@@ -1,6 +1,115 @@
 // Controller para estoque consolidado - visão geral por produto
 import { Request, Response } from "express";
+import * as XLSX from 'xlsx';
+import * as fs from 'fs';
+import * as path from 'path';
 const db = require("../database");
+
+// Função para gerar backup em Excel no formato de matriz
+async function gerarBackupExcel(client: any) {
+  try {
+    // Buscar todos os dados de estoque
+    const estoqueData = await client.query(`
+      SELECT 
+        e.nome as escola_nome,
+        p.nome as produto_nome,
+        p.categoria,
+        p.unidade,
+        ee.quantidade_atual
+      FROM estoque_escolas ee
+      JOIN escolas e ON e.id = ee.escola_id
+      JOIN produtos p ON p.id = ee.produto_id
+      WHERE e.ativo = true AND p.ativo = true
+      ORDER BY e.nome, p.categoria, p.nome
+    `);
+
+    // Buscar movimentações para planilha separada
+    const movimentacoesData = await client.query(`
+      SELECT 
+        me.id,
+        e.nome as escola_nome,
+        p.nome as produto_nome,
+        me.tipo_movimentacao,
+        me.quantidade,
+        me.observacoes,
+        me.created_at
+      FROM movimentacoes_estoque me
+      JOIN escolas e ON e.id = me.escola_id
+      JOIN produtos p ON p.id = me.produto_id
+      ORDER BY me.created_at DESC
+    `);
+
+    // Criar matriz de estoque (escolas x produtos)
+    const escolas = [...new Set(estoqueData.rows.map(row => row.escola_nome))].sort();
+    const produtos = [...new Set(estoqueData.rows.map(row => row.produto_nome))].sort();
+    
+    // Criar mapa de quantidades
+    const quantidadeMap = new Map();
+    estoqueData.rows.forEach(row => {
+      const key = `${row.escola_nome}|${row.produto_nome}`;
+      quantidadeMap.set(key, row.quantidade_atual);
+    });
+
+    // Criar dados da matriz
+    const matrizData = [];
+    
+    // Cabeçalho com produtos
+    const header = ['Escola', ...produtos];
+    matrizData.push(header);
+    
+    // Linhas com escolas e quantidades
+    escolas.forEach(escola => {
+      const row = [escola];
+      produtos.forEach(produto => {
+        const key = `${escola}|${produto}`;
+        const quantidade = quantidadeMap.get(key) || 0;
+        row.push(quantidade);
+      });
+      matrizData.push(row);
+    });
+
+    // Criar workbook
+    const wb = XLSX.utils.book_new();
+
+    // Adicionar planilha matriz (escolas x produtos)
+    const wsMatriz = XLSX.utils.aoa_to_sheet(matrizData);
+    XLSX.utils.book_append_sheet(wb, wsMatriz, 'Matriz Estoque');
+
+    // Adicionar planilha de estoque detalhado
+    const wsEstoque = XLSX.utils.json_to_sheet(estoqueData.rows);
+    XLSX.utils.book_append_sheet(wb, wsEstoque, 'Estoque Detalhado');
+
+    // Adicionar planilha de movimentações
+    const wsMovimentacoes = XLSX.utils.json_to_sheet(movimentacoesData.rows);
+    XLSX.utils.book_append_sheet(wb, wsMovimentacoes, 'Movimentacoes');
+
+    // Criar diretório de backup se não existir
+    const backupDir = path.join(process.cwd(), 'backups');
+    if (!fs.existsSync(backupDir)) {
+      fs.mkdirSync(backupDir, { recursive: true });
+    }
+
+    // Gerar nome do arquivo com timestamp
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const filename = `backup-estoque-${timestamp}.xlsx`;
+    const filepath = path.join(backupDir, filename);
+
+    // Salvar arquivo
+    XLSX.writeFile(wb, filepath);
+
+    return {
+      filename,
+      filepath,
+      total_escolas: escolas.length,
+      total_produtos: produtos.length,
+      total_registros_estoque: estoqueData.rows.length,
+      total_movimentacoes: movimentacoesData.rows.length
+    };
+  } catch (error) {
+    console.error('Erro ao gerar backup Excel:', error);
+    throw error;
+  }
+}
 
 export async function buscarEstoqueConsolidadoProduto(req: Request, res: Response) {
   try {
@@ -76,47 +185,22 @@ export async function resetarEstoqueGlobal(req: Request, res: Response) {
     const result = await db.transaction(async (client) => {
       // Transação já iniciada automaticamente pela função transaction
       
-      // 1. Criar backup das movimentações
-      const backupMovimentacoes = await client.query(`
-        INSERT INTO backup_movimentacoes_estoque (
-          escola_id, produto_id, tipo_movimentacao, quantidade, 
-          observacoes, created_at, usuario_id, data_backup
-        )
-        SELECT 
-          escola_id, produto_id, tipo_movimentacao, quantidade,
-          observacoes, created_at, usuario_id, NOW()
-        FROM movimentacoes_estoque
-        RETURNING id
-      `);
+      // 1. Gerar backup em Excel antes do reset
+      const backupData = await gerarBackupExcel(client);
       
-      // 2. Criar backup dos estoques atuais
-      const backupEstoques = await client.query(`
-        INSERT INTO backup_estoque_escolas (
-          escola_id, produto_id, quantidade_atual, 
-          created_at, updated_at, data_backup
-        )
-        SELECT 
-          escola_id, produto_id, quantidade_atual,
-          created_at, updated_at, NOW()
-        FROM estoque_escolas
-        WHERE quantidade_atual > 0
-        RETURNING id
-      `);
-      
-      // 3. Deletar todas as movimentações
+      // 2. Deletar todas as movimentações
       const deleteMovimentacoes = await client.query(`
         DELETE FROM movimentacoes_estoque
       `);
       
-      // 4. Zerar todos os estoques
+      // 3. Zerar todos os estoques
       const resetEstoques = await client.query(`
         DELETE FROM estoque_escolas
       `);
       
       // Retornar dados da operação
       return {
-        movimentacoes_backup: backupMovimentacoes.rowCount,
-        estoques_backup: backupEstoques.rowCount,
+        backup_excel: backupData,
         movimentacoes_deletadas: deleteMovimentacoes.rowCount,
         estoques_resetados: resetEstoques.rowCount,
         data_backup: new Date().toISOString()
