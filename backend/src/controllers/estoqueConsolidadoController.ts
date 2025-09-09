@@ -73,10 +73,8 @@ export async function buscarEstoqueConsolidadoProduto(req: Request, res: Respons
 
 export async function resetarEstoqueGlobal(req: Request, res: Response) {
   try {
-    const client = await db.connect();
-    
-    try {
-      await client.query('BEGIN');
+    const result = await db.transaction(async (client) => {
+      // Transação já iniciada automaticamente pela função transaction
       
       // 1. Criar backup das movimentações
       const backupMovimentacoes = await client.query(`
@@ -115,26 +113,21 @@ export async function resetarEstoqueGlobal(req: Request, res: Response) {
         DELETE FROM estoque_escolas
       `);
       
-      await client.query('COMMIT');
-      
-      res.json({
-        success: true,
-        message: 'Estoque global resetado com sucesso',
-        data: {
-          movimentacoes_backup: backupMovimentacoes.rowCount,
-          estoques_backup: backupEstoques.rowCount,
-          movimentacoes_deletadas: deleteMovimentacoes.rowCount,
-          estoques_resetados: resetEstoques.rowCount,
-          data_backup: new Date().toISOString()
-        }
-      });
-      
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
-    }
+      // Retornar dados da operação
+      return {
+        movimentacoes_backup: backupMovimentacoes.rowCount,
+        estoques_backup: backupEstoques.rowCount,
+        movimentacoes_deletadas: deleteMovimentacoes.rowCount,
+        estoques_resetados: resetEstoques.rowCount,
+        data_backup: new Date().toISOString()
+      };
+    });
+    
+    res.json({
+      success: true,
+      message: 'Estoque global resetado com sucesso',
+      data: result
+    });
     
   } catch (error) {
     console.error('❌ Erro ao resetar estoque global:', error);
