@@ -339,10 +339,10 @@ export async function registrarMovimentacao(req: Request, res: Response) {
       });
     }
 
-    if (!quantidade || quantidade <= 0) {
+    if (!quantidade && quantidade !== 0 || quantidade < 0) {
       return res.status(400).json({
         success: false,
-        message: "Quantidade deve ser maior que zero"
+        message: "Quantidade deve ser maior ou igual a zero"
       });
     }
 

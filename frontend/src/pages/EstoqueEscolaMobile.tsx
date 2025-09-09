@@ -251,8 +251,8 @@ const EstoqueEscolaMobile = () => {
 
         try {
             const quantidade = parseFloat(quantidadeMovimentacao) || 0;
-            if (quantidade <= 0) {
-                setError('Quantidade deve ser maior que zero.');
+            if (quantidade < 0) {
+                setError('Quantidade deve ser maior ou igual a zero.');
                 return;
             }
 
@@ -910,6 +910,11 @@ const EstoqueEscolaMobile = () => {
                             type="number"
                             value={quantidadeMovimentacao}
                             onChange={(e) => setQuantidadeMovimentacao(e.target.value)}
+                            placeholder={
+                                tipoMovimentacao === 'entrada' ? 'Ex: 10 (quantidade a adicionar)' :
+                                tipoMovimentacao === 'saida' ? 'Ex: 5 (quantidade a remover)' :
+                                'Ex: 15 (nova quantidade total)'
+                            }
                             InputProps={{
                                 endAdornment: <InputAdornment position="end">{itemMovimentacao?.unidade_medida}</InputAdornment>,
                                 sx: { fontSize: '1.2rem' }

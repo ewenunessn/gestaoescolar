@@ -172,8 +172,14 @@ const EstoqueScreen: React.FC<EstoqueScreenProps> = ({ navigation }) => {
       return;
     }
 
-    // Validação para saída: não pode ser maior que a quantidade atual
+    // Validação da quantidade
     const quantidadeMovimento = parseFloat(quantidade);
+    if (isNaN(quantidadeMovimento) || quantidadeMovimento < 0) {
+      Alert.alert('Erro', 'Quantidade deve ser maior ou igual a zero');
+      return;
+    }
+
+    // Validação para saída: não pode ser maior que a quantidade atual
     if (tipoMovimento === 'saida' && quantidadeMovimento > itemSelecionado.quantidade_atual) {
       Alert.alert(
         'Erro de Validação', 
@@ -396,7 +402,11 @@ const EstoqueScreen: React.FC<EstoqueScreenProps> = ({ navigation }) => {
                 <View style={styles.quantidadeContainer}>
                   <TextInput
                     style={[styles.input, styles.quantidadeInput]}
-                    placeholder="Quantidade"
+                    placeholder={
+                      tipoMovimento === 'entrada' ? 'Ex: 10 (quantidade a adicionar)' :
+                      tipoMovimento === 'saida' ? 'Ex: 5 (quantidade a remover)' :
+                      'Ex: 15 (nova quantidade total)'
+                    }
                     value={quantidade}
                     onChangeText={(text) => setQuantidade(text.replace(',', '.'))}
                     keyboardType="numeric"

@@ -1157,6 +1157,11 @@ const EstoqueEscolaPage = () => {
                                 ...formMovimentacao,
                                 quantidade: parseFloat(e.target.value) || 0
                             })}
+                            placeholder={
+                                formMovimentacao.tipo_movimentacao === 'entrada' ? 'Ex: 10 (quantidade a adicionar)' :
+                                formMovimentacao.tipo_movimentacao === 'saida' ? 'Ex: 5 (quantidade a remover)' :
+                                'Ex: 15 (nova quantidade total)'
+                            }
                             fullWidth
                             required
                             InputProps={{
@@ -1224,7 +1229,7 @@ const EstoqueEscolaPage = () => {
                     <Button
                         onClick={salvarMovimentacao}
                         variant="contained"
-                        disabled={!formMovimentacao.quantidade || formMovimentacao.quantidade <= 0 || salvandoMovimentacao}
+                        disabled={formMovimentacao.quantidade === undefined || formMovimentacao.quantidade < 0 || salvandoMovimentacao}
                         sx={{
                             bgcolor: formMovimentacao.tipo_movimentacao === 'entrada' ? '#059669' :
                                 formMovimentacao.tipo_movimentacao === 'saida' ? '#dc2626' : '#8b5cf6',

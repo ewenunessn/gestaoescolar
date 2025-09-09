@@ -209,7 +209,7 @@ export async function criarLote(req: Request, res: Response) {
     } = req.body;
 
     // Validações básicas
-    if (!produto_id || !lote || !quantidade || quantidade <= 0) {
+    if (!produto_id || !lote || (quantidade !== 0 && !quantidade) || quantidade < 0) {
       return res.status(400).json({
         success: false,
         message: "Produto, lote e quantidade são obrigatórios"
@@ -287,7 +287,7 @@ export async function processarSaidaEstoque(req: Request, res: Response) {
     } = req.body;
 
     // Validações
-    if (!produto_id || !quantidade || quantidade <= 0 || !motivo) {
+    if (!produto_id || (quantidade !== 0 && !quantidade) || quantidade < 0 || !motivo) {
       console.log('❌ Validação falhou:', { produto_id, quantidade, motivo });
       return res.status(400).json({
         success: false,
