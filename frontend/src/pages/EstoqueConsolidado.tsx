@@ -298,7 +298,9 @@ const EstoqueConsolidadoPage = () => {
                 row.getCell(2).value = escola.quantidade_atual;
                 row.getCell(3).value = escola.unidade;
                 row.getCell(4).value = getStatusLabel(escola.status_estoque);
-                row.getCell(5).value = new Date(escola.data_ultima_atualizacao).toLocaleDateString('pt-BR');
+                row.getCell(5).value = escola.data_ultima_atualizacao 
+                    ? new Date(escola.data_ultima_atualizacao).toLocaleDateString('pt-BR')
+                    : 'Nunca atualizado';
 
                 // Aplicar formatação baseada no status
                 let corFundo = 'FFFFFF'; // Branco padrão
@@ -913,7 +915,10 @@ const EstoqueConsolidadoPage = () => {
                                                 </TableCell>
                                                 <TableCell align="center">
                                                     <Typography variant="body2" color="text.secondary">
-                                                        {new Date(escola.data_ultima_atualizacao).toLocaleDateString('pt-BR')}
+                                                        {escola.data_ultima_atualizacao 
+                                                            ? new Date(escola.data_ultima_atualizacao).toLocaleDateString('pt-BR')
+                                                            : 'Nunca atualizado'
+                                                        }
                                                     </Typography>
                                                 </TableCell>
                                             </TableRow>

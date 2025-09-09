@@ -710,7 +710,10 @@ const EstoqueEscolaMobile = () => {
                                     </Box>
 
                                     <Typography variant="caption" sx={{ color: 'text.secondary', mb: 2, display: 'block', fontSize: '0.7rem' }}>
-                                        Atualizado em {new Date(item.data_ultima_atualizacao).toLocaleDateString('pt-BR')}
+                                        Atualizado em {item.data_ultima_atualizacao 
+                                    ? new Date(item.data_ultima_atualizacao).toLocaleDateString('pt-BR')
+                                    : 'Nunca'
+                                }
                                     </Typography>
 
                                     <Stack direction="row" spacing={1.5}>

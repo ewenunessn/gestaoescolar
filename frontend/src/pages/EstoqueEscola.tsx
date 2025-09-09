@@ -878,7 +878,10 @@ const EstoqueEscolaPage = () => {
                                         </TableCell>
                                         <TableCell align="center">
                                             <Typography variant="body2" color="text.secondary">
-                                                {new Date(item.data_ultima_atualizacao).toLocaleDateString('pt-BR')}
+                                                {item.data_ultima_atualizacao 
+                                            ? new Date(item.data_ultima_atualizacao).toLocaleDateString('pt-BR')
+                                            : 'Nunca atualizado'
+                                        }
                                             </Typography>
                                         </TableCell>
                                         {modoEdicaoLote && (

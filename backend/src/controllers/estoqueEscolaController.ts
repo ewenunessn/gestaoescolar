@@ -13,7 +13,7 @@ export async function listarEstoqueEscola(req: Request, res: Response) {
         $1::integer as escola_id,
         p.id as produto_id,
         COALESCE(ee.quantidade_atual, 0) as quantidade_atual,
-        COALESCE(ee.updated_at, CURRENT_TIMESTAMP) as data_ultima_atualizacao,
+        ee.updated_at as data_ultima_atualizacao,
         p.nome as produto_nome,
         p.descricao as produto_descricao,
         p.unidade as unidade_medida,

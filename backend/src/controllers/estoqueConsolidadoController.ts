@@ -34,7 +34,7 @@ export async function buscarEstoqueConsolidadoProduto(req: Request, res: Respons
           WHEN COALESCE(ee.quantidade_atual, 0) = 0 THEN 'sem_estoque'
           ELSE 'normal'
         END as status_estoque,
-        COALESCE(ee.updated_at, CURRENT_TIMESTAMP) as data_ultima_atualizacao
+        ee.updated_at as data_ultima_atualizacao
       FROM escolas e
       LEFT JOIN estoque_escolas ee ON (ee.escola_id = e.id AND ee.produto_id = $1)
       WHERE e.ativo = true
