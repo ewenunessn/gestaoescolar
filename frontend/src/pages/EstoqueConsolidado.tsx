@@ -501,7 +501,7 @@ const EstoqueConsolidadoPage = () => {
                 {/* Header */}
                 <Box sx={{ mb: 3 }}>
                     <Typography variant="h4" sx={{ fontWeight: 600, color: '#1f2937', mb: 1 }}>
-                        Estoque Consolidado
+                        Estoque das Escolas
                     </Typography>
                     <Typography variant="body1" color="text.secondary">
                         Visualize o estoque de cada produto em todas as escolas
@@ -991,7 +991,7 @@ const EstoqueConsolidadoPage = () => {
                             // Adicionar título
                             worksheet.mergeCells('A1:E1');
                             const tituloCell = worksheet.getCell('A1');
-                            tituloCell.value = 'Relatório de Estoque Consolidado por Produto';
+                            tituloCell.value = 'Relatório de Estoque das Escolas por Produto';
                             tituloCell.font = {
                                 size: 14,
                                 bold: true,

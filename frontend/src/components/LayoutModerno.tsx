@@ -160,7 +160,7 @@ const menuItems = [
     badgeColor: "success",
   },
   {
-    text: "Estoque Consolidado",
+    text: "Estoque das Escolas",
     icon: <Assessment />,
     path: "/estoque-consolidado",
     category: "estoque",

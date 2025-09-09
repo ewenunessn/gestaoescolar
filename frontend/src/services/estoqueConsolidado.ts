@@ -33,13 +33,13 @@ export interface EstoqueConsolidadoResumo {
   total_escolas: number;
 }
 
-// Buscar estoque consolidado de um produto específico em todas as escolas
+// Buscar estoque das escolas de um produto específico em todas as escolas
 export async function buscarEstoqueConsolidadoProduto(produtoId: number): Promise<EstoqueConsolidadoProduto> {
   const { data } = await apiWithRetry.get(`/estoque-consolidado/produto/${produtoId}`);
   return data.data;
 }
 
-// Buscar estoque consolidado de todos os produtos (resumo)
+// Buscar estoque das escolas de todos os produtos (resumo)
 export async function listarEstoqueConsolidado(): Promise<EstoqueConsolidadoResumo[]> {
   const { data } = await apiWithRetry.get('/estoque-consolidado');
   return data.data || [];
