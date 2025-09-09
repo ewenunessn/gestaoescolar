@@ -212,7 +212,7 @@ export async function listarHistoricoEstoque(req: Request, res: Response) {
       SELECT 
         eeh.*,
         p.nome as produto_nome,
-        p.unidade as unidade_medida,
+        COALESCE(eeh.unidade_medida, p.unidade) as unidade_medida,
         u.nome as usuario_nome
       FROM estoque_escolas_historico eeh
       LEFT JOIN produtos p ON eeh.produto_id = p.id

@@ -358,7 +358,7 @@ export async function getMovimentacoesProduto(produto_id: number, limite: number
       em.*,
       el.lote,
       p.nome as produto_nome,
-      p.unidade as produto_unidade
+      COALESCE(em.unidade_medida, p.unidade) as produto_unidade
     FROM estoque_movimentacoes em
     LEFT JOIN estoque_lotes el ON em.lote_id = el.id
     LEFT JOIN produtos p ON em.produto_id = p.id
