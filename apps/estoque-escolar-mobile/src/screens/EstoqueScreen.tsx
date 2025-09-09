@@ -167,7 +167,7 @@ const EstoqueScreen: React.FC<EstoqueScreenProps> = ({ navigation }) => {
 
 
   const salvarMovimento = async () => {
-    if (!itemSelecionado || !quantidade) {
+    if (!itemSelecionado || quantidade === '' || quantidade === null || quantidade === undefined) {
       Alert.alert('Erro', 'Preencha todos os campos obrigatórios');
       return;
     }

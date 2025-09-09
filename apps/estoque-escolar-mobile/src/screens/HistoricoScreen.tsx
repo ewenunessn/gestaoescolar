@@ -222,12 +222,7 @@ const HistoricoScreen: React.FC<HistoricoScreenProps> = ({ navigation }) => {
         </View>
       )}
       
-      {(item.usuario_nome || item.usuario?.nome) && (
-        <View style={styles.usuarioContainer}>
-          <Text style={styles.usuarioLabel}>Usuário:</Text>
-          <Text style={styles.usuarioText}>{item.usuario_nome || item.usuario?.nome}</Text>
-        </View>
-      )}
+
     </View>
   );
 
@@ -475,8 +470,8 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   produtoContainer: {
-    marginBottom: 12,
-    paddingBottom: 12,
+    marginBottom: 10,
+    paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
@@ -495,7 +490,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   tipoContainer: {
     flexDirection: 'row',
@@ -511,7 +506,7 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   quantidadeContainer: {
-    marginBottom: 8,
+    marginBottom: 10,
   },
   quantidadeLabel: {
     fontSize: 12,
@@ -524,7 +519,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   saldoContainer: {
-    marginBottom: 8,
+    marginBottom: 10,
   },
   saldoLabel: {
     fontSize: 12,
@@ -536,7 +531,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   motivoContainer: {
-    marginBottom: 8,
+    marginBottom: 12,
   },
   motivoLabel: {
     fontSize: 12,
@@ -548,7 +543,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   observacoesContainer: {
-    marginBottom: 8,
+    marginBottom: 0,
   },
   observacoesLabel: {
     fontSize: 12,
@@ -559,18 +554,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#333',
   },
-  usuarioContainer: {
-    marginBottom: 8,
-  },
-  usuarioLabel: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 4,
-  },
-  usuarioText: {
-    fontSize: 14,
-    color: '#333',
-  },
+
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
