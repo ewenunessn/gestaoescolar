@@ -27,16 +27,17 @@ async function gerarBackupExcel(client: any) {
     const movimentacoesData = await client.query(`
       SELECT 
         me.id,
-        e.nome as escola_nome,
+        el.lote as lote_codigo,
         p.nome as produto_nome,
-        me.tipo_movimentacao,
+        me.tipo,
         me.quantidade,
+        me.motivo,
         me.observacoes,
-        me.created_at
+        me.data_movimentacao
       FROM estoque_movimentacoes me
-      JOIN escolas e ON e.id = me.escola_id
+      JOIN estoque_lotes el ON el.id = me.lote_id
       JOIN produtos p ON p.id = me.produto_id
-      ORDER BY me.created_at DESC
+      ORDER BY me.data_movimentacao DESC
     `);
 
     // Criar matriz de estoque (escolas x produtos)
@@ -190,7 +191,7 @@ export async function resetarEstoqueGlobal(req: Request, res: Response) {
       
       // 2. Deletar todas as movimentações
       const deleteMovimentacoes = await client.query(`
-        DELETE FROM movimentacoes_estoque
+        DELETE FROM estoque_movimentacoes
       `);
       
       // 3. Zerar todos os estoques
