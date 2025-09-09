@@ -348,6 +348,17 @@ export async function registrarMovimentacao(req: Request, res: Response) {
 
     // Usar transação para garantir consistência
     const result = await db.transaction(async (client: any) => {
+      // Buscar a unidade de medida do produto
+      const produtoResult = await client.query(`
+        SELECT unidade FROM produtos WHERE id = $1
+      `, [produto_id]);
+      
+      if (produtoResult.rows.length === 0) {
+        throw new Error('Produto não encontrado');
+      }
+      
+      const unidadeMedida = produtoResult.rows[0].unidade;
+
       // Buscar ou criar o item no estoque
       let estoqueAtual = await client.query(`
         SELECT * FROM estoque_escolas 
@@ -408,8 +419,9 @@ export async function registrarMovimentacao(req: Request, res: Response) {
           motivo,
           documento_referencia,
           usuario_id,
+          unidade_medida,
           data_movimentacao
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP)
         RETURNING *
       `, [
         item.id,
@@ -421,7 +433,8 @@ export async function registrarMovimentacao(req: Request, res: Response) {
         quantidadePosterior,
         motivo,
         documento_referencia,
-        usuario_id
+        usuario_id,
+        unidadeMedida
       ]);
 
       return {

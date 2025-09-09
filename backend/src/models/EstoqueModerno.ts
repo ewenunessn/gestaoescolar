@@ -235,13 +235,21 @@ export async function registrarMovimentacao(dados: {
   documento_referencia?: string;
   usuario_id: number;
   observacoes?: string;
+  unidade_medida?: string;
 }): Promise<MovimentacaoEstoque> {
+
+  // Se unidade_medida não foi fornecida, buscar do produto
+  let unidadeMedida = dados.unidade_medida;
+  if (!unidadeMedida) {
+    const produto = await db.query('SELECT unidade FROM produtos WHERE id = $1', [dados.produto_id]);
+    unidadeMedida = produto.rows[0]?.unidade || null;
+  }
 
   const result = await db.query(`
     INSERT INTO estoque_movimentacoes (
       lote_id, produto_id, tipo, quantidade, quantidade_anterior,
-      quantidade_posterior, motivo, documento_referencia, usuario_id, observacoes
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      quantidade_posterior, motivo, documento_referencia, usuario_id, observacoes, unidade_medida
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
     RETURNING id
   `, [
     dados.lote_id,
@@ -253,7 +261,8 @@ export async function registrarMovimentacao(dados: {
     dados.motivo,
     dados.documento_referencia || null,
     dados.usuario_id,
-    dados.observacoes || null
+    dados.observacoes || null,
+    unidadeMedida
   ]);
 
   return await getMovimentacaoById(result.rows[0].id);
