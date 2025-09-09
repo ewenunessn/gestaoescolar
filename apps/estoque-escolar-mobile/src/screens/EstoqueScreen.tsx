@@ -51,7 +51,7 @@ const EstoqueScreen: React.FC<EstoqueScreenProps> = ({ navigation }) => {
   const [tipoMovimento, setTipoMovimento] = useState<'entrada' | 'saida' | 'ajuste'>('entrada');
   const [quantidade, setQuantidade] = useState('');
   const [motivo, setMotivo] = useState('');
-  const [observacoes, setObservacoes] = useState('');
+
 
   // Mostrar erro se houver
   React.useEffect(() => {
@@ -149,7 +149,7 @@ const EstoqueScreen: React.FC<EstoqueScreenProps> = ({ navigation }) => {
     setModalMovimento(true);
     setQuantidade('');
     setMotivo('');
-    setObservacoes('');
+
   };
 
   const abrirModalHistorico = (item: ItemEstoqueEscola) => {
@@ -198,7 +198,7 @@ const EstoqueScreen: React.FC<EstoqueScreenProps> = ({ navigation }) => {
         tipo_movimentacao: tipoMovimento,
         quantidade_movimentada: parseFloat(quantidade),
         motivo,
-        observacoes,
+  
       };
 
       await apiService.atualizarQuantidadeItem(escolaId, itemSelecionado.produto_id, movimento);
@@ -399,9 +399,9 @@ const EstoqueScreen: React.FC<EstoqueScreenProps> = ({ navigation }) => {
                   ))}
                 </View>
                 
-                <View style={styles.quantidadeContainer}>
+                <View style={styles.quantidadeInputContainer}>
                   <TextInput
-                    style={[styles.input, styles.quantidadeInput]}
+                    style={styles.quantidadeInputWithUnit}
                     placeholder={
                       tipoMovimento === 'entrada' ? 'Ex: 10 (quantidade a adicionar)' :
                       tipoMovimento === 'saida' ? 'Ex: 5 (quantidade a remover)' :
@@ -411,21 +411,14 @@ const EstoqueScreen: React.FC<EstoqueScreenProps> = ({ navigation }) => {
                     onChangeText={(text) => setQuantidade(text.replace(',', '.'))}
                     keyboardType="numeric"
                   />
-                  <Text style={styles.unidadeText}>{itemSelecionado.produto?.unidade_medida || ''}</Text>
+                  <Text style={styles.unidadeTextInside}>{itemSelecionado.produto?.unidade_medida || ''}</Text>
                 </View>
                 
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, styles.textArea]}
                   placeholder="Motivo (opcional)"
                   value={motivo}
                   onChangeText={setMotivo}
-                />
-                
-                <TextInput
-                  style={[styles.input, styles.textArea]}
-                  placeholder="Observações (opcional)"
-                  value={observacoes}
-                  onChangeText={setObservacoes}
                   multiline
                   numberOfLines={3}
                 />
@@ -674,21 +667,28 @@ const styles = StyleSheet.create({
   tipoButtonTextActive: {
     color: 'white',
   },
-  quantidadeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  quantidadeInputContainer: {
+    position: 'relative',
     marginBottom: 12,
   },
-  quantidadeInput: {
-    flex: 1,
-    marginRight: 8,
-    marginBottom: 0,
-  },
-  unidadeText: {
+  quantidadeInputWithUnit: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    paddingRight: 60,
     fontSize: 16,
-    color: '#666',
+    backgroundColor: 'transparent',
+  },
+  unidadeTextInside: {
+    position: 'absolute',
+    right: 12,
+    top: 10,
+    fontSize: 16,
+    color: '#999',
     fontWeight: '500',
-    minWidth: 40,
+    backgroundColor: 'transparent',
   },
   input: {
     borderWidth: 1,
