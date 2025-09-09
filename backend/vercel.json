@@ -1,0 +1,29 @@
+{
+    "version": 2,
+    "builds": [
+        {
+            "src": "src/index.ts",
+            "use": "@vercel/node"
+        },
+        {
+            "src": "api/index.js",
+            "use": "@vercel/node"
+        }
+    ],
+    "routes": [
+        {
+            "src": "/(.*)",
+            "dest": "api/index.js"
+        }
+    ],
+    "env": {
+        "NODE_ENV": "production",
+        "VERCEL": "1",
+        "CORS_ORIGIN": "https://gestaoescolar-hxq4hnhsj-ewenunes0-4923s-projects.vercel.app,https://*.vercel.app,http://localhost:5173",
+        "JWT_SECRET": "sua_chave_jwt_super_secreta_minimo_32_caracteres",
+        "JWT_EXPIRES_IN": "24h",
+        "POSTGRES_URL": "postgresql://neondb_owner:npg_PDfBTKRsi29G@ep-crimson-violet-adf47gue-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
+        "DATABASE_URL": "postgresql://neondb_owner:npg_PDfBTKRsi29G@ep-crimson-violet-adf47gue-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
+        "FORCE_REDEPLOY": "2024-01-15"
+    }
+}
