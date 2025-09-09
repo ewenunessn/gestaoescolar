@@ -50,6 +50,7 @@ import {
     ArrowUpward,
     ArrowDownward,
     MoreVert,
+    RestartAlt,
 } from '@mui/icons-material';
 import * as XLSX from 'xlsx';
 import * as ExcelJS from 'exceljs';
@@ -90,6 +91,10 @@ const EstoqueConsolidadoPage = () => {
 
     // Estados do menu de ações
     const [actionsMenuAnchor, setActionsMenuAnchor] = useState<null | HTMLElement>(null);
+
+    // Estados do modal de reset
+    const [resetModalOpen, setResetModalOpen] = useState(false);
+    const [loadingReset, setLoadingReset] = useState(false);
 
     // Estados do modal de detalhes
     const [detalhesModalOpen, setDetalhesModalOpen] = useState(false);
@@ -165,6 +170,32 @@ const EstoqueConsolidadoPage = () => {
             loadEstoqueResumo();
         }
     }, [produtos]);
+
+    // Função para resetar estoque global
+    const handleResetEstoque = async () => {
+        try {
+            setLoadingReset(true);
+            setError(null);
+
+            // Importar apiWithRetry dinamicamente
+            const { apiWithRetry } = await import('../services/api');
+            
+            const response = await apiWithRetry.post('/estoque-consolidado/reset');
+            
+            setSuccessMessage('Estoque resetado com sucesso! Backup criado automaticamente.');
+            setTimeout(() => setSuccessMessage(null), 5000);
+            
+            // Recarregar dados
+            await loadEstoqueResumo();
+            
+        } catch (err: any) {
+            console.error('Erro ao resetar estoque:', err);
+            setError('Erro ao resetar estoque. Tente novamente.');
+        } finally {
+            setLoadingReset(false);
+            setResetModalOpen(false);
+        }
+    };
 
     // Filtrar e ordenar produtos
     const filteredProdutos = useMemo(() => {
@@ -949,7 +980,7 @@ const EstoqueConsolidadoPage = () => {
                             '&:hover': { bgcolor: '#047857' }
                         }}
                     >
-                        Exportar Excel
+                        Exportar
                     </Button>
                     <Button onClick={() => setDetalhesModalOpen(false)} variant="outlined">
                         Fechar
@@ -1112,7 +1143,87 @@ const EstoqueConsolidadoPage = () => {
                         <Typography>Exportar Lista</Typography>
                     </Box>
                 </MenuItem>
+                
+                <MenuItem
+                    onClick={() => {
+                        setActionsMenuAnchor(null);
+                        setResetModalOpen(true);
+                    }}
+                    sx={{ py: 1.5, px: 2 }}
+                >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <RestartAlt sx={{ fontSize: 18, color: '#dc2626' }} />
+                        <Typography>Resetar Movimentações e Estoques</Typography>
+                    </Box>
+                </MenuItem>
             </Menu>
+
+            {/* Modal de Confirmação de Reset */}
+            <Dialog
+                open={resetModalOpen}
+                onClose={() => !loadingReset && setResetModalOpen(false)}
+                maxWidth="sm"
+                fullWidth
+                PaperProps={{
+                    sx: {
+                        borderRadius: '12px',
+                        boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
+                    }
+                }}
+            >
+                <DialogTitle sx={{ 
+                    pb: 1, 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 1,
+                    color: '#dc2626'
+                }}>
+                    <RestartAlt />
+                    Resetar Movimentações e Estoques
+                </DialogTitle>
+                <DialogContent>
+                    <Alert severity="warning" sx={{ mb: 2 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            ⚠️ Esta ação irá:
+                        </Typography>
+                        <Box component="ul" sx={{ mt: 1, mb: 0, pl: 2 }}>
+                            <li>Criar um backup completo de todas as movimentações</li>
+                            <li>Criar um backup do estoque atual de todas as escolas</li>
+                            <li>Zerar todas as movimentações de estoque</li>
+                            <li>Zerar todos os estoques das escolas</li>
+                        </Box>
+                    </Alert>
+                    
+                    <Typography variant="body1" sx={{ mb: 2 }}>
+                        Os backups serão salvos automaticamente no banco de dados com timestamp atual.
+                        Esta operação <strong>não pode ser desfeita</strong> através da interface.
+                    </Typography>
+                    
+                    <Typography variant="body2" color="text.secondary">
+                        Tem certeza que deseja continuar?
+                    </Typography>
+                </DialogContent>
+                <DialogActions sx={{ p: 2, gap: 1 }}>
+                    <Button
+                        onClick={() => setResetModalOpen(false)}
+                        disabled={loadingReset}
+                        variant="outlined"
+                        sx={{ minWidth: 100 }}
+                    >
+                        Cancelar
+                    </Button>
+                    <Button
+                        onClick={handleResetEstoque}
+                        disabled={loadingReset}
+                        variant="contained"
+                        color="error"
+                        sx={{ minWidth: 120 }}
+                        startIcon={loadingReset ? <CircularProgress size={16} /> : <RestartAlt />}
+                    >
+                        {loadingReset ? 'Resetando...' : 'Resetar Tudo'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 };

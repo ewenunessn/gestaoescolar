@@ -481,6 +481,7 @@ const EstoqueEscolaPage = () => {
 
     // Função para resetar estoque com backup
     const handleResetarEstoque = () => {
+        console.log('handleResetarEstoque chamada');
         setResetModalOpen(true);
     };
 
@@ -766,7 +767,10 @@ const EstoqueEscolaPage = () => {
                             )}
 
                             <IconButton
-                                onClick={(e) => setActionsMenuAnchor(e.currentTarget)}
+                                onClick={(e) => {
+                                    console.log('Menu de ações clicado');
+                                    setActionsMenuAnchor(e.currentTarget);
+                                }}
                                 sx={{
                                     border: '1px solid #d1d5db',
                                     borderRadius: '8px',
@@ -973,6 +977,7 @@ const EstoqueEscolaPage = () => {
             </Box>
 
             {/* Menu de Ações */}
+            {console.log('Renderizando menu com actionsMenuAnchor:', actionsMenuAnchor)}
             <Menu
                 anchorEl={actionsMenuAnchor}
                 open={Boolean(actionsMenuAnchor)}
@@ -983,6 +988,19 @@ const EstoqueEscolaPage = () => {
                         boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
                         mt: 1,
                         minWidth: 200,
+                        maxHeight: 400,
+                        zIndex: 9999,
+                        backgroundColor: 'white',
+                    }
+                }}
+                transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                slotProps={{
+                    paper: {
+                        style: {
+                            maxHeight: '400px',
+                            overflow: 'auto'
+                        }
                     }
                 }}
             >
@@ -1012,8 +1030,10 @@ const EstoqueEscolaPage = () => {
                     </Box>
                 </MenuItem>
 
+                {console.log('Renderizando MenuItem Resetar Estoque')}
                 <MenuItem
                     onClick={() => {
+                        console.log('MenuItem Resetar Estoque clicado');
                         setActionsMenuAnchor(null);
                         handleResetarEstoque();
                     }}
