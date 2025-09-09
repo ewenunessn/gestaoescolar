@@ -71,6 +71,7 @@ import {
     Tune,
     Logout,
     ExitToApp,
+    RestartAlt,
 } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -173,6 +174,10 @@ const EstoqueEscolaPage = () => {
         motivo: '',
         documento_referencia: '',
     });
+
+    // Estados do modal de reset
+    const [resetModalOpen, setResetModalOpen] = useState(false);
+    const [motivoReset, setMotivoReset] = useState('');
 
     // Carregar dados
     const loadData = async () => {
@@ -471,6 +476,51 @@ const EstoqueEscolaPage = () => {
         } catch (err: any) {
             console.error('Erro ao exportar:', err);
             setError('Erro ao exportar estoque. Tente novamente.');
+        }
+    };
+
+    // Função para resetar estoque com backup
+    const handleResetarEstoque = () => {
+        setResetModalOpen(true);
+    };
+
+    const confirmarResetEstoque = async () => {
+        if (!escolaId) return;
+
+        try {
+            setLoading(true);
+            setResetModalOpen(false);
+            
+            const response = await fetch(`/api/estoque-escola/escola/${escolaId}/reset`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    usuario_id: 1, // TODO: pegar do contexto de usuário
+                    motivo: motivoReset || 'Reset manual do estoque'
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Erro ao resetar estoque');
+            }
+
+            const result = await response.json();
+            
+            if (result.success) {
+                setSuccessMessage(`Estoque resetado com sucesso! Backup criado: ${result.data.backup_nome}`);
+                await loadData(); // Recarregar os dados
+            } else {
+                throw new Error(result.message || 'Erro ao resetar estoque');
+            }
+            
+        } catch (err: any) {
+            console.error('Erro ao resetar estoque:', err);
+            setError('Erro ao resetar estoque. Tente novamente.');
+        } finally {
+            setLoading(false);
+            setMotivoReset('');
         }
     };
 
@@ -961,6 +1011,19 @@ const EstoqueEscolaPage = () => {
                         <Typography>Exportar Excel</Typography>
                     </Box>
                 </MenuItem>
+
+                <MenuItem
+                    onClick={() => {
+                        setActionsMenuAnchor(null);
+                        handleResetarEstoque();
+                    }}
+                    sx={{ py: 1.5, px: 2 }}
+                >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <RestartAlt sx={{ fontSize: 18, color: '#dc2626' }} />
+                        <Typography sx={{ color: '#dc2626' }}>Resetar Estoque</Typography>
+                    </Box>
+                </MenuItem>
             </Menu>
 
             {/* Modal de Edição */}
@@ -1272,6 +1335,88 @@ const EstoqueEscolaPage = () => {
                 <DialogActions sx={{ p: 3 }}>
                     <Button onClick={() => setHistoricoModalOpen(false)} variant="outlined">
                         Fechar
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Modal de Confirmação de Reset */}
+            <Dialog 
+                open={resetModalOpen} 
+                onClose={() => setResetModalOpen(false)}
+                maxWidth="sm" 
+                fullWidth
+            >
+                <DialogTitle>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <RestartAlt sx={{ color: '#dc2626' }} />
+                        <Typography variant="h6" sx={{ color: '#dc2626' }}>
+                            Confirmar Reset do Estoque
+                        </Typography>
+                    </Box>
+                </DialogTitle>
+                <DialogContent sx={{ pt: 2 }}>
+                    <Box sx={{ mb: 3 }}>
+                        <Typography variant="body1" sx={{ mb: 2, fontWeight: 600 }}>
+                            ⚠️ ATENÇÃO: Esta ação irá:
+                        </Typography>
+                        <Box component="ul" sx={{ pl: 2, mb: 2 }}>
+                            <Typography component="li" variant="body2" sx={{ mb: 1 }}>
+                                Zerar todas as quantidades do estoque desta escola
+                            </Typography>
+                            <Typography component="li" variant="body2" sx={{ mb: 1 }}>
+                                Criar um backup automático dos dados atuais
+                            </Typography>
+                            <Typography component="li" variant="body2" sx={{ mb: 1 }}>
+                                Registrar a operação no histórico de movimentações
+                            </Typography>
+                        </Box>
+                        <Typography variant="body2" sx={{ color: '#dc2626', fontWeight: 600 }}>
+                            Esta ação NÃO pode ser desfeita!
+                        </Typography>
+                    </Box>
+                    
+                    <TextField
+                        fullWidth
+                        label="Motivo do Reset (opcional)"
+                        multiline
+                        rows={3}
+                        value={motivoReset}
+                        onChange={(e) => setMotivoReset(e.target.value)}
+                        placeholder="Ex: Início do ano letivo, correção de inventário, etc."
+                        sx={{ mb: 2 }}
+                    />
+                </DialogContent>
+                <DialogActions sx={{ p: 3, gap: 1 }}>
+                    <Button
+                        onClick={() => {
+                            setResetModalOpen(false);
+                            setMotivoReset('');
+                        }}
+                        variant="outlined"
+                        disabled={loading}
+                    >
+                        Cancelar
+                    </Button>
+                    <Button
+                        onClick={confirmarResetEstoque}
+                        variant="contained"
+                        color="error"
+                        disabled={loading}
+                        sx={{
+                            bgcolor: '#dc2626',
+                            '&:hover': {
+                                bgcolor: '#b91c1c'
+                            }
+                        }}
+                    >
+                        {loading ? (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <CircularProgress size={16} color="inherit" />
+                                Resetando...
+                            </Box>
+                        ) : (
+                            'Confirmar Reset'
+                        )}
                     </Button>
                 </DialogActions>
             </Dialog>

@@ -252,7 +252,7 @@ const HistoricoScreen: React.FC<HistoricoScreenProps> = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <Header title="Histórico de Movimentos" schoolName={usuario?.escola_id ? 'Escola' : undefined} />
+      <Header title="Histórico de Movimentos" schoolName={usuario?.escola?.nome} />
       
       {/* Botão para mostrar/ocultar filtros */}
       <TouchableOpacity 

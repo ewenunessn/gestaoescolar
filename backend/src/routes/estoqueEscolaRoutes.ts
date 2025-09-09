@@ -7,7 +7,8 @@ import {
   listarHistoricoEstoque,
   obterResumoEstoque,
   inicializarEstoqueEscola,
-  registrarMovimentacao
+  registrarMovimentacao,
+  resetarEstoqueComBackup
 } from "../controllers/estoqueEscolaController";
 
 const router = Router();
@@ -26,6 +27,9 @@ router.post("/escola/:escola_id/inicializar", inicializarEstoqueEscola);
 
 // Registrar movimentação (entrada, saída, ajuste)
 router.post("/escola/:escola_id/movimentacao", registrarMovimentacao);
+
+// Resetar estoque da escola com backup
+router.post("/escola/:escola_id/reset", resetarEstoqueComBackup);
 
 // Atualizar quantidades em lote
 router.put("/escola/:escola_id/lote", atualizarLoteQuantidades);

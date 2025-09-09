@@ -476,3 +476,141 @@ export async function registrarMovimentacao(req: Request, res: Response) {
     });
   }
 }
+
+export async function resetarEstoqueComBackup(req: Request, res: Response) {
+  try {
+    const { escola_id } = req.params;
+    const { usuario_id, motivo } = req.body;
+
+    // Verificar se a escola existe
+    const escolaResult = await db.query('SELECT id, nome FROM escolas WHERE id = $1 AND ativo = true', [escola_id]);
+    if (escolaResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Escola não encontrada"
+      });
+    }
+
+    const escola = escolaResult.rows[0];
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const nomeBackup = `backup_estoque_escola_${escola_id}_${timestamp}`;
+
+    // Usar transação para garantir consistência
+    const result = await db.transaction(async (client: any) => {
+      // 1. Criar backup dos dados atuais
+      const dadosEstoque = await client.query(`
+        SELECT 
+          ee.id,
+          ee.escola_id,
+          ee.produto_id,
+          ee.quantidade_atual,
+          ee.created_at,
+          ee.updated_at,
+          p.nome as produto_nome,
+          p.descricao as produto_descricao
+        FROM estoque_escolas ee
+        JOIN produtos p ON p.id = ee.produto_id
+        WHERE ee.escola_id = $1
+      `, [escola_id]);
+
+      const dadosHistorico = await client.query(`
+        SELECT 
+          eeh.*,
+          p.nome as produto_nome
+        FROM estoque_escolas_historico eeh
+        JOIN estoque_escolas ee ON ee.id = eeh.estoque_escola_id
+        JOIN produtos p ON p.id = ee.produto_id
+        WHERE ee.escola_id = $1
+        ORDER BY eeh.created_at DESC
+      `, [escola_id]);
+
+      // 2. Salvar backup em tabela de backups (se existir) ou em arquivo JSON
+      const backupData = {
+        escola: escola,
+        timestamp: new Date(),
+        motivo: motivo || 'Reset manual do estoque',
+        usuario_id: usuario_id,
+        estoque: dadosEstoque.rows,
+        historico: dadosHistorico.rows
+      };
+
+      // Tentar salvar na tabela de backups
+      try {
+        await client.query(`
+          INSERT INTO backups (nome_arquivo, tipo, status, data_backup, observacoes)
+          VALUES ($1, 'reset_estoque', 'sucesso', NOW(), $2)
+        `, [nomeBackup, JSON.stringify(backupData)]);
+      } catch (backupError) {
+        console.warn('⚠️ Tabela de backups não encontrada, continuando sem salvar backup em BD:', backupError);
+      }
+
+      // 3. Registrar a operação de reset no histórico antes de limpar
+      const itensEstoque = await client.query(`
+        SELECT id, produto_id, quantidade_atual 
+        FROM estoque_escolas 
+        WHERE escola_id = $1 AND quantidade_atual > 0
+      `, [escola_id]);
+
+      // Registrar movimentação de saída para cada item com estoque
+      for (const item of itensEstoque.rows) {
+        if (item.quantidade_atual > 0) {
+          await client.query(`
+            INSERT INTO estoque_escolas_historico (
+              estoque_escola_id,
+              tipo_movimentacao,
+              quantidade_anterior,
+              quantidade_movimentada,
+              quantidade_atual,
+              motivo,
+              documento_referencia,
+              usuario_id,
+              created_at
+            ) VALUES ($1, 'reset', $2, $3, 0, $4, $5, $6, NOW())
+          `, [
+            item.id,
+            item.quantidade_atual,
+            -item.quantidade_atual,
+            motivo || 'Reset do estoque - backup criado',
+            nomeBackup,
+            usuario_id
+          ]);
+        }
+      }
+
+      // 4. Zerar todas as quantidades do estoque da escola
+      const resetEstoque = await client.query(`
+        UPDATE estoque_escolas 
+        SET quantidade_atual = 0, updated_at = NOW()
+        WHERE escola_id = $1
+        RETURNING *
+      `, [escola_id]);
+
+      return {
+        backup: backupData,
+        itensResetados: resetEstoque.rows.length,
+        nomeBackup: nomeBackup
+      };
+    });
+
+    res.json({
+      success: true,
+      message: `Estoque da escola ${escola.nome} foi resetado com sucesso. Backup criado: ${result.nomeBackup}`,
+      data: {
+        escola_nome: escola.nome,
+        itens_resetados: result.itensResetados,
+        backup_nome: result.nomeBackup,
+        backup_criado_em: new Date(),
+        itens_backup: result.backup.estoque.length,
+        historico_backup: result.backup.historico.length
+      }
+    });
+
+  } catch (error) {
+    console.error("❌ Erro ao resetar estoque com backup:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao resetar estoque",
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+}

@@ -247,7 +247,7 @@ const EstoqueScreen: React.FC<EstoqueScreenProps> = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <Header title="Estoque" schoolName={usuario?.escola_id ? 'Escola' : undefined} />
+      <Header title="Estoque" schoolName={usuario?.escola?.nome} />
       {renderResumo()}
       
       <View style={styles.filtroToggleContainer}>

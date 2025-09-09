@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "bdc26b01-9606-4ffe-a9f0-599eeb9955e3"
+      }
+    },
+    "android": {
+      "package": "com.ewenunes.gestaoescolar"
+    }
+  }
+}
