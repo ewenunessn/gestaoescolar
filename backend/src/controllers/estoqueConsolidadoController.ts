@@ -71,6 +71,81 @@ export async function buscarEstoqueConsolidadoProduto(req: Request, res: Respons
   }
 }
 
+export async function resetarEstoqueGlobal(req: Request, res: Response) {
+  try {
+    const client = await db.connect();
+    
+    try {
+      await client.query('BEGIN');
+      
+      // 1. Criar backup das movimentações
+      const backupMovimentacoes = await client.query(`
+        INSERT INTO backup_movimentacoes_estoque (
+          escola_id, produto_id, tipo_movimentacao, quantidade, 
+          observacoes, created_at, usuario_id, data_backup
+        )
+        SELECT 
+          escola_id, produto_id, tipo_movimentacao, quantidade,
+          observacoes, created_at, usuario_id, NOW()
+        FROM movimentacoes_estoque
+        RETURNING id
+      `);
+      
+      // 2. Criar backup dos estoques atuais
+      const backupEstoques = await client.query(`
+        INSERT INTO backup_estoque_escolas (
+          escola_id, produto_id, quantidade_atual, 
+          created_at, updated_at, data_backup
+        )
+        SELECT 
+          escola_id, produto_id, quantidade_atual,
+          created_at, updated_at, NOW()
+        FROM estoque_escolas
+        WHERE quantidade_atual > 0
+        RETURNING id
+      `);
+      
+      // 3. Deletar todas as movimentações
+      const deleteMovimentacoes = await client.query(`
+        DELETE FROM movimentacoes_estoque
+      `);
+      
+      // 4. Zerar todos os estoques
+      const resetEstoques = await client.query(`
+        DELETE FROM estoque_escolas
+      `);
+      
+      await client.query('COMMIT');
+      
+      res.json({
+        success: true,
+        message: 'Estoque global resetado com sucesso',
+        data: {
+          movimentacoes_backup: backupMovimentacoes.rowCount,
+          estoques_backup: backupEstoques.rowCount,
+          movimentacoes_deletadas: deleteMovimentacoes.rowCount,
+          estoques_resetados: resetEstoques.rowCount,
+          data_backup: new Date().toISOString()
+        }
+      });
+      
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+    
+  } catch (error) {
+    console.error('❌ Erro ao resetar estoque global:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao resetar estoque global',
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+}
+
 export async function listarEstoqueConsolidado(req: Request, res: Response) {
   try {
     // Buscar resumo do estoque de todos os produtos
