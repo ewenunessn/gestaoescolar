@@ -33,7 +33,7 @@ async function gerarBackupExcel(client: any) {
         me.quantidade,
         me.observacoes,
         me.created_at
-      FROM movimentacoes_estoque me
+      FROM estoque_movimentacoes me
       JOIN escolas e ON e.id = me.escola_id
       JOIN produtos p ON p.id = me.produto_id
       ORDER BY me.created_at DESC
