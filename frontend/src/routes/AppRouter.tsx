@@ -10,6 +10,7 @@ import ErrorBoundary from "../components/ErrorBoundary";
 import Login from "../pages/Login";
 import Registro from "../pages/Registro";
 import Dashboard from "../pages/Dashboard";
+import LandingPage from "../pages/LandingPage";
 
 // Sistema de gestores de escola
 const LoginGestorEscola = lazy(() => import("../pages/LoginGestorEscola"));
@@ -111,6 +112,10 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
       <EscolasProvider>
         <CarrinhoProvider>
           <Routes>
+            {/* Landing Page Pública */}
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/home" element={<LandingPage />} />
+            
             <Route path="/login" element={<Login />} />
             <Route path="/registro" element={<Registro />} />
             
@@ -142,7 +147,7 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
               </Suspense>
             } />
             <Route
-              path="/"
+              path="/dashboard"
               element={
                 <PrivateRoute>
                   <LayoutModerno>
@@ -152,7 +157,7 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
               }
             />
             <Route
-              path="/dashboard"
+              path="/app"
               element={
                 <PrivateRoute>
                   <LayoutModerno>
