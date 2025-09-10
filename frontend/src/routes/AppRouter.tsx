@@ -11,6 +11,7 @@ import Login from "../pages/Login";
 import Registro from "../pages/Registro";
 import Dashboard from "../pages/Dashboard";
 import LandingPage from "../pages/LandingPage";
+import InterestForm from "../pages/InterestForm";
 
 // Sistema de gestores de escola
 const LoginGestorEscola = lazy(() => import("../pages/LoginGestorEscola"));
@@ -116,6 +117,10 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
             <Route path="/" element={<LandingPage />} />
             <Route path="/home" element={<LandingPage />} />
             
+            {/* Formulário de Interesse */}
+            <Route path="/interesse" element={<InterestForm />} />
+            
+            {/* Login administrativo */}
             <Route path="/login" element={<Login />} />
             <Route path="/registro" element={<Registro />} />
             
@@ -249,7 +254,7 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
             />
 
 
-            {/* Rotas do Estoque Moderno */}
+            {/* Rotas do Estoque Central */}
             <Route
               path="/estoque-moderno"
               element={<LazyRoute><EstoqueModerno /></LazyRoute>}

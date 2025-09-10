@@ -152,7 +152,7 @@ const menuItems = [
     category: "compras",
   },
   {
-    text: "Estoque Moderno",
+    text: "Estoque Central",
     icon: <Storage />,
     path: "/estoque-moderno",
     category: "estoque",
@@ -160,7 +160,7 @@ const menuItems = [
     badgeColor: "success",
   },
   {
-    text: "Estoque das Escolas",
+    text: "Estoque Escolar",
     icon: <Assessment />,
     path: "/estoque-consolidado",
     category: "estoque",

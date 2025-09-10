@@ -122,11 +122,13 @@ api.interceptors.response.use(
       switch (status) {
         case 401:
           localStorage.removeItem("token");
-          // Só redirecionar se não estivermos já na página de login
-          if (!window.location.pathname.includes('/login')) {
+          // Verificar se estamos na página de login para diferenciar entre credenciais inválidas e sessão expirada
+          if (window.location.pathname.includes('/login')) {
+            throw new Error("Credenciais inválidas. Verifique seu email e senha.");
+          } else {
             window.location.href = "/login";
+            throw new Error("Sessão expirada. Faça login novamente.");
           }
-          throw new Error("Sessão expirada. Faça login novamente.");
         case 403:
           throw new Error(
             "Acesso negado. Você não tem permissão para esta ação."

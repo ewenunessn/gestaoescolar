@@ -10,143 +10,129 @@ import {
   Mail,
   Phone,
   MapPin,
-  ArrowRight
+  ArrowRight,
+  Facebook,
+  Twitter,
+  Instagram
 } from 'lucide-react';
+import './LandingPage.css';
 
 const LandingPage: React.FC = () => {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="landing-page">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center">
-              <BookOpen className="h-8 w-8 text-blue-600 mr-2" />
-              <span className="text-xl font-bold text-gray-900">GestãoEscolar</span>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Link 
-                to="/login" 
-                className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-              >
-                Entrar
-              </Link>
-              <Link 
-                to="/registro" 
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
-              >
-                Começar Agora
-              </Link>
-            </div>
+      <header className="header">
+        <div className="header-container">
+          <Link to="/" className="logo">
+            <BookOpen className="logo-icon" size={32} />
+            <span>GestãoEscolar</span>
+          </Link>
+          <div className="nav-links">
+            <Link to="/interesse" className="nav-link secondary">
+              Interesse
+            </Link>
+            <Link to="/login" className="nav-link primary">
+              Entrar
+            </Link>
           </div>
         </div>
       </header>
 
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-blue-50 to-indigo-100 py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
-              Gestão Escolar
-              <span className="text-blue-600 block">Simplificada</span>
-            </h1>
-            <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-              Transforme a administração da sua escola com nossa plataforma completa de gestão. 
-              Controle estoque, pedidos, cardápios e muito mais em um só lugar.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link 
-                to="/registro" 
-                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg text-lg font-medium transition-colors flex items-center justify-center"
-              >
-                Começar Gratuitamente
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Link>
-              <Link 
-                to="/login" 
-                className="border border-gray-300 hover:border-gray-400 text-gray-700 px-8 py-3 rounded-lg text-lg font-medium transition-colors"
-              >
-                Fazer Login
-              </Link>
-            </div>
+      <section className="hero">
+        <div className="hero-container">
+          <h1 className="hero-title fade-in">
+            Gestão Escolar
+            <span className="text-gradient"> Simplificada</span>
+          </h1>
+          <p className="hero-subtitle slide-up">
+            Transforme a administração da sua escola com nossa plataforma completa de gestão. 
+            Controle estoque, pedidos, cardápios e muito mais em um só lugar.
+          </p>
+          <div className="hero-buttons slide-up">
+            <Link to="/interesse" className="btn btn-primary">
+              Demonstrar Interesse
+              <ArrowRight size={20} />
+            </Link>
+            <Link to="/login" className="btn btn-secondary">
+              Entrar
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Recursos Principais
-            </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Tudo que você precisa para gerenciar sua escola de forma eficiente
-            </p>
-          </div>
+      {/* Recursos Principais */}
+      <section className="features">
+        <div className="features-container">
+          <h2 className="section-title">
+            Recursos Principais
+          </h2>
+          <p className="section-subtitle">
+            Tudo que você precisa para gerenciar sua escola de forma eficiente
+          </p>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <div className="bg-gray-50 p-6 rounded-xl">
-              <div className="bg-blue-100 w-12 h-12 rounded-lg flex items-center justify-center mb-4">
-                <BarChart3 className="h-6 w-6 text-blue-600" />
+          <div className="features-grid">
+            {/* Controle de Estoque */}
+            <div className="feature-card">
+              <div className="feature-icon">
+                <BarChart3 size={28} />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Controle de Estoque</h3>
-              <p className="text-gray-600">
-                Gerencie o estoque de alimentos e materiais com controle de lotes, 
-                validades e movimentações em tempo real.
+              <h3 className="feature-title">Controle de Estoque</h3>
+              <p className="feature-description">
+                Gerencie o estoque de alimentos e materiais com controle de lotes, validades e movimentações em tempo real.
               </p>
             </div>
             
-            <div className="bg-gray-50 p-6 rounded-xl">
-              <div className="bg-green-100 w-12 h-12 rounded-lg flex items-center justify-center mb-4">
-                <Users className="h-6 w-6 text-green-600" />
+            {/* Gestão de Escolas */}
+            <div className="feature-card">
+              <div className="feature-icon">
+                <Users size={28} />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Gestão de Escolas</h3>
-              <p className="text-gray-600">
-                Administre múltiplas escolas, controle de usuários e permissões 
-                de forma centralizada e organizada.
+              <h3 className="feature-title">Gestão de Escolas</h3>
+              <p className="feature-description">
+                Administre múltiplas escolas, controle de usuários e permissões de forma centralizada e organizada.
               </p>
             </div>
             
-            <div className="bg-gray-50 p-6 rounded-xl">
-              <div className="bg-purple-100 w-12 h-12 rounded-lg flex items-center justify-center mb-4">
-                <BookOpen className="h-6 w-6 text-purple-600" />
+            {/* Cardápios e Refeições */}
+            <div className="feature-card">
+              <div className="feature-icon">
+                <BookOpen size={28} />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Cardápios e Refeições</h3>
-              <p className="text-gray-600">
-                Planeje cardápios, gerencie refeições e controle a alimentação 
-                escolar de forma prática e eficiente.
+              <h3 className="feature-title">Cardápios e Refeições</h3>
+              <p className="feature-description">
+                Planeje cardápios, gerencie refeições e controle a alimentação escolar de forma prática e eficiente.
               </p>
             </div>
             
-            <div className="bg-gray-50 p-6 rounded-xl">
-              <div className="bg-orange-100 w-12 h-12 rounded-lg flex items-center justify-center mb-4">
-                <Shield className="h-6 w-6 text-orange-600" />
+            <div className="feature-card">
+              <div className="feature-icon">
+                <Shield size={28} />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Contratos e Fornecedores</h3>
-              <p className="text-gray-600">
+              <h3 className="feature-title">Contratos e Fornecedores</h3>
+              <p className="feature-description">
                 Gerencie contratos, fornecedores e pedidos com controle 
                 financeiro e acompanhamento de entregas.
               </p>
             </div>
             
-            <div className="bg-gray-50 p-6 rounded-xl">
-              <div className="bg-red-100 w-12 h-12 rounded-lg flex items-center justify-center mb-4">
-                <Clock className="h-6 w-6 text-red-600" />
+            <div className="feature-card">
+              <div className="feature-icon">
+                <Clock size={28} />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Relatórios em Tempo Real</h3>
-              <p className="text-gray-600">
+              <h3 className="feature-title">Relatórios em Tempo Real</h3>
+              <p className="feature-description">
                 Acesse dashboards e relatórios detalhados para tomada de 
                 decisões baseada em dados atualizados.
               </p>
             </div>
             
-            <div className="bg-gray-50 p-6 rounded-xl">
-              <div className="bg-indigo-100 w-12 h-12 rounded-lg flex items-center justify-center mb-4">
-                <CheckCircle className="h-6 w-6 text-indigo-600" />
+            <div className="feature-card">
+              <div className="feature-icon">
+                <CheckCircle size={28} />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Interface Intuitiva</h3>
-              <p className="text-gray-600">
+              <h3 className="feature-title">Interface Intuitiva</h3>
+              <p className="feature-description">
                 Design moderno e responsivo que funciona perfeitamente 
                 em computadores, tablets e smartphones.
               </p>
@@ -155,155 +141,145 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Benefits Section */}
-      <section className="py-20 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Por que escolher o GestãoEscolar?
-            </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Benefícios que fazem a diferença na administração escolar
-            </p>
-          </div>
+      {/* Benefícios */}
+      <section className="benefits">
+        <div className="benefits-container">
+          <h2 className="section-title">
+            Por que escolher nossa plataforma?
+          </h2>
+          <p className="section-subtitle">
+            Benefícios que fazem a diferença na gestão da sua escola
+          </p>
           
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <div className="space-y-6">
-                <div className="flex items-start">
-                  <CheckCircle className="h-6 w-6 text-green-500 mt-1 mr-3 flex-shrink-0" />
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                      Economia de Tempo
-                    </h3>
-                    <p className="text-gray-600">
-                      Automatize processos manuais e reduza o tempo gasto em tarefas administrativas.
-                    </p>
-                  </div>
-                </div>
+          <div className="benefits-grid">
+            <div className="benefit-item">
+              <CheckCircle className="benefit-icon" size={24} />
+              <div>
+                <h3 className="benefit-text">Economia de Tempo</h3>
+                <p className="feature-description">
+                  Automatize processos manuais e reduza o tempo gasto em tarefas administrativas.
+                </p>
+              </div>
+            </div>
                 
-                <div className="flex items-start">
-                  <CheckCircle className="h-6 w-6 text-green-500 mt-1 mr-3 flex-shrink-0" />
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                      Redução de Desperdícios
-                    </h3>
-                    <p className="text-gray-600">
-                      Controle preciso de estoque evita perdas e otimiza o uso de recursos.
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="flex items-start">
-                  <CheckCircle className="h-6 w-6 text-green-500 mt-1 mr-3 flex-shrink-0" />
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                      Transparência Total
-                    </h3>
-                    <p className="text-gray-600">
-                      Acompanhe todas as movimentações e tenha visibilidade completa dos processos.
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="flex items-start">
-                  <CheckCircle className="h-6 w-6 text-green-500 mt-1 mr-3 flex-shrink-0" />
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                      Conformidade Garantida
-                    </h3>
-                    <p className="text-gray-600">
-                      Mantenha-se em conformidade com regulamentações e normas educacionais.
-                    </p>
-                  </div>
-                </div>
+            <div className="benefit-item">
+              <CheckCircle className="benefit-icon" size={24} />
+              <div>
+                <h3 className="benefit-text">Redução de Desperdícios</h3>
+                <p className="feature-description">
+                  Controle preciso de estoque evita perdas e otimiza o uso de recursos.
+                </p>
               </div>
             </div>
             
-            <div className="bg-white p-8 rounded-2xl shadow-lg">
-              <h3 className="text-2xl font-bold text-gray-900 mb-6 text-center">
-                Comece Hoje Mesmo
-              </h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between py-2">
-                  <span className="text-gray-600">Configuração</span>
-                  <span className="text-green-600 font-semibold">Gratuita</span>
-                </div>
-                <div className="flex items-center justify-between py-2">
-                  <span className="text-gray-600">Suporte Técnico</span>
-                  <span className="text-green-600 font-semibold">Incluído</span>
-                </div>
-                <div className="flex items-center justify-between py-2">
-                  <span className="text-gray-600">Atualizações</span>
-                  <span className="text-green-600 font-semibold">Automáticas</span>
-                </div>
-                <div className="flex items-center justify-between py-2">
-                  <span className="text-gray-600">Treinamento</span>
-                  <span className="text-green-600 font-semibold">Personalizado</span>
-                </div>
+            <div className="benefit-item">
+              <CheckCircle className="benefit-icon" size={24} />
+              <div>
+                <h3 className="benefit-text">Transparência Total</h3>
+                <p className="feature-description">
+                  Acompanhe todas as movimentações e tenha visibilidade completa dos processos.
+                </p>
               </div>
-              <Link 
-                to="/registro" 
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-medium transition-colors mt-6 block text-center"
-              >
-                Criar Conta Gratuita
-              </Link>
+            </div>
+            
+            <div className="benefit-item">
+              <CheckCircle className="benefit-icon" size={24} />
+              <div>
+                <h3 className="benefit-text">Conformidade Garantida</h3>
+                <p className="feature-description">
+                  Mantenha-se em conformidade com regulamentações e normas educacionais.
+                </p>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Contact Section */}
-      <section className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Entre em Contato
-            </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Tem dúvidas? Nossa equipe está pronta para ajudar você
-            </p>
-          </div>
+      {/* Contato */}
+      <section className="contact">
+        <div className="contact-container">
+          <h2 className="section-title">
+            Entre em Contato
+          </h2>
+          <p className="section-subtitle">
+            Estamos aqui para ajudar você a transformar a gestão da sua escola
+          </p>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-center">
-              <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Mail className="h-8 w-8 text-blue-600" />
+          <div className="contact-grid">
+            <div className="contact-item">
+              <div className="contact-icon">
+                <Mail size={24} />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Email</h3>
-              <p className="text-gray-600">contato@gestaoescolar.com</p>
+              <h3 className="contact-label">Email</h3>
+              <p className="contact-value">contato@gestaoescolar.com</p>
             </div>
             
-            <div className="text-center">
-              <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Phone className="h-8 w-8 text-green-600" />
+            <div className="contact-item">
+              <div className="contact-icon">
+                <Phone size={24} />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Telefone</h3>
-              <p className="text-gray-600">(11) 9999-9999</p>
+              <h3 className="contact-label">Telefone</h3>
+              <p className="contact-value">(11) 9999-9999</p>
             </div>
             
-            <div className="text-center">
-              <div className="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <MapPin className="h-8 w-8 text-purple-600" />
+            <div className="contact-item">
+              <div className="contact-icon">
+                <MapPin size={24} />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Localização</h3>
-              <p className="text-gray-600">São Paulo, SP</p>
+              <h3 className="contact-label">Localização</h3>
+              <p className="contact-value">São Paulo, SP</p>
             </div>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="flex items-center mb-4 md:mb-0">
-              <BookOpen className="h-8 w-8 text-blue-400 mr-2" />
-              <span className="text-xl font-bold">GestãoEscolar</span>
+      <footer className="footer">
+        <div className="footer-container">
+          <div className="footer-grid">
+            <div className="footer-brand">
+              <h3 className="footer-title">Gestão Escolar</h3>
+              <p className="footer-description">
+                Transforme a administração da sua escola com nossa plataforma completa de gestão.
+              </p>
+              <div className="footer-social">
+                <a href="#" className="social-link">
+                  <Facebook size={20} />
+                </a>
+                <a href="#" className="social-link">
+                  <Twitter size={20} />
+                </a>
+                <a href="#" className="social-link">
+                  <Instagram size={20} />
+                </a>
+              </div>
             </div>
-            <div className="text-gray-400 text-sm">
-              © 2024 GestãoEscolar. Todos os direitos reservados.
+            
+            <div className="footer-column">
+              <h4 className="footer-column-title">Recursos</h4>
+              <ul className="footer-links">
+                <li><a href="#" className="footer-link">Gestão de Alunos</a></li>
+                <li><a href="#" className="footer-link">Controle Financeiro</a></li>
+                <li><a href="#" className="footer-link">Relatórios</a></li>
+                <li><a href="#" className="footer-link">Comunicação</a></li>
+              </ul>
             </div>
+            
+            <div className="footer-column">
+              <h4 className="footer-column-title">Suporte</h4>
+              <ul className="footer-links">
+                <li><a href="#" className="footer-link">Central de Ajuda</a></li>
+                <li><a href="#" className="footer-link">Documentação</a></li>
+                <li><a href="#" className="footer-link">Contato</a></li>
+                <li><a href="#" className="footer-link">Status</a></li>
+              </ul>
+            </div>
+          </div>
+          
+          <div className="footer-bottom">
+            <p className="footer-copyright">
+              © 2024 Gestão Escolar. Todos os direitos reservados.
+            </p>
           </div>
         </div>
       </footer>

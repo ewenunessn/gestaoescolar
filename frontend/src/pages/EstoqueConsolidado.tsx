@@ -532,7 +532,7 @@ const EstoqueConsolidadoPage = () => {
                 {/* Header */}
                 <Box sx={{ mb: 3 }}>
                     <Typography variant="h4" sx={{ fontWeight: 600, color: '#1f2937', mb: 1 }}>
-                        Estoque das Escolas
+                        Estoque Escolar
                     </Typography>
                     <Typography variant="body1" color="text.secondary">
                         Visualize o estoque de cada produto em todas as escolas
@@ -790,7 +790,7 @@ const EstoqueConsolidadoPage = () => {
                         <Box sx={{ textAlign: 'center', py: 4 }}>
                             <CircularProgress size={40} sx={{ mb: 2 }} />
                             <Typography variant="body2" color="text.secondary">
-                                Carregando estoque das escolas...
+                                Carregando estoque escolar...
                             </Typography>
                         </Box>
                     ) : estoqueDetalhado ? (
@@ -1022,7 +1022,7 @@ const EstoqueConsolidadoPage = () => {
                             // Adicionar título
                             worksheet.mergeCells('A1:E1');
                             const tituloCell = worksheet.getCell('A1');
-                            tituloCell.value = 'Relatório de Estoque das Escolas por Produto';
+                            tituloCell.value = 'Relatório de Estoque Escolar por Produto';
                             tituloCell.font = {
                                 size: 14,
                                 bold: true,

@@ -13,9 +13,10 @@ import {
   CardContent,
   CircularProgress,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
+  IconButton
 } from "@mui/material";
-import { Email, Lock, School, Login as LoginIcon } from "@mui/icons-material";
+import { Email, Lock, School, Login as LoginIcon, ArrowBack } from "@mui/icons-material";
 import { login } from "../services/auth";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 
@@ -29,6 +30,7 @@ export default function Login() {
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isSmall = useMediaQuery(theme.breakpoints.down('md'));
 
   // Verificar se há mensagem de sucesso do registro
   useEffect(() => {
@@ -94,43 +96,239 @@ export default function Login() {
     <Box
       sx={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        p: 2
+        flexDirection: 'column',
+        fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        position: 'relative',
+        overflow: 'hidden'
       }}
     >
-      <Container maxWidth="sm">
-        <Paper
-          elevation={24}
+      {/* Background Pattern */}
+      <Box
+        sx={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: `radial-gradient(circle at 25% 25%, rgba(37, 99, 235, 0.1) 0%, transparent 50%),
+                       radial-gradient(circle at 75% 75%, rgba(59, 130, 246, 0.1) 0%, transparent 50%)`,
+          zIndex: 0
+        }}
+      />
+
+      {/* Header */}
+      <Box sx={{ position: 'relative', zIndex: 2, p: isSmall ? 2 : 3 }}>
+        <IconButton
+          onClick={() => navigate('/')}
           sx={{
-            borderRadius: 4,
-            overflow: 'hidden',
-            background: 'rgba(255, 255, 255, 0.95)',
+            color: '#2563eb',
+            backgroundColor: 'rgba(255, 255, 255, 0.9)',
             backdropFilter: 'blur(10px)',
-            maxWidth: isMobile ? '100%' : 450
+            border: '1px solid rgba(37, 99, 235, 0.2)',
+            '&:hover': {
+              backgroundColor: 'rgba(255, 255, 255, 1)',
+              transform: 'translateY(-1px)',
+              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)'
+            },
+            transition: 'all 0.3s ease'
           }}
         >
+          <ArrowBack />
+        </IconButton>
+      </Box>
+
+      {/* Main Content */}
+      <Box
+        sx={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          p: 2,
+          position: 'relative',
+          zIndex: 1
+        }}
+      >
+      <Container maxWidth="lg" sx={{ height: '100%' }}>
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between',
+          height: '100%',
+          gap: 4,
+          flexDirection: isMobile ? 'column' : 'row'
+        }}>
+          {/* Left Side - System Info */}
+          {!isMobile && (
+             <Box sx={{ 
+               flex: 1, 
+               display: 'flex', 
+               flexDirection: 'column',
+               justifyContent: 'space-between',
+               pr: 4,
+               height: '100%',
+               minHeight: '600px'
+             }}>
+              {/* Header Section */}
+               <Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                    <School sx={{ fontSize: 48, color: '#2563eb', mr: 2 }} />
+                    <Typography variant="h3" sx={{ 
+                      fontWeight: 700, 
+                      color: '#2563eb',
+                      fontSize: { xs: '2rem', md: '2.5rem' }
+                    }}>
+                      GestãoEscolar
+                    </Typography>
+                  </Box>
+                 <Typography variant="h6" sx={{ 
+                   color: '#6b7280',
+                   lineHeight: 1.6
+                 }}>
+                   Plataforma completa para administração e controle de estoque escolar
+                 </Typography>
+               </Box>
+ 
+               {/* Features Section */}
+               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4, py: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Box sx={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 2,
+                    background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <School sx={{ color: 'white', fontSize: 24 }} />
+                  </Box>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 600, color: '#1f2937', mb: 0.5 }}>
+                      Controle de Estoque
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: '#6b7280' }}>
+                      Gerencie produtos, lotes e movimentações em tempo real
+                    </Typography>
+                  </Box>
+                </Box>
+
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Box sx={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 2,
+                    background: 'linear-gradient(135deg, #059669, #10b981)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <LoginIcon sx={{ color: 'white', fontSize: 24 }} />
+                  </Box>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 600, color: '#1f2937', mb: 0.5 }}>
+                      Acesso Seguro
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: '#6b7280' }}>
+                      Sistema com autenticação e controle de permissões
+                    </Typography>
+                  </Box>
+                </Box>
+
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Box sx={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 2,
+                    background: 'linear-gradient(135deg, #7c3aed, #8b5cf6)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <Email sx={{ color: 'white', fontSize: 24 }} />
+                  </Box>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 600, color: '#1f2937', mb: 0.5 }}>
+                      Relatórios Automáticos
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: '#6b7280' }}>
+                      Receba relatórios e alertas por email automaticamente
+                    </Typography>
+                  </Box>
+                </Box>
+               </Box>
+
+               {/* Footer Section */}
+               <Box sx={{ 
+                 borderTop: '1px solid rgba(37, 99, 235, 0.1)',
+                 pt: 3,
+                 textAlign: 'center'
+               }}>
+                 <Typography variant="body2" sx={{ 
+                   color: '#9ca3af',
+                   mb: 2,
+                   fontWeight: 500
+                 }}>
+                   Desenvolvido para escolas modernas
+                 </Typography>
+                 <Box sx={{ display: 'flex', justifyContent: 'center', gap: 4 }}>
+                   <Typography variant="caption" sx={{ color: '#6b7280' }}>
+                     ✓ Seguro
+                   </Typography>
+                   <Typography variant="caption" sx={{ color: '#6b7280' }}>
+                     ✓ Confiável
+                   </Typography>
+                   <Typography variant="caption" sx={{ color: '#6b7280' }}>
+                     ✓ Eficiente
+                   </Typography>
+                 </Box>
+               </Box>
+             </Box>
+           )}
+
+          {/* Right Side - Login Form */}
+          <Box sx={{ 
+            flex: isMobile ? 1 : '0 0 450px',
+            display: 'flex',
+            justifyContent: 'center',
+            width: isMobile ? '100%' : 'auto'
+          }}>
+            <Paper
+              elevation={0}
+              sx={{
+                borderRadius: 3,
+                overflow: 'hidden',
+                background: 'rgba(255, 255, 255, 0.95)',
+                backdropFilter: 'blur(20px)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                boxShadow: '0 20px 40px rgba(0, 0, 0, 0.1)',
+                width: '100%',
+                maxWidth: 450,
+                py: 1
+              }}
+            >
           {/* Header */}
           <Box
             sx={{
-              background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
-              color: 'white',
+              background: 'transparent',
+              color: '#1f2937',
               p: isMobile ? 3 : 4,
-              textAlign: 'center'
+              textAlign: 'center',
+              borderBottom: '1px solid rgba(0, 0, 0, 0.05)'
             }}
           >
-            <School sx={{ fontSize: isMobile ? 40 : 48, mb: 2 }} />
-            <Typography variant={isMobile ? "h5" : "h4"} sx={{ fontWeight: 600, mb: 1 }}>
-              Login Administrativo
+
+            <Typography variant={isMobile ? "h6" : "h5"} sx={{ fontWeight: 600, mb: 1, color: '#1f2937' }}>
+              Bem-vindo de volta
             </Typography>
-            <Typography variant="body1" sx={{ opacity: 0.9, fontSize: isMobile ? '0.9rem' : '1rem' }}>
-              Sistema de Gerenciamento de Alimentação Escolar
+            <Typography variant="body2" sx={{ color: '#6b7280', fontSize: isMobile ? '0.875rem' : '1rem' }}>
+              Faça login para acessar o sistema
             </Typography>
           </Box>
 
-          <CardContent sx={{ p: isMobile ? 3 : 4 }}>
+          <CardContent sx={{ p: 3 }}>
             {/* Mensagem de sucesso do registro */}
             {successMessage && (
               <Alert severity="success" sx={{ mb: 3 }}>
@@ -148,7 +346,7 @@ export default function Login() {
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
                 {/* Campo E-mail */}
                 <Box>
-                  <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 600 }}>
+                  <Typography variant="body2" sx={{ mb: 1, fontWeight: 600, color: '#374151' }}>
                     E-mail
                   </Typography>
                   <TextField
@@ -163,13 +361,25 @@ export default function Login() {
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
-                          <Email sx={{ color: 'text.secondary' }} />
+                          <Email sx={{ color: '#6b7280' }} />
                         </InputAdornment>
                       ),
                     }}
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         borderRadius: 2,
+                        backgroundColor: 'rgba(249, 250, 251, 0.8)',
+                        border: '1px solid #e5e7eb',
+                        '&:hover': {
+                          borderColor: '#2563eb',
+                        },
+                        '&.Mui-focused': {
+                          borderColor: '#2563eb',
+                          boxShadow: '0 0 0 3px rgba(37, 99, 235, 0.1)'
+                        }
+                      },
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        border: 'none'
                       }
                     }}
                   />
@@ -177,7 +387,7 @@ export default function Login() {
 
                 {/* Campo Senha */}
                 <Box>
-                  <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 600 }}>
+                  <Typography variant="body2" sx={{ mb: 1, fontWeight: 600, color: '#374151' }}>
                     Senha
                   </Typography>
                   <TextField
@@ -192,13 +402,25 @@ export default function Login() {
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
-                          <Lock sx={{ color: 'text.secondary' }} />
+                          <Lock sx={{ color: '#6b7280' }} />
                         </InputAdornment>
                       ),
                     }}
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         borderRadius: 2,
+                        backgroundColor: 'rgba(249, 250, 251, 0.8)',
+                        border: '1px solid #e5e7eb',
+                        '&:hover': {
+                          borderColor: '#2563eb',
+                        },
+                        '&.Mui-focused': {
+                          borderColor: '#2563eb',
+                          boxShadow: '0 0 0 3px rgba(37, 99, 235, 0.1)'
+                        }
+                      },
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        border: 'none'
                       }
                     }}
                   />
@@ -216,15 +438,22 @@ export default function Login() {
                     mt: 2,
                     py: 1.5,
                     borderRadius: 2,
-                    background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
-                    fontSize: '1.1rem',
+                    background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+                    fontSize: '1rem',
                     fontWeight: 600,
+                    textTransform: 'none',
+                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
                     '&:hover': {
-                      background: 'linear-gradient(135deg, #4338ca 0%, #6d28d9 100%)',
+                      background: 'linear-gradient(135deg, #1d4ed8, #2563eb)',
+                      transform: 'translateY(-1px)',
+                      boxShadow: '0 6px 20px rgba(37, 99, 235, 0.4)'
                     },
                     '&:disabled': {
                       background: 'rgba(0, 0, 0, 0.12)',
-                    }
+                      transform: 'none',
+                      boxShadow: 'none'
+                    },
+                    transition: 'all 0.3s ease'
                   }}
                 >
                   {loading ? "Entrando..." : "Entrar no Sistema"}
@@ -232,44 +461,9 @@ export default function Login() {
               </Box>
             </form>
 
-            {/* Links adicionais */}
-            <Divider sx={{ my: 3 }} />
-            
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, textAlign: 'center' }}>
-              {/* Link para registro */}
-              <Typography variant="body2" color="text.secondary">
-                Não possui uma conta?{' '}
-                <Link 
-                  to="/registro" 
-                  style={{ 
-                    color: theme.palette.primary.main,
-                    textDecoration: 'none',
-                    fontWeight: 600
-                  }}
-                >
-                  Criar Conta
-                </Link>
-              </Typography>
-
-              {/* Link para login de gestor */}
-              <Typography variant="body2" color="text.secondary">
-                É gestor de escola?{' '}
-                <Link 
-                  to="/login-gestor" 
-                  style={{ 
-                    color: theme.palette.secondary.main,
-                    textDecoration: 'none',
-                    fontWeight: 600
-                  }}
-                >
-                  Acesso Gestor
-                </Link>
-              </Typography>
-            </Box>
-
             {/* Informações adicionais */}
-            <Box sx={{ mt: 4, textAlign: 'center' }}>
-              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+            <Box sx={{ mt: 3, textAlign: 'center' }}>
+              <Typography variant="caption" sx={{ color: '#9ca3af', fontSize: '0.75rem', lineHeight: 1.5 }}>
                 Sistema destinado aos administradores e nutricionistas.
                 <br />
                 Para suporte técnico, entre em contato com a equipe de TI.
@@ -277,7 +471,10 @@ export default function Login() {
             </Box>
           </CardContent>
         </Paper>
-      </Container>
+      </Box>
     </Box>
-  );
+  </Container>
+  </Box>
+</Box>
+);
 }

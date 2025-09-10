@@ -217,7 +217,7 @@ const menuItems = [
     category: "compras",
   },
   {
-    text: "Estoque Moderno",
+    text: "Estoque Central",
     icon: <Storage />,
     path: "/estoque-moderno",
     category: "estoque",

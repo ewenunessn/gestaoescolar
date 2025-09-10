@@ -196,7 +196,7 @@ const EstoqueModerno: React.FC = () => {
       {/* Cabeçalho */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4" component="h1" fontWeight="bold">
-          Estoque Moderno
+          Estoque Central
         </Typography>
         <Box display="flex" gap={2}>
           <Button

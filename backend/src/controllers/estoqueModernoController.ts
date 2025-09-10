@@ -19,9 +19,9 @@ export async function initEstoqueModerno() {
     await createEstoqueModernoTables();
     await migrarStatusEsgotado();
     await limparAlertasDuplicados();
-    console.log("✅ Tabelas do estoque moderno criadas com sucesso");
+    console.log("✅ Tabelas do estoque central criadas com sucesso");
   } catch (error) {
-    console.error("❌ Erro ao criar tabelas do estoque moderno:", error);
+    console.error("❌ Erro ao criar tabelas do estoque central:", error);
   }
 }
 
