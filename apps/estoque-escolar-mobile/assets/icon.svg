@@ -1,0 +1,40 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="512" cy="512" r="512" fill="#2563eb"/>
+  
+  <!-- Inner circle -->
+  <circle cx="512" cy="512" r="400" fill="#3b82f6"/>
+  
+  <!-- Book base -->
+  <rect x="300" y="350" width="424" height="324" rx="20" fill="#ffffff"/>
+  
+  <!-- Book pages -->
+  <rect x="320" y="370" width="384" height="284" rx="10" fill="#f8fafc"/>
+  
+  <!-- Book spine -->
+  <rect x="300" y="350" width="40" height="324" rx="20" fill="#e2e8f0"/>
+  
+  <!-- Graduation cap -->
+  <polygon points="400,280 624,280 512,220" fill="#1e40af"/>
+  <rect x="500" y="220" width="24" height="80" fill="#1e40af"/>
+  <circle cx="524" cy="210" r="8" fill="#fbbf24"/>
+  
+  <!-- Book lines -->
+  <line x1="360" y1="420" x2="664" y2="420" stroke="#cbd5e1" stroke-width="4"/>
+  <line x1="360" y1="460" x2="664" y2="460" stroke="#cbd5e1" stroke-width="4"/>
+  <line x1="360" y1="500" x2="664" y2="500" stroke="#cbd5e1" stroke-width="4"/>
+  <line x1="360" y1="540" x2="664" y2="540" stroke="#cbd5e1" stroke-width="4"/>
+  
+  <!-- School building icon -->
+  <rect x="450" y="580" width="124" height="80" fill="#1e40af"/>
+  <polygon points="450,580 512,540 574,580" fill="#1e40af"/>
+  
+  <!-- Windows -->
+  <rect x="465" y="595" width="15" height="15" fill="#fbbf24"/>
+  <rect x="485" y="595" width="15" height="15" fill="#fbbf24"/>
+  <rect x="524" y="595" width="15" height="15" fill="#fbbf24"/>
+  <rect x="544" y="595" width="15" height="15" fill="#fbbf24"/>
+  
+  <!-- Door -->
+  <rect x="500" y="620" width="24" height="40" fill="#7c3aed"/>
+</svg>

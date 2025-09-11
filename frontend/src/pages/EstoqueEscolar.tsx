@@ -186,160 +186,123 @@ const EstoqueEscolarPage = () => {
                 setError('Nenhum produto selecionado para exportar.');
                 return;
             }
-
+    
             const workbook = new ExcelJS.Workbook();
             const worksheet = workbook.addWorksheet(`Detalhes - ${produtoSelecionado.nome}`);
+    
+            const thinBorder = {
+                top: { style: 'thin' as const },
+                left: { style: 'thin' as const },
+                bottom: { style: 'thin' as const },
+                right: { style: 'thin' as const }
+            };
 
             // Título principal
             worksheet.mergeCells('A1:F1');
             const titleCell = worksheet.getCell('A1');
             titleCell.value = `RELATÓRIO DETALHADO DE ESTOQUE - ${produtoSelecionado.nome.toUpperCase()}`;
-            titleCell.font = { bold: true, size: 16, color: { argb: 'FF2563eb' } };
+            titleCell.font = { bold: true, size: 14 };
             titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-            titleCell.fill = {
-                type: 'pattern',
-                pattern: 'solid',
-                fgColor: { argb: 'FFE3F2FD' }
-            };
-
-            // Informações do produto
-            worksheet.getRow(3).values = ['INFORMAÇÕES DO PRODUTO'];
+            worksheet.getRow(1).height = 25;
+    
+            // Seção: INFORMAÇÕES DO PRODUTO
             worksheet.mergeCells('A3:F3');
             const infoHeader = worksheet.getCell('A3');
-            infoHeader.font = { bold: true, size: 12 };
-            infoHeader.fill = {
-                type: 'pattern',
-                pattern: 'solid',
-                fgColor: { argb: 'FFF3F4F6' }
-            };
-
-            worksheet.getRow(4).values = ['Produto:', produtoSelecionado.nome, '', 'Categoria:', produtoSelecionado.categoria || 'Sem categoria'];
+            infoHeader.value = 'INFORMAÇÕES DO PRODUTO';
+            infoHeader.font = { bold: true, color: { argb: 'FF000000'} };
+            infoHeader.alignment = { horizontal: 'center' };
+            infoHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9D9D9' } };
+            infoHeader.border = thinBorder;
+            
+            worksheet.getRow(4).values = ['Produto:', produtoSelecionado.nome, '', 'Categoria:', produtoSelecionado.categoria || 'N/A'];
             worksheet.getRow(5).values = ['Unidade:', produtoSelecionado.unidade, '', 'Data do Relatório:', new Date().toLocaleDateString('pt-BR')];
 
-            // Resumo estatístico
-            worksheet.getRow(7).values = ['RESUMO ESTATÍSTICO'];
+            // Aplicar bordas à seção de informações
+            for (let rowNum = 4; rowNum <= 5; rowNum++) {
+                worksheet.getRow(rowNum).eachCell({ includeEmpty: true }, cell => {
+                    cell.border = thinBorder;
+                });
+            }
+    
+            // Seção: RESUMO ESTATÍSTICO
             worksheet.mergeCells('A7:F7');
             const resumoHeader = worksheet.getCell('A7');
-            resumoHeader.font = { bold: true, size: 12 };
-            resumoHeader.fill = {
-                type: 'pattern',
-                pattern: 'solid',
-                fgColor: { argb: 'FFF3F4F6' }
-            };
-
-            worksheet.getRow(8).values = [
-                'Total de Escolas:', estoqueDetalhado.resumo?.total_escolas || 0,
-                '', 'Escolas com Estoque:', estoqueDetalhado.resumo?.escolas_com_estoque || 0
-            ];
-            worksheet.getRow(9).values = [
-                'Escolas sem Estoque:', estoqueDetalhado.resumo?.escolas_sem_estoque || 0,
-                '', 'Quantidade Total:', `${estoqueDetalhado.resumo?.quantidade_total || 0} ${produtoSelecionado.unidade}`
-            ];
-
-            // Tabela de distribuição por escola
-            worksheet.getRow(11).values = ['DISTRIBUIÇÃO POR ESCOLA'];
+            resumoHeader.value = 'RESUMO ESTATÍSTICO';
+            resumoHeader.font = { bold: true, color: { argb: 'FF000000'} };
+            resumoHeader.alignment = { horizontal: 'center' };
+            resumoHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9D9D9' } };
+            resumoHeader.border = thinBorder;
+            
+            worksheet.getRow(8).values = ['Total de Escolas:', estoqueDetalhado.resumo?.total_escolas || 0, '', 'Escolas com Estoque:', estoqueDetalhado.resumo?.escolas_com_estoque || 0];
+            worksheet.getRow(9).values = ['Escolas sem Estoque:', estoqueDetalhado.resumo?.escolas_sem_estoque || 0, '', 'Quantidade Total:', `${estoqueDetalhado.resumo?.quantidade_total || 0} ${produtoSelecionado.unidade}`];
+            
+            // Aplicar bordas à seção de resumo
+            for (let rowNum = 8; rowNum <= 9; rowNum++) {
+                worksheet.getRow(rowNum).eachCell({ includeEmpty: true }, cell => {
+                    cell.border = thinBorder;
+                });
+            }
+    
+            // Seção: DISTRIBUIÇÃO POR ESCOLA
             worksheet.mergeCells('A11:F11');
             const distribuicaoHeader = worksheet.getCell('A11');
-            distribuicaoHeader.font = { bold: true, size: 12 };
-            distribuicaoHeader.fill = {
-                type: 'pattern',
-                pattern: 'solid',
-                fgColor: { argb: 'FFF3F4F6' }
-            };
+            distribuicaoHeader.value = 'DISTRIBUIÇÃO POR ESCOLA';
+            distribuicaoHeader.font = { bold: true, color: { argb: 'FF000000' } };
+            distribuicaoHeader.alignment = { horizontal: 'center' };
+            distribuicaoHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9D9D9' } };
+            distribuicaoHeader.border = thinBorder;
 
-            // Cabeçalhos da tabela
+            // Cabeçalhos da tabela principal
             const headerRow = worksheet.getRow(13);
             headerRow.values = ['Escola', 'Quantidade', 'Unidade', 'Status', 'Última Atualização', 'Observações'];
             headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-            headerRow.fill = {
-                type: 'pattern',
-                pattern: 'solid',
-                fgColor: { argb: 'FF059669' }
-            };
-
+            headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF059669' } };
+            headerRow.eachCell(cell => { cell.border = thinBorder; });
+    
             // Definir larguras das colunas
             worksheet.columns = [
-                { width: 35 }, // Escola
-                { width: 15 }, // Quantidade
-                { width: 12 }, // Unidade
-                { width: 15 }, // Status
-                { width: 20 }, // Última Atualização
-                { width: 30 }  // Observações
+                { key: 'escola', width: 35 },
+                { key: 'quantidade', width: 15 },
+                { key: 'unidade', width: 12 },
+                { key: 'status', width: 15 },
+                { key: 'atualizacao', width: 20 },
+                { key: 'obs', width: 30 }
             ];
-
+    
             // Dados das escolas
-            let currentRow = 14;
             if (estoqueDetalhado.escolas && estoqueDetalhado.escolas.length > 0) {
-                estoqueDetalhado.escolas.forEach((escola: any, index: number) => {
-                    const row = worksheet.getRow(currentRow);
-                    row.values = [
+                estoqueDetalhado.escolas.forEach((escola: any) => {
+                    const row = worksheet.addRow([
                         escola.escola_nome,
                         escola.quantidade_atual || 0,
                         produtoSelecionado.unidade,
                         escola.quantidade_atual > 0 ? 'Com Estoque' : 'Sem Estoque',
-                        escola.data_ultima_atualizacao ? 
-                            new Date(escola.data_ultima_atualizacao).toLocaleDateString('pt-BR') : 
-                            'Nunca atualizado',
+                        escola.data_ultima_atualizacao ? new Date(escola.data_ultima_atualizacao).toLocaleDateString('pt-BR') : 'Nunca atualizado',
                         escola.observacoes || ''
-                    ];
-
-                    // Colorir linha baseada no status
-                    if (escola.quantidade_atual > 0) {
-                        row.fill = {
-                            type: 'pattern',
-                            pattern: 'solid',
-                            fgColor: { argb: 'FFE6FFFA' }
-                        };
-                    } else {
-                        row.fill = {
-                            type: 'pattern',
-                            pattern: 'solid',
-                            fgColor: { argb: 'FFFEF2F2' }
-                        };
-                    }
-
-                    currentRow++;
+                    ]);
+    
+                    // Itera sobre cada célula da linha para aplicar bordas e a cor de fundo condicionalmente
+                    row.eachCell(cell => {
+                        // 1. Aplica a borda a todas as células da linha
+                        cell.border = thinBorder;
+    
+                        // 2. Aplica a cor de fundo SOMENTE se a condição for atendida
+                        if (escola.quantidade_atual <= 0) {
+                            cell.fill = {
+                                type: 'pattern',
+                                pattern: 'solid',
+                                fgColor: { argb: 'FFFFE8E8' } // Rosa claro para "Sem Estoque"
+                            };
+                        }
+                    });
                 });
             } else {
-                const row = worksheet.getRow(currentRow);
-                row.values = ['Nenhuma escola encontrada', '', '', '', '', ''];
-                worksheet.mergeCells(`A${currentRow}:F${currentRow}`);
-                row.alignment = { horizontal: 'center' };
-                row.font = { italic: true };
+                const row = worksheet.addRow(['Nenhuma escola encontrada']);
+                worksheet.mergeCells(`A${row.number}:F${row.number}`);
+                row.getCell('A').alignment = { horizontal: 'center' };
+                row.getCell('A').font = { italic: true };
             }
-
-            // Adicionar bordas a toda a tabela
-            const tableRange = `A13:F${currentRow - 1}`;
-            worksheet.getCell(tableRange).border = {
-                top: { style: 'thin' },
-                left: { style: 'thin' },
-                bottom: { style: 'thin' },
-                right: { style: 'thin' }
-            };
-
-            // Aplicar bordas a cada célula da tabela
-            for (let row = 13; row < currentRow; row++) {
-                for (let col = 1; col <= 6; col++) {
-                    const cell = worksheet.getCell(row, col);
-                    cell.border = {
-                        top: { style: 'thin' },
-                        left: { style: 'thin' },
-                        bottom: { style: 'thin' },
-                        right: { style: 'thin' }
-                    };
-                }
-            }
-
-            // Rodapé
-            const footerRow = currentRow + 2;
-            worksheet.getRow(footerRow).values = [
-                `Relatório gerado em ${new Date().toLocaleString('pt-BR')} - Sistema de Gestão Escolar`
-            ];
-            worksheet.mergeCells(`A${footerRow}:F${footerRow}`);
-            const footerCell = worksheet.getCell(`A${footerRow}`);
-            footerCell.font = { italic: true, size: 10 };
-            footerCell.alignment = { horizontal: 'center' };
-
+    
             // Gerar e baixar arquivo
             const buffer = await workbook.xlsx.writeBuffer();
             const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -349,8 +312,7 @@ const EstoqueEscolarPage = () => {
             link.download = `detalhes-estoque-${produtoSelecionado.nome.replace(/[^a-zA-Z0-9]/g, '-')}-${new Date().toISOString().split('T')[0]}.xlsx`;
             link.click();
             window.URL.revokeObjectURL(url);
-
-            // Fechar modal após exportar
+    
             setDetalhesModalOpen(false);
         } catch (error) {
             console.error('Erro ao exportar detalhes Excel:', error);

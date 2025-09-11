@@ -1,0 +1,70 @@
+<svg width="1080" height="1920" viewBox="0 0 1080 1920" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background gradient -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e40af;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2563eb;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <rect width="1080" height="1920" fill="url(#bgGradient)"/>
+  
+  <!-- Main icon centered -->
+  <g transform="translate(540, 960)">
+    <!-- Background circle -->
+    <circle cx="0" cy="0" r="200" fill="#ffffff" opacity="0.1"/>
+    <circle cx="0" cy="0" r="150" fill="#ffffff" opacity="0.2"/>
+    
+    <!-- Book base -->
+    <rect x="-150" y="-100" width="300" height="200" rx="15" fill="#ffffff"/>
+    
+    <!-- Book pages -->
+    <rect x="-130" y="-80" width="260" height="160" rx="8" fill="#f8fafc"/>
+    
+    <!-- Book spine -->
+    <rect x="-150" y="-100" width="25" height="200" rx="15" fill="#e2e8f0"/>
+    
+    <!-- Graduation cap -->
+    <polygon points="-80,-140 80,-140 0,-200" fill="#1e40af"/>
+    <rect x="-8" y="-200" width="16" height="60" fill="#1e40af"/>
+    <circle cx="8" cy="-210" r="6" fill="#fbbf24"/>
+    
+    <!-- Book lines -->
+    <line x1="-100" y1="-50" x2="130" y2="-50" stroke="#cbd5e1" stroke-width="3"/>
+    <line x1="-100" y1="-20" x2="130" y2="-20" stroke="#cbd5e1" stroke-width="3"/>
+    <line x1="-100" y1="10" x2="130" y2="10" stroke="#cbd5e1" stroke-width="3"/>
+    <line x1="-100" y1="40" x2="130" y2="40" stroke="#cbd5e1" stroke-width="3"/>
+    
+    <!-- School building -->
+    <rect x="-50" y="120" width="100" height="60" fill="#1e40af"/>
+    <polygon points="-50,120 0,90 50,120" fill="#1e40af"/>
+    
+    <!-- Windows -->
+    <rect x="-35" y="130" width="12" height="12" fill="#fbbf24"/>
+    <rect x="-15" y="130" width="12" height="12" fill="#fbbf24"/>
+    <rect x="5" y="130" width="12" height="12" fill="#fbbf24"/>
+    <rect x="25" y="130" width="12" height="12" fill="#fbbf24"/>
+    
+    <!-- Door -->
+    <rect x="-8" y="150" width="16" height="30" fill="#7c3aed"/>
+  </g>
+  
+  <!-- App title -->
+  <text x="540" y="1200" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="48" font-weight="bold">Gestão Escolar</text>
+  
+  <!-- Subtitle -->
+  <text x="540" y="1260" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="24" opacity="0.8">Sistema de Controle de Estoque</text>
+  
+  <!-- Loading indicator -->
+  <g transform="translate(540, 1400)">
+    <circle cx="-30" cy="0" r="8" fill="#ffffff" opacity="0.3">
+      <animate attributeName="opacity" values="0.3;1;0.3" dur="1.5s" repeatCount="indefinite" begin="0s"/>
+    </circle>
+    <circle cx="0" cy="0" r="8" fill="#ffffff" opacity="0.3">
+      <animate attributeName="opacity" values="0.3;1;0.3" dur="1.5s" repeatCount="indefinite" begin="0.5s"/>
+    </circle>
+    <circle cx="30" cy="0" r="8" fill="#ffffff" opacity="0.3">
+      <animate attributeName="opacity" values="0.3;1;0.3" dur="1.5s" repeatCount="indefinite" begin="1s"/>
+    </circle>
+  </g>
+</svg>

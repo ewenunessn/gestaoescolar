@@ -347,6 +347,7 @@ export async function importarEscolasLote(req: Request, res: Response) {
               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
               ON CONFLICT (nome) DO UPDATE SET
                 codigo = EXCLUDED.codigo,
+                codigo_acesso = EXCLUDED.codigo_acesso,
                 endereco = EXCLUDED.endereco,
                 municipio = EXCLUDED.municipio,
                 endereco_maps = EXCLUDED.endereco_maps,

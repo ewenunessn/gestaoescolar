@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "estoque-escolar-mobile",
+    "name": "Estoque Escolar",
     "slug": "estoque-escolar-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/icon.svg",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "image": "./assets/splash.svg",
+      "resizeMode": "cover",
+      "backgroundColor": "#2563eb"
     },
     "ios": {
       "supportsTablet": true
