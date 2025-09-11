@@ -296,18 +296,18 @@ export async function listarItensRecebimento(req: Request, res: Response) {
         pi.created_at,
         p.nome as nome_produto,
         p.unidade as unidade,
-        COALESCE(pfc.fornecedor_id, pf.fornecedor_id) as fornecedor_id,
+        pf.fornecedor_id as fornecedor_id,
         f.nome as nome_fornecedor,
-        pfc.status as status_faturamento
+
       FROM pedidos_itens pi
       LEFT JOIN pedidos_fornecedores pf ON pi.pedido_fornecedor_id = pf.id
       LEFT JOIN pedidos pm ON pf.pedido_id = pm.id
       LEFT JOIN produtos p ON pi.produto_id = p.id
       LEFT JOIN recebimento_itens_controle rs ON pi.id = rs.pedido_item_id
-      LEFT JOIN pedidos_faturamentos_controle pfc ON pf.pedido_id = pfc.pedido_id
-      LEFT JOIN fornecedores f ON COALESCE(pfc.fornecedor_id, pf.fornecedor_id) = f.id
+
+      LEFT JOIN fornecedores f ON pf.fornecedor_id = f.id
       WHERE pf.pedido_id = $1
-      GROUP BY pi.id, pf.pedido_id, pi.produto_id, pi.quantidade, pi.created_at, p.nome, p.unidade, pfc.fornecedor_id, pf.fornecedor_id, f.nome, pfc.status
+      GROUP BY pi.id, pf.pedido_id, pi.produto_id, pi.quantidade, pi.created_at, p.nome, p.unidade, pf.fornecedor_id, f.nome
       ORDER BY COALESCE(f.nome, 'ZZZ'), p.nome
     `, [pedido_id]);
     
@@ -323,7 +323,7 @@ export async function listarItensRecebimento(req: Request, res: Response) {
       nome_produto: item.nome_produto || 'Produto não identificado',
       unidade: item.unidade || 'UN',
       nome_fornecedor: item.nome_fornecedor || 'Fornecedor não identificado',
-      status_faturamento: item.status_faturamento || 'PENDENTE'
+
     }));
     
     // Calcular estatísticas
@@ -347,7 +347,7 @@ export async function listarItensRecebimento(req: Request, res: Response) {
       quantidade_total: totalEsperado,
       quantidade_recebida: totalRecebido,
       total_fornecedores: new Set(itensFormatados.map((item: any) => item.fornecedor_id)).size,
-      fornecedores_faturados: new Set(itensFormatados.filter((item: any) => item.status_faturamento === 'FATURADO').map((item: any) => item.fornecedor_id)).size
+
     };
     
     res.json({
@@ -637,11 +637,11 @@ export async function buscarRecebimento(req: Request, res: Response) {
         p.nome as nome_produto,
         p.unidade as unidade,
         f.nome as nome_fornecedor,
-        pfc.status as status_faturamento
+
       FROM pedidos_fornecedores pf
       JOIN pedidos_itens pi ON pf.id = pi.pedido_fornecedor_id
       LEFT JOIN produtos p ON pi.produto_id = p.id
-      LEFT JOIN pedidos_faturamentos_controle pfc ON pf.pedido_id = pfc.pedido_id
+
       LEFT JOIN fornecedores f ON pf.fornecedor_id = f.id
       WHERE pf.pedido_id = $1
       ORDER BY COALESCE(f.nome, 'ZZZ'), p.nome
@@ -699,12 +699,9 @@ export async function estatisticasPedido(req: Request, res: Response) {
     // Buscar informações de fornecedores separadamente
     const fornecedoresStats = await db.query(`
       SELECT 
-        COUNT(DISTINCT COALESCE(pfc.fornecedor_id, pm.fornecedor_id)) as total_fornecedores,
-        COUNT(DISTINCT CASE WHEN pfc.status = 'FATURADO' THEN COALESCE(pfc.fornecedor_id, pm.fornecedor_id) END) as fornecedores_faturados
+        COUNT(DISTINCT pf.fornecedor_id) as total_fornecedores
       FROM pedidos_fornecedores pf
       JOIN pedidos_itens pi ON pf.id = pi.pedido_fornecedor_id
-      LEFT JOIN pedidos pm ON pf.pedido_id = pm.id
-      LEFT JOIN pedidos_faturamentos_controle pfc ON pf.pedido_id = pfc.pedido_id
       WHERE pf.pedido_id = $1
     `, [id]);
     

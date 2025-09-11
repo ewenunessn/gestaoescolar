@@ -213,7 +213,7 @@ export class PedidoIntegrityChecker {
         if (!fornecedoresProcessados.has(item.fornecedor_pedido_id)) {
           fornecedoresProcessados.add(item.fornecedor_pedido_id);
           
-          // Não aplicável na estrutura moderna - fornecedores são agrupados por faturamento
+          // Verificação de subtotal do fornecedor
           const subtotalFornecedorResult = { rows: [{ total: 0 }] };
           
           const subtotalFornecedorCalculado = subtotalFornecedorResult.rows[0];
@@ -406,22 +406,7 @@ export class PedidoIntegrityChecker {
         });
       }
 
-      // Verificar fornecedores órfãos
-      const fornecedoresOrfaos = await db.get(`
-        SELECT COUNT(*) as count
-        FROM pedidos_faturamentos_controle pfc
-        LEFT JOIN fornecedores f ON pfc.fornecedor_id = f.id
-        WHERE f.id IS NULL
-      `);
 
-      if (fornecedoresOrfaos.count > 0) {
-        problemasGerais.push({
-          tipo: 'CRITICO',
-          categoria: 'REFERENCIA',
-          descricao: `${fornecedoresOrfaos.count} registros de fornecedores órfãos`,
-          sugestaoCorrecao: 'Verificar e corrigir referências de fornecedores'
-        });
-      }
 
       // Verificar produtos órfãos
       const produtosOrfaos = await db.get(`

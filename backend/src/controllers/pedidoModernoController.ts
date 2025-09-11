@@ -282,8 +282,7 @@ export async function buscarPedido(req: Request, res: Response) {
     
     const itens = itensResult.rows;
     
-    // Buscar status de faturamento por fornecedor (simplificado)
-    const faturamentos: any[] = [];
+
     
     // Validar integridade dos itens
     const itensValidados = itens.map(item => {
@@ -326,7 +325,7 @@ export async function buscarPedido(req: Request, res: Response) {
           };
         })(),
         itens: itensValidados,
-        faturamentos
+
       }
     });
   } catch (error) {
@@ -478,17 +477,7 @@ export async function buscarHistorico(req: Request, res: Response) {
         'Status alterado de ' || ph.status_anterior || ' para ' || ph.status_novo as descricao
       FROM pedidos_historico ph
       WHERE ph.pedido_id = $1
-      
-      UNION ALL
-      
-      SELECT 
-        'FATURADO' as acao,
-        pfc.data_faturamento as data,
-        'Sistema' as usuario,
-        'Faturamento por fornecedor: ' || COALESCE(f.nome, 'Fornecedor não encontrado') as descricao
-      FROM pedidos_faturamentos_controle pfc
-      LEFT JOIN fornecedores f ON pfc.fornecedor_id = f.id
-      WHERE pfc.pedido_id = $1 AND pfc.status = 'FATURADO'
+
       
       ORDER BY data DESC
     `, [pedidoId]);

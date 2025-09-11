@@ -212,11 +212,6 @@ export async function removerModalidade(req: Request, res: Response) {
     // Verificar se há referências em outras tabelas
     const referencias = await db.all(`
       SELECT 
-        'faturamento_itens' as tabela, COUNT(*) as total
-      FROM faturamento_itens 
-      WHERE modalidade_id = $1
-      UNION ALL
-      SELECT 
         'escola_modalidades' as tabela, COUNT(*) as total
       FROM escola_modalidades 
       WHERE modalidade_id = $1
@@ -248,17 +243,12 @@ export async function removerModalidade(req: Request, res: Response) {
       
       // Exclusão forçada - remover referências primeiro
       let removidosEscolaModalidades = 0;
-      let removidosFaturamentosItens = 0;
       
       const resultEscola = await db.query('DELETE FROM escola_modalidades WHERE modalidade_id = $1', [id]);
       removidosEscolaModalidades = resultEscola.rowCount || 0;
       
-      const resultFaturamento = await db.query('DELETE FROM faturamento_itens WHERE modalidade_id = $1', [id]);
-      removidosFaturamentosItens = resultFaturamento.rowCount || 0;
-      
       console.log(`✅ Referências removidas:`);
       console.log(`   - escola_modalidades: ${removidosEscolaModalidades} registro(s)`);
-      console.log(`   - faturamento_itens: ${removidosFaturamentosItens} registro(s)`);
     }
 
     // Excluir a modalidade
