@@ -130,7 +130,233 @@ const EstoqueEscolarPage = () => {
             setLoadingReset(false);
         }
     };
-    const exportarExcel = async () => { /* ... sua lógica de exportação ... */ };
+    const exportarExcel = async () => {
+        try {
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('Estoque Escolar');
+
+            // Cabeçalhos
+            worksheet.columns = [
+                { header: 'Produto', key: 'nome', width: 30 },
+                { header: 'Categoria', key: 'categoria', width: 20 },
+                { header: 'Unidade', key: 'unidade', width: 15 },
+                { header: 'Quantidade Total', key: 'total_quantidade', width: 20 },
+                { header: 'Escolas com Estoque', key: 'total_escolas_com_estoque', width: 25 },
+                { header: 'Total de Escolas', key: 'total_escolas', width: 20 }
+            ];
+
+            // Dados
+            filteredProdutos.forEach(produto => {
+                worksheet.addRow({
+                    nome: produto.nome,
+                    categoria: produto.categoria || 'Sem categoria',
+                    unidade: produto.unidade,
+                    total_quantidade: produto.total_quantidade,
+                    total_escolas_com_estoque: produto.total_escolas_com_estoque,
+                    total_escolas: produto.total_escolas
+                });
+            });
+
+            // Estilização do cabeçalho
+            worksheet.getRow(1).font = { bold: true };
+            worksheet.getRow(1).fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFE3F2FD' }
+            };
+
+            // Gerar arquivo
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `estoque-escolar-${new Date().toISOString().split('T')[0]}.xlsx`;
+            link.click();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Erro ao exportar Excel:', error);
+            setError('Erro ao exportar planilha Excel.');
+        }
+    };
+
+    const exportarDetalhesExcel = async () => {
+        try {
+            if (!estoqueDetalhado || !produtoSelecionado) {
+                setError('Nenhum produto selecionado para exportar.');
+                return;
+            }
+
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet(`Detalhes - ${produtoSelecionado.nome}`);
+
+            // Título principal
+            worksheet.mergeCells('A1:F1');
+            const titleCell = worksheet.getCell('A1');
+            titleCell.value = `RELATÓRIO DETALHADO DE ESTOQUE - ${produtoSelecionado.nome.toUpperCase()}`;
+            titleCell.font = { bold: true, size: 16, color: { argb: 'FF2563eb' } };
+            titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+            titleCell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFE3F2FD' }
+            };
+
+            // Informações do produto
+            worksheet.getRow(3).values = ['INFORMAÇÕES DO PRODUTO'];
+            worksheet.mergeCells('A3:F3');
+            const infoHeader = worksheet.getCell('A3');
+            infoHeader.font = { bold: true, size: 12 };
+            infoHeader.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFF3F4F6' }
+            };
+
+            worksheet.getRow(4).values = ['Produto:', produtoSelecionado.nome, '', 'Categoria:', produtoSelecionado.categoria || 'Sem categoria'];
+            worksheet.getRow(5).values = ['Unidade:', produtoSelecionado.unidade, '', 'Data do Relatório:', new Date().toLocaleDateString('pt-BR')];
+
+            // Resumo estatístico
+            worksheet.getRow(7).values = ['RESUMO ESTATÍSTICO'];
+            worksheet.mergeCells('A7:F7');
+            const resumoHeader = worksheet.getCell('A7');
+            resumoHeader.font = { bold: true, size: 12 };
+            resumoHeader.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFF3F4F6' }
+            };
+
+            worksheet.getRow(8).values = [
+                'Total de Escolas:', estoqueDetalhado.resumo?.total_escolas || 0,
+                '', 'Escolas com Estoque:', estoqueDetalhado.resumo?.escolas_com_estoque || 0
+            ];
+            worksheet.getRow(9).values = [
+                'Escolas sem Estoque:', estoqueDetalhado.resumo?.escolas_sem_estoque || 0,
+                '', 'Quantidade Total:', `${estoqueDetalhado.resumo?.quantidade_total || 0} ${produtoSelecionado.unidade}`
+            ];
+
+            // Tabela de distribuição por escola
+            worksheet.getRow(11).values = ['DISTRIBUIÇÃO POR ESCOLA'];
+            worksheet.mergeCells('A11:F11');
+            const distribuicaoHeader = worksheet.getCell('A11');
+            distribuicaoHeader.font = { bold: true, size: 12 };
+            distribuicaoHeader.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFF3F4F6' }
+            };
+
+            // Cabeçalhos da tabela
+            const headerRow = worksheet.getRow(13);
+            headerRow.values = ['Escola', 'Quantidade', 'Unidade', 'Status', 'Última Atualização', 'Observações'];
+            headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            headerRow.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FF059669' }
+            };
+
+            // Definir larguras das colunas
+            worksheet.columns = [
+                { width: 35 }, // Escola
+                { width: 15 }, // Quantidade
+                { width: 12 }, // Unidade
+                { width: 15 }, // Status
+                { width: 20 }, // Última Atualização
+                { width: 30 }  // Observações
+            ];
+
+            // Dados das escolas
+            let currentRow = 14;
+            if (estoqueDetalhado.escolas && estoqueDetalhado.escolas.length > 0) {
+                estoqueDetalhado.escolas.forEach((escola: any, index: number) => {
+                    const row = worksheet.getRow(currentRow);
+                    row.values = [
+                        escola.escola_nome,
+                        escola.quantidade_atual || 0,
+                        produtoSelecionado.unidade,
+                        escola.quantidade_atual > 0 ? 'Com Estoque' : 'Sem Estoque',
+                        escola.data_ultima_atualizacao ? 
+                            new Date(escola.data_ultima_atualizacao).toLocaleDateString('pt-BR') : 
+                            'Nunca atualizado',
+                        escola.observacoes || ''
+                    ];
+
+                    // Colorir linha baseada no status
+                    if (escola.quantidade_atual > 0) {
+                        row.fill = {
+                            type: 'pattern',
+                            pattern: 'solid',
+                            fgColor: { argb: 'FFE6FFFA' }
+                        };
+                    } else {
+                        row.fill = {
+                            type: 'pattern',
+                            pattern: 'solid',
+                            fgColor: { argb: 'FFFEF2F2' }
+                        };
+                    }
+
+                    currentRow++;
+                });
+            } else {
+                const row = worksheet.getRow(currentRow);
+                row.values = ['Nenhuma escola encontrada', '', '', '', '', ''];
+                worksheet.mergeCells(`A${currentRow}:F${currentRow}`);
+                row.alignment = { horizontal: 'center' };
+                row.font = { italic: true };
+            }
+
+            // Adicionar bordas a toda a tabela
+            const tableRange = `A13:F${currentRow - 1}`;
+            worksheet.getCell(tableRange).border = {
+                top: { style: 'thin' },
+                left: { style: 'thin' },
+                bottom: { style: 'thin' },
+                right: { style: 'thin' }
+            };
+
+            // Aplicar bordas a cada célula da tabela
+            for (let row = 13; row < currentRow; row++) {
+                for (let col = 1; col <= 6; col++) {
+                    const cell = worksheet.getCell(row, col);
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' }
+                    };
+                }
+            }
+
+            // Rodapé
+            const footerRow = currentRow + 2;
+            worksheet.getRow(footerRow).values = [
+                `Relatório gerado em ${new Date().toLocaleString('pt-BR')} - Sistema de Gestão Escolar`
+            ];
+            worksheet.mergeCells(`A${footerRow}:F${footerRow}`);
+            const footerCell = worksheet.getCell(`A${footerRow}`);
+            footerCell.font = { italic: true, size: 10 };
+            footerCell.alignment = { horizontal: 'center' };
+
+            // Gerar e baixar arquivo
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `detalhes-estoque-${produtoSelecionado.nome.replace(/[^a-zA-Z0-9]/g, '-')}-${new Date().toISOString().split('T')[0]}.xlsx`;
+            link.click();
+            window.URL.revokeObjectURL(url);
+
+            // Fechar modal após exportar
+            setDetalhesModalOpen(false);
+        } catch (error) {
+            console.error('Erro ao exportar detalhes Excel:', error);
+            setError('Erro ao exportar detalhes em Excel.');
+        }
+    };
     
     const verDetalhesEstoque = async (produto: ProdutoComEstoque) => {
         try {
@@ -222,9 +448,155 @@ const EstoqueEscolarPage = () => {
                 )}
             </Box>
 
-            {/* Modal de Detalhes (sem alterações, pois já é complexo e funcional) */}
+            {/* Modal de Detalhes */}
             <Dialog open={detalhesModalOpen} onClose={() => setDetalhesModalOpen(false)} maxWidth="lg" fullWidth>
-                {/* ... seu código do modal de detalhes aqui ... */}
+                <DialogTitle sx={{ 
+                    bgcolor: '#f8fafc', 
+                    borderBottom: '1px solid #e2e8f0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 2
+                }}>
+                    <Inventory sx={{ color: '#4f46e5' }} />
+                    <Box>
+                        <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                            Detalhes do Estoque: {produtoSelecionado?.nome}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            Distribuição por escola
+                        </Typography>
+                    </Box>
+                </DialogTitle>
+                <DialogContent sx={{ p: 0 }}>
+                    {loadingDetalhes ? (
+                        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 200 }}>
+                            <CircularProgress />
+                        </Box>
+                    ) : estoqueDetalhado ? (
+                        <Box>
+                            {/* Resumo */}
+                            <Box sx={{ p: 3, bgcolor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                                <Grid container spacing={3}>
+                                    <Grid item xs={12} sm={4}>
+                                        <Card sx={{ textAlign: 'center', p: 2 }}>
+                                            <Typography variant="h4" sx={{ fontWeight: 700, color: '#059669' }}>
+                                                {estoqueDetalhado.resumo?.quantidade_total || 0}
+                                            </Typography>
+                                            <Typography variant="body2" color="text.secondary">
+                                                Total Geral ({produtoSelecionado?.unidade})
+                                            </Typography>
+                                        </Card>
+                                    </Grid>
+                                    <Grid item xs={12} sm={4}>
+                                        <Card sx={{ textAlign: 'center', p: 2 }}>
+                                            <Typography variant="h4" sx={{ fontWeight: 700, color: '#2563eb' }}>
+                                                {estoqueDetalhado.resumo?.escolas_com_estoque || 0}
+                                            </Typography>
+                                            <Typography variant="body2" color="text.secondary">
+                                                Escolas com Estoque
+                                            </Typography>
+                                        </Card>
+                                    </Grid>
+                                    <Grid item xs={12} sm={4}>
+                                        <Card sx={{ textAlign: 'center', p: 2 }}>
+                                            <Typography variant="h4" sx={{ fontWeight: 700, color: '#dc2626' }}>
+                                                {estoqueDetalhado.resumo?.escolas_sem_estoque || 0}
+                                            </Typography>
+                                            <Typography variant="body2" color="text.secondary">
+                                                Escolas sem Estoque
+                                            </Typography>
+                                        </Card>
+                                    </Grid>
+                                </Grid>
+                            </Box>
+
+                            {/* Lista de Escolas */}
+                            <Box sx={{ p: 3 }}>
+                                <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                                    Distribuição por Escola
+                                </Typography>
+                                <TableContainer component={Paper} variant="outlined">
+                                    <Table>
+                                        <TableHead>
+                                            <TableRow>
+                                                <TableCell>Escola</TableCell>
+                                                <TableCell align="center">Quantidade</TableCell>
+                                                <TableCell align="center">Status</TableCell>
+                                                <TableCell>Última Atualização</TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            {estoqueDetalhado.escolas?.map((escola: any) => (
+                                                <TableRow key={escola.escola_id} hover>
+                                                    <TableCell>
+                                                         <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                                             {escola.escola_nome}
+                                                         </Typography>
+                                                     </TableCell>
+                                                     <TableCell align="center">
+                                                         <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                                             {escola.quantidade_atual || 0} {produtoSelecionado?.unidade}
+                                                         </Typography>
+                                                     </TableCell>
+                                                     <TableCell align="center">
+                                                         <Chip 
+                                                             label={escola.quantidade_atual > 0 ? 'Com Estoque' : 'Sem Estoque'}
+                                                             size="small"
+                                                             color={escola.quantidade_atual > 0 ? 'success' : 'error'}
+                                                             variant="outlined"
+                                                         />
+                                                     </TableCell>
+                                                     <TableCell>
+                                                         <Typography variant="body2" color="text.secondary">
+                                                             {escola.data_ultima_atualizacao ? 
+                                                                 new Date(escola.data_ultima_atualizacao).toLocaleDateString('pt-BR') : 
+                                                                 'Nunca atualizado'
+                                                             }
+                                                         </Typography>
+                                                     </TableCell>
+                                                </TableRow>
+                                            )) || (
+                                                <TableRow>
+                                                    <TableCell colSpan={4} align="center">
+                                                        <Typography color="text.secondary">
+                                                            Nenhum dado de escola encontrado
+                                                        </Typography>
+                                                    </TableCell>
+                                                </TableRow>
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+                            </Box>
+                        </Box>
+                    ) : (
+                        <Box sx={{ p: 3, textAlign: 'center' }}>
+                            <Typography color="text.secondary">
+                                Erro ao carregar detalhes do estoque
+                            </Typography>
+                        </Box>
+                    )}
+                </DialogContent>
+                <DialogActions sx={{ p: 3, borderTop: '1px solid #e2e8f0' }}>
+                    <Button 
+                        onClick={() => exportarDetalhesExcel()} 
+                        variant="contained"
+                        startIcon={<Download />}
+                        sx={{ 
+                            bgcolor: '#059669', 
+                            '&:hover': { bgcolor: '#047857' },
+                            mr: 1
+                        }}
+                    >
+                        Exportar Excel
+                    </Button>
+                    <Button 
+                        onClick={() => setDetalhesModalOpen(false)}
+                        variant="outlined"
+                    >
+                        Fechar
+                    </Button>
+                </DialogActions>
             </Dialog>
 
             {/* Modal de Confirmação de Reset */}
