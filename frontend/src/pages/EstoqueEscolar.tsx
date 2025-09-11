@@ -12,7 +12,7 @@ import {
 } from '@mui/icons-material';
 import * as ExcelJS from 'exceljs';
 import {
-    buscarEstoqueEscolarProduto, listarEstoqueEscolar, EstoqueEscolarProduto
+    buscarEstoqueEscolarProduto, listarEstoqueEscolar, EstoqueEscolarProduto, resetEstoqueGlobal
 } from '../services/estoqueEscolar';
 
 // Interface
@@ -108,7 +108,28 @@ const EstoqueEscolarPage = () => {
     const toggleFilters = useCallback(() => setFiltersExpanded(!filtersExpanded), [filtersExpanded]);
 
     // Funções de Ações
-    const handleResetEstoque = async () => { /* ... sua lógica de reset ... */ };
+    const handleResetEstoque = async () => {
+        try {
+            setLoadingReset(true);
+            setError(null);
+            setResetModalOpen(false);
+            
+            const result = await resetEstoqueGlobal();
+            
+            if (result.success) {
+                setSuccessMessage(`Estoque global resetado com sucesso! ${result.data.estoques_resetados} itens foram resetados.`);
+                await loadEstoque(); // Recarregar os dados
+            } else {
+                throw new Error(result.message || 'Erro ao resetar estoque');
+            }
+            
+        } catch (err: any) {
+            console.error('Erro ao resetar estoque:', err);
+            setError('Erro ao resetar estoque global. Tente novamente.');
+        } finally {
+            setLoadingReset(false);
+        }
+    };
     const exportarExcel = async () => { /* ... sua lógica de exportação ... */ };
     
     const verDetalhesEstoque = async (produto: ProdutoComEstoque) => {
@@ -147,8 +168,19 @@ const EstoqueEscolarPage = () => {
 
     return (
         <Box sx={{ minHeight: '100vh', bgcolor: '#f9fafb' }}>
-            {successMessage && (<Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}><Alert severity="success" onClose={() => setSuccessMessage(null)}>{successMessage}</Alert></Box>)}
             <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+                <Typography variant="h4" sx={{ mb: 3, fontWeight: 700, color: '#1e293b' }}>Estoque Escolar</Typography>
+                
+                {/* Mensagem de Sucesso */}
+                {successMessage && (
+                    <Alert 
+                        severity="success" 
+                        sx={{ mb: 3 }}
+                        onClose={() => setSuccessMessage(null)}
+                    >
+                        {successMessage}
+                    </Alert>
+                )}
                 <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', p: 3, mb: 3 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
                         <TextField placeholder="Buscar produtos..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '12px' } }} InputProps={{ startAdornment: (<InputAdornment position="start"><Search sx={{ color: '#64748b' }} /></InputAdornment>), endAdornment: searchTerm && (<InputAdornment position="end"><IconButton size="small" onClick={() => setSearchTerm('')}><ClearIcon fontSize="small" /></IconButton></InputAdornment>)}}/>
@@ -195,9 +227,70 @@ const EstoqueEscolarPage = () => {
                 {/* ... seu código do modal de detalhes aqui ... */}
             </Dialog>
 
-            {/* Modal de Reset (sem alterações) */}
-            <Dialog open={resetModalOpen} onClose={() => !loadingReset && setResetModalOpen(false)} maxWidth="sm" fullWidth>
-                {/* ... seu código do modal de reset aqui ... */}
+            {/* Modal de Confirmação de Reset */}
+            <Dialog
+                open={resetModalOpen}
+                onClose={() => setResetModalOpen(false)}
+                maxWidth="sm"
+                fullWidth
+            >
+                <DialogTitle sx={{ 
+                    bgcolor: '#fef2f2', 
+                    color: '#dc2626',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1
+                }}>
+                    <Warning />
+                    Confirmar Reset do Estoque Global
+                </DialogTitle>
+                <DialogContent sx={{ pt: 3 }}>
+                    <Alert severity="warning" sx={{ mb: 2 }}>
+                        <strong>Atenção!</strong> Esta ação irá resetar o estoque de TODAS as escolas.
+                    </Alert>
+                    <Typography variant="body1" sx={{ mb: 2 }}>
+                        Você tem certeza que deseja resetar todo o estoque? Esta ação:
+                    </Typography>
+                    <Box component="ul" sx={{ pl: 2, mb: 2 }}>
+                        <li>Zerará todas as quantidades de estoque de todas as escolas</li>
+                        <li>Criará um backup automático dos dados atuais</li>
+                        <li>Registrará a operação no histórico</li>
+                        <li><strong>NÃO PODE SER DESFEITA</strong></li>
+                    </Box>
+                    <Typography variant="body2" color="text.secondary">
+                        Recomendamos fazer esta operação apenas no início do ano letivo ou após inventário completo.
+                    </Typography>
+                </DialogContent>
+                <DialogActions sx={{ p: 3, gap: 1 }}>
+                    <Button
+                        onClick={() => setResetModalOpen(false)}
+                        variant="outlined"
+                        disabled={loadingReset}
+                    >
+                        Cancelar
+                    </Button>
+                    <Button
+                        onClick={handleResetEstoque}
+                        variant="contained"
+                        color="error"
+                        disabled={loadingReset}
+                        sx={{
+                            bgcolor: '#dc2626',
+                            '&:hover': {
+                                bgcolor: '#b91c1c'
+                            }
+                        }}
+                    >
+                        {loadingReset ? (
+                            <>
+                                <CircularProgress size={20} sx={{ mr: 1, color: 'white' }} />
+                                Resetando...
+                            </>
+                        ) : (
+                            'Confirmar Reset'
+                        )}
+                    </Button>
+                </DialogActions>
             </Dialog>
 
             {/* Menu de Ações */}

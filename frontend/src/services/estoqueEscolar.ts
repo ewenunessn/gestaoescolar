@@ -44,3 +44,9 @@ export async function listarEstoqueEscolar(): Promise<EstoqueEscolarResumo[]> {
   const { data } = await apiWithRetry.get('/estoque-escolar');
   return data.data || [];
 }
+
+// Resetar estoque global (todas as escolas)
+export async function resetEstoqueGlobal(): Promise<any> {
+  const { data } = await apiWithRetry.post('/estoque-escolar/reset');
+  return data;
+}
