@@ -232,7 +232,7 @@ const PedidoDetalhes: React.FC<PedidoDetalhesProps> = ({ pedidoId, onClose }) =>
                    </Typography>
                    <Chip 
                      label={pedido.status} 
-                     color={getCorStatus(pedido.status)}
+                     color={pedido.status === 'ATIVO' ? 'success' : 'default'}
                      size="small"
                    />
                  </Box>

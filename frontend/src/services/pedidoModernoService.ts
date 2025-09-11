@@ -102,12 +102,7 @@ export interface PedidoDetalhadoResponse {
       nome_fornecedor: string;
       fornecedor_id: number;
     }>;
-    faturamentos: Array<{
-      fornecedor_id: number;
-      nome_fornecedor: string;
-      status: string;
-      valor_pedido: number;
-    }>;
+
   };
 }
 

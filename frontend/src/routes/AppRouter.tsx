@@ -69,8 +69,7 @@ const CarrinhoCompras = lazy(() => import("../pages/CarrinhoCompras"));
 
 const RecebimentoSimplificado = lazy(() => import("../pages/RecebimentoSimplificado"));
 const RecebimentoItensPage = lazy(() => import("../pages/RecebimentoItensPage"));
-const FaturamentoModalidades = lazy(() => import("../pages/FaturamentoModalidades"));
-const FaturamentoInterfacePage = lazy(() => import("../pages/FaturamentoInterfacePage"));
+
 const SaldoContratos = lazy(() => import("../pages/SaldoContratos"));
 
 
@@ -372,17 +371,7 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
               element={<LazyRoute><DashboardConsistencia /></LazyRoute>}
             />
             
-            {/* Faturamento de Modalidades */}
-            <Route
-              path="/faturamento-modalidades"
-              element={<LazyRoute><FaturamentoModalidades /></LazyRoute>}
-            />
-            
-            {/* Interface de Faturamento */}
-            <Route
-              path="/faturamento-interface"
-              element={<LazyRoute><FaturamentoInterfacePage /></LazyRoute>}
-            />
+
 
 
 
