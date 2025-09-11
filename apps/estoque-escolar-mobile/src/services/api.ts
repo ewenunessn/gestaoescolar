@@ -257,7 +257,7 @@ class ApiService {
     const dadosMovimentacao = {
       produto_id: produtoId,
       tipo_movimentacao: movimento.tipo_movimentacao || movimento.tipo || 'ajuste',
-      quantidade: movimento.quantidade_movimentada || movimento.quantidade,
+      quantidade: movimento.quantidade_movimentada !== undefined ? movimento.quantidade_movimentada : movimento.quantidade,
       motivo: movimento.motivo || '',
       documento_referencia: movimento.documento_referencia || '',
       usuario_id: movimento.usuario_id || 1

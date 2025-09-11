@@ -310,7 +310,7 @@ const PedidosModerno: React.FC = () => {
             }}
           >
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <ShoppingCart sx={{ color: "#4f46e5", fontSize: 24 }} />
+              <ShoppingCart sx={{ color: "#059669", fontSize: 24 }} />
               <Typography
                 variant="h5"
                 sx={{
@@ -330,12 +330,12 @@ const PedidosModerno: React.FC = () => {
                 startIcon={<ShoppingCart />}
                 onClick={() => navigate("/catalogo")}
                 sx={{
-                  bgcolor: "#4f46e5",
+                  bgcolor: "#059669",
                   fontFamily:
                     "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
                   textTransform: "none",
                   borderRadius: "8px",
-                  "&:hover": { bgcolor: "#4338ca" },
+                  "&:hover": { bgcolor: "#047857" },
                 }}
               >
                 Fazer Pedido
@@ -392,14 +392,14 @@ const PedidosModerno: React.FC = () => {
                   left: 0,
                   right: 0,
                   height: "4px",
-                  background: "linear-gradient(90deg, #4f46e5, #7c3aed)",
+                  background: "linear-gradient(90deg, #059669, #10b981)",
                 }}
               />
               <CardContent sx={{ p: 3 }}>
                 <Box display="flex" alignItems="center">
                   <Avatar
                     sx={{
-                      bgcolor: "#4f46e5",
+                      bgcolor: "#059669",
                       width: 48,
                       height: 48,
                       mr: 2,
@@ -569,14 +569,14 @@ const PedidosModerno: React.FC = () => {
                 startIcon={<FilterList />}
                 onClick={() => setMostrarFiltros(!mostrarFiltros)}
                 sx={{
-                  borderColor: "#4f46e5",
-                  color: "#4f46e5",
+                  borderColor: "#059669",
+                  color: "#059669",
                   fontFamily:
                     "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
                   textTransform: "none",
                   borderRadius: "8px",
                   "&:hover": {
-                    borderColor: "#4338ca",
+                    borderColor: "#047857",
                     bgcolor: "#f8fafc",
                   },
                 }}
@@ -673,12 +673,12 @@ const PedidosModerno: React.FC = () => {
                     variant="contained"
                     onClick={handleAplicarFiltros}
                     sx={{
-                      bgcolor: "#4f46e5",
+                      bgcolor: "#059669",
                       fontFamily:
                         "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
                       textTransform: "none",
                       borderRadius: "8px",
-                      "&:hover": { bgcolor: "#4338ca" },
+                      "&:hover": { bgcolor: "#047857" },
                     }}
                   >
                     Aplicar Filtros
@@ -890,13 +890,13 @@ const PedidosModerno: React.FC = () => {
                         {/* Valor Total */}
                         <TableCell>
                           <Typography
-                            variant="body2"
-                            sx={{
-                              color: "#4f46e5",
-                              fontWeight: "bold",
-                              fontFamily:
-                                "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-                            }}
+                              variant="body2"
+                              sx={{
+                                color: "#059669",
+                                fontWeight: "bold",
+                                fontFamily:
+                                  "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+                              }}
                           >
                             {formatarPreco(pedido.valor_total)}
                           </Typography>
@@ -924,8 +924,8 @@ const PedidosModerno: React.FC = () => {
                                 size="small"
                                 onClick={() => handleVisualizarPedido(pedido)}
                                 sx={{
-                                  color: "#4f46e5",
-                                  "&:hover": { bgcolor: "#eef2ff" },
+                                  color: "#059669",
+                                  "&:hover": { bgcolor: "#f0fdf4" },
                                 }}
                               >
                                 <Visibility fontSize="small" />
@@ -1085,12 +1085,12 @@ const PedidosModerno: React.FC = () => {
                 startIcon={<Add />}
                 onClick={() => navigate("/catalogo")}
                 sx={{
-                  bgcolor: "#4f46e5",
+                  bgcolor: "#059669",
                   fontFamily:
                     "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
                   textTransform: "none",
                   borderRadius: "8px",
-                  "&:hover": { bgcolor: "#4338ca" },
+                  "&:hover": { bgcolor: "#047857" },
                 }}
               >
                 Fazer Pedido
@@ -1116,7 +1116,7 @@ const PedidosModerno: React.FC = () => {
       >
         <MenuItem onClick={handleEditarPedido}>
           <ListItemIcon>
-            <Edit fontSize="small" sx={{ color: "#4f46e5" }} />
+            <Edit fontSize="small" sx={{ color: "#059669" }} />
           </ListItemIcon>
           <ListItemText
             primary="Editar Pedido"

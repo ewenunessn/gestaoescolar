@@ -1,12 +1,9 @@
 import React, { useState, useEffect } from "react";
 import {
-  Container,
-  Paper,
   Typography,
   Box,
   Grid,
   Card,
-  CardContent,
   Button,
   FormControl,
   InputLabel,
@@ -32,10 +29,6 @@ import {
   Calculate as CalculateIcon,
   Download as DownloadIcon,
   ExpandMore as ExpandMoreIcon,
-  School as SchoolIcon,
-  Restaurant as RestaurantIcon,
-  ShoppingCart as ShoppingCartIcon,
-  AttachMoney as AttachMoneyIcon,
 } from "@mui/icons-material";
 import { 
   gerarDemandaMensal, 
@@ -182,19 +175,54 @@ export default function GerarDemanda() {
   };
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Gerar Demanda Mensal
-      </Typography>
-      
-      <Typography variant="body1" color="text.secondary" paragraph>
-        Calcule automaticamente a demanda de produtos baseada nos cardápios, 
-        refeições, quantidade de alunos e frequências mensais.
-      </Typography>
+    <Box sx={{ p: 3 }}>
+      {/* Cabeçalho */}
+      <Box sx={{ mb: 4 }}>
+        <Typography 
+          variant="h4" 
+          component="h1" 
+          sx={{ 
+            fontFamily: 'Inter, sans-serif',
+            fontWeight: 700,
+            color: '#1a1a1a',
+            mb: 1
+          }}
+        >
+          Gerar Demanda Mensal
+        </Typography>
+        <Typography 
+          variant="body1" 
+          sx={{ 
+            color: '#6b7280',
+            fontFamily: 'Inter, sans-serif',
+            fontSize: '0.95rem'
+          }}
+        >
+          Calcule automaticamente a demanda de produtos baseada nos cardápios, 
+          refeições, quantidade de alunos e frequências mensais.
+        </Typography>
+      </Box>
 
       {/* Filtros */}
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
+      <Card
+        sx={{
+          p: 2.5,
+          mb: 3,
+          borderRadius: '12px',
+          backgroundColor: '#fafafa',
+          border: '1px solid #e8e8e8',
+          boxShadow: 'none',
+        }}
+      >
+        <Typography 
+          variant="h6" 
+          sx={{
+            fontFamily: 'Inter, sans-serif',
+            fontWeight: 600,
+            color: '#1a1a1a',
+            mb: 2
+          }}
+        >
           Filtros
         </Typography>
         
@@ -290,44 +318,57 @@ export default function GerarDemanda() {
           </Grid>
         </Grid>
 
-        <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
+        <Box sx={{ mt: 3, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
           <Button
             variant="contained"
-            startIcon={<CalculateIcon />}
+            startIcon={loading ? <CircularProgress size={16} /> : <CalculateIcon />}
             onClick={handleGerarDemanda}
             disabled={loading}
+            sx={{
+              backgroundColor: '#4f46e5',
+              fontFamily: 'Inter, sans-serif',
+              fontWeight: 600,
+              textTransform: 'none',
+              borderRadius: '8px',
+              boxShadow: 'none',
+              '&:hover': {
+                backgroundColor: '#4338ca',
+                boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)',
+              },
+              '&:disabled': {
+                backgroundColor: '#9ca3af',
+              },
+            }}
           >
-            {loading ? <CircularProgress size={20} /> : "Gerar Demanda"}
+            {loading ? "Gerando..." : "Gerar Demanda"}
           </Button>
 
           {demanda.length > 0 && (
             <>
               <Button
                 variant="contained"
-                color="success"
                 startIcon={<DownloadIcon />}
                 onClick={handleExportarExcel}
+                sx={{
+                  backgroundColor: '#10b981',
+                  fontFamily: 'Inter, sans-serif',
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  borderRadius: '8px',
+                  boxShadow: 'none',
+                  '&:hover': {
+                    backgroundColor: '#059669',
+                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+                  },
+                }}
               >
                 Exportar Excel
               </Button>
-              <Button
-                variant="outlined"
-                startIcon={<DownloadIcon />}
-                onClick={() => handleExportar('csv')}
-              >
-                Exportar CSV
-              </Button>
-              <Button
-                variant="outlined"
-                startIcon={<DownloadIcon />}
-                onClick={() => handleExportar('json')}
-              >
-                Exportar JSON
-              </Button>
+
             </>
           )}
         </Box>
-      </Paper>
+      </Card>
 
       {erro && (
         <Alert severity="error" sx={{ mb: 3 }}>
@@ -337,100 +378,315 @@ export default function GerarDemanda() {
 
       {/* Resumo */}
       {resumo && (
-        <Grid container spacing={3} sx={{ mb: 3 }}>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <ShoppingCartIcon color="primary" />
-                  <Box>
-                    <Typography variant="h4">{resumo.total_produtos}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Produtos
-                    </Typography>
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
+        <Box sx={{ mb: 3 }}>
+          <Typography 
+            variant="h6" 
+            sx={{
+              fontFamily: 'Inter, sans-serif',
+              fontWeight: 600,
+              color: '#1a1a1a',
+              mb: 2
+            }}
+          >
+            Resumo da Demanda
+          </Typography>
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={4}>
+              <Card 
+                sx={{ 
+                  p: 3, 
+                  textAlign: 'center',
+                  borderRadius: '12px',
+                  backgroundColor: '#fafafa',
+                  border: '1px solid #e8e8e8',
+                  boxShadow: 'none',
+                }}
+              >
+                <Typography 
+                  variant="h4" 
+                  sx={{
+                    color: '#4f46e5',
+                    fontFamily: 'Inter, sans-serif',
+                    fontWeight: 700,
+                    mb: 1
+                  }}
+                >
+                  {resumo.total_produtos}
+                </Typography>
+                <Typography 
+                  variant="body2" 
+                  sx={{
+                    color: '#6b7280',
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  Total de Produtos
+                </Typography>
+              </Card>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Card 
+                sx={{ 
+                  p: 3, 
+                  textAlign: 'center',
+                  borderRadius: '12px',
+                  backgroundColor: '#fafafa',
+                  border: '1px solid #e8e8e8',
+                  boxShadow: 'none',
+                }}
+              >
+                <Typography 
+                  variant="h4" 
+                  sx={{
+                    color: '#10b981',
+                    fontFamily: 'Inter, sans-serif',
+                    fontWeight: 700,
+                    mb: 1
+                  }}
+                >
+                  {formatarMoeda(resumo.total_valor)}
+                </Typography>
+                <Typography 
+                  variant="body2" 
+                  sx={{
+                    color: '#6b7280',
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  Valor Total Estimado
+                </Typography>
+              </Card>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Card 
+                sx={{ 
+                  p: 3, 
+                  textAlign: 'center',
+                  borderRadius: '12px',
+                  backgroundColor: '#fafafa',
+                  border: '1px solid #e8e8e8',
+                  boxShadow: 'none',
+                }}
+              >
+                <Typography 
+                  variant="h4" 
+                  sx={{
+                    color: '#0ea5e9',
+                    fontFamily: 'Inter, sans-serif',
+                    fontWeight: 700,
+                    mb: 1
+                  }}
+                >
+                  {resumo.filtros.escolas || "Todas"}
+                </Typography>
+                <Typography 
+                  variant="body2" 
+                  sx={{
+                    color: '#6b7280',
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  Escolas Selecionadas
+                </Typography>
+              </Card>
+            </Grid>
           </Grid>
-
-
-
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <AttachMoneyIcon color="warning" />
-                  <Box>
-                    <Typography variant="h4">{formatarMoeda(resumo.total_valor)}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Valor Total
-                    </Typography>
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <SchoolIcon color="info" />
-                  <Box>
-                    <Typography variant="h4">{resumo.filtros.escolas || "Todas"}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Escolas
-                    </Typography>
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
+        </Box>
       )}
 
       {/* Tabela de Demanda */}
       {demanda.length > 0 && (
-        <Paper sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom>
-            Demanda Calculada - {meses.find(m => m.value === mes)?.label} {ano}
-          </Typography>
+        <Card
+          sx={{
+            borderRadius: '12px',
+            boxShadow: 'none',
+            border: '1px solid #e8e8e8',
+            overflow: 'hidden',
+            backgroundColor: '#ffffff',
+          }}
+        >
+          <Box sx={{ p: 3, pb: 0 }}>
+            <Typography 
+              variant="h6" 
+              sx={{
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 600,
+                color: '#1a1a1a',
+                mb: 2
+              }}
+            >
+              Demanda Calculada - {meses.find(m => m.value === mes)?.label} {ano}
+            </Typography>
+          </Box>
 
           <TableContainer>
             <Table>
               <TableHead>
-                <TableRow>
-                  <TableCell>Produto</TableCell>
-                  <TableCell>Unidade</TableCell>
-                  <TableCell align="right">Quantidade</TableCell>
-                  <TableCell align="right">Valor Total</TableCell>
-                  <TableCell align="center">Detalhes</TableCell>
+                <TableRow sx={{ backgroundColor: '#f8fafc' }}>
+                  <TableCell 
+                    sx={{
+                      fontFamily: 'Inter, sans-serif',
+                      fontWeight: 600,
+                      color: '#374151',
+                      fontSize: '0.875rem',
+                      borderBottom: '1px solid #e5e7eb',
+                    }}
+                  >
+                    Produto
+                  </TableCell>
+                  <TableCell 
+                    sx={{
+                      fontFamily: 'Inter, sans-serif',
+                      fontWeight: 600,
+                      color: '#374151',
+                      fontSize: '0.875rem',
+                      borderBottom: '1px solid #e5e7eb',
+                    }}
+                  >
+                    Unidade
+                  </TableCell>
+                  <TableCell 
+                    align="right"
+                    sx={{
+                      fontFamily: 'Inter, sans-serif',
+                      fontWeight: 600,
+                      color: '#374151',
+                      fontSize: '0.875rem',
+                      borderBottom: '1px solid #e5e7eb',
+                    }}
+                  >
+                    Quantidade
+                  </TableCell>
+                  <TableCell 
+                    align="right"
+                    sx={{
+                      fontFamily: 'Inter, sans-serif',
+                      fontWeight: 600,
+                      color: '#374151',
+                      fontSize: '0.875rem',
+                      borderBottom: '1px solid #e5e7eb',
+                    }}
+                  >
+                    Valor Total
+                  </TableCell>
+                  <TableCell 
+                    align="center"
+                    sx={{
+                      fontFamily: 'Inter, sans-serif',
+                      fontWeight: 600,
+                      color: '#374151',
+                      fontSize: '0.875rem',
+                      borderBottom: '1px solid #e5e7eb',
+                    }}
+                  >
+                    Detalhes
+                  </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {demanda.map((item) => (
-                  <TableRow key={item.produto_id}>
-                    <TableCell>
-                      <Typography variant="subtitle2">
+                  <TableRow 
+                    key={item.produto_id}
+                    sx={{
+                      '&:hover': {
+                        backgroundColor: '#f8fafc',
+                      },
+                    }}
+                  >
+                    <TableCell
+                      sx={{
+                        borderBottom: '1px solid #f1f5f9',
+                        fontFamily: 'Inter, sans-serif',
+                      }}
+                    >
+                      <Typography 
+                        variant="subtitle2"
+                        sx={{
+                          fontFamily: 'Inter, sans-serif',
+                          fontWeight: 600,
+                          color: '#1f2937',
+                        }}
+                      >
                         {item.produto_nome}
                       </Typography>
                     </TableCell>
-                    <TableCell>{item.unidade_medida}</TableCell>
-                    <TableCell align="right">
-                      <Typography variant="body2" fontWeight="bold">
+                    <TableCell
+                      sx={{
+                        borderBottom: '1px solid #f1f5f9',
+                        fontFamily: 'Inter, sans-serif',
+                        color: '#6b7280',
+                      }}
+                    >
+                      {item.unidade_medida}
+                    </TableCell>
+                    <TableCell 
+                      align="right"
+                      sx={{
+                        borderBottom: '1px solid #f1f5f9',
+                      }}
+                    >
+                      <Typography 
+                        variant="body2" 
+                        sx={{
+                          fontFamily: 'Inter, sans-serif',
+                          fontWeight: 600,
+                          color: '#1f2937',
+                        }}
+                      >
                         {formatarQuantidade(item.quantidade_total)}
                       </Typography>
                     </TableCell>
-                    <TableCell align="right">
-                      <Typography variant="body2" fontWeight="bold">
+                    <TableCell 
+                      align="right"
+                      sx={{
+                        borderBottom: '1px solid #f1f5f9',
+                      }}
+                    >
+                      <Typography 
+                        variant="body2" 
+                        sx={{
+                          fontFamily: 'Inter, sans-serif',
+                          fontWeight: 600,
+                          color: '#10b981',
+                        }}
+                      >
                         {formatarMoeda(item.valor_total)}
                       </Typography>
                     </TableCell>
-                    <TableCell align="center">
-                      <Accordion>
-                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                          <Typography variant="body2">
+                    <TableCell 
+                      align="center"
+                      sx={{
+                        borderBottom: '1px solid #f1f5f9',
+                      }}
+                    >
+                      <Accordion
+                        sx={{
+                          boxShadow: 'none',
+                          '&:before': {
+                            display: 'none',
+                          },
+                        }}
+                      >
+                        <AccordionSummary 
+                          expandIcon={<ExpandMoreIcon />}
+                          sx={{
+                            minHeight: 'auto',
+                            '& .MuiAccordionSummary-content': {
+                              margin: '8px 0',
+                            },
+                          }}
+                        >
+                          <Typography 
+                            variant="body2"
+                            sx={{
+                              fontFamily: 'Inter, sans-serif',
+                              color: '#4f46e5',
+                              fontWeight: 500,
+                            }}
+                          >
                             Ver Cálculos ({item.detalhes.length})
                           </Typography>
                         </AccordionSummary>
@@ -473,8 +729,8 @@ export default function GerarDemanda() {
               </TableBody>
             </Table>
           </TableContainer>
-        </Paper>
-      )}
-    </Container>
+        </Card>
+       )}
+     </Box>
   );
 }

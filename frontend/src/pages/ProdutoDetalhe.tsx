@@ -358,7 +358,7 @@ export default function ProdutoDetalhe() {
                   sx={{
                     width: 80,
                     height: 80,
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
                     borderRadius: '12px',
                     display: 'flex',
                     alignItems: 'center',
@@ -501,7 +501,7 @@ export default function ProdutoDetalhe() {
                         <Chip
                           icon={<Category sx={{ fontSize: '16px !important' }} />}
                           label={produto.categoria}
-                          sx={{ bgcolor: '#dbeafe', color: '#2563eb', fontWeight: 600 }}
+                          sx={{ bgcolor: '#dcfce7', color: '#059669', fontWeight: 600 }}
                         />
                       ) : (
                         <Typography sx={{ color: '#9ca3af', fontStyle: 'italic' }}>
@@ -812,10 +812,10 @@ export default function ProdutoDetalhe() {
                 disabled={salvandoComp}
                 startIcon={salvandoComp ? <CircularProgress size={16} color="inherit" /> : <Science />}
                 sx={{
-                  bgcolor: '#4f46e5',
+                  bgcolor: '#059669',
                   textTransform: 'none',
                   fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-                  '&:hover': { bgcolor: '#4338ca' },
+                  '&:hover': { bgcolor: '#047857' },
                 }}
               >
                 {salvandoComp ? 'Salvando...' : 'Salvar Composição Nutricional'}

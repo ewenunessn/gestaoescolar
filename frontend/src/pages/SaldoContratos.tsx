@@ -10,7 +10,6 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
   Chip,
   TextField,
   MenuItem,
@@ -172,12 +171,9 @@ const SaldoContratos: React.FC = () => {
   }
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        Saldos de Contratos
-      </Typography>
-      
-      {/* Estatísticas */}
+    <Box sx={{ minHeight: '100vh', bgcolor: '#f9fafb' }}>
+      <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+        {/* Estatísticas */}
       {estatisticas && (
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12} sm={6} md={2.4}>
@@ -244,9 +240,24 @@ const SaldoContratos: React.FC = () => {
       )}
 
       {/* Filtros */}
-      <Card sx={{ mb: 3 }}>
+      <Card sx={{ 
+        mb: 3,
+        p: 3,
+        borderRadius: 2,
+        backgroundColor: '#ffffff',
+        border: '1px solid #e0e0e0',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+      }}>
         <CardContent>
-          <Typography variant="h6" gutterBottom>
+          <Typography 
+            variant="h6" 
+            sx={{
+              fontFamily: 'Inter, sans-serif',
+              fontWeight: 600,
+              color: '#1a1a1a',
+              mb: 2
+            }}
+          >
             <FilterIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
             Filtros
           </Typography>
@@ -315,6 +326,14 @@ const SaldoContratos: React.FC = () => {
                   variant="contained"
                   onClick={aplicarFiltros}
                   disabled={loading}
+                  sx={{
+                    backgroundColor: '#1976d2',
+                    fontFamily: 'Inter, sans-serif',
+                    borderRadius: 2,
+                    '&:hover': {
+                      backgroundColor: '#1565c0'
+                    }
+                  }}
                 >
                   Filtrar
                 </Button>
@@ -322,6 +341,15 @@ const SaldoContratos: React.FC = () => {
                   variant="outlined"
                   onClick={limparFiltros}
                   disabled={loading}
+                  sx={{
+                    borderColor: '#1976d2',
+                    color: '#1976d2',
+                    fontFamily: 'Inter, sans-serif',
+                    '&:hover': {
+                      borderColor: '#1565c0',
+                      backgroundColor: 'rgba(25, 118, 210, 0.04)'
+                    }
+                  }}
                 >
                   Limpar
                 </Button>
@@ -337,6 +365,8 @@ const SaldoContratos: React.FC = () => {
           Resultados ({total} itens)
         </Typography>
         
+        <Box sx={{ flexGrow: 1 }} />
+        
         <Box display="flex" gap={1}>
           <Tooltip title="Atualizar">
             <IconButton onClick={carregarDados} disabled={loading}>
@@ -349,6 +379,15 @@ const SaldoContratos: React.FC = () => {
             startIcon={<DownloadIcon />}
             onClick={exportarCSV}
             disabled={loading}
+            sx={{
+              borderColor: '#1976d2',
+              color: '#1976d2',
+              fontFamily: 'Inter, sans-serif',
+              '&:hover': {
+                borderColor: '#1565c0',
+                backgroundColor: 'rgba(25, 118, 210, 0.04)'
+              }
+            }}
           >
             Exportar CSV
           </Button>
@@ -362,24 +401,34 @@ const SaldoContratos: React.FC = () => {
       )}
 
       {/* Tabela */}
-      <TableContainer component={Paper}>
+      <TableContainer 
+        component={Card}
+        sx={{
+          mt: 2,
+          borderRadius: 2,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          border: '1px solid #e0e0e0',
+          overflow: 'hidden',
+          backgroundColor: '#ffffff'
+        }}
+      >
         <Table>
           <TableHead>
-            <TableRow>
-              <TableCell>Contrato</TableCell>
-              <TableCell>Fornecedor</TableCell>
-              <TableCell>Produto</TableCell>
-              <TableCell>Unidade</TableCell>
-              <TableCell align="right">Qtd Total</TableCell>
-              <TableCell align="right">Qtd Utilizada</TableCell>
-              <TableCell align="right">Qtd Reservada</TableCell>
-              <TableCell align="right">Qtd Disponível</TableCell>
-              <TableCell align="right">Valor Unit.</TableCell>
-              <TableCell align="right">Valor Total Disp.</TableCell>
-              <TableCell align="center">Status</TableCell>
-              <TableCell align="right">% Utilizado</TableCell>
-              <TableCell>Período</TableCell>
-            </TableRow>
+            <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+               <TableCell sx={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, color: '#1a1a1a', fontSize: '0.875rem', borderBottom: '1px solid #e0e0e0' }}>Contrato</TableCell>
+               <TableCell sx={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, color: '#1a1a1a', fontSize: '0.875rem', borderBottom: '1px solid #e0e0e0' }}>Fornecedor</TableCell>
+               <TableCell sx={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, color: '#1a1a1a', fontSize: '0.875rem', borderBottom: '1px solid #e0e0e0' }}>Produto</TableCell>
+               <TableCell sx={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, color: '#1a1a1a', fontSize: '0.875rem', borderBottom: '1px solid #e0e0e0' }}>Unidade</TableCell>
+               <TableCell align="right" sx={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, color: '#1a1a1a', fontSize: '0.875rem', borderBottom: '1px solid #e0e0e0' }}>Qtd Total</TableCell>
+               <TableCell align="right" sx={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, color: '#1a1a1a', fontSize: '0.875rem', borderBottom: '1px solid #e0e0e0' }}>Qtd Utilizada</TableCell>
+               <TableCell align="right" sx={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, color: '#1a1a1a', fontSize: '0.875rem', borderBottom: '1px solid #e0e0e0' }}>Qtd Reservada</TableCell>
+               <TableCell align="right" sx={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, color: '#1a1a1a', fontSize: '0.875rem', borderBottom: '1px solid #e0e0e0' }}>Qtd Disponível</TableCell>
+               <TableCell align="right" sx={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, color: '#1a1a1a', fontSize: '0.875rem', borderBottom: '1px solid #e0e0e0' }}>Valor Unit.</TableCell>
+               <TableCell align="right" sx={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, color: '#1a1a1a', fontSize: '0.875rem', borderBottom: '1px solid #e0e0e0' }}>Valor Total Disp.</TableCell>
+               <TableCell align="center" sx={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, color: '#1a1a1a', fontSize: '0.875rem', borderBottom: '1px solid #e0e0e0' }}>Status</TableCell>
+               <TableCell align="right" sx={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, color: '#1a1a1a', fontSize: '0.875rem', borderBottom: '1px solid #e0e0e0' }}>% Utilizado</TableCell>
+               <TableCell sx={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, color: '#1a1a1a', fontSize: '0.875rem', borderBottom: '1px solid #e0e0e0' }}>Período</TableCell>
+             </TableRow>
           </TableHead>
           <TableBody>
             {loading ? (
@@ -485,6 +534,7 @@ const SaldoContratos: React.FC = () => {
         labelRowsPerPage="Itens por página:"
         labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
       />
+      </Box>
     </Box>
   );
 };

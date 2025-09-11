@@ -238,7 +238,7 @@ const LoginGestorScreen: React.FC<Props> = ({ navigation }) => {
             style={styles.headerBackButton}
             onPress={() => navigation.goBack()}
           >
-            <Icon name="arrow-back" size={24} color="white" />
+            <Icon name="arrow-back" size={24} color="#2563eb" />
           </TouchableOpacity>
         </View>
 
@@ -246,7 +246,7 @@ const LoginGestorScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.content}>
           <View style={styles.logoContainer}>
             <View style={styles.logoCircle}>
-              <Icon name="school" size={32} color="white" />
+              <Icon name="school" size={32} color="#2563eb" />
             </View>
             <Text style={styles.title}>Gestor Escolar</Text>
             <Text style={styles.subtitle}>Sistema de Gestão de Estoque</Text>
@@ -273,7 +273,7 @@ const LoginGestorScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#eff6ff',
   },
   scrollContainer: {
     flexGrow: 1,
@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(37, 99, 235, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -312,12 +312,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: 'white',
+    color: '#1f2937',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: '#6b7280',
     marginBottom: 16,
   },
   badge: {
@@ -483,7 +483,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     textAlign: 'center',
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: '#6b7280',
     fontSize: 12,
     lineHeight: 16,
     paddingHorizontal: 20,

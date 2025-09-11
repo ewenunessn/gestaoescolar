@@ -27,7 +27,6 @@ import {
     TableContainer,
     TableHead,
     TableRow,
-    Paper,
     Tooltip,
 } from '@mui/material';
 import {
@@ -241,29 +240,42 @@ const PedidosModernos: React.FC = () => {
     }
 
     return (
-        <Box sx={{ p: 3, maxWidth: '1200px', mx: 'auto' }}>
-            {/* Header */}
-            <Box sx={{ mb: 4 }}>
-                <Typography variant="h4" sx={{ fontWeight: 600, color: '#1f2937', mb: 1 }}>
-                    Meus Pedidos
-                </Typography>
-                <Typography variant="body1" sx={{ color: '#6b7280' }}>
-                    Gerencie e acompanhe seus pedidos de alimentação escolar
-                </Typography>
-            </Box>
-
-            {/* Filtros */}
-            <Card sx={{ mb: 3 }}>
+        <Box sx={{ minHeight: '100vh', bgcolor: '#f9fafb' }}>
+            <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+                {/* Filtros */}
+            <Card sx={{ 
+                mb: 3,
+                p: 3,
+                borderRadius: '12px',
+                backgroundColor: '#ffffff',
+                border: '1px solid #e5e7eb',
+                boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)'
+            }}>
                 <CardContent>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                        <FilterList sx={{ color: '#4f46e5' }} />
-                        <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                        <FilterList sx={{ color: '#059669' }} />
+                        <Typography 
+                            variant="h6" 
+                            sx={{ 
+                                fontFamily: 'Inter, sans-serif',
+                                fontWeight: 600,
+                                color: '#1a1a1a'
+                            }}
+                        >
                             Filtros
                         </Typography>
                         <Button
                             startIcon={<Refresh />}
                             onClick={() => handleFiltroChange({})}
                             size="small"
+                            sx={{
+                                backgroundColor: '#f3f4f6',
+                                fontFamily: 'Inter, sans-serif',
+                                borderRadius: '8px',
+                                '&:hover': {
+                                    backgroundColor: '#e5e7eb'
+                                }
+                            }}
                         >
                             Limpar
                         </Button>
@@ -355,17 +367,70 @@ const PedidosModernos: React.FC = () => {
                     </CardContent>
                 </Card>
             ) : (
-                <TableContainer component={Paper} sx={{ mt: 2, boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)' }}>
+                <TableContainer 
+                    component={Card} 
+                    sx={{ 
+                        mt: 2, 
+                        borderRadius: '12px',
+                        boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)',
+                        border: '1px solid #e5e7eb',
+                        overflow: 'hidden',
+                        backgroundColor: '#ffffff'
+                    }}
+                >
                     <Table sx={{ minWidth: 650 }} aria-label="tabela de pedidos">
                         <TableHead>
                             <TableRow sx={{ backgroundColor: '#f8fafc' }}>
-                                <TableCell sx={{ fontWeight: 600, color: '#374151' }}>Número do Pedido</TableCell>
-                                <TableCell sx={{ fontWeight: 600, color: '#374151' }}>Tipo</TableCell>
-                                <TableCell sx={{ fontWeight: 600, color: '#374151' }}>Status</TableCell>
-                                <TableCell sx={{ fontWeight: 600, color: '#374151' }}>Itens</TableCell>
-                                <TableCell sx={{ fontWeight: 600, color: '#374151' }}>Valor Total</TableCell>
-                                <TableCell sx={{ fontWeight: 600, color: '#374151' }}>Data</TableCell>
-                                <TableCell sx={{ fontWeight: 600, color: '#374151', textAlign: 'center' }}>Ações</TableCell>
+                                <TableCell sx={{ 
+                                    fontFamily: 'Inter, sans-serif',
+                                    fontWeight: 600, 
+                                    color: '#1a1a1a',
+                                    fontSize: '0.875rem',
+                                    borderBottom: '1px solid #e5e7eb'
+                                }}>Número do Pedido</TableCell>
+                                <TableCell sx={{ 
+                                    fontFamily: 'Inter, sans-serif',
+                                    fontWeight: 600, 
+                                    color: '#1a1a1a',
+                                    fontSize: '0.875rem',
+                                    borderBottom: '1px solid #e5e7eb'
+                                }}>Tipo</TableCell>
+                                <TableCell sx={{ 
+                                    fontFamily: 'Inter, sans-serif',
+                                    fontWeight: 600, 
+                                    color: '#1a1a1a',
+                                    fontSize: '0.875rem',
+                                    borderBottom: '1px solid #e5e7eb'
+                                }}>Status</TableCell>
+                                <TableCell sx={{ 
+                                    fontFamily: 'Inter, sans-serif',
+                                    fontWeight: 600, 
+                                    color: '#1a1a1a',
+                                    fontSize: '0.875rem',
+                                    borderBottom: '1px solid #e5e7eb'
+                                }}>Itens</TableCell>
+                                <TableCell sx={{ 
+                                    fontFamily: 'Inter, sans-serif',
+                                    fontWeight: 600, 
+                                    color: '#1a1a1a',
+                                    fontSize: '0.875rem',
+                                    borderBottom: '1px solid #e5e7eb'
+                                }}>Valor Total</TableCell>
+                                <TableCell sx={{ 
+                                    fontFamily: 'Inter, sans-serif',
+                                    fontWeight: 600, 
+                                    color: '#1a1a1a',
+                                    fontSize: '0.875rem',
+                                    borderBottom: '1px solid #e5e7eb'
+                                }}>Data</TableCell>
+                                <TableCell sx={{ 
+                                    fontFamily: 'Inter, sans-serif',
+                                    fontWeight: 600, 
+                                    color: '#1a1a1a',
+                                    fontSize: '0.875rem',
+                                    borderBottom: '1px solid #e5e7eb',
+                                    textAlign: 'center' 
+                                }}>Ações</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
@@ -749,6 +814,7 @@ const PedidosModernos: React.FC = () => {
                     )}
                 </DialogActions>
             </Dialog>
+            </Box>
         </Box>
     );
 };

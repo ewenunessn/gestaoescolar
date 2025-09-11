@@ -21,11 +21,9 @@ import {
 } from '@mui/icons-material';
 
 import { PedidoModerno, formatarData, formatarPreco, getCorStatus } from '../types/pedidos';
-import PedidoValidationAlert from './PedidoValidationAlert';
 import { pedidoModernoService } from '../services/pedidoModernoService';
 import { recebimentoSimplificadoService } from '../services/recebimentoSimplificadoService';
 import { EstatisticasRecebimento, ItemRecebimento } from '../types/recebimentoSimplificado';
-import TabelaPedidoCompleta from './TabelaPedidoCompleta';
 
 interface PedidoDetalhesProps {
   pedidoId: number;
@@ -234,7 +232,7 @@ const PedidoDetalhes: React.FC<PedidoDetalhesProps> = ({ pedidoId, onClose }) =>
                    </Typography>
                    <Chip 
                      label={pedido.status} 
-                     color={pedido.status === 'ATIVO' ? 'success' : 'default'}
+                     color={getCorStatus(pedido.status)}
                      size="small"
                    />
                  </Box>
@@ -271,120 +269,12 @@ const PedidoDetalhes: React.FC<PedidoDetalhesProps> = ({ pedidoId, onClose }) =>
           </CardContent>
         </Card>
         
-      {/* Alerta de Validação */}
-      <PedidoValidationAlert 
-        pedidoId={pedidoId} 
-        autoValidate={true}
-        showDetails={true}
-      />
 
 
 
 
-      {pedido && (
-        <TabelaPedidoCompleta 
-          pedidoInfo={{
-            numero_pedido: pedido.numero_pedido,
-            data_criacao: pedido.data_criacao,
-            nome_usuario: pedido.nome_usuario || 'Não informado',
-            valor_total: pedido.valor_total || 0,
-            status: pedido.status,
-            fornecedores: pedido.itens ? 
-              Object.values(
-                pedido.itens.reduce((acc, item) => {
-                  const fornecedorId = item.fornecedor_id;
-                          if (!acc[fornecedorId]) {
-                              acc[fornecedorId] = {
-                              fornecedor_id: fornecedorId,
-                              nome_fornecedor: item.nome_fornecedor,
-                              status_geral: 'PENDENTE' as const,
-                              valor_total: 0,
-                              itens: [],
-                              progresso_recebimento: 0
-                            };
-                          }
-                          
-                          // Buscar dados de recebimento para este item
-                          // Primeiro tenta match por pedido_item_id (mais preciso)
-                          let itemRecebimento = itensRecebimento.find(ir => 
-                            ir.pedido_item_id === item.id
-                          );
-                          
-                          // Se não encontrar, tenta match por produto_id e fornecedor_id
-                          if (!itemRecebimento) {
-                            itemRecebimento = itensRecebimento.find(ir => 
-                              ir.produto_id === item.produto_id && 
-                              ir.fornecedor_id === item.fornecedor_id
-                            );
-                          }
-                          
-                          console.log(`🔍 DEBUG - Item ${item.nome_produto}:`, {
-                            item_id: item.id,
-                            produto_id: item.produto_id,
-                            fornecedor_id: item.fornecedor_id,
-                            quantidade_esperada: item.quantidade,
-                            itemRecebimento: itemRecebimento,
-                            itensRecebimento_length: itensRecebimento.length,
-                            match_method: itemRecebimento ? 
-                              (itensRecebimento.find(ir => ir.pedido_item_id === item.id) ? 'pedido_item_id' : 'produto_fornecedor') 
-                              : 'no_match'
-                          });
-                          
-                          const statusItem = itemRecebimento ? 
-                            (parseFloat(itemRecebimento.quantidade_recebida.toString()) >= parseFloat(item.quantidade.toString()) ? 'RECEBIDO' :
-                             parseFloat(itemRecebimento.quantidade_recebida.toString()) > 0 ? 'PARCIAL' : 'PENDENTE') as const
-                            : 'PENDENTE' as const;
-                          
-                          console.log(`🔍 DEBUG - Status calculado para ${item.nome_produto}:`, {
-                            status: statusItem,
-                            quantidade_recebida: itemRecebimento?.quantidade_recebida || 0,
-                            quantidade_esperada: item.quantidade
-                          });
-                          
-                          acc[fornecedorId].itens.push({
-                            id: item.id,
-                            produto_id: item.produto_id,
-                            nome_produto: item.nome_produto,
-                            quantidade: item.quantidade,
-                            preco_unitario: item.preco_unitario,
-                            subtotal: item.subtotal,
-                            unidade: item.unidade,
-                            status_recebimento: statusItem,
-                            quantidade_recebida: itemRecebimento ? parseFloat(itemRecebimento.quantidade_recebida.toString()) : 0
-                          });
-                          
-                          acc[fornecedorId].valor_total += item.subtotal;
-                          
-                          return acc;
-                        }, {} as Record<number, any>)
-                      ).map(fornecedor => {
-                        const totalItens = fornecedor.itens.length;
-                        const itensRecebidos = fornecedor.itens.filter((item: any) => item.status_recebimento === 'RECEBIDO').length;
-                        const itensParciais = fornecedor.itens.filter((item: any) => item.status_recebimento === 'PARCIAL').length;
-                        
-                        const statusGeral = itensRecebidos === totalItens ? 'RECEBIDO' as const :
-                                          (itensRecebidos > 0 || itensParciais > 0) ? 'PARCIAL' as const :
-                                          'PENDENTE' as const;
-                        
-                        // Calcular progresso baseado no valor recebido vs valor total
-                        const valorTotalFornecedor = fornecedor.valor_total;
-                        const valorRecebidoFornecedor = fornecedor.itens.reduce((acc: number, item: any) => {
-                          const percentualRecebido = item.quantidade > 0 ? (item.quantidade_recebida / item.quantidade) : 0;
-                          return acc + (item.subtotal * Math.min(percentualRecebido, 1)); // Limita a 100%
-                        }, 0);
-                        
-                        const progresso = valorTotalFornecedor > 0 ? (valorRecebidoFornecedor / valorTotalFornecedor) * 100 : 0;
-                        
-                        return {
-                          ...fornecedor,
-                          status_geral: statusGeral,
-                          progresso_recebimento: progresso
-                        };
-                      })
-                      : []
-                  }}
-                />
-        )}
+
+      {/* Componentes de validação e tabela removidos - não disponíveis */}
 
 
 

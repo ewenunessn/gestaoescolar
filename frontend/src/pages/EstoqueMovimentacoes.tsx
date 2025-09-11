@@ -39,7 +39,7 @@ import {
   getTipoMovimentacaoColor,
   getTipoMovimentacaoLabel,
   type MovimentacaoEstoque
-} from "../services/estoqueModernoService";
+} from "../services/estoqueCentralService";
 import { buscarProduto } from "../services/produtos";
 import { useToast } from "../hooks/useToast";
 
@@ -68,14 +68,14 @@ const EstoqueMovimentacoes: React.FC = () => {
       
       const [movimentacoesData, produtoData] = await Promise.all([
         getMovimentacoesProduto(produtoIdNum, 100), // Últimas 100 movimentações
-        getProdutoById(produtoIdNum)
+        buscarProduto(produtoIdNum)
       ]);
       
       setMovimentacoes(movimentacoesData);
       setProduto(produtoData);
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
-      showToast("Erro ao carregar movimentações", "error");
+      showToast("error", "error");
     } finally {
       setLoading(false);
     }

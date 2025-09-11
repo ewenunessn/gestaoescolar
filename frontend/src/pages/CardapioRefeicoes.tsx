@@ -56,7 +56,7 @@ interface DragItem {
 }
 
 export default function CardapioRefeicoes() {
-  const { cardapioId } = useParams();
+  const { cardapioId } = useParams<{ cardapioId: string }>();
   const navigate = useNavigate();
   const [refeicoes, setRefeicoes] = useState<any[]>([]);
   const [modalidades, setModalidades] = useState<any[]>([]);

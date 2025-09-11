@@ -1,11 +1,4 @@
-import { useEffect, useState } from "react";
-import {
-  listarModalidades,
-  criarModalidade,
-  editarModalidade,
-  removerModalidade,
-  Modalidade,
-} from "../services/modalidades";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Table,
   TableBody,
@@ -27,241 +20,350 @@ import {
   Box,
   Chip,
   Tooltip,
+  Card,
   CardContent,
+  Collapse,
+  Divider,
+  TablePagination,
+  InputAdornment,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Menu,
 } from "@mui/material";
-import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/Delete";
+import {
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Add as AddIcon,
+  Search as SearchIcon,
+  TuneRounded,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
+  Clear as ClearIcon,
+  MoreVert,
+  Category,
+} from "@mui/icons-material";
+import {
+  listarModalidades,
+  criarModalidade,
+  editarModalidade,
+  removerModalidade,
+  Modalidade, // <-- TIPO IMPORTADO DO SERVIÇO (AGORA CORRETO)
+} from "../services/modalidades";
 
-const modalidadeVazia = { nome: "", valor_repasse: 0 };
-
-export default function Modalidades() {
+const ModalidadesPage = () => {
+  // Estados principais
   const [modalidades, setModalidades] = useState<Modalidade[]>([]);
   const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState("");
-  const [open, setOpen] = useState(false);
-  const [editando, setEditando] = useState<Modalidade | null>(null);
-  const [form, setForm] = useState<any>(modalidadeVazia);
-  const [removerId, setRemoverId] = useState<number | null>(null);
-  const [removerDialog, setRemoverDialog] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  
+  // Estados do menu de ações
+  const [actionsMenuAnchor, setActionsMenuAnchor] = useState<null | HTMLElement>(null);
 
-  function atualizarLista() {
-    setLoading(true);
-    listarModalidades()
-      .then(setModalidades)
-      .catch(() => setErro("Erro ao carregar modalidades"))
-      .finally(() => setLoading(false));
-  }
+  // Estados de filtros
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState("");
+  const [sortBy, setSortBy] = useState("nome");
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [hasActiveFilters, setHasActiveFilters] = useState(false);
 
-  useEffect(() => {
-    atualizarLista();
+  // Estados de paginação
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  // Estados de modais
+  const [modalOpen, setModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [editingModalidade, setEditingModalidade] = useState<Modalidade | null>(null);
+  const [modalidadeToDelete, setModalidadeToDelete] = useState<Modalidade | null>(null);
+  const [formData, setFormData] = useState({ nome: "", valor_repasse: 0, ativo: true });
+
+  // Carregar modalidades
+  const loadModalidades = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await listarModalidades();
+      setModalidades(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setError("Erro ao carregar modalidades. Tente novamente.");
+      setModalidades([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  function abrirModal(modalidade?: Modalidade) {
-    setEditando(modalidade || null);
-    setForm(modalidade ? { ...modalidade } : modalidadeVazia);
-    setOpen(true);
-  }
+  useEffect(() => {
+    loadModalidades();
+  }, [loadModalidades]);
 
-  function fecharModal() {
-    setOpen(false);
-    setEditando(null);
-    setForm(modalidadeVazia);
-  }
+  // Detectar filtros ativos
+  useEffect(() => {
+    setHasActiveFilters(!!(searchTerm || selectedStatus));
+  }, [searchTerm, selectedStatus]);
 
-  async function salvar() {
-    try {
-      if (editando) {
-        await editarModalidade(editando.id, form);
-      } else {
-        await criarModalidade(form);
-      }
-      fecharModal();
-      atualizarLista();
-    } catch {
-      setErro("Erro ao salvar modalidade");
-    }
-  }
+  // Filtrar e ordenar modalidades
+  const filteredModalidades = useMemo(() => {
+    return modalidades
+      .filter((modalidade) => {
+        const matchesSearch = modalidade.nome.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesStatus = !selectedStatus ||
+          (selectedStatus === "ativo" && modalidade.ativo) ||
+          (selectedStatus === "inativo" && !modalidade.ativo);
+        return matchesSearch && matchesStatus;
+      })
+      .sort((a, b) => {
+        switch (sortBy) {
+          case "nome":
+            return a.nome.localeCompare(b.nome);
+          case "valor":
+            return Number(a.valor_repasse) - Number(b.valor_repasse);
+          case "status":
+            return Number(b.ativo) - Number(a.ativo);
+          default:
+            return 0;
+        }
+      });
+  }, [modalidades, searchTerm, selectedStatus, sortBy]);
 
-  function confirmarRemover(id: number) {
-    setRemoverId(id);
-    setRemoverDialog(true);
-  }
+  // Modalidades paginadas
+  const paginatedModalidades = useMemo(() => {
+    const startIndex = page * rowsPerPage;
+    return filteredModalidades.slice(startIndex, startIndex + rowsPerPage);
+  }, [filteredModalidades, page, rowsPerPage]);
 
-  async function remover() {
-    if (removerId) {
-      try {
-        await removerModalidade(removerId);
-        setRemoverDialog(false);
-        setRemoverId(null);
-        atualizarLista();
-      } catch {
-        setErro("Erro ao remover modalidade");
-      }
-    }
-  }
+  // Funções de paginação
+  const handleChangePage = useCallback((event: unknown, newPage: number) => {
+    setPage(newPage);
+  }, []);
 
-  return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" sx={{ fontWeight: 600, color: '#1f2937' }}>
-          Modalidades
-        </Typography>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={() => abrirModal()}
-          sx={{ px: 3, py: 1 }}
-        >
-          Nova Modalidade
-        </Button>
+  const handleChangeRowsPerPage = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  }, []);
+
+  // Reset da página quando filtros mudam
+  useEffect(() => {
+    setPage(0);
+  }, [searchTerm, selectedStatus, sortBy]);
+
+  const clearFilters = useCallback(() => {
+    setSearchTerm("");
+    setSelectedStatus("");
+    setSortBy("nome");
+    setPage(0);
+  }, []);
+
+  const toggleFilters = useCallback(() => {
+    setFiltersExpanded(!filtersExpanded);
+  }, [filtersExpanded]);
+
+  // Formatar valor para moeda
+  const formatCurrency = (value: number | string) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(Number(value) || 0);
+  };
+
+  // Componente de conteúdo dos filtros
+  const FiltersContent = () => (
+    <Box sx={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)', borderRadius: '16px', p: 3, border: '1px solid rgba(148, 163, 184, 0.1)' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <TuneRounded sx={{ color: '#4f46e5' }} />
+          <Typography variant="h6" sx={{ fontWeight: 600, color: '#1e293b' }}>Filtros Avançados</Typography>
+        </Box>
+        {hasActiveFilters && <Button size="small" onClick={clearFilters} sx={{ color: '#64748b', textTransform: 'none' }}>Limpar Tudo</Button>}
       </Box>
-
-      <Paper sx={{ borderRadius: 2, overflow: 'hidden' }}>
-        <CardContent sx={{ p: 0 }}>
-          {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-              <CircularProgress />
-            </Box>
-          ) : erro ? (
-            <Box sx={{ p: 3 }}>
-              <Alert severity="error">{erro}</Alert>
-            </Box>
-          ) : modalidades.length === 0 ? (
-            <Box sx={{ textAlign: 'center', p: 4 }}>
-              <Typography variant="h6" color="text.secondary">
-                Nenhuma modalidade encontrada
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                Clique em "Nova Modalidade" para adicionar a primeira modalidade
-              </Typography>
-            </Box>
-          ) : (
-            <TableContainer>
-              <Table>
-                <TableHead sx={{ bgcolor: '#f8fafc' }}>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: 600, color: '#374151' }}>Nome da Modalidade</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 600, color: '#374151' }}>Valor Repasse</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 600, color: '#374151' }}>Status</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 600, color: '#374151' }}>Ações</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {modalidades.map((modalidade) => (
-                    <TableRow key={modalidade.id} sx={{ '&:hover': { bgcolor: '#f9fafb' } }}>
-                      <TableCell>
-                        <Box>
-                          <Typography variant="body1" sx={{ fontWeight: 600, color: '#1f2937' }}>
-                            {modalidade.nome}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            ID: {modalidade.id}
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                      <TableCell align="center">
-                        <Chip
-                          label={`R$ ${(parseFloat(modalidade.valor_repasse) || 0).toFixed(2)}`}
-                          sx={{
-                            bgcolor: '#dcfce7',
-                            color: '#166534',
-                            fontWeight: 600,
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell align="center">
-                        <Chip
-                          label={modalidade.ativo ? 'Ativo' : 'Inativo'}
-                          color={modalidade.ativo ? 'success' : 'default'}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell align="center">
-                        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
-                          <Tooltip title="Editar modalidade">
-                            <IconButton
-                              onClick={() => abrirModal(modalidade)}
-                              sx={{
-                                bgcolor: '#fef3c7',
-                                color: '#d97706',
-                                '&:hover': { bgcolor: '#fde68a' },
-                              }}
-                            >
-                              <EditIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Excluir modalidade">
-                            <IconButton
-                              onClick={() => confirmarRemover(modalidade.id)}
-                              sx={{
-                                bgcolor: '#fecaca',
-                                color: '#dc2626',
-                                '&:hover': { bgcolor: '#fca5a5' },
-                              }}
-                            >
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        </Box>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
-        </CardContent>
-      </Paper>
-
-      {/* Modal de cadastro/edição */}
-      <Dialog open={open} onClose={fecharModal} maxWidth="xs" fullWidth>
-        <DialogTitle>
-          {editando ? "Editar Modalidade" : "Adicionar Modalidade"}
-        </DialogTitle>
-        <DialogContent>
-          <TextField
-            label="Nome"
-            value={form.nome}
-            onChange={(e) => setForm({ ...form, nome: e.target.value })}
-            fullWidth
-            margin="normal"
-            required
-          />
-          <TextField
-            label="Valor do Repasse"
-            type="number"
-            value={form.valor_repasse}
-            onChange={(e) => setForm({ ...form, valor_repasse: parseFloat(e.target.value) || 0 })}
-            fullWidth
-            margin="normal"
-            inputProps={{ 
-              step: "0.01", 
-              min: "0" 
-            }}
-            helperText="Valor em reais para compra de alimentos"
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={fecharModal}>Cancelar</Button>
-          <Button onClick={salvar} variant="contained">
-            Salvar
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Modal de confirmação de remoção */}
-      <Dialog open={removerDialog} onClose={() => setRemoverDialog(false)}>
-        <DialogTitle>Remover Modalidade</DialogTitle>
-        <DialogContent>
-          Tem certeza que deseja remover esta modalidade?
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setRemoverDialog(false)}>Cancelar</Button>
-          <Button onClick={remover} color="error" variant="contained">
-            Remover
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <Divider sx={{ mb: 3 }} />
+      <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+        <FormControl sx={{ minWidth: 150 }}>
+          <InputLabel>Status</InputLabel>
+          <Select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)} label="Status">
+            <MenuItem value="">Todos</MenuItem>
+            <MenuItem value="ativo">Ativas</MenuItem>
+            <MenuItem value="inativo">Inativas</MenuItem>
+          </Select>
+        </FormControl>
+        <FormControl sx={{ minWidth: 150 }}>
+          <InputLabel>Ordenar por</InputLabel>
+          <Select value={sortBy} onChange={(e) => setSortBy(e.target.value)} label="Ordenar por">
+            <MenuItem value="nome">Nome</MenuItem>
+            <MenuItem value="valor">Valor Repasse</MenuItem>
+            <MenuItem value="status">Status</MenuItem>
+          </Select>
+        </FormControl>
+      </Box>
     </Box>
   );
-}
+
+  // Funções de modais
+  const openModal = (modalidade: Modalidade | null = null) => {
+    if (modalidade) {
+      setEditingModalidade(modalidade);
+      setFormData({
+        nome: modalidade.nome,
+        valor_repasse: Number(modalidade.valor_repasse),
+        ativo: modalidade.ativo,
+      });
+    } else {
+      setEditingModalidade(null);
+      setFormData({ nome: "", valor_repasse: 0, ativo: true });
+    }
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+  };
+
+  const handleSave = async () => {
+    try {
+      const dataToSend = { ...formData, valor_repasse: Number(formData.valor_repasse) };
+      if (editingModalidade) {
+        await editarModalidade(editingModalidade.id, dataToSend);
+        setSuccessMessage('Modalidade atualizada com sucesso!');
+      } else {
+        await criarModalidade(dataToSend);
+        setSuccessMessage('Modalidade criada com sucesso!');
+      }
+      closeModal();
+      await loadModalidades();
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      setError("Erro ao salvar modalidade. Verifique os dados e tente novamente.");
+    }
+  };
+
+  const openDeleteModal = (modalidade: Modalidade) => {
+    setModalidadeToDelete(modalidade);
+    setDeleteModalOpen(true);
+  };
+
+  const closeDeleteModal = () => {
+    setDeleteModalOpen(false);
+    setModalidadeToDelete(null);
+  };
+
+  const handleDelete = async () => {
+    if (!modalidadeToDelete) return;
+    try {
+      await removerModalidade(modalidadeToDelete.id);
+      setSuccessMessage('Modalidade excluída com sucesso!');
+      closeDeleteModal();
+      await loadModalidades();
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      setError("Erro ao excluir. A modalidade pode estar em uso.");
+    }
+  };
+  
+  return (
+    <Box sx={{ minHeight: '100vh', bgcolor: '#f9fafb' }}>
+      {successMessage && (
+        <Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}>
+          <Alert severity="success" onClose={() => setSuccessMessage(null)} sx={{ minWidth: 300 }}>
+            {successMessage}
+          </Alert>
+        </Box>
+      )}
+
+      <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+        <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', p: 3, mb: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+            <TextField
+              placeholder="Buscar modalidades..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+              InputProps={{
+                startAdornment: (<InputAdornment position="start"><SearchIcon sx={{ color: '#64748b' }} /></InputAdornment>),
+                endAdornment: searchTerm && (<InputAdornment position="end"><IconButton size="small" onClick={() => setSearchTerm('')}><ClearIcon fontSize="small" /></IconButton></InputAdornment>),
+              }}
+            />
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <Button variant={filtersExpanded || hasActiveFilters ? 'contained' : 'outlined'} startIcon={filtersExpanded ? <ExpandLessIcon /> : <TuneRounded />} onClick={toggleFilters}>
+                Filtros
+                {hasActiveFilters && !filtersExpanded && (<Box sx={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', bgcolor: '#ef4444' }}/>)}
+              </Button>
+              <Button startIcon={<AddIcon />} onClick={() => openModal()} sx={{ bgcolor: '#059669', color: 'white', '&:hover': { bgcolor: '#047857' } }}>
+                Nova Modalidade
+              </Button>
+              <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)} sx={{ border: '1px solid #d1d5db' }}>
+                <MoreVert />
+              </IconButton>
+            </Box>
+          </Box>
+
+          <Collapse in={filtersExpanded} timeout={400}><Box sx={{ mb: 3 }}><FiltersContent /></Box></Collapse>
+
+          <Typography variant="body2" sx={{ mb: 2, color: '#64748b' }}>
+            {`Mostrando ${Math.min((page * rowsPerPage) + 1, filteredModalidades.length)}-${Math.min((page + 1) * rowsPerPage, filteredModalidades.length)} de ${filteredModalidades.length} modalidades`}
+          </Typography>
+        </Card>
+
+        {loading ? (
+          <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><CircularProgress size={60} /></CardContent></Card>
+        ) : error ? (
+          <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={loadModalidades}>Tentar Novamente</Button></CardContent></Card>
+        ) : filteredModalidades.length === 0 ? (
+          <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Category sx={{ fontSize: 64, color: '#d1d5db', mb: 2 }} /><Typography variant="h6" sx={{ color: '#6b7280' }}>Nenhuma modalidade encontrada</Typography></CardContent></Card>
+        ) : (
+          <TableContainer component={Paper} sx={{ mt: 2, borderRadius: '12px' }}>
+            <Table>
+              <TableHead><TableRow><TableCell>Nome da Modalidade</TableCell><TableCell align="center">Valor Repasse</TableCell><TableCell align="center">Status</TableCell><TableCell align="center">Ações</TableCell></TableRow></TableHead>
+              <TableBody>
+                {paginatedModalidades.map((modalidade) => (
+                  <TableRow key={modalidade.id} hover>
+                    <TableCell><Typography variant="body2" sx={{ fontWeight: 600 }}>{modalidade.nome}</Typography></TableCell>
+                    <TableCell align="center"><Typography variant="body2" color="text.secondary">{formatCurrency(modalidade.valor_repasse)}</Typography></TableCell>
+                    <TableCell align="center"><Chip label={modalidade.ativo ? 'Ativa' : 'Inativa'} size="small" color={modalidade.ativo ? 'success' : 'error'} variant="outlined" /></TableCell>
+                    <TableCell align="center">
+                      <Tooltip title="Editar"><IconButton size="small" onClick={() => openModal(modalidade)} color="primary"><EditIcon fontSize="small" /></IconButton></Tooltip>
+                      <Tooltip title="Excluir"><IconButton size="small" onClick={() => openDeleteModal(modalidade)} color="error"><DeleteIcon fontSize="small" /></IconButton></Tooltip>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            <TablePagination component="div" count={filteredModalidades.length} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage} onRowsPerPageChange={handleChangeRowsPerPage} rowsPerPageOptions={[5, 10, 25, 50]} labelRowsPerPage="Linhas por página:" />
+          </TableContainer>
+        )}
+      </Box>
+
+      {/* Modal de Criação/Edição */}
+      <Dialog open={modalOpen} onClose={closeModal} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: '12px' } }}>
+        <DialogTitle sx={{ fontWeight: 600 }}>{editingModalidade ? 'Editar Modalidade' : 'Nova Modalidade'}</DialogTitle>
+        <DialogContent sx={{ pt: 2 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <TextField label="Nome da Modalidade" value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} required />
+            <TextField label="Valor do Repasse (R$)" type="number" value={formData.valor_repasse} onChange={(e) => setFormData({ ...formData, valor_repasse: parseFloat(e.target.value) || 0 })} inputProps={{ step: "0.01", min: "0" }} />
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 3, pt: 1 }}>
+          <Button onClick={closeModal} sx={{ color: '#6b7280' }}>Cancelar</Button>
+          <Button onClick={handleSave} variant="contained" disabled={!formData.nome.trim()} sx={{ bgcolor: '#4f46e5', '&:hover': { bgcolor: '#4338ca' } }}>
+            {editingModalidade ? 'Salvar Alterações' : 'Criar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* Modal de Confirmação de Exclusão */}
+      <Dialog open={deleteModalOpen} onClose={closeDeleteModal} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: '12px' } }}>
+        <DialogTitle sx={{ fontWeight: 600 }}>Confirmar Exclusão</DialogTitle>
+        <DialogContent><Typography>Tem certeza que deseja excluir a modalidade "{modalidadeToDelete?.nome}"?</Typography></DialogContent>
+        <DialogActions sx={{ p: 3, pt: 1 }}><Button onClick={closeDeleteModal} sx={{ color: '#6b7280' }}>Cancelar</Button><Button onClick={handleDelete} color="error" variant="contained">Excluir</Button></DialogActions>
+      </Dialog>
+      
+      {/* Menu de Ações */}
+      <Menu anchorEl={actionsMenuAnchor} open={Boolean(actionsMenuAnchor)} onClose={() => setActionsMenuAnchor(null)}>
+        <MenuItem disabled><Typography>Nenhuma ação disponível</Typography></MenuItem>
+      </Menu>
+    </Box>
+  );
+};
+
+export default ModalidadesPage;

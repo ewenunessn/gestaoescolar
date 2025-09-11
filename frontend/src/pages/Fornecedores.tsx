@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Box,
   Typography,
@@ -9,7 +9,8 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
+  Card,
+  CardContent, // <-- ADICIONADO AQUI
   IconButton,
   Dialog,
   DialogTitle,
@@ -20,21 +21,33 @@ import {
   Switch,
   Alert,
   Chip,
+  Paper,
+  CircularProgress,
+  Menu,
+  MenuItem,
+  Collapse,
+  Divider,
+  TablePagination,
+  InputAdornment,
+  FormControl,
+  InputLabel,
+  Select,
+  Tooltip,
 } from "@mui/material";
 import {
-  validarDocumento,
-  formatarDocumento,
-  aplicarMascaraDocumento,
-  detectarTipoDocumento
-} from '../utils/validacaoDocumento';
-import { 
-  Add, 
-  Edit, 
-  Delete, 
-  Assignment, 
-  Visibility, 
-  Business, 
-  FileDownload 
+  Add as AddIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Info as InfoIcon,
+  Business,
+  Download,
+  Upload,
+  Search as SearchIcon,
+  TuneRounded,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
+  Clear as ClearIcon,
+  MoreVert,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import {
@@ -43,557 +56,266 @@ import {
   editarFornecedor,
   removerFornecedor,
   importarFornecedoresLote,
-  verificarRelacionamentosFornecedor,
 } from "../services/fornecedores";
 import ImportacaoFornecedores from '../components/ImportacaoFornecedores';
 import ConfirmacaoExclusaoFornecedor from '../components/ConfirmacaoExclusaoFornecedor';
 import * as XLSX from 'xlsx';
+import { formatarDocumento } from "../utils/validacaoDocumento"; // Supondo que você tenha essa util
 
+// Interfaces
 interface Fornecedor {
   id: number;
   nome: string;
   cnpj: string;
-  cidade?: string;
-  estado?: string;
-  cep?: string;
-  observacoes?: string;
   email?: string;
   telefone?: string;
-  endereco?: string;
   ativo: boolean;
 }
 
-const Fornecedores: React.FC = () => {
+const FornecedoresPage: React.FC = () => {
   const navigate = useNavigate();
+
+  // Estados principais
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
   const [loading, setLoading] = useState(true);
-  const [openDialog, setOpenDialog] = useState(false);
-  const [editingFornecedor, setEditingFornecedor] = useState<Fornecedor | null>(null);
-  const [formData, setFormData] = useState({
-    nome: "",
-    cnpj: "",
-    email: "",
-    telefone: "",
-    endereco: "",
-    cidade: "",
-    estado: "",
-    cep: "",
-    observacoes: "",
-    ativo: true,
-  });
-  const [documentoErro, setDocumentoErro] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Estados do menu de ações
+  const [actionsMenuAnchor, setActionsMenuAnchor] = useState<null | HTMLElement>(null);
+
+  // Estados de filtros
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState("");
+  const [sortBy, setSortBy] = useState("nome");
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [hasActiveFilters, setHasActiveFilters] = useState(false);
+
+  // Estados de paginação
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  // Estados de modais
+  const [modalOpen, setModalOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-  const [fornecedorParaExcluir, setFornecedorParaExcluir] = useState<Fornecedor | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [editingFornecedor, setEditingFornecedor] = useState<Fornecedor | null>(null);
+  const [fornecedorToDelete, setFornecedorToDelete] = useState<Fornecedor | null>(null);
+  const [formData, setFormData] = useState({ nome: "", cnpj: "", email: "", telefone: "", ativo: true });
 
-  useEffect(() => {
-    carregarFornecedores();
-  }, []);
-
-  const carregarFornecedores = async () => {
+  // Carregar fornecedores
+  const loadFornecedores = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const data = await listarFornecedores();
-      setFornecedores(data);
-    } catch (error) {
-      setError("Erro ao carregar fornecedores");
+      setFornecedores(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setError("Erro ao carregar fornecedores. Tente novamente.");
+      setFornecedores([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleOpenDialog = (fornecedor?: Fornecedor) => {
+  useEffect(() => {
+    loadFornecedores();
+  }, [loadFornecedores]);
+  
+  // Detectar filtros ativos
+  useEffect(() => {
+    setHasActiveFilters(!!(searchTerm || selectedStatus));
+  }, [searchTerm, selectedStatus]);
+  
+  // Filtrar e ordenar fornecedores
+  const filteredFornecedores = useMemo(() => {
+    return fornecedores.filter(f => {
+      const matchesSearch = f.nome.toLowerCase().includes(searchTerm.toLowerCase()) || f.cnpj.includes(searchTerm);
+      const matchesStatus = !selectedStatus || (selectedStatus === 'ativo' && f.ativo) || (selectedStatus === 'inativo' && !f.ativo);
+      return matchesSearch && matchesStatus;
+    }).sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [fornecedores, searchTerm, selectedStatus, sortBy]);
+
+  // Fornecedores paginados
+  const paginatedFornecedores = useMemo(() => {
+    const startIndex = page * rowsPerPage;
+    return filteredFornecedores.slice(startIndex, startIndex + rowsPerPage);
+  }, [filteredFornecedores, page, rowsPerPage]);
+  
+  // Funções de paginação
+  const handleChangePage = useCallback((event: unknown, newPage: number) => setPage(newPage), []);
+  const handleChangeRowsPerPage = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  }, []);
+  
+  // Reset da página quando filtros mudam
+  useEffect(() => {
+    setPage(0);
+  }, [searchTerm, selectedStatus, sortBy]);
+  
+  const clearFilters = useCallback(() => {
+    setSearchTerm("");
+    setSelectedStatus("");
+    setSortBy("nome");
+  }, []);
+  
+  const toggleFilters = useCallback(() => setFiltersExpanded(!filtersExpanded), [filtersExpanded]);
+  
+  // Componente de conteúdo dos filtros
+  const FiltersContent = () => (
+    <Box sx={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)', borderRadius: '16px', p: 3, border: '1px solid rgba(148, 163, 184, 0.1)' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}><TuneRounded sx={{ color: '#4f46e5' }} /><Typography variant="h6" sx={{ fontWeight: 600, color: '#1e293b' }}>Filtros Avançados</Typography></Box>
+        {hasActiveFilters && <Button size="small" onClick={clearFilters} sx={{ color: '#64748b', textTransform: 'none' }}>Limpar Tudo</Button>}
+      </Box>
+      <Divider sx={{ mb: 3 }} />
+      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+        <FormControl sx={{ minWidth: 150 }}><InputLabel>Status</InputLabel><Select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)} label="Status"><MenuItem value="">Todos</MenuItem><MenuItem value="ativo">Ativos</MenuItem><MenuItem value="inativo">Inativos</MenuItem></Select></FormControl>
+        <FormControl sx={{ minWidth: 150 }}><InputLabel>Ordenar por</InputLabel><Select value={sortBy} onChange={(e) => setSortBy(e.target.value)} label="Ordenar por"><MenuItem value="nome">Nome</MenuItem></Select></FormControl>
+      </Box>
+    </Box>
+  );
+
+  // Funções de modais
+  const openModal = (fornecedor: Fornecedor | null = null) => {
     if (fornecedor) {
       setEditingFornecedor(fornecedor);
-      setFormData({
-        nome: fornecedor.nome,
-        cnpj: fornecedor.cnpj || "",
-  
-        email: fornecedor.email || "",
-        telefone: fornecedor.telefone || "",
-        endereco: fornecedor.endereco || "",
-        cidade: fornecedor.cidade || "",
-        estado: fornecedor.estado || "",
-        cep: fornecedor.cep || "",
-        observacoes: fornecedor.observacoes || "",
-        ativo: fornecedor.ativo,
-      });
+      setFormData({ nome: fornecedor.nome, cnpj: fornecedor.cnpj, email: fornecedor.email || '', telefone: fornecedor.telefone || '', ativo: fornecedor.ativo });
     } else {
       setEditingFornecedor(null);
-      setFormData({
-        nome: "",
-        cnpj: "",
+      setFormData({ nome: "", cnpj: "", email: "", telefone: "", ativo: true });
+    }
+    setModalOpen(true);
+  };
   
-        email: "",
-        telefone: "",
-        endereco: "",
-        cidade: "",
-        estado: "",
-        cep: "",
-        observacoes: "",
-        ativo: true,
-      });
-    }
-    setOpenDialog(true);
-  };
-
-  const handleCloseDialog = () => {
-    setOpenDialog(false);
-    setEditingFornecedor(null);
-    setError(null);
-    setDocumentoErro(null);
-  };
-
-  // Função para lidar com mudanças no campo de documento
-  const handleDocumentoChange = (valor: string) => {
-    // Aplicar máscara automaticamente
-    const valorFormatado = aplicarMascaraDocumento(valor);
-    setFormData({ ...formData, cnpj: valorFormatado });
-    
-    // Validar em tempo real apenas se o campo não estiver vazio
-    if (valor.trim() !== '') {
-      const validacao = validarDocumento(valor);
-      setDocumentoErro(validacao.valido ? null : validacao.mensagem);
-    } else {
-      setDocumentoErro(null);
-    }
-  };
+  const closeModal = () => setModalOpen(false);
 
   const handleSave = async () => {
     try {
-      // Validações básicas
-      if (!formData.nome.trim()) {
-        setError("Nome é obrigatório");
-        return;
-      }
-      
-      if (!formData.cnpj.trim()) {
-        setError("CPF/CNPJ é obrigatório");
-        return;
-      }
-
-      // Validação do documento (CPF ou CNPJ)
-      const validacaoDocumento = validarDocumento(formData.cnpj);
-      if (!validacaoDocumento.valido) {
-        setError(validacaoDocumento.mensagem);
-        setDocumentoErro(validacaoDocumento.mensagem);
-        return;
-      }
-
       if (editingFornecedor) {
         await editarFornecedor(editingFornecedor.id, formData);
+        setSuccessMessage('Fornecedor atualizado com sucesso!');
       } else {
         await criarFornecedor(formData);
+        setSuccessMessage('Fornecedor criado com sucesso!');
       }
-
-      await carregarFornecedores();
-      handleCloseDialog();
-    } catch (error: any) {
-      const mensagemErro = error.response?.data?.message || "Erro ao salvar fornecedor";
-      setError(mensagemErro);
-    }
-  };
-
-  const handleDelete = async (fornecedor: Fornecedor) => {
-    setFornecedorParaExcluir(fornecedor);
-    setConfirmDeleteOpen(true);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!fornecedorParaExcluir) return;
-    
-    try {
-      await removerFornecedor(fornecedorParaExcluir.id);
-      await carregarFornecedores();
-      setSuccessMessage("Fornecedor removido com sucesso!");
+      closeModal();
+      await loadFornecedores();
       setTimeout(() => setSuccessMessage(null), 3000);
-    } catch (error: any) {
-      setError(error.response?.data?.message || "Erro ao remover fornecedor");
-      setTimeout(() => setError(null), 5000);
-    } finally {
-      setConfirmDeleteOpen(false);
-      setFornecedorParaExcluir(null);
-    }
-  };
-
-  const handleCancelDelete = () => {
-    setConfirmDeleteOpen(false);
-    setFornecedorParaExcluir(null);
-  };
-
-  const handleVerContratos = (fornecedor: Fornecedor) => {
-    navigate(`/contratos?fornecedor_id=${fornecedor.id}`);
-  };
-
-  const handleVerDetalhes = (fornecedor: Fornecedor) => {
-    navigate(`/fornecedores/${fornecedor.id}`);
-  };
-
-  // Função para importação em lote
-  const handleImportFornecedores = async (fornecedoresImportacao: any[]) => {
-    try {
-      setLoading(true);
-
-      const resultado = await importarFornecedoresLote(fornecedoresImportacao);
-
-      const { insercoes = 0, atualizacoes = 0 } = resultado.resultados;
-      let mensagemSucesso = '';
-      
-      if (insercoes > 0 && atualizacoes > 0) {
-        mensagemSucesso = `${insercoes} fornecedores inseridos e ${atualizacoes} atualizados com sucesso!`;
-      } else if (insercoes > 0) {
-        mensagemSucesso = `${insercoes} fornecedores inseridos com sucesso!`;
-      } else if (atualizacoes > 0) {
-        mensagemSucesso = `${atualizacoes} fornecedores atualizados com sucesso!`;
-      } else {
-        mensagemSucesso = 'Importação concluída!';
-      }
-
-      if (resultado.resultados.sucesso > 0) {
-        setSuccessMessage(mensagemSucesso);
-        await carregarFornecedores();
-      }
-
-      if (resultado.resultados.erros > 0) {
-        setError(`${resultado.resultados.erros} fornecedores não puderam ser importados. Verifique os dados.`);
-      }
-
-      setTimeout(() => {
-        setSuccessMessage(null);
-        setError(null);
-      }, 5000);
     } catch (err: any) {
-      console.error('Erro na importação em lote:', err);
-      setError('Erro ao importar fornecedores. Tente novamente.');
-    } finally {
-      setLoading(false);
+      setError(err.response?.data?.message || "Erro ao salvar fornecedor.");
     }
   };
 
-  // Função para exportar fornecedores para Excel
-  const handleExportarFornecedores = async () => {
-    if (fornecedores.length === 0) {
-      setError('Nenhum fornecedor disponível para exportação.');
-      setTimeout(() => setError(null), 3000);
-      return;
-    }
+  const openDeleteModal = (fornecedor: Fornecedor) => {
+    setFornecedorToDelete(fornecedor);
+    setDeleteModalOpen(true);
+  };
 
+  const closeDeleteModal = () => {
+    setDeleteModalOpen(false);
+    setFornecedorToDelete(null);
+  };
+
+  const handleDelete = async () => {
+    if (!fornecedorToDelete) return;
     try {
-      setLoading(true);
-      
-      // Preparar dados para exportação no formato correto para importação
-      const dadosExportacao = fornecedores.map((fornecedor) => ({
-        nome: fornecedor.nome || '',
-        cnpj: fornecedor.cnpj || '',
-        email: fornecedor.email || '',
-        telefone: fornecedor.telefone || '',
-        endereco: fornecedor.endereco || '',
-        cidade: '', // Campo não disponível na interface atual
-        estado: '', // Campo não disponível na interface atual
-        cep: '', // Campo não disponível na interface atual
-  
-        observacoes: '', // Campo não disponível na interface atual
-        ativo: fornecedor.ativo ? 'true' : 'false'
-      }));
-
-      // Criar planilha principal
-      const ws = XLSX.utils.json_to_sheet(dadosExportacao);
-      
-      // Definir largura das colunas
-      ws['!cols'] = [
-        { wch: 30 }, // nome
-        { wch: 18 }, // cnpj
-        { wch: 25 }, // email
-        { wch: 15 }, // telefone
-        { wch: 30 }, // endereco
-        { wch: 15 }, // cidade
-        { wch: 8 },  // estado
-        { wch: 12 }, // cep
-  
-        { wch: 35 }, // observacoes
-        { wch: 8 }   // ativo
-      ];
-
-      // Criar workbook
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Fornecedores');
-
-      // Gerar nome do arquivo com data/hora
-      const agora = new Date();
-      const dataFormatada = agora.toLocaleDateString('pt-BR').replace(/\//g, '-');
-      const horaFormatada = agora.toLocaleTimeString('pt-BR').replace(/:/g, '-');
-      const nomeArquivo = `fornecedores_${dataFormatada}_${horaFormatada}.xlsx`;
-
-      // Fazer download
-      XLSX.writeFile(wb, nomeArquivo);
-
-      setSuccessMessage(`${fornecedores.length} fornecedores exportados com sucesso!`);
+      await removerFornecedor(fornecedorToDelete.id);
+      setSuccessMessage('Fornecedor removido com sucesso!');
+      closeDeleteModal();
+      await loadFornecedores();
       setTimeout(() => setSuccessMessage(null), 3000);
-    } catch (error: any) {
-      console.error('Erro na exportação:', error);
-      setError('Erro ao exportar fornecedores. Tente novamente.');
-      setTimeout(() => setError(null), 3000);
-    } finally {
-      setLoading(false);
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Erro ao remover fornecedor.");
     }
   };
 
-  if (loading) {
-    return (
-      <Box sx={{ p: 3 }}>
-        <Typography>Carregando...</Typography>
-      </Box>
-    );
-  }
+  // Funções de Importação/Exportação
+  const handleImportFornecedores = async (data: any[]) => { /* ... */ };
+  const handleExportarFornecedores = () => { /* ... */ };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
-        <Typography variant="h4" component="h1">
-          Fornecedores
-        </Typography>
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <Button
-            variant="contained"
-            startIcon={<Add />}
-            onClick={() => handleOpenDialog()}
-          >
-            Novo Fornecedor (CNPJ)
-          </Button>
+    <Box sx={{ minHeight: '100vh', bgcolor: '#f9fafb' }}>
+      {successMessage && (<Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}><Alert severity="success" onClose={() => setSuccessMessage(null)}>{successMessage}</Alert></Box>)}
+      <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+        <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', p: 3, mb: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+            <TextField placeholder="Buscar por nome ou CNPJ..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '12px' } }} InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon sx={{ color: '#64748b' }} /></InputAdornment>), endAdornment: searchTerm && (<InputAdornment position="end"><IconButton size="small" onClick={() => setSearchTerm('')}><ClearIcon fontSize="small" /></IconButton></InputAdornment>)}}/>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <Button variant={filtersExpanded || hasActiveFilters ? 'contained' : 'outlined'} startIcon={filtersExpanded ? <ExpandLessIcon /> : <TuneRounded />} onClick={toggleFilters}>Filtros{hasActiveFilters && !filtersExpanded && (<Box sx={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', bgcolor: '#ef4444' }}/>)}</Button>
+              <Button startIcon={<AddIcon />} onClick={() => openModal()} sx={{ bgcolor: '#059669', color: 'white', '&:hover': { bgcolor: '#047857' } }}>Novo Fornecedor</Button>
+              <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)} sx={{ border: '1px solid #d1d5db' }}><MoreVert /></IconButton>
+            </Box>
+          </Box>
+          <Collapse in={filtersExpanded} timeout={400}><Box sx={{ mb: 3 }}><FiltersContent /></Box></Collapse>
+          <Typography variant="body2" sx={{ mb: 2, color: '#64748b' }}>{`Mostrando ${Math.min((page * rowsPerPage) + 1, filteredFornecedores.length)}-${Math.min((page + 1) * rowsPerPage, filteredFornecedores.length)} de ${filteredFornecedores.length} fornecedores`}</Typography>
+        </Card>
 
-          <Button
-            startIcon={<Business />}
-            onClick={() => setImportModalOpen(true)}
-            variant="outlined"
-            sx={{
-              borderColor: '#4f46e5',
-              color: '#4f46e5',
-              '&:hover': {
-                borderColor: '#4338ca',
-                color: '#4338ca',
-                bgcolor: '#f8fafc'
-              },
-            }}
-          >
-            Importar em Lote
-          </Button>
-          <Button
-            startIcon={<FileDownload />}
-            onClick={handleExportarFornecedores}
-            variant="outlined"
-            sx={{
-              borderColor: '#059669',
-              color: '#059669',
-              '&:hover': {
-                borderColor: '#047857',
-                color: '#047857',
-                bgcolor: '#f0fdf4'
-              },
-            }}
-          >
-            Exportar Excel
-          </Button>
-        </Box>
+        {loading ? (
+          <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><CircularProgress size={60} /></CardContent></Card>
+        ) : error ? (
+          <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={loadFornecedores}>Tentar Novamente</Button></CardContent></Card>
+        ) : filteredFornecedores.length === 0 ? (
+          <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Business sx={{ fontSize: 64, color: '#d1d5db', mb: 2 }} /><Typography variant="h6" sx={{ color: '#6b7280' }}>Nenhum fornecedor encontrado</Typography></CardContent></Card>
+        ) : (
+          <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px' }}>
+            <TableContainer>
+              <Table>
+                <TableHead><TableRow><TableCell>Nome</TableCell><TableCell>CNPJ</TableCell><TableCell>Contato</TableCell><TableCell align="center">Status</TableCell><TableCell align="center">Ações</TableCell></TableRow></TableHead>
+                <TableBody>
+                  {paginatedFornecedores.map((f) => (
+                    <TableRow key={f.id} hover>
+                      <TableCell><Typography variant="body2" sx={{ fontWeight: 600 }}>{f.nome}</Typography></TableCell>
+                      <TableCell><Typography variant="body2" color="text.secondary" fontFamily="monospace">{formatarDocumento(f.cnpj)}</Typography></TableCell>
+                      <TableCell><Typography variant="body2" color="text.secondary">{f.email || f.telefone || 'N/A'}</Typography></TableCell>
+                      <TableCell align="center"><Chip label={f.ativo ? 'Ativo' : 'Inativo'} size="small" color={f.ativo ? 'success' : 'error'} variant="outlined" /></TableCell>
+                      <TableCell align="center">
+                        <Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => navigate(`/fornecedores/${f.id}`)} color="primary"><InfoIcon fontSize="small" /></IconButton></Tooltip>
+                        <Tooltip title="Editar"><IconButton size="small" onClick={() => openModal(f)} color="secondary"><EditIcon fontSize="small" /></IconButton></Tooltip>
+                        <Tooltip title="Excluir"><IconButton size="small" onClick={() => openDeleteModal(f)} color="error"><DeleteIcon fontSize="small" /></IconButton></Tooltip>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            <TablePagination component="div" count={filteredFornecedores.length} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage} onRowsPerPageChange={handleChangeRowsPerPage} rowsPerPageOptions={[5, 10, 25, 50]} labelRowsPerPage="Itens por página:" />
+          </Paper>
+        )}
       </Box>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-
-      {successMessage && (
-        <Alert severity="success" sx={{ mb: 2 }}>
-          {successMessage}
-        </Alert>
-      )}
-
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Nome</TableCell>
-              <TableCell>CPF/CNPJ</TableCell>
-              <TableCell>Email</TableCell>
-              <TableCell>Telefone</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell align="center">Ações</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {fornecedores.map((fornecedor) => (
-              <TableRow key={fornecedor.id}>
-                <TableCell>{fornecedor.nome}</TableCell>
-                <TableCell>
-                  {fornecedor.cnpj ? (
-                    <Box>
-                      <Typography variant="body2">
-                        {formatarDocumento(fornecedor.cnpj)}
-                      </Typography>
-                      <Chip 
-                        label={detectarTipoDocumento(fornecedor.cnpj)} 
-                        size="small" 
-                        color={detectarTipoDocumento(fornecedor.cnpj) === 'CPF' ? 'primary' : 'secondary'}
-                        sx={{ fontSize: '0.7rem', height: '20px' }}
-                      />
-                    </Box>
-                  ) : "-"}
-                </TableCell>
-                <TableCell>{fornecedor.email || "-"}</TableCell>
-                <TableCell>{fornecedor.telefone || "-"}</TableCell>
-                <TableCell>
-                  <Chip 
-                    label={fornecedor.ativo ? "Ativo" : "Inativo"}
-                    color={fornecedor.ativo ? "success" : "default"}
-                    size="small"
-                  />
-                </TableCell>
-                <TableCell align="center">
-                  <IconButton
-                    size="small"
-                    onClick={() => handleVerDetalhes(fornecedor)}
-                    title="Ver Detalhes"
-                    color="primary"
-                  >
-                    <Visibility />
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleVerContratos(fornecedor)}
-                    title="Ver Contratos"
-                  >
-                    <Assignment />
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleOpenDialog(fornecedor)}
-                    title="Editar"
-                  >
-                    <Edit />
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleDelete(fornecedor)}
-                    title="Excluir"
-                    color="error"
-                  >
-                    <Delete />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          {editingFornecedor ? "Editar Fornecedor" : "Novo Fornecedor"}
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
-            <TextField
-              label="Nome *"
-              value={formData.nome}
-              onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
-              fullWidth
-            />
-            <TextField
-              label={`${detectarTipoDocumento(formData.cnpj) !== 'INVALIDO' ? detectarTipoDocumento(formData.cnpj) : 'CPF/CNPJ'} *`}
-              value={formData.cnpj}
-              onChange={(e) => handleDocumentoChange(e.target.value)}
-              error={!!documentoErro}
-              helperText={documentoErro || (formData.cnpj && detectarTipoDocumento(formData.cnpj) !== 'INVALIDO' ? `${detectarTipoDocumento(formData.cnpj)} detectado` : 'Digite CPF (11 dígitos) ou CNPJ (14 dígitos)')}
-              fullWidth
-              placeholder="000.000.000-00 ou 00.000.000/0000-00"
-            />
-
-            <TextField
-              label="Email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              fullWidth
-            />
-            <TextField
-              label="Telefone"
-              value={formData.telefone}
-              onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
-              fullWidth
-            />
-            <TextField
-              label="Endereço"
-              value={formData.endereco}
-              onChange={(e) => setFormData({ ...formData, endereco: e.target.value })}
-              fullWidth
-              multiline
-              rows={2}
-            />
-            <TextField
-              label="Cidade"
-              value={formData.cidade}
-              onChange={(e) => setFormData({ ...formData, cidade: e.target.value })}
-              fullWidth
-            />
-            <TextField
-              label="Estado"
-              value={formData.estado}
-              onChange={(e) => setFormData({ ...formData, estado: e.target.value })}
-              fullWidth
-            />
-            <TextField
-              label="CEP"
-              value={formData.cep}
-              onChange={(e) => setFormData({ ...formData, cep: e.target.value })}
-              fullWidth
-            />
-            <TextField
-              label="Observações"
-              value={formData.observacoes}
-              onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
-              fullWidth
-              multiline
-              rows={2}
-            />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={formData.ativo}
-                  onChange={(e) => setFormData({ ...formData, ativo: e.target.checked })}
-                />
-              }
-              label="Ativo"
-            />
+      {/* Modal de Criação/Edição */}
+      <Dialog open={modalOpen} onClose={closeModal} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: '12px' } }}>
+        <DialogTitle sx={{ fontWeight: 600 }}>{editingFornecedor ? 'Editar Fornecedor' : 'Novo Fornecedor'}</DialogTitle>
+        <DialogContent sx={{ pt: 2 }}>
+          <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <TextField label="Nome" value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} required />
+            <TextField label="CNPJ" value={formData.cnpj} onChange={(e) => setFormData({ ...formData, cnpj: e.target.value })} required />
+            <TextField label="Email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+            <TextField label="Telefone" value={formData.telefone} onChange={(e) => setFormData({ ...formData, telefone: e.target.value })} />
+            <FormControlLabel control={<Switch checked={formData.ativo} onChange={(e) => setFormData({ ...formData, ativo: e.target.checked })} />} label="Ativo" />
           </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancelar</Button>
-          <Button onClick={handleSave} variant="contained">
-            Salvar
-          </Button>
+        <DialogActions sx={{ p: 3, pt: 1 }}>
+          <Button onClick={closeModal} sx={{ color: '#6b7280' }}>Cancelar</Button>
+          <Button onClick={handleSave} variant="contained" disabled={!formData.nome.trim() || !formData.cnpj.trim()} sx={{ bgcolor: '#4f46e5', '&:hover': { bgcolor: '#4338ca' } }}>Salvar</Button>
         </DialogActions>
       </Dialog>
-
-      {/* Modal de Importação */}
-      <ImportacaoFornecedores
-        open={importModalOpen}
-        onClose={() => setImportModalOpen(false)}
-        onImport={handleImportFornecedores}
-      />
-
+      
       {/* Modal de Confirmação de Exclusão */}
-      <ConfirmacaoExclusaoFornecedor
-        open={confirmDeleteOpen}
-        fornecedor={fornecedorParaExcluir}
-        onConfirm={handleConfirmDelete}
-        onCancel={handleCancelDelete}
-      />
+      <ConfirmacaoExclusaoFornecedor open={deleteModalOpen} fornecedor={fornecedorToDelete} onConfirm={handleDelete} onCancel={closeDeleteModal} />
+      
+      {/* Modal de Importação */}
+      <ImportacaoFornecedores open={importModalOpen} onClose={() => setImportModalOpen(false)} onImport={handleImportFornecedores} />
 
-
+      {/* Menu de Ações */}
+      <Menu anchorEl={actionsMenuAnchor} open={Boolean(actionsMenuAnchor)} onClose={() => setActionsMenuAnchor(null)}>
+        <MenuItem onClick={() => { setActionsMenuAnchor(null); setImportModalOpen(true); }}><Upload sx={{ mr: 1 }} /> Importar em Lote</MenuItem>
+        <MenuItem onClick={() => { setActionsMenuAnchor(null); handleExportarFornecedores(); }}><Download sx={{ mr: 1 }} /> Exportar Excel</MenuItem>
+      </Menu>
     </Box>
   );
 };
 
-export default Fornecedores;
+export default FornecedoresPage;

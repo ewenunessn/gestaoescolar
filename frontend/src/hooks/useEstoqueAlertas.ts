@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getAlertas, type AlertaEstoque } from '../services/estoqueModernoService';
+import { getAlertas, type AlertaEstoque } from '../services/estoqueCentralService';
 
 export function useEstoqueAlertas() {
   const [alertas, setAlertas] = useState<AlertaEstoque[]>([]);

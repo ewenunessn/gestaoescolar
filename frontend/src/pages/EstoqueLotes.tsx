@@ -44,7 +44,7 @@ import {
   getStatusLoteLabel,
   calcularDiasParaVencimento,
   type EstoqueLote
-} from "../services/estoqueModernoService";
+} from "../services/estoqueCentralService";
 import { buscarProduto } from "../services/produtos";
 import { useToast } from "../hooks/useToast";
 

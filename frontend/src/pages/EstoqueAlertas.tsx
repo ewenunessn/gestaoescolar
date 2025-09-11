@@ -45,7 +45,7 @@ import {
   formatarData,
   getNivelAlertaColor,
   type AlertaEstoque
-} from "../services/estoqueModernoService";
+} from "../services/estoqueCentralService";
 import { useToast } from "../hooks/useToast";
 
 const EstoqueAlertas: React.FC = () => {

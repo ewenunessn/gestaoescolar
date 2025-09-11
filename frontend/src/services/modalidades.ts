@@ -4,6 +4,7 @@ export interface Modalidade {
   id: number;
   nome: string;
   valor_repasse: number;
+  ativo: boolean;
 }
 
 export interface ModalidadeInput {

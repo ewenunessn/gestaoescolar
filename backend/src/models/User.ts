@@ -153,3 +153,16 @@ export async function emailExists(email: string, excludeId?: number): Promise<bo
     throw error;
   }
 }
+
+// Resetar sequência da tabela usuarios
+export async function resetUserSequence(): Promise<void> {
+  try {
+    await db.query(`
+      SELECT setval('usuarios_id_seq', COALESCE((SELECT MAX(id) FROM usuarios), 0) + 1);
+    `);
+    console.log('✅ Sequência da tabela usuarios resetada com sucesso!');
+  } catch (error) {
+    console.error('❌ Erro ao resetar sequência:', error);
+    throw error;
+  }
+}

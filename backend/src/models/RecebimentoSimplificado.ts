@@ -274,7 +274,7 @@ export async function registrarRecebimento(
     // Registrar entrada no estoque (igual aos outros módulos)
     if (numero_lote) {
       try {
-        const { criarLoteEstoque } = await import('./EstoqueModerno');
+        const { criarLoteEstoque } = await import('./EstoqueCentral');
         await criarLoteEstoque({
           produto_id: itemControle.produto_id,
           lote: numero_lote,
@@ -293,7 +293,7 @@ export async function registrarRecebimento(
     } else {
       // Se não tem lote, criar entrada genérica no estoque
       try {
-        const { criarLoteEstoque } = await import('./EstoqueModerno');
+        const { criarLoteEstoque } = await import('./EstoqueCentral');
         const loteGenerico = `SIMP-${Date.now()}-${itemControle.produto_id}`;
         
         await criarLoteEstoque({

@@ -26,10 +26,10 @@ import produtoModalidadeRoutes from "./routes/produtoModalidadeRoutes";
 // Importar rotas modernas
 import pedidoModernoRoutes from "./routes/pedidoModernoRoutes";
 import recebimentoSimplificadoRoutes from "./routes/recebimentoSimplificadoRoutes";
-import estoqueModernoRoutes from "./routes/estoqueModernoRoutes";
+import estoqueCentralRoutes from "./routes/estoqueCentralRoutes";
 import estoqueEscolaRoutes from "./routes/estoqueEscolaRoutes";
 import gestorEscolaRoutes from "./routes/gestorEscolaRoutes";
-import estoqueConsolidadoRoutes from "./routes/estoqueConsolidadoRoutes";
+import estoqueEscolarRoutes from "./routes/estoqueEscolarRoutes";
 
 import faturamentoModalidadesRoutes from "./routes/faturamentoModalidadesRoutes";
 import faturamentoInterfaceRoutes from "./routes/faturamentoInterface";
@@ -209,10 +209,10 @@ app.use("/api/produto-modalidades", produtoModalidadeRoutes);
 
 app.use("/api/pedidos-modernos", pedidoModernoRoutes);
 app.use("/api/recebimento-simples", recebimentoSimplificadoRoutes);
-app.use("/api/estoque-moderno", estoqueModernoRoutes);
+app.use("/api/estoque-central", estoqueCentralRoutes);
 app.use("/api/estoque-escola", estoqueEscolaRoutes);
 app.use("/api/gestor-escola", gestorEscolaRoutes);
-app.use("/api/estoque-consolidado", estoqueConsolidadoRoutes);
+app.use("/api/estoque-escolar", estoqueEscolarRoutes);
 
 app.use("/api/faturamento-modalidades", faturamentoModalidadesRoutes);
 app.use("/api/faturamento-interface", faturamentoInterfaceRoutes);
@@ -259,7 +259,7 @@ app.get("/", (req, res) => {
       "/api/pedidos-modernos",
       "/api/recebimento-simples",
       "/api/estoque-moderno",
-      "/api/estoque-consolidado",
+      "/api/estoque-escolar",
       "/api/faturamento-modalidades",
       "/api/test-db",
       "/health"
@@ -295,7 +295,7 @@ app.use("*", (req, res) => {
       "/api/pedidos-modernos",
       "/api/recebimento-simples",
       "/api/estoque-moderno",
-      "/api/estoque-consolidado",
+      "/api/estoque-escolar",
       "/api/faturamento-modalidades",
       "/api/test-db",
       "/health"
@@ -337,14 +337,10 @@ async function iniciarServidor() {
 
       // Inicializar módulos
       console.log('🔧 Inicializando módulos...');
-      const { initEstoqueModerno } = await import('./controllers/estoqueModernoController');
-      await initEstoqueModerno();
+      const { initEstoqueCentral } = await import('./controllers/estoqueCentralController');
+      await initEstoqueCentral();
 
-      // Inicializar tabelas de rotas - DESABILITADO temporariamente
-      // const { createRotasTables } = await import('./models/Rota');
-      // await createRotasTables();
-      // console.log('✅ Tabelas de rotas criadas com sucesso');
-      console.log('⚠️ Módulo de rotas desabilitado temporariamente');
+
 
       console.log('✅ Módulos inicializados com sucesso!');
 

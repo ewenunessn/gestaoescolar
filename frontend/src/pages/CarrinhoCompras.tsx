@@ -509,7 +509,7 @@ const CarrinhoCompras: React.FC = () => {
                       color="primary"
                       sx={{
                         "& .MuiBadge-badge": {
-                          bgcolor: "#4f46e5",
+                          bgcolor: "#059669",
                           color: "white",
                           fontWeight: 600,
                         },
@@ -589,7 +589,7 @@ const CarrinhoCompras: React.FC = () => {
                           startIcon={selectedItems.size === filteredItems.length ? <ClearAll /> : <SelectAll />}
                           onClick={selectedItems.size === filteredItems.length ? clearAllSelections : selectAllItems}
                           sx={{
-                            color: selectedItems.size === filteredItems.length ? "#dc2626" : "#4f46e5",
+                            color: selectedItems.size === filteredItems.length ? "#dc2626" : "#059669",
                             textTransform: "none",
                             fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
                             "&:hover": { 

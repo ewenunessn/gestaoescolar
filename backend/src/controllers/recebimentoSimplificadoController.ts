@@ -487,7 +487,7 @@ export async function receberItem(req: Request, res: Response) {
         });
         
         // Importar função do estoque
-        const { criarLoteEstoque } = await import('../models/EstoqueModerno');
+        const { criarLoteEstoque } = await import('../models/EstoqueCentral');
         
         const loteResult = await criarLoteEstoque({
           produto_id: itemData.produto_id,
@@ -507,7 +507,7 @@ export async function receberItem(req: Request, res: Response) {
     } else {
       // Criar lote genérico se não informado
       try {
-        const { criarLoteEstoque } = await import('../models/EstoqueModerno');
+        const { criarLoteEstoque } = await import('../models/EstoqueCentral');
         const loteGenerico = `REC-${Date.now()}-${itemData.produto_id}`;
         
         await criarLoteEstoque({

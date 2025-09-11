@@ -1,5 +1,5 @@
 /**
- * Tipos relacionados às escolas e rotas
+ * Tipos relacionados às escolas
  */
 
 export interface Escola {

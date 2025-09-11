@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { listarCardapios } from "../services/cardapios";
 import {
   Box,
@@ -15,6 +15,7 @@ import {
   useTheme,
   useMediaQuery,
   Card,
+  CardContent,
   Table,
   TableBody,
   TableCell,
@@ -27,574 +28,195 @@ import {
   Paper,
   Menu,
   Collapse,
-  Snackbar,
   TablePagination,
+  Divider,
 } from "@mui/material";
 import {
-  Search,
-  Add,
+  Search as SearchIcon,
+  Add as AddIcon,
   MenuBook,
-  Visibility,
-  CheckCircle,
-  Cancel,
-  CalendarToday,
-  Clear,
-  FilterList,
+  Info,
+  Clear as ClearIcon,
   MoreVert,
-  ArrowUpward,
-  ArrowDownward,
+  TuneRounded,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 
+// Interface
 interface Cardapio {
   id: number;
   nome: string;
   periodo_dias: number;
   data_inicio: string;
   data_fim: string;
-  modalidade_id?: number;
   modalidade_nome?: string;
   ativo: boolean;
 }
 
-export default function CardapiosPage() {
+const CardapiosPage = () => {
+  const navigate = useNavigate();
+
+  // Estados principais
   const [cardapios, setCardapios] = useState<Cardapio[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
-  
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Estados do menu de ações
+  const [actionsMenuAnchor, setActionsMenuAnchor] = useState<null | HTMLElement>(null);
+
   // Estados de filtros
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedModalidade, setSelectedModalidade] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
   const [sortBy, setSortBy] = useState("nome");
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  
-  // Estados de UI
-  const [showFilters, setShowFilters] = useState(false);
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [hasActiveFilters, setHasActiveFilters] = useState(false);
+
+  // Estados de paginação
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  
-  const navigate = useNavigate();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  const carregarCardapios = async () => {
+  // Carregar cardápios
+  const loadCardapios = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const data = await listarCardapios();
-      setCardapios(data);
-      setError("");
-    } catch (error) {
-      console.error('Erro ao carregar cardápios:', error);
-      setError("Erro ao carregar cardápios");
+      setCardapios(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setError("Erro ao carregar cardápios. Tente novamente.");
+      setCardapios([]);
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    carregarCardapios();
   }, []);
 
+  useEffect(() => {
+    loadCardapios();
+  }, [loadCardapios]);
+
   // Detectar filtros ativos
-  const hasActiveFilters = useMemo(() => {
-    return searchTerm || selectedModalidade || selectedStatus;
+  useEffect(() => {
+    setHasActiveFilters(!!(searchTerm || selectedModalidade || selectedStatus));
   }, [searchTerm, selectedModalidade, selectedStatus]);
 
-  // Extrair dados únicos para filtros
+  // Extrair modalidades únicas para filtros
   const modalidades = useMemo(() => {
-    const uniqueModalidades = [...new Set(cardapios.map(c => c.modalidade_nome).filter(Boolean))];
-    return uniqueModalidades.sort();
+    return [...new Set(cardapios.map(c => c.modalidade_nome).filter(Boolean))].sort();
   }, [cardapios]);
 
   // Filtrar e ordenar cardápios
   const filteredCardapios = useMemo(() => {
-    let filtered = cardapios.filter(cardapio => {
+    return cardapios.filter(cardapio => {
       const matchesSearch = cardapio.nome.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesModalidade = !selectedModalidade || cardapio.modalidade_nome === selectedModalidade;
-      const matchesStatus = !selectedStatus || 
+      const matchesStatus = !selectedStatus ||
         (selectedStatus === 'ativo' && cardapio.ativo) ||
         (selectedStatus === 'inativo' && !cardapio.ativo);
-      
       return matchesSearch && matchesModalidade && matchesStatus;
-    });
+    }).sort((a, b) => a.nome.localeCompare(b.nome)); // Simplificado para ordenar por nome
+  }, [cardapios, searchTerm, selectedModalidade, selectedStatus]);
 
-    // Ordenação
-    filtered.sort((a, b) => {
-      let aValue: any = a[sortBy as keyof Cardapio];
-      let bValue: any = b[sortBy as keyof Cardapio];
-      
-      if (sortBy === 'modalidade') {
-        aValue = a.modalidade_nome || '';
-        bValue = b.modalidade_nome || '';
-      }
-      
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
-        aValue = aValue.toLowerCase();
-        bValue = bValue.toLowerCase();
-      }
-      
-      if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
-      if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
-      return 0;
-    });
-
-    return filtered;
-  }, [cardapios, searchTerm, selectedModalidade, selectedStatus, sortBy, sortOrder]);
-
-  // Paginação
+  // Cardápios paginados
   const paginatedCardapios = useMemo(() => {
     const startIndex = page * rowsPerPage;
     return filteredCardapios.slice(startIndex, startIndex + rowsPerPage);
   }, [filteredCardapios, page, rowsPerPage]);
+  
+  // Funções de paginação
+  const handleChangePage = useCallback((event: unknown, newPage: number) => setPage(newPage), []);
+  const handleChangeRowsPerPage = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  }, []);
 
-  // Funções de filtros
-  const clearFilters = () => {
+  // Reset da página quando filtros mudam
+  useEffect(() => {
+    setPage(0);
+  }, [searchTerm, selectedModalidade, selectedStatus, sortBy]);
+
+  const clearFilters = useCallback(() => {
     setSearchTerm("");
     setSelectedModalidade("");
     setSelectedStatus("");
-    setPage(0);
-  };
+    setSortBy("nome");
+  }, []);
 
-  const removeSearchFilter = () => setSearchTerm("");
-  const removeModalidadeFilter = () => setSelectedModalidade("");
-  const removeStatusFilter = () => setSelectedStatus("");
+  const toggleFilters = useCallback(() => setFiltersExpanded(!filtersExpanded), [filtersExpanded]);
 
-  const toggleFilters = () => setShowFilters(!showFilters);
+  const formatarData = (data: string) => new Date(data).toLocaleDateString('pt-BR');
 
-  const formatarData = (data: string) => {
-    return new Date(data).toLocaleDateString('pt-BR');
-  };
-
-  const handleChangePage = (event: unknown, newPage: number) => {
-    setPage(newPage);
-  };
-
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
-
-  // Componente de Filtros
+  // Componente de conteúdo dos filtros
   const FiltersContent = () => (
-    <Box sx={{ p: 2, borderTop: '1px solid #e5e7eb' }}>
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
-        {/* Modalidade */}
-        <FormControl sx={{ minWidth: 200 }}>
-          <InputLabel>Modalidade</InputLabel>
-          <Select
-            value={selectedModalidade}
-            onChange={(e) => setSelectedModalidade(e.target.value as string)}
-            label="Modalidade"
-          >
-            <MenuItem value="">Todas as modalidades</MenuItem>
-            {modalidades.map(modalidade => (
-              <MenuItem key={modalidade} value={modalidade}>{modalidade}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        {/* Status */}
-        <FormControl sx={{ minWidth: 150 }}>
-          <InputLabel>Status</InputLabel>
-          <Select
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value as string)}
-            label="Status"
-          >
-            <MenuItem value="">Todos</MenuItem>
-            <MenuItem value="ativo">Ativos</MenuItem>
-            <MenuItem value="inativo">Inativos</MenuItem>
-          </Select>
-        </FormControl>
-
-        {/* Ordenação */}
-        <FormControl sx={{ minWidth: 150 }}>
-          <InputLabel>Ordenar por</InputLabel>
-          <Select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as string)}
-            label="Ordenar por"
-          >
-            <MenuItem value="nome">Nome</MenuItem>
-            <MenuItem value="modalidade">Modalidade</MenuItem>
-            <MenuItem value="periodo_dias">Período</MenuItem>
-            <MenuItem value="ativo">Status</MenuItem>
-          </Select>
-        </FormControl>
-
-        {/* Direção da Ordenação */}
-        <Tooltip title={`Ordenação ${sortOrder === 'asc' ? 'Crescente' : 'Decrescente'}`}>
-          <IconButton
-            onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
-            sx={{
-              border: '1px solid #d1d5db',
-              borderRadius: '8px',
-              color: sortOrder === 'asc' ? '#059669' : '#dc2626',
-            }}
-          >
-            {sortOrder === 'asc' ? <ArrowUpward /> : <ArrowDownward />}
-          </IconButton>
-        </Tooltip>
+    <Box sx={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)', borderRadius: '16px', p: 3, border: '1px solid rgba(148, 163, 184, 0.1)' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}><TuneRounded sx={{ color: '#4f46e5' }} /><Typography variant="h6" sx={{ fontWeight: 600, color: '#1e293b' }}>Filtros Avançados</Typography></Box>
+        {hasActiveFilters && <Button size="small" onClick={clearFilters} sx={{ color: '#64748b', textTransform: 'none' }}>Limpar Tudo</Button>}
+      </Box>
+      <Divider sx={{ mb: 3 }} />
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2 }}>
+        <FormControl fullWidth><InputLabel>Modalidade</InputLabel><Select value={selectedModalidade} onChange={(e) => setSelectedModalidade(e.target.value)} label="Modalidade"><MenuItem value="">Todas</MenuItem>{modalidades.map(m => <MenuItem key={m} value={m}>{m}</MenuItem>)}</Select></FormControl>
+        <FormControl fullWidth><InputLabel>Status</InputLabel><Select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)} label="Status"><MenuItem value="">Todos</MenuItem><MenuItem value="ativo">Ativos</MenuItem><MenuItem value="inativo">Inativos</MenuItem></Select></FormControl>
+        <FormControl fullWidth><InputLabel>Ordenar por</InputLabel><Select value={sortBy} onChange={(e) => setSortBy(e.target.value)} label="Ordenar por"><MenuItem value="nome">Nome</MenuItem><MenuItem value="modalidade">Modalidade</MenuItem></Select></FormControl>
       </Box>
     </Box>
   );
 
   return (
-    <Box sx={{ 
-      minHeight: '100vh',
-      backgroundColor: '#f9fafb',
-      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
-    }}>
-      <Box sx={{ maxWidth: '1400px', mx: 'auto', p: 3 }}>
-        {/* Mensagem de Sucesso */}
-        {successMessage && (
-          <Alert 
-            severity="success" 
-            sx={{ mb: 2 }}
-            onClose={() => setSuccessMessage("")}
-          >
-            {successMessage}
-          </Alert>
-        )}
-
-        {/* Cabeçalho removido */}
-
-        {/* Barra de Busca e Ações */}
-        <Card sx={{ mb: 3, boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)' }}>
-          <Box sx={{ p: 2 }}>
-            <Box sx={{ 
-              display: 'flex', 
-              gap: 2, 
-              alignItems: 'center',
-              flexDirection: isMobile ? 'column' : 'row'
-            }}>
-              <TextField
-                placeholder="Buscar cardápios..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Search sx={{ color: '#6b7280' }} />
-                    </InputAdornment>
-                  ),
-                  endAdornment: searchTerm && (
-                    <InputAdornment position="end">
-                      <IconButton
-                        size="small"
-                        onClick={() => setSearchTerm("")}
-                        sx={{ color: '#6b7280' }}
-                      >
-                        <Clear />
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-                sx={{ 
-                  flexGrow: 1,
-                  '& .MuiOutlinedInput-root': {
-                    backgroundColor: '#ffffff',
-                    '&:hover': {
-                      '& > fieldset': {
-                        borderColor: '#4f46e5',
-                      }
-                    }
-                  }
-                }}
-              />
-              
-              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                {/* Botão de Filtros */}
-                <Tooltip title="Filtros avançados">
-                  <IconButton
-                    onClick={toggleFilters}
-                    sx={{
-                      border: '1px solid #d1d5db',
-                      borderRadius: '8px',
-                      color: showFilters || hasActiveFilters ? '#4f46e5' : '#6b7280',
-                      backgroundColor: showFilters || hasActiveFilters ? '#f0f9ff' : 'transparent',
-                      '&:hover': {
-                        backgroundColor: '#f0f9ff',
-                        borderColor: '#4f46e5',
-                      }
-                    }}
-                  >
-                    <FilterList />
-                    {hasActiveFilters && (
-                      <Box
-                        sx={{
-                          position: 'absolute',
-                          top: -2,
-                          right: -2,
-                          width: 8,
-                          height: 8,
-                          borderRadius: '50%',
-                          backgroundColor: '#ef4444',
-                        }}
-                      />
-                    )}
-                  </IconButton>
-                </Tooltip>
-
-                {/* Botão Novo Cardápio */}
-                <Button
-                  variant="contained"
-                  startIcon={<Add />}
-                  onClick={() => navigate("/cardapios/novo")}
-                  sx={{
-                    backgroundColor: '#4f46e5',
-                    '&:hover': {
-                      backgroundColor: '#4338ca',
-                    },
-                    borderRadius: '8px',
-                    textTransform: 'none',
-                    fontWeight: 500,
-                    px: 3,
-                  }}
-                >
-                  Novo Cardápio
-                </Button>
-
-                {/* Menu de Ações */}
-                <IconButton
-                  onClick={(e) => setAnchorEl(e.currentTarget)}
-                  sx={{
-                    border: '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    color: '#6b7280',
-                    '&:hover': {
-                      backgroundColor: '#f9fafb',
-                      borderColor: '#9ca3af',
-                    }
-                  }}
-                >
-                  <MoreVert />
-                </IconButton>
-              </Box>
+    <Box sx={{ minHeight: '100vh', bgcolor: '#f9fafb' }}>
+      {successMessage && (<Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}><Alert severity="success" onClose={() => setSuccessMessage(null)}>{successMessage}</Alert></Box>)}
+      <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+        <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', p: 3, mb: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+            <TextField placeholder="Buscar cardápios..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '12px' } }} InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon sx={{ color: '#64748b' }} /></InputAdornment>), endAdornment: searchTerm && (<InputAdornment position="end"><IconButton size="small" onClick={() => setSearchTerm('')}><ClearIcon fontSize="small" /></IconButton></InputAdornment>)}}/>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <Button variant={filtersExpanded || hasActiveFilters ? 'contained' : 'outlined'} startIcon={filtersExpanded ? <ExpandLessIcon /> : <TuneRounded />} onClick={toggleFilters}>Filtros{hasActiveFilters && !filtersExpanded && (<Box sx={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', bgcolor: '#ef4444' }}/>)}</Button>
+              <Button startIcon={<AddIcon />} onClick={() => navigate("/cardapios/novo")} sx={{ bgcolor: '#059669', color: 'white', '&:hover': { bgcolor: '#047857' } }}>Novo Cardápio</Button>
+              <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)} sx={{ border: '1px solid #d1d5db' }}><MoreVert /></IconButton>
             </Box>
           </Box>
-
-          {/* Filtros Avançados */}
-          <Collapse in={showFilters}>
-            <FiltersContent />
-          </Collapse>
+          <Collapse in={filtersExpanded} timeout={400}><Box sx={{ mb: 3 }}><FiltersContent /></Box></Collapse>
+          <Typography variant="body2" sx={{ mb: 2, color: '#64748b' }}>{`Mostrando ${Math.min((page * rowsPerPage) + 1, filteredCardapios.length)}-${Math.min((page + 1) * rowsPerPage, filteredCardapios.length)} de ${filteredCardapios.length} cardápios`}</Typography>
         </Card>
 
-        {/* Chips de Filtros Ativos */}
-        {hasActiveFilters && (
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-            {searchTerm && (
-              <Chip
-                label={`Busca: "${searchTerm}"`}
-                onDelete={removeSearchFilter}
-                color="primary"
-                variant="outlined"
-                size="small"
-              />
-            )}
-            {selectedModalidade && (
-              <Chip
-                label={`Modalidade: ${selectedModalidade}`}
-                onDelete={removeModalidadeFilter}
-                color="primary"
-                variant="outlined"
-                size="small"
-              />
-            )}
-            {selectedStatus && (
-              <Chip
-                label={`Status: ${selectedStatus === 'ativo' ? 'Ativos' : 'Inativos'}`}
-                onDelete={removeStatusFilter}
-                color="primary"
-                variant="outlined"
-                size="small"
-              />
-            )}
-          </Box>
-        )}
-
-        {/* Contador de Cardápios */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography
-            sx={{
-              color: '#6b7280',
-              fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-            }}
-          >
-            Mostrando {paginatedCardapios.length} de {filteredCardapios.length} cardápios
-            {filteredCardapios.length !== cardapios.length && (
-              <Typography
-                component="span"
-                sx={{
-                  color: '#4f46e5',
-                  fontSize: '0.875rem',
-                  ml: 1,
-                  fontWeight: 500,
-                }}
-              >
-                (filtrados de {cardapios.length} total)
-              </Typography>
-            )}
-          </Typography>
-        </Box>
-
-        {/* Tabela de Cardápios */}
         {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-            <CircularProgress />
-          </Box>
+          <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><CircularProgress size={60} /></CardContent></Card>
         ) : error ? (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
+          <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={loadCardapios}>Tentar Novamente</Button></CardContent></Card>
         ) : filteredCardapios.length === 0 ? (
-          <Box sx={{ textAlign: 'center', py: 8 }}>
-            <MenuBook sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
-            <Typography variant="h6" color="text.secondary">
-              Nenhum cardápio encontrado
-            </Typography>
-            <Typography color="text.secondary">
-              {searchTerm || hasActiveFilters 
-                ? 'Tente ajustar os filtros ou buscar por outros termos'
-                : 'Comece criando seu primeiro cardápio'
-              }
-            </Typography>
-          </Box>
+          <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><MenuBook sx={{ fontSize: 64, color: '#d1d5db', mb: 2 }} /><Typography variant="h6" sx={{ color: '#6b7280' }}>Nenhum cardápio encontrado</Typography></CardContent></Card>
         ) : (
-          <Paper sx={{ width: '100%', overflow: 'hidden', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)' }}>
+          <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px' }}>
             <TableContainer>
-              <Table stickyHeader>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Cardápio</TableCell>
-                    <TableCell>Modalidade</TableCell>
-                    <TableCell>Período</TableCell>
-                    <TableCell>Vigência</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell align="center">Ações</TableCell>
-                  </TableRow>
-                </TableHead>
+              <Table>
+                <TableHead><TableRow><TableCell>Cardápio</TableCell><TableCell>Modalidade</TableCell><TableCell>Vigência</TableCell><TableCell align="center">Status</TableCell><TableCell align="center">Ações</TableCell></TableRow></TableHead>
                 <TableBody>
                   {paginatedCardapios.map((cardapio) => (
                     <TableRow key={cardapio.id} hover>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <MenuBook color="primary" fontSize="small" />
-                          <Box>
-                            <Typography variant="subtitle2" fontWeight="bold">
-                              {cardapio.nome}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              ID: {cardapio.id}
-                            </Typography>
-                          </Box>
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">
-                          {cardapio.modalidade_nome || 'Não definida'}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <CalendarToday fontSize="small" color="action" />
-                          <Typography variant="body2">
-                            {cardapio.periodo_dias} dias
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">
-                          {formatarData(cardapio.data_inicio)} até {formatarData(cardapio.data_fim)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          icon={cardapio.ativo ? <CheckCircle /> : <Cancel />}
-                          label={cardapio.ativo ? 'Ativo' : 'Inativo'}
-                          color={cardapio.ativo ? 'success' : 'error'}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell align="center">
-                        <Tooltip title="Ver detalhes">
-                          <IconButton
-                            size="small"
-                            onClick={() => navigate(`/cardapios/${cardapio.id}`)}
-                            sx={{
-                              color: '#4f46e5',
-                              '&:hover': {
-                                backgroundColor: '#f0f9ff',
-                              }
-                            }}
-                          >
-                            <Visibility />
-                          </IconButton>
-                        </Tooltip>
-                      </TableCell>
+                      <TableCell><Typography variant="body2" sx={{ fontWeight: 600 }}>{cardapio.nome}</Typography><Typography variant="caption" color="text.secondary">{cardapio.periodo_dias} dias</Typography></TableCell>
+                      <TableCell><Typography variant="body2" color="text.secondary">{cardapio.modalidade_nome || 'N/A'}</Typography></TableCell>
+                      <TableCell><Typography variant="body2" color="text.secondary">{`${formatarData(cardapio.data_inicio)} a ${formatarData(cardapio.data_fim)}`}</Typography></TableCell>
+                      <TableCell align="center"><Chip label={cardapio.ativo ? 'Ativo' : 'Inativo'} size="small" color={cardapio.ativo ? 'success' : 'error'} variant="outlined" /></TableCell>
+                      <TableCell align="center"><Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => navigate(`/cardapios/${cardapio.id}`)} color="primary"><Info fontSize="small" /></IconButton></Tooltip></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </TableContainer>
-            
-            {/* Paginação */}
-            <TablePagination
-              rowsPerPageOptions={[5, 10, 25, 50]}
-              component="div"
-              count={filteredCardapios.length}
-              rowsPerPage={rowsPerPage}
-              page={page}
-              onPageChange={handleChangePage}
-              onRowsPerPageChange={handleChangeRowsPerPage}
-              labelRowsPerPage="Linhas por página:"
-              labelDisplayedRows={({ from, to, count }) => 
-                `${from}-${to} de ${count !== -1 ? count : `mais de ${to}`}`
-              }
-            />
+            <TablePagination component="div" count={filteredCardapios.length} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage} onRowsPerPageChange={handleChangeRowsPerPage} rowsPerPageOptions={[5, 10, 25, 50]} labelRowsPerPage="Itens por página:" />
           </Paper>
         )}
-
-        {/* Menu de Ações */}
-        <Menu
-          anchorEl={anchorEl}
-          open={Boolean(anchorEl)}
-          onClose={() => setAnchorEl(null)}
-          transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-          anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-        >
-          <MenuItem 
-            onClick={() => {
-              clearFilters();
-              setAnchorEl(null);
-            }}
-            disabled={!hasActiveFilters}
-            sx={{ minWidth: 150 }}
-          >
-            <Clear sx={{ mr: 1, fontSize: 20 }} />
-            Limpar Filtros
-          </MenuItem>
-        </Menu>
-
-        {/* Sistema de Mensagens */}
-        <Snackbar
-          open={!!successMessage}
-          autoHideDuration={4000}
-          onClose={() => setSuccessMessage("")}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        >
-          <Alert 
-            onClose={() => setSuccessMessage("")} 
-            severity="success" 
-            sx={{ width: '100%' }}
-          >
-            {successMessage}
-          </Alert>
-        </Snackbar>
       </Box>
+      
+      {/* Menu de Ações */}
+      <Menu anchorEl={actionsMenuAnchor} open={Boolean(actionsMenuAnchor)} onClose={() => setActionsMenuAnchor(null)}>
+        <MenuItem disabled><Typography>Nenhuma ação disponível</Typography></MenuItem>
+      </Menu>
     </Box>
   );
-}
+};
+
+export default CardapiosPage;

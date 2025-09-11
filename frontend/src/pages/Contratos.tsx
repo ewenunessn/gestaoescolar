@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Box,
   Typography,
@@ -9,7 +9,8 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
+  Card,
+  CardContent,
   IconButton,
   Chip,
   Alert,
@@ -19,13 +20,30 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Paper,
+  CircularProgress,
+  Menu,
+  Collapse,
+  Divider,
+  TablePagination,
+  Tooltip,
 } from "@mui/material";
-import { Add, Edit, Visibility, Search, Clear } from "@mui/icons-material";
+import {
+  Add as AddIcon,
+  Info as InfoIcon,
+  Search as SearchIcon,
+  Clear as ClearIcon,
+  MenuBook,
+  TuneRounded,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
+  MoreVert,
+} from "@mui/icons-material";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { listarContratos } from "../services/contratos";
 import { listarFornecedores } from "../services/fornecedores";
-// import { listarAditivosContrato } from "../services/aditivosContratos"; // Removido - módulo de aditivos excluído
 
+// Interfaces
 interface Contrato {
   id: number;
   fornecedor_id: number;
@@ -41,286 +59,185 @@ interface Fornecedor {
   nome: string;
 }
 
-const Contratos: React.FC = () => {
+const ContratosPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const fornecedorIdParam = searchParams.get('fornecedor_id');
-  
+
+  // Estados principais
   const [contratos, setContratos] = useState<Contrato[]>([]);
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
-  // const [aditivosMap, setAditivosMap] = useState<Map<number, any[]>>(new Map()); // Removido - módulo de aditivos excluído
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filtros, setFiltros] = useState({
-    busca: "",
-    fornecedor_id: fornecedorIdParam ? Number(fornecedorIdParam) : "",
-    status: "",
-  });
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  
+  // Estados do menu de ações
+  const [actionsMenuAnchor, setActionsMenuAnchor] = useState<null | HTMLElement>(null);
 
-  useEffect(() => {
-    carregarDados();
-  }, []);
+  // Estados de filtros
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedFornecedor, setSelectedFornecedor] = useState<number | string>(fornecedorIdParam ? Number(fornecedorIdParam) : "");
+  const [selectedStatus, setSelectedStatus] = useState("");
+  const [sortBy, setSortBy] = useState("numero");
+  const [filtersExpanded, setFiltersExpanded] = useState(!!fornecedorIdParam);
+  const [hasActiveFilters, setHasActiveFilters] = useState(!!fornecedorIdParam);
 
-  const carregarDados = async () => {
+  // Estados de paginação
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  // Carregar dados
+  const loadContratos = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const [contratosData, fornecedoresData] = await Promise.all([
         listarContratos(),
         listarFornecedores(),
       ]);
-      setContratos(contratosData);
-      setFornecedores(fornecedoresData);
-
-      // Carregar aditivos para todos os contratos - removido, módulo de aditivos excluído
-    // const aditivosPromises = contratosData.map(async (contrato: Contrato) => {
-    //   try {
-    //     const aditivos = await listarAditivosContrato(contrato.id);
-    //     return { contratoId: contrato.id, aditivos };
-    //   } catch (error) {
-    //     return { contratoId: contrato.id, aditivos: [] };
-    //   }
-    // });
-    // const aditivosResults = await Promise.all(aditivosPromises);
-    // const newAditivosMap = new Map();
-    // aditivosResults.forEach(({ contratoId, aditivos }) => {
-    //   newAditivosMap.set(contratoId, aditivos);
-    // });
-    // setAditivosMap(newAditivosMap);
-
-    } catch (error) {
-      setError("Erro ao carregar dados");
+      setContratos(Array.isArray(contratosData) ? contratosData : []);
+      setFornecedores(Array.isArray(fornecedoresData) ? fornecedoresData : []);
+    } catch (err) {
+      setError("Erro ao carregar contratos. Tente novamente.");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const fornecedorMap = new Map(fornecedores.map((f) => [f.id, f.nome]));
+  useEffect(() => {
+    loadContratos();
+  }, [loadContratos]);
 
-  // Função simplificada - módulo de aditivos foi excluído do sistema
-  function getDataFimFinal(contrato: Contrato) {
-    if (!contrato) return null;
+  // Mapa de fornecedores para performance
+  const fornecedorMap = useMemo(() => new Map(fornecedores.map(f => [f.id, f.nome])), [fornecedores]);
 
-    const dataOriginal = new Date(contrato.data_fim);
-    return {
-      dataFinal: dataOriginal,
-      temAditivo: false,
-      dataOriginal
-    };
-  }
+  // Detectar filtros ativos
+  useEffect(() => {
+    setHasActiveFilters(!!(searchTerm || selectedFornecedor || selectedStatus));
+  }, [searchTerm, selectedFornecedor, selectedStatus]);
 
-  // Função simplificada - módulo de aditivos foi excluído do sistema
-  function getStatusContrato(contrato: Contrato) {
-    if (!contrato) return { status: "Desconhecido", color: "default" };
-
+  // Funções de status e data
+  const getStatusContrato = useCallback((contrato: Contrato) => {
+    if (!contrato.ativo) return { status: "Inativo", color: "default" as const };
     const hoje = new Date();
-    const inicio = new Date(contrato.data_inicio);
-    const infoDataFim = getDataFimFinal(contrato);
-    
-    if (!infoDataFim) return { status: "Desconhecido", color: "default" };
+    const fim = new Date(contrato.data_fim);
+    if (hoje > fim) return { status: "Expirado", color: "error" as const };
+    return { status: "Ativo", color: "success" as const };
+  }, []);
 
-    if (!contrato.ativo) return { status: "Inativo", color: "error" };
-    if (hoje < inicio) return { status: "Pendente", color: "warning" };
-    
-    if (hoje > infoDataFim.dataFinal) return { status: "Expirado", color: "error" };
-    return { status: "Ativo", color: "success" };
-  }
+  // Filtrar e ordenar contratos
+  const filteredContratos = useMemo(() => {
+    return contratos.filter(contrato => {
+      const fornecedorNome = fornecedorMap.get(contrato.fornecedor_id)?.toLowerCase() || "";
+      const matchesSearch = contrato.numero.toLowerCase().includes(searchTerm.toLowerCase()) || fornecedorNome.includes(searchTerm.toLowerCase());
+      const matchesFornecedor = !selectedFornecedor || contrato.fornecedor_id === selectedFornecedor;
+      const statusInfo = getStatusContrato(contrato);
+      const matchesStatus = !selectedStatus || statusInfo.status.toLowerCase() === selectedStatus;
+      
+      return matchesSearch && matchesFornecedor && matchesStatus;
+    }).sort((a, b) => a.numero.localeCompare(b.numero));
+  }, [contratos, searchTerm, selectedFornecedor, selectedStatus, fornecedorMap, getStatusContrato]);
 
-  const contratosFiltrados = contratos.filter((contrato) => {
-    const matchBusca = !filtros.busca || 
-      contrato.numero.toLowerCase().includes(filtros.busca.toLowerCase()) ||
-      fornecedorMap.get(contrato.fornecedor_id)?.toLowerCase().includes(filtros.busca.toLowerCase());
-    
-    const matchFornecedor = !filtros.fornecedor_id || 
-      contrato.fornecedor_id === filtros.fornecedor_id;
-    
-    // Usar status calculado para filtros
-    const status = getStatusContrato(contrato);
-    
-    const matchStatus = !filtros.status || 
-      (filtros.status === "ativo" && (status.status === "Ativo" || status.status === "Prorrogado")) ||
-      (filtros.status === "inativo" && status.status === "Inativo") ||
-      (filtros.status === "expirado" && (status.status === "Expirado" || status.status === "Expirado (Prorrogado)")) ||
-      (filtros.status === "prorrogado" && status.status === "Prorrogado");
+  // Contratos paginados
+  const paginatedContratos = useMemo(() => {
+    const startIndex = page * rowsPerPage;
+    return filteredContratos.slice(startIndex, startIndex + rowsPerPage);
+  }, [filteredContratos, page, rowsPerPage]);
 
-    return matchBusca && matchFornecedor && matchStatus;
-  });
+  // Funções de paginação
+  const handleChangePage = useCallback((event: unknown, newPage: number) => setPage(newPage), []);
+  const handleChangeRowsPerPage = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  }, []);
+  
+  // Reset da página quando filtros mudam
+  useEffect(() => setPage(0), [searchTerm, selectedFornecedor, selectedStatus, sortBy]);
 
-  const limparFiltros = () => {
-    setFiltros({
-      busca: "",
-      fornecedor_id: "",
-      status: "",
-    });
-    // Remove o parâmetro da URL se existir
-    if (fornecedorIdParam) {
-      navigate('/contratos', { replace: true });
-    }
-  };
+  const clearFilters = useCallback(() => {
+    setSearchTerm("");
+    setSelectedFornecedor("");
+    setSelectedStatus("");
+    setSortBy("numero");
+    if (fornecedorIdParam) navigate('/contratos', { replace: true });
+  }, [fornecedorIdParam, navigate]);
 
-  const handleVerDetalhes = (id: number) => {
-    navigate(`/contratos/${id}`);
-  };
+  const toggleFilters = useCallback(() => setFiltersExpanded(!filtersExpanded), [filtersExpanded]);
+  const formatarData = (data: string) => new Date(data).toLocaleDateString('pt-BR');
+  const formatarValor = (valor?: number) => `R$ ${(Number(valor) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
 
-  if (loading) {
-    return (
-      <Box sx={{ p: 3 }}>
-        <Typography>Carregando...</Typography>
+  // Componente de conteúdo dos filtros
+  const FiltersContent = () => (
+    <Box sx={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)', borderRadius: '16px', p: 3, border: '1px solid rgba(148, 163, 184, 0.1)' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}><TuneRounded sx={{ color: '#4f46e5' }} /><Typography variant="h6" sx={{ fontWeight: 600, color: '#1e293b' }}>Filtros Avançados</Typography></Box>
+        {hasActiveFilters && <Button size="small" onClick={clearFilters} sx={{ color: '#64748b', textTransform: 'none' }}>Limpar Tudo</Button>}
       </Box>
-    );
-  }
+      <Divider sx={{ mb: 3 }} />
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2 }}>
+        <FormControl fullWidth><InputLabel>Fornecedor</InputLabel><Select value={selectedFornecedor} onChange={(e) => setSelectedFornecedor(e.target.value)} label="Fornecedor"><MenuItem value="">Todos</MenuItem>{fornecedores.map(f => <MenuItem key={f.id} value={f.id}>{f.nome}</MenuItem>)}</Select></FormControl>
+        <FormControl fullWidth><InputLabel>Status</InputLabel><Select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)} label="Status"><MenuItem value="">Todos</MenuItem><MenuItem value="ativo">Ativo</MenuItem><MenuItem value="expirado">Expirado</MenuItem><MenuItem value="inativo">Inativo</MenuItem></Select></FormControl>
+        <FormControl fullWidth><InputLabel>Ordenar por</InputLabel><Select value={sortBy} onChange={(e) => setSortBy(e.target.value)} label="Ordenar por"><MenuItem value="numero">Número</MenuItem></Select></FormControl>
+      </Box>
+    </Box>
+  );
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
-        <Typography variant="h4" component="h1">
-          Contratos
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<Add />}
-          onClick={() => navigate('/contratos/novo')}
-        >
-          Novo Contrato
-        </Button>
-      </Box>
+    <Box sx={{ minHeight: '100vh', bgcolor: '#f9fafb' }}>
+      {successMessage && (<Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}><Alert severity="success" onClose={() => setSuccessMessage(null)}>{successMessage}</Alert></Box>)}
+      <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+        <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', p: 3, mb: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+            <TextField placeholder="Buscar por número ou fornecedor..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '12px' } }} InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon sx={{ color: '#64748b' }} /></InputAdornment>), endAdornment: searchTerm && (<InputAdornment position="end"><IconButton size="small" onClick={() => setSearchTerm('')}><ClearIcon fontSize="small" /></IconButton></InputAdornment>)}}/>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <Button variant={filtersExpanded || hasActiveFilters ? 'contained' : 'outlined'} startIcon={filtersExpanded ? <ExpandLessIcon /> : <TuneRounded />} onClick={toggleFilters}>Filtros{hasActiveFilters && !filtersExpanded && (<Box sx={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', bgcolor: '#ef4444' }}/>)}</Button>
+              <Button startIcon={<AddIcon />} onClick={() => navigate("/contratos/novo")} sx={{ bgcolor: '#059669', color: 'white', '&:hover': { bgcolor: '#047857' } }}>Novo Contrato</Button>
+              <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)} sx={{ border: '1px solid #d1d5db' }}><MoreVert /></IconButton>
+            </Box>
+          </Box>
+          <Collapse in={filtersExpanded} timeout={400}><Box sx={{ mb: 3 }}><FiltersContent /></Box></Collapse>
+          <Typography variant="body2" sx={{ mb: 2, color: '#64748b' }}>{`Mostrando ${Math.min((page * rowsPerPage) + 1, filteredContratos.length)}-${Math.min((page + 1) * rowsPerPage, filteredContratos.length)} de ${filteredContratos.length} contratos`}</Typography>
+        </Card>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-
-      {/* Filtros */}
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          Filtros
-        </Typography>
-        <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", alignItems: "center" }}>
-          <TextField
-            label="Buscar"
-            value={filtros.busca}
-            onChange={(e) => setFiltros({ ...filtros, busca: e.target.value })}
-            size="small"
-            sx={{ minWidth: 200 }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Search />
-                </InputAdornment>
-              ),
-            }}
-          />
-          
-          <FormControl size="small" sx={{ minWidth: 200 }}>
-            <InputLabel>Fornecedor</InputLabel>
-            <Select
-              value={filtros.fornecedor_id}
-              label="Fornecedor"
-              onChange={(e) => setFiltros({ ...filtros, fornecedor_id: e.target.value as number })}
-            >
-              <MenuItem value="">Todos</MenuItem>
-              {fornecedores.map((fornecedor) => (
-                <MenuItem key={fornecedor.id} value={fornecedor.id}>
-                  {fornecedor.nome}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <FormControl size="small" sx={{ minWidth: 120 }}>
-            <InputLabel>Status</InputLabel>
-            <Select
-              value={filtros.status}
-              label="Status"
-              onChange={(e) => setFiltros({ ...filtros, status: e.target.value })}
-            >
-              <MenuItem value="">Todos</MenuItem>
-              <MenuItem value="ativo">Ativo</MenuItem>
-              <MenuItem value="prorrogado">Prorrogado</MenuItem>
-              <MenuItem value="expirado">Expirado</MenuItem>
-              <MenuItem value="inativo">Inativo</MenuItem>
-            </Select>
-          </FormControl>
-
-          <Button
-            variant="outlined"
-            startIcon={<Clear />}
-            onClick={limparFiltros}
-          >
-            Limpar
-          </Button>
-        </Box>
-      </Paper>
-
-      {/* Tabela de Contratos */}
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Número</TableCell>
-              <TableCell>Fornecedor</TableCell>
-              <TableCell>Data Início</TableCell>
-              <TableCell>Data Fim</TableCell>
-              <TableCell align="right">Valor Total</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell align="center">Ações</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {contratosFiltrados.map((contrato) => (
-              <TableRow key={contrato.id}>
-                <TableCell>{contrato.numero}</TableCell>
-                <TableCell>
-                  {fornecedorMap.get(contrato.fornecedor_id) || "N/A"}
-                </TableCell>
-                <TableCell>
-                  {new Date(contrato.data_inicio).toLocaleDateString()}
-                </TableCell>
-                <TableCell>
-                  {new Date(contrato.data_fim).toLocaleDateString()}
-                </TableCell>
-                <TableCell align="right">
-                  R$ {(Number(contrato.valor_total_contrato) || 0).toFixed(2)}
-                </TableCell>
-                <TableCell>
-                  {(() => {
+        {loading ? (
+          <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><CircularProgress size={60} /></CardContent></Card>
+        ) : error ? (
+          <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={loadContratos}>Tentar Novamente</Button></CardContent></Card>
+        ) : filteredContratos.length === 0 ? (
+          <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><MenuBook sx={{ fontSize: 64, color: '#d1d5db', mb: 2 }} /><Typography variant="h6" sx={{ color: '#6b7280' }}>Nenhum contrato encontrado</Typography></CardContent></Card>
+        ) : (
+          <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px' }}>
+            <TableContainer>
+              <Table>
+                <TableHead><TableRow><TableCell>Número</TableCell><TableCell>Fornecedor</TableCell><TableCell>Vigência</TableCell><TableCell align="right">Valor Total</TableCell><TableCell align="center">Status</TableCell><TableCell align="center">Ações</TableCell></TableRow></TableHead>
+                <TableBody>
+                  {paginatedContratos.map((contrato) => {
                     const status = getStatusContrato(contrato);
                     return (
-                      <Chip
-                        label={status.status}
-                        color={status.color as any}
-                        size="small"
-                      />
+                      <TableRow key={contrato.id} hover>
+                        <TableCell><Typography variant="body2" sx={{ fontWeight: 600 }}>{contrato.numero}</Typography></TableCell>
+                        <TableCell><Typography variant="body2" color="text.secondary">{fornecedorMap.get(contrato.fornecedor_id) || "N/A"}</Typography></TableCell>
+                        <TableCell><Typography variant="body2" color="text.secondary">{`${formatarData(contrato.data_inicio)} a ${formatarData(contrato.data_fim)}`}</Typography></TableCell>
+                        <TableCell align="right"><Typography variant="body2" color="text.secondary">{formatarValor(contrato.valor_total_contrato)}</Typography></TableCell>
+                        <TableCell align="center"><Chip label={status.status} size="small" color={status.color} variant="outlined" /></TableCell>
+                        <TableCell align="center"><Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => navigate(`/contratos/${contrato.id}`)} color="primary"><InfoIcon fontSize="small" /></IconButton></Tooltip></TableCell>
+                      </TableRow>
                     );
-                  })()} 
-                </TableCell>
-                <TableCell align="center">
-                  <IconButton
-                    size="small"
-                    onClick={() => handleVerDetalhes(contrato.id)}
-                    title="Ver Detalhes"
-                  >
-                    <Visibility />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-
-      {contratosFiltrados.length === 0 && (
-        <Box sx={{ textAlign: "center", py: 4 }}>
-          <Typography variant="body1" color="text.secondary">
-            {contratos.length === 0 
-              ? "Nenhum contrato encontrado." 
-              : "Nenhum contrato corresponde aos filtros aplicados."
-            }
-          </Typography>
-        </Box>
-      )}
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            <TablePagination component="div" count={filteredContratos.length} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage} onRowsPerPageChange={handleChangeRowsPerPage} rowsPerPageOptions={[5, 10, 25, 50]} labelRowsPerPage="Itens por página:" />
+          </Paper>
+        )}
+      </Box>
+      
+      {/* Menu de Ações */}
+      <Menu anchorEl={actionsMenuAnchor} open={Boolean(actionsMenuAnchor)} onClose={() => setActionsMenuAnchor(null)}>
+        <MenuItem disabled><Typography>Nenhuma ação disponível</Typography></MenuItem>
+      </Menu>
     </Box>
   );
 };
 
-export default Contratos;
+export default ContratosPage;

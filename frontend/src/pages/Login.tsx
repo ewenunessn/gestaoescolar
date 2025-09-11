@@ -51,7 +51,7 @@ export default function Login() {
       
       // Salvar token
       localStorage.setItem("token", response.token);
-      localStorage.setItem("perfil", response.perfil);
+      localStorage.setItem("perfil", response.tipo); // Backend retorna 'tipo', não 'perfil'
       localStorage.setItem("nome", response.nome);
       
       // Extrair ID do token JWT e criar objeto user completo
@@ -60,7 +60,7 @@ export default function Login() {
         const user = {
           id: tokenPayload.id,
           nome: response.nome,
-          perfil: response.perfil
+          perfil: response.tipo // Backend retorna 'tipo', não 'perfil'
         };
         localStorage.setItem("user", JSON.stringify(user));
         console.log('👤 Dados do usuário salvos:', user);
@@ -70,7 +70,7 @@ export default function Login() {
         const user = {
           id: 1, // Fallback para admin
           nome: response.nome,
-          perfil: response.perfil
+          perfil: response.tipo // Backend retorna 'tipo', não 'perfil'
         };
         localStorage.setItem("user", JSON.stringify(user));
       }

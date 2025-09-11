@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { findUserByEmail, createUser, User } from "../models/User";
+import { findUserByEmail, createUser, User, resetUserSequence } from "../models/User";
 import { config } from "../config/config";
 const db = require("../database");
 
@@ -25,6 +25,9 @@ export async function register(req: Request, res: Response) {
 
     // Hash da senha
     const hash = await bcrypt.hash(senha, 10);
+    
+    // Resetar sequência para evitar conflitos de ID
+    await resetUserSequence();
     
     // Criar usuário com campos básicos (usando 'tipo' em vez de 'perfil')
     const novo = await createUser({ 

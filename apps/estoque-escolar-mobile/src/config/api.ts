@@ -41,7 +41,7 @@ export const API_ENDPOINTS = {
   
   // Estoque
   ESTOQUE_MODERNO: '/api/estoque-moderno',
-  ESTOQUE_CONSOLIDADO: '/api/estoque-consolidado',
+  ESTOQUE_ESCOLAR: '/api/estoque-escolar',
   
   // Fornecedores
   FORNECEDORES: '/api/fornecedores',
