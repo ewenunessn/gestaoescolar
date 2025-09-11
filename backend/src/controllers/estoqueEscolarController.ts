@@ -84,8 +84,11 @@ async function gerarBackupExcel(client: any) {
     XLSX.utils.book_append_sheet(wb, wsMovimentacoes, 'Movimentacoes');
 
     // Criar diretório de backup se não existir
-    const backupDir = path.join(process.cwd(), 'backups');
-    if (!fs.existsSync(backupDir)) {
+    // No Vercel, usar /tmp que é writable, em desenvolvimento usar ./backups
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL;
+    const backupDir = isProduction ? '/tmp' : path.join(process.cwd(), 'backups');
+    
+    if (!isProduction && !fs.existsSync(backupDir)) {
       fs.mkdirSync(backupDir, { recursive: true });
     }
 
