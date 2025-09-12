@@ -195,9 +195,9 @@ const EscolasPage = () => {
   }, []);
   const toggleFilters = useCallback(() => setFiltersExpanded(!filtersExpanded), [filtersExpanded]);
 
-  const handleFormChange = (event: React.ChangeEvent<HTMLInputElement | { name?: string; value: unknown }> | SelectChangeEvent<string>) => {
+  const handleFormChange = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | SelectChangeEvent<string>) => {
     const { name, value } = event.target;
-    setFormData(prev => ({ ...prev, [name!]: value }));
+    setFormData(prev => ({ ...prev, [name!]: value as string }));
   };
 
   const handleSwitchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -290,10 +290,10 @@ const EscolasPage = () => {
       </Box>
       <Divider sx={{ mb: 3 }} />
       <Grid container spacing={2}>
-        <Grid item xs={12} sm={6} md={3}><FormControl fullWidth><InputLabel>Município</InputLabel><Select value={selectedMunicipio} onChange={(e) => setSelectedMunicipio(e.target.value)} label="Município"><MenuItem value="">Todos</MenuItem>{municipios.map(m => <MenuItem key={m} value={m}>{m}</MenuItem>)}</Select></FormControl></Grid>
-        <Grid item xs={12} sm={6} md={3}><FormControl fullWidth><InputLabel>Status</InputLabel><Select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)} label="Status"><MenuItem value="">Todos</MenuItem><MenuItem value="ativo">Ativas</MenuItem><MenuItem value="inativo">Inativas</MenuItem></Select></FormControl></Grid>
-        <Grid item xs={12} sm={6} md={3}><FormControl fullWidth><InputLabel>Ordenar por</InputLabel><Select value={sortBy} onChange={(e) => setSortBy(e.target.value)} label="Ordenar por"><MenuItem value="name">Nome</MenuItem><MenuItem value="municipio">Município</MenuItem><MenuItem value="status">Status</MenuItem></Select></FormControl></Grid>
-        <Grid item xs={12} sm={6} md={3}><FormControl fullWidth><InputLabel>Modalidades</InputLabel><Select multiple value={selectedModalidades} onChange={(e) => setSelectedModalidades(e.target.value as string[])} input={<OutlinedInput label="Modalidades" />} renderValue={(selected) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map(v => <Chip key={v} label={v} size="small" />)}</Box>}>{modalidades.map(m => <MenuItem key={m} value={m}><Checkbox checked={selectedModalidades.includes(m)} />{m}</MenuItem>)}</Select></FormControl></Grid>
+        <Grid item xs={12} sm={6} md={3}><FormControl fullWidth><InputLabel>Município</InputLabel><Select value={selectedMunicipio} onChange={(e: SelectChangeEvent<string>) => setSelectedMunicipio(e.target.value)} label="Município"><MenuItem value="">Todos</MenuItem>{municipios.map(m => <MenuItem key={m} value={m}>{m}</MenuItem>)}</Select></FormControl></Grid>
+        <Grid item xs={12} sm={6} md={3}><FormControl fullWidth><InputLabel>Status</InputLabel><Select value={selectedStatus} onChange={(e: SelectChangeEvent<string>) => setSelectedStatus(e.target.value)} label="Status"><MenuItem value="">Todos</MenuItem><MenuItem value="ativo">Ativas</MenuItem><MenuItem value="inativo">Inativas</MenuItem></Select></FormControl></Grid>
+        <Grid item xs={12} sm={6} md={3}><FormControl fullWidth><InputLabel>Ordenar por</InputLabel><Select value={sortBy} onChange={(e: SelectChangeEvent<string>) => setSortBy(e.target.value)} label="Ordenar por"><MenuItem value="name">Nome</MenuItem><MenuItem value="municipio">Município</MenuItem><MenuItem value="status">Status</MenuItem></Select></FormControl></Grid>
+        <Grid item xs={12} sm={6} md={3}><FormControl fullWidth><InputLabel>Modalidades</InputLabel><Select multiple value={selectedModalidades} onChange={(e: SelectChangeEvent<string[]>) => setSelectedModalidades(e.target.value as string[])} input={<OutlinedInput label="Modalidades" />} renderValue={(selected) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map(v => <Chip key={v} label={v} size="small" />)}</Box>}>{modalidades.map(m => <MenuItem key={m} value={m}><Checkbox checked={selectedModalidades.includes(m)} />{m}</MenuItem>)}</Select></FormControl></Grid>
       </Grid>
     </Box>
   );
@@ -351,7 +351,7 @@ const EscolasPage = () => {
           <Grid item xs={12} sm={6}><TextField name="codigo" label="Código INEP" value={formData.codigo} onChange={handleFormChange} fullWidth /></Grid>
           <Grid item xs={12} sm={6}><FormControl fullWidth><InputLabel>Administração</InputLabel><Select name="administracao" value={formData.administracao} label="Administração" onChange={handleFormChange}><MenuItem value="municipal">Municipal</MenuItem><MenuItem value="estadual">Estadual</MenuItem><MenuItem value="federal">Federal</MenuItem><MenuItem value="particular">Particular</MenuItem></Select></FormControl></Grid>
           <Grid item xs={12}><TextField name="endereco" label="Endereço Completo" value={formData.endereco} onChange={handleFormChange} fullWidth /></Grid>
-          <Grid item xs={12}><LocationSelector selectedMunicipio={formData.municipio} onMunicipioChange={(m) => setFormData(p => ({...p, municipio: m}))} /></Grid>
+          <Grid item xs={12}><LocationSelector value={formData.municipio} onChange={(m) => setFormData(p => ({...p, municipio: m}))} label="Município" placeholder="Digite o nome do município ou cole uma URL do Google Maps" /></Grid>
           <Grid item xs={12} sm={6}><TextField name="telefone" label="Telefone" value={formData.telefone} onChange={handleFormChange} fullWidth /></Grid>
           <Grid item xs={12} sm={6}><TextField name="email" label="Email" type="email" value={formData.email} onChange={handleFormChange} fullWidth /></Grid>
           <Grid item xs={12}><TextField name="nome_gestor" label="Nome do Gestor" value={formData.nome_gestor} onChange={handleFormChange} fullWidth /></Grid>

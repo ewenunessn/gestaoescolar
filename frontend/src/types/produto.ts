@@ -4,6 +4,17 @@ export interface Produto {
   unidade: string;
   categoria?: string;
   descricao?: string;
+  marca?: string;
+  codigo_barras?: string;
+  peso?: number;
+  validade_minima?: number;
+  fator_divisao?: number;
+  tipo_processamento?: string;
+  imagem_url?: string;
+  preco_referencia?: number;
+  estoque_minimo?: number;
+  per_capita?: number;
+  modalidade_id?: number;
   ativo: boolean;
   created_at: string;
   updated_at: string;
@@ -14,6 +25,15 @@ export interface CriarProdutoRequest {
   unidade: string;
   categoria?: string;
   descricao?: string;
+  marca?: string;
+  codigo_barras?: string;
+  peso?: number;
+  validade_minima?: number;
+  fator_divisao?: number;
+  tipo_processamento?: string;
+  imagem_url?: string;
+  preco_referencia?: number;
+  estoque_minimo?: number;
   ativo?: boolean;
 }
 
@@ -44,6 +64,15 @@ export interface ImportarProdutoRequest {
   unidade: string;
   categoria?: string;
   descricao?: string;
+  marca?: string;
+  codigo_barras?: string;
+  peso?: number;
+  validade_minima?: number;
+  fator_divisao?: number;
+  tipo_processamento?: string;
+  imagem_url?: string;
+  preco_referencia?: number;
+  estoque_minimo?: number;
 }
 
 export interface ImportarProdutosResponse {

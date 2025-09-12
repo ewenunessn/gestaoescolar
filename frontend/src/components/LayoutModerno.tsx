@@ -20,6 +20,7 @@ import {
   Chip,
   useTheme,
   useMediaQuery,
+  Button, // <-- CORREÇÃO: Adicionada a importação do Button
 } from "@mui/material";
 import {
   Menu as MenuIcon,
@@ -33,16 +34,13 @@ import {
   Assignment,
   LocalShipping,
   Settings,
-  AccountCircle,
   Logout,
-  ShoppingCart,
   Storage,
   Calculate,
   Assessment,
 } from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
 import { logout } from "../services/auth";
-import { useCarrinho } from "../context/CarrinhoContext";
 
 const drawerWidth = 280;
 
@@ -77,7 +75,6 @@ const menuConfig = [
       { text: "Contratos", icon: <Assignment />, path: "/contratos" },
       { text: "Saldos de Contratos", icon: <Assessment />, path: "/saldos-contratos", badge: "Novo!", badgeColor: "primary" },
       { text: "Catálogo", icon: <Category />, path: "/catalogo", badge: "Novo!", badgeColor: "primary" },
-      { text: "Carrinho", icon: <ShoppingCart />, path: "/carrinho", showCartBadge: true },
       { text: "Pedidos", icon: <Assignment />, path: "/pedidos", badge: "Novo!", badgeColor: "success" },
       { text: "Recebimentos", icon: <LocalShipping />, path: "/recebimento-simples" },
     ],
@@ -94,12 +91,11 @@ const menuConfig = [
 interface NavItemProps {
   item: any;
   isActive: boolean;
-  totalItensCarrinho: number;
   onClick: (path: string) => void;
 }
 
 // Subcomponente para Item do Menu
-const NavItem: React.FC<NavItemProps> = ({ item, isActive, totalItensCarrinho, onClick }) => {
+const NavItem: React.FC<NavItemProps> = ({ item, isActive, onClick }) => {
   return (
     <ListItem disablePadding sx={{ mb: 0.5 }}>
       <ListItemButton
@@ -117,13 +113,7 @@ const NavItem: React.FC<NavItemProps> = ({ item, isActive, totalItensCarrinho, o
         }}
       >
         <ListItemIcon sx={{ color: 'inherit', minWidth: 40 }}>
-          {item.showCartBadge ? (
-            <Badge badgeContent={totalItensCarrinho} color="primary">
-              {item.icon}
-            </Badge>
-          ) : (
-            item.icon
-          )}
+          {item.icon}
         </ListItemIcon>
         <ListItemText
           primary={item.text}
@@ -148,20 +138,13 @@ const NavItem: React.FC<NavItemProps> = ({ item, isActive, totalItensCarrinho, o
 
 const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const { itens } = useCarrinho();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
-  const totalItensCarrinho = useMemo(() => itens.length, [itens]);
-
   const handleDrawerToggle = useCallback(() => setMobileOpen(prev => !prev), []);
-  const handleMenuClick = (event: React.MouseEvent<HTMLElement>) => setAnchorEl(event.currentTarget);
-  const handleMenuClose = () => setAnchorEl(null);
   const handleLogout = () => {
-    handleMenuClose();
     logout();
   };
   const handleNavigation = useCallback((path: string) => {
@@ -207,7 +190,6 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                     key={item.text}
                     item={item}
                     isActive={isActive}
-                    totalItensCarrinho={totalItensCarrinho}
                     onClick={handleNavigation}
                   />
                 );
@@ -217,10 +199,19 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         ))}
       </Box>
 
-      <Box sx={{ p: 2, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
-        <Typography variant="caption" color="text.secondary" display="block" textAlign="center">
+      <Box sx={{ p: 2, borderTop: '1px solid rgba(0,0,0,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="caption" color="text.secondary">
           © {new Date().getFullYear()} Sistema de Gestão
         </Typography>
+        <Button 
+          onClick={handleLogout}
+          size="small"
+          startIcon={<Logout fontSize="small" />}
+          color="inherit"
+          sx={{ textTransform: 'none', fontSize: '0.75rem', color: 'text.secondary' }}
+        >
+          Sair
+        </Button>
       </Box>
     </Box>
   );
@@ -236,7 +227,8 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           backdropFilter: 'blur(8px)',
           color: "text.primary",
           boxShadow: 'none',
-          borderBottom: '1px solid rgba(0,0,0,0.1)'
+          borderBottom: '1px solid rgba(0,0,0,0.1)',
+          display: 'none' // Oculta o AppBar completo
         }}
       >
         <Toolbar>
@@ -246,24 +238,6 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, fontWeight: 600 }}>
             {currentTitle}
           </Typography>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Tooltip title="Carrinho">
-              <IconButton color="inherit" onClick={() => handleNavigation("/carrinho")}>
-                <Badge badgeContent={totalItensCarrinho} color="primary">
-                  <ShoppingCart />
-                </Badge>
-              </IconButton>
-            </Tooltip>
-            <IconButton onClick={handleMenuClick} color="inherit">
-              <Avatar sx={{ width: 32, height: 32, bgcolor: "primary.light" }}><AccountCircle /></Avatar>
-            </IconButton>
-            <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose} PaperProps={{ sx: { borderRadius: 2, mt: 1 } }}>
-              <MenuItem onClick={handleMenuClose}><ListItemIcon><AccountCircle fontSize="small" /></ListItemIcon>Meu Perfil</MenuItem>
-              <MenuItem onClick={handleMenuClose}><ListItemIcon><Settings fontSize="small" /></ListItemIcon>Configurações</MenuItem>
-              <Divider />
-              <MenuItem onClick={handleLogout}><ListItemIcon><Logout fontSize="small" /></ListItemIcon>Sair</MenuItem>
-            </Menu>
-          </Box>
         </Toolbar>
       </AppBar>
 

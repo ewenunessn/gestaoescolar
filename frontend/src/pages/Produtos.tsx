@@ -69,6 +69,14 @@ interface Produto {
   unidade?: string;
   categoria?: string;
   marca?: string;
+  codigo_barras?: string;
+  peso?: number;
+  validade_minima?: number;
+  fator_divisao?: number;
+  tipo_processamento?: string;
+  imagem_url?: string;
+  preco_referencia?: number;
+  estoque_minimo?: number;
   ativo: boolean;
 }
 
@@ -78,8 +86,15 @@ interface ProdutoForm {
   unidade: string;
   categoria: string;
   marca: string;
+  codigo_barras?: string;
+  peso?: number;
+  validade_minima?: number;
+  fator_divisao?: number;
+  tipo_processamento?: string;
+  imagem_url?: string;
+  preco_referencia?: number;
+  estoque_minimo?: number;
   ativo: boolean;
-  // Adicione outros campos conforme necessário para o formulário
 }
 
 const ProdutosPage = () => {
@@ -251,12 +266,12 @@ const ProdutosPage = () => {
         marca: produto.marca || '',
         codigo_barras: produto.codigo_barras || '',
         unidade: produto.unidade || '',
-        peso: produto.peso || '',
-        validade_minima: produto.validade_minima || '',
-        fator_divisao: produto.fator_divisao || '',
+        peso: produto.peso || 0,
+        validade_minima: produto.validade_minima || 0,
+        fator_divisao: produto.fator_divisao || 1,
         tipo_processamento: produto.tipo_processamento || '',
         imagem_url: produto.imagem_url || '',
-        preco_referencia: produto.preco_referencia || '',
+        preco_referencia: produto.preco_referencia || 0,
         estoque_minimo: produto.estoque_minimo || 10,
         ativo: produto.ativo
       }));
@@ -410,6 +425,8 @@ const ProdutosPage = () => {
     <Box sx={{ minHeight: '100vh', bgcolor: '#f9fafb' }}>
       {successMessage && (<Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}><Alert severity="success" onClose={() => setSuccessMessage(null)}>{successMessage}</Alert></Box>)}
       <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+        <Typography variant="h4" sx={{ mb: 3, fontWeight: 700, color: '#1e293b' }}>Produtos</Typography>
+
         <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', p: 3, mb: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
             <TextField placeholder="Buscar produtos..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '12px' } }} InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon sx={{ color: '#64748b' }} /></InputAdornment>), endAdornment: searchTerm && (<InputAdornment position="end"><IconButton size="small" onClick={() => setSearchTerm('')}><ClearIcon fontSize="small" /></IconButton></InputAdornment>)}}/>
