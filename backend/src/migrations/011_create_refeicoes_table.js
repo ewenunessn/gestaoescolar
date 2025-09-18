@@ -1,5 +1,5 @@
 // Migração para criar tabela de refeições no PostgreSQL
-const db = require('../database');
+const db = require('../../database');
 
 module.exports = {
   async up() {

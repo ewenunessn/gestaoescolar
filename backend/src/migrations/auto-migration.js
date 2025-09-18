@@ -1,4 +1,4 @@
-const db = require('../database');
+const db = require('../../database');
 const fs = require('fs');
 const path = require('path');
 
@@ -149,9 +149,7 @@ class AutoMigration {
       'produtos',
       'modalidades',
       'escolas',
-      'pedidos_v2',
-      'pedido_itens_v2',
-      'recebimentos_simples'
+
     ];
 
     const missingTables = [];
