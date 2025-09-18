@@ -51,19 +51,6 @@ class CacheManager {
     }
   }
 
-  // Métodos específicos para recebimento
-  cacheRecebimento(recebimentoId: number, data: any): void {
-    this.set(`recebimento:${recebimentoId}`, data, 10 * 60 * 1000); // 10 minutos
-  }
-
-  getRecebimento(recebimentoId: number): any | null {
-    return this.get(`recebimento:${recebimentoId}`);
-  }
-
-  invalidateRecebimento(recebimentoId: number): void {
-    this.delete(`recebimento:${recebimentoId}`);
-  }
-
   cacheProduto(produtoId: number, data: any): void {
     this.set(`produto:${produtoId}`, data, 30 * 60 * 1000); // 30 minutos
   }

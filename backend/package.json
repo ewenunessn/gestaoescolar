@@ -11,7 +11,10 @@
     "start:vercel": "node api/index.js",
     "lint": "eslint . --ext .ts",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "migrate": "node run-migration.js",
+    "migrate:guias": "node run-migration-guias.js",
+    "migrate:guias:local": "node run-migration-guias-local.js"
   },
   "author": "",
   "license": "MIT",
@@ -29,6 +32,7 @@
     "multer": "^2.0.2",
     "pg": "^8.16.3",
     "pg-hstore": "^2.3.4",
+    "sequelize": "^6.37.7",
     "xlsx": "^0.18.5",
     "zod": "^3.22.4"
   },

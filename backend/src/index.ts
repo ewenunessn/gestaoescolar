@@ -4,35 +4,30 @@ import dotenv from "dotenv";
 import cors from "cors";
 import { config } from "./config";
 
-// Importar apenas rotas essenciais que funcionam com PostgreSQL
-import userRoutes from "./routes/userRoutes";
+// Importar rotas organizadas por módulos
+import userRoutes from "./modules/usuarios/routes/userRoutes";
 
 // Importar rotas essenciais
-import escolaRoutes from "./routes/escolaRoutes";
-import modalidadeRoutes from "./routes/modalidadeRoutes";
-import escolaModalidadeRoutes from "./routes/escolaModalidadeRoutes";
-import carrinhoRoutes from "./routes/carrinhoRoutes";
-import fornecedorRoutes from "./routes/fornecedorRoutes";
-import contratoRoutes from "./routes/contratoRoutes";
-import contratoProdutoRoutes from "./routes/contratoProdutoRoutes";
-import { createAditivoContratoRoutes } from "./routes/aditivoContratoRoutes";
+import escolaRoutes from "./modules/escolas/routes/escolaRoutes";
+import modalidadeRoutes from "./modules/cardapios/routes/modalidadeRoutes";
+import escolaModalidadeRoutes from "./modules/guias/routes/escolaModalidadeRoutes";
+import fornecedorRoutes from "./modules/contratos/routes/fornecedorRoutes";
+import contratoRoutes from "./modules/contratos/routes/contratoRoutes";
+import contratoProdutoRoutes from "./modules/contratos/routes/contratoProdutoRoutes";
+import refeicaoRoutes from "./modules/cardapios/routes/refeicaoRoutes";
+import refeicaoProdutoRoutes from "./modules/cardapios/routes/refeicaoProdutoRoutes";
+import cardapioRoutes from "./modules/cardapios/routes/cardapioRoutes";
+import produtoRoutes from "./modules/produtos/routes/produtoRoutes";
+import produtoModalidadeRoutes from "./modules/estoque/routes/produtoModalidadeRoutes";
 
-import refeicaoRoutes from "./routes/refeicaoRoutes";
-import refeicaoProdutoRoutes from "./routes/refeicaoProdutoRoutes";
-import cardapioRoutes from "./routes/cardapioRoutes";
-import demandaRoutes from "./routes/demandaRoutes";
-import produtoRoutes from "./routes/produtoRoutes";
-import produtoModalidadeRoutes from "./routes/produtoModalidadeRoutes";
-// Importar rotas modernas
-import pedidoModernoRoutes from "./routes/pedidoModernoRoutes";
-import recebimentoSimplificadoRoutes from "./routes/recebimentoSimplificadoRoutes";
-import estoqueCentralRoutes from "./routes/estoqueCentralRoutes";
-import estoqueEscolaRoutes from "./routes/estoqueEscolaRoutes";
-import gestorEscolaRoutes from "./routes/gestorEscolaRoutes";
-import estoqueEscolarRoutes from "./routes/estoqueEscolarRoutes";
+import estoqueCentralRoutes from "./modules/estoque/routes/estoqueCentralRoutes";
+import estoqueEscolaRoutes from "./modules/estoque/routes/estoqueEscolaRoutes";
+import gestorEscolaRoutes from "./modules/guias/routes/gestorEscolaRoutes";
+import estoqueEscolarRoutes from "./modules/estoque/routes/estoqueEscolarRoutes";
+import demandaRoutes from "./modules/estoque/routes/demandaRoutes";
 
-
-import saldoContratosRoutes from "./routes/saldoContratosRoutes";
+import saldoContratosRoutes from "./modules/contratos/routes/saldoContratosRoutes";
+import guiaRoutes from "./modules/guias/routes/guiaRoutes";
 // Módulo de gás removido
 
 
@@ -145,44 +140,7 @@ app.get("/api/test-db", async (req, res) => {
 
 
 
-// Endpoint de teste para tabelas de pedidos
-app.get("/api/test-pedidos", async (req, res) => {
-  try {
-    // Verificar se as tabelas existem
-    const tabelas = await db.query(`
-      SELECT table_name 
-      FROM information_schema.tables 
-      WHERE table_schema = 'public' 
-      AND table_name LIKE '%pedido%'
-      ORDER BY table_name
-    `);
 
-    // Testar uma consulta simples
-    let pedidosCount = 0;
-    try {
-      const countResult = await db.query('SELECT COUNT(*) as total FROM pedidos');
-      pedidosCount = countResult.rows[0].total;
-    } catch (e) {
-      // Tabela pode não existir ainda
-    }
-
-    res.json({
-      success: true,
-      message: "Teste de tabelas de pedidos",
-      data: {
-        tabelasEncontradas: tabelas.rows.map((r: any) => r.table_name),
-        totalPedidos: pedidosCount,
-        timestamp: new Date().toISOString()
-      }
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Erro ao testar tabelas de pedidos",
-      error: error instanceof Error ? error.message : String(error)
-    });
-  }
-});
 
 // Registrar rotas essenciais
 app.use("/api/usuarios", userRoutes);
@@ -192,29 +150,23 @@ app.use("/api/auth", userRoutes); // compatibilidade para login
 app.use("/api/escolas", escolaRoutes);
 app.use("/api/modalidades", modalidadeRoutes);
 app.use("/api/escola-modalidades", escolaModalidadeRoutes);
-app.use("/api/carrinho", carrinhoRoutes);
 app.use("/api/fornecedores", fornecedorRoutes);
 app.use("/api/contratos", contratoRoutes);
 app.use("/api/contrato-produtos", contratoProdutoRoutes);
-app.use("/api/aditivos-contratos", createAditivoContratoRoutes(db.pool));
 
 app.use("/api/refeicoes", refeicaoRoutes);
 app.use("/api/refeicao-produtos", refeicaoProdutoRoutes);
 app.use("/api/cardapios", cardapioRoutes);
-app.use("/api/demanda", demandaRoutes);
+app.use("/api/demandas", demandaRoutes);
 app.use("/api/produtos", produtoRoutes);
-
 app.use("/api/produto-modalidades", produtoModalidadeRoutes);
-
-app.use("/api/pedidos-modernos", pedidoModernoRoutes);
-app.use("/api/recebimento-simples", recebimentoSimplificadoRoutes);
 app.use("/api/estoque-central", estoqueCentralRoutes);
 app.use("/api/estoque-escola", estoqueEscolaRoutes);
 app.use("/api/gestor-escola", gestorEscolaRoutes);
 app.use("/api/estoque-escolar", estoqueEscolarRoutes);
 
-
-app.use("/api/saldos-contratos", saldoContratosRoutes);
+app.use("/api/saldo-contratos", saldoContratosRoutes);
+app.use("/api/guias", guiaRoutes);
 // Rotas de gás removidas
 
 
@@ -243,19 +195,19 @@ app.get("/", (req, res) => {
       "/api/escolas",
       "/api/modalidades",
       "/api/escola-modalidades",
-      "/api/carrinho",
+
       "/api/fornecedores",
       "/api/contratos",
       "/api/contrato-produtos",
-      "/api/aditivos-contratos",
+
       "/api/refeicoes",
       "/api/cardapios",
       "/api/demanda",
       "/api/produtos",
       "/api/produtos-orm",
       "/api/produto-modalidades",
-      "/api/pedidos-modernos",
-      "/api/recebimento-simples",
+
+
       "/api/estoque-moderno",
       "/api/estoque-escolar",
       "/api/test-db",
@@ -278,19 +230,19 @@ app.use("*", (req, res) => {
       "/api/escolas",
       "/api/modalidades",
       "/api/escola-modalidades",
-      "/api/carrinho",
+
       "/api/fornecedores",
       "/api/contratos",
       "/api/contrato-produtos",
-      "/api/aditivos-contratos",
+
       "/api/refeicoes",
       "/api/cardapios",
       "/api/demanda",
       "/api/produtos",
       "/api/produtos-orm",
       "/api/produto-modalidades",
-      "/api/pedidos-modernos",
-      "/api/recebimento-simples",
+
+
       "/api/estoque-moderno",
       "/api/estoque-escolar",
       "/api/test-db",
@@ -333,7 +285,7 @@ async function iniciarServidor() {
 
       // Inicializar módulos
       console.log('🔧 Inicializando módulos...');
-      const { initEstoqueCentral } = await import('./controllers/estoqueCentralController');
+      const { initEstoqueCentral } = await import('./modules/estoque/controllers/estoqueCentralController');
       await initEstoqueCentral();
 
 

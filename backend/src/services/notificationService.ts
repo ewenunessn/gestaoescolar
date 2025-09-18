@@ -203,25 +203,7 @@ export class NotificationService {
     );
   }
 
-  async notificarPedidoAprovado(pedidoId: number, escolaNome: string): Promise<void> {
-    await this.notificarPorPerfil(
-      'escola',
-      'Pedido Aprovado',
-      `Seu pedido para ${escolaNome} foi aprovado e está sendo processado`,
-      'sucesso',
-      { tipo: 'pedido_aprovado', pedido_id: pedidoId, escola: escolaNome }
-    );
-  }
 
-  async notificarEntregaRealizada(pedidoId: number, escolaNome: string): Promise<void> {
-    await this.notificarPorPerfil(
-      'administrador',
-      'Entrega Realizada',
-      `Entrega realizada com sucesso na escola ${escolaNome}`,
-      'sucesso',
-      { tipo: 'entrega_realizada', pedido_id: pedidoId, escola: escolaNome }
-    );
-  }
 
   async notificarContratoVencendo(contratoNumero: string, fornecedorNome: string, diasRestantes: number): Promise<void> {
     await this.notificarPorPerfil(

@@ -1,4 +1,4 @@
-const db = require('../database');
+const db = require('../../database');
 
 interface AuditoriaEntry {
   modulo: string;
@@ -536,14 +536,14 @@ export class SistemaRobustoManager {
         const rows = await this.db.all(`
           SELECT c.id, c.numero,
             COALESCE(SUM(CASE WHEN mcc.tipo_movimentacao = 'CONSUMO' THEN mcc.quantidade ELSE 0 END), 0) as consumido,
-            COALESCE(SUM(cp.quantidade), 0) as contratado
+            COALESCE(SUM(cp.quantidade_contratada), 0) as contratado
           FROM contratos c
           LEFT JOIN contrato_produtos cp ON c.id = cp.contrato_id
           LEFT JOIN movimentacoes_consumo_contrato mcc ON c.id = mcc.contrato_id
           WHERE c.ativo = true
           GROUP BY c.id
           HAVING COALESCE(SUM(CASE WHEN mcc.tipo_movimentacao = 'CONSUMO' THEN mcc.quantidade ELSE 0 END), 0) > 
-                 COALESCE(SUM(cp.quantidade), 0)
+                 COALESCE(SUM(cp.quantidade_contratada), 0)
         `, []);
 
         if (rows && rows.length > 0) {

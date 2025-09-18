@@ -1,46 +1,33 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
-  Box,
-  Typography,
-  Card,
-  CardContent,
-  Grid,
-  Button,
-  Chip,
-  Alert,
-  CircularProgress,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  IconButton,
+  Box, Typography, Card, CardContent, Grid, Button, Chip, Alert,
+  CircularProgress, Table, TableBody, TableCell, TableContainer,
+  TableHead, TableRow, Paper, IconButton, Stack, Tooltip
 } from "@mui/material";
 import {
-  ArrowBack,
-  Add,
-  Business,
-  Phone,
-  Email,
-  LocationOn,
-  Description,
-  Visibility,
-  Edit,
+  ArrowBack as ArrowBackIcon,
+  Add as AddIcon,
+  Business as BusinessIcon,
+  Phone as PhoneIcon,
+  Email as EmailIcon,
+  LocationOn as LocationOnIcon,
+  Description as DescriptionIcon,
+  Visibility as VisibilityIcon,
+  Edit as EditIcon,
+  MenuBook as MenuBookIcon,
+  ReceiptLong as ReceiptLongIcon,
+  MonetizationOn as MonetizationOnIcon,
 } from "@mui/icons-material";
 import { buscarFornecedor } from "../services/fornecedores";
 import { listarContratos } from "../services/contratos";
-// import { listarAditivosContrato } from "../services/aditivosContratos"; // Removido - módulo de aditivos excluído
 
+// --- Interfaces ---
 interface Fornecedor {
   id: number;
   nome: string;
   cnpj: string;
-  telefone?: string;
   email?: string;
-  endereco?: string;
   ativo: boolean;
 }
 
@@ -50,301 +37,173 @@ interface Contrato {
   data_inicio: string;
   data_fim: string;
   ativo: boolean;
+  fornecedor_id: number;
   valor_total_contrato?: number;
 }
 
+// --- Funções Utilitárias ---
+const formatarData = (data: string) => new Date(data).toLocaleDateString("pt-BR", { timeZone: 'UTC' });
+const formatarMoeda = (valor: number = 0) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(valor);
+
+const getStatusContrato = (contrato: Contrato) => {
+  if (!contrato) return { status: "Desconhecido", color: "default" as const };
+  const hoje = new Date();
+  const inicio = new Date(contrato.data_inicio);
+  const dataFim = new Date(contrato.data_fim);
+  if (!contrato.ativo) return { status: "Inativo", color: "default" as const };
+  if (hoje < inicio) return { status: "Pendente", color: "warning" as const };
+  if (hoje > dataFim) return { status: "Expirado", color: "error" as const };
+  return { status: "Ativo", color: "success" as const };
+};
+
+// --- Subcomponentes de UI ---
+const PageHeader = ({ onBack, onEdit }) => (
+    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2, mb: 3 }}>
+        <Box>
+            <Typography variant="h4" sx={{ fontWeight: 700, color: '#1e293b' }}>
+                Detalhes do Fornecedor
+            </Typography>
+            <Button startIcon={<ArrowBackIcon />} onClick={onBack} sx={{ textTransform: 'none', color: 'text.secondary', p: 0, mt: 0.5 }}>
+                Voltar para lista de fornecedores
+            </Button>
+        </Box>
+        <Button variant="outlined" startIcon={<EditIcon />} onClick={onEdit}>
+            Editar Fornecedor
+        </Button>
+    </Box>
+);
+
+const InfoItem = ({ icon, label, value }) => (
+    <Stack direction="row" alignItems="center" spacing={1.5}>
+        {icon}
+        <Box>
+            <Typography variant="caption" color="text.secondary" display="block">{label}</Typography>
+            <Typography variant="body2" fontWeight={500}>{value}</Typography>
+        </Box>
+    </Stack>
+);
+
+// --- Componente Principal ---
 export default function FornecedorDetalhe() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [fornecedor, setFornecedor] = useState<Fornecedor | null>(null);
   const [contratos, setContratos] = useState<Contrato[]>([]);
-  // const [aditivosMap, setAditivosMap] = useState<Map<number, any[]>>(new Map()); // Removido - módulo de aditivos excluído
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    carregarDados();
-  }, [id]);
-
-  const carregarDados = async () => {
+  const carregarDados = useCallback(async () => {
     if (!id) return;
-    
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      
-      // Carregar dados do fornecedor
-      const fornecedorData = await buscarFornecedor(Number(id));
+      const [fornecedorData, todosContratos] = await Promise.all([
+        buscarFornecedor(Number(id)),
+        listarContratos()
+      ]);
       setFornecedor(fornecedorData);
-      
-      // Carregar contratos do fornecedor
-      const contratosData = await listarContratos();
-      const contratosFornecedor = contratosData.filter(
-        (contrato: Contrato) => contrato.fornecedor_id === Number(id)
+      const contratosDoFornecedor = todosContratos.filter(
+        (c: Contrato) => c.fornecedor_id === Number(id)
       );
-      setContratos(contratosFornecedor);
-
-      // Carregar aditivos removido - módulo de aditivos excluído do sistema
-      
-    } catch (error: any) {
-      setError(error.message || "Erro ao carregar dados do fornecedor");
+      setContratos(contratosDoFornecedor);
+    } catch (err: any) {
+      setError(err.message || "Erro ao carregar dados do fornecedor");
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
-  const handleNovoContrato = () => {
-    navigate(`/contratos/novo?fornecedor_id=${id}`);
-  };
+  useEffect(() => {
+    carregarDados();
+  }, [carregarDados]);
 
-  const handleVerContrato = (contratoId: number) => {
-    navigate(`/contratos/${contratoId}`);
-  };
+  const valorTotalContratos = useMemo(() => 
+    contratos.reduce((total, contrato) => total + (Number(contrato.valor_total_contrato) || 0), 0),
+    [contratos]
+  );
+  
+  const handleNovoContrato = useCallback(() => navigate(`/contratos/novo?fornecedor_id=${id}`), [navigate, id]);
+  const handleVerContrato = useCallback((contratoId: number) => navigate(`/contratos/${contratoId}`), [navigate]);
+  const handleEditarFornecedor = useCallback(() => navigate(`/fornecedores?edit=${id}`), [navigate, id]);
 
-  const handleEditarFornecedor = () => {
-    navigate(`/fornecedores?edit=${id}`);
-  };
-
-
-
-  const formatarData = (data: string) => {
-    return new Date(data).toLocaleDateString("pt-BR");
-  };
-
-  const formatarMoeda = (valor: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(valor);
-  };
-
-  // Funções para calcular status - aditivos removidos do sistema
-  const getStatusContrato = (contrato: Contrato) => {
-    if (!contrato) return { status: "Desconhecido", color: "default" };
-
-    const hoje = new Date();
-    const inicio = new Date(contrato.data_inicio);
-    const dataFim = new Date(contrato.data_fim);
-
-    if (!contrato.ativo) return { status: "Inativo", color: "error" };
-    if (hoje < inicio) return { status: "Pendente", color: "warning" };
-    if (hoje > dataFim) return { status: "Expirado", color: "error" };
-    return { status: "Ativo", color: "success" };
-  };
-
-  if (loading) {
-    return (
-      <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
-  if (error) {
-    return <Alert severity="error">{error}</Alert>;
-  }
-
-  if (!fornecedor) {
-    return <Alert severity="error">Fornecedor não encontrado</Alert>;
-  }
+  if (loading) return <Box sx={{ display: "flex", justifyContent: "center", alignItems: 'center', minHeight: '80vh' }}><CircularProgress size={60} /></Box>;
+  if (error) return <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}><Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={carregarDados}>Tentar Novamente</Button></CardContent></Card></Box>;
+  if (!fornecedor) return <Alert severity="error">Fornecedor não encontrado</Alert>;
 
   return (
-    <Box>
-      {/* Header */}
-      <Box
-        sx={{
-          mb: 3,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <Button
-          startIcon={<ArrowBack />}
-          onClick={() => navigate("/fornecedores")}
-          sx={{ mb: 2 }}
-        >
-          Voltar para Fornecedores
-        </Button>
-        <Box sx={{ display: 'flex', gap: 1 }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: '#f9fafb' }}>
+      <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+        <PageHeader onBack={() => navigate("/fornecedores")} onEdit={handleEditarFornecedor} />
 
-          <Button
-            variant="outlined"
-            startIcon={<Edit />}
-            onClick={handleEditarFornecedor}
-          >
-            Editar Fornecedor
-          </Button>
-        </Box>
-      </Box>
-
-      {/* Informações do Fornecedor */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-            <Business sx={{ mr: 1, fontSize: 32, color: "primary.main" }} />
-            <Typography variant="h4">
-              {fornecedor.nome}
-            </Typography>
-            <Chip
-              label={fornecedor.ativo ? "Ativo" : "Inativo"}
-              color={fornecedor.ativo ? "success" : "error"}
-              sx={{ ml: 2 }}
-            />
-          </Box>
-
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" color="text.secondary">
-                  CNPJ
-                </Typography>
-                <Typography variant="body1">
-                  {fornecedor.cnpj}
-                </Typography>
-              </Box>
-
-              {fornecedor.telefone && (
-                <Box sx={{ mb: 2, display: "flex", alignItems: "center" }}>
-                  <Phone sx={{ mr: 1, fontSize: 20, color: "text.secondary" }} />
+        <Grid container spacing={4}>
+          <Grid item xs={12} lg={8}>
+            <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', height: '100%' }}>
+              <CardContent sx={{ p: 3 }}>
+                <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 3 }}>
+                  <BusinessIcon color="primary" sx={{ fontSize: 40 }} />
                   <Box>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      Telefone
-                    </Typography>
-                    <Typography variant="body1">
-                      {fornecedor.telefone}
-                    </Typography>
+                    <Typography variant="h5" fontWeight="600">{fornecedor.nome}</Typography>
+                    <Chip label={fornecedor.ativo ? "Ativo" : "Inativo"} color={fornecedor.ativo ? "success" : "error"} size="small" variant="outlined" sx={{ mt: 0.5 }} />
                   </Box>
-                </Box>
-              )}
-
-              {fornecedor.email && (
-                <Box sx={{ mb: 2, display: "flex", alignItems: "center" }}>
-                  <Email sx={{ mr: 1, fontSize: 20, color: "text.secondary" }} />
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      E-mail
-                    </Typography>
-                    <Typography variant="body1">
-                      {fornecedor.email}
-                    </Typography>
-                  </Box>
-                </Box>
-              )}
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              {fornecedor.endereco && (
-                <Box sx={{ mb: 2, display: "flex", alignItems: "flex-start" }}>
-                  <LocationOn sx={{ mr: 1, fontSize: 20, color: "text.secondary", mt: 0.5 }} />
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      Endereço
-                    </Typography>
-                    <Typography variant="body1">
-                      {fornecedor.endereco}
-                    </Typography>
-                  </Box>
-                </Box>
-              )}
-
-              <Box sx={{ mt: 3 }}>
-                <Typography variant="h6" color="primary">
-                  {contratos.length} contrato(s) cadastrado(s)
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Valor total: {formatarMoeda(
-                    contratos.reduce((total, contrato) => 
-                      total + (contrato.valor_total_contrato || 0), 0
-                    )
-                  )}
-                </Typography>
-              </Box>
-            </Grid>
+                </Stack>
+                <Grid container spacing={3}>
+                  <Grid item xs={12} md={6}><InfoItem icon={<ReceiptLongIcon color="action" />} label="CNPJ" value={fornecedor.cnpj} /></Grid>
+                  {fornecedor.email && <Grid item xs={12} md={6}><InfoItem icon={<EmailIcon color="action" />} label="E-mail" value={fornecedor.email} /></Grid>}
+                </Grid>
+              </CardContent>
+            </Card>
           </Grid>
-        </CardContent>
-      </Card>
+          <Grid item xs={12} lg={4}>
+            <Stack spacing={4} height="100%">
+              <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', flex: 1 }}>
+                <CardContent sx={{ p: 3, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+                  <DescriptionIcon color="primary" sx={{ fontSize: 40, mb: 1 }}/>
+                  <Typography variant="h4" fontWeight="bold">{contratos.length}</Typography>
+                  <Typography color="text.secondary">Contrato(s) Cadastrado(s)</Typography>
+                </CardContent>
+              </Card>
+              <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', flex: 1 }}>
+                <CardContent sx={{ p: 3, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+                  <MonetizationOnIcon color="primary" sx={{ fontSize: 40, mb: 1 }}/>
+                  <Typography variant="h4" fontWeight="bold">{formatarMoeda(valorTotalContratos)}</Typography>
+                  <Typography color="text.secondary">em Valor Total de Contratos</Typography>
+                </CardContent>
+              </Card>
+            </Stack>
+          </Grid>
+        </Grid>
 
-      {/* Contratos */}
-      <Card>
-        <CardContent>
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              mb: 2,
-            }}
-          >
-            <Typography variant="h6" sx={{ display: "flex", alignItems: "center" }}>
-              <Description sx={{ mr: 1 }} />
-              Contratos ({contratos.length})
-            </Typography>
-            <Button
-              variant="contained"
-              startIcon={<Add />}
-              onClick={handleNovoContrato}
-            >
+        <Paper sx={{ mt: 4, width: '100%', overflow: 'hidden', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
+          <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: 1, borderColor: 'divider' }}>
+            <Typography variant="h6" fontWeight="600">Contratos</Typography>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={handleNovoContrato} sx={{ bgcolor: '#059669', '&:hover': { bgcolor: '#047857' } }}>
               Novo Contrato
             </Button>
           </Box>
-
           {contratos.length === 0 ? (
-            <Alert severity="info">
-              Este fornecedor ainda não possui contratos cadastrados.
-              <br />
-              Clique em "Novo Contrato" para cadastrar o primeiro contrato.
-            </Alert>
+            <Box sx={{ textAlign: 'center', py: 6 }}>
+                <MenuBookIcon sx={{ fontSize: 64, color: '#d1d5db', mb: 2 }} />
+                <Typography variant="h6" sx={{ color: '#6b7280' }}>Nenhum contrato encontrado</Typography>
+                <Typography variant="body2" color="text.secondary">Cadastre o primeiro contrato para este fornecedor.</Typography>
+            </Box>
           ) : (
-            <TableContainer component={Paper} variant="outlined">
+            <TableContainer>
               <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Número</TableCell>
-                    <TableCell>Período</TableCell>
-                    <TableCell>Valor Total</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell align="center">Ações</TableCell>
-                  </TableRow>
-                </TableHead>
+                <TableHead sx={{ bgcolor: 'grey.50' }}><TableRow>
+                  <TableCell>Número</TableCell><TableCell>Vigência</TableCell>
+                  <TableCell>Valor Total</TableCell><TableCell>Status</TableCell><TableCell align="center">Ações</TableCell>
+                </TableRow></TableHead>
                 <TableBody>
                   {contratos.map((contrato) => {
                     const status = getStatusContrato(contrato);
                     return (
-                      <TableRow key={contrato.id}>
-                        <TableCell>
-                          <Typography variant="body2" fontWeight="bold">
-                            {contrato.numero}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2">
-                            {formatarData(contrato.data_inicio)}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            até {formatarData(contrato.data_fim)}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          {contrato.valor_total_contrato 
-                            ? formatarMoeda(contrato.valor_total_contrato)
-                            : "N/A"
-                          }
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={status.status}
-                            color={status.color as any}
-                            size="small"
-                          />
-                        </TableCell>
+                      <TableRow key={contrato.id} hover>
+                        <TableCell><Typography variant="body2" fontWeight="600">{contrato.numero}</Typography></TableCell>
+                        <TableCell><Typography variant="body2">{`${formatarData(contrato.data_inicio)} a ${formatarData(contrato.data_fim)}`}</Typography></TableCell>
+                        <TableCell>{formatarMoeda(contrato.valor_total_contrato)}</TableCell>
+                        <TableCell><Chip label={status.status} color={status.color} size="small" variant="outlined" /></TableCell>
                         <TableCell align="center">
-                          <IconButton
-                            size="small"
-                            onClick={() => handleVerContrato(contrato.id)}
-                            title="Ver Detalhes"
-                          >
-                            <Visibility />
-                          </IconButton>
+                          <Tooltip title="Ver Detalhes do Contrato"><IconButton size="small" onClick={() => handleVerContrato(contrato.id)}><VisibilityIcon fontSize="small" /></IconButton></Tooltip>
                         </TableCell>
                       </TableRow>
                     );
@@ -353,8 +212,8 @@ export default function FornecedorDetalhe() {
               </Table>
             </TableContainer>
           )}
-        </CardContent>
-      </Card>
+        </Paper>
+      </Box>
     </Box>
   );
 }

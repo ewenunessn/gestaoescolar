@@ -68,7 +68,6 @@ interface Fornecedor {
   nome: string;
   cnpj: string;
   email?: string;
-  telefone?: string;
   ativo: boolean;
 }
 
@@ -101,7 +100,7 @@ const FornecedoresPage: React.FC = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [editingFornecedor, setEditingFornecedor] = useState<Fornecedor | null>(null);
   const [fornecedorToDelete, setFornecedorToDelete] = useState<Fornecedor | null>(null);
-  const [formData, setFormData] = useState({ nome: "", cnpj: "", email: "", telefone: "", ativo: true });
+  const [formData, setFormData] = useState({ nome: "", cnpj: "", email: "", ativo: true });
 
   // Carregar fornecedores
   const loadFornecedores = useCallback(async () => {
@@ -181,10 +180,10 @@ const FornecedoresPage: React.FC = () => {
   const openModal = (fornecedor: Fornecedor | null = null) => {
     if (fornecedor) {
       setEditingFornecedor(fornecedor);
-      setFormData({ nome: fornecedor.nome, cnpj: fornecedor.cnpj, email: fornecedor.email || '', telefone: fornecedor.telefone || '', ativo: fornecedor.ativo });
+      setFormData({ nome: fornecedor.nome, cnpj: fornecedor.cnpj, email: fornecedor.email || '', ativo: fornecedor.ativo });
     } else {
       setEditingFornecedor(null);
-      setFormData({ nome: "", cnpj: "", email: "", telefone: "", ativo: true });
+      setFormData({ nome: "", cnpj: "", email: "", ativo: true });
     }
     setModalOpen(true);
   };
@@ -239,6 +238,8 @@ const FornecedoresPage: React.FC = () => {
     <Box sx={{ minHeight: '100vh', bgcolor: '#f9fafb' }}>
       {successMessage && (<Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}><Alert severity="success" onClose={() => setSuccessMessage(null)}>{successMessage}</Alert></Box>)}
       <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+          <Typography variant="h4" sx={{ mb: 3, fontWeight: 700, color: '#1e293b' }}>Fornecedores</Typography>
+
         <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', p: 3, mb: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
             <TextField placeholder="Buscar por nome ou CNPJ..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '12px' } }} InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon sx={{ color: '#64748b' }} /></InputAdornment>), endAdornment: searchTerm && (<InputAdornment position="end"><IconButton size="small" onClick={() => setSearchTerm('')}><ClearIcon fontSize="small" /></IconButton></InputAdornment>)}}/>
@@ -262,13 +263,13 @@ const FornecedoresPage: React.FC = () => {
           <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px' }}>
             <TableContainer>
               <Table>
-                <TableHead><TableRow><TableCell>Nome</TableCell><TableCell>CNPJ</TableCell><TableCell>Contato</TableCell><TableCell align="center">Status</TableCell><TableCell align="center">Ações</TableCell></TableRow></TableHead>
+                <TableHead><TableRow><TableCell>Nome</TableCell><TableCell>CNPJ</TableCell><TableCell>Email</TableCell><TableCell align="center">Status</TableCell><TableCell align="center">Ações</TableCell></TableRow></TableHead>
                 <TableBody>
                   {paginatedFornecedores.map((f) => (
                     <TableRow key={f.id} hover>
                       <TableCell><Typography variant="body2" sx={{ fontWeight: 600 }}>{f.nome}</Typography></TableCell>
                       <TableCell><Typography variant="body2" color="text.secondary" fontFamily="monospace">{formatarDocumento(f.cnpj)}</Typography></TableCell>
-                      <TableCell><Typography variant="body2" color="text.secondary">{f.email || f.telefone || 'N/A'}</Typography></TableCell>
+                      <TableCell><Typography variant="body2" color="text.secondary">{f.email || 'N/A'}</Typography></TableCell>
                       <TableCell align="center"><Chip label={f.ativo ? 'Ativo' : 'Inativo'} size="small" color={f.ativo ? 'success' : 'error'} variant="outlined" /></TableCell>
                       <TableCell align="center">
                         <Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => navigate(`/fornecedores/${f.id}`)} color="primary"><InfoIcon fontSize="small" /></IconButton></Tooltip>
@@ -293,7 +294,6 @@ const FornecedoresPage: React.FC = () => {
             <TextField label="Nome" value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} required />
             <TextField label="CNPJ" value={formData.cnpj} onChange={(e) => setFormData({ ...formData, cnpj: e.target.value })} required />
             <TextField label="Email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
-            <TextField label="Telefone" value={formData.telefone} onChange={(e) => setFormData({ ...formData, telefone: e.target.value })} />
             <FormControlLabel control={<Switch checked={formData.ativo} onChange={(e) => setFormData({ ...formData, ativo: e.target.checked })} />} label="Ativo" />
           </Box>
         </DialogContent>

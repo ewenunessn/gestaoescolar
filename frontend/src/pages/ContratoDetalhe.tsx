@@ -1,721 +1,361 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   buscarContrato,
   editarContrato,
   removerContrato,
-} from "../services/contratos";
-import { listarFornecedores } from "../services/fornecedores";
-import { listarProdutos } from "../services/produtos";
-import { formatDateForInput } from "../utils/dateUtils";
-import {
   listarContratoProdutos,
   adicionarContratoProduto,
   editarContratoProduto,
   removerContratoProduto,
 } from "../services/contratos";
-import { listarAditivosContrato } from "../services/aditivosContratos";
+import { listarFornecedores } from "../services/fornecedores";
+import { listarProdutos } from "../services/produtos";
+import { formatDateForInput } from "../utils/dateUtils";
+
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Typography,
-  CircularProgress,
-  Alert,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  IconButton,
-  Card,
-  CardContent,
-  Grid,
-  Chip,
-  Box,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Checkbox,
-  FormControlLabel,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  Paper, Typography, CircularProgress, Alert, Button, Dialog,
+  DialogTitle, DialogContent, DialogActions, TextField, IconButton,
+  Card, CardContent, Grid, Chip, Box, FormControl, InputLabel,
+  Select, MenuItem, Checkbox, FormControlLabel, Stack, AlertTitle, Tooltip
 } from "@mui/material";
-import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/Delete";
-import AddIcon from "@mui/icons-material/Add";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import BusinessIcon from "@mui/icons-material/Business";
-import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
-import InventoryIcon from "@mui/icons-material/Inventory";
-import AditivosContrato from "../components/AditivosContrato";
+import {
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Add as AddIcon,
+  ArrowBack as ArrowBackIcon,
+  Business as BusinessIcon,
+  CalendarToday as CalendarTodayIcon,
+  ReceiptLong as ReceiptLongIcon,
+  ErrorOutline as ErrorOutlineIcon,
+  ShoppingCart as ShoppingCartIcon,
+  MenuBook as MenuBookIcon
+} from "@mui/icons-material";
 
-const produtoVazio = {
-  produto_id: "",
-  quantidade: "",
-  preco: "",
+// --- Constantes e Funções Utilitárias (Fora do Componente) ---
+
+const produtoVazio = { produto_id: "", quantidade: "", preco_unitario: "" };
+const contratoVazio = { fornecedor_id: "", numero: "", data_inicio: "", data_fim: "", ativo: true };
+
+const formatarData = (data: string) => new Date(data).toLocaleDateString("pt-BR", { timeZone: 'UTC' });
+const formatarMoeda = (valor: number = 0) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(valor);
+
+const getStatusContrato = (contrato: any) => {
+  if (!contrato) return { status: "Desconhecido", color: "default" as const };
+  const hoje = new Date();
+  const inicio = new Date(contrato.data_inicio);
+  const fim = new Date(contrato.data_fim);
+
+  if (!contrato.ativo) return { status: "Inativo", color: "default" as const };
+  if (hoje < inicio) return { status: "Pendente", color: "warning" as const };
+  if (hoje > fim) return { status: "Expirado", color: "error" as const };
+  return { status: "Ativo", color: "success" as const };
 };
 
-const contratoVazio = {
-  fornecedor_id: "",
-  numero: "",
-  data_inicio: "",
-  data_fim: "",
-  ativo: true,
+// --- Subcomponentes de UI ---
+
+const PageHeader = ({ onBack, onEdit, onDelete }) => (
+    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2, mb: 3 }}>
+        <Box>
+            <Typography variant="h4" sx={{ fontWeight: 700, color: '#1e293b' }}>
+                Detalhes do Contrato
+            </Typography>
+            <Button startIcon={<ArrowBackIcon />} onClick={onBack} sx={{ textTransform: 'none', color: 'text.secondary', p: 0, mt: 0.5 }}>
+                Voltar para lista de contratos
+            </Button>
+        </Box>
+        <Stack direction="row" spacing={1}>
+            <Button variant="outlined" color="primary" startIcon={<EditIcon />} onClick={onEdit}>
+                Editar
+            </Button>
+            <Button variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={onDelete}>
+                Excluir
+            </Button>
+        </Stack>
+    </Box>
+);
+
+const ContratoInfoCard = ({ contrato, fornecedor, valorTotal }) => {
+  const status = getStatusContrato(contrato);
+  return (
+    <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', mb: 4 }}>
+      <CardContent sx={{ p: 3 }}>
+        <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 3 }}>
+          <ReceiptLongIcon color="primary" sx={{ fontSize: 40 }} />
+          <Box>
+            <Typography variant="h5" component="div" fontWeight="600">
+              Contrato #{contrato.numero}
+            </Typography>
+            <Chip label={status.status} color={status.color} size="small" variant="outlined" sx={{ mt: 0.5 }} />
+          </Box>
+        </Stack>
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={7}>
+            <Stack spacing={2}>
+              <Stack direction="row" alignItems="center" spacing={1.5}>
+                <BusinessIcon fontSize="small" color="action" />
+                <Typography variant="body2"><strong>Fornecedor:</strong> {fornecedor?.nome || "N/A"}</Typography>
+              </Stack>
+              <Stack direction="row" alignItems="center" spacing={1.5}>
+                <CalendarTodayIcon fontSize="small" color="action" />
+                <Typography variant="body2"><strong>Vigência:</strong> {`${formatarData(contrato.data_inicio)} a ${formatarData(contrato.data_fim)}`}</Typography>
+              </Stack>
+            </Stack>
+          </Grid>
+          <Grid item xs={12} md={5} sx={{ display: 'flex', alignItems: 'center', justifyContent: { xs: 'flex-start', md: 'flex-end' } }}>
+            <Box sx={{ p: 2, bgcolor: 'primary.main', color: 'white', borderRadius: 2, textAlign: 'center', width: { xs: '100%', md: 'auto' } }}>
+              <Typography variant="body2" sx={{ opacity: 0.8 }}>VALOR TOTAL DO CONTRATO</Typography>
+              <Typography variant="h5" fontWeight="bold">{formatarMoeda(valorTotal)}</Typography>
+            </Box>
+          </Grid>
+        </Grid>
+      </CardContent>
+    </Card>
+  );
 };
+
+// --- Componente Principal ---
 
 export default function ContratoDetalhe() {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+
+  // Estados de dados
   const [contrato, setContrato] = useState<any>(null);
   const [fornecedor, setFornecedor] = useState<any>(null);
-  const [produtos, setProdutos] = useState<any[]>([]);
+  const [produtosDisponiveis, setProdutosDisponiveis] = useState<any[]>([]);
   const [produtosContrato, setProdutosContrato] = useState<any[]>([]);
-  const [aditivos, setAditivos] = useState<any[]>([]);
+  
+  // Estados de UI
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState("");
-  const [openProduto, setOpenProduto] = useState(false);
+
+  // Estados de Modais (Dialogs)
+  const [dialogState, setDialogState] = useState({ produto: false, editarContrato: false, removerContrato: false, removerProduto: false });
   const [formProduto, setFormProduto] = useState<any>(produtoVazio);
+  const [formContrato, setFormContrato] = useState<any>(contratoVazio);
   const [editandoProduto, setEditandoProduto] = useState<any | null>(null);
   const [removerId, setRemoverId] = useState<number | null>(null);
-  const [removerDialog, setRemoverDialog] = useState(false);
-  const [openEditar, setOpenEditar] = useState(false);
-  const [formContrato, setFormContrato] = useState<any>(contratoVazio);
-  const [removerContratoDialog, setRemoverContratoDialog] = useState(false);
   const [dependenciasContrato, setDependenciasContrato] = useState<any>(null);
   const [forceDelete, setForceDelete] = useState(false);
 
-  // Função para calcular o valor total do contrato
-  function calcularValorTotalContrato(produtos: any[]) {
-    return produtos.reduce((total, produto) => {
-      const limite = produto.limite || produto.quantidade_contratada || 0;
-      const preco = produto.preco || produto.preco_unitario || 0;
-      const valorProduto = limite * preco;
-      return total + valorProduto;
-    }, 0);
-  }
+  const valorTotalContrato = useMemo(() => 
+    produtosContrato.reduce((total, produto) => total + (Number(produto.valor_total) || 0), 0),
+    [produtosContrato]
+  );
 
-  async function carregarDados() {
+  const carregarDados = useCallback(async () => {
     if (!id || isNaN(Number(id))) {
       setErro("ID do contrato inválido");
       setLoading(false);
       return;
     }
     setLoading(true);
+    setErro("");
     try {
-      const contratoData = await buscarContrato(Number(id));
+      const [contratoData, fornecedoresData, produtosData, produtosContratoData] = await Promise.all([
+        buscarContrato(Number(id)),
+        listarFornecedores(),
+        listarProdutos(),
+        listarContratoProdutos(Number(id))
+      ]);
+
       setContrato(contratoData);
+      setFornecedor(fornecedoresData.find(f => f.id === contratoData.fornecedor_id));
+      setProdutosDisponiveis(produtosData);
 
-      // Carregar fornecedor
-      const fornecedores = await listarFornecedores();
-      const fornecedorData = fornecedores.find(
-        (f: any) => f.id === contratoData.fornecedor_id
-      );
-      setFornecedor(fornecedorData);
-
-      // Carregar produtos disponíveis
-      const produtosData = await listarProdutos();
-      setProdutos(produtosData);
-
-      // Carregar produtos do contrato
-      const produtosContratoData = await listarContratoProdutos(Number(id));
-      // Mapear campos da API para o formato esperado pelo frontend
-      const produtosComValorTotal = produtosContratoData.map((produto: any) => ({
-        ...produto,
-        quantidade: produto.quantidade_contratada || produto.limite || 0,
-        preco: produto.preco_unitario || produto.preco || 0,
-        saldo: produto.saldo || produto.quantidade_contratada || produto.limite || 0,
-        valor_total: produto.valor_total || ((produto.quantidade_contratada || produto.limite || 0) * (produto.preco_unitario || produto.preco || 0))
+      const produtosMapeados = produtosContratoData.map((p: any) => ({
+        ...p,
+        quantidade: p.quantidade_contratada ?? p.limite ?? 0,
+        preco_unitario: p.preco_unitario ?? p.preco ?? 0,
+        saldo: p.saldo ?? p.quantidade_contratada ?? p.limite ?? 0,
+        valor_total: p.valor_total ?? ((p.quantidade_contratada ?? p.limite ?? 0) * (p.preco_unitario ?? p.preco ?? 0))
       }));
-      setProdutosContrato(produtosComValorTotal);
+      setProdutosContrato(produtosMapeados);
 
-      // Carregar aditivos do contrato
-      const aditivosData = await listarAditivosContrato(Number(id));
-      setAditivos(aditivosData);
     } catch (error: any) {
-      if (error.message.includes('404')) {
-        setErro('Contrato não encontrado.');
-      } else {
-        setErro(error.message || 'Erro ao carregar dados do contrato');
-      }
+      setErro(error.message.includes('404') ? 'Contrato não encontrado.' : 'Erro ao carregar dados do contrato.');
     } finally {
       setLoading(false);
     }
-  }
+  }, [id]);
 
   useEffect(() => {
     carregarDados();
-  }, [id]);
+  }, [carregarDados]);
 
-  function abrirModalProduto(produto?: any) {
-    if (produto) {
-      setFormProduto({
-        produto_id: produto.produto_id,
-        quantidade: produto.quantidade,
-        preco: produto.preco,
-      });
-      setEditandoProduto(produto);
-    } else {
-      setFormProduto(produtoVazio);
-      setEditandoProduto(null);
-    }
-    setOpenProduto(true);
-  }
+  const abrirModalProduto = (produto?: any) => {
+    setEditandoProduto(produto || null);
+    setFormProduto(produto ? { produto_id: produto.produto_id, quantidade: produto.quantidade, preco_unitario: produto.preco_unitario } : produtoVazio);
+    setDialogState(prev => ({ ...prev, produto: true }));
+  };
 
-  function fecharModalProduto() {
-    setOpenProduto(false);
-    setFormProduto(produtoVazio);
-    setEditandoProduto(null);
-  }
-
-  async function salvarProduto() {
+  const salvarProduto = async () => {
+    if (!formProduto.produto_id || !formProduto.quantidade || !formProduto.preco_unitario) { return setErro("Produto, quantidade e preço são obrigatórios."); }
     try {
-      if (
-        !formProduto.produto_id ||
-        !formProduto.quantidade ||
-      !formProduto.preco
-    ) {
-      setErro("Produto, quantidade e preço são obrigatórios");
-        return;
-      }
-      if (Number(formProduto.quantidade) < 0 || Number(formProduto.preco) < 0) {
-        setErro("Limite e preço devem ser positivos");
-        return;
-      }
+      const payload = { contrato_id: Number(id), produto_id: formProduto.produto_id, quantidade_contratada: formProduto.quantidade, preco_unitario: formProduto.preco_unitario };
+      if (editandoProduto) { await editarContratoProduto(editandoProduto.id, payload); } 
+      else { await adicionarContratoProduto(payload); }
+      setDialogState(prev => ({ ...prev, produto: false }));
+      await carregarDados();
+    } catch (error: any) { setErro(error.message || "Erro ao salvar produto."); }
+  };
 
-      if (editandoProduto) {
-        await editarContratoProduto(editandoProduto.id, {
-          contrato_id: editandoProduto.contrato_id,
-          produto_id: formProduto.produto_id,
-          quantidade_contratada: formProduto.quantidade,
-          preco_unitario: formProduto.preco,
-        });
-      } else {
-        await adicionarContratoProduto({
-          contrato_id: Number(id),
-          produto_id: formProduto.produto_id,
-          quantidade_contratada: formProduto.quantidade,
-          preco_unitario: formProduto.preco,
-        });
-      }
-      fecharModalProduto();
-      carregarDados(); // Recarregar dados para mostrar o novo produto
-    } catch (error: any) {
-      setErro(error.message || "Erro ao salvar produto");
-    }
-  }
-
-  function confirmarRemoverProduto(id: number) {
+  const confirmarRemoverProduto = (id: number) => {
     setRemoverId(id);
-    setRemoverDialog(true);
-  }
+    setDialogState(prev => ({ ...prev, removerProduto: true }));
+  };
 
-  async function removerProduto() {
-    if (removerId) {
-      try {
-        await removerContratoProduto(removerId);
-        setRemoverDialog(false);
-        setRemoverId(null);
-        carregarDados();
-      } catch (error: any) {
-        setErro(error.message || "Erro ao remover produto");
-      }
-    }
-  }
-
-  function abrirModalEditar() {
-    setFormContrato({ 
-      ...contrato,
-      data_inicio: formatDateForInput(contrato.data_inicio),
-      data_fim: formatDateForInput(contrato.data_fim)
-    });
-    setOpenEditar(true);
-  }
-
-  function fecharModalEditar() {
-    setOpenEditar(false);
-    setFormContrato(contratoVazio);
-  }
-
-  async function salvarContratoEditado() {
+  const removerProdutoConfirmado = async () => {
+    if (!removerId) return;
     try {
-      if (
-        !formContrato.numero ||
-        !formContrato.data_inicio ||
-        !formContrato.data_fim
-      ) {
-        setErro("Todos os campos obrigatórios devem ser preenchidos");
-        return;
-      }
-      if (
-        new Date(formContrato.data_fim) <= new Date(formContrato.data_inicio)
-      ) {
-        setErro("Data de fim deve ser posterior à data de início");
-        return;
-      }
+      await removerContratoProduto(removerId);
+      setDialogState(prev => ({ ...prev, removerProduto: false }));
+      setRemoverId(null);
+      await carregarDados();
+    } catch (error: any) { setErro(error.message || "Erro ao remover produto."); }
+  };
+  
+  const abrirModalEditarContrato = () => {
+    setFormContrato({ ...contrato, data_inicio: formatDateForInput(contrato.data_inicio), data_fim: formatDateForInput(contrato.data_fim) });
+    setDialogState(prev => ({ ...prev, editarContrato: true }));
+  };
+
+  const salvarContratoEditado = async () => {
+    if (!formContrato.numero || !formContrato.data_inicio || !formContrato.data_fim) { return setErro("Todos os campos obrigatórios devem ser preenchidos."); }
+    if (new Date(formContrato.data_fim) <= new Date(formContrato.data_inicio)) { return setErro("A data de fim deve ser posterior à data de início."); }
+    try {
       await editarContrato(contrato.id, formContrato);
-      fecharModalEditar();
-      carregarDados();
-    } catch (error: any) {
-      setErro(error.message || "Erro ao editar contrato");
-    }
-  }
+      setDialogState(prev => ({ ...prev, editarContrato: false }));
+      await carregarDados();
+    } catch (error: any) { setErro(error.message || "Erro ao editar contrato."); }
+  };
 
-  function confirmarRemoverContrato() {
-    setRemoverContratoDialog(true);
-  }
-
-  async function removerContratoConfirmado() {
+  const confirmarRemoverContrato = () => {
+    setDependenciasContrato(null);
+    setForceDelete(false);
+    setDialogState(prev => ({ ...prev, removerContrato: true }));
+  };
+  
+  const removerContratoConfirmado = async () => {
     try {
       await removerContrato(contrato.id, forceDelete);
-      setRemoverContratoDialog(false);
-      setDependenciasContrato(null);
-      setForceDelete(false);
+      setDialogState(prev => ({ ...prev, removerContrato: false }));
       navigate("/contratos");
     } catch (error: any) {
-      // Se o erro contém informações sobre dependências, mostrar opção de força
-      if (error.response?.data?.dependencias) {
-        setDependenciasContrato(error.response.data);
-        setErro(null); // Limpar erro anterior
-      } else {
-        setErro(error.response?.data?.message || error.message || "Erro ao remover contrato");
-      }
+      if (error.response?.data?.dependencias) { setDependenciasContrato(error.response.data); } 
+      else { setErro(error.response?.data?.message || "Erro ao remover contrato."); }
     }
-  }
+  };
 
-  function formatarData(data: string) {
-    return new Date(data).toLocaleDateString("pt-BR");
-  }
-
-  function formatarMoeda(valor: number) {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(valor);
-  }
-
-  // Função removida - módulo de aditivos foi excluído do sistema
-  function getDataFimFinal(contrato: any) {
-    if (!contrato) return null;
-
-    return {
-      dataFinal: new Date(contrato.data_fim),
-      temAditivo: false,
-      dataOriginal: new Date(contrato.data_fim)
-    };
-  }
-
-  // Função simplificada - módulo de aditivos foi excluído do sistema
-  function getStatusContrato(contrato: any) {
-    if (!contrato) return { status: "Desconhecido", color: "default" };
-
-    const hoje = new Date();
-    const inicio = new Date(contrato.data_inicio);
-    const infoDataFim = getDataFimFinal(contrato);
-    
-    if (!infoDataFim) return { status: "Desconhecido", color: "default" };
-
-    if (!contrato.ativo) return { status: "Inativo", color: "error" };
-    if (hoje < inicio) return { status: "Pendente", color: "warning" };
-    
-    if (hoje > infoDataFim.dataFinal) return { status: "Expirado", color: "error" };
-    return { status: "Ativo", color: "success" };
-  }
-
-  if (loading) return <CircularProgress sx={{ mt: 4 }} />;
-  if (erro) return <Alert severity="error">{erro}</Alert>;
-  if (!contrato) return <Alert severity="error">Contrato não encontrado</Alert>;
-
-  const status = getStatusContrato(contrato);
+  if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}><CircularProgress size={60} /></Box>;
+  
+  if (erro && !contrato) return (
+    <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+        <Card><CardContent sx={{ textAlign: 'center', py: 6 }}>
+            <Alert severity="error" sx={{ mb: 2 }}>{erro}</Alert>
+            <Button variant="contained" onClick={carregarDados}>Tentar Novamente</Button>
+        </CardContent></Card>
+    </Box>
+  );
 
   return (
-    <>
-      <Box
-        sx={{
-          mb: 3,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <Button
-          startIcon={<ArrowBackIcon />}
-          onClick={() =>
-            fornecedor && navigate(`/fornecedores/${fornecedor.id}`)
-          }
-          sx={{ mb: 2 }}
-        >
-          Voltar para Fornecedor
-        </Button>
-        <Box>
-          <Button
-            variant="outlined"
-            color="primary"
-            startIcon={<EditIcon />}
-            sx={{ mr: 1 }}
-            onClick={abrirModalEditar}
-          >
-            Editar
-          </Button>
-          <Button
-            variant="outlined"
-            color="error"
-            startIcon={<DeleteIcon />}
-            onClick={confirmarRemoverContrato}
-          >
-            Excluir
-          </Button>
-        </Box>
-      </Box>
+    <Box sx={{ minHeight: '100vh', bgcolor: '#f9fafb' }}>
+        <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+        
+        {erro && <Alert severity="error" onClose={() => setErro("")} sx={{ mb: 3 }}>{erro}</Alert>}
 
-      {/* Informações do Contrato */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Typography
-            variant="h4"
-            sx={{ mb: 2, display: "flex", alignItems: "center" }}
-          >
-            <BusinessIcon sx={{ mr: 1 }} />
-            Contrato #{contrato.id}
-          </Typography>
+        <PageHeader onBack={() => navigate('/contratos')} onEdit={abrirModalEditarContrato} onDelete={confirmarRemoverContrato} />
 
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={6}>
-              <Typography variant="body1" sx={{ mb: 1 }}>
-                <strong>Fornecedor:</strong> {fornecedor?.nome || "N/A"}
-              </Typography>
-              <Typography
-                variant="body1"
-                sx={{ mb: 1, display: "flex", alignItems: "center" }}
-              >
-                <CalendarTodayIcon sx={{ mr: 1, fontSize: "small" }} />
-                <strong>Início:</strong> {formatarData(contrato.data_inicio)}
-              </Typography>
-              <Typography variant="body1" sx={{ mb: 1 }}>
-                <strong>Número:</strong> {contrato.numero}
-              </Typography>
+        <ContratoInfoCard contrato={contrato} fornecedor={fornecedor} valorTotal={valorTotalContrato} />
 
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <Typography
-                variant="body1"
-                sx={{ mb: 1, display: "flex", alignItems: "center" }}
-              >
-                <CalendarTodayIcon sx={{ mr: 1, fontSize: "small" }} />
-                <strong>Fim:</strong> {formatarData(contrato.data_fim)}
-              </Typography>
-              <Box sx={{ mt: 2 }}>
-                <Chip
-                  label={status.status}
-                  color={status.color as any}
-                  size="small"
-                />
-              </Box>
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="h6" color="primary">
-                  Valor total do contrato:{" "}
-                  {formatarMoeda(calcularValorTotalContrato(produtosContrato))}
-                </Typography>
-              </Box>
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Card>
-
-      {/* Produtos do Contrato */}
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          mb: 2,
-        }}
-      >
-        <Typography variant="h5">
-          Produtos ({produtosContrato.length})
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => abrirModalProduto()}
-        >
-          Adicionar Produto
-        </Button>
-      </Box>
-
-      {produtosContrato.length === 0 ? (
-        <Alert severity="info">
-          Este contrato ainda não possui produtos vinculados.
-        </Alert>
-      ) : (
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Produto</TableCell>
-                <TableCell>Quantidade</TableCell>
-                <TableCell>Preço</TableCell>
-                <TableCell>Valor Total</TableCell>
-                <TableCell>Saldo</TableCell>
-                <TableCell align="right">Ações</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {produtosContrato.map((produto) => {
-                const produtoInfo = produtos.find(
-                  (p: any) => p.id === produto.produto_id
-                );
-                return (
-                  <TableRow key={produto.id}>
-                    <TableCell>
-                      <Box>
-                        <Typography variant="body2" fontWeight="bold">
-                          {produtoInfo?.nome ||
-                            `Produto #${produto.produto_id}`}
-                        </Typography>
-                        {produto.produto_nome && (
-                          <Typography variant="caption" color="textSecondary">
-                            {produto.produto_nome}
-                          </Typography>
-                        )}
-                      </Box>
-                    </TableCell>
-                    <TableCell>{produto.quantidade}</TableCell>
-                    <TableCell>{formatarMoeda(produto.preco)}</TableCell>
-                    <TableCell>
-                      {formatarMoeda(produto.valor_total || 0)}
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={produto.saldo}
-                        color={produto.saldo > 0 ? "success" : "error"}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <IconButton onClick={() => abrirModalProduto(produto)}>
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton
-                        onClick={() => confirmarRemoverProduto(produto.id)}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
-
-      {/* Seção de Aditivos Contratuais */}
-      <AditivosContrato 
-        contratoId={contrato.id}
-        contratoNumero={contrato.numero}
-        dataFimContrato={contrato.data_fim}
-        onAtualizarContrato={carregarDados}
-      />
-
-      {/* Modal para adicionar/editar produto */}
-      <Dialog open={openProduto} onClose={fecharModalProduto}>
-        <DialogTitle>
-          {editandoProduto ? "Editar Produto" : "Adicionar Produto"}
-        </DialogTitle>
-        <DialogContent>
-          <FormControl fullWidth sx={{ mb: 2, mt: 1 }}>
-            <InputLabel>Produto</InputLabel>
-            <Select
-              value={formProduto.produto_id}
-              label="Produto"
-              onChange={(e) =>
-                setFormProduto({ ...formProduto, produto_id: e.target.value })
-              }
-              required
-            >
-              {produtos.map((produto) => (
-                <MenuItem key={produto.id} value={produto.id}>
-                  {produto.nome}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <TextField
-            label="Quantidade"
-            type="number"
-            value={formProduto.quantidade}
-            onChange={(e) =>
-              setFormProduto({ ...formProduto, quantidade: e.target.value })
-            }
-            fullWidth
-            sx={{ mb: 2 }}
-            required
-            inputProps={{ min: 0, step: 0.01 }}
-          />
-          <TextField
-            label="Preço"
-            type="number"
-            value={formProduto.preco}
-            onChange={(e) =>
-              setFormProduto({ ...formProduto, preco: e.target.value })
-            }
-            fullWidth
-            sx={{ mb: 2 }}
-            required
-            inputProps={{ min: 0, step: 0.01 }}
-          />
-
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={fecharModalProduto}>Cancelar</Button>
-          <Button onClick={salvarProduto} variant="contained">
-            {editandoProduto ? "Salvar Alterações" : "Adicionar Produto"}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Dialog de confirmação de remoção */}
-      <Dialog open={removerDialog} onClose={() => setRemoverDialog(false)}>
-        <DialogTitle>Remover Produto</DialogTitle>
-        <DialogContent>
-          Tem certeza que deseja remover este produto do contrato?
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setRemoverDialog(false)}>Cancelar</Button>
-          <Button onClick={removerProduto} color="error" variant="contained">
-            Remover
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Modal de edição do contrato */}
-      <Dialog open={openEditar} onClose={fecharModalEditar}>
-        <DialogTitle>Editar Contrato</DialogTitle>
-        <DialogContent>
-          <TextField
-            label="Número do Contrato"
-            value={formContrato.numero}
-            onChange={(e) =>
-              setFormContrato({ ...formContrato, numero: e.target.value })
-            }
-            fullWidth
-            sx={{ mb: 2 }}
-            required
-          />
-          <TextField
-            label="Data Início"
-            type="date"
-            value={formContrato.data_inicio}
-            onChange={(e) =>
-              setFormContrato({ ...formContrato, data_inicio: e.target.value })
-            }
-            fullWidth
-            sx={{ mb: 2 }}
-            InputLabelProps={{ shrink: true }}
-            required
-          />
-          <TextField
-            label="Data Fim"
-            type="date"
-            value={formContrato.data_fim}
-            onChange={(e) =>
-              setFormContrato({ ...formContrato, data_fim: e.target.value })
-            }
-            fullWidth
-            sx={{ mb: 2 }}
-            InputLabelProps={{ shrink: true }}
-            required
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={fecharModalEditar}>Cancelar</Button>
-          <Button onClick={salvarContratoEditado} variant="contained">
-            Salvar
-          </Button>
-        </DialogActions>
-      </Dialog>
-      {/* Dialog de confirmação de remoção do contrato */}
-      <Dialog
-        open={removerContratoDialog}
-        onClose={() => {
-          setRemoverContratoDialog(false);
-          setDependenciasContrato(null);
-          setForceDelete(false);
-        }}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>Remover Contrato</DialogTitle>
-        <DialogContent>
-          {!dependenciasContrato ? (
-            <Typography>
-              Tem certeza que deseja remover este contrato? Esta ação não pode ser desfeita.
-            </Typography>
-          ) : (
-            <Box>
-              <Typography color="error" gutterBottom>
-                {dependenciasContrato.message}
-              </Typography>
-              <Typography variant="body2" sx={{ mt: 2, mb: 2 }}>
-                Dependências encontradas:
-              </Typography>
-              <Box sx={{ pl: 2 }}>
-                {dependenciasContrato.dependencias.produtos > 0 && (
-                  <Typography variant="body2">
-                    • {dependenciasContrato.dependencias.produtos} produtos vinculados
-                  </Typography>
-                )}
-                {/* Aditivos removidos - módulo de aditivos excluído */}
-                {dependenciasContrato.dependencias.pedidos_itens > 0 && (
-                  <Typography variant="body2">
-                    • {dependenciasContrato.dependencias.pedidos_itens} itens de pedidos vinculados
-                  </Typography>
-                )}
-                {dependenciasContrato.dependencias.movimentacoes > 0 && (
-                  <Typography variant="body2">
-                    • {dependenciasContrato.dependencias.movimentacoes} movimentações vinculadas
-                  </Typography>
-                )}
-              </Box>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={forceDelete}
-                    onChange={(e) => setForceDelete(e.target.checked)}
-                    color="error"
-                  />
-                }
-                label="Forçar exclusão (removerá todas as dependências)"
-                sx={{ mt: 2 }}
-              />
+        {/* --- Seção de Itens do Contrato --- */}
+        <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
+            <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="h6" fontWeight="600">Itens do Contrato ({produtosContrato.length})</Typography>
+                <Button variant="contained" startIcon={<AddIcon />} onClick={() => abrirModalProduto()} sx={{ bgcolor: '#059669', '&:hover': { bgcolor: '#047857' } }}>
+                    Adicionar Item
+                </Button>
             </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button 
-            onClick={() => {
-              setRemoverContratoDialog(false);
-              setDependenciasContrato(null);
-              setForceDelete(false);
-            }}
-          >
-            Cancelar
-          </Button>
-          <Button
-            onClick={removerContratoConfirmado}
-            color="error"
-            variant="contained"
-            disabled={dependenciasContrato && !forceDelete}
-          >
-            {dependenciasContrato && forceDelete ? "Forçar Remoção" : "Remover"}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </>
+            {produtosContrato.length === 0 ? (
+                <Box sx={{ textAlign: 'center', py: 6 }}>
+                    <MenuBookIcon sx={{ fontSize: 64, color: '#d1d5db', mb: 2 }} />
+                    <Typography variant="h6" sx={{ color: '#6b7280' }}>Nenhum item encontrado</Typography>
+                    <Typography variant="body2" color="text.secondary">Adicione o primeiro item a este contrato.</Typography>
+                </Box>
+            ) : (
+                <TableContainer>
+                    <Table>
+                        <TableHead sx={{ bgcolor: 'grey.50' }}><TableRow>
+                            <TableCell>Produto</TableCell><TableCell>Quantidade</TableCell><TableCell>Preço Unitário</TableCell>
+                            <TableCell>Valor Total</TableCell><TableCell>Saldo</TableCell><TableCell align="right">Ações</TableCell>
+                        </TableRow></TableHead>
+                        <TableBody>
+                            {produtosContrato.map((produto) => {
+                                const produtoInfo = produtosDisponiveis.find(p => p.id === produto.produto_id);
+                                return (
+                                <TableRow key={produto.id} hover>
+                                    <TableCell>{produtoInfo?.nome || `Produto #${produto.produto_id}`}</TableCell>
+                                    <TableCell>{produto.quantidade}</TableCell>
+                                    <TableCell>{formatarMoeda(produto.preco_unitario)}</TableCell>
+                                    <TableCell>{formatarMoeda(produto.valor_total)}</TableCell>
+                                    <TableCell><Chip label={produto.saldo} color={produto.saldo > 0 ? "success" : "error"} size="small" variant="outlined"/></TableCell>
+                                    <TableCell align="right">
+                                        <Tooltip title="Editar Item"><IconButton size="small" onClick={() => abrirModalProduto(produto)}><EditIcon fontSize="small" /></IconButton></Tooltip>
+                                        <Tooltip title="Remover Item"><IconButton size="small" onClick={() => confirmarRemoverProduto(produto.id)}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
+                                    </TableCell>
+                                </TableRow>
+                                );
+                            })}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            )}
+        </Paper>
+
+        {/* --- MODAIS / DIALOGS --- */}
+        <Dialog open={dialogState.produto} onClose={() => setDialogState(p => ({...p, produto: false}))} fullWidth maxWidth="sm">
+            <DialogTitle>{editandoProduto ? "Editar Item" : "Adicionar Item ao Contrato"}</DialogTitle>
+            <DialogContent dividers>
+                <FormControl fullWidth sx={{ mt: 2, mb: 2 }}><InputLabel>Produto</InputLabel><Select value={formProduto.produto_id} label="Produto" onChange={e => setFormProduto({ ...formProduto, produto_id: e.target.value })} required>{produtosDisponiveis.map(p => <MenuItem key={p.id} value={p.id}>{p.nome}</MenuItem>)}</Select></FormControl>
+                <TextField label="Quantidade Contratada" type="number" value={formProduto.quantidade} onChange={e => setFormProduto({ ...formProduto, quantidade: e.target.value })} fullWidth sx={{ mb: 2 }} required inputProps={{ min: 0 }} />
+                <TextField label="Preço Unitário" type="number" value={formProduto.preco_unitario} onChange={e => setFormProduto({ ...formProduto, preco_unitario: e.target.value })} fullWidth required inputProps={{ min: 0, step: 0.01 }} />
+            </DialogContent>
+            <DialogActions><Button onClick={() => setDialogState(p => ({...p, produto: false}))}>Cancelar</Button><Button onClick={salvarProduto} variant="contained">{editandoProduto ? "Salvar" : "Adicionar"}</Button></DialogActions>
+        </Dialog>
+        
+        <Dialog open={dialogState.editarContrato} onClose={() => setDialogState(p => ({...p, editarContrato: false}))} fullWidth maxWidth="sm">
+            <DialogTitle>Editar Contrato</DialogTitle>
+            <DialogContent dividers>
+                <TextField label="Número do Contrato" value={formContrato.numero} onChange={e => setFormContrato({ ...formContrato, numero: e.target.value })} fullWidth sx={{ mt: 2, mb: 2 }} required />
+                <TextField label="Data de Início" type="date" value={formContrato.data_inicio} onChange={e => setFormContrato({ ...formContrato, data_inicio: e.target.value })} fullWidth sx={{ mb: 2 }} InputLabelProps={{ shrink: true }} required />
+                <TextField label="Data de Fim" type="date" value={formContrato.data_fim} onChange={e => setFormContrato({ ...formContrato, data_fim: e.target.value })} fullWidth InputLabelProps={{ shrink: true }} required />
+            </DialogContent>
+            <DialogActions><Button onClick={() => setDialogState(p => ({...p, editarContrato: false}))}>Cancelar</Button><Button onClick={salvarContratoEditado} variant="contained">Salvar Alterações</Button></DialogActions>
+        </Dialog>
+        
+        <Dialog open={dialogState.removerProduto} onClose={() => setDialogState(p => ({...p, removerProduto: false}))}><DialogTitle>Remover Item do Contrato</DialogTitle><DialogContent><Typography>Tem certeza que deseja remover este item do contrato?</Typography></DialogContent><DialogActions><Button onClick={() => setDialogState(p => ({...p, removerProduto: false}))}>Cancelar</Button><Button onClick={removerProdutoConfirmado} color="error" variant="contained">Remover</Button></DialogActions></Dialog>
+        
+        <Dialog open={dialogState.removerContrato} onClose={() => setDialogState(p => ({...p, removerContrato: false}))} fullWidth maxWidth="sm">
+            <DialogTitle>Remover Contrato</DialogTitle>
+            <DialogContent>
+                {!dependenciasContrato ? (<Typography>Tem certeza que deseja remover este contrato? Esta ação é irreversível.</Typography>) : (
+                    <Alert severity="warning" icon={<ErrorOutlineIcon />}>
+                        <AlertTitle>Não é possível remover este contrato diretamente</AlertTitle>
+                        {dependenciasContrato.message}
+                        <Box component="ul" sx={{ pl: 2, mt: 1, mb: 0 }}>
+                            {dependenciasContrato.dependencias.produtos > 0 && <li>{dependenciasContrato.dependencias.produtos} itens de contrato</li>}
+                            {dependenciasContrato.dependencias.pedidos_itens > 0 && <li>{dependenciasContrato.dependencias.pedidos_itens} itens de pedidos</li>}
+                            {dependenciasContrato.dependencias.movimentacoes > 0 && <li>{dependenciasContrato.dependencias.movimentacoes} movimentações de estoque</li>}
+                        </Box>
+                        <FormControlLabel control={<Checkbox checked={forceDelete} onChange={e => setForceDelete(e.target.checked)} color="error" />} label="Sim, entendo os riscos e desejo forçar a exclusão de tudo." sx={{ mt: 2 }} />
+                    </Alert>
+                )}
+            </DialogContent>
+            <DialogActions><Button onClick={() => setDialogState(p => ({...p, removerContrato: false}))}>Cancelar</Button><Button onClick={removerContratoConfirmado} color="error" variant="contained" disabled={dependenciasContrato && !forceDelete}>Remover</Button></DialogActions>
+        </Dialog>
+      </Box>
+    </Box>
   );
 }

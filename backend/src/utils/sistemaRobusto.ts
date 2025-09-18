@@ -125,7 +125,7 @@ export class SistemaRobusto {
     // Lista de tabelas principais para verificar
     const tabelas = [
       'usuarios', 'produtos', 'escolas', 'fornecedores', 
-      'contratos', 'pedidos', 'estoque', 'recebimentos'
+      'contratos', 'estoque'
     ];
 
     for (const tabela of tabelas) {
@@ -188,20 +188,7 @@ export class SistemaRobusto {
         }
         break;
 
-      case 'pedidos':
-        // Verificar pedidos sem itens
-        const pedidosSemItens = await this.pool.query(`
-          SELECT COUNT(*) as count 
-          FROM pedidos p
-          LEFT JOIN pedidos_itens pi ON p.id = pi.pedido_id
-          WHERE pi.id IS NULL
-        `);
-        
-        if (parseInt(pedidosSemItens.rows[0].count) > 0) {
-          problemas.push(`${pedidosSemItens.rows[0].count} pedidos sem itens`);
-          registrosInvalidos += parseInt(pedidosSemItens.rows[0].count);
-        }
-        break;
+
 
       case 'estoque':
         // Verificar estoques negativos
@@ -250,18 +237,7 @@ export class SistemaRobusto {
       `);
       totalCorrigidos += estoquesCorrigidos.rowCount || 0;
 
-      // Desativar pedidos sem itens
-      const pedidosCorrigidos = await this.pool.query(`
-        UPDATE pedidos 
-        SET status = 'cancelado', observacoes = 'Cancelado automaticamente - sem itens'
-        WHERE id IN (
-          SELECT p.id 
-          FROM pedidos p
-          LEFT JOIN pedidos_itens pi ON p.id = pi.pedido_id
-          WHERE pi.id IS NULL AND p.status != 'cancelado'
-        )
-      `);
-      totalCorrigidos += pedidosCorrigidos.rowCount || 0;
+
 
     } catch (error) {
       erros.push(`Erro ao corrigir problemas: ${error.message}`);

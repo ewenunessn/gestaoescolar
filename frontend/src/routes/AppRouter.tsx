@@ -2,7 +2,7 @@ import { Suspense, lazy } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { isAuthenticated } from "../services/auth";
 import LayoutModerno from "../components/LayoutModerno";
-import { CarrinhoProvider } from "../context/CarrinhoContext";
+
 import { EscolasProvider } from "../contexts/EscolasContext";
 import ErrorBoundary from "../components/ErrorBoundary";
 
@@ -34,12 +34,10 @@ const PageLoader = () => (
 
 // Lazy loading para páginas menos críticas
 const Escolas = lazy(() => import("../pages/Escolas"));
-
 const Modalidades = lazy(() => import("../pages/Modalidades"));
 const Produtos = lazy(() => import("../pages/Produtos"));
 const ProdutoDetalhe = lazy(() => import("../pages/ProdutoDetalhe"));
 const EscolaDetalhes = lazy(() => import("../pages/EscolaDetalhes"));
-const EstoqueEscola = lazy(() => import("../pages/EstoqueEscola"));
 const EstoqueEscolar = lazy(() => import("../pages/EstoqueEscolar"));
 const RefeicaoDetalhe = lazy(() => import("../pages/RefeicaoDetalhe"));
 const Refeicoes = lazy(() => import("../pages/Refeicoes"));
@@ -52,29 +50,13 @@ const FornecedorDetalhe = lazy(() => import("../pages/FornecedorDetalhe"));
 const Contratos = lazy(() => import("../pages/Contratos"));
 const NovoContrato = lazy(() => import("../pages/NovoContrato"));
 const ContratoDetalhe = lazy(() => import("../pages/ContratoDetalhe"));
-
-
-const PedidosModernos = lazy(() => import("../pages/PedidosModernos"));
 const EstoqueCentral = lazy(() => import("../pages/EstoqueCentral"));
 const EstoqueLotes = lazy(() => import("../pages/EstoqueLotes"));
 const EstoqueMovimentacoes = lazy(() => import("../pages/EstoqueMovimentacoes"));
 const EstoqueAlertas = lazy(() => import("../pages/EstoqueAlertas"));
-
-
-
-// SISTEMAS ANTIGOS REMOVIDOS - Agora usando apenas o sistema simplificado
-const CatalogoProdutos = lazy(() => import("../pages/CatalogoProdutosSimples"));
-const CarrinhoCompras = lazy(() => import("../pages/CarrinhoCompras"));
-
-
-const RecebimentoSimplificado = lazy(() => import("../pages/RecebimentoSimplificado"));
-const RecebimentoItensPage = lazy(() => import("../pages/RecebimentoItensPage"));
-
 const SaldoContratos = lazy(() => import("../pages/SaldoContratos"));
-
-
 const DashboardConsistencia = lazy(() => import("../components/DashboardConsistencia"));
-// Componente removido: ExemploTabelaPedido não existe
+const GuiasDemanda = lazy(() => import("../pages/GuiasDemanda"));
 
 
 
@@ -109,8 +91,7 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
   return (
     <BrowserRouter future={routerConfig?.future}>
       <EscolasProvider>
-        <CarrinhoProvider>
-          <Routes>
+        <Routes>
             {/* Landing Page Pública */}
             <Route path="/" element={<LandingPage />} />
             <Route path="/home" element={<LandingPage />} />
@@ -128,18 +109,20 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
                 <LoginGestorEscola />
               </Suspense>
             } />
-            {/* Rota inteligente que detecta dispositivo */}
-            <Route path="/estoque-escola-auto/:escolaId" element={
-              <Suspense fallback={<PageLoader />}>
-                <EstoqueEscolaRouter />
-              </Suspense>
-            } />
+            {/* Rota única para estoque escola - versão mobile */}
             <Route path="/estoque-escola/:escolaId" element={
               <Suspense fallback={<PageLoader />}>
-                <EstoqueEscola />
+                <EstoqueEscolaMobile />
               </Suspense>
             } />
+            {/* Rota mantida para compatibilidade com URLs antigas */}
             <Route path="/estoque-escola-mobile/:escolaId" element={
+              <Suspense fallback={<PageLoader />}>
+                <EstoqueEscolaMobile />
+              </Suspense>
+            } />
+            {/* Rota antiga auto-detect removida */}
+            <Route path="/estoque-escola-auto/:escolaId" element={
               <Suspense fallback={<PageLoader />}>
                 <EstoqueEscolaMobile />
               </Suspense>
@@ -174,7 +157,7 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
             />
             <Route
               path="/escolas/:escolaId/estoque"
-              element={<LazyRoute><EstoqueEscola /></LazyRoute>}
+              element={<LazyRoute><EstoqueEscolaMobile /></LazyRoute>}
             />
             <Route
               path="/estoque-escolar"
@@ -220,6 +203,10 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
             <Route
               path="/gerar-demanda"
               element={<LazyRoute><GerarDemanda /></LazyRoute>}
+            />
+            <Route
+              path="/guias-demanda"
+              element={<LazyRoute><GuiasDemanda /></LazyRoute>}
             />
             <Route
               path="/fornecedores"
@@ -268,98 +255,7 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
 
 
             {/* Outras rotas protegidas podem ser adicionadas aqui, sempre dentro do LayoutModerno */}
-            <Route
-              path="/catalogo"
-              element={
-                <LazyRoute>
-                  <ErrorBoundary>
-                    <CatalogoProdutos />
-                  </ErrorBoundary>
-                </LazyRoute>
-              }
-            />
-            <Route
-              path="/carrinho"
-              element={
-                <LazyRoute>
-                  <ErrorBoundary>
-                    <CarrinhoCompras />
-                  </ErrorBoundary>
-                </LazyRoute>
-              }
-            />
-            <Route
-              path="/pedidos"
-              element={<LazyRoute><PedidosModernos /></LazyRoute>}
-            />
-            {/* Rota removida: ExemploTabelaPedido não existe */}
-            {/* Sistema clássico removido - agora usando apenas pedidos modernos */}
-            {/* 
-              MIGRAÇÃO PARA SISTEMA ÚNICO DE RECEBIMENTO
-              
-              Os sistemas antigos foram descontinuados em favor do sistema simplificado:
-              - Mais intuitivo e fácil de usar
-              - Sem necessidade de "iniciar" e "finalizar" recebimentos
-              - Status automático baseado nas quantidades
-              - Integração completa com contratos e estoque
-              
-              Todas as rotas antigas redirecionam para o novo sistema.
-            */}
-            <Route
-              path="/recebimentos"
-              element={<Navigate to="/recebimento-simples" replace />}
-            />
-            <Route
-              path="/recebimentos/classico"
-              element={<Navigate to="/recebimento-simples" replace />}
-            />
-            <Route
-              path="/recebimentos/:pedidoId/conferir"
-              element={<Navigate to="/recebimento-simples" replace />}
-            />
-            <Route
-              path="/recebimentos/:id"
-              element={<Navigate to="/recebimento-simples" replace />}
-            />
-
-
-
-
-            {/* SISTEMA DE RECEBIMENTOS */}
-            <Route
-              path="/recebimento-simplificado"
-              element={<LazyRoute><RecebimentoSimplificado /></LazyRoute>}
-            />
-            <Route
-              path="/recebimento-simples"
-              element={<LazyRoute><RecebimentoSimplificado /></LazyRoute>}
-            />
-            {/* Rota principal de recebimentos */}
-            <Route
-              path="/recebimentos-novo"
-              element={<LazyRoute><RecebimentoSimplificado /></LazyRoute>}
-            />
-            <Route
-              path="/recebimento-simplificado/pedido/:pedido_id"
-              element={<LazyRoute><RecebimentoItensPage /></LazyRoute>}
-            />
-            <Route
-              path="/recebimento-simples/pedido/:pedido_id"
-              element={<LazyRoute><RecebimentoItensPage /></LazyRoute>}
-            />
-            {/* Rotas alternativas para compatibilidade */}
-            <Route
-              path="/recebimento-simplificado/:pedido_id"
-              element={<LazyRoute><RecebimentoItensPage /></LazyRoute>}
-            />
-            <Route
-              path="/recebimento-simples/:pedido_id"
-              element={<LazyRoute><RecebimentoItensPage /></LazyRoute>}
-            />
-            <Route
-              path="/recebimento-itens/:pedidoId"
-              element={<LazyRoute><RecebimentoItensPage /></LazyRoute>}
-            />
+            {/* Outras rotas protegidas podem ser adicionadas aqui, sempre dentro do LayoutModerno */}
 
 
 
@@ -376,8 +272,7 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
 
 
           </Routes>
-        </CarrinhoProvider>
-      </EscolasProvider>
+        </EscolasProvider>
     </BrowserRouter>
   );
 }

@@ -38,6 +38,8 @@ import {
   Storage,
   Calculate,
   Assessment,
+  Receipt,
+  ListAlt,
 } from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
 import { logout } from "../services/auth";
@@ -69,14 +71,11 @@ const menuConfig = [
     ],
   },
   {
-    category: "Compras & Recebimento",
+    category: "Compras",
     items: [
       { text: "Fornecedores", icon: <Business />, path: "/fornecedores" },
       { text: "Contratos", icon: <Assignment />, path: "/contratos" },
       { text: "Saldos de Contratos", icon: <Assessment />, path: "/saldos-contratos", badge: "Novo!", badgeColor: "primary" },
-      { text: "Catálogo", icon: <Category />, path: "/catalogo", badge: "Novo!", badgeColor: "primary" },
-      { text: "Pedidos", icon: <Assignment />, path: "/pedidos", badge: "Novo!", badgeColor: "success" },
-      { text: "Recebimentos", icon: <LocalShipping />, path: "/recebimento-simples" },
     ],
   },
   {
@@ -84,6 +83,13 @@ const menuConfig = [
     items: [
       { text: "Estoque Central", icon: <Storage />, path: "/estoque-central", badge: "Novo!", badgeColor: "success" },
       { text: "Estoque Escolar", icon: <Assessment />, path: "/estoque-escolar", badge: "Novo!", badgeColor: "primary" },
+    ],
+  },
+  {
+    category: "Guias",
+    items: [
+      { text: "Guias de Demanda", icon: <ListAlt />, path: "/guias-demanda" },
+      { text: "Movimentações", icon: <Receipt />, path: "/estoque-movimentacoes" },
     ],
   },
 ];

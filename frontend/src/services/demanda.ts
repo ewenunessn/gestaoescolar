@@ -53,7 +53,7 @@ export async function gerarDemandaMensal(params: {
   escola_ids?: number[];
   modalidade_ids?: number[];
 }): Promise<DemandaResponse> {
-  const { data } = await apiWithRetry.post("/demanda/gerar", params);
+  const { data } = await apiWithRetry.post("/demandas/gerar", params);
   return data.data;
 }
 
@@ -64,7 +64,7 @@ export async function gerarDemandaMultiplosCardapios(params: {
   modalidade_ids?: number[];
   cardapio_ids?: number[];
 }): Promise<DemandaResponse> {
-  const { data } = await apiWithRetry.post("/demanda/gerar-multiplos", params);
+  const { data } = await apiWithRetry.post("/demandas/gerar-multiplos", params);
   return data.data;
 }
 
@@ -72,7 +72,7 @@ export async function listarCardapiosDisponiveis(params?: {
   escola_ids?: number[];
   modalidade_ids?: number[];
 }): Promise<CardapioDisponivel[]> {
-  const { data } = await apiWithRetry.get("/demanda/cardapios-disponiveis", { params });
+  const { data } = await apiWithRetry.get("/demandas/cardapios-disponiveis", { params });
   return data.data;
 }
 
@@ -83,7 +83,7 @@ export async function exportarDemandaMensal(params: {
   modalidade_ids?: number[];
   formato?: 'json' | 'csv';
 }): Promise<any> {
-  const { data } = await apiWithRetry.post("/demanda/exportar", params);
+  const { data } = await apiWithRetry.post("/demandas/exportar", params);
   return data;
 }
 
@@ -93,7 +93,7 @@ export async function exportarDemandaExcel(params: {
   escola_ids?: number[];
   modalidade_ids?: number[];
 }): Promise<void> {
-  const response = await apiWithRetry.post("/demanda/exportar-excel", params, {
+  const response = await apiWithRetry.post("/demandas/exportar-excel", params, {
     responseType: 'blob'
   });
   

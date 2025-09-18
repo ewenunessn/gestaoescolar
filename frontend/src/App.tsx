@@ -1,5 +1,4 @@
 import AppRouter from "./routes/AppRouter";
-import { CarrinhoProvider } from "./context/CarrinhoContext";
 import { NotificationProvider } from "./context/NotificationContext";
 import ToastContainer from "./components/Toast";
 import { ThemeProvider } from '@mui/material/styles';
@@ -20,10 +19,8 @@ export default function App({ routerConfig }: AppProps) {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <NotificationProvider>
-        <CarrinhoProvider>
-          <AppRouter routerConfig={routerConfig} />
-          <ToastContainer />
-        </CarrinhoProvider>
+        <AppRouter routerConfig={routerConfig} />
+        <ToastContainer />
       </NotificationProvider>
     </ThemeProvider>
   );

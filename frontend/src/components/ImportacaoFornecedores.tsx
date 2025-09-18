@@ -50,12 +50,6 @@ interface FornecedorImportacao {
   nome: string;
   cnpj: string;
   email?: string;
-  telefone?: string;
-  endereco?: string;
-  cidade?: string;
-  estado?: string;
-  cep?: string;
-  observacoes?: string;
   ativo: boolean;
   status: 'valido' | 'erro' | 'aviso';
   mensagem?: string;
@@ -91,13 +85,6 @@ const ImportacaoFornecedores: React.FC<ImportacaoFornecedoresProps> = ({
       'nome',
       'cnpj',
       'email',
-      'telefone',
-      'endereco',
-      'cidade',
-      'estado',
-      'cep',
-    
-      'observacoes',
       'ativo'
     ];
 
@@ -106,52 +93,24 @@ const ImportacaoFornecedores: React.FC<ImportacaoFornecedoresProps> = ({
         'Distribuidora Alimentos Ltda',
         '12.345.678/0001-90',
         'contato@distribuidora.com.br',
-        '(11) 3456-7890',
-        'Rua das Indústrias, 123',
-        'São Paulo',
-        'SP',
-        '01234-567',
-        'João Silva',
-        'Fornecedor de cereais e grãos',
         'true'
       ],
       [
         'Frigorífico Central S.A.',
         '98.765.432/0001-10',
         'vendas@frigorifico.com.br',
-        '(21) 2345-6789',
-        'Av. Industrial, 456',
-        'Rio de Janeiro',
-        'RJ',
-        '20123-456',
-        'Maria Santos',
-        'Especializado em carnes e derivados',
         'true'
       ],
       [
         'Hortifruti Verde Vida',
         '11.222.333/0001-44',
         'comercial@verdevida.com.br',
-        '(31) 3333-4444',
-        'Estrada Rural, km 15',
-        'Belo Horizonte',
-        'MG',
-        '30123-000',
-        'Carlos Oliveira',
-        'Frutas, verduras e legumes frescos',
         'true'
       ],
       [
         'Laticínios do Campo',
         '55.666.777/0001-88',
         'pedidos@laticinios.com.br',
-        '(47) 3555-6666',
-        'Fazenda São José, s/n',
-        'Blumenau',
-        'SC',
-        '89012-345',
-        'Ana Costa',
-        'Leite, queijos e derivados lácteos',
         'true'
       ]
     ];
@@ -173,13 +132,6 @@ const ImportacaoFornecedores: React.FC<ImportacaoFornecedoresProps> = ({
       'nome',
       'cnpj',
       'email',
-      'telefone',
-      'endereco',
-      'cidade',
-      'estado',
-      'cep',
-    
-      'observacoes',
       'ativo'
     ];
 
@@ -188,52 +140,24 @@ const ImportacaoFornecedores: React.FC<ImportacaoFornecedoresProps> = ({
         'Distribuidora Alimentos Ltda',
         '12.345.678/0001-90',
         'contato@distribuidora.com.br',
-        '(11) 3456-7890',
-        'Rua das Indústrias, 123',
-        'São Paulo',
-        'SP',
-        '01234-567',
-        'João Silva',
-        'Fornecedor de cereais e grãos',
         true
       ],
       [
         'Frigorífico Central S.A.',
         '98.765.432/0001-10',
         'vendas@frigorifico.com.br',
-        '(21) 2345-6789',
-        'Av. Industrial, 456',
-        'Rio de Janeiro',
-        'RJ',
-        '20123-456',
-        'Maria Santos',
-        'Especializado em carnes e derivados',
         true
       ],
       [
         'Hortifruti Verde Vida',
         '11.222.333/0001-44',
         'comercial@verdevida.com.br',
-        '(31) 3333-4444',
-        'Estrada Rural, km 15',
-        'Belo Horizonte',
-        'MG',
-        '30123-000',
-        'Carlos Oliveira',
-        'Frutas, verduras e legumes frescos',
         true
       ],
       [
         'Laticínios do Campo',
         '55.666.777/0001-88',
         'pedidos@laticinios.com.br',
-        '(47) 3555-6666',
-        'Fazenda São José, s/n',
-        'Blumenau',
-        'SC',
-        '89012-345',
-        'Ana Costa',
-        'Leite, queijos e derivados lácteos',
         true
       ]
     ];
@@ -577,13 +501,6 @@ const ImportacaoFornecedores: React.FC<ImportacaoFornecedoresProps> = ({
                   <li><strong>nome</strong>: Nome do fornecedor (obrigatório)</li>
                   <li><strong>cnpj</strong>: CNPJ do fornecedor (obrigatório)</li>
                   <li><strong>email</strong>: Email de contato (opcional)</li>
-                  <li><strong>telefone</strong>: Telefone de contato (opcional)</li>
-                  <li><strong>endereco</strong>: Endereço completo (opcional)</li>
-                  <li><strong>cidade</strong>: Cidade (opcional)</li>
-                  <li><strong>estado</strong>: Estado (opcional)</li>
-                  <li><strong>cep</strong>: CEP (opcional)</li>
-          
-                  <li><strong>observacoes</strong>: Observações gerais (opcional)</li>
                   <li><strong>ativo</strong>: true ou false (padrão: true)</li>
                 </ul>
               </Typography>
@@ -651,10 +568,6 @@ const ImportacaoFornecedores: React.FC<ImportacaoFornecedoresProps> = ({
                     <TableCell>Nome</TableCell>
                     <TableCell>CPF/CNPJ</TableCell>
                     <TableCell>Email</TableCell>
-                    <TableCell>Telefone</TableCell>
-                    <TableCell>Cidade</TableCell>
-                    <TableCell>Estado</TableCell>
-                    <TableCell>Contato</TableCell>
                     <TableCell align="center">Ativo</TableCell>
                     <TableCell>Mensagem</TableCell>
                     <TableCell align="center">Ações</TableCell>
@@ -699,10 +612,6 @@ const ImportacaoFornecedores: React.FC<ImportacaoFornecedoresProps> = ({
                           ) : '-'}
                         </TableCell>
                         <TableCell>{fornecedor.email || '-'}</TableCell>
-                        <TableCell>{fornecedor.telefone || '-'}</TableCell>
-                        <TableCell>{fornecedor.cidade || '-'}</TableCell>
-                        <TableCell>{fornecedor.estado || '-'}</TableCell>
-          
                         <TableCell align="center">
                           <Chip
                             label={fornecedor.ativo ? 'Sim' : 'Não'}

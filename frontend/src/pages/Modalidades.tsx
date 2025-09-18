@@ -272,6 +272,8 @@ const ModalidadesPage = () => {
       )}
 
       <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+        <Typography variant="h4" sx={{ mb: 3, fontWeight: 700, color: '#1e293b' }}>Modalidades</Typography>
+
         <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', p: 3, mb: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
             <TextField

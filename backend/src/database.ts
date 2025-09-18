@@ -1,36 +1,25 @@
 // Configuração PostgreSQL - Sistema de Alimentação Escolar
 import { Pool, PoolClient, QueryResult } from 'pg';
 
-// Carregar configuração
-let config: any;
-try {
-    const configModule = require('./config');
-    config = configModule.config || configModule.default;
-} catch (error) {
-    console.warn('⚠️  Não foi possível carregar config, usando variáveis de ambiente');
-    config = {
-        database: {
-            user: process.env.DB_USER || 'postgres',
-            host: process.env.DB_HOST || 'localhost',
-            name: process.env.DB_NAME || 'alimentacao_escolar',
-            password: process.env.DB_PASSWORD || 'admin123',
-            port: process.env.DB_PORT || 5432,
-            ssl: process.env.DB_SSL === 'true'
-        }
-    };
-}
+// Configuração explícita para garantir conexão correta
+const dbConfig = {
+    user: process.env.DB_USER || 'postgres',
+    host: process.env.DB_HOST || 'localhost',
+    database: process.env.DB_NAME || 'alimentacao_escolar',
+    password: process.env.DB_PASSWORD || 'admin123',
+    port: parseInt(process.env.DB_PORT || '5432'),
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+};
 
-// Pool de conexões PostgreSQL (Supabase)
-const pool = new Pool({
-    connectionString: process.env.POSTGRES_URL || process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-    // Configurações otimizadas para Supabase
-    max: 15, // Supabase suporta até 60 conexões no plano gratuito
-    min: 0, // Não manter conexões ociosas
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 10000,
-    allowExitOnIdle: true, // Para Vercel Serverless
+console.log('🔧 Configuração do banco de dados:', {
+    host: dbConfig.host,
+    port: dbConfig.port,
+    database: dbConfig.database,
+    user: dbConfig.user
 });
+
+// Pool de conexões PostgreSQL
+const pool = new Pool(dbConfig);
 
 // Função principal para queries
 async function query(text: string, params: any[] = []): Promise<QueryResult> {
@@ -75,8 +64,8 @@ async function transaction(callback: (client: PoolClient) => Promise<any>): Prom
 // Função para testar conexão
 async function testConnection(): Promise<boolean> {
     try {
-        const result = await query('SELECT NOW() as current_time, version()');
-        console.log('✅ PostgreSQL conectado:', result.rows[0].current_time);
+        const result = await query('SELECT NOW() as current_time, current_database() as db_name');
+        console.log('✅ PostgreSQL conectado:', result.rows[0]);
         return true;
     } catch (error: any) {
         console.error('❌ Erro na conexão PostgreSQL:', error.message);
@@ -110,6 +99,9 @@ const db = {
         };
     }
 };
+
+// Testar conexão ao iniciar
+testConnection();
 
 // Fechar pool quando aplicação terminar
 process.on('SIGINT', () => {
