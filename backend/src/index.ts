@@ -35,8 +35,8 @@ import guiaRoutes from "./modules/guias/routes/guiaRoutes";
 // Importar rotas preservadas do sistema escolar
 
 
-// Importar configuração SQLite
-const db = require("./database");
+// Importar configuração do banco de dados baseada no ambiente
+const db = process.env.VERCEL === '1' ? require("./database-vercel") : require("./database");
 
 dotenv.config();
 

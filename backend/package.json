@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc --skipLibCheck",
-    "vercel-build": "npm run build",
+    "vercel-build": "npm run build && npm run vercel-post-build",
     "start": "node dist/index.js",
     "start:vercel": "node api/index.js",
     "lint": "eslint . --ext .ts",
@@ -14,7 +14,8 @@
     "test:watch": "jest --watch",
     "migrate": "node run-migration.js",
     "migrate:guias": "node run-migration-guias.js",
-    "migrate:guias:local": "node run-migration-guias-local.js"
+    "migrate:guias:local": "node run-migration-guias-local.js",
+    "vercel-post-build": "echo '✅ Build concluído - Arquivos compilados em dist/' && ls -la dist/ || dir dist/"
   },
   "author": "",
   "license": "MIT",
