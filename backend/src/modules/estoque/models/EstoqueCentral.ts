@@ -44,19 +44,6 @@ export interface EstoquePosicao {
   proximo_vencimento: string | null;
 }
 
-export interface AlertaEstoque {
-  id: number;
-  produto_id: number;
-  lote_id: number | null;
-  tipo: 'vencimento_proximo' | 'vencido' | 'estoque_baixo' | 'estoque_zerado';
-  nivel: 'info' | 'warning' | 'critical';
-  titulo: string;
-  descricao: string;
-  data_alerta: string;
-  visualizado: boolean;
-  resolvido: boolean;
-}
-
 // Criação das tabelas PostgreSQL
 export async function createEstoqueCentralTables() {
   // Tabela de lotes de estoque
@@ -100,24 +87,6 @@ export async function createEstoqueCentralTables() {
     )
   `);
 
-  // Tabela de alertas
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS estoque_alertas (
-      id SERIAL PRIMARY KEY,
-      produto_id INTEGER NOT NULL,
-      lote_id INTEGER,
-      tipo VARCHAR(30) NOT NULL CHECK (tipo IN ('vencimento_proximo', 'vencido', 'estoque_baixo', 'estoque_zerado')),
-      nivel VARCHAR(20) NOT NULL CHECK (nivel IN ('info', 'warning', 'critical')),
-      titulo TEXT NOT NULL,
-      descricao TEXT NOT NULL,
-      data_alerta TIMESTAMP DEFAULT NOW(),
-      visualizado BOOLEAN DEFAULT FALSE,
-      resolvido BOOLEAN DEFAULT FALSE,
-      FOREIGN KEY (produto_id) REFERENCES produtos(id),
-      FOREIGN KEY (lote_id) REFERENCES estoque_lotes(id)
-    )
-  `);
-
   // Índices para performance
   await db.query(`
     CREATE INDEX IF NOT EXISTS idx_estoque_lotes_produto ON estoque_lotes(produto_id);
@@ -126,8 +95,6 @@ export async function createEstoqueCentralTables() {
     CREATE INDEX IF NOT EXISTS idx_movimentacoes_lote ON estoque_movimentacoes(lote_id);
     CREATE INDEX IF NOT EXISTS idx_movimentacoes_produto ON estoque_movimentacoes(produto_id);
     CREATE INDEX IF NOT EXISTS idx_movimentacoes_data ON estoque_movimentacoes(data_movimentacao);
-    CREATE INDEX IF NOT EXISTS idx_alertas_produto ON estoque_alertas(produto_id);
-    CREATE INDEX IF NOT EXISTS idx_alertas_tipo ON estoque_alertas(tipo, resolvido);
   `);
 
   // Trigger para atualizar updated_at
@@ -148,13 +115,6 @@ export async function createEstoqueCentralTables() {
       FOR EACH ROW
       EXECUTE FUNCTION update_estoque_lotes_timestamp();
   `);
-
-  // Constraint única para alertas não resolvidos
-  await db.query(`
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_alertas_unique 
-    ON estoque_alertas(produto_id, COALESCE(lote_id, 0), tipo) 
-    WHERE resolvido = FALSE;
-  `);
 }
 
 // Funções de entrada de estoque
@@ -165,7 +125,7 @@ export async function criarLoteEstoque(dados: {
   data_fabricacao?: string;
   data_validade?: string;
   fornecedor_id?: number;
-
+  recebimento_id?: number;
   observacoes?: string;
   usuario_id: number;
 }): Promise<EstoqueLote> {
@@ -215,9 +175,6 @@ export async function criarLoteEstoque(dados: {
     usuario_id: dados.usuario_id,
     observacoes: dados.observacoes
   });
-
-  // Verificar alertas
-  await verificarAlertas(dados.produto_id);
 
   // Retornar lote criado
   return await getLoteById(loteId);
@@ -369,127 +326,7 @@ export async function getMovimentacoesProduto(produto_id: number, limite: number
   return result.rows;
 }
 
-export async function verificarAlertas(produto_id?: number): Promise<void> {
-  const whereClause = produto_id ? 'WHERE p.id = $1' : '';
-  const params = produto_id ? [produto_id] : [];
 
-  // Buscar produtos para verificar alertas
-  const produtos = await db.query(`
-    SELECT 
-      p.id,
-      p.nome,
-      p.estoque_minimo,
-      COALESCE(SUM(el.quantidade_atual), 0) as quantidade_total,
-      COUNT(CASE WHEN el.status = 'ativo' AND el.quantidade_atual > 0 THEN 1 END) as lotes_ativos
-    FROM produtos p
-    LEFT JOIN estoque_lotes el ON p.id = el.produto_id
-    ${whereClause}
-    GROUP BY p.id, p.nome, p.estoque_minimo
-  `, params);
-
-  for (const produto of produtos.rows) {
-    // Verificar estoque baixo/zerado
-    if (produto.quantidade_total <= 0) {
-      await criarAlerta({
-        produto_id: produto.id,
-        tipo: 'estoque_zerado',
-        nivel: 'critical',
-        titulo: 'Estoque Zerado',
-        descricao: `O produto ${produto.nome} está com estoque zerado`
-      });
-    } else if (produto.estoque_minimo && produto.quantidade_total <= produto.estoque_minimo) {
-      await criarAlerta({
-        produto_id: produto.id,
-        tipo: 'estoque_baixo',
-        nivel: 'warning',
-        titulo: 'Estoque Baixo',
-        descricao: `O produto ${produto.nome} está com estoque baixo (${produto.quantidade_total} unidades)`
-      });
-    }
-
-    // Verificar lotes vencidos ou próximos do vencimento
-    const lotesVencimento = await db.query(`
-      SELECT id, lote, data_validade, quantidade_atual
-      FROM estoque_lotes
-      WHERE produto_id = $1 
-        AND status = 'ativo'
-        AND data_validade IS NOT NULL
-        AND data_validade <= CURRENT_DATE + INTERVAL '30 days'
-    `, [produto.id]);
-
-    for (const lote of lotesVencimento.rows) {
-      const diasVencimento = Math.ceil((new Date(lote.data_validade).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-      
-      if (diasVencimento <= 0) {
-        await criarAlerta({
-          produto_id: produto.id,
-          lote_id: lote.id,
-          tipo: 'vencido',
-          nivel: 'critical',
-          titulo: 'Lote Vencido',
-          descricao: `Lote ${lote.lote} do produto ${produto.nome} está vencido`
-        });
-      } else if (diasVencimento <= 7) {
-        await criarAlerta({
-          produto_id: produto.id,
-          lote_id: lote.id,
-          tipo: 'vencimento_proximo',
-          nivel: 'warning',
-          titulo: 'Vencimento Próximo',
-          descricao: `Lote ${lote.lote} do produto ${produto.nome} vence em ${diasVencimento} dias`
-        });
-      }
-    }
-  }
-}
-
-async function criarAlerta(dados: {
-  produto_id: number;
-  lote_id?: number;
-  tipo: string;
-  nivel: string;
-  titulo: string;
-  descricao: string;
-}): Promise<void> {
-  try {
-    await db.query(`
-      INSERT INTO estoque_alertas (produto_id, lote_id, tipo, nivel, titulo, descricao)
-      SELECT $1, $2, $3, $4, $5, $6
-      WHERE NOT EXISTS (
-        SELECT 1 FROM estoque_alertas 
-        WHERE produto_id = $1 
-          AND COALESCE(lote_id, 0) = COALESCE($2, 0)
-          AND tipo = $3
-          AND resolvido = FALSE
-      )
-    `, [
-      dados.produto_id,
-      dados.lote_id || null,
-      dados.tipo,
-      dados.nivel,
-      dados.titulo,
-      dados.descricao
-    ]);
-  } catch (error) {
-    console.warn('Falha ao criar alerta (duplicidade ignorada):', dados.tipo, dados.produto_id);
-  }
-}
-
-export async function getAlertas(resolvidos: boolean = false): Promise<AlertaEstoque[]> {
-  const result = await db.query(`
-    SELECT 
-      ea.*,
-      p.nome as produto_nome,
-      el.lote
-    FROM estoque_alertas ea
-    LEFT JOIN produtos p ON ea.produto_id = p.id
-    LEFT JOIN estoque_lotes el ON ea.lote_id = el.id
-    WHERE ea.resolvido = $1
-    ORDER BY ea.nivel DESC, ea.data_alerta DESC
-  `, [resolvidos]);
-
-  return result.rows;
-}
 
 export async function processarSaida(dados: {
   produto_id: number;
@@ -565,9 +402,6 @@ export async function processarSaida(dados: {
 
     await db.query('COMMIT');
 
-    // Verificar alertas após a saída
-    await verificarAlertas(dados.produto_id);
-
     return {
       success: true,
       lotes_utilizados: lotesUtilizados,
@@ -578,4 +412,59 @@ export async function processarSaida(dados: {
     await db.query('ROLLBACK');
     throw error;
   }
+}
+
+export async function registrarEntrada(dados: {
+  produto_id: number;
+  quantidade: number;
+  data_validade?: string;
+  fornecedor_id?: number;
+  nota_fiscal?: string;
+  usuario_id: number;
+  observacoes?: string;
+  lote?: string;
+  recebimento_id?: number; // Adicionar este campo
+}): Promise<EstoqueLote> {
+
+  // Validar produto
+  const produto = await db.query('SELECT * FROM produtos WHERE id = $1', [dados.produto_id]);
+  if (produto.rows.length === 0) {
+    throw new Error('Produto não encontrado');
+  }
+
+  // Criar lote
+  const loteResult = await db.query(`
+    INSERT INTO estoque_lotes (
+      produto_id, quantidade_inicial, quantidade_atual, lote,
+      data_validade, fornecedor_id, nota_fiscal, status, created_at, updated_at
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'ativo', NOW(), NOW())
+    RETURNING id
+  `, [
+    dados.produto_id,
+    dados.quantidade,
+    dados.quantidade,
+    dados.lote || `LOT-${Date.now()}`,
+    dados.data_validade || null,
+    dados.fornecedor_id || null,
+    dados.nota_fiscal || null
+  ]);
+
+  const loteId = loteResult.rows[0].id;
+
+  // Registrar movimentação
+  await registrarMovimentacao({
+    lote_id: loteId,
+    produto_id: dados.produto_id,
+    tipo: 'entrada',
+    quantidade: dados.quantidade,
+    quantidade_anterior: 0,
+    quantidade_posterior: dados.quantidade,
+    motivo: dados.recebimento_id ? `Recebimento #${dados.recebimento_id}` : 'Entrada manual',
+    documento_referencia: dados.recebimento_id?.toString(),
+    usuario_id: dados.usuario_id,
+    observacoes: dados.observacoes
+  });
+
+  // Retornar lote criado
+  return await getLoteById(loteId);
 }

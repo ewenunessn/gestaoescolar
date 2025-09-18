@@ -229,7 +229,7 @@ export class SistemaRobustoController {
         });
       }
 
-      const sucesso = await sistemaRobusto.setConfiguracao(chave, valor, descricao, tipo);
+      const sucesso = await sistemaRobusto.setConfiguracao(chave, valor);
 
       if (!sucesso) {
         return res.status(500).json({

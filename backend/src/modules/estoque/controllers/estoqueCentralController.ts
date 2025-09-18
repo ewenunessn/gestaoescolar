@@ -6,8 +6,6 @@ import {
   getPosicaoEstoque,
   getMovimentacoesProduto,
   processarSaida,
-  verificarAlertas,
-  getAlertas,
   getLoteById
 } from "../models/EstoqueCentral";
 import { getProdutoById } from "../models/Produto";
@@ -18,33 +16,13 @@ export async function initEstoqueCentral() {
   try {
     await createEstoqueCentralTables();
     await migrarStatusEsgotado();
-    await limparAlertasDuplicados();
     console.log("✅ Tabelas do estoque central criadas com sucesso");
   } catch (error) {
     console.error("❌ Erro ao criar tabelas do estoque central:", error);
   }
 }
 
-// Migração para limpar alertas duplicados
-async function limparAlertasDuplicados() {
-  try {
-    console.log("🔄 Limpando alertas duplicados...");
 
-    const result = await db.query(`
-      DELETE FROM estoque_alertas 
-      WHERE id NOT IN (
-        SELECT MAX(id) 
-        FROM estoque_alertas 
-        GROUP BY produto_id, COALESCE(lote_id, 0), tipo, resolvido
-      )
-    `);
-
-    console.log(`✅ ${result.rowCount || 0} alertas duplicados removidos`);
-  } catch (error) {
-    console.error("⚠️ Erro ao limpar alertas duplicados (continuando):", error);
-    // Não falha a inicialização se a limpeza der erro
-  }
-}
 
 // Migração para adicionar status 'esgotado'
 async function migrarStatusEsgotado() {
@@ -374,97 +352,11 @@ export async function listarMovimentacoes(req: Request, res: Response) {
   }
 }
 
-// Listar alertas do estoque
-export async function listarAlertas(req: Request, res: Response) {
-  try {
-    const apenasNaoResolvidos = req.query.apenas_nao_resolvidos !== 'false';
-    const alertas = await getAlertas(!apenasNaoResolvidos);
-    
-    res.json({
-      success: true,
-      data: alertas,
-      resumo: {
-        total: alertas.length,
-        criticos: alertas.filter(a => a.nivel === 'critical').length,
-        avisos: alertas.filter(a => a.nivel === 'warning').length,
-        informativos: alertas.filter(a => a.nivel === 'info').length
-      }
-    });
-  } catch (error: any) {
-    console.error("Erro ao listar alertas:", error);
-    res.status(500).json({
-      success: false,
-      message: "Erro ao listar alertas",
-      error: error.message
-    });
-  }
-}
 
-// Atualizar alertas (verificar novos)
-export async function atualizarAlertas(req: Request, res: Response) {
-  try {
-    const produto_id = req.query.produto_id ? Number(req.query.produto_id) : undefined;
-    
-    await verificarAlertas(produto_id);
-    
-    res.json({
-      success: true,
-      message: "Alertas atualizados com sucesso"
-    });
-  } catch (error: any) {
-    console.error("Erro ao atualizar alertas:", error);
-    res.status(500).json({
-      success: false,
-      message: "Erro ao atualizar alertas",
-      error: error.message
-    });
-  }
-}
 
-// Marcar alerta como resolvido
-export async function resolverAlerta(req: Request, res: Response) {
-  try {
-    const alerta_id = Number(req.params.alerta_id);
-    
-    if (!alerta_id) {
-      return res.status(400).json({
-        success: false,
-        message: "ID do alerta é obrigatório"
-      });
-    }
 
-    // Verificar se alerta existe
-    const alerta = await db.query(
-      'SELECT * FROM estoque_alertas WHERE id = $1',
-      [alerta_id]
-    );
 
-    if (alerta.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Alerta não encontrado"
-      });
-    }
 
-    // Marcar como resolvido
-    await db.query(
-      'UPDATE estoque_alertas SET resolvido = TRUE WHERE id = $1',
-      [alerta_id]
-    );
-
-    res.json({
-      success: true,
-      message: "Alerta marcado como resolvido"
-    });
-  } catch (error: any) {
-    console.error("Erro ao resolver alerta:", error);
-    res.status(500).json({
-      success: false,
-      message: "Erro ao resolver alerta",
-      error: error.message
-    });
-  }
-}
 
 // Detalhes de um lote específico
 export async function detalharLote(req: Request, res: Response) {
