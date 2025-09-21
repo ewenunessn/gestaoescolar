@@ -1,33 +1,30 @@
 import api from './api';
 
 export interface SaldoContratoItem {
-  contrato_produto_id: number;
+  id: number;
+  contrato_id: number;
   produto_id: number;
   produto_nome: string;
-  produto_unidade: string;
-  contrato_id: number;
+  unidade: string;
   contrato_numero: string;
   data_inicio: string;
   data_fim: string;
   fornecedor_id: number;
   fornecedor_nome: string;
+  contrato_status: string;
   
   // Quantidades
-  quantidade_original: number;
-  // quantidade_aditivos: number; // Removido - módulo de aditivos excluído
   quantidade_total: number;
   quantidade_utilizada: number;
-  quantidade_disponivel: number;
-  quantidade_reservada: number;
+  
   quantidade_disponivel_real: number;
   
   // Valores
-  valor_unitario: number;
+  preco_unitario: number;
   valor_total_disponivel: number;
   
   // Status
   status: 'DISPONIVEL' | 'BAIXO_ESTOQUE' | 'ESGOTADO';
-  percentual_utilizado: number;
 }
 
 export interface FornecedorOption {
@@ -51,7 +48,7 @@ export interface SaldoContratosResponse {
     itens_esgotados: number;
     quantidade_total_geral: number;
     quantidade_utilizada_geral: number;
-    quantidade_reservada_geral: number;
+    
     quantidade_disponivel_geral: number;
     valor_total_disponivel: number;
   };
@@ -80,7 +77,7 @@ class SaldoContratosService {
         }
       });
       
-      const response = await api.get(`/saldos-contratos?${params.toString()}`);
+      const response = await api.get(`/saldo-contratos?${params.toString()}`);
       return response.data;
     } catch (error) {
       console.error('Erro ao listar saldos de contratos:', error);
@@ -93,10 +90,62 @@ class SaldoContratosService {
    */
   async listarFornecedores(): Promise<FornecedorOption[]> {
     try {
-      const response = await api.get('/saldos-contratos/fornecedores');
+      const response = await api.get('/saldo-contratos/fornecedores');
       return response.data.data;
     } catch (error) {
       console.error('Erro ao listar fornecedores:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Registra consumo de um produto do contrato
+   */
+  async registrarConsumo(contratoProdutoId: number, quantidade: number, observacao?: string): Promise<any> {
+    try {
+      // Obter ID do usuário do localStorage ou contexto
+      const usuarioId = localStorage.getItem('userId') || '1'; // Temporário - deve vir do contexto de autenticação
+      
+      const response = await api.post(`/saldo-contratos/${contratoProdutoId}/consumir`, {
+        quantidade,
+        observacao,
+        usuario_id: parseInt(usuarioId)
+      });
+      
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao registrar consumo:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Busca histórico de consumos de um contrato/produto
+   */
+  async buscarHistoricoConsumos(contratoProdutoId: number): Promise<any> {
+    try {
+      const response = await api.get(`/saldo-contratos/${contratoProdutoId}/historico-consumo`);
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao buscar histórico de consumos:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Deleta um consumo registrado
+   * @param id - ID do consumo a ser deletado
+   * @param usuarioId - ID do usuário que está deletando
+   * @returns Promise com o resultado da operação
+   */
+  async deletarConsumo(id: number, usuarioId: number): Promise<{ success: boolean; message: string; data?: any }> {
+    try {
+      const response = await api.delete(`/saldo-contratos/consumo/${id}`, {
+        data: { usuario_id: usuarioId }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao deletar consumo:', error);
       throw error;
     }
   }
@@ -117,7 +166,6 @@ class SaldoContratosService {
         'Unidade',
         'Qtd Total',
         'Qtd Utilizada',
-        'Qtd Reservada',
         'Qtd Disponível',
         'Valor Unitário',
         'Valor Total Disponível',
@@ -129,22 +177,27 @@ class SaldoContratosService {
       
       const csvContent = [
         headers.join(','),
-        ...dadosCompletos.data.map(item => [
-          `"${item.contrato_numero}"`,
-          `"${item.fornecedor_nome}"`,
-          `"${item.produto_nome}"`,
-          `"${item.produto_unidade}"`,
-          item.quantidade_total,
-          item.quantidade_utilizada,
-          item.quantidade_reservada,
-          item.quantidade_disponivel_real,
-          item.valor_unitario,
-          item.valor_total_disponivel,
-          `"${item.status}"`,
-          `${item.percentual_utilizado.toFixed(2)}%`,
-          `"${new Date(item.data_inicio).toLocaleDateString('pt-BR')}"`,
-          `"${new Date(item.data_fim).toLocaleDateString('pt-BR')}"`
-        ].join(','))
+        ...dadosCompletos.data.map(item => {
+          const percentual = item.quantidade_total > 0 
+            ? ((item.quantidade_utilizada / item.quantidade_total) * 100).toFixed(2)
+            : '0.00';
+          
+          return [
+            `"${item.contrato_numero}"`,
+            `"${item.fornecedor_nome}"`,
+            `"${item.produto_nome}"`,
+            `"${item.unidade}"`,
+            item.quantidade_total,
+            item.quantidade_utilizada,
+            item.quantidade_disponivel_real,
+            item.preco_unitario,
+            item.valor_total_disponivel,
+            `"${item.status}"`,
+            `${percentual}%`,
+            `"${new Date(item.data_inicio).toLocaleDateString('pt-BR')}"`,
+            `"${new Date(item.data_fim).toLocaleDateString('pt-BR')}"`
+          ].join(',');
+        })
       ].join('\n');
       
       return new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });

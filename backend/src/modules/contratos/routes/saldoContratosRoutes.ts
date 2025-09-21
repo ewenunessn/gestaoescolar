@@ -29,4 +29,33 @@ router.get('/', saldoContratosController.listarTodosSaldos);
  */
 router.get('/fornecedores', saldoContratosController.listarFornecedores);
 
+/**
+ * @route POST /api/saldos-contratos/:id/consumir
+ * @desc Registra consumo de um produto do contrato
+ * @access Private
+ * @body {
+ *   quantidade: number,
+ *   observacao?: string,
+ *   usuario_id: number
+ * }
+ */
+router.post('/:id/consumir', saldoContratosController.registrarConsumo);
+
+/**
+ * @route GET /api/saldos-contratos/:id/historico-consumo
+ * @desc Busca histórico de consumos de um produto do contrato
+ * @access Private
+ */
+router.get('/:id/historico-consumo', saldoContratosController.buscarHistoricoConsumo);
+
+/**
+ * @route DELETE /api/saldos-contratos/consumo/:id
+ * @desc Deleta um consumo registrado e estorna o saldo
+ * @access Private
+ * @body {
+ *   usuario_id: number
+ * }
+ */
+router.delete('/consumo/:id', saldoContratosController.deletarConsumo);
+
 export default router;
