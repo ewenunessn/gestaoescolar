@@ -733,7 +733,7 @@ const SaldoContratos: React.FC = () => {
           <DialogTitle>
             <Box display="flex" alignItems="center" gap={1}>
               <HistoryIcon color="primary" />
-              Histórico de Consumos - {itemSelecionado?.item_nome}
+              Histórico de Consumos - {itemSelecionado?.produto_nome}
             </Box>
           </DialogTitle>
           <DialogContent>
