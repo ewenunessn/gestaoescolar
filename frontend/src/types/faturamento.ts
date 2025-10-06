@@ -25,7 +25,7 @@ export interface FaturamentoItem {
   fornecedor_nome?: string;
   produto_id: number;
   produto_nome?: string;
-  unidade_medida?: string;
+  unidade?: string;
   quantidade_original: number;
   quantidade_modalidade: number;
   percentual_modalidade: number;
@@ -53,7 +53,7 @@ export interface FaturamentoResumo {
     itens: {
       produto_id: number;
       produto_nome: string;
-      unidade_medida: string;
+      unidade: string;
       quantidade_total: number;
       valor_total: number;
     }[];
@@ -80,7 +80,7 @@ export interface ModalidadeCalculo {
 export interface ItemCalculado {
   pedido_item_id: number;
   produto_nome: string;
-  unidade_medida: string;
+  unidade: string;
   quantidade_original: number;
   preco_unitario: number;
   valor_original: number;

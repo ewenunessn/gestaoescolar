@@ -1149,11 +1149,11 @@ export default function CardapioDetalhe() {
                     {modalDetalheCusto.produtos?.map((produto, index) => (
                       <TableRow key={index}>
                         <TableCell>{produto.produto_nome}</TableCell>
-                        <TableCell>{produto.unidade_medida}</TableCell>
+                        <TableCell>{produto.unidade}</TableCell>
                         <TableCell align="right">{produto.per_capita}</TableCell>
                         <TableCell align="right">
-                          {produto.unidade_medida === 'unidade' 
-                            ? `${(modalDetalheCusto.total_alunos_modalidade * produto.per_capita).toFixed(3)} ${produto.unidade_medida}`
+                          {produto.unidade === 'unidade' 
+                            ? `${(modalDetalheCusto.total_alunos_modalidade * produto.per_capita).toFixed(3)} ${produto.unidade}`
                             : `${(modalDetalheCusto.total_alunos_modalidade * produto.per_capita / 1000).toFixed(3)} kg`
                           }
                         </TableCell>

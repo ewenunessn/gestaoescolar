@@ -142,8 +142,6 @@ export default function ProdutoDetalhe() {
       const dataToSend = { ...form,
         fator_divisao: form.fator_divisao === "" ? null : Number(form.fator_divisao),
         peso: form.peso === "" ? null : Number(form.peso),
-        validade_minima: form.validade_minima === "" ? null : Number(form.validade_minima),
-        estoque_minimo: form.estoque_minimo === "" ? 10 : Number(form.estoque_minimo),
       };
       const atualizado = await editarProduto(Number(id), dataToSend);
       setProduto(atualizado); setIsEditing(false);
@@ -221,7 +219,7 @@ export default function ProdutoDetalhe() {
                         {isEditing ? <TextField label="Fator de Divisão" value={form.fator_divisao ?? ""} onChange={e => setForm({ ...form, fator_divisao: e.target.value })} type="number" fullWidth /> : <InfoItem label="Fator de Divisão" value={produto.fator_divisao}/>}
                     </Grid>
                     <Grid item xs={12} sm={6}>
-                        {isEditing ? <TextField label="Estoque Mínimo" value={form.estoque_minimo ?? ""} onChange={e => setForm({ ...form, estoque_minimo: e.target.value })} type="number" fullWidth /> : <InfoItem label="Estoque Mínimo" value={produto.estoque_minimo}/>}
+                        {isEditing ? <FormControlLabel control={<Switch checked={form.perecivel || false} onChange={e => setForm({ ...form, perecivel: e.target.checked })}/>} label="Produto Perecível" /> : <InfoItem label="Perecível" value={produto.perecivel ? 'Sim' : 'Não'}/>}
                     </Grid>
                 </Grid>
             </SectionPaper>

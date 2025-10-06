@@ -11,15 +11,11 @@ export async function listarProdutos(req: Request, res: Response) {
         descricao,
         categoria,
         marca,
-        codigo_barras,
         unidade,
         peso,
-        validade_minima,
         fator_divisao,
         tipo_processamento,
-        imagem_url,
-        COALESCE(preco_referencia, 0.00) as preco_referencia,
-        COALESCE(estoque_minimo, 10) as estoque_minimo,
+        perecivel,
         ativo,
         created_at
       FROM produtos 
@@ -77,30 +73,26 @@ export async function criarProduto(req: Request, res: Response) {
       descricao,
       categoria,
       marca,
-      codigo_barras,
       unidade,
       peso,
-      validade_minima,
       fator_divisao,
       tipo_processamento,
-      imagem_url,
-      preco_referencia,
-      estoque_minimo = 10,
+      perecivel = false,
       ativo = true
     } = req.body;
 
     const result = await db.query(`
       INSERT INTO produtos (
-        nome, descricao, categoria, marca, codigo_barras, unidade, 
-        peso, validade_minima, fator_divisao, tipo_processamento,
-        imagem_url, preco_referencia, estoque_minimo, ativo, created_at
+        nome, descricao, categoria, marca, unidade, 
+        peso, fator_divisao, tipo_processamento,
+        perecivel, ativo, created_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, CURRENT_TIMESTAMP)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)
       RETURNING *
     `, [
-      nome, descricao, categoria, marca, codigo_barras, unidade,
-      peso, validade_minima, fator_divisao, tipo_processamento,
-      imagem_url, preco_referencia, estoque_minimo, ativo
+      nome, descricao, categoria, marca, unidade,
+      peso, fator_divisao, tipo_processamento,
+      perecivel, ativo
     ]);
 
     res.json({
@@ -126,15 +118,11 @@ export async function editarProduto(req: Request, res: Response) {
       descricao,
       categoria,
       marca,
-      codigo_barras,
       unidade,
       peso,
-      validade_minima,
       fator_divisao,
       tipo_processamento,
-      imagem_url,
-      preco_referencia,
-      estoque_minimo,
+      perecivel,
       ativo
     } = req.body;
 
@@ -144,22 +132,19 @@ export async function editarProduto(req: Request, res: Response) {
         descricao = $2,
         categoria = $3,
         marca = $4,
-        codigo_barras = $5,
-        unidade = $6,
-        peso = $7,
-        validade_minima = $8,
-        fator_divisao = $9,
-        tipo_processamento = $10,
-        imagem_url = $11,
-        preco_referencia = $12,
-        estoque_minimo = $13,
-        ativo = $14
-      WHERE id = $15
+        unidade = $5,
+        peso = $6,
+        fator_divisao = $7,
+        tipo_processamento = $8,
+        perecivel = $9,
+        ativo = $10,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $11
       RETURNING *
     `, [
-      nome, descricao, categoria, marca, codigo_barras, unidade,
-      peso, validade_minima, fator_divisao, tipo_processamento,
-      imagem_url, preco_referencia, estoque_minimo, ativo, id
+      nome, descricao, categoria, marca, unidade,
+      peso, fator_divisao, tipo_processamento,
+      perecivel, ativo, id
     ]);
 
     if (result.rows.length === 0) {
@@ -359,15 +344,11 @@ export async function importarProdutosLote(req: Request, res: Response) {
           descricao,
           categoria,
           marca,
-          codigo_barras,
           unidade,
           peso,
-          validade_minima,
           fator_divisao,
           tipo_processamento,
-          imagem_url,
-          preco_referencia,
-          estoque_minimo = 10,
+          perecivel = false,
           ativo = true
         } = produto;
 
@@ -378,30 +359,26 @@ export async function importarProdutosLote(req: Request, res: Response) {
 
         const result = await db.query(`
           INSERT INTO produtos (
-            nome, descricao, categoria, marca, codigo_barras, unidade, 
-            peso, validade_minima, fator_divisao, tipo_processamento,
-            imagem_url, preco_referencia, estoque_minimo, ativo, created_at
+            nome, descricao, categoria, marca, unidade, 
+            peso, fator_divisao, tipo_processamento,
+            perecivel, ativo, created_at
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, CURRENT_TIMESTAMP)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)
           ON CONFLICT (nome) DO UPDATE SET
             descricao = EXCLUDED.descricao,
             categoria = EXCLUDED.categoria,
             marca = EXCLUDED.marca,
-            codigo_barras = EXCLUDED.codigo_barras,
             unidade = EXCLUDED.unidade,
             peso = EXCLUDED.peso,
-            validade_minima = EXCLUDED.validade_minima,
             fator_divisao = EXCLUDED.fator_divisao,
             tipo_processamento = EXCLUDED.tipo_processamento,
-            imagem_url = EXCLUDED.imagem_url,
-            preco_referencia = EXCLUDED.preco_referencia,
-            estoque_minimo = EXCLUDED.estoque_minimo,
+            perecivel = EXCLUDED.perecivel,
             ativo = EXCLUDED.ativo
           RETURNING *
         `, [
-          nome, descricao, categoria, marca, codigo_barras, unidade,
-          peso, validade_minima, fator_divisao, tipo_processamento,
-          imagem_url, preco_referencia, estoque_minimo, ativo
+          nome, descricao, categoria, marca, unidade,
+          peso, fator_divisao, tipo_processamento,
+          perecivel, ativo
         ]);
 
         const acao = produtoExistente ? 'atualizado' : 'inserido';

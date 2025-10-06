@@ -3,7 +3,7 @@ import { apiWithRetry } from "./api";
 export interface DemandaItem {
   produto_id: number;
   produto_nome: string;
-  unidade_medida: string;
+  unidade: string;
   quantidade_total: number;
   valor_total: number;
   detalhes: {

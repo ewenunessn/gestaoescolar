@@ -24,7 +24,7 @@ export interface PedidoItem {
   contrato_produto_id: number;
   produto_id: number;
   produto_nome?: string;
-  unidade_medida?: string;
+  unidade?: string;
   quantidade: number;
   preco_unitario: number;
   preco_contrato?: number;
@@ -98,7 +98,7 @@ export interface ContratoProduto {
   produto_id: number;
   produto_nome: string;
   produto_descricao?: string;
-  unidade_medida: string;
+  unidade: string;
   preco_unitario: number;
   quantidade_contratada: number;
   contrato_id: number;

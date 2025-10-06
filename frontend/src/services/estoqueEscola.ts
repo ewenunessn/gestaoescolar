@@ -12,7 +12,7 @@ export interface ItemEstoqueEscola {
   ativo: boolean;
   produto_nome: string;
   produto_descricao?: string;
-  unidade_medida: string;
+  unidade: string;
   categoria: string;
   escola_nome: string;
   status_estoque: 'sem_estoque' | 'baixo' | 'normal' | 'alto';
@@ -33,7 +33,7 @@ export interface HistoricoEstoque {
   data_movimentacao: string;
   observacoes?: string;
   produto_nome: string;
-  unidade_medida: string;
+  unidade: string;
   usuario_nome?: string;
 }
 

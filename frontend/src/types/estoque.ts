@@ -26,7 +26,7 @@ export interface MovimentacaoEstoque {
   motivo?: string;
   usuario_id: number;
   created_at: string;
-  unidade_medida?: string;
+  unidade?: string;
   // Dados relacionados
   produto_nome?: string;
   unidade?: string;

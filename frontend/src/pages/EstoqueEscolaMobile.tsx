@@ -689,7 +689,7 @@ const EstoqueEscolaMobile = () => {
                                                     {formatarQuantidade(item.quantidade_atual)}
                                                 </Typography>
                                                 <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600 }}>
-                                                    {item.unidade_medida}
+                                                    {item.unidade}
                                                 </Typography>
                                             </Box>
                                         </Box>
@@ -830,7 +830,7 @@ const EstoqueEscolaMobile = () => {
                         </Box>
                     </Box>
                     <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
-                        Estoque atual: {formatarQuantidade(itemMovimentacao?.quantidade_atual || 0)} {itemMovimentacao?.unidade_medida}
+                        Estoque atual: {formatarQuantidade(itemMovimentacao?.quantidade_atual || 0)} {itemMovimentacao?.unidade}
                     </Typography>
                 </DialogTitle>
                 <DialogContent sx={{ pt: 3 }}>
@@ -916,7 +916,7 @@ const EstoqueEscolaMobile = () => {
                                 'Ex: 15 (nova quantidade total)'
                             }
                             InputProps={{
-                                endAdornment: <InputAdornment position="end">{itemMovimentacao?.unidade_medida}</InputAdornment>,
+                                endAdornment: <InputAdornment position="end">{itemMovimentacao?.unidade}</InputAdornment>,
                                 sx: { fontSize: '1.2rem' }
                             }}
                             sx={{
@@ -931,7 +931,7 @@ const EstoqueEscolaMobile = () => {
                             }}
                             helperText={
                                 tipoMovimentacao === 'ajuste'
-                                    ? `Estoque atual: ${formatarQuantidade(itemMovimentacao?.quantidade_atual || 0)} ${itemMovimentacao?.unidade_medida}`
+                                    ? `Estoque atual: ${formatarQuantidade(itemMovimentacao?.quantidade_atual || 0)} ${itemMovimentacao?.unidade}`
                                     : undefined
                             }
                             autoFocus
@@ -1076,7 +1076,7 @@ const EstoqueEscolaMobile = () => {
                                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                                             <Typography variant="h5" sx={{ fontWeight: 800 }}>
                                                 {mov.tipo_movimentacao === 'entrada' ? '+' :
-                                                    mov.tipo_movimentacao === 'saida' ? '-' : '='} {formatarQuantidade(mov.quantidade_movimentada)} {mov.unidade_medida}
+                                                    mov.tipo_movimentacao === 'saida' ? '-' : '='} {formatarQuantidade(mov.quantidade_movimentada)} {mov.unidade}
                                             </Typography>
                                             <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600 }}>
                                                 {formatarQuantidade(mov.quantidade_anterior || 0)} → {formatarQuantidade(mov.quantidade_posterior || 0)}

@@ -69,14 +69,10 @@ interface Produto {
   unidade?: string;
   categoria?: string;
   marca?: string;
-  codigo_barras?: string;
   peso?: number;
-  validade_minima?: number;
   fator_divisao?: number;
   tipo_processamento?: string;
-  imagem_url?: string;
-  preco_referencia?: number;
-  estoque_minimo?: number;
+  perecivel?: boolean;
   ativo: boolean;
 }
 
@@ -86,14 +82,10 @@ interface ProdutoForm {
   unidade: string;
   categoria: string;
   marca: string;
-  codigo_barras?: string;
   peso?: number;
-  validade_minima?: number;
   fator_divisao?: number;
   tipo_processamento?: string;
-  imagem_url?: string;
-  preco_referencia?: number;
-  estoque_minimo?: number;
+  perecivel?: boolean;
   ativo: boolean;
 }
 
@@ -253,7 +245,19 @@ const ProdutosPage = () => {
 
   // Funções de Importação/Exportação
   const handleImportProdutos = async (produtosImportacao: any[]) => {
-    // Implementação da importação...
+    try {
+      setLoading(true);
+      const response = await importarProdutosLote(produtosImportacao);
+      
+      setSuccessMessage(`Importação concluída: ${response.resultados.insercoes} inseridos, ${response.resultados.atualizacoes} atualizados`);
+      await loadProdutos();
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } catch (err) {
+      setError('Erro ao importar produtos. Verifique os dados e tente novamente.');
+      setTimeout(() => setError(null), 5000);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleExportarProdutos = () => {
@@ -264,15 +268,11 @@ const ProdutosPage = () => {
         descricao: produto.descricao || '',
         categoria: produto.categoria || '',
         marca: produto.marca || '',
-        codigo_barras: produto.codigo_barras || '',
         unidade: produto.unidade || '',
         peso: produto.peso || 0,
-        validade_minima: produto.validade_minima || 0,
         fator_divisao: produto.fator_divisao || 1,
         tipo_processamento: produto.tipo_processamento || '',
-        imagem_url: produto.imagem_url || '',
-        preco_referencia: produto.preco_referencia || 0,
-        estoque_minimo: produto.estoque_minimo || 10,
+        perecivel: produto.perecivel || false,
         ativo: produto.ativo
       }));
 
@@ -291,18 +291,60 @@ const ProdutosPage = () => {
         { wch: 35 }, // descricao
         { wch: 15 }, // categoria
         { wch: 15 }, // marca
-        { wch: 15 }, // codigo_barras
         { wch: 12 }, // unidade
         { wch: 8 },  // peso
-        { wch: 12 }, // validade_minima
         { wch: 12 }, // fator_divisao
-        { wch: 18 }, // tipo_processamento
-        { wch: 25 }, // imagem_url
-        { wch: 12 }, // preco_referencia
-        { wch: 12 }, // estoque_minimo
+        { wch: 25 }, // tipo_processamento (aumentado para caber o texto)
+        { wch: 10 }, // perecivel
         { wch: 8 }   // ativo
       ];
       ws['!cols'] = colWidths;
+
+      // Adicionar validação de dados para tipo_processamento (coluna H)
+      // Adicionar validação para perecivel (coluna I) e ativo (coluna J)
+      if (!ws['!dataValidation']) ws['!dataValidation'] = [];
+      
+      // Validação para tipo_processamento (coluna H, linhas 2 em diante)
+      for (let i = 2; i <= dadosExportacao.length + 1; i++) {
+        ws['!dataValidation'].push({
+          type: 'list',
+          allowBlank: true,
+          sqref: `H${i}`,
+          formulas: ['"in natura,minimamente processado,processado,ultraprocessado"'],
+          promptTitle: 'Tipo de Processamento',
+          prompt: 'Selecione uma das opções',
+          errorTitle: 'Valor Inválido',
+          error: 'Escolha: in natura, minimamente processado, processado ou ultraprocessado'
+        });
+      }
+
+      // Validação para perecivel (coluna I)
+      for (let i = 2; i <= dadosExportacao.length + 1; i++) {
+        ws['!dataValidation'].push({
+          type: 'list',
+          allowBlank: false,
+          sqref: `I${i}`,
+          formulas: ['"true,false"'],
+          promptTitle: 'Perecível',
+          prompt: 'Selecione true ou false',
+          errorTitle: 'Valor Inválido',
+          error: 'Escolha: true ou false'
+        });
+      }
+
+      // Validação para ativo (coluna J)
+      for (let i = 2; i <= dadosExportacao.length + 1; i++) {
+        ws['!dataValidation'].push({
+          type: 'list',
+          allowBlank: false,
+          sqref: `J${i}`,
+          formulas: ['"true,false"'],
+          promptTitle: 'Ativo',
+          prompt: 'Selecione true ou false',
+          errorTitle: 'Valor Inválido',
+          error: 'Escolha: true ou false'
+        });
+      }
 
       // Adicionar worksheet ao workbook
       XLSX.utils.book_append_sheet(wb, ws, 'Produtos');
@@ -326,10 +368,9 @@ const ProdutosPage = () => {
     try {
       // Criar modelo com headers e exemplo
       const headers = [
-        'nome', 'descricao', 'categoria', 'marca', 'codigo_barras', 
-        'unidade', 'peso', 'validade_minima', 'fator_divisao', 
-        'tipo_processamento', 'imagem_url', 'preco_referencia', 
-        'estoque_minimo', 'ativo'
+        'nome', 'descricao', 'categoria', 'marca', 
+        'unidade', 'peso', 'fator_divisao', 
+        'tipo_processamento', 'perecivel', 'ativo'
       ];
 
       const exemplo = [
@@ -337,15 +378,11 @@ const ProdutosPage = () => {
         'Arroz branco polido, tipo 1, classe longo fino',
         'Cereais',
         'Tio João',
-        '7891234567890',
         'kg',
         1000,
-        365,
         1,
         'processado',
-        '',
-        5.50,
-        50,
+        false,
         true
       ];
 
@@ -358,18 +395,53 @@ const ProdutosPage = () => {
         { wch: 35 }, // descricao
         { wch: 15 }, // categoria
         { wch: 15 }, // marca
-        { wch: 15 }, // codigo_barras
         { wch: 12 }, // unidade
         { wch: 8 },  // peso
-        { wch: 12 }, // validade_minima
         { wch: 12 }, // fator_divisao
-        { wch: 18 }, // tipo_processamento
-        { wch: 25 }, // imagem_url
-        { wch: 12 }, // preco_referencia
-        { wch: 12 }, // estoque_minimo
+        { wch: 25 }, // tipo_processamento (aumentado)
+        { wch: 10 }, // perecivel
         { wch: 8 }   // ativo
       ];
       ws['!cols'] = colWidths;
+
+      // Adicionar validação de dados para facilitar o preenchimento
+      if (!ws['!dataValidation']) ws['!dataValidation'] = [];
+      
+      // Validação para tipo_processamento (coluna H, linhas 2 a 100)
+      ws['!dataValidation'].push({
+        type: 'list',
+        allowBlank: true,
+        sqref: 'H2:H100',
+        formulas: ['"in natura,minimamente processado,processado,ultraprocessado"'],
+        promptTitle: 'Tipo de Processamento',
+        prompt: 'Selecione uma das opções',
+        errorTitle: 'Valor Inválido',
+        error: 'Escolha: in natura, minimamente processado, processado ou ultraprocessado'
+      });
+
+      // Validação para perecivel (coluna I, linhas 2 a 100)
+      ws['!dataValidation'].push({
+        type: 'list',
+        allowBlank: false,
+        sqref: 'I2:I100',
+        formulas: ['"true,false"'],
+        promptTitle: 'Perecível',
+        prompt: 'Selecione true ou false',
+        errorTitle: 'Valor Inválido',
+        error: 'Escolha: true ou false'
+      });
+
+      // Validação para ativo (coluna J, linhas 2 a 100)
+      ws['!dataValidation'].push({
+        type: 'list',
+        allowBlank: false,
+        sqref: 'J2:J100',
+        formulas: ['"true,false"'],
+        promptTitle: 'Ativo',
+        prompt: 'Selecione true ou false',
+        errorTitle: 'Valor Inválido',
+        error: 'Escolha: true ou false'
+      });
 
       // Criar workbook e adicionar worksheet
       const wb = XLSX.utils.book_new();
@@ -384,26 +456,22 @@ const ProdutosPage = () => {
         ['descricao', 'Descrição detalhada do produto', 'NÃO', 'Arroz branco tipo 1'],
         ['categoria', 'Categoria do produto', 'NÃO', 'Cereais'],
         ['marca', 'Marca do produto', 'NÃO', 'Tio João'],
-        ['codigo_barras', 'Código de barras (8-14 dígitos)', 'NÃO', '7891234567890'],
-        ['unidade', 'Unidade de medida', 'NÃO', 'kg'],
+        ['unidade', 'Unidade de medida (kg, litro, unidade, etc)', 'NÃO', 'kg'],
         ['peso', 'Peso em gramas', 'NÃO', '1000'],
-        ['validade_minima', 'Validade mínima em dias', 'NÃO', '365'],
         ['fator_divisao', 'Fator de divisão', 'NÃO', '1'],
-        ['tipo_processamento', 'Tipo: in natura, processado, etc', 'NÃO', 'processado'],
-        ['imagem_url', 'URL da imagem do produto', 'NÃO', ''],
-        ['preco_referencia', 'Preço de referência', 'NÃO', '5.50'],
-        ['estoque_minimo', 'Estoque mínimo', 'NÃO', '50'],
+        ['tipo_processamento', 'Tipo: in natura, minimamente processado, processado, ultraprocessado', 'NÃO', 'processado'],
+        ['perecivel', 'Produto perecível (true/false)', 'NÃO', 'false'],
         ['ativo', 'Produto ativo (true/false)', 'NÃO', 'true'],
         [''],
         ['NOTAS:'],
         ['- Preencha apenas os campos necessários'],
-        ['- Use valores numéricos para peso, validade_minima, etc'],
-        ['- Use true ou false para o campo ativo'],
+        ['- Use valores numéricos para peso e fator_divisao'],
+        ['- Use true ou false para os campos perecivel e ativo'],
         ['- O sistema identificará produtos existentes pelo nome e fará atualização']
       ];
 
       const wsInstrucoes = XLSX.utils.aoa_to_sheet(instrucoes);
-      wsInstrucoes['!cols'] = [{ wch: 15 }, { wch: 40 }, { wch: 10 }, { wch: 20 }];
+      wsInstrucoes['!cols'] = [{ wch: 15 }, { wch: 50 }, { wch: 10 }, { wch: 20 }];
       XLSX.utils.book_append_sheet(wb, wsInstrucoes, 'Instruções');
 
       // Gerar nome do arquivo

@@ -361,7 +361,7 @@ export default function PedidoDetalhe() {
                           )}
                         </TableCell>
                         <TableCell>{item.contrato_numero}</TableCell>
-                        <TableCell>{item.unidade_medida}</TableCell>
+                        <TableCell>{item.unidade}</TableCell>
                         <TableCell align="right">{item.quantidade}</TableCell>
                         <TableCell>
                           {item.data_entrega_prevista ? formatarData(item.data_entrega_prevista) : '-'}

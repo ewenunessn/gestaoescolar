@@ -348,7 +348,7 @@ export default function ModalGerarFaturamento({
                                       {item.produto_nome}
                                     </Typography>
                                     <Typography variant="caption" color="text.secondary">
-                                      {item.unidade_medida}
+                                      {item.unidade}
                                     </Typography>
                                   </TableCell>
                                   <TableCell align="right" rowSpan={item.divisoes.length}>

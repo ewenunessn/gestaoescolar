@@ -375,7 +375,7 @@ function GerarFaturamento() {
                                                             {contrato.itens.map((item: ItemCalculado) => (
                                                                 <TableRow key={item.pedido_item_id}>
                                                                     <TableCell>{item.produto_nome}</TableCell>
-                                                                    <TableCell>{item.unidade_medida}</TableCell>
+                                                                    <TableCell>{item.unidade}</TableCell>
                                                                     <TableCell align="right">{item.quantidade_original}</TableCell>
                                                                     <TableCell align="right">{formatarMoeda(item.preco_unitario)}</TableCell>
                                                                     <TableCell align="right">
@@ -523,7 +523,7 @@ function GerarFaturamento() {
                                     <strong>Produto:</strong> {itemSelecionado.produto_nome}
                                 </Typography>
                                 <Typography variant="body1">
-                                    <strong>Unidade:</strong> {itemSelecionado.unidade_medida}
+                                    <strong>Unidade:</strong> {itemSelecionado.unidade}
                                 </Typography>
                                 <Typography variant="body1">
                                     <strong>Quantidade Total:</strong> {itemSelecionado.quantidade_original}

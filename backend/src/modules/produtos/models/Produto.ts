@@ -3,18 +3,14 @@ const db = require("../database");
 export interface Produto {
   id: number;
   nome: string;
-  // descricao?: string; // DESCONTINUADO - não usar mais
+  descricao?: string;
   unidade?: string;
   fator_divisao?: number;
   tipo_processamento?: string; // in natura, minimamente processado, processado, ultraprocessado
   categoria?: string;
   marca?: string;
-  codigo_barras?: string;
   peso?: number; // peso em gramas
-  validade_minima?: number; // validade mínima em dias
-  imagem_url?: string;
-  estoque_minimo?: number; // quantidade mínima em estoque
-  perecivel: boolean; // NOVO - indica se o produto é perecível
+  perecivel: boolean; // indica se o produto é perecível
   ativo: boolean;
 }
 

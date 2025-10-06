@@ -659,7 +659,7 @@ export default function GerarDemanda() {
                         color: "#6b7280",
                       }}
                     >
-                      {item.unidade_medida}
+                      {item.unidade}
                     </TableCell>
                     <TableCell
                       align="right"

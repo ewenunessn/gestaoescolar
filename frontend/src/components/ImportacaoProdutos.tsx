@@ -48,16 +48,11 @@ interface ProdutoImportacao {
   descricao?: string;
   categoria?: string;
   marca?: string;
-  codigo_barras?: string;
-  unidade_medida?: string;
   unidade?: string;
   peso?: number;
-  validade_minima?: number;
   fator_divisao?: number;
   tipo_processamento?: string;
-  imagem_url?: string;
-  preco_referencia?: number;
-  estoque_minimo?: number;
+  perecivel?: boolean;
   ativo: boolean;
   status: 'valido' | 'erro' | 'aviso';
   mensagem?: string;
@@ -96,16 +91,11 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
       'descricao',
       'categoria',
       'marca',
-      'codigo_barras',
-      'unidade_medida',
       'unidade',
       'peso',
-      'validade_minima',
       'fator_divisao',
       'tipo_processamento',
-      'imagem_url',
-      'preco_referencia',
-      'estoque_minimo',
+      'perecivel',
       'ativo'
     ];
 
@@ -115,16 +105,11 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
         'Arroz branco polido, tipo 1, classe longo fino',
         'Cereais',
         'Tio João',
-        '7891234567890',
-        'kg',
         'kg',
         '1000',
-        '365',
         '1',
         'processado',
-        '',
-        '5.50',
-        '50',
+        'false',
         'true'
       ],
       [
@@ -132,16 +117,11 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
         'Feijão carioca tipo 1, classe cores',
         'Leguminosas',
         'Camil',
-        '7891234567891',
-        'kg',
         'kg',
         '1000',
-        '730',
         '1',
         'in natura',
-        '',
-        '8.90',
-        '30',
+        'false',
         'true'
       ],
       [
@@ -149,16 +129,11 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
         'Banana prata fresca, primeira qualidade',
         'Frutas',
         '',
-        '',
-        'kg',
         'kg',
         '150',
-        '7',
         '1',
         'in natura',
-        '',
-        '4.20',
-        '25',
+        'true',
         'true'
       ],
       [
@@ -166,16 +141,11 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
         'Carne bovina moída, primeira qualidade',
         'Carnes',
         'Friboi',
-        '7891234567898',
-        'kg',
         'kg',
         '1000',
-        '30',
         '1',
         'in natura',
-        '',
-        '18.50',
-        '10',
+        'true',
         'true'
       ],
       [
@@ -183,16 +153,11 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
         'Óleo de soja refinado',
         'Óleos',
         'Liza',
-        '7891234567892',
         'litro',
-        'L',
         '900',
-        '180',
         '1',
         'processado',
-        '',
-        '6.80',
-        '20',
+        'false',
         'true'
       ]
     ];
@@ -215,16 +180,11 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
       'descricao',
       'categoria',
       'marca',
-      'codigo_barras',
-      'unidade_medida',
       'unidade',
       'peso',
-      'validade_minima',
       'fator_divisao',
       'tipo_processamento',
-      'imagem_url',
-      'preco_referencia',
-      'estoque_minimo',
+      'perecivel',
       'ativo'
     ];
 
@@ -234,16 +194,11 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
         'Arroz branco polido, tipo 1, classe longo fino',
         'Cereais',
         'Tio João',
-        '7891234567890',
-        'kg',
         'kg',
         1000,
-        365,
         1,
         'processado',
-        '',
-        5.50,
-        50,
+        false,
         true
       ],
       [
@@ -251,16 +206,11 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
         'Feijão carioca tipo 1, classe cores',
         'Leguminosas',
         'Camil',
-        '7891234567891',
-        'kg',
         'kg',
         1000,
-        730,
         1,
         'in natura',
-        '',
-        8.90,
-        30,
+        false,
         true
       ],
       [
@@ -268,16 +218,11 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
         'Banana prata fresca, primeira qualidade',
         'Frutas',
         '',
-        '',
-        'kg',
         'kg',
         150,
-        7,
         1,
         'in natura',
-        '',
-        4.20,
-        25,
+        true,
         true
       ],
       [
@@ -285,16 +230,11 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
         'Carne bovina moída, primeira qualidade',
         'Carnes',
         'Friboi',
-        '7891234567898',
-        'kg',
         'kg',
         1000,
-        30,
         1,
         'in natura',
-        '',
-        18.50,
-        10,
+        true,
         true
       ],
       [
@@ -302,16 +242,11 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
         'Óleo de soja refinado',
         'Óleos',
         'Liza',
-        '7891234567892',
         'litro',
-        'L',
         900,
-        180,
         1,
         'processado',
-        '',
-        6.80,
-        20,
+        false,
         true
       ]
     ];
@@ -324,18 +259,52 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
       { wch: 35 }, // descricao
       { wch: 15 }, // categoria
       { wch: 15 }, // marca
-      { wch: 15 }, // codigo_barras
-      { wch: 12 }, // unidade_medida
-      { wch: 10 }, // unidade
+      { wch: 12 }, // unidade
       { wch: 8 },  // peso
-      { wch: 12 }, // validade_minima
       { wch: 12 }, // fator_divisao
-      { wch: 18 }, // tipo_processamento
-      { wch: 25 }, // imagem_url
-      { wch: 12 }, // preco_referencia
-      { wch: 12 }, // estoque_minimo
+      { wch: 25 }, // tipo_processamento (aumentado)
+      { wch: 10 }, // perecivel
       { wch: 8 }   // ativo
     ];
+
+    // Adicionar validação de dados
+    if (!ws['!dataValidation']) ws['!dataValidation'] = [];
+    
+    // Validação para tipo_processamento (coluna H, linhas 2 a 100)
+    ws['!dataValidation'].push({
+      type: 'list',
+      allowBlank: true,
+      sqref: 'H2:H100',
+      formulas: ['"in natura,minimamente processado,processado,ultraprocessado"'],
+      promptTitle: 'Tipo de Processamento',
+      prompt: 'Selecione uma das opções',
+      errorTitle: 'Valor Inválido',
+      error: 'Escolha: in natura, minimamente processado, processado ou ultraprocessado'
+    });
+
+    // Validação para perecivel (coluna I, linhas 2 a 100)
+    ws['!dataValidation'].push({
+      type: 'list',
+      allowBlank: false,
+      sqref: 'I2:I100',
+      formulas: ['"true,false"'],
+      promptTitle: 'Perecível',
+      prompt: 'Selecione true ou false',
+      errorTitle: 'Valor Inválido',
+      error: 'Escolha: true ou false'
+    });
+
+    // Validação para ativo (coluna J, linhas 2 a 100)
+    ws['!dataValidation'].push({
+      type: 'list',
+      allowBlank: false,
+      sqref: 'J2:J100',
+      formulas: ['"true,false"'],
+      promptTitle: 'Ativo',
+      prompt: 'Selecione true ou false',
+      errorTitle: 'Valor Inválido',
+      error: 'Escolha: true ou false'
+    });
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Produtos');
@@ -429,16 +398,11 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
         descricao: linha.descricao || '',
         categoria: linha.categoria || '',
         marca: linha.marca || '',
-        codigo_barras: linha.codigo_barras || '',
-        unidade_medida: linha.unidade_medida || '',
         unidade: linha.unidade || '',
         peso: parseFloat(linha.peso) || undefined,
-        validade_minima: parseInt(linha.validade_minima) || undefined,
         fator_divisao: parseFloat(linha.fator_divisao) || undefined,
         tipo_processamento: linha.tipo_processamento || '',
-        imagem_url: linha.imagem_url || '',
-        preco_referencia: parseFloat(linha.preco_referencia) || undefined,
-        estoque_minimo: parseInt(linha.estoque_minimo) || 10,
+        perecivel: linha.perecivel === 'true' || linha.perecivel === true || linha.perecivel === 1,
         ativo: linha.ativo === 'true' || linha.ativo === true || linha.ativo === 1,
         status: 'valido',
         mensagem: ''
@@ -457,30 +421,9 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
         erros.push('Tipo de processamento deve ser: in natura, minimamente processado, processado ou ultraprocessado');
       }
 
-      // Validar código de barras apenas se não estiver vazio
-      if (produto.codigo_barras && produto.codigo_barras.length > 0 && !/^\d{8,14}$/.test(produto.codigo_barras)) {
-        avisos.push('Código de barras deve ter entre 8 e 14 dígitos');
-      }
-
       // Validar peso
       if (produto.peso !== undefined && produto.peso <= 0) {
         erros.push('Peso deve ser maior que zero');
-      }
-
-      // Validar validade mínima
-      if (produto.validade_minima !== undefined && produto.validade_minima <= 0) {
-        erros.push('Validade mínima deve ser maior que zero');
-      }
-
-      // Validar estoque mínimo
-      if (produto.estoque_minimo !== undefined && produto.estoque_minimo < 0) {
-        erros.push('Estoque mínimo não pode ser negativo');
-      }
-
-      // Validar URL da imagem apenas se não estiver vazia
-      if (produto.imagem_url && produto.imagem_url.length > 10 &&
-        !produto.imagem_url.match(/^https?:\/\/.+\.(jpg|jpeg|png|gif|webp)$/i)) {
-        avisos.push('URL da imagem pode estar incorreta');
       }
 
       // Avisos apenas para campos realmente importantes (removidos avisos desnecessários)
@@ -669,16 +612,11 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
                   <li><strong>descricao</strong>: Descrição detalhada do produto (opcional)</li>
                   <li><strong>categoria</strong>: Categoria do produto (opcional)</li>
                   <li><strong>marca</strong>: Marca do produto (opcional)</li>
-                  <li><strong>codigo_barras</strong>: Código de barras 8-14 dígitos (opcional)</li>
-                  <li><strong>unidade_medida</strong>: Unidade de medida padrão (opcional)</li>
-                  <li><strong>unidade</strong>: Unidade de venda (opcional)</li>
+                  <li><strong>unidade</strong>: Unidade de medida (kg, litro, unidade, etc.) (opcional)</li>
                   <li><strong>peso</strong>: Peso em gramas (opcional)</li>
-                  <li><strong>validade_minima</strong>: Validade mínima em dias (opcional)</li>
                   <li><strong>fator_divisao</strong>: Fator de divisão (opcional)</li>
                   <li><strong>tipo_processamento</strong>: in natura, minimamente processado, processado, ultraprocessado (opcional)</li>
-                  <li><strong>imagem_url</strong>: URL da imagem do produto (opcional)</li>
-                  <li><strong>preco_referencia</strong>: Preço de referência (opcional)</li>
-                  <li><strong>estoque_minimo</strong>: Estoque mínimo (padrão: 10)</li>
+                  <li><strong>perecivel</strong>: true ou false (padrão: false)</li>
                   <li><strong>ativo</strong>: true ou false (padrão: true)</li>
                 </ul>
               </Typography>
@@ -744,43 +682,46 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
               <Table stickyHeader>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Status</TableCell>
                     <TableCell>Nome</TableCell>
                     <TableCell>Descrição</TableCell>
                     <TableCell>Categoria</TableCell>
                     <TableCell>Marca</TableCell>
                     <TableCell>Unidade</TableCell>
-                    <TableCell>Tipo</TableCell>
-                    <TableCell align="center">Peso (g)</TableCell>
-                    <TableCell align="center">Preço Ref.</TableCell>
-                    <TableCell align="center">Estoque Min.</TableCell>
+                    <TableCell align="center">Peso</TableCell>
+                    <TableCell align="center">Fator Divisão</TableCell>
+                    <TableCell>Tipo Processamento</TableCell>
+                    <TableCell align="center">Perecível</TableCell>
                     <TableCell align="center">Ativo</TableCell>
-                    <TableCell>Mensagem</TableCell>
-                    <TableCell align="center">Ações</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {produtos.map((produto, index) => {
-                    const statusConfig = getStatusColor(produto.status);
+                    const hasError = produto.status === 'erro';
+                    const hasWarning = produto.status === 'aviso';
                     return (
-                      <TableRow key={index}>
+                      <TableRow 
+                        key={index}
+                        sx={{
+                          bgcolor: hasError ? '#fee2e2' : hasWarning ? '#fef3c7' : 'transparent',
+                          '&:hover': {
+                            bgcolor: hasError ? '#fecaca' : hasWarning ? '#fde68a' : '#f9fafb',
+                          }
+                        }}
+                      >
                         <TableCell>
-                          <Chip
-                            icon={statusConfig.icon}
-                            label={produto.status}
-                            size="small"
-                            sx={{
-                              bgcolor: statusConfig.bg,
-                              color: statusConfig.color,
-                              fontWeight: 600,
-                              textTransform: 'capitalize',
-                            }}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Typography sx={{ fontWeight: 600 }}>
-                            {produto.nome}
-                          </Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            {hasError && <Error sx={{ fontSize: 16, color: '#dc2626' }} />}
+                            {hasWarning && <Warning sx={{ fontSize: 16, color: '#d97706' }} />}
+                            {!hasError && !hasWarning && <CheckCircle sx={{ fontSize: 16, color: '#059669' }} />}
+                            <Typography sx={{ fontWeight: 600 }}>
+                              {produto.nome}
+                            </Typography>
+                          </Box>
+                          {produto.mensagem && (
+                            <Typography sx={{ fontSize: '0.75rem', color: hasError ? '#dc2626' : '#d97706', mt: 0.5 }}>
+                              {produto.mensagem}
+                            </Typography>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Typography sx={{ fontSize: '0.875rem', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -789,7 +730,9 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
                         </TableCell>
                         <TableCell>{produto.categoria || '-'}</TableCell>
                         <TableCell>{produto.marca || '-'}</TableCell>
-                        <TableCell>{produto.unidade || produto.unidade_medida || '-'}</TableCell>
+                        <TableCell>{produto.unidade || '-'}</TableCell>
+                        <TableCell align="center">{produto.peso || '-'}</TableCell>
+                        <TableCell align="center">{produto.fator_divisao || '-'}</TableCell>
                         <TableCell>
                           {produto.tipo_processamento ? (
                             <Chip
@@ -803,47 +746,11 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
                             />
                           ) : '-'}
                         </TableCell>
-                        <TableCell align="center">{produto.peso || '-'}</TableCell>
                         <TableCell align="center">
-                          {produto.preco_referencia ? `R$ ${produto.preco_referencia.toFixed(2)}` : '-'}
-                        </TableCell>
-                        <TableCell align="center">{produto.estoque_minimo || 10}</TableCell>
-                        <TableCell align="center">
-                          <Chip
-                            label={produto.ativo ? 'Sim' : 'Não'}
-                            size="small"
-                            sx={{
-                              bgcolor: produto.ativo ? '#dcfce7' : '#fee2e2',
-                              color: produto.ativo ? '#059669' : '#dc2626',
-                            }}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Typography
-                            sx={{
-                              color: produto.status === 'erro' ? '#dc2626' : '#6b7280',
-                              fontSize: '0.875rem',
-                              maxWidth: 200,
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                            }}
-                          >
-                            {produto.mensagem}
-                          </Typography>
+                          {produto.perecivel ? 'Sim' : 'Não'}
                         </TableCell>
                         <TableCell align="center">
-                          <Tooltip title="Remover produto">
-                            <IconButton
-                              onClick={() => removerProduto(index)}
-                              sx={{
-                                bgcolor: '#fee2e2',
-                                color: '#dc2626',
-                                '&:hover': { bgcolor: '#fecaca' },
-                              }}
-                            >
-                              <Delete sx={{ fontSize: 18 }} />
-                            </IconButton>
-                          </Tooltip>
+                          {produto.ativo ? 'Sim' : 'Não'}
                         </TableCell>
                       </TableRow>
                     );

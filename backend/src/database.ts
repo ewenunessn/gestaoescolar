@@ -8,7 +8,9 @@ const dbConfig = {
     database: process.env.DB_NAME || 'alimentacao_escolar',
     password: process.env.DB_PASSWORD || 'admin123',
     port: parseInt(process.env.DB_PORT || '5432'),
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+    // Forçar SSL como false para desenvolvimento local
+    // Em produção na Vercel, usar variável de ambiente DB_SSL=true
+    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false
 };
 
 console.log('🔧 Configuração do banco de dados:', {
@@ -27,7 +29,7 @@ async function query(text: string, params: any[] = []): Promise<QueryResult> {
     try {
         const res = await pool.query(text, params);
         const duration = Date.now() - start;
-        
+
         if (process.env.NODE_ENV === 'development') {
             console.log('Query executada:', {
                 text: text.substring(0, 50) + '...',
@@ -35,7 +37,7 @@ async function query(text: string, params: any[] = []): Promise<QueryResult> {
                 rows: res.rowCount
             });
         }
-        
+
         return res;
     } catch (error: any) {
         console.error('Erro na query PostgreSQL:', error.message);
@@ -79,18 +81,18 @@ const db = {
     transaction,
     testConnection,
     pool,
-    
+
     // Métodos para compatibilidade com código existente
     all: async (sql: string, params: any[] = []): Promise<any[]> => {
         const result = await query(sql, params);
         return result.rows;
     },
-    
+
     get: async (sql: string, params: any[] = []): Promise<any> => {
         const result = await query(sql, params);
         return result.rows[0];
     },
-    
+
     run: async (sql: string, params: any[] = []): Promise<{ changes: number; lastID: any }> => {
         const result = await query(sql, params);
         return {

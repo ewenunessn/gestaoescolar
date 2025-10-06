@@ -35,7 +35,7 @@ import { formatarMoeda } from '../utils/dateUtils';
 interface ItemPedido {
   contrato_produto_id: number;
   produto_nome: string;
-  unidade_medida: string;
+  unidade: string;
   fornecedor_nome: string;
   contrato_numero: string;
   quantidade: number;
@@ -85,7 +85,7 @@ export default function NovoPedido() {
     const novoItem: ItemPedido = {
       contrato_produto_id: produtoSelecionado.contrato_produto_id,
       produto_nome: produtoSelecionado.produto_nome,
-      unidade_medida: produtoSelecionado.unidade_medida,
+      unidade: produtoSelecionado.unidade,
       fornecedor_nome: produtoSelecionado.fornecedor_nome,
       contrato_numero: produtoSelecionado.contrato_numero,
       quantidade: 1,
@@ -219,7 +219,7 @@ export default function NovoPedido() {
                     options={produtosDisponiveis}
                     groupBy={(option) => option.fornecedor_nome}
                     getOptionLabel={(option) => 
-                      `${option.produto_nome} - ${option.fornecedor_nome} (${formatarMoeda(option.preco_unitario)}/${option.unidade_medida})`
+                      `${option.produto_nome} - ${option.fornecedor_nome} (${formatarMoeda(option.preco_unitario)}/${option.unidade})`
                     }
                     renderInput={(params) => (
                       <TextField 
@@ -235,7 +235,7 @@ export default function NovoPedido() {
                             <strong>{option.produto_nome}</strong>
                           </Typography>
                           <Typography variant="caption" color="text.secondary">
-                            {option.fornecedor_nome} - Contrato {option.contrato_numero} - {formatarMoeda(option.preco_unitario)}/{option.unidade_medida}
+                            {option.fornecedor_nome} - Contrato {option.contrato_numero} - {formatarMoeda(option.preco_unitario)}/{option.unidade}
                           </Typography>
                         </Box>
                       </li>
@@ -364,7 +364,7 @@ export default function NovoPedido() {
                           <TableCell>{item.produto_nome}</TableCell>
                           <TableCell>{item.fornecedor_nome}</TableCell>
                           <TableCell>{item.contrato_numero}</TableCell>
-                          <TableCell>{item.unidade_medida}</TableCell>
+                          <TableCell>{item.unidade}</TableCell>
                           <TableCell>
                             <TextField
                               type="number"
