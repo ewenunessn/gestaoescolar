@@ -269,7 +269,7 @@ const FornecedoresPage: React.FC = () => {
                     <TableRow key={f.id} hover>
                       <TableCell><Typography variant="body2" sx={{ fontWeight: 600 }}>{f.nome}</Typography></TableCell>
                       <TableCell><Typography variant="body2" color="text.secondary" fontFamily="monospace">{formatarDocumento(f.cnpj)}</Typography></TableCell>
-                      <TableCell><Typography variant="body2" color="text.secondary">{f.email || 'N/A'}</Typography></TableCell>
+                      <TableCell><Typography variant="body2" color="text.secondary">{f.email || 'Não informado'}</Typography></TableCell>
                       <TableCell align="center"><Chip label={f.ativo ? 'Ativo' : 'Inativo'} size="small" color={f.ativo ? 'success' : 'error'} variant="outlined" /></TableCell>
                       <TableCell align="center">
                         <Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => navigate(`/fornecedores/${f.id}`)} color="primary"><InfoIcon fontSize="small" /></IconButton></Tooltip>

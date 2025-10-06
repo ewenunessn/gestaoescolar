@@ -325,8 +325,7 @@ export async function removerContrato(req: Request, res: Response) {
     // Verificar se há dependências vinculadas ao contrato
     const dependenciasResult = await db.query(`
       SELECT 
-        (SELECT COUNT(*) FROM contrato_produtos WHERE contrato_id = $1) as produtos,
-
+        (SELECT COUNT(*) FROM contrato_produtos WHERE contrato_id = $1) as produtos
     `, [id]);
 
     const dependencias = dependenciasResult.rows[0];

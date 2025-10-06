@@ -18,7 +18,8 @@ import {
   Paper, Typography, CircularProgress, Alert, Button, Dialog,
   DialogTitle, DialogContent, DialogActions, TextField, IconButton,
   Card, CardContent, Grid, Chip, Box, FormControl, InputLabel,
-  Select, MenuItem, Checkbox, FormControlLabel, Stack, AlertTitle, Tooltip
+  Select, MenuItem, Checkbox, FormControlLabel, Stack, AlertTitle, Tooltip,
+  Autocomplete
 } from "@mui/material";
 import {
   Edit as EditIcon,
@@ -139,6 +140,7 @@ export default function ContratoDetalhe() {
   const [removerId, setRemoverId] = useState<number | null>(null);
   const [dependenciasContrato, setDependenciasContrato] = useState<any>(null);
   const [forceDelete, setForceDelete] = useState(false);
+  const [produtoSelecionado, setProdutoSelecionado] = useState<any>(null);
 
   const valorTotalContrato = useMemo(() => 
     produtosContrato.reduce((total, produto) => total + (Number(produto.valor_total) || 0), 0),
@@ -187,7 +189,14 @@ export default function ContratoDetalhe() {
 
   const abrirModalProduto = (produto?: any) => {
     setEditandoProduto(produto || null);
-    setFormProduto(produto ? { produto_id: produto.produto_id, quantidade: produto.quantidade, preco_unitario: produto.preco_unitario } : produtoVazio);
+    if (produto) {
+      const produtoInfo = produtosDisponiveis.find(p => p.id === produto.produto_id);
+      setProdutoSelecionado(produtoInfo || null);
+      setFormProduto({ produto_id: produto.produto_id, quantidade: produto.quantidade, preco_unitario: produto.preco_unitario });
+    } else {
+      setProdutoSelecionado(null);
+      setFormProduto(produtoVazio);
+    }
     setDialogState(prev => ({ ...prev, produto: true }));
   };
 
@@ -318,9 +327,40 @@ export default function ContratoDetalhe() {
         <Dialog open={dialogState.produto} onClose={() => setDialogState(p => ({...p, produto: false}))} fullWidth maxWidth="sm">
             <DialogTitle>{editandoProduto ? "Editar Item" : "Adicionar Item ao Contrato"}</DialogTitle>
             <DialogContent dividers>
-                <FormControl fullWidth sx={{ mt: 2, mb: 2 }}><InputLabel>Produto</InputLabel><Select value={formProduto.produto_id} label="Produto" onChange={e => setFormProduto({ ...formProduto, produto_id: e.target.value })} required>{produtosDisponiveis.map(p => <MenuItem key={p.id} value={p.id}>{p.nome}</MenuItem>)}</Select></FormControl>
-                <TextField label="Quantidade Contratada" type="number" value={formProduto.quantidade} onChange={e => setFormProduto({ ...formProduto, quantidade: e.target.value })} fullWidth sx={{ mb: 2 }} required inputProps={{ min: 0 }} />
-                <TextField label="Preço Unitário" type="number" value={formProduto.preco_unitario} onChange={e => setFormProduto({ ...formProduto, preco_unitario: e.target.value })} fullWidth required inputProps={{ min: 0, step: 0.01 }} />
+                <Autocomplete
+                  value={produtoSelecionado}
+                  onChange={(_, newValue) => {
+                    setProdutoSelecionado(newValue);
+                    setFormProduto({ ...formProduto, produto_id: newValue?.id || "" });
+                  }}
+                  options={produtosDisponiveis}
+                  getOptionLabel={(option) => option.nome}
+                  renderOption={(props, option) => (
+                    <li {...props} key={option.id}>
+                      <Box>
+                        <Typography variant="body2">{option.nome}</Typography>
+                        {option.categoria && (
+                          <Typography variant="caption" color="text.secondary">
+                            {option.categoria}
+                          </Typography>
+                        )}
+                      </Box>
+                    </li>
+                  )}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Produto *"
+                      placeholder="Digite para pesquisar..."
+                      required
+                    />
+                  )}
+                  noOptionsText="Nenhum produto encontrado"
+                  fullWidth
+                  sx={{ mt: 2, mb: 2 }}
+                />
+                <TextField label="Quantidade Contratada *" type="number" value={formProduto.quantidade} onChange={e => setFormProduto({ ...formProduto, quantidade: e.target.value })} fullWidth sx={{ mb: 2 }} required inputProps={{ min: 0 }} />
+                <TextField label="Preço Unitário *" type="number" value={formProduto.preco_unitario} onChange={e => setFormProduto({ ...formProduto, preco_unitario: e.target.value })} fullWidth required inputProps={{ min: 0, step: 0.01 }} />
             </DialogContent>
             <DialogActions><Button onClick={() => setDialogState(p => ({...p, produto: false}))}>Cancelar</Button><Button onClick={salvarProduto} variant="contained">{editandoProduto ? "Salvar" : "Adicionar"}</Button></DialogActions>
         </Dialog>
