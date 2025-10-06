@@ -48,6 +48,7 @@ const GerarDemanda = lazy(() => import("../pages/GerarDemanda"));
 const Fornecedores = lazy(() => import("../pages/Fornecedores"));
 const FornecedorDetalhe = lazy(() => import("../pages/FornecedorDetalhe"));
 const Contratos = lazy(() => import("../pages/Contratos"));
+const GerarFaturamento = lazy(() => import("../pages/GerarFaturamento"));
 const NovoContrato = lazy(() => import("../pages/NovoContrato"));
 const ContratoDetalhe = lazy(() => import("../pages/ContratoDetalhe"));
 const EstoqueCentral = lazy(() => import("../pages/EstoqueCentral"));
@@ -55,11 +56,13 @@ const EstoqueLotes = lazy(() => import("../pages/EstoqueLotes"));
 const EstoqueMovimentacoes = lazy(() => import("../pages/EstoqueMovimentacoes"));
 const EstoqueAlertas = lazy(() => import("../pages/EstoqueAlertas"));
 const SaldoContratos = lazy(() => import("../pages/SaldoContratos"));
+const SaldoContratosModalidades = lazy(() => import("../pages/SaldoContratosModalidades"));
 const DashboardConsistencia = lazy(() => import("../components/DashboardConsistencia"));
 const GuiasDemanda = lazy(() => import("../pages/GuiasDemanda"));
-
-
-
+const Pedidos = lazy(() => import("../pages/Pedidos"));
+const NovoPedido = lazy(() => import("../pages/NovoPedido"));
+const PedidoDetalhe = lazy(() => import("../pages/PedidoDetalhe"));
+const EditarPedido = lazy(() => import("../pages/EditarPedido"));
 
 interface AppRouterProps {
   routerConfig?: {
@@ -232,7 +235,32 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
               path="/saldos-contratos"
               element={<LazyRoute><SaldoContratos /></LazyRoute>}
             />
+            <Route
+              path="/saldos-contratos-modalidades"
+              element={<LazyRoute><SaldoContratosModalidades /></LazyRoute>}
+            />
 
+            {/* Rotas de Pedidos */}
+            <Route
+              path="/pedidos"
+              element={<LazyRoute><Pedidos /></LazyRoute>}
+            />
+            <Route
+              path="/pedidos/novo"
+              element={<LazyRoute><NovoPedido /></LazyRoute>}
+            />
+            <Route
+              path="/pedidos/:id/editar"
+              element={<LazyRoute><EditarPedido /></LazyRoute>}
+            />
+            <Route
+              path="/pedidos/:pedidoId/faturamento"
+              element={<LazyRoute><GerarFaturamento /></LazyRoute>}
+            />
+            <Route
+              path="/pedidos/:id"
+              element={<LazyRoute><PedidoDetalhe /></LazyRoute>}
+            />
 
             {/* Rotas do Estoque Central */}
             <Route

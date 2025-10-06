@@ -4,6 +4,7 @@ export interface Modalidade {
   id: number;
   nome: string;
   descricao?: string;
+  codigo_financeiro?: string;
   ativo: boolean;
   created_at?: string;
   updated_at?: string;
@@ -12,6 +13,7 @@ export interface Modalidade {
 export interface CriarModalidadeData {
   nome: string;
   descricao?: string;
+  codigo_financeiro?: string;
   ativo: boolean;
 }
 

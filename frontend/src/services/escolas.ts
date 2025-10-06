@@ -1,5 +1,12 @@
 import { apiWithRetry } from "./api";
 
+export const escolasService = {
+  async listar() {
+    const { data } = await apiWithRetry.get("/escolas");
+    return data.data || [];
+  }
+};
+
 export async function listarEscolas() {
   const { data } = await apiWithRetry.get("/escolas");
   return data.data || []; // Return the actual array from the response

@@ -9,6 +9,7 @@ export async function listarModalidades(req: Request, res: Response) {
         id,
         nome,
         descricao,
+        codigo_financeiro,
         ativo,
         COALESCE(valor_repasse, 0.00) as valor_repasse,
         created_at,
@@ -131,13 +132,13 @@ export async function buscarModalidade(req: Request, res: Response) {
 
 export async function criarModalidade(req: Request, res: Response) {
   try {
-    const { nome, descricao, ativo = true, valor_repasse = 0.00 } = req.body;
+    const { nome, descricao, codigo_financeiro, ativo = true, valor_repasse = 0.00 } = req.body;
 
     const result = await db.query(`
-      INSERT INTO modalidades (nome, descricao, ativo, valor_repasse)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO modalidades (nome, descricao, codigo_financeiro, ativo, valor_repasse)
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING *
-    `, [nome, descricao, ativo, valor_repasse]);
+    `, [nome, descricao, codigo_financeiro, ativo, valor_repasse]);
 
     res.json({
       success: true,
@@ -157,18 +158,19 @@ export async function criarModalidade(req: Request, res: Response) {
 export async function editarModalidade(req: Request, res: Response) {
   try {
     const { id } = req.params;
-    const { nome, descricao, ativo, valor_repasse } = req.body;
+    const { nome, descricao, codigo_financeiro, ativo, valor_repasse } = req.body;
 
     const result = await db.query(`
       UPDATE modalidades SET
         nome = $1,
         descricao = $2,
-        ativo = $3,
-        valor_repasse = $4,
+        codigo_financeiro = $3,
+        ativo = $4,
+        valor_repasse = $5,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $5
+      WHERE id = $6
       RETURNING *
-    `, [nome, descricao, ativo, valor_repasse, id]);
+    `, [nome, descricao, codigo_financeiro, ativo, valor_repasse, id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({

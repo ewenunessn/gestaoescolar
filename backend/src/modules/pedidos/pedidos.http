@@ -1,0 +1,195 @@
+### Exemplos de requisições HTTP para testar a API de Pedidos
+### Use com extensões como REST Client (VS Code) ou Postman
+
+@baseUrl = http://localhost:3000/api
+@token = seu_token_aqui
+
+### 1. Listar todos os pedidos
+GET {{baseUrl}}/pedidos
+Authorization: Bearer {{token}}
+
+### 2. Listar pedidos com filtros
+GET {{baseUrl}}/pedidos?status=pendente&page=1&limit=10
+Authorization: Bearer {{token}}
+
+### 3. Listar pedidos por contrato
+GET {{baseUrl}}/pedidos?contrato_id=1
+Authorization: Bearer {{token}}
+
+### 4. Listar pedidos por escola
+GET {{baseUrl}}/pedidos?escola_id=5
+Authorization: Bearer {{token}}
+
+### 5. Listar pedidos por período
+GET {{baseUrl}}/pedidos?data_inicio=2025-01-01&data_fim=2025-01-31
+Authorization: Bearer {{token}}
+
+### 6. Buscar pedido específico
+GET {{baseUrl}}/pedidos/1
+Authorization: Bearer {{token}}
+
+### 7. Listar produtos disponíveis no contrato
+GET {{baseUrl}}/pedidos/contrato/1/produtos
+Authorization: Bearer {{token}}
+
+### 8. Criar novo pedido
+POST {{baseUrl}}/pedidos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "contrato_id": 1,
+  "escola_id": 5,
+  "data_entrega_prevista": "2025-01-20",
+  "observacoes": "Pedido mensal de janeiro",
+  "itens": [
+    {
+      "contrato_produto_id": 1,
+      "quantidade": 200,
+      "observacoes": "Arroz tipo 1"
+    },
+    {
+      "contrato_produto_id": 2,
+      "quantidade": 150,
+      "observacoes": "Feijão preto"
+    },
+    {
+      "contrato_produto_id": 3,
+      "quantidade": 100
+    }
+  ]
+}
+
+### 9. Criar pedido mínimo (sem data de entrega e observações)
+POST {{baseUrl}}/pedidos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "contrato_id": 1,
+  "escola_id": 5,
+  "itens": [
+    {
+      "contrato_produto_id": 1,
+      "quantidade": 50
+    }
+  ]
+}
+
+### 10. Atualizar pedido
+PUT {{baseUrl}}/pedidos/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "data_entrega_prevista": "2025-01-25",
+  "observacoes": "Observação atualizada - entrega adiada"
+}
+
+### 11. Aprovar pedido
+PATCH {{baseUrl}}/pedidos/1/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "status": "aprovado"
+}
+
+### 12. Atualizar para em separação
+PATCH {{baseUrl}}/pedidos/1/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "status": "em_separacao"
+}
+
+### 13. Atualizar para enviado
+PATCH {{baseUrl}}/pedidos/1/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "status": "enviado"
+}
+
+### 14. Atualizar para entregue
+PATCH {{baseUrl}}/pedidos/1/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "status": "entregue"
+}
+
+### 15. Cancelar pedido
+POST {{baseUrl}}/pedidos/1/cancelar
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "motivo": "Produto indisponível no estoque do fornecedor"
+}
+
+### 16. Obter estatísticas de pedidos
+GET {{baseUrl}}/pedidos/estatisticas
+Authorization: Bearer {{token}}
+
+### 17. Teste de erro - Criar pedido sem itens
+POST {{baseUrl}}/pedidos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "contrato_id": 1,
+  "escola_id": 5,
+  "itens": []
+}
+
+### 18. Teste de erro - Criar pedido com contrato inexistente
+POST {{baseUrl}}/pedidos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "contrato_id": 99999,
+  "escola_id": 5,
+  "itens": [
+    {
+      "contrato_produto_id": 1,
+      "quantidade": 100
+    }
+  ]
+}
+
+### 19. Teste de erro - Quantidade inválida
+POST {{baseUrl}}/pedidos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "contrato_id": 1,
+  "escola_id": 5,
+  "itens": [
+    {
+      "contrato_produto_id": 1,
+      "quantidade": -10
+    }
+  ]
+}
+
+### 20. Teste de erro - Produto não está no contrato
+POST {{baseUrl}}/pedidos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "contrato_id": 1,
+  "escola_id": 5,
+  "itens": [
+    {
+      "contrato_produto_id": 99999,
+      "quantidade": 100
+    }
+  ]
+}

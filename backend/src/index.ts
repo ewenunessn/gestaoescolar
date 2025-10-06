@@ -27,7 +27,10 @@ import estoqueEscolarRoutes from "./modules/estoque/routes/estoqueEscolarRoutes"
 import demandaRoutes from "./modules/estoque/routes/demandaRoutes";
 
 import saldoContratosRoutes from "./modules/contratos/routes/saldoContratosRoutes";
+import saldoContratosModalidadesRoutes from "./modules/contratos/routes/saldoContratosModalidadesRoutes";
 import guiaRoutes from "./modules/guias/routes/guiaRoutes";
+import pedidoRoutes from "./modules/pedidos/routes/pedidoRoutes";
+import faturamentoRoutes from "./modules/pedidos/routes/faturamentoRoutes";
 // Módulo de gás removido
 
 
@@ -166,7 +169,10 @@ app.use("/api/gestor-escola", gestorEscolaRoutes);
 app.use("/api/estoque-escolar", estoqueEscolarRoutes);
 
 app.use("/api/saldo-contratos", saldoContratosRoutes);
+app.use("/api/saldo-contratos-modalidades", saldoContratosModalidadesRoutes);
 app.use("/api/guias", guiaRoutes);
+app.use("/api/pedidos", pedidoRoutes);
+app.use("/api/faturamentos", faturamentoRoutes);
 // Rotas de gás removidas
 
 
@@ -199,7 +205,7 @@ app.get("/", (req, res) => {
       "/api/fornecedores",
       "/api/contratos",
       "/api/contrato-produtos",
-
+      "/api/pedidos",
       "/api/refeicoes",
       "/api/cardapios",
       "/api/demanda",
@@ -234,7 +240,7 @@ app.use("*", (req, res) => {
       "/api/fornecedores",
       "/api/contratos",
       "/api/contrato-produtos",
-
+      "/api/pedidos",
       "/api/refeicoes",
       "/api/cardapios",
       "/api/demanda",

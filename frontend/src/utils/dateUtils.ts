@@ -59,3 +59,24 @@ export function formatDateForDisplay(isoString: string | null | undefined): stri
     return '';
   }
 }
+/**
+ 
+* Formata um valor monetário para exibição
+ * @param valor - Valor numérico
+ * @returns String formatada (R$ 1.234,56)
+ */
+export function formatarMoeda(valor: number): string {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  }).format(valor);
+}
+
+/**
+ * Formata uma data para exibição (alias para formatDateForDisplay)
+ * @param isoString - String de data no formato ISO
+ * @returns String formatada (dd/MM/yyyy)
+ */
+export function formatarData(isoString: string | null | undefined): string {
+  return formatDateForDisplay(isoString);
+}

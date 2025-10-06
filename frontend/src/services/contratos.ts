@@ -1,5 +1,16 @@
 import { apiWithRetry } from "./api";
 
+export const contratosService = {
+  async listar(filtros?: any) {
+    const params = new URLSearchParams();
+    if (filtros?.status) params.append('status', filtros.status);
+    const queryString = params.toString();
+    const url = `/contratos${queryString ? `?${queryString}` : ''}`;
+    const { data } = await apiWithRetry.get(url);
+    return data;
+  }
+};
+
 export async function listarContratos() {
   const { data } = await apiWithRetry.get("/contratos");
   return data.data || []; // Return the actual array from the response

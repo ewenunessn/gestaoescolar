@@ -78,7 +78,7 @@ const ModalidadesPage = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [editingModalidade, setEditingModalidade] = useState<Modalidade | null>(null);
   const [modalidadeToDelete, setModalidadeToDelete] = useState<Modalidade | null>(null);
-  const [formData, setFormData] = useState({ nome: "", valor_repasse: 0, ativo: true });
+  const [formData, setFormData] = useState({ nome: "", codigo_financeiro: "", valor_repasse: 0, ativo: true });
 
   // Carregar modalidades
   const loadModalidades = useCallback(async () => {
@@ -206,12 +206,13 @@ const ModalidadesPage = () => {
       setEditingModalidade(modalidade);
       setFormData({
         nome: modalidade.nome,
+        codigo_financeiro: modalidade.codigo_financeiro || "",
         valor_repasse: Number(modalidade.valor_repasse),
         ativo: modalidade.ativo,
       });
     } else {
       setEditingModalidade(null);
-      setFormData({ nome: "", valor_repasse: 0, ativo: true });
+      setFormData({ nome: "", codigo_financeiro: "", valor_repasse: 0, ativo: true });
     }
     setModalOpen(true);
   };
@@ -316,16 +317,52 @@ const ModalidadesPage = () => {
         ) : (
           <TableContainer component={Paper} sx={{ mt: 2, borderRadius: '12px' }}>
             <Table>
-              <TableHead><TableRow><TableCell>Nome da Modalidade</TableCell><TableCell align="center">Valor Repasse</TableCell><TableCell align="center">Status</TableCell><TableCell align="center">Ações</TableCell></TableRow></TableHead>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Nome da Modalidade</TableCell>
+                  <TableCell align="center">Código Financeiro</TableCell>
+                  <TableCell align="center">Valor Repasse</TableCell>
+                  <TableCell align="center">Status</TableCell>
+                  <TableCell align="center">Ações</TableCell>
+                </TableRow>
+              </TableHead>
               <TableBody>
                 {paginatedModalidades.map((modalidade) => (
                   <TableRow key={modalidade.id} hover>
-                    <TableCell><Typography variant="body2" sx={{ fontWeight: 600 }}>{modalidade.nome}</Typography></TableCell>
-                    <TableCell align="center"><Typography variant="body2" color="text.secondary">{formatCurrency(modalidade.valor_repasse)}</Typography></TableCell>
-                    <TableCell align="center"><Chip label={modalidade.ativo ? 'Ativa' : 'Inativa'} size="small" color={modalidade.ativo ? 'success' : 'error'} variant="outlined" /></TableCell>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        {modalidade.nome}
+                      </Typography>
+                    </TableCell>
                     <TableCell align="center">
-                      <Tooltip title="Editar"><IconButton size="small" onClick={() => openModal(modalidade)} color="primary"><EditIcon fontSize="small" /></IconButton></Tooltip>
-                      <Tooltip title="Excluir"><IconButton size="small" onClick={() => openDeleteModal(modalidade)} color="error"><DeleteIcon fontSize="small" /></IconButton></Tooltip>
+                      <Typography variant="body2" color="text.secondary">
+                        {modalidade.codigo_financeiro || '-'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="center">
+                      <Typography variant="body2" color="text.secondary">
+                        {formatCurrency(modalidade.valor_repasse)}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="center">
+                      <Chip 
+                        label={modalidade.ativo ? 'Ativa' : 'Inativa'} 
+                        size="small" 
+                        color={modalidade.ativo ? 'success' : 'error'} 
+                        variant="outlined" 
+                      />
+                    </TableCell>
+                    <TableCell align="center">
+                      <Tooltip title="Editar">
+                        <IconButton size="small" onClick={() => openModal(modalidade)} color="primary">
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Excluir">
+                        <IconButton size="small" onClick={() => openDeleteModal(modalidade)} color="error">
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -341,8 +378,26 @@ const ModalidadesPage = () => {
         <DialogTitle sx={{ fontWeight: 600 }}>{editingModalidade ? 'Editar Modalidade' : 'Nova Modalidade'}</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <TextField label="Nome da Modalidade" value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} required />
-            <TextField label="Valor do Repasse (R$)" type="number" value={formData.valor_repasse} onChange={(e) => setFormData({ ...formData, valor_repasse: parseFloat(e.target.value) || 0 })} inputProps={{ step: "0.01", min: "0" }} />
+            <TextField 
+              label="Nome da Modalidade" 
+              value={formData.nome} 
+              onChange={(e) => setFormData({ ...formData, nome: e.target.value })} 
+              required 
+            />
+            <TextField 
+              label="Código Financeiro" 
+              value={formData.codigo_financeiro} 
+              onChange={(e) => setFormData({ ...formData, codigo_financeiro: e.target.value })} 
+              placeholder="Ex: 2.036, 1.025, FIN-001"
+              helperText="Código usado no sistema financeiro (opcional)"
+            />
+            <TextField 
+              label="Valor do Repasse (R$)" 
+              type="number" 
+              value={formData.valor_repasse} 
+              onChange={(e) => setFormData({ ...formData, valor_repasse: parseFloat(e.target.value) || 0 })} 
+              inputProps={{ step: "0.01", min: "0" }} 
+            />
           </Box>
         </DialogContent>
         <DialogActions sx={{ p: 3, pt: 1 }}>

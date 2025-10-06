@@ -1,0 +1,310 @@
+import { Request, Response } from "express";
+import { FaturamentoService } from "../services/FaturamentoService";
+import { FaturamentoModel } from "../models/Faturamento";
+const db = require("../../../database");
+
+const faturamentoModel = new FaturamentoModel(db.pool);
+
+export async function calcularPreviaFaturamento(req: Request, res: Response) {
+  try {
+    const { pedido_id } = req.params;
+    
+    const previa = await FaturamentoService.calcularPreviaFaturamento(Number(pedido_id));
+    
+    res.json({
+      success: true,
+      data: previa
+    });
+  } catch (error) {
+    console.error("❌ Erro ao calcular prévia do faturamento:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao calcular prévia do faturamento",
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+}
+
+export async function gerarFaturamento(req: Request, res: Response) {
+  try {
+    const { pedido_id } = req.params;
+    const { observacoes } = req.body;
+    const usuarioId = 1; // TODO: Pegar do token de autenticação
+    
+    const resultado = await FaturamentoService.gerarFaturamento(
+      Number(pedido_id), 
+      usuarioId, 
+      observacoes
+    );
+    
+    res.json({
+      success: true,
+      message: "Faturamento gerado com sucesso",
+      data: resultado
+    });
+  } catch (error) {
+    console.error("❌ Erro ao gerar faturamento:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao gerar faturamento",
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+}
+
+export async function listarFaturamentos(req: Request, res: Response) {
+  try {
+    const { pedido_id, status, data_inicio, data_fim, page = 1, limit = 50 } = req.query;
+    
+    const filtros: any = {};
+    if (pedido_id) filtros.pedido_id = Number(pedido_id);
+    if (status) filtros.status = status as string;
+    if (data_inicio) filtros.data_inicio = new Date(data_inicio as string);
+    if (data_fim) filtros.data_fim = new Date(data_fim as string);
+    
+    const faturamentos = await faturamentoModel.listar(filtros);
+    
+    // Paginação simples
+    const pageNum = Number(page);
+    const limitNum = Number(limit);
+    const startIndex = (pageNum - 1) * limitNum;
+    const endIndex = startIndex + limitNum;
+    
+    const paginatedResults = faturamentos.slice(startIndex, endIndex);
+    
+    res.json({
+      success: true,
+      data: paginatedResults,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total: faturamentos.length,
+        totalPages: Math.ceil(faturamentos.length / limitNum)
+      }
+    });
+  } catch (error) {
+    console.error("❌ Erro ao listar faturamentos:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao listar faturamentos",
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+}
+
+export async function buscarFaturamento(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    
+    const faturamento = await faturamentoModel.buscarPorId(Number(id));
+    
+    if (!faturamento) {
+      return res.status(404).json({
+        success: false,
+        message: "Faturamento não encontrado"
+      });
+    }
+    
+    const itens = await faturamentoModel.buscarItens(Number(id));
+    
+    res.json({
+      success: true,
+      data: {
+        ...faturamento,
+        itens: itens
+      }
+    });
+  } catch (error) {
+    console.error("❌ Erro ao buscar faturamento:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao buscar faturamento",
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+}
+
+export async function buscarFaturamentosPorPedido(req: Request, res: Response) {
+  try {
+    const { pedido_id } = req.params;
+    
+    const faturamentos = await faturamentoModel.buscarPorPedido(Number(pedido_id));
+    
+    res.json({
+      success: true,
+      data: faturamentos
+    });
+  } catch (error) {
+    console.error("❌ Erro ao buscar faturamentos do pedido:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao buscar faturamentos do pedido",
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+}
+
+export async function atualizarStatusFaturamento(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    
+    if (!['gerado', 'processado', 'cancelado'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Status inválido"
+      });
+    }
+    
+    const sucesso = await faturamentoModel.atualizarStatus(Number(id), status);
+    
+    if (!sucesso) {
+      return res.status(404).json({
+        success: false,
+        message: "Faturamento não encontrado"
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: "Status do faturamento atualizado com sucesso"
+    });
+  } catch (error) {
+    console.error("❌ Erro ao atualizar status do faturamento:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao atualizar status do faturamento",
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+}
+
+export async function excluirFaturamento(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    
+    // Verificar se o faturamento existe e pode ser excluído
+    const faturamento = await faturamentoModel.buscarPorId(Number(id));
+    
+    if (!faturamento) {
+      return res.status(404).json({
+        success: false,
+        message: "Faturamento não encontrado"
+      });
+    }
+    
+    if (faturamento.status === 'processado') {
+      return res.status(400).json({
+        success: false,
+        message: "Não é possível excluir faturamentos processados"
+      });
+    }
+    
+    const sucesso = await faturamentoModel.excluir(Number(id));
+    
+    if (!sucesso) {
+      return res.status(500).json({
+        success: false,
+        message: "Erro ao excluir faturamento"
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: "Faturamento excluído com sucesso"
+    });
+  } catch (error) {
+    console.error("❌ Erro ao excluir faturamento:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao excluir faturamento",
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+}
+
+export async function obterResumoFaturamento(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    
+    const faturamento = await faturamentoModel.buscarPorId(Number(id));
+    
+    if (!faturamento) {
+      return res.status(404).json({
+        success: false,
+        message: "Faturamento não encontrado"
+      });
+    }
+    
+    const itens = await faturamentoModel.buscarItens(Number(id));
+    
+    // Agrupar por contrato e modalidade
+    const resumoPorContrato: any = {};
+    
+    for (const item of itens) {
+      const contratoKey = `${item.contrato_id}`;
+      
+      if (!resumoPorContrato[contratoKey]) {
+        resumoPorContrato[contratoKey] = {
+          contrato_id: item.contrato_id,
+          contrato_numero: item.contrato_numero,
+          fornecedor_id: item.fornecedor_id,
+          fornecedor_nome: item.fornecedor_nome,
+          modalidades: {},
+          quantidade_total: 0,
+          valor_total: 0
+        };
+      }
+      
+      const modalidadeKey = `${item.modalidade_id}`;
+      
+      if (!resumoPorContrato[contratoKey].modalidades[modalidadeKey]) {
+        resumoPorContrato[contratoKey].modalidades[modalidadeKey] = {
+          modalidade_id: item.modalidade_id,
+          modalidade_nome: item.modalidade_nome,
+          modalidade_codigo_financeiro: item.modalidade_codigo_financeiro,
+          itens: [],
+          quantidade_total: 0,
+          valor_total: 0
+        };
+      }
+      
+      const modalidade = resumoPorContrato[contratoKey].modalidades[modalidadeKey];
+      
+      modalidade.itens.push({
+        produto_id: item.produto_id,
+        produto_nome: item.produto_nome,
+        unidade_medida: item.unidade_medida,
+        quantidade_total: item.quantidade_modalidade,
+        valor_total: item.valor_total
+      });
+      
+      modalidade.quantidade_total += item.quantidade_modalidade;
+      modalidade.valor_total += item.valor_total;
+      
+      resumoPorContrato[contratoKey].quantidade_total += item.quantidade_modalidade;
+      resumoPorContrato[contratoKey].valor_total += item.valor_total;
+    }
+    
+    // Converter modalidades de objeto para array
+    const contratos = Object.values(resumoPorContrato).map((contrato: any) => ({
+      ...contrato,
+      modalidades: Object.values(contrato.modalidades)
+    }));
+    
+    res.json({
+      success: true,
+      data: {
+        faturamento: faturamento,
+        contratos: contratos
+      }
+    });
+  } catch (error) {
+    console.error("❌ Erro ao obter resumo do faturamento:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao obter resumo do faturamento",
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+}

@@ -3,12 +3,14 @@ import { apiWithRetry } from "./api";
 export interface Modalidade {
   id: number;
   nome: string;
+  codigo_financeiro?: string;
   valor_repasse: number;
   ativo: boolean;
 }
 
 export interface ModalidadeInput {
   nome: string;
+  codigo_financeiro?: string;
   valor_repasse?: number;
 }
 
