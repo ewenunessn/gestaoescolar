@@ -30,7 +30,8 @@ export const config = {
   // Configurações CORS
   corsOrigin: isVercel 
     ? [
-        process.env.FRONTEND_URL || "https://your-frontend.vercel.app",
+        "https://gestaoescolar-frontend.vercel.app",
+        "*.vercel.app",
         "http://localhost:5173",
         "http://localhost:3000"
       ]

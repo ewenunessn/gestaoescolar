@@ -49,11 +49,23 @@ app.use(express.json());
 // Configuração CORS usando config.json
 const corsOptions = {
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    console.log('🔍 CORS Check - Origin:', origin);
+    
     // Permitir requisições sem origin (mobile apps, Postman, etc.)
-    if (!origin) return callback(null, true);
+    if (!origin) {
+      console.log('✅ CORS: Permitido (sem origin)');
+      return callback(null, true);
+    }
     
     // Em desenvolvimento, permitir qualquer origem
     if (process.env.NODE_ENV === 'development') {
+      console.log('✅ CORS: Permitido (desenvolvimento)');
+      return callback(null, true);
+    }
+    
+    // Sempre permitir domínios Vercel
+    if (origin.includes('.vercel.app')) {
+      console.log('✅ CORS: Permitido (Vercel)');
       return callback(null, true);
     }
     
@@ -63,15 +75,25 @@ const corsOptions = {
       const isAllowed = allowedOrigins.some(allowedOrigin => {
         if (allowedOrigin.includes('*')) {
           // Suporte para wildcards como *.vercel.app
-          const pattern = allowedOrigin.replace(/\*/g, '.*');
-          return new RegExp(pattern).test(origin);
+          const pattern = allowedOrigin.replace(/\*/g, '.*').replace(/\./g, '\\.');
+          return new RegExp(`^${pattern}$`).test(origin);
         }
         return allowedOrigin === origin;
       });
+      
+      if (isAllowed) {
+        console.log('✅ CORS: Permitido (lista)');
+      } else {
+        console.log('❌ CORS: Bloqueado - Origin não está na lista permitida');
+        console.log('   Origens permitidas:', allowedOrigins);
+      }
+      
       return callback(null, isAllowed);
     }
     
-    return callback(null, allowedOrigins === true || allowedOrigins === origin);
+    const allowed = allowedOrigins === true || allowedOrigins === origin;
+    console.log(allowed ? '✅ CORS: Permitido' : '❌ CORS: Bloqueado');
+    return callback(null, allowed);
   },
   credentials: config.backend.cors.credentials,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
