@@ -25,8 +25,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Paper,
-  Fab
+  Paper
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -69,19 +68,30 @@ const headerCellStyle = {
 interface ModalidadeRowProps {
   modalidade: any;
   produtoSelecionado: any;
+  todasModalidades: any[];
   onSalvar: (modalidadeId: number, quantidade: number) => Promise<void>;
+  onRegistrarConsumo?: (modalidade: any) => void;
+  onVerHistorico?: (modalidade: any) => void;
   formatarNumero: (valor: number) => string;
 }
 
 const ModalidadeRow: React.FC<ModalidadeRowProps> = ({ 
   modalidade, 
   produtoSelecionado, 
-  onSalvar, 
+  todasModalidades,
+  onSalvar,
+  onRegistrarConsumo,
+  onVerHistorico,
   formatarNumero 
 }) => {
   const [editando, setEditando] = useState(false);
   const [quantidade, setQuantidade] = useState(modalidade.quantidade_inicial.toString());
   const [salvando, setSalvando] = useState(false);
+
+  // Atualizar quantidade quando modalidade mudar
+  React.useEffect(() => {
+    setQuantidade(modalidade.quantidade_inicial.toString());
+  }, [modalidade.quantidade_inicial]);
 
   const handleSalvar = async () => {
     const novaQuantidade = parseFloat(quantidade);
@@ -92,11 +102,26 @@ const ModalidadeRow: React.FC<ModalidadeRowProps> = ({
     }
 
     // Validar se a soma total não excede a quantidade contratada
-    const outrasModalidades = produtoSelecionado.modalidades.filter((m: any) => m.modalidade_id !== modalidade.id);
-    const somaOutras = outrasModalidades.reduce((sum: number, m: any) => sum + m.quantidade_inicial, 0);
+    const outrasModalidades = todasModalidades.filter((m: any) => m.id !== modalidade.id);
+    const somaOutras = outrasModalidades.reduce((sum: number, m: any) => {
+      const valor = parseFloat(m.quantidade_inicial) || 0;
+      return sum + valor;
+    }, 0);
+    const somaTotal = somaOutras + novaQuantidade;
+    const quantidadeContratada = parseFloat(produtoSelecionado.quantidade_contrato) || 0;
+    const disponivelParaDistribuir = quantidadeContratada - somaOutras;
     
-    if (somaOutras + novaQuantidade > produtoSelecionado.quantidade_contrato) {
-      alert(`A soma das modalidades (${formatarNumero(somaOutras + novaQuantidade)}) não pode exceder a quantidade contratada (${formatarNumero(produtoSelecionado.quantidade_contrato)})`);
+    if (somaTotal > quantidadeContratada) {
+      alert(
+        `❌ VALIDAÇÃO BLOQUEADA\n\n` +
+        `A soma das modalidades (${formatarNumero(somaTotal)}) não pode exceder a quantidade contratada (${formatarNumero(quantidadeContratada)}).\n\n` +
+        `📊 Detalhes:\n` +
+        `• Quantidade contratada: ${formatarNumero(quantidadeContratada)}\n` +
+        `• Outras modalidades: ${formatarNumero(somaOutras)}\n` +
+        `• Disponível para distribuir: ${formatarNumero(disponivelParaDistribuir)}\n` +
+        `• Você tentou adicionar: ${formatarNumero(novaQuantidade)}\n\n` +
+        `💡 Máximo permitido para esta modalidade: ${formatarNumero(disponivelParaDistribuir)}`
+      );
       return;
     }
 
@@ -180,13 +205,39 @@ const ModalidadeRow: React.FC<ModalidadeRowProps> = ({
             </IconButton>
           </Box>
         ) : (
-          <IconButton
-            size="small"
-            onClick={() => setEditando(true)}
-            color="primary"
-          >
-            <EditIcon fontSize="small" />
-          </IconButton>
+          <Box display="flex" justifyContent="center" gap={0.5}>
+            <Tooltip title="Editar Quantidade">
+              <IconButton
+                size="small"
+                onClick={() => setEditando(true)}
+                color="primary"
+              >
+                <EditIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            {modalidade.cadastrada && modalidade.quantidade_disponivel > 0 && onRegistrarConsumo && (
+              <Tooltip title="Registrar Consumo">
+                <IconButton
+                  size="small"
+                  onClick={() => onRegistrarConsumo(modalidade)}
+                  color="success"
+                >
+                  <RestaurantIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
+            {modalidade.cadastrada && onVerHistorico && (
+              <Tooltip title="Ver Histórico">
+                <IconButton
+                  size="small"
+                  onClick={() => onVerHistorico(modalidade)}
+                  color="info"
+                >
+                  <HistoryIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
+          </Box>
         )}
       </TableCell>
     </TableRow>
@@ -199,6 +250,7 @@ const SaldoContratosModalidades: React.FC = () => {
   const [produtosContratos, setProdutosContratos] = useState<ProdutoContratoOption[]>([]);
   const [loading, setLoading] = useState(true);
   const { success, error: toastError } = useToast();
+  const timeoutRef = React.useRef<number | null>(null);
   
   // Estados para diálogos
   const [dialogGerenciarModalidades, setDialogGerenciarModalidades] = useState(false);
@@ -213,6 +265,7 @@ const SaldoContratosModalidades: React.FC = () => {
   
   // Estados para consumo
   const [quantidadeConsumo, setQuantidadeConsumo] = useState('');
+  const [dataConsumo, setDataConsumo] = useState('');
   const [observacaoConsumo, setObservacaoConsumo] = useState('');
   
   // Estados para histórico
@@ -245,6 +298,38 @@ const SaldoContratosModalidades: React.FC = () => {
   useEffect(() => {
     carregarDados();
   }, [filtros]);
+
+  // Atalhos de teclado
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+F - Focar no campo de pesquisa
+      if (e.ctrlKey && e.key === 'f') {
+        e.preventDefault();
+        const produtoInput = document.querySelector('input[placeholder*="Digite o nome do produto"]') as HTMLInputElement;
+        if (produtoInput) {
+          produtoInput.focus();
+          produtoInput.select();
+        }
+      }
+      
+      // Ctrl+K - Limpar filtros
+      if (e.ctrlKey && e.key === 'k') {
+        e.preventDefault();
+        setFiltrosTemp({});
+        setFiltros({ page: 1, limit: rowsPerPage });
+        setPage(0);
+      }
+
+      // Ctrl+R - Atualizar dados
+      if (e.ctrlKey && e.key === 'r') {
+        e.preventDefault();
+        carregarDados();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [filtrosTemp]);
 
   const carregarDados = async () => {
     try {
@@ -293,18 +378,31 @@ const SaldoContratosModalidades: React.FC = () => {
     setCarregandoModalidades(true);
     
     try {
-      // Carregar todas as modalidades disponíveis e as já cadastradas para este produto
+      // Buscar dados atualizados do servidor para este produto
+      const response = await saldoContratosModalidadesService.listarSaldosModalidades({
+        page: 1,
+        limit: 100
+      });
+      
+      // Filtrar apenas as modalidades deste produto específico
+      const modalidadesAtualizadas = response.data.filter(
+        (item: any) => item.contrato_produto_id === produto.contrato_produto_id
+      );
+      
+      // Carregar todas as modalidades disponíveis
       const todasModalidades = await saldoContratosModalidadesService.listarModalidades();
       
-      // Criar array com todas as modalidades, marcando as que já estão cadastradas
+      // Criar array com todas as modalidades com dados atualizados do servidor
       const modalidadesComStatus = todasModalidades.map(modalidade => {
-        const modalidadeExistente = produto.modalidades.find((m: any) => m.modalidade_id === modalidade.id);
+        const modalidadeExistente = modalidadesAtualizadas.find(
+          (m: any) => m.modalidade_id === modalidade.id
+        );
         return {
           ...modalidade,
           quantidade_inicial: modalidadeExistente ? modalidadeExistente.quantidade_inicial : 0,
           quantidade_consumida: modalidadeExistente ? modalidadeExistente.quantidade_consumida : 0,
           quantidade_disponivel: modalidadeExistente ? modalidadeExistente.quantidade_disponivel : 0,
-          cadastrada: !!modalidadeExistente,
+          cadastrada: modalidadeExistente && modalidadeExistente.id > 0,
           id_saldo: modalidadeExistente ? modalidadeExistente.id : null
         };
       });
@@ -324,6 +422,30 @@ const SaldoContratosModalidades: React.FC = () => {
     setModalidadesProduto([]);
   };
 
+  // Função para calcular totais em tempo real
+  const calcularTotaisAtuais = () => {
+    if (!produtoSelecionado) {
+      return { totalDistribuido: 0, disponivelDistribuir: 0 };
+    }
+    
+    // Se modalidadesProduto ainda não foi carregado, usar os dados originais
+    if (!modalidadesProduto || modalidadesProduto.length === 0) {
+      const totalDistribuido = produtoSelecionado.total_inicial || 0;
+      const disponivelDistribuir = (produtoSelecionado.quantidade_contrato || 0) - totalDistribuido;
+      return { totalDistribuido, disponivelDistribuir };
+    }
+    
+    // Calcular com base nas modalidades atuais
+    const totalDistribuido = modalidadesProduto.reduce((sum, m) => {
+      const valor = parseFloat(m.quantidade_inicial as any) || 0;
+      return sum + valor;
+    }, 0);
+    
+    const disponivelDistribuir = (produtoSelecionado.quantidade_contrato || 0) - totalDistribuido;
+    
+    return { totalDistribuido, disponivelDistribuir };
+  };
+
   const salvarModalidade = async (modalidadeId: number, quantidade: number) => {
     if (!produtoSelecionado) return;
     
@@ -336,14 +458,78 @@ const SaldoContratosModalidades: React.FC = () => {
       
       success('Modalidade atualizada com sucesso!');
       
-      // Recarregar modalidades do produto
-      await abrirDialogGerenciarModalidades(produtoSelecionado);
+      // Atualizar o estado local das modalidades imediatamente
+      setModalidadesProduto(prev => 
+        prev.map(m => 
+          m.id === modalidadeId 
+            ? { ...m, quantidade_inicial: quantidade, quantidade_disponivel: quantidade - (m.quantidade_consumida || 0) }
+            : m
+        )
+      );
       
-      // Recarregar dados da tabela principal
+      // Recarregar dados da tabela principal em background
       carregarDados();
     } catch (error: any) {
       console.error('Erro ao salvar modalidade:', error);
       toastError(error.response?.data?.message || 'Erro ao salvar modalidade');
+      // Em caso de erro, recarregar os dados para garantir consistência
+      await abrirDialogGerenciarModalidades(produtoSelecionado);
+    }
+  };
+
+  const abrirConsumoModalidade = (modalidade: any) => {
+    // Converter modalidade para o formato esperado pelo diálogo de consumo
+    const itemParaConsumo = {
+      id: modalidade.id_saldo,
+      modalidade_id: modalidade.id,
+      modalidade_nome: modalidade.nome,
+      produto_nome: produtoSelecionado.produto_nome,
+      contrato_numero: produtoSelecionado.contrato_numero,
+      quantidade_inicial: modalidade.quantidade_inicial,
+      quantidade_consumida: modalidade.quantidade_consumida,
+      quantidade_disponivel: modalidade.quantidade_disponivel,
+      unidade: produtoSelecionado.unidade
+    };
+    abrirDialogConsumo(itemParaConsumo as any);
+  };
+
+  const abrirHistoricoModalidade = async (modalidade: any) => {
+    // Converter modalidade para o formato esperado pelo diálogo de histórico
+    const itemParaHistorico = {
+      id: modalidade.id_saldo,
+      modalidade_id: modalidade.id,
+      modalidade_nome: modalidade.nome,
+      produto_nome: produtoSelecionado.produto_nome,
+      contrato_numero: produtoSelecionado.contrato_numero,
+      unidade: produtoSelecionado.unidade
+    };
+    await abrirDialogHistorico(itemParaHistorico as any);
+  };
+
+  const excluirConsumo = async (consumoId: number) => {
+    if (!itemSelecionado) return;
+    
+    if (!window.confirm('Tem certeza que deseja excluir este registro de consumo?')) {
+      return;
+    }
+
+    try {
+      await saldoContratosModalidadesService.excluirConsumoModalidade(itemSelecionado.id, consumoId);
+      success('Consumo excluído com sucesso!');
+      
+      // Recarregar histórico
+      await abrirDialogHistorico(itemSelecionado);
+      
+      // Recarregar dados da tabela principal
+      await carregarDados();
+      
+      // Se o modal de gerenciar modalidades estiver aberto, recarregar também
+      if (dialogGerenciarModalidades && produtoSelecionado) {
+        await abrirDialogGerenciarModalidades(produtoSelecionado);
+      }
+    } catch (error: any) {
+      console.error('Erro ao excluir consumo:', error);
+      toastError(error.response?.data?.message || 'Erro ao excluir consumo');
     }
   };
 
@@ -351,6 +537,9 @@ const SaldoContratosModalidades: React.FC = () => {
   const abrirDialogConsumo = (item: SaldoContratoModalidadeItem) => {
     setItemSelecionado(item);
     setQuantidadeConsumo('');
+    // Definir data padrão como hoje
+    const hoje = new Date().toISOString().split('T')[0];
+    setDataConsumo(hoje);
     setObservacaoConsumo('');
     setError(null);
     setDialogConsumoAberto(true);
@@ -360,6 +549,7 @@ const SaldoContratosModalidades: React.FC = () => {
     setDialogConsumoAberto(false);
     setItemSelecionado(null);
     setQuantidadeConsumo('');
+    setDataConsumo('');
     setObservacaoConsumo('');
   };
 
@@ -380,12 +570,20 @@ const SaldoContratosModalidades: React.FC = () => {
       await saldoContratosModalidadesService.registrarConsumoModalidade(
         itemSelecionado.id,
         quantidade,
-        observacaoConsumo || undefined
+        observacaoConsumo || undefined,
+        dataConsumo || undefined
       );
       
       success('Consumo registrado com sucesso!');
       fecharDialogConsumo();
-      carregarDados();
+      
+      // Recarregar dados da tabela principal
+      await carregarDados();
+      
+      // Se o modal de gerenciar modalidades estiver aberto, recarregar também
+      if (dialogGerenciarModalidades && produtoSelecionado) {
+        await abrirDialogGerenciarModalidades(produtoSelecionado);
+      }
     } catch (error: any) {
       console.error('Erro ao registrar consumo:', error);
       setError(error.response?.data?.message || 'Erro ao registrar consumo');
@@ -432,9 +630,9 @@ const SaldoContratosModalidades: React.FC = () => {
 
     return Object.entries(grupos).map(([chave, modalidades]) => {
       const primeiro = modalidades[0];
-      const totalInicial = modalidades.reduce((sum, m) => sum + m.quantidade_inicial, 0);
-      const totalConsumido = modalidades.reduce((sum, m) => sum + m.quantidade_consumida, 0);
-      const totalDisponivel = modalidades.reduce((sum, m) => sum + m.quantidade_disponivel, 0);
+      const totalInicial = modalidades.reduce((sum, m) => sum + (parseFloat(m.quantidade_inicial as any) || 0), 0);
+      const totalConsumido = modalidades.reduce((sum, m) => sum + (parseFloat(m.quantidade_consumida as any) || 0), 0);
+      const totalDisponivel = modalidades.reduce((sum, m) => sum + (parseFloat(m.quantidade_disponivel as any) || 0), 0);
       
       return {
         contrato_produto_id: primeiro.contrato_produto_id,
@@ -540,147 +738,70 @@ const SaldoContratosModalidades: React.FC = () => {
           Saldo de Contratos por Modalidade
         </Typography>
 
-        {/* Estatísticas */}
-        {estatisticas && (
-          <Grid container spacing={2} sx={{ mb: 3 }}>
-            <Grid item xs={12} sm={6} md={2.4}>
-              <Card>
-                <CardContent sx={{ textAlign: 'center' }}>
-                  <Typography variant="h6" color="primary">
-                    {estatisticas.total_itens}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    Total de Itens
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid item xs={12} sm={6} md={2.4}>
-              <Card>
-                <CardContent sx={{ textAlign: 'center' }}>
-                  <Typography variant="h6" color="success.main">
-                    {estatisticas.itens_disponiveis}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    Disponíveis
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid item xs={12} sm={6} md={2.4}>
-              <Card>
-                <CardContent sx={{ textAlign: 'center' }}>
-                  <Typography variant="h6" color="warning.main">
-                    {estatisticas.itens_baixo_estoque}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    Baixo Estoque
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid item xs={12} sm={6} md={2.4}>
-              <Card>
-                <CardContent sx={{ textAlign: 'center' }}>
-                  <Typography variant="h6" color="error.main">
-                    {estatisticas.itens_esgotados}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    Esgotados
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid item xs={12} sm={6} md={2.4}>
-              <Card>
-                <CardContent sx={{ textAlign: 'center' }}>
-                  <Typography variant="h6" color="primary">
-                    {formatarMoeda(estatisticas.valor_total_disponivel)}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    Valor Disponível
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
-        )}
-
         {/* Filtros */}
-        <Card sx={{ mb: 3, p: 3, borderRadius: 2, backgroundColor: '#ffffff', border: '1px solid #e0e0e0', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+        <Card sx={{ mb: 3, borderRadius: 2, backgroundColor: '#ffffff', border: '1px solid #e0e0e0', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
           <CardContent>
-            <Typography variant="h6" sx={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, color: '#1a1a1a', mb: 2 }}>
-              <FilterIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-              Filtros
-            </Typography>
+            <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+              <Typography variant="h6" sx={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, color: '#1a1a1a' }}>
+                <FilterIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+                Filtros
+              </Typography>
+              <Box display="flex" gap={1} alignItems="center">
+                <Typography variant="caption" color="text.secondary" sx={{ display: { xs: 'none', md: 'block' } }}>
+                  ⌨️ Atalhos:
+                </Typography>
+                <Chip label="Ctrl+F Pesquisar" size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
+                <Chip label="Ctrl+K Limpar" size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
+                <Chip label="Ctrl+R Atualizar" size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
+              </Box>
+            </Box>
             
-            <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} sm={6} md={3}>
-                <TextField
-                  fullWidth
-                  label="Produto"
-                  value={filtrosTemp.produto_nome || ''}
-                  onChange={(e) => setFiltrosTemp({ ...filtrosTemp, produto_nome: e.target.value })}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Grid>
-              
-              <Grid item xs={12} sm={6} md={2}>
-                <TextField
-                  fullWidth
-                  select
-                  label="Modalidade"
-                  value={filtrosTemp.modalidade_id || ''}
-                  onChange={(e) => setFiltrosTemp({ ...filtrosTemp, modalidade_id: parseInt(e.target.value) || undefined })}
-                >
-                  <MenuItem value="">Todas</MenuItem>
-                  {modalidades.map((modalidade) => (
-                    <MenuItem key={modalidade.id} value={modalidade.id}>
-                      {modalidade.nome}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
-              
-              <Grid item xs={12} sm={6} md={2}>
-                <TextField
-                  fullWidth
-                  select
-                  label="Status"
-                  value={filtrosTemp.status || ''}
-                  onChange={(e) => setFiltrosTemp({ ...filtrosTemp, status: e.target.value as any })}
-                >
-                  <MenuItem value="">Todos</MenuItem>
-                  <MenuItem value="DISPONIVEL">Disponível</MenuItem>
-                  <MenuItem value="BAIXO_ESTOQUE">Baixo Estoque</MenuItem>
-                  <MenuItem value="ESGOTADO">Esgotado</MenuItem>
-                </TextField>
-              </Grid>
-              
-              <Grid item xs={12} sm={12} md={5}>
-                <Box display="flex" gap={1}>
-                  <Button variant="contained" onClick={aplicarFiltros} disabled={loading}>
-                    Filtrar
-                  </Button>
-                  <Button variant="outlined" onClick={limparFiltros} disabled={loading}>
-                    Limpar
-                  </Button>
-                </Box>
-              </Grid>
-            </Grid>
+            <TextField
+              fullWidth
+              label="Pesquisar Produto"
+              placeholder="Digite o nome do produto..."
+              value={filtrosTemp.produto_nome || ''}
+              onChange={(e) => {
+                const valor = e.target.value;
+                setFiltrosTemp({ ...filtrosTemp, produto_nome: valor });
+                // Aplicar filtro automaticamente após 500ms
+                if (timeoutRef.current) {
+                  clearTimeout(timeoutRef.current);
+                }
+                timeoutRef.current = setTimeout(() => {
+                  setFiltros({ ...filtrosTemp, produto_nome: valor, page: 1, limit: rowsPerPage });
+                  setPage(0);
+                }, 500);
+              }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+                endAdornment: filtrosTemp.produto_nome && (
+                  <InputAdornment position="end">
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        setFiltrosTemp({});
+                        setFiltros({ page: 1, limit: rowsPerPage });
+                        setPage(0);
+                      }}
+                    >
+                      <CancelIcon fontSize="small" />
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
           </CardContent>
         </Card>
 
         {/* Ações */}
         <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
           <Typography variant="h6">
-            Resultados ({total} itens)
+            Resultados ({agruparPorProdutoContrato(dados).length} produtos)
           </Typography>
           
           <Box sx={{ flexGrow: 1 }} />
@@ -814,10 +935,16 @@ const SaldoContratosModalidades: React.FC = () => {
                     <strong>Quantidade Contratada:</strong> {formatarNumero(produtoSelecionado.quantidade_contrato)} {produtoSelecionado.unidade}
                   </Typography>
                   <Typography variant="body1">
-                    <strong>Total Distribuído:</strong> {formatarNumero(produtoSelecionado.total_inicial)} {produtoSelecionado.unidade}
+                    <strong>Total Distribuído:</strong> {formatarNumero(calcularTotaisAtuais().totalDistribuido)} {produtoSelecionado.unidade}
                   </Typography>
-                  <Typography variant="body1">
-                    <strong>Disponível para Distribuir:</strong> {formatarNumero(produtoSelecionado.quantidade_contrato - produtoSelecionado.total_inicial)} {produtoSelecionado.unidade}
+                  <Typography 
+                    variant="body1"
+                    sx={{ 
+                      color: calcularTotaisAtuais().disponivelDistribuir < 0 ? 'error.main' : 'text.primary',
+                      fontWeight: calcularTotaisAtuais().disponivelDistribuir < 0 ? 'bold' : 'normal'
+                    }}
+                  >
+                    <strong>Disponível para Distribuir:</strong> {formatarNumero(calcularTotaisAtuais().disponivelDistribuir)} {produtoSelecionado.unidade}
                   </Typography>
                 </Box>
 
@@ -843,7 +970,10 @@ const SaldoContratosModalidades: React.FC = () => {
                             key={modalidade.id}
                             modalidade={modalidade}
                             produtoSelecionado={produtoSelecionado}
+                            todasModalidades={modalidadesProduto}
                             onSalvar={salvarModalidade}
+                            onRegistrarConsumo={abrirConsumoModalidade}
+                            onVerHistorico={abrirHistoricoModalidade}
                             formatarNumero={formatarNumero}
                           />
                         ))}
@@ -883,20 +1013,36 @@ const SaldoContratosModalidades: React.FC = () => {
                   <strong>Saldo Disponível:</strong> {formatarNumero(itemSelecionado.quantidade_disponivel)} {itemSelecionado.unidade}
                 </Typography>
                 
-                <TextField
-                  fullWidth
-                  label="Quantidade a Consumir"
-                  type="number"
-                  value={quantidadeConsumo}
-                  onChange={(e) => setQuantidadeConsumo(e.target.value)}
-                  inputProps={{ 
-                    min: 0, 
-                    max: itemSelecionado.quantidade_disponivel,
-                    step: 0.01
-                  }}
-                  sx={{ mb: 2 }}
-                  helperText={`Máximo: ${formatarNumero(itemSelecionado.quantidade_disponivel)} ${itemSelecionado.unidade}`}
-                />
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      label="Quantidade a Consumir"
+                      type="number"
+                      value={quantidadeConsumo}
+                      onChange={(e) => setQuantidadeConsumo(e.target.value)}
+                      inputProps={{ 
+                        min: 0, 
+                        max: itemSelecionado.quantidade_disponivel,
+                        step: 0.01
+                      }}
+                      helperText={`Máximo: ${formatarNumero(itemSelecionado.quantidade_disponivel)} ${itemSelecionado.unidade}`}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      label="Data do Consumo"
+                      type="date"
+                      value={dataConsumo}
+                      onChange={(e) => setDataConsumo(e.target.value)}
+                      InputLabelProps={{
+                        shrink: true,
+                      }}
+                      helperText="Para registros retroativos"
+                    />
+                  </Grid>
+                </Grid>
                 
                 <TextField
                   fullWidth
@@ -906,6 +1052,7 @@ const SaldoContratosModalidades: React.FC = () => {
                   value={observacaoConsumo}
                   onChange={(e) => setObservacaoConsumo(e.target.value)}
                   placeholder="Descreva o motivo do consumo..."
+                  sx={{ mt: 2 }}
                 />
                 
                 {error && (
@@ -958,15 +1105,27 @@ const SaldoContratosModalidades: React.FC = () => {
                         <TableCell align="right">Quantidade</TableCell>
                         <TableCell>Responsável</TableCell>
                         <TableCell>Observação</TableCell>
+                        <TableCell align="center">Ações</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {historicoConsumo.map((consumo, index) => (
                         <TableRow key={index}>
                           <TableCell>{formatarData(consumo.data_consumo)}</TableCell>
-                          <TableCell align="right">{formatarNumero(consumo.quantidade)}</TableCell>
+                          <TableCell align="right">{formatarNumero(consumo.quantidade)} {itemSelecionado?.unidade}</TableCell>
                           <TableCell>{consumo.responsavel_nome || 'Não informado'}</TableCell>
                           <TableCell>{consumo.observacao || '-'}</TableCell>
+                          <TableCell align="center">
+                            <Tooltip title="Excluir Consumo">
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => excluirConsumo(consumo.id)}
+                              >
+                                <CancelIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -981,6 +1140,8 @@ const SaldoContratosModalidades: React.FC = () => {
             </Button>
           </DialogActions>
         </Dialog>
+
+
       </Box>
     </Box>
   );

@@ -5,7 +5,8 @@ import {
   listarProdutosContratos,
   cadastrarSaldoModalidade,
   registrarConsumoModalidade,
-  buscarHistoricoConsumoModalidade
+  buscarHistoricoConsumoModalidade,
+  excluirConsumoModalidade
 } from '../controllers/saldoContratosModalidadesController';
 
 const router = Router();
@@ -27,5 +28,8 @@ router.post('/:id/consumir', registrarConsumoModalidade);
 
 // Buscar histórico de consumos por modalidade
 router.get('/:id/historico', buscarHistoricoConsumoModalidade);
+
+// Excluir registro de consumo por modalidade
+router.delete('/:id/consumo/:consumoId', excluirConsumoModalidade);
 
 export default router;

@@ -163,7 +163,7 @@ class SaldoContratosModalidadesService {
   /**
    * Registra consumo por modalidade
    */
-  async registrarConsumoModalidade(id: number, quantidade: number, observacao?: string): Promise<any> {
+  async registrarConsumoModalidade(id: number, quantidade: number, observacao?: string, dataConsumo?: string): Promise<any> {
     try {
       // Obter ID do usuário do localStorage ou contexto
       const usuarioId = localStorage.getItem('userId') || '1'; // Temporário - deve vir do contexto de autenticação
@@ -171,6 +171,7 @@ class SaldoContratosModalidadesService {
       const response = await api.post(`/saldo-contratos-modalidades/${id}/consumir`, {
         quantidade,
         observacao,
+        data_consumo: dataConsumo,
         usuario_id: parseInt(usuarioId)
       });
       
@@ -190,6 +191,19 @@ class SaldoContratosModalidadesService {
       return response.data;
     } catch (error) {
       console.error('Erro ao buscar histórico de consumo por modalidade:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Exclui um registro de consumo
+   */
+  async excluirConsumoModalidade(saldoId: number, consumoId: number): Promise<any> {
+    try {
+      const response = await api.delete(`/saldo-contratos-modalidades/${saldoId}/consumo/${consumoId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao excluir consumo:', error);
       throw error;
     }
   }
