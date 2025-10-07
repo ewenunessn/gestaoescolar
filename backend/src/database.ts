@@ -1,27 +1,39 @@
 // Configuração PostgreSQL - Sistema de Alimentação Escolar
 import { Pool, PoolClient, QueryResult } from 'pg';
 
-// Configuração explícita para garantir conexão correta
-const dbConfig = {
-    user: process.env.DB_USER || 'postgres',
-    host: process.env.DB_HOST || 'localhost',
-    database: process.env.DB_NAME || 'alimentacao_escolar',
-    password: process.env.DB_PASSWORD || 'admin123',
-    port: parseInt(process.env.DB_PORT || '5432'),
-    // Forçar SSL como false para desenvolvimento local
-    // Em produção na Vercel, usar variável de ambiente DB_SSL=true
-    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false
-};
+// Configuração do banco de dados
+// Prioriza DATABASE_URL (Vercel/Neon) sobre variáveis individuais
+let pool: Pool;
 
-console.log('🔧 Configuração do banco de dados:', {
-    host: dbConfig.host,
-    port: dbConfig.port,
-    database: dbConfig.database,
-    user: dbConfig.user
-});
+if (process.env.DATABASE_URL) {
+    // Usar DATABASE_URL (produção - Vercel/Neon)
+    console.log('🔧 Usando DATABASE_URL para conexão');
+    pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: {
+            rejectUnauthorized: false
+        }
+    });
+} else {
+    // Usar variáveis individuais (desenvolvimento local)
+    const dbConfig = {
+        user: process.env.DB_USER || 'postgres',
+        host: process.env.DB_HOST || 'localhost',
+        database: process.env.DB_NAME || 'alimentacao_escolar',
+        password: process.env.DB_PASSWORD || 'admin123',
+        port: parseInt(process.env.DB_PORT || '5432'),
+        ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false
+    };
 
-// Pool de conexões PostgreSQL
-const pool = new Pool(dbConfig);
+    console.log('🔧 Configuração do banco de dados:', {
+        host: dbConfig.host,
+        port: dbConfig.port,
+        database: dbConfig.database,
+        user: dbConfig.user
+    });
+
+    pool = new Pool(dbConfig);
+}
 
 // Função principal para queries
 async function query(text: string, params: any[] = []): Promise<QueryResult> {
