@@ -9,7 +9,11 @@ export interface Produto {
   tipo_processamento?: string; // in natura, minimamente processado, processado, ultraprocessado
   categoria?: string;
   marca?: string;
+  codigo_barras?: string;
   peso?: number; // peso em gramas
+  validade_minima?: number;
+  imagem_url?: string;
+  estoque_minimo?: number;
   perecivel: boolean; // indica se o produto é perecível
   ativo: boolean;
 }
