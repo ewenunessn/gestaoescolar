@@ -38,11 +38,11 @@ const createApiConfig = (): ApiConfig => {
   
   if (isDevelopment) {
     // Desenvolvimento - API local
-    baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+    baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
     healthURL = import.meta.env.VITE_HEALTH_URL || 'http://localhost:3000/health';
   } else {
     // Produção - usar URL do backend na Vercel
-    baseURL = import.meta.env.VITE_API_URL || 'https://gestaoescolar-backend.vercel.app';
+    baseURL = import.meta.env.VITE_API_URL || 'https://gestaoescolar-backend.vercel.app/api';
     healthURL = import.meta.env.VITE_HEALTH_URL || 'https://gestaoescolar-backend.vercel.app/health';
   }
   

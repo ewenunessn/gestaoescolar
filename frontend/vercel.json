@@ -44,7 +44,7 @@
   ],
   "env": {
     "NODE_ENV": "production",
-    "VITE_API_URL": "https://gestaoescolar-backend.vercel.app",
+    "VITE_API_URL": "https://gestaoescolar-backend.vercel.app/api",
     "VITE_HEALTH_URL": "https://gestaoescolar-backend.vercel.app/health",
     "VITE_VERCEL": "true",
     "VITE_APP_ENV": "production"
