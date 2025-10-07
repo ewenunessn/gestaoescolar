@@ -5,11 +5,15 @@ import { Pool, PoolClient, QueryResult } from 'pg';
 // Prioriza DATABASE_URL (Vercel/Neon) sobre variáveis individuais
 let pool: Pool;
 
-if (process.env.DATABASE_URL) {
-    // Usar DATABASE_URL (produção - Vercel/Neon)
-    console.log('🔧 Usando DATABASE_URL para conexão');
+console.log('🔍 DATABASE_URL presente?', !!process.env.DATABASE_URL);
+console.log('🔍 POSTGRES_URL presente?', !!process.env.POSTGRES_URL);
+
+if (process.env.DATABASE_URL || process.env.POSTGRES_URL) {
+    // Usar DATABASE_URL ou POSTGRES_URL (produção - Vercel/Neon)
+    const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+    console.log('✅ Usando connection string para Neon/Vercel');
     pool = new Pool({
-        connectionString: process.env.DATABASE_URL,
+        connectionString,
         ssl: {
             rejectUnauthorized: false
         }
@@ -25,7 +29,7 @@ if (process.env.DATABASE_URL) {
         ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false
     };
 
-    console.log('🔧 Configuração do banco de dados:', {
+    console.log('🔧 Usando configuração local:', {
         host: dbConfig.host,
         port: dbConfig.port,
         database: dbConfig.database,
