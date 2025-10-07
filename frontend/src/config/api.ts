@@ -41,9 +41,9 @@ const createApiConfig = (): ApiConfig => {
     baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
     healthURL = import.meta.env.VITE_HEALTH_URL || 'http://localhost:3000/health';
   } else {
-    // Produção - usar rotas de proxy do Vercel
-    baseURL = '/api';
-    healthURL = '/health';
+    // Produção - usar URL do backend na Vercel
+    baseURL = import.meta.env.VITE_API_URL || 'https://gestaoescolar-backend.vercel.app';
+    healthURL = import.meta.env.VITE_HEALTH_URL || 'https://gestaoescolar-backend.vercel.app/health';
   }
   
   return {
