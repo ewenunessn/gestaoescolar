@@ -187,6 +187,19 @@ export default function ContratoDetalhe() {
     carregarDados();
   }, [carregarDados]);
 
+  // Atalho Ctrl+A para adicionar item
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === 'a') {
+        e.preventDefault();
+        abrirModalProduto();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const abrirModalProduto = (produto?: any) => {
     setEditandoProduto(produto || null);
     if (produto) {
