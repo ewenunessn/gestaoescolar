@@ -309,13 +309,15 @@ const SaldoContratosModalidades: React.FC = () => {
       // Tab no modal de edição de quantidade - ir para próxima modalidade
       if (e.key === 'Tab' && dialogQuantidadeInicial && !e.shiftKey) {
         e.preventDefault();
+        console.log('Tab pressionado - salvando e indo para próxima modalidade');
         salvarEProximaModalidade();
         return;
       }
       
       // Enter no modal de edição - salvar e fechar
-      if (e.key === 'Enter' && dialogQuantidadeInicial && !isInputField) {
+      if (e.key === 'Enter' && dialogQuantidadeInicial) {
         e.preventDefault();
+        console.log('Enter pressionado - salvando e fechando');
         salvarQuantidadeInicial();
         return;
       }
@@ -536,9 +538,14 @@ const SaldoContratosModalidades: React.FC = () => {
   };
   
   const salvarEProximaModalidade = async () => {
-    if (!produtoSelecionado || !modalidadeSelecionada) return;
+    console.log('salvarEProximaModalidade chamada');
+    if (!produtoSelecionado || !modalidadeSelecionada) {
+      console.log('Produto ou modalidade não selecionados');
+      return;
+    }
     
     const novaQuantidade = parseFloat(quantidadeInicial);
+    console.log('Nova quantidade:', novaQuantidade);
     
     if (isNaN(novaQuantidade) || novaQuantidade < 0) {
       setError('Quantidade deve ser um número válido e não negativo');
@@ -560,6 +567,7 @@ const SaldoContratosModalidades: React.FC = () => {
     }
 
     setSalvandoQuantidade(true);
+    console.log('Iniciando salvamento...');
     
     try {
       await saldoContratosModalidadesService.cadastrarSaldoModalidade({
@@ -1150,7 +1158,25 @@ const SaldoContratosModalidades: React.FC = () => {
         </Dialog>
 
         {/* Modal de Quantidade Inicial */}
-        <Dialog open={dialogQuantidadeInicial} onClose={fecharDialogQuantidadeInicial} maxWidth="sm" fullWidth>
+        <Dialog 
+          open={dialogQuantidadeInicial} 
+          onClose={fecharDialogQuantidadeInicial} 
+          maxWidth="sm" 
+          fullWidth
+          onKeyDown={(e) => {
+            if (e.key === 'Tab' && !e.shiftKey) {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('Tab capturado no Dialog');
+              salvarEProximaModalidade();
+            } else if (e.key === 'Enter') {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('Enter capturado no Dialog');
+              salvarQuantidadeInicial();
+            }
+          }}
+        >
           <DialogTitle sx={{ bgcolor: '#059669', color: 'white', display: 'flex', alignItems: 'center', gap: 1 }}>
             <EditIcon />
             Editar Quantidade Inicial
