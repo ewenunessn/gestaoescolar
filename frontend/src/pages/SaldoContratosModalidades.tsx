@@ -1201,14 +1201,17 @@ const SaldoContratosModalidades: React.FC = () => {
                   <Typography variant="body2" gutterBottom>
                     <strong>Já Distribuído (outras modalidades):</strong> {formatarNumero(calcularTotaisAtuais().totalDistribuido - (modalidadeSelecionada.quantidade_inicial || 0))} {produtoSelecionado.unidade}
                   </Typography>
+                  <Typography variant="body2" gutterBottom>
+                    <strong>Quantidade Atual desta Modalidade:</strong> {formatarNumero(modalidadeSelecionada.quantidade_inicial || 0)} {produtoSelecionado.unidade}
+                  </Typography>
                   <Typography 
                     variant="body2"
                     sx={{ 
-                      color: calcularTotaisAtuais().disponivelDistribuir + (modalidadeSelecionada.quantidade_inicial || 0) < 0 ? 'error.main' : 'success.main',
+                      color: calcularTotaisAtuais().disponivelDistribuir < 0 ? 'error.main' : 'success.main',
                       fontWeight: 'bold'
                     }}
                   >
-                    <strong>Disponível para esta modalidade:</strong> {formatarNumero(calcularTotaisAtuais().disponivelDistribuir + (modalidadeSelecionada.quantidade_inicial || 0))} {produtoSelecionado.unidade}
+                    <strong>Disponível para Redistribuir:</strong> {formatarNumero(calcularTotaisAtuais().disponivelDistribuir + (modalidadeSelecionada.quantidade_inicial || 0))} {produtoSelecionado.unidade}
                   </Typography>
                 </Box>
                 
