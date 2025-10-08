@@ -24,7 +24,71 @@ class SaldoContratosModalidadesController {
 
       const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
       
-      // Query que retorna TODOS os produtos de contratos ativos com TODAS as modalidades
+      // Primeiro, buscar os produtos paginados (produtos únicos)
+      let produtosQuery = `
+        SELECT DISTINCT cp.id as contrato_produto_id
+        FROM contrato_produtos cp
+        JOIN contratos c ON cp.contrato_id = c.id
+        JOIN produtos p ON cp.produto_id = p.id
+        JOIN fornecedores f ON c.fornecedor_id = f.id
+        WHERE cp.ativo = true
+          AND c.ativo = true
+      `;
+      
+      const produtosParams: any[] = [];
+      let produtosParamIndex = 1;
+      
+      if (contrato_numero) {
+        produtosQuery += ` AND c.numero ILIKE $${produtosParamIndex}`;
+        produtosParams.push(`%${contrato_numero}%`);
+        produtosParamIndex++;
+      }
+      
+      if (produto_nome) {
+        produtosQuery += ` AND p.nome ILIKE $${produtosParamIndex}`;
+        produtosParams.push(`%${produto_nome}%`);
+        produtosParamIndex++;
+      }
+      
+      if (fornecedor_id) {
+        produtosQuery += ` AND f.id = $${produtosParamIndex}`;
+        produtosParams.push(parseInt(fornecedor_id as string));
+        produtosParamIndex++;
+      }
+      
+      produtosQuery += ` ORDER BY cp.id`;
+      produtosQuery += ` LIMIT $${produtosParamIndex} OFFSET $${produtosParamIndex + 1}`;
+      produtosParams.push(parseInt(limit as string), offset);
+      
+      const produtosPaginados = await db.query(produtosQuery, produtosParams);
+      const produtoIds = produtosPaginados.rows.map((r: any) => r.contrato_produto_id);
+      
+      // Se não há produtos, retornar vazio
+      if (produtoIds.length === 0) {
+        res.json({
+          success: true,
+          data: [],
+          pagination: {
+            page: parseInt(page as string),
+            limit: parseInt(limit as string),
+            total: 0,
+            totalPages: 0
+          },
+          estatisticas: {
+            total_itens: 0,
+            itens_disponiveis: 0,
+            itens_baixo_estoque: 0,
+            itens_esgotados: 0,
+            quantidade_inicial_total: 0,
+            quantidade_consumida_total: 0,
+            quantidade_disponivel_total: 0,
+            valor_total_disponivel: 0
+          }
+        });
+        return;
+      }
+      
+      // Agora buscar todas as modalidades para esses produtos
       let query = `
         SELECT 
           COALESCE(cpm.id, 0) as id,
@@ -74,82 +138,46 @@ class SaldoContratosModalidadesController {
         JOIN contratos c ON cp.contrato_id = c.id
         JOIN produtos p ON cp.produto_id = p.id
         JOIN fornecedores f ON c.fornecedor_id = f.id
-        WHERE cp.ativo = true
-          AND c.ativo = true
+        WHERE cp.id = ANY($1)
           AND m.ativo = true
       `;
       
-      const params: any[] = [];
-      let paramIndex = 1;
+      const queryParams: any[] = [produtoIds];
+      let queryParamIndex = 2;
       
       if (status) {
         query += ` AND (CASE 
             WHEN COALESCE(cpm.quantidade_disponivel, 0) <= 0 THEN 'ESGOTADO'
             WHEN COALESCE(cpm.quantidade_disponivel, 0) <= (COALESCE(cpm.quantidade_inicial, 0) * 0.1) THEN 'BAIXO_ESTOQUE'
             ELSE 'DISPONIVEL'
-          END) = $${paramIndex}`;
-        params.push(status);
-        paramIndex++;
-      }
-      
-      if (contrato_numero) {
-        query += ` AND c.numero ILIKE $${paramIndex}`;
-        params.push(`%${contrato_numero}%`);
-        paramIndex++;
-      }
-      
-      if (produto_nome) {
-        query += ` AND p.nome ILIKE $${paramIndex}`;
-        params.push(`%${produto_nome}%`);
-        paramIndex++;
-      }
-      
-      if (fornecedor_id) {
-        query += ` AND f.id = $${paramIndex}`;
-        params.push(parseInt(fornecedor_id as string));
-        paramIndex++;
+          END) = $${queryParamIndex}`;
+        queryParams.push(status);
+        queryParamIndex++;
       }
 
       if (modalidade_id) {
-        query += ` AND m.id = $${paramIndex}`;
-        params.push(parseInt(modalidade_id as string));
-        paramIndex++;
+        query += ` AND m.id = $${queryParamIndex}`;
+        queryParams.push(parseInt(modalidade_id as string));
+        queryParamIndex++;
       }
       
       query += ` ORDER BY c.numero, p.nome, m.nome`;
-      query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
-      params.push(parseInt(limit as string), offset);
       
-      const result = await db.query(query, params);
+      const result = await db.query(query, queryParams);
       
-      // Count query
+      // Count query - contar produtos únicos ao invés de linhas
       let countQuery = `
-        SELECT COUNT(*) as total
+        SELECT COUNT(DISTINCT cp.id) as total
         FROM contrato_produtos cp
-        CROSS JOIN modalidades m
-        LEFT JOIN contrato_produtos_modalidades cpm 
-          ON cp.id = cpm.contrato_produto_id 
-          AND m.id = cpm.modalidade_id
         JOIN contratos c ON cp.contrato_id = c.id
         JOIN produtos p ON cp.produto_id = p.id
         JOIN fornecedores f ON c.fornecedor_id = f.id
         WHERE cp.ativo = true
           AND c.ativo = true
-          AND m.ativo = true
       `;
       
       const countParams: any[] = [];
       let countParamIndex = 1;
-      
-      if (status) {
-        countQuery += ` AND (CASE 
-            WHEN COALESCE(cpm.quantidade_disponivel, 0) <= 0 THEN 'ESGOTADO'
-            WHEN COALESCE(cpm.quantidade_disponivel, 0) <= (COALESCE(cpm.quantidade_inicial, 0) * 0.1) THEN 'BAIXO_ESTOQUE'
-            ELSE 'DISPONIVEL'
-          END) = $${countParamIndex}`;
-        countParams.push(status);
-        countParamIndex++;
-      }
       
       if (contrato_numero) {
         countQuery += ` AND c.numero ILIKE $${countParamIndex}`;
@@ -166,12 +194,6 @@ class SaldoContratosModalidadesController {
       if (fornecedor_id) {
         countQuery += ` AND f.id = $${countParamIndex}`;
         countParams.push(parseInt(fornecedor_id as string));
-        countParamIndex++;
-      }
-
-      if (modalidade_id) {
-        countQuery += ` AND m.id = $${countParamIndex}`;
-        countParams.push(parseInt(modalidade_id as string));
         countParamIndex++;
       }
       
@@ -216,17 +238,28 @@ class SaldoContratosModalidadesController {
       
       // Construir a parte adicional do WHERE para estatísticas
       let statsWhereAdditional = '';
-      if (countParams.length > 0) {
-        // Pegar apenas as condições adicionais após o WHERE base
-        const whereIndex = countQuery.lastIndexOf('WHERE');
-        const baseWhereConditions = 'WHERE cp.ativo = true\n          AND c.ativo = true\n          AND m.ativo = true';
-        const additionalConditions = countQuery.substring(whereIndex + baseWhereConditions.length);
-        if (additionalConditions.trim()) {
-          statsWhereAdditional = additionalConditions;
-        }
+      const statsParams: any[] = [];
+      let statsParamIndex = 1;
+      
+      if (contrato_numero) {
+        statsWhereAdditional += ` AND c.numero ILIKE $${statsParamIndex}`;
+        statsParams.push(`%${contrato_numero}%`);
+        statsParamIndex++;
       }
       
-      const statsResult = await db.query(statsQuery + statsWhereAdditional, countParams);
+      if (produto_nome) {
+        statsWhereAdditional += ` AND p.nome ILIKE $${statsParamIndex}`;
+        statsParams.push(`%${produto_nome}%`);
+        statsParamIndex++;
+      }
+      
+      if (fornecedor_id) {
+        statsWhereAdditional += ` AND f.id = $${statsParamIndex}`;
+        statsParams.push(parseInt(fornecedor_id as string));
+        statsParamIndex++;
+      }
+      
+      const statsResult = await db.query(statsQuery + statsWhereAdditional, statsParams);
       
       res.json({
         success: true,
