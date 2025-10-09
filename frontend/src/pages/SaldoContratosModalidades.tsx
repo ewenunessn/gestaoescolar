@@ -1144,7 +1144,15 @@ const SaldoContratosModalidades: React.FC = () => {
                     <TableCell align="right" sx={cellStyle}>{formatarNumero(produto.total_consumido)}</TableCell>
                     <TableCell align="right" sx={cellStyle}>{formatarNumero(produto.total_disponivel)}</TableCell>
                     <TableCell align="right" sx={cellStyle}>
-                      {produto.contratos.length === 1 ? formatarMoeda(produto.contratos[0].preco_unitario) : 'Variável'}
+                      {(() => {
+                        if (produto.contratos.length === 1) {
+                          return formatarMoeda(produto.contratos[0].preco_unitario);
+                        }
+                        // Verificar se todos os contratos têm o mesmo preço
+                        const precos = produto.contratos.map((c: any) => parseFloat(c.preco_unitario));
+                        const precoUnico = precos.every((p: number) => p === precos[0]);
+                        return precoUnico ? formatarMoeda(precos[0]) : 'Variável';
+                      })()}
                     </TableCell>
                     <TableCell align="center" sx={cellStyle}>
                       <Chip
