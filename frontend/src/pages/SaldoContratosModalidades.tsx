@@ -440,6 +440,7 @@ const SaldoContratosModalidades: React.FC = () => {
   };
 
   const abrirDialogGerenciarModalidades = async (produto: any) => {
+    console.log('Produto recebido:', produto);
     setProdutoSelecionado(produto);
     setError(null);
     setDialogGerenciarModalidades(true);
@@ -456,6 +457,19 @@ const SaldoContratosModalidades: React.FC = () => {
       const modalidadesAtualizadas = response.data.filter(
         (item: any) => item.contrato_produto_id === produto.contrato_produto_id
       );
+
+      console.log('Modalidades atualizadas:', modalidadesAtualizadas);
+
+      // Se encontrou modalidades, pegar o nome do produto da primeira
+      if (modalidadesAtualizadas.length > 0) {
+        const produtoAtualizado = {
+          ...produto,
+          produto_nome: modalidadesAtualizadas[0].produto_nome,
+          unidade: modalidadesAtualizadas[0].unidade
+        };
+        console.log('Produto atualizado:', produtoAtualizado);
+        setProdutoSelecionado(produtoAtualizado);
+      }
 
       // Carregar todas as modalidades disponíveis
       const todasModalidades = await saldoContratosModalidadesService.listarModalidades();
@@ -513,13 +527,6 @@ const SaldoContratosModalidades: React.FC = () => {
     }, 0);
 
     const disponivelDistribuir = quantidadeContrato - totalDistribuido;
-
-    console.log('Cálculo de totais:', {
-      quantidadeContrato,
-      totalDistribuido,
-      disponivelDistribuir,
-      produtoSelecionado
-    });
 
     return { totalDistribuido, disponivelDistribuir };
   };
@@ -1352,9 +1359,16 @@ const SaldoContratosModalidades: React.FC = () => {
             }
           }}
         >
-          <DialogTitle sx={{ bgcolor: '#059669', color: 'white', display: 'flex', alignItems: 'center', gap: 1 }}>
-            <EditIcon />
-            Editar Quantidade Inicial
+          <DialogTitle sx={{ bgcolor: '#059669', color: 'white' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+              <EditIcon />
+              Editar Quantidade Inicial
+            </Box>
+            {modalidadeSelecionada && (
+              <Typography variant="h6" sx={{ fontWeight: 'bold', fontSize: '1.25rem' }}>
+                Modalidade: {modalidadeSelecionada.nome}
+              </Typography>
+            )}
           </DialogTitle>
           <DialogContent>
             {modalidadeSelecionada && produtoSelecionado && (
@@ -1363,12 +1377,12 @@ const SaldoContratosModalidades: React.FC = () => {
                   Define a quantidade inicial disponível para esta modalidade. Esta é a quantidade que será distribuída do contrato.
                 </Alert>
 
-                <Box sx={{ mb: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                <Box sx={{ mb: 3, p: 2, bgcolor: '#e3f2fd', borderRadius: 1, border: '2px solid #2196f3' }}>
                   <Typography variant="body2" gutterBottom>
-                    <strong>Produto:</strong> {produtoSelecionado.produto_nome}
+                    <strong>Produto:</strong> {produtoSelecionado.produto_nome || produtoSelecionado.nome || 'N/A'}
                   </Typography>
                   <Typography variant="body2" gutterBottom>
-                    <strong>Modalidade:</strong> {modalidadeSelecionada.nome}
+                    <strong>Contrato:</strong> {produtoSelecionado.contrato_numero || 'N/A'}
                   </Typography>
                   <Typography variant="body2" gutterBottom>
                     <strong>Quantidade Contratada:</strong> {formatarNumero(produtoSelecionado.quantidade_contrato)} {produtoSelecionado.unidade}

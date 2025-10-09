@@ -126,12 +126,19 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.get("/health", async (req, res) => {
   try {
     await db.testConnection();
+    
+    // Detectar URL baseado no ambiente
+    const isVercel = process.env.VERCEL === '1' || process.env.VERCEL === 'true';
+    const apiUrl = isVercel 
+      ? 'https://gestaoescolar-backend.vercel.app'
+      : (config as any).apiUrl || 'http://localhost:3000';
+    
     res.json({
       status: "ok",
       database: "PostgreSQL",
       dbConnection: "connected",
       timestamp: new Date().toISOString(),
-      apiUrl: (config as any).apiUrl || 'http://localhost:3000',
+      apiUrl,
       environment: process.env.NODE_ENV || 'development',
     });
   } catch (error) {

@@ -12,18 +12,18 @@ class SaldoContratosModalidadesController {
    */
   async listarSaldosModalidades(req: Request, res: Response): Promise<void> {
     try {
-      const { 
-        page = 1, 
-        limit = 50, 
-        status, 
-        contrato_numero, 
+      const {
+        page = 1,
+        limit = 50,
+        status,
+        contrato_numero,
         produto_nome,
         fornecedor_id,
-        modalidade_id 
+        modalidade_id
       } = req.query;
 
       const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
-      
+
       // Primeiro, buscar os produtos paginados (produtos únicos)
       let produtosQuery = `
         SELECT DISTINCT cp.id as contrato_produto_id
@@ -34,35 +34,35 @@ class SaldoContratosModalidadesController {
         WHERE cp.ativo = true
           AND c.ativo = true
       `;
-      
+
       const produtosParams: any[] = [];
       let produtosParamIndex = 1;
-      
+
       if (contrato_numero) {
         produtosQuery += ` AND c.numero ILIKE $${produtosParamIndex}`;
         produtosParams.push(`%${contrato_numero}%`);
         produtosParamIndex++;
       }
-      
+
       if (produto_nome) {
         produtosQuery += ` AND p.nome ILIKE $${produtosParamIndex}`;
         produtosParams.push(`%${produto_nome}%`);
         produtosParamIndex++;
       }
-      
+
       if (fornecedor_id) {
         produtosQuery += ` AND f.id = $${produtosParamIndex}`;
         produtosParams.push(parseInt(fornecedor_id as string));
         produtosParamIndex++;
       }
-      
+
       produtosQuery += ` ORDER BY cp.id`;
       produtosQuery += ` LIMIT $${produtosParamIndex} OFFSET $${produtosParamIndex + 1}`;
       produtosParams.push(parseInt(limit as string), offset);
-      
+
       const produtosPaginados = await db.query(produtosQuery, produtosParams);
       const produtoIds = produtosPaginados.rows.map((r: any) => r.contrato_produto_id);
-      
+
       // Se não há produtos, retornar vazio
       if (produtoIds.length === 0) {
         res.json({
@@ -87,7 +87,7 @@ class SaldoContratosModalidadesController {
         });
         return;
       }
-      
+
       // Agora buscar todas as modalidades para esses produtos
       let query = `
         SELECT 
@@ -141,10 +141,10 @@ class SaldoContratosModalidadesController {
         WHERE cp.id = ANY($1)
           AND m.ativo = true
       `;
-      
+
       const queryParams: any[] = [produtoIds];
       let queryParamIndex = 2;
-      
+
       if (status) {
         query += ` AND (CASE 
             WHEN COALESCE(cpm.quantidade_disponivel, 0) <= 0 THEN 'ESGOTADO'
@@ -160,11 +160,11 @@ class SaldoContratosModalidadesController {
         queryParams.push(parseInt(modalidade_id as string));
         queryParamIndex++;
       }
-      
+
       query += ` ORDER BY c.numero, p.nome, m.nome`;
-      
+
       const result = await db.query(query, queryParams);
-      
+
       // Count query - contar produtos únicos ao invés de linhas
       let countQuery = `
         SELECT COUNT(DISTINCT cp.id) as total
@@ -175,31 +175,31 @@ class SaldoContratosModalidadesController {
         WHERE cp.ativo = true
           AND c.ativo = true
       `;
-      
+
       const countParams: any[] = [];
       let countParamIndex = 1;
-      
+
       if (contrato_numero) {
         countQuery += ` AND c.numero ILIKE $${countParamIndex}`;
         countParams.push(`%${contrato_numero}%`);
         countParamIndex++;
       }
-      
+
       if (produto_nome) {
         countQuery += ` AND p.nome ILIKE $${countParamIndex}`;
         countParams.push(`%${produto_nome}%`);
         countParamIndex++;
       }
-      
+
       if (fornecedor_id) {
         countQuery += ` AND f.id = $${countParamIndex}`;
         countParams.push(parseInt(fornecedor_id as string));
         countParamIndex++;
       }
-      
+
       const countResult = await db.query(countQuery, countParams);
       const total = parseInt(countResult.rows[0].total);
-      
+
       // Estatísticas
       const statsQuery = `
         SELECT 
@@ -235,32 +235,32 @@ class SaldoContratosModalidadesController {
           AND c.ativo = true
           AND m.ativo = true
       `;
-      
+
       // Construir a parte adicional do WHERE para estatísticas
       let statsWhereAdditional = '';
       const statsParams: any[] = [];
       let statsParamIndex = 1;
-      
+
       if (contrato_numero) {
         statsWhereAdditional += ` AND c.numero ILIKE $${statsParamIndex}`;
         statsParams.push(`%${contrato_numero}%`);
         statsParamIndex++;
       }
-      
+
       if (produto_nome) {
         statsWhereAdditional += ` AND p.nome ILIKE $${statsParamIndex}`;
         statsParams.push(`%${produto_nome}%`);
         statsParamIndex++;
       }
-      
+
       if (fornecedor_id) {
         statsWhereAdditional += ` AND f.id = $${statsParamIndex}`;
         statsParams.push(parseInt(fornecedor_id as string));
         statsParamIndex++;
       }
-      
+
       const statsResult = await db.query(statsQuery + statsWhereAdditional, statsParams);
-      
+
       res.json({
         success: true,
         data: result.rows,
@@ -281,7 +281,7 @@ class SaldoContratosModalidadesController {
           valor_total_disponivel: parseFloat(statsResult.rows[0].valor_total_disponivel || 0)
         }
       });
-      
+
     } catch (error: any) {
       console.error('Erro ao listar saldos por modalidade:', error);
       res.status(500).json({
@@ -303,10 +303,10 @@ class SaldoContratosModalidadesController {
         WHERE ativo = true
         ORDER BY nome
       `;
-      
+
       const result = await db.query(query);
       res.json({ success: true, data: result.rows });
-      
+
     } catch (error: any) {
       console.error('Erro ao listar modalidades:', error);
       res.status(500).json({ success: false, message: 'Erro interno do servidor', error: error.message });
@@ -331,10 +331,10 @@ class SaldoContratosModalidadesController {
         WHERE cp.ativo = true AND c.ativo = true AND c.status = 'ativo'
         ORDER BY c.numero, p.nome
       `;
-      
+
       const result = await db.query(query);
       res.json({ success: true, data: result.rows });
-      
+
     } catch (error: any) {
       console.error('Erro ao listar produtos de contratos:', error);
       res.status(500).json({ success: false, message: 'Erro interno do servidor', error: error.message });
@@ -386,8 +386,8 @@ class SaldoContratosModalidadesController {
 
       // Validar se a soma total não excede a quantidade contratada
       if (somaTotal > quantidadeContratada) {
-        res.status(400).json({ 
-          success: false, 
+        res.status(400).json({
+          success: false,
           message: `A soma das modalidades (${somaTotal.toFixed(2)}) não pode exceder a quantidade contratada de ${produtoNome} (${quantidadeContratada.toFixed(2)})`,
           detalhes: {
             quantidade_contratada: quantidadeContratada,
@@ -406,7 +406,7 @@ class SaldoContratosModalidadesController {
       `, [contrato_produto_id, modalidade_id]);
 
       let result;
-      
+
       if (existeResult.rows.length > 0) {
         result = await db.query(`
           UPDATE contrato_produtos_modalidades 
@@ -470,7 +470,7 @@ class SaldoContratosModalidadesController {
       }
 
       const client = await db.pool.connect();
-      
+
       try {
         await client.query('BEGIN');
 
@@ -532,7 +532,7 @@ class SaldoContratosModalidadesController {
 
       const consumo = consumoResult.rows[0];
       const client = await db.pool.connect();
-      
+
       try {
         await client.query('BEGIN');
 
@@ -582,10 +582,10 @@ class SaldoContratosModalidadesController {
         WHERE mcm.contrato_produto_modalidade_id = $1
         ORDER BY mcm.created_at DESC
       `;
-      
+
       const result = await db.query(query, [id]);
       res.json({ success: true, data: result.rows });
-      
+
     } catch (error: any) {
       console.error('Erro ao buscar histórico de consumo por modalidade:', error);
       res.status(500).json({ success: false, message: 'Erro interno do servidor', error: error.message });
