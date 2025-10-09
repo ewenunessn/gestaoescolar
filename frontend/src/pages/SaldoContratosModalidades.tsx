@@ -209,6 +209,31 @@ const SaldoContratosModalidades: React.FC = () => {
   const [linhaSelecionada, setLinhaSelecionada] = useState<number>(-1);
   const [modalidadeEditandoIndex, setModalidadeEditandoIndex] = useState<number>(-1);
   const quantidadeInputRefs = React.useRef<{ [key: number]: HTMLInputElement | null }>({});
+  
+  // Estados para seleção de contrato
+  const [dialogSelecionarContrato, setDialogSelecionarContrato] = useState(false);
+  const [contratosDisponiveis, setContratosDisponiveis] = useState<any[]>([]);
+  const [contratoSelecionadoIndex, setContratoSelecionadoIndex] = useState<number>(0);
+  
+  // Scroll para linha selecionada
+  useEffect(() => {
+    if (linhaSelecionada >= 0) {
+      const row = document.querySelector(`[data-row-index="${linhaSelecionada}"]`);
+      if (row) {
+        row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+  }, [linhaSelecionada]);
+  
+  // Scroll para contrato selecionado no dialog
+  useEffect(() => {
+    if (dialogSelecionarContrato && contratoSelecionadoIndex >= 0) {
+      const card = document.querySelector(`[data-contrato-index="${contratoSelecionadoIndex}"]`);
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+  }, [contratoSelecionadoIndex, dialogSelecionarContrato]);
 
   // Carregar dados iniciais
   useEffect(() => {
@@ -278,29 +303,53 @@ const SaldoContratosModalidades: React.FC = () => {
       }
       
       // Navegação na tabela principal (quando não há modal aberto)
-      if (!dialogGerenciarModalidades && !dialogQuantidadeInicial && !dialogConsumoAberto && !dialogHistoricoOpen) {
-        const produtosAgrupados = agruparPorProdutoContrato(dados);
+      if (!dialogGerenciarModalidades && !dialogQuantidadeInicial && !dialogConsumoAberto && !dialogHistoricoOpen && !dialogSelecionarContrato) {
+        const produtosAgrupados = agruparPorProduto(dados);
         
-        // Seta para baixo
-        if (e.key === 'ArrowDown') {
-          e.preventDefault();
-          setLinhaSelecionada(prev => Math.min(prev + 1, produtosAgrupados.length - 1));
+        // Seta para baixo - permitir mesmo em input de pesquisa
+        if (e.key === 'ArrowDown' && !e.ctrlKey && !e.altKey) {
+          // Se estiver no input de pesquisa, permitir navegação
+          if (isInputField && target.getAttribute('placeholder')?.includes('Digite o nome do produto')) {
+            e.preventDefault();
+            if (linhaSelecionada < 0) {
+              setLinhaSelecionada(0);
+            } else {
+              setLinhaSelecionada(prev => Math.min(prev + 1, produtosAgrupados.length - 1));
+            }
+          } else if (!isInputField) {
+            e.preventDefault();
+            if (linhaSelecionada < 0) {
+              setLinhaSelecionada(0);
+            } else {
+              setLinhaSelecionada(prev => Math.min(prev + 1, produtosAgrupados.length - 1));
+            }
+          }
           return;
         }
         
-        // Seta para cima
-        if (e.key === 'ArrowUp') {
-          e.preventDefault();
-          setLinhaSelecionada(prev => Math.max(prev - 1, 0));
+        // Seta para cima - permitir mesmo em input de pesquisa
+        if (e.key === 'ArrowUp' && !e.ctrlKey && !e.altKey) {
+          // Se estiver no input de pesquisa, permitir navegação
+          if (isInputField && target.getAttribute('placeholder')?.includes('Digite o nome do produto')) {
+            e.preventDefault();
+            setLinhaSelecionada(prev => Math.max(prev - 1, 0));
+          } else if (!isInputField) {
+            e.preventDefault();
+            setLinhaSelecionada(prev => Math.max(prev - 1, 0));
+          }
           return;
         }
         
-        // Enter - Abrir modal de gerenciar modalidades
-        if (e.key === 'Enter' && linhaSelecionada >= 0) {
+        // Enter - Abrir modal de gerenciar modalidades ou seleção de contrato
+        if (e.key === 'Enter' && linhaSelecionada >= 0 && !isInputField) {
           e.preventDefault();
           const produtoSelecionadoItem = produtosAgrupados[linhaSelecionada];
           if (produtoSelecionadoItem) {
-            abrirDialogGerenciarModalidades(produtoSelecionadoItem);
+            if (produtoSelecionadoItem.contratos.length > 1) {
+              abrirDialogSelecionarContrato(produtoSelecionadoItem);
+            } else {
+              abrirDialogGerenciarModalidades(produtoSelecionadoItem.contratos[0]);
+            }
           }
           return;
         }
@@ -379,6 +428,17 @@ const SaldoContratosModalidades: React.FC = () => {
   };
 
   // Funções para gerenciar modalidades
+  const abrirDialogSelecionarContrato = (produto: any) => {
+    setContratosDisponiveis(produto.contratos);
+    setContratoSelecionadoIndex(0);
+    setDialogSelecionarContrato(true);
+  };
+  
+  const selecionarContrato = (contrato: any) => {
+    setDialogSelecionarContrato(false);
+    abrirDialogGerenciarModalidades(contrato);
+  };
+  
   const abrirDialogGerenciarModalidades = async (produto: any) => {
     setProdutoSelecionado(produto);
     setError(null);
@@ -766,40 +826,59 @@ const SaldoContratosModalidades: React.FC = () => {
     setHistoricoConsumo([]);
   };
 
-  // Agrupar dados por produto do contrato
-  const agruparPorProdutoContrato = (itens: SaldoContratoModalidadeItem[]) => {
-    const grupos: { [key: string]: SaldoContratoModalidadeItem[] } = {};
+  // Agrupar dados por produto (somando todos os contratos)
+  const agruparPorProduto = (itens: SaldoContratoModalidadeItem[]) => {
+    const grupos: { [key: string]: any } = {};
     
     itens.forEach(item => {
-      const chave = `${item.contrato_produto_id}`;
+      const chave = item.produto_nome; // Agrupar por nome do produto
+      
       if (!grupos[chave]) {
-        grupos[chave] = [];
+        grupos[chave] = {
+          produto_nome: item.produto_nome,
+          unidade: item.unidade,
+          contratos: [],
+          total_inicial: 0,
+          total_consumido: 0,
+          total_disponivel: 0,
+          quantidade_contrato_total: 0
+        };
       }
-      grupos[chave].push(item);
+      
+      // Verificar se já existe este contrato_produto_id
+      const contratoExistente = grupos[chave].contratos.find((c: any) => c.contrato_produto_id === item.contrato_produto_id);
+      
+      if (!contratoExistente) {
+        // Calcular totais para este contrato_produto_id
+        const modalidadesDoContrato = itens.filter(i => i.contrato_produto_id === item.contrato_produto_id);
+        const totalInicial = modalidadesDoContrato.reduce((sum, m) => sum + (parseFloat(m.quantidade_inicial as any) || 0), 0);
+        const totalConsumido = modalidadesDoContrato.reduce((sum, m) => sum + (parseFloat(m.quantidade_consumida as any) || 0), 0);
+        const totalDisponivel = modalidadesDoContrato.reduce((sum, m) => sum + (parseFloat(m.quantidade_disponivel as any) || 0), 0);
+        
+        grupos[chave].contratos.push({
+          contrato_produto_id: item.contrato_produto_id,
+          contrato_numero: item.contrato_numero,
+          fornecedor_nome: item.fornecedor_nome,
+          preco_unitario: item.preco_unitario,
+          quantidade_contrato: item.quantidade_contrato,
+          total_inicial: totalInicial,
+          total_consumido: totalConsumido,
+          total_disponivel: totalDisponivel,
+          modalidades: modalidadesDoContrato
+        });
+        
+        grupos[chave].total_inicial += totalInicial;
+        grupos[chave].total_consumido += totalConsumido;
+        grupos[chave].total_disponivel += totalDisponivel;
+        grupos[chave].quantidade_contrato_total += parseFloat(item.quantidade_contrato as any) || 0;
+      }
     });
 
-    return Object.entries(grupos).map(([chave, modalidades]) => {
-      const primeiro = modalidades[0];
-      const totalInicial = modalidades.reduce((sum, m) => sum + (parseFloat(m.quantidade_inicial as any) || 0), 0);
-      const totalConsumido = modalidades.reduce((sum, m) => sum + (parseFloat(m.quantidade_consumida as any) || 0), 0);
-      const totalDisponivel = modalidades.reduce((sum, m) => sum + (parseFloat(m.quantidade_disponivel as any) || 0), 0);
-      
-      return {
-        contrato_produto_id: primeiro.contrato_produto_id,
-        contrato_numero: primeiro.contrato_numero,
-        produto_nome: primeiro.produto_nome,
-        unidade: primeiro.unidade,
-        fornecedor_nome: primeiro.fornecedor_nome,
-        preco_unitario: primeiro.preco_unitario,
-        quantidade_contrato: primeiro.quantidade_contrato,
-        total_inicial: totalInicial,
-        total_consumido: totalConsumido,
-        total_disponivel: totalDisponivel,
-        modalidades: modalidades,
-        status: totalDisponivel <= 0 ? 'ESGOTADO' : 
-                totalDisponivel <= (totalInicial * 0.1) ? 'BAIXO_ESTOQUE' : 'DISPONIVEL'
-      };
-    });
+    return Object.values(grupos).map((grupo: any) => ({
+      ...grupo,
+      status: grupo.total_disponivel <= 0 ? 'ESGOTADO' : 
+              grupo.total_disponivel <= (grupo.total_inicial * 0.1) ? 'BAIXO_ESTOQUE' : 'DISPONIVEL'
+    }));
   };
 
   const aplicarFiltros = () => {
@@ -955,7 +1034,7 @@ const SaldoContratosModalidades: React.FC = () => {
         {/* Ações */}
         <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
           <Typography variant="h6">
-            Resultados ({agruparPorProdutoContrato(dados).length} produtos)
+            Resultados ({agruparPorProduto(dados).length} produtos)
           </Typography>
           
           <Box sx={{ flexGrow: 1 }} />
@@ -1010,9 +1089,10 @@ const SaldoContratosModalidades: React.FC = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                agruparPorProdutoContrato(dados).map((produto, index) => (
+                agruparPorProduto(dados).map((produto, index) => (
                   <TableRow 
-                    key={produto.contrato_produto_id} 
+                    key={produto.produto_nome} 
+                    data-row-index={index}
                     hover
                     sx={{
                       backgroundColor: linhaSelecionada === index ? '#e3f2fd' : 'inherit',
@@ -1022,7 +1102,7 @@ const SaldoContratosModalidades: React.FC = () => {
                       }
                     }}
                     onClick={() => setLinhaSelecionada(index)}
-                    onDoubleClick={() => abrirDialogGerenciarModalidades(produto)}
+                    onDoubleClick={() => produto.contratos.length > 1 ? abrirDialogSelecionarContrato(produto) : abrirDialogGerenciarModalidades(produto.contratos[0])}
                   >
                     <TableCell sx={cellStyle}>
                       <Box>
@@ -1030,21 +1110,25 @@ const SaldoContratosModalidades: React.FC = () => {
                           {produto.produto_nome}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          {produto.fornecedor_nome}
+                          {produto.contratos.length} contrato(s)
                         </Typography>
                       </Box>
                     </TableCell>
-                    <TableCell sx={cellStyle}>{produto.contrato_numero}</TableCell>
+                    <TableCell sx={cellStyle}>
+                      {produto.contratos.length === 1 ? produto.contratos[0].contrato_numero : `${produto.contratos.length} contratos`}
+                    </TableCell>
                     <TableCell sx={cellStyle}>{produto.unidade}</TableCell>
                     <TableCell align="right" sx={cellStyle}>
                       <Typography variant="body2" fontWeight="bold" color="primary">
-                        {formatarNumero(produto.quantidade_contrato)}
+                        {formatarNumero(produto.quantidade_contrato_total)}
                       </Typography>
                     </TableCell>
                     <TableCell align="right" sx={cellStyle}>{formatarNumero(produto.total_inicial)}</TableCell>
                     <TableCell align="right" sx={cellStyle}>{formatarNumero(produto.total_consumido)}</TableCell>
                     <TableCell align="right" sx={cellStyle}>{formatarNumero(produto.total_disponivel)}</TableCell>
-                    <TableCell align="right" sx={cellStyle}>{formatarMoeda(produto.preco_unitario)}</TableCell>
+                    <TableCell align="right" sx={cellStyle}>
+                      {produto.contratos.length === 1 ? formatarMoeda(produto.contratos[0].preco_unitario) : 'Variável'}
+                    </TableCell>
                     <TableCell align="center" sx={cellStyle}>
                       <Chip
                         label={produto.status}
@@ -1056,7 +1140,7 @@ const SaldoContratosModalidades: React.FC = () => {
                       <Button
                         size="small"
                         variant="outlined"
-                        onClick={() => abrirDialogGerenciarModalidades(produto)}
+                        onClick={() => produto.contratos.length > 1 ? abrirDialogSelecionarContrato(produto) : abrirDialogGerenciarModalidades(produto.contratos[0])}
                         sx={{ fontSize: '0.75rem' }}
                       >
                         Gerenciar Modalidades
@@ -1081,6 +1165,87 @@ const SaldoContratosModalidades: React.FC = () => {
           labelRowsPerPage="Itens por página:"
           labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
         />
+
+        {/* Modal de Seleção de Contrato */}
+        <Dialog 
+          open={dialogSelecionarContrato} 
+          onClose={() => setDialogSelecionarContrato(false)} 
+          maxWidth="sm" 
+          fullWidth
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              setContratoSelecionadoIndex(prev => Math.min(prev + 1, contratosDisponiveis.length - 1));
+            } else if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              setContratoSelecionadoIndex(prev => Math.max(prev - 1, 0));
+            } else if (e.key === 'Enter') {
+              e.preventDefault();
+              if (contratosDisponiveis[contratoSelecionadoIndex]) {
+                selecionarContrato(contratosDisponiveis[contratoSelecionadoIndex]);
+              }
+            } else if (e.key === 'Escape') {
+              setDialogSelecionarContrato(false);
+            }
+          }}
+        >
+          <DialogTitle>Selecione o Contrato</DialogTitle>
+          <DialogContent>
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="body2" color="text.secondary">
+                Este produto está em múltiplos contratos. Selecione qual deseja gerenciar:
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
+                <Chip label="↑↓ Navegar" size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
+                <Chip label="Enter Selecionar" size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
+                <Chip label="Esc Cancelar" size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
+              </Box>
+            </Box>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {contratosDisponiveis.map((contrato, index) => (
+                <Card 
+                  key={contrato.contrato_produto_id}
+                  data-contrato-index={index}
+                  sx={{ 
+                    cursor: 'pointer',
+                    bgcolor: contratoSelecionadoIndex === index ? '#e3f2fd' : 'inherit',
+                    '&:hover': { bgcolor: contratoSelecionadoIndex === index ? '#bbdefb' : 'action.hover' },
+                    border: '2px solid',
+                    borderColor: contratoSelecionadoIndex === index ? 'primary.main' : 'divider',
+                    transition: 'all 0.2s'
+                  }}
+                  onClick={() => {
+                    setContratoSelecionadoIndex(index);
+                    selecionarContrato(contrato);
+                  }}
+                >
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      Contrato {contrato.contrato_numero}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      <strong>Fornecedor:</strong> {contrato.fornecedor_nome}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      <strong>Quantidade:</strong> {formatarNumero(contrato.quantidade_contrato)} {contratosDisponiveis[0]?.modalidades[0]?.unidade || ''}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      <strong>Preço Unitário:</strong> {formatarMoeda(contrato.preco_unitario)}
+                    </Typography>
+                    <Box sx={{ mt: 1, display: 'flex', gap: 2 }}>
+                      <Chip label={`Inicial: ${formatarNumero(contrato.total_inicial)}`} size="small" color="primary" variant="outlined" />
+                      <Chip label={`Consumido: ${formatarNumero(contrato.total_consumido)}`} size="small" color="warning" variant="outlined" />
+                      <Chip label={`Disponível: ${formatarNumero(contrato.total_disponivel)}`} size="small" color="success" variant="outlined" />
+                    </Box>
+                  </CardContent>
+                </Card>
+              ))}
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDialogSelecionarContrato(false)}>Cancelar</Button>
+          </DialogActions>
+        </Dialog>
 
         {/* Modal de Gerenciar Modalidades */}
         <Dialog open={dialogGerenciarModalidades} onClose={fecharDialogGerenciarModalidades} maxWidth="md" fullWidth>
