@@ -24,9 +24,10 @@ class SaldoContratosModalidadesController {
 
       const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
 
-      // Primeiro, buscar os produtos paginados (produtos únicos)
+      // Primeiro, buscar os produtos paginados (produtos únicos por nome)
       let produtosQuery = `
-        SELECT DISTINCT cp.id as contrato_produto_id
+        SELECT DISTINCT p.nome as produto_nome, 
+               array_agg(DISTINCT cp.id) as contrato_produto_ids
         FROM contrato_produtos cp
         JOIN contratos c ON cp.contrato_id = c.id
         JOIN produtos p ON cp.produto_id = p.id
@@ -56,12 +57,13 @@ class SaldoContratosModalidadesController {
         produtosParamIndex++;
       }
 
-      produtosQuery += ` ORDER BY cp.id`;
+      produtosQuery += ` GROUP BY p.nome`;
+      produtosQuery += ` ORDER BY p.nome`;
       produtosQuery += ` LIMIT $${produtosParamIndex} OFFSET $${produtosParamIndex + 1}`;
       produtosParams.push(parseInt(limit as string), offset);
 
       const produtosPaginados = await db.query(produtosQuery, produtosParams);
-      const produtoIds = produtosPaginados.rows.map((r: any) => r.contrato_produto_id);
+      const produtoIds = produtosPaginados.rows.flatMap((r: any) => r.contrato_produto_ids);
 
       // Se não há produtos, retornar vazio
       if (produtoIds.length === 0) {
@@ -165,9 +167,9 @@ class SaldoContratosModalidadesController {
 
       const result = await db.query(query, queryParams);
 
-      // Count query - contar produtos únicos ao invés de linhas
+      // Count query - contar produtos únicos por nome (agrupados)
       let countQuery = `
-        SELECT COUNT(DISTINCT cp.id) as total
+        SELECT COUNT(DISTINCT p.nome) as total
         FROM contrato_produtos cp
         JOIN contratos c ON cp.contrato_id = c.id
         JOIN produtos p ON cp.produto_id = p.id

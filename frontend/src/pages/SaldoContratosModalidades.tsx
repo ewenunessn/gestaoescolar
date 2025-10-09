@@ -1179,7 +1179,7 @@ const SaldoContratosModalidades: React.FC = () => {
           rowsPerPage={rowsPerPage}
           onRowsPerPageChange={handleChangeRowsPerPage}
           rowsPerPageOptions={[10, 25, 50, 100]}
-          labelRowsPerPage="Itens por página:"
+          labelRowsPerPage="Produtos por página:"
           labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
         />
 
