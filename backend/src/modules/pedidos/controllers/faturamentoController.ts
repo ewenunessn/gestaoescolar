@@ -17,10 +17,17 @@ export async function calcularPreviaFaturamento(req: Request, res: Response) {
     });
   } catch (error) {
     console.error("❌ Erro ao calcular prévia do faturamento:", error);
-    res.status(500).json({
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+    
+    // Se for erro de validação de negócio (saldo insuficiente, etc), retorna 400
+    const isBusinessError = errorMessage.includes('Saldo') || 
+                           errorMessage.includes('saldo') || 
+                           errorMessage.includes('rascunho') ||
+                           errorMessage.includes('modalidade');
+    
+    res.status(isBusinessError ? 400 : 500).json({
       success: false,
-      message: "Erro ao calcular prévia do faturamento",
-      error: error instanceof Error ? error.message : 'Erro desconhecido'
+      message: errorMessage
     });
   }
 }
@@ -44,10 +51,17 @@ export async function gerarFaturamento(req: Request, res: Response) {
     });
   } catch (error) {
     console.error("❌ Erro ao gerar faturamento:", error);
-    res.status(500).json({
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+    
+    // Se for erro de validação de negócio, retorna 400
+    const isBusinessError = errorMessage.includes('Saldo') || 
+                           errorMessage.includes('saldo') || 
+                           errorMessage.includes('existe') ||
+                           errorMessage.includes('modalidade');
+    
+    res.status(isBusinessError ? 400 : 500).json({
       success: false,
-      message: "Erro ao gerar faturamento",
-      error: error instanceof Error ? error.message : 'Erro desconhecido'
+      message: errorMessage
     });
   }
 }
@@ -223,6 +237,63 @@ export async function excluirFaturamento(req: Request, res: Response) {
   }
 }
 
+export async function registrarConsumoFaturamento(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    
+    await FaturamentoService.registrarConsumo(Number(id));
+    
+    res.json({
+      success: true,
+      message: "Consumo registrado com sucesso"
+    });
+  } catch (error) {
+    console.error("❌ Erro ao registrar consumo:", error);
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+    
+    const isBusinessError = errorMessage.includes('já foi registrado') || 
+                           errorMessage.includes('não encontrado');
+    
+    res.status(isBusinessError ? 400 : 500).json({
+      success: false,
+      message: errorMessage
+    });
+  }
+}
+
+export async function removerItensModalidade(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const { contrato_id, modalidade_id } = req.body;
+    
+    if (!contrato_id || !modalidade_id) {
+      return res.status(400).json({
+        success: false,
+        message: "contrato_id e modalidade_id são obrigatórios"
+      });
+    }
+    
+    await FaturamentoService.removerItensModalidade(
+      Number(id),
+      Number(contrato_id),
+      Number(modalidade_id)
+    );
+    
+    res.json({
+      success: true,
+      message: "Itens da modalidade removidos com sucesso"
+    });
+  } catch (error) {
+    console.error("❌ Erro ao remover itens da modalidade:", error);
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+    
+    res.status(500).json({
+      success: false,
+      message: errorMessage
+    });
+  }
+}
+
 export async function obterResumoFaturamento(req: Request, res: Response) {
   try {
     const { id } = req.params;
@@ -250,6 +321,7 @@ export async function obterResumoFaturamento(req: Request, res: Response) {
           contrato_numero: item.contrato_numero,
           fornecedor_id: item.fornecedor_id,
           fornecedor_nome: item.fornecedor_nome,
+          fornecedor_cnpj: item.fornecedor_cnpj,
           modalidades: {},
           quantidade_total: 0,
           valor_total: 0
@@ -276,14 +348,15 @@ export async function obterResumoFaturamento(req: Request, res: Response) {
         produto_nome: item.produto_nome,
         unidade_medida: item.unidade_medida,
         quantidade_total: item.quantidade_modalidade,
+        preco_unitario: item.preco_unitario,
         valor_total: item.valor_total
       });
       
-      modalidade.quantidade_total += item.quantidade_modalidade;
-      modalidade.valor_total += item.valor_total;
+      modalidade.quantidade_total += Number(item.quantidade_modalidade || 0);
+      modalidade.valor_total += Number(item.valor_total || 0);
       
-      resumoPorContrato[contratoKey].quantidade_total += item.quantidade_modalidade;
-      resumoPorContrato[contratoKey].valor_total += item.valor_total;
+      resumoPorContrato[contratoKey].quantidade_total += Number(item.quantidade_modalidade || 0);
+      resumoPorContrato[contratoKey].valor_total += Number(item.valor_total || 0);
     }
     
     // Converter modalidades de objeto para array

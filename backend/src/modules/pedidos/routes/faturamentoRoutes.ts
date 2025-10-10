@@ -4,7 +4,9 @@ import {
   buscarFaturamento,
   atualizarStatusFaturamento,
   excluirFaturamento,
-  obterResumoFaturamento
+  obterResumoFaturamento,
+  registrarConsumoFaturamento,
+  removerItensModalidade
 } from "../controllers/faturamentoController";
 
 const router = Router();
@@ -13,6 +15,8 @@ const router = Router();
 router.get("/", listarFaturamentos);
 router.get("/:id", buscarFaturamento);
 router.get("/:id/resumo", obterResumoFaturamento);
+router.post("/:id/registrar-consumo", registrarConsumoFaturamento);
+router.delete("/:id/remover-modalidade", removerItensModalidade);
 router.patch("/:id/status", atualizarStatusFaturamento);
 router.delete("/:id", excluirFaturamento);
 

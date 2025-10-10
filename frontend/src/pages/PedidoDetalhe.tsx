@@ -49,7 +49,7 @@ export default function PedidoDetalhe() {
   const [pedido, setPedido] = useState<PedidoDetalhado | null>(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState('');
-  
+
   const [dialogExcluir, setDialogExcluir] = useState(false);
   const [dialogCancelar, setDialogCancelar] = useState(false);
   const [motivoCancelamento, setMotivoCancelamento] = useState('');
@@ -90,8 +90,13 @@ export default function PedidoDetalhe() {
   };
 
   const handleGerarFaturamento = () => {
-    // Navegar para a página de gerar faturamento
-    navigate(`/pedidos/${id}/faturamento`);
+    if (temFaturamento) {
+      // Se já tem faturamento, mostrar alerta
+      setErro('Este pedido já possui um faturamento gerado. Não é possível gerar novamente.');
+    } else {
+      // Navegar para a página de gerar faturamento
+      navigate(`/pedidos/${id}/faturamento`);
+    }
   };
 
   const atualizarStatus = async (novoStatus: string) => {
@@ -111,12 +116,12 @@ export default function PedidoDetalhe() {
   const handleExcluir = async () => {
     try {
       setProcessando(true);
-      
+
       // Usar endpoint de exclusão para rascunhos e cancelados
       await pedidosService.excluirPedido(Number(id));
       // Redirecionar para lista após excluir
       navigate('/pedidos');
-      
+
       setErro('');
     } catch (error: any) {
       console.error('Erro ao excluir pedido:', error);
@@ -134,13 +139,13 @@ export default function PedidoDetalhe() {
 
     try {
       setProcessando(true);
-      
+
       // Para pedidos normais, usar cancelamento
       await pedidosService.cancelar(Number(id), motivoCancelamento);
       setDialogCancelar(false);
       setMotivoCancelamento('');
       await carregarPedido();
-      
+
       setErro('');
     } catch (error: any) {
       console.error('Erro ao cancelar pedido:', error);
@@ -248,7 +253,7 @@ export default function PedidoDetalhe() {
               📝 Pedido em Rascunho
             </Typography>
             <Typography variant="body2">
-              Este pedido foi salvo como rascunho e ainda não foi enviado. 
+              Este pedido foi salvo como rascunho e ainda não foi enviado.
               Você pode editá-lo ou enviá-lo quando estiver pronto.
             </Typography>
           </CardContent>
@@ -263,7 +268,7 @@ export default function PedidoDetalhe() {
                 Informações do Pedido
               </Typography>
               <Divider sx={{ mb: 2 }} />
-              
+
               <Box sx={{ mb: 2 }}>
                 <Typography variant="body2" color="text.secondary">Número</Typography>
                 <Typography variant="body1" fontWeight="bold">{pedido.numero}</Typography>
@@ -312,8 +317,8 @@ export default function PedidoDetalhe() {
                 </Typography>
                 <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                   {Array.from(new Set(pedido.itens.map(item => item.fornecedor_nome))).map(fornecedor => (
-                    <Chip 
-                      key={fornecedor} 
+                    <Chip
+                      key={fornecedor}
                       label={fornecedor}
                       color="primary"
                       variant="outlined"
@@ -490,7 +495,7 @@ export default function PedidoDetalhe() {
               </Button>
             )}
 
-            {podeGerarFaturamento && (
+            {podeGerarFaturamento && !temFaturamento && (
               <Button
                 variant="contained"
                 color="secondary"
@@ -498,7 +503,19 @@ export default function PedidoDetalhe() {
                 onClick={handleGerarFaturamento}
                 disabled={processando}
               >
-                {temFaturamento ? 'Ver Faturamento' : 'Gerar Faturamento'}
+                Gerar Faturamento
+              </Button>
+            )}
+
+            {temFaturamento && (
+              <Button
+                variant="contained"
+                color="success"
+                startIcon={<ReceiptIcon />}
+                onClick={() => navigate(`/pedidos/${id}/faturamento/visualizar`)}
+                disabled={processando}
+              >
+                Ver Faturamento
               </Button>
             )}
           </Box>
@@ -512,13 +529,13 @@ export default function PedidoDetalhe() {
         </DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            {ehRascunho 
+            {ehRascunho
               ? 'Tem certeza que deseja excluir este rascunho? Esta ação não pode ser desfeita.'
               : ehCancelado
-              ? 'Tem certeza que deseja excluir este pedido cancelado? Esta ação não pode ser desfeita.'
-              : ehEntregue
-              ? 'Tem certeza que deseja excluir este pedido entregue? Esta ação não pode ser desfeita e removerá o histórico de entrega.'
-              : 'Tem certeza que deseja excluir este pedido em andamento? Esta ação não pode ser desfeita e pode afetar o processo de compra.'
+                ? 'Tem certeza que deseja excluir este pedido cancelado? Esta ação não pode ser desfeita.'
+                : ehEntregue
+                  ? 'Tem certeza que deseja excluir este pedido entregue? Esta ação não pode ser desfeita e removerá o histórico de entrega.'
+                  : 'Tem certeza que deseja excluir este pedido em andamento? Esta ação não pode ser desfeita e pode afetar o processo de compra.'
             }
           </Typography>
           {!ehRascunho && !ehCancelado && !ehEntregue && (

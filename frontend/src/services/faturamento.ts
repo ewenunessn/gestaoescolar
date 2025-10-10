@@ -53,6 +53,12 @@ export const faturamentoService = {
     return response.data.data;
   },
 
+  // Buscar resumo completo do faturamento (com todos os dados)
+  async buscarResumo(id: number): Promise<any> {
+    const response = await api.get(`/faturamentos/${id}/resumo`);
+    return response.data.data;
+  },
+
   // Buscar faturamentos por pedido
   async buscarPorPedido(pedidoId: number): Promise<Faturamento[]> {
     const response = await api.get(`/pedidos/${pedidoId}/faturamentos`);
@@ -67,6 +73,18 @@ export const faturamentoService = {
   // Excluir faturamento
   async excluir(id: number): Promise<void> {
     await api.delete(`/faturamentos/${id}`);
+  },
+
+  // Registrar consumo do faturamento
+  async registrarConsumo(id: number): Promise<void> {
+    await api.post(`/faturamentos/${id}/registrar-consumo`);
+  },
+
+  // Remover itens de uma modalidade
+  async removerItensModalidade(id: number, contratoId: number, modalidadeId: number): Promise<void> {
+    await api.delete(`/faturamentos/${id}/remover-modalidade`, {
+      data: { contrato_id: contratoId, modalidade_id: modalidadeId }
+    });
   },
 
   // Obter resumo do faturamento

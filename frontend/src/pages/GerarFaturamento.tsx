@@ -36,13 +36,15 @@ import {
     Receipt as ReceiptIcon,
     Calculate as CalculateIcon,
     Send as SendIcon,
-    Visibility as VisibilityIcon
+    Visibility as VisibilityIcon,
+    FileDownload as FileDownloadIcon
 } from '@mui/icons-material';
 import faturamentoService from '../services/faturamento';
 import pedidosService from '../services/pedidos';
 import type { FaturamentoPrevia, ContratoCalculado, ItemCalculado } from '../types/faturamento';
 import type { PedidoDetalhado } from '../types/pedido';
 import { formatarMoeda, formatarData } from '../utils/dateUtils';
+import { exportarContratoParaExcel } from '../utils/exportarFaturamentoExcel';
 
 function GerarFaturamento() {
     const { pedidoId } = useParams<{ pedidoId: string }>();
@@ -102,7 +104,8 @@ function GerarFaturamento() {
 
         } catch (error: any) {
             console.error('Erro ao calcular prévia:', error);
-            setErro(error.response?.data?.message || 'Erro ao calcular prévia do faturamento');
+            const mensagemErro = error.response?.data?.message || error.message || 'Erro ao calcular prévia do faturamento';
+            setErro(mensagemErro);
         } finally {
             setLoading(false);
         }
@@ -125,8 +128,12 @@ function GerarFaturamento() {
 
             setDialogConfirmacao(false);
 
-            // Redirecionar para o faturamento gerado
-            navigate(`/faturamentos/${resultado.faturamento.id}`);
+            // Redirecionar de volta para o pedido
+            navigate(`/pedidos/${pedidoId}`, { 
+                state: { 
+                    message: `Faturamento #${resultado.faturamento.id} gerado com sucesso!` 
+                } 
+            });
 
         } catch (error: any) {
             console.error('Erro ao gerar faturamento:', error);
@@ -196,8 +203,49 @@ function GerarFaturamento() {
             </Card>
 
             {erro && (
-                <Alert severity="error" sx={{ mb: 3 }} onClose={() => setErro('')}>
-                    {erro}
+                <Alert 
+                    severity="error" 
+                    sx={{ mb: 3 }} 
+                    onClose={() => setErro('')}
+                    action={
+                        erro.includes('Saldo total insuficiente') || erro.includes('saldos configurados') ? (
+                            <Button 
+                                color="inherit" 
+                                size="small" 
+                                onClick={() => navigate('/saldos-contratos-modalidades')}
+                            >
+                                Ajustar Saldos
+                            </Button>
+                        ) : undefined
+                    }
+                >
+                    <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
+                        Erro ao calcular prévia do faturamento
+                    </Typography>
+                    <Typography variant="body2">
+                        {erro}
+                    </Typography>
+                    {(erro.includes('Saldo total insuficiente') || erro.includes('saldos configurados')) && (
+                        <Typography variant="body2" sx={{ mt: 1, fontStyle: 'italic' }}>
+                            💡 Acesse "Saldo por Modalidade" para ajustar os saldos disponíveis.
+                        </Typography>
+                    )}
+                </Alert>
+            )}
+
+            {/* Alertas de Saldo */}
+            {previa?.alertas && previa.alertas.length > 0 && (
+                <Alert severity="warning" sx={{ mb: 3 }}>
+                    <Typography variant="subtitle2" gutterBottom>
+                        Atenção: Problemas detectados com saldo por modalidade
+                    </Typography>
+                    <Box component="ul" sx={{ mt: 1, mb: 0, pl: 2 }}>
+                        {previa.alertas.map((alerta, index) => (
+                            <li key={index}>
+                                <Typography variant="body2">{alerta}</Typography>
+                            </li>
+                        ))}
+                    </Box>
                 </Alert>
             )}
 
@@ -348,6 +396,17 @@ function GerarFaturamento() {
                                                     <Typography variant="subtitle1" sx={{ flexGrow: 1 }}>
                                                         Contrato {contrato.contrato_numero} - {contrato.fornecedor_nome}
                                                     </Typography>
+                                                    <Button
+                                                        size="small"
+                                                        startIcon={<FileDownloadIcon />}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            exportarContratoParaExcel(contrato, pedido.numero);
+                                                        }}
+                                                        sx={{ mr: 2 }}
+                                                    >
+                                                        Exportar Excel
+                                                    </Button>
                                                     <Chip
                                                         label={`${contrato.itens.length} itens`}
                                                         size="small"

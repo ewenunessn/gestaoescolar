@@ -131,8 +131,11 @@ export class FaturamentoModel {
         m.codigo_financeiro as modalidade_codigo_financeiro,
         c.numero as contrato_numero,
         f.nome as fornecedor_nome,
+        f.cnpj as fornecedor_cnpj,
         pr.nome as produto_nome,
-        pr.unidade as unidade_medida
+        pr.unidade as unidade_medida,
+        fi.preco_unitario,
+        fi.quantidade_modalidade
       FROM faturamento_itens fi
       JOIN modalidades m ON fi.modalidade_id = m.id
       JOIN contratos c ON fi.contrato_id = c.id
@@ -224,8 +227,67 @@ export class FaturamentoModel {
   }
 
   async excluir(id: number): Promise<boolean> {
-    const query = `DELETE FROM faturamentos WHERE id = $1`;
-    const result = await this.pool.query(query, [id]);
-    return result.rowCount > 0;
+    const client = await this.pool.connect();
+    
+    try {
+      await client.query('BEGIN');
+      
+      // Verificar se o faturamento teve consumo registrado
+      const faturamentoResult = await client.query(
+        'SELECT status FROM faturamentos WHERE id = $1',
+        [id]
+      );
+      
+      const faturamento = faturamentoResult.rows[0];
+      const consumoRegistrado = faturamento?.status === 'consumido';
+      
+      // Se o consumo foi registrado, restaurar saldos
+      if (consumoRegistrado) {
+        const itensQuery = `
+          SELECT 
+            fi.contrato_id,
+            fi.produto_id,
+            fi.modalidade_id,
+            fi.quantidade_modalidade
+          FROM faturamento_itens fi
+          WHERE fi.faturamento_id = $1
+        `;
+        const itensResult = await client.query(itensQuery, [id]);
+        
+        // Restaurar saldos dos contratos
+        for (const item of itensResult.rows) {
+          await client.query(`
+            UPDATE contrato_produtos_modalidades cpm
+            SET quantidade_consumida = cpm.quantidade_consumida - $1
+            FROM contrato_produtos cp
+            WHERE cpm.contrato_produto_id = cp.id
+              AND cp.contrato_id = $2
+              AND cp.produto_id = $3
+              AND cpm.modalidade_id = $4
+              AND cpm.ativo = true
+          `, [
+            item.quantidade_modalidade,
+            item.contrato_id,
+            item.produto_id,
+            item.modalidade_id
+          ]);
+        }
+      }
+      
+      // Excluir itens do faturamento
+      await client.query('DELETE FROM faturamento_itens WHERE faturamento_id = $1', [id]);
+      
+      // Excluir faturamento
+      const result = await client.query('DELETE FROM faturamentos WHERE id = $1', [id]);
+      
+      await client.query('COMMIT');
+      return result.rowCount > 0;
+      
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 }

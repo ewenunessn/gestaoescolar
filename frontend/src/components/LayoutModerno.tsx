@@ -76,7 +76,7 @@ const menuConfig = [
       { text: "Fornecedores", icon: <Business />, path: "/fornecedores" },
       { text: "Contratos", icon: <Assignment />, path: "/contratos" },
       { text: "Pedidos", icon: <LocalShipping />, path: "/pedidos", badge: "Novo!", badgeColor: "success" },
-      { text: "Saldos de Contratos", icon: <Assessment />, path: "/saldos-contratos", badge: "Novo!", badgeColor: "primary" },
+      { text: "Saldo por Modalidade", icon: <Category />, path: "/saldos-contratos-modalidades", badge: "Novo!", badgeColor: "success" },
     ],
   },
   {

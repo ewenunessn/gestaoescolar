@@ -21,7 +21,7 @@ export interface ItemCalculado {
   pedido_item_id: number;
   produto_id: number;
   produto_nome: string;
-  unidade_medida: string;
+  unidade: string;
   quantidade_original: number;
   preco_unitario: number;
   valor_original: number;
@@ -33,6 +33,7 @@ export interface ContratoCalculado {
   contrato_numero: string;
   fornecedor_id: number;
   fornecedor_nome: string;
+  fornecedor_cnpj: string;
   itens: ItemCalculado[];
   quantidade_total: number;
   valor_total: number;
@@ -172,6 +173,7 @@ export class FaturamentoService {
         c.numero as contrato_numero,
         c.fornecedor_id,
         f.nome as fornecedor_nome,
+        f.cnpj as fornecedor_cnpj,
         p.id as produto_id,
         p.nome as produto_nome,
         p.unidade as unidade_medida
@@ -192,6 +194,7 @@ export class FaturamentoService {
     
     // Agrupar por contrato
     const contratosPorId: { [key: number]: ContratoCalculado } = {};
+    const alertas: string[] = [];
     
     for (const item of itensResult) {
       const contratoId = item.contrato_id;
@@ -202,21 +205,147 @@ export class FaturamentoService {
           contrato_numero: item.contrato_numero,
           fornecedor_id: item.fornecedor_id,
           fornecedor_nome: item.fornecedor_nome,
+          fornecedor_cnpj: item.fornecedor_cnpj,
           itens: [],
           quantidade_total: 0,
           valor_total: 0
         };
       }
       
-      // Dividir quantidade do item entre modalidades
-      const divisoesQuantidade = this.dividirQuantidadeEntreModalidades(
+      // Buscar saldos disponíveis por modalidade para este produto/contrato
+      const saldosQuery = `
+        SELECT 
+          cpm.modalidade_id,
+          cpm.quantidade_disponivel,
+          cpm.quantidade_inicial,
+          m.nome as modalidade_nome,
+          m.valor_repasse
+        FROM contrato_produtos_modalidades cpm
+        JOIN contrato_produtos cp ON cpm.contrato_produto_id = cp.id
+        JOIN modalidades m ON cpm.modalidade_id = m.id
+        WHERE cp.contrato_id = $1
+          AND cp.produto_id = $2
+          AND cpm.ativo = true
+          AND m.ativo = true
+      `;
+      
+      let saldosResult = [];
+      try {
+        saldosResult = await db.all(saldosQuery, [contratoId, item.produto_id]);
+      } catch (error: any) {
+        console.error('Erro ao buscar saldos:', error.message);
+        console.error('Query:', saldosQuery);
+        console.error('Params:', [contratoId, item.produto_id]);
+        throw error;
+      }
+      
+      // Filtrar modalidades que têm saldo disponível (quantidade_inicial > 0 e quantidade_disponivel > 0)
+      const modalidadesComSaldo = modalidades
+        .map(modalidade => {
+          const saldo = saldosResult.find((s: any) => s.modalidade_id === modalidade.id);
+          return {
+            ...modalidade,
+            quantidade_disponivel: saldo ? parseFloat(saldo.quantidade_disponivel.toString()) : 0,
+            quantidade_inicial: saldo ? parseFloat(saldo.quantidade_inicial.toString()) : 0,
+            tem_registro: !!saldo
+          };
+        })
+        .filter(m => m.tem_registro && m.quantidade_inicial > 0 && m.quantidade_disponivel > 0);
+      
+      // Se nenhuma modalidade tem saldo, pular este item e alertar
+      if (modalidadesComSaldo.length === 0) {
+        const mensagemAlerta = saldosResult.length === 0
+          ? `❌ Produto "${item.produto_nome}" (Contrato ${item.contrato_numero}): ` +
+            `Não há saldos configurados. Este item será EXCLUÍDO do faturamento.`
+          : `❌ Produto "${item.produto_nome}" (Contrato ${item.contrato_numero}): ` +
+            `Todas as modalidades estão com saldo zerado. Este item será EXCLUÍDO do faturamento.`;
+        
+        alertas.push(mensagemAlerta);
+        continue; // Pula para o próximo item
+      }
+      
+      // Verificar se a soma dos saldos disponíveis é suficiente
+      const somaSaldosDisponiveis = modalidadesComSaldo.reduce((soma, m) => soma + m.quantidade_disponivel, 0);
+      const quantidadeNecessaria = parseFloat(item.quantidade.toString());
+      
+      if (somaSaldosDisponiveis < quantidadeNecessaria) {
+        alertas.push(
+          `❌ Produto "${item.produto_nome}" (Contrato ${item.contrato_numero}): ` +
+          `Saldo insuficiente. Necessário: ${quantidadeNecessaria}, Disponível: ${somaSaldosDisponiveis}. ` +
+          `Faltam ${(quantidadeNecessaria - somaSaldosDisponiveis).toFixed(2)} unidades. ` +
+          `Este item será EXCLUÍDO do faturamento.`
+        );
+        continue; // Pula para o próximo item
+      }
+      
+      // Recalcular percentuais apenas para modalidades com saldo
+      const somaRepasses = modalidadesComSaldo.reduce((soma, m) => soma + m.valor_repasse, 0);
+      const modalidadesAjustadas = modalidadesComSaldo.map(m => ({
+        ...m,
+        percentual: (m.valor_repasse / somaRepasses) * 100
+      }));
+      
+      // Dividir quantidade do item entre modalidades COM SALDO
+      let divisoesQuantidade = this.dividirQuantidadeEntreModalidades(
         item.quantidade, 
-        modalidades
+        modalidadesAjustadas
       );
+      
+      // Ajustar divisões que excedem o saldo disponível
+      let quantidadeRestante = 0;
+      const divisoesAjustadas = divisoesQuantidade.map(divisao => {
+        const modalidadeComSaldo = modalidadesAjustadas.find(m => m.id === divisao.modalidade_id)!;
+        
+        if (divisao.quantidade > modalidadeComSaldo.quantidade_disponivel) {
+          const excedente = divisao.quantidade - modalidadeComSaldo.quantidade_disponivel;
+          quantidadeRestante += excedente;
+          
+          return {
+            ...divisao,
+            quantidade: modalidadeComSaldo.quantidade_disponivel,
+            ajustado: true
+          };
+        }
+        
+        return { ...divisao, ajustado: false };
+      });
+      
+      // Redistribuir quantidade restante entre modalidades que ainda têm espaço
+      if (quantidadeRestante > 0) {
+        const modalidadesComEspaco = divisoesAjustadas
+          .map(d => {
+            const modalidade = modalidadesAjustadas.find(m => m.id === d.modalidade_id)!;
+            const espacoDisponivel = modalidade.quantidade_disponivel - d.quantidade;
+            return { ...d, modalidade, espacoDisponivel };
+          })
+          .filter(d => d.espacoDisponivel > 0)
+          .sort((a, b) => b.espacoDisponivel - a.espacoDisponivel);
+        
+        let restante = quantidadeRestante;
+        for (const item of modalidadesComEspaco) {
+          if (restante <= 0) break;
+          
+          const podeAdicionar = Math.min(restante, item.espacoDisponivel);
+          const divisaoOriginal = divisoesAjustadas.find(d => d.modalidade_id === item.modalidade_id);
+          if (divisaoOriginal) {
+            divisaoOriginal.quantidade += podeAdicionar;
+            restante -= podeAdicionar;
+          }
+        }
+        
+        if (restante > 0) {
+          // Isso não deveria acontecer pois já validamos a soma total
+          throw new Error(
+            `Erro interno: Não foi possível redistribuir ${restante} unidades de "${item.produto_nome}"`
+          );
+        }
+      }
+      
+      divisoesQuantidade = divisoesAjustadas;
       
       // Criar divisões com valores calculados
       const divisoes: ItemDivisao[] = divisoesQuantidade.map(divisao => {
-        const modalidade = modalidades.find(m => m.id === divisao.modalidade_id)!;
+        const modalidade = modalidadesAjustadas.find(m => m.id === divisao.modalidade_id)!;
         const valor = divisao.quantidade * item.preco_unitario;
         
         return {
@@ -233,7 +362,7 @@ export class FaturamentoService {
         pedido_item_id: item.pedido_item_id,
         produto_id: item.produto_id,
         produto_nome: item.produto_nome,
-        unidade_medida: item.unidade_medida,
+        unidade: item.unidade_medida,
         quantidade_original: item.quantidade,
         preco_unitario: item.preco_unitario,
         valor_original: item.valor_total,
@@ -247,25 +376,103 @@ export class FaturamentoService {
     
     const contratos = Object.values(contratosPorId);
     
-    // Calcular resumo
+    // Filtrar contratos vazios (sem itens processados)
+    const contratosComItens = contratos.filter(c => c.itens.length > 0);
+    
+    // Verificar se pelo menos um item foi processado
+    if (contratosComItens.length === 0) {
+      throw new Error(
+        'Nenhum item pôde ser processado devido a problemas de saldo. ' +
+        'Verifique os alertas e ajuste os saldos em "Saldo por Modalidade".'
+      );
+    }
+    
+    // Calcular resumo apenas dos itens processados
+    const totalItensProcessados = contratosComItens.reduce((sum, c) => sum + c.itens.length, 0);
+    const itensExcluidos = itensResult.length - totalItensProcessados;
+    
+    if (itensExcluidos > 0) {
+      alertas.unshift(
+        `⚠️ ATENÇÃO: ${itensExcluidos} de ${itensResult.length} itens foram EXCLUÍDOS do faturamento por falta de saldo.`
+      );
+    }
+    
     const resumo = {
-      total_contratos: contratos.length,
-      total_fornecedores: new Set(contratos.map(c => c.fornecedor_id)).size,
+      total_contratos: contratosComItens.length,
+      total_fornecedores: new Set(contratosComItens.map(c => c.fornecedor_id)).size,
       total_modalidades: modalidades.length,
       total_itens: itensResult.length,
-      quantidade_total: contratos.reduce((sum, c) => sum + parseFloat(c.quantidade_total.toString()), 0),
-      valor_total: contratos.reduce((sum, c) => sum + parseFloat(c.valor_total.toString()), 0)
+      total_itens_processados: totalItensProcessados,
+      total_itens_excluidos: itensExcluidos,
+      quantidade_total: contratosComItens.reduce((sum, c) => sum + parseFloat(c.quantidade_total.toString()), 0),
+      valor_total: contratosComItens.reduce((sum, c) => sum + parseFloat(c.valor_total.toString()), 0)
     };
     
     return {
       pedido_id: pedidoId,
       pedido_numero: pedidoResult.numero,
       modalidades: modalidades,
-      contratos: contratos,
-      resumo: resumo
+      contratos: contratosComItens,
+      resumo: resumo,
+      alertas: alertas.length > 0 ? alertas : undefined
     };
   }
   
+  /**
+   * Verifica se há saldo disponível por modalidade para os itens do pedido
+   */
+  static async verificarSaldoModalidades(pedidoId: number, previa: any): Promise<void> {
+    const erros: string[] = [];
+    
+    for (const contrato of previa.contratos) {
+      for (const item of contrato.itens) {
+        for (const divisao of item.divisoes) {
+          if (divisao.quantidade > 0) {
+            // Buscar saldo disponível para este produto/contrato/modalidade
+            const saldoQuery = `
+              SELECT 
+                cpm.quantidade_disponivel,
+                cpm.quantidade_inicial,
+                p.nome as produto_nome,
+                m.nome as modalidade_nome,
+                c.numero as contrato_numero
+              FROM contrato_produtos_modalidades cpm
+              JOIN contrato_produtos cp ON cpm.contrato_produto_id = cp.id
+              JOIN produtos p ON cp.produto_id = p.id
+              JOIN modalidades m ON cpm.modalidade_id = m.id
+              JOIN contratos c ON cp.contrato_id = c.id
+              WHERE cp.contrato_id = $1
+                AND cp.produto_id = $2
+                AND cpm.modalidade_id = $3
+                AND cpm.ativo = true
+            `;
+            
+            const saldoResult = await db.get(saldoQuery, [
+              contrato.contrato_id,
+              item.produto_id,
+              divisao.modalidade_id
+            ]);
+            
+            if (!saldoResult) {
+              erros.push(
+                `Produto "${item.produto_nome}" não possui saldo configurado para modalidade "${divisao.modalidade_nome}" no contrato ${contrato.contrato_numero}`
+              );
+            } else if (saldoResult.quantidade_disponivel < divisao.quantidade) {
+              erros.push(
+                `Saldo insuficiente para "${item.produto_nome}" na modalidade "${divisao.modalidade_nome}" (Contrato ${contrato.contrato_numero}). ` +
+                `Disponível: ${saldoResult.quantidade_disponivel}, Necessário: ${divisao.quantidade}`
+              );
+            }
+          }
+        }
+      }
+    }
+    
+    if (erros.length > 0) {
+      throw new Error('Erros de saldo por modalidade:\n' + erros.join('\n'));
+    }
+  }
+
   /**
    * Gera o faturamento definitivo
    */
@@ -286,6 +493,9 @@ export class FaturamentoService {
       
       // Calcular prévia
       const previa = await this.calcularPreviaFaturamento(pedidoId);
+      
+      // Verificar saldo por modalidade
+      await this.verificarSaldoModalidades(pedidoId, previa);
       
       // Gerar número do faturamento
       const numeroQuery = `
@@ -317,11 +527,12 @@ export class FaturamentoService {
       
       const faturamento = faturamentoResult.rows[0];
       
-      // Criar itens do faturamento
+      // Criar itens do faturamento e atualizar saldo por modalidade
       for (const contrato of previa.contratos) {
         for (const item of contrato.itens) {
           for (const divisao of item.divisoes) {
             if (divisao.quantidade > 0) { // Só criar se quantidade > 0
+              // Criar item do faturamento
               await client.query(`
                 INSERT INTO faturamento_itens (
                   faturamento_id, pedido_item_id, modalidade_id, contrato_id,
@@ -342,6 +553,8 @@ export class FaturamentoService {
                 item.preco_unitario,
                 divisao.valor
               ]);
+              
+              // Não atualizar consumo automaticamente - será feito ao clicar em "Registrar Consumo"
             }
           }
         }
@@ -353,6 +566,273 @@ export class FaturamentoService {
         faturamento: faturamento,
         previa: previa
       };
+      
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Remove itens de uma modalidade específica do faturamento
+   */
+  static async removerItensModalidade(
+    faturamentoId: number,
+    contratoId: number,
+    modalidadeId: number
+  ): Promise<void> {
+    const client = await db.pool.connect();
+    
+    try {
+      await client.query('BEGIN');
+      
+      // Verificar se o faturamento existe
+      const faturamentoResult = await client.query(
+        'SELECT id, status FROM faturamentos WHERE id = $1',
+        [faturamentoId]
+      );
+      
+      if (faturamentoResult.rows.length === 0) {
+        throw new Error('Faturamento não encontrado');
+      }
+      
+      const faturamento = faturamentoResult.rows[0];
+      const consumoRegistrado = faturamento.status === 'consumido';
+      
+      // Buscar itens que serão removidos
+      const itensResult = await client.query(`
+        SELECT 
+          fi.id,
+          fi.quantidade_modalidade,
+          fi.produto_id,
+          p.nome as produto_nome,
+          m.nome as modalidade_nome
+        FROM faturamento_itens fi
+        JOIN produtos p ON p.id = fi.produto_id
+        JOIN modalidades m ON m.id = fi.modalidade_id
+        WHERE fi.faturamento_id = $1
+          AND fi.contrato_id = $2
+          AND fi.modalidade_id = $3
+      `, [faturamentoId, contratoId, modalidadeId]);
+      
+      if (itensResult.rows.length === 0) {
+        throw new Error('Nenhum item encontrado para esta modalidade neste contrato');
+      }
+      
+      // Se o consumo foi registrado, restaurar saldos
+      if (consumoRegistrado) {
+        for (const item of itensResult.rows) {
+          await client.query(`
+            UPDATE contrato_produtos_modalidades cpm
+            SET quantidade_consumida = cpm.quantidade_consumida - $1
+            FROM contrato_produtos cp
+            WHERE cpm.contrato_produto_id = cp.id
+              AND cp.contrato_id = $2
+              AND cp.produto_id = $3
+              AND cpm.modalidade_id = $4
+              AND cpm.ativo = true
+          `, [
+            item.quantidade_modalidade,
+            contratoId,
+            item.produto_id,
+            modalidadeId
+          ]);
+        }
+      }
+      
+      // Para cada produto que tinha itens na modalidade removida, redistribuir
+      for (const itemRemovido of itensResult.rows) {
+        // Buscar outros itens do mesmo produto no mesmo faturamento e contrato
+        const outrosItensResult = await client.query(`
+          SELECT 
+            fi.id,
+            fi.modalidade_id,
+            fi.quantidade_modalidade,
+            fi.preco_unitario,
+            m.valor_repasse
+          FROM faturamento_itens fi
+          JOIN modalidades m ON m.id = fi.modalidade_id
+          WHERE fi.faturamento_id = $1
+            AND fi.contrato_id = $2
+            AND fi.produto_id = $3
+            AND fi.modalidade_id != $4
+        `, [faturamentoId, contratoId, itemRemovido.produto_id, modalidadeId]);
+        
+        if (outrosItensResult.rows.length > 0) {
+          // Calcular o total de valor_repasse das modalidades restantes
+          const totalRepasse = outrosItensResult.rows.reduce(
+            (sum, item) => sum + Number(item.valor_repasse || 0), 
+            0
+          );
+          
+          if (totalRepasse > 0) {
+            // Redistribuir a quantidade proporcionalmente
+            const quantidadeParaRedistribuir = itemRemovido.quantidade_modalidade;
+            
+            for (const outroItem of outrosItensResult.rows) {
+              const percentual = Number(outroItem.valor_repasse || 0) / totalRepasse;
+              const quantidadeAdicional = Math.round(quantidadeParaRedistribuir * percentual);
+              const novaQuantidade = Number(outroItem.quantidade_modalidade) + quantidadeAdicional;
+              const novoValor = novaQuantidade * Number(outroItem.preco_unitario);
+              
+              // Atualizar o item
+              await client.query(`
+                UPDATE faturamento_itens
+                SET quantidade_modalidade = $1,
+                    valor_total = $2,
+                    percentual_modalidade = (
+                      SELECT (quantidade_modalidade * 100.0 / 
+                        (SELECT SUM(quantidade_modalidade) 
+                         FROM faturamento_itens 
+                         WHERE faturamento_id = $3 
+                           AND contrato_id = $4 
+                           AND produto_id = $5))
+                      FROM faturamento_itens
+                      WHERE id = $6
+                    )
+                WHERE id = $6
+              `, [
+                novaQuantidade,
+                novoValor,
+                faturamentoId,
+                contratoId,
+                itemRemovido.produto_id,
+                outroItem.id
+              ]);
+              
+              // Se o consumo foi registrado, atualizar também o saldo
+              if (consumoRegistrado) {
+                console.log(`🔄 Atualizando consumo: +${quantidadeAdicional} para modalidade ${outroItem.modalidade_id} do produto ${itemRemovido.produto_nome}`);
+                
+                await client.query(`
+                  UPDATE contrato_produtos_modalidades cpm
+                  SET quantidade_consumida = cpm.quantidade_consumida + $1
+                  FROM contrato_produtos cp
+                  WHERE cpm.contrato_produto_id = cp.id
+                    AND cp.contrato_id = $2
+                    AND cp.produto_id = $3
+                    AND cpm.modalidade_id = $4
+                    AND cpm.ativo = true
+                `, [
+                  quantidadeAdicional,
+                  contratoId,
+                  itemRemovido.produto_id,
+                  outroItem.modalidade_id
+                ]);
+              }
+            }
+          }
+        }
+      }
+      
+      // Excluir os itens da modalidade removida
+      await client.query(`
+        DELETE FROM faturamento_itens
+        WHERE faturamento_id = $1
+          AND contrato_id = $2
+          AND modalidade_id = $3
+      `, [faturamentoId, contratoId, modalidadeId]);
+      
+      // Recalcular o valor total do faturamento
+      const totalResult = await client.query(`
+        SELECT COALESCE(SUM(valor_total), 0) as total
+        FROM faturamento_itens
+        WHERE faturamento_id = $1
+      `, [faturamentoId]);
+      
+      const novoTotal = totalResult.rows[0].total;
+      
+      await client.query(`
+        UPDATE faturamentos
+        SET valor_total = $1
+        WHERE id = $2
+      `, [novoTotal, faturamentoId]);
+      
+      await client.query('COMMIT');
+      
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Registra o consumo do faturamento nos saldos dos contratos
+   */
+  static async registrarConsumo(faturamentoId: number): Promise<void> {
+    const client = await db.pool.connect();
+    
+    try {
+      await client.query('BEGIN');
+      
+      // Verificar se o faturamento existe
+      const faturamentoResult = await client.query(
+        'SELECT id, status FROM faturamentos WHERE id = $1',
+        [faturamentoId]
+      );
+      
+      if (faturamentoResult.rows.length === 0) {
+        throw new Error('Faturamento não encontrado');
+      }
+      
+      const faturamento = faturamentoResult.rows[0];
+      
+      if (faturamento.status === 'consumido') {
+        throw new Error('O consumo deste faturamento já foi registrado');
+      }
+      
+      // Buscar itens do faturamento
+      const itensResult = await client.query(`
+        SELECT 
+          fi.contrato_id,
+          fi.produto_id,
+          fi.modalidade_id,
+          fi.quantidade_modalidade,
+          p.nome as produto_nome,
+          m.nome as modalidade_nome
+        FROM faturamento_itens fi
+        JOIN produtos p ON p.id = fi.produto_id
+        JOIN modalidades m ON m.id = fi.modalidade_id
+        WHERE fi.faturamento_id = $1
+      `, [faturamentoId]);
+      
+      // Atualizar consumo para cada item
+      for (const item of itensResult.rows) {
+        const updateResult = await client.query(`
+          UPDATE contrato_produtos_modalidades cpm
+          SET quantidade_consumida = cpm.quantidade_consumida + $1
+          FROM contrato_produtos cp
+          WHERE cpm.contrato_produto_id = cp.id
+            AND cp.contrato_id = $2
+            AND cp.produto_id = $3
+            AND cpm.modalidade_id = $4
+            AND cpm.ativo = true
+          RETURNING cpm.id
+        `, [
+          item.quantidade_modalidade,
+          item.contrato_id,
+          item.produto_id,
+          item.modalidade_id
+        ]);
+        
+        if (updateResult.rows.length === 0) {
+          throw new Error(
+            `Erro ao registrar consumo: Produto "${item.produto_nome}" / Modalidade "${item.modalidade_nome}" não encontrado no contrato`
+          );
+        }
+      }
+      
+      // Atualizar status do faturamento para 'consumido'
+      await client.query(
+        'UPDATE faturamentos SET status = $1 WHERE id = $2',
+        ['consumido', faturamentoId]
+      );
+      
+      await client.query('COMMIT');
       
     } catch (error) {
       await client.query('ROLLBACK');

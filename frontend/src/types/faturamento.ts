@@ -99,6 +99,7 @@ export interface ContratoCalculado {
   contrato_numero: string;
   fornecedor_id: number;
   fornecedor_nome: string;
+  fornecedor_cnpj: string;
   itens: ItemCalculado[];
   quantidade_total: number;
   valor_total: number;
@@ -117,4 +118,5 @@ export interface FaturamentoPrevia {
     quantidade_total: number;
     valor_total: number;
   };
+  alertas?: string[];
 }
