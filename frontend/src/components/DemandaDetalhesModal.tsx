@@ -36,11 +36,11 @@ interface DemandaDetalhesModalProps {
   demandaId?: number;
 }
 
-export default function DemandaDetalhesModal({ 
-  open, 
-  onClose, 
-  onRefresh, 
-  demandaId 
+export default function DemandaDetalhesModal({
+  open,
+  onClose,
+  onRefresh,
+  demandaId
 }: DemandaDetalhesModalProps) {
   const [demanda, setDemanda] = useState<Demanda | null>(null);
   const [loading, setLoading] = useState(true);
@@ -53,7 +53,7 @@ export default function DemandaDetalhesModal({
   const [dialogAtender, setDialogAtender] = useState(false);
   const [dialogNaoAtender, setDialogNaoAtender] = useState(false);
   const [dialogExcluir, setDialogExcluir] = useState(false);
-  
+
   // Modal de edição
   const [modalEdicao, setModalEdicao] = useState(false);
 
@@ -68,6 +68,76 @@ export default function DemandaDetalhesModal({
       carregarDemanda();
     }
   }, [open, demandaId]);
+
+  // Atalhos de teclado para o modal
+  useEffect(() => {
+    if (!open) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignorar se estiver digitando em um campo
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      // Ctrl + E: Enviar para SEMAD (apenas se pendente)
+      if (e.ctrlKey && e.key === 'e' && demanda?.status === 'pendente' && !processando) {
+        e.preventDefault();
+        setDialogEnviar(true);
+        return;
+      }
+
+      // Ctrl + R: Contexto dependente do status
+      if (e.ctrlKey && e.key === 'r' && !processando) {
+        e.preventDefault();
+        if (demanda?.status === 'pendente') {
+          // Recusar se pendente
+          setDialogRecusar(true);
+        } else if (demanda?.status === 'enviado_semead') {
+          // Registrar Atendimento se enviado
+          setDialogAtender(true);
+        }
+        return;
+      }
+
+      // Ctrl + N: Registrar Não Atendimento (apenas se enviado)
+      if (e.ctrlKey && e.key === 'n' && demanda?.status === 'enviado_semead' && !processando) {
+        e.preventDefault();
+        setDialogNaoAtender(true);
+        return;
+      }
+
+      // Ctrl + Delete: Excluir demanda
+      if (e.ctrlKey && e.key === 'Delete' && !processando) {
+        e.preventDefault();
+        setDialogExcluir(true);
+        return;
+      }
+
+      // ESC: Fechar modal
+      if (e.key === 'Escape' && !processando) {
+        // Fechar diálogos primeiro, depois o modal principal
+        if (dialogEnviar) {
+          setDialogEnviar(false);
+        } else if (dialogRecusar) {
+          setDialogRecusar(false);
+        } else if (dialogAtender) {
+          setDialogAtender(false);
+        } else if (dialogNaoAtender) {
+          setDialogNaoAtender(false);
+        } else if (dialogExcluir) {
+          setDialogExcluir(false);
+        } else if (modalEdicao) {
+          setModalEdicao(false);
+        } else {
+          onClose();
+        }
+        return;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [open, demanda?.status, processando, dialogEnviar, dialogRecusar, dialogAtender, dialogNaoAtender, dialogExcluir, modalEdicao, onClose]);
 
   const carregarDemanda = async () => {
     try {
@@ -211,24 +281,39 @@ export default function DemandaDetalhesModal({
 
   return (
     <>
-      <Dialog 
-        open={open} 
-        onClose={handleClose} 
-        maxWidth="lg" 
+      <Dialog
+        open={open}
+        onClose={handleClose}
+        maxWidth="lg"
         fullWidth
         PaperProps={{
           sx: { minHeight: '700px' }
         }}
       >
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box>
             {demanda && (
-              <>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 0.5 }}>
                 <Typography variant="h6">
                   Demanda {demanda.numero_oficio}
                 </Typography>
                 {getStatusChip(demanda.status)}
-              </>
+              </Box>
+            )}
+            {demanda?.status === 'pendente' && (
+              <Typography variant="caption" color="text.secondary">
+                Atalhos: Ctrl+E (Enviar), Ctrl+R (Recusar), Ctrl+Del (Excluir), Esc (Fechar)
+              </Typography>
+            )}
+            {demanda?.status === 'enviado_semead' && (
+              <Typography variant="caption" color="text.secondary">
+                Atalhos: Ctrl+R (Registrar Atendimento), Ctrl+N (Não Atender), Ctrl+Del (Excluir), Esc (Fechar)
+              </Typography>
+            )}
+            {demanda && !['pendente', 'enviado_semead'].includes(demanda.status) && (
+              <Typography variant="caption" color="text.secondary">
+                Atalhos: Ctrl+Del (Excluir), Esc (Fechar)
+              </Typography>
             )}
           </Box>
           <IconButton onClick={handleClose} disabled={processando}>
@@ -302,15 +387,15 @@ export default function DemandaDetalhesModal({
 
                     <Box sx={{ mb: 2 }}>
                       <Typography variant="body2" color="text.secondary">
-                        {demanda.data_resposta_semead ? 'Tempo de Resposta da SEMEAD' : 'Aguardando Resposta da SEMEAD'}
+                        {demanda.data_resposta_semead ? 'Tempo de Resposta da SEMAD' : 'Aguardando Resposta da SEMAD'}
                       </Typography>
                       {demanda.dias_solicitacao !== null ? (
-                        <Chip 
-                          label={`${demanda.dias_solicitacao} dias`} 
-                          color={demanda.data_resposta_semead ? 'success' : 'primary'} 
+                        <Chip
+                          label={`${demanda.dias_solicitacao} dias`}
+                          color={demanda.data_resposta_semead ? 'success' : 'primary'}
                         />
                       ) : (
-                        <Typography variant="body2" color="text.secondary">Ainda não enviado à SEMEAD</Typography>
+                        <Typography variant="body2" color="text.secondary">Ainda não enviado à SEMAD</Typography>
                       )}
                     </Box>
 
@@ -365,7 +450,7 @@ export default function DemandaDetalhesModal({
                             onClick={() => setDialogEnviar(true)}
                             disabled={processando}
                           >
-                            Registrar Envio à SEMAD
+                            Registrar Envio à SEMAD (Ctrl+E)
                           </Button>
                           <Button
                             variant="outlined"
@@ -374,7 +459,7 @@ export default function DemandaDetalhesModal({
                             onClick={() => setDialogRecusar(true)}
                             disabled={processando}
                           >
-                            Recusar Imediatamente
+                            Recusar Imediatamente (Ctrl+R)
                           </Button>
                         </>
                       )}
@@ -389,7 +474,7 @@ export default function DemandaDetalhesModal({
                             onClick={() => setDialogAtender(true)}
                             disabled={processando}
                           >
-                            Registrar Atendimento
+                            Registrar Atendimento (Ctrl+R)
                           </Button>
                           <Button
                             variant="outlined"
@@ -398,7 +483,7 @@ export default function DemandaDetalhesModal({
                             onClick={() => setDialogNaoAtender(true)}
                             disabled={processando}
                           >
-                            Registrar Não Atendimento
+                            Registrar Não Atendimento (Ctrl+N)
                           </Button>
                         </>
                       )}
@@ -420,7 +505,7 @@ export default function DemandaDetalhesModal({
                         onClick={() => setDialogExcluir(true)}
                         disabled={processando}
                       >
-                        Excluir
+                        Excluir (Ctrl+Del)
                       </Button>
                     </Box>
                   </CardContent>
@@ -438,11 +523,25 @@ export default function DemandaDetalhesModal({
       </Dialog>
 
       {/* Diálogo: Registrar Envio à SEMAD */}
-      <Dialog open={dialogEnviar} onClose={() => setDialogEnviar(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={dialogEnviar}
+        onClose={() => setDialogEnviar(false)}
+        maxWidth="sm"
+        fullWidth
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !processando && dataEnvio) {
+            e.preventDefault();
+            handleEnviarSemead();
+          }
+        }}
+      >
         <DialogTitle>Registrar Envio à SEMAD</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             Informe a data em que a demanda foi enviada à SEMEAD:
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: 'block' }}>
+            Pressione Enter para confirmar
           </Typography>
           <TextField
             fullWidth
@@ -452,6 +551,13 @@ export default function DemandaDetalhesModal({
             onChange={(e) => setDataEnvio(e.target.value)}
             InputLabelProps={{ shrink: true }}
             sx={{ mt: 2 }}
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !processando && dataEnvio) {
+                e.preventDefault();
+                handleEnviarSemead();
+              }
+            }}
           />
         </DialogContent>
         <DialogActions>
@@ -463,17 +569,31 @@ export default function DemandaDetalhesModal({
             variant="contained"
             disabled={processando || !dataEnvio}
           >
-            {processando ? 'Registrando...' : 'Confirmar Envio'}
+            {processando ? 'Registrando...' : 'Confirmar Envio (Enter)'}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Diálogo: Recusar Imediatamente */}
-      <Dialog open={dialogRecusar} onClose={() => setDialogRecusar(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={dialogRecusar}
+        onClose={() => setDialogRecusar(false)}
+        maxWidth="sm"
+        fullWidth
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && e.ctrlKey && !processando && motivoRecusa.trim()) {
+            e.preventDefault();
+            handleRecusarImediata();
+          }
+        }}
+      >
         <DialogTitle>Recusar Demanda</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             Informe o motivo da recusa imediata:
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: 'block' }}>
+            Pressione Ctrl+Enter para confirmar
           </Typography>
           <TextField
             fullWidth
@@ -484,6 +604,13 @@ export default function DemandaDetalhesModal({
             onChange={(e) => setMotivoRecusa(e.target.value)}
             placeholder="Ex: Fora do escopo, sem orçamento disponível, etc."
             sx={{ mt: 2 }}
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && e.ctrlKey && !processando && motivoRecusa.trim()) {
+                e.preventDefault();
+                handleRecusarImediata();
+              }
+            }}
           />
         </DialogContent>
         <DialogActions>
@@ -496,17 +623,31 @@ export default function DemandaDetalhesModal({
             color="error"
             disabled={processando || !motivoRecusa.trim()}
           >
-            {processando ? 'Registrando...' : 'Confirmar Recusa'}
+            {processando ? 'Registrando...' : 'Confirmar Recusa (Ctrl+Enter)'}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Diálogo: Registrar Atendimento */}
-      <Dialog open={dialogAtender} onClose={() => setDialogAtender(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={dialogAtender}
+        onClose={() => setDialogAtender(false)}
+        maxWidth="sm"
+        fullWidth
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && e.ctrlKey && !processando && dataResposta) {
+            e.preventDefault();
+            handleAtender();
+          }
+        }}
+      >
         <DialogTitle>Registrar Atendimento</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            A SEMEAD atendeu a demanda. Informe os detalhes:
+            A SEMAD atendeu a demanda. Informe os detalhes:
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: 'block' }}>
+            Pressione Ctrl+Enter para confirmar
           </Typography>
           <TextField
             fullWidth
@@ -516,6 +657,13 @@ export default function DemandaDetalhesModal({
             onChange={(e) => setDataResposta(e.target.value)}
             InputLabelProps={{ shrink: true }}
             sx={{ mt: 2, mb: 2 }}
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && e.ctrlKey && !processando && dataResposta) {
+                e.preventDefault();
+                handleAtender();
+              }
+            }}
           />
           <TextField
             fullWidth
@@ -525,6 +673,12 @@ export default function DemandaDetalhesModal({
             value={observacoes}
             onChange={(e) => setObservacoes(e.target.value)}
             placeholder="Ex: Itens entregues conforme solicitado"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && e.ctrlKey && !processando && dataResposta) {
+                e.preventDefault();
+                handleAtender();
+              }
+            }}
           />
         </DialogContent>
         <DialogActions>
@@ -537,17 +691,31 @@ export default function DemandaDetalhesModal({
             color="success"
             disabled={processando || !dataResposta}
           >
-            {processando ? 'Registrando...' : 'Confirmar Atendimento'}
+            {processando ? 'Registrando...' : 'Confirmar Atendimento (Ctrl+Enter)'}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Diálogo: Registrar Não Atendimento */}
-      <Dialog open={dialogNaoAtender} onClose={() => setDialogNaoAtender(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={dialogNaoAtender}
+        onClose={() => setDialogNaoAtender(false)}
+        maxWidth="sm"
+        fullWidth
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && e.ctrlKey && !processando && dataResposta) {
+            e.preventDefault();
+            handleNaoAtender();
+          }
+        }}
+      >
         <DialogTitle>Registrar Não Atendimento</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            A SEMEAD não atendeu a demanda. Informe os detalhes:
+            A SEMAD não atendeu a demanda. Informe os detalhes:
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: 'block' }}>
+            Pressione Ctrl+Enter para confirmar
           </Typography>
           <TextField
             fullWidth
@@ -557,6 +725,13 @@ export default function DemandaDetalhesModal({
             onChange={(e) => setDataResposta(e.target.value)}
             InputLabelProps={{ shrink: true }}
             sx={{ mt: 2, mb: 2 }}
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && e.ctrlKey && !processando && dataResposta) {
+                e.preventDefault();
+                handleNaoAtender();
+              }
+            }}
           />
           <TextField
             fullWidth
@@ -566,6 +741,12 @@ export default function DemandaDetalhesModal({
             value={observacoes}
             onChange={(e) => setObservacoes(e.target.value)}
             placeholder="Ex: Sem disponibilidade orçamentária"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && e.ctrlKey && !processando && dataResposta) {
+                e.preventDefault();
+                handleNaoAtender();
+              }
+            }}
           />
         </DialogContent>
         <DialogActions>
@@ -578,7 +759,7 @@ export default function DemandaDetalhesModal({
             color="error"
             disabled={processando || !dataResposta}
           >
-            {processando ? 'Registrando...' : 'Confirmar Não Atendimento'}
+            {processando ? 'Registrando...' : 'Confirmar Não Atendimento (Ctrl+Enter)'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -592,11 +773,26 @@ export default function DemandaDetalhesModal({
       />
 
       {/* Diálogo: Excluir */}
-      <Dialog open={dialogExcluir} onClose={() => setDialogExcluir(false)} maxWidth="sm" fullWidth>
+      <Dialog 
+        open={dialogExcluir} 
+        onClose={() => setDialogExcluir(false)} 
+        maxWidth="sm" 
+        fullWidth
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !processando) {
+            e.preventDefault();
+            e.stopPropagation();
+            handleExcluir();
+          }
+        }}
+      >
         <DialogTitle>Excluir Demanda</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary">
             Tem certeza que deseja excluir esta demanda? Esta ação não pode ser desfeita.
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+            Pressione Enter para confirmar ou Esc para cancelar
           </Typography>
         </DialogContent>
         <DialogActions>
@@ -609,7 +805,7 @@ export default function DemandaDetalhesModal({
             color="error"
             disabled={processando}
           >
-            {processando ? 'Excluindo...' : 'Confirmar Exclusão'}
+            {processando ? 'Excluindo...' : 'Confirmar Exclusão (Enter)'}
           </Button>
         </DialogActions>
       </Dialog>
