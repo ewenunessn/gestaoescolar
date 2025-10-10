@@ -88,7 +88,7 @@ DELETE /api/demandas/:id
 ## Status Disponíveis
 
 - **pendente**: Demanda criada, aguardando envio
-- **enviado_semead**: Enviado para a SEMEAD
+- **enviado_semead**: Enviado para a SEMAD
 - **atendido**: Demanda atendida
 - **nao_atendido**: Demanda não atendida
 

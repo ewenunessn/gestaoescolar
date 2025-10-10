@@ -312,7 +312,7 @@ export default function DemandaDetalhe() {
                                             onClick={() => setDialogEnviar(true)}
                                             disabled={processando}
                                         >
-                                            Registrar Envio à SEMEAD
+                                            Registrar Envio à SEMAD
                                         </Button>
                                         <Button
                                             variant="outlined"
@@ -444,7 +444,7 @@ export default function DemandaDetalhe() {
                 <DialogTitle>Registrar Atendimento</DialogTitle>
                 <DialogContent>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                        A SEMEAD atendeu a demanda. Informe os detalhes:
+                        A SEMAD atendeu a demanda. Informe os detalhes:
                     </Typography>
                     <TextField
                         fullWidth
@@ -485,7 +485,7 @@ export default function DemandaDetalhe() {
                 <DialogTitle>Registrar Não Atendimento</DialogTitle>
                 <DialogContent>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                        A SEMEAD não atendeu a demanda. Informe os detalhes:
+                        A SEMAD não atendeu a demanda. Informe os detalhes:
                     </Typography>
                     <TextField
                         fullWidth

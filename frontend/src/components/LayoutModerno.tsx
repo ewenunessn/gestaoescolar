@@ -40,6 +40,7 @@ import {
   Assessment,
   Receipt,
   ListAlt,
+  RequestPage,
 } from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
 import { logout } from "../services/auth";
@@ -52,6 +53,7 @@ const menuConfig = [
     category: "Principal",
     items: [
       { text: "Dashboard", icon: <Dashboard />, path: "/dashboard" },
+      { text: "Demandas SEMED", icon: <RequestPage />, path: "/demandas", badge: "Novo!", badgeColor: "success" },
     ],
   },
   {
@@ -82,7 +84,6 @@ const menuConfig = [
   {
     category: "Estoque",
     items: [
-      { text: "Estoque Central", icon: <Storage />, path: "/estoque-central", badge: "Novo!", badgeColor: "success" },
       { text: "Estoque Escolar", icon: <Assessment />, path: "/estoque-escolar", badge: "Novo!", badgeColor: "primary" },
     ],
   },
@@ -90,7 +91,6 @@ const menuConfig = [
     category: "Guias",
     items: [
       { text: "Guias de Demanda", icon: <ListAlt />, path: "/guias-demanda" },
-      { text: "Movimentações", icon: <Receipt />, path: "/estoque-movimentacoes" },
     ],
   },
 ];
