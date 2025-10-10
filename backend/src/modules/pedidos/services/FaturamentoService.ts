@@ -624,7 +624,7 @@ export class FaturamentoService {
       // Se o consumo foi registrado, restaurar saldos
       if (consumoRegistrado) {
         for (const item of itensResult.rows) {
-          await client.query(`
+          const updateResult = await client.query(`
             UPDATE contrato_produtos_modalidades cpm
             SET quantidade_consumida = cpm.quantidade_consumida - $1
             FROM contrato_produtos cp
@@ -633,12 +633,32 @@ export class FaturamentoService {
               AND cp.produto_id = $3
               AND cpm.modalidade_id = $4
               AND cpm.ativo = true
+            RETURNING cpm.id
           `, [
             item.quantidade_modalidade,
             contratoId,
             item.produto_id,
             modalidadeId
           ]);
+          
+          // Registrar no histórico
+          if (updateResult.rows.length > 0) {
+            await client.query(`
+              INSERT INTO movimentacoes_consumo_modalidade (
+                contrato_produto_modalidade_id,
+                quantidade,
+                tipo_movimentacao,
+                observacao,
+                usuario_id
+              )
+              VALUES ($1, $2, 'ESTORNO', $3, $4)
+            `, [
+              updateResult.rows[0].id,
+              item.quantidade_modalidade,
+              `Faturamento #${faturamentoId} - Modalidade ${item.modalidade_nome} removida`,
+              1
+            ]);
+          }
         }
       }
       
@@ -824,6 +844,25 @@ export class FaturamentoService {
             `Erro ao registrar consumo: Produto "${item.produto_nome}" / Modalidade "${item.modalidade_nome}" não encontrado no contrato`
           );
         }
+        
+        // Registrar no histórico de movimentações
+        const contratoProduModalidadeId = updateResult.rows[0].id;
+        
+        await client.query(`
+          INSERT INTO movimentacoes_consumo_modalidade (
+            contrato_produto_modalidade_id,
+            quantidade,
+            tipo_movimentacao,
+            observacao,
+            usuario_id
+          )
+          VALUES ($1, $2, 'CONSUMO', $3, $4)
+        `, [
+          contratoProduModalidadeId,
+          item.quantidade_modalidade,
+          `Faturamento #${faturamentoId} - Consumo registrado`,
+          1 // TODO: Pegar do token de autenticação
+        ]);
       }
       
       // Atualizar status do faturamento para 'consumido'
