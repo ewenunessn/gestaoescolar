@@ -75,9 +75,19 @@ export const faturamentoService = {
     await api.delete(`/faturamentos/${id}`);
   },
 
-  // Registrar consumo do faturamento
+  // Registrar consumo do faturamento (todos os itens)
   async registrarConsumo(id: number): Promise<void> {
     await api.post(`/faturamentos/${id}/registrar-consumo`);
+  },
+
+  // Registrar consumo de um item específico
+  async registrarConsumoItem(faturamentoId: number, itemId: number): Promise<void> {
+    await api.post(`/faturamentos/${faturamentoId}/itens/${itemId}/registrar-consumo`);
+  },
+
+  // Reverter consumo de um item específico
+  async reverterConsumoItem(faturamentoId: number, itemId: number): Promise<void> {
+    await api.post(`/faturamentos/${faturamentoId}/itens/${itemId}/reverter-consumo`);
   },
 
   // Remover itens de uma modalidade

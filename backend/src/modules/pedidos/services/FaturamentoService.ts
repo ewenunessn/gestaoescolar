@@ -1,4 +1,12 @@
 const db = require("../../../database");
+import {
+  FaturamentoDuplicadoError,
+  SaldoInsuficienteError,
+  PedidoInvalidoError,
+  FaturamentoNaoEncontradoError,
+  ConsumoJaRegistradoError,
+  ModalidadeNaoEncontradaError
+} from "../errors/FaturamentoErrors";
 
 export interface ModalidadeCalculo {
   id: number;
@@ -176,7 +184,7 @@ export class FaturamentoService {
         f.cnpj as fornecedor_cnpj,
         p.id as produto_id,
         p.nome as produto_nome,
-        p.unidade as unidade_medida
+        p.unidade as unidade 
       FROM pedido_itens pi
       JOIN contrato_produtos cp ON pi.contrato_produto_id = cp.id
       JOIN contratos c ON cp.contrato_id = c.id
@@ -362,7 +370,7 @@ export class FaturamentoService {
         pedido_item_id: item.pedido_item_id,
         produto_id: item.produto_id,
         produto_nome: item.produto_nome,
-        unidade: item.unidade_medida,
+        unidade: item.unidade ,
         quantidade_original: item.quantidade,
         preco_unitario: item.preco_unitario,
         valor_original: item.valor_total,
@@ -483,18 +491,47 @@ export class FaturamentoService {
       await client.query('BEGIN');
       
       // Verificar se já existe faturamento para este pedido
+      // FOR UPDATE trava o registro e previne race condition
       const faturamentoExistente = await client.query(`
-        SELECT id FROM faturamentos WHERE pedido_id = $1
+        SELECT id FROM faturamentos 
+        WHERE pedido_id = $1 
+        FOR UPDATE
       `, [pedidoId]);
       
       if (faturamentoExistente.rows.length > 0) {
-        throw new Error('Já existe um faturamento para este pedido');
+        throw new FaturamentoDuplicadoError(pedidoId);
       }
       
-      // Calcular prévia
+      // Travar também o pedido para evitar modificações simultâneas
+      await client.query(`
+        SELECT id FROM pedidos 
+        WHERE id = $1 
+        FOR UPDATE
+      `, [pedidoId]);
+      
+      // Calcular prévia DENTRO da transação
       const previa = await this.calcularPreviaFaturamento(pedidoId);
       
-      // Verificar saldo por modalidade
+      // Travar saldos para evitar race condition
+      // Buscar todos os saldos que serão usados e travá-los
+      for (const contrato of previa.contratos) {
+        for (const item of contrato.itens) {
+          for (const divisao of item.divisoes) {
+            await client.query(`
+              SELECT cpm.id, cpm.quantidade_disponivel
+              FROM contrato_produtos_modalidades cpm
+              JOIN contrato_produtos cp ON cpm.contrato_produto_id = cp.id
+              WHERE cp.contrato_id = $1
+                AND cp.produto_id = $2
+                AND cpm.modalidade_id = $3
+                AND cpm.ativo = true
+              FOR UPDATE
+            `, [contrato.contrato_id, item.produto_id, divisao.modalidade_id]);
+          }
+        }
+      }
+      
+      // Verificar saldo por modalidade (agora com locks aplicados)
       await this.verificarSaldoModalidades(pedidoId, previa);
       
       // Gerar número do faturamento
@@ -726,7 +763,7 @@ export class FaturamentoService {
               if (consumoRegistrado) {
                 console.log(`🔄 Atualizando consumo: +${quantidadeAdicional} para modalidade ${outroItem.modalidade_id} do produto ${itemRemovido.produto_nome}`);
                 
-                await client.query(`
+                const updateConsumoResult = await client.query(`
                   UPDATE contrato_produtos_modalidades cpm
                   SET quantidade_consumida = cpm.quantidade_consumida + $1
                   FROM contrato_produtos cp
@@ -735,12 +772,32 @@ export class FaturamentoService {
                     AND cp.produto_id = $3
                     AND cpm.modalidade_id = $4
                     AND cpm.ativo = true
+                  RETURNING cpm.id
                 `, [
                   quantidadeAdicional,
                   contratoId,
                   itemRemovido.produto_id,
                   outroItem.modalidade_id
                 ]);
+                
+                // Registrar no histórico a redistribuição
+                if (updateConsumoResult.rows.length > 0) {
+                  await client.query(`
+                    INSERT INTO movimentacoes_consumo_modalidade (
+                      contrato_produto_modalidade_id,
+                      quantidade,
+                      tipo_movimentacao,
+                      observacao,
+                      usuario_id
+                    )
+                    VALUES ($1, $2, 'CONSUMO', $3, $4)
+                  `, [
+                    updateConsumoResult.rows[0].id,
+                    quantidadeAdicional,
+                    `Faturamento #${faturamentoId} - Redistribuição de ${itemRemovido.modalidade_nome}`,
+                    1
+                  ]);
+                }
               }
             }
           }
@@ -781,7 +838,218 @@ export class FaturamentoService {
   }
 
   /**
-   * Registra o consumo do faturamento nos saldos dos contratos
+   * Registra o consumo de um item específico do faturamento
+   */
+  static async registrarConsumoItem(
+    faturamentoId: number,
+    itemId: number,
+    usuarioId: number = 1
+  ): Promise<void> {
+    const client = await db.pool.connect();
+    
+    try {
+      await client.query('BEGIN');
+      
+      // Buscar o item do faturamento
+      const itemResult = await client.query(`
+        SELECT 
+          fi.id,
+          fi.contrato_id,
+          fi.produto_id,
+          fi.modalidade_id,
+          fi.quantidade_modalidade,
+          fi.consumo_registrado,
+          p.nome as produto_nome,
+          m.nome as modalidade_nome,
+          c.numero as contrato_numero
+        FROM faturamento_itens fi
+        JOIN produtos p ON p.id = fi.produto_id
+        JOIN modalidades m ON m.id = fi.modalidade_id
+        JOIN contratos c ON c.id = fi.contrato_id
+        WHERE fi.id = $1 AND fi.faturamento_id = $2
+        FOR UPDATE
+      `, [itemId, faturamentoId]);
+      
+      if (itemResult.rows.length === 0) {
+        throw new Error('Item do faturamento não encontrado');
+      }
+      
+      const item = itemResult.rows[0];
+      
+      if (item.consumo_registrado) {
+        throw new Error(`Consumo do item "${item.produto_nome}" já foi registrado`);
+      }
+      
+      // Atualizar saldo
+      const updateResult = await client.query(`
+        UPDATE contrato_produtos_modalidades cpm
+        SET quantidade_consumida = cpm.quantidade_consumida + $1
+        FROM contrato_produtos cp
+        WHERE cpm.contrato_produto_id = cp.id
+          AND cp.contrato_id = $2
+          AND cp.produto_id = $3
+          AND cpm.modalidade_id = $4
+          AND cpm.ativo = true
+        RETURNING cpm.id
+      `, [
+        item.quantidade_modalidade,
+        item.contrato_id,
+        item.produto_id,
+        item.modalidade_id
+      ]);
+      
+      if (updateResult.rows.length === 0) {
+        throw new Error(
+          `Erro ao registrar consumo: Produto "${item.produto_nome}" / ` +
+          `Modalidade "${item.modalidade_nome}" não encontrado no contrato ${item.contrato_numero}`
+        );
+      }
+      
+      // Registrar no histórico
+      await client.query(`
+        INSERT INTO movimentacoes_consumo_modalidade (
+          contrato_produto_modalidade_id,
+          quantidade,
+          tipo_movimentacao,
+          observacao,
+          usuario_id
+        )
+        VALUES ($1, $2, 'CONSUMO', $3, $4)
+      `, [
+        updateResult.rows[0].id,
+        item.quantidade_modalidade,
+        `Faturamento #${faturamentoId} - Item #${itemId} - ${item.produto_nome}`,
+        usuarioId
+      ]);
+      
+      // Marcar item como consumido
+      const updateItemResult = await client.query(`
+        UPDATE faturamento_itens
+        SET consumo_registrado = true,
+            data_consumo = CURRENT_TIMESTAMP
+        WHERE id = $1
+        RETURNING id, consumo_registrado, data_consumo
+      `, [itemId]);
+      
+      console.log('✅ Item marcado como consumido:', updateItemResult.rows[0]);
+      
+      await client.query('COMMIT');
+      console.log('✅ Transação commitada com sucesso!');
+      
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Reverte o consumo de um item específico do faturamento
+   */
+  static async reverterConsumoItem(
+    faturamentoId: number,
+    itemId: number,
+    usuarioId: number = 1
+  ): Promise<void> {
+    const client = await db.pool.connect();
+    
+    try {
+      await client.query('BEGIN');
+      
+      // Buscar o item do faturamento
+      const itemResult = await client.query(`
+        SELECT 
+          fi.id,
+          fi.contrato_id,
+          fi.produto_id,
+          fi.modalidade_id,
+          fi.quantidade_modalidade,
+          fi.consumo_registrado,
+          p.nome as produto_nome,
+          m.nome as modalidade_nome,
+          c.numero as contrato_numero
+        FROM faturamento_itens fi
+        JOIN produtos p ON p.id = fi.produto_id
+        JOIN modalidades m ON m.id = fi.modalidade_id
+        JOIN contratos c ON c.id = fi.contrato_id
+        WHERE fi.id = $1 AND fi.faturamento_id = $2
+        FOR UPDATE
+      `, [itemId, faturamentoId]);
+      
+      if (itemResult.rows.length === 0) {
+        throw new Error('Item do faturamento não encontrado');
+      }
+      
+      const item = itemResult.rows[0];
+      
+      if (!item.consumo_registrado) {
+        throw new Error(`Consumo do item "${item.produto_nome}" não foi registrado ainda`);
+      }
+      
+      // Restaurar saldo
+      const updateResult = await client.query(`
+        UPDATE contrato_produtos_modalidades cpm
+        SET quantidade_consumida = cpm.quantidade_consumida - $1
+        FROM contrato_produtos cp
+        WHERE cpm.contrato_produto_id = cp.id
+          AND cp.contrato_id = $2
+          AND cp.produto_id = $3
+          AND cpm.modalidade_id = $4
+          AND cpm.ativo = true
+        RETURNING cpm.id
+      `, [
+        item.quantidade_modalidade,
+        item.contrato_id,
+        item.produto_id,
+        item.modalidade_id
+      ]);
+      
+      if (updateResult.rows.length === 0) {
+        throw new Error(
+          `Erro ao reverter consumo: Produto "${item.produto_nome}" / ` +
+          `Modalidade "${item.modalidade_nome}" não encontrado no contrato ${item.contrato_numero}`
+        );
+      }
+      
+      // Apagar o registro de consumo do histórico
+      // Não criamos um registro de estorno, apenas removemos o registro original
+      await client.query(`
+        DELETE FROM movimentacoes_consumo_modalidade
+        WHERE id IN (
+          SELECT id 
+          FROM movimentacoes_consumo_modalidade
+          WHERE contrato_produto_modalidade_id = $1
+            AND tipo_movimentacao = 'CONSUMO'
+            AND observacao LIKE $2
+          ORDER BY created_at DESC
+          LIMIT 1
+        )
+      `, [
+        updateResult.rows[0].id,
+        `%Faturamento #${faturamentoId}%Item #${itemId}%`
+      ]);
+      
+      // Desmarcar item como consumido
+      await client.query(`
+        UPDATE faturamento_itens
+        SET consumo_registrado = false,
+            data_consumo = NULL
+        WHERE id = $1
+      `, [itemId]);
+      
+      await client.query('COMMIT');
+      
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Registra o consumo do faturamento nos saldos dos contratos (TODOS os itens)
    */
   static async registrarConsumo(faturamentoId: number): Promise<void> {
     const client = await db.pool.connect();
@@ -802,7 +1070,7 @@ export class FaturamentoService {
       const faturamento = faturamentoResult.rows[0];
       
       if (faturamento.status === 'consumido') {
-        throw new Error('O consumo deste faturamento já foi registrado');
+        throw new ConsumoJaRegistradoError(faturamentoId);
       }
       
       // Buscar itens do faturamento

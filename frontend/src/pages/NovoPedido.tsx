@@ -228,18 +228,21 @@ export default function NovoPedido() {
                         placeholder="Digite para buscar..."
                       />
                     )}
-                    renderOption={(props, option) => (
-                      <li {...props}>
-                        <Box>
-                          <Typography variant="body2">
-                            <strong>{option.produto_nome}</strong>
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {option.fornecedor_nome} - Contrato {option.contrato_numero} - {formatarMoeda(option.preco_unitario)}/{option.unidade}
-                          </Typography>
-                        </Box>
-                      </li>
-                    )}
+                    renderOption={(props, option) => {
+                      const { key, ...otherProps } = props;
+                      return (
+                        <li key={key} {...otherProps}>
+                          <Box>
+                            <Typography variant="body2">
+                              <strong>{option.produto_nome}</strong>
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {option.fornecedor_nome} - Contrato {option.contrato_numero} - {formatarMoeda(option.preco_unitario)}/{option.unidade}
+                            </Typography>
+                          </Box>
+                        </li>
+                      );
+                    }}
                   />
                 </Grid>
                 <Grid item xs={12} md={3}>

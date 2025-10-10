@@ -31,6 +31,7 @@ import saldoContratosModalidadesRoutes from "./modules/contratos/routes/saldoCon
 import guiaRoutes from "./modules/guias/routes/guiaRoutes";
 import pedidoRoutes from "./modules/pedidos/routes/pedidoRoutes";
 import faturamentoRoutes from "./modules/pedidos/routes/faturamentoRoutes";
+import demandasRoutes from "./modules/demandas/routes/demandaRoutes";
 // Módulo de gás removido
 
 
@@ -202,6 +203,7 @@ app.use("/api/saldo-contratos-modalidades", saldoContratosModalidadesRoutes);
 app.use("/api/guias", guiaRoutes);
 app.use("/api/pedidos", pedidoRoutes);
 app.use("/api/faturamentos", faturamentoRoutes);
+app.use("/api/demandas", demandasRoutes);
 // Rotas de gás removidas
 
 

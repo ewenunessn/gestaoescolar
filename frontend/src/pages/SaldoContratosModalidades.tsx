@@ -516,8 +516,10 @@ const SaldoContratosModalidades: React.FC = () => {
     // Se modalidadesProduto ainda não foi carregado, usar os dados originais
     if (!modalidadesProduto || modalidadesProduto.length === 0) {
       const totalDistribuido = produtoSelecionado.total_inicial || 0;
+      const totalConsumido = produtoSelecionado.total_consumido || 0;
       const disponivelDistribuir = quantidadeContrato - totalDistribuido;
-      return { totalDistribuido, disponivelDistribuir };
+      const totalDisponivel = totalDistribuido - totalConsumido;
+      return { totalDistribuido, disponivelDistribuir, totalDisponivel };
     }
 
     // Calcular com base nas modalidades atuais
@@ -526,9 +528,15 @@ const SaldoContratosModalidades: React.FC = () => {
       return sum + valor;
     }, 0);
 
-    const disponivelDistribuir = quantidadeContrato - totalDistribuido;
+    const totalConsumido = modalidadesProduto.reduce((sum, m) => {
+      const valor = parseFloat(m.quantidade_consumida as any) || 0;
+      return sum + valor;
+    }, 0);
 
-    return { totalDistribuido, disponivelDistribuir };
+    const disponivelDistribuir = quantidadeContrato - totalDistribuido;
+    const totalDisponivel = totalDistribuido - totalConsumido;
+
+    return { totalDistribuido, disponivelDistribuir, totalDisponivel };
   };
 
   const abrirDialogQuantidadeInicial = (modalidade: any) => {
@@ -560,6 +568,16 @@ const SaldoContratosModalidades: React.FC = () => {
 
     if (isNaN(novaQuantidade) || novaQuantidade < 0) {
       setError('Quantidade deve ser um número válido e não negativo');
+      return;
+    }
+
+    // Validar se a quantidade inicial não é menor que o consumo já registrado
+    const quantidadeConsumida = parseFloat(modalidadeSelecionada.quantidade_consumida as any) || 0;
+    if (novaQuantidade < quantidadeConsumida) {
+      setError(
+        `A quantidade inicial (${formatarNumero(novaQuantidade)}) não pode ser menor que o consumo já registrado (${formatarNumero(quantidadeConsumida)}).\n\n` +
+        `Mínimo permitido: ${formatarNumero(quantidadeConsumida)}`
+      );
       return;
     }
 
@@ -626,6 +644,16 @@ const SaldoContratosModalidades: React.FC = () => {
 
     if (isNaN(novaQuantidade) || novaQuantidade < 0) {
       setError('Quantidade deve ser um número válido e não negativo');
+      return;
+    }
+
+    // Validar se a quantidade inicial não é menor que o consumo já registrado
+    const quantidadeConsumida = parseFloat(modalidadeSelecionada.quantidade_consumida as any) || 0;
+    if (novaQuantidade < quantidadeConsumida) {
+      setError(
+        `A quantidade inicial (${formatarNumero(novaQuantidade)}) não pode ser menor que o consumo já registrado (${formatarNumero(quantidadeConsumida)}).\n\n` +
+        `Mínimo permitido: ${formatarNumero(quantidadeConsumida)}`
+      );
       return;
     }
 
@@ -1081,13 +1109,10 @@ const SaldoContratosModalidades: React.FC = () => {
             <TableHead>
               <TableRow>
                 <TableCell sx={headerCellStyle}>Produto</TableCell>
-                <TableCell sx={headerCellStyle}>Contrato</TableCell>
                 <TableCell sx={headerCellStyle}>Unidade</TableCell>
-                <TableCell align="right" sx={headerCellStyle}>Qtd Contratada</TableCell>
                 <TableCell align="right" sx={headerCellStyle}>Total Inicial</TableCell>
                 <TableCell align="right" sx={headerCellStyle}>Total Consumido</TableCell>
                 <TableCell align="right" sx={headerCellStyle}>Total Disponível</TableCell>
-                <TableCell align="right" sx={headerCellStyle}>Valor Unit.</TableCell>
                 <TableCell align="center" sx={headerCellStyle}>Status</TableCell>
                 <TableCell align="center" sx={headerCellStyle}>Ações</TableCell>
               </TableRow>
@@ -1095,13 +1120,13 @@ const SaldoContratosModalidades: React.FC = () => {
             <TableBody>
               {loading && dados.length > 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} align="center" sx={cellStyle}>
+                  <TableCell colSpan={7} align="center" sx={cellStyle}>
                     <CircularProgress size={24} />
                   </TableCell>
                 </TableRow>
               ) : dados.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} align="center" sx={cellStyle}>
+                  <TableCell colSpan={7} align="center" sx={cellStyle}>
                     Nenhum resultado encontrado
                   </TableCell>
                 </TableRow>
@@ -1131,28 +1156,13 @@ const SaldoContratosModalidades: React.FC = () => {
                         </Typography>
                       </Box>
                     </TableCell>
-                    <TableCell sx={cellStyle}>
-                      {produto.contratos.length === 1 ? produto.contratos[0].contrato_numero : `${produto.contratos.length} contratos`}
-                    </TableCell>
                     <TableCell sx={cellStyle}>{produto.unidade}</TableCell>
-                    <TableCell align="right" sx={cellStyle}>
-                      <Typography variant="body2" fontWeight="bold" color="primary">
-                        {formatarNumero(produto.quantidade_contrato_total)}
-                      </Typography>
-                    </TableCell>
                     <TableCell align="right" sx={cellStyle}>{formatarNumero(produto.total_inicial)}</TableCell>
                     <TableCell align="right" sx={cellStyle}>{formatarNumero(produto.total_consumido)}</TableCell>
-                    <TableCell align="right" sx={cellStyle}>{formatarNumero(produto.total_disponivel)}</TableCell>
                     <TableCell align="right" sx={cellStyle}>
-                      {(() => {
-                        if (produto.contratos.length === 1) {
-                          return formatarMoeda(produto.contratos[0].preco_unitario);
-                        }
-                        // Verificar se todos os contratos têm o mesmo preço
-                        const precos = produto.contratos.map((c: any) => parseFloat(c.preco_unitario));
-                        const precoUnico = precos.every((p: number) => p === precos[0]);
-                        return precoUnico ? formatarMoeda(precos[0]) : 'Variável';
-                      })()}
+                      <Typography variant="body2" fontWeight="bold" color="primary">
+                        {formatarNumero(produto.total_disponivel)}
+                      </Typography>
                     </TableCell>
                     <TableCell align="center" sx={cellStyle}>
                       <Chip
@@ -1301,6 +1311,16 @@ const SaldoContratosModalidades: React.FC = () => {
                     }}
                   >
                     <strong>Disponível para Distribuir:</strong> {formatarNumero(calcularTotaisAtuais().disponivelDistribuir)} {produtoSelecionado.unidade}
+                  </Typography>
+                  <Typography
+                    variant="body1"
+                    sx={{
+                      color: 'primary.main',
+                      fontWeight: 'bold',
+                      mt: 1
+                    }}
+                  >
+                    <strong>Total Disponível para Consumo:</strong> {formatarNumero(calcularTotaisAtuais().totalDisponivel)} {produtoSelecionado.unidade}
                   </Typography>
                 </Box>
 

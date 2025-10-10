@@ -95,7 +95,7 @@ class ApiService {
           id: item.produto_id,
           nome: item.produto_nome || 'Produto sem nome',
           descricao: item.produto_descricao || '',
-          unidade_medida: item.unidade_medida || 'un',
+          unidade_medida: item.unidade  || 'un',
           categoria: item.categoria || 'Geral'
         },
         escola: {

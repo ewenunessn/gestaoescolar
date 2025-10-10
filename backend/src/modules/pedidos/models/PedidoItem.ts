@@ -49,7 +49,8 @@ export class PedidoItemModel {
       SELECT 
         pi.*,
         p.nome as produto_nome,
-        p.unidade as unidade_medida,
+        p.unidade as unidade ,
+        p.unidade as unidade,
         cp.quantidade_contratada,
         cp.preco_unitario as preco_contrato
       FROM pedido_itens pi

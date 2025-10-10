@@ -55,6 +55,8 @@ export default function PedidoDetalhe() {
   const [motivoCancelamento, setMotivoCancelamento] = useState('');
   const [processando, setProcessando] = useState(false);
   const [temFaturamento, setTemFaturamento] = useState(false);
+  const [temConsumoRegistrado, setTemConsumoRegistrado] = useState(false);
+  const [mensagemConsumo, setMensagemConsumo] = useState('');
 
   useEffect(() => {
     carregarPedido();
@@ -63,6 +65,7 @@ export default function PedidoDetalhe() {
   useEffect(() => {
     if (pedido && pedido.id) {
       verificarFaturamento();
+      verificarConsumo();
     }
   }, [pedido]);
 
@@ -70,6 +73,8 @@ export default function PedidoDetalhe() {
     try {
       setLoading(true);
       const dados = await pedidosService.buscarPorId(Number(id));
+      console.log('📊 Dados do pedido:', dados);
+      console.log('📦 Primeiro item:', dados.itens[0]);
       setPedido(dados);
     } catch (error) {
       console.error('Erro ao carregar pedido:', error);
@@ -86,6 +91,46 @@ export default function PedidoDetalhe() {
     } catch (error) {
       console.error('Erro ao verificar faturamento:', error);
       setTemFaturamento(false);
+    }
+  };
+
+  const verificarConsumo = async () => {
+    try {
+      const faturamentos = await faturamentoService.buscarPorPedido(Number(id));
+      
+      // Verificar se algum faturamento tem itens com consumo
+      let totalItensComConsumo = 0;
+      let numerosFaturamento: string[] = [];
+      
+      // Buscar detalhes de cada faturamento para verificar consumo
+      for (const fat of faturamentos) {
+        const detalhes = await faturamentoService.buscarPorId(fat.id);
+        
+        const itensComConsumo = detalhes.itens?.filter(item => 
+          item.consumo_registrado === true
+        ) || [];
+        
+        if (itensComConsumo.length > 0) {
+          totalItensComConsumo += itensComConsumo.length;
+          numerosFaturamento.push(fat.numero);
+        }
+      }
+      
+      if (totalItensComConsumo > 0) {
+        setTemConsumoRegistrado(true);
+        const fatsText = numerosFaturamento.join(', ');
+        setMensagemConsumo(
+          `Este pedido possui ${totalItensComConsumo} item(ns) com consumo registrado no(s) faturamento(s) ${fatsText}. ` +
+          `Para excluir o pedido, é necessário reverter o consumo de todos os itens primeiro.`
+        );
+      } else {
+        setTemConsumoRegistrado(false);
+        setMensagemConsumo('');
+      }
+    } catch (error) {
+      console.error('Erro ao verificar consumo:', error);
+      setTemConsumoRegistrado(false);
+      setMensagemConsumo('');
     }
   };
 
@@ -366,7 +411,7 @@ export default function PedidoDetalhe() {
                           )}
                         </TableCell>
                         <TableCell>{item.contrato_numero}</TableCell>
-                        <TableCell>{item.unidade}</TableCell>
+                        <TableCell>{item.unidade || item.unidade || '-'}</TableCell>
                         <TableCell align="right">{item.quantidade}</TableCell>
                         <TableCell>
                           {item.data_entrega_prevista ? formatarData(item.data_entrega_prevista) : '-'}
@@ -528,6 +573,17 @@ export default function PedidoDetalhe() {
           Excluir Pedido
         </DialogTitle>
         <DialogContent>
+          {temConsumoRegistrado && (
+            <Alert severity="warning" sx={{ mb: 3 }}>
+              <Typography variant="body2" fontWeight="bold" gutterBottom>
+                ⚠️ Pedido com Consumo Registrado
+              </Typography>
+              <Typography variant="body2">
+                {mensagemConsumo}
+              </Typography>
+            </Alert>
+          )}
+          
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             {ehRascunho
               ? 'Tem certeza que deseja excluir este rascunho? Esta ação não pode ser desfeita.'
@@ -538,7 +594,7 @@ export default function PedidoDetalhe() {
                   : 'Tem certeza que deseja excluir este pedido em andamento? Esta ação não pode ser desfeita e pode afetar o processo de compra.'
             }
           </Typography>
-          {!ehRascunho && !ehCancelado && !ehEntregue && (
+          {!ehRascunho && !ehCancelado && !ehEntregue && !temConsumoRegistrado && (
             <Typography variant="body2" color="warning.main" sx={{ mb: 2, fontWeight: 'bold' }}>
               ⚠️ Atenção: Este pedido está em andamento. A exclusão pode impactar fornecedores e processos em curso.
             </Typography>
@@ -552,7 +608,7 @@ export default function PedidoDetalhe() {
             onClick={handleExcluir}
             color="error"
             variant="contained"
-            disabled={processando}
+            disabled={processando || temConsumoRegistrado}
           >
             {processando ? 'Excluindo...' : 'Confirmar Exclusão'}
           </Button>

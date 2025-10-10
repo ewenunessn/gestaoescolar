@@ -1,9 +1,10 @@
 export interface Faturamento {
   id: number;
   pedido_id: number;
+  pedido_numero?: string;
   numero: string;
   data_faturamento: string;
-  status: 'gerado' | 'processado' | 'cancelado';
+  status: 'gerado' | 'processado' | 'cancelado' | 'consumido';
   valor_total: number;
   observacoes?: string;
   usuario_criacao_id: number;
@@ -31,6 +32,8 @@ export interface FaturamentoItem {
   percentual_modalidade: number;
   preco_unitario: number;
   valor_total: number;
+  consumo_registrado?: boolean;
+  data_consumo?: string;
   created_at: string;
   updated_at: string;
 }
@@ -79,18 +82,22 @@ export interface ModalidadeCalculo {
 
 export interface ItemCalculado {
   pedido_item_id: number;
+  produto_id: number;
   produto_nome: string;
   unidade: string;
   quantidade_original: number;
   preco_unitario: number;
   valor_original: number;
   divisoes: {
+    faturamento_item_id?: number;
     modalidade_id: number;
     modalidade_nome: string;
     modalidade_codigo_financeiro?: string;
     quantidade: number;
     percentual: number;
     valor: number;
+    consumo_registrado?: boolean;
+    data_consumo?: string;
   }[];
 }
 

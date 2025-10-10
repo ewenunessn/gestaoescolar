@@ -30,8 +30,7 @@ import {
   ArrowBack as ArrowBackIcon,
   ExpandMore as ExpandMoreIcon,
   FileDownload as FileDownloadIcon,
-  Delete as DeleteIcon,
-  CheckCircle as CheckCircleIcon
+  Delete as DeleteIcon
 } from '@mui/icons-material';
 import faturamentoService from '../services/faturamento';
 import type { ContratoCalculado } from '../types/faturamento';
@@ -46,7 +45,6 @@ export default function FaturamentoDetalhe() {
   const [faturamentos, setFaturamentos] = useState<any[]>([]);
   const [previa, setPrevia] = useState<any>(null);
   const [dialogExcluir, setDialogExcluir] = useState(false);
-  const [dialogConsumo, setDialogConsumo] = useState(false);
   const [dialogContrato, setDialogContrato] = useState(false);
   const [dialogRemoverModalidade, setDialogRemoverModalidade] = useState(false);
   const [contratoSelecionado, setContratoSelecionado] = useState<ContratoCalculado | null>(null);
@@ -58,7 +56,7 @@ export default function FaturamentoDetalhe() {
     carregarFaturamento();
   }, [pedidoId]);
 
-  const carregarFaturamento = async () => {
+  const carregarFaturamento = async (): Promise<any> => {
     try {
       setLoading(true);
       setErro('');
@@ -91,7 +89,7 @@ export default function FaturamentoDetalhe() {
                   itensPorProduto[key] = {
                     produto_id: item.produto_id,
                     produto_nome: item.produto_nome,
-                    unidade: item.unidade_medida,
+                    unidade: item.unidade ,
                     quantidade_original: 0,
                     preco_unitario: Number(item.preco_unitario || 0),
                     valor_total: 0,
@@ -102,12 +100,15 @@ export default function FaturamentoDetalhe() {
                 itensPorProduto[key].quantidade_original += Number(item.quantidade_total || 0);
                 itensPorProduto[key].valor_total += Number(item.valor_total || 0);
                 itensPorProduto[key].divisoes.push({
+                  faturamento_item_id: item.faturamento_item_id,
                   modalidade_id: modalidade.modalidade_id,
                   modalidade_nome: modalidade.modalidade_nome,
                   modalidade_codigo_financeiro: modalidade.modalidade_codigo_financeiro,
                   quantidade: Number(item.quantidade_total || 0),
                   percentual: 0, // Será calculado depois
-                  valor: Number(item.valor_total || 0)
+                  valor: Number(item.valor_total || 0),
+                  consumo_registrado: item.consumo_registrado || false,
+                  data_consumo: item.data_consumo
                 });
               });
             });
@@ -141,10 +142,13 @@ export default function FaturamentoDetalhe() {
         
         console.log('📊 Prévia adaptada:', previaAdaptada);
         setPrevia(previaAdaptada);
+        return previaAdaptada;
       }
+      return null;
     } catch (error: any) {
       console.error('Erro ao carregar faturamento:', error);
       setErro(error.response?.data?.message || 'Erro ao carregar faturamento');
+      return null;
     } finally {
       setLoading(false);
     }
@@ -185,36 +189,6 @@ export default function FaturamentoDetalhe() {
     }
   };
 
-  const handleRegistrarConsumo = async () => {
-    if (faturamentos.length === 0) return;
-
-    try {
-      setProcessando(true);
-      setErro('');
-
-      await faturamentoService.registrarConsumo(faturamentos[0].id);
-      
-      // Recarregar dados
-      await carregarFaturamento();
-      setDialogConsumo(false);
-      
-    } catch (error: any) {
-      console.error('Erro ao registrar consumo:', error);
-      const mensagemErro = error.response?.data?.message || error.message || 'Erro ao registrar consumo';
-      
-      // Verificar se é erro de saldo insuficiente
-      if (mensagemErro.includes('Saldo insuficiente')) {
-        setErro(`❌ ${mensagemErro}\n\nPor favor, ajuste as quantidades no faturamento ou verifique o saldo disponível no contrato.`);
-      } else {
-        setErro(mensagemErro);
-      }
-      
-      setDialogConsumo(false);
-    } finally {
-      setProcessando(false);
-    }
-  };
-
   const handleVerContrato = (contrato: ContratoCalculado) => {
     setContratoSelecionado(contrato);
     setModalidadeSelecionada(null);
@@ -246,11 +220,14 @@ export default function FaturamentoDetalhe() {
       item.divisoes.forEach(divisao => {
         if (modalidadeSelecionada === null || divisao.modalidade_id === modalidadeSelecionada) {
           itensFiltrados.push({
+            id: divisao.faturamento_item_id,
             produto_nome: item.produto_nome,
             unidade: item.unidade,
             quantidade: divisao.quantidade,
             preco_unitario: item.preco_unitario,
-            valor: divisao.valor
+            valor: divisao.valor,
+            consumo_registrado: divisao.consumo_registrado || false,
+            data_consumo: divisao.data_consumo
           });
         }
       });
@@ -296,6 +273,187 @@ export default function FaturamentoDetalhe() {
     }
   };
 
+  const handleRegistrarConsumoItem = async (itemId: number) => {
+    if (!itemId || faturamentos.length === 0) return;
+
+    try {
+      setProcessando(true);
+      setErro('');
+
+      await faturamentoService.registrarConsumoItem(faturamentos[0].id, itemId);
+      
+      // Recarregar dados SEM afetar o loading (para não piscar)
+      const resumoData = await faturamentoService.buscarResumo(faturamentos[0].id);
+      
+      // Adaptar formato
+      const previaAtualizada = {
+        pedido: previa.pedido,
+        contratos: resumoData.contratos.map((contrato: any) => {
+          const itensPorProduto: any = {};
+          
+          contrato.modalidades.forEach((modalidade: any) => {
+            modalidade.itens.forEach((item: any) => {
+              const key = item.produto_id;
+              
+              if (!itensPorProduto[key]) {
+                itensPorProduto[key] = {
+                  produto_id: item.produto_id,
+                  produto_nome: item.produto_nome,
+                  unidade: item.unidade ,
+                  quantidade_original: 0,
+                  preco_unitario: Number(item.preco_unitario || 0),
+                  valor_total: 0,
+                  divisoes: []
+                };
+              }
+              
+              itensPorProduto[key].quantidade_original += Number(item.quantidade_total || 0);
+              itensPorProduto[key].valor_total += Number(item.valor_total || 0);
+              itensPorProduto[key].divisoes.push({
+                faturamento_item_id: item.faturamento_item_id,
+                modalidade_id: modalidade.modalidade_id,
+                modalidade_nome: modalidade.modalidade_nome,
+                modalidade_codigo_financeiro: modalidade.modalidade_codigo_financeiro,
+                quantidade: Number(item.quantidade_total || 0),
+                percentual: 0,
+                valor: Number(item.valor_total || 0),
+                consumo_registrado: item.consumo_registrado || false,
+                data_consumo: item.data_consumo
+              });
+            });
+          });
+          
+          Object.values(itensPorProduto).forEach((item: any) => {
+            item.divisoes.forEach((divisao: any) => {
+              divisao.percentual = item.quantidade_original > 0
+                ? (divisao.quantidade / item.quantidade_original) * 100
+                : 0;
+            });
+          });
+          
+          return {
+            contrato_id: contrato.contrato_id,
+            contrato_numero: contrato.contrato_numero,
+            fornecedor_id: contrato.fornecedor_id,
+            fornecedor_nome: contrato.fornecedor_nome,
+            fornecedor_cnpj: contrato.fornecedor_cnpj || '',
+            valor_total: Number(contrato.valor_total || 0),
+            itens: Object.values(itensPorProduto)
+          };
+        })
+      };
+      
+      setPrevia(previaAtualizada);
+      
+      // Atualizar o contrato selecionado
+      if (contratoSelecionado) {
+        const contratoAtualizado = previaAtualizada.contratos.find(
+          (c: any) => c.contrato_id === contratoSelecionado.contrato_id
+        );
+        if (contratoAtualizado) {
+          setContratoSelecionado(contratoAtualizado);
+        }
+      }
+      
+    } catch (error: any) {
+      console.error('Erro ao registrar consumo do item:', error);
+      const mensagemErro = error.response?.data?.message || error.message || 'Erro ao registrar consumo do item';
+      setErro(mensagemErro);
+    } finally {
+      setProcessando(false);
+    }
+  };
+
+  const handleReverterConsumoItem = async (itemId: number) => {
+    if (!itemId || faturamentos.length === 0) return;
+
+    try {
+      setProcessando(true);
+      setErro('');
+
+      await faturamentoService.reverterConsumoItem(faturamentos[0].id, itemId);
+      
+      // Recarregar dados SEM afetar o loading (para não piscar)
+      const resumoData = await faturamentoService.buscarResumo(faturamentos[0].id);
+      
+      // Adaptar formato
+      const previaAtualizada = {
+        pedido: previa.pedido,
+        contratos: resumoData.contratos.map((contrato: any) => {
+          const itensPorProduto: any = {};
+          
+          contrato.modalidades.forEach((modalidade: any) => {
+            modalidade.itens.forEach((item: any) => {
+              const key = item.produto_id;
+              
+              if (!itensPorProduto[key]) {
+                itensPorProduto[key] = {
+                  produto_id: item.produto_id,
+                  produto_nome: item.produto_nome,
+                  unidade: item.unidade ,
+                  quantidade_original: 0,
+                  preco_unitario: Number(item.preco_unitario || 0),
+                  valor_total: 0,
+                  divisoes: []
+                };
+              }
+              
+              itensPorProduto[key].quantidade_original += Number(item.quantidade_total || 0);
+              itensPorProduto[key].valor_total += Number(item.valor_total || 0);
+              itensPorProduto[key].divisoes.push({
+                faturamento_item_id: item.faturamento_item_id,
+                modalidade_id: modalidade.modalidade_id,
+                modalidade_nome: modalidade.modalidade_nome,
+                modalidade_codigo_financeiro: modalidade.modalidade_codigo_financeiro,
+                quantidade: Number(item.quantidade_total || 0),
+                percentual: 0,
+                valor: Number(item.valor_total || 0),
+                consumo_registrado: item.consumo_registrado || false,
+                data_consumo: item.data_consumo
+              });
+            });
+          });
+          
+          Object.values(itensPorProduto).forEach((item: any) => {
+            item.divisoes.forEach((divisao: any) => {
+              divisao.percentual = item.quantidade_original > 0
+                ? (divisao.quantidade / item.quantidade_original) * 100
+                : 0;
+            });
+          });
+          
+          return {
+            contrato_id: contrato.contrato_id,
+            contrato_numero: contrato.contrato_numero,
+            fornecedor_id: contrato.fornecedor_id,
+            fornecedor_nome: contrato.fornecedor_nome,
+            fornecedor_cnpj: contrato.fornecedor_cnpj || '',
+            valor_total: Number(contrato.valor_total || 0),
+            itens: Object.values(itensPorProduto)
+          };
+        })
+      };
+      
+      setPrevia(previaAtualizada);
+      
+      // Atualizar o contrato selecionado
+      if (contratoSelecionado) {
+        const contratoAtualizado = previaAtualizada.contratos.find(
+          (c: any) => c.contrato_id === contratoSelecionado.contrato_id
+        );
+        if (contratoAtualizado) {
+          setContratoSelecionado(contratoAtualizado);
+        }
+      }
+      
+    } catch (error: any) {
+      console.error('Erro ao reverter consumo do item:', error);
+      setErro(error.response?.data?.message || error.message || 'Erro ao reverter consumo do item');
+    } finally {
+      setProcessando(false);
+    }
+  };
+
   if (loading) {
     return (
       <Box sx={{ p: 3 }}>
@@ -336,17 +494,6 @@ export default function FaturamentoDetalhe() {
           Faturamento - Pedido {previa?.pedido?.numero}
         </Typography>
         <Box sx={{ display: 'flex', gap: 2 }}>
-          {faturamentos[0]?.status !== 'consumido' && (
-            <Button
-              variant="contained"
-              color="success"
-              startIcon={<CheckCircleIcon />}
-              onClick={() => setDialogConsumo(true)}
-              disabled={processando}
-            >
-              Registrar Consumo
-            </Button>
-          )}
           <Button
             variant="outlined"
             color="error"
@@ -405,61 +552,164 @@ export default function FaturamentoDetalhe() {
         ))}
       </Grid>
 
-      {/* Lista de Contratos */}
+      {/* Lista de Contratos Agrupados por Fornecedor */}
       {previa?.contratos && (
         <Box>
           <Typography variant="h5" gutterBottom sx={{ mb: 2 }}>
             Contratos Faturados
           </Typography>
 
-          <Grid container spacing={2}>
-            {previa.contratos.map((contrato: ContratoCalculado) => (
-              <Grid item xs={12} md={6} key={contrato.contrato_id}>
-                <Card>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                      <Box>
-                        <Typography variant="h6">
-                          Contrato {contrato.contrato_numero}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {contrato.fornecedor_nome}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {contrato.fornecedor_cnpj}
-                        </Typography>
-                      </Box>
-                      <Typography variant="h6" color="primary">
-                        {formatarMoeda(contrato.valor_total)}
-                      </Typography>
-                    </Box>
-                    
-                    <Divider sx={{ my: 2 }} />
-                    
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                      <Button
-                        variant="contained"
-                        size="small"
-                        onClick={() => handleVerContrato(contrato)}
-                        fullWidth
-                      >
-                        Ver Detalhes
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        startIcon={<FileDownloadIcon />}
-                        onClick={() => handleExportar(contrato)}
-                        fullWidth
-                      >
-                        Exportar Excel
-                      </Button>
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
+          {previa.contratos.map((contrato: ContratoCalculado) => (
+            <Card key={contrato.contrato_id} sx={{ mb: 3 }}>
+              <CardContent>
+                {/* Cabeçalho do Fornecedor */}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Box>
+                    <Typography variant="h6">
+                      Contrato {contrato.contrato_numero}
+                    </Typography>
+                    <Typography variant="body1" fontWeight="bold">
+                      Fornecedor: {contrato.fornecedor_nome}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      CNPJ: {contrato.fornecedor_cnpj}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ textAlign: 'right' }}>
+                    <Typography variant="body2" color="text.secondary">Valor Total</Typography>
+                    <Typography variant="h5" color="primary" fontWeight="bold">
+                      {formatarMoeda(contrato.valor_total)}
+                    </Typography>
+                  </Box>
+                </Box>
+
+                <Divider sx={{ my: 2 }} />
+
+                {/* Tabela de Itens */}
+                <TableContainer component={Paper} variant="outlined">
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow sx={{ bgcolor: 'primary.main' }}>
+                        <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Produto</TableCell>
+                        <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Modalidade</TableCell>
+                        <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Unidade</TableCell>
+                        <TableCell align="right" sx={{ color: 'white', fontWeight: 'bold' }}>Quantidade</TableCell>
+                        <TableCell align="right" sx={{ color: 'white', fontWeight: 'bold' }}>Preço Unit.</TableCell>
+                        <TableCell align="right" sx={{ color: 'white', fontWeight: 'bold' }}>Valor Total</TableCell>
+                        <TableCell align="center" sx={{ color: 'white', fontWeight: 'bold' }}>Status</TableCell>
+                        <TableCell align="center" sx={{ color: 'white', fontWeight: 'bold' }}>Ações</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {contrato.itens.map((item: any) => (
+                        item.divisoes.map((divisao: any, divIdx: number) => (
+                          <TableRow key={`${item.produto_id}-${divisao.modalidade_id}-${divIdx}`}>
+                            {divIdx === 0 && (
+                              <TableCell rowSpan={item.divisoes.length}>
+                                <Typography variant="body2" fontWeight="medium">
+                                  {item.produto_nome}
+                                </Typography>
+                              </TableCell>
+                            )}
+                            <TableCell>
+                              <Box>
+                                <Typography variant="body2">{divisao.modalidade_nome}</Typography>
+                                {divisao.modalidade_codigo_financeiro && (
+                                  <Typography variant="caption" color="text.secondary">
+                                    {divisao.modalidade_codigo_financeiro}
+                                  </Typography>
+                                )}
+                              </Box>
+                            </TableCell>
+                            <TableCell>{item.unidade}</TableCell>
+                            <TableCell align="right">
+                              {divisao.quantidade}
+                              <Typography variant="caption" color="text.secondary" display="block">
+                                ({formatarPercentual(divisao.percentual)})
+                              </Typography>
+                            </TableCell>
+                            <TableCell align="right">{formatarMoeda(item.preco_unitario)}</TableCell>
+                            <TableCell align="right">
+                              <Typography fontWeight="bold">
+                                {formatarMoeda(divisao.valor)}
+                              </Typography>
+                            </TableCell>
+                            <TableCell align="center">
+                              {divisao.consumo_registrado ? (
+                                <Chip 
+                                  label="Consumido" 
+                                  color="success" 
+                                  size="small"
+                                  sx={{ minWidth: 90 }}
+                                />
+                              ) : (
+                                <Chip 
+                                  label="Pendente" 
+                                  color="warning" 
+                                  size="small"
+                                  sx={{ minWidth: 90 }}
+                                />
+                              )}
+                              {divisao.data_consumo && (
+                                <Typography variant="caption" display="block" color="text.secondary">
+                                  {formatarData(divisao.data_consumo)}
+                                </Typography>
+                              )}
+                            </TableCell>
+                            <TableCell align="center">
+                              {divisao.consumo_registrado ? (
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  color="error"
+                                  onClick={() => handleReverterConsumoItem(divisao.faturamento_item_id)}
+                                  disabled={processando}
+                                >
+                                  Reverter
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="small"
+                                  variant="contained"
+                                  color="success"
+                                  onClick={() => handleRegistrarConsumoItem(divisao.faturamento_item_id)}
+                                  disabled={processando}
+                                >
+                                  Registrar
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ))}
+                      <TableRow sx={{ bgcolor: 'grey.100' }}>
+                        <TableCell colSpan={5} align="right">
+                          <Typography variant="h6" fontWeight="bold">TOTAL:</Typography>
+                        </TableCell>
+                        <TableCell align="right">
+                          <Typography variant="h6" color="primary" fontWeight="bold">
+                            {formatarMoeda(contrato.valor_total)}
+                          </Typography>
+                        </TableCell>
+                        <TableCell colSpan={2} />
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+
+                {/* Botões de Ação */}
+                <Box sx={{ display: 'flex', gap: 2, mt: 2, justifyContent: 'flex-end' }}>
+                  <Button
+                    variant="outlined"
+                    startIcon={<FileDownloadIcon />}
+                    onClick={() => handleExportar(contrato)}
+                  >
+                    Exportar Excel
+                  </Button>
+                </Box>
+              </CardContent>
+            </Card>
+          ))}
         </Box>
       )}
 
@@ -523,6 +773,8 @@ export default function FaturamentoDetalhe() {
                       <TableCell align="right" sx={{ color: 'white', fontWeight: 'bold' }}>QUANTIDADE</TableCell>
                       <TableCell align="right" sx={{ color: 'white', fontWeight: 'bold' }}>PREÇO UNITÁRIO</TableCell>
                       <TableCell align="right" sx={{ color: 'white', fontWeight: 'bold' }}>CUSTO POR ITEM</TableCell>
+                      <TableCell align="center" sx={{ color: 'white', fontWeight: 'bold' }}>STATUS</TableCell>
+                      <TableCell align="center" sx={{ color: 'white', fontWeight: 'bold' }}>AÇÕES</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -537,10 +789,40 @@ export default function FaturamentoDetalhe() {
                             {formatarMoeda(item.valor)}
                           </Typography>
                         </TableCell>
+                        <TableCell align="center">
+                          {item.consumo_registrado ? (
+                            <Chip label="Consumido" color="success" size="small" />
+                          ) : (
+                            <Chip label="Pendente" color="warning" size="small" />
+                          )}
+                        </TableCell>
+                        <TableCell align="center">
+                          {item.consumo_registrado ? (
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              color="error"
+                              onClick={() => handleReverterConsumoItem(item.id)}
+                              disabled={processando}
+                            >
+                              Reverter
+                            </Button>
+                          ) : (
+                            <Button
+                              size="small"
+                              variant="contained"
+                              color="success"
+                              onClick={() => handleRegistrarConsumoItem(item.id)}
+                              disabled={processando}
+                            >
+                              Registrar
+                            </Button>
+                          )}
+                        </TableCell>
                       </TableRow>
                     ))}
                     <TableRow>
-                      <TableCell colSpan={4} align="right">
+                      <TableCell colSpan={6} align="right">
                         <Typography variant="h6" fontWeight="bold">TOTAL:</Typography>
                       </TableCell>
                       <TableCell align="right">
@@ -596,32 +878,6 @@ export default function FaturamentoDetalhe() {
             disabled={processando}
           >
             {processando ? 'Removendo...' : 'Confirmar Remoção'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Diálogo de Registrar Consumo */}
-      <Dialog open={dialogConsumo} onClose={() => setDialogConsumo(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Registrar Consumo</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Ao registrar o consumo, os saldos dos contratos serão atualizados e não será mais possível excluir este faturamento.
-          </Typography>
-          <Typography variant="body2" color="info.main" sx={{ fontWeight: 'bold' }}>
-            ℹ️ Esta ação registrará o consumo de todos os produtos nas modalidades correspondentes.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDialogConsumo(false)} disabled={processando}>
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleRegistrarConsumo}
-            color="success"
-            variant="contained"
-            disabled={processando}
-          >
-            {processando ? 'Registrando...' : 'Confirmar Registro'}
           </Button>
         </DialogActions>
       </Dialog>

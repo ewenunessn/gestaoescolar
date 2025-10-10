@@ -133,9 +133,11 @@ export class FaturamentoModel {
         f.nome as fornecedor_nome,
         f.cnpj as fornecedor_cnpj,
         pr.nome as produto_nome,
-        pr.unidade as unidade_medida,
+        pr.unidade as unidade ,
         fi.preco_unitario,
-        fi.quantidade_modalidade
+        fi.quantidade_modalidade,
+        fi.consumo_registrado,
+        fi.data_consumo
       FROM faturamento_itens fi
       JOIN modalidades m ON fi.modalidade_id = m.id
       JOIN contratos c ON fi.contrato_id = c.id
@@ -146,6 +148,51 @@ export class FaturamentoModel {
     `;
     
     const result = await this.pool.query(query, [faturamentoId]);
+    
+    // Sincronizar status de consumo com o histórico (verificação assíncrona)
+    for (const item of result.rows) {
+      if (item.consumo_registrado) {
+        // Verificar se existe registro de consumo no histórico
+        const historicoResult = await this.pool.query(`
+          SELECT 1 
+          FROM movimentacoes_consumo_modalidade mcm
+          JOIN contrato_produtos_modalidades cpm ON mcm.contrato_produto_modalidade_id = cpm.id
+          JOIN contrato_produtos cp ON cpm.contrato_produto_id = cp.id
+          WHERE cp.contrato_id = $1
+            AND cp.produto_id = $2
+            AND cpm.modalidade_id = $3
+            AND mcm.tipo_movimentacao = 'CONSUMO'
+            AND mcm.observacao LIKE $4
+          LIMIT 1
+        `, [
+          item.contrato_id,
+          item.produto_id,
+          item.modalidade_id,
+          `%Faturamento #${faturamentoId}%Item #${item.id}%`
+        ]);
+        
+        // Se está marcado como consumido mas não tem histórico, corrigir
+        if (historicoResult.rows.length === 0) {
+          console.log(`⚠️ Inconsistência detectada no item ${item.id}: marcado como consumido mas sem histórico. Corrigindo...`);
+          await this.pool.query(`
+            UPDATE faturamento_itens
+            SET consumo_registrado = false,
+                data_consumo = NULL
+            WHERE id = $1
+          `, [item.id]);
+          item.consumo_registrado = false;
+          item.data_consumo = null;
+        }
+      }
+    }
+    
+    console.log(`📊 Itens do faturamento ${faturamentoId}:`, result.rows.map(r => ({
+      id: r.id,
+      produto_nome: r.produto_nome,
+      consumo_registrado: r.consumo_registrado,
+      data_consumo: r.data_consumo
+    })));
+    
     return result.rows;
   }
 
@@ -232,46 +279,21 @@ export class FaturamentoModel {
     try {
       await client.query('BEGIN');
       
-      // Verificar se o faturamento teve consumo registrado
-      const faturamentoResult = await client.query(
-        'SELECT status FROM faturamentos WHERE id = $1',
-        [id]
-      );
+      // Verificar se algum item do faturamento tem consumo registrado
+      const itensComConsumoResult = await client.query(`
+        SELECT COUNT(*) as total
+        FROM faturamento_itens
+        WHERE faturamento_id = $1
+          AND consumo_registrado = true
+      `, [id]);
       
-      const faturamento = faturamentoResult.rows[0];
-      const consumoRegistrado = faturamento?.status === 'consumido';
+      const temConsumoRegistrado = parseInt(itensComConsumoResult.rows[0].total) > 0;
       
-      // Se o consumo foi registrado, restaurar saldos
-      if (consumoRegistrado) {
-        const itensQuery = `
-          SELECT 
-            fi.contrato_id,
-            fi.produto_id,
-            fi.modalidade_id,
-            fi.quantidade_modalidade
-          FROM faturamento_itens fi
-          WHERE fi.faturamento_id = $1
-        `;
-        const itensResult = await client.query(itensQuery, [id]);
-        
-        // Restaurar saldos dos contratos
-        for (const item of itensResult.rows) {
-          await client.query(`
-            UPDATE contrato_produtos_modalidades cpm
-            SET quantidade_consumida = cpm.quantidade_consumida - $1
-            FROM contrato_produtos cp
-            WHERE cpm.contrato_produto_id = cp.id
-              AND cp.contrato_id = $2
-              AND cp.produto_id = $3
-              AND cpm.modalidade_id = $4
-              AND cpm.ativo = true
-          `, [
-            item.quantidade_modalidade,
-            item.contrato_id,
-            item.produto_id,
-            item.modalidade_id
-          ]);
-        }
+      if (temConsumoRegistrado) {
+        throw new Error(
+          'Não é possível excluir o faturamento porque existem itens com consumo registrado. ' +
+          'Por favor, reverta o consumo de todos os itens antes de excluir o faturamento.'
+        );
       }
       
       // Excluir itens do faturamento

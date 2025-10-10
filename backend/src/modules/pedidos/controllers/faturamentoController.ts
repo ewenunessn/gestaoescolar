@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { FaturamentoService } from "../services/FaturamentoService";
 import { FaturamentoModel } from "../models/Faturamento";
+import { getErrorStatus, isBusinessError } from "../errors/FaturamentoErrors";
 const db = require("../../../database");
 
 const faturamentoModel = new FaturamentoModel(db.pool);
@@ -18,14 +19,9 @@ export async function calcularPreviaFaturamento(req: Request, res: Response) {
   } catch (error) {
     console.error("❌ Erro ao calcular prévia do faturamento:", error);
     const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+    const status = error instanceof Error ? getErrorStatus(error) : 500;
     
-    // Se for erro de validação de negócio (saldo insuficiente, etc), retorna 400
-    const isBusinessError = errorMessage.includes('Saldo') || 
-                           errorMessage.includes('saldo') || 
-                           errorMessage.includes('rascunho') ||
-                           errorMessage.includes('modalidade');
-    
-    res.status(isBusinessError ? 400 : 500).json({
+    res.status(status).json({
       success: false,
       message: errorMessage
     });
@@ -52,14 +48,9 @@ export async function gerarFaturamento(req: Request, res: Response) {
   } catch (error) {
     console.error("❌ Erro ao gerar faturamento:", error);
     const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+    const status = error instanceof Error ? getErrorStatus(error) : 500;
     
-    // Se for erro de validação de negócio, retorna 400
-    const isBusinessError = errorMessage.includes('Saldo') || 
-                           errorMessage.includes('saldo') || 
-                           errorMessage.includes('existe') ||
-                           errorMessage.includes('modalidade');
-    
-    res.status(isBusinessError ? 400 : 500).json({
+    res.status(status).json({
       success: false,
       message: errorMessage
     });
@@ -250,11 +241,63 @@ export async function registrarConsumoFaturamento(req: Request, res: Response) {
   } catch (error) {
     console.error("❌ Erro ao registrar consumo:", error);
     const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+    const status = error instanceof Error ? getErrorStatus(error) : 500;
     
-    const isBusinessError = errorMessage.includes('já foi registrado') || 
-                           errorMessage.includes('não encontrado');
+    res.status(status).json({
+      success: false,
+      message: errorMessage
+    });
+  }
+}
+
+export async function registrarConsumoItem(req: Request, res: Response) {
+  try {
+    const { id, itemId } = req.params;
+    const usuarioId = 1; // TODO: Pegar do token
     
-    res.status(isBusinessError ? 400 : 500).json({
+    await FaturamentoService.registrarConsumoItem(
+      Number(id),
+      Number(itemId),
+      usuarioId
+    );
+    
+    res.json({
+      success: true,
+      message: "Consumo do item registrado com sucesso"
+    });
+  } catch (error) {
+    console.error("❌ Erro ao registrar consumo do item:", error);
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+    const status = error instanceof Error ? getErrorStatus(error) : 500;
+    
+    res.status(status).json({
+      success: false,
+      message: errorMessage
+    });
+  }
+}
+
+export async function reverterConsumoItem(req: Request, res: Response) {
+  try {
+    const { id, itemId } = req.params;
+    const usuarioId = 1; // TODO: Pegar do token
+    
+    await FaturamentoService.reverterConsumoItem(
+      Number(id),
+      Number(itemId),
+      usuarioId
+    );
+    
+    res.json({
+      success: true,
+      message: "Consumo do item revertido com sucesso"
+    });
+  } catch (error) {
+    console.error("❌ Erro ao reverter consumo do item:", error);
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+    const status = error instanceof Error ? getErrorStatus(error) : 500;
+    
+    res.status(status).json({
       success: false,
       message: errorMessage
     });
@@ -343,14 +386,20 @@ export async function obterResumoFaturamento(req: Request, res: Response) {
       
       const modalidade = resumoPorContrato[contratoKey].modalidades[modalidadeKey];
       
-      modalidade.itens.push({
+      const itemData = {
+        faturamento_item_id: item.id, // ID do item de faturamento
         produto_id: item.produto_id,
         produto_nome: item.produto_nome,
-        unidade_medida: item.unidade_medida,
+        unidade_medida: item.unidade ,
         quantidade_total: item.quantidade_modalidade,
         preco_unitario: item.preco_unitario,
-        valor_total: item.valor_total
-      });
+        valor_total: item.valor_total,
+        consumo_registrado: item.consumo_registrado || false,
+        data_consumo: item.data_consumo
+      };
+      
+      console.log('📊 Item adicionado ao resumo:', itemData);
+      modalidade.itens.push(itemData);
       
       modalidade.quantidade_total += Number(item.quantidade_modalidade || 0);
       modalidade.valor_total += Number(item.valor_total || 0);

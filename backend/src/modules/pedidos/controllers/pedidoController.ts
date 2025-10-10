@@ -14,48 +14,48 @@ const STATUS_PEDIDO = {
 export async function listarPedidos(req: Request, res: Response) {
   try {
     const { status, contrato_id, escola_id, data_inicio, data_fim, page = 1, limit = 50 } = req.query;
-    
+
     let whereClause = '1=1';
     const params: any[] = [];
     let paramCount = 0;
-    
+
     if (status) {
       paramCount++;
       whereClause += ` AND p.status = $${paramCount}`;
       params.push(status);
     }
-    
+
     if (contrato_id) {
       paramCount++;
       whereClause += ` AND p.contrato_id = $${paramCount}`;
       params.push(contrato_id);
     }
-    
+
     if (escola_id) {
       paramCount++;
       whereClause += ` AND p.escola_id = $${paramCount}`;
       params.push(escola_id);
     }
-    
+
     if (data_inicio) {
       paramCount++;
       whereClause += ` AND p.data_pedido >= $${paramCount}`;
       params.push(data_inicio);
     }
-    
+
     if (data_fim) {
       paramCount++;
       whereClause += ` AND p.data_pedido <= $${paramCount}`;
       params.push(data_fim);
     }
-    
+
     const offset = (Number(page) - 1) * Number(limit);
     paramCount++;
     const limitParam = paramCount;
     paramCount++;
     const offsetParam = paramCount;
     params.push(Number(limit), offset);
-    
+
     const pedidosResult = await db.query(`
       SELECT 
         p.*,
@@ -105,7 +105,7 @@ export async function listarPedidos(req: Request, res: Response) {
 export async function buscarPedido(req: Request, res: Response) {
   try {
     const { id } = req.params;
-    
+
     const pedidoResult = await db.query(`
       SELECT 
         p.*,
@@ -128,7 +128,8 @@ export async function buscarPedido(req: Request, res: Response) {
       SELECT 
         pi.*,
         p.nome as produto_nome,
-        p.unidade as unidade_medida,
+        p.unidade as unidade ,
+        p.unidade as unidade,
         cp.quantidade_contratada,
         cp.preco_unitario as preco_contrato,
         c.numero as contrato_numero,
@@ -167,7 +168,7 @@ export async function buscarPedido(req: Request, res: Response) {
 
 export async function criarPedido(req: Request, res: Response) {
   const client = await db.pool.connect();
-  
+
   try {
     await client.query('BEGIN');
 
@@ -192,7 +193,7 @@ export async function criarPedido(req: Request, res: Response) {
       FROM pedidos 
       WHERE EXTRACT(YEAR FROM created_at) = $1
     `, [ano]);
-    
+
     const sequencial = (parseInt(countResult.rows[0].total) + 1).toString().padStart(6, '0');
     const numero = `PED${ano}${sequencial}`;
 
@@ -215,7 +216,7 @@ export async function criarPedido(req: Request, res: Response) {
       }
 
       const contratoProduto = cpResult.rows[0];
-      
+
       if (contratoProduto.contrato_status !== 'ativo') {
         await client.query('ROLLBACK');
         return res.status(400).json({
@@ -223,7 +224,7 @@ export async function criarPedido(req: Request, res: Response) {
           message: `O contrato do produto ${contratoProduto.produto_nome} não está ativo`
         });
       }
-      
+
       if (item.quantidade <= 0) {
         await client.query('ROLLBACK');
         return res.status(400).json({
@@ -236,7 +237,7 @@ export async function criarPedido(req: Request, res: Response) {
     }
 
     const status_inicial = salvar_como_rascunho ? 'rascunho' : 'pendente';
-    
+
     const pedidoResult = await client.query(`
       INSERT INTO pedidos (
         numero, data_pedido, status, valor_total, observacoes, usuario_criacao_id
@@ -283,8 +284,8 @@ export async function criarPedido(req: Request, res: Response) {
       GROUP BY p.id, u.nome
     `, [pedido_id]);
 
-    const mensagem = salvar_como_rascunho 
-      ? "Pedido salvo como rascunho com sucesso" 
+    const mensagem = salvar_como_rascunho
+      ? "Pedido salvo como rascunho com sucesso"
       : "Pedido criado com sucesso";
 
     res.status(201).json({
@@ -358,7 +359,7 @@ export async function atualizarStatusPedido(req: Request, res: Response) {
     const usuario_id = (req as any).user?.id || 1;
 
     const statusValidos = ['rascunho', 'pendente', 'aprovado', 'em_separacao', 'enviado', 'entregue', 'cancelado'];
-    
+
     if (!statusValidos.includes(status)) {
       return res.status(400).json({
         success: false,
@@ -370,7 +371,7 @@ export async function atualizarStatusPedido(req: Request, res: Response) {
       UPDATE pedidos 
       SET status = $1, updated_at = CURRENT_TIMESTAMP
     `;
-    
+
     const values: any[] = [status];
     let paramCount = 2;
 
@@ -409,10 +410,10 @@ export async function atualizarStatusPedido(req: Request, res: Response) {
 
 export async function excluirPedido(req: Request, res: Response) {
   const client = await db.pool.connect();
-  
+
   try {
     await client.query('BEGIN');
-    
+
     const { id } = req.params;
 
     const pedidoResult = await client.query(`
@@ -430,24 +431,48 @@ export async function excluirPedido(req: Request, res: Response) {
     const status = pedidoResult.rows[0].status;
     const numero = pedidoResult.rows[0].numero;
 
+    // Verificar se há faturamento com consumo registrado
+    const faturamentoComConsumoResult = await client.query(`
+      SELECT f.id, f.numero, COUNT(fi.id) as itens_consumidos
+      FROM faturamentos f
+      JOIN faturamento_itens fi ON fi.faturamento_id = f.id
+      WHERE f.pedido_id = $1
+        AND fi.consumo_registrado = true
+      GROUP BY f.id, f.numero
+    `, [id]);
+
+    if (faturamentoComConsumoResult.rows.length > 0) {
+      const faturamento = faturamentoComConsumoResult.rows[0];
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        success: false,
+        message: `Não é possível excluir o pedido porque o faturamento ${faturamento.numero} possui ${faturamento.itens_consumidos} item(ns) com consumo registrado. ` +
+          `Por favor, reverta o consumo de todos os itens antes de excluir o pedido.`
+      });
+    }
+
     // Permitir excluir pedidos em qualquer fase
     // Adicionar log de auditoria para exclusões de pedidos em andamento
     if (!['rascunho', 'cancelado'].includes(status)) {
       console.log(`⚠️ EXCLUSÃO DE PEDIDO EM ANDAMENTO: Pedido ${numero} (Status: ${status}) sendo excluído pelo usuário`);
     }
 
-    // Excluir itens primeiro (CASCADE já faz isso, mas vamos ser explícitos)
+    // Excluir faturamentos sem consumo (se houver)
+    await client.query(`DELETE FROM faturamento_itens WHERE faturamento_id IN (SELECT id FROM faturamentos WHERE pedido_id = $1)`, [id]);
+    await client.query(`DELETE FROM faturamentos WHERE pedido_id = $1`, [id]);
+
+    // Excluir itens do pedido
     await client.query(`DELETE FROM pedido_itens WHERE pedido_id = $1`, [id]);
-    
+
     // Excluir o pedido
     await client.query(`DELETE FROM pedidos WHERE id = $1`, [id]);
 
     await client.query('COMMIT');
 
-    const tipoExclusao = status === 'rascunho' ? 'Rascunho' : 
-                        status === 'cancelado' ? 'Pedido cancelado' : 
-                        `Pedido ${STATUS_PEDIDO[status as keyof typeof STATUS_PEDIDO]?.label || status}`;
-    
+    const tipoExclusao = status === 'rascunho' ? 'Rascunho' :
+      status === 'cancelado' ? 'Pedido cancelado' :
+        `Pedido ${STATUS_PEDIDO[status as keyof typeof STATUS_PEDIDO]?.label || status}`;
+
     res.json({
       success: true,
       message: `${tipoExclusao} ${numero} excluído com sucesso`
@@ -581,7 +606,7 @@ export async function obterEstatisticasPedidos(req: Request, res: Response) {
 
 export async function atualizarItensPedido(req: Request, res: Response) {
   const client = await db.pool.connect();
-  
+
   try {
     await client.query('BEGIN');
 
@@ -632,7 +657,7 @@ export async function atualizarItensPedido(req: Request, res: Response) {
       }
 
       const contratoProduto = cpResult.rows[0];
-      
+
       if (contratoProduto.contrato_status !== 'ativo') {
         await client.query('ROLLBACK');
         return res.status(400).json({
@@ -640,7 +665,7 @@ export async function atualizarItensPedido(req: Request, res: Response) {
           message: `O contrato do produto ${contratoProduto.produto_nome} não está ativo`
         });
       }
-      
+
       if (item.quantidade <= 0) {
         await client.query('ROLLBACK');
         return res.status(400).json({
@@ -698,7 +723,7 @@ export async function listarProdutosContrato(req: Request, res: Response) {
       SELECT 
         cp.*,
         p.nome as produto_nome,
-        p.unidade as unidade_medida,
+        p.unidade as unidade ,
         p.descricao as produto_descricao,
         c.numero as contrato_numero,
         f.nome as fornecedor_nome
@@ -733,7 +758,7 @@ export async function listarTodosProdutosDisponiveis(req: Request, res: Response
         cp.quantidade_contratada,
         p.id as produto_id,
         p.nome as produto_nome,
-        p.unidade as unidade_medida,
+        p.unidade as unidade ,
         p.descricao as produto_descricao,
         c.id as contrato_id,
         c.numero as contrato_numero,

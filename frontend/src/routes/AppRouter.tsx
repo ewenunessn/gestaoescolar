@@ -48,6 +48,7 @@ const GerarDemanda = lazy(() => import("../pages/GerarDemanda"));
 const Fornecedores = lazy(() => import("../pages/Fornecedores"));
 const FornecedorDetalhe = lazy(() => import("../pages/FornecedorDetalhe"));
 const Contratos = lazy(() => import("../pages/Contratos"));
+const DemandasLista = lazy(() => import("../pages/DemandasLista"));
 const GerarFaturamento = lazy(() => import("../pages/GerarFaturamento"));
 const NovoContrato = lazy(() => import("../pages/NovoContrato"));
 const ContratoDetalhe = lazy(() => import("../pages/ContratoDetalhe"));
@@ -265,6 +266,12 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
             <Route
               path="/pedidos/:id"
               element={<LazyRoute><PedidoDetalhe /></LazyRoute>}
+            />
+
+            {/* Rotas de Demandas */}
+            <Route
+              path="/demandas"
+              element={<LazyRoute><DemandasLista /></LazyRoute>}
             />
 
             {/* Rotas do Estoque Central */}
