@@ -150,7 +150,7 @@ export default function DemandasLista() {
       // Atalhos para demanda selecionada
       if (linhaSelecionada >= 0 && demandasPaginadas[linhaSelecionada] && !modoEdicao) {
         const demandaSelecionadaAtual = demandasPaginadas[linhaSelecionada];
-        
+
         // Ctrl + E: Enviar para SEMAD (apenas se pendente)
         if (e.ctrlKey && e.key === 'e' && demandaSelecionadaAtual.status === 'pendente') {
           e.preventDefault();
@@ -730,8 +730,8 @@ export default function DemandasLista() {
               </TableRow>
             ) : (
               demandasPaginadas.map((demanda, index) => (
-                <TableRow 
-                  key={demanda.id} 
+                <TableRow
+                  key={demanda.id}
                   hover
                   sx={{
                     backgroundColor: linhaSelecionada === index ? 'rgba(25, 118, 210, 0.08)' : 'inherit',
@@ -815,10 +815,10 @@ export default function DemandasLista() {
       />
 
       {/* Modal de Confirmação de Exclusão */}
-      <Dialog 
-        open={modalExcluir} 
-        onClose={() => setModalExcluir(false)} 
-        maxWidth="sm" 
+      <Dialog
+        open={modalExcluir}
+        onClose={() => setModalExcluir(false)}
+        maxWidth="sm"
         fullWidth
         onKeyDown={(e) => {
           if (e.key === 'Enter' && !excluindo) {
