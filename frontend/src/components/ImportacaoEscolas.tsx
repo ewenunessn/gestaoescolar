@@ -270,7 +270,7 @@ const ImportacaoEscolas: React.FC<ImportacaoEscolasProps> = ({ open, onClose, on
       <DialogActions sx={{ p: 2, borderTop: '1px solid #e5e7eb' }}>
         <Button onClick={handleClose}>Cancelar</Button>
         {activeStep === 1 && (
-          <Button variant="contained" onClick={handleImport} disabled={validasCount === 0 || loading} sx={{ bgcolor: '#059669', '&:hover': { bgcolor: '#047857' } }}>
+          <Button variant="contained" color="success" onClick={handleImport} disabled={validasCount === 0 || loading}>
             Importar {validasCount} Escolas Válidas
           </Button>
         )}

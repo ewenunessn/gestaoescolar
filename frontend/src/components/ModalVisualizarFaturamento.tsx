@@ -147,7 +147,7 @@ export default function ModalVisualizarFaturamento({
             <TableContainer component={Paper} variant="outlined">
               <Table size="small">
                 <TableHead>
-                  <TableRow sx={{ backgroundColor: 'grey.50' }}>
+                  <TableRow>
                     <TableCell>
                       <Typography variant="subtitle2" fontWeight="bold">
                         Modalidade

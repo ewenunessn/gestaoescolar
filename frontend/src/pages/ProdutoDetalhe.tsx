@@ -27,7 +27,7 @@ const composicaoVazia = {
 const PageHeader = ({ produto, onBack, isEditing, onEdit, onSave, onCancel, onDelete, isSaving }) => (
     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2, mb: 3 }}>
         <Box>
-            <Typography variant="h4" sx={{ fontWeight: 700, color: '#1e293b', mb: 1 }}>{isEditing ? 'Editar Produto' : produto?.nome}</Typography>
+            <Typography variant="h4" sx={{ fontWeight: 700, color: 'text.primary', mb: 1 }}>{isEditing ? 'Editar Produto' : produto?.nome}</Typography>
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                 <Button startIcon={<ArrowBackIcon />} onClick={onBack} sx={{ textTransform: 'none', color: 'text.secondary', p: 0 }}>Voltar para Produtos</Button>
                 {!isEditing && <Chip label={produto?.ativo ? 'Ativo' : 'Inativo'} color={produto?.ativo ? 'success' : 'error'} size="small" variant="outlined" />}
@@ -177,7 +177,7 @@ export default function ProdutoDetalhe() {
   if (!produto) return null;
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#f9fafb' }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
         {successMessage && <Alert severity="success" onClose={() => setSuccessMessage(null)} sx={{ mb: 2 }}>{successMessage}</Alert>}
         {error && <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>{error}</Alert>}

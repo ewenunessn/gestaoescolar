@@ -767,7 +767,7 @@ export default function FaturamentoDetalhe() {
               <TableContainer component={Paper} variant="outlined">
                 <Table size="small">
                   <TableHead>
-                    <TableRow sx={{ bgcolor: '#D2691E' }}>
+                    <TableRow sx={{ bgcolor: 'primary.main' }}>
                       <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>ITEM</TableCell>
                       <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>UNIDADE DE MEDIDA</TableCell>
                       <TableCell align="right" sx={{ color: 'white', fontWeight: 'bold' }}>QUANTIDADE</TableCell>

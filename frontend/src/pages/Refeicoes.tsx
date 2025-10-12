@@ -201,12 +201,12 @@ const RefeicoesPage = () => {
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <TuneRounded sx={{ color: '#4f46e5' }} />
-          <Typography variant="h6" sx={{ fontWeight: 600, color: '#1e293b' }}>
+          <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
             Filtros Avançados
           </Typography>
         </Box>
         {hasActiveFilters && (
-          <Button size="small" onClick={clearFilters} sx={{ color: '#64748b', textTransform: 'none' }}>
+          <Button size="small" onClick={clearFilters} sx={{ color: 'text.secondary', textTransform: 'none' }}>
             Limpar Tudo
           </Button>
         )}
@@ -317,7 +317,7 @@ const RefeicoesPage = () => {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#f9fafb' }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       {successMessage && (
         <Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}>
           <Alert severity="success" onClose={() => setSuccessMessage(null)} sx={{ minWidth: 300 }}>
@@ -336,7 +336,7 @@ const RefeicoesPage = () => {
               sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
               InputProps={{
                 startAdornment: (
-                  <InputAdornment position="start"><SearchIcon sx={{ color: '#64748b' }} /></InputAdornment>
+                  <InputAdornment position="start"><SearchIcon sx={{ color: 'text.secondary' }} /></InputAdornment>
                 ),
                 endAdornment: searchTerm && (
                   <InputAdornment position="end">
@@ -353,13 +353,13 @@ const RefeicoesPage = () => {
               >
                 Filtros
                 {hasActiveFilters && !filtersExpanded && (
-                  <Box sx={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', bgcolor: '#ef4444' }}/>
+                  <Box sx={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', bgcolor: 'error.main' }}/>
                 )}
               </Button>
-              <Button startIcon={<AddIcon />} onClick={() => openModal()} sx={{ bgcolor: '#059669', color: 'white', '&:hover': { bgcolor: '#047857' } }}>
+              <Button startIcon={<AddIcon />} onClick={() => openModal()} variant="contained" color="success">
                 Nova Refeição
               </Button>
-              <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)} sx={{ border: '1px solid #d1d5db' }}>
+              <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)}>
                 <MoreVert />
               </IconButton>
             </Box>
@@ -369,7 +369,7 @@ const RefeicoesPage = () => {
             <Box sx={{ mb: 3 }}><FiltersContent /></Box>
           </Collapse>
 
-          <Typography variant="body2" sx={{ mb: 2, color: '#64748b' }}>
+          <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
             {`Mostrando ${Math.min((page * rowsPerPage) + 1, filteredRefeicoes.length)}-${Math.min((page + 1) * rowsPerPage, filteredRefeicoes.length)} de ${filteredRefeicoes.length} refeições`}
           </Typography>
         </Card>
@@ -386,8 +386,8 @@ const RefeicoesPage = () => {
         ) : filteredRefeicoes.length === 0 ? (
           <Card>
             <CardContent sx={{ textAlign: 'center', py: 6 }}>
-              <Restaurant sx={{ fontSize: 64, color: '#d1d5db', mb: 2 }} />
-              <Typography variant="h6" sx={{ color: '#6b7280' }}>Nenhuma refeição encontrada</Typography>
+              <Restaurant sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
+              <Typography variant="h6" sx={{ color: 'text.secondary' }}>Nenhuma refeição encontrada</Typography>
             </CardContent>
           </Card>
         ) : (
@@ -458,8 +458,8 @@ const RefeicoesPage = () => {
           </Box>
         </DialogContent>
         <DialogActions sx={{ p: 3, pt: 1 }}>
-          <Button onClick={closeModal} sx={{ color: '#6b7280' }}>Cancelar</Button>
-          <Button onClick={handleSave} variant="contained" disabled={!formData.nome.trim()} sx={{ bgcolor: '#4f46e5', '&:hover': { bgcolor: '#4338ca' } }}>
+          <Button onClick={closeModal} sx={{ color: 'text.secondary' }}>Cancelar</Button>
+          <Button onClick={handleSave} variant="contained" disabled={!formData.nome.trim()}>
             {editingRefeicao ? 'Salvar Alterações' : 'Criar'}
           </Button>
         </DialogActions>
@@ -474,7 +474,7 @@ const RefeicoesPage = () => {
           </Typography>
         </DialogContent>
         <DialogActions sx={{ p: 3, pt: 1 }}>
-            <Button onClick={closeDeleteModal} sx={{ color: '#6b7280' }}>Cancelar</Button>
+            <Button onClick={closeDeleteModal} sx={{ color: 'text.secondary' }}>Cancelar</Button>
             <Button onClick={handleDelete} color="error" variant="contained">Excluir</Button>
         </DialogActions>
       </Dialog>

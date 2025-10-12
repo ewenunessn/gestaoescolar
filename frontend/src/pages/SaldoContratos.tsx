@@ -44,23 +44,7 @@ import saldoContratosService, {
   SaldoContratosFilters
 } from '../services/saldoContratosService';
 
-// Estilo comum para as células da tabela para adicionar as bordas internas
-const cellStyle = {
-  fontFamily: 'Inter, sans-serif',
-  fontSize: '0.875rem',
-  borderBottom: '1px solid #e0e0e0',
-  borderRight: '1px solid #e0e0e0', // Adiciona a borda direita
-  '&:last-child': {
-    borderRight: 0, // Remove a borda direita da última célula da linha
-  },
-};
 
-const headerCellStyle = {
-  ...cellStyle,
-  fontWeight: 600,
-  color: '#1a1a1a',
-  backgroundColor: '#f5f5f5',
-};
 
 
 const SaldoContratos: React.FC = () => {
@@ -337,7 +321,7 @@ const SaldoContratos: React.FC = () => {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#f9fafb' }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
         {/* Estatísticas */}
         {estatisticas && (
@@ -410,7 +394,7 @@ const SaldoContratos: React.FC = () => {
           mb: 3,
           p: 3,
           borderRadius: 2,
-          backgroundColor: '#ffffff',
+          bgcolor: 'background.paper',
           border: '1px solid #e0e0e0',
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
         }}>
@@ -533,33 +517,33 @@ const SaldoContratos: React.FC = () => {
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
             border: '1px solid #e0e0e0',
             overflow: 'auto',
-            backgroundColor: '#ffffff'
+            bgcolor: 'background.paper'
           }}
         >
           <Table sx={{ minWidth: 1200, borderCollapse: 'separate' }}>
             <TableHead>
               <TableRow>
-                <TableCell sx={headerCellStyle}>Produto</TableCell>
-                <TableCell sx={headerCellStyle}>Unidade</TableCell>
-                <TableCell align="right" sx={headerCellStyle}>Qtd Total</TableCell>
-                <TableCell align="right" sx={headerCellStyle}>Qtd Utilizada</TableCell>
-                <TableCell align="right" sx={headerCellStyle}>Qtd Disponível</TableCell>
-                <TableCell align="right" sx={headerCellStyle}>Valor Unit.</TableCell>
-                <TableCell align="right" sx={headerCellStyle}>Valor Total Disp.</TableCell>
-                <TableCell align="center" sx={headerCellStyle}>Status</TableCell>
-                <TableCell align="center" sx={headerCellStyle}>Ações</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Produto</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Unidade</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 600 }}>Qtd Total</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 600 }}>Qtd Utilizada</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 600 }}>Qtd Disponível</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 600 }}>Valor Unit.</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 600 }}>Valor Total Disp.</TableCell>
+                <TableCell align="center" sx={{ fontWeight: 600 }}>Status</TableCell>
+                <TableCell align="center" sx={{ fontWeight: 600 }}>Ações</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {loading && dados.length > 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} align="center" sx={cellStyle}>
+                  <TableCell colSpan={9} align="center">
                     <CircularProgress size={24} />
                   </TableCell>
                 </TableRow>
               ) : dados.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} align="center" sx={cellStyle}>
+                  <TableCell colSpan={9} align="center">
                     Nenhum resultado encontrado
                   </TableCell>
                 </TableRow>
@@ -568,7 +552,7 @@ const SaldoContratos: React.FC = () => {
                   <React.Fragment key={`${grupo.fornecedor_id}-${grupo.contrato_id}`}>
                     {/* Cabeçalho do Grupo */}
                     <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                      <TableCell colSpan={9} sx={{...cellStyle, borderRight: 0}}>
+                      <TableCell colSpan={9}>
                         <Box display="flex" alignItems="center" gap={2}>
                           <BusinessIcon sx={{ color: '#666' }} />
                           <Typography variant="h6" component="div" sx={{ fontWeight: 600 }}>
@@ -584,21 +568,21 @@ const SaldoContratos: React.FC = () => {
                     {/* Itens do Grupo */}
                     {grupo.itens.map((item) => (
                       <TableRow key={item.id} hover>
-                        <TableCell sx={cellStyle}>{item.produto_nome}</TableCell>
-                        <TableCell sx={cellStyle}>{item.unidade}</TableCell>
-                        <TableCell align="right" sx={cellStyle}>{formatarNumero(item.quantidade_total)}</TableCell>
-                        <TableCell align="right" sx={cellStyle}>{formatarNumero(item.quantidade_utilizada)}</TableCell>
-                        <TableCell align="right" sx={cellStyle}>{formatarNumero(item.quantidade_disponivel_real)}</TableCell>
-                        <TableCell align="right" sx={cellStyle}>{formatarMoeda(item.preco_unitario)}</TableCell>
-                        <TableCell align="right" sx={cellStyle}>{formatarMoeda(item.valor_total_disponivel)}</TableCell>
-                        <TableCell align="center" sx={cellStyle}>
+                        <TableCell>{item.produto_nome}</TableCell>
+                        <TableCell>{item.unidade}</TableCell>
+                        <TableCell align="right">{formatarNumero(item.quantidade_total)}</TableCell>
+                        <TableCell align="right">{formatarNumero(item.quantidade_utilizada)}</TableCell>
+                        <TableCell align="right">{formatarNumero(item.quantidade_disponivel_real)}</TableCell>
+                        <TableCell align="right">{formatarMoeda(item.preco_unitario)}</TableCell>
+                        <TableCell align="right">{formatarMoeda(item.valor_total_disponivel)}</TableCell>
+                        <TableCell align="center">
                           <Chip
                             label={item.status}
                             color={getStatusColor(item.status) as any}
                             size="small"
                           />
                         </TableCell>
-                        <TableCell align="center" sx={cellStyle}>
+                        <TableCell align="center">
                           <Box display="flex" justifyContent="center" gap={1}>
                             <Tooltip title="Registrar Consumo">
                               <span>

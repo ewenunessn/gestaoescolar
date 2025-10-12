@@ -165,8 +165,8 @@ const FornecedoresPage: React.FC = () => {
   const FiltersContent = () => (
     <Box sx={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)', borderRadius: '16px', p: 3, border: '1px solid rgba(148, 163, 184, 0.1)' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}><TuneRounded sx={{ color: '#4f46e5' }} /><Typography variant="h6" sx={{ fontWeight: 600, color: '#1e293b' }}>Filtros Avançados</Typography></Box>
-        {hasActiveFilters && <Button size="small" onClick={clearFilters} sx={{ color: '#64748b', textTransform: 'none' }}>Limpar Tudo</Button>}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}><TuneRounded sx={{ color: 'primary.main' }} /><Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>Filtros Avançados</Typography></Box>
+        {hasActiveFilters && <Button size="small" onClick={clearFilters} sx={{ color: 'text.secondary', textTransform: 'none' }}>Limpar Tudo</Button>}
       </Box>
       <Divider sx={{ mb: 3 }} />
       <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
@@ -235,22 +235,22 @@ const FornecedoresPage: React.FC = () => {
   const handleExportarFornecedores = () => { /* ... */ };
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#f9fafb' }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       {successMessage && (<Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}><Alert severity="success" onClose={() => setSuccessMessage(null)}>{successMessage}</Alert></Box>)}
       <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
-          <Typography variant="h4" sx={{ mb: 3, fontWeight: 700, color: '#1e293b' }}>Fornecedores</Typography>
+          <Typography variant="h4" sx={{ mb: 3, fontWeight: 700, color: 'text.primary' }}>Fornecedores</Typography>
 
         <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', p: 3, mb: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-            <TextField placeholder="Buscar por nome ou CNPJ..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '12px' } }} InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon sx={{ color: '#64748b' }} /></InputAdornment>), endAdornment: searchTerm && (<InputAdornment position="end"><IconButton size="small" onClick={() => setSearchTerm('')}><ClearIcon fontSize="small" /></IconButton></InputAdornment>)}}/>
+            <TextField placeholder="Buscar por nome ou CNPJ..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '12px' } }} InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon sx={{ color: 'text.secondary' }} /></InputAdornment>), endAdornment: searchTerm && (<InputAdornment position="end"><IconButton size="small" onClick={() => setSearchTerm('')}><ClearIcon fontSize="small" /></IconButton></InputAdornment>)}}/>
             <Box sx={{ display: 'flex', gap: 2 }}>
-              <Button variant={filtersExpanded || hasActiveFilters ? 'contained' : 'outlined'} startIcon={filtersExpanded ? <ExpandLessIcon /> : <TuneRounded />} onClick={toggleFilters}>Filtros{hasActiveFilters && !filtersExpanded && (<Box sx={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', bgcolor: '#ef4444' }}/>)}</Button>
-              <Button startIcon={<AddIcon />} onClick={() => openModal()} sx={{ bgcolor: '#059669', color: 'white', '&:hover': { bgcolor: '#047857' } }}>Novo Fornecedor</Button>
-              <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)} sx={{ border: '1px solid #d1d5db' }}><MoreVert /></IconButton>
+              <Button variant={filtersExpanded || hasActiveFilters ? 'contained' : 'outlined'} startIcon={filtersExpanded ? <ExpandLessIcon /> : <TuneRounded />} onClick={toggleFilters}>Filtros{hasActiveFilters && !filtersExpanded && (<Box sx={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', bgcolor: 'error.main' }}/>)}</Button>
+              <Button startIcon={<AddIcon />} onClick={() => openModal()} variant="contained" color="success">Novo Fornecedor</Button>
+              <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)}><MoreVert /></IconButton>
             </Box>
           </Box>
           <Collapse in={filtersExpanded} timeout={400}><Box sx={{ mb: 3 }}><FiltersContent /></Box></Collapse>
-          <Typography variant="body2" sx={{ mb: 2, color: '#64748b' }}>{`Mostrando ${Math.min((page * rowsPerPage) + 1, filteredFornecedores.length)}-${Math.min((page + 1) * rowsPerPage, filteredFornecedores.length)} de ${filteredFornecedores.length} fornecedores`}</Typography>
+          <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>{`Mostrando ${Math.min((page * rowsPerPage) + 1, filteredFornecedores.length)}-${Math.min((page + 1) * rowsPerPage, filteredFornecedores.length)} de ${filteredFornecedores.length} fornecedores`}</Typography>
         </Card>
 
         {loading ? (
@@ -258,7 +258,7 @@ const FornecedoresPage: React.FC = () => {
         ) : error ? (
           <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={loadFornecedores}>Tentar Novamente</Button></CardContent></Card>
         ) : filteredFornecedores.length === 0 ? (
-          <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Business sx={{ fontSize: 64, color: '#d1d5db', mb: 2 }} /><Typography variant="h6" sx={{ color: '#6b7280' }}>Nenhum fornecedor encontrado</Typography></CardContent></Card>
+          <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Business sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} /><Typography variant="h6" sx={{ color: 'text.secondary' }}>Nenhum fornecedor encontrado</Typography></CardContent></Card>
         ) : (
           <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px' }}>
             <TableContainer>
@@ -298,8 +298,8 @@ const FornecedoresPage: React.FC = () => {
           </Box>
         </DialogContent>
         <DialogActions sx={{ p: 3, pt: 1 }}>
-          <Button onClick={closeModal} sx={{ color: '#6b7280' }}>Cancelar</Button>
-          <Button onClick={handleSave} variant="contained" disabled={!formData.nome.trim() || !formData.cnpj.trim()} sx={{ bgcolor: '#4f46e5', '&:hover': { bgcolor: '#4338ca' } }}>Salvar</Button>
+          <Button onClick={closeModal} sx={{ color: 'text.secondary' }}>Cancelar</Button>
+          <Button onClick={handleSave} variant="contained" disabled={!formData.nome.trim() || !formData.cnpj.trim()}>Salvar</Button>
         </DialogActions>
       </Dialog>
       

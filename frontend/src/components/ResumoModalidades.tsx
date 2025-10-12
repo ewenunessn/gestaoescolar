@@ -38,7 +38,7 @@ export default function ResumoModalidades({ modalidades, titulo = "Resumo por Mo
       <TableContainer component={Paper} variant="outlined">
         <Table size="small">
           <TableHead>
-            <TableRow sx={{ backgroundColor: 'grey.50' }}>
+            <TableRow>
               <TableCell>
                 <Typography variant="subtitle2" fontWeight="bold">
                   Modalidade

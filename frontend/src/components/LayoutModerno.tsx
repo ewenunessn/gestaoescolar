@@ -1,26 +1,18 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import {
   Box,
   Drawer,
-  AppBar,
-  Toolbar,
   List,
   Typography,
-  Divider,
   IconButton,
   ListItem,
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  Avatar,
-  Menu,
-  MenuItem,
-  Badge,
-  Tooltip,
   Chip,
   useTheme,
   useMediaQuery,
-  Button, // <-- CORREÇÃO: Adicionada a importação do Button
+  Button,
 } from "@mui/material";
 import {
   Menu as MenuIcon,
@@ -33,19 +25,21 @@ import {
   Business,
   Assignment,
   LocalShipping,
-  Settings,
   Logout,
-  Storage,
   Calculate,
   Assessment,
-  Receipt,
   ListAlt,
   RequestPage,
+  ChevronLeft,
+  ChevronRight,
 } from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
 import { logout } from "../services/auth";
+import { getLogo } from "../theme/theme";
+import ThemeToggle from "./ThemeToggle";
 
 const drawerWidth = 280;
+const collapsedDrawerWidth = 72;
 
 // Estrutura de Dados Aprimorada
 const menuConfig = [
@@ -99,10 +93,11 @@ interface NavItemProps {
   item: any;
   isActive: boolean;
   onClick: (path: string) => void;
+  collapsed: boolean;
 }
 
 // Subcomponente para Item do Menu
-const NavItem: React.FC<NavItemProps> = ({ item, isActive, onClick }) => {
+const NavItem: React.FC<NavItemProps> = ({ item, isActive, onClick, collapsed }) => {
   return (
     <ListItem disablePadding sx={{ mb: 0.5 }}>
       <ListItemButton
@@ -117,26 +112,36 @@ const NavItem: React.FC<NavItemProps> = ({ item, isActive, onClick }) => {
             color: 'primary.main',
           },
           transition: "all 0.2s ease-in-out",
+          justifyContent: collapsed ? 'center' : 'flex-start',
+          px: collapsed ? 1 : 2,
         }}
       >
-        <ListItemIcon sx={{ color: 'inherit', minWidth: 40 }}>
+        <ListItemIcon sx={{ 
+          color: 'inherit', 
+          minWidth: collapsed ? 'auto' : 40,
+          justifyContent: 'center'
+        }}>
           {item.icon}
         </ListItemIcon>
-        <ListItemText
-          primary={item.text}
-          primaryTypographyProps={{
-            fontSize: "0.9rem",
-            fontWeight: isActive ? 600 : 500,
-            fontFamily: 'Inter, sans-serif'
-          }}
-        />
-        {item.badge && (
-          <Chip
-            label={item.badge}
-            size="small"
-            color={item.badgeColor as any}
-            sx={{ height: 20, fontSize: "0.7rem", fontWeight: 600 }}
-          />
+        {!collapsed && (
+          <>
+            <ListItemText
+              primary={item.text}
+              primaryTypographyProps={{
+                fontSize: "0.9rem",
+                fontWeight: isActive ? 600 : 500,
+                fontFamily: 'Inter, sans-serif'
+              }}
+            />
+            {item.badge && (
+              <Chip
+                label={item.badge}
+                size="small"
+                color={item.badgeColor as any}
+                sx={{ height: 20, fontSize: "0.7rem", fontWeight: 600 }}
+              />
+            )}
+          </>
         )}
       </ListItemButton>
     </ListItem>
@@ -145,12 +150,23 @@ const NavItem: React.FC<NavItemProps> = ({ item, isActive, onClick }) => {
 
 const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    const saved = localStorage.getItem('sidebar-collapsed');
+    return saved ? JSON.parse(saved) : false;
+  });
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const handleDrawerToggle = useCallback(() => setMobileOpen(prev => !prev), []);
+  const handleCollapseToggle = useCallback(() => {
+    setCollapsed(prev => {
+      const newValue = !prev;
+      localStorage.setItem('sidebar-collapsed', JSON.stringify(newValue));
+      return newValue;
+    });
+  }, []);
   const handleLogout = () => {
     logout();
   };
@@ -159,36 +175,93 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     if (isMobile) {
       setMobileOpen(false);
     }
+    // O estado collapsed deve permanecer inalterado
   }, [navigate, isMobile]);
 
-  const currentTitle = useMemo(() => {
-    for (const category of menuConfig) {
-      for (const item of category.items) {
-        if (location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path))) {
-          return item.text;
-        }
-      }
-    }
-    return "Dashboard";
-  }, [location.pathname]);
+
 
   const drawer = (
-    <Box sx={{ height: "100%", display: "flex", flexDirection: "column", bgcolor: '#f8fafc' }}>
-      <Box sx={{ p: 3, textAlign: "center", borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
-        <Avatar sx={{ width: 60, height: 60, mx: "auto", mb: 2, bgcolor: "primary.main" }}>
-          <Restaurant fontSize="large" />
-        </Avatar>
-        <Typography variant="h6" fontWeight="600" color="text.primary">
-          Gestão Escolar
-        </Typography>
+    <Box sx={{ height: "100%", display: "flex", flexDirection: "column", bgcolor: 'background.paper' }}>
+      <Box sx={{ 
+        p: collapsed ? 1 : 3, 
+        textAlign: "center", 
+        borderBottom: 1, 
+        borderColor: 'divider',
+        transition: 'all 0.3s ease-in-out'
+      }}>
+        <Box sx={{ 
+          width: collapsed ? 40 : 80, 
+          height: collapsed ? 40 : 80, 
+          mx: "auto", 
+          mb: collapsed ? 0 : 1,
+          transition: 'all 0.3s ease-in-out'
+        }}>
+          <img
+            src={getLogo(theme.palette.mode === 'dark')}
+            alt="Logo"
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain'
+            }}
+          />
+        </Box>
+        {!collapsed && (
+          <>
+            <Typography
+              variant="h5"
+              fontWeight="700"
+              sx={{
+                mb: 0,
+                color: 'text.primary',
+                fontSize: '1.3rem',
+                letterSpacing: '0.5px'
+              }}
+            >
+              NutriEscola
+            </Typography>
+            <Typography
+              variant="caption"
+              sx={{
+                fontSize: '0.8rem',
+                lineHeight: 1.2,
+                color: 'text.secondary',
+                fontWeight: 400,
+                letterSpacing: '0.3px'
+              }}
+            >
+              Gestão Alimentar Escolar
+            </Typography>
+          </>
+        )}
+
       </Box>
 
-      <Box sx={{ flexGrow: 1, overflow: "auto", p: 1 }}>
+      <Box sx={{ 
+        flexGrow: 1, 
+        overflow: "auto", 
+        p: 1,
+        '&::-webkit-scrollbar': {
+          width: '6px',
+        },
+        '&::-webkit-scrollbar-track': {
+          background: 'transparent',
+        },
+        '&::-webkit-scrollbar-thumb': {
+          background: 'rgba(0,0,0,0.2)',
+          borderRadius: '3px',
+        },
+        '&::-webkit-scrollbar-thumb:hover': {
+          background: 'rgba(0,0,0,0.3)',
+        },
+      }}>
         {menuConfig.map(({ category, items }) => (
-          <Box key={category} sx={{ mb: 2 }}>
-            <Typography variant="overline" sx={{ px: 2, py: 1, display: "block", fontWeight: "bold", color: 'text.secondary', fontSize: "0.7rem" }}>
-              {category}
-            </Typography>
+          <Box key={category} sx={{ mb: collapsed ? 1 : 2 }}>
+            {!collapsed && (
+              <Typography variant="overline" sx={{ px: 2, py: 1, display: "block", fontWeight: "bold", color: 'text.secondary', fontSize: "0.7rem" }}>
+                {category}
+              </Typography>
+            )}
             <List dense>
               {items.map((item) => {
                 const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
@@ -198,6 +271,7 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                     item={item}
                     isActive={isActive}
                     onClick={handleNavigation}
+                    collapsed={collapsed}
                   />
                 );
               })}
@@ -206,50 +280,87 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         ))}
       </Box>
 
-      <Box sx={{ p: 2, borderTop: '1px solid rgba(0,0,0,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="caption" color="text.secondary">
-          © {new Date().getFullYear()} Sistema de Gestão
-        </Typography>
-        <Button 
-          onClick={handleLogout}
-          size="small"
-          startIcon={<Logout fontSize="small" />}
-          color="inherit"
-          sx={{ textTransform: 'none', fontSize: '0.75rem', color: 'text.secondary' }}
-        >
-          Sair
-        </Button>
+      <Box sx={{ p: collapsed ? 1 : 2, borderTop: 1, borderColor: 'divider', position: 'relative' }}>
+        {!collapsed && (
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5, textAlign: 'center' }}>
+            © {new Date().getFullYear()} Sistema de Gestão
+          </Typography>
+        )}
+        
+        <Box sx={{ display: 'flex', gap: 1, flexDirection: collapsed ? 'column' : 'row' }}>
+          <Button
+            onClick={handleLogout}
+            size="small"
+            startIcon={collapsed ? undefined : <Logout fontSize="small" />}
+            color="inherit"
+            sx={{ 
+              flex: collapsed ? 'none' : 1,
+              textTransform: 'none', 
+              fontSize: '0.75rem', 
+              color: 'text.secondary', 
+              justifyContent: collapsed ? 'center' : 'flex-start',
+              minHeight: '32px',
+              minWidth: collapsed ? '40px' : 'auto',
+              px: collapsed ? 1 : 2,
+            }}
+          >
+            {collapsed ? <Logout fontSize="small" /> : 'Sair'}
+          </Button>
+          
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'flex-start' }}>
+            <ThemeToggle />
+          </Box>
+        </Box>
+
+        {/* Botão de colapsar - apenas no desktop */}
+        {!isMobile && (
+          <IconButton
+            onClick={handleCollapseToggle}
+            sx={{
+              position: 'absolute',
+              right: -20,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              bgcolor: 'background.paper',
+              border: 1,
+              borderColor: 'divider',
+              width: 40,
+              height: 40,
+              '&:hover': {
+                bgcolor: 'action.hover',
+              },
+              zIndex: 1301,
+            }}
+          >
+            {collapsed ? <ChevronRight /> : <ChevronLeft />}
+          </IconButton>
+        )}
       </Box>
     </Box>
   );
 
   return (
     <Box sx={{ display: "flex", minHeight: "100vh" }}>
-      <AppBar
-        position="fixed"
-        sx={{
-          width: { md: `calc(100% - ${drawerWidth}px)` },
-          ml: { md: `${drawerWidth}px` },
-          bgcolor: 'rgba(255, 255, 255, 0.8)',
-          backdropFilter: 'blur(8px)',
-          color: "text.primary",
-          boxShadow: 'none',
-          borderBottom: '1px solid rgba(0,0,0,0.1)',
-          display: 'none' // Oculta o AppBar completo
-        }}
-      >
-        <Toolbar>
-          <IconButton color="inherit" onClick={handleDrawerToggle} edge="start" sx={{ mr: 2, display: { md: "none" } }}>
-            <MenuIcon />
-          </IconButton>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, fontWeight: 600 }}>
-            {currentTitle}
-          </Typography>
-        </Toolbar>
-      </AppBar>
 
-      <Box component="nav" sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}>
-        <Drawer variant="temporary" open={mobileOpen} onClose={handleDrawerToggle} ModalProps={{ keepMounted: true }} sx={{ display: { xs: "block", md: "none" }, "& .MuiDrawer-paper": { width: drawerWidth }}}>
+
+      <Box component="nav" sx={{ 
+        width: { md: collapsed ? collapsedDrawerWidth : drawerWidth }, 
+        flexShrink: { md: 0 },
+        transition: 'width 0.3s ease-in-out'
+      }}>
+        <Drawer
+          variant="temporary"
+          open={mobileOpen}
+          onClose={handleDrawerToggle}
+          ModalProps={{ keepMounted: true }}
+          sx={{
+            display: { xs: "block", md: "none" },
+            "& .MuiDrawer-paper": {
+              width: drawerWidth,
+              bgcolor: 'background.paper',
+            }
+          }}
+        >
           {drawer}
         </Drawer>
         <Drawer
@@ -257,8 +368,12 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           sx={{
             display: { xs: "none", md: "block" },
             "& .MuiDrawer-paper": {
-              width: drawerWidth,
-              borderRight: '1px solid rgba(0, 0, 0, 0.12)', // Borda sutil adicionada
+              width: collapsed ? collapsedDrawerWidth : drawerWidth,
+              borderRight: 1,
+              borderColor: 'divider',
+              bgcolor: 'background.paper',
+              transition: 'width 0.3s ease-in-out',
+              overflow: 'visible',
             },
           }}
           open
@@ -271,12 +386,32 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         component="main"
         sx={{
           flexGrow: 1,
-          width: { md: `calc(100% - ${drawerWidth}px)` },
+          width: { md: `calc(100% - ${collapsed ? collapsedDrawerWidth : drawerWidth}px)` },
           minHeight: "100vh",
-          bgcolor: "#f8fafc", // Fundo do conteúdo principal ligeiramente diferente do menu
+          bgcolor: "background.default",
+          position: "relative",
+          transition: 'width 0.3s ease-in-out',
         }}
       >
-        <Toolbar />
+        {/* Botão de menu flutuante para mobile */}
+        <IconButton
+          onClick={handleDrawerToggle}
+          sx={{
+            position: "fixed",
+            top: 16,
+            left: 16,
+            zIndex: 1300,
+            display: { xs: "flex", md: "none" },
+            bgcolor: "background.paper",
+            boxShadow: 2,
+            "&:hover": {
+              bgcolor: "action.hover",
+            },
+          }}
+        >
+          <MenuIcon />
+        </IconButton>
+        
         <Box>{children}</Box>
       </Box>
     </Box>

@@ -602,7 +602,7 @@ function GerarFaturamento() {
                             <TableContainer component={Paper} variant="outlined">
                                 <Table>
                                     <TableHead>
-                                        <TableRow sx={{ backgroundColor: 'grey.50' }}>
+                                        <TableRow>
                                             <TableCell>Modalidade</TableCell>
                                             <TableCell align="right">Quantidade</TableCell>
                                             <TableCell align="right">Percentual</TableCell>

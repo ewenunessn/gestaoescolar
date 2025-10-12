@@ -173,10 +173,10 @@ const ModalidadesPage = () => {
     <Box sx={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)', borderRadius: '16px', p: 3, border: '1px solid rgba(148, 163, 184, 0.1)' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <TuneRounded sx={{ color: '#4f46e5' }} />
-          <Typography variant="h6" sx={{ fontWeight: 600, color: '#1e293b' }}>Filtros Avançados</Typography>
+          <TuneRounded sx={{ color: 'primary.main' }} />
+          <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>Filtros Avançados</Typography>
         </Box>
-        {hasActiveFilters && <Button size="small" onClick={clearFilters} sx={{ color: '#64748b', textTransform: 'none' }}>Limpar Tudo</Button>}
+        {hasActiveFilters && <Button size="small" onClick={clearFilters} sx={{ color: 'text.secondary', textTransform: 'none' }}>Limpar Tudo</Button>}
       </Box>
       <Divider sx={{ mb: 3 }} />
       <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
@@ -263,7 +263,7 @@ const ModalidadesPage = () => {
   };
   
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#f9fafb' }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       {successMessage && (
         <Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}>
           <Alert severity="success" onClose={() => setSuccessMessage(null)} sx={{ minWidth: 300 }}>
@@ -273,7 +273,7 @@ const ModalidadesPage = () => {
       )}
 
       <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
-        <Typography variant="h4" sx={{ mb: 3, fontWeight: 700, color: '#1e293b' }}>Modalidades</Typography>
+        <Typography variant="h4" sx={{ mb: 3, fontWeight: 700, color: 'text.primary' }}>Modalidades</Typography>
 
         <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', p: 3, mb: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
@@ -283,19 +283,19 @@ const ModalidadesPage = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
               sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
               InputProps={{
-                startAdornment: (<InputAdornment position="start"><SearchIcon sx={{ color: '#64748b' }} /></InputAdornment>),
+                startAdornment: (<InputAdornment position="start"><SearchIcon sx={{ color: 'text.secondary' }} /></InputAdornment>),
                 endAdornment: searchTerm && (<InputAdornment position="end"><IconButton size="small" onClick={() => setSearchTerm('')}><ClearIcon fontSize="small" /></IconButton></InputAdornment>),
               }}
             />
             <Box sx={{ display: 'flex', gap: 2 }}>
               <Button variant={filtersExpanded || hasActiveFilters ? 'contained' : 'outlined'} startIcon={filtersExpanded ? <ExpandLessIcon /> : <TuneRounded />} onClick={toggleFilters}>
                 Filtros
-                {hasActiveFilters && !filtersExpanded && (<Box sx={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', bgcolor: '#ef4444' }}/>)}
+                {hasActiveFilters && !filtersExpanded && (<Box sx={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', bgcolor: 'error.main' }}/>)}
               </Button>
-              <Button startIcon={<AddIcon />} onClick={() => openModal()} sx={{ bgcolor: '#059669', color: 'white', '&:hover': { bgcolor: '#047857' } }}>
+              <Button startIcon={<AddIcon />} onClick={() => openModal()} variant="contained" color="success">
                 Nova Modalidade
               </Button>
-              <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)} sx={{ border: '1px solid #d1d5db' }}>
+              <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)}>
                 <MoreVert />
               </IconButton>
             </Box>
@@ -303,7 +303,7 @@ const ModalidadesPage = () => {
 
           <Collapse in={filtersExpanded} timeout={400}><Box sx={{ mb: 3 }}><FiltersContent /></Box></Collapse>
 
-          <Typography variant="body2" sx={{ mb: 2, color: '#64748b' }}>
+          <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
             {`Mostrando ${Math.min((page * rowsPerPage) + 1, filteredModalidades.length)}-${Math.min((page + 1) * rowsPerPage, filteredModalidades.length)} de ${filteredModalidades.length} modalidades`}
           </Typography>
         </Card>
@@ -313,7 +313,7 @@ const ModalidadesPage = () => {
         ) : error ? (
           <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={loadModalidades}>Tentar Novamente</Button></CardContent></Card>
         ) : filteredModalidades.length === 0 ? (
-          <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Category sx={{ fontSize: 64, color: '#d1d5db', mb: 2 }} /><Typography variant="h6" sx={{ color: '#6b7280' }}>Nenhuma modalidade encontrada</Typography></CardContent></Card>
+          <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Category sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} /><Typography variant="h6" sx={{ color: 'text.secondary' }}>Nenhuma modalidade encontrada</Typography></CardContent></Card>
         ) : (
           <TableContainer component={Paper} sx={{ mt: 2, borderRadius: '12px' }}>
             <Table>
@@ -401,8 +401,8 @@ const ModalidadesPage = () => {
           </Box>
         </DialogContent>
         <DialogActions sx={{ p: 3, pt: 1 }}>
-          <Button onClick={closeModal} sx={{ color: '#6b7280' }}>Cancelar</Button>
-          <Button onClick={handleSave} variant="contained" disabled={!formData.nome.trim()} sx={{ bgcolor: '#4f46e5', '&:hover': { bgcolor: '#4338ca' } }}>
+          <Button onClick={closeModal} sx={{ color: 'text.secondary' }}>Cancelar</Button>
+          <Button onClick={handleSave} variant="contained" disabled={!formData.nome.trim()}>
             {editingModalidade ? 'Salvar Alterações' : 'Criar'}
           </Button>
         </DialogActions>
@@ -412,7 +412,7 @@ const ModalidadesPage = () => {
       <Dialog open={deleteModalOpen} onClose={closeDeleteModal} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: '12px' } }}>
         <DialogTitle sx={{ fontWeight: 600 }}>Confirmar Exclusão</DialogTitle>
         <DialogContent><Typography>Tem certeza que deseja excluir a modalidade "{modalidadeToDelete?.nome}"?</Typography></DialogContent>
-        <DialogActions sx={{ p: 3, pt: 1 }}><Button onClick={closeDeleteModal} sx={{ color: '#6b7280' }}>Cancelar</Button><Button onClick={handleDelete} color="error" variant="contained">Excluir</Button></DialogActions>
+        <DialogActions sx={{ p: 3, pt: 1 }}><Button onClick={closeDeleteModal} sx={{ color: 'text.secondary' }}>Cancelar</Button><Button onClick={handleDelete} color="error" variant="contained">Excluir</Button></DialogActions>
       </Dialog>
       
       {/* Menu de Ações */}

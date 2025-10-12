@@ -46,23 +46,7 @@ import saldoContratosModalidadesService, {
   SaldoContratosModalidadesFilters
 } from '../services/saldoContratosModalidadesService';
 
-// Estilo comum para as células da tabela
-const cellStyle = {
-  fontFamily: 'Inter, sans-serif',
-  fontSize: '0.875rem',
-  borderBottom: '1px solid #e0e0e0',
-  borderRight: '1px solid #e0e0e0',
-  '&:last-child': {
-    borderRight: 0,
-  },
-};
 
-const headerCellStyle = {
-  ...cellStyle,
-  fontWeight: 600,
-  color: '#1a1a1a',
-  backgroundColor: '#f5f5f5',
-};
 
 // Componente para gerenciar cada modalidade individualmente
 interface ModalidadeRowProps {
@@ -1005,39 +989,16 @@ const SaldoContratosModalidades: React.FC = () => {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#f9fafb' }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
-        {/* Título */}
-        <Typography variant="h4" component="h1" sx={{ mb: 3, fontWeight: 600 }}>
+        <Typography variant="h4" sx={{ mb: 3, fontWeight: 700, color: 'text.primary' }}>
           Saldo de Contratos por Modalidade
         </Typography>
 
-        {/* Filtros */}
-        <Card sx={{ mb: 3, borderRadius: 2, backgroundColor: '#ffffff', border: '1px solid #e0e0e0', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-          <CardContent>
-            <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
-              <Typography variant="h6" sx={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, color: '#1a1a1a' }}>
-                <FilterIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                Filtros
-              </Typography>
-              <Box display="flex" gap={1} alignItems="center" flexWrap="wrap">
-                <Typography variant="caption" color="text.secondary" sx={{ display: { xs: 'none', md: 'block' } }}>
-                  ⌨️ Atalhos:
-                </Typography>
-                <Chip label="Ctrl+F Pesquisar" size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
-                <Chip label="↑↓ Navegar" size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
-                <Chip label="Enter Abrir" size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
-                <Chip label="Ctrl+E Editar" size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
-                <Chip label="Tab Próximo" size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
-                <Chip label="Ctrl+R Consumo" size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
-                <Chip label="Esc Fechar" size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
-              </Box>
-            </Box>
-
+        <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', p: 3, mb: 3 }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 3 }}>
             <TextField
-              fullWidth
-              label="Pesquisar Produto"
-              placeholder="Digite o nome do produto..."
+              placeholder="Pesquisar produto..."
               value={filtrosTemp.produto_nome || ''}
               onChange={(e) => {
                 const valor = e.target.value;
@@ -1051,29 +1012,22 @@ const SaldoContratosModalidades: React.FC = () => {
                   setPage(0);
                 }, 500);
               }}
+              sx={{ flex: 1, minWidth: '200px', '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
               InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon />
-                  </InputAdornment>
-                ),
-                endAdornment: filtrosTemp.produto_nome && (
-                  <InputAdornment position="end">
-                    <IconButton
-                      size="small"
-                      onClick={() => {
-                        setFiltrosTemp({});
-                        setFiltros({ page: 1, limit: rowsPerPage });
-                        setPage(0);
-                      }}
-                    >
-                      <CancelIcon fontSize="small" />
-                    </IconButton>
-                  </InputAdornment>
-                ),
+                startAdornment: (<InputAdornment position="start"><SearchIcon sx={{ color: 'text.secondary' }} /></InputAdornment>),
+                endAdornment: filtrosTemp.produto_nome && (<InputAdornment position="end"><IconButton size="small" onClick={() => { setFiltrosTemp({}); setFiltros({ page: 1, limit: rowsPerPage }); setPage(0); }}><CancelIcon fontSize="small" /></IconButton></InputAdornment>)
               }}
             />
-          </CardContent>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button variant="outlined" startIcon={<FilterIcon />}>
+                Filtros
+              </Button>
+            </Box>
+          </Box>
+
+          <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+            {`Mostrando ${Math.min(page * rowsPerPage + 1, total)}-${Math.min((page + 1) * rowsPerPage, total)} de ${total} produtos`}
+          </Typography>
         </Card>
 
         {/* Ações */}
@@ -1103,103 +1057,132 @@ const SaldoContratosModalidades: React.FC = () => {
           </Alert>
         )}
 
-        {/* Tabela */}
-        <TableContainer component={Card} sx={{ mt: 2, borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', border: '1px solid #e0e0e0', overflow: 'auto', backgroundColor: '#ffffff' }}>
-          <Table sx={{ minWidth: 1200, borderCollapse: 'separate' }}>
-            <TableHead>
-              <TableRow>
-                <TableCell sx={headerCellStyle}>Produto</TableCell>
-                <TableCell sx={headerCellStyle}>Unidade</TableCell>
-                <TableCell align="right" sx={headerCellStyle}>Total Inicial</TableCell>
-                <TableCell align="right" sx={headerCellStyle}>Total Consumido</TableCell>
-                <TableCell align="right" sx={headerCellStyle}>Total Disponível</TableCell>
-                <TableCell align="center" sx={headerCellStyle}>Status</TableCell>
-                <TableCell align="center" sx={headerCellStyle}>Ações</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {loading && dados.length > 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} align="center" sx={cellStyle}>
-                    <CircularProgress size={24} />
-                  </TableCell>
-                </TableRow>
-              ) : dados.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} align="center" sx={cellStyle}>
-                    Nenhum resultado encontrado
-                  </TableCell>
-                </TableRow>
-              ) : (
-                agruparPorProduto(dados).map((produto, index) => (
-                  <TableRow
-                    key={produto.produto_nome}
-                    data-row-index={index}
-                    hover
-                    sx={{
-                      backgroundColor: linhaSelecionada === index ? '#e3f2fd' : 'inherit',
-                      cursor: 'pointer',
-                      '&:hover': {
-                        backgroundColor: linhaSelecionada === index ? '#bbdefb' : undefined
-                      }
-                    }}
-                    onClick={() => setLinhaSelecionada(index)}
-                    onDoubleClick={() => produto.contratos.length > 1 ? abrirDialogSelecionarContrato(produto) : abrirDialogGerenciarModalidades(produto.contratos[0])}
-                  >
-                    <TableCell sx={cellStyle}>
-                      <Box>
-                        <Typography variant="body2" fontWeight="bold">
-                          {produto.produto_nome}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {produto.contratos.length} contrato(s)
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                    <TableCell sx={cellStyle}>{produto.unidade}</TableCell>
-                    <TableCell align="right" sx={cellStyle}>{formatarNumero(produto.total_inicial)}</TableCell>
-                    <TableCell align="right" sx={cellStyle}>{formatarNumero(produto.total_consumido)}</TableCell>
-                    <TableCell align="right" sx={cellStyle}>
-                      <Typography variant="body2" fontWeight="bold" color="primary">
-                        {formatarNumero(produto.total_disponivel)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell align="center" sx={cellStyle}>
-                      <Chip
-                        label={produto.status}
-                        color={getStatusColor(produto.status) as any}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell align="center" sx={cellStyle}>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        onClick={() => produto.contratos.length > 1 ? abrirDialogSelecionarContrato(produto) : abrirDialogGerenciarModalidades(produto.contratos[0])}
-                        sx={{ fontSize: '0.75rem' }}
-                      >
-                        Gerenciar Modalidades
-                      </Button>
-                    </TableCell>
+        {loading ? (
+          <Card>
+            <CardContent sx={{ textAlign: 'center', py: 6 }}>
+              <CircularProgress />
+              <Typography variant="body2" sx={{ mt: 2 }}>Carregando...</Typography>
+            </CardContent>
+          </Card>
+        ) : total === 0 ? (
+          <Card>
+            <CardContent sx={{ textAlign: 'center', py: 6 }}>
+              <Typography variant="h6" sx={{ color: 'text.secondary' }}>
+                Nenhum produto encontrado
+              </Typography>
+            </CardContent>
+          </Card>
+        ) : (
+          <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px' }}>
+            <TableContainer>
+              <Table sx={{ minWidth: 1200 }}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 600 }}>Produto</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Unidade</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 600 }}>Total Inicial</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 600 }}>Total Consumido</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 600 }}>Total Disponível</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 600 }}>Status</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 600 }}>Ações</TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+                </TableHead>
+                <TableBody>
+                  {loading && dados.length > 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} align="center">
+                        <CircularProgress size={24} />
+                      </TableCell>
+                    </TableRow>
+                  ) : dados.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} align="center">
+                        Nenhum resultado encontrado
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    agruparPorProduto(dados).map((produto, index) => (
+                      <TableRow
+                        key={produto.produto_nome}
+                        data-row-index={index}
+                        hover
+                        sx={{
+                          backgroundColor: linhaSelecionada === index ? '#e3f2fd' : 'inherit',
+                          cursor: 'pointer',
+                          '&:hover': {
+                            backgroundColor: linhaSelecionada === index ? '#bbdefb' : undefined
+                          }
+                        }}
+                        onClick={() => setLinhaSelecionada(index)}
+                        onDoubleClick={() => produto.contratos.length > 1 ? abrirDialogSelecionarContrato(produto) : abrirDialogGerenciarModalidades(produto.contratos[0])}
+                      >
+                        <TableCell>
+                          <Box>
+                            <Typography variant="body2" fontWeight="bold">
+                              {produto.produto_nome}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {produto.contratos.length} contrato(s)
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell>{produto.unidade}</TableCell>
+                        <TableCell align="right">{formatarNumero(produto.total_inicial)}</TableCell>
+                        <TableCell align="right">{formatarNumero(produto.total_consumido)}</TableCell>
+                        <TableCell align="right">
+                          <Typography variant="body2" fontWeight="bold" color="primary">
+                            {formatarNumero(produto.total_disponivel)}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="center">
+                          <Chip
+                            label={produto.status}
+                            color={getStatusColor(produto.status) as any}
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell align="center">
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={() => produto.contratos.length > 1 ? abrirDialogSelecionarContrato(produto) : abrirDialogGerenciarModalidades(produto.contratos[0])}
+                            sx={{ fontSize: '0.75rem' }}
+                          >
+                            Gerenciar Modalidades
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
 
-        {/* Paginação */}
-        <TablePagination
-          component="div"
-          count={total}
-          page={page}
-          onPageChange={handleChangePage}
-          rowsPerPage={rowsPerPage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-          rowsPerPageOptions={[10, 25, 50, 100]}
-          labelRowsPerPage="Produtos por página:"
-          labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
-        />
+            <TablePagination
+              component="div"
+              count={total}
+              page={page}
+              onPageChange={(_, newPage) => {
+                setPage(newPage);
+                setFiltros({ ...filtros, page: newPage + 1 });
+              }}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={(event) => {
+                const newRowsPerPage = parseInt(event.target.value, 10);
+                setRowsPerPage(newRowsPerPage);
+                setPage(0);
+                setFiltros({ ...filtros, page: 1, limit: newRowsPerPage });
+              }}
+              rowsPerPageOptions={[5, 10, 25, 50]}
+              labelRowsPerPage="Itens por página:"
+              labelDisplayedRows={({ from, to, count }) =>
+                `${from}-${to} de ${count !== -1 ? count : `mais de ${to}`}`
+              }
+            />
+          </Paper>
+        )}
+
+
 
         {/* Modal de Seleção de Contrato */}
         <Dialog
@@ -1295,7 +1278,7 @@ const SaldoContratosModalidades: React.FC = () => {
           <DialogContent>
             {produtoSelecionado && (
               <Box sx={{ pt: 2 }}>
-                <Box sx={{ mb: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                <Box sx={{ mb: 3, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
                   <Typography variant="body2" color="text.secondary">Informações do Produto</Typography>
                   <Typography variant="body1">
                     <strong>Quantidade Contratada:</strong> {formatarNumero(produtoSelecionado.quantidade_contrato)} {produtoSelecionado.unidade}
@@ -1387,7 +1370,7 @@ const SaldoContratosModalidades: React.FC = () => {
             }
           }}
         >
-          <DialogTitle sx={{ bgcolor: '#059669', color: 'white' }}>
+          <DialogTitle sx={{ bgcolor: 'success.main', color: 'success.contrastText' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
               <EditIcon />
               Editar Quantidade Inicial
@@ -1405,7 +1388,7 @@ const SaldoContratosModalidades: React.FC = () => {
                   Define a quantidade inicial disponível para esta modalidade. Esta é a quantidade que será distribuída do contrato.
                 </Alert>
 
-                <Box sx={{ mb: 3, p: 2, bgcolor: '#e3f2fd', borderRadius: 1, border: '2px solid #2196f3' }}>
+                <Box sx={{ mb: 3, p: 2, bgcolor: 'primary.light', borderRadius: 1, border: 2, borderColor: 'primary.main' }}>
                   <Typography variant="body2" gutterBottom>
                     <strong>Produto:</strong> {produtoSelecionado.produto_nome || produtoSelecionado.nome || 'N/A'}
                   </Typography>
@@ -1467,7 +1450,7 @@ const SaldoContratosModalidades: React.FC = () => {
               onClick={salvarQuantidadeInicial}
               variant="contained"
               disabled={salvandoQuantidade || !quantidadeInicial || parseFloat(quantidadeInicial) < 0}
-              sx={{ bgcolor: '#059669', '&:hover': { bgcolor: '#047857' } }}
+              color="success"
               startIcon={salvandoQuantidade ? <CircularProgress size={16} /> : <SaveIcon />}
             >
               {salvandoQuantidade ? 'Salvando...' : 'Salvar Quantidade'}
@@ -1477,7 +1460,7 @@ const SaldoContratosModalidades: React.FC = () => {
 
         {/* Modal de Registro de Consumo */}
         <Dialog open={dialogConsumoAberto} onClose={fecharDialogConsumo} maxWidth="sm" fullWidth>
-          <DialogTitle sx={{ bgcolor: '#2563eb', color: 'white', display: 'flex', alignItems: 'center', gap: 1 }}>
+          <DialogTitle sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', display: 'flex', alignItems: 'center', gap: 1 }}>
             <RestaurantIcon />
             Registrar Consumo
           </DialogTitle>

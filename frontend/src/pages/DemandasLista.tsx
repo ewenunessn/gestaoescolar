@@ -27,8 +27,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Pagination,
-  Stack
+  TablePagination
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -82,8 +81,8 @@ export default function DemandasLista() {
   const [linhaSelecionada, setLinhaSelecionada] = useState<number>(-1);
 
   // Paginação
-  const [paginaAtual, setPaginaAtual] = useState(1);
-  const [itensPorPagina] = useState(10);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [demandasPaginadas, setDemandasPaginadas] = useState<Demanda[]>([]);
 
   useEffect(() => {
@@ -239,17 +238,17 @@ export default function DemandasLista() {
 
     setDemandas(demandasFiltradas);
     // Reset página e linha selecionada quando filtros mudarem
-    setPaginaAtual(1);
+    setPage(0);
     setLinhaSelecionada(-1);
   }, [demandasOriginais, filtroSolicitante, filtroObjeto, filtroStatus, filtroDataInicio, filtroDataFim]);
 
   // Calcular paginação
   const calcularPaginacao = useCallback(() => {
-    const inicio = (paginaAtual - 1) * itensPorPagina;
-    const fim = inicio + itensPorPagina;
+    const inicio = page * rowsPerPage;
+    const fim = inicio + rowsPerPage;
     const demandasDaPagina = demandas.slice(inicio, fim);
     setDemandasPaginadas(demandasDaPagina);
-  }, [demandas, paginaAtual, itensPorPagina]);
+  }, [demandas, page, rowsPerPage]);
 
   // Aplicar filtros sempre que os filtros mudarem
   useEffect(() => {
@@ -272,12 +271,18 @@ export default function DemandasLista() {
     setFiltroDataInicio('');
     setFiltroDataFim('');
     setDemandas(demandasOriginais);
-    setPaginaAtual(1);
+    setPage(0);
   };
 
-  const handleMudancaPagina = (_: React.ChangeEvent<unknown>, novaPagina: number) => {
-    setPaginaAtual(novaPagina);
+  const handleChangePage = (_: unknown, newPage: number) => {
+    setPage(newPage);
     setLinhaSelecionada(-1); // Reset seleção ao mudar página
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+    setLinhaSelecionada(-1);
   };
 
   const handleNovaDemanda = () => {
@@ -410,209 +415,168 @@ export default function DemandasLista() {
   }
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box>
-          <Typography variant="h4" component="h1">
-            Demandas Escolas e Anexos da SEMED
-          </Typography>
-        </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleNovaDemanda}
-        >
-          Nova Demanda (Ctrl+A)
-        </Button>
-      </Box>
-
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       {erro && (
-        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setErro('')}>
-          {erro}
-        </Alert>
+        <Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}>
+          <Alert severity="error" onClose={() => setErro('')}>
+            {erro}
+          </Alert>
+        </Box>
       )}
 
-      {/* Filtros */}
-      <Card sx={{ mb: 3, boxShadow: 1 }}>
-        <CardContent sx={{ pb: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <FilterListIcon sx={{ mr: 1, color: 'primary.main' }} />
-              <Typography variant="h6" color="primary.main">
-                Filtros de Busca
-              </Typography>
-            </Box>
-            <Button
-              variant="outlined"
+      <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+        <Typography variant="h4" sx={{ mb: 3, fontWeight: 700, color: 'text.primary' }}>
+          Demandas SEMED
+        </Typography>
+        
+        <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', p: 3, mb: 3 }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 3 }}>
+            <Autocomplete
+              freeSolo
               size="small"
-              onClick={limparFiltros}
-              sx={{ minWidth: 'auto' }}
-            >
-              Limpar Tudo (Ctrl+L)
-            </Button>
+              options={solicitantes}
+              value={filtroSolicitante}
+              onChange={(_, newValue) => setFiltroSolicitante(newValue || '')}
+              onInputChange={(_, newInputValue) => setFiltroSolicitante(newInputValue)}
+              sx={{ flex: 1, minWidth: '200px' }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  inputRef={filtroSolicitanteRef}
+                  placeholder="Buscar por solicitante..."
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                  InputProps={{
+                    ...params.InputProps,
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon sx={{ color: 'text.secondary' }} />
+                      </InputAdornment>
+                    )
+                  }}
+                />
+              )}
+            />
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button 
+                variant="outlined" 
+                startIcon={<FilterListIcon />} 
+                onClick={() => {/* Toggle filtros avançados */}}
+              >
+                Filtros
+              </Button>
+              <Button
+                variant="contained"
+                color="success"
+                startIcon={<AddIcon />}
+                onClick={handleNovaDemanda}
+              >
+                Nova Demanda
+              </Button>
+            </Box>
+          </Box>
+          
+          {/* Filtros Avançados */}
+          <Box sx={{ mb: 3 }}>
+            <Grid container spacing={2} alignItems="center">
+              <Grid item xs={12} md={3}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="Buscar no Objeto"
+                  value={filtroObjeto}
+                  onChange={(e) => setFiltroObjeto(e.target.value)}
+                  placeholder="Palavras-chave..."
+                />
+              </Grid>
+
+              <Grid item xs={12} md={2}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Status</InputLabel>
+                  <Select
+                    value={filtroStatus}
+                    onChange={(e) => setFiltroStatus(e.target.value)}
+                    label="Status"
+                  >
+                    <MenuItem value="">Todos</MenuItem>
+                    <MenuItem value="pendente">Pendente</MenuItem>
+                    <MenuItem value="enviado_semead">Enviado à SEMAD</MenuItem>
+                    <MenuItem value="atendido">Atendido</MenuItem>
+                    <MenuItem value="nao_atendido">Não Atendido</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} md={2}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  type="date"
+                  label="Data Início"
+                  value={filtroDataInicio}
+                  onChange={(e) => setFiltroDataInicio(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={2}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  type="date"
+                  label="Data Fim"
+                  value={filtroDataFim}
+                  onChange={(e) => setFiltroDataFim(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={3}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={limparFiltros}
+                  fullWidth
+                >
+                  Limpar Filtros
+                </Button>
+              </Grid>
+            </Grid>
           </Box>
 
-          <Grid container spacing={2} alignItems="center">
-            {/* Linha 1: Filtros principais */}
-            <Grid item xs={12} md={3}>
-              <Autocomplete
-                freeSolo
-                size="small"
-                options={solicitantes}
-                value={filtroSolicitante}
-                onChange={(_, newValue) => setFiltroSolicitante(newValue || '')}
-                onInputChange={(_, newInputValue) => setFiltroSolicitante(newInputValue)}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    inputRef={filtroSolicitanteRef}
-                    label="Solicitante"
-                    placeholder="Digite ou selecione..."
-                    InputProps={{
-                      ...params.InputProps,
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <SearchIcon sx={{ color: 'action.active', fontSize: 20 }} />
-                        </InputAdornment>
-                      )
-                    }}
-                  />
-                )}
-              />
-            </Grid>
+          <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+            {`Mostrando ${Math.min(page * rowsPerPage + 1, demandas.length)}-${Math.min((page + 1) * rowsPerPage, demandas.length)} de ${demandas.length} demandas`}
+          </Typography>
+        </Card>
 
-            <Grid item xs={12} md={3}>
-              <TextField
-                fullWidth
-                size="small"
-                label="Buscar no Objeto"
-                value={filtroObjeto}
-                onChange={(e) => setFiltroObjeto(e.target.value)}
-                placeholder="Palavras-chave..."
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon sx={{ color: 'action.active', fontSize: 20 }} />
-                    </InputAdornment>
-                  )
-                }}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={2}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Status</InputLabel>
-                <Select
-                  value={filtroStatus}
-                  onChange={(e) => setFiltroStatus(e.target.value)}
-                  label="Status"
-                >
-                  <MenuItem value="">Todos</MenuItem>
-                  <MenuItem value="pendente">Pendente</MenuItem>
-                  <MenuItem value="enviado_semead">Enviado à SEMAD</MenuItem>
-                  <MenuItem value="atendido">Atendido</MenuItem>
-                  <MenuItem value="nao_atendido">Não Atendido</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-
-            <Grid item xs={12} md={2}>
-              <TextField
-                fullWidth
-                size="small"
-                type="date"
-                label="Data Início"
-                value={filtroDataInicio}
-                onChange={(e) => setFiltroDataInicio(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={2}>
-              <TextField
-                fullWidth
-                size="small"
-                type="date"
-                label="Data Fim"
-                value={filtroDataFim}
-                onChange={(e) => setFiltroDataFim(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-              />
-            </Grid>
-          </Grid>
-
-          {/* Indicador de filtros ativos */}
-          {(filtroSolicitante || filtroObjeto || filtroStatus || filtroDataInicio || filtroDataFim) && (
-            <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
-              <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
-                Filtros ativos:
+        {loading ? (
+          <Card>
+            <CardContent sx={{ textAlign: 'center', py: 6 }}>
+              <Typography>Carregando...</Typography>
+            </CardContent>
+          </Card>
+        ) : demandasPaginadas.length === 0 && !modoEdicao ? (
+          <Card>
+            <CardContent sx={{ textAlign: 'center', py: 6 }}>
+              <Typography variant="h6" sx={{ color: 'text.secondary' }}>
+                Nenhuma demanda encontrada
               </Typography>
-              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                {filtroSolicitante && (
-                  <Chip
-                    label={`Solicitante: ${filtroSolicitante}`}
-                    size="small"
-                    onDelete={() => setFiltroSolicitante('')}
-                    color="primary"
-                    variant="outlined"
-                  />
-                )}
-                {filtroObjeto && (
-                  <Chip
-                    label={`Objeto: ${filtroObjeto}`}
-                    size="small"
-                    onDelete={() => setFiltroObjeto('')}
-                    color="primary"
-                    variant="outlined"
-                  />
-                )}
-                {filtroStatus && (
-                  <Chip
-                    label={`Status: ${filtroStatus}`}
-                    size="small"
-                    onDelete={() => setFiltroStatus('')}
-                    color="primary"
-                    variant="outlined"
-                  />
-                )}
-                {filtroDataInicio && (
-                  <Chip
-                    label={`De: ${new Date(filtroDataInicio).toLocaleDateString('pt-BR')}`}
-                    size="small"
-                    onDelete={() => setFiltroDataInicio('')}
-                    color="primary"
-                    variant="outlined"
-                  />
-                )}
-                {filtroDataFim && (
-                  <Chip
-                    label={`Até: ${new Date(filtroDataFim).toLocaleDateString('pt-BR')}`}
-                    size="small"
-                    onDelete={() => setFiltroDataFim('')}
-                    color="primary"
-                    variant="outlined"
-                  />
-                )}
-              </Box>
-            </Box>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Tabela */}
-      <TableContainer component={Paper}>
+            </CardContent>
+          </Card>
+        ) : (
+          <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px' }}>
+            <TableContainer>
         <Table>
           <TableHead>
-            <TableRow sx={{ bgcolor: 'primary.main' }}>
-              <TableCell align="center" sx={{ color: 'white', fontWeight: 'bold', minWidth: 200, width: 250 }}>Solicitante</TableCell>
-              <TableCell align="center" sx={{ color: 'white', fontWeight: 'bold' }}>Nº Ofício</TableCell>
-              <TableCell align="center" sx={{ color: 'white', fontWeight: 'bold' }}>Data Solicitação à SEMED</TableCell>
-              <TableCell align="center" sx={{ color: 'white', fontWeight: 'bold' }}>Objeto</TableCell>
-              <TableCell align="center" sx={{ color: 'white', fontWeight: 'bold' }}>Data Envio à SEMAD</TableCell>
-              <TableCell align="center" sx={{ color: 'white', fontWeight: 'bold' }}>Data Resposta</TableCell>
-              <TableCell align="center" sx={{ color: 'white', fontWeight: 'bold' }}>Tempo na SEMAD</TableCell>
-              <TableCell align="center" sx={{ color: 'white', fontWeight: 'bold' }}>Status</TableCell>
-              <TableCell align="center" sx={{ color: 'white', fontWeight: 'bold' }}>Visualizar</TableCell>
+            <TableRow>
+              <TableCell sx={{ fontWeight: 600, minWidth: 200, width: 250 }}>Solicitante</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>Nº Ofício</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>Data Solicitação</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>Objeto</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>Data Envio SEMAD</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>Data Resposta</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>Tempo SEMAD</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
+              <TableCell align="center" sx={{ fontWeight: 600 }}>Ações</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -781,30 +745,26 @@ export default function DemandasLista() {
                 </TableRow>
               ))
             )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+              </TableBody>
+            </Table>
+          </TableContainer>
 
-      {/* Paginação */}
-      {demandas.length > 0 && (
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 3 }}>
-          <Typography variant="body2" color="text.secondary">
-            Mostrando {Math.min((paginaAtual - 1) * itensPorPagina + 1, demandas.length)} a{' '}
-            {Math.min(paginaAtual * itensPorPagina, demandas.length)} de {demandas.length} demandas
-          </Typography>
-          <Stack spacing={2}>
-            <Pagination
-              count={Math.ceil(demandas.length / itensPorPagina)}
-              page={paginaAtual}
-              onChange={handleMudancaPagina}
-              color="primary"
-              showFirstButton
-              showLastButton
-              size="medium"
+            <TablePagination
+              component="div"
+              count={demandas.length}
+              page={page}
+              onPageChange={handleChangePage}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              rowsPerPageOptions={[5, 10, 25, 50]}
+              labelRowsPerPage="Itens por página:"
+              labelDisplayedRows={({ from, to, count }) => 
+                `${from}-${to} de ${count !== -1 ? count : `mais de ${to}`}`
+              }
             />
-          </Stack>
-        </Box>
-      )}
+        </Paper>
+        )}
+      </Box>
 
       {/* Modal de Detalhes */}
       <DemandaDetalhesModal
@@ -837,7 +797,7 @@ export default function DemandasLista() {
             Pressione Enter para confirmar ou Esc para cancelar
           </Typography>
           {demandaSelecionada && demandasPaginadas.find(d => d.id === demandaSelecionada) && (
-            <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+            <Box sx={{ mt: 2, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
               <Typography variant="body2" fontWeight="bold">
                 {demandasPaginadas.find(d => d.id === demandaSelecionada)?.escola_nome}
               </Typography>

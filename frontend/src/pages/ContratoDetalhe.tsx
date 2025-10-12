@@ -59,7 +59,7 @@ const getStatusContrato = (contrato: any) => {
 const PageHeader = ({ onBack, onEdit, onDelete }) => (
     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2, mb: 3 }}>
         <Box>
-            <Typography variant="h4" sx={{ fontWeight: 700, color: '#1e293b' }}>
+            <Typography variant="h4" sx={{ fontWeight: 700, color: 'text.primary' }}>
                 Detalhes do Contrato
             </Typography>
             <Button startIcon={<ArrowBackIcon />} onClick={onBack} sx={{ textTransform: 'none', color: 'text.secondary', p: 0, mt: 0.5 }}>
@@ -283,7 +283,7 @@ export default function ContratoDetalhe() {
   );
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#f9fafb' }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
         <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
         
         {erro && <Alert severity="error" onClose={() => setErro("")} sx={{ mb: 3 }}>{erro}</Alert>}
@@ -296,22 +296,22 @@ export default function ContratoDetalhe() {
         <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
             <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography variant="h6" fontWeight="600">Itens do Contrato ({produtosContrato.length})</Typography>
-                <Button variant="contained" startIcon={<AddIcon />} onClick={() => abrirModalProduto()} sx={{ bgcolor: '#059669', '&:hover': { bgcolor: '#047857' } }}>
+                <Button variant="contained" startIcon={<AddIcon />} onClick={() => abrirModalProduto()} color="success">
                     Adicionar Item
                 </Button>
             </Box>
             {produtosContrato.length === 0 ? (
                 <Box sx={{ textAlign: 'center', py: 6 }}>
-                    <MenuBookIcon sx={{ fontSize: 64, color: '#d1d5db', mb: 2 }} />
-                    <Typography variant="h6" sx={{ color: '#6b7280' }}>Nenhum item encontrado</Typography>
+                    <MenuBookIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
+                    <Typography variant="h6" sx={{ color: 'text.secondary' }}>Nenhum item encontrado</Typography>
                     <Typography variant="body2" color="text.secondary">Adicione o primeiro item a este contrato.</Typography>
                 </Box>
             ) : (
                 <TableContainer>
                     <Table>
-                        <TableHead sx={{ bgcolor: 'grey.50' }}><TableRow>
-                            <TableCell>Produto</TableCell><TableCell>Quantidade</TableCell><TableCell>Preço Unitário</TableCell>
-                            <TableCell>Valor Total</TableCell><TableCell>Saldo</TableCell><TableCell align="right">Ações</TableCell>
+                        <TableHead><TableRow>
+                            <TableCell sx={{ fontWeight: 600 }}>Produto</TableCell><TableCell sx={{ fontWeight: 600 }}>Quantidade</TableCell><TableCell sx={{ fontWeight: 600 }}>Preço Unitário</TableCell>
+                            <TableCell sx={{ fontWeight: 600 }}>Valor Total</TableCell><TableCell sx={{ fontWeight: 600 }}>Saldo</TableCell><TableCell align="right" sx={{ fontWeight: 600 }}>Ações</TableCell>
                         </TableRow></TableHead>
                         <TableBody>
                             {produtosContrato.map((produto) => {

@@ -145,7 +145,7 @@ function DroppableZone({ id, children }: DroppableZoneProps) {
         mb: 2,
         transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
         backgroundColor: isOver ? "rgba(25, 118, 210, 0.08)" : "transparent",
-        borderColor: isOver ? "#1976d2" : "#e0e0e0",
+        borderColor: isOver ? "primary.main" : "divider",
         transform: isOver ? "scale(1.02)" : "scale(1)",
         boxShadow: isOver ? "0 4px 20px rgba(25, 118, 210, 0.15)" : "none",
         '&::before': isOver ? {

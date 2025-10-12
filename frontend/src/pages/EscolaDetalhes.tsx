@@ -40,7 +40,7 @@ const PageHeader = ({ escola, totalAlunos, isEditing, onEdit, onSave, onCancel, 
     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2, mb: 4 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Box>
-                <Typography variant="h4" sx={{ fontWeight: 700, color: '#1f2937' }}>
+                <Typography variant="h4" sx={{ fontWeight: 700, color: 'text.primary' }}>
                     {escola?.nome}
                 </Typography>
                 <Stack direction="row" spacing={1} mt={1} flexWrap="wrap" useFlexGap>
@@ -60,7 +60,7 @@ const PageHeader = ({ escola, totalAlunos, isEditing, onEdit, onSave, onCancel, 
             ) : (
                 <>
                     <Button startIcon={<EditIcon />} onClick={onEdit} variant="outlined">Editar</Button>
-                    <Button startIcon={<InventoryIcon />} onClick={onEstoque} variant="contained" sx={{ bgcolor: '#059669', '&:hover': { bgcolor: '#047857' } }}>Estoque</Button>
+                    <Button startIcon={<InventoryIcon />} onClick={onEstoque} variant="contained" color="success">Estoque</Button>
                     <Button startIcon={<DeleteIcon />} onClick={onDelete} variant="contained" color="error">Excluir</Button>
                 </>
             )}
@@ -251,7 +251,7 @@ const EscolaDetalhesPage = () => {
   if (error && !escola) return <Box sx={{ maxWidth: '1280px', mx: 'auto', p: 4 }}><Card><CardContent sx={{ textAlign: 'center', p: 4 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={loadData}>Tentar Novamente</Button></CardContent></Card></Box>;
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#f9fafb' }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
         <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
             {successMessage && <Alert severity="success" onClose={() => setSuccessMessage(null)} sx={{ mb: 2 }}>{successMessage}</Alert>}
             {error && <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>{error}</Alert>}
@@ -264,20 +264,20 @@ const EscolaDetalhesPage = () => {
 
             <EscolaInfoCard isEditing={isEditing} formData={formData} setFormData={setFormData} />
 
-            <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
+            <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px' }}>
                 <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: 1, borderColor: 'divider' }}>
                     <Typography variant="h6" fontWeight="600" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}><PeopleIcon />Modalidades Associadas</Typography>
-                    <Button variant="contained" startIcon={<AddIcon />} onClick={() => openModalidadeModal()} sx={{ bgcolor: '#059669', '&:hover': { bgcolor: '#047857' } }}>Adicionar</Button>
+                    <Button variant="contained" startIcon={<AddIcon />} onClick={() => openModalidadeModal()} color="success">Adicionar</Button>
                 </Box>
                 {associacoes.length === 0 ? (
                     <Box sx={{ textAlign: 'center', py: 6 }}>
-                        <CategoryIcon sx={{ fontSize: 64, color: '#d1d5db', mb: 2 }} />
-                        <Typography variant="h6" sx={{ color: '#6b7280' }}>Nenhuma modalidade encontrada</Typography>
+                        <CategoryIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
+                        <Typography variant="h6" sx={{ color: 'text.secondary' }}>Nenhuma modalidade encontrada</Typography>
                         <Typography variant="body2" color="text.secondary">Adicione a primeira modalidade para esta escola.</Typography>
                     </Box>
                 ) : (
                     <TableContainer>
-                        <Table><TableHead sx={{ bgcolor: 'grey.50' }}><TableRow><TableCell>Modalidade</TableCell><TableCell align="center">Alunos</TableCell><TableCell align="right">Ações</TableCell></TableRow></TableHead>
+                        <Table><TableHead><TableRow><TableCell sx={{ fontWeight: 600 }}>Modalidade</TableCell><TableCell align="center" sx={{ fontWeight: 600 }}>Alunos</TableCell><TableCell align="right" sx={{ fontWeight: 600 }}>Ações</TableCell></TableRow></TableHead>
                             <TableBody>
                                 {associacoes.map((assoc) => (
                                     <TableRow key={assoc.id} hover>
