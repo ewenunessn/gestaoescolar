@@ -1,27 +1,29 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   StyleSheet,
   ScrollView,
   RefreshControl,
+  SafeAreaView,
 } from 'react-native';
 import {
-  Title,
+  Text,
   Card,
-  Paragraph,
   Button,
   Chip,
   ActivityIndicator,
   Searchbar,
   SegmentedButtons,
+  Surface,
 } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useNotification } from '../contexts/NotificationContext';
 import { useRota } from '../contexts/RotaContext';
+import { useOffline } from '../contexts/OfflineContext';
 import { entregaServiceHybrid } from '../services/entregaServiceHybrid';
-import { EscolaEntrega } from '../services/entregaService';
+import { EscolaEntrega, EstatisticasEntregas } from '../services/entregaService';
 import { RootStackParamList } from '../navigation/AppNavigator';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
@@ -29,26 +31,37 @@ type NavigationProp = StackNavigationProp<RootStackParamList>;
 const EntregasScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const { showError } = useNotification();
-  const { rotaSelecionada } = useRota();
+  const { rotaSelecionada, limparRota } = useRota();
+  const { isOffline, sincronizando } = useOffline();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [escolas, setEscolas] = useState<EscolaEntrega[]>([]);
+  const [estatisticas, setEstatisticas] = useState<EstatisticasEntregas | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filtroStatus, setFiltroStatus] = useState('todas');
 
-  useEffect(() => {
-    carregarEscolas();
-  }, []);
+  // Recarregar dados sempre que a tela ganhar foco
+  useFocusEffect(
+    useCallback(() => {
+      carregarDados();
+    }, [rotaSelecionada])
+  );
 
-  const carregarEscolas = async () => {
+  const carregarDados = async () => {
     try {
       setLoading(true);
-      // Usar a rota selecionada como filtro
       const rotaId = rotaSelecionada?.id;
-      const escolasData = await entregaServiceHybrid.listarEscolasRota(rotaId);
+
+      // Carregar escolas e estatísticas em paralelo
+      const [escolasData, estatisticasData] = await Promise.all([
+        entregaServiceHybrid.listarEscolasRota(rotaId),
+        entregaServiceHybrid.obterEstatisticas(undefined, rotaId).catch(() => null)
+      ]);
+
       setEscolas(escolasData);
+      setEstatisticas(estatisticasData);
     } catch (error) {
-      showError('Erro ao carregar escolas');
+      showError('Erro ao carregar dados');
       console.error('Erro:', error);
     } finally {
       setLoading(false);
@@ -57,8 +70,13 @@ const EntregasScreen = () => {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await carregarEscolas();
+    await carregarDados();
     setRefreshing(false);
+  };
+
+  const handleTrocarRota = () => {
+    limparRota();
+    navigation.navigate('SelecionarRota');
   };
 
   const filteredEscolas = escolas.filter(escola => {
@@ -101,23 +119,50 @@ const EntregasScreen = () => {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" />
-        <Paragraph style={styles.loadingText}>Carregando entregas...</Paragraph>
+        <Text style={styles.loadingText}>Carregando entregas...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.safeArea}>
       {/* Header */}
-      <View style={styles.header}>
-        <Title style={styles.headerTitle}>Entregas</Title>
-        <Paragraph style={styles.headerSubtitle}>
-          {rotaSelecionada 
-            ? `Rota: ${rotaSelecionada.nome}`
-            : 'Gerencie as entregas por escola'
-          }
-        </Paragraph>
-      </View>
+      <Surface style={styles.header}>
+        <View style={styles.headerContent}>
+          <View style={styles.headerInfo}>
+            <Text style={styles.headerTitle}>Entregas</Text>
+            <Text style={styles.headerSubtitle}>
+              {rotaSelecionada
+                ? `Rota: ${rotaSelecionada.nome}`
+                : 'Gerencie as entregas por escola'
+              }
+            </Text>
+          </View>
+          <Button
+            mode="outlined"
+            compact
+            onPress={handleTrocarRota}
+            style={styles.trocarRotaButton}
+            icon="swap-horizontal"
+          >
+            Trocar
+          </Button>
+        </View>
+
+        {/* Status Offline/Sincronização */}
+        {(isOffline || sincronizando) && (
+          <View style={styles.statusBanner}>
+            <MaterialCommunityIcons
+              name={isOffline ? "wifi-off" : "sync"}
+              size={18}
+              color={isOffline ? "#d32f2f" : "#1976d2"}
+            />
+            <Text style={[styles.statusBannerText, { color: isOffline ? "#d32f2f" : "#1976d2" }]}>
+              {isOffline ? "Modo Offline - Dados podem estar desatualizados" : "Sincronizando dados..."}
+            </Text>
+          </View>
+        )}
+      </Surface>
 
       {/* Filtros */}
       <View style={styles.filtersContainer}>
@@ -127,7 +172,7 @@ const EntregasScreen = () => {
           value={searchQuery}
           style={styles.searchbar}
         />
-        
+
         <SegmentedButtons
           value={filtroStatus}
           onValueChange={setFiltroStatus}
@@ -147,48 +192,80 @@ const EntregasScreen = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* Resumo */}
-        <Card style={styles.resumoCard}>
-          <Card.Content>
-            <Title style={styles.resumoTitle}>Resumo</Title>
-            <View style={styles.resumoStats}>
-              <View style={styles.resumoStat}>
-                <Paragraph style={styles.resumoNumber}>{escolas.length}</Paragraph>
-                <Paragraph style={styles.resumoLabel}>Total</Paragraph>
+        {/* Estatísticas */}
+        {estatisticas ? (
+          <Card style={styles.resumoCard}>
+            <Card.Content>
+              <Text style={styles.resumoTitle}>Estatísticas da Rota</Text>
+              <View style={styles.resumoStats}>
+                <View style={styles.resumoStat}>
+                  <Text style={styles.resumoNumber}>{estatisticas.total_escolas}</Text>
+                  <Text style={styles.resumoLabel}>Escolas</Text>
+                </View>
+                <View style={styles.resumoStat}>
+                  <Text style={[styles.resumoNumber, { color: '#388e3c' }]}>
+                    {estatisticas.total_itens}
+                  </Text>
+                  <Text style={styles.resumoLabel}>Itens Total</Text>
+                </View>
+                <View style={styles.resumoStat}>
+                  <Text style={[styles.resumoNumber, { color: '#26a69a' }]}>
+                    {estatisticas.itens_entregues}
+                  </Text>
+                  <Text style={styles.resumoLabel}>Entregues</Text>
+                </View>
+                <View style={styles.resumoStat}>
+                  <Text style={[styles.resumoNumber, { color: '#ffb300' }]}>
+                    {estatisticas.itens_pendentes}
+                  </Text>
+                  <Text style={styles.resumoLabel}>Pendentes</Text>
+                </View>
               </View>
-              <View style={styles.resumoStat}>
-                <Paragraph style={[styles.resumoNumber, { color: '#f44336' }]}>
-                  {escolas.filter(e => e.percentual_entregue === 0).length}
-                </Paragraph>
-                <Paragraph style={styles.resumoLabel}>Pendentes</Paragraph>
+            </Card.Content>
+          </Card>
+        ) : (
+          <Card style={styles.resumoCard}>
+            <Card.Content>
+              <Text style={styles.resumoTitle}>Resumo por Escolas</Text>
+              <View style={styles.resumoStats}>
+                <View style={styles.resumoStat}>
+                  <Text style={styles.resumoNumber}>{escolas.length}</Text>
+                  <Text style={styles.resumoLabel}>Total</Text>
+                </View>
+                <View style={styles.resumoStat}>
+                  <Text style={[styles.resumoNumber, { color: '#f44336' }]}>
+                    {escolas.filter(e => e.percentual_entregue === 0).length}
+                  </Text>
+                  <Text style={styles.resumoLabel}>Pendentes</Text>
+                </View>
+                <View style={styles.resumoStat}>
+                  <Text style={[styles.resumoNumber, { color: '#ff9800' }]}>
+                    {escolas.filter(e => e.percentual_entregue > 0 && e.percentual_entregue < 100).length}
+                  </Text>
+                  <Text style={styles.resumoLabel}>Em Andamento</Text>
+                </View>
+                <View style={styles.resumoStat}>
+                  <Text style={[styles.resumoNumber, { color: '#4caf50' }]}>
+                    {escolas.filter(e => e.percentual_entregue === 100).length}
+                  </Text>
+                  <Text style={styles.resumoLabel}>Concluídas</Text>
+                </View>
               </View>
-              <View style={styles.resumoStat}>
-                <Paragraph style={[styles.resumoNumber, { color: '#ff9800' }]}>
-                  {escolas.filter(e => e.percentual_entregue > 0 && e.percentual_entregue < 100).length}
-                </Paragraph>
-                <Paragraph style={styles.resumoLabel}>Em Andamento</Paragraph>
-              </View>
-              <View style={styles.resumoStat}>
-                <Paragraph style={[styles.resumoNumber, { color: '#4caf50' }]}>
-                  {escolas.filter(e => e.percentual_entregue === 100).length}
-                </Paragraph>
-                <Paragraph style={styles.resumoLabel}>Concluídas</Paragraph>
-              </View>
-            </View>
-          </Card.Content>
-        </Card>
+            </Card.Content>
+          </Card>
+        )}
 
         {/* Lista de Escolas */}
         {filteredEscolas.length === 0 ? (
           <Card style={styles.emptyCard}>
             <Card.Content style={styles.emptyContent}>
               <MaterialCommunityIcons name="school-outline" size={48} color="#ccc" />
-              <Paragraph style={styles.emptyText}>
-                {searchQuery || filtroStatus !== 'todas' 
+              <Text style={styles.emptyText}>
+                {searchQuery || filtroStatus !== 'todas'
                   ? 'Nenhuma escola encontrada com os filtros aplicados'
                   : 'Nenhuma escola com itens para entrega'
                 }
-              </Paragraph>
+              </Text>
             </Card.Content>
           </Card>
         ) : (
@@ -197,19 +274,19 @@ const EntregasScreen = () => {
               <Card.Content>
                 <View style={styles.escolaHeader}>
                   <View style={styles.escolaInfo}>
-                    <Title style={styles.escolaNome}>{escola.nome}</Title>
+                    <Text style={styles.escolaNome}>{escola.nome}</Text>
                     {escola.endereco && (
-                      <Paragraph style={styles.escolaEndereco}>
+                      <Text style={styles.escolaEndereco}>
                         📍 {escola.endereco}
-                      </Paragraph>
+                      </Text>
                     )}
                     {escola.telefone && (
-                      <Paragraph style={styles.escolaTelefone}>
+                      <Text style={styles.escolaTelefone}>
                         📞 {escola.telefone}
-                      </Paragraph>
+                      </Text>
                     )}
                   </View>
-                  
+
                   <View style={styles.escolaStatus}>
                     <Chip
                       icon={getStatusIcon(escola.percentual_entregue)}
@@ -225,13 +302,13 @@ const EntregasScreen = () => {
                 <View style={styles.escolaStats}>
                   <View style={styles.escolaStat}>
                     <MaterialCommunityIcons name="package-variant" size={20} color="#666" />
-                    <Paragraph style={styles.escolaStatText}>
+                    <Text style={styles.escolaStatText}>
                       {escola.itens_entregues}/{escola.total_itens} itens
-                    </Paragraph>
+                    </Text>
                   </View>
-                  <Paragraph style={styles.escolaPercentual}>
+                  <Text style={styles.escolaPercentual}>
                     {(escola.percentual_entregue || 0).toFixed(1)}% concluído
-                  </Paragraph>
+                  </Text>
                 </View>
 
                 {/* Barra de Progresso */}
@@ -240,7 +317,7 @@ const EntregasScreen = () => {
                     <View
                       style={[
                         styles.progressFill,
-                        { 
+                        {
                           width: `${escola.percentual_entregue}%`,
                           backgroundColor: getStatusColor(escola.percentual_entregue)
                         }
@@ -261,13 +338,14 @@ const EntregasScreen = () => {
                   >
                     Ver Detalhes
                   </Button>
-                  
+
                   {escola.percentual_entregue < 100 && (
                     <Button
                       mode="outlined"
-                      onPress={() => {
-                        // Navegar diretamente para confirmar próxima entrega
-                      }}
+                      onPress={() => navigation.navigate('EscolaDetalhes', {
+                        escolaId: escola.id,
+                        escolaNome: escola.nome
+                      })}
                       style={styles.escolaButtonSecondary}
                       icon="truck-delivery"
                     >
@@ -280,12 +358,12 @@ const EntregasScreen = () => {
           ))
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
@@ -293,15 +371,30 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#f5f5f5',
   },
   loadingText: {
     marginTop: 16,
     color: '#666',
   },
   header: {
+    margin: 16,
+    marginBottom: 0,
+    borderRadius: 16,
+    elevation: 4,
+    backgroundColor: '#ffffff',
+    overflow: 'hidden',
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     padding: 20,
-    paddingBottom: 10,
-    backgroundColor: '#fff',
+    paddingBottom: 16,
+  },
+  headerInfo: {
+    flex: 1,
+    marginRight: 16,
   },
   headerTitle: {
     fontSize: 24,
@@ -311,6 +404,23 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     color: '#666',
     marginTop: 4,
+  },
+  trocarRotaButton: {
+    borderRadius: 8,
+  },
+  statusBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    backgroundColor: 'rgba(255, 235, 59, 0.1)',
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  statusBannerText: {
+    fontSize: 13,
+    marginLeft: 8,
+    fontWeight: '600',
   },
   filtersContainer: {
     padding: 16,

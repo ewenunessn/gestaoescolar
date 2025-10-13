@@ -3,23 +3,33 @@ import {
   View,
   StyleSheet,
   ScrollView,
+  SafeAreaView,
 } from 'react-native';
 import {
-  Title,
+  Text,
   Card,
-  Paragraph,
   Button,
   List,
   Divider,
   Avatar,
 } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
 import { useAuth } from '../contexts/AuthContext';
+import { useRota } from '../contexts/RotaContext';
+import { useOffline } from '../contexts/OfflineContext';
 import { useNotification } from '../contexts/NotificationContext';
+import { RootStackParamList } from '../navigation/AppNavigator';
+
+type NavigationProp = StackNavigationProp<RootStackParamList>;
 
 const PerfilScreen = () => {
+  const navigation = useNavigation<NavigationProp>();
   const { user, signOut } = useAuth();
-  const { showSuccess } = useNotification();
+  const { rotaSelecionada, limparRota } = useRota();
+  const { isOffline, sincronizando, sincronizarAgora, operacoesPendentes } = useOffline();
+  const { showSuccess, showError } = useNotification();
 
   const handleLogout = async () => {
     try {
@@ -27,6 +37,26 @@ const PerfilScreen = () => {
       showSuccess('Logout realizado com sucesso');
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
+    }
+  };
+
+  const handleTrocarRota = () => {
+    limparRota();
+    navigation.navigate('SelecionarRota');
+  };
+
+  const handleSincronizar = async () => {
+    try {
+      if (isOffline) {
+        showError('Não é possível sincronizar no modo offline');
+        return;
+      }
+      
+      await sincronizarAgora();
+      showSuccess('Dados sincronizados com sucesso');
+    } catch (error) {
+      showError('Erro ao sincronizar dados');
+      console.error('Erro na sincronização:', error);
     }
   };
 
@@ -53,58 +83,138 @@ const PerfilScreen = () => {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Header do Perfil */}
-      <Card style={styles.profileCard}>
-        <Card.Content>
-          <View style={styles.profileHeader}>
-            <Avatar.Text
-              size={80}
-              label={getInitials(user?.nome || 'U')}
-              style={styles.avatar}
-            />
-            <View style={styles.profileInfo}>
-              <Title style={styles.userName}>{user?.nome}</Title>
-              <Paragraph style={styles.userEmail}>{user?.email}</Paragraph>
-              <Paragraph style={styles.userType}>
-                {getTipoUsuarioLabel(user?.tipo || '')}
-              </Paragraph>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView style={styles.container}>
+        {/* Header do Perfil */}
+        <Card style={styles.profileCard}>
+          <Card.Content>
+            <View style={styles.profileHeader}>
+              <Avatar.Text
+                size={80}
+                label={getInitials(user?.nome || 'U')}
+                style={styles.avatar}
+              />
+              <View style={styles.profileInfo}>
+                <Text style={styles.userName}>{user?.nome}</Text>
+                <Text style={styles.userEmail}>{user?.email}</Text>
+                <Text style={styles.userType}>
+                  {getTipoUsuarioLabel(user?.tipo || '')}
+                </Text>
+              </View>
             </View>
-          </View>
-        </Card.Content>
-      </Card>
+          </Card.Content>
+        </Card>
 
-      {/* Informações da Conta */}
-      <Card style={styles.sectionCard}>
-        <Card.Content>
-          <Title style={styles.sectionTitle}>Informações da Conta</Title>
-          
-          <List.Item
-            title="Nome Completo"
-            description={user?.nome}
-            left={(props) => <List.Icon {...props} icon="account" />}
-          />
-          <Divider />
-          
-          <List.Item
-            title="Email"
-            description={user?.email}
-            left={(props) => <List.Icon {...props} icon="email" />}
-          />
-          <Divider />
-          
-          <List.Item
-            title="Tipo de Usuário"
-            description={getTipoUsuarioLabel(user?.tipo || '')}
-            left={(props) => <List.Icon {...props} icon="account-group" />}
-          />
-        </Card.Content>
-      </Card>
+        {/* Rota Atual */}
+        <Card style={styles.sectionCard}>
+          <Card.Content>
+            <Text style={styles.sectionTitle}>Rota Atual</Text>
+            
+            {rotaSelecionada ? (
+              <>
+                <List.Item
+                  title={rotaSelecionada.nome}
+                  description={rotaSelecionada.descricao || 'Rota selecionada'}
+                  left={(props) => (
+                    <View style={styles.rotaIconContainer}>
+                      <View 
+                        style={[
+                          styles.rotaColorIndicator, 
+                          { backgroundColor: rotaSelecionada.cor || '#1976d2' }
+                        ]} 
+                      />
+                    </View>
+                  )}
+                  right={(props) => <List.Icon {...props} icon="chevron-right" />}
+                  onPress={handleTrocarRota}
+                />
+                <Divider />
+                <List.Item
+                  title="Trocar Rota"
+                  description="Selecionar uma rota diferente"
+                  left={(props) => <List.Icon {...props} icon="swap-horizontal" />}
+                  right={(props) => <List.Icon {...props} icon="chevron-right" />}
+                  onPress={handleTrocarRota}
+                />
+              </>
+            ) : (
+              <List.Item
+                title="Nenhuma rota selecionada"
+                description="Toque para selecionar uma rota"
+                left={(props) => <List.Icon {...props} icon="map-search" />}
+                right={(props) => <List.Icon {...props} icon="chevron-right" />}
+                onPress={handleTrocarRota}
+              />
+            )}
+          </Card.Content>
+        </Card>
 
-      {/* Configurações */}
-      <Card style={styles.sectionCard}>
-        <Card.Content>
-          <Title style={styles.sectionTitle}>Configurações</Title>
+        {/* Status de Sincronização */}
+        <Card style={styles.sectionCard}>
+          <Card.Content>
+            <Text style={styles.sectionTitle}>Sincronização</Text>
+            
+            <List.Item
+              title={isOffline ? "Modo Offline" : "Online"}
+              description={
+                isOffline 
+                  ? `${operacoesPendentes} operações pendentes`
+                  : sincronizando 
+                    ? "Sincronizando dados..."
+                    : "Dados atualizados"
+              }
+              left={(props) => (
+                <List.Icon 
+                  {...props} 
+                  icon={isOffline ? "wifi-off" : sincronizando ? "sync" : "wifi"} 
+                  color={isOffline ? "#f44336" : sincronizando ? "#ff9800" : "#4caf50"}
+                />
+              )}
+            />
+            <Divider />
+            
+            <List.Item
+              title="Sincronizar Agora"
+              description="Atualizar dados com o servidor"
+              left={(props) => <List.Icon {...props} icon="sync" />}
+              right={(props) => <List.Icon {...props} icon="chevron-right" />}
+              onPress={handleSincronizar}
+              disabled={isOffline || sincronizando}
+            />
+          </Card.Content>
+        </Card>
+
+        {/* Informações da Conta */}
+        <Card style={styles.sectionCard}>
+          <Card.Content>
+            <Text style={styles.sectionTitle}>Informações da Conta</Text>
+            
+            <List.Item
+              title="Nome Completo"
+              description={user?.nome}
+              left={(props) => <List.Icon {...props} icon="account" />}
+            />
+            <Divider />
+            
+            <List.Item
+              title="Email"
+              description={user?.email}
+              left={(props) => <List.Icon {...props} icon="email" />}
+            />
+            <Divider />
+            
+            <List.Item
+              title="Tipo de Usuário"
+              description={getTipoUsuarioLabel(user?.tipo || '')}
+              left={(props) => <List.Icon {...props} icon="account-group" />}
+            />
+          </Card.Content>
+        </Card>
+
+        {/* Configurações */}
+        <Card style={styles.sectionCard}>
+          <Card.Content>
+            <Text style={styles.sectionTitle}>Configurações</Text>
           
           <List.Item
             title="Notificações"
@@ -137,13 +247,13 @@ const PerfilScreen = () => {
               // Implementar configurações de câmera
             }}
           />
-        </Card.Content>
-      </Card>
+          </Card.Content>
+        </Card>
 
-      {/* Sobre o App */}
-      <Card style={styles.sectionCard}>
-        <Card.Content>
-          <Title style={styles.sectionTitle}>Sobre o App</Title>
+        {/* Sobre o App */}
+        <Card style={styles.sectionCard}>
+          <Card.Content>
+            <Text style={styles.sectionTitle}>Sobre o App</Text>
           
           <List.Item
             title="Versão"
@@ -183,56 +293,41 @@ const PerfilScreen = () => {
               // Implementar tela de privacidade
             }}
           />
-        </Card.Content>
-      </Card>
+          </Card.Content>
+        </Card>
 
-      {/* Ações */}
-      <Card style={styles.sectionCard}>
-        <Card.Content>
-          <Title style={styles.sectionTitle}>Ações</Title>
-          
-          <List.Item
-            title="Sincronizar Dados"
-            description="Atualizar dados com o servidor"
-            left={(props) => <List.Icon {...props} icon="sync" />}
-            right={(props) => <List.Icon {...props} icon="chevron-right" />}
-            onPress={() => {
-              // Implementar sincronização
-            }}
-          />
-          <Divider />
-          
+        {/* Botão de Logout */}
+        <View style={styles.logoutContainer}>
+          <Button
+            mode="contained"
+            onPress={handleLogout}
+            style={styles.logoutButton}
+            buttonColor="#f44336"
+            icon="logout"
+          >
+            Sair da Conta
+          </Button>
+        </View>
 
-        </Card.Content>
-      </Card>
-
-      {/* Botão de Logout */}
-      <View style={styles.logoutContainer}>
-        <Button
-          mode="contained"
-          onPress={handleLogout}
-          style={styles.logoutButton}
-          buttonColor="#f44336"
-          icon="logout"
-        >
-          Sair da Conta
-        </Button>
-      </View>
-
-      {/* Footer */}
-      <View style={styles.footer}>
-        <Paragraph style={styles.footerText}>
-          Sistema de Alimentação Escolar
-        </Paragraph>
-        <Paragraph style={styles.footerVersion}>
-          Entregas Mobile v1.0.0
-        </Paragraph>
-      </View>
-    </ScrollView>
+        {/* Footer */}
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>
+            Sistema de Alimentação Escolar
+          </Text>
+          <Text style={styles.footerVersion}>
+            Entregas Mobile v1.0.0
+          </Text>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
@@ -279,6 +374,19 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 8,
     color: '#333',
+  },
+  rotaIconContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 40,
+    height: 40,
+  },
+  rotaColorIndicator: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#eee',
   },
   logoutContainer: {
     margin: 16,

@@ -3,10 +3,11 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
+import { useRota } from '../contexts/RotaContext';
 
 // Screens
 import LoginScreen from '../screens/LoginScreen';
-import HomeScreen from '../screens/HomeScreen';
+import SelecionarRotaScreen from '../screens/SelecionarRotaScreen';
 import EntregasScreen from '../screens/EntregasScreen';
 import EscolaDetalhesScreen from '../screens/EscolaDetalhesScreen';
 import ConfirmarEntregaScreen from '../screens/ConfirmarEntregaScreen';
@@ -14,19 +15,17 @@ import EntregaMassaScreen from '../screens/EntregaMassaScreen';
 import RevisaoEntregaScreen from '../screens/RevisaoEntregaScreen';
 import PerfilScreen from '../screens/PerfilScreen';
 
-
 export type RootStackParamList = {
   Login: undefined;
+  SelecionarRota: undefined;
   MainTabs: undefined;
   EscolaDetalhes: { escolaId: number; escolaNome: string };
   ConfirmarEntrega: { itemId: number; itemData: any };
   EntregaMassa: { itensSelecionados: any[]; escolaNome: string };
   RevisaoEntrega: { itensRevisados: any[]; escolaNome: string };
-
 };
 
 export type TabParamList = {
-  Home: undefined;
   Entregas: undefined;
   Perfil: undefined;
 };
@@ -41,9 +40,7 @@ const TabNavigator = () => {
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof MaterialCommunityIcons.glyphMap;
 
-          if (route.name === 'Home') {
-            iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Entregas') {
+          if (route.name === 'Entregas') {
             iconName = focused ? 'truck-delivery' : 'truck-delivery-outline';
           } else if (route.name === 'Perfil') {
             iconName = focused ? 'account' : 'account-outline';
@@ -58,11 +55,6 @@ const TabNavigator = () => {
         headerShown: false,
       })}
     >
-      <Tab.Screen 
-        name="Home" 
-        component={HomeScreen}
-        options={{ tabBarLabel: 'Início' }}
-      />
       <Tab.Screen 
         name="Entregas" 
         component={EntregasScreen}
@@ -79,11 +71,14 @@ const TabNavigator = () => {
 
 const AppNavigator = () => {
   const { isAuthenticated } = useAuth();
+  const { rotaSelecionada } = useRota();
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       {!isAuthenticated ? (
         <Stack.Screen name="Login" component={LoginScreen} />
+      ) : !rotaSelecionada ? (
+        <Stack.Screen name="SelecionarRota" component={SelecionarRotaScreen} />
       ) : (
         <>
           <Stack.Screen name="MainTabs" component={TabNavigator} />
@@ -107,7 +102,6 @@ const AppNavigator = () => {
             component={RevisaoEntregaScreen}
             options={{ headerShown: true, title: 'Revisão Final' }}
           />
-
         </>
       )}
     </Stack.Navigator>

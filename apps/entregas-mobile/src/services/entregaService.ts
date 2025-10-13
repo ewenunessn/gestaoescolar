@@ -1,5 +1,18 @@
 import api from './api';
 
+export interface User {
+  id: number;
+  nome: string;
+  email: string;
+  tipo: 'admin' | 'entregador' | 'escola';
+}
+
+export interface LoginResponse {
+  token: string;
+  tipo: string;
+  nome: string;
+}
+
 export interface EscolaEntrega {
   id: number;
   nome: string;
@@ -82,6 +95,39 @@ export interface PlanejamentoEntrega {
 }
 
 class EntregaService {
+  // ========== AUTENTICAÇÃO ==========
+  
+  // Login do usuário
+  async login(email: string, password: string): Promise<LoginResponse> {
+    try {
+      console.log('🔐 Fazendo login para:', email);
+      const response = await api.post('/auth/login', {
+        email,
+        senha: password
+      });
+      console.log('✅ Login realizado com sucesso');
+      return response.data;
+    } catch (error) {
+      console.error('❌ Erro no login:', error);
+      throw error;
+    }
+  }
+
+  // Buscar dados do usuário logado
+  async buscarUsuario(): Promise<User> {
+    try {
+      console.log('👤 Buscando dados do usuário logado');
+      const response = await api.get('/auth/me');
+      console.log('✅ Dados do usuário recebidos:', response.data);
+      return response.data.data;
+    } catch (error) {
+      console.error('❌ Erro ao buscar usuário:', error);
+      throw error;
+    }
+  }
+
+  // ========== ROTAS ==========
+  
   // Listar todas as rotas de entrega
   async listarTodasRotas(): Promise<RotaEntrega[]> {
     try {

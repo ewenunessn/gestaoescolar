@@ -144,6 +144,13 @@ app.get("/health", async (req, res) => {
       timestamp: new Date().toISOString(),
       apiUrl,
       environment: process.env.NODE_ENV || 'development',
+      debug: {
+        nodeEnv: process.env.NODE_ENV,
+        jwtSecretFromEnv: process.env.JWT_SECRET ? 'Configurado' : 'Não configurado',
+        jwtSecretFromConfig: config.jwtSecret ? 'Configurado' : 'Não configurado',
+        vercelEnv: process.env.VERCEL,
+        jwtEnvKeys: Object.keys(process.env).filter(key => key.includes('JWT'))
+      }
     });
   } catch (error) {
     res.status(500).json({

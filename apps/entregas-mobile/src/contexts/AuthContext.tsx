@@ -1,13 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { entregaServiceHybrid } from '../services/entregaServiceHybrid';
-
-interface User {
-  id: number;
-  nome: string;
-  email: string;
-  tipo: 'admin' | 'entregador' | 'escola';
-}
+import { entregaService, User } from '../services/entregaService';
+import api from '../services/api';
 
 interface AuthContextData {
   user: User | null;
@@ -33,14 +28,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const loadStoredUser = async () => {
     try {
-      const storedUser = await AsyncStorage.getItem('@entregas:user');
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
+      const [storedUser, storedToken] = await Promise.all([
+        AsyncStorage.getItem('@entregas:user'),
+        AsyncStorage.getItem('@entregas:token')
+      ]);
+      
+      if (storedUser && storedToken) {
+        // Configurar token no header da API
+        api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
         
-        // Se usuário já está logado, pré-carregar dados em background
-        setTimeout(() => {
-          preCarregarDadosAutomatico();
-        }, 2000);
+        try {
+          // Verificar se o token ainda é válido buscando dados atualizados do usuário
+          const userData = await entregaService.buscarUsuario();
+          setUser(userData);
+          
+          // Se usuário já está logado, pré-carregar dados em background
+          setTimeout(() => {
+            preCarregarDadosAutomatico();
+          }, 2000);
+        } catch (error) {
+          console.log('Token expirado ou inválido, fazendo logout');
+          await signOut();
+        }
       }
     } catch (error) {
       console.error('Erro ao carregar usuário:', error);
@@ -53,23 +62,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       
-      // Simulação de login - substituir pela API real
-      const mockUser: User = {
-        id: 1,
-        nome: 'Entregador Teste',
-        email: email,
-        tipo: 'entregador'
-      };
-
-      await AsyncStorage.setItem('@entregas:user', JSON.stringify(mockUser));
-      setUser(mockUser);
+      // Fazer login real na API
+      const loginResponse = await entregaService.login(email, password);
+      
+      // Salvar token no AsyncStorage PRIMEIRO
+      await AsyncStorage.setItem('@entregas:token', loginResponse.token);
+      
+      // Configurar token no header da API (backup para requisições imediatas)
+      api.defaults.headers.common['Authorization'] = `Bearer ${loginResponse.token}`;
+      
+      // Buscar dados completos do usuário
+      const userData = await entregaService.buscarUsuario();
+      
+      // Salvar dados do usuário no AsyncStorage
+      await AsyncStorage.setItem('@entregas:user', JSON.stringify(userData));
+      
+      setUser(userData);
 
       // Pré-carregar dados automaticamente após login (em background)
       setTimeout(() => {
         preCarregarDadosAutomatico();
       }, 1000);
-    } catch (error) {
-      throw new Error('Erro ao fazer login');
+    } catch (error: any) {
+      console.error('Erro no login:', error);
+      throw new Error(error?.response?.data?.message || 'Erro ao fazer login');
     } finally {
       setLoading(false);
     }
@@ -87,7 +103,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signOut = async () => {
     try {
-      await AsyncStorage.removeItem('@entregas:user');
+      await Promise.all([
+        AsyncStorage.removeItem('@entregas:user'),
+        AsyncStorage.removeItem('@entregas:token')
+      ]);
+      
+      // Remover token do header da API
+      delete api.defaults.headers.common['Authorization'];
+      
       setUser(null);
     } catch (error) {
       console.error('Erro ao fazer logout:', error);

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import { config } from "../config/config";
 
 export function authMiddleware(
   req: Request,
@@ -7,9 +8,14 @@ export function authMiddleware(
   next: NextFunction
 ) {
   try {
+    console.log('🔐 [AUTH] Middleware executado para:', req.method, req.originalUrl);
+    
     // Em desenvolvimento, permitir acesso sem token se não houver header de autorização
     const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
     const authHeader = req.headers.authorization;
+    
+    console.log('🔐 [AUTH] Modo desenvolvimento:', isDevelopment);
+    console.log('🔐 [AUTH] Header Authorization:', authHeader ? 'Presente' : 'Ausente');
 
     if (isDevelopment && !authHeader) {
       console.log('🔓 Modo desenvolvimento: Permitindo acesso sem token');
@@ -51,8 +57,11 @@ export function authMiddleware(
     }
     
     try {
-      const jwtSecret = process.env.JWT_SECRET || 'seu_jwt_secret_aqui';
-      const decoded = jwt.verify(token, jwtSecret);
+      console.log('🔐 [AUTH] Validando JWT com secret:', config.jwtSecret);
+      console.log('🔐 [AUTH] NODE_ENV:', process.env.NODE_ENV);
+      console.log('🔐 [AUTH] JWT_SECRET env:', process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, config.jwtSecret) as any;
+      console.log('✅ [AUTH] Token decodificado:', { id: decoded.id, tipo: decoded.tipo });
       (req as any).user = decoded;
       next();
     } catch (jwtError: any) {

@@ -1,24 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     View,
     StyleSheet,
     ScrollView,
     RefreshControl,
     Alert,
+    SafeAreaView,
 } from 'react-native';
 import {
-    Title,
+    Text,
     Card,
-    Paragraph,
     Button,
     Chip,
     ActivityIndicator,
     List,
     Divider,
     Checkbox,
+    Surface,
 } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRoute, useNavigation } from '@react-navigation/native';
+import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 import { useNotification } from '../contexts/NotificationContext';
@@ -49,19 +50,13 @@ const EscolaDetalhesScreen = () => {
     // Estados para seleção múltipla
     const [itensSelecionados, setItensSelecionados] = useState<Set<number>>(new Set());
 
-    useEffect(() => {
-        carregarItens();
-    }, []);
-
-    // Limpar seleção quando voltar da tela de entrega em massa
-    useEffect(() => {
-        const unsubscribe = navigation.addListener('focus', () => {
+    // Recarregar dados sempre que a tela ganhar foco
+    useFocusEffect(
+        useCallback(() => {
             setItensSelecionados(new Set());
             carregarItens();
-        });
-
-        return unsubscribe;
-    }, [navigation]);
+        }, [escolaId])
+    );
 
     const carregarItens = async () => {
         try {
@@ -211,46 +206,45 @@ const EscolaDetalhesScreen = () => {
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" />
-                <Paragraph style={styles.loadingText}>Carregando itens...</Paragraph>
+                <Text style={styles.loadingText}>Carregando itens...</Text>
             </View>
         );
     }
 
     return (
-        <ScrollView
-            style={styles.container}
-            refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-            }
-        >
-            {/* Header da Escola */}
-            <Card style={styles.headerCard}>
-                <Card.Content>
+        <SafeAreaView style={styles.safeArea}>
+            <ScrollView
+                style={styles.container}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                }
+            >
+                {/* Header da Escola */}
+                <Surface style={styles.headerCard}>
                     <View style={styles.headerContent}>
                         <MaterialCommunityIcons name="school" size={48} color="#1976d2" />
                         <View style={styles.headerInfo}>
-                            <Title style={styles.escolaNome}>{escolaNome}</Title>
-                            <Paragraph style={styles.totalItens}>
+                            <Text style={styles.escolaNome}>{escolaNome}</Text>
+                            <Text style={styles.totalItens}>
                                 {itens.length} item(s) total
-                            </Paragraph>
+                            </Text>
                             {isOffline && (
                                 <View style={styles.offlineIndicator}>
                                     <MaterialCommunityIcons name="wifi-off" size={16} color="#ff9800" />
-                                    <Paragraph style={styles.offlineText}>Modo Offline</Paragraph>
+                                    <Text style={styles.offlineText}>Modo Offline</Text>
                                 </View>
                             )}
                             {operacoesPendentes > 0 && (
                                 <View style={styles.pendingIndicator}>
                                     <MaterialCommunityIcons name="sync" size={16} color="#2196f3" />
-                                    <Paragraph style={styles.pendingText}>
+                                    <Text style={styles.pendingText}>
                                         {operacoesPendentes} operação(ões) pendente(s)
-                                    </Paragraph>
+                                    </Text>
                                 </View>
                             )}
                         </View>
                     </View>
-                </Card.Content>
-            </Card>
+                </Surface>
 
             {/* Resumo */}
             <Card style={styles.resumoCard}>
@@ -460,11 +454,16 @@ const EscolaDetalhesScreen = () => {
             )}
 
 
-        </ScrollView>
+            </ScrollView>
+        </SafeAreaView>
     );
 };
 
 const styles = StyleSheet.create({
+    safeArea: {
+        flex: 1,
+        backgroundColor: '#f5f5f5',
+    },
     container: {
         flex: 1,
         backgroundColor: '#f5f5f5',

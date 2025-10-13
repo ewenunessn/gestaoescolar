@@ -24,7 +24,7 @@ export const config = {
   },
 
   // Configurações de segurança
-  jwtSecret: process.env.JWT_SECRET || "sua_chave_secreta_jwt_aqui_muito_segura_para_producao",
+  jwtSecret: process.env.JWT_SECRET || "sua_chave_jwt_super_secreta_minimo_32_caracteres",
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "24h",
 
   // Configurações CORS
