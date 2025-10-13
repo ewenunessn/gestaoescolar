@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Button,
   Card,
   CardContent,
-  CardHeader,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -24,19 +24,36 @@ import {
   MenuItem,
   Select,
   FormControl,
-  InputLabel
+  InputLabel,
+  Alert,
+  CircularProgress,
+  Tooltip,
+  TablePagination,
+  InputAdornment,
+  Collapse
 } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Visibility as ViewIcon } from '@mui/icons-material';
+import { 
+  Add as AddIcon, 
+  Delete as DeleteIcon, 
+  Visibility as ViewIcon,
+  Search as SearchIcon,
+  Clear as ClearIcon,
+  TuneRounded,
+  ExpandLess,
+  Assignment as AssignmentIcon
+} from '@mui/icons-material';
 import { useNotification } from '../context/NotificationContext';
 import { guiaService, Guia, CreateGuiaData } from '../services/guiaService';
-import GuiaDetalhes from '../components/GuiaDetalhes';
 
 const GuiasDemanda: React.FC = () => {
+  const navigate = useNavigate();
   const [guias, setGuias] = useState<Guia[]>([]);
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
-  const [selectedGuia, setSelectedGuia] = useState<Guia | null>(null);
-  const [openDetalhes, setOpenDetalhes] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [filters, setFilters] = useState({
     mes: '',
     ano: '',
@@ -52,20 +69,69 @@ const GuiasDemanda: React.FC = () => {
 
   useEffect(() => {
     carregarGuias();
-  }, [filters]);
+  }, []);
+
+  // Filtrar guias
+  const filteredGuias = guias.filter(guia => {
+    const matchesSearch = !searchTerm || 
+      `${guia.mes}/${guia.ano}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (guia.observacao && guia.observacao.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    const matchesMes = !filters.mes || guia.mes === parseInt(filters.mes);
+    const matchesAno = !filters.ano || guia.ano === parseInt(filters.ano);
+    const matchesStatus = !filters.status || guia.status === filters.status;
+    
+    return matchesSearch && matchesMes && matchesAno && matchesStatus;
+  });
+
+  // Paginação
+  const paginatedGuias = filteredGuias.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+
+  // Verificar se há filtros ativos
+  const hasActiveFilters = filters.mes || filters.ano || filters.status;
+
+  const handleChangePage = (event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const toggleFilters = () => {
+    setFiltersExpanded(!filtersExpanded);
+  };
+
+  const clearFilters = () => {
+    setFilters({ mes: '', ano: '', status: '' });
+    setSearchTerm('');
+    setPage(0);
+  };
 
   const carregarGuias = async () => {
     try {
       setLoading(true);
-      const params: any = {};
-      if (filters.mes) params.mes = parseInt(filters.mes);
-      if (filters.ano) params.ano = parseInt(filters.ano);
-      if (filters.status) params.status = filters.status;
-
-      const response = await guiaService.listarGuias(params);
-      setGuias(response.data);
-    } catch (error: any) {
+      const response = await guiaService.listarGuias();
+      const guiasData = Array.isArray(response.data) ? response.data : Array.isArray(response) ? response : [];
+      
+      // Debug temporário
+      console.log('Dados das guias recebidos:', guiasData);
+      if (guiasData.length > 0) {
+        console.log('Primeira guia completa:', guiasData[0]);
+        console.log('Propriedades de data disponíveis:', {
+          createdAt: guiasData[0].createdAt,
+          created_at: guiasData[0].created_at,
+          updatedAt: guiasData[0].updatedAt,
+          updated_at: guiasData[0].updated_at
+        });
+      }
+      
+      setGuias(guiasData);
+    } catch (err: any) {
+      console.error('Erro ao carregar guias:', err);
       error('Erro ao carregar guias');
+      setGuias([]);
     } finally {
       setLoading(false);
     }
@@ -99,14 +165,8 @@ const GuiasDemanda: React.FC = () => {
     }
   };
 
-  const handleViewDetalhes = async (guia: Guia) => {
-    try {
-      const response = await guiaService.buscarGuia(guia.id);
-      setSelectedGuia(response.data);
-      setOpenDetalhes(true);
-    } catch (errorCatch: any) {
-      error('Erro ao carregar detalhes da guia');
-    }
+  const handleViewDetalhes = (guia: Guia) => {
+    navigate(`/guias-demanda/${guia.id}`);
   };
 
   const getStatusColor = (status: string) => {
@@ -135,128 +195,316 @@ const GuiasDemanda: React.FC = () => {
     }
   };
 
-  return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        Guias de Demanda
-      </Typography>
+  const formatDate = (dateString: string | undefined) => {
+    try {
+      if (!dateString) {
+        console.log('Data vazia recebida');
+        return '-';
+      }
+      
+      console.log('Tentando formatar data:', dateString, 'tipo:', typeof dateString);
+      
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        console.log('Data inválida:', dateString);
+        return '-';
+      }
+      
+      const formatted = date.toLocaleDateString('pt-BR');
+      console.log('Data formatada:', formatted);
+      return formatted;
+    } catch (error) {
+      console.log('Erro ao formatar data:', dateString, error);
+      return '-';
+    }
+  };
 
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={2}>
-            <FormControl fullWidth>
-              <InputLabel>Mês</InputLabel>
-              <Select
-                value={filters.mes}
-                onChange={(e) => setFilters({ ...filters, mes: e.target.value })}
-                label="Mês"
-              >
-                <MenuItem value="">Todos</MenuItem>
-                {[...Array(12)].map((_, i) => (
-                  <MenuItem key={i + 1} value={i + 1}>
-                    {i + 1}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} md={2}>
+  const FiltersContent = () => (
+    <Grid container spacing={2}>
+      <Grid item xs={12} md={3}>
+        <FormControl fullWidth size="small">
+          <InputLabel>Mês</InputLabel>
+          <Select
+            value={filters.mes}
+            onChange={(e) => setFilters({ ...filters, mes: e.target.value })}
+            label="Mês"
+          >
+            <MenuItem value="">Todos</MenuItem>
+            {[...Array(12)].map((_, i) => (
+              <MenuItem key={i + 1} value={i + 1}>
+                {new Date(0, i).toLocaleDateString('pt-BR', { month: 'long' })}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Grid>
+      <Grid item xs={12} md={3}>
+        <TextField
+          label="Ano"
+          type="number"
+          size="small"
+          value={filters.ano}
+          onChange={(e) => setFilters({ ...filters, ano: e.target.value })}
+          fullWidth
+          sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+        />
+      </Grid>
+      <Grid item xs={12} md={3}>
+        <FormControl fullWidth size="small">
+          <InputLabel>Status</InputLabel>
+          <Select
+            value={filters.status}
+            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+            label="Status"
+          >
+            <MenuItem value="">Todos</MenuItem>
+            <MenuItem value="aberta">Aberta</MenuItem>
+            <MenuItem value="fechada">Fechada</MenuItem>
+            <MenuItem value="cancelada">Cancelada</MenuItem>
+          </Select>
+        </FormControl>
+      </Grid>
+      <Grid item xs={12} md={3}>
+        <Button
+          variant="outlined"
+          onClick={clearFilters}
+          disabled={!hasActiveFilters}
+          fullWidth
+          sx={{ height: '40px' }}
+        >
+          Limpar Filtros
+        </Button>
+      </Grid>
+    </Grid>
+  );
+
+  return (
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+      <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+        <Typography variant="h4" sx={{ mb: 3, fontWeight: 700, color: 'text.primary' }}>
+          Guias de Demanda
+        </Typography>
+        
+        <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', p: 3, mb: 3 }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 3 }}>
             <TextField
-              label="Ano"
-              type="number"
-              value={filters.ano}
-              onChange={(e) => setFilters({ ...filters, ano: e.target.value })}
-              fullWidth
+              placeholder="Buscar guias..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              sx={{ 
+                flex: 1, 
+                minWidth: '200px', 
+                '& .MuiOutlinedInput-root': { borderRadius: '12px' } 
+              }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ color: 'text.secondary' }} />
+                  </InputAdornment>
+                ),
+                endAdornment: searchTerm && (
+                  <InputAdornment position="end">
+                    <IconButton size="small" onClick={() => setSearchTerm('')}>
+                      <ClearIcon fontSize="small" />
+                    </IconButton>
+                  </InputAdornment>
+                )
+              }}
             />
-          </Grid>
-          <Grid item xs={12} md={2}>
-            <FormControl fullWidth>
-              <InputLabel>Status</InputLabel>
-              <Select
-                value={filters.status}
-                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                label="Status"
-              >
-                <MenuItem value="">Todos</MenuItem>
-                <MenuItem value="aberta">Aberta</MenuItem>
-                <MenuItem value="fechada">Fechada</MenuItem>
-                <MenuItem value="cancelada">Cancelada</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <Box display="flex" justifyContent="flex-end">
+            <Box sx={{ display: 'flex', gap: 1 }}>
               <Button
-                variant="contained"
+                variant={filtersExpanded || hasActiveFilters ? 'contained' : 'outlined'}
+                startIcon={filtersExpanded ? <ExpandLess /> : <TuneRounded />}
+                onClick={toggleFilters}
+                sx={{ position: 'relative' }}
+              >
+                Filtros
+                {hasActiveFilters && !filtersExpanded && (
+                  <Box sx={{ 
+                    position: 'absolute', 
+                    top: -2, 
+                    right: -2, 
+                    width: 8, 
+                    height: 8, 
+                    borderRadius: '50%', 
+                    bgcolor: 'error.main' 
+                  }} />
+                )}
+              </Button>
+              <Button
                 startIcon={<AddIcon />}
                 onClick={() => setOpenDialog(true)}
+                variant="contained"
+                color="success"
               >
                 Nova Guia
               </Button>
             </Box>
-          </Grid>
-        </Grid>
-      </Paper>
+          </Box>
+          
+          <Collapse in={filtersExpanded} timeout={400}>
+            <Box sx={{ mb: 3 }}>
+              <FiltersContent />
+            </Box>
+          </Collapse>
+          
+          <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+            {`Mostrando ${Math.min((page * rowsPerPage) + 1, filteredGuias.length)}-${Math.min((page + 1) * rowsPerPage, filteredGuias.length)} de ${filteredGuias.length} guias`}
+          </Typography>
+        </Card>
 
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Mês/Ano</TableCell>
-              <TableCell>Observação</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Produtos</TableCell>
-              <TableCell>Criado em</TableCell>
-              <TableCell>Ações</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {guias.map((guia) => (
-              <TableRow key={guia.id}>
-                <TableCell>
-                  {guia.mes}/{guia.ano}
-                </TableCell>
-                <TableCell>{guia.observacao || '-'}</TableCell>
-                <TableCell>
-                  <Chip
-                    label={getStatusLabel(guia.status)}
-                    color={getStatusColor(guia.status)}
-                    size="small"
-                  />
-                </TableCell>
-                <TableCell>{guia.produtosEscola?.length || 0}</TableCell>
-                <TableCell>
-                  {new Date(guia.createdAt).toLocaleDateString('pt-BR')}
-                </TableCell>
-                <TableCell>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleViewDetalhes(guia)}
-                    color="primary"
-                  >
-                    <ViewIcon />
-                  </IconButton>
-                  {guia.status === 'aberta' && (
-                    <IconButton
-                      size="small"
-                      onClick={() => handleDeleteGuia(guia.id)}
-                      color="error"
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+        {loading ? (
+          <Card>
+            <CardContent sx={{ textAlign: 'center', py: 6 }}>
+              <CircularProgress size={60} />
+            </CardContent>
+          </Card>
+        ) : filteredGuias.length === 0 ? (
+          <Card>
+            <CardContent sx={{ textAlign: 'center', py: 6 }}>
+              <AssignmentIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
+              <Typography variant="h6" sx={{ color: 'text.secondary' }}>
+                {searchTerm || hasActiveFilters ? 'Nenhuma guia encontrada' : 'Nenhuma guia cadastrada'}
+              </Typography>
+              {(searchTerm || hasActiveFilters) && (
+                <Button variant="outlined" onClick={clearFilters} sx={{ mt: 2 }}>
+                  Limpar Filtros
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px' }}>
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Mês/Ano</TableCell>
+                    <TableCell>Observação</TableCell>
+                    <TableCell align="center">Status</TableCell>
+                    <TableCell align="center">Produtos</TableCell>
+                    <TableCell>Criado em</TableCell>
+                    <TableCell align="center">Ações</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {paginatedGuias.map((guia) => (
+                    <TableRow key={guia.id} hover>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {guia.mes}/{guia.ano}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="text.secondary">
+                          {guia.observacao || '-'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="center">
+                        <Chip
+                          label={getStatusLabel(guia.status)}
+                          color={getStatusColor(guia.status)}
+                          size="small"
+                          sx={{
+                            fontWeight: 'bold',
+                            minWidth: '70px',
+                            ...(guia.status === 'aberta' && {
+                              bgcolor: 'success.main',
+                              color: 'success.contrastText'
+                            }),
+                            ...(guia.status === 'fechada' && {
+                              bgcolor: 'grey.600',
+                              color: 'white'
+                            }),
+                            ...(guia.status === 'cancelada' && {
+                              bgcolor: 'error.main',
+                              color: 'error.contrastText'
+                            })
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell align="center">
+                        {(() => {
+                          const count = parseInt(guia.total_produtos?.toString() || '0') || guia.produtosEscola?.length || 0;
+                          return (
+                            <Chip
+                              label={count}
+                              size="small"
+                              sx={{
+                                fontWeight: 'bold',
+                                minWidth: '40px',
+                                ...(count > 0 ? {
+                                  bgcolor: 'primary.main',
+                                  color: 'primary.contrastText'
+                                } : {
+                                  bgcolor: 'grey.300',
+                                  color: 'grey.700'
+                                })
+                              }}
+                            />
+                          );
+                        })()}
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="text.secondary">
+                          {(() => {
+                            const dateValue = guia.createdAt || guia.created_at || guia.updatedAt || guia.updated_at;
+                            console.log('Guia ID:', guia.id, 'Data encontrada:', dateValue);
+                            return formatDate(dateValue);
+                          })()}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="center">
+                        <Tooltip title="Ver Detalhes">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleViewDetalhes(guia)}
+                            color="primary"
+                          >
+                            <ViewIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        {guia.status === 'aberta' && (
+                          <Tooltip title="Excluir Guia">
+                            <IconButton
+                              size="small"
+                              onClick={() => handleDeleteGuia(guia.id)}
+                              color="error"
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            <TablePagination
+              component="div"
+              count={filteredGuias.length}
+              page={page}
+              onPageChange={handleChangePage}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              rowsPerPageOptions={[5, 10, 25, 50]}
+              labelRowsPerPage="Itens por página:"
+            />
+          </Paper>
+        )}
+
+      </Box>
 
       {/* Dialog para criar nova guia */}
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Nova Guia de Demanda</DialogTitle>
-        <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
+        <DialogTitle sx={{ pb: 2 }}>
+          <Typography variant="h6" component="div">
+            Nova Guia de Demanda
+          </Typography>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Grid container spacing={2} sx={{ pt: 1 }}>
             <Grid item xs={6}>
               <FormControl fullWidth>
                 <InputLabel>Mês</InputLabel>
@@ -267,7 +515,7 @@ const GuiasDemanda: React.FC = () => {
                 >
                   {[...Array(12)].map((_, i) => (
                     <MenuItem key={i + 1} value={i + 1}>
-                      {i + 1}
+                      {new Date(0, i).toLocaleDateString('pt-BR', { month: 'long' })}
                     </MenuItem>
                   ))}
                 </Select>
@@ -278,40 +526,37 @@ const GuiasDemanda: React.FC = () => {
                 label="Ano"
                 type="number"
                 value={formData.ano}
-                onChange={(e) => setFormData({ ...formData, ano: parseInt(e.target.value) })}
+                onChange={(e) => setFormData({ ...formData, ano: parseInt(e.target.value) || new Date().getFullYear() })}
                 fullWidth
+                inputProps={{ min: 2020, max: 2030 }}
               />
             </Grid>
             <Grid item xs={12}>
               <TextField
-                label="Observação"
+                label="Observação (Opcional)"
                 multiline
                 rows={3}
                 value={formData.observacao}
                 onChange={(e) => setFormData({ ...formData, observacao: e.target.value })}
                 fullWidth
+                placeholder="Adicione uma observação sobre esta guia..."
               />
             </Grid>
           </Grid>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
-          <Button onClick={handleCreateGuia} variant="contained">
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button onClick={() => setOpenDialog(false)} color="inherit">
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleCreateGuia} 
+            variant="contained"
+            disabled={!formData.mes || !formData.ano}
+          >
             Criar Guia
           </Button>
         </DialogActions>
       </Dialog>
-
-      {/* Dialog de detalhes da guia */}
-      <GuiaDetalhes
-        open={openDetalhes}
-        onClose={() => {
-          setOpenDetalhes(false);
-          setSelectedGuia(null);
-        }}
-        guia={selectedGuia}
-        onUpdate={carregarGuias}
-      />
     </Box>
   );
 };

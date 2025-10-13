@@ -104,7 +104,7 @@ router.get('/:id/produtos', authenticateToken, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const produtos = await GuiaModel.listarProdutosPorGuia(id);
-    res.json(produtos);
+    res.json({ data: produtos });
   } catch (error) {
     console.error('Erro ao listar produtos da guia:', error);
     res.status(500).json({ error: 'Erro ao listar produtos da guia' });

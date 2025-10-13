@@ -8,6 +8,9 @@ export interface Guia {
   status: 'aberta' | 'fechada' | 'cancelada';
   createdAt: string;
   updatedAt: string;
+  created_at?: string;
+  updated_at?: string;
+  total_produtos?: number;
   produtosEscola?: GuiaProdutoEscola[];
 }
 
@@ -18,7 +21,26 @@ export interface GuiaProdutoEscola {
   escolaId: number;
   quantidade: number;
   unidade: string;
+  lote?: string;
   observacao?: string;
+  para_entrega: boolean;
+  created_at?: string;
+  updated_at?: string;
+  data_criacao?: string;
+  // Campos de entrega
+  entrega_confirmada?: boolean;
+  quantidade_entregue?: number;
+  data_entrega?: string;
+  nome_quem_recebeu?: string;
+  nome_quem_entregou?: string;
+  // Campos do backend (snake_case)
+  guia_id?: number;
+  produto_id?: number;
+  escola_id?: number;
+  produto_nome?: string;
+  escola_nome?: string;
+  produto_unidade?: string;
+  // Objetos relacionados (para compatibilidade)
   produto?: {
     id: number;
     nome: string;
@@ -42,7 +64,9 @@ export interface AddProdutoGuiaData {
   escolaId: number;
   quantidade: number;
   unidade: string;
+  lote?: string;
   observacao?: string;
+  para_entrega?: boolean;
 }
 
 export const guiaService = {
@@ -91,6 +115,24 @@ export const guiaService = {
   // Listar produtos de uma guia
   async listarProdutosGuia(guiaId: number, params?: { escolaId?: number }) {
     const response = await api.get(`/guias/${guiaId}/produtos`, { params });
+    return response.data;
+  },
+
+  // Atualizar dados de entrega
+  async atualizarEntrega(guiaId: number, produtoId: number, escolaId: number, dadosEntrega: {
+    entrega_confirmada?: boolean;
+    quantidade_entregue?: number;
+    data_entrega?: string;
+    nome_quem_recebeu?: string;
+    nome_quem_entregou?: string;
+  }) {
+    const response = await api.put(`/guias/${guiaId}/produtos/${produtoId}/escolas/${escolaId}/entrega`, dadosEntrega);
+    return response.data;
+  },
+
+  // Atualizar campo para_entrega
+  async atualizarParaEntrega(itemId: number, para_entrega: boolean) {
+    const response = await api.put(`/guias/itens/${itemId}/para-entrega`, { para_entrega });
     return response.data;
   }
 };

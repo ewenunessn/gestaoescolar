@@ -85,6 +85,7 @@ const menuConfig = [
     category: "Guias",
     items: [
       { text: "Guias de Demanda", icon: <ListAlt />, path: "/guias-demanda" },
+      { text: "Entregas", icon: <LocalShipping />, path: "/entregas", badge: "Novo!", badgeColor: "success" },
     ],
   },
 ];

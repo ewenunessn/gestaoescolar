@@ -60,11 +60,14 @@ const SaldoContratos = lazy(() => import("../pages/SaldoContratos"));
 const SaldoContratosModalidades = lazy(() => import("../pages/SaldoContratosModalidades"));
 const DashboardConsistencia = lazy(() => import("../components/DashboardConsistencia"));
 const GuiasDemanda = lazy(() => import("../pages/GuiasDemanda"));
+const GuiaDetalhe = lazy(() => import("../pages/GuiaDetalhe"));
+const Entregas = lazy(() => import("../pages/Entregas"));
 const Pedidos = lazy(() => import("../pages/Pedidos"));
 const NovoPedido = lazy(() => import("../pages/NovoPedido"));
 const PedidoDetalhe = lazy(() => import("../pages/PedidoDetalhe"));
 const EditarPedido = lazy(() => import("../pages/EditarPedido"));
 const FaturamentoDetalhe = lazy(() => import("../pages/FaturamentoDetalhe"));
+
 
 interface AppRouterProps {
   routerConfig?: {
@@ -213,6 +216,15 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
               path="/guias-demanda"
               element={<LazyRoute><GuiasDemanda /></LazyRoute>}
             />
+            <Route
+              path="/guias-demanda/:id"
+              element={<LazyRoute><GuiaDetalhe /></LazyRoute>}
+            />
+            <Route
+              path="/entregas"
+              element={<LazyRoute><Entregas /></LazyRoute>}
+            />
+
             <Route
               path="/fornecedores"
               element={<LazyRoute><Fornecedores /></LazyRoute>}

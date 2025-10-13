@@ -279,8 +279,8 @@ export const lightTheme: Theme = createTheme({
       dark: '#b91c1c',
     },
     background: {
-      default: '#FFFFFF',
-      paper: '#F8F8F7',
+      default: '#DCDADF',
+      paper: '#F2F1F4',
     },
     text: {
       primary: '#1e293b',

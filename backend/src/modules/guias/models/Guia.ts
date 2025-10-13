@@ -8,6 +8,7 @@ export interface Guia {
   status: 'aberta' | 'fechada' | 'cancelada';
   created_at: string;
   updated_at: string;
+  total_produtos?: number;
 }
 
 export interface GuiaProdutoEscola {
@@ -17,8 +18,16 @@ export interface GuiaProdutoEscola {
   escola_id: number;
   quantidade: number;
   unidade: string;
+  lote?: string;
+  observacao?: string;
+  para_entrega: boolean;
   created_at: string;
   updated_at: string;
+  entrega_confirmada?: boolean;
+  quantidade_entregue?: number;
+  data_entrega?: string;
+  nome_quem_recebeu?: string;
+  nome_quem_entregou?: string;
 }
 
 export interface CreateGuiaData {
@@ -33,13 +42,26 @@ export interface CreateGuiaProdutoEscolaData {
   escola_id: number;
   quantidade: number;
   unidade: string;
+  lote?: string;
+  observacao?: string;
+  para_entrega?: boolean;
+  entrega_confirmada?: boolean;
+  quantidade_entregue?: number;
+  data_entrega?: string;
+  nome_quem_recebeu?: string;
+  nome_quem_entregou?: string;
 }
 
 class GuiaModel {
   async listarGuias(): Promise<Guia[]> {
     const result = await db.all(`
-      SELECT * FROM guias 
-      ORDER BY created_at DESC
+      SELECT 
+        g.*,
+        COUNT(DISTINCT gpe.id) as total_produtos
+      FROM guias g
+      LEFT JOIN guia_produto_escola gpe ON g.id = gpe.guia_id
+      GROUP BY g.id
+      ORDER BY g.created_at DESC
     `);
     return result;
   }
@@ -57,7 +79,7 @@ class GuiaModel {
       VALUES ($1, $2, $3, 'aberta', NOW(), NOW())
       RETURNING *
     `, [data.mes, data.ano, data.observacao || null]);
-    
+
     return await this.buscarGuia(result.lastID);
   }
 
@@ -107,24 +129,45 @@ class GuiaModel {
         gpe.*,
         p.nome as produto_nome,
         p.unidade as produto_unidade,
-        e.nome as escola_nome
+        e.nome as escola_nome,
+        DATE(gpe.created_at) as data_criacao
       FROM guia_produto_escola gpe
       JOIN produtos p ON gpe.produto_id = p.id
       JOIN escolas e ON gpe.escola_id = e.id
       WHERE gpe.guia_id = $1
-      ORDER BY e.nome, p.nome
+      ORDER BY gpe.created_at DESC, gpe.lote, p.nome, e.nome
     `, [guiaId]);
     return result;
   }
 
   async adicionarProdutoGuia(data: CreateGuiaProdutoEscolaData): Promise<GuiaProdutoEscola> {
-    const result = await db.run(`
-      INSERT INTO guia_produto_escola (guia_id, produto_id, escola_id, quantidade, unidade, created_at, updated_at)
-      VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
-      RETURNING *
-    `, [data.guia_id, data.produto_id, data.escola_id, data.quantidade, data.unidade]);
-    
-    return await this.buscarProdutoGuia(result.lastID);
+    // Verificar se já existe o produto para esta escola COM O MESMO LOTE
+    const existente = await db.get(`
+      SELECT * FROM guia_produto_escola 
+      WHERE guia_id = $1 AND produto_id = $2 AND escola_id = $3 
+      AND (lote = $4 OR (lote IS NULL AND $4 IS NULL))
+    `, [data.guia_id, data.produto_id, data.escola_id, data.lote]);
+
+    if (existente) {
+      // Se existe, atualizar a quantidade (somar)
+      const novaQuantidade = parseFloat(existente.quantidade.toString()) + parseFloat(data.quantidade.toString());
+      await db.run(`
+        UPDATE guia_produto_escola 
+        SET quantidade = $1, unidade = $2, lote = $3, observacao = $4, updated_at = NOW()
+        WHERE id = $5
+      `, [novaQuantidade, data.unidade, data.lote, data.observacao, existente.id]);
+
+      return await this.buscarProdutoGuia(existente.id);
+    } else {
+      // Se não existe, inserir novo
+      const result = await db.run(`
+        INSERT INTO guia_produto_escola (guia_id, produto_id, escola_id, quantidade, unidade, lote, observacao, para_entrega, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+        RETURNING *
+      `, [data.guia_id, data.produto_id, data.escola_id, data.quantidade, data.unidade, data.lote, data.observacao, data.para_entrega ?? true]);
+
+      return await this.buscarProdutoGuia(result.lastID);
+    }
   }
 
   async buscarProdutoGuia(id: number): Promise<GuiaProdutoEscola | null> {
@@ -147,6 +190,46 @@ class GuiaModel {
     if (data.unidade !== undefined) {
       fields.push(`unidade = $${paramCount}`);
       values.push(data.unidade);
+      paramCount++;
+    }
+    if (data.lote !== undefined) {
+      fields.push(`lote = $${paramCount}`);
+      values.push(data.lote);
+      paramCount++;
+    }
+    if (data.observacao !== undefined) {
+      fields.push(`observacao = $${paramCount}`);
+      values.push(data.observacao);
+      paramCount++;
+    }
+    if (data.entrega_confirmada !== undefined) {
+      fields.push(`entrega_confirmada = $${paramCount}`);
+      values.push(data.entrega_confirmada);
+      paramCount++;
+    }
+    if (data.quantidade_entregue !== undefined) {
+      fields.push(`quantidade_entregue = $${paramCount}`);
+      values.push(data.quantidade_entregue);
+      paramCount++;
+    }
+    if (data.data_entrega !== undefined) {
+      fields.push(`data_entrega = $${paramCount}`);
+      values.push(data.data_entrega);
+      paramCount++;
+    }
+    if (data.nome_quem_recebeu !== undefined) {
+      fields.push(`nome_quem_recebeu = $${paramCount}`);
+      values.push(data.nome_quem_recebeu);
+      paramCount++;
+    }
+    if (data.nome_quem_entregou !== undefined) {
+      fields.push(`nome_quem_entregou = $${paramCount}`);
+      values.push(data.nome_quem_entregou);
+      paramCount++;
+    }
+    if (data.para_entrega !== undefined) {
+      fields.push(`para_entrega = $${paramCount}`);
+      values.push(data.para_entrega);
       paramCount++;
     }
 
@@ -172,19 +255,85 @@ class GuiaModel {
   async removerProdutosPorGuia(guiaId: number, produtoId?: number, escolaId?: number): Promise<boolean> {
     let query = 'DELETE FROM guia_produto_escola WHERE guia_id = $1';
     const params = [guiaId];
-    
+
     if (produtoId) {
       query += ' AND produto_id = $2';
       params.push(produtoId);
     }
-    
+
     if (escolaId) {
-      query += ' AND escola_id = $' + (params.length + 1);
+      query += ` AND escola_id = $${params.length + 1}`;
       params.push(escolaId);
     }
 
     const result = await db.run(query, params);
     return result.changes > 0;
+  }
+
+  // Métodos específicos para entregas
+  async listarEscolasComItensParaEntrega(): Promise<any[]> {
+    const result = await db.all(`
+      SELECT DISTINCT
+        e.id,
+        e.nome,
+        e.endereco,
+        e.telefone,
+        COUNT(gpe.id) as total_itens,
+        SUM(CASE WHEN gpe.entrega_confirmada = true THEN 1 ELSE 0 END) as itens_entregues
+      FROM escolas e
+      INNER JOIN guia_produto_escola gpe ON e.id = gpe.escola_id
+      INNER JOIN guias g ON gpe.guia_id = g.id
+      WHERE gpe.para_entrega = true 
+        AND g.status = 'aberta'
+      GROUP BY e.id, e.nome, e.endereco, e.telefone
+      ORDER BY e.nome
+    `);
+    return result;
+  }
+
+  async listarItensParaEntregaPorEscola(escolaId: number): Promise<any[]> {
+    const result = await db.all(`
+      SELECT 
+        gpe.*,
+        p.nome as produto_nome,
+        p.unidade as produto_unidade,
+        g.mes,
+        g.ano,
+        g.observacao as guia_observacao
+      FROM guia_produto_escola gpe
+      INNER JOIN produtos p ON gpe.produto_id = p.id
+      INNER JOIN guias g ON gpe.guia_id = g.id
+      WHERE gpe.escola_id = $1 
+        AND gpe.para_entrega = true
+        AND g.status = 'aberta'
+      ORDER BY g.mes DESC, g.ano DESC, p.nome, gpe.lote
+    `, [escolaId]);
+    return result;
+  }
+
+  async confirmarEntrega(itemId: number, dadosEntrega: {
+    quantidade_entregue: number;
+    nome_quem_entregou: string;
+    nome_quem_recebeu: string;
+  }): Promise<GuiaProdutoEscola> {
+    await db.run(`
+      UPDATE guia_produto_escola 
+      SET 
+        entrega_confirmada = true,
+        quantidade_entregue = $1,
+        data_entrega = NOW(),
+        nome_quem_entregou = $2,
+        nome_quem_recebeu = $3,
+        updated_at = NOW()
+      WHERE id = $4
+    `, [
+      dadosEntrega.quantidade_entregue,
+      dadosEntrega.nome_quem_entregou,
+      dadosEntrega.nome_quem_recebeu,
+      itemId
+    ]);
+
+    return await this.buscarProdutoGuia(itemId);
   }
 }
 

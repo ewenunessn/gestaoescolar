@@ -128,7 +128,7 @@ export const guiaController = {
   async adicionarProdutoGuia(req: Request, res: Response) {
     try {
       const { guiaId } = req.params;
-      const { produtoId, escolaId, quantidade, unidade, observacao } = req.body;
+      const { produtoId, escolaId, quantidade, unidade, observacao, para_entrega } = req.body;
 
       const guia = await GuiaModel.buscarGuia(parseInt(guiaId));
       if (!guia) {
@@ -149,7 +149,10 @@ export const guiaController = {
         produto_id: parseInt(produtoId),
         escola_id: parseInt(escolaId),
         quantidade,
-        unidade
+        unidade,
+        lote: req.body.lote,
+        observacao: req.body.observacao,
+        para_entrega: para_entrega !== undefined ? para_entrega : true
       });
 
       const guiaProdutoCompleto = await GuiaModel.buscarProdutoGuia(guiaProduto.id);
@@ -237,6 +240,110 @@ export const guiaController = {
     } catch (error) {
       console.error('Erro ao listar produtos:', error);
       res.status(500).json({ success: false, error: 'Erro ao listar produtos' });
+    }
+  },
+
+  // Atualizar dados de entrega
+  async atualizarEntrega(req: Request, res: Response) {
+    try {
+      const { guiaId, produtoId, escolaId } = req.params;
+      const { 
+        entrega_confirmada, 
+        quantidade_entregue, 
+        data_entrega, 
+        nome_quem_recebeu, 
+        nome_quem_entregou 
+      } = req.body;
+
+      // Validar parâmetros
+      if (!guiaId || !produtoId || !escolaId) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Parâmetros inválidos: guiaId, produtoId e escolaId são obrigatórios' 
+        });
+      }
+
+      const guiaIdNum = parseInt(guiaId);
+      const produtoIdNum = parseInt(produtoId);
+      const escolaIdNum = parseInt(escolaId);
+
+      if (isNaN(guiaIdNum) || isNaN(produtoIdNum) || isNaN(escolaIdNum)) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Parâmetros devem ser números válidos' 
+        });
+      }
+
+      // Buscar o produto na guia
+      const produtos = await GuiaModel.listarProdutosPorGuia(guiaIdNum);
+      const produto = produtos.find(p => 
+        p.produto_id === produtoIdNum && 
+        p.escola_id === escolaIdNum
+      );
+
+      if (!produto) {
+        return res.status(404).json({ success: false, error: 'Produto não encontrado na guia' });
+      }
+
+      // Atualizar dados de entrega
+      const produtoAtualizado = await GuiaModel.atualizarProdutoGuia(produto.id, {
+        entrega_confirmada,
+        quantidade_entregue,
+        data_entrega,
+        nome_quem_recebeu,
+        nome_quem_entregou
+      });
+
+      res.json({ success: true, data: produtoAtualizado });
+    } catch (error) {
+      console.error('Erro ao atualizar entrega:', error);
+      res.status(500).json({ success: false, error: 'Erro ao atualizar dados de entrega' });
+    }
+  },
+
+  // Atualizar campo para_entrega de um item
+  async atualizarParaEntrega(req: Request, res: Response) {
+    try {
+      const { itemId } = req.params;
+      const { para_entrega } = req.body;
+
+      if (!itemId || isNaN(Number(itemId))) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'ID do item é obrigatório e deve ser um número' 
+        });
+      }
+
+      if (para_entrega === undefined || typeof para_entrega !== 'boolean') {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Campo para_entrega é obrigatório e deve ser um boolean' 
+        });
+      }
+
+      const item = await GuiaModel.buscarProdutoGuia(Number(itemId));
+      if (!item) {
+        return res.status(404).json({ 
+          success: false, 
+          error: 'Item não encontrado' 
+        });
+      }
+
+      const itemAtualizado = await GuiaModel.atualizarProdutoGuia(Number(itemId), {
+        para_entrega
+      });
+
+      res.json({ 
+        success: true, 
+        data: itemAtualizado,
+        message: `Item ${para_entrega ? 'marcado' : 'desmarcado'} para entrega`
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar para_entrega:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Erro ao atualizar campo para_entrega' 
+      });
     }
   }
 };

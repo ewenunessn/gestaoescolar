@@ -19,4 +19,10 @@ router.post('/:guiaId/produtos', guiaController.adicionarProdutoGuia);
 router.get('/:guiaId/produtos', guiaController.listarProdutosGuia);
 router.delete('/:guiaId/produtos/:produtoId/escolas/:escolaId', guiaController.removerProdutoGuia);
 
+// Rota para atualizar dados de entrega
+router.put('/:guiaId/produtos/:produtoId/escolas/:escolaId/entrega', guiaController.atualizarEntrega);
+
+// Rota para atualizar campo para_entrega
+router.put('/itens/:itemId/para-entrega', guiaController.atualizarParaEntrega);
+
 export default router;
