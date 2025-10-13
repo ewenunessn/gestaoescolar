@@ -1,4 +1,4 @@
-const db = require('../../../database');
+import db from '../../../database';
 
 export interface EscolaEntrega {
   id: number;
@@ -25,6 +25,10 @@ export interface ItemEntrega {
   data_entrega?: string;
   nome_quem_recebeu?: string;
   nome_quem_entregou?: string;
+  observacao_entrega?: string;
+  latitude?: number;
+  longitude?: number;
+  precisao_gps?: number;
   produto_nome: string;
   produto_unidade: string;
   mes: number;
@@ -36,6 +40,10 @@ export interface ConfirmarEntregaData {
   quantidade_entregue: number;
   nome_quem_entregou: string;
   nome_quem_recebeu: string;
+  observacao?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  precisao_gps?: number | null;
 }
 
 class EntregaModel {
@@ -59,7 +67,7 @@ class EntregaModel {
       paramCount++;
     }
 
-    const result = await db.all(`
+    const result = await db.query(`
       SELECT DISTINCT
         e.id,
         e.nome,
@@ -78,7 +86,7 @@ class EntregaModel {
       GROUP BY e.id, e.nome, e.endereco, e.telefone
       ORDER BY e.nome
     `, params);
-    return result;
+    return result.rows;
   }
 
   async listarItensEntregaPorEscola(escolaId: number, guiaId?: number): Promise<ItemEntrega[]> {
@@ -92,7 +100,7 @@ class EntregaModel {
       paramCount++;
     }
 
-    const result = await db.all(`
+    const result = await db.query(`
       SELECT 
         gpe.*,
         p.nome as produto_nome,
@@ -111,11 +119,11 @@ class EntregaModel {
         p.nome, 
         gpe.lote
     `, params);
-    return result;
+    return result.rows;
   }
 
   async buscarItemEntrega(itemId: number): Promise<ItemEntrega | null> {
-    const result = await db.get(`
+    const result = await db.query(`
       SELECT 
         gpe.*,
         p.nome as produto_nome,
@@ -130,7 +138,7 @@ class EntregaModel {
       INNER JOIN escolas e ON gpe.escola_id = e.id
       WHERE gpe.id = $1
     `, [itemId]);
-    return result;
+    return result.rows[0] || null;
   }
 
   async confirmarEntrega(itemId: number, dados: ConfirmarEntregaData): Promise<ItemEntrega> {
@@ -149,7 +157,7 @@ class EntregaModel {
     }
 
     // Confirmar a entrega
-    await db.run(`
+    await db.query(`
       UPDATE guia_produto_escola 
       SET 
         entrega_confirmada = true,
@@ -157,16 +165,28 @@ class EntregaModel {
         data_entrega = NOW(),
         nome_quem_entregou = $2,
         nome_quem_recebeu = $3,
+        observacao_entrega = $4,
+        latitude = $5,
+        longitude = $6,
+        precisao_gps = $7,
         updated_at = NOW()
-      WHERE id = $4
+      WHERE id = $8
     `, [
       dados.quantidade_entregue,
       dados.nome_quem_entregou,
       dados.nome_quem_recebeu,
+      dados.observacao,
+      dados.latitude,
+      dados.longitude,
+      dados.precisao_gps,
       itemId
     ]);
 
-    return await this.buscarItemEntrega(itemId);
+    const updatedItem = await this.buscarItemEntrega(itemId);
+    if (!updatedItem) {
+      throw new Error('Erro ao buscar item atualizado');
+    }
+    return updatedItem;
   }
 
   async cancelarEntrega(itemId: number): Promise<ItemEntrega> {
@@ -181,7 +201,7 @@ class EntregaModel {
     }
 
     // Cancelar a entrega
-    await db.run(`
+    await db.query(`
       UPDATE guia_produto_escola 
       SET 
         entrega_confirmada = false,
@@ -189,11 +209,19 @@ class EntregaModel {
         data_entrega = NULL,
         nome_quem_entregou = NULL,
         nome_quem_recebeu = NULL,
+        observacao_entrega = NULL,
+        latitude = NULL,
+        longitude = NULL,
+        precisao_gps = NULL,
         updated_at = NOW()
       WHERE id = $1
     `, [itemId]);
 
-    return await this.buscarItemEntrega(itemId);
+    const updatedItem = await this.buscarItemEntrega(itemId);
+    if (!updatedItem) {
+      throw new Error('Erro ao buscar item atualizado');
+    }
+    return updatedItem;
   }
 
   async obterEstatisticasEntregas(guiaId?: number, rotaId?: number): Promise<any> {
@@ -216,7 +244,7 @@ class EntregaModel {
       paramCount++;
     }
 
-    const result = await db.get(`
+    const result = await db.query(`
       SELECT 
         COUNT(DISTINCT gpe.escola_id) as total_escolas,
         COUNT(gpe.id) as total_itens,
@@ -230,7 +258,7 @@ class EntregaModel {
       INNER JOIN guias g ON gpe.guia_id = g.id
       ${whereClause}
     `, params);
-    return result;
+    return result.rows[0];
   }
 }
 

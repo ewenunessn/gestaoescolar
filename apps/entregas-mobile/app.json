@@ -4,12 +4,11 @@
     "slug": "entregas-escolares",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#ffffff",
+      "resizeMode": "contain"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -19,23 +18,15 @@
       "bundleIdentifier": "com.alimentacaoescolar.entregas"
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#FFFFFF"
-      },
       "package": "com.alimentacaoescolar.entregas",
       "permissions": [
-        "CAMERA",
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
       ]
-    },
-    "web": {
-      "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-camera",
-      "expo-barcode-scanner",
       "expo-location"
     ]
   }

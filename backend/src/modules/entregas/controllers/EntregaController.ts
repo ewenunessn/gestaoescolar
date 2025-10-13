@@ -70,13 +70,21 @@ class EntregaController {
   async confirmarEntrega(req: Request, res: Response) {
     try {
       const { itemId } = req.params;
-      const { quantidade_entregue, nome_quem_entregou, nome_quem_recebeu } = req.body;
+      const { 
+        quantidade_entregue, 
+        nome_quem_entregou, 
+        nome_quem_recebeu,
+        observacao,
+        latitude,
+        longitude,
+        precisao_gps
+      } = req.body;
 
       if (!itemId || isNaN(Number(itemId))) {
         return res.status(400).json({ error: 'ID do item é obrigatório e deve ser um número' });
       }
 
-      // Validações
+      // Validações obrigatórias
       if (!quantidade_entregue || quantidade_entregue <= 0) {
         return res.status(400).json({ error: 'Quantidade entregue é obrigatória e deve ser maior que zero' });
       }
@@ -89,10 +97,23 @@ class EntregaController {
         return res.status(400).json({ error: 'Nome de quem recebeu é obrigatório' });
       }
 
+      // Validação de localização (opcional, mas se enviada deve ser válida)
+      if (latitude !== undefined && (isNaN(Number(latitude)) || Math.abs(Number(latitude)) > 90)) {
+        return res.status(400).json({ error: 'Latitude deve ser um número válido entre -90 e 90' });
+      }
+
+      if (longitude !== undefined && (isNaN(Number(longitude)) || Math.abs(Number(longitude)) > 180)) {
+        return res.status(400).json({ error: 'Longitude deve ser um número válido entre -180 e 180' });
+      }
+
       const item = await EntregaModel.confirmarEntrega(Number(itemId), {
         quantidade_entregue: Number(quantidade_entregue),
         nome_quem_entregou: nome_quem_entregou.trim(),
-        nome_quem_recebeu: nome_quem_recebeu.trim()
+        nome_quem_recebeu: nome_quem_recebeu.trim(),
+        observacao: observacao?.trim() || null,
+        latitude: latitude ? Number(latitude) : null,
+        longitude: longitude ? Number(longitude) : null,
+        precisao_gps: precisao_gps ? Number(precisao_gps) : null
       });
 
       res.json({

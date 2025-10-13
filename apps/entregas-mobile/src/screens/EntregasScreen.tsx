@@ -19,6 +19,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useNotification } from '../contexts/NotificationContext';
+import { useRota } from '../contexts/RotaContext';
 import { entregaService, EscolaEntrega } from '../services/entregaService';
 import { RootStackParamList } from '../navigation/AppNavigator';
 
@@ -27,6 +28,7 @@ type NavigationProp = StackNavigationProp<RootStackParamList>;
 const EntregasScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const { showError } = useNotification();
+  const { rotaSelecionada } = useRota();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [escolas, setEscolas] = useState<EscolaEntrega[]>([]);
@@ -40,7 +42,9 @@ const EntregasScreen = () => {
   const carregarEscolas = async () => {
     try {
       setLoading(true);
-      const escolasData = await entregaService.listarEscolasRota();
+      // Usar a rota selecionada como filtro
+      const rotaId = rotaSelecionada?.id;
+      const escolasData = await entregaService.listarEscolasRota(rotaId);
       setEscolas(escolasData);
     } catch (error) {
       showError('Erro ao carregar escolas');
@@ -107,7 +111,10 @@ const EntregasScreen = () => {
       <View style={styles.header}>
         <Title style={styles.headerTitle}>Entregas</Title>
         <Paragraph style={styles.headerSubtitle}>
-          Gerencie as entregas por escola
+          {rotaSelecionada 
+            ? `Rota: ${rotaSelecionada.nome}`
+            : 'Gerencie as entregas por escola'
+          }
         </Paragraph>
       </View>
 
@@ -222,7 +229,7 @@ const EntregasScreen = () => {
                     </Paragraph>
                   </View>
                   <Paragraph style={styles.escolaPercentual}>
-                    {escola.percentual_entregue.toFixed(1)}% concluído
+                    {(escola.percentual_entregue || 0).toFixed(1)}% concluído
                   </Paragraph>
                 </View>
 

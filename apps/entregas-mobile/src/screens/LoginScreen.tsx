@@ -5,8 +5,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Image,
 } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import {
   TextInput,
   Button,
@@ -48,11 +48,9 @@ const LoginScreen = () => {
     >
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.logoContainer}>
-          <Image
-            source={require('../../assets/logo.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
+          <View style={styles.logoPlaceholder}>
+            <MaterialCommunityIcons name="truck-delivery" size={80} color="#1976d2" />
+          </View>
           <Title style={styles.title}>Entregas Escolares</Title>
           <Paragraph style={styles.subtitle}>
             Sistema de Gestão de Entregas
@@ -121,10 +119,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 40,
   },
-  logo: {
+  logoPlaceholder: {
     width: 120,
     height: 120,
     marginBottom: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#e3f2fd',
+    borderRadius: 60,
   },
   title: {
     fontSize: 28,

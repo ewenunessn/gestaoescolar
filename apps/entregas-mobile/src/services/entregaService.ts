@@ -39,9 +39,9 @@ export interface ConfirmarEntregaData {
   nome_quem_entregou: string;
   nome_quem_recebeu: string;
   observacao?: string;
-  foto_comprovante?: string;
   latitude?: number;
   longitude?: number;
+  precisao_gps?: number;
 }
 
 export interface EstatisticasEntregas {
@@ -60,16 +60,70 @@ export interface RotaEntrega {
   total_escolas: number;
   total_itens: number;
   itens_entregues: number;
+  ativo?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface PlanejamentoEntrega {
+  id: number;
+  guia_id: number;
+  rota_id: number;
+  data_planejada?: string;
+  status: 'planejado' | 'em_andamento' | 'concluido' | 'cancelado';
+  responsavel?: string;
+  observacao?: string;
+  created_at: string;
+  updated_at: string;
+  rota_nome?: string;
+  rota_cor?: string;
+  guia_mes?: number;
+  guia_ano?: number;
 }
 
 class EntregaService {
-  // Listar rotas disponíveis para entrega
-  async listarRotas(): Promise<RotaEntrega[]> {
+  // Listar todas as rotas de entrega
+  async listarTodasRotas(): Promise<RotaEntrega[]> {
     try {
-      const response = await api.get('/entregas/rotas-entregas');
-      return response.data;
+      console.log('🌐 Fazendo requisição para: /entregas/rotas');
+      const response = await api.get('/entregas/rotas');
+      console.log('✅ Todas as rotas recebidas:', response.data);
+      
+      // Normalizar dados das rotas
+      return response.data.map((rota: any) => ({
+        ...rota,
+        id: Number(rota.id),
+        total_escolas: Number(rota.total_escolas) || 0,
+        total_itens: Number(rota.total_itens) || 0,
+        itens_entregues: Number(rota.itens_entregues) || 0,
+      }));
     } catch (error) {
-      console.error('Erro ao listar rotas:', error);
+      console.error('❌ Erro ao listar todas as rotas:', error);
+      throw error;
+    }
+  }
+
+  // Listar rotas disponíveis para entrega (com planejamentos)
+  async listarRotas(guiaId?: number): Promise<RotaEntrega[]> {
+    try {
+      const params = new URLSearchParams();
+      if (guiaId) params.append('guiaId', guiaId.toString());
+      
+      const url = `/entregas/rotas-entregas?${params.toString()}`;
+      console.log('🌐 Fazendo requisição para:', url);
+      const response = await api.get(url);
+      console.log('✅ Rotas com entregas recebidas:', response.data);
+      
+      // Normalizar dados das rotas
+      return response.data.map((rota: any) => ({
+        ...rota,
+        id: Number(rota.id),
+        total_escolas: Number(rota.total_escolas) || 0,
+        total_itens: Number(rota.total_itens) || 0,
+        itens_entregues: Number(rota.itens_entregues) || 0,
+      }));
+    } catch (error) {
+      console.error('❌ Erro ao listar rotas com entregas:', error);
       throw error;
     }
   }
@@ -81,10 +135,22 @@ class EntregaService {
       if (rotaId) params.append('rotaId', rotaId.toString());
       if (guiaId) params.append('guiaId', guiaId.toString());
       
-      const response = await api.get(`/entregas/escolas?${params.toString()}`);
-      return response.data;
+      const url = `/entregas/escolas?${params.toString()}`;
+      console.log('🌐 Fazendo requisição para:', url);
+      
+      const response = await api.get(url);
+      console.log('✅ Escolas recebidas:', response.data);
+      
+      // Normalizar dados das escolas
+      return response.data.map((escola: any) => ({
+        ...escola,
+        id: Number(escola.id),
+        total_itens: Number(escola.total_itens) || 0,
+        itens_entregues: Number(escola.itens_entregues) || 0,
+        percentual_entregue: Number(escola.percentual_entregue) || 0,
+      }));
     } catch (error) {
-      console.error('Erro ao listar escolas:', error);
+      console.error('❌ Erro ao listar escolas:', error);
       throw error;
     }
   }
@@ -96,10 +162,23 @@ class EntregaService {
       if (guiaId) params.append('guiaId', guiaId.toString());
       if (rotaId) params.append('rotaId', rotaId.toString());
       
-      const response = await api.get(`/entregas/estatisticas?${params.toString()}`);
-      return response.data;
+      const url = `/entregas/estatisticas?${params.toString()}`;
+      console.log('🌐 Fazendo requisição para:', url);
+      
+      const response = await api.get(url);
+      console.log('✅ Estatísticas recebidas:', response.data);
+      
+      // Normalizar dados - converter strings para números
+      const data = response.data;
+      return {
+        total_escolas: Number(data.total_escolas) || 0,
+        total_itens: Number(data.total_itens) || 0,
+        itens_entregues: Number(data.itens_entregues) || 0,
+        itens_pendentes: Number(data.itens_pendentes) || 0,
+        percentual_entregue: Number(data.percentual_entregue) || 0,
+      };
     } catch (error) {
-      console.error('Erro ao obter estatísticas:', error);
+      console.error('❌ Erro ao obter estatísticas:', error);
       throw error;
     }
   }
@@ -110,10 +189,28 @@ class EntregaService {
       const params = new URLSearchParams();
       if (guiaId) params.append('guiaId', guiaId.toString());
       
-      const response = await api.get(`/entregas/escolas/${escolaId}/itens?${params.toString()}`);
-      return response.data;
+      const url = `/entregas/escolas/${escolaId}/itens?${params.toString()}`;
+      console.log('🌐 Fazendo requisição para:', url);
+      
+      const response = await api.get(url);
+      console.log('✅ Itens da escola recebidos:', response.data);
+      
+      // Normalizar dados dos itens
+      return response.data.map((item: any) => ({
+        ...item,
+        id: Number(item.id),
+        guia_id: Number(item.guia_id),
+        produto_id: Number(item.produto_id),
+        escola_id: Number(item.escola_id),
+        quantidade: Number(item.quantidade) || 0,
+        quantidade_entregue: item.quantidade_entregue ? Number(item.quantidade_entregue) : undefined,
+        para_entrega: Boolean(item.para_entrega),
+        entrega_confirmada: Boolean(item.entrega_confirmada),
+        mes: Number(item.mes),
+        ano: Number(item.ano),
+      }));
     } catch (error) {
-      console.error('Erro ao listar itens da escola:', error);
+      console.error('❌ Erro ao listar itens da escola:', error);
       throw error;
     }
   }
@@ -151,25 +248,34 @@ class EntregaService {
     }
   }
 
-  // Upload de foto de comprovante
-  async uploadFotoComprovante(itemId: number, fotoUri: string): Promise<{ url: string }> {
+  // Listar planejamentos de entrega
+  async listarPlanejamentos(guiaId?: number, rotaId?: number): Promise<PlanejamentoEntrega[]> {
     try {
-      const formData = new FormData();
-      formData.append('foto', {
-        uri: fotoUri,
-        type: 'image/jpeg',
-        name: `comprovante_${itemId}_${Date.now()}.jpg`,
-      } as any);
-
-      const response = await api.post(`/entregas/itens/${itemId}/foto`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const params = new URLSearchParams();
+      if (guiaId) params.append('guiaId', guiaId.toString());
+      if (rotaId) params.append('rotaId', rotaId.toString());
       
+      const url = `/entregas/planejamentos?${params.toString()}`;
+      console.log('🌐 Fazendo requisição para:', url);
+      
+      const response = await api.get(url);
+      console.log('✅ Planejamentos recebidos:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Erro ao fazer upload da foto:', error);
+      console.error('❌ Erro ao listar planejamentos:', error);
+      throw error;
+    }
+  }
+
+  // Salvar foto localmente (não faz upload para servidor)
+  async salvarFotoLocal(itemId: number, fotoUri: string): Promise<string> {
+    try {
+      // A foto já está salva localmente pelo expo-camera
+      // Apenas retornamos o URI local para referência
+      console.log(`📸 Foto salva localmente para item ${itemId}:`, fotoUri);
+      return fotoUri;
+    } catch (error) {
+      console.error('Erro ao processar foto local:', error);
       throw error;
     }
   }

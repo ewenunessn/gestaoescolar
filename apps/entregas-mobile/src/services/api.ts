@@ -1,14 +1,13 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getApiBaseUrl, API_CONFIG } from '../config/api';
 
-// Configuração da API - ajustar conforme necessário
-const API_BASE_URL = __DEV__ 
-  ? 'http://localhost:3001/api' // Desenvolvimento
-  : 'https://sua-api-producao.com/api'; // Produção
+// Configuração da API
+const API_BASE_URL = getApiBaseUrl();
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: API_CONFIG.TIMEOUT,
   headers: {
     'Content-Type': 'application/json',
   },

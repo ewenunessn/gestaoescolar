@@ -1,0 +1,191 @@
+// Dados mock para testes offline
+export const mockData: {
+  estatisticas: any;
+  rotas: any[];
+  escolas: any[];
+  itensEscola: { [key: number]: any[] };
+} = {
+  // Estatísticas
+  estatisticas: {
+    total_escolas: 12,
+    total_itens: 45,
+    itens_entregues: 28,
+    itens_pendentes: 17,
+    percentual_entregue: 62.2,
+  },
+
+  // Rotas
+  rotas: [
+    {
+      id: 1,
+      nome: 'Rota Centro',
+      cor: '#1976d2',
+      descricao: 'Escolas da região central',
+      total_escolas: 5,
+      total_itens: 20,
+      itens_entregues: 15,
+    },
+    {
+      id: 2,
+      nome: 'Rota Norte',
+      cor: '#388e3c',
+      descricao: 'Escolas da zona norte',
+      total_escolas: 4,
+      total_itens: 15,
+      itens_entregues: 8,
+    },
+    {
+      id: 3,
+      nome: 'Rota Sul',
+      cor: '#f57c00',
+      descricao: 'Escolas da zona sul',
+      total_escolas: 3,
+      total_itens: 10,
+      itens_entregues: 5,
+    },
+  ],
+
+  // Escolas
+  escolas: [
+    {
+      id: 1,
+      nome: 'EMEI Pequenos Sonhos',
+      endereco: 'Rua das Flores, 123 - Centro',
+      telefone: '(11) 1234-5678',
+      total_itens: 8,
+      itens_entregues: 6,
+      percentual_entregue: 75.0,
+    },
+    {
+      id: 2,
+      nome: 'CMEI Berço da Liberdade',
+      endereco: 'Av. Principal, 456 - Centro',
+      telefone: '(11) 2345-6789',
+      total_itens: 6,
+      itens_entregues: 4,
+      percentual_entregue: 66.7,
+    },
+    {
+      id: 3,
+      nome: 'Escola Municipal Futuro Brilhante',
+      endereco: 'Rua da Esperança, 789 - Norte',
+      telefone: '(11) 3456-7890',
+      total_itens: 10,
+      itens_entregues: 2,
+      percentual_entregue: 20.0,
+    },
+    {
+      id: 4,
+      nome: 'EMEF Crescer Juntos',
+      endereco: 'Rua do Saber, 321 - Sul',
+      telefone: '(11) 4567-8901',
+      total_itens: 5,
+      itens_entregues: 5,
+      percentual_entregue: 100.0,
+    },
+  ],
+
+  // Itens por escola
+  itensEscola: {
+    1: [ // EMEI Pequenos Sonhos
+      {
+        id: 1,
+        guia_id: 1,
+        produto_id: 1,
+        escola_id: 1,
+        quantidade: 50,
+        unidade: 'kg',
+        lote: 'ARR-2025-001',
+        observacao: 'Arroz tipo 1',
+        para_entrega: true,
+        entrega_confirmada: true,
+        quantidade_entregue: 50,
+        data_entrega: '2025-01-10T10:30:00Z',
+        nome_quem_recebeu: 'Maria Silva',
+        nome_quem_entregou: 'João Santos',
+        produto_nome: 'Arroz Branco',
+        produto_unidade: 'kg',
+        mes: 1,
+        ano: 2025,
+      },
+      {
+        id: 2,
+        guia_id: 1,
+        produto_id: 2,
+        escola_id: 1,
+        quantidade: 30,
+        unidade: 'kg',
+        lote: 'FEI-2025-001',
+        observacao: 'Feijão carioca',
+        para_entrega: true,
+        entrega_confirmada: false,
+        produto_nome: 'Feijão Carioca',
+        produto_unidade: 'kg',
+        mes: 1,
+        ano: 2025,
+      },
+      {
+        id: 3,
+        guia_id: 1,
+        produto_id: 3,
+        escola_id: 1,
+        quantidade: 20,
+        unidade: 'litros',
+        lote: 'LEI-2025-001',
+        observacao: 'Leite integral',
+        para_entrega: true,
+        entrega_confirmada: true,
+        quantidade_entregue: 20,
+        data_entrega: '2025-01-10T11:00:00Z',
+        nome_quem_recebeu: 'Ana Costa',
+        nome_quem_entregou: 'João Santos',
+        produto_nome: 'Leite Integral',
+        produto_unidade: 'litros',
+        mes: 1,
+        ano: 2025,
+      },
+    ],
+    2: [ // CMEI Berço da Liberdade
+      {
+        id: 4,
+        guia_id: 1,
+        produto_id: 1,
+        escola_id: 2,
+        quantidade: 40,
+        unidade: 'kg',
+        lote: 'ARR-2025-001',
+        observacao: 'Arroz tipo 1',
+        para_entrega: true,
+        entrega_confirmada: false,
+        produto_nome: 'Arroz Branco',
+        produto_unidade: 'kg',
+        mes: 1,
+        ano: 2025,
+      },
+      {
+        id: 5,
+        guia_id: 1,
+        produto_id: 4,
+        escola_id: 2,
+        quantidade: 15,
+        unidade: 'kg',
+        lote: 'ACU-2025-001',
+        observacao: 'Açúcar cristal',
+        para_entrega: true,
+        entrega_confirmada: true,
+        quantidade_entregue: 15,
+        data_entrega: '2025-01-09T14:30:00Z',
+        nome_quem_recebeu: 'Carlos Oliveira',
+        nome_quem_entregou: 'Pedro Lima',
+        produto_nome: 'Açúcar Cristal',
+        produto_unidade: 'kg',
+        mes: 1,
+        ano: 2025,
+      },
+    ],
+  },
+};
+
+// Função para simular delay de rede
+export const mockDelay = (ms: number = 1000) => 
+  new Promise(resolve => setTimeout(resolve, ms));

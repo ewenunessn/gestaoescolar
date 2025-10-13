@@ -7,7 +7,6 @@ import { useAuth } from '../contexts/AuthContext';
 // Screens
 import LoginScreen from '../screens/LoginScreen';
 import HomeScreen from '../screens/HomeScreen';
-import RotasScreen from '../screens/RotasScreen';
 import EntregasScreen from '../screens/EntregasScreen';
 import EscolaDetalhesScreen from '../screens/EscolaDetalhesScreen';
 import ConfirmarEntregaScreen from '../screens/ConfirmarEntregaScreen';
@@ -22,7 +21,6 @@ export type RootStackParamList = {
 
 export type TabParamList = {
   Home: undefined;
-  Rotas: undefined;
   Entregas: undefined;
   Perfil: undefined;
 };
@@ -39,8 +37,6 @@ const TabNavigator = () => {
 
           if (route.name === 'Home') {
             iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Rotas') {
-            iconName = focused ? 'map-marker-path' : 'map-marker-outline';
           } else if (route.name === 'Entregas') {
             iconName = focused ? 'truck-delivery' : 'truck-delivery-outline';
           } else if (route.name === 'Perfil') {
@@ -60,11 +56,6 @@ const TabNavigator = () => {
         name="Home" 
         component={HomeScreen}
         options={{ tabBarLabel: 'Início' }}
-      />
-      <Tab.Screen 
-        name="Rotas" 
-        component={RotasScreen}
-        options={{ tabBarLabel: 'Rotas' }}
       />
       <Tab.Screen 
         name="Entregas" 
