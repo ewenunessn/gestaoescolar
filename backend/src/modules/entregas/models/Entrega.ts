@@ -78,13 +78,15 @@ class EntregaModel {
         ROUND(
           (SUM(CASE WHEN gpe.entrega_confirmada = true THEN 1 ELSE 0 END) * 100.0) / COUNT(gpe.id), 
           2
-        ) as percentual_entregue
+        ) as percentual_entregue,
+        COALESCE(re.posicao, 999) as posicao_rota
       FROM escolas e
       INNER JOIN guia_produto_escola gpe ON e.id = gpe.escola_id
       INNER JOIN guias g ON gpe.guia_id = g.id
+      LEFT JOIN rota_escolas re ON e.id = re.escola_id ${rotaId ? `AND re.rota_id = ${rotaId}` : ''}
       ${whereClause}
-      GROUP BY e.id, e.nome, e.endereco, e.telefone
-      ORDER BY e.nome
+      GROUP BY e.id, e.nome, e.endereco, e.telefone, re.posicao
+      ORDER BY COALESCE(re.posicao, 999), e.nome
     `, params);
     return result.rows;
   }

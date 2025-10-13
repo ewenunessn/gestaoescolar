@@ -202,15 +202,7 @@ const PerfilScreen = () => {
           />
           <Divider />
           
-          <List.Item
-            title="Limpar Cache"
-            description="Limpar dados temporários do app"
-            left={(props) => <List.Icon {...props} icon="delete-sweep" />}
-            right={(props) => <List.Icon {...props} icon="chevron-right" />}
-            onPress={() => {
-              // Implementar limpeza de cache
-            }}
-          />
+
         </Card.Content>
       </Card>
 

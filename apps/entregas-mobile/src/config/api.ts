@@ -6,8 +6,8 @@ export const API_CONFIG = {
   // Para produção - API PRINCIPAL
   PROD_BASE_URL: 'https://gestaoescolar-backend.vercel.app/api',
 
-  // Timeout das requisições
-  TIMEOUT: 30000,
+  // Timeout das requisições (5 segundos para fallback rápido para offline)
+  TIMEOUT: 5000,
 
   // Modo offline desabilitado - sempre usar API real
   OFFLINE_MODE: false,

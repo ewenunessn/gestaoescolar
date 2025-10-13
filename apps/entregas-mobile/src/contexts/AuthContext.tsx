@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { entregaServiceHybrid } from '../services/entregaServiceHybrid';
 
 interface User {
   id: number;
@@ -35,6 +36,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const storedUser = await AsyncStorage.getItem('@entregas:user');
       if (storedUser) {
         setUser(JSON.parse(storedUser));
+        
+        // Se usuário já está logado, pré-carregar dados em background
+        setTimeout(() => {
+          preCarregarDadosAutomatico();
+        }, 2000);
       }
     } catch (error) {
       console.error('Erro ao carregar usuário:', error);
@@ -57,10 +63,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       await AsyncStorage.setItem('@entregas:user', JSON.stringify(mockUser));
       setUser(mockUser);
+
+      // Pré-carregar dados automaticamente após login (em background)
+      setTimeout(() => {
+        preCarregarDadosAutomatico();
+      }, 1000);
     } catch (error) {
       throw new Error('Erro ao fazer login');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const preCarregarDadosAutomatico = async () => {
+    try {
+      console.log('🔄 Iniciando pré-carregamento automático de dados...');
+      await entregaServiceHybrid.preCarregarDados();
+      console.log('✅ Dados pré-carregados automaticamente! App pronto para uso offline.');
+    } catch (error) {
+      console.log('⚠️ Erro no pré-carregamento automático (normal se offline):', error);
     }
   };
 

@@ -10,13 +10,19 @@ import HomeScreen from '../screens/HomeScreen';
 import EntregasScreen from '../screens/EntregasScreen';
 import EscolaDetalhesScreen from '../screens/EscolaDetalhesScreen';
 import ConfirmarEntregaScreen from '../screens/ConfirmarEntregaScreen';
+import EntregaMassaScreen from '../screens/EntregaMassaScreen';
+import RevisaoEntregaScreen from '../screens/RevisaoEntregaScreen';
 import PerfilScreen from '../screens/PerfilScreen';
+
 
 export type RootStackParamList = {
   Login: undefined;
   MainTabs: undefined;
   EscolaDetalhes: { escolaId: number; escolaNome: string };
   ConfirmarEntrega: { itemId: number; itemData: any };
+  EntregaMassa: { itensSelecionados: any[]; escolaNome: string };
+  RevisaoEntrega: { itensRevisados: any[]; escolaNome: string };
+
 };
 
 export type TabParamList = {
@@ -91,6 +97,17 @@ const AppNavigator = () => {
             component={ConfirmarEntregaScreen}
             options={{ headerShown: true, title: 'Confirmar Entrega' }}
           />
+          <Stack.Screen 
+            name="EntregaMassa" 
+            component={EntregaMassaScreen}
+            options={{ headerShown: true, title: 'Ajustar Quantidades' }}
+          />
+          <Stack.Screen 
+            name="RevisaoEntrega" 
+            component={RevisaoEntregaScreen}
+            options={{ headerShown: true, title: 'Revisão Final' }}
+          />
+
         </>
       )}
     </Stack.Navigator>

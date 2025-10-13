@@ -15,7 +15,9 @@ Aplicativo móvel para gerenciamento de entregas escolares.
 - **Gestão de Entregas**: Confirmar/cancelar entregas
 - **Localização GPS**: Captura automática de localização
 - **Fotos Comprovante**: Câmera integrada para evidências
-- **Offline First**: Funciona sem internet (sincroniza depois)
+- **🔥 Offline First**: Funciona sem internet (sincroniza depois) - **IGUAL AO WHATSAPP!**
+- **Sincronização Automática**: Envia dados quando volta online
+- **Cache Inteligente**: Pré-carrega dados para uso offline
 - **Push Notifications**: Notificações de novas entregas
 
 ### 📊 **Dashboard**
@@ -44,6 +46,14 @@ npm install
 # Instalar Expo CLI (se não tiver)
 npm install -g @expo/cli
 
+# Configurar funcionalidade offline
+# Windows:
+install-offline.bat
+
+# Linux/Mac:
+chmod +x install-offline.sh
+./install-offline.sh
+
 # Iniciar o projeto
 npm start
 
@@ -53,6 +63,28 @@ npm run android
 # Para iOS
 npm run ios
 ```
+
+## 📱 **Sistema Offline (Novo!)**
+
+### 🚀 **Funciona Igual ao WhatsApp**
+- ✅ **Pré-carrega dados** quando online
+- ✅ **Trabalha offline** sem perder funcionalidades  
+- ✅ **Registra entregas** mesmo sem internet
+- ✅ **Sincroniza automaticamente** quando volta online
+
+### 🔄 **Como Usar**
+1. **Primeira vez**: Conecte à internet para baixar dados
+2. **Trabalho de campo**: Use normalmente (mesmo offline)
+3. **Sincronização**: Automática quando voltar online
+
+### 📊 **Gerenciamento**
+- Acesse `Perfil → Configurações Offline`
+- Veja status da conexão e operações pendentes
+- Force sincronização manual se necessário
+- Gerencie cache e armazenamento local
+
+### 📖 **Documentação Completa**
+Veja o arquivo [OFFLINE.md](./OFFLINE.md) para instruções detalhadas.
 
 ## 🔧 **Configuração**
 

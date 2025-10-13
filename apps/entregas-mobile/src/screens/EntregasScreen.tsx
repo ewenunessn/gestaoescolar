@@ -20,7 +20,8 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useNotification } from '../contexts/NotificationContext';
 import { useRota } from '../contexts/RotaContext';
-import { entregaService, EscolaEntrega } from '../services/entregaService';
+import { entregaServiceHybrid } from '../services/entregaServiceHybrid';
+import { EscolaEntrega } from '../services/entregaService';
 import { RootStackParamList } from '../navigation/AppNavigator';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
@@ -44,7 +45,7 @@ const EntregasScreen = () => {
       setLoading(true);
       // Usar a rota selecionada como filtro
       const rotaId = rotaSelecionada?.id;
-      const escolasData = await entregaService.listarEscolasRota(rotaId);
+      const escolasData = await entregaServiceHybrid.listarEscolasRota(rotaId);
       setEscolas(escolasData);
     } catch (error) {
       showError('Erro ao carregar escolas');

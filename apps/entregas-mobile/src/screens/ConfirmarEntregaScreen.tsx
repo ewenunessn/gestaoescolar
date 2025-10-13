@@ -23,18 +23,26 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { useNotification } from '../contexts/NotificationContext';
 import { useAuth } from '../contexts/AuthContext';
-import { entregaService, ConfirmarEntregaData } from '../services/entregaService';
+import { useOffline } from '../contexts/OfflineContext';
+import { entregaServiceHybrid } from '../services/entregaServiceHybrid';
+import { ConfirmarEntregaData } from '../services/entregaService';
 import { RootStackParamList } from '../navigation/AppNavigator';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 type ConfirmarEntregaRouteProp = RouteProp<RootStackParamList, 'ConfirmarEntrega'>;
 
 const ConfirmarEntregaScreen = () => {
+  console.log(`🟢 === TELA CONFIRMAR ENTREGA CARREGADA ===`);
+  console.log(`Versão do código: 2025-01-13-v2`);
+  
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<ConfirmarEntregaRouteProp>();
   const { showError, showSuccess } = useNotification();
   const { user } = useAuth();
+  const { isOffline, atualizarStatusOperacoes } = useOffline();
   const { itemId, itemData } = route.params;
+  
+  console.log(`Item recebido:`, itemId, itemData?.produto_nome);
 
   const [loading, setLoading] = useState(false);
   const [quantidadeEntregue, setQuantidadeEntregue] = useState(itemData.quantidade.toString());
@@ -111,35 +119,54 @@ const ConfirmarEntregaScreen = () => {
   };
 
   const confirmarEntrega = async () => {
+    console.log(`🔵 === BOTÃO CONFIRMAR PRESSIONADO ===`);
+    console.log(`Item ID: ${itemId}`);
+    console.log(`Nome quem recebeu: "${nomeQuemRecebeu}"`);
+    console.log(`Quantidade: "${quantidadeEntregue}"`);
+    
     if (!nomeQuemRecebeu.trim()) {
+      console.log(`❌ Validação falhou: nome vazio`);
       showError('Por favor, informe quem recebeu a entrega');
       return;
     }
 
     const quantidade = parseFloat(quantidadeEntregue);
     if (isNaN(quantidade) || quantidade <= 0) {
+      console.log(`❌ Validação falhou: quantidade inválida`);
       showError('Quantidade entregue deve ser um número válido');
       return;
     }
 
+    console.log(`✅ Validações OK, quantidade: ${quantidade}`);
+
     if (quantidade > itemData.quantidade) {
+      console.log(`⚠️ Quantidade excedida, mostrando alerta`);
       Alert.alert(
         'Quantidade Excedida',
         `A quantidade entregue (${quantidade}) é maior que a quantidade programada (${itemData.quantidade}). Deseja continuar?`,
         [
           { text: 'Cancelar', style: 'cancel' },
-          { text: 'Continuar', onPress: () => processarConfirmacao() }
+          { text: 'Continuar', onPress: () => {
+            console.log(`✅ Usuário confirmou continuar`);
+            processarConfirmacao();
+          }}
         ]
       );
     } else {
+      console.log(`✅ Quantidade OK, processando confirmação`);
       processarConfirmacao();
     }
   };
 
   const processarConfirmacao = async () => {
+    console.log(`🚀 === INICIANDO CONFIRMAÇÃO ===`);
+    console.log(`📋 Item ID: ${itemId}`);
+    
     try {
       setLoading(true);
+      console.log(`⏳ Loading ativado`);
 
+      console.log(`📝 Preparando dados...`);
       const dadosEntrega: ConfirmarEntregaData = {
         quantidade_entregue: parseFloat(quantidadeEntregue),
         nome_quem_entregou: user?.nome || 'Entregador',
@@ -152,29 +179,32 @@ const ConfirmarEntregaScreen = () => {
 
       // Salvar foto localmente se foi tirada
       if (fotoUri) {
-        await entregaService.salvarFotoLocal(itemId, fotoUri);
-      }
-
-      // Upload da foto se houver
-      if (fotoUri) {
         try {
-          const fotoResult = await entregaService.uploadFotoComprovante(itemId, fotoUri);
-          dadosEntrega.foto_comprovante = fotoResult.url;
+          console.log(`📸 Tentando salvar foto para item ${itemId}`);
+          await entregaServiceHybrid.salvarFotoLocal(itemId, fotoUri);
+          console.log(`✅ Foto salva com sucesso`);
         } catch (error) {
-          console.error('Erro ao fazer upload da foto:', error);
-          // Continua sem a foto
+          console.error(`⚠️ Erro ao salvar foto (continuando sem foto):`, error);
+          // Continuar mesmo se a foto falhar
         }
       }
 
-      await entregaService.confirmarEntrega(itemId, dadosEntrega);
+      console.log(`🎯 Chamando confirmarEntrega para item ${itemId}`);
+      const resultado = await entregaServiceHybrid.confirmarEntrega(itemId, dadosEntrega);
+      console.log(`✅ Resultado:`, resultado.message);
       
-      showSuccess('Entrega confirmada com sucesso!');
+      showSuccess(resultado.message);
+      await atualizarStatusOperacoes();
       navigation.goBack();
-    } catch (error) {
+    } catch (error: any) {
+      console.error(`❌ === ERRO NA CONFIRMAÇÃO ===`);
+      console.error(`Item: ${itemId}`);
+      console.error(`Tipo:`, error?.constructor?.name);
+      console.error(`Mensagem:`, error?.message);
       showError('Erro ao confirmar entrega');
-      console.error('Erro:', error);
     } finally {
       setLoading(false);
+      console.log(`⏳ Loading desativado`);
     }
   };
 
