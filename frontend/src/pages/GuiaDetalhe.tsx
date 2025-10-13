@@ -30,9 +30,13 @@ import {
   Add as AddIcon,
   Visibility as VisibilityIcon,
   Delete as DeleteIcon,
+  CheckCircle as CheckCircleIcon,
+  PendingActions as PendingIcon,
+  History as HistoryIcon,
 } from '@mui/icons-material';
 import { useNotification } from '../context/NotificationContext';
 import { guiaService, Guia, GuiaProdutoEscola } from '../services/guiaService';
+import { entregaService } from '../modules/entregas/services/entregaService';
 import GuiaDetalhes from '../components/GuiaDetalhes';
 import AdicionarProdutoIndividual from '../components/AdicionarProdutoIndividual';
 
@@ -69,6 +73,7 @@ const GuiaDetalhe: React.FC = () => {
   const [openEscolasProduto, setOpenEscolasProduto] = useState(false);
   const [itensSelecionados, setItensSelecionados] = useState<Set<string>>(new Set());
   const [removendoItens, setRemovendoItens] = useState(false);
+  const [dadosEntrega, setDadosEntrega] = useState<{[key: string]: any}>({});
 
   useEffect(() => {
     if (id) {
@@ -149,10 +154,39 @@ const GuiaDetalhe: React.FC = () => {
     });
   }, [produtos]);
 
-  const handleVerEscolas = (produto: ProdutoAgrupado) => {
+  const handleVerEscolas = async (produto: ProdutoAgrupado) => {
     setProdutoSelecionado(produto);
     setItensSelecionados(new Set());
     setOpenEscolasProduto(true);
+    
+    // Carregar dados de entrega para cada escola
+    try {
+      const dadosEntregaTemp: {[key: string]: any} = {};
+      
+      for (const item of produto.escolas) {
+        const escolaId = (item as any).escola_id || item.escolaId;
+        if (escolaId && guia) {
+          try {
+            const itensEntrega = await entregaService.listarItensPorEscola(escolaId, guia.id);
+            // Encontrar o item específico deste produto
+            const itemEntrega = itensEntrega.find((entrega: any) => 
+              entrega.produto_id === ((item as any).produto_id || item.produtoId) &&
+              entrega.lote === item.lote
+            );
+            
+            if (itemEntrega) {
+              dadosEntregaTemp[`${escolaId}_${(item as any).produto_id || item.produtoId}_${item.lote || 'sem_lote'}`] = itemEntrega;
+            }
+          } catch (err) {
+            console.log(`Erro ao carregar dados de entrega para escola ${escolaId}:`, err);
+          }
+        }
+      }
+      
+      setDadosEntrega(dadosEntregaTemp);
+    } catch (err) {
+      console.error('Erro ao carregar dados de entrega:', err);
+    }
   };
 
   const handleSelecionarItem = (itemId: string) => {
@@ -599,6 +633,8 @@ const GuiaDetalhe: React.FC = () => {
                   <TableCell align="right">Quantidade</TableCell>
                   <TableCell>Unidade</TableCell>
                   <TableCell align="center">Para Entrega</TableCell>
+                  <TableCell align="center">Status Entrega</TableCell>
+                  <TableCell align="right">Qtd. Entregue</TableCell>
                   <TableCell>Observação</TableCell>
                   {guia.status === 'aberta' && <TableCell align="center">Ação Individual</TableCell>}
                 </TableRow>
@@ -707,6 +743,92 @@ const GuiaDetalhe: React.FC = () => {
                           sx={{ m: 0 }}
                         />
                       </TableCell>
+                      
+                      {/* Status de Entrega */}
+                      <TableCell align="center">
+                        {(() => {
+                          const escolaId = (item as any).escola_id || item.escolaId;
+                          const produtoId = (item as any).produto_id || item.produtoId;
+                          const lote = item.lote || 'sem_lote';
+                          const chaveEntrega = `${escolaId}_${produtoId}_${lote}`;
+                          const dadosItem = dadosEntrega[chaveEntrega];
+                          
+                          if (!normalizeBoolean(item.para_entrega)) {
+                            return (
+                              <Chip
+                                label="Não p/ entrega"
+                                size="small"
+                                sx={{ bgcolor: 'grey.300', color: 'grey.700' }}
+                              />
+                            );
+                          }
+                          
+                          if (dadosItem?.entrega_confirmada) {
+                            return (
+                              <Chip
+                                icon={<CheckCircleIcon />}
+                                label="Entregue"
+                                size="small"
+                                color="success"
+                                sx={{ fontWeight: 'bold' }}
+                              />
+                            );
+                          } else {
+                            return (
+                              <Chip
+                                icon={<PendingIcon />}
+                                label="Pendente"
+                                size="small"
+                                color="warning"
+                                variant="outlined"
+                              />
+                            );
+                          }
+                        })()}
+                      </TableCell>
+                      
+                      {/* Quantidade Entregue */}
+                      <TableCell align="right">
+                        {(() => {
+                          const escolaId = (item as any).escola_id || item.escolaId;
+                          const produtoId = (item as any).produto_id || item.produtoId;
+                          const lote = item.lote || 'sem_lote';
+                          const chaveEntrega = `${escolaId}_${produtoId}_${lote}`;
+                          const dadosItem = dadosEntrega[chaveEntrega];
+                          
+                          if (!normalizeBoolean(item.para_entrega)) {
+                            return (
+                              <Typography variant="body2" color="text.secondary">
+                                -
+                              </Typography>
+                            );
+                          }
+                          
+                          if (dadosItem?.entrega_confirmada && dadosItem?.quantidade_entregue) {
+                            return (
+                              <Box>
+                                <Typography variant="body2" fontWeight="bold" color="success.main">
+                                  {typeof dadosItem.quantidade_entregue === 'number' 
+                                    ? dadosItem.quantidade_entregue.toLocaleString('pt-BR') 
+                                    : dadosItem.quantidade_entregue}
+                                </Typography>
+                                {dadosItem.data_entrega && (
+                                  <Typography variant="caption" color="text.secondary" display="block">
+                                    {new Date(dadosItem.data_entrega).toLocaleDateString('pt-BR')}
+                                  </Typography>
+                                )}
+                              </Box>
+                            );
+                          } else {
+                            return (
+                              <Typography variant="body2" color="warning.main">
+                                Pendente
+                              </Typography>
+                            );
+                          }
+                        })()}
+                      </TableCell>
+                      
                       <TableCell>
                         <Typography variant="body2">
                           {item.observacao || '-'}
@@ -735,10 +857,100 @@ const GuiaDetalhe: React.FC = () => {
             </Table>
           </TableContainer>
 
-          <Box sx={{ mt: 2, p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
-            <Typography variant="subtitle2" color="primary">
-              Total: {produtoSelecionado?.totalQuantidade.toLocaleString('pt-BR')} {produtoSelecionado?.unidade}
-            </Typography>
+          <Box sx={{ mt: 2, p: 2, bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6} md={3}>
+                <Box textAlign="center">
+                  <Typography variant="h6" color="primary" fontWeight="bold">
+                    {produtoSelecionado?.totalQuantidade.toLocaleString('pt-BR')}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Total Programado ({produtoSelecionado?.unidade})
+                  </Typography>
+                </Box>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Box textAlign="center">
+                  <Typography variant="h6" color="success.main" fontWeight="bold">
+                    {(() => {
+                      if (!produtoSelecionado) return '0';
+                      let totalEntregue = 0;
+                      produtoSelecionado.escolas.forEach((item: any) => {
+                        const escolaId = (item as any).escola_id || item.escolaId;
+                        const produtoId = (item as any).produto_id || item.produtoId;
+                        const lote = item.lote || 'sem_lote';
+                        const chaveEntrega = `${escolaId}_${produtoId}_${lote}`;
+                        const dadosItem = dadosEntrega[chaveEntrega];
+                        if (dadosItem?.entrega_confirmada && dadosItem?.quantidade_entregue) {
+                          totalEntregue += parseFloat(dadosItem.quantidade_entregue) || 0;
+                        }
+                      });
+                      return totalEntregue.toLocaleString('pt-BR');
+                    })()}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Total Entregue ({produtoSelecionado?.unidade})
+                  </Typography>
+                </Box>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Box textAlign="center">
+                  <Typography variant="h6" color="warning.main" fontWeight="bold">
+                    {(() => {
+                      if (!produtoSelecionado) return '0';
+                      let totalPendente = 0;
+                      produtoSelecionado.escolas.forEach((item: any) => {
+                        if (normalizeBoolean(item.para_entrega)) {
+                          const escolaId = (item as any).escola_id || item.escolaId;
+                          const produtoId = (item as any).produto_id || item.produtoId;
+                          const lote = item.lote || 'sem_lote';
+                          const chaveEntrega = `${escolaId}_${produtoId}_${lote}`;
+                          const dadosItem = dadosEntrega[chaveEntrega];
+                          if (!dadosItem?.entrega_confirmada) {
+                            totalPendente += parseFloat(item.quantidade) || 0;
+                          }
+                        }
+                      });
+                      return totalPendente.toLocaleString('pt-BR');
+                    })()}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Pendente Entrega ({produtoSelecionado?.unidade})
+                  </Typography>
+                </Box>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Box textAlign="center">
+                  <Typography variant="h6" color="info.main" fontWeight="bold">
+                    {(() => {
+                      if (!produtoSelecionado) return '0%';
+                      let totalParaEntrega = 0;
+                      let totalEntregue = 0;
+                      
+                      produtoSelecionado.escolas.forEach((item: any) => {
+                        if (normalizeBoolean(item.para_entrega)) {
+                          totalParaEntrega += parseFloat(item.quantidade) || 0;
+                          const escolaId = (item as any).escola_id || item.escolaId;
+                          const produtoId = (item as any).produto_id || item.produtoId;
+                          const lote = item.lote || 'sem_lote';
+                          const chaveEntrega = `${escolaId}_${produtoId}_${lote}`;
+                          const dadosItem = dadosEntrega[chaveEntrega];
+                          if (dadosItem?.entrega_confirmada && dadosItem?.quantidade_entregue) {
+                            totalEntregue += parseFloat(dadosItem.quantidade_entregue) || 0;
+                          }
+                        }
+                      });
+                      
+                      const percentual = totalParaEntrega > 0 ? (totalEntregue / totalParaEntrega) * 100 : 0;
+                      return `${percentual.toFixed(1)}%`;
+                    })()}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Progresso Entrega
+                  </Typography>
+                </Box>
+              </Grid>
+            </Grid>
           </Box>
         </DialogContent>
         <DialogActions>

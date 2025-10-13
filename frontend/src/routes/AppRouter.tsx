@@ -62,6 +62,8 @@ const DashboardConsistencia = lazy(() => import("../components/DashboardConsiste
 const GuiasDemanda = lazy(() => import("../pages/GuiasDemanda"));
 const GuiaDetalhe = lazy(() => import("../pages/GuiaDetalhe"));
 const Entregas = lazy(() => import("../pages/Entregas"));
+const PlanejamentoEntregas = lazy(() => import("../pages/PlanejamentoEntregas"));
+const GestaoRotas = lazy(() => import("../pages/GestaoRotas"));
 const Pedidos = lazy(() => import("../pages/Pedidos"));
 const NovoPedido = lazy(() => import("../pages/NovoPedido"));
 const PedidoDetalhe = lazy(() => import("../pages/PedidoDetalhe"));
@@ -223,6 +225,14 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
             <Route
               path="/entregas"
               element={<LazyRoute><Entregas /></LazyRoute>}
+            />
+            <Route
+              path="/planejamento-entregas"
+              element={<LazyRoute><PlanejamentoEntregas /></LazyRoute>}
+            />
+            <Route
+              path="/gestao-rotas"
+              element={<LazyRoute><GestaoRotas /></LazyRoute>}
             />
 
             <Route

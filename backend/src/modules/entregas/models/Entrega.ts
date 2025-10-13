@@ -39,7 +39,26 @@ export interface ConfirmarEntregaData {
 }
 
 class EntregaModel {
-  async listarEscolasComEntregas(): Promise<EscolaEntrega[]> {
+  async listarEscolasComEntregas(guiaId?: number, rotaId?: number): Promise<EscolaEntrega[]> {
+    let whereClause = 'WHERE gpe.para_entrega = true AND g.status = \'aberta\'';
+    const params = [];
+    let paramCount = 1;
+
+    if (guiaId) {
+      whereClause += ` AND g.id = $${paramCount}`;
+      params.push(guiaId);
+      paramCount++;
+    }
+
+    if (rotaId) {
+      whereClause += ` AND EXISTS (
+        SELECT 1 FROM rota_escolas re 
+        WHERE re.escola_id = e.id AND re.rota_id = $${paramCount}
+      )`;
+      params.push(rotaId);
+      paramCount++;
+    }
+
     const result = await db.all(`
       SELECT DISTINCT
         e.id,
@@ -55,15 +74,24 @@ class EntregaModel {
       FROM escolas e
       INNER JOIN guia_produto_escola gpe ON e.id = gpe.escola_id
       INNER JOIN guias g ON gpe.guia_id = g.id
-      WHERE gpe.para_entrega = true 
-        AND g.status = 'aberta'
+      ${whereClause}
       GROUP BY e.id, e.nome, e.endereco, e.telefone
       ORDER BY e.nome
-    `);
+    `, params);
     return result;
   }
 
-  async listarItensEntregaPorEscola(escolaId: number): Promise<ItemEntrega[]> {
+  async listarItensEntregaPorEscola(escolaId: number, guiaId?: number): Promise<ItemEntrega[]> {
+    let whereClause = 'WHERE gpe.escola_id = $1 AND gpe.para_entrega = true AND g.status = \'aberta\'';
+    const params = [escolaId];
+    let paramCount = 2;
+
+    if (guiaId) {
+      whereClause += ` AND g.id = $${paramCount}`;
+      params.push(guiaId);
+      paramCount++;
+    }
+
     const result = await db.all(`
       SELECT 
         gpe.*,
@@ -75,16 +103,14 @@ class EntregaModel {
       FROM guia_produto_escola gpe
       INNER JOIN produtos p ON gpe.produto_id = p.id
       INNER JOIN guias g ON gpe.guia_id = g.id
-      WHERE gpe.escola_id = $1 
-        AND gpe.para_entrega = true
-        AND g.status = 'aberta'
+      ${whereClause}
       ORDER BY 
         gpe.entrega_confirmada ASC,
         g.mes DESC, 
         g.ano DESC, 
         p.nome, 
         gpe.lote
-    `, [escolaId]);
+    `, params);
     return result;
   }
 
@@ -170,7 +196,26 @@ class EntregaModel {
     return await this.buscarItemEntrega(itemId);
   }
 
-  async obterEstatisticasEntregas(): Promise<any> {
+  async obterEstatisticasEntregas(guiaId?: number, rotaId?: number): Promise<any> {
+    let whereClause = 'WHERE gpe.para_entrega = true AND g.status = \'aberta\'';
+    const params = [];
+    let paramCount = 1;
+
+    if (guiaId) {
+      whereClause += ` AND g.id = $${paramCount}`;
+      params.push(guiaId);
+      paramCount++;
+    }
+
+    if (rotaId) {
+      whereClause += ` AND EXISTS (
+        SELECT 1 FROM rota_escolas re 
+        WHERE re.escola_id = gpe.escola_id AND re.rota_id = $${paramCount}
+      )`;
+      params.push(rotaId);
+      paramCount++;
+    }
+
     const result = await db.get(`
       SELECT 
         COUNT(DISTINCT gpe.escola_id) as total_escolas,
@@ -183,9 +228,8 @@ class EntregaModel {
         ) as percentual_entregue
       FROM guia_produto_escola gpe
       INNER JOIN guias g ON gpe.guia_id = g.id
-      WHERE gpe.para_entrega = true 
-        AND g.status = 'aberta'
-    `);
+      ${whereClause}
+    `, params);
     return result;
   }
 }

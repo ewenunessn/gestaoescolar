@@ -31,9 +31,10 @@ import { entregaService } from '../services/entregaService';
 interface ItensEntregaListProps {
   escola: EscolaEntrega;
   onVoltar: () => void;
+  filtros: { guiaId?: number; rotaId?: number };
 }
 
-export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVoltar }) => {
+export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVoltar, filtros }) => {
   const [itens, setItens] = useState<ItemEntrega[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -48,13 +49,13 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
 
   useEffect(() => {
     carregarItens();
-  }, [escola.id]);
+  }, [escola.id, filtros]);
 
   const carregarItens = async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await entregaService.listarItensPorEscola(escola.id);
+      const data = await entregaService.listarItensPorEscola(escola.id, filtros.guiaId);
       setItens(data);
     } catch (err) {
       console.error('Erro ao carregar itens:', err);

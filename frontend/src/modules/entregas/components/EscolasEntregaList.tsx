@@ -25,9 +25,10 @@ import { entregaService } from '../services/entregaService';
 
 interface EscolasEntregaListProps {
   onEscolaSelect: (escola: EscolaEntrega) => void;
+  filtros: { guiaId?: number; rotaId?: number };
 }
 
-export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({ onEscolaSelect }) => {
+export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({ onEscolaSelect, filtros }) => {
   const [escolas, setEscolas] = useState<EscolaEntrega[]>([]);
   const [estatisticas, setEstatisticas] = useState<EstatisticasEntregas | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,7 +37,7 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({ onEscola
 
   useEffect(() => {
     carregarDados();
-  }, []);
+  }, [filtros]);
 
   const carregarDados = async () => {
     try {
@@ -44,8 +45,8 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({ onEscola
       setError(null);
       
       const [escolasData, estatisticasData] = await Promise.all([
-        entregaService.listarEscolas(),
-        entregaService.obterEstatisticas()
+        entregaService.listarEscolas(filtros.guiaId, filtros.rotaId),
+        entregaService.obterEstatisticas(filtros.guiaId, filtros.rotaId)
       ]);
       
       setEscolas(escolasData);

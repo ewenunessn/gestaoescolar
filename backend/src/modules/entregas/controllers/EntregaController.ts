@@ -4,7 +4,12 @@ import EntregaModel from '../models/Entrega';
 class EntregaController {
   async listarEscolas(req: Request, res: Response) {
     try {
-      const escolas = await EntregaModel.listarEscolasComEntregas();
+      const { guiaId, rotaId } = req.query;
+      
+      const escolas = await EntregaModel.listarEscolasComEntregas(
+        guiaId ? Number(guiaId) : undefined,
+        rotaId ? Number(rotaId) : undefined
+      );
       res.json(escolas);
     } catch (error) {
       console.error('Erro ao listar escolas com entregas:', error);
@@ -18,12 +23,16 @@ class EntregaController {
   async listarItensPorEscola(req: Request, res: Response) {
     try {
       const { escolaId } = req.params;
+      const { guiaId } = req.query;
       
       if (!escolaId || isNaN(Number(escolaId))) {
         return res.status(400).json({ error: 'ID da escola é obrigatório e deve ser um número' });
       }
 
-      const itens = await EntregaModel.listarItensEntregaPorEscola(Number(escolaId));
+      const itens = await EntregaModel.listarItensEntregaPorEscola(
+        Number(escolaId),
+        guiaId ? Number(guiaId) : undefined
+      );
       res.json(itens);
     } catch (error) {
       console.error('Erro ao listar itens para entrega:', error);
@@ -141,7 +150,12 @@ class EntregaController {
 
   async obterEstatisticas(req: Request, res: Response) {
     try {
-      const estatisticas = await EntregaModel.obterEstatisticasEntregas();
+      const { guiaId, rotaId } = req.query;
+      
+      const estatisticas = await EntregaModel.obterEstatisticasEntregas(
+        guiaId ? Number(guiaId) : undefined,
+        rotaId ? Number(rotaId) : undefined
+      );
       res.json(estatisticas);
     } catch (error) {
       console.error('Erro ao obter estatísticas:', error);

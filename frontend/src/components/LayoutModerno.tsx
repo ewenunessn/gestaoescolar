@@ -85,6 +85,8 @@ const menuConfig = [
     category: "Guias",
     items: [
       { text: "Guias de Demanda", icon: <ListAlt />, path: "/guias-demanda" },
+      { text: "Gestão de Rotas", icon: <Business />, path: "/gestao-rotas", badge: "Novo!", badgeColor: "info" },
+      { text: "Planejamento de Entregas", icon: <Assignment />, path: "/planejamento-entregas", badge: "Novo!", badgeColor: "primary" },
       { text: "Entregas", icon: <LocalShipping />, path: "/entregas", badge: "Novo!", badgeColor: "success" },
     ],
   },

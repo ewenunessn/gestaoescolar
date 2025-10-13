@@ -30,6 +30,7 @@ import saldoContratosRoutes from "./modules/contratos/routes/saldoContratosRoute
 import saldoContratosModalidadesRoutes from "./modules/contratos/routes/saldoContratosModalidadesRoutes";
 import guiaRoutes from "./modules/guias/routes/guiaRoutes";
 import entregaRoutes from "./modules/entregas/routes/entregaRoutes";
+import rotaRoutes from "./modules/entregas/routes/rotaRoutes";
 import pedidoRoutes from "./modules/pedidos/routes/pedidoRoutes";
 import faturamentoRoutes from "./modules/pedidos/routes/faturamentoRoutes";
 import demandasRoutes from "./modules/demandas/routes/demandaRoutes";
@@ -204,6 +205,7 @@ app.use("/api/saldo-contratos", saldoContratosRoutes);
 app.use("/api/saldo-contratos-modalidades", saldoContratosModalidadesRoutes);
 app.use("/api/guias", guiaRoutes);
 app.use("/api/entregas", entregaRoutes);
+app.use("/api/entregas", rotaRoutes);
 app.use("/api/pedidos", pedidoRoutes);
 app.use("/api/faturamentos", faturamentoRoutes);
 app.use("/api/demandas", demandasRoutes);
