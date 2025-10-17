@@ -36,9 +36,12 @@ import { listarModalidades } from '../services/modalidades';
 
 // --- Subcomponentes de UI ---
 
-const PageHeader = ({ escola, totalAlunos, isEditing, onEdit, onSave, onCancel, onEstoque, onDelete, salvando }) => (
+const PageHeader = ({ escola, totalAlunos, isEditing, onEdit, onSave, onCancel, onEstoque, onDelete, onBack, salvando }) => (
     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2, mb: 4 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <IconButton onClick={onBack} sx={{ bgcolor: 'background.paper', boxShadow: 1 }}>
+                <ArrowBackIcon />
+            </IconButton>
             <Box>
                 <Typography variant="h4" sx={{ fontWeight: 700, color: 'text.primary' }}>
                     {escola?.nome}
@@ -259,7 +262,8 @@ const EscolaDetalhesPage = () => {
             <PageHeader
                 escola={escola} totalAlunos={totalAlunos} isEditing={isEditing}
                 onEdit={() => setIsEditing(true)} onSave={handleSaveEscola} onCancel={handleCancelEdit}
-                onEstoque={() => navigate(`/escolas/${id}/estoque`)} onDelete={() => setDeleteDialogOpen(true)} salvando={isSaving}
+                onEstoque={() => navigate(`/escolas/${id}/estoque`)} onDelete={() => setDeleteDialogOpen(true)} 
+                onBack={() => navigate('/escolas')} salvando={isSaving}
             />
 
             <EscolaInfoCard isEditing={isEditing} formData={formData} setFormData={setFormData} />

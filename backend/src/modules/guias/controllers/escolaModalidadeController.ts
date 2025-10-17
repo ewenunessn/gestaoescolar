@@ -109,15 +109,39 @@ export async function criarEscolaModalidade(req: Request, res: Response) {
   try {
     const { escola_id, modalidade_id, quantidade_alunos } = req.body;
 
+    // Se quantidade_alunos for 0 ou vazio, remove o registro se existir
+    if (!quantidade_alunos || quantidade_alunos === 0) {
+      const existing = await db.get(`
+        SELECT id FROM escola_modalidades 
+        WHERE escola_id = $1 AND modalidade_id = $2
+      `, [escola_id, modalidade_id]);
+
+      if (existing) {
+        await db.query(`
+          DELETE FROM escola_modalidades 
+          WHERE escola_id = $1 AND modalidade_id = $2
+        `, [escola_id, modalidade_id]);
+      }
+
+      return res.json({
+        success: true,
+        message: "Registro removido com sucesso",
+        data: null
+      });
+    }
+
+    // UPSERT: Insere ou atualiza se já existir
     const result = await db.query(`
       INSERT INTO escola_modalidades (escola_id, modalidade_id, quantidade_alunos)
       VALUES ($1, $2, $3)
+      ON CONFLICT (escola_id, modalidade_id) 
+      DO UPDATE SET quantidade_alunos = EXCLUDED.quantidade_alunos
       RETURNING *
     `, [escola_id, modalidade_id, quantidade_alunos]);
 
     res.json({
       success: true,
-      message: "Escola-modalidade criada com sucesso",
+      message: "Escola-modalidade salva com sucesso",
       data: result.rows[0]
     });
   } catch (error) {

@@ -43,7 +43,9 @@ import {
   Clear as ClearIcon,
   MoreVert,
   Category,
+  People as PeopleIcon,
 } from "@mui/icons-material";
+import { useNavigate } from "react-router-dom";
 import {
   listarModalidades,
   criarModalidade,
@@ -53,6 +55,8 @@ import {
 } from "../services/modalidades";
 
 const ModalidadesPage = () => {
+  const navigate = useNavigate();
+  
   // Estados principais
   const [modalidades, setModalidades] = useState<Modalidade[]>([]);
   const [loading, setLoading] = useState(true);
@@ -417,7 +421,9 @@ const ModalidadesPage = () => {
       
       {/* Menu de Ações */}
       <Menu anchorEl={actionsMenuAnchor} open={Boolean(actionsMenuAnchor)} onClose={() => setActionsMenuAnchor(null)}>
-        <MenuItem disabled><Typography>Nenhuma ação disponível</Typography></MenuItem>
+        <MenuItem onClick={() => { setActionsMenuAnchor(null); navigate('/modalidades/gerenciar-alunos'); }}>
+          <PeopleIcon sx={{ mr: 1 }} /> Gerenciar Alunos por Escola
+        </MenuItem>
       </Menu>
     </Box>
   );

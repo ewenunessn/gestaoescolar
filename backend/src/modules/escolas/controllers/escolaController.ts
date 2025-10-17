@@ -69,8 +69,23 @@ export async function buscarEscola(req: Request, res: Response) {
       WHERE escola_id = $1
     `, [id]);
 
+    // Buscar modalidades da escola
+    const modalidadesResult = await db.query(`
+      SELECT 
+        em.id,
+        em.escola_id,
+        em.modalidade_id,
+        em.quantidade_alunos,
+        m.nome as modalidade_nome
+      FROM escola_modalidades em
+      LEFT JOIN modalidades m ON em.modalidade_id = m.id
+      WHERE em.escola_id = $1
+      ORDER BY m.nome
+    `, [id]);
+
     const escola = escolaResult.rows[0];
     escola.total_alunos = parseInt(alunosResult.rows[0].total_alunos) || 0;
+    escola.modalidades = modalidadesResult.rows;
 
     res.json({
       success: true,
