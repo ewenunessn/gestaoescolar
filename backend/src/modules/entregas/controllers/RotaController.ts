@@ -444,14 +444,75 @@ class RotaController {
         return this.listarRotasComEntregas(req, res);
       }
 
-      // Buscar todas as rotas
-      const todasRotas = await RotaModel.listarRotasComEntregas(configuracao.guia_id);
+      console.log('🔍 Configuração encontrada:', {
+        id: configuracao.id,
+        guiaId: configuracao.guia_id,
+        rotasSelecionadas: configuracao.rotas_selecionadas
+      });
+
+      // Buscar todas as rotas básicas primeiro
+      const todasRotasBasicas = await RotaModel.listarRotas();
+      console.log('📋 Todas as rotas básicas:', todasRotasBasicas.map(r => ({ id: r.id, nome: r.nome })));
       
       // Filtrar apenas as rotas selecionadas na configuração
-      const rotasFiltradas = todasRotas.filter(rota => 
+      const rotasBasicasFiltradas = todasRotasBasicas.filter(rota => 
         configuracao.rotas_selecionadas.includes(rota.id)
       );
+      
+      console.log('✅ Rotas básicas filtradas:', rotasBasicasFiltradas.map(r => ({ id: r.id, nome: r.nome })));
 
+      // Para cada rota filtrada, buscar dados de entregas
+      const rotasFiltradas = [];
+      
+      for (const rota of rotasBasicasFiltradas) {
+        try {
+          // Buscar dados de entregas para esta rota específica
+          const rotasComEntregas = await RotaModel.listarRotasComEntregas(configuracao.guia_id);
+          const rotaComEntregas = rotasComEntregas.find(r => r.id === rota.id);
+          
+          if (rotaComEntregas) {
+            // Se tem dados de entregas, usar esses dados
+            rotasFiltradas.push(rotaComEntregas);
+          } else {
+            // Se não tem dados de entregas, criar estrutura básica
+            rotasFiltradas.push({
+              id: rota.id,
+              nome: rota.nome,
+              descricao: rota.descricao,
+              cor: rota.cor,
+              guia_id: configuracao.guia_id,
+              status: 'planejado',
+              responsavel: null,
+              data_planejada: null,
+              mes: null,
+              ano: null,
+              total_escolas: rota.total_escolas || 0,
+              total_itens: 0,
+              itens_entregues: 0
+            });
+          }
+        } catch (error) {
+          console.error(`Erro ao buscar dados de entregas para rota ${rota.id}:`, error);
+          // Em caso de erro, incluir rota básica
+          rotasFiltradas.push({
+            id: rota.id,
+            nome: rota.nome,
+            descricao: rota.descricao,
+            cor: rota.cor,
+            guia_id: configuracao.guia_id,
+            status: 'planejado',
+            responsavel: null,
+            data_planejada: null,
+            mes: null,
+            ano: null,
+            total_escolas: rota.total_escolas || 0,
+            total_itens: 0,
+            itens_entregues: 0
+          });
+        }
+      }
+
+      console.log('🎯 Rotas finais filtradas:', rotasFiltradas.map(r => ({ id: r.id, nome: r.nome, total_escolas: r.total_escolas })));
       res.json(rotasFiltradas);
     } catch (error) {
       console.error('Erro ao listar rotas filtradas:', error);
