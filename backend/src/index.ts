@@ -147,7 +147,6 @@ app.get("/health", async (req, res) => {
       debug: {
         nodeEnv: process.env.NODE_ENV,
         jwtSecretFromEnv: process.env.JWT_SECRET ? 'Configurado' : 'Não configurado',
-        jwtSecretFromConfig: config.jwtSecret ? 'Configurado' : 'Não configurado',
         vercelEnv: process.env.VERCEL,
         jwtEnvKeys: Object.keys(process.env).filter(key => key.includes('JWT'))
       }

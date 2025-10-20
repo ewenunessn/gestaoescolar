@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { pool } from '../../../config/database';
+const db = require('../../../database');
 
 class UserController {
   async login(req: Request, res: Response) {
@@ -18,7 +18,7 @@ class UserController {
         WHERE email = $1 AND ativo = true
       `;
       
-      const result = await pool.query(query, [email]);
+      const result = await db.query(query, [email]);
       
       if (result.rows.length === 0) {
         return res.status(401).json({ error: 'Credenciais inválidas' });
@@ -56,7 +56,7 @@ class UserController {
         WHERE id = $1 AND ativo = true
       `;
       
-      const result = await pool.query(query, [Number(userId)]);
+      const result = await db.query(query, [Number(userId)]);
       
       if (result.rows.length === 0) {
         return res.status(404).json({ error: 'Usuário não encontrado' });
@@ -93,7 +93,7 @@ class UserController {
       
       query += ` ORDER BY nome`;
       
-      const result = await pool.query(query, params);
+      const result = await db.query(query, params);
 
       res.json(result.rows);
     } catch (error) {
