@@ -2,6 +2,7 @@ import { Router } from "express";
 import { 
   listarContratoProdutos, 
   listarProdutosPorContrato,
+  listarProdutosPorFornecedor,
   buscarContratoProduto,
   criarContratoProduto,
   editarContratoProduto,
@@ -15,6 +16,9 @@ router.get("/", listarContratoProdutos);
 
 // Listar produtos de um contrato específico
 router.get("/contrato/:contrato_id", listarProdutosPorContrato);
+
+// Listar produtos de um fornecedor específico
+router.get("/fornecedor/:fornecedor_id", listarProdutosPorFornecedor);
 
 // Buscar contrato-produto por ID
 router.get("/:id", buscarContratoProduto);

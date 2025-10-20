@@ -83,6 +83,45 @@ export async function listarProdutosPorContrato(req: Request, res: Response) {
   }
 }
 
+export async function listarProdutosPorFornecedor(req: Request, res: Response) {
+  try {
+    const { fornecedor_id } = req.params;
+    
+    const result = await db.query(`
+      SELECT 
+        cp.id,
+        cp.contrato_id,
+        cp.produto_id,
+        cp.preco_unitario,
+        cp.quantidade_contratada,
+        p.nome as produto_nome,
+        p.marca,
+        p.unidade,
+        c.numero as contrato_numero
+      FROM contrato_produtos cp
+      INNER JOIN produtos p ON cp.produto_id = p.id
+      INNER JOIN contratos c ON cp.contrato_id = c.id
+      WHERE c.fornecedor_id = $1 AND cp.ativo = true
+      ORDER BY c.numero, p.nome
+    `, [fornecedor_id]);
+
+    const produtos = result.rows;
+    
+    res.json({
+      success: true,
+      data: produtos,
+      total: produtos.length
+    });
+  } catch (error) {
+    console.error("❌ Erro ao listar produtos por fornecedor:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao listar produtos por fornecedor",
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+}
+
 export async function buscarContratoProduto(req: Request, res: Response) {
   try {
     const { id } = req.params;

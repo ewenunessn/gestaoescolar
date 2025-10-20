@@ -18,6 +18,7 @@ import {
   MenuBook as MenuBookIcon,
   ReceiptLong as ReceiptLongIcon,
   MonetizationOn as MonetizationOnIcon,
+  Inventory as InventoryIcon,
 } from "@mui/icons-material";
 import { buscarFornecedor } from "../services/fornecedores";
 import { listarContratos } from "../services/contratos";
@@ -57,7 +58,7 @@ const getStatusContrato = (contrato: Contrato) => {
 };
 
 // --- Subcomponentes de UI ---
-const PageHeader = ({ onBack, onEdit }) => (
+const PageHeader = ({ onBack, onEdit, onVerItens }) => (
     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2, mb: 3 }}>
         <Box>
             <Typography variant="h4" sx={{ fontWeight: 700, color: 'text.primary' }}>
@@ -67,9 +68,14 @@ const PageHeader = ({ onBack, onEdit }) => (
                 Voltar para lista de fornecedores
             </Button>
         </Box>
-        <Button variant="outlined" startIcon={<EditIcon />} onClick={onEdit}>
-            Editar Fornecedor
-        </Button>
+        <Stack direction="row" spacing={2}>
+            <Button variant="outlined" startIcon={<InventoryIcon />} onClick={onVerItens}>
+                Ver Todos os Itens
+            </Button>
+            <Button variant="outlined" startIcon={<EditIcon />} onClick={onEdit}>
+                Editar Fornecedor
+            </Button>
+        </Stack>
     </Box>
 );
 
@@ -125,6 +131,7 @@ export default function FornecedorDetalhe() {
   const handleNovoContrato = useCallback(() => navigate(`/contratos/novo?fornecedor_id=${id}`), [navigate, id]);
   const handleVerContrato = useCallback((contratoId: number) => navigate(`/contratos/${contratoId}`), [navigate]);
   const handleEditarFornecedor = useCallback(() => navigate(`/fornecedores?edit=${id}`), [navigate, id]);
+  const handleVerItens = useCallback(() => navigate(`/fornecedores/${id}/itens`), [navigate, id]);
 
   if (loading) return <Box sx={{ display: "flex", justifyContent: "center", alignItems: 'center', minHeight: '80vh' }}><CircularProgress size={60} /></Box>;
   if (error) return <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}><Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={carregarDados}>Tentar Novamente</Button></CardContent></Card></Box>;
@@ -133,7 +140,7 @@ export default function FornecedorDetalhe() {
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
-        <PageHeader onBack={() => navigate("/fornecedores")} onEdit={handleEditarFornecedor} />
+        <PageHeader onBack={() => navigate("/fornecedores")} onEdit={handleEditarFornecedor} onVerItens={handleVerItens} />
 
         <Grid container spacing={4}>
           <Grid item xs={12} lg={8}>

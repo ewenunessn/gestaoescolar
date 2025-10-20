@@ -47,6 +47,7 @@ const CardapioRefeicoes = lazy(() => import("../pages/CardapioRefeicoes"));
 const GerarDemanda = lazy(() => import("../pages/GerarDemanda"));
 const Fornecedores = lazy(() => import("../pages/Fornecedores"));
 const FornecedorDetalhe = lazy(() => import("../pages/FornecedorDetalhe"));
+const ItensFornecedor = lazy(() => import("../pages/ItensFornecedor"));
 const Contratos = lazy(() => import("../pages/Contratos"));
 const DemandasLista = lazy(() => import("../pages/DemandasLista"));
 const GerarFaturamento = lazy(() => import("../pages/GerarFaturamento"));
@@ -247,6 +248,10 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
             <Route
               path="/fornecedores/:id"
               element={<LazyRoute><FornecedorDetalhe /></LazyRoute>}
+            />
+            <Route
+              path="/fornecedores/:id/itens"
+              element={<LazyRoute><ItensFornecedor /></LazyRoute>}
             />
             <Route
               path="/contratos"
