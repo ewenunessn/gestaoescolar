@@ -4,3 +4,15 @@ dist
 .env
 *.log
 .DS_Store
+uploads
+*.sqlite
+*.db
+coverage
+.git
+.vscode
+.idea
+*.test.ts
+*.spec.ts
+__tests__
+test
+tests

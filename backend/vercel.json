@@ -2,10 +2,6 @@
     "version": 2,
     "builds": [
         {
-            "src": "src/index.ts",
-            "use": "@vercel/node"
-        },
-        {
             "src": "api/index.js",
             "use": "@vercel/node"
         }
@@ -15,20 +11,5 @@
             "src": "/(.*)",
             "dest": "api/index.js"
         }
-    ],
-    "env": {
-        "NODE_ENV": "production",
-        "VERCEL": "1",
-        "CORS_ORIGIN": "https://gestaoescolar-frontend.vercel.app,https://*.vercel.app,http://localhost:5173",
-        "JWT_SECRET": "sua_chave_jwt_super_secreta_minimo_32_caracteres_producao_2024",
-        "JWT_EXPIRES_IN": "24h",
-        "DB_HOST": "ep-crimson-violet-adf47gue-pooler.c-2.us-east-1.aws.neon.tech",
-        "DB_PORT": "5432",
-        "DB_NAME": "neondb",
-        "DB_USER": "neondb_owner",
-        "DB_PASSWORD": "npg_PDfBTKRsi29G",
-        "DB_SSL": "true",
-        "POSTGRES_URL": "postgresql://neondb_owner:npg_PDfBTKRsi29G@ep-crimson-violet-adf47gue-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require",
-        "DATABASE_URL": "postgresql://neondb_owner:npg_PDfBTKRsi29G@ep-crimson-violet-adf47gue-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require"
-    }
+    ]
 }
