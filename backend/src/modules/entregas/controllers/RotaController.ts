@@ -414,8 +414,7 @@ class RotaController {
           rota_id: rotaId,
           data_planejada: dataPlanejada || null,
           responsavel: null,
-          observacao: observacaoCompleta,
-          status: 'planejado'
+          observacao: observacaoCompleta
         });
 
         planejamentos.push(planejamento);
