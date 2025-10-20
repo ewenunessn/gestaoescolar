@@ -22,8 +22,8 @@ class EntregaServiceHybrid {
     }
     
     try {
-      // Tentar buscar online
-      const rotas = await entregaService.listarTodasRotas();
+      // Usar listarRotas que já tem suporte a filtros da configuração
+      const rotas = await entregaService.listarRotas();
       
       // Salvar no cache para uso offline
       await offlineService.salvarRotasCache(rotas);
