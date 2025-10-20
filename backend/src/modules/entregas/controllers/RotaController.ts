@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import RotaModel from '../models/Rota';
+import EntregaModel from '../models/Entrega';
 import ConfiguracaoEntregaModel from '../models/ConfiguracaoEntrega';
 
 class RotaController {
@@ -470,8 +471,13 @@ class RotaController {
       const configuracao = await ConfiguracaoEntregaModel.buscarConfiguracaoAtiva();
       
       if (!configuracao) {
-        // Se não há configuração, usar método normal
-        return this.listarEscolas(req, res);
+        // Se não há configuração, usar método normal do EntregaController
+        const { rotaId, guiaId } = req.query;
+        const escolas = await EntregaModel.listarEscolasComEntregas(
+          guiaId ? Number(guiaId) : undefined,
+          rotaId ? Number(rotaId) : undefined
+        );
+        return res.json(escolas);
       }
 
       // Verificar se a rota está nas rotas selecionadas
@@ -483,7 +489,7 @@ class RotaController {
       const guiaIdFinal = guiaId || configuracao.guia_id;
 
       // Buscar escolas normalmente
-      const escolas = await RotaModel.listarEscolas(Number(rotaId), Number(guiaIdFinal));
+      const escolas = await EntregaModel.listarEscolasComEntregas(Number(guiaIdFinal), Number(rotaId));
       
       // Filtrar escolas que têm itens selecionados na configuração
       const escolasFiltradas = escolas.filter(escola => {

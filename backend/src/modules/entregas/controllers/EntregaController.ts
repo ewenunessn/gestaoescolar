@@ -204,7 +204,7 @@ class EntregaController {
       const guiaIdFinal = guiaId || configuracao.guia_id;
 
       // Buscar todos os itens da escola
-      const todosItens = await EntregaModel.listarItensPorEscola(
+      const todosItens = await EntregaModel.listarItensEntregaPorEscola(
         Number(escolaId), 
         Number(guiaIdFinal)
       );
