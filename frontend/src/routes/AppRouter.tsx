@@ -8,6 +8,7 @@ import ErrorBoundary from "../components/ErrorBoundary";
 
 // Componentes críticos carregados imediatamente
 import Login from "../pages/Login";
+import LoginWrapper from "../components/LoginWrapper";
 import Registro from "../pages/Registro";
 import Dashboard from "../pages/Dashboard";
 import LandingPage from "../pages/LandingPage";
@@ -65,6 +66,8 @@ const GuiasDemanda = lazy(() => import("../pages/GuiasDemanda"));
 const GuiaDetalhe = lazy(() => import("../pages/GuiaDetalhe"));
 const Entregas = lazy(() => import("../pages/Entregas"));
 const PlanejamentoEntregas = lazy(() => import("../pages/PlanejamentoEntregas"));
+const PlanejamentoEntregasAvancado = lazy(() => import("../pages/PlanejamentoEntregasAvancado"));
+const ConfiguracaoEntrega = lazy(() => import("../pages/ConfiguracaoEntrega"));
 const GestaoRotas = lazy(() => import("../pages/GestaoRotas"));
 const Pedidos = lazy(() => import("../pages/Pedidos"));
 const NovoPedido = lazy(() => import("../pages/NovoPedido"));
@@ -112,7 +115,11 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
             <Route path="/interesse" element={<InterestForm />} />
             
             {/* Login administrativo */}
-            <Route path="/login" element={<Login />} />
+            <Route path="/login" element={
+              <LoginWrapper>
+                <Login />
+              </LoginWrapper>
+            } />
             <Route path="/registro" element={<Registro />} />
             
             {/* Sistema de Gestores de Escola */}
@@ -235,6 +242,14 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
             <Route
               path="/planejamento-entregas"
               element={<LazyRoute><PlanejamentoEntregas /></LazyRoute>}
+            />
+            <Route
+              path="/planejamento-entregas-avancado"
+              element={<LazyRoute><PlanejamentoEntregasAvancado /></LazyRoute>}
+            />
+            <Route
+              path="/configuracao-entrega"
+              element={<LazyRoute><ConfiguracaoEntrega /></LazyRoute>}
             />
             <Route
               path="/gestao-rotas"

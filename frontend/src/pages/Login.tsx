@@ -12,11 +12,9 @@ import {
   Container,
   CardContent,
   CircularProgress,
-  useTheme,
-  useMediaQuery,
   IconButton
 } from "@mui/material";
-import { Email, Lock, School, Login as LoginIcon, ArrowBack } from "@mui/icons-material";
+import { Email, Lock, School, Login as LoginIcon, ArrowBack, Visibility, VisibilityOff } from "@mui/icons-material";
 import { login } from "../services/auth";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 
@@ -26,11 +24,13 @@ export default function Login() {
   const [erro, setErro] = useState("");
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const isSmall = useMediaQuery(theme.breakpoints.down('md'));
+  
+  // Usar breakpoints fixos em vez do tema
+  const isMobile = window.innerWidth < 600;
+  const isSmall = window.innerWidth < 960;
 
   // Verificar se há mensagem de sucesso do registro
   useEffect(() => {
@@ -90,6 +90,10 @@ export default function Login() {
     if (event.key === 'Enter') {
       handleSubmit(event as any);
     }
+  };
+
+  const handleTogglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
   };
 
   return (
@@ -391,7 +395,7 @@ export default function Login() {
                     Senha
                   </Typography>
                   <TextField
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     value={senha}
                     onChange={(e) => setSenha(e.target.value)}
                     onKeyPress={handleKeyPress}
@@ -403,6 +407,23 @@ export default function Login() {
                       startAdornment: (
                         <InputAdornment position="start">
                           <Lock sx={{ color: '#6b7280' }} />
+                        </InputAdornment>
+                      ),
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            onClick={handleTogglePasswordVisibility}
+                            edge="end"
+                            sx={{ 
+                              color: '#6b7280',
+                              '&:hover': {
+                                color: '#2563eb',
+                                backgroundColor: 'rgba(37, 99, 235, 0.1)'
+                              }
+                            }}
+                          >
+                            {showPassword ? <VisibilityOff /> : <Visibility />}
+                          </IconButton>
                         </InputAdornment>
                       ),
                     }}

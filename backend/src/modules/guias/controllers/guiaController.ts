@@ -345,5 +345,37 @@ export const guiaController = {
         error: 'Erro ao atualizar campo para_entrega' 
       });
     }
+  },
+
+  // Listar todos os itens de uma guia
+  async listarItensGuia(req: Request, res: Response) {
+    try {
+      const { guiaId } = req.params;
+
+      const guia = await GuiaModel.buscarGuia(parseInt(guiaId));
+      if (!guia) {
+        return res.status(404).json({ success: false, error: 'Guia não encontrada' });
+      }
+
+      const itens = await GuiaModel.listarProdutosPorGuia(parseInt(guiaId));
+      
+      // Transformar os dados para o formato esperado pelo frontend
+      const itensFormatados = itens.map(item => ({
+        id: item.id,
+        produto_nome: (item as any).produto_nome || 'Produto não identificado',
+        quantidade: item.quantidade || 0,
+        unidade: (item as any).produto_unidade || 'un',
+        lote: item.lote || null,
+        escola_nome: (item as any).escola_nome || 'Escola não identificada',
+        escola_id: item.escola_id,
+        produto_id: item.produto_id,
+        guia_id: item.guia_id
+      }));
+
+      res.json({ success: true, data: itensFormatados });
+    } catch (error) {
+      console.error('Erro ao listar itens da guia:', error);
+      res.status(500).json({ success: false, error: 'Erro ao listar itens da guia' });
+    }
   }
 };

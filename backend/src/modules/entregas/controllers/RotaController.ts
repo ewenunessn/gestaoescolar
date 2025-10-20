@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import RotaModel from '../models/Rota';
+import ConfiguracaoEntregaModel from '../models/ConfiguracaoEntrega';
 
 class RotaController {
   // Rotas de Entrega
@@ -386,6 +387,219 @@ class RotaController {
     } catch (error) {
       console.error('Erro ao listar rotas com entregas:', error);
       res.status(500).json({ 
+        error: 'Erro interno do servidor',
+        message: error instanceof Error ? error.message : 'Erro desconhecido'
+      });
+    }
+  }
+  async criarPlanejamentoAvancado(req: Request, res: Response) {
+    try {
+      const { guiaId, rotaIds, dataPlanejada, observacao, itensSelecionados } = req.body;
+
+      if (!guiaId || !rotaIds || !Array.isArray(rotaIds) || rotaIds.length === 0) {
+        return res.status(400).json({ 
+          error: 'Guia ID e pelo menos uma rota são obrigatórios' 
+        });
+      }
+
+      const planejamentos = [];
+
+      // Criar um planejamento para cada rota selecionada
+      for (const rotaId of rotaIds) {
+        const observacaoCompleta = `${observacao || ''} - Itens selecionados: ${itensSelecionados?.length || 0}`;
+        
+        const planejamento = await RotaModel.criarPlanejamento({
+          guia_id: guiaId,
+          rota_id: rotaId,
+          data_planejada: dataPlanejada || null,
+          responsavel: null,
+          observacao: observacaoCompleta,
+          status: 'planejado'
+        });
+
+        planejamentos.push(planejamento);
+      }
+
+      res.json({ 
+        message: `${planejamentos.length} planejamento(s) criado(s) com sucesso`,
+        planejamentos 
+      });
+    } catch (error) {
+      console.error('Erro ao criar planejamento avançado:', error);
+      res.status(500).json({ 
+        error: 'Erro interno do servidor',
+        message: error instanceof Error ? error.message : 'Erro desconhecido'
+      });
+    }
+  }
+
+  // Métodos com filtros da configuração ativa
+  async listarRotasFiltradas(req: Request, res: Response) {
+    try {
+      // Buscar configuração ativa
+      const configuracao = await ConfiguracaoEntregaModel.buscarConfiguracaoAtiva();
+      
+      if (!configuracao) {
+        // Se não há configuração, retornar todas as rotas
+        return this.listarRotasComEntregas(req, res);
+      }
+
+      // Buscar todas as rotas
+      const todasRotas = await RotaModel.listarRotasComEntregas(configuracao.guia_id);
+      
+      // Filtrar apenas as rotas selecionadas na configuração
+      const rotasFiltradas = todasRotas.filter(rota => 
+        configuracao.rotas_selecionadas.includes(rota.id)
+      );
+
+      res.json(rotasFiltradas);
+    } catch (error) {
+      console.error('Erro ao listar rotas filtradas:', error);
+      res.status(500).json({ 
+        error: 'Erro interno do servidor',
+        message: error instanceof Error ? error.message : 'Erro desconhecido'
+      });
+    }
+  }
+
+  async listarEscolasFiltradas(req: Request, res: Response) {
+    try {
+      const { rotaId, guiaId } = req.query;
+
+      // Buscar configuração ativa
+      const configuracao = await ConfiguracaoEntregaModel.buscarConfiguracaoAtiva();
+      
+      if (!configuracao) {
+        // Se não há configuração, usar método normal
+        return this.listarEscolas(req, res);
+      }
+
+      // Verificar se a rota está nas rotas selecionadas
+      if (rotaId && !configuracao.rotas_selecionadas.includes(Number(rotaId))) {
+        return res.json([]); // Rota não selecionada, retornar vazio
+      }
+
+      // Usar a guia da configuração se não especificada
+      const guiaIdFinal = guiaId || configuracao.guia_id;
+
+      // Buscar escolas normalmente
+      const escolas = await RotaModel.listarEscolas(Number(rotaId), Number(guiaIdFinal));
+      
+      // Filtrar escolas que têm itens selecionados na configuração
+      const escolasFiltradas = escolas.filter(escola => {
+        // Verificar se a escola tem pelo menos um item selecionado
+        // Por enquanto, retornar todas as escolas da rota
+        // TODO: Implementar filtro por itens específicos
+        return true;
+      });
+
+      res.json(escolasFiltradas);
+    } catch (error) {
+      console.error('Erro ao listar escolas filtradas:', error);
+      res.status(500).json({ 
+        error: 'Erro interno do servidor',
+        message: error instanceof Error ? error.message : 'Erro desconhecido'
+      });
+    }
+  }
+
+  // Configuração de Entrega
+  async buscarConfiguracaoAtiva(req: Request, res: Response) {
+    try {
+      const configuracao = await ConfiguracaoEntregaModel.buscarConfiguracaoAtiva();
+      
+      if (!configuracao) {
+        return res.status(404).json({ 
+          success: false,
+          message: 'Nenhuma configuração ativa encontrada' 
+        });
+      }
+
+      res.json({ 
+        success: true,
+        data: {
+          id: configuracao.id,
+          guiaId: configuracao.guia_id,
+          rotasSelecionadas: configuracao.rotas_selecionadas,
+          itensSelecionados: configuracao.itens_selecionados,
+          ativa: configuracao.ativa,
+          created_at: configuracao.created_at,
+          updated_at: configuracao.updated_at
+        }
+      });
+    } catch (error) {
+      console.error('Erro ao buscar configuração ativa:', error);
+      res.status(500).json({ 
+        success: false,
+        error: 'Erro interno do servidor',
+        message: error instanceof Error ? error.message : 'Erro desconhecido'
+      });
+    }
+  }
+
+  async salvarConfiguracao(req: Request, res: Response) {
+    try {
+      const { guiaId, rotasSelecionadas, itensSelecionados, ativa } = req.body;
+
+      if (!guiaId || !Array.isArray(rotasSelecionadas) || !Array.isArray(itensSelecionados)) {
+        return res.status(400).json({ 
+          success: false,
+          error: 'Dados inválidos. Verifique guiaId, rotasSelecionadas e itensSelecionados' 
+        });
+      }
+
+      const configuracao = await ConfiguracaoEntregaModel.criarConfiguracao({
+        guia_id: guiaId,
+        rotas_selecionadas: rotasSelecionadas,
+        itens_selecionados: itensSelecionados,
+        ativa: ativa !== false // Default true
+      });
+
+      res.json({ 
+        success: true,
+        message: 'Configuração de entrega salva com sucesso!',
+        data: {
+          id: configuracao.id,
+          guiaId: configuracao.guia_id,
+          rotasSelecionadas: configuracao.rotas_selecionadas,
+          itensSelecionados: configuracao.itens_selecionados,
+          ativa: configuracao.ativa,
+          created_at: configuracao.created_at,
+          updated_at: configuracao.updated_at
+        }
+      });
+    } catch (error) {
+      console.error('Erro ao salvar configuração:', error);
+      res.status(500).json({ 
+        success: false,
+        error: 'Erro interno do servidor',
+        message: error instanceof Error ? error.message : 'Erro desconhecido'
+      });
+    }
+  }
+
+  async listarConfiguracoes(req: Request, res: Response) {
+    try {
+      const configuracoes = await ConfiguracaoEntregaModel.listarConfiguracoes();
+      
+      const configuracoesMapeadas = configuracoes.map(config => ({
+        id: config.id,
+        guiaId: config.guia_id,
+        rotasSelecionadas: config.rotas_selecionadas,
+        itensSelecionados: config.itens_selecionados,
+        ativa: config.ativa,
+        created_at: config.created_at,
+        updated_at: config.updated_at
+      }));
+
+      res.json({ 
+        success: true,
+        data: configuracoesMapeadas
+      });
+    } catch (error) {
+      console.error('Erro ao listar configurações:', error);
+      res.status(500).json({ 
+        success: false,
         error: 'Erro interno do servidor',
         message: error instanceof Error ? error.message : 'Erro desconhecido'
       });

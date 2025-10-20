@@ -152,24 +152,43 @@ class EntregaService {
   // Listar rotas disponíveis para entrega (com planejamentos)
   async listarRotas(guiaId?: number): Promise<RotaEntrega[]> {
     try {
-      const params = new URLSearchParams();
-      if (guiaId) params.append('guiaId', guiaId.toString());
-      
-      const url = `/entregas/rotas-entregas?${params.toString()}`;
-      console.log('🌐 Fazendo requisição para:', url);
-      const response = await api.get(url);
-      console.log('✅ Rotas com entregas recebidas:', response.data);
-      
-      // Normalizar dados das rotas
-      return response.data.map((rota: any) => ({
-        ...rota,
-        id: Number(rota.id),
-        total_escolas: Number(rota.total_escolas) || 0,
-        total_itens: Number(rota.total_itens) || 0,
-        itens_entregues: Number(rota.itens_entregues) || 0,
-      }));
+      // Tentar usar rotas filtradas primeiro
+      try {
+        console.log('🌐 Tentando buscar rotas filtradas...');
+        const response = await api.get('/entregas/rotas-filtradas');
+        console.log('✅ Rotas filtradas recebidas:', response.data);
+        
+        // Normalizar dados das rotas
+        return response.data.map((rota: any) => ({
+          ...rota,
+          id: Number(rota.id),
+          total_escolas: Number(rota.total_escolas) || 0,
+          total_itens: Number(rota.total_itens) || 0,
+          itens_entregues: Number(rota.itens_entregues) || 0,
+        }));
+      } catch (filtroError) {
+        console.log('⚠️ Rotas filtradas não disponíveis, usando método padrão');
+        
+        // Fallback para método original
+        const params = new URLSearchParams();
+        if (guiaId) params.append('guiaId', guiaId.toString());
+        
+        const url = `/entregas/rotas-entregas?${params.toString()}`;
+        console.log('🌐 Fazendo requisição para:', url);
+        const response = await api.get(url);
+        console.log('✅ Rotas com entregas recebidas:', response.data);
+        
+        // Normalizar dados das rotas
+        return response.data.map((rota: any) => ({
+          ...rota,
+          id: Number(rota.id),
+          total_escolas: Number(rota.total_escolas) || 0,
+          total_itens: Number(rota.total_itens) || 0,
+          itens_entregues: Number(rota.itens_entregues) || 0,
+        }));
+      }
     } catch (error) {
-      console.error('❌ Erro ao listar rotas com entregas:', error);
+      console.error('❌ Erro ao listar rotas:', error);
       throw error;
     }
   }
@@ -177,24 +196,49 @@ class EntregaService {
   // Listar escolas de uma rota com itens para entrega
   async listarEscolasRota(rotaId?: number, guiaId?: number): Promise<EscolaEntrega[]> {
     try {
-      const params = new URLSearchParams();
-      if (rotaId) params.append('rotaId', rotaId.toString());
-      if (guiaId) params.append('guiaId', guiaId.toString());
-      
-      const url = `/entregas/escolas?${params.toString()}`;
-      console.log('🌐 Fazendo requisição para:', url);
-      
-      const response = await api.get(url);
-      console.log('✅ Escolas recebidas:', response.data);
-      
-      // Normalizar dados das escolas
-      return response.data.map((escola: any) => ({
-        ...escola,
-        id: Number(escola.id),
-        total_itens: Number(escola.total_itens) || 0,
-        itens_entregues: Number(escola.itens_entregues) || 0,
-        percentual_entregue: Number(escola.percentual_entregue) || 0,
-      }));
+      // Tentar usar escolas filtradas primeiro
+      try {
+        const params = new URLSearchParams();
+        if (rotaId) params.append('rotaId', rotaId.toString());
+        if (guiaId) params.append('guiaId', guiaId.toString());
+        
+        const url = `/entregas/escolas-filtradas?${params.toString()}`;
+        console.log('🌐 Tentando buscar escolas filtradas:', url);
+        
+        const response = await api.get(url);
+        console.log('✅ Escolas filtradas recebidas:', response.data);
+        
+        // Normalizar dados das escolas
+        return response.data.map((escola: any) => ({
+          ...escola,
+          id: Number(escola.id),
+          total_itens: Number(escola.total_itens) || 0,
+          itens_entregues: Number(escola.itens_entregues) || 0,
+          percentual_entregue: Number(escola.percentual_entregue) || 0,
+        }));
+      } catch (filtroError) {
+        console.log('⚠️ Escolas filtradas não disponíveis, usando método padrão');
+        
+        // Fallback para método original
+        const params = new URLSearchParams();
+        if (rotaId) params.append('rotaId', rotaId.toString());
+        if (guiaId) params.append('guiaId', guiaId.toString());
+        
+        const url = `/entregas/escolas?${params.toString()}`;
+        console.log('🌐 Fazendo requisição para:', url);
+        
+        const response = await api.get(url);
+        console.log('✅ Escolas recebidas:', response.data);
+        
+        // Normalizar dados das escolas
+        return response.data.map((escola: any) => ({
+          ...escola,
+          id: Number(escola.id),
+          total_itens: Number(escola.total_itens) || 0,
+          itens_entregues: Number(escola.itens_entregues) || 0,
+          percentual_entregue: Number(escola.percentual_entregue) || 0,
+        }));
+      }
     } catch (error) {
       console.error('❌ Erro ao listar escolas:', error);
       throw error;
@@ -232,29 +276,59 @@ class EntregaService {
   // Listar itens para entrega de uma escola específica
   async listarItensEscola(escolaId: number, guiaId?: number): Promise<ItemEntrega[]> {
     try {
-      const params = new URLSearchParams();
-      if (guiaId) params.append('guiaId', guiaId.toString());
-      
-      const url = `/entregas/escolas/${escolaId}/itens?${params.toString()}`;
-      console.log('🌐 Fazendo requisição para:', url);
-      
-      const response = await api.get(url);
-      console.log('✅ Itens da escola recebidos:', response.data);
-      
-      // Normalizar dados dos itens
-      return response.data.map((item: any) => ({
-        ...item,
-        id: Number(item.id),
-        guia_id: Number(item.guia_id),
-        produto_id: Number(item.produto_id),
-        escola_id: Number(item.escola_id),
-        quantidade: Number(item.quantidade) || 0,
-        quantidade_entregue: item.quantidade_entregue ? Number(item.quantidade_entregue) : undefined,
-        para_entrega: Boolean(item.para_entrega),
-        entrega_confirmada: Boolean(item.entrega_confirmada),
-        mes: Number(item.mes),
-        ano: Number(item.ano),
-      }));
+      // Tentar usar itens filtrados primeiro
+      try {
+        const params = new URLSearchParams();
+        if (guiaId) params.append('guiaId', guiaId.toString());
+        
+        const url = `/entregas/escolas/${escolaId}/itens-filtrados?${params.toString()}`;
+        console.log('🌐 Tentando buscar itens filtrados:', url);
+        
+        const response = await api.get(url);
+        console.log('✅ Itens filtrados recebidos:', response.data);
+        
+        // Normalizar dados dos itens
+        return response.data.map((item: any) => ({
+          ...item,
+          id: Number(item.id),
+          guia_id: Number(item.guia_id),
+          produto_id: Number(item.produto_id),
+          escola_id: Number(item.escola_id),
+          quantidade: Number(item.quantidade) || 0,
+          quantidade_entregue: item.quantidade_entregue ? Number(item.quantidade_entregue) : undefined,
+          para_entrega: Boolean(item.para_entrega),
+          entrega_confirmada: Boolean(item.entrega_confirmada),
+          mes: Number(item.mes),
+          ano: Number(item.ano),
+        }));
+      } catch (filtroError) {
+        console.log('⚠️ Itens filtrados não disponíveis, usando método padrão');
+        
+        // Fallback para método original
+        const params = new URLSearchParams();
+        if (guiaId) params.append('guiaId', guiaId.toString());
+        
+        const url = `/entregas/escolas/${escolaId}/itens?${params.toString()}`;
+        console.log('🌐 Fazendo requisição para:', url);
+        
+        const response = await api.get(url);
+        console.log('✅ Itens da escola recebidos:', response.data);
+        
+        // Normalizar dados dos itens
+        return response.data.map((item: any) => ({
+          ...item,
+          id: Number(item.id),
+          guia_id: Number(item.guia_id),
+          produto_id: Number(item.produto_id),
+          escola_id: Number(item.escola_id),
+          quantidade: Number(item.quantidade) || 0,
+          quantidade_entregue: item.quantidade_entregue ? Number(item.quantidade_entregue) : undefined,
+          para_entrega: Boolean(item.para_entrega),
+          entrega_confirmada: Boolean(item.entrega_confirmada),
+          mes: Number(item.mes),
+          ano: Number(item.ano),
+        }));
+      }
     } catch (error) {
       console.error('❌ Erro ao listar itens da escola:', error);
       throw error;

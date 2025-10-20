@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import EntregaModel from '../models/Entrega';
+import ConfiguracaoEntregaModel from '../models/ConfiguracaoEntrega';
 
 class EntregaController {
   async listarEscolas(req: Request, res: Response) {
@@ -180,6 +181,42 @@ class EntregaController {
       res.json(estatisticas);
     } catch (error) {
       console.error('Erro ao obter estatísticas:', error);
+      res.status(500).json({ 
+        error: 'Erro interno do servidor',
+        message: error instanceof Error ? error.message : 'Erro desconhecido'
+      });
+    }
+  }
+  async listarItensFiltrados(req: Request, res: Response) {
+    try {
+      const { escolaId } = req.params;
+      const { guiaId } = req.query;
+
+      // Buscar configuração ativa
+      const configuracao = await ConfiguracaoEntregaModel.buscarConfiguracaoAtiva();
+      
+      if (!configuracao) {
+        // Se não há configuração, usar método normal
+        return this.listarItensPorEscola(req, res);
+      }
+
+      // Usar a guia da configuração se não especificada
+      const guiaIdFinal = guiaId || configuracao.guia_id;
+
+      // Buscar todos os itens da escola
+      const todosItens = await EntregaModel.listarItensPorEscola(
+        Number(escolaId), 
+        Number(guiaIdFinal)
+      );
+
+      // Filtrar apenas os itens selecionados na configuração
+      const itensFiltrados = todosItens.filter(item => 
+        configuracao.itens_selecionados.includes(item.id)
+      );
+
+      res.json(itensFiltrados);
+    } catch (error) {
+      console.error('Erro ao listar itens filtrados:', error);
       res.status(500).json({ 
         error: 'Erro interno do servidor',
         message: error instanceof Error ? error.message : 'Erro desconhecido'

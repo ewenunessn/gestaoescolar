@@ -50,6 +50,24 @@ export interface CreatePlanejamentoData {
   observacao?: string;
 }
 
+export interface CreatePlanejamentoAvancadoData {
+  guiaId: number;
+  rotaIds: number[];
+  dataPlanejada?: string;
+  observacao?: string;
+  itensSelecionados: number[];
+}
+
+export interface ConfiguracaoEntrega {
+  id?: number;
+  guiaId: number;
+  rotasSelecionadas: number[];
+  itensSelecionados: number[];
+  ativa: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface RotaComEntregas {
   id: number;
   nome: string;

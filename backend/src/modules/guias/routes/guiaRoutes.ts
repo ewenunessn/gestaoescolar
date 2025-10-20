@@ -25,4 +25,7 @@ router.put('/:guiaId/produtos/:produtoId/escolas/:escolaId/entrega', guiaControl
 // Rota para atualizar campo para_entrega
 router.put('/itens/:itemId/para-entrega', guiaController.atualizarParaEntrega);
 
+// Rota para listar todos os itens de uma guia
+router.get('/:guiaId/itens', guiaController.listarItensGuia);
+
 export default router;

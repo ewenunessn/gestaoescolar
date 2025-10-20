@@ -11,6 +11,7 @@ router.get('/estatisticas', EntregaController.obterEstatisticas);
 
 // Listar itens para entrega de uma escola específica
 router.get('/escolas/:escolaId/itens', EntregaController.listarItensPorEscola);
+router.get('/escolas/:escolaId/itens-filtrados', EntregaController.listarItensFiltrados);
 
 // Buscar um item específico
 router.get('/itens/:itemId', EntregaController.buscarItem);
