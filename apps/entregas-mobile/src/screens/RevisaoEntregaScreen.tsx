@@ -29,6 +29,7 @@ import { entregaServiceHybrid } from '../services/entregaServiceHybrid';
 import { ConfirmarEntregaData } from '../services/entregaService';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { appTheme } from '../theme/appTheme';
+import { comprovanteService } from '../services/comprovanteService';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 type RevisaoEntregaRouteProp = RouteProp<RootStackParamList, 'RevisaoEntrega'>;
@@ -77,6 +78,46 @@ const RevisaoEntregaScreen = () => {
     );
   };
 
+  const gerarComprovante = async () => {
+    try {
+      const dadosComprovante = {
+        escolaNome: escolaNome,
+        itens: itensRevisados.map(item => ({
+          produto_nome: item.produto_nome,
+          quantidade_entregue: item.quantidade_entregue,
+          unidade: item.unidade,
+        })),
+        nomeQuemRecebeu: nomeQuemRecebeu.trim(),
+        nomeQuemEntregou: user?.nome || 'Entregador',
+        dataEntrega: new Date().toISOString(),
+      };
+
+      const pdfUri = await comprovanteService.gerarComprovantePDF(dadosComprovante);
+      
+      // Perguntar se quer compartilhar
+      Alert.alert(
+        'Comprovante Gerado',
+        'Deseja compartilhar o comprovante de entrega?',
+        [
+          { text: 'Não', style: 'cancel' },
+          { 
+            text: 'Compartilhar', 
+            onPress: async () => {
+              try {
+                await comprovanteService.compartilharComprovante(pdfUri);
+              } catch (error) {
+                console.error('Erro ao compartilhar:', error);
+              }
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Erro ao gerar comprovante:', error);
+      // Não bloquear o fluxo se falhar
+    }
+  };
+
   const processarEntregas = async () => {
     try {
       setProcessando(true);
@@ -113,6 +154,9 @@ const RevisaoEntregaScreen = () => {
       // Mostrar resultado
       if (erros === 0) {
         showSuccess(`${sucessos} item(s) entregue(s) com sucesso!`);
+        
+        // Gerar comprovante
+        await gerarComprovante();
       } else {
         showError(`${sucessos} item(s) entregue(s), ${erros} erro(s)`);
       }

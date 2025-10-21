@@ -179,7 +179,7 @@ const ConfirmarEntregaScreen = () => {
         observacao: observacao.trim() || undefined,
         latitude: localizacao?.coords.latitude,
         longitude: localizacao?.coords.longitude,
-        precisao_gps: localizacao?.coords.accuracy,
+        precisao_gps: localizacao?.coords.accuracy ?? undefined,
       };
 
       // Salvar foto localmente se foi tirada
