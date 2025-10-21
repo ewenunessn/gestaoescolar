@@ -8,7 +8,6 @@ import {
   Paper, Grid, Stack, CardContent
 } from '@mui/material';
 import {
-  ArrowBack as ArrowBackIcon,
   Edit as EditIcon,
   Save as SaveIcon,
   Cancel as CancelIcon,
@@ -30,6 +29,7 @@ import {
   adicionarEscolaModalidade, editarEscolaModalidade, removerEscolaModalidade,
 } from '../services/escolas';
 import { listarModalidades } from '../services/modalidades';
+import BackButton from '../components/BackButton';
 
 // --- Interfaces ---
 // (As interfaces originais foram mantidas)
@@ -39,9 +39,7 @@ import { listarModalidades } from '../services/modalidades';
 const PageHeader = ({ escola, totalAlunos, isEditing, onEdit, onSave, onCancel, onEstoque, onDelete, onBack, salvando }) => (
     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2, mb: 4 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <IconButton onClick={onBack} sx={{ bgcolor: 'background.paper', boxShadow: 1 }}>
-                <ArrowBackIcon />
-            </IconButton>
+            <BackButton to="/escolas" />
             <Box>
                 <Typography variant="h4" sx={{ fontWeight: 700, color: 'text.primary' }}>
                     {escola?.nome}

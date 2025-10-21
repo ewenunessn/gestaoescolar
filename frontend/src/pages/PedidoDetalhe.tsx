@@ -28,7 +28,6 @@ import {
   StepLabel
 } from '@mui/material';
 import {
-  ArrowBack as ArrowBackIcon,
   CheckCircle as CheckCircleIcon,
   Cancel as CancelIcon,
   LocalShipping as LocalShippingIcon,
@@ -41,6 +40,7 @@ import {
 import pedidosService from '../services/pedidos';
 import faturamentoService from '../services/faturamento';
 import { PedidoDetalhado, STATUS_PEDIDO } from '../types/pedido';
+import BackButton from '../components/BackButton';
 import { formatarMoeda, formatarData } from '../utils/dateUtils';
 
 export default function PedidoDetalhe() {
@@ -247,13 +247,8 @@ export default function PedidoDetalhe() {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-        <IconButton onClick={() => navigate('/pedidos')} sx={{ mr: 2 }}>
-          <ArrowBackIcon />
-        </IconButton>
-        <Typography variant="h4" component="h1" sx={{ flexGrow: 1 }}>
-          Pedido {pedido.numero}
-        </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+        <BackButton to="/pedidos" label={`Pedido ${pedido.numero}`} />
         {getStatusChip(pedido.status)}
       </Box>
 
