@@ -128,6 +128,11 @@ const AppNavigator = () => {
         <>
           <Stack.Screen name="MainTabs" component={TabNavigator} />
           <Stack.Screen 
+            name="SelecionarRota" 
+            component={SelecionarRotaScreen}
+            options={{ headerShown: true, title: 'Selecionar Rota' }}
+          />
+          <Stack.Screen 
             name="EscolaDetalhes" 
             component={EscolaDetalhesScreen}
             options={{ headerShown: true, title: 'Detalhes da Escola' }}

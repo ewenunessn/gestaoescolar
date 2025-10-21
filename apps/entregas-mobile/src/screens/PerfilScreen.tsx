@@ -4,6 +4,7 @@ import {
   StyleSheet,
   ScrollView,
   SafeAreaView,
+  StatusBar,
 } from 'react-native';
 import {
   Text,
@@ -18,6 +19,7 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useAuth } from '../contexts/AuthContext';
 import { useRota } from '../contexts/RotaContext';
+import { appTheme } from '../theme/appTheme';
 import { useOffline } from '../contexts/OfflineContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { RootStackParamList } from '../navigation/AppNavigator';
@@ -84,9 +86,10 @@ const PerfilScreen = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor="#f5f5f5" />
       <ScrollView style={styles.container}>
         {/* Header do Perfil */}
-        <Card style={styles.profileCard}>
+        <Card style={styles.profileCard} elevation={0}>
           <Card.Content>
             <View style={styles.profileHeader}>
               <Avatar.Text
@@ -106,37 +109,27 @@ const PerfilScreen = () => {
         </Card>
 
         {/* Rota Atual */}
-        <Card style={styles.sectionCard}>
+        <Card style={styles.sectionCard} elevation={0}>
           <Card.Content>
             <Text style={styles.sectionTitle}>Rota Atual</Text>
             
             {rotaSelecionada ? (
-              <>
-                <List.Item
-                  title={rotaSelecionada.nome}
-                  description={rotaSelecionada.descricao || 'Rota selecionada'}
-                  left={(props) => (
-                    <View style={styles.rotaIconContainer}>
-                      <View 
-                        style={[
-                          styles.rotaColorIndicator, 
-                          { backgroundColor: rotaSelecionada.cor || '#1976d2' }
-                        ]} 
-                      />
-                    </View>
-                  )}
-                  right={(props) => <List.Icon {...props} icon="chevron-right" />}
-                  onPress={handleTrocarRota}
-                />
-                <Divider />
-                <List.Item
-                  title="Trocar Rota"
-                  description="Selecionar uma rota diferente"
-                  left={(props) => <List.Icon {...props} icon="swap-horizontal" />}
-                  right={(props) => <List.Icon {...props} icon="chevron-right" />}
-                  onPress={handleTrocarRota}
-                />
-              </>
+              <List.Item
+                title={rotaSelecionada.nome}
+                description="Toque para trocar de rota"
+                left={(props) => (
+                  <View style={styles.rotaIconContainer}>
+                    <View 
+                      style={[
+                        styles.rotaColorIndicator, 
+                        { backgroundColor: rotaSelecionada.cor || '#1976d2' }
+                      ]} 
+                    />
+                  </View>
+                )}
+                right={(props) => <List.Icon {...props} icon="chevron-right" />}
+                onPress={handleTrocarRota}
+              />
             ) : (
               <List.Item
                 title="Nenhuma rota selecionada"
@@ -150,7 +143,7 @@ const PerfilScreen = () => {
         </Card>
 
         {/* Status de Sincronização */}
-        <Card style={styles.sectionCard}>
+        <Card style={styles.sectionCard} elevation={0}>
           <Card.Content>
             <Text style={styles.sectionTitle}>Sincronização</Text>
             
@@ -185,7 +178,7 @@ const PerfilScreen = () => {
         </Card>
 
         {/* Informações da Conta */}
-        <Card style={styles.sectionCard}>
+        <Card style={styles.sectionCard} elevation={0}>
           <Card.Content>
             <Text style={styles.sectionTitle}>Informações da Conta</Text>
             
@@ -212,7 +205,7 @@ const PerfilScreen = () => {
         </Card>
 
         {/* Configurações */}
-        <Card style={styles.sectionCard}>
+        <Card style={styles.sectionCard} elevation={0}>
           <Card.Content>
             <Text style={styles.sectionTitle}>Configurações</Text>
           
@@ -251,7 +244,7 @@ const PerfilScreen = () => {
         </Card>
 
         {/* Sobre o App */}
-        <Card style={styles.sectionCard}>
+        <Card style={styles.sectionCard} elevation={0}>
           <Card.Content>
             <Text style={styles.sectionTitle}>Sobre o App</Text>
           
@@ -326,24 +319,31 @@ const PerfilScreen = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: appTheme.colors.background,
+    paddingTop: StatusBar.currentHeight || 0,
   },
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: appTheme.colors.background,
   },
   profileCard: {
-    margin: 16,
-    marginBottom: 8,
-    borderRadius: 12,
-    elevation: 3,
+    margin: appTheme.spacing.lg,
+    marginBottom: appTheme.spacing.sm,
+    borderRadius: appTheme.borderRadius.large,
+    elevation: 0,
+    shadowOpacity: 0,
+    shadowOffset: { width: 0, height: 0 },
+    shadowRadius: 0,
+    borderWidth: 1,
+    borderColor: appTheme.colors.border,
+    backgroundColor: appTheme.colors.surface,
   },
   profileHeader: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   avatar: {
-    backgroundColor: '#1976d2',
+    backgroundColor: appTheme.colors.primary,
   },
   profileInfo: {
     marginLeft: 20,
@@ -352,28 +352,34 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
+    color: appTheme.colors.text.primary,
   },
   userEmail: {
-    color: '#666',
-    marginTop: 4,
+    color: appTheme.colors.text.secondary,
+    marginTop: appTheme.spacing.xs,
   },
   userType: {
-    color: '#1976d2',
+    color: appTheme.colors.primary,
     fontWeight: 'bold',
-    marginTop: 4,
+    marginTop: appTheme.spacing.xs,
   },
   sectionCard: {
-    margin: 16,
-    marginTop: 8,
-    borderRadius: 12,
-    elevation: 2,
+    margin: appTheme.spacing.lg,
+    marginTop: appTheme.spacing.sm,
+    borderRadius: appTheme.borderRadius.large,
+    elevation: 0,
+    shadowOpacity: 0,
+    shadowOffset: { width: 0, height: 0 },
+    shadowRadius: 0,
+    borderWidth: 1,
+    borderColor: appTheme.colors.border,
+    backgroundColor: appTheme.colors.surface,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 8,
-    color: '#333',
+    marginBottom: appTheme.spacing.sm,
+    color: appTheme.colors.text.primary,
   },
   rotaIconContainer: {
     justifyContent: 'center',
