@@ -5,6 +5,8 @@ import {
   ScrollView,
   Alert,
   Image,
+  SafeAreaView,
+  StatusBar,
 } from 'react-native';
 import {
   Title,
@@ -27,6 +29,7 @@ import { useOffline } from '../contexts/OfflineContext';
 import { entregaServiceHybrid } from '../services/entregaServiceHybrid';
 import { ConfirmarEntregaData } from '../services/entregaService';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { appTheme } from '../theme/appTheme';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 type ConfirmarEntregaRouteProp = RouteProp<RootStackParamList, 'ConfirmarEntrega'>;
@@ -34,14 +37,14 @@ type ConfirmarEntregaRouteProp = RouteProp<RootStackParamList, 'ConfirmarEntrega
 const ConfirmarEntregaScreen = () => {
   console.log(`🟢 === TELA CONFIRMAR ENTREGA CARREGADA ===`);
   console.log(`Versão do código: 2025-01-13-v2`);
-  
+
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<ConfirmarEntregaRouteProp>();
   const { showError, showSuccess } = useNotification();
   const { user } = useAuth();
   const { isOffline, atualizarStatusOperacoes } = useOffline();
   const { itemId, itemData } = route.params;
-  
+
   console.log(`Item recebido:`, itemId, itemData?.produto_nome);
 
   const [loading, setLoading] = useState(false);
@@ -123,7 +126,7 @@ const ConfirmarEntregaScreen = () => {
     console.log(`Item ID: ${itemId}`);
     console.log(`Nome quem recebeu: "${nomeQuemRecebeu}"`);
     console.log(`Quantidade: "${quantidadeEntregue}"`);
-    
+
     if (!nomeQuemRecebeu.trim()) {
       console.log(`❌ Validação falhou: nome vazio`);
       showError('Por favor, informe quem recebeu a entrega');
@@ -146,10 +149,12 @@ const ConfirmarEntregaScreen = () => {
         `A quantidade entregue (${quantidade}) é maior que a quantidade programada (${itemData.quantidade}). Deseja continuar?`,
         [
           { text: 'Cancelar', style: 'cancel' },
-          { text: 'Continuar', onPress: () => {
-            console.log(`✅ Usuário confirmou continuar`);
-            processarConfirmacao();
-          }}
+          {
+            text: 'Continuar', onPress: () => {
+              console.log(`✅ Usuário confirmou continuar`);
+              processarConfirmacao();
+            }
+          }
         ]
       );
     } else {
@@ -161,7 +166,7 @@ const ConfirmarEntregaScreen = () => {
   const processarConfirmacao = async () => {
     console.log(`🚀 === INICIANDO CONFIRMAÇÃO ===`);
     console.log(`📋 Item ID: ${itemId}`);
-    
+
     try {
       setLoading(true);
       console.log(`⏳ Loading ativado`);
@@ -192,7 +197,7 @@ const ConfirmarEntregaScreen = () => {
       console.log(`🎯 Chamando confirmarEntrega para item ${itemId}`);
       const resultado = await entregaServiceHybrid.confirmarEntrega(itemId, dadosEntrega);
       console.log(`✅ Resultado:`, resultado.message);
-      
+
       showSuccess(resultado.message);
       await atualizarStatusOperacoes();
       navigation.goBack();
@@ -209,176 +214,181 @@ const ConfirmarEntregaScreen = () => {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Informações do Item */}
-      <Card style={styles.itemCard}>
-        <Card.Content>
-          <View style={styles.itemHeader}>
-            <MaterialCommunityIcons name="package-variant" size={32} color="#1976d2" />
-            <View style={styles.itemInfo}>
-              <Title style={styles.itemNome}>{itemData.produto_nome}</Title>
-              <Paragraph style={styles.itemDetalhes}>
-                Quantidade: {itemData.quantidade} {itemData.unidade}
-              </Paragraph>
-              {itemData.lote && (
-                <Chip mode="outlined" style={styles.loteChip}>
-                  Lote: {itemData.lote}
-                </Chip>
-              )}
-            </View>
-          </View>
-        </Card.Content>
-      </Card>
-
-      {/* Formulário de Confirmação */}
-      <Card style={styles.formCard}>
-        <Card.Content>
-          <Title style={styles.formTitle}>Confirmar Entrega</Title>
-
-          <TextInput
-            label="Quantidade Entregue *"
-            value={quantidadeEntregue}
-            onChangeText={setQuantidadeEntregue}
-            mode="outlined"
-            keyboardType="numeric"
-            style={styles.input}
-            right={<TextInput.Affix text={itemData.unidade} />}
-          />
-
-          <TextInput
-            label="Nome de Quem Recebeu *"
-            value={nomeQuemRecebeu}
-            onChangeText={setNomeQuemRecebeu}
-            mode="outlined"
-            style={styles.input}
-            placeholder="Nome completo da pessoa que recebeu"
-          />
-
-          <TextInput
-            label="Observações"
-            value={observacao}
-            onChangeText={setObservacao}
-            mode="outlined"
-            multiline
-            numberOfLines={3}
-            style={styles.input}
-            placeholder="Observações sobre a entrega (opcional)"
-          />
-        </Card.Content>
-      </Card>
-
-      {/* Foto Comprovante */}
-      <Card style={styles.fotoCard}>
-        <Card.Content>
-          <Title style={styles.fotoTitle}>Foto Comprovante (Opcional)</Title>
-          
-          {fotoUri ? (
-            <View style={styles.fotoContainer}>
-              <Image source={{ uri: fotoUri }} style={styles.fotoPreview} />
-              <View style={styles.fotoActions}>
-                <Button
-                  mode="outlined"
-                  onPress={() => setFotoUri(null)}
-                  style={styles.fotoButton}
-                  icon="delete"
-                >
-                  Remover
-                </Button>
-                <Button
-                  mode="outlined"
-                  onPress={tirarFoto}
-                  style={styles.fotoButton}
-                  icon="camera"
-                >
-                  Nova Foto
-                </Button>
-              </View>
-            </View>
-          ) : (
-            <View style={styles.fotoPlaceholder}>
-              <MaterialCommunityIcons name="camera-outline" size={48} color="#ccc" />
-              <Paragraph style={styles.fotoPlaceholderText}>
-                Adicione uma foto como comprovante da entrega
-              </Paragraph>
-              <View style={styles.fotoButtons}>
-                <Button
-                  mode="outlined"
-                  onPress={tirarFoto}
-                  style={styles.fotoButton}
-                  icon="camera"
-                >
-                  Tirar Foto
-                </Button>
-                <Button
-                  mode="outlined"
-                  onPress={selecionarFoto}
-                  style={styles.fotoButton}
-                  icon="image"
-                >
-                  Galeria
-                </Button>
-              </View>
-            </View>
-          )}
-        </Card.Content>
-      </Card>
-
-      {/* Localização */}
-      {localizacao && (
-        <Card style={styles.localizacaoCard}>
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="light-content" backgroundColor="#1976d2" />
+      <ScrollView style={styles.container}>
+        {/* Informações do Item */}
+        <Card style={styles.itemCard} elevation={0}>
           <Card.Content>
-            <View style={styles.localizacaoHeader}>
-              <MaterialCommunityIcons name="map-marker" size={24} color="#4caf50" />
-              <Title style={styles.localizacaoTitle}>Localização Capturada</Title>
+            <View style={styles.itemHeader}>
+              <MaterialCommunityIcons name="package-variant" size={32} color="#1976d2" />
+              <View style={styles.itemInfo}>
+                <Title style={styles.itemNome}>{itemData.produto_nome}</Title>
+                <Paragraph style={styles.itemDetalhes}>
+                  Quantidade: {itemData.quantidade} {itemData.unidade}
+                </Paragraph>
+              </View>
             </View>
-            <Paragraph style={styles.localizacaoText}>
-              Lat: {localizacao.coords.latitude.toFixed(6)}
-            </Paragraph>
-            <Paragraph style={styles.localizacaoText}>
-              Lng: {localizacao.coords.longitude.toFixed(6)}
-            </Paragraph>
-            <Paragraph style={styles.localizacaoAccuracy}>
-              Precisão: ±{localizacao.coords.accuracy?.toFixed(0)}m
-            </Paragraph>
           </Card.Content>
         </Card>
-      )}
 
-      {/* Botões de Ação */}
-      <View style={styles.actionsContainer}>
-        <Button
-          mode="outlined"
-          onPress={() => navigation.goBack()}
-          style={styles.cancelButton}
-          disabled={loading}
-        >
-          Cancelar
-        </Button>
-        
-        <Button
-          mode="contained"
-          onPress={confirmarEntrega}
-          style={styles.confirmButton}
-          loading={loading}
-          disabled={loading}
-        >
-          {loading ? 'Confirmando...' : 'Confirmar Entrega'}
-        </Button>
-      </View>
-    </ScrollView>
+        {/* Formulário de Confirmação */}
+        <Card style={styles.formCard} elevation={0}>
+          <Card.Content>
+            <Title style={styles.formTitle}>Confirmar Entrega</Title>
+
+            <TextInput
+              label="Quantidade Entregue *"
+              value={quantidadeEntregue}
+              onChangeText={setQuantidadeEntregue}
+              mode="outlined"
+              keyboardType="numeric"
+              style={styles.input}
+              right={<TextInput.Affix text={itemData.unidade} />}
+            />
+
+            <TextInput
+              label="Nome de Quem Recebeu *"
+              value={nomeQuemRecebeu}
+              onChangeText={setNomeQuemRecebeu}
+              mode="outlined"
+              style={styles.input}
+              placeholder="Nome completo da pessoa que recebeu"
+            />
+
+            <TextInput
+              label="Observações"
+              value={observacao}
+              onChangeText={setObservacao}
+              mode="outlined"
+              multiline
+              numberOfLines={3}
+              style={styles.input}
+              placeholder="Observações sobre a entrega (opcional)"
+            />
+          </Card.Content>
+        </Card>
+
+        {/* Foto Comprovante */}
+        <Card style={styles.fotoCard} elevation={0}>
+          <Card.Content>
+            <Title style={styles.fotoTitle}>Foto Comprovante (Opcional)</Title>
+
+            {fotoUri ? (
+              <View style={styles.fotoContainer}>
+                <Image source={{ uri: fotoUri }} style={styles.fotoPreview} />
+                <View style={styles.fotoActions}>
+                  <Button
+                    mode="outlined"
+                    onPress={() => setFotoUri(null)}
+                    style={styles.fotoButton}
+                    icon="delete"
+                  >
+                    Remover
+                  </Button>
+                  <Button
+                    mode="outlined"
+                    onPress={tirarFoto}
+                    style={styles.fotoButton}
+                    icon="camera"
+                  >
+                    Nova Foto
+                  </Button>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.fotoPlaceholder}>
+                <MaterialCommunityIcons name="camera-outline" size={48} color="#ccc" />
+                <Paragraph style={styles.fotoPlaceholderText}>
+                  Adicione uma foto como comprovante da entrega
+                </Paragraph>
+                <View style={styles.fotoButtons}>
+                  <Button
+                    mode="outlined"
+                    onPress={tirarFoto}
+                    style={styles.fotoButton}
+                    icon="camera"
+                  >
+                    Tirar Foto
+                  </Button>
+                  <Button
+                    mode="outlined"
+                    onPress={selecionarFoto}
+                    style={styles.fotoButton}
+                    icon="image"
+                  >
+                    Galeria
+                  </Button>
+                </View>
+              </View>
+            )}
+          </Card.Content>
+        </Card>
+
+        {/* Localização */}
+        {localizacao && (
+          <Card style={styles.localizacaoCard} elevation={0}>
+            <Card.Content>
+              <View style={styles.localizacaoHeader}>
+                <MaterialCommunityIcons name="map-marker" size={24} color="#4caf50" />
+                <Title style={styles.localizacaoTitle}>Localização Capturada</Title>
+              </View>
+              <Paragraph style={styles.localizacaoText}>
+                Lat: {localizacao.coords.latitude.toFixed(6)}
+              </Paragraph>
+              <Paragraph style={styles.localizacaoText}>
+                Lng: {localizacao.coords.longitude.toFixed(6)}
+              </Paragraph>
+              <Paragraph style={styles.localizacaoAccuracy}>
+                Precisão: ±{localizacao.coords.accuracy?.toFixed(0)}m
+              </Paragraph>
+            </Card.Content>
+          </Card>
+        )}
+
+        {/* Botões de Ação */}
+        <View style={styles.actionsContainer}>
+          <Button
+            mode="outlined"
+            onPress={() => navigation.goBack()}
+            style={styles.cancelButton}
+            disabled={loading}
+          >
+            Cancelar
+          </Button>
+
+          <Button
+            mode="contained"
+            onPress={confirmarEntrega}
+            style={styles.confirmButton}
+            loading={loading}
+            disabled={loading}
+          >
+            {loading ? 'Confirmando...' : 'Confirmar Entrega'}
+          </Button>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
   itemCard: {
-    margin: 16,
-    marginBottom: 8,
-    borderRadius: 12,
-    elevation: 3,
+    margin: appTheme.spacing.lg,
+    marginBottom: appTheme.spacing.sm,
+    borderRadius: appTheme.borderRadius.large,
+    elevation: 0,
+    borderWidth: 1,
+    borderColor: appTheme.colors.border,
+    backgroundColor: appTheme.colors.surface,
   },
   itemHeader: {
     flexDirection: 'row',
@@ -402,10 +412,13 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   formCard: {
-    margin: 16,
-    marginTop: 8,
-    borderRadius: 12,
-    elevation: 2,
+    margin: appTheme.spacing.lg,
+    marginTop: appTheme.spacing.sm,
+    borderRadius: appTheme.borderRadius.large,
+    elevation: 0,
+    borderWidth: 1,
+    borderColor: appTheme.colors.border,
+    backgroundColor: appTheme.colors.surface,
   },
   formTitle: {
     fontSize: 18,
@@ -417,10 +430,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   fotoCard: {
-    margin: 16,
-    marginTop: 8,
-    borderRadius: 12,
-    elevation: 2,
+    margin: appTheme.spacing.lg,
+    marginTop: appTheme.spacing.sm,
+    borderRadius: appTheme.borderRadius.large,
+    elevation: 0,
+    borderWidth: 1,
+    borderColor: appTheme.colors.border,
+    backgroundColor: appTheme.colors.surface,
   },
   fotoTitle: {
     fontSize: 16,
@@ -459,10 +475,13 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   localizacaoCard: {
-    margin: 16,
-    marginTop: 8,
-    borderRadius: 12,
-    elevation: 2,
+    margin: appTheme.spacing.lg,
+    marginTop: appTheme.spacing.sm,
+    borderRadius: appTheme.borderRadius.large,
+    elevation: 0,
+    borderWidth: 1,
+    borderColor: appTheme.colors.border,
+    backgroundColor: appTheme.colors.surface,
   },
   localizacaoHeader: {
     flexDirection: 'row',

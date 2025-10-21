@@ -6,6 +6,7 @@ import {
     RefreshControl,
     Alert,
     SafeAreaView,
+    StatusBar,
 } from 'react-native';
 import {
     Text,
@@ -17,6 +18,8 @@ import {
     Divider,
     Checkbox,
     Surface,
+    Title,
+    Paragraph,
 } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -196,7 +199,8 @@ const EscolaDetalhesScreen = () => {
 
         navigation.navigate('EntregaMassa', {
             itensSelecionados: itensParaEntregar,
-            escolaNome: escolaNome
+            escolaNome: escolaNome,
+            escolaId: escolaId
         });
     };
 
@@ -213,6 +217,7 @@ const EscolaDetalhesScreen = () => {
 
     return (
         <SafeAreaView style={styles.safeArea}>
+            <StatusBar barStyle="light-content" backgroundColor="#1976d2" />
             <ScrollView
                 style={styles.container}
                 refreshControl={
@@ -220,7 +225,7 @@ const EscolaDetalhesScreen = () => {
                 }
             >
                 {/* Header da Escola */}
-                <Surface style={styles.headerCard}>
+                <Surface style={styles.headerCard} elevation={0}>
                     <View style={styles.headerContent}>
                         <MaterialCommunityIcons name="school" size={48} color="#1976d2" />
                         <View style={styles.headerInfo}>
@@ -247,7 +252,7 @@ const EscolaDetalhesScreen = () => {
                 </Surface>
 
             {/* Resumo */}
-            <Card style={styles.resumoCard}>
+            <Card style={styles.resumoCard} elevation={0}>
                 <Card.Content>
                     <Title style={styles.resumoTitle}>Resumo</Title>
                     <View style={styles.resumoStats}>
@@ -275,49 +280,24 @@ const EscolaDetalhesScreen = () => {
 
             {/* Itens Pendentes */}
             {itensPendentes.length > 0 && (
-                <Card style={styles.sectionCard}>
+                <Card style={styles.sectionCard} elevation={0}>
                     <Card.Content>
                         <View style={styles.sectionHeader}>
                             <Title style={styles.sectionTitle}>
                                 Itens Pendentes ({itensPendentes.length})
                             </Title>
-                            <View style={styles.sectionActions}>
-                                {itensSelecionados.size > 0 && (
-                                    <Chip
-                                        mode="outlined"
-                                        style={styles.selectionChip}
-                                        textStyle={{ color: '#1976d2' }}
-                                    >
-                                        {itensSelecionados.size} selecionado(s)
-                                    </Chip>
-                                )}
-                                <MaterialCommunityIcons name="clock-outline" size={24} color="#ff9800" />
-                            </View>
+                            <MaterialCommunityIcons name="clock-outline" size={24} color="#ff9800" />
                         </View>
 
-                        {/* Controles de Seleção */}
-                        <View style={styles.selectionControls}>
-                            <Button
-                                mode="outlined"
-                                onPress={selecionarTodosPendentes}
-                                style={styles.selectAllButton}
-                                compact
-                            >
-                                {itensSelecionados.size === itensPendentes.length ? 'Desmarcar Todos' : 'Selecionar Todos'}
-                            </Button>
-
-                            {itensSelecionados.size > 0 && (
-                                <Button
-                                    mode="contained"
-                                    onPress={iniciarEntregaMassa}
-                                    style={styles.entregaMassaButton}
-                                    icon="truck-delivery"
-                                    compact
-                                >
-                                    Entregar
-                                </Button>
-                            )}
-                        </View>
+                        {/* Botão Selecionar Todos */}
+                        <Button
+                            mode="outlined"
+                            onPress={selecionarTodosPendentes}
+                            style={styles.selectAllButton}
+                            compact
+                        >
+                            {itensSelecionados.size === itensPendentes.length ? 'Desmarcar Todos' : 'Selecionar Todos'}
+                        </Button>
 
                         {itensPendentes.map((item, index) => (
                             <View key={item.id}>
@@ -344,13 +324,25 @@ const EscolaDetalhesScreen = () => {
                                 {index < itensPendentes.length - 1 && <Divider />}
                             </View>
                         ))}
+
+                        {/* Botão Entregar - Aparece no final quando há itens selecionados */}
+                        {itensSelecionados.size > 0 && (
+                            <Button
+                                mode="contained"
+                                onPress={iniciarEntregaMassa}
+                                style={styles.entregaMassaButton}
+                                icon="truck-delivery"
+                            >
+                                Entregar {itensSelecionados.size} {itensSelecionados.size === 1 ? 'item' : 'itens'}
+                            </Button>
+                        )}
                     </Card.Content>
                 </Card>
             )}
 
             {/* Itens Entregues */}
             {itensEntregues.length > 0 && (
-                <Card style={styles.sectionCard}>
+                <Card style={styles.sectionCard} elevation={0}>
                     <Card.Content>
                         <View style={styles.sectionHeader}>
                             <Title style={styles.sectionTitle}>
@@ -394,7 +386,7 @@ const EscolaDetalhesScreen = () => {
 
             {/* Itens Não para Entrega */}
             {itensNaoEntrega.length > 0 && (
-                <Card style={styles.sectionCard}>
+                <Card style={styles.sectionCard} elevation={0}>
                     <Card.Content>
                         <View style={styles.sectionHeader}>
                             <Title style={styles.sectionTitle}>
@@ -426,7 +418,7 @@ const EscolaDetalhesScreen = () => {
 
             {/* Estado Vazio */}
             {itens.length === 0 && (
-                <Card style={styles.emptyCard}>
+                <Card style={styles.emptyCard} elevation={0}>
                     <Card.Content style={styles.emptyContent}>
                         <MaterialCommunityIcons name="package-variant-closed" size={48} color="#ccc" />
                         <Paragraph style={styles.emptyText}>
@@ -435,24 +427,6 @@ const EscolaDetalhesScreen = () => {
                     </Card.Content>
                 </Card>
             )}
-
-            {/* Botão de Ação Rápida */}
-            {itensPendentes.length > 0 && itensSelecionados.size === 0 && (
-                <View style={styles.fabContainer}>
-                    <Button
-                        mode="outlined"
-                        onPress={() => {
-                            // Selecionar todos os itens
-                            setItensSelecionados(new Set(itensPendentes.map(item => item.id)));
-                        }}
-                        style={styles.fabButton}
-                        icon="checkbox-multiple-marked"
-                    >
-                        Selecionar Todos os Itens
-                    </Button>
-                </View>
-            )}
-
 
             </ScrollView>
         </SafeAreaView>
@@ -481,7 +455,11 @@ const styles = StyleSheet.create({
         margin: 16,
         marginBottom: 8,
         borderRadius: 12,
-        elevation: 3,
+        elevation: 0,
+        backgroundColor: '#fff',
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+        padding: 16,
     },
     headerContent: {
         flexDirection: 'row',
@@ -504,7 +482,10 @@ const styles = StyleSheet.create({
         margin: 16,
         marginTop: 8,
         borderRadius: 12,
-        elevation: 2,
+        elevation: 0,
+        backgroundColor: '#fff',
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
     },
     resumoTitle: {
         fontSize: 18,
@@ -518,10 +499,13 @@ const styles = StyleSheet.create({
     },
     resumoStat: {
         alignItems: 'center',
+        paddingVertical: 4,
     },
     resumoNumber: {
         fontSize: 24,
         fontWeight: 'bold',
+        lineHeight: 32,
+        includeFontPadding: false,
     },
     resumoLabel: {
         fontSize: 12,
@@ -532,7 +516,10 @@ const styles = StyleSheet.create({
         margin: 16,
         marginTop: 8,
         borderRadius: 12,
-        elevation: 2,
+        elevation: 0,
+        backgroundColor: '#fff',
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
     },
     sectionHeader: {
         flexDirection: 'row',
@@ -580,6 +567,10 @@ const styles = StyleSheet.create({
     emptyCard: {
         margin: 16,
         borderRadius: 12,
+        elevation: 0,
+        backgroundColor: '#fff',
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
     },
     emptyContent: {
         alignItems: 'center',
@@ -607,18 +598,12 @@ const styles = StyleSheet.create({
     selectionChip: {
         borderColor: '#1976d2',
     },
-    selectionControls: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 12,
-        gap: 8,
-    },
     selectAllButton: {
-        flex: 1,
+        marginBottom: 12,
     },
     entregaMassaButton: {
-        flex: 2,
+        marginTop: 12,
+        borderRadius: 8,
     },
     itemLeftContainer: {
         flexDirection: 'row',

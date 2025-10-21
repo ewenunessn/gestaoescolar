@@ -4,6 +4,8 @@ import {
   StyleSheet,
   ScrollView,
   Alert,
+  SafeAreaView,
+  StatusBar,
 } from 'react-native';
 import {
   Title,
@@ -26,6 +28,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { entregaServiceHybrid } from '../services/entregaServiceHybrid';
 import { ConfirmarEntregaData } from '../services/entregaService';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { appTheme } from '../theme/appTheme';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 type RevisaoEntregaRouteProp = RouteProp<RootStackParamList, 'RevisaoEntrega'>;
@@ -35,7 +38,7 @@ const RevisaoEntregaScreen = () => {
   const route = useRoute<RevisaoEntregaRouteProp>();
   const { showError, showSuccess } = useNotification();
   const { user } = useAuth();
-  const { itensRevisados, escolaNome } = route.params;
+  const { itensRevisados, escolaNome, escolaId } = route.params;
 
   const [nomeQuemRecebeu, setNomeQuemRecebeu] = useState('');
   const [localizacao, setLocalizacao] = useState<Location.LocationObject | null>(null);
@@ -116,7 +119,7 @@ const RevisaoEntregaScreen = () => {
 
       // Voltar para tela de detalhes da escola
       navigation.navigate('EscolaDetalhes', {
-        escolaId: itensRevisados[0]?.escola_id || 0,
+        escolaId: escolaId,
         escolaNome: escolaNome
       });
 
@@ -146,9 +149,11 @@ const RevisaoEntregaScreen = () => {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Header */}
-      <Card style={styles.headerCard}>
+    <>
+      <StatusBar barStyle="light-content" backgroundColor="#1976d2" />
+      <ScrollView style={styles.container}>
+        {/* Header */}
+        <Card style={styles.headerCard} elevation={0}>
         <Card.Content>
           <Title style={styles.headerTitle}>Revisão Final</Title>
           <Paragraph style={styles.headerSubtitle}>
@@ -158,7 +163,7 @@ const RevisaoEntregaScreen = () => {
       </Card>
 
       {/* Resumo dos Itens */}
-      <Card style={styles.summaryCard}>
+      <Card style={styles.summaryCard} elevation={0}>
         <Card.Content>
           <Title style={styles.summaryTitle}>Resumo da Entrega</Title>
           
@@ -200,7 +205,7 @@ const RevisaoEntregaScreen = () => {
       </Card>
 
       {/* Campo Nome do Recebedor */}
-      <Card style={styles.receiverCard}>
+      <Card style={styles.receiverCard} elevation={0}>
         <Card.Content>
           <Title style={styles.receiverTitle}>Confirmação de Recebimento</Title>
           <TextInput
@@ -219,7 +224,7 @@ const RevisaoEntregaScreen = () => {
 
       {/* Barra de Progresso */}
       {processando && (
-        <Card style={styles.progressCard}>
+        <Card style={styles.progressCard} elevation={0}>
           <Card.Content>
             <Paragraph style={styles.progressText}>
               Processando entregas... {Math.round(progresso * 100)}%
@@ -251,7 +256,8 @@ const RevisaoEntregaScreen = () => {
           {processando ? 'Processando...' : 'Confirmar Entregas'}
         </Button>
       </View>
-    </ScrollView>
+      </ScrollView>
+    </>
   );
 };
 
@@ -261,10 +267,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   headerCard: {
-    margin: 16,
-    marginBottom: 8,
-    borderRadius: 12,
-    elevation: 3,
+    margin: appTheme.spacing.lg,
+    marginBottom: appTheme.spacing.sm,
+    borderRadius: appTheme.borderRadius.large,
+    elevation: 0,
+    shadowOpacity: 0,
+    borderWidth: 1,
+    borderColor: appTheme.colors.border,
+    backgroundColor: appTheme.colors.surface,
   },
   headerTitle: {
     fontSize: 20,
@@ -276,10 +286,14 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   summaryCard: {
-    margin: 16,
-    marginTop: 8,
-    borderRadius: 12,
-    elevation: 2,
+    margin: appTheme.spacing.lg,
+    marginTop: appTheme.spacing.sm,
+    borderRadius: appTheme.borderRadius.large,
+    elevation: 0,
+    shadowOpacity: 0,
+    borderWidth: 1,
+    borderColor: appTheme.colors.border,
+    backgroundColor: appTheme.colors.surface,
   },
   summaryTitle: {
     fontSize: 18,
@@ -318,10 +332,13 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   receiverCard: {
-    margin: 16,
-    marginTop: 8,
-    borderRadius: 12,
-    elevation: 2,
+    margin: appTheme.spacing.lg,
+    marginTop: appTheme.spacing.sm,
+    borderRadius: appTheme.borderRadius.large,
+    elevation: 0,
+    shadowOpacity: 0,
+    borderWidth: 1,
+    borderColor: appTheme.colors.border,
     backgroundColor: '#fff3e0',
   },
   receiverTitle: {
@@ -339,10 +356,14 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   progressCard: {
-    margin: 16,
-    marginTop: 8,
-    borderRadius: 12,
-    elevation: 2,
+    margin: appTheme.spacing.lg,
+    marginTop: appTheme.spacing.sm,
+    borderRadius: appTheme.borderRadius.large,
+    elevation: 0,
+    shadowOpacity: 0,
+    borderWidth: 1,
+    borderColor: appTheme.colors.border,
+    backgroundColor: appTheme.colors.surface,
   },
   progressText: {
     fontSize: 14,

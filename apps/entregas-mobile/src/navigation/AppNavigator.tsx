@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useRota } from '../contexts/RotaContext';
 
 // Screens
+import SplashScreen from '../screens/SplashScreen';
 import LoginScreen from '../screens/LoginScreen';
 import SelecionarRotaScreen from '../screens/SelecionarRotaScreen';
 import EntregasScreen from '../screens/EntregasScreen';
@@ -14,15 +15,17 @@ import ConfirmarEntregaScreen from '../screens/ConfirmarEntregaScreen';
 import EntregaMassaScreen from '../screens/EntregaMassaScreen';
 import RevisaoEntregaScreen from '../screens/RevisaoEntregaScreen';
 import PerfilScreen from '../screens/PerfilScreen';
+import { appTheme } from '../theme/appTheme';
 
 export type RootStackParamList = {
+  Splash: undefined;
   Login: undefined;
   SelecionarRota: undefined;
   MainTabs: undefined;
   EscolaDetalhes: { escolaId: number; escolaNome: string };
   ConfirmarEntrega: { itemId: number; itemData: any };
-  EntregaMassa: { itensSelecionados: any[]; escolaNome: string };
-  RevisaoEntrega: { itensRevisados: any[]; escolaNome: string };
+  EntregaMassa: { itensSelecionados: any[]; escolaNome: string; escolaId: number };
+  RevisaoEntrega: { itensRevisados: any[]; escolaNome: string; escolaId: number };
 };
 
 export type TabParamList = {
@@ -70,12 +73,29 @@ const TabNavigator = () => {
 };
 
 const AppNavigator = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
   const { rotaSelecionada } = useRota();
 
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      {!isAuthenticated ? (
+    <Stack.Navigator 
+      screenOptions={{ 
+        headerShown: false,
+        headerStyle: {
+          backgroundColor: appTheme.colors.navbar,
+        },
+        headerTintColor: '#fff',
+        headerTitleStyle: {
+          fontWeight: 'bold',
+        },
+      }}
+    >
+      {loading ? (
+        <Stack.Screen 
+          name="Splash" 
+          component={SplashScreen}
+          options={{ headerShown: false }}
+        />
+      ) : !isAuthenticated ? (
         <Stack.Screen name="Login" component={LoginScreen} />
       ) : !rotaSelecionada ? (
         <Stack.Screen name="SelecionarRota" component={SelecionarRotaScreen} />

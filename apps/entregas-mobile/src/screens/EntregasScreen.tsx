@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   StyleSheet,
   ScrollView,
   RefreshControl,
   SafeAreaView,
+  StatusBar,
 } from 'react-native';
 import {
   Text,
@@ -14,7 +15,6 @@ import {
   ActivityIndicator,
   Searchbar,
   SegmentedButtons,
-  Surface,
 } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -31,14 +31,14 @@ type NavigationProp = StackNavigationProp<RootStackParamList>;
 const EntregasScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const { showError } = useNotification();
-  const { rotaSelecionada, limparRota } = useRota();
+  const { rotaSelecionada } = useRota();
   const { isOffline, sincronizando } = useOffline();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [escolas, setEscolas] = useState<EscolaEntrega[]>([]);
   const [estatisticas, setEstatisticas] = useState<EstatisticasEntregas | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filtroStatus, setFiltroStatus] = useState('todas');
+  const [filtroStatus, setFiltroStatus] = useState('pendentes');
 
   // Recarregar dados sempre que a tela ganhar foco
   useFocusEffect(
@@ -74,11 +74,6 @@ const EntregasScreen = () => {
     setRefreshing(false);
   };
 
-  const handleTrocarRota = () => {
-    limparRota();
-    navigation.navigate('SelecionarRota');
-  };
-
   const filteredEscolas = escolas.filter(escola => {
     const matchesSearch = escola.nome.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (escola.endereco && escola.endereco.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -87,11 +82,13 @@ const EntregasScreen = () => {
 
     switch (filtroStatus) {
       case 'pendentes':
+        // Mostra todas que ainda estão em andamento (não concluídas)
         return escola.percentual_entregue < 100;
+      case 'parciais':
+        // Mostra SOMENTE as que estão em andamento (já começaram mas não terminaram)
+        return escola.percentual_entregue > 0 && escola.percentual_entregue < 100;
       case 'concluidas':
         return escola.percentual_entregue === 100;
-      case 'em_andamento':
-        return escola.percentual_entregue > 0 && escola.percentual_entregue < 100;
       default:
         return true;
     }
@@ -126,43 +123,20 @@ const EntregasScreen = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* Header */}
-      <Surface style={styles.header}>
-        <View style={styles.headerContent}>
-          <View style={styles.headerInfo}>
-            <Text style={styles.headerTitle}>Entregas</Text>
-            <Text style={styles.headerSubtitle}>
-              {rotaSelecionada
-                ? `Rota: ${rotaSelecionada.nome}`
-                : 'Gerencie as entregas por escola'
-              }
-            </Text>
-          </View>
-          <Button
-            mode="outlined"
-            compact
-            onPress={handleTrocarRota}
-            style={styles.trocarRotaButton}
-            icon="swap-horizontal"
-          >
-            Trocar
-          </Button>
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+      {/* Status Offline/Sincronização */}
+      {(isOffline || sincronizando) && (
+        <View style={styles.statusBanner}>
+          <MaterialCommunityIcons
+            name={isOffline ? "wifi-off" : "sync"}
+            size={18}
+            color={isOffline ? "#d32f2f" : "#1976d2"}
+          />
+          <Text style={[styles.statusBannerText, { color: isOffline ? "#d32f2f" : "#1976d2" }]}>
+            {isOffline ? "Modo Offline - Dados podem estar desatualizados" : "Sincronizando dados..."}
+          </Text>
         </View>
-
-        {/* Status Offline/Sincronização */}
-        {(isOffline || sincronizando) && (
-          <View style={styles.statusBanner}>
-            <MaterialCommunityIcons
-              name={isOffline ? "wifi-off" : "sync"}
-              size={18}
-              color={isOffline ? "#d32f2f" : "#1976d2"}
-            />
-            <Text style={[styles.statusBannerText, { color: isOffline ? "#d32f2f" : "#1976d2" }]}>
-              {isOffline ? "Modo Offline - Dados podem estar desatualizados" : "Sincronizando dados..."}
-            </Text>
-          </View>
-        )}
-      </Surface>
+      )}
 
       {/* Filtros */}
       <View style={styles.filtersContainer}>
@@ -171,15 +145,17 @@ const EntregasScreen = () => {
           onChangeText={setSearchQuery}
           value={searchQuery}
           style={styles.searchbar}
+          icon="magnify"
+          iconColor="#666"
+          placeholderTextColor="#999"
         />
 
         <SegmentedButtons
           value={filtroStatus}
           onValueChange={setFiltroStatus}
           buttons={[
-            { value: 'todas', label: 'Todas' },
             { value: 'pendentes', label: 'Pendentes' },
-            { value: 'em_andamento', label: 'Em Andamento' },
+            { value: 'parciais', label: 'Parciais' },
             { value: 'concluidas', label: 'Concluídas' },
           ]}
           style={styles.segmentedButtons}
@@ -192,76 +168,44 @@ const EntregasScreen = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* Estatísticas */}
-        {estatisticas ? (
-          <Card style={styles.resumoCard}>
-            <Card.Content>
-              <Text style={styles.resumoTitle}>Estatísticas da Rota</Text>
-              <View style={styles.resumoStats}>
-                <View style={styles.resumoStat}>
-                  <Text style={styles.resumoNumber}>{estatisticas.total_escolas}</Text>
-                  <Text style={styles.resumoLabel}>Escolas</Text>
-                </View>
-                <View style={styles.resumoStat}>
-                  <Text style={[styles.resumoNumber, { color: '#388e3c' }]}>
-                    {estatisticas.total_itens}
-                  </Text>
-                  <Text style={styles.resumoLabel}>Itens Total</Text>
-                </View>
-                <View style={styles.resumoStat}>
-                  <Text style={[styles.resumoNumber, { color: '#26a69a' }]}>
-                    {estatisticas.itens_entregues}
-                  </Text>
-                  <Text style={styles.resumoLabel}>Entregues</Text>
-                </View>
-                <View style={styles.resumoStat}>
-                  <Text style={[styles.resumoNumber, { color: '#ffb300' }]}>
-                    {estatisticas.itens_pendentes}
-                  </Text>
-                  <Text style={styles.resumoLabel}>Pendentes</Text>
-                </View>
+        {/* Estatísticas por Escolas */}
+        <Card style={styles.resumoCard} elevation={0}>
+          <Card.Content>
+            <Text style={styles.resumoTitle}>Resumo de Escolas</Text>
+            <View style={styles.resumoStats}>
+              <View style={styles.resumoStat}>
+                <Text style={styles.resumoNumber}>{escolas.length}</Text>
+                <Text style={styles.resumoLabel}>Escolas</Text>
               </View>
-            </Card.Content>
-          </Card>
-        ) : (
-          <Card style={styles.resumoCard}>
-            <Card.Content>
-              <Text style={styles.resumoTitle}>Resumo por Escolas</Text>
-              <View style={styles.resumoStats}>
-                <View style={styles.resumoStat}>
-                  <Text style={styles.resumoNumber}>{escolas.length}</Text>
-                  <Text style={styles.resumoLabel}>Total</Text>
-                </View>
-                <View style={styles.resumoStat}>
-                  <Text style={[styles.resumoNumber, { color: '#f44336' }]}>
-                    {escolas.filter(e => e.percentual_entregue === 0).length}
-                  </Text>
-                  <Text style={styles.resumoLabel}>Pendentes</Text>
-                </View>
-                <View style={styles.resumoStat}>
-                  <Text style={[styles.resumoNumber, { color: '#ff9800' }]}>
-                    {escolas.filter(e => e.percentual_entregue > 0 && e.percentual_entregue < 100).length}
-                  </Text>
-                  <Text style={styles.resumoLabel}>Em Andamento</Text>
-                </View>
-                <View style={styles.resumoStat}>
-                  <Text style={[styles.resumoNumber, { color: '#4caf50' }]}>
-                    {escolas.filter(e => e.percentual_entregue === 100).length}
-                  </Text>
-                  <Text style={styles.resumoLabel}>Concluídas</Text>
-                </View>
+              <View style={styles.resumoStat}>
+                <Text style={[styles.resumoNumber, { color: '#f44336' }]}>
+                  {escolas.filter(e => e.percentual_entregue === 0).length}
+                </Text>
+                <Text style={styles.resumoLabel}>Pendentes</Text>
               </View>
-            </Card.Content>
-          </Card>
-        )}
+              <View style={styles.resumoStat}>
+                <Text style={[styles.resumoNumber, { color: '#ff9800' }]}>
+                  {escolas.filter(e => e.percentual_entregue > 0 && e.percentual_entregue < 100).length}
+                </Text>
+                <Text style={styles.resumoLabel}>Parciais</Text>
+              </View>
+              <View style={styles.resumoStat}>
+                <Text style={[styles.resumoNumber, { color: '#4caf50' }]}>
+                  {escolas.filter(e => e.percentual_entregue === 100).length}
+                </Text>
+                <Text style={styles.resumoLabel}>Concluídas</Text>
+              </View>
+            </View>
+          </Card.Content>
+        </Card>
 
         {/* Lista de Escolas */}
         {filteredEscolas.length === 0 ? (
-          <Card style={styles.emptyCard}>
+          <Card style={styles.emptyCard} elevation={0}>
             <Card.Content style={styles.emptyContent}>
               <MaterialCommunityIcons name="school-outline" size={48} color="#ccc" />
               <Text style={styles.emptyText}>
-                {searchQuery || filtroStatus !== 'todas'
+                {searchQuery || filtroStatus !== 'pendentes'
                   ? 'Nenhuma escola encontrada com os filtros aplicados'
                   : 'Nenhuma escola com itens para entrega'
                 }
@@ -270,7 +214,7 @@ const EntregasScreen = () => {
           </Card>
         ) : (
           filteredEscolas.map((escola) => (
-            <Card key={escola.id} style={styles.escolaCard}>
+            <Card key={escola.id} style={styles.escolaCard} elevation={0}>
               <Card.Content>
                 <View style={styles.escolaHeader}>
                   <View style={styles.escolaInfo}>
@@ -326,33 +270,17 @@ const EntregasScreen = () => {
                   </View>
                 </View>
 
-                <View style={styles.escolaActions}>
-                  <Button
-                    mode="contained"
-                    onPress={() => navigation.navigate('EscolaDetalhes', {
-                      escolaId: escola.id,
-                      escolaNome: escola.nome
-                    })}
-                    style={styles.escolaButton}
-                    icon="eye"
-                  >
-                    Ver Detalhes
-                  </Button>
-
-                  {escola.percentual_entregue < 100 && (
-                    <Button
-                      mode="outlined"
-                      onPress={() => navigation.navigate('EscolaDetalhes', {
-                        escolaId: escola.id,
-                        escolaNome: escola.nome
-                      })}
-                      style={styles.escolaButtonSecondary}
-                      icon="truck-delivery"
-                    >
-                      Entregar
-                    </Button>
-                  )}
-                </View>
+                <Button
+                  mode="contained"
+                  onPress={() => navigation.navigate('EscolaDetalhes', {
+                    escolaId: escola.id,
+                    escolaNome: escola.nome
+                  })}
+                  style={styles.escolaButton}
+                  icon="truck-delivery"
+                >
+                  {escola.percentual_entregue === 100 ? 'Ver Detalhes' : 'Entregar'}
+                </Button>
               </Card.Content>
             </Card>
           ))
@@ -366,6 +294,7 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+    paddingTop: StatusBar.currentHeight || 0,
   },
   loadingContainer: {
     flex: 1,
@@ -377,45 +306,14 @@ const styles = StyleSheet.create({
     marginTop: 16,
     color: '#666',
   },
-  header: {
-    margin: 16,
-    marginBottom: 0,
-    borderRadius: 16,
-    elevation: 4,
-    backgroundColor: '#ffffff',
-    overflow: 'hidden',
-  },
-  headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    paddingBottom: 16,
-  },
-  headerInfo: {
-    flex: 1,
-    marginRight: 16,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1976d2',
-  },
-  headerSubtitle: {
-    color: '#666',
-    marginTop: 4,
-  },
-  trocarRotaButton: {
-    borderRadius: 8,
-  },
   statusBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
+    paddingVertical: 12,
     backgroundColor: 'rgba(255, 235, 59, 0.1)',
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
   },
   statusBannerText: {
     fontSize: 13,
@@ -424,13 +322,17 @@ const styles = StyleSheet.create({
   },
   filtersContainer: {
     padding: 16,
-    paddingTop: 8,
+    paddingTop: 12,
+    paddingBottom: 12,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
   searchbar: {
-    elevation: 2,
+    elevation: 0,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    borderWidth: 0,
     marginBottom: 12,
   },
   segmentedButtons: {
@@ -443,7 +345,10 @@ const styles = StyleSheet.create({
   resumoCard: {
     marginBottom: 16,
     borderRadius: 12,
-    elevation: 3,
+    elevation: 0,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    backgroundColor: '#fff',
   },
   resumoTitle: {
     fontSize: 18,
@@ -471,7 +376,10 @@ const styles = StyleSheet.create({
   escolaCard: {
     marginBottom: 12,
     borderRadius: 12,
-    elevation: 2,
+    elevation: 0,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    backgroundColor: '#fff',
   },
   escolaHeader: {
     flexDirection: 'row',
@@ -484,9 +392,10 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   escolaNome: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 2,
   },
   escolaEndereco: {
     fontSize: 14,
@@ -525,29 +434,27 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   progressBar: {
-    height: 8,
-    backgroundColor: '#e0e0e0',
-    borderRadius: 4,
+    height: 6,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 3,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
   },
   progressFill: {
     height: '100%',
-  },
-  escolaActions: {
-    flexDirection: 'row',
-    gap: 8,
+    borderRadius: 2,
   },
   escolaButton: {
-    flex: 1,
-    borderRadius: 8,
-  },
-  escolaButtonSecondary: {
-    flex: 1,
     borderRadius: 8,
   },
   emptyCard: {
     borderRadius: 12,
     marginTop: 20,
+    elevation: 0,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    backgroundColor: '#fff',
   },
   emptyContent: {
     alignItems: 'center',

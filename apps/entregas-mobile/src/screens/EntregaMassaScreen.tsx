@@ -3,6 +3,8 @@ import {
     View,
     StyleSheet,
     ScrollView,
+    SafeAreaView,
+    StatusBar,
 } from 'react-native';
 import {
     Title,
@@ -19,6 +21,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 import { useNotification } from '../contexts/NotificationContext';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { appTheme } from '../theme/appTheme';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 type EntregaMassaRouteProp = RouteProp<RootStackParamList, 'EntregaMassa'>;
@@ -38,7 +41,7 @@ const EntregaMassaScreen = () => {
     const navigation = useNavigation<NavigationProp>();
     const route = useRoute<EntregaMassaRouteProp>();
     const { showError } = useNotification();
-    const { itensSelecionados, escolaNome } = route.params;
+    const { itensSelecionados, escolaNome, escolaId } = route.params;
 
     const [itens, setItens] = useState<ItemEntregaMassa[]>([]);
 
@@ -103,14 +106,17 @@ const EntregaMassaScreen = () => {
 
         navigation.navigate('RevisaoEntrega', {
             itensRevisados: itens,
-            escolaNome: escolaNome
+            escolaNome: escolaNome,
+            escolaId: escolaId
         });
     };
 
     return (
-        <ScrollView style={styles.container}>
-            {/* Header */}
-            <Card style={styles.headerCard}>
+        <>
+            <StatusBar barStyle="light-content" backgroundColor="#1976d2" />
+            <ScrollView style={styles.container}>
+                {/* Header */}
+                <Card style={styles.headerCard} elevation={0}>
                 <Card.Content>
                     <Title style={styles.headerTitle}>Ajustar Quantidades</Title>
                     <Paragraph style={styles.headerSubtitle}>
@@ -120,7 +126,7 @@ const EntregaMassaScreen = () => {
             </Card>
 
             {/* Lista de Itens */}
-            <Card style={styles.itemsCard}>
+            <Card style={styles.itemsCard} elevation={0}>
                 <Card.Content>
                     <Title style={styles.itemsTitle}>Itens para Entrega</Title>
 
@@ -132,7 +138,6 @@ const EntregaMassaScreen = () => {
                                         <Paragraph style={styles.itemName}>{item.produto_nome}</Paragraph>
                                         <Paragraph style={styles.itemDetails}>
                                             Programado: {item.quantidade} {item.unidade}
-                                            {item.lote && ` - Lote: ${item.lote}`}
                                         </Paragraph>
                                     </View>
 
@@ -194,7 +199,8 @@ const EntregaMassaScreen = () => {
                     Próximo
                 </Button>
             </View>
-        </ScrollView>
+            </ScrollView>
+        </>
     );
 };
 
@@ -204,10 +210,13 @@ const styles = StyleSheet.create({
         backgroundColor: '#f5f5f5',
     },
     headerCard: {
-        margin: 16,
-        marginBottom: 8,
-        borderRadius: 12,
-        elevation: 3,
+        margin: appTheme.spacing.lg,
+        marginBottom: appTheme.spacing.sm,
+        borderRadius: appTheme.borderRadius.large,
+        elevation: 0,
+        borderWidth: 1,
+        borderColor: appTheme.colors.border,
+        backgroundColor: appTheme.colors.surface,
     },
     headerTitle: {
         fontSize: 20,
@@ -219,10 +228,13 @@ const styles = StyleSheet.create({
         marginTop: 4,
     },
     itemsCard: {
-        margin: 16,
-        marginTop: 8,
-        borderRadius: 12,
-        elevation: 2,
+        margin: appTheme.spacing.lg,
+        marginTop: appTheme.spacing.sm,
+        borderRadius: appTheme.borderRadius.large,
+        elevation: 0,
+        borderWidth: 1,
+        borderColor: appTheme.colors.border,
+        backgroundColor: appTheme.colors.surface,
     },
     itemsTitle: {
         fontSize: 18,
