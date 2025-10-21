@@ -2,11 +2,13 @@ import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../contexts/AuthContext';
 import { useRota } from '../contexts/RotaContext';
 
 // Screens
 import SplashScreen from '../screens/SplashScreen';
+import InitialLoadingScreen from '../screens/InitialLoadingScreen';
 import LoginScreen from '../screens/LoginScreen';
 import SelecionarRotaScreen from '../screens/SelecionarRotaScreen';
 import EntregasScreen from '../screens/EntregasScreen';
@@ -19,6 +21,7 @@ import { appTheme } from '../theme/appTheme';
 
 export type RootStackParamList = {
   Splash: undefined;
+  InitialLoading: undefined;
   Login: undefined;
   SelecionarRota: undefined;
   MainTabs: undefined;
@@ -75,6 +78,24 @@ const TabNavigator = () => {
 const AppNavigator = () => {
   const { isAuthenticated, loading } = useAuth();
   const { rotaSelecionada } = useRota();
+  const [showInitialLoading, setShowInitialLoading] = React.useState(false);
+  const [needsInitialLoad, setNeedsInitialLoad] = React.useState(false);
+
+  React.useEffect(() => {
+    checkInitialLoad();
+  }, [isAuthenticated]);
+
+  const checkInitialLoad = async () => {
+    if (isAuthenticated && !rotaSelecionada) {
+      const jaCarregou = await AsyncStorage.getItem('@entregas:initial_load_done');
+      setNeedsInitialLoad(jaCarregou !== 'true');
+    }
+  };
+
+  const handleInitialLoadComplete = () => {
+    setShowInitialLoading(false);
+    setNeedsInitialLoad(false);
+  };
 
   return (
     <Stack.Navigator 
@@ -97,6 +118,10 @@ const AppNavigator = () => {
         />
       ) : !isAuthenticated ? (
         <Stack.Screen name="Login" component={LoginScreen} />
+      ) : needsInitialLoad && !rotaSelecionada ? (
+        <Stack.Screen name="InitialLoading" options={{ headerShown: false }}>
+          {() => <InitialLoadingScreen onComplete={handleInitialLoadComplete} />}
+        </Stack.Screen>
       ) : !rotaSelecionada ? (
         <Stack.Screen name="SelecionarRota" component={SelecionarRotaScreen} />
       ) : (

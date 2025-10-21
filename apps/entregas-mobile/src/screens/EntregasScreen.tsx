@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -47,22 +47,59 @@ const EntregasScreen = () => {
     }, [rotaSelecionada])
   );
 
+  // Recalcular estatísticas quando as escolas mudarem (após entregas offline)
+  useEffect(() => {
+    if (escolas.length > 0 && isOffline) {
+      const estatisticasLocais = calcularEstatisticasLocais(escolas);
+      setEstatisticas(estatisticasLocais);
+    }
+  }, [escolas, isOffline]);
+
+  const calcularEstatisticasLocais = (escolas: EscolaEntrega[]) => {
+    const totalEscolas = escolas.length;
+    const totalItens = escolas.reduce((sum, e) => sum + (e.total_itens || 0), 0);
+    const itensEntregues = escolas.reduce((sum, e) => sum + (e.itens_entregues || 0), 0);
+    const itensPendentes = totalItens - itensEntregues;
+    const percentualEntregue = totalItens > 0 ? (itensEntregues / totalItens) * 100 : 0;
+
+    return {
+      total_escolas: totalEscolas,
+      total_itens: totalItens,
+      itens_entregues: itensEntregues,
+      itens_pendentes: itensPendentes,
+      percentual_entregue: percentualEntregue,
+    };
+  };
+
   const carregarDados = async () => {
     try {
       setLoading(true);
       const rotaId = rotaSelecionada?.id;
 
-      // Carregar escolas e estatísticas em paralelo
-      const [escolasData, estatisticasData] = await Promise.all([
-        entregaServiceHybrid.listarEscolasRota(rotaId),
-        entregaServiceHybrid.obterEstatisticas(undefined, rotaId).catch(() => null)
-      ]);
-
+      // Carregar escolas (obrigatório)
+      const escolasData = await entregaServiceHybrid.listarEscolasRota(rotaId);
       setEscolas(escolasData);
-      setEstatisticas(estatisticasData);
+
+      // Tentar carregar estatísticas online
+      if (!isOffline) {
+        try {
+          const estatisticasData = await entregaServiceHybrid.obterEstatisticas(undefined, rotaId);
+          setEstatisticas(estatisticasData);
+        } catch (error) {
+          // Se falhar online, calcular localmente
+          console.log('Estatísticas online não disponíveis, calculando localmente');
+          const estatisticasLocais = calcularEstatisticasLocais(escolasData);
+          setEstatisticas(estatisticasLocais);
+        }
+      } else {
+        // Se offline, sempre calcular localmente
+        console.log('Modo offline: calculando estatísticas localmente');
+        const estatisticasLocais = calcularEstatisticasLocais(escolasData);
+        setEstatisticas(estatisticasLocais);
+      }
     } catch (error) {
-      showError('Erro ao carregar dados');
-      console.error('Erro:', error);
+      showError('Erro ao carregar escolas');
+      console.error('Erro ao carregar escolas:', error);
     } finally {
       setLoading(false);
     }

@@ -469,7 +469,15 @@ class EntregaServiceHybrid {
   // ========== MÉTODOS DELEGADOS (SEM CACHE) ==========
   
   async obterEstatisticas(guiaId?: number, rotaId?: number) {
-    return entregaService.obterEstatisticas(guiaId, rotaId);
+    try {
+      // Tentar buscar online
+      return await entregaService.obterEstatisticas(guiaId, rotaId);
+    } catch (error) {
+      // Se falhar (offline ou erro de rede), retornar null
+      // A tela vai calcular as estatísticas localmente
+      console.log('Estatísticas não disponíveis online, usando dados locais');
+      return null;
+    }
   }
 
   async listarPlanejamentos(guiaId?: number, rotaId?: number) {

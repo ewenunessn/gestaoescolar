@@ -224,7 +224,7 @@ class EntregaService {
         percentual_entregue: Number(data.percentual_entregue) || 0,
       };
     } catch (error) {
-      console.error('❌ Erro ao obter estatísticas:', error);
+      // Não logar erro aqui pois é tratado no hybrid service
       throw error;
     }
   }

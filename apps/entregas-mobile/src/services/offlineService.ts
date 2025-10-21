@@ -169,9 +169,52 @@ class OfflineService {
         itens[index] = itemAtualizado;
         await this.salvarItensEscolaCache(escolaId, itens);
         console.log(`📝 Item ${itemAtualizado.id} atualizado no cache`);
+        
+        // Recalcular e atualizar percentuais da escola
+        await this.recalcularPercentuaisEscola(escolaId, itens);
       }
     } catch (error) {
       console.error('Erro ao atualizar item no cache:', error);
+    }
+  }
+
+  // Recalcular percentuais da escola após mudanças nos itens
+  private async recalcularPercentuaisEscola(escolaId: number, itens: ItemEntrega[]): Promise<void> {
+    try {
+      // Calcular estatísticas dos itens
+      const itensParaEntrega = itens.filter(item => item.para_entrega);
+      const totalItens = itensParaEntrega.length;
+      const itensEntregues = itensParaEntrega.filter(item => item.entrega_confirmada).length;
+      const percentualEntregue = totalItens > 0 ? (itensEntregues / totalItens) * 100 : 0;
+
+      console.log(`📊 Escola ${escolaId}: ${itensEntregues}/${totalItens} itens entregues (${percentualEntregue.toFixed(1)}%)`);
+
+      // Atualizar todas as listas de escolas em cache que contenham esta escola
+      const keys = await AsyncStorage.getAllKeys();
+      const escolasKeys = keys.filter(key => key.startsWith(STORAGE_KEYS.ESCOLAS));
+
+      for (const key of escolasKeys) {
+        const data = await AsyncStorage.getItem(key);
+        if (data) {
+          const escolas: EscolaEntrega[] = JSON.parse(data);
+          const escolaIndex = escolas.findIndex(e => e.id === escolaId);
+          
+          if (escolaIndex !== -1) {
+            // Atualizar os dados da escola
+            escolas[escolaIndex] = {
+              ...escolas[escolaIndex],
+              total_itens: totalItens,
+              itens_entregues: itensEntregues,
+              percentual_entregue: percentualEntregue,
+            };
+            
+            await AsyncStorage.setItem(key, JSON.stringify(escolas));
+            console.log(`✅ Percentuais da escola ${escolaId} atualizados no cache ${key}`);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao recalcular percentuais da escola:', error);
     }
   }
 
