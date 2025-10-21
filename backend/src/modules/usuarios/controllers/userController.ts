@@ -79,12 +79,12 @@ export async function login(req: Request, res: Response) {
     }
 
     console.log("✅ Senha correta, gerando token...");
-    console.log("🔐 [LOGIN] JWT Secret para geração:", config.jwtSecret);
+    const jwtSecret = process.env.JWT_SECRET || 'sua_chave_jwt_super_secreta_minimo_32_caracteres_producao_2024';
     console.log("🔐 [LOGIN] NODE_ENV:", process.env.NODE_ENV);
-    console.log("🔐 [LOGIN] JWT_SECRET env:", process.env.JWT_SECRET);
+    console.log("🔐 [LOGIN] JWT_SECRET configurado:", jwtSecret ? 'Sim' : 'Não');
     const token = jwt.sign(
-      { id: user.id, tipo: user.tipo },
-      config.jwtSecret,
+      { id: user.id, tipo: user.tipo, email: user.email, nome: user.nome },
+      jwtSecret,
       { expiresIn: '24h' }
     );
     console.log("🔐 [LOGIN] Token gerado:", token.substring(0, 20) + '...');

@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import jwt from "jsonwebtoken";
 
 /**
  * Middleware de autenticação para desenvolvimento
@@ -30,18 +31,36 @@ export function devAuthMiddleware(
       return next();
     }
 
-    // Em produção, usar autenticação normal
+    // Em produção, validar token JWT
     const authHeader = req.headers.authorization;
     if (!authHeader) {
+      console.log('❌ [PROD] Token não fornecido:', req.originalUrl);
       return res.status(401).json({ 
         success: false,
-        message: "Token de autorização necessário em produção" 
+        message: "Token de autorização necessário" 
       });
     }
 
-    // Aqui você colocaria a lógica de validação JWT para produção
-    // Por enquanto, vamos apenas passar adiante
-    next();
+    const token = authHeader.replace('Bearer ', '');
+    
+    try {
+      const jwtSecret = process.env.JWT_SECRET || 'sua_chave_jwt_super_secreta_minimo_32_caracteres_producao_2024';
+      const decoded = jwt.verify(token, jwtSecret) as any;
+      (req as any).user = decoded;
+      
+      console.log('✅ [PROD] Token válido:', {
+        userId: decoded.id,
+        url: req.originalUrl
+      });
+      
+      next();
+    } catch (jwtError) {
+      console.error('❌ [PROD] Token inválido:', jwtError);
+      return res.status(401).json({ 
+        success: false,
+        message: "Token inválido ou expirado" 
+      });
+    }
 
   } catch (error) {
     console.error('❌ Erro no middleware de desenvolvimento:', error);
