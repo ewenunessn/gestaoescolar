@@ -12,7 +12,16 @@ import {
   Select,
   MenuItem,
   CircularProgress,
+  Autocomplete,
+  Alert,
+  Box,
+  Typography,
+  Chip
 } from '@mui/material';
+import {
+  School as SchoolIcon,
+  Inventory as InventoryIcon
+} from '@mui/icons-material';
 import { useNotification } from '../context/NotificationContext';
 import { guiaService, Guia, AddProdutoGuiaData } from '../services/guiaService';
 import { listarProdutos } from '../services/produtos';
@@ -23,13 +32,18 @@ interface AdicionarProdutoIndividualProps {
   onClose: () => void;
   guia: Guia | null;
   onUpdate: () => void;
+  escolaPreSelecionada?: {
+    id: number;
+    nome: string;
+  };
 }
 
-const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({ 
-  open, 
-  onClose, 
-  guia, 
-  onUpdate 
+const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
+  open,
+  onClose,
+  guia,
+  onUpdate,
+  escolaPreSelecionada
 }) => {
   const [escolas, setEscolas] = useState<any[]>([]);
   const [produtosList, setProdutosList] = useState<any[]>([]);
@@ -41,13 +55,25 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
   const [observacao, setObservacao] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Estados para gerenciamento de lotes
+  const [lotesExistentes, setLotesExistentes] = useState<string[]>([]);
+  const [itemExistente, setItemExistente] = useState<any>(null);
+  const [showConfirmacao, setShowConfirmacao] = useState(false);
+
   const { success, error } = useNotification();
 
   useEffect(() => {
     if (open) {
       carregarDados();
+      // Se há escola pré-selecionada, definir no formulário
+      if (escolaPreSelecionada) {
+        setSelectedEscola(escolaPreSelecionada.id.toString());
+      }
+    } else {
+      // Limpar formulário quando fechar
+      limparFormulario();
     }
-  }, [open]);
+  }, [open, escolaPreSelecionada]);
 
   const carregarDados = async () => {
     try {
@@ -67,50 +93,163 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
     }
   };
 
-  const handleProdutoChange = (produtoId: string) => {
+  const handleProdutoChange = async (produtoId: string) => {
     setSelectedProduto(produtoId);
     const produto = produtosList.find(p => p.id.toString() === produtoId);
     if (produto) {
       setUnidade(produto.unidade || 'kg');
     }
+
+    // Carregar lotes existentes para este produto
+    if (produtoId && guia) {
+      await carregarLotesExistentes(parseInt(produtoId));
+    }
   };
 
-  const handleSalvar = async () => {
+  const carregarLotesExistentes = async (produtoId: number) => {
+    try {
+      // Buscar itens da guia para encontrar lotes existentes deste produto
+      const response = await guiaService.listarProdutosGuia(guia!.id);
+      const itensGuia = response.data || response;
+      const lotesUnicos = [...new Set(
+        itensGuia
+          .filter((item: any) => item.produto_id === produtoId && item.lote)
+          .map((item: any) => item.lote)
+          .filter((lote: any): lote is string => typeof lote === 'string')
+      )];
+      setLotesExistentes(lotesUnicos);
+    } catch (err) {
+      console.error('Erro ao carregar lotes:', err);
+      setLotesExistentes([]);
+    }
+  };
+
+  const verificarItemExistente = async (produtoId: number, escolaId: number, loteValue: string) => {
+    if (!guia || !loteValue) return true;
+
+    try {
+      const response = await guiaService.listarProdutosGuia(guia.id);
+      const itensGuia = response.data || response;
+      const itemExistente = itensGuia.find((item: any) =>
+        item.produto_id === produtoId &&
+        item.escola_id === escolaId &&
+        item.lote === loteValue
+      );
+
+      if (itemExistente) {
+        // Verificar se já foi entregue
+        if (itemExistente.entrega_confirmada) {
+          error('Este lote já foi entregue para esta escola. Não é possível adicionar mais itens.');
+          return false;
+        }
+
+        setItemExistente(itemExistente);
+        setShowConfirmacao(true);
+        return false; // Não prosseguir com adição direta
+      }
+
+      return true;
+    } catch (err) {
+      console.error('Erro ao verificar item existente:', err);
+      return true;
+    }
+  };
+
+  const handleLoteChange = async (value: string) => {
+    setLote(value);
+
+    if (selectedProduto && selectedEscola && value) {
+      await verificarItemExistente(parseInt(selectedProduto), parseInt(selectedEscola), value);
+    }
+  };
+
+  const handleSalvar = async (atualizarExistente = false) => {
     if (!guia || !selectedProduto || !selectedEscola || !quantidade || !unidade) {
       error('Preencha todos os campos obrigatórios');
       return;
     }
 
+    // Se há item existente e não foi confirmada a atualização, verificar primeiro
+    if (!atualizarExistente && lote && selectedProduto && selectedEscola) {
+      const podeAdicionar = await verificarItemExistente(
+        parseInt(selectedProduto),
+        parseInt(selectedEscola),
+        lote
+      );
+      if (!podeAdicionar) return;
+    }
+
     try {
       setLoading(true);
-      
-      const data: AddProdutoGuiaData = {
-        produtoId: parseInt(selectedProduto),
-        escolaId: parseInt(selectedEscola),
-        quantidade: parseFloat(quantidade),
-        unidade,
-        lote: lote || undefined,
-        observacao
-      };
 
-      await guiaService.adicionarProdutoGuia(guia.id, data);
-      success('Produto adicionado com sucesso!');
-      
+      if (atualizarExistente && itemExistente) {
+        // Remover item existente e adicionar novo com quantidade atualizada
+        await guiaService.removerProdutoGuia(
+          guia.id,
+          itemExistente.produto_id,
+          itemExistente.escola_id
+        );
+
+        // Adicionar novo item com quantidade atualizada
+        const data: AddProdutoGuiaData = {
+          produtoId: itemExistente.produto_id,
+          escolaId: itemExistente.escola_id,
+          quantidade: parseFloat(quantidade),
+          unidade,
+          lote: lote || undefined,
+          observacao: observacao || itemExistente.observacao,
+          para_entrega: true // Marcar automaticamente para entrega
+        };
+
+        await guiaService.adicionarProdutoGuia(guia.id, data);
+        success(`Quantidade atualizada para ${parseFloat(quantidade).toLocaleString('pt-BR')} ${unidade}`);
+      } else {
+        // Adicionar novo item
+        const data: AddProdutoGuiaData = {
+          produtoId: parseInt(selectedProduto),
+          escolaId: parseInt(selectedEscola),
+          quantidade: parseFloat(quantidade),
+          unidade,
+          lote: lote || undefined,
+          observacao,
+          para_entrega: true // Marcar automaticamente para entrega
+        };
+
+        await guiaService.adicionarProdutoGuia(guia.id, data);
+        success('Produto adicionado com sucesso!');
+      }
+
       // Limpar formulário
-      setSelectedEscola('');
-      setSelectedProduto('');
-      setQuantidade('');
-      setUnidade('');
-      setLote('');
-      setObservacao('');
-      
+      limparFormulario();
       onUpdate();
       onClose();
     } catch (errorCatch: any) {
-      error(errorCatch.response?.data?.error || 'Erro ao adicionar produto');
+      error(errorCatch.response?.data?.error || 'Erro ao salvar produto');
     } finally {
       setLoading(false);
     }
+  };
+
+  const limparFormulario = () => {
+    setSelectedEscola('');
+    setSelectedProduto('');
+    setQuantidade('');
+    setUnidade('');
+    setLote('');
+    setObservacao('');
+    setItemExistente(null);
+    setShowConfirmacao(false);
+    setLotesExistentes([]);
+  };
+
+  const handleConfirmarAtualizacao = () => {
+    setShowConfirmacao(false);
+    handleSalvar(true);
+  };
+
+  const handleCancelarAtualizacao = () => {
+    setShowConfirmacao(false);
+    setItemExistente(null);
   };
 
   return (
@@ -124,39 +263,70 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
         ) : (
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={12}>
-              <FormControl fullWidth>
-                <InputLabel>Escola</InputLabel>
-                <Select
-                  value={selectedEscola}
-                  onChange={(e) => setSelectedEscola(e.target.value)}
-                  label="Escola"
-                >
-                  {escolas.map((escola) => (
-                    <MenuItem key={escola.id} value={escola.id}>
-                      {escola.nome}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Autocomplete
+                options={escolas}
+                getOptionLabel={(option) => option.nome}
+                value={escolas.find(e => e.id.toString() === selectedEscola) || null}
+                onChange={(event, newValue) => {
+                  setSelectedEscola(newValue ? newValue.id.toString() : '');
+                }}
+                disabled={!!escolaPreSelecionada}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Escola"
+                    placeholder="Digite para buscar uma escola..."
+                    required
+                  />
+                )}
+                renderOption={(props, option) => (
+                  <Box component="li" {...props}>
+                    <SchoolIcon sx={{ mr: 1, color: 'text.secondary' }} fontSize="small" />
+                    {option.nome}
+                  </Box>
+                )}
+                noOptionsText="Nenhuma escola encontrada"
+              />
+              {escolaPreSelecionada && (
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                  Escola pré-selecionada: {escolaPreSelecionada.nome}
+                </Typography>
+              )}
             </Grid>
-            
+
             <Grid item xs={12}>
-              <FormControl fullWidth>
-                <InputLabel>Produto</InputLabel>
-                <Select
-                  value={selectedProduto}
-                  onChange={(e) => handleProdutoChange(e.target.value)}
-                  label="Produto"
-                >
-                  {produtosList.map((produto) => (
-                    <MenuItem key={produto.id} value={produto.id}>
-                      {produto.nome}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Autocomplete
+                options={produtosList}
+                getOptionLabel={(option) => option.nome}
+                value={produtosList.find(p => p.id.toString() === selectedProduto) || null}
+                onChange={(event, newValue) => {
+                  handleProdutoChange(newValue ? newValue.id.toString() : '');
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Produto"
+                    placeholder="Digite para buscar um produto..."
+                    required
+                  />
+                )}
+                renderOption={(props, option) => (
+                  <Box component="li" {...props}>
+                    <InventoryIcon sx={{ mr: 1, color: 'text.secondary' }} fontSize="small" />
+                    <Box>
+                      <Typography variant="body2">{option.nome}</Typography>
+                      {option.codigo && (
+                        <Typography variant="caption" color="text.secondary">
+                          Código: {option.codigo}
+                        </Typography>
+                      )}
+                    </Box>
+                  </Box>
+                )}
+                noOptionsText="Nenhum produto encontrado"
+              />
             </Grid>
-            
+
             <Grid item xs={6}>
               <TextField
                 label="Quantidade"
@@ -168,7 +338,7 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
                 required
               />
             </Grid>
-            
+
             <Grid item xs={6}>
               <TextField
                 label="Unidade"
@@ -178,17 +348,30 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
                 required
               />
             </Grid>
-            
+
             <Grid item xs={12}>
-              <TextField
-                label="Lote (Opcional)"
+              <Autocomplete
+                freeSolo
+                options={lotesExistentes}
                 value={lote}
-                onChange={(e) => setLote(e.target.value)}
-                fullWidth
-                placeholder="Ex: Lote-001, 2024-12-10"
+                onInputChange={(event, newValue) => handleLoteChange(newValue || '')}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Lote"
+                    placeholder="Digite um novo lote ou selecione existente"
+                    helperText={lotesExistentes.length > 0 ? "Lotes existentes disponíveis" : "Nenhum lote existente para este produto"}
+                  />
+                )}
+                renderOption={(props, option) => (
+                  <Box component="li" {...props}>
+                    <Chip label={option} size="small" sx={{ mr: 1 }} />
+                    {option}
+                  </Box>
+                )}
               />
             </Grid>
-            
+
             <Grid item xs={12}>
               <TextField
                 label="Observação"
@@ -199,6 +382,50 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
                 fullWidth
               />
             </Grid>
+
+            {/* Alerta de confirmação para item existente */}
+            {showConfirmacao && itemExistente && (
+              <Grid item xs={12}>
+                <Alert
+                  severity="warning"
+                  action={
+                    <Box>
+                      <Button
+                        color="inherit"
+                        size="small"
+                        onClick={handleConfirmarAtualizacao}
+                        sx={{ mr: 1 }}
+                      >
+                        Atualizar
+                      </Button>
+                      <Button
+                        color="inherit"
+                        size="small"
+                        onClick={handleCancelarAtualizacao}
+                      >
+                        Cancelar
+                      </Button>
+                    </Box>
+                  }
+                >
+                  <Typography variant="body2" fontWeight="bold">
+                    Item já existe neste lote!
+                  </Typography>
+                  <Typography variant="body2">
+                    Quantidade atual: {(Number(itemExistente.quantidade) || 0).toLocaleString('pt-BR', {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 3
+                    })} {itemExistente.unidade}
+                  </Typography>
+                  <Typography variant="body2">
+                    Deseja atualizar para {(Number(quantidade) || 0).toLocaleString('pt-BR', {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 3
+                    })} {unidade}?
+                  </Typography>
+                </Alert>
+              </Grid>
+            )}
           </Grid>
         )}
       </DialogContent>
@@ -206,12 +433,12 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
         <Button onClick={onClose} disabled={loading}>
           Cancelar
         </Button>
-        <Button 
-          onClick={handleSalvar} 
-          variant="contained" 
-          disabled={loading || !selectedProduto || !selectedEscola || !quantidade || !unidade}
+        <Button
+          onClick={() => handleSalvar(false)}
+          variant="contained"
+          disabled={loading || !selectedProduto || !selectedEscola || !quantidade || !unidade || showConfirmacao}
         >
-          {loading ? <CircularProgress size={24} /> : 'Adicionar'}
+          {loading ? <CircularProgress size={24} /> : (itemExistente && showConfirmacao ? 'Confirmar' : 'Adicionar')}
         </Button>
       </DialogActions>
     </Dialog>

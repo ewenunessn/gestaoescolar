@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -24,7 +24,11 @@ import {
   MenuItem,
   Divider,
   Switch,
-  FormControlLabel
+  FormControlLabel,
+  Collapse,
+  IconButton,
+  Badge,
+  Dialog
 } from '@mui/material';
 import {
   Settings as SettingsIcon,
@@ -33,12 +37,19 @@ import {
   Inventory as InventoryIcon,
   School as SchoolIcon,
   Save as SaveIcon,
-  Refresh as RefreshIcon
+  Refresh as RefreshIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
+  KeyboardArrowDown as KeyboardArrowDownIcon,
+  KeyboardArrowRight as KeyboardArrowRightIcon,
+  Visibility as VisibilityIcon,
+  Close as CloseIcon
 } from '@mui/icons-material';
 import { guiaService } from '../services/guiaService';
 import { rotaService } from '../modules/entregas/services/rotaService';
 import { itemGuiaService, ItemGuia } from '../services/itemGuiaService';
 import { RotaEntrega, ConfiguracaoEntrega as ConfiguracaoEntregaType } from '../modules/entregas/types/rota';
+import { useNavigate } from 'react-router-dom';
 
 interface ItemGuiaComSelecao extends ItemGuia {
   selecionado: boolean;
@@ -48,6 +59,7 @@ interface ItemGuiaComSelecao extends ItemGuia {
 type ConfiguracaoAtiva = ConfiguracaoEntregaType;
 
 const ConfiguracaoEntrega: React.FC = () => {
+  const navigate = useNavigate();
   const [guias, setGuias] = useState<any[]>([]);
   const [rotas, setRotas] = useState<RotaEntrega[]>([]);
   const [itensGuia, setItensGuia] = useState<ItemGuiaComSelecao[]>([]);
@@ -64,9 +76,28 @@ const ConfiguracaoEntrega: React.FC = () => {
     ativa: true
   });
 
+  // Estado para controlar expansão dos grupos de produtos
+  const [produtosExpandidos, setProdutosExpandidos] = useState<Set<string>>(new Set());
+
+  // Estado para modal de visualização por escola
+  const [modalVisualizacaoAberto, setModalVisualizacaoAberto] = useState(false);
+  const [dadosEscolas, setDadosEscolas] = useState<any[]>([]);
+
   useEffect(() => {
     carregarDados();
   }, []);
+
+  // Recarregar dados quando a página receber foco
+  useEffect(() => {
+    const handleFocus = () => {
+      if (configuracao.guiaId > 0) {
+        carregarItensGuia(configuracao.guiaId);
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [configuracao.guiaId]);
 
   useEffect(() => {
     if (configuracao.guiaId > 0) {
@@ -86,7 +117,7 @@ const ConfiguracaoEntrega: React.FC = () => {
       ]);
 
       const guiasResponse = guiasData?.data || guiasData;
-      const guiasAbertas = Array.isArray(guiasResponse) 
+      const guiasAbertas = Array.isArray(guiasResponse)
         ? guiasResponse.filter(g => g.status === 'aberta')
         : [];
       setGuias(guiasAbertas);
@@ -126,19 +157,33 @@ const ConfiguracaoEntrega: React.FC = () => {
   const carregarItensGuia = async (guiaId: number) => {
     try {
       const itens = await itemGuiaService.listarItensPorGuia(guiaId);
-      
-      const itensComSelecao: ItemGuiaComSelecao[] = itens.map(item => ({
-        ...item,
-        selecionado: configuracao.itensSelecionados.includes(item.id)
-      }));
-      
-      setItensGuia(itensComSelecao);
-      
-      // Se não há itens selecionados, selecionar todos por padrão
-      if (configuracao.itensSelecionados.length === 0) {
+
+      // Verificar se há novos itens marcados para entrega que não estão na configuração
+      const itensParaEntrega = itens.filter(item => item.para_entrega === true);
+      const novosItens = itensParaEntrega.filter(item => !configuracao.itensSelecionados.includes(item.id));
+
+      // Se há novos itens, adicionar automaticamente à configuração
+      let itensSelecionadosAtualizados = configuracao.itensSelecionados;
+      if (novosItens.length > 0) {
+        itensSelecionadosAtualizados = [...configuracao.itensSelecionados, ...novosItens.map(item => item.id)];
         setConfiguracao(prev => ({
           ...prev,
-          itensSelecionados: itensComSelecao.map(item => item.id)
+          itensSelecionados: itensSelecionadosAtualizados
+        }));
+      }
+
+      const itensComSelecao: ItemGuiaComSelecao[] = itens.map(item => ({
+        ...item,
+        selecionado: itensSelecionadosAtualizados.includes(item.id)
+      }));
+
+      setItensGuia(itensComSelecao);
+
+      // Se não há itens selecionados, selecionar todos os itens para entrega por padrão
+      if (configuracao.itensSelecionados.length === 0 && itensParaEntrega.length > 0) {
+        setConfiguracao(prev => ({
+          ...prev,
+          itensSelecionados: itensParaEntrega.map(item => item.id)
         }));
       }
     } catch (err) {
@@ -192,6 +237,155 @@ const ConfiguracaoEntrega: React.FC = () => {
     }));
   };
 
+  // Agrupar itens por produto
+  const itensAgrupados = useMemo(() => {
+    const grupos = new Map<string, ItemGuiaComSelecao[]>();
+
+    itensGuia.forEach(item => {
+      const chave = item.produto_nome;
+      if (!grupos.has(chave)) {
+        grupos.set(chave, []);
+      }
+      grupos.get(chave)!.push(item);
+    });
+
+    return Array.from(grupos.entries()).map(([produto, itens]) => ({
+      produto,
+      itens: itens.sort((a, b) => a.escola_nome.localeCompare(b.escola_nome)),
+      totalItens: itens.length,
+      itensSelecionados: itens.filter(item => configuracao.itensSelecionados.includes(item.id)).length,
+      quantidadeTotal: itens.reduce((sum, item) => sum + (Number(item.quantidade) || 0), 0),
+      unidade: itens[0]?.unidade || ''
+    }));
+  }, [itensGuia, configuracao.itensSelecionados]);
+
+  const toggleProdutoExpansao = (produto: string) => {
+    setProdutosExpandidos(prev => {
+      const novo = new Set(prev);
+      if (novo.has(produto)) {
+        novo.delete(produto);
+      } else {
+        novo.add(produto);
+      }
+      return novo;
+    });
+  };
+
+  const toggleProdutoCompleto = (produto: string) => {
+    const grupo = itensAgrupados.find(g => g.produto === produto);
+    if (!grupo) return;
+
+    const todosItensDoProduto = grupo.itens.map(item => item.id);
+    const todosSelecionados = todosItensDoProduto.every(id => configuracao.itensSelecionados.includes(id));
+
+    if (todosSelecionados) {
+      // Desselecionar todos os itens deste produto
+      setConfiguracao(prev => ({
+        ...prev,
+        itensSelecionados: prev.itensSelecionados.filter(id => !todosItensDoProduto.includes(id))
+      }));
+    } else {
+      // Selecionar todos os itens deste produto
+      setConfiguracao(prev => ({
+        ...prev,
+        itensSelecionados: [...new Set([...prev.itensSelecionados, ...todosItensDoProduto])]
+      }));
+    }
+  };
+
+  const expandirTodosProdutos = () => {
+    setProdutosExpandidos(new Set(itensAgrupados.map(g => g.produto)));
+  };
+
+  const recolherTodosProdutos = () => {
+    setProdutosExpandidos(new Set());
+  };
+
+  const visualizarPorEscola = async () => {
+    if (!configuracao.guiaId || configuracao.rotasSelecionadas.length === 0 || configuracao.itensSelecionados.length === 0) {
+      setError('Configure a guia, rotas e itens antes de visualizar por escola');
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // Usar os itens já carregados e filtrar localmente
+      const itensFiltrados = itensGuia.filter(item =>
+        configuracao.itensSelecionados.includes(item.id)
+      );
+
+      if (itensFiltrados.length === 0) {
+        setError('Nenhum item selecionado encontrado');
+        return;
+      }
+
+      // Buscar informações das escolas das rotas selecionadas
+      const escolasRotas = new Map<number, any>();
+
+      for (const rotaId of configuracao.rotasSelecionadas) {
+        try {
+          const escolasRota = await rotaService.listarEscolasRota(rotaId);
+          escolasRota.forEach(escolaRota => {
+            escolasRotas.set(escolaRota.escola_id, {
+              escola_id: escolaRota.escola_id,
+              escola_nome: escolaRota.escola_nome,
+              escola_endereco: escolaRota.escola_endereco || '',
+              rota_id: rotaId
+            });
+          });
+        } catch (err) {
+          console.warn(`Erro ao carregar escolas da rota ${rotaId}:`, err);
+        }
+      }
+
+      // Agrupar itens por escola, considerando apenas escolas das rotas selecionadas
+      const escolasAgrupadas = new Map<string, any>();
+
+      itensFiltrados.forEach(item => {
+        // Verificar se a escola do item está nas rotas selecionadas
+        const escolaInfo = escolasRotas.get(item.escola_id);
+        if (!escolaInfo) {
+          return; // Pular itens de escolas que não estão nas rotas selecionadas
+        }
+
+        const chaveEscola = `${item.escola_id}-${item.escola_nome}`;
+
+        if (!escolasAgrupadas.has(chaveEscola)) {
+          escolasAgrupadas.set(chaveEscola, {
+            escola_id: item.escola_id,
+            escola_nome: item.escola_nome,
+            escola_endereco: escolaInfo.escola_endereco || '',
+            rota_id: escolaInfo.rota_id,
+            itens: [],
+            total_itens: 0,
+            produtos_unicos: new Set()
+          });
+        }
+
+        const escola = escolasAgrupadas.get(chaveEscola)!;
+        escola.itens.push(item);
+        escola.total_itens++;
+        escola.produtos_unicos.add(item.produto_nome);
+      });
+
+      // Converter para array e ordenar
+      const escolasArray = Array.from(escolasAgrupadas.values()).map(escola => ({
+        ...escola,
+        produtos_unicos: escola.produtos_unicos.size
+      })).sort((a, b) => a.escola_nome.localeCompare(b.escola_nome));
+
+      setDadosEscolas(escolasArray);
+      setModalVisualizacaoAberto(true);
+
+    } catch (err) {
+      console.error('Erro ao carregar dados por escola:', err);
+      setError('Erro ao carregar dados por escola');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const salvarConfiguracao = async () => {
     try {
       setSalvando(true);
@@ -219,9 +413,9 @@ const ConfiguracaoEntrega: React.FC = () => {
         itensSelecionados: configuracao.itensSelecionados,
         ativa: true
       });
-      
+
       setSuccess(resultado.message || 'Configuração de entrega salva com sucesso! O mobile agora mostrará apenas os itens selecionados.');
-      
+
       // Limpar mensagem de sucesso após 5 segundos
       setTimeout(() => setSuccess(null), 5000);
 
@@ -255,6 +449,14 @@ const ConfiguracaoEntrega: React.FC = () => {
             </Typography>
           </Box>
           <Box display="flex" gap={2}>
+            <Button
+              variant="outlined"
+              startIcon={<VisibilityIcon />}
+              onClick={() => navigate('/visualizacao-entregas')}
+              disabled={!configuracao.guiaId || configuracao.rotasSelecionadas.length === 0 || configuracao.itensSelecionados.length === 0}
+            >
+              Visualizar Entregas
+            </Button>
             <Button
               variant="outlined"
               startIcon={<RefreshIcon />}
@@ -298,13 +500,13 @@ const ConfiguracaoEntrega: React.FC = () => {
                     1. Selecionar Guia de Demanda
                   </Typography>
                 </Box>
-                
+
                 <FormControl fullWidth>
                   <InputLabel>Guia de Demanda</InputLabel>
                   <Select
-                    value={configuracao.guiaId}
-                    onChange={(e) => setConfiguracao(prev => ({ 
-                      ...prev, 
+                    value={configuracao.guiaId || ''}
+                    onChange={(e) => setConfiguracao(prev => ({
+                      ...prev,
                       guiaId: Number(e.target.value),
                       itensSelecionados: [] // Reset itens quando muda guia
                     }))}
@@ -349,8 +551,8 @@ const ConfiguracaoEntrega: React.FC = () => {
                 <Grid container spacing={2}>
                   {rotas.map((rota) => (
                     <Grid item xs={12} key={rota.id}>
-                      <Card 
-                        sx={{ 
+                      <Card
+                        sx={{
                           cursor: 'pointer',
                           border: configuracao.rotasSelecionadas.includes(rota.id) ? 2 : 1,
                           borderColor: configuracao.rotasSelecionadas.includes(rota.id) ? 'primary.main' : 'divider',
@@ -360,7 +562,7 @@ const ConfiguracaoEntrega: React.FC = () => {
                       >
                         <CardContent sx={{ py: 2 }}>
                           <Box display="flex" alignItems="center" gap={1}>
-                            <Checkbox 
+                            <Checkbox
                               checked={configuracao.rotasSelecionadas.includes(rota.id)}
                               onChange={() => toggleRota(rota.id)}
                             />
@@ -415,12 +617,18 @@ const ConfiguracaoEntrega: React.FC = () => {
                       3. Selecionar Itens
                     </Typography>
                   </Box>
-                  <Box>
+                  <Box display="flex" gap={1}>
                     <Button size="small" onClick={selecionarTodosItens} sx={{ mr: 1 }}>
                       Todos
                     </Button>
-                    <Button size="small" onClick={deselecionarTodosItens}>
+                    <Button size="small" onClick={deselecionarTodosItens} sx={{ mr: 1 }}>
                       Nenhum
+                    </Button>
+                    <Button size="small" onClick={expandirTodosProdutos} sx={{ mr: 1 }}>
+                      Expandir
+                    </Button>
+                    <Button size="small" onClick={recolherTodosProdutos}>
+                      Recolher
                     </Button>
                   </Box>
                 </Box>
@@ -431,63 +639,157 @@ const ConfiguracaoEntrega: React.FC = () => {
                   </Alert>
                 ) : (
                   <>
-                    <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
-                      <Table stickyHeader size="small">
-                        <TableHead>
-                          <TableRow>
-                            <TableCell padding="checkbox">
-                              <Checkbox
-                                checked={configuracao.itensSelecionados.length === itensGuia.length && itensGuia.length > 0}
-                                indeterminate={configuracao.itensSelecionados.length > 0 && configuracao.itensSelecionados.length < itensGuia.length}
-                                onChange={(e) => e.target.checked ? selecionarTodosItens() : deselecionarTodosItens()}
-                              />
-                            </TableCell>
-                            <TableCell>Produto</TableCell>
-                            <TableCell>Qtd</TableCell>
-                            <TableCell>Lote</TableCell>
-                            <TableCell>Escola</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {itensGuia.map((item) => (
-                            <TableRow key={item.id} hover>
-                              <TableCell padding="checkbox">
-                                <Checkbox
-                                  checked={configuracao.itensSelecionados.includes(item.id)}
-                                  onChange={() => toggleItem(item.id)}
-                                />
-                              </TableCell>
-                              <TableCell>
-                                <Typography variant="body2" fontWeight="medium">
-                                  {item.produto_nome}
-                                </Typography>
-                              </TableCell>
-                              <TableCell>
-                                <Typography variant="body2">
-                                  {item.quantidade} {item.unidade}
-                                </Typography>
-                              </TableCell>
-                              <TableCell>
-                                <Chip 
-                                  label={item.lote || 'S/L'} 
-                                  size="small" 
-                                  variant="outlined" 
-                                />
-                              </TableCell>
-                              <TableCell>
-                                <Typography variant="body2" color="text.secondary">
-                                  {item.escola_nome}
-                                </Typography>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
+                    <Box sx={{ maxHeight: 500, overflow: 'auto' }}>
+                      {itensAgrupados.map((grupo) => {
+                        const todosItensSelecionados = grupo.itens.every(item => configuracao.itensSelecionados.includes(item.id));
+                        const algunsItensSelecionados = grupo.itens.some(item => configuracao.itensSelecionados.includes(item.id));
+                        const expandido = produtosExpandidos.has(grupo.produto);
 
-                    <Box mt={2}>
+                        return (
+                          <Card
+                            key={grupo.produto}
+                            sx={{
+                              mb: 1,
+                              border: '1px solid',
+                              borderColor: 'divider',
+                              bgcolor: 'background.paper'
+                            }}
+                          >
+                            {/* Cabeçalho do Produto */}
+                            <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+                              <Box display="flex" alignItems="center" gap={1}>
+                                <Checkbox
+                                  checked={todosItensSelecionados}
+                                  indeterminate={algunsItensSelecionados && !todosItensSelecionados}
+                                  onChange={() => toggleProdutoCompleto(grupo.produto)}
+                                />
+
+                                <IconButton
+                                  size="small"
+                                  onClick={() => toggleProdutoExpansao(grupo.produto)}
+                                  sx={{ p: 0.5 }}
+                                >
+                                  {expandido ? <KeyboardArrowDownIcon /> : <KeyboardArrowRightIcon />}
+                                </IconButton>
+
+                                <Box flex={1} onClick={() => toggleProdutoExpansao(grupo.produto)} sx={{ cursor: 'pointer' }}>
+                                  <Typography variant="subtitle2" fontWeight="bold">
+                                    {grupo.produto}
+                                  </Typography>
+                                  <Typography variant="caption" color="text.secondary">
+                                    {(Number(grupo.quantidadeTotal) || 0).toLocaleString('pt-BR', {
+                                      minimumFractionDigits: 0,
+                                      maximumFractionDigits: 3
+                                    })} {grupo.unidade} • {grupo.totalItens} escolas
+                                  </Typography>
+                                </Box>
+
+                                <Badge
+                                  badgeContent={grupo.itensSelecionados}
+                                  color="primary"
+                                  max={999}
+                                  sx={{ mr: 1 }}
+                                >
+                                  <Chip
+                                    label={`${grupo.itensSelecionados}/${grupo.totalItens}`}
+                                    size="small"
+                                    color={todosItensSelecionados ? 'success' : algunsItensSelecionados ? 'warning' : 'default'}
+                                    variant="outlined"
+                                    sx={{
+                                      bgcolor: (theme) => theme.palette.mode === 'dark'
+                                        ? 'background.paper'
+                                        : 'background.default'
+                                    }}
+                                  />
+                                </Badge>
+                              </Box>
+                            </CardContent>
+
+                            {/* Detalhes dos Itens (Colapsável) */}
+                            <Collapse in={expandido}>
+                              <Divider />
+                              <Box sx={{
+                                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'grey.900' : 'grey.50'
+                              }}>
+                                <TableContainer>
+                                  <Table size="small">
+                                    <TableHead>
+                                      <TableRow sx={{
+                                        bgcolor: (theme) => theme.palette.mode === 'dark'
+                                          ? 'rgba(255, 255, 255, 0.05)'
+                                          : 'rgba(0, 0, 0, 0.02)'
+                                      }}>
+                                        <TableCell padding="checkbox" sx={{ width: 48 }}></TableCell>
+                                        <TableCell sx={{ fontWeight: 600 }}>Escola</TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: 600 }}>Qtd</TableCell>
+                                        <TableCell sx={{ fontWeight: 600 }}>Lote</TableCell>
+                                      </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                      {grupo.itens.map((item) => (
+                                        <TableRow
+                                          key={item.id}
+                                          hover
+                                          sx={{
+                                            '&:hover': {
+                                              bgcolor: (theme) => theme.palette.mode === 'dark'
+                                                ? 'rgba(255, 255, 255, 0.08)'
+                                                : 'action.hover'
+                                            }
+                                          }}
+                                        >
+                                          <TableCell padding="checkbox">
+                                            <Checkbox
+                                              size="small"
+                                              checked={configuracao.itensSelecionados.includes(item.id)}
+                                              onChange={() => toggleItem(item.id)}
+                                            />
+                                          </TableCell>
+                                          <TableCell>
+                                            <Typography variant="body2">
+                                              {item.escola_nome}
+                                            </Typography>
+                                          </TableCell>
+                                          <TableCell align="right">
+                                            <Typography variant="body2" fontWeight="medium">
+                                              {(Number(item.quantidade) || 0).toLocaleString('pt-BR', {
+                                                minimumFractionDigits: 0,
+                                                maximumFractionDigits: 3
+                                              })}
+                                            </Typography>
+                                          </TableCell>
+                                          <TableCell>
+                                            <Chip
+                                              label={item.lote || 'S/L'}
+                                              size="small"
+                                              variant="outlined"
+                                              sx={{
+                                                fontSize: '0.7rem',
+                                                height: 20,
+                                                bgcolor: (theme) => theme.palette.mode === 'dark'
+                                                  ? 'background.paper'
+                                                  : 'background.default'
+                                              }}
+                                            />
+                                          </TableCell>
+                                        </TableRow>
+                                      ))}
+                                    </TableBody>
+                                  </Table>
+                                </TableContainer>
+                              </Box>
+                            </Collapse>
+                          </Card>
+                        );
+                      })}
+                    </Box>
+
+                    <Box mt={2} display="flex" justifyContent="space-between" alignItems="center">
                       <Typography variant="body2" color="primary">
                         {configuracao.itensSelecionados.length} de {itensGuia.length} itens selecionados
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {itensAgrupados.length} produtos • {produtosExpandidos.size} expandidos
                       </Typography>
                     </Box>
                   </>
@@ -533,6 +835,128 @@ const ConfiguracaoEntrega: React.FC = () => {
             </CardContent>
           </Card>
         )}
+
+        {/* Modal de Visualização por Escola */}
+        <Dialog
+          open={modalVisualizacaoAberto}
+          onClose={() => setModalVisualizacaoAberto(false)}
+          maxWidth="lg"
+          fullWidth
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+            <Box>
+              <Typography variant="h6">
+                Visualização por Escola
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Dados filtrados conforme configuração atual
+              </Typography>
+            </Box>
+            <IconButton onClick={() => setModalVisualizacaoAberto(false)}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
+
+          <Box sx={{ p: 2, maxHeight: '70vh', overflow: 'auto' }}>
+            {dadosEscolas.length === 0 ? (
+              <Alert severity="info">
+                Nenhuma escola encontrada com os filtros aplicados
+              </Alert>
+            ) : (
+              <Grid container spacing={2}>
+                {dadosEscolas.map((escola) => (
+                  <Grid item xs={12} md={6} key={escola.escola_id}>
+                    <Card sx={{ height: '100%' }}>
+                      <CardContent>
+                        <Box display="flex" alignItems="center" gap={1} mb={2}>
+                          <SchoolIcon color="primary" />
+                          <Box flex={1}>
+                            <Typography variant="h6" fontWeight="bold">
+                              {escola.escola_nome}
+                            </Typography>
+                            {escola.escola_endereco && (
+                              <Typography variant="body2" color="text.secondary">
+                                📍 {escola.escola_endereco}
+                              </Typography>
+                            )}
+                            {escola.rota_id && (
+                              <Typography variant="caption" color="text.secondary">
+                                🚚 Rota: {rotas.find(r => r.id === escola.rota_id)?.nome || `ID ${escola.rota_id}`}
+                              </Typography>
+                            )}
+                          </Box>
+                        </Box>
+
+                        <Box display="flex" gap={1} mb={2}>
+                          <Chip
+                            label={`${escola.total_itens} itens`}
+                            size="small"
+                            color="primary"
+                            variant="outlined"
+                          />
+                          <Chip
+                            label={`${escola.produtos_unicos} produtos`}
+                            size="small"
+                            color="secondary"
+                            variant="outlined"
+                          />
+                        </Box>
+
+                        <Divider sx={{ my: 2 }} />
+
+                        <Typography variant="subtitle2" gutterBottom>
+                          Itens para Entrega:
+                        </Typography>
+
+                        <TableContainer component={Paper} sx={{ maxHeight: 300 }}>
+                          <Table size="small">
+                            <TableHead>
+                              <TableRow>
+                                <TableCell>Produto</TableCell>
+                                <TableCell align="right">Qtd</TableCell>
+                                <TableCell>Lote</TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {escola.itens.map((item: any) => (
+                                <TableRow key={item.id}>
+                                  <TableCell>
+                                    <Typography variant="body2" fontWeight="medium">
+                                      {item.produto_nome}
+                                    </Typography>
+                                  </TableCell>
+                                  <TableCell align="right">
+                                    <Typography variant="body2">
+                                      {(Number(item.quantidade) || 0).toFixed(3)} {item.unidade}
+                                    </Typography>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Chip
+                                      label={item.lote || 'S/L'}
+                                      size="small"
+                                      variant="outlined"
+                                      sx={{ fontSize: '0.7rem', height: 20 }}
+                                    />
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+          </Box>
+
+          <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
+            <Typography variant="body2" color="text.secondary" textAlign="center">
+              {dadosEscolas.length} escola(s) • {dadosEscolas.reduce((sum, e) => sum + e.total_itens, 0)} itens totais
+            </Typography>
+          </Box>
+        </Dialog>
       </Box>
     </Container>
   );

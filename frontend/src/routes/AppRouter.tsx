@@ -48,6 +48,7 @@ const CardapioRefeicoes = lazy(() => import("../pages/CardapioRefeicoes"));
 const GerarDemanda = lazy(() => import("../pages/GerarDemanda"));
 const Fornecedores = lazy(() => import("../pages/Fornecedores"));
 const FornecedorDetalhe = lazy(() => import("../pages/FornecedorDetalhe"));
+const VisualizacaoEntregas = lazy(() => import("../pages/VisualizacaoEntregas"));
 const ItensFornecedor = lazy(() => import("../pages/ItensFornecedor"));
 const Contratos = lazy(() => import("../pages/Contratos"));
 const DemandasLista = lazy(() => import("../pages/DemandasLista"));
@@ -65,8 +66,6 @@ const DashboardConsistencia = lazy(() => import("../components/DashboardConsiste
 const GuiasDemanda = lazy(() => import("../pages/GuiasDemanda"));
 const GuiaDetalhe = lazy(() => import("../pages/GuiaDetalhe"));
 const Entregas = lazy(() => import("../pages/Entregas"));
-const PlanejamentoEntregas = lazy(() => import("../pages/PlanejamentoEntregas"));
-const PlanejamentoEntregasAvancado = lazy(() => import("../pages/PlanejamentoEntregasAvancado"));
 const ConfiguracaoEntrega = lazy(() => import("../pages/ConfiguracaoEntrega"));
 const GestaoRotas = lazy(() => import("../pages/GestaoRotas"));
 const Pedidos = lazy(() => import("../pages/Pedidos"));
@@ -240,16 +239,12 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
               element={<LazyRoute><Entregas /></LazyRoute>}
             />
             <Route
-              path="/planejamento-entregas"
-              element={<LazyRoute><PlanejamentoEntregas /></LazyRoute>}
-            />
-            <Route
-              path="/planejamento-entregas-avancado"
-              element={<LazyRoute><PlanejamentoEntregasAvancado /></LazyRoute>}
-            />
-            <Route
               path="/configuracao-entrega"
               element={<LazyRoute><ConfiguracaoEntrega /></LazyRoute>}
+            />
+            <Route
+              path="/visualizacao-entregas"
+              element={<LazyRoute><VisualizacaoEntregas /></LazyRoute>}
             />
             <Route
               path="/gestao-rotas"

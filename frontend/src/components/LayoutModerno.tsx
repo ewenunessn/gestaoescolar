@@ -87,8 +87,6 @@ const menuConfig = [
     items: [
       { text: "Guias de Demanda", icon: <ListAlt />, path: "/guias-demanda" },
       { text: "Gestão de Rotas", icon: <Business />, path: "/gestao-rotas", badge: "Novo!", badgeColor: "info" },
-      { text: "Planejamento de Entregas", icon: <Assignment />, path: "/planejamento-entregas", badge: "Novo!", badgeColor: "primary" },
-      { text: "Planejamento Avançado", icon: <Assignment />, path: "/planejamento-entregas-avancado", badge: "Beta!", badgeColor: "warning" },
       { text: "Configuração de Entrega", icon: <Settings />, path: "/configuracao-entrega", badge: "Novo!", badgeColor: "success" },
       { text: "Entregas", icon: <LocalShipping />, path: "/entregas", badge: "Novo!", badgeColor: "success" },
     ],
