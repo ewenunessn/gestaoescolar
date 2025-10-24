@@ -98,8 +98,8 @@ const baseTheme = {
         root: ({ theme }) => ({
           borderRadius: '12px',
           boxShadow: 'none',
-          border: theme.palette.mode === 'light' 
-            ? '1px solid #e2e8f0' 
+          border: theme.palette.mode === 'light'
+            ? '1px solid #e2e8f0'
             : '1px solid #374151',
         }),
       },
@@ -109,8 +109,8 @@ const baseTheme = {
         root: ({ theme }) => ({
           backgroundImage: 'none',
           boxShadow: 'none',
-          border: theme.palette.mode === 'light' 
-            ? '1px solid #e2e8f0' 
+          border: theme.palette.mode === 'light'
+            ? '1px solid #e2e8f0'
             : '1px solid #374151',
         }),
       },
@@ -161,8 +161,8 @@ const baseTheme = {
       styleOverrides: {
         root: ({ theme }) => ({
           '& .MuiTableCell-root': {
-            borderBottom: theme.palette.mode === 'light' 
-              ? '1px solid #e2e8f0' 
+            borderBottom: theme.palette.mode === 'light'
+              ? '1px solid #e2e8f0'
               : '1px solid #374151',
           },
         }),
@@ -172,12 +172,12 @@ const baseTheme = {
       styleOverrides: {
         root: ({ theme }) => ({
           '& .MuiTableCell-root': {
-            borderBottom: theme.palette.mode === 'light' 
-              ? '2px solid #cbd5e1' 
+            borderBottom: theme.palette.mode === 'light'
+              ? '2px solid #cbd5e1'
               : '2px solid #4b5563',
             fontWeight: 600,
-            backgroundColor: theme.palette.mode === 'light' 
-              ? '#f8fafc' 
+            backgroundColor: theme.palette.mode === 'light'
+              ? '#f8fafc'
               : '#1f2937',
           },
         }),
@@ -187,13 +187,13 @@ const baseTheme = {
       styleOverrides: {
         root: ({ theme }) => ({
           '&:hover': {
-            backgroundColor: theme.palette.mode === 'light' 
-              ? 'rgba(37, 99, 235, 0.04)' 
+            backgroundColor: theme.palette.mode === 'light'
+              ? 'rgba(37, 99, 235, 0.04)'
               : 'rgba(229, 231, 235, 0.08)',
           },
           '&:nth-of-type(even)': {
-            backgroundColor: theme.palette.mode === 'light' 
-              ? '#f9fafb' 
+            backgroundColor: theme.palette.mode === 'light'
+              ? '#f9fafb'
               : '#1a1a1a',
           },
         }),
@@ -202,8 +202,8 @@ const baseTheme = {
     MuiTableCell: {
       styleOverrides: {
         root: ({ theme }) => ({
-          borderRight: theme.palette.mode === 'light' 
-            ? '1px solid #f1f5f9' 
+          borderRight: theme.palette.mode === 'light'
+            ? '1px solid #f1f5f9'
             : '1px solid #2d3748',
           '&:last-child': {
             borderRight: 'none',
