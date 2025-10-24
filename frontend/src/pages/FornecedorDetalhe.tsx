@@ -22,6 +22,7 @@ import {
 } from "@mui/icons-material";
 import { buscarFornecedor } from "../services/fornecedores";
 import { listarContratos } from "../services/contratos";
+import PageBreadcrumbs from '../components/PageBreadcrumbs';
 
 // --- Interfaces ---
 interface Fornecedor {
@@ -58,15 +59,12 @@ const getStatusContrato = (contrato: Contrato) => {
 };
 
 // --- Subcomponentes de UI ---
-const PageHeader = ({ onBack, onEdit, onVerItens }) => (
+const PageHeader = ({ onEdit, onVerItens }) => (
     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2, mb: 3 }}>
         <Box>
             <Typography variant="h4" sx={{ fontWeight: 700, color: 'text.primary' }}>
                 Detalhes do Fornecedor
             </Typography>
-            <Button startIcon={<ArrowBackIcon />} onClick={onBack} sx={{ textTransform: 'none', color: 'text.secondary', p: 0, mt: 0.5 }}>
-                Voltar para lista de fornecedores
-            </Button>
         </Box>
         <Stack direction="row" spacing={2}>
             <Button variant="outlined" startIcon={<InventoryIcon />} onClick={onVerItens}>
@@ -129,7 +127,7 @@ export default function FornecedorDetalhe() {
   );
   
   const handleNovoContrato = useCallback(() => navigate(`/contratos/novo?fornecedor_id=${id}`), [navigate, id]);
-  const handleVerContrato = useCallback((contratoId: number) => navigate(`/contratos/${contratoId}`), [navigate]);
+  const handleVerContrato = useCallback((contratoId: number) => navigate(`/contratos/${contratoId}?from=fornecedor&fornecedor_id=${id}`), [navigate, id]);
   const handleEditarFornecedor = useCallback(() => navigate(`/fornecedores?edit=${id}`), [navigate, id]);
   const handleVerItens = useCallback(() => navigate(`/fornecedores/${id}/itens`), [navigate, id]);
 
@@ -140,7 +138,13 @@ export default function FornecedorDetalhe() {
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
-        <PageHeader onBack={() => navigate("/fornecedores")} onEdit={handleEditarFornecedor} onVerItens={handleVerItens} />
+        <PageBreadcrumbs 
+          items={[
+            { label: 'Fornecedores', path: '/fornecedores', icon: <BusinessIcon fontSize="small" /> },
+            { label: fornecedor?.nome || 'Detalhes do Fornecedor' }
+          ]}
+        />
+        <PageHeader onEdit={handleEditarFornecedor} onVerItens={handleVerItens} />
 
         <Grid container spacing={4}>
           <Grid item xs={12} lg={8}>

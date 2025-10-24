@@ -29,17 +29,16 @@ import {
   adicionarEscolaModalidade, editarEscolaModalidade, removerEscolaModalidade,
 } from '../services/escolas';
 import { listarModalidades } from '../services/modalidades';
-import BackButton from '../components/BackButton';
+import PageBreadcrumbs from '../components/PageBreadcrumbs';
 
 // --- Interfaces ---
 // (As interfaces originais foram mantidas)
 
 // --- Subcomponentes de UI ---
 
-const PageHeader = ({ escola, totalAlunos, isEditing, onEdit, onSave, onCancel, onEstoque, onDelete, onBack, salvando }) => (
+const PageHeader = ({ escola, totalAlunos, isEditing, onEdit, onSave, onCancel, onEstoque, onDelete, salvando }) => (
     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2, mb: 4 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <BackButton to="/escolas" />
+        <Box>
             <Box>
                 <Typography variant="h4" sx={{ fontWeight: 700, color: 'text.primary' }}>
                     {escola?.nome}
@@ -254,6 +253,12 @@ const EscolaDetalhesPage = () => {
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
         <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+            <PageBreadcrumbs 
+              items={[
+                { label: 'Escolas', path: '/escolas', icon: <SchoolIcon fontSize="small" /> },
+                { label: escola?.nome || 'Detalhes da Escola' }
+              ]}
+            />
             {successMessage && <Alert severity="success" onClose={() => setSuccessMessage(null)} sx={{ mb: 2 }}>{successMessage}</Alert>}
             {error && <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>{error}</Alert>}
             
@@ -261,7 +266,7 @@ const EscolaDetalhesPage = () => {
                 escola={escola} totalAlunos={totalAlunos} isEditing={isEditing}
                 onEdit={() => setIsEditing(true)} onSave={handleSaveEscola} onCancel={handleCancelEdit}
                 onEstoque={() => navigate(`/escolas/${id}/estoque`)} onDelete={() => setDeleteDialogOpen(true)} 
-                onBack={() => navigate('/escolas')} salvando={isSaving}
+                salvando={isSaving}
             />
 
             <EscolaInfoCard isEditing={isEditing} formData={formData} setFormData={setFormData} />

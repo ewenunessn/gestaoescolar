@@ -24,7 +24,7 @@ export const guiaController = {
   // Criar nova guia
   async criarGuia(req: Request, res: Response) {
     try {
-      const { mes, ano, observacao } = req.body;
+      const { mes, ano, nome, observacao } = req.body;
 
       // Verificar se já existe uma guia para o mesmo mês/ano
       const guias = await GuiaModel.listarGuias();
@@ -40,6 +40,7 @@ export const guiaController = {
       const guia = await GuiaModel.criarGuia({
         mes,
         ano,
+        nome,
         observacao
       });
 

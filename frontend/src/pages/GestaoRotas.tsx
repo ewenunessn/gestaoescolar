@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Box,
     Typography,
@@ -51,7 +52,7 @@ import {
     Route as RouteIcon,
     School as SchoolIcon,
     ColorLens as ColorIcon,
-    DragIndicator as DragIcon,
+
     Save as SaveIcon,
     Cancel as CancelIcon,
     ArrowUpward as ArrowUpIcon,
@@ -64,133 +65,26 @@ import {
     MoreVert,
     Info
 } from '@mui/icons-material';
-import {
-    DndContext,
-    closestCenter,
-    KeyboardSensor,
-    PointerSensor,
-    useSensor,
-    useSensors,
-    DragEndEvent,
-} from '@dnd-kit/core';
-import {
-    arrayMove,
-    SortableContext,
-    sortableKeyboardCoordinates,
-    verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import {
-    useSortable,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+
 import { rotaService } from '../modules/entregas/services/rotaService';
-import { escolaService } from '../services/escolaService';
-import { RotaEntrega, RotaEscola, CreateRotaData } from '../modules/entregas/types/rota';
+import { RotaEntrega, CreateRotaData } from '../modules/entregas/types/rota';
+import PageBreadcrumbs from '../components/PageBreadcrumbs';
 
-// Componente para item arrastável da escola
-interface SortableEscolaItemProps {
-    escola: RotaEscola;
-    index: number;
-    onRemove: (escola: any) => void;
-}
 
-const SortableEscolaItem: React.FC<SortableEscolaItemProps> = ({ escola, index, onRemove }) => {
-    const {
-        attributes,
-        listeners,
-        setNodeRef,
-        transform,
-        transition,
-        isDragging,
-    } = useSortable({ id: escola.id });
-
-    const style = {
-        transform: CSS.Transform.toString(transform),
-        transition,
-        opacity: isDragging ? 0.5 : 1,
-    };
-
-    return (
-        <Card
-            ref={setNodeRef}
-            style={style}
-            sx={{
-                mb: 1,
-                border: '2px solid',
-                borderColor: isDragging ? 'primary.main' : 'grey.300',
-                bgcolor: isDragging ? 'primary.50' : 'background.paper',
-                cursor: isDragging ? 'grabbing' : 'grab',
-                '&:hover': {
-                    borderColor: 'primary.main',
-                    bgcolor: 'primary.50',
-                }
-            }}
-        >
-            <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-                <Box display="flex" alignItems="center" gap={2}>
-                    <Box
-                        {...attributes}
-                        {...listeners}
-                        sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            cursor: 'grab',
-                            '&:active': { cursor: 'grabbing' }
-                        }}
-                    >
-                        <DragIcon color="action" />
-                    </Box>
-
-                    <Chip
-                        label={index + 1}
-                        size="small"
-                        color="primary"
-                        sx={{ minWidth: 32, fontWeight: 'bold' }}
-                    />
-
-                    <Box flexGrow={1}>
-                        <Typography variant="subtitle2" fontWeight="bold">
-                            {escola.escola_nome}
-                        </Typography>
-                        {escola.escola_endereco && (
-                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-                                📍 {escola.escola_endereco}
-                            </Typography>
-                        )}
-                    </Box>
-
-                    <Tooltip title="Remover da rota">
-                        <IconButton
-                            size="small"
-                            color="error"
-                            onClick={() => onRemove({ id: escola.escola_id })}
-                        >
-                            <DeleteIcon />
-                        </IconButton>
-                    </Tooltip>
-                </Box>
-            </CardContent>
-        </Card>
-    );
-};
 
 const GestaoRotas: React.FC = () => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+    const navigate = useNavigate();
 
     const [rotas, setRotas] = useState<RotaEntrega[]>([]);
-    const [escolas, setEscolas] = useState<any[]>([]);
-    const [escolasDisponiveis, setEscolasDisponiveis] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
     // Estados dos modais
     const [modalRotaAberto, setModalRotaAberto] = useState(false);
-    const [modalEscolasAberto, setModalEscolasAberto] = useState(false);
     const [rotaEditando, setRotaEditando] = useState<RotaEntrega | null>(null);
-    const [rotaSelecionada, setRotaSelecionada] = useState<RotaEntrega | null>(null);
-    const [escolasRota, setEscolasRota] = useState<RotaEscola[]>([]);
 
     // Estados de filtros e busca
     const [searchTerm, setSearchTerm] = useState('');
@@ -212,10 +106,8 @@ const GestaoRotas: React.FC = () => {
         descricao: '',
         cor: '#1976d2'
     });
-    const [escolasSelecionadas, setEscolasSelecionadas] = useState<Set<number>>(new Set());
     const [salvando, setSalvando] = useState(false);
-    const [filtroEscolas, setFiltroEscolas] = useState('');
-    const inputPesquisaRef = React.useRef<HTMLInputElement>(null);
+
 
     // Cores predefinidas para as rotas
     const coresPredefinidas = [
@@ -224,27 +116,14 @@ const GestaoRotas: React.FC = () => {
         '#00796b', '#5d4037', '#455a64', '#e64a19', '#303f9f'
     ];
 
-    // Sensores para drag and drop
-    const sensors = useSensors(
-        useSensor(PointerSensor),
-        useSensor(KeyboardSensor, {
-            coordinateGetter: sortableKeyboardCoordinates,
-        })
-    );
+
 
     const loadRotas = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
-            const [rotasData, escolasData, escolasDisponiveisData] = await Promise.all([
-                rotaService.listarRotas(),
-                escolaService.listarEscolas(),
-                rotaService.listarEscolasDisponiveis()
-            ]);
-
+            const rotasData = await rotaService.listarRotas();
             setRotas(Array.isArray(rotasData) ? rotasData : []);
-            setEscolas(Array.isArray(escolasData) ? escolasData : []);
-            setEscolasDisponiveis(escolasDisponiveisData);
         } catch (err: any) {
             setError('Erro ao carregar rotas. Tente novamente.');
             setRotas([]);
@@ -262,18 +141,7 @@ const GestaoRotas: React.FC = () => {
         setHasActiveFilters(hasFilters);
     }, [selectedStatus, searchTerm]);
 
-    // Atalho de teclado para focar no campo de pesquisa
-    useEffect(() => {
-        const handleKeyDown = (event: KeyboardEvent) => {
-            if ((event.ctrlKey || event.metaKey) && event.key === 'f' && modalEscolasAberto) {
-                event.preventDefault();
-                inputPesquisaRef.current?.focus();
-            }
-        };
 
-        document.addEventListener('keydown', handleKeyDown);
-        return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [modalEscolasAberto]);
 
     const filteredRotas = useMemo(() => {
         return rotas.filter(rota => {
@@ -376,209 +244,7 @@ const GestaoRotas: React.FC = () => {
         }
     };
 
-    const abrirModalEscolas = async (rota: RotaEntrega) => {
-        try {
-            setRotaSelecionada(rota);
-            setLoading(true);
 
-            const [escolasRotaData, escolasDisponiveisData] = await Promise.all([
-                rotaService.listarEscolasRota(rota.id),
-                rotaService.listarEscolasDisponiveis()
-            ]);
-
-            setEscolasRota(escolasRotaData);
-            setEscolasDisponiveis(escolasDisponiveisData);
-
-            // Marcar escolas já associadas
-            const escolasIds = new Set(escolasRotaData.map(er => er.escola_id));
-            setEscolasSelecionadas(escolasIds);
-
-            setModalEscolasAberto(true);
-        } catch (err) {
-            console.error('Erro ao carregar escolas da rota:', err);
-            setError('Erro ao carregar escolas da rota');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const fecharModalEscolas = () => {
-        setModalEscolasAberto(false);
-        setRotaSelecionada(null);
-        setEscolasRota([]);
-        setEscolasSelecionadas(new Set());
-        setFiltroEscolas('');
-    };
-
-    const escolasDisponiveisFiltradas = escolasDisponiveis.filter(escola => {
-        if (!filtroEscolas.trim()) return true;
-
-        const termo = filtroEscolas.toLowerCase().trim();
-        return (
-            escola.nome?.toLowerCase().includes(termo) ||
-            escola.endereco?.toLowerCase().includes(termo) ||
-            escola.modalidades?.toLowerCase().includes(termo)
-        );
-    });
-
-    const destacarTexto = (texto: string, termo: string) => {
-        if (!termo.trim()) return texto;
-
-        const regex = new RegExp(`(${termo})`, 'gi');
-        const partes = texto.split(regex);
-
-        return partes.map((parte, index) =>
-            regex.test(parte) ? (
-                <Box component="span" key={index} sx={{ bgcolor: 'yellow', fontWeight: 'bold' }}>
-                    {parte}
-                </Box>
-            ) : parte
-        );
-    };
-
-
-
-    const toggleEscolaSelecao = (escolaId: number) => {
-        const novasSelecoes = new Set(escolasSelecionadas);
-        if (novasSelecoes.has(escolaId)) {
-            novasSelecoes.delete(escolaId);
-        } else {
-            novasSelecoes.add(escolaId);
-        }
-        setEscolasSelecionadas(novasSelecoes);
-    };
-
-    const adicionarEscolaRota = (escola: any) => {
-        if (!rotaSelecionada) return;
-
-        // Adicionar escola à lista da rota com a próxima ordem disponível
-        const novaOrdem = escolasRota.length + 1;
-        const novaEscolaRota: RotaEscola = {
-            id: Date.now(), // ID temporário
-            rota_id: rotaSelecionada.id,
-            escola_id: escola.id,
-            ordem: novaOrdem,
-            created_at: new Date().toISOString(),
-            escola_nome: escola.nome,
-            escola_endereco: escola.endereco
-        };
-
-        setEscolasRota(prev => [...prev, novaEscolaRota]);
-        setEscolasSelecionadas(prev => new Set([...prev, escola.id]));
-
-        // Remover escola da lista de disponíveis
-        setEscolasDisponiveis(prev => prev.filter(e => e.id !== escola.id));
-    };
-
-    const removerEscolaRota = (escola: any) => {
-        setEscolasRota(prev => {
-            const novasEscolas = prev.filter(er => er.escola_id !== escola.id);
-            // Reordenar as posições
-            return novasEscolas.map((er, index) => ({
-                ...er,
-                ordem: index + 1
-            }));
-        });
-        setEscolasSelecionadas(prev => {
-            const novas = new Set(prev);
-            novas.delete(escola.id);
-            return novas;
-        });
-
-        // Adicionar escola de volta às disponíveis
-        const escolaCompleta = escolas.find(e => e.id === escola.id);
-        if (escolaCompleta) {
-            setEscolasDisponiveis(prev => [...prev, escolaCompleta].sort((a, b) => a.nome.localeCompare(b.nome)));
-        }
-    };
-
-    const moverEscola = (index: number, direcao: 'up' | 'down') => {
-        const escolasOrdenadas = [...escolasRota].sort((a, b) => a.ordem - b.ordem);
-
-        if (direcao === 'up' && index > 0) {
-            // Trocar com o anterior
-            [escolasOrdenadas[index], escolasOrdenadas[index - 1]] =
-                [escolasOrdenadas[index - 1], escolasOrdenadas[index]];
-        } else if (direcao === 'down' && index < escolasOrdenadas.length - 1) {
-            // Trocar com o próximo
-            [escolasOrdenadas[index], escolasOrdenadas[index + 1]] =
-                [escolasOrdenadas[index + 1], escolasOrdenadas[index]];
-        }
-
-        // Atualizar as ordens
-        const escolasAtualizadas = escolasOrdenadas.map((escola, idx) => ({
-            ...escola,
-            ordem: idx + 1
-        }));
-
-        setEscolasRota(escolasAtualizadas);
-    };
-
-    const handleDragEnd = (event: DragEndEvent) => {
-        const { active, over } = event;
-
-        if (active.id !== over?.id) {
-            setEscolasRota((items) => {
-                const escolasOrdenadas = [...items].sort((a, b) => a.ordem - b.ordem);
-                const oldIndex = escolasOrdenadas.findIndex(item => item.id === active.id);
-                const newIndex = escolasOrdenadas.findIndex(item => item.id === over?.id);
-
-                const reorderedItems = arrayMove(escolasOrdenadas, oldIndex, newIndex);
-
-                // Atualizar as ordens
-                return reorderedItems.map((escola, idx) => ({
-                    ...escola,
-                    ordem: idx + 1
-                }));
-            });
-        }
-    };
-
-    const salvarEscolasRotaOrdenadas = async () => {
-        if (!rotaSelecionada) return;
-
-        try {
-            setSalvando(true);
-
-            // Primeiro, remover todas as escolas da rota
-            const escolasAtuaisResponse = await rotaService.listarEscolasRota(rotaSelecionada.id);
-            for (const escolaAtual of escolasAtuaisResponse) {
-                await rotaService.removerEscolaRota(rotaSelecionada.id, escolaAtual.escola_id);
-            }
-
-            // Depois, adicionar as escolas na ordem correta usando o método otimizado
-            if (escolasRota.length > 0) {
-                const escolasOrdenadas = [...escolasRota].sort((a, b) => a.ordem - b.ordem);
-
-                // Primeiro adicionar todas as escolas
-                for (const escolaRota of escolasOrdenadas) {
-                    await rotaService.adicionarEscolaRota(
-                        rotaSelecionada.id,
-                        escolaRota.escola_id,
-                        escolaRota.ordem
-                    );
-                }
-
-                // Depois atualizar a ordem usando o método otimizado
-                const escolasOrdem = escolasOrdenadas.map(escola => ({
-                    escolaId: escola.escola_id,
-                    ordem: escola.ordem
-                }));
-
-                await rotaService.atualizarOrdemEscolas(rotaSelecionada.id, escolasOrdem);
-            }
-
-            await loadRotas();
-            setSuccessMessage('Escolas da rota atualizadas com sucesso!');
-            fecharModalEscolas();
-
-        } catch (err) {
-            console.error('Erro ao salvar escolas da rota:', err);
-            setError('Erro ao salvar escolas da rota');
-        } finally {
-            setSalvando(false);
-        }
-    };
 
     const FiltersContent = () => (
         <Box sx={{ bgcolor: 'background.paper', borderRadius: '16px', p: 3 }}>
@@ -647,6 +313,11 @@ const GestaoRotas: React.FC = () => {
             )}
 
             <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+                <PageBreadcrumbs
+                    items={[
+                        { label: 'Gestão de Rotas', icon: <RouteIcon fontSize="small" /> }
+                    ]}
+                />
                 <Typography variant="h4" sx={{ mb: 3, fontWeight: 700, color: 'text.primary' }}>
                     Gestão de Rotas de Entrega
                 </Typography>
@@ -792,7 +463,7 @@ const GestaoRotas: React.FC = () => {
                                                     <Tooltip title="Gerenciar Escolas">
                                                         <IconButton
                                                             size="small"
-                                                            onClick={() => abrirModalEscolas(rota)}
+                                                            onClick={() => navigate(`/gestao-rotas/${rota.id}/escolas`)}
                                                             color="primary"
                                                         >
                                                             <SchoolIcon fontSize="small" />
@@ -917,267 +588,8 @@ const GestaoRotas: React.FC = () => {
                     </DialogActions>
                 </Dialog>
 
-                {/* Modal de Escolas */}
-                <Dialog open={modalEscolasAberto} onClose={fecharModalEscolas} maxWidth="lg" fullWidth>
-                    <DialogTitle>
-                        <Box display="flex" alignItems="center" gap={2}>
-                            {rotaSelecionada && (
-                                <>
-                                    <Avatar sx={{ bgcolor: rotaSelecionada.cor }}>
-                                        <RouteIcon />
-                                    </Avatar>
-                                    <Box>
-                                        <Typography variant="h6">
-                                            Gerenciar Escolas - {rotaSelecionada.nome}
-                                        </Typography>
-                                        <Typography variant="body2" color="text.secondary">
-                                            Arraste escolas da lista disponível para a rota e organize a ordem de visita
-                                        </Typography>
-                                    </Box>
-                                </>
-                            )}
-                        </Box>
-                    </DialogTitle>
 
-                    <DialogContent sx={{ height: '70vh' }}>
-                        <Grid container spacing={2} sx={{ height: '100%' }}>
-                            {/* Card de Escolas Disponíveis */}
-                            <Grid item xs={12} md={6}>
-                                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                                    <CardContent sx={{ pb: 1 }}>
-                                        <Box display="flex" alignItems="center" gap={1} mb={2}>
-                                            <SchoolIcon color="action" />
-                                            <Typography variant="h6">
-                                                Escolas Disponíveis
-                                            </Typography>
-                                            <Chip
-                                                label={escolasDisponiveisFiltradas.length}
-                                                size="small"
-                                                color="default"
-                                            />
-                                            {filtroEscolas && (
-                                                <Chip
-                                                    label={`de ${escolasDisponiveis.length}`}
-                                                    size="small"
-                                                    variant="outlined"
-                                                    color="primary"
-                                                />
-                                            )}
-                                        </Box>
 
-                                        <TextField
-                                            fullWidth
-                                            size="small"
-                                            inputRef={inputPesquisaRef}
-                                            placeholder="Pesquisar escolas... (Ctrl+F)"
-                                            value={filtroEscolas}
-                                            onChange={(e) => setFiltroEscolas(e.target.value)}
-                                            sx={{ mb: 2 }}
-                                            InputProps={{
-                                                startAdornment: (
-                                                    <Box sx={{ mr: 1, display: 'flex', alignItems: 'center' }}>
-                                                        🔍
-                                                    </Box>
-                                                ),
-                                                endAdornment: filtroEscolas && (
-                                                    <Tooltip title="Limpar pesquisa">
-                                                        <IconButton
-                                                            size="small"
-                                                            onClick={() => setFiltroEscolas('')}
-                                                            sx={{ p: 0.5 }}
-                                                        >
-                                                            <CancelIcon fontSize="small" />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                )
-                                            }}
-                                        />
-
-                                        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                                            <Typography variant="body2" color="text.secondary">
-                                                {filtroEscolas
-                                                    ? `${escolasDisponiveisFiltradas.length} escola(s) encontrada(s)`
-                                                    : 'Clique nas escolas para adicionar à rota'
-                                                }
-                                            </Typography>
-                                            {filtroEscolas && escolasDisponiveisFiltradas.length > 0 && (
-                                                <Button
-                                                    size="small"
-                                                    variant="outlined"
-                                                    onClick={() => {
-                                                        escolasDisponiveisFiltradas.forEach(escola => {
-                                                            adicionarEscolaRota(escola);
-                                                        });
-                                                        setFiltroEscolas('');
-                                                    }}
-                                                    sx={{ fontSize: '0.75rem' }}
-                                                >
-                                                    Adicionar Todas ({escolasDisponiveisFiltradas.length})
-                                                </Button>
-                                            )}
-                                        </Box>
-                                    </CardContent>
-
-                                    <Box sx={{ flexGrow: 1, overflow: 'auto', px: 2, pb: 2 }}>
-                                        {escolasDisponiveisFiltradas
-                                            .map((escola) => (
-                                                <Card
-                                                    key={escola.id}
-                                                    sx={{
-                                                        mb: 1,
-                                                        cursor: 'pointer',
-                                                        border: '2px solid transparent',
-                                                        position: 'relative',
-                                                        '&:hover': {
-                                                            borderColor: 'primary.main',
-                                                            bgcolor: 'primary.50',
-                                                            transform: 'translateX(4px)',
-                                                            transition: 'all 0.2s',
-                                                            '& .add-icon': {
-                                                                opacity: 1
-                                                            }
-                                                        }
-                                                    }}
-                                                    onClick={() => adicionarEscolaRota(escola)}
-                                                >
-                                                    <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-                                                        <Box display="flex" alignItems="center" gap={2}>
-                                                            <Box flexGrow={1}>
-                                                                <Typography variant="subtitle2" fontWeight="bold">
-                                                                    {destacarTexto(escola.nome, filtroEscolas)}
-                                                                </Typography>
-                                                                {escola.endereco && (
-                                                                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-                                                                        📍 {destacarTexto(escola.endereco, filtroEscolas)}
-                                                                    </Typography>
-                                                                )}
-                                                                {escola.modalidades && (
-                                                                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-                                                                        🎓 {destacarTexto(escola.modalidades, filtroEscolas)}
-                                                                    </Typography>
-                                                                )}
-                                                            </Box>
-                                                            <AddIcon
-                                                                className="add-icon"
-                                                                sx={{
-                                                                    opacity: 0.3,
-                                                                    transition: 'opacity 0.2s',
-                                                                    color: 'primary.main'
-                                                                }}
-                                                            />
-                                                        </Box>
-                                                    </CardContent>
-                                                </Card>
-                                            ))}
-
-                                        {escolasDisponiveisFiltradas.length === 0 && (
-                                            <Box textAlign="center" py={4}>
-                                                {filtroEscolas ? (
-                                                    <>
-                                                        <Typography variant="body2" color="text.secondary">
-                                                            Nenhuma escola encontrada para "{filtroEscolas}"
-                                                        </Typography>
-                                                        <Button
-                                                            size="small"
-                                                            onClick={() => setFiltroEscolas('')}
-                                                            sx={{ mt: 1 }}
-                                                        >
-                                                            Limpar filtro
-                                                        </Button>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <Typography variant="body2" color="text.secondary">
-                                                            Todas as escolas já estão associadas a alguma rota
-                                                        </Typography>
-                                                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                                                            Uma escola não pode estar em duas rotas ao mesmo tempo
-                                                        </Typography>
-                                                    </>
-                                                )}
-                                            </Box>
-                                        )}
-                                    </Box>
-                                </Card>
-                            </Grid>
-
-                            {/* Card de Escolas na Rota */}
-                            <Grid item xs={12} md={6}>
-                                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'primary.50' }}>
-                                    <CardContent sx={{ pb: 1 }}>
-                                        <Box display="flex" alignItems="center" gap={1} mb={2}>
-                                            <RouteIcon color="primary" />
-                                            <Typography variant="h6" color="primary">
-                                                Escolas na Rota
-                                            </Typography>
-                                            <Chip
-                                                label={escolasRota.length}
-                                                size="small"
-                                                color="primary"
-                                            />
-                                        </Box>
-                                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                                            Ordem de visita - Arraste e solte para reordenar
-                                        </Typography>
-                                        <Alert severity="info" sx={{ mb: 2, fontSize: '0.75rem' }}>
-                                            💡 Dica: Clique e arraste o ícone ⋮⋮ para reordenar as escolas na rota
-                                        </Alert>
-                                    </CardContent>
-
-                                    <Box sx={{ flexGrow: 1, overflow: 'auto', px: 2, pb: 2 }}>
-                                        <DndContext
-                                            sensors={sensors}
-                                            collisionDetection={closestCenter}
-                                            onDragEnd={handleDragEnd}
-                                        >
-                                            <SortableContext
-                                                items={escolasRota.sort((a, b) => a.ordem - b.ordem).map(e => e.id)}
-                                                strategy={verticalListSortingStrategy}
-                                            >
-                                                {escolasRota
-                                                    .sort((a, b) => a.ordem - b.ordem)
-                                                    .map((escolaRota, index) => (
-                                                        <SortableEscolaItem
-                                                            key={escolaRota.id}
-                                                            escola={escolaRota}
-                                                            index={index}
-                                                            onRemove={removerEscolaRota}
-                                                        />
-                                                    ))}
-                                            </SortableContext>
-                                        </DndContext>
-
-                                        {escolasRota.length === 0 && (
-                                            <Box textAlign="center" py={4}>
-                                                <RouteIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
-                                                <Typography variant="body2" color="text.secondary">
-                                                    Nenhuma escola na rota ainda
-                                                </Typography>
-                                                <Typography variant="body2" color="text.secondary">
-                                                    Clique nas escolas disponíveis para adicionar
-                                                </Typography>
-                                            </Box>
-                                        )}
-                                    </Box>
-                                </Card>
-                            </Grid>
-                        </Grid>
-                    </DialogContent>
-
-                    <DialogActions>
-                        <Button onClick={fecharModalEscolas} disabled={salvando}>
-                            Cancelar
-                        </Button>
-                        <Button
-                            onClick={salvarEscolasRotaOrdenadas}
-                            variant="contained"
-                            disabled={salvando}
-                            startIcon={salvando ? <CircularProgress size={20} /> : <SaveIcon />}
-                        >
-                            {salvando ? 'Salvando...' : `Salvar Rota (${escolasRota.length} escolas)`}
-                        </Button>
-                    </DialogActions>
-                </Dialog>
 
                 {/* Menu de Ações */}
                 <Menu

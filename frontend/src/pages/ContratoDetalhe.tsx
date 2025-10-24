@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   buscarContrato,
   editarContrato,
@@ -31,8 +31,10 @@ import {
   ReceiptLong as ReceiptLongIcon,
   ErrorOutline as ErrorOutlineIcon,
   ShoppingCart as ShoppingCartIcon,
-  MenuBook as MenuBookIcon
+  MenuBook as MenuBookIcon,
+  Description as DescriptionIcon
 } from "@mui/icons-material";
+import PageBreadcrumbs from '../components/PageBreadcrumbs';
 
 // --- Constantes e Funções Utilitárias (Fora do Componente) ---
 
@@ -56,15 +58,12 @@ const getStatusContrato = (contrato: any) => {
 
 // --- Subcomponentes de UI ---
 
-const PageHeader = ({ onBack, onEdit, onDelete }) => (
+const PageHeader = ({ onEdit, onDelete }) => (
     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2, mb: 3 }}>
         <Box>
             <Typography variant="h4" sx={{ fontWeight: 700, color: 'text.primary' }}>
                 Detalhes do Contrato
             </Typography>
-            <Button startIcon={<ArrowBackIcon />} onClick={onBack} sx={{ textTransform: 'none', color: 'text.secondary', p: 0, mt: 0.5 }}>
-                Voltar para lista de contratos
-            </Button>
         </Box>
         <Stack direction="row" spacing={1}>
             <Button variant="outlined" color="primary" startIcon={<EditIcon />} onClick={onEdit}>
@@ -121,6 +120,11 @@ const ContratoInfoCard = ({ contrato, fornecedor, valorTotal }) => {
 export default function ContratoDetalhe() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  
+  // Detectar de onde o usuário veio
+  const fromFornecedor = searchParams.get('from') === 'fornecedor';
+  const fornecedorId = searchParams.get('fornecedor_id');
 
   // Estados de dados
   const [contrato, setContrato] = useState<any>(null);
@@ -146,6 +150,15 @@ export default function ContratoDetalhe() {
     produtosContrato.reduce((total, produto) => total + (Number(produto.valor_total) || 0), 0),
     [produtosContrato]
   );
+
+  // Função para navegar de volta
+  const handleVoltar = useCallback(() => {
+    if (fromFornecedor && fornecedorId) {
+      navigate(`/fornecedores/${fornecedorId}`);
+    } else {
+      navigate('/contratos');
+    }
+  }, [navigate, fromFornecedor, fornecedorId]);
 
   const carregarDados = useCallback(async () => {
     if (!id || isNaN(Number(id))) {
@@ -285,10 +298,21 @@ export default function ContratoDetalhe() {
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
         <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+        <PageBreadcrumbs 
+          items={fromFornecedor && fornecedor ? [
+            { label: 'Fornecedores', path: '/fornecedores', icon: <BusinessIcon fontSize="small" /> },
+            { label: fornecedor.nome, path: `/fornecedores/${fornecedorId}` },
+            { label: contrato ? `Contrato ${contrato.numero}` : 'Detalhes do Contrato' }
+          ] : [
+            { label: 'Contratos', path: '/contratos', icon: <DescriptionIcon fontSize="small" /> },
+            { label: contrato ? `Contrato ${contrato.numero}` : 'Detalhes do Contrato' }
+          ]}
+          onBack={handleVoltar}
+        />
         
         {erro && <Alert severity="error" onClose={() => setErro("")} sx={{ mb: 3 }}>{erro}</Alert>}
 
-        <PageHeader onBack={() => navigate('/contratos')} onEdit={abrirModalEditarContrato} onDelete={confirmarRemoverContrato} />
+        <PageHeader onEdit={abrirModalEditarContrato} onDelete={confirmarRemoverContrato} />
 
         <ContratoInfoCard contrato={contrato} fornecedor={fornecedor} valorTotal={valorTotalContrato} />
 

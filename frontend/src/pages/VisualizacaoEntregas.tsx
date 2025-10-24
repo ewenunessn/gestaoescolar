@@ -37,10 +37,12 @@ import {
   LocationOn as LocationIcon,
   CheckCircle as CheckCircleIcon,
   RadioButtonUnchecked as RadioButtonUncheckedIcon,
-  Add as AddIcon
+  Add as AddIcon,
+  LocalShipping as LocalShippingIcon
 } from '@mui/icons-material';
 import { rotaService } from '../modules/entregas/services/rotaService';
 import { itemGuiaService, ItemGuia } from '../services/itemGuiaService';
+import PageBreadcrumbs from '../components/PageBreadcrumbs';
 import { RotaEntrega } from '../modules/entregas/types/rota';
 import AdicionarProdutoIndividual from '../components/AdicionarProdutoIndividual';
 import { guiaService } from '../services/guiaService';
@@ -303,6 +305,11 @@ const VisualizacaoEntregas: React.FC = () => {
     <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
       <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
+        <PageBreadcrumbs 
+          items={[
+            { label: 'Visualização de Entregas', icon: <LocalShippingIcon fontSize="small" /> }
+          ]}
+        />
         <Typography variant="h5" fontWeight="bold">
           Visualização de Entregas
         </Typography>

@@ -15,9 +15,10 @@ import {
   Alert,
   CircularProgress,
 } from "@mui/material";
-import { ArrowBack, Save } from "@mui/icons-material";
+import { ArrowBack, Save, Business as BusinessIcon, Description as DescriptionIcon } from "@mui/icons-material";
 import { listarFornecedores, buscarFornecedor } from "../services/fornecedores";
 import { criarContrato } from "../services/contratos";
+import PageBreadcrumbs from '../components/PageBreadcrumbs';
 
 interface Fornecedor {
   id: number;
@@ -159,6 +160,16 @@ export default function NovoContrato() {
 
   return (
     <Box>
+      <PageBreadcrumbs 
+        items={[
+          { label: fornecedorIdParam ? 'Fornecedores' : 'Contratos', 
+            path: fornecedorIdParam ? '/fornecedores' : '/contratos', 
+            icon: fornecedorIdParam ? <BusinessIcon fontSize="small" /> : <DescriptionIcon fontSize="small" /> },
+          ...(fornecedorIdParam && fornecedorSelecionado ? 
+            [{ label: fornecedorSelecionado.nome, path: `/fornecedores/${fornecedorIdParam}` }] : []),
+          { label: 'Novo Contrato' }
+        ]}
+      />
       {/* Header */}
       <Box
         sx={{

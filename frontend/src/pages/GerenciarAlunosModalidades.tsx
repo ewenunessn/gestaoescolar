@@ -5,10 +5,10 @@ import {
   TableHead, TableRow, TextField, CircularProgress, Alert, IconButton,
   Card, Tooltip, TablePagination, InputAdornment
 } from '@mui/material';
-import { Search as SearchIcon } from '@mui/icons-material';
+import { Search as SearchIcon, Category as CategoryIcon } from '@mui/icons-material';
 import { listarEscolas, listarEscolaModalidades, adicionarEscolaModalidade, editarEscolaModalidade, removerEscolaModalidade } from '../services/escolas';
 import { listarModalidades } from '../services/modalidades';
-import BackButton from '../components/BackButton';
+import PageBreadcrumbs from '../components/PageBreadcrumbs';
 
 interface Escola {
   id: number;
@@ -224,9 +224,17 @@ const GerenciarAlunosModalidades: React.FC = () => {
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       <Box sx={{ maxWidth: '1400px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+        <PageBreadcrumbs 
+          items={[
+            { label: 'Modalidades', path: '/modalidades', icon: <CategoryIcon fontSize="small" /> },
+            { label: 'Gerenciar Alunos por Modalidade' }
+          ]}
+        />
         {/* Header */}
-        <BackButton to="/modalidades" label="Gerenciar Alunos por Modalidade" />
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 3, mt: -2 }}>
+        <Typography variant="h4" sx={{ fontWeight: 700, mb: 2 }}>
+          Gerenciar Alunos por Modalidade
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
           Digite a quantidade de alunos de cada modalidade em cada escola. O salvamento é automático.
         </Typography>
 

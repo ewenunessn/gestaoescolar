@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Box, Typography, Container } from '@mui/material';
+import { LocalShipping as LocalShippingIcon } from '@mui/icons-material';
 import { EscolasEntregaList } from '../modules/entregas/components/EscolasEntregaList';
 import { ItensEntregaList } from '../modules/entregas/components/ItensEntregaList';
 import { FiltrosEntrega } from '../modules/entregas/components/FiltrosEntrega';
 import { EscolaEntrega } from '../modules/entregas/types';
+import PageBreadcrumbs from '../components/PageBreadcrumbs';
 
 const Entregas: React.FC = () => {
   const [escolaSelecionada, setEscolaSelecionada] = useState<EscolaEntrega | null>(null);
@@ -26,6 +28,12 @@ const Entregas: React.FC = () => {
   return (
     <Container maxWidth="xl">
       <Box py={3}>
+        <PageBreadcrumbs 
+          items={[
+            { label: 'Entregas', icon: <LocalShippingIcon fontSize="small" /> }
+          ]}
+          showBackButton={false}
+        />
         {!escolaSelecionada ? (
           <>
             <Typography variant="h4" component="h1" gutterBottom>

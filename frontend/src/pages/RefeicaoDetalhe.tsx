@@ -46,6 +46,8 @@ import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import SearchIcon from "@mui/icons-material/Search";
+import RestaurantIcon from "@mui/icons-material/Restaurant";
+import PageBreadcrumbs from '../components/PageBreadcrumbs';
 import {
   DndContext,
   DragEndEvent,
@@ -447,13 +449,12 @@ export default function RefeicaoDetalhe() {
       onDragEnd={handleDragEnd}
     >
       <Box maxWidth={1200} mx="auto" mt={4} px={2}>
-        <Button
-          onClick={() => navigate("/refeicoes")}
-          variant="outlined"
-          sx={{ mb: 3 }}
-        >
-          Voltar para lista
-        </Button>
+        <PageBreadcrumbs 
+          items={[
+            { label: 'Refeições', path: '/refeicoes', icon: <RestaurantIcon fontSize="small" /> },
+            { label: refeicao?.nome || 'Detalhes da Refeição' }
+          ]}
+        />
 
         {/* Card Superior - Informações Básicas */}
         <Card sx={{ mb: 3 }}>

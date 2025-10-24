@@ -81,6 +81,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import { listarModalidades } from "../services/modalidades";
 import { useSafeData } from "../hooks/useSafeData";
 import DownloadIcon from "@mui/icons-material/Download";
+import PageBreadcrumbs from '../components/PageBreadcrumbs';
 import {
   DndContext,
   DragEndEvent,
@@ -745,15 +746,12 @@ export default function CardapioDetalhe() {
       onDragEnd={handleDragEnd}
     >
       <Container maxWidth="lg" sx={{ py: 4 }}>
-        {/* Botão Voltar */}
-        <Button
-          component={RouterLink}
-          to="/cardapios"
-          startIcon={<ArrowBackIcon />}
-          sx={{ mb: 3 }}
-        >
-          Voltar para Cardápios
-        </Button>
+        <PageBreadcrumbs 
+          items={[
+            { label: 'Cardápios', path: '/cardapios', icon: <RestaurantIcon fontSize="small" /> },
+            { label: isNovo ? 'Novo Cardápio' : (cardapio?.nome || 'Detalhes do Cardápio') }
+          ]}
+        />
 
         {/* Card de Informações do Cardápio */}
         <Card sx={{ mb: 4, borderRadius: 3, boxShadow: 3 }}>

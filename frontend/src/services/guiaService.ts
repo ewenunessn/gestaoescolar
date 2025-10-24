@@ -4,6 +4,7 @@ export interface Guia {
   id: number;
   mes: number;
   ano: number;
+  nome?: string;
   observacao?: string;
   status: 'aberta' | 'fechada' | 'cancelada';
   createdAt: string;
@@ -56,6 +57,7 @@ export interface GuiaProdutoEscola {
 export interface CreateGuiaData {
   mes: number;
   ano: number;
+  nome?: string;
   observacao?: string;
 }
 

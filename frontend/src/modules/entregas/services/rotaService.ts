@@ -13,6 +13,11 @@ export const rotaService = {
     return response.data;
   },
 
+  async obterRota(id: number): Promise<RotaEntrega> {
+    const response = await api.get(`/entregas/rotas/${id}`);
+    return response.data;
+  },
+
   async criarRota(data: CreateRotaData): Promise<{ message: string; rota: RotaEntrega }> {
     const response = await api.post('/entregas/rotas', data);
     return response.data;

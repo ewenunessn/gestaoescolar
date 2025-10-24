@@ -33,9 +33,11 @@ import {
   CheckCircle as CheckCircleIcon,
   PendingActions as PendingIcon,
   History as HistoryIcon,
+  Assignment as AssignmentIcon,
 } from '@mui/icons-material';
 import { useNotification } from '../context/NotificationContext';
 import { guiaService, Guia, GuiaProdutoEscola } from '../services/guiaService';
+import PageBreadcrumbs from '../components/PageBreadcrumbs';
 import { entregaService } from '../modules/entregas/services/entregaService';
 import GuiaDetalhes from '../components/GuiaDetalhes';
 import AdicionarProdutoIndividual from '../components/AdicionarProdutoIndividual';
@@ -311,11 +313,14 @@ const GuiaDetalhe: React.FC = () => {
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+        <PageBreadcrumbs 
+          items={[
+            { label: 'Guias de Demanda', path: '/guias-demanda', icon: <AssignmentIcon fontSize="small" /> },
+            { label: `Guia ${guia.mes}/${guia.ano}` }
+          ]}
+        />
         {/* Cabeçalho */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-          <IconButton onClick={() => navigate('/guias-demanda')} color="primary">
-            <ArrowBackIcon />
-          </IconButton>
+        <Box sx={{ mb: 3 }}>
           <Typography variant="h4" sx={{ fontWeight: 700, color: 'text.primary' }}>
             Guia de Demanda - {guia.mes}/{guia.ano}
           </Typography>
@@ -632,7 +637,6 @@ const GuiaDetalhe: React.FC = () => {
                   <TableCell>Escola</TableCell>
                   <TableCell align="right">Quantidade</TableCell>
                   <TableCell>Unidade</TableCell>
-                  <TableCell align="center">Para Entrega</TableCell>
                   <TableCell align="center">Status Entrega</TableCell>
                   <TableCell align="right">Qtd. Entregue</TableCell>
                   <TableCell>Observação</TableCell>
@@ -679,70 +683,6 @@ const GuiaDetalhe: React.FC = () => {
                           {item.unidade || '-'}
                         </Typography>
                       </TableCell>
-                      <TableCell align="center">
-                        <FormControlLabel
-                          control={
-                            <Checkbox
-                              checked={normalizeBoolean(item.para_entrega)}
-                              onChange={async (e) => {
-                                const novoValor = e.target.checked;
-                                
-                                // Atualizar o estado local imediatamente para feedback visual
-                                setProdutos(prevProdutos => 
-                                  prevProdutos.map(produto => 
-                                    produto.id === item.id 
-                                      ? { ...produto, para_entrega: novoValor }
-                                      : produto
-                                  )
-                                );
-                                
-                                // Atualizar também o produtoSelecionado se estiver no modal
-                                if (produtoSelecionado) {
-                                  setProdutoSelecionado(prev => ({
-                                    ...prev!,
-                                    escolas: prev!.escolas.map(escola => 
-                                      escola.id === item.id 
-                                        ? { ...escola, para_entrega: novoValor }
-                                        : escola
-                                    )
-                                  }));
-                                }
-                                
-                                try {
-                                  // Atualizar no backend
-                                  await guiaService.atualizarParaEntrega(item.id, novoValor);
-                                  success(`Item ${novoValor ? 'marcado' : 'desmarcado'} para entrega`);
-                                } catch (err) {
-                                  error('Erro ao atualizar campo para entrega');
-                                  // Em caso de erro, reverter o estado local e recarregar
-                                  setProdutos(prevProdutos => 
-                                    prevProdutos.map(produto => 
-                                      produto.id === item.id 
-                                        ? { ...produto, para_entrega: !novoValor }
-                                        : produto
-                                    )
-                                  );
-                                  if (produtoSelecionado) {
-                                    setProdutoSelecionado(prev => ({
-                                      ...prev!,
-                                      escolas: prev!.escolas.map(escola => 
-                                        escola.id === item.id 
-                                          ? { ...escola, para_entrega: !novoValor }
-                                          : escola
-                                      )
-                                    }));
-                                  }
-                                  await carregarGuia();
-                                }
-                              }}
-                              disabled={guia.status !== 'aberta'}
-                              color="primary"
-                            />
-                          }
-                          label=""
-                          sx={{ m: 0 }}
-                        />
-                      </TableCell>
                       
                       {/* Status de Entrega */}
                       <TableCell align="center">
@@ -752,16 +692,6 @@ const GuiaDetalhe: React.FC = () => {
                           const lote = item.lote || 'sem_lote';
                           const chaveEntrega = `${escolaId}_${produtoId}_${lote}`;
                           const dadosItem = dadosEntrega[chaveEntrega];
-                          
-                          if (!normalizeBoolean(item.para_entrega)) {
-                            return (
-                              <Chip
-                                label="Não p/ entrega"
-                                size="small"
-                                sx={{ bgcolor: 'grey.300', color: 'grey.700' }}
-                              />
-                            );
-                          }
                           
                           if (dadosItem?.entrega_confirmada) {
                             return (
@@ -795,14 +725,6 @@ const GuiaDetalhe: React.FC = () => {
                           const lote = item.lote || 'sem_lote';
                           const chaveEntrega = `${escolaId}_${produtoId}_${lote}`;
                           const dadosItem = dadosEntrega[chaveEntrega];
-                          
-                          if (!normalizeBoolean(item.para_entrega)) {
-                            return (
-                              <Typography variant="body2" color="text.secondary">
-                                -
-                              </Typography>
-                            );
-                          }
                           
                           if (dadosItem?.entrega_confirmada && dadosItem?.quantidade_entregue) {
                             return (
@@ -900,15 +822,13 @@ const GuiaDetalhe: React.FC = () => {
                       if (!produtoSelecionado) return '0';
                       let totalPendente = 0;
                       produtoSelecionado.escolas.forEach((item: any) => {
-                        if (normalizeBoolean(item.para_entrega)) {
-                          const escolaId = (item as any).escola_id || item.escolaId;
-                          const produtoId = (item as any).produto_id || item.produtoId;
-                          const lote = item.lote || 'sem_lote';
-                          const chaveEntrega = `${escolaId}_${produtoId}_${lote}`;
-                          const dadosItem = dadosEntrega[chaveEntrega];
-                          if (!dadosItem?.entrega_confirmada) {
-                            totalPendente += parseFloat(item.quantidade) || 0;
-                          }
+                        const escolaId = (item as any).escola_id || item.escolaId;
+                        const produtoId = (item as any).produto_id || item.produtoId;
+                        const lote = item.lote || 'sem_lote';
+                        const chaveEntrega = `${escolaId}_${produtoId}_${lote}`;
+                        const dadosItem = dadosEntrega[chaveEntrega];
+                        if (!dadosItem?.entrega_confirmada) {
+                          totalPendente += parseFloat(item.quantidade) || 0;
                         }
                       });
                       return totalPendente.toLocaleString('pt-BR');
@@ -924,24 +844,22 @@ const GuiaDetalhe: React.FC = () => {
                   <Typography variant="h6" color="info.main" fontWeight="bold">
                     {(() => {
                       if (!produtoSelecionado) return '0%';
-                      let totalParaEntrega = 0;
+                      let totalProgramado = 0;
                       let totalEntregue = 0;
                       
                       produtoSelecionado.escolas.forEach((item: any) => {
-                        if (normalizeBoolean(item.para_entrega)) {
-                          totalParaEntrega += parseFloat(item.quantidade) || 0;
-                          const escolaId = (item as any).escola_id || item.escolaId;
-                          const produtoId = (item as any).produto_id || item.produtoId;
-                          const lote = item.lote || 'sem_lote';
-                          const chaveEntrega = `${escolaId}_${produtoId}_${lote}`;
-                          const dadosItem = dadosEntrega[chaveEntrega];
-                          if (dadosItem?.entrega_confirmada && dadosItem?.quantidade_entregue) {
-                            totalEntregue += parseFloat(dadosItem.quantidade_entregue) || 0;
-                          }
+                        totalProgramado += parseFloat(item.quantidade) || 0;
+                        const escolaId = (item as any).escola_id || item.escolaId;
+                        const produtoId = (item as any).produto_id || item.produtoId;
+                        const lote = item.lote || 'sem_lote';
+                        const chaveEntrega = `${escolaId}_${produtoId}_${lote}`;
+                        const dadosItem = dadosEntrega[chaveEntrega];
+                        if (dadosItem?.entrega_confirmada && dadosItem?.quantidade_entregue) {
+                          totalEntregue += parseFloat(dadosItem.quantidade_entregue) || 0;
                         }
                       });
                       
-                      const percentual = totalParaEntrega > 0 ? (totalEntregue / totalParaEntrega) * 100 : 0;
+                      const percentual = totalProgramado > 0 ? (totalEntregue / totalProgramado) * 100 : 0;
                       return `${percentual.toFixed(1)}%`;
                     })()}
                   </Typography>

@@ -4,11 +4,12 @@ import {
   Box, Typography, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Paper, CircularProgress, Alert, IconButton, Chip, TextField, InputAdornment
 } from '@mui/material';
-import { Search as SearchIcon } from '@mui/icons-material';
+import { Search as SearchIcon, Business as BusinessIcon, Inventory as InventoryIcon } from '@mui/icons-material';
 import { buscarFornecedor } from '../services/fornecedores';
 import { listarContratos } from '../services/contratos';
 import api from '../services/api';
 import BackButton from '../components/BackButton';
+import PageBreadcrumbs from '../components/PageBreadcrumbs';
 
 interface ItemContrato {
   id: number;
@@ -106,9 +107,18 @@ export default function ItensFornecedor() {
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       <Box sx={{ maxWidth: '1400px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
-        {/* Header */}
-        <BackButton to={`/fornecedores/${id}`} label={`Itens de Contratos - ${fornecedor?.nome || ''}`} />
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 3, mt: -2 }}>
+        <PageBreadcrumbs 
+          items={[
+            { label: 'Fornecedores', path: '/fornecedores', icon: <BusinessIcon fontSize="small" /> },
+            { label: fornecedor?.nome || 'Fornecedor', path: `/fornecedores/${id}`, icon: <BusinessIcon fontSize="small" /> },
+            { label: 'Itens de Contratos', icon: <InventoryIcon fontSize="small" /> }
+          ]}
+        />
+        
+        <Typography variant="h4" sx={{ fontWeight: 700, color: 'text.primary', mb: 1 }}>
+          Itens de Contratos - {fornecedor?.nome || ''}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
           Todos os produtos de todos os contratos deste fornecedor
         </Typography>
 

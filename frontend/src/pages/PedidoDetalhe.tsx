@@ -40,8 +40,9 @@ import {
 import pedidosService from '../services/pedidos';
 import faturamentoService from '../services/faturamento';
 import { PedidoDetalhado, STATUS_PEDIDO } from '../types/pedido';
-import BackButton from '../components/BackButton';
+import PageBreadcrumbs from '../components/PageBreadcrumbs';
 import { formatarMoeda, formatarData } from '../utils/dateUtils';
+import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 
 export default function PedidoDetalhe() {
   const { id } = useParams<{ id: string }>();
@@ -247,8 +248,16 @@ export default function PedidoDetalhe() {
 
   return (
     <Box sx={{ p: 3 }}>
+      <PageBreadcrumbs 
+        items={[
+          { label: 'Pedidos', path: '/pedidos', icon: <ShoppingCartIcon fontSize="small" /> },
+          { label: `Pedido ${pedido.numero}` }
+        ]}
+      />
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-        <BackButton to="/pedidos" label={`Pedido ${pedido.numero}`} />
+        <Typography variant="h4" sx={{ fontWeight: 700 }}>
+          Pedido {pedido.numero}
+        </Typography>
         {getStatusChip(pedido.status)}
       </Box>
 

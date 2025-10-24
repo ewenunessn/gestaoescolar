@@ -32,9 +32,9 @@ import {
   InputAdornment,
   Collapse
 } from '@mui/material';
-import { 
-  Add as AddIcon, 
-  Delete as DeleteIcon, 
+import {
+  Add as AddIcon,
+  Delete as DeleteIcon,
   Visibility as ViewIcon,
   Search as SearchIcon,
   Clear as ClearIcon,
@@ -44,6 +44,7 @@ import {
 } from '@mui/icons-material';
 import { useNotification } from '../context/NotificationContext';
 import { guiaService, Guia, CreateGuiaData } from '../services/guiaService';
+import PageBreadcrumbs from '../components/PageBreadcrumbs';
 
 const GuiasDemanda: React.FC = () => {
   const navigate = useNavigate();
@@ -73,14 +74,15 @@ const GuiasDemanda: React.FC = () => {
 
   // Filtrar guias
   const filteredGuias = guias.filter(guia => {
-    const matchesSearch = !searchTerm || 
+    const matchesSearch = !searchTerm ||
       `${guia.mes}/${guia.ano}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (guia.nome && guia.nome.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (guia.observacao && guia.observacao.toLowerCase().includes(searchTerm.toLowerCase()));
-    
+
     const matchesMes = !filters.mes || guia.mes === parseInt(filters.mes);
     const matchesAno = !filters.ano || guia.ano === parseInt(filters.ano);
     const matchesStatus = !filters.status || guia.status === filters.status;
-    
+
     return matchesSearch && matchesMes && matchesAno && matchesStatus;
   });
 
@@ -114,7 +116,7 @@ const GuiasDemanda: React.FC = () => {
       setLoading(true);
       const response = await guiaService.listarGuias();
       const guiasData = Array.isArray(response.data) ? response.data : Array.isArray(response) ? response : [];
-      
+
       // Debug temporário
       console.log('Dados das guias recebidos:', guiasData);
       if (guiasData.length > 0) {
@@ -126,7 +128,7 @@ const GuiasDemanda: React.FC = () => {
           updated_at: guiasData[0].updated_at
         });
       }
-      
+
       setGuias(guiasData);
     } catch (err: any) {
       console.error('Erro ao carregar guias:', err);
@@ -201,15 +203,15 @@ const GuiasDemanda: React.FC = () => {
         console.log('Data vazia recebida');
         return '-';
       }
-      
+
       console.log('Tentando formatar data:', dateString, 'tipo:', typeof dateString);
-      
+
       const date = new Date(dateString);
       if (isNaN(date.getTime())) {
         console.log('Data inválida:', dateString);
         return '-';
       }
-      
+
       const formatted = date.toLocaleDateString('pt-BR');
       console.log('Data formatada:', formatted);
       return formatted;
@@ -281,20 +283,25 @@ const GuiasDemanda: React.FC = () => {
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+        <PageBreadcrumbs 
+          items={[
+            { label: 'Guias de Demanda', icon: <AssignmentIcon fontSize="small" /> }
+          ]}
+        />
         <Typography variant="h4" sx={{ mb: 3, fontWeight: 700, color: 'text.primary' }}>
           Guias de Demanda
         </Typography>
-        
+
         <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', p: 3, mb: 3 }}>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 3 }}>
             <TextField
               placeholder="Buscar guias..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              sx={{ 
-                flex: 1, 
-                minWidth: '200px', 
-                '& .MuiOutlinedInput-root': { borderRadius: '12px' } 
+              sx={{
+                flex: 1,
+                minWidth: '200px',
+                '& .MuiOutlinedInput-root': { borderRadius: '12px' }
               }}
               InputProps={{
                 startAdornment: (
@@ -320,14 +327,14 @@ const GuiasDemanda: React.FC = () => {
               >
                 Filtros
                 {hasActiveFilters && !filtersExpanded && (
-                  <Box sx={{ 
-                    position: 'absolute', 
-                    top: -2, 
-                    right: -2, 
-                    width: 8, 
-                    height: 8, 
-                    borderRadius: '50%', 
-                    bgcolor: 'error.main' 
+                  <Box sx={{
+                    position: 'absolute',
+                    top: -2,
+                    right: -2,
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    bgcolor: 'error.main'
                   }} />
                 )}
               </Button>
@@ -341,13 +348,13 @@ const GuiasDemanda: React.FC = () => {
               </Button>
             </Box>
           </Box>
-          
+
           <Collapse in={filtersExpanded} timeout={400}>
             <Box sx={{ mb: 3 }}>
               <FiltersContent />
             </Box>
           </Collapse>
-          
+
           <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
             {`Mostrando ${Math.min((page * rowsPerPage) + 1, filteredGuias.length)}-${Math.min((page + 1) * rowsPerPage, filteredGuias.length)} de ${filteredGuias.length} guias`}
           </Typography>
@@ -392,8 +399,13 @@ const GuiasDemanda: React.FC = () => {
                     <TableRow key={guia.id} hover>
                       <TableCell>
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {guia.mes}/{guia.ano}
+                          {guia.nome || `${guia.mes}/${guia.ano}`}
                         </Typography>
+                        {guia.nome && (
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            {guia.mes}/{guia.ano}
+                          </Typography>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2" color="text.secondary">
@@ -533,6 +545,16 @@ const GuiasDemanda: React.FC = () => {
             </Grid>
             <Grid item xs={12}>
               <TextField
+                label="Nome da Guia (Opcional)"
+                value={(formData as any).nome || ''}
+                onChange={(e) => setFormData({ ...formData, nome: e.target.value } as any)}
+                fullWidth
+                placeholder="Ex: Guia Especial de Natal, Guia Emergencial..."
+                helperText="Se não informado, será usado o padrão: Mês Ano"
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
                 label="Observação (Opcional)"
                 multiline
                 rows={3}
@@ -548,8 +570,8 @@ const GuiasDemanda: React.FC = () => {
           <Button onClick={() => setOpenDialog(false)} color="inherit">
             Cancelar
           </Button>
-          <Button 
-            onClick={handleCreateGuia} 
+          <Button
+            onClick={handleCreateGuia}
             variant="contained"
             disabled={!formData.mes || !formData.ano}
           >

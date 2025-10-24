@@ -33,6 +33,7 @@ export interface GuiaProdutoEscola {
 export interface CreateGuiaData {
   mes: number;
   ano: number;
+  nome?: string;
   observacao?: string;
 }
 
@@ -75,10 +76,10 @@ class GuiaModel {
 
   async criarGuia(data: CreateGuiaData): Promise<Guia> {
     const result = await db.run(`
-      INSERT INTO guias (mes, ano, observacao, status, created_at, updated_at)
-      VALUES ($1, $2, $3, 'aberta', NOW(), NOW())
+      INSERT INTO guias (mes, ano, nome, observacao, status, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, 'aberta', NOW(), NOW())
       RETURNING *
-    `, [data.mes, data.ano, data.observacao || null]);
+    `, [data.mes, data.ano, data.nome || null, data.observacao || null]);
 
     return await this.buscarGuia(result.lastID);
   }
