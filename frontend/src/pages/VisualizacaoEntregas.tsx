@@ -86,10 +86,20 @@ const VisualizacaoEntregas: React.FC = () => {
     carregarDados();
   }, []);
 
-  const carregarDados = async () => {
+  // Recarregar itens não marcados quando a configuração mudar
+  useEffect(() => {
+    if (escolaSelecionada && configuracaoAtiva) {
+      carregarItensNaoMarcados(escolaSelecionada.escola_id, configuracaoAtiva.guiaId);
+    }
+  }, [configuracaoAtiva?.itensSelecionados]);
+
+  const carregarDados = async (manterEscolaSelecionada = false) => {
     try {
       setLoading(true);
       setError(null);
+
+      // Salvar escola atual se necessário
+      const escolaAtual = manterEscolaSelecionada ? escolaSelecionada : null;
 
       // Buscar configuração ativa
       const config = await rotaService.buscarConfiguracaoAtiva();
@@ -152,16 +162,36 @@ const VisualizacaoEntregas: React.FC = () => {
 
       setRotasComEscolas(rotasProcessadas);
 
-      // Selecionar primeira escola com itens automaticamente
-      if (rotasProcessadas.length > 0) {
-        const primeiraEscolaComItens = rotasProcessadas
+      // Se deve manter escola selecionada, procurar ela na lista atualizada
+      if (manterEscolaSelecionada && escolaAtual) {
+        const escolaEncontrada = rotasProcessadas
           .flatMap(r => r.escolas)
-          .find(e => e.total_itens > 0);
+          .find(e => e.escola_id === escolaAtual.escola_id);
         
-        if (primeiraEscolaComItens) {
-          setEscolaSelecionada(primeiraEscolaComItens);
-        } else if (rotasProcessadas[0].escolas.length > 0) {
-          setEscolaSelecionada(rotasProcessadas[0].escolas[0]);
+        if (escolaEncontrada) {
+          setEscolaSelecionada(escolaEncontrada);
+        } else {
+          // Se a escola não foi encontrada, selecionar a primeira com itens
+          const primeiraEscolaComItens = rotasProcessadas
+            .flatMap(r => r.escolas)
+            .find(e => e.total_itens > 0);
+          
+          if (primeiraEscolaComItens) {
+            setEscolaSelecionada(primeiraEscolaComItens);
+          }
+        }
+      } else {
+        // Selecionar primeira escola com itens automaticamente
+        if (rotasProcessadas.length > 0) {
+          const primeiraEscolaComItens = rotasProcessadas
+            .flatMap(r => r.escolas)
+            .find(e => e.total_itens > 0);
+          
+          if (primeiraEscolaComItens) {
+            setEscolaSelecionada(primeiraEscolaComItens);
+          } else if (rotasProcessadas[0].escolas.length > 0) {
+            setEscolaSelecionada(rotasProcessadas[0].escolas[0]);
+          }
         }
       }
 
@@ -201,10 +231,46 @@ const VisualizacaoEntregas: React.FC = () => {
     setModalAdicionarAberto(false);
   };
 
-  const handleProdutoAdicionado = () => {
-    // Recarregar dados após adicionar produto
-    carregarDados();
-    fecharModalAdicionar();
+  const handleProdutoAdicionado = async () => {
+    try {
+      // Recarregar dados após adicionar produto, mantendo escola selecionada
+      await carregarDados(true);
+      
+      // Atualizar a configuração ativa para incluir o novo item
+      if (configuracaoAtiva && configuracaoAtiva.guiaId && escolaSelecionada) {
+        // Buscar os itens da escola selecionada após adicionar
+        const todosItens = await itemGuiaService.listarItensPorGuia(configuracaoAtiva.guiaId);
+        const itensEscola = todosItens.filter((item: any) => 
+          item.escola_id === escolaSelecionada.escola_id
+        );
+        
+        // Pegar os IDs dos itens já selecionados
+        const itensSelecionadosAtuais = configuracaoAtiva.itensSelecionados || [];
+        
+        // Adicionar os novos IDs que não estão na lista
+        const novosIds = itensEscola
+          .map((item: any) => item.id)
+          .filter((id: number) => !itensSelecionadosAtuais.includes(id));
+        
+        if (novosIds.length > 0) {
+          // Atualizar a configuração incluindo os novos itens
+          await rotaService.salvarConfiguracao({
+            guiaId: configuracaoAtiva.guiaId,
+            rotasSelecionadas: configuracaoAtiva.rotasSelecionadas || [],
+            itensSelecionados: [...itensSelecionadosAtuais, ...novosIds],
+            ativa: true
+          });
+          
+          success('Produto adicionado e incluído na configuração de entrega!');
+        }
+      }
+      
+      fecharModalAdicionar();
+    } catch (error) {
+      console.error('Erro ao atualizar configuração:', error);
+      // Mesmo com erro, fechar o modal e recarregar dados
+      fecharModalAdicionar();
+    }
   };
 
   const carregarItensNaoMarcados = async (escolaId: number, guiaId: number) => {
@@ -212,20 +278,23 @@ const VisualizacaoEntregas: React.FC = () => {
       const response = await itemGuiaService.listarItensPorGuia(guiaId);
       console.log('Todos os itens da guia:', response);
       
+      // Pegar os IDs dos itens já selecionados na configuração
+      const itensSelecionados = configuracaoAtiva?.itensSelecionados || [];
+      
       const itensEscola = response.filter((item: any) => {
         const pertenceEscola = item.escola_id === escolaId;
-        const naoMarcado = item.para_entrega === false || item.para_entrega === null || item.para_entrega === undefined;
+        const naoNaConfiguracao = !itensSelecionados.includes(item.id);
         
         console.log(`Item ${item.id} (${item.produto_nome}):`, {
           pertenceEscola,
-          para_entrega: item.para_entrega,
-          naoMarcado
+          naoNaConfiguracao,
+          itensSelecionados
         });
         
-        return pertenceEscola && naoMarcado;
+        return pertenceEscola && naoNaConfiguracao;
       });
       
-      console.log('Itens não marcados filtrados:', itensEscola);
+      console.log('Itens disponíveis (não na configuração):', itensEscola);
       setItensNaoMarcados(itensEscola);
     } catch (err) {
       console.error('Erro ao carregar itens não marcados:', err);
@@ -270,8 +339,8 @@ const VisualizacaoEntregas: React.FC = () => {
       
       success('Item marcado para entrega com sucesso!');
       
-      // Recarregar dados principais para atualizar a guia de entrega
-      await carregarDados();
+      // Recarregar dados principais mantendo a escola selecionada
+      await carregarDados(true);
       
       // Recarregar itens não marcados para garantir consistência
       if (escolaSelecionada && configuracaoAtiva) {

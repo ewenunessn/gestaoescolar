@@ -158,34 +158,24 @@ const ConfiguracaoEntrega: React.FC = () => {
     try {
       const itens = await itemGuiaService.listarItensPorGuia(guiaId);
 
-      // Verificar se há novos itens marcados para entrega que não estão na configuração
-      const itensParaEntrega = itens.filter(item => item.para_entrega === true);
-      const novosItens = itensParaEntrega.filter(item => !configuracao.itensSelecionados.includes(item.id));
+      // Limpar IDs inválidos da configuração (itens que não existem mais)
+      const idsValidos = itens.map(item => item.id);
+      const itensSelecionadosLimpos = configuracao.itensSelecionados.filter(id => idsValidos.includes(id));
 
-      // Se há novos itens, adicionar automaticamente à configuração
-      let itensSelecionadosAtualizados = configuracao.itensSelecionados;
-      if (novosItens.length > 0) {
-        itensSelecionadosAtualizados = [...configuracao.itensSelecionados, ...novosItens.map(item => item.id)];
+      // Atualizar configuração se houve mudanças (IDs inválidos foram removidos)
+      if (itensSelecionadosLimpos.length !== configuracao.itensSelecionados.length) {
         setConfiguracao(prev => ({
           ...prev,
-          itensSelecionados: itensSelecionadosAtualizados
+          itensSelecionados: itensSelecionadosLimpos
         }));
       }
 
       const itensComSelecao: ItemGuiaComSelecao[] = itens.map(item => ({
         ...item,
-        selecionado: itensSelecionadosAtualizados.includes(item.id)
+        selecionado: itensSelecionadosLimpos.includes(item.id)
       }));
 
       setItensGuia(itensComSelecao);
-
-      // Se não há itens selecionados, selecionar todos os itens para entrega por padrão
-      if (configuracao.itensSelecionados.length === 0 && itensParaEntrega.length > 0) {
-        setConfiguracao(prev => ({
-          ...prev,
-          itensSelecionados: itensParaEntrega.map(item => item.id)
-        }));
-      }
     } catch (err) {
       console.error('Erro ao carregar itens da guia:', err);
     }
@@ -786,7 +776,12 @@ const ConfiguracaoEntrega: React.FC = () => {
 
                     <Box mt={2} display="flex" justifyContent="space-between" alignItems="center">
                       <Typography variant="body2" color="primary">
-                        {configuracao.itensSelecionados.length} de {itensGuia.length} itens selecionados
+                        {(() => {
+                          // Contar apenas itens selecionados que existem na lista atual
+                          const idsValidos = itensGuia.map(item => item.id);
+                          const itensSelecionadosValidos = configuracao.itensSelecionados.filter(id => idsValidos.includes(id));
+                          return `${itensSelecionadosValidos.length} de ${itensGuia.length} itens selecionados`;
+                        })()}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         {itensAgrupados.length} produtos • {produtosExpandidos.size} expandidos
