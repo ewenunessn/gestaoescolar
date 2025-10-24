@@ -12,12 +12,36 @@ const baseTheme = {
       'Arial',
       'sans-serif',
     ].join(','),
+    fontSize: 13, // Reduzido de 14 (padrão) para 13
+    h1: {
+      fontSize: '2rem', // Reduzido
+    },
+    h2: {
+      fontSize: '1.75rem', // Reduzido
+    },
+    h3: {
+      fontSize: '1.5rem', // Reduzido
+    },
     h4: {
+      fontSize: '1.25rem', // Reduzido
       fontWeight: 700,
       letterSpacing: '-0.025em',
     },
+    h5: {
+      fontSize: '1.1rem', // Reduzido
+    },
     h6: {
+      fontSize: '1rem', // Reduzido
       fontWeight: 600,
+    },
+    body1: {
+      fontSize: '0.875rem', // Reduzido
+    },
+    body2: {
+      fontSize: '0.8125rem', // Reduzido
+    },
+    button: {
+      fontSize: '0.8125rem', // Reduzido
     },
   },
   shape: {
