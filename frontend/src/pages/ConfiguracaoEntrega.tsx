@@ -82,6 +82,10 @@ const ConfiguracaoEntrega: React.FC = () => {
   // Estado para modal de visualização por escola
   const [modalVisualizacaoAberto, setModalVisualizacaoAberto] = useState(false);
   const [dadosEscolas, setDadosEscolas] = useState<any[]>([]);
+  
+  // Estado para modal de romaneio
+  const [modalRomaneioAberto, setModalRomaneioAberto] = useState(false);
+  const [dadosRomaneio, setDadosRomaneio] = useState<any[]>([]);
 
   useEffect(() => {
     carregarDados();
@@ -373,6 +377,69 @@ const ConfiguracaoEntrega: React.FC = () => {
       setError('Erro ao carregar dados por escola');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const gerarRomaneio = async () => {
+    try {
+      setModalRomaneioAberto(true);
+      
+      // Buscar rotas selecionadas
+      const rotasSelecionadas = rotas.filter(r => configuracao.rotasSelecionadas.includes(r.id));
+      
+      // Buscar itens selecionados
+      const itensSelecionados = itensGuia.filter(item => configuracao.itensSelecionados.includes(item.id));
+      
+      // Agrupar itens por produto
+      const produtosMap = new Map<string, any>();
+      
+      for (const item of itensSelecionados) {
+        const chave = `${item.produto_id}_${item.unidade}`;
+        
+        if (!produtosMap.has(chave)) {
+          produtosMap.set(chave, {
+            produto_nome: item.produto_nome,
+            unidade: item.unidade,
+            rotas: {}
+          });
+        }
+        
+        const produto = produtosMap.get(chave);
+        
+        // Buscar a rota da escola deste item
+        for (const rota of rotasSelecionadas) {
+          const escolasRota = await rotaService.listarEscolasRota(rota.id);
+          const escolaNaRota = escolasRota.find(e => e.escola_id === item.escola_id);
+          
+          if (escolaNaRota) {
+            if (!produto.rotas[rota.id]) {
+              produto.rotas[rota.id] = {
+                rota_nome: rota.nome,
+                rota_cor: rota.cor,
+                quantidade: 0
+              };
+            }
+            produto.rotas[rota.id].quantidade += parseFloat(String(item.quantidade)) || 0;
+            break;
+          }
+        }
+      }
+      
+      // Converter para array
+      const dadosRomaneio = Array.from(produtosMap.values()).map(produto => ({
+        ...produto,
+        rotasArray: rotasSelecionadas.map(rota => ({
+          rota_id: rota.id,
+          rota_nome: rota.nome,
+          rota_cor: rota.cor,
+          quantidade: produto.rotas[rota.id]?.quantidade || 0
+        }))
+      }));
+      
+      setDadosRomaneio(dadosRomaneio);
+    } catch (err) {
+      console.error('Erro ao gerar romaneio:', err);
+      setError('Erro ao gerar romaneio');
     }
   };
 
@@ -798,9 +865,19 @@ const ConfiguracaoEntrega: React.FC = () => {
         {(configuracao.guiaId > 0 || configuracao.rotasSelecionadas.length > 0 || configuracao.itensSelecionados.length > 0) && (
           <Card sx={{ mt: 3 }}>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Resumo da Configuração
-              </Typography>
+              <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                <Typography variant="h6">
+                  Resumo da Configuração
+                </Typography>
+                <Button
+                  variant="outlined"
+                  startIcon={<VisibilityIcon />}
+                  onClick={gerarRomaneio}
+                  disabled={configuracao.rotasSelecionadas.length === 0 || configuracao.itensSelecionados.length === 0}
+                >
+                  Exibir Romaneio
+                </Button>
+              </Box>
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={4}>
                   <Box display="flex" alignItems="center" gap={1}>
@@ -950,6 +1027,102 @@ const ConfiguracaoEntrega: React.FC = () => {
             <Typography variant="body2" color="text.secondary" textAlign="center">
               {dadosEscolas.length} escola(s) • {dadosEscolas.reduce((sum, e) => sum + e.total_itens, 0)} itens totais
             </Typography>
+          </Box>
+        </Dialog>
+
+        {/* Modal de Romaneio */}
+        <Dialog
+          open={modalRomaneioAberto}
+          onClose={() => setModalRomaneioAberto(false)}
+          maxWidth="xl"
+          fullWidth
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+            <Box>
+              <Typography variant="h6">
+                Romaneio de Entrega
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Quantidades por produto e rota
+              </Typography>
+            </Box>
+            <IconButton onClick={() => setModalRomaneioAberto(false)}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
+
+          <Box sx={{ p: 3 }}>
+            {dadosRomaneio.length === 0 ? (
+              <Alert severity="info">
+                Nenhum item selecionado para gerar romaneio
+              </Alert>
+            ) : (
+              <TableContainer component={Paper} variant="outlined">
+                <Table size="small">
+                  <TableHead>
+                    <TableRow sx={{ bgcolor: 'primary.main' }}>
+                      <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Item</TableCell>
+                      <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Unidade</TableCell>
+                      {dadosRomaneio[0]?.rotasArray.map((rota: any) => (
+                        <TableCell 
+                          key={rota.rota_id} 
+                          align="right"
+                          sx={{ 
+                            color: 'white', 
+                            fontWeight: 'bold',
+                            bgcolor: rota.rota_cor,
+                            minWidth: 120
+                          }}
+                        >
+                          {rota.rota_nome}
+                        </TableCell>
+                      ))}
+                      <TableCell 
+                        align="right"
+                        sx={{ color: 'white', fontWeight: 'bold', bgcolor: 'primary.dark' }}
+                      >
+                        Total
+                      </TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {dadosRomaneio.map((produto, index) => {
+                      const total = produto.rotasArray.reduce((sum: number, rota: any) => sum + rota.quantidade, 0);
+                      return (
+                        <TableRow key={index} hover>
+                          <TableCell sx={{ fontWeight: 'medium' }}>{produto.produto_nome}</TableCell>
+                          <TableCell>{produto.unidade}</TableCell>
+                          {produto.rotasArray.map((rota: any) => (
+                            <TableCell 
+                              key={rota.rota_id} 
+                              align="right"
+                              sx={{ 
+                                bgcolor: rota.quantidade > 0 ? `${rota.rota_cor}15` : 'transparent',
+                                fontWeight: rota.quantidade > 0 ? 'bold' : 'normal'
+                              }}
+                            >
+                              {rota.quantidade > 0 ? rota.quantidade.toLocaleString('pt-BR', {
+                                minimumFractionDigits: 0,
+                                maximumFractionDigits: 3
+                              }) : '-'}
+                            </TableCell>
+                          ))}
+                          <TableCell 
+                            align="right"
+                            sx={{ fontWeight: 'bold', bgcolor: 'grey.100' }}
+                          >
+                            {total.toLocaleString('pt-BR', {
+                              minimumFractionDigits: 0,
+                              maximumFractionDigits: 3
+                            })}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
           </Box>
         </Dialog>
       </Box>
