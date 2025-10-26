@@ -26,6 +26,7 @@ import { useNotification } from '../context/NotificationContext';
 import { guiaService, Guia, AddProdutoGuiaData } from '../services/guiaService';
 import { listarProdutos } from '../services/produtos';
 import { escolaService } from '../services/escolaService';
+import { buscarEstoqueEscolarProduto, EstoqueEscolaProduto } from '../services/estoqueEscolar';
 
 interface AdicionarProdutoIndividualProps {
   open: boolean;
@@ -59,6 +60,10 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
   const [lotesExistentes, setLotesExistentes] = useState<string[]>([]);
   const [itemExistente, setItemExistente] = useState<any>(null);
   const [showConfirmacao, setShowConfirmacao] = useState(false);
+  
+  // Estados para validação de estoque
+  const [estoqueEscola, setEstoqueEscola] = useState<EstoqueEscolaProduto | null>(null);
+  const [loadingEstoque, setLoadingEstoque] = useState(false);
 
   const { success, error } = useNotification();
 
@@ -103,6 +108,34 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
     // Carregar lotes existentes para este produto
     if (produtoId && guia) {
       await carregarLotesExistentes(parseInt(produtoId));
+    }
+
+    // Carregar estoque da escola se produto e escola estão selecionados
+    if (produtoId && selectedEscola) {
+      await carregarEstoqueEscola(parseInt(produtoId), parseInt(selectedEscola));
+    }
+  };
+
+  const handleEscolaChange = async (escolaId: string) => {
+    setSelectedEscola(escolaId);
+    
+    // Carregar estoque da escola se produto e escola estão selecionados
+    if (selectedProduto && escolaId) {
+      await carregarEstoqueEscola(parseInt(selectedProduto), parseInt(escolaId));
+    }
+  };
+
+  const carregarEstoqueEscola = async (produtoId: number, escolaId: number) => {
+    try {
+      setLoadingEstoque(true);
+      const estoqueData = await buscarEstoqueEscolarProduto(produtoId);
+      const estoqueEscolaEspecifica = estoqueData.escolas.find(e => e.escola_id === escolaId);
+      setEstoqueEscola(estoqueEscolaEspecifica || null);
+    } catch (err) {
+      console.error('Erro ao carregar estoque:', err);
+      setEstoqueEscola(null);
+    } finally {
+      setLoadingEstoque(false);
     }
   };
 
@@ -167,6 +200,15 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
     if (!guia || !selectedProduto || !selectedEscola || !quantidade || !unidade) {
       error('Preencha todos os campos obrigatórios');
       return;
+    }
+
+    // Validação de estoque
+    const quantidadeSolicitada = parseFloat(quantidade);
+    if (estoqueEscola && estoqueEscola.quantidade_atual < quantidadeSolicitada) {
+      const confirmar = window.confirm(
+        `ATENÇÃO: A quantidade solicitada (${quantidadeSolicitada} ${unidade}) é maior que o estoque disponível (${estoqueEscola.quantidade_atual} ${estoqueEscola.unidade}).\n\nDeseja continuar mesmo assim?`
+      );
+      if (!confirmar) return;
     }
 
     // Se há item existente e não foi confirmada a atualização, verificar primeiro
@@ -240,6 +282,8 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
     setItemExistente(null);
     setShowConfirmacao(false);
     setLotesExistentes([]);
+    setEstoqueEscola(null);
+    setLoadingEstoque(false);
   };
 
   const handleConfirmarAtualizacao = () => {
@@ -268,7 +312,7 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
                 getOptionLabel={(option) => option.nome}
                 value={escolas.find(e => e.id.toString() === selectedEscola) || null}
                 onChange={(event, newValue) => {
-                  setSelectedEscola(newValue ? newValue.id.toString() : '');
+                  handleEscolaChange(newValue ? newValue.id.toString() : '');
                 }}
                 disabled={!!escolaPreSelecionada}
                 renderInput={(params) => (
@@ -326,6 +370,63 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
                 noOptionsText="Nenhum produto encontrado"
               />
             </Grid>
+
+            {/* Informações de Estoque */}
+            {(selectedProduto && selectedEscola) && (
+              <Grid item xs={12}>
+                <Box sx={{ 
+                  p: 2, 
+                  bgcolor: 'background.paper', 
+                  borderRadius: 1, 
+                  border: 1, 
+                  borderColor: 'divider',
+                  mb: 1
+                }}>
+                  <Typography variant="subtitle2" sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <InventoryIcon fontSize="small" />
+                    Estoque Atual da Escola
+                  </Typography>
+                  
+                  {loadingEstoque ? (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <CircularProgress size={16} />
+                      <Typography variant="body2" color="text.secondary">
+                        Carregando estoque...
+                      </Typography>
+                    </Box>
+                  ) : estoqueEscola ? (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                      <Typography variant="body2">
+                        <strong>Quantidade:</strong> {estoqueEscola.quantidade_atual} {estoqueEscola.unidade}
+                      </Typography>
+                      <Chip 
+                        label={
+                          estoqueEscola.status_estoque === 'sem_estoque' ? 'Sem Estoque' :
+                          estoqueEscola.status_estoque === 'baixo' ? 'Estoque Baixo' :
+                          estoqueEscola.status_estoque === 'normal' ? 'Estoque Normal' :
+                          'Estoque Alto'
+                        }
+                        size="small"
+                        color={
+                          estoqueEscola.status_estoque === 'sem_estoque' ? 'error' :
+                          estoqueEscola.status_estoque === 'baixo' ? 'warning' :
+                          'success'
+                        }
+                      />
+                      <Typography variant="caption" color="text.secondary">
+                        Atualizado em: {new Date(estoqueEscola.data_ultima_atualizacao).toLocaleDateString('pt-BR')}
+                      </Typography>
+                    </Box>
+                  ) : (
+                    <Alert severity="info" sx={{ py: 0.5 }}>
+                      <Typography variant="body2">
+                        Esta escola não possui estoque registrado para este produto.
+                      </Typography>
+                    </Alert>
+                  )}
+                </Box>
+              </Grid>
+            )}
 
             <Grid item xs={6}>
               <TextField

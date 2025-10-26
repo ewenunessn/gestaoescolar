@@ -26,6 +26,7 @@ import { useNotification } from '../context/NotificationContext';
 import { guiaService, Guia, AddProdutoGuiaData } from '../services/guiaService';
 import { listarProdutos } from '../services/produtos';
 import { escolaService } from '../services/escolaService';
+import { buscarEstoqueEscolarProduto, EstoqueEscolaProduto } from '../services/estoqueEscolar';
 
 interface GuiaDetalhesProps {
   guia: Guia | null;
@@ -146,12 +147,13 @@ const ProdutosList = React.memo(({ produtos, filtro, onSelecionarProduto }: {
 });
 
 // Componente otimizado para item de escola
-const EscolaItem = React.memo(({ escola, quantidadesEscolas, unidadeGlobal, onAtualizarQuantidade, index }: {
+const EscolaItem = React.memo(({ escola, quantidadesEscolas, unidadeGlobal, onAtualizarQuantidade, index, estoqueEscola }: {
   escola: any;
   quantidadesEscolas: any;
   unidadeGlobal: string;
   onAtualizarQuantidade: (escolaId: number, campo: 'quantidade' | 'observacao' | 'para_entrega', valor: string) => void;
   index: number;
+  estoqueEscola?: EstoqueEscolaProduto;
 }) => {
   const quantidadeRef = useRef<HTMLInputElement>(null);
   const observacaoRef = useRef<HTMLInputElement>(null);
@@ -182,8 +184,35 @@ const EscolaItem = React.memo(({ escola, quantidadesEscolas, unidadeGlobal, onAt
                 {escola.nome}
               </Typography>
               {escola.modalidades && (
-                <Typography variant="caption" color="text.secondary">
+                <Typography variant="caption" color="text.secondary" display="block">
                   {escola.modalidades}
+                </Typography>
+              )}
+              {/* Informações de Estoque */}
+              {estoqueEscola ? (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Estoque: {estoqueEscola.quantidade_atual} {estoqueEscola.unidade}
+                  </Typography>
+                  <Chip 
+                    label={
+                      estoqueEscola.status_estoque === 'sem_estoque' ? 'Sem Estoque' :
+                      estoqueEscola.status_estoque === 'baixo' ? 'Baixo' :
+                      estoqueEscola.status_estoque === 'normal' ? 'Normal' :
+                      'Alto'
+                    }
+                    size="small"
+                    color={
+                      estoqueEscola.status_estoque === 'sem_estoque' ? 'error' :
+                      estoqueEscola.status_estoque === 'baixo' ? 'warning' :
+                      'success'
+                    }
+                    sx={{ fontSize: '0.65rem', height: '18px' }}
+                  />
+                </Box>
+              ) : (
+                <Typography variant="caption" color="text.disabled" sx={{ mt: 0.5, display: 'block' }}>
+                  Sem info de estoque
                 </Typography>
               )}
             </Grid>
@@ -272,11 +301,12 @@ const EscolaItem = React.memo(({ escola, quantidadesEscolas, unidadeGlobal, onAt
 });
 
 // Componente otimizado para lista de escolas
-const EscolasList = React.memo(({ escolas, quantidadesEscolas, unidadeGlobal, onAtualizarQuantidade }: {
+const EscolasList = React.memo(({ escolas, quantidadesEscolas, unidadeGlobal, onAtualizarQuantidade, estoqueEscolas }: {
   escolas: any[];
   quantidadesEscolas: any;
   unidadeGlobal: string;
   onAtualizarQuantidade: (escolaId: number, campo: 'quantidade' | 'observacao' | 'para_entrega', valor: string) => void;
+  estoqueEscolas: { [key: number]: EstoqueEscolaProduto };
 }) => {
   const [itensCarregados, setItensCarregados] = useState(15);
   const [carregandoMais, setCarregandoMais] = useState(false);
@@ -348,6 +378,7 @@ const EscolasList = React.memo(({ escolas, quantidadesEscolas, unidadeGlobal, on
             quantidadesEscolas={quantidadesEscolas}
             unidadeGlobal={unidadeGlobal}
             onAtualizarQuantidade={onAtualizarQuantidade}
+            estoqueEscola={estoqueEscolas[escola.id]}
             index={index}
           />
         ))}
@@ -389,6 +420,10 @@ const GuiaDetalhes: React.FC<GuiaDetalhesProps> = ({ guia, onUpdate, onClose }) 
   const [modalidades, setModalidades] = useState<string[]>([]);
   const [salvandoMassa, setSalvandoMassa] = useState(false);
   const [carregandoEscolas, setCarregandoEscolas] = useState(false);
+  
+  // Estados para validação de estoque
+  const [estoqueEscolas, setEstoqueEscolas] = useState<{ [key: number]: EstoqueEscolaProduto }>({});
+  const [loadingEstoque, setLoadingEstoque] = useState(false);
 
   const { success, error } = useNotification();
 
@@ -481,7 +516,7 @@ const GuiaDetalhes: React.FC<GuiaDetalhesProps> = ({ guia, onUpdate, onClose }) 
     setInputEscolaNome('');
   };
 
-  const selecionarProdutoMassa = useCallback((produto: any) => {
+  const selecionarProdutoMassa = useCallback(async (produto: any) => {
     setCarregandoEscolas(true);
     setSelectedProdutoMassa(produto);
     setUnidadeGlobal(produto.unidade || 'kg');
@@ -493,6 +528,9 @@ const GuiaDetalhes: React.FC<GuiaDetalhesProps> = ({ guia, onUpdate, onClose }) 
     const loteAuto = `${produto.nome.substring(0, 3).toUpperCase()}-${dataFormatada}-${horaFormatada}`;
     setLoteGlobal(loteAuto);
 
+    // Carregar estoque de todas as escolas para este produto
+    await carregarEstoqueProduto(produto.id);
+
     requestAnimationFrame(() => {
       setTimeout(() => {
         setQuantidadesEscolas({});
@@ -500,6 +538,26 @@ const GuiaDetalhes: React.FC<GuiaDetalhesProps> = ({ guia, onUpdate, onClose }) 
       }, 100);
     });
   }, []);
+
+  const carregarEstoqueProduto = async (produtoId: number) => {
+    try {
+      setLoadingEstoque(true);
+      const estoqueData = await buscarEstoqueEscolarProduto(produtoId);
+      
+      // Criar um mapa de estoque por escola
+      const estoqueMap: { [key: number]: EstoqueEscolaProduto } = {};
+      estoqueData.escolas.forEach(escola => {
+        estoqueMap[escola.escola_id] = escola;
+      });
+      
+      setEstoqueEscolas(estoqueMap);
+    } catch (err) {
+      console.error('Erro ao carregar estoque:', err);
+      setEstoqueEscolas({});
+    } finally {
+      setLoadingEstoque(false);
+    }
+  };
 
   const atualizarQuantidadeEscola = useCallback((escolaId: number, campo: 'quantidade' | 'observacao' | 'para_entrega', valor: string) => {
     setQuantidadesEscolas(prev => {
@@ -534,6 +592,25 @@ const GuiaDetalhes: React.FC<GuiaDetalhesProps> = ({ guia, onUpdate, onClose }) 
     if (escolasComQuantidade.length === 0) {
       error('Adicione pelo menos uma quantidade para uma escola');
       return;
+    }
+
+    // Validação de estoque
+    const alertasEstoque: string[] = [];
+    escolasComQuantidade.forEach(item => {
+      const estoqueEscola = estoqueEscolas[item.escolaId];
+      if (estoqueEscola && estoqueEscola.quantidade_atual < item.quantidade) {
+        const escola = escolasFiltradas.find(e => e.id === item.escolaId);
+        alertasEstoque.push(
+          `${escola?.nome}: solicitado ${item.quantidade} ${item.unidade}, disponível ${estoqueEscola.quantidade_atual} ${estoqueEscola.unidade}`
+        );
+      }
+    });
+
+    if (alertasEstoque.length > 0) {
+      const confirmar = window.confirm(
+        `ATENÇÃO: Algumas escolas têm quantidade solicitada maior que o estoque disponível:\n\n${alertasEstoque.join('\n')}\n\nDeseja continuar mesmo assim?`
+      );
+      if (!confirmar) return;
     }
 
     try {
@@ -832,6 +909,7 @@ const GuiaDetalhes: React.FC<GuiaDetalhesProps> = ({ guia, onUpdate, onClose }) 
                 quantidadesEscolas={quantidadesEscolas}
                 unidadeGlobal={unidadeGlobal}
                 onAtualizarQuantidade={atualizarQuantidadeEscola}
+                estoqueEscolas={estoqueEscolas}
               />
             )}
           </Box>

@@ -102,7 +102,7 @@ interface NavItemProps {
 // Subcomponente para Item do Menu
 const NavItem: React.FC<NavItemProps> = ({ item, isActive, onClick, collapsed }) => {
   const theme = useTheme();
-  
+
   if (collapsed) {
     // Modo colapsado - ícone + texto embaixo com barra lateral
     return (
@@ -196,8 +196,8 @@ const NavItem: React.FC<NavItemProps> = ({ item, isActive, onClick, collapsed })
           minHeight: 36,
         }}
       >
-        <ListItemIcon sx={{ 
-          color: 'inherit', 
+        <ListItemIcon sx={{
+          color: 'inherit',
           minWidth: 28,
           justifyContent: 'center'
         }}>
@@ -253,9 +253,9 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       {/* Espaço para o header fixo */}
       <Box sx={{ height: 56 }} />
 
-      <Box sx={{ 
-        flexGrow: 1, 
-        overflow: "auto", 
+      <Box sx={{
+        flexGrow: 1,
+        overflow: "auto",
         py: 1,
         '&::-webkit-scrollbar': {
           width: '6px',
@@ -274,18 +274,18 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         {menuConfig.map(({ category, items }) => (
           <Box key={category} sx={{ mb: collapsed ? 0 : 1 }}>
             {!collapsed && category !== "Principal" && (
-              <Box sx={{ 
-                px: 2, 
-                py: 0.75, 
+              <Box sx={{
+                px: 2,
+                py: 0.75,
                 borderBottom: 1,
                 borderColor: 'divider',
                 mb: 0.5
               }}>
-                <Typography 
-                  variant="caption" 
-                  sx={{ 
-                    fontWeight: "500", 
-                    color: 'text.disabled', 
+                <Typography
+                  variant="caption"
+                  sx={{
+                    fontWeight: "500",
+                    color: 'text.disabled',
                     fontSize: "0.7rem",
                     textTransform: 'uppercase',
                     letterSpacing: '0.3px'
@@ -313,22 +313,22 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         ))}
       </Box>
 
-      <Box sx={{ 
-        p: collapsed ? 1 : 1.5, 
+      <Box sx={{
+        p: collapsed ? 1 : 1.5,
         borderTop: 1,
-        borderColor: 'divider', 
-        position: 'relative' 
+        borderColor: 'divider',
+        position: 'relative'
       }}>
         <Box sx={{ display: 'flex', gap: 1, flexDirection: collapsed ? 'column' : 'row', alignItems: 'center' }}>
           <Button
             onClick={handleLogout}
             size="small"
             startIcon={collapsed ? undefined : <Logout fontSize="small" />}
-            sx={{ 
+            sx={{
               flex: collapsed ? 'none' : 1,
-              textTransform: 'none', 
-              fontSize: '0.8rem', 
-              color: 'text.secondary', 
+              textTransform: 'none',
+              fontSize: '0.8rem',
+              color: 'text.secondary',
               justifyContent: collapsed ? 'center' : 'flex-start',
               minHeight: '32px',
               minWidth: collapsed ? '40px' : 'auto',
@@ -341,7 +341,7 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           >
             {collapsed ? <Logout fontSize="small" /> : 'Sair'}
           </Button>
-          
+
 
         </Box>
 
@@ -382,7 +382,7 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         >
           <MenuIcon />
         </IconButton>
-        
+
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <img
             src={getLogo()}
@@ -396,8 +396,8 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         </Box>
       </Box>
 
-      <Box component="nav" sx={{ 
-        width: { md: collapsed ? collapsedDrawerWidth : drawerWidth }, 
+      <Box component="nav" sx={{
+        width: { md: collapsed ? collapsedDrawerWidth : drawerWidth },
         flexShrink: { md: 0 },
         transition: 'width 0.3s ease-in-out'
       }}>
