@@ -3,8 +3,7 @@ import { NotificationProvider } from "./context/NotificationContext";
 import ToastContainer from "./components/Toast";
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import { lightTheme, darkTheme } from './theme/theme';
-import { CustomThemeProvider, useTheme } from './contexts/ThemeContext';
+import theme from './theme/theme';
 
 interface AppProps {
   routerConfig?: {
@@ -15,25 +14,14 @@ interface AppProps {
   };
 }
 
-function AppContent({ routerConfig }: AppProps) {
-  const { mode } = useTheme();
-  const currentTheme = mode === 'light' ? lightTheme : darkTheme;
-
+export default function App({ routerConfig }: AppProps) {
   return (
-    <ThemeProvider theme={currentTheme}>
+    <ThemeProvider theme={theme}>
       <CssBaseline />
       <NotificationProvider>
         <AppRouter routerConfig={routerConfig} />
         <ToastContainer />
       </NotificationProvider>
     </ThemeProvider>
-  );
-}
-
-export default function App({ routerConfig }: AppProps) {
-  return (
-    <CustomThemeProvider>
-      <AppContent routerConfig={routerConfig} />
-    </CustomThemeProvider>
   );
 }

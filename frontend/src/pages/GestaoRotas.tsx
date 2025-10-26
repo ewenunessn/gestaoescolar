@@ -247,8 +247,8 @@ const GestaoRotas: React.FC = () => {
 
 
     const FiltersContent = () => (
-        <Box sx={{ bgcolor: 'background.paper', borderRadius: '16px', p: 3 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+        <Box sx={{ bgcolor: 'background.paper', borderRadius: '12px', p: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <TuneRounded sx={{ color: 'primary.main' }} />
                     <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
@@ -261,10 +261,10 @@ const GestaoRotas: React.FC = () => {
                     </Button>
                 )}
             </Box>
-            <Divider sx={{ mb: 3 }} />
+            <Divider sx={{ mb: 2 }} />
             <Grid container spacing={2}>
                 <Grid item xs={12} sm={6} md={4}>
-                    <FormControl fullWidth>
+                    <FormControl fullWidth size="small">
                         <InputLabel>Status</InputLabel>
                         <Select
                             value={selectedStatus}
@@ -278,7 +278,7 @@ const GestaoRotas: React.FC = () => {
                     </FormControl>
                 </Grid>
                 <Grid item xs={12} sm={6} md={4}>
-                    <FormControl fullWidth>
+                    <FormControl fullWidth size="small">
                         <InputLabel>Ordenar por</InputLabel>
                         <Select
                             value={sortBy}
@@ -322,13 +322,14 @@ const GestaoRotas: React.FC = () => {
                     Gestão de Rotas de Entrega
                 </Typography>
 
-                <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', p: 3, mb: 3 }}>
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 3 }}>
+                <Card sx={{ borderRadius: '12px', p: 2, mb: 3 }}>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 2 }}>
                         <TextField
                             placeholder="Buscar rotas..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            sx={{ flex: 1, minWidth: '200px', '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                            size="small"
+                            sx={{ flex: 1, minWidth: '200px', '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
                             InputProps={{
                                 startAdornment: (
                                     <InputAdornment position="start">
@@ -346,6 +347,7 @@ const GestaoRotas: React.FC = () => {
                         />
                         <Box sx={{ display: 'flex', gap: 1 }}>
                             <Button
+                                size="small"
                                 variant={filtersExpanded || hasActiveFilters ? 'contained' : 'outlined'}
                                 startIcon={filtersExpanded ? <ExpandLess /> : <TuneRounded />}
                                 onClick={toggleFilters}
@@ -356,6 +358,7 @@ const GestaoRotas: React.FC = () => {
                                 )}
                             </Button>
                             <Button
+                                size="small"
                                 startIcon={<AddIcon />}
                                 onClick={() => abrirModalRota()}
                                 variant="contained"
@@ -363,17 +366,17 @@ const GestaoRotas: React.FC = () => {
                             >
                                 Nova Rota
                             </Button>
-                            <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)}>
+                            <IconButton size="small" onClick={(e) => setActionsMenuAnchor(e.currentTarget)}>
                                 <MoreVert />
                             </IconButton>
                         </Box>
                     </Box>
-                    <Collapse in={filtersExpanded} timeout={400}>
-                        <Box sx={{ mb: 3 }}>
+                    <Collapse in={filtersExpanded} timeout={300}>
+                        <Box sx={{ mb: 2 }}>
                             <FiltersContent />
                         </Box>
                     </Collapse>
-                    <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+                    <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary', fontSize: '0.8rem' }}>
                         {`Mostrando ${Math.min((page * rowsPerPage) + 1, filteredRotas.length)}-${Math.min((page + 1) * rowsPerPage, filteredRotas.length)} de ${filteredRotas.length} rotas`}
                     </Typography>
                 </Card>

@@ -194,8 +194,8 @@ const PedidosPage = () => {
   const handleViewDetails = (pedido: Pedido) => navigate(`/pedidos/${pedido.id}`);
 
   const FiltersContent = () => (
-    <Box sx={{ bgcolor: 'background.paper', borderRadius: '16px', p: 3 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+    <Box sx={{ bgcolor: 'background.paper', borderRadius: '12px', p: 2 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <TuneRounded sx={{ color: 'primary.main' }} />
           <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
@@ -208,10 +208,10 @@ const PedidosPage = () => {
           </Button>
         )}
       </Box>
-      <Divider sx={{ mb: 3 }} />
+      <Divider sx={{ mb: 2 }} />
       <Grid container spacing={2}>
         <Grid item xs={12} sm={6} md={3}>
-          <FormControl fullWidth>
+          <FormControl fullWidth size="small">
             <InputLabel>Status</InputLabel>
             <Select
               value={selectedStatus}
@@ -231,6 +231,7 @@ const PedidosPage = () => {
         <Grid item xs={12} sm={6} md={3}>
           <TextField
             fullWidth
+            size="small"
             label="Data Início"
             type="date"
             value={selectedDataInicio}
@@ -241,6 +242,7 @@ const PedidosPage = () => {
         <Grid item xs={12} sm={6} md={3}>
           <TextField
             fullWidth
+            size="small"
             label="Data Fim"
             type="date"
             value={selectedDataFim}
@@ -249,7 +251,7 @@ const PedidosPage = () => {
           />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          <FormControl fullWidth>
+          <FormControl fullWidth size="small">
             <InputLabel>Ordenar por</InputLabel>
             <Select
               value={sortBy}
@@ -289,13 +291,14 @@ const PedidosPage = () => {
           Pedidos de Compra
         </Typography>
         
-        <Card sx={{ borderRadius: '12px', p: 3, mb: 3 }}>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 3 }}>
+        <Card sx={{ borderRadius: '12px', p: 2, mb: 3 }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 2 }}>
             <TextField
               placeholder="Buscar pedidos..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              sx={{ flex: 1, minWidth: '200px', '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+              size="small"
+              sx={{ flex: 1, minWidth: '200px', '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -313,6 +316,7 @@ const PedidosPage = () => {
             />
             <Box sx={{ display: 'flex', gap: 1 }}>
               <Button
+                size="small"
                 variant={filtersExpanded || hasActiveFilters ? 'contained' : 'outlined'}
                 startIcon={filtersExpanded ? <ExpandLess /> : <TuneRounded />}
                 onClick={toggleFilters}
@@ -323,6 +327,7 @@ const PedidosPage = () => {
                 )}
               </Button>
               <Button
+                size="small"
                 startIcon={<AddIcon />}
                 onClick={() => navigate('/pedidos/novo')}
                 variant="contained"

@@ -28,7 +28,11 @@ import {
   Collapse,
   IconButton,
   Badge,
-  Dialog
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField
 } from '@mui/material';
 import {
   Settings as SettingsIcon,
@@ -43,7 +47,9 @@ import {
   KeyboardArrowDown as KeyboardArrowDownIcon,
   KeyboardArrowRight as KeyboardArrowRightIcon,
   Visibility as VisibilityIcon,
-  Close as CloseIcon
+  Close as CloseIcon,
+  Print as PrintIcon,
+  Settings as ConfigIcon
 } from '@mui/icons-material';
 import { guiaService } from '../services/guiaService';
 import { rotaService } from '../modules/entregas/services/rotaService';
@@ -82,10 +88,30 @@ const ConfiguracaoEntrega: React.FC = () => {
   // Estado para modal de visualização por escola
   const [modalVisualizacaoAberto, setModalVisualizacaoAberto] = useState(false);
   const [dadosEscolas, setDadosEscolas] = useState<any[]>([]);
-  
+
   // Estado para modal de romaneio
   const [modalRomaneioAberto, setModalRomaneioAberto] = useState(false);
   const [dadosRomaneio, setDadosRomaneio] = useState<any[]>([]);
+
+  // Estado para configuração de unidades de impressão
+  const [modalConfigUnidadesAberto, setModalConfigUnidadesAberto] = useState(false);
+  const [configUnidades, setConfigUnidades] = useState<{
+    [key: string]: {
+      ativo: boolean;
+      pacote: number;
+      caixa: number;
+      tipoCaixa: 'caixa' | 'fardo';
+    }
+  }>({});
+  
+  // Estado local para os campos de input durante a digitação
+  const [inputValues, setInputValues] = useState<{
+    [key: string]: {
+      pacote: string;
+      caixa: string;
+      tipoCaixa: 'caixa' | 'fardo';
+    }
+  }>({});
 
   useEffect(() => {
     carregarDados();
@@ -383,19 +409,19 @@ const ConfiguracaoEntrega: React.FC = () => {
   const gerarRomaneio = async () => {
     try {
       setModalRomaneioAberto(true);
-      
+
       // Buscar rotas selecionadas
       const rotasSelecionadas = rotas.filter(r => configuracao.rotasSelecionadas.includes(r.id));
-      
+
       // Buscar itens selecionados
       const itensSelecionados = itensGuia.filter(item => configuracao.itensSelecionados.includes(item.id));
-      
+
       // Agrupar itens por produto
       const produtosMap = new Map<string, any>();
-      
+
       for (const item of itensSelecionados) {
         const chave = `${item.produto_id}_${item.unidade}`;
-        
+
         if (!produtosMap.has(chave)) {
           produtosMap.set(chave, {
             produto_nome: item.produto_nome,
@@ -403,14 +429,14 @@ const ConfiguracaoEntrega: React.FC = () => {
             rotas: {}
           });
         }
-        
+
         const produto = produtosMap.get(chave);
-        
+
         // Buscar a rota da escola deste item
         for (const rota of rotasSelecionadas) {
           const escolasRota = await rotaService.listarEscolasRota(rota.id);
           const escolaNaRota = escolasRota.find(e => e.escola_id === item.escola_id);
-          
+
           if (escolaNaRota) {
             if (!produto.rotas[rota.id]) {
               produto.rotas[rota.id] = {
@@ -424,7 +450,7 @@ const ConfiguracaoEntrega: React.FC = () => {
           }
         }
       }
-      
+
       // Converter para array
       const dadosRomaneio = Array.from(produtosMap.values()).map(produto => ({
         ...produto,
@@ -435,12 +461,190 @@ const ConfiguracaoEntrega: React.FC = () => {
           quantidade: produto.rotas[rota.id]?.quantidade || 0
         }))
       }));
-      
+
       setDadosRomaneio(dadosRomaneio);
+
+      // Inicializar configuração de unidades se não existir
+      const novaConfigUnidades = { ...configUnidades };
+      const novosInputValues = { ...inputValues };
+      
+      dadosRomaneio.forEach(produto => {
+        if (!novaConfigUnidades[produto.produto_nome]) {
+          novaConfigUnidades[produto.produto_nome] = {
+            ativo: false, // Por padrão, conversão desativada
+            pacote: 1,    // 1 pacote = 1 unidade do item (padrão)
+            caixa: 10,    // 10 unidades = 1 caixa/fardo (padrão)
+            tipoCaixa: 'caixa' // Padrão é caixa
+          };
+        }
+        
+        // Inicializar valores de input se não existirem
+        if (!novosInputValues[produto.produto_nome]) {
+          novosInputValues[produto.produto_nome] = {
+            pacote: novaConfigUnidades[produto.produto_nome].pacote.toString(),
+            caixa: novaConfigUnidades[produto.produto_nome].caixa.toString(),
+            tipoCaixa: novaConfigUnidades[produto.produto_nome].tipoCaixa || 'caixa'
+          };
+        }
+      });
+      
+      setConfigUnidades(novaConfigUnidades);
+      setInputValues(novosInputValues);
+
     } catch (err) {
       console.error('Erro ao gerar romaneio:', err);
       setError('Erro ao gerar romaneio');
     }
+  };
+
+  const abrirConfigUnidades = () => {
+    setModalConfigUnidadesAberto(true);
+  };
+
+  const salvarConfigUnidades = () => {
+    setModalConfigUnidadesAberto(false);
+  };
+
+  const imprimirRomaneio = () => {
+    // Criar uma nova janela para impressão
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    // Gerar HTML para impressão com conversões de unidades
+    const htmlContent = gerarHTMLImpressao();
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+  };
+
+  const gerarHTMLImpressao = () => {
+    const dataAtual = new Date().toLocaleDateString('pt-BR');
+
+    let html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Romaneio de Entrega</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; }
+          h1 { color: #1976d2; text-align: center; }
+          h2 { color: #666; text-align: center; margin-bottom: 30px; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+          th { background-color: #1976d2; color: white; font-weight: bold; }
+          .text-right { text-align: right; }
+          .conversion { font-size: 0.8em; color: #666; font-style: italic; }
+          .rota-conversion { font-size: 0.75em; color: #666; font-style: italic; display: block; margin-top: 2px; }
+          .footer { margin-top: 30px; text-align: center; color: #666; }
+        </style>
+      </head>
+      <body>
+        <h1>Romaneio de Entrega</h1>
+        <h2>Data: ${dataAtual}</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>`;
+
+    // Adicionar colunas das rotas
+    if (dadosRomaneio[0]?.rotasArray) {
+      dadosRomaneio[0].rotasArray.forEach((rota: any) => {
+        html += `<th class="text-right">${rota.rota_nome}</th>`;
+      });
+    }
+
+    html += `
+              <th class="text-right">Total</th>
+            </tr>
+          </thead>
+          <tbody>`;
+
+    // Adicionar linhas dos produtos
+    dadosRomaneio.forEach(produto => {
+      const total = produto.rotasArray.reduce((sum: number, rota: any) => sum + rota.quantidade, 0);
+      const config = configUnidades[produto.produto_nome] || { ativo: false, pacote: 1, caixa: 10, tipoCaixa: 'caixa' };
+
+      html += `
+            <tr>
+              <td><strong>${produto.produto_nome}</strong></td>`;
+
+      // Adicionar quantidades por rota com conversões
+      produto.rotasArray.forEach((rota: any) => {
+        if (rota.quantidade > 0) {
+          let conteudo = '';
+
+          // Se conversão está ativa, mostrar apenas a conversão
+          if (config.ativo) {
+            const kgPorCaixa = config.pacote * config.caixa; // kg por caixa
+            const caixas = Math.floor(rota.quantidade / kgPorCaixa);
+            const restoKg = rota.quantidade % kgPorCaixa;
+            const pacotes = Math.floor(restoKg / config.pacote);
+            const kgAvulso = restoKg % config.pacote;
+
+            let conversaoRota = '';
+            if (caixas > 0) conversaoRota += `${caixas}${config.tipoCaixa === 'fardo' ? 'fd' : 'cx'} `;
+            if (pacotes > 0) conversaoRota += `${pacotes}pc `;
+            if (kgAvulso > 0) conversaoRota += `${kgAvulso.toLocaleString('pt-BR')} ${produto.unidade}`;
+
+            conteudo = conversaoRota.trim() || `${rota.quantidade.toLocaleString('pt-BR')} ${produto.unidade}`;
+          } else {
+            // Se conversão não está ativa, mostrar valor original com unidade
+            conteudo = `${rota.quantidade.toLocaleString('pt-BR')} ${produto.unidade}`;
+          }
+
+          html += `
+                <td class="text-right">
+                  <strong>${conteudo}</strong>
+                </td>`;
+        } else {
+          html += `<td class="text-right">-</td>`;
+        }
+      });
+
+      // Calcular conversão total (só se estiver ativo)
+      let totalConteudo = '';
+      if (config.ativo) {
+        const kgPorCaixa = config.pacote * config.caixa; // kg por caixa
+        const caixasTotal = Math.floor(total / kgPorCaixa);
+        const restoKgTotal = total % kgPorCaixa;
+        const pacotesTotal = Math.floor(restoKgTotal / config.pacote);
+        const kgAvulsoTotal = restoKgTotal % config.pacote;
+
+        let conversaoTotal = '';
+        if (caixasTotal > 0) conversaoTotal += `${caixasTotal}${config.tipoCaixa === 'fardo' ? 'fd' : 'cx'} `;
+        if (pacotesTotal > 0) conversaoTotal += `${pacotesTotal}pc `;
+        if (kgAvulsoTotal > 0) conversaoTotal += `${kgAvulsoTotal.toLocaleString('pt-BR')} ${produto.unidade}`;
+        
+        totalConteudo = conversaoTotal.trim() || `${total.toLocaleString('pt-BR')} ${produto.unidade}`;
+      } else {
+        totalConteudo = `${total.toLocaleString('pt-BR')} ${produto.unidade}`;
+      }
+
+      html += `
+              <td class="text-right">
+                <strong>${totalConteudo}</strong>
+              </td>
+            </tr>`;
+    });
+
+    html += `
+          </tbody>
+        </table>
+        
+        <div style="margin-top: 20px; padding: 10px; background-color: #f5f5f5; border-radius: 5px;">
+          <h3>Legenda:</h3>
+          <p><strong>cx</strong> = Caixa/Fardo | <strong>pc</strong> = Pacote | Valores avulsos mostram a unidade original (kg, g, etc.)</p>
+        </div>
+        
+        <div class="footer">
+          <p>Sistema de Gestão Escolar - NutriEscola</p>
+        </div>
+      </body>
+      </html>`;
+
+    return html;
   };
 
   const salvarConfiguracao = async () => {
@@ -1046,9 +1250,27 @@ const ConfiguracaoEntrega: React.FC = () => {
                 Quantidades por produto e rota
               </Typography>
             </Box>
-            <IconButton onClick={() => setModalRomaneioAberto(false)}>
-              <CloseIcon />
-            </IconButton>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<ConfigIcon />}
+                onClick={abrirConfigUnidades}
+              >
+                Configurar Unidades
+              </Button>
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<PrintIcon />}
+                onClick={imprimirRomaneio}
+              >
+                Imprimir
+              </Button>
+              <IconButton onClick={() => setModalRomaneioAberto(false)}>
+                <CloseIcon />
+              </IconButton>
+            </Box>
           </Box>
 
           <Box sx={{ p: 3 }}>
@@ -1057,64 +1279,196 @@ const ConfiguracaoEntrega: React.FC = () => {
                 Nenhum item selecionado para gerar romaneio
               </Alert>
             ) : (
-              <TableContainer component={Paper} variant="outlined">
+              <TableContainer 
+                component={Paper} 
+                variant="outlined"
+                sx={{
+                  borderRadius: 2,
+                  overflow: 'hidden',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                  border: '1px solid rgba(224, 224, 224, 0.8)'
+                }}
+              >
                 <Table size="small">
                   <TableHead>
-                    <TableRow sx={{ bgcolor: 'primary.main' }}>
-                      <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Item</TableCell>
-                      <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Unidade</TableCell>
+                    <TableRow sx={{ 
+                      bgcolor: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)',
+                      '& .MuiTableCell-root': {
+                        borderBottom: 'none'
+                      }
+                    }}>
+                      <TableCell sx={{
+                        color: '#ffffff !important',
+                        fontWeight: 'bold',
+                        fontSize: '0.95rem',
+                        bgcolor: 'rgba(25, 118, 210, 0.95) !important',
+                        borderRight: '1px solid rgba(255, 255, 255, 0.2)'
+                      }}>
+                        Item
+                      </TableCell>
+
                       {dadosRomaneio[0]?.rotasArray.map((rota: any) => (
-                        <TableCell 
-                          key={rota.rota_id} 
-                          align="right"
-                          sx={{ 
-                            color: 'white', 
+                        <TableCell
+                          key={rota.rota_id}
+                          align="center"
+                          sx={{
+                            color: '#ffffff !important',
                             fontWeight: 'bold',
-                            bgcolor: rota.rota_cor,
-                            minWidth: 120
+                            bgcolor: 'rgba(25, 118, 210, 0.9) !important',
+                            minWidth: 120,
+                            fontSize: '0.9rem',
+                            borderRight: '1px solid rgba(255, 255, 255, 0.2)'
                           }}
                         >
                           {rota.rota_nome}
                         </TableCell>
                       ))}
-                      <TableCell 
-                        align="right"
-                        sx={{ color: 'white', fontWeight: 'bold', bgcolor: 'primary.dark' }}
+                      <TableCell
+                        align="center"
+                        sx={{
+                          color: '#ffffff !important',
+                          fontWeight: 'bold',
+                          bgcolor: 'rgba(21, 101, 192, 1) !important',
+                          fontSize: '0.95rem',
+                          borderLeft: '2px solid rgba(255, 255, 255, 0.3)'
+                        }}
                       >
                         Total
                       </TableCell>
+
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {dadosRomaneio.map((produto, index) => {
                       const total = produto.rotasArray.reduce((sum: number, rota: any) => sum + rota.quantidade, 0);
+                      const config = configUnidades[produto.produto_nome] || { ativo: false, pacote: 1, caixa: 10, tipoCaixa: 'caixa' };
+                      
+                      // Calcular conversão para visualização
+                      let conversaoVisual = 'N/A';
+                      if (config.ativo) {
+                        const kgPorCaixa = config.pacote * config.caixa;
+                        const caixasTotal = Math.floor(total / kgPorCaixa);
+                        const restoKgTotal = total % kgPorCaixa;
+                        const pacotesTotal = Math.floor(restoKgTotal / config.pacote);
+                        const kgAvulsoTotal = restoKgTotal % config.pacote;
+
+                        let conv = '';
+                        if (caixasTotal > 0) conv += `${caixasTotal}${config.tipoCaixa === 'fardo' ? 'fd' : 'cx'} `;
+                        if (pacotesTotal > 0) conv += `${pacotesTotal}pc `;
+                        if (kgAvulsoTotal > 0) conv += `${kgAvulsoTotal.toLocaleString('pt-BR')} ${produto.unidade}`;
+                        
+                        conversaoVisual = conv.trim() || 'N/A';
+                      }
+                      
                       return (
-                        <TableRow key={index} hover>
-                          <TableCell sx={{ fontWeight: 'medium' }}>{produto.produto_nome}</TableCell>
-                          <TableCell>{produto.unidade}</TableCell>
+                        <TableRow 
+                          key={index} 
+                          sx={{
+                            '&:nth-of-type(odd)': {
+                              bgcolor: 'rgba(0, 0, 0, 0.02)'
+                            },
+                            '&:hover': {
+                              bgcolor: 'rgba(25, 118, 210, 0.04) !important'
+                            }
+                          }}
+                        >
+                          <TableCell sx={{
+                            fontWeight: 'bold',
+                            borderRight: '1px solid rgba(224, 224, 224, 1)',
+                            bgcolor: 'rgba(25, 118, 210, 0.02)'
+                          }}>
+                            <Box>
+                              <Typography variant="body2" component="div" fontWeight="bold" color="primary.main">
+                                {produto.produto_nome}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary" component="div">
+                                {produto.unidade}
+                              </Typography>
+                            </Box>
+                          </TableCell>
                           {produto.rotasArray.map((rota: any) => (
-                            <TableCell 
-                              key={rota.rota_id} 
+                            <TableCell
+                              key={rota.rota_id}
                               align="right"
-                              sx={{ 
-                                bgcolor: rota.quantidade > 0 ? `${rota.rota_cor}15` : 'transparent',
-                                fontWeight: rota.quantidade > 0 ? 'bold' : 'normal'
+                              sx={{
+                                bgcolor: rota.quantidade > 0 ? 'rgba(76, 175, 80, 0.08)' : 'transparent',
+                                borderRight: '1px solid rgba(224, 224, 224, 0.5)'
                               }}
                             >
-                              {rota.quantidade > 0 ? rota.quantidade.toLocaleString('pt-BR', {
-                                minimumFractionDigits: 0,
-                                maximumFractionDigits: 3
-                              }) : '-'}
+                              {rota.quantidade > 0 ? (() => {
+                                if (config.ativo) {
+                                  const kgPorCaixa = config.pacote * config.caixa;
+                                  const caixas = Math.floor(rota.quantidade / kgPorCaixa);
+                                  const restoKg = rota.quantidade % kgPorCaixa;
+                                  const pacotes = Math.floor(restoKg / config.pacote);
+                                  const kgAvulso = restoKg % config.pacote;
+
+                                  let conversaoRota = '';
+                                  if (caixas > 0) conversaoRota += `${caixas}${config.tipoCaixa === 'fardo' ? 'fd' : 'cx'} `;
+                                  if (pacotes > 0) conversaoRota += `${pacotes}pc `;
+                                  if (kgAvulso > 0) conversaoRota += `${kgAvulso.toLocaleString('pt-BR')}${produto.unidade}`;
+
+                                  const conversaoLimpa = conversaoRota.trim();
+                                  const quantidadeOriginal = `${rota.quantidade.toLocaleString('pt-BR', {
+                                    minimumFractionDigits: 0,
+                                    maximumFractionDigits: 3
+                                  })} ${produto.unidade}`;
+
+                                  return (
+                                    <Box sx={{ textAlign: 'right' }}>
+                                      <Typography variant="body2" component="div" fontWeight="bold">
+                                        {conversaoLimpa || quantidadeOriginal}
+                                      </Typography>
+                                      {conversaoLimpa && (
+                                        <Typography variant="caption" color="text.secondary" component="div" sx={{ fontSize: '0.7rem' }}>
+                                          ({quantidadeOriginal})
+                                        </Typography>
+                                      )}
+                                    </Box>
+                                  );
+                                } else {
+                                  return (
+                                    <Typography variant="body2" component="div" fontWeight="bold">
+                                      {rota.quantidade.toLocaleString('pt-BR', {
+                                        minimumFractionDigits: 0,
+                                        maximumFractionDigits: 3
+                                      })} {produto.unidade}
+                                    </Typography>
+                                  );
+                                }
+                              })() : '-'}
                             </TableCell>
                           ))}
-                          <TableCell 
+                          <TableCell
                             align="right"
-                            sx={{ fontWeight: 'bold', bgcolor: 'grey.100' }}
+                            sx={{
+                              fontWeight: 'bold',
+                              bgcolor: 'rgba(25, 118, 210, 0.1)',
+                              borderLeft: '2px solid rgba(25, 118, 210, 0.3)'
+                            }}
                           >
-                            {total.toLocaleString('pt-BR', {
-                              minimumFractionDigits: 0,
-                              maximumFractionDigits: 3
-                            })}
+                            <Box sx={{ textAlign: 'right' }}>
+                              {config.ativo && conversaoVisual !== 'N/A' ? (
+                                <>
+                                  <Typography variant="body2" component="div" fontWeight="bold">
+                                    {conversaoVisual}
+                                  </Typography>
+                                  <Typography variant="caption" color="text.secondary" component="div" sx={{ fontSize: '0.7rem' }}>
+                                    ({total.toLocaleString('pt-BR', {
+                                      minimumFractionDigits: 0,
+                                      maximumFractionDigits: 3
+                                    })} {produto.unidade})
+                                  </Typography>
+                                </>
+                              ) : (
+                                <Typography variant="body2" component="div" fontWeight="bold">
+                                  {total.toLocaleString('pt-BR', {
+                                    minimumFractionDigits: 0,
+                                    maximumFractionDigits: 3
+                                  })} {produto.unidade}
+                                </Typography>
+                              )}
+                            </Box>
                           </TableCell>
                         </TableRow>
                       );
@@ -1124,6 +1478,175 @@ const ConfiguracaoEntrega: React.FC = () => {
               </TableContainer>
             )}
           </Box>
+        </Dialog>
+
+        {/* Modal de Configuração de Unidades */}
+        <Dialog
+          open={modalConfigUnidadesAberto}
+          onClose={() => setModalConfigUnidadesAberto(false)}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle>
+            Configurar Unidades de Transporte
+          </DialogTitle>
+          <DialogContent>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              Configure quantas unidades originais equivalem a cada unidade de transporte para facilitar o carregamento.
+            </Typography>
+
+            {dadosRomaneio.map((produto, index) => (
+              <Box key={index} sx={{ mb: 3, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                  <Typography variant="h6">
+                    {produto.produto_nome} ({produto.unidade})
+                  </Typography>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={configUnidades[produto.produto_nome]?.ativo || false}
+                        onChange={(e) => {
+                          const novaConfig = { ...configUnidades };
+                          if (!novaConfig[produto.produto_nome]) {
+                            novaConfig[produto.produto_nome] = { ativo: false, unidade: 1, pacote: 5, caixa: 20 };
+                          }
+                          novaConfig[produto.produto_nome].ativo = e.target.checked;
+                          setConfigUnidades(novaConfig);
+                        }}
+                      />
+                    }
+                    label="Ativar conversão"
+                  />
+                </Box>
+
+                <Grid container spacing={1} alignItems="center">
+                  <Grid item xs={3}>
+                    <TextField
+                      label={`${produto.unidade}/pacote`}
+                      type="number"
+                      size="small"
+                      fullWidth
+                      inputProps={{ step: "0.1", min: "0.1" }}
+                      disabled={!configUnidades[produto.produto_nome]?.ativo}
+                      value={inputValues[produto.produto_nome]?.pacote || '1'}
+                      onChange={(e) => {
+                        const novosInputs = { ...inputValues };
+                        if (!novosInputs[produto.produto_nome]) {
+                          novosInputs[produto.produto_nome] = { pacote: '1', caixa: '10', tipoCaixa: 'caixa' };
+                        }
+                        novosInputs[produto.produto_nome].pacote = e.target.value;
+                        setInputValues(novosInputs);
+                      }}
+                      onBlur={(e) => {
+                        const novaConfig = { ...configUnidades };
+                        const novosInputs = { ...inputValues };
+                        
+                        if (!novaConfig[produto.produto_nome]) {
+                          novaConfig[produto.produto_nome] = { ativo: false, pacote: 1, caixa: 10, tipoCaixa: 'caixa' };
+                        }
+                        
+                        const valor = parseFloat(e.target.value.replace(',', '.'));
+                        if (isNaN(valor) || valor <= 0) {
+                          novaConfig[produto.produto_nome].pacote = 1;
+                          novosInputs[produto.produto_nome].pacote = '1';
+                        } else {
+                          novaConfig[produto.produto_nome].pacote = valor;
+                          novosInputs[produto.produto_nome].pacote = valor.toString();
+                        }
+                        
+                        setConfigUnidades(novaConfig);
+                        setInputValues(novosInputs);
+                      }}
+                    />
+                  </Grid>
+
+                  <Grid item xs={2}>
+                    <FormControl size="small" fullWidth disabled={!configUnidades[produto.produto_nome]?.ativo}>
+                      <InputLabel>Tipo</InputLabel>
+                      <Select
+                        value={inputValues[produto.produto_nome]?.tipoCaixa || 'caixa'}
+                        onChange={(e) => {
+                          const novosInputs = { ...inputValues };
+                          const novaConfig = { ...configUnidades };
+                          
+                          if (!novosInputs[produto.produto_nome]) {
+                            novosInputs[produto.produto_nome] = { pacote: '1', caixa: '10', tipoCaixa: 'caixa' };
+                          }
+                          if (!novaConfig[produto.produto_nome]) {
+                            novaConfig[produto.produto_nome] = { ativo: false, pacote: 1, caixa: 10, tipoCaixa: 'caixa' };
+                          }
+                          
+                          novosInputs[produto.produto_nome].tipoCaixa = e.target.value as 'caixa' | 'fardo';
+                          novaConfig[produto.produto_nome].tipoCaixa = e.target.value as 'caixa' | 'fardo';
+                          
+                          setInputValues(novosInputs);
+                          setConfigUnidades(novaConfig);
+                        }}
+                        label="Tipo"
+                      >
+                        <MenuItem value="caixa">Caixa</MenuItem>
+                        <MenuItem value="fardo">Fardo</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+
+                  <Grid item xs={3}>
+                    <TextField
+                      label={`Pacotes/${inputValues[produto.produto_nome]?.tipoCaixa || 'caixa'}`}
+                      type="number"
+                      size="small"
+                      fullWidth
+                      inputProps={{ step: "1", min: "1" }}
+                      disabled={!configUnidades[produto.produto_nome]?.ativo}
+                      value={inputValues[produto.produto_nome]?.caixa || '10'}
+                      onChange={(e) => {
+                        const novosInputs = { ...inputValues };
+                        if (!novosInputs[produto.produto_nome]) {
+                          novosInputs[produto.produto_nome] = { pacote: '1', caixa: '10', tipoCaixa: 'caixa' };
+                        }
+                        novosInputs[produto.produto_nome].caixa = e.target.value;
+                        setInputValues(novosInputs);
+                      }}
+                      onBlur={(e) => {
+                        const novaConfig = { ...configUnidades };
+                        const novosInputs = { ...inputValues };
+                        
+                        if (!novaConfig[produto.produto_nome]) {
+                          novaConfig[produto.produto_nome] = { ativo: false, pacote: 1, caixa: 10, tipoCaixa: 'caixa' };
+                        }
+                        
+                        const valor = parseFloat(e.target.value.replace(',', '.'));
+                        if (isNaN(valor) || valor <= 0) {
+                          novaConfig[produto.produto_nome].caixa = 10;
+                          novosInputs[produto.produto_nome].caixa = '10';
+                        } else {
+                          novaConfig[produto.produto_nome].caixa = valor;
+                          novosInputs[produto.produto_nome].caixa = valor.toString();
+                        }
+                        
+                        setConfigUnidades(novaConfig);
+                        setInputValues(novosInputs);
+                      }}
+                    />
+                  </Grid>
+                  
+                  <Grid item xs={4}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                      1 {configUnidades[produto.produto_nome]?.tipoCaixa || 'caixa'} = {((configUnidades[produto.produto_nome]?.caixa || 10) * (configUnidades[produto.produto_nome]?.pacote || 1))} {produto.unidade}
+                    </Typography>
+                  </Grid>
+                </Grid>
+              </Box>
+            ))}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setModalConfigUnidadesAberto(false)}>
+              Cancelar
+            </Button>
+            <Button variant="contained" onClick={salvarConfigUnidades}>
+              Salvar Configuração
+            </Button>
+          </DialogActions>
         </Dialog>
       </Box>
     </Container>

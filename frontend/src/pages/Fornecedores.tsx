@@ -240,13 +240,13 @@ const FornecedoresPage: React.FC = () => {
       <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
           <Typography variant="h4" sx={{ mb: 3, fontWeight: 700, color: 'text.primary' }}>Fornecedores</Typography>
 
-        <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', p: 3, mb: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-            <TextField placeholder="Buscar por nome ou CNPJ..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '12px' } }} InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon sx={{ color: 'text.secondary' }} /></InputAdornment>), endAdornment: searchTerm && (<InputAdornment position="end"><IconButton size="small" onClick={() => setSearchTerm('')}><ClearIcon fontSize="small" /></IconButton></InputAdornment>)}}/>
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <Button variant={filtersExpanded || hasActiveFilters ? 'contained' : 'outlined'} startIcon={filtersExpanded ? <ExpandLessIcon /> : <TuneRounded />} onClick={toggleFilters}>Filtros{hasActiveFilters && !filtersExpanded && (<Box sx={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', bgcolor: 'error.main' }}/>)}</Button>
-              <Button startIcon={<AddIcon />} onClick={() => openModal()} variant="contained" color="success">Novo Fornecedor</Button>
-              <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)}><MoreVert /></IconButton>
+        <Card sx={{ borderRadius: '12px', p: 2, mb: 3 }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 2 }}>
+            <TextField placeholder="Buscar por nome ou CNPJ..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} size="small" sx={{ flex: 1, minWidth: '200px', '& .MuiOutlinedInput-root': { borderRadius: '8px' } }} InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon sx={{ color: 'text.secondary' }} /></InputAdornment>), endAdornment: searchTerm && (<InputAdornment position="end"><IconButton size="small" onClick={() => setSearchTerm('')}><ClearIcon fontSize="small" /></IconButton></InputAdornment>)}}/>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button variant={filtersExpanded || hasActiveFilters ? 'contained' : 'outlined'} startIcon={filtersExpanded ? <ExpandLessIcon /> : <TuneRounded />} onClick={toggleFilters} size="small">Filtros{hasActiveFilters && !filtersExpanded && (<Box sx={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', bgcolor: 'error.main' }}/>)}</Button>
+              <Button startIcon={<AddIcon />} onClick={() => openModal()} variant="contained" color="success" size="small">Novo Fornecedor</Button>
+              <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)} size="small"><MoreVert /></IconButton>
             </Box>
           </Box>
           <Collapse in={filtersExpanded} timeout={400}><Box sx={{ mb: 3 }}><FiltersContent /></Box></Collapse>
@@ -270,7 +270,7 @@ const FornecedoresPage: React.FC = () => {
                       <TableCell><Typography variant="body2" sx={{ fontWeight: 600 }}>{f.nome}</Typography></TableCell>
                       <TableCell><Typography variant="body2" color="text.secondary" fontFamily="monospace">{formatarDocumento(f.cnpj)}</Typography></TableCell>
                       <TableCell><Typography variant="body2" color="text.secondary">{f.email || 'Não informado'}</Typography></TableCell>
-                      <TableCell align="center"><Chip label={f.ativo ? 'Ativo' : 'Inativo'} size="small" color={f.ativo ? 'success' : 'error'} variant="outlined" /></TableCell>
+                      <TableCell align="center"><Chip label={f.ativo ? 'Ativo' : 'Inativo'} size="small" color={f.ativo ? 'success' : 'error'} /></TableCell>
                       <TableCell align="center">
                         <Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => navigate(`/fornecedores/${f.id}`)} color="primary"><InfoIcon fontSize="small" /></IconButton></Tooltip>
                         <Tooltip title="Editar"><IconButton size="small" onClick={() => openModal(f)} color="secondary"><EditIcon fontSize="small" /></IconButton></Tooltip>

@@ -9,7 +9,7 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  Chip,
+
   useTheme,
   useMediaQuery,
   Button,
@@ -30,17 +30,16 @@ import {
   Assessment,
   ListAlt,
   RequestPage,
-  ChevronLeft,
-  ChevronRight,
+
   Settings,
 } from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
 import { logout } from "../services/auth";
 import { getLogo } from "../theme/theme";
-import ThemeToggle from "./ThemeToggle";
 
-const drawerWidth = 280;
-const collapsedDrawerWidth = 72;
+
+const drawerWidth = 200;
+const collapsedDrawerWidth = 80;
 
 // Estrutura de Dados Aprimorada
 const menuConfig = [
@@ -48,7 +47,7 @@ const menuConfig = [
     category: "Principal",
     items: [
       { text: "Dashboard", icon: <Dashboard />, path: "/dashboard" },
-      { text: "Demandas SEMED", icon: <RequestPage />, path: "/demandas", badge: "Novo!", badgeColor: "success" },
+      { text: "Demandas SEMED", icon: <RequestPage />, path: "/demandas" },
     ],
   },
   {
@@ -64,7 +63,7 @@ const menuConfig = [
     category: "Planejamento",
     items: [
       { text: "Cardápios", icon: <MenuBook />, path: "/cardapios" },
-      { text: "Gerar Demanda", icon: <Calculate />, path: "/gerar-demanda", badge: "Novo!", badgeColor: "success" },
+      { text: "Gerar Demanda", icon: <Calculate />, path: "/gerar-demanda" },
     ],
   },
   {
@@ -72,23 +71,23 @@ const menuConfig = [
     items: [
       { text: "Fornecedores", icon: <Business />, path: "/fornecedores" },
       { text: "Contratos", icon: <Assignment />, path: "/contratos" },
-      { text: "Pedidos", icon: <LocalShipping />, path: "/pedidos", badge: "Novo!", badgeColor: "success" },
-      { text: "Saldo por Modalidade", icon: <Category />, path: "/saldos-contratos-modalidades", badge: "Novo!", badgeColor: "success" },
+      { text: "Pedidos", icon: <LocalShipping />, path: "/pedidos" },
+      { text: "Saldo por Modalidade", icon: <Category />, path: "/saldos-contratos-modalidades" },
     ],
   },
   {
     category: "Estoque",
     items: [
-      { text: "Estoque Escolar", icon: <Assessment />, path: "/estoque-escolar", badge: "Novo!", badgeColor: "primary" },
+      { text: "Estoque Escolar", icon: <Assessment />, path: "/estoque-escolar" },
     ],
   },
   {
     category: "Guias",
     items: [
       { text: "Guias de Demanda", icon: <ListAlt />, path: "/guias-demanda" },
-      { text: "Gestão de Rotas", icon: <Business />, path: "/gestao-rotas", badge: "Novo!", badgeColor: "info" },
-      { text: "Configuração de Entrega", icon: <Settings />, path: "/configuracao-entrega", badge: "Novo!", badgeColor: "success" },
-      { text: "Entregas", icon: <LocalShipping />, path: "/entregas", badge: "Novo!", badgeColor: "success" },
+      { text: "Gestão de Rotas", icon: <Business />, path: "/gestao-rotas" },
+      { text: "Configuração de Entrega", icon: <Settings />, path: "/configuracao-entrega" },
+      { text: "Entregas", icon: <LocalShipping />, path: "/entregas" },
     ],
   },
 ];
@@ -102,51 +101,116 @@ interface NavItemProps {
 
 // Subcomponente para Item do Menu
 const NavItem: React.FC<NavItemProps> = ({ item, isActive, onClick, collapsed }) => {
+  const theme = useTheme();
+  
+  if (collapsed) {
+    // Modo colapsado - ícone + texto embaixo com barra lateral
+    return (
+      <ListItem disablePadding sx={{ mb: 0.5, position: 'relative' }}>
+        {/* Barra lateral para item ativo */}
+        {isActive && (
+          <Box
+            sx={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: 4,
+              bgcolor: theme.palette.sidebarSelection,
+              zIndex: 1,
+            }}
+          />
+        )}
+        <ListItemButton
+          onClick={() => onClick(item.path)}
+          sx={{
+            mx: 0.5,
+            bgcolor: 'transparent',
+            color: isActive ? theme.palette.sidebarSelection : 'text.secondary',
+            '&:hover': {
+              bgcolor: 'rgba(0, 0, 0, 0.04)',
+              color: isActive ? theme.palette.sidebarSelection : 'text.primary',
+            },
+            transition: "all 0.2s ease-in-out",
+            justifyContent: 'center',
+            px: 0.5,
+            py: 1.5,
+            minHeight: 56,
+            flexDirection: 'column',
+          }}
+        >
+          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 0.5 }}>
+            {item.icon}
+          </Box>
+          <Typography
+            variant="caption"
+            sx={{
+              fontSize: "0.7rem",
+              fontWeight: isActive ? 600 : 400,
+              fontFamily: 'Inter, sans-serif',
+              textAlign: 'center',
+              lineHeight: 1.1,
+              maxWidth: '100%',
+              wordBreak: 'break-word',
+              hyphens: 'auto',
+            }}
+          >
+            {item.text}
+          </Typography>
+        </ListItemButton>
+      </ListItem>
+    );
+  }
+
+  // Modo expandido - ícone + texto na horizontal
   return (
-    <ListItem disablePadding sx={{ mb: 0.5 }}>
+    <ListItem disablePadding sx={{ mb: 0, position: 'relative' }}>
+      {/* Barra lateral para item ativo */}
+      {isActive && (
+        <Box
+          sx={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 4,
+            bgcolor: theme.palette.sidebarSelection,
+            zIndex: 1,
+          }}
+        />
+      )}
       <ListItemButton
         onClick={() => onClick(item.path)}
         sx={{
-          borderRadius: 2,
           mx: 1,
-          bgcolor: isActive ? 'rgba(79, 70, 229, 0.1)' : 'transparent',
-          color: isActive ? 'primary.main' : 'text.secondary',
+          bgcolor: 'transparent',
+          color: isActive ? theme.palette.sidebarSelection : 'text.secondary',
           '&:hover': {
-            bgcolor: 'rgba(79, 70, 229, 0.05)',
-            color: 'primary.main',
+            bgcolor: 'rgba(0, 0, 0, 0.04)',
+            color: isActive ? theme.palette.sidebarSelection : 'text.primary',
           },
           transition: "all 0.2s ease-in-out",
-          justifyContent: collapsed ? 'center' : 'flex-start',
-          px: collapsed ? 1 : 2,
+          justifyContent: 'flex-start',
+          px: 2,
+          py: 0.75,
+          minHeight: 36,
         }}
       >
         <ListItemIcon sx={{ 
           color: 'inherit', 
-          minWidth: collapsed ? 'auto' : 40,
+          minWidth: 28,
           justifyContent: 'center'
         }}>
           {item.icon}
         </ListItemIcon>
-        {!collapsed && (
-          <>
-            <ListItemText
-              primary={item.text}
-              primaryTypographyProps={{
-                fontSize: "0.9rem",
-                fontWeight: isActive ? 600 : 500,
-                fontFamily: 'Inter, sans-serif'
-              }}
-            />
-            {item.badge && (
-              <Chip
-                label={item.badge}
-                size="small"
-                color={item.badgeColor as any}
-                sx={{ height: 20, fontSize: "0.7rem", fontWeight: 600 }}
-              />
-            )}
-          </>
-        )}
+        <ListItemText
+          primary={item.text}
+          primaryTypographyProps={{
+            fontSize: "0.8rem",
+            fontWeight: isActive ? 600 : 400,
+            fontFamily: 'Inter, sans-serif'
+          }}
+        />
       </ListItemButton>
     </ListItem>
   );
@@ -185,66 +249,14 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
 
   const drawer = (
-    <Box sx={{ height: "100%", display: "flex", flexDirection: "column", bgcolor: 'background.paper' }}>
-      <Box sx={{ 
-        p: collapsed ? 1 : 3, 
-        textAlign: "center", 
-        borderBottom: 1, 
-        borderColor: 'divider',
-        transition: 'all 0.3s ease-in-out'
-      }}>
-        <Box sx={{ 
-          width: collapsed ? 40 : 80, 
-          height: collapsed ? 40 : 80, 
-          mx: "auto", 
-          mb: collapsed ? 0 : 1,
-          transition: 'all 0.3s ease-in-out'
-        }}>
-          <img
-            src={getLogo(theme.palette.mode === 'dark')}
-            alt="Logo"
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'contain'
-            }}
-          />
-        </Box>
-        {!collapsed && (
-          <>
-            <Typography
-              variant="h5"
-              fontWeight="700"
-              sx={{
-                mb: 0,
-                color: 'text.primary',
-                fontSize: '1.3rem',
-                letterSpacing: '0.5px'
-              }}
-            >
-              NutriEscola
-            </Typography>
-            <Typography
-              variant="caption"
-              sx={{
-                fontSize: '0.8rem',
-                lineHeight: 1.2,
-                color: 'text.secondary',
-                fontWeight: 400,
-                letterSpacing: '0.3px'
-              }}
-            >
-              Gestão Alimentar Escolar
-            </Typography>
-          </>
-        )}
-
-      </Box>
+    <Box sx={{ height: "100%", display: "flex", flexDirection: "column", bgcolor: 'background.sidebar' }}>
+      {/* Espaço para o header fixo */}
+      <Box sx={{ height: 56 }} />
 
       <Box sx={{ 
         flexGrow: 1, 
         overflow: "auto", 
-        p: 1,
+        py: 1,
         '&::-webkit-scrollbar': {
           width: '6px',
         },
@@ -252,21 +264,38 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           background: 'transparent',
         },
         '&::-webkit-scrollbar-thumb': {
-          background: 'rgba(0,0,0,0.2)',
+          background: 'action.disabled',
           borderRadius: '3px',
         },
         '&::-webkit-scrollbar-thumb:hover': {
-          background: 'rgba(0,0,0,0.3)',
+          background: 'action.hover',
         },
       }}>
         {menuConfig.map(({ category, items }) => (
-          <Box key={category} sx={{ mb: collapsed ? 1 : 2 }}>
-            {!collapsed && (
-              <Typography variant="overline" sx={{ px: 2, py: 1, display: "block", fontWeight: "bold", color: 'text.secondary', fontSize: "0.7rem" }}>
-                {category}
-              </Typography>
+          <Box key={category} sx={{ mb: collapsed ? 0 : 1 }}>
+            {!collapsed && category !== "Principal" && (
+              <Box sx={{ 
+                px: 2, 
+                py: 0.75, 
+                borderBottom: 1,
+                borderColor: 'divider',
+                mb: 0.5
+              }}>
+                <Typography 
+                  variant="caption" 
+                  sx={{ 
+                    fontWeight: "500", 
+                    color: 'text.disabled', 
+                    fontSize: "0.7rem",
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.3px'
+                  }}
+                >
+                  {category}
+                </Typography>
+              </Box>
             )}
-            <List dense>
+            <List dense sx={{ py: 0 }}>
               {items.map((item) => {
                 const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
                 return (
@@ -284,68 +313,88 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         ))}
       </Box>
 
-      <Box sx={{ p: collapsed ? 1 : 2, borderTop: 1, borderColor: 'divider', position: 'relative' }}>
-        {!collapsed && (
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5, textAlign: 'center' }}>
-            © {new Date().getFullYear()} Sistema de Gestão
-          </Typography>
-        )}
-        
-        <Box sx={{ display: 'flex', gap: 1, flexDirection: collapsed ? 'column' : 'row' }}>
+      <Box sx={{ 
+        p: collapsed ? 1 : 1.5, 
+        borderTop: 1,
+        borderColor: 'divider', 
+        position: 'relative' 
+      }}>
+        <Box sx={{ display: 'flex', gap: 1, flexDirection: collapsed ? 'column' : 'row', alignItems: 'center' }}>
           <Button
             onClick={handleLogout}
             size="small"
             startIcon={collapsed ? undefined : <Logout fontSize="small" />}
-            color="inherit"
             sx={{ 
               flex: collapsed ? 'none' : 1,
               textTransform: 'none', 
-              fontSize: '0.75rem', 
+              fontSize: '0.8rem', 
               color: 'text.secondary', 
               justifyContent: collapsed ? 'center' : 'flex-start',
               minHeight: '32px',
               minWidth: collapsed ? '40px' : 'auto',
-              px: collapsed ? 1 : 2,
+              px: collapsed ? 1 : 1.5,
+              '&:hover': {
+                bgcolor: 'action.hover',
+                color: 'text.primary',
+              },
             }}
           >
             {collapsed ? <Logout fontSize="small" /> : 'Sair'}
           </Button>
           
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'flex-start' }}>
-            <ThemeToggle />
-          </Box>
+
         </Box>
 
-        {/* Botão de colapsar - apenas no desktop */}
-        {!isMobile && (
-          <IconButton
-            onClick={handleCollapseToggle}
-            sx={{
-              position: 'absolute',
-              right: -20,
-              top: '50%',
-              transform: 'translateY(-50%)',
-              bgcolor: 'background.paper',
-              border: 1,
-              borderColor: 'divider',
-              width: 40,
-              height: 40,
-              '&:hover': {
-                bgcolor: 'action.hover',
-              },
-              zIndex: 1301,
-            }}
-          >
-            {collapsed ? <ChevronRight /> : <ChevronLeft />}
-          </IconButton>
-        )}
+
       </Box>
     </Box>
   );
 
   return (
     <Box sx={{ display: "flex", minHeight: "100vh" }}>
-
+      {/* Header fixo no topo */}
+      <Box
+        component="header"
+        sx={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 56,
+          bgcolor: 'background.paper',
+          borderBottom: 1,
+          borderColor: 'divider',
+          display: 'flex',
+          alignItems: 'center',
+          px: 2,
+          zIndex: 1300,
+        }}
+      >
+        <IconButton
+          onClick={isMobile ? handleDrawerToggle : handleCollapseToggle}
+          sx={{
+            color: 'text.secondary',
+            mr: 1.5,
+            '&:hover': {
+              bgcolor: 'action.hover',
+            },
+          }}
+        >
+          <MenuIcon />
+        </IconButton>
+        
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <img
+            src={getLogo()}
+            alt="Logo"
+            style={{
+              height: '40px',
+              width: 'auto',
+              objectFit: 'contain'
+            }}
+          />
+        </Box>
+      </Box>
 
       <Box component="nav" sx={{ 
         width: { md: collapsed ? collapsedDrawerWidth : drawerWidth }, 
@@ -361,7 +410,8 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             display: { xs: "block", md: "none" },
             "& .MuiDrawer-paper": {
               width: drawerWidth,
-              bgcolor: 'background.paper',
+              bgcolor: 'background.sidebar',
+              pt: '56px', // Espaço para o header fixo
             }
           }}
         >
@@ -375,9 +425,10 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               width: collapsed ? collapsedDrawerWidth : drawerWidth,
               borderRight: 1,
               borderColor: 'divider',
-              bgcolor: 'background.paper',
+              bgcolor: 'background.sidebar',
               transition: 'width 0.3s ease-in-out',
               overflow: 'visible',
+              pt: '56px', // Espaço para o header fixo
             },
           }}
           open
@@ -395,27 +446,9 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           bgcolor: "background.default",
           position: "relative",
           transition: 'width 0.3s ease-in-out',
+          pt: '56px', // Espaço para o header fixo
         }}
       >
-        {/* Botão de menu flutuante para mobile */}
-        <IconButton
-          onClick={handleDrawerToggle}
-          sx={{
-            position: "fixed",
-            top: 16,
-            left: 16,
-            zIndex: 1300,
-            display: { xs: "flex", md: "none" },
-            bgcolor: "background.paper",
-            boxShadow: 2,
-            "&:hover": {
-              bgcolor: "action.hover",
-            },
-          }}
-        >
-          <MenuIcon />
-        </IconButton>
-        
         <Box>{children}</Box>
       </Box>
     </Box>

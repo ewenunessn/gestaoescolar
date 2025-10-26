@@ -194,26 +194,22 @@ const RefeicoesPage = () => {
   const FiltersContent = () => (
     <Box
       sx={{
-        background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-        borderRadius: '16px', p: 3, border: '1px solid rgba(148, 163, 184, 0.1)',
+        bgcolor: 'background.paper',
+        borderRadius: '12px', p: 2,
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <TuneRounded sx={{ color: '#4f46e5' }} />
-          <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
-            Filtros Avançados
-          </Typography>
-        </Box>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'text.primary', fontSize: '0.9rem' }}>
+          Filtros Avançados
+        </Typography>
         {hasActiveFilters && (
-          <Button size="small" onClick={clearFilters} sx={{ color: 'text.secondary', textTransform: 'none' }}>
-            Limpar Tudo
+          <Button size="small" onClick={clearFilters} sx={{ color: 'text.secondary', textTransform: 'none', fontSize: '0.8rem' }}>
+            Limpar
           </Button>
         )}
       </Box>
-      <Divider sx={{ mb: 3 }} />
-      <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-        <FormControl sx={{ minWidth: 200 }}>
+      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+        <FormControl sx={{ minWidth: 180 }} size="small">
           <InputLabel>Tipo</InputLabel>
           <Select value={selectedTipo} onChange={(e) => setSelectedTipo(e.target.value)} label="Tipo">
             <MenuItem value="">Todos os tipos</MenuItem>
@@ -222,7 +218,7 @@ const RefeicoesPage = () => {
             ))}
           </Select>
         </FormControl>
-        <FormControl sx={{ minWidth: 150 }}>
+        <FormControl sx={{ minWidth: 150 }} size="small">
           <InputLabel>Status</InputLabel>
           <Select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)} label="Status">
             <MenuItem value="">Todos</MenuItem>
@@ -230,7 +226,7 @@ const RefeicoesPage = () => {
             <MenuItem value="inativo">Inativas</MenuItem>
           </Select>
         </FormControl>
-        <FormControl sx={{ minWidth: 150 }}>
+        <FormControl sx={{ minWidth: 150 }} size="small">
           <InputLabel>Ordenar por</InputLabel>
           <Select value={sortBy} onChange={(e) => setSortBy(e.target.value)} label="Ordenar por">
             <MenuItem value="name">Nome</MenuItem>
@@ -327,13 +323,18 @@ const RefeicoesPage = () => {
       )}
 
       <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
-        <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', p: 3, mb: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+        <Typography variant="h4" sx={{ mb: 3, fontWeight: 700, color: 'text.primary' }}>
+          Refeições
+        </Typography>
+        
+        <Card sx={{ borderRadius: '12px', p: 2, mb: 3 }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 2 }}>
             <TextField
               placeholder="Buscar refeições..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+              size="small"
+              sx={{ flex: 1, minWidth: '200px', '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start"><SearchIcon sx={{ color: 'text.secondary' }} /></InputAdornment>
@@ -345,31 +346,32 @@ const RefeicoesPage = () => {
                 ),
               }}
             />
-            <Box sx={{ display: 'flex', gap: 2 }}>
+            <Box sx={{ display: 'flex', gap: 1 }}>
               <Button
                 variant={filtersExpanded || hasActiveFilters ? 'contained' : 'outlined'}
                 startIcon={filtersExpanded ? <ExpandLess /> : <TuneRounded />}
                 onClick={toggleFilters}
+                size="small"
               >
                 Filtros
                 {hasActiveFilters && !filtersExpanded && (
                   <Box sx={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', bgcolor: 'error.main' }}/>
                 )}
               </Button>
-              <Button startIcon={<AddIcon />} onClick={() => openModal()} variant="contained" color="success">
+              <Button startIcon={<AddIcon />} onClick={() => openModal()} variant="contained" color="success" size="small">
                 Nova Refeição
               </Button>
-              <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)}>
+              <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)} size="small">
                 <MoreVert />
               </IconButton>
             </Box>
           </Box>
 
-          <Collapse in={filtersExpanded} timeout={400}>
-            <Box sx={{ mb: 3 }}><FiltersContent /></Box>
+          <Collapse in={filtersExpanded} timeout={300}>
+            <Box sx={{ mb: 2 }}><FiltersContent /></Box>
           </Collapse>
 
-          <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+          <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>
             {`Mostrando ${Math.min((page * rowsPerPage) + 1, filteredRefeicoes.length)}-${Math.min((page + 1) * rowsPerPage, filteredRefeicoes.length)} de ${filteredRefeicoes.length} refeições`}
           </Typography>
         </Card>
@@ -414,7 +416,7 @@ const RefeicoesPage = () => {
                       <Typography variant="body2" color="text.secondary">{tiposRefeicao[refeicao.tipo]}</Typography>
                     </TableCell>
                     <TableCell align="center">
-                      <Chip label={refeicao.ativo ? 'Ativa' : 'Inativa'} size="small" color={refeicao.ativo ? 'success' : 'error'} variant="outlined" />
+                      <Chip label={refeicao.ativo ? 'Ativa' : 'Inativa'} size="small" color={refeicao.ativo ? 'success' : 'error'} />
                     </TableCell>
                     <TableCell align="center">
                         <Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => handleViewDetails(refeicao)} color="default"><Visibility fontSize="small" /></IconButton></Tooltip>

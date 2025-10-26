@@ -205,17 +205,16 @@ const ProdutosPage = () => {
 
   // Componente de conteúdo dos filtros
   const FiltersContent = () => (
-    <Box sx={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)', borderRadius: '16px', p: 3, border: '1px solid rgba(148, 163, 184, 0.1)' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}><TuneRounded sx={{ color: 'primary.main' }} /><Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>Filtros Avançados</Typography></Box>
-        {hasActiveFilters && <Button size="small" onClick={clearFilters} sx={{ color: 'text.secondary', textTransform: 'none' }}>Limpar Tudo</Button>}
+    <Box sx={{ bgcolor: 'background.paper', borderRadius: '12px', p: 2 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'text.primary', fontSize: '0.9rem' }}>Filtros Avançados</Typography>
+        {hasActiveFilters && <Button size="small" onClick={clearFilters} sx={{ color: 'text.secondary', textTransform: 'none', fontSize: '0.8rem' }}>Limpar</Button>}
       </Box>
-      <Divider sx={{ mb: 3 }} />
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 2 }}>
-        <FormControl fullWidth><InputLabel>Categoria</InputLabel><Select value={selectedCategoria} onChange={(e) => setSelectedCategoria(e.target.value)} label="Categoria"><MenuItem value="">Todas</MenuItem>{categorias.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)}</Select></FormControl>
-        <FormControl fullWidth><InputLabel>Marcas</InputLabel><Select multiple value={selectedMarcas} onChange={(e) => setSelectedMarcas(e.target.value as string[])} input={<OutlinedInput label="Marcas" />} renderValue={(selected) => selected.join(', ')}>{marcas.map(m => <MenuItem key={m} value={m}><Checkbox checked={selectedMarcas.includes(m)} />{m}</MenuItem>)}</Select></FormControl>
-        <FormControl fullWidth><InputLabel>Status</InputLabel><Select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)} label="Status"><MenuItem value="">Todos</MenuItem><MenuItem value="ativo">Ativos</MenuItem><MenuItem value="inativo">Inativos</MenuItem></Select></FormControl>
-        <FormControl fullWidth><InputLabel>Ordenar por</InputLabel><Select value={sortBy} onChange={(e) => setSortBy(e.target.value)} label="Ordenar por"><MenuItem value="name">Nome</MenuItem><MenuItem value="categoria">Categoria</MenuItem><MenuItem value="marca">Marca</MenuItem></Select></FormControl>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2 }}>
+        <FormControl fullWidth size="small"><InputLabel>Categoria</InputLabel><Select value={selectedCategoria} onChange={(e) => setSelectedCategoria(e.target.value)} label="Categoria"><MenuItem value="">Todas</MenuItem>{categorias.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)}</Select></FormControl>
+        <FormControl fullWidth size="small"><InputLabel>Marcas</InputLabel><Select multiple value={selectedMarcas} onChange={(e) => setSelectedMarcas(e.target.value as string[])} input={<OutlinedInput label="Marcas" />} renderValue={(selected) => selected.join(', ')}>{marcas.map(m => <MenuItem key={m} value={m}><Checkbox checked={selectedMarcas.includes(m)} />{m}</MenuItem>)}</Select></FormControl>
+        <FormControl fullWidth size="small"><InputLabel>Status</InputLabel><Select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)} label="Status"><MenuItem value="">Todos</MenuItem><MenuItem value="ativo">Ativos</MenuItem><MenuItem value="inativo">Inativos</MenuItem></Select></FormControl>
+        <FormControl fullWidth size="small"><InputLabel>Ordenar por</InputLabel><Select value={sortBy} onChange={(e) => setSortBy(e.target.value)} label="Ordenar por"><MenuItem value="name">Nome</MenuItem><MenuItem value="categoria">Categoria</MenuItem><MenuItem value="marca">Marca</MenuItem></Select></FormControl>
       </Box>
     </Box>
   );
@@ -495,17 +494,17 @@ const ProdutosPage = () => {
       <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
         <Typography variant="h4" sx={{ mb: 3, fontWeight: 700, color: 'text.primary' }}>Produtos</Typography>
 
-        <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', p: 3, mb: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-            <TextField placeholder="Buscar produtos..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '12px' } }} InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon sx={{ color: 'text.secondary' }} /></InputAdornment>), endAdornment: searchTerm && (<InputAdornment position="end"><IconButton size="small" onClick={() => setSearchTerm('')}><ClearIcon fontSize="small" /></IconButton></InputAdornment>)}}/>
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <Button variant={filtersExpanded || hasActiveFilters ? 'contained' : 'outlined'} startIcon={filtersExpanded ? <ExpandLess /> : <TuneRounded />} onClick={toggleFilters}>Filtros{hasActiveFilters && !filtersExpanded && (<Box sx={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', bgcolor: 'error.main' }}/>)}</Button>
-              <Button startIcon={<AddIcon />} onClick={openModal} variant="contained" color="success">Novo Produto</Button>
-              <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)}><MoreVert /></IconButton>
+        <Card sx={{ borderRadius: '12px', p: 2, mb: 3 }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 2 }}>
+            <TextField placeholder="Buscar produtos..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} size="small" sx={{ flex: 1, minWidth: '200px', '& .MuiOutlinedInput-root': { borderRadius: '8px' } }} InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon sx={{ color: 'text.secondary' }} /></InputAdornment>), endAdornment: searchTerm && (<InputAdornment position="end"><IconButton size="small" onClick={() => setSearchTerm('')}><ClearIcon fontSize="small" /></IconButton></InputAdornment>)}}/>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button variant={filtersExpanded || hasActiveFilters ? 'contained' : 'outlined'} startIcon={filtersExpanded ? <ExpandLess /> : <TuneRounded />} onClick={toggleFilters} size="small">Filtros{hasActiveFilters && !filtersExpanded && (<Box sx={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', bgcolor: 'error.main' }}/>)}</Button>
+              <Button startIcon={<AddIcon />} onClick={openModal} variant="contained" color="success" size="small">Novo Produto</Button>
+              <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)} size="small"><MoreVert /></IconButton>
             </Box>
           </Box>
-          <Collapse in={filtersExpanded} timeout={400}><Box sx={{ mb: 3 }}><FiltersContent /></Box></Collapse>
-          <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>{`Mostrando ${Math.min((page * rowsPerPage) + 1, filteredProdutos.length)}-${Math.min((page + 1) * rowsPerPage, filteredProdutos.length)} de ${filteredProdutos.length} produtos`}</Typography>
+          <Collapse in={filtersExpanded} timeout={300}><Box sx={{ mb: 2 }}><FiltersContent /></Box></Collapse>
+          <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>{`Mostrando ${Math.min((page * rowsPerPage) + 1, filteredProdutos.length)}-${Math.min((page + 1) * rowsPerPage, filteredProdutos.length)} de ${filteredProdutos.length} produtos`}</Typography>
         </Card>
 
         {loading ? (
@@ -525,7 +524,7 @@ const ProdutosPage = () => {
                       <TableCell><Typography variant="body2" sx={{ fontWeight: 600 }}>{produto.nome}</Typography>{produto.descricao && <Typography variant="caption" color="text.secondary">{produto.descricao}</Typography>}</TableCell>
                       <TableCell><Typography variant="body2" color="text.secondary">{produto.categoria || 'N/A'}</Typography></TableCell>
                       <TableCell><Typography variant="body2" color="text.secondary">{produto.marca || 'N/A'}</Typography></TableCell>
-                      <TableCell><Chip label={produto.ativo ? 'Ativo' : 'Inativo'} size="small" color={produto.ativo ? 'success' : 'error'} variant="outlined" /></TableCell>
+                      <TableCell><Chip label={produto.ativo ? 'Ativo' : 'Inativo'} size="small" color={produto.ativo ? 'success' : 'error'} /></TableCell>
                       <TableCell align="center"><Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => navigate(`/produtos/${produto.id}`)} color="primary"><Info fontSize="small" /></IconButton></Tooltip></TableCell>
                     </TableRow>
                   ))}

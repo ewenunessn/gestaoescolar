@@ -154,7 +154,7 @@ export default function FornecedorDetalhe() {
                   <BusinessIcon color="primary" sx={{ fontSize: 40 }} />
                   <Box>
                     <Typography variant="h5" fontWeight="600">{fornecedor.nome}</Typography>
-                    <Chip label={fornecedor.ativo ? "Ativo" : "Inativo"} color={fornecedor.ativo ? "success" : "error"} size="small" variant="outlined" sx={{ mt: 0.5 }} />
+                    <Chip label={fornecedor.ativo ? "Ativo" : "Inativo"} color={fornecedor.ativo ? "success" : "error"} size="small" sx={{ mt: 0.5 }} />
                   </Box>
                 </Stack>
                 <Grid container spacing={3}>

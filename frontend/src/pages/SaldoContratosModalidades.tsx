@@ -995,8 +995,8 @@ const SaldoContratosModalidades: React.FC = () => {
           Saldo de Contratos por Modalidade
         </Typography>
 
-        <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', p: 3, mb: 3 }}>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 3 }}>
+        <Card sx={{ borderRadius: '12px', p: 2, mb: 3 }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 2 }}>
             <TextField
               placeholder="Pesquisar produto..."
               value={filtrosTemp.produto_nome || ''}
@@ -1012,20 +1012,21 @@ const SaldoContratosModalidades: React.FC = () => {
                   setPage(0);
                 }, 500);
               }}
-              sx={{ flex: 1, minWidth: '200px', '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+              size="small"
+              sx={{ flex: 1, minWidth: '200px', '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
               InputProps={{
                 startAdornment: (<InputAdornment position="start"><SearchIcon sx={{ color: 'text.secondary' }} /></InputAdornment>),
                 endAdornment: filtrosTemp.produto_nome && (<InputAdornment position="end"><IconButton size="small" onClick={() => { setFiltrosTemp({}); setFiltros({ page: 1, limit: rowsPerPage }); setPage(0); }}><CancelIcon fontSize="small" /></IconButton></InputAdornment>)
               }}
             />
             <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button variant="outlined" startIcon={<FilterIcon />}>
+              <Button size="small" variant="outlined" startIcon={<FilterIcon />}>
                 Filtros
               </Button>
             </Box>
           </Box>
 
-          <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+          <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary', fontSize: '0.8rem' }}>
             {`Mostrando ${Math.min(page * rowsPerPage + 1, total)}-${Math.min((page + 1) * rowsPerPage, total)} de ${total} produtos`}
           </Typography>
         </Card>
@@ -1040,12 +1041,12 @@ const SaldoContratosModalidades: React.FC = () => {
 
           <Box display="flex" gap={1}>
             <Tooltip title="Atualizar">
-              <IconButton onClick={carregarDados} disabled={loading}>
+              <IconButton size="small" onClick={carregarDados} disabled={loading}>
                 <RefreshIcon />
               </IconButton>
             </Tooltip>
 
-            <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportarCSV} disabled={loading}>
+            <Button size="small" variant="outlined" startIcon={<DownloadIcon />} onClick={exportarCSV} disabled={loading}>
               Exportar CSV
             </Button>
           </Box>
@@ -1261,7 +1262,7 @@ const SaldoContratosModalidades: React.FC = () => {
             </Box>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setDialogSelecionarContrato(false)}>Cancelar</Button>
+            <Button size="small" onClick={() => setDialogSelecionarContrato(false)}>Cancelar</Button>
           </DialogActions>
         </Dialog>
 
@@ -1344,7 +1345,7 @@ const SaldoContratosModalidades: React.FC = () => {
             )}
           </DialogContent>
           <DialogActions>
-            <Button onClick={fecharDialogGerenciarModalidades}>
+            <Button size="small" onClick={fecharDialogGerenciarModalidades}>
               Fechar
             </Button>
           </DialogActions>
@@ -1443,7 +1444,7 @@ const SaldoContratosModalidades: React.FC = () => {
             )}
           </DialogContent>
           <DialogActions>
-            <Button onClick={fecharDialogQuantidadeInicial} disabled={salvandoQuantidade}>
+            <Button size="small" onClick={fecharDialogQuantidadeInicial} disabled={salvandoQuantidade}>
               Cancelar
             </Button>
             <Button
@@ -1535,7 +1536,7 @@ const SaldoContratosModalidades: React.FC = () => {
             )}
           </DialogContent>
           <DialogActions>
-            <Button onClick={fecharDialogConsumo} disabled={registrandoConsumo}>
+            <Button size="small" onClick={fecharDialogConsumo} disabled={registrandoConsumo}>
               Cancelar
             </Button>
             <Button
@@ -1606,7 +1607,7 @@ const SaldoContratosModalidades: React.FC = () => {
             </Box>
           </DialogContent>
           <DialogActions>
-            <Button onClick={fecharDialogHistorico}>
+            <Button size="small" onClick={fecharDialogHistorico}>
               Fechar
             </Button>
           </DialogActions>

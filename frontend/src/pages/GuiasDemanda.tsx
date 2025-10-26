@@ -292,16 +292,17 @@ const GuiasDemanda: React.FC = () => {
           Guias de Demanda
         </Typography>
 
-        <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', p: 3, mb: 3 }}>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 3 }}>
+        <Card sx={{ borderRadius: '12px', p: 2, mb: 3 }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 2 }}>
             <TextField
               placeholder="Buscar guias..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              size="small"
               sx={{
                 flex: 1,
                 minWidth: '200px',
-                '& .MuiOutlinedInput-root': { borderRadius: '12px' }
+                '& .MuiOutlinedInput-root': { borderRadius: '8px' }
               }}
               InputProps={{
                 startAdornment: (
@@ -320,6 +321,7 @@ const GuiasDemanda: React.FC = () => {
             />
             <Box sx={{ display: 'flex', gap: 1 }}>
               <Button
+                size="small"
                 variant={filtersExpanded || hasActiveFilters ? 'contained' : 'outlined'}
                 startIcon={filtersExpanded ? <ExpandLess /> : <TuneRounded />}
                 onClick={toggleFilters}

@@ -87,7 +87,7 @@ const ContratoInfoCard = ({ contrato, fornecedor, valorTotal }) => {
             <Typography variant="h5" component="div" fontWeight="600">
               Contrato #{contrato.numero}
             </Typography>
-            <Chip label={status.status} color={status.color} size="small" variant="outlined" sx={{ mt: 0.5 }} />
+            <Chip label={status.status} color={status.color} size="small" sx={{ mt: 0.5 }} />
           </Box>
         </Stack>
         <Grid container spacing={3}>
@@ -346,7 +346,7 @@ export default function ContratoDetalhe() {
                                     <TableCell>{produto.quantidade}</TableCell>
                                     <TableCell>{formatarMoeda(produto.preco_unitario)}</TableCell>
                                     <TableCell>{formatarMoeda(produto.valor_total)}</TableCell>
-                                    <TableCell><Chip label={produto.saldo} color={produto.saldo > 0 ? "success" : "error"} size="small" variant="outlined"/></TableCell>
+                                    <TableCell><Chip label={produto.saldo} color={produto.saldo > 0 ? "success" : "error"} size="small"/></TableCell>
                                     <TableCell align="right">
                                         <Tooltip title="Editar Item"><IconButton size="small" onClick={() => abrirModalProduto(produto)}><EditIcon fontSize="small" /></IconButton></Tooltip>
                                         <Tooltip title="Remover Item"><IconButton size="small" onClick={() => confirmarRemoverProduto(produto.id)}><DeleteIcon fontSize="small" /></IconButton></Tooltip>

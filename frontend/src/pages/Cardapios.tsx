@@ -151,16 +151,15 @@ const CardapiosPage = () => {
 
   // Componente de conteúdo dos filtros
   const FiltersContent = () => (
-    <Box sx={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)', borderRadius: '16px', p: 3, border: '1px solid rgba(148, 163, 184, 0.1)' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}><TuneRounded sx={{ color: 'primary.main' }} /><Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>Filtros Avançados</Typography></Box>
-        {hasActiveFilters && <Button size="small" onClick={clearFilters} sx={{ color: 'text.secondary', textTransform: 'none' }}>Limpar Tudo</Button>}
+    <Box sx={{ bgcolor: 'background.paper', borderRadius: '12px', p: 2 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'text.primary', fontSize: '0.9rem' }}>Filtros Avançados</Typography>
+        {hasActiveFilters && <Button size="small" onClick={clearFilters} sx={{ color: 'text.secondary', textTransform: 'none', fontSize: '0.8rem' }}>Limpar</Button>}
       </Box>
-      <Divider sx={{ mb: 3 }} />
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2 }}>
-        <FormControl fullWidth><InputLabel>Modalidade</InputLabel><Select value={selectedModalidade} onChange={(e) => setSelectedModalidade(e.target.value)} label="Modalidade"><MenuItem value="">Todas</MenuItem>{modalidades.map(m => <MenuItem key={m} value={m}>{m}</MenuItem>)}</Select></FormControl>
-        <FormControl fullWidth><InputLabel>Status</InputLabel><Select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)} label="Status"><MenuItem value="">Todos</MenuItem><MenuItem value="ativo">Ativos</MenuItem><MenuItem value="inativo">Inativos</MenuItem></Select></FormControl>
-        <FormControl fullWidth><InputLabel>Ordenar por</InputLabel><Select value={sortBy} onChange={(e) => setSortBy(e.target.value)} label="Ordenar por"><MenuItem value="nome">Nome</MenuItem><MenuItem value="modalidade">Modalidade</MenuItem></Select></FormControl>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 2 }}>
+        <FormControl fullWidth size="small"><InputLabel>Modalidade</InputLabel><Select value={selectedModalidade} onChange={(e) => setSelectedModalidade(e.target.value)} label="Modalidade"><MenuItem value="">Todas</MenuItem>{modalidades.map(m => <MenuItem key={m} value={m}>{m}</MenuItem>)}</Select></FormControl>
+        <FormControl fullWidth size="small"><InputLabel>Status</InputLabel><Select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)} label="Status"><MenuItem value="">Todos</MenuItem><MenuItem value="ativo">Ativos</MenuItem><MenuItem value="inativo">Inativos</MenuItem></Select></FormControl>
+        <FormControl fullWidth size="small"><InputLabel>Ordenar por</InputLabel><Select value={sortBy} onChange={(e) => setSortBy(e.target.value)} label="Ordenar por"><MenuItem value="nome">Nome</MenuItem><MenuItem value="modalidade">Modalidade</MenuItem></Select></FormControl>
       </Box>
     </Box>
   );
@@ -169,17 +168,17 @@ const CardapiosPage = () => {
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       {successMessage && (<Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}><Alert severity="success" onClose={() => setSuccessMessage(null)}>{successMessage}</Alert></Box>)}
       <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
-        <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', p: 3, mb: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-            <TextField placeholder="Buscar cardápios..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '12px' } }} InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon sx={{ color: 'text.secondary' }} /></InputAdornment>), endAdornment: searchTerm && (<InputAdornment position="end"><IconButton size="small" onClick={() => setSearchTerm('')}><ClearIcon fontSize="small" /></IconButton></InputAdornment>)}}/>
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <Button variant={filtersExpanded || hasActiveFilters ? 'contained' : 'outlined'} startIcon={filtersExpanded ? <ExpandLessIcon /> : <TuneRounded />} onClick={toggleFilters}>Filtros{hasActiveFilters && !filtersExpanded && (<Box sx={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', bgcolor: 'error.main' }}/>)}</Button>
-              <Button startIcon={<AddIcon />} onClick={() => navigate("/cardapios/novo")} variant="contained" color="success">Novo Cardápio</Button>
-              <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)}><MoreVert /></IconButton>
+        <Card sx={{ borderRadius: '12px', p: 2, mb: 3 }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 2 }}>
+            <TextField placeholder="Buscar cardápios..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} size="small" sx={{ flex: 1, minWidth: '200px', '& .MuiOutlinedInput-root': { borderRadius: '8px' } }} InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon sx={{ color: 'text.secondary' }} /></InputAdornment>), endAdornment: searchTerm && (<InputAdornment position="end"><IconButton size="small" onClick={() => setSearchTerm('')}><ClearIcon fontSize="small" /></IconButton></InputAdornment>)}}/>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button variant={filtersExpanded || hasActiveFilters ? 'contained' : 'outlined'} startIcon={filtersExpanded ? <ExpandLessIcon /> : <TuneRounded />} onClick={toggleFilters} size="small">Filtros{hasActiveFilters && !filtersExpanded && (<Box sx={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', bgcolor: 'error.main' }}/>)}</Button>
+              <Button startIcon={<AddIcon />} onClick={() => navigate("/cardapios/novo")} variant="contained" color="success" size="small">Novo Cardápio</Button>
+              <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)} size="small"><MoreVert /></IconButton>
             </Box>
           </Box>
-          <Collapse in={filtersExpanded} timeout={400}><Box sx={{ mb: 3 }}><FiltersContent /></Box></Collapse>
-          <Typography variant="body2" sx={{ mb: 2, color: '#64748b' }}>{`Mostrando ${Math.min((page * rowsPerPage) + 1, filteredCardapios.length)}-${Math.min((page + 1) * rowsPerPage, filteredCardapios.length)} de ${filteredCardapios.length} cardápios`}</Typography>
+          <Collapse in={filtersExpanded} timeout={300}><Box sx={{ mb: 2 }}><FiltersContent /></Box></Collapse>
+          <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>{`Mostrando ${Math.min((page * rowsPerPage) + 1, filteredCardapios.length)}-${Math.min((page + 1) * rowsPerPage, filteredCardapios.length)} de ${filteredCardapios.length} cardápios`}</Typography>
         </Card>
 
         {loading ? (
@@ -199,7 +198,7 @@ const CardapiosPage = () => {
                       <TableCell><Typography variant="body2" sx={{ fontWeight: 600 }}>{cardapio.nome}</Typography><Typography variant="caption" color="text.secondary">{cardapio.periodo_dias} dias</Typography></TableCell>
                       <TableCell><Typography variant="body2" color="text.secondary">{cardapio.modalidade_nome || 'N/A'}</Typography></TableCell>
                       <TableCell><Typography variant="body2" color="text.secondary">{`${formatarData(cardapio.data_inicio)} a ${formatarData(cardapio.data_fim)}`}</Typography></TableCell>
-                      <TableCell align="center"><Chip label={cardapio.ativo ? 'Ativo' : 'Inativo'} size="small" color={cardapio.ativo ? 'success' : 'error'} variant="outlined" /></TableCell>
+                      <TableCell align="center"><Chip label={cardapio.ativo ? 'Ativo' : 'Inativo'} size="small" color={cardapio.ativo ? 'success' : 'error'} /></TableCell>
                       <TableCell align="center"><Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => navigate(`/cardapios/${cardapio.id}`)} color="primary"><Info fontSize="small" /></IconButton></Tooltip></TableCell>
                     </TableRow>
                   ))}

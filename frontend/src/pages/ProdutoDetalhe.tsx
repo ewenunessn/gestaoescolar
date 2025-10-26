@@ -30,7 +30,7 @@ const PageHeader = ({ produto, isEditing, onEdit, onSave, onCancel, onDelete, is
         <Box>
             <Typography variant="h4" sx={{ fontWeight: 700, color: 'text.primary', mb: 1 }}>{isEditing ? 'Editar Produto' : produto?.nome}</Typography>
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                {!isEditing && <Chip label={produto?.ativo ? 'Ativo' : 'Inativo'} color={produto?.ativo ? 'success' : 'error'} size="small" variant="outlined" />}
+                {!isEditing && <Chip label={produto?.ativo ? 'Ativo' : 'Inativo'} color={produto?.ativo ? 'success' : 'error'} size="small" />}
                 {!isEditing && produto?.categoria && <Chip label={produto.categoria} color="primary" size="small" variant="outlined" />}
             </Stack>
         </Box>

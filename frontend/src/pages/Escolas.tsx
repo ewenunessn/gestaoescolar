@@ -44,6 +44,7 @@ import {
   Search as SearchIcon,
   Add as AddIcon,
   Info,
+  Visibility,
   School,
   Clear as ClearIcon,
   Download,
@@ -185,7 +186,7 @@ const EscolasPage = () => {
     setPage(0);
   }, []);
   useEffect(() => { setPage(0); }, [searchTerm, selectedMunicipio, selectedStatus, selectedModalidades, sortBy]);
-  
+
   const clearFilters = useCallback(() => {
     setSearchTerm('');
     setSelectedMunicipio('');
@@ -203,7 +204,7 @@ const EscolasPage = () => {
   const handleSwitchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({ ...prev, [event.target.name]: event.target.checked }));
   };
-  
+
   const handleSave = async () => {
     if (!formData.nome.trim()) {
       alert("O nome da escola é obrigatório.");
@@ -221,7 +222,7 @@ const EscolasPage = () => {
       setLoadingSave(false);
     }
   };
-  
+
   const handleImportEscolas = async (escolasParaImportar: any[]) => {
     if (!escolasParaImportar || escolasParaImportar.length === 0) {
       setError("Nenhum dado válido para importar.");
@@ -232,7 +233,7 @@ const EscolasPage = () => {
       setImportModalOpen(false);
       const response = await importarEscolasLote(escolasParaImportar);
       const { sucesso_count = 0, erros = [] } = response.data || {};
-      
+
       setSuccessMessage(`${sucesso_count} escolas foram importadas com sucesso.`);
       if (erros.length > 0) {
         setErrosImportacao(erros);
@@ -244,7 +245,7 @@ const EscolasPage = () => {
       setLoadingImport(false);
     }
   };
-  
+
   const handleExportarEscolas = () => {
     if (filteredEscolas.length === 0) {
       setError("Não há escolas para exportar com os filtros atuais.");
@@ -283,17 +284,16 @@ const EscolasPage = () => {
   const handleViewDetails = (escola: Escola) => navigate(`/escolas/${escola.id}`);
 
   const FiltersContent = () => (
-    <Box sx={{ bgcolor: 'background.paper', borderRadius: '16px', p: 3 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}><TuneRounded sx={{ color: 'primary.main' }} /><Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>Filtros Avançados</Typography></Box>
-        {hasActiveFilters && <Button size="small" onClick={clearFilters} sx={{ color: 'text.secondary', textTransform: 'none' }}>Limpar Tudo</Button>}
+    <Box sx={{ bgcolor: 'background.paper', borderRadius: '12px', p: 2 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'text.primary', fontSize: '0.9rem' }}>Filtros Avançados</Typography>
+        {hasActiveFilters && <Button size="small" onClick={clearFilters} sx={{ color: 'text.secondary', textTransform: 'none', fontSize: '0.8rem' }}>Limpar</Button>}
       </Box>
-      <Divider sx={{ mb: 3 }} />
       <Grid container spacing={2}>
-        <Grid item xs={12} sm={6} md={3}><FormControl fullWidth><InputLabel>Município</InputLabel><Select value={selectedMunicipio} onChange={(e: SelectChangeEvent<string>) => setSelectedMunicipio(e.target.value)} label="Município"><MenuItem value="">Todos</MenuItem>{municipios.map(m => <MenuItem key={m} value={m}>{m}</MenuItem>)}</Select></FormControl></Grid>
-        <Grid item xs={12} sm={6} md={3}><FormControl fullWidth><InputLabel>Status</InputLabel><Select value={selectedStatus} onChange={(e: SelectChangeEvent<string>) => setSelectedStatus(e.target.value)} label="Status"><MenuItem value="">Todos</MenuItem><MenuItem value="ativo">Ativas</MenuItem><MenuItem value="inativo">Inativas</MenuItem></Select></FormControl></Grid>
-        <Grid item xs={12} sm={6} md={3}><FormControl fullWidth><InputLabel>Ordenar por</InputLabel><Select value={sortBy} onChange={(e: SelectChangeEvent<string>) => setSortBy(e.target.value)} label="Ordenar por"><MenuItem value="name">Nome</MenuItem><MenuItem value="municipio">Município</MenuItem><MenuItem value="status">Status</MenuItem></Select></FormControl></Grid>
-        <Grid item xs={12} sm={6} md={3}><FormControl fullWidth><InputLabel>Modalidades</InputLabel><Select multiple value={selectedModalidades} onChange={(e: SelectChangeEvent<string[]>) => setSelectedModalidades(e.target.value as string[])} input={<OutlinedInput label="Modalidades" />} renderValue={(selected) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map(v => <Chip key={v} label={v} size="small" />)}</Box>}>{modalidades.map(m => <MenuItem key={m} value={m}><Checkbox checked={selectedModalidades.includes(m)} />{m}</MenuItem>)}</Select></FormControl></Grid>
+        <Grid item xs={12} sm={6} md={3}><FormControl fullWidth size="small"><InputLabel>Município</InputLabel><Select value={selectedMunicipio} onChange={(e: SelectChangeEvent<string>) => setSelectedMunicipio(e.target.value)} label="Município"><MenuItem value="">Todos</MenuItem>{municipios.map(m => <MenuItem key={m} value={m}>{m}</MenuItem>)}</Select></FormControl></Grid>
+        <Grid item xs={12} sm={6} md={3}><FormControl fullWidth size="small"><InputLabel>Status</InputLabel><Select value={selectedStatus} onChange={(e: SelectChangeEvent<string>) => setSelectedStatus(e.target.value)} label="Status"><MenuItem value="">Todos</MenuItem><MenuItem value="ativo">Ativas</MenuItem><MenuItem value="inativo">Inativas</MenuItem></Select></FormControl></Grid>
+        <Grid item xs={12} sm={6} md={3}><FormControl fullWidth size="small"><InputLabel>Ordenar por</InputLabel><Select value={sortBy} onChange={(e: SelectChangeEvent<string>) => setSortBy(e.target.value)} label="Ordenar por"><MenuItem value="name">Nome</MenuItem><MenuItem value="municipio">Município</MenuItem><MenuItem value="status">Status</MenuItem></Select></FormControl></Grid>
+        <Grid item xs={12} sm={6} md={3}><FormControl fullWidth size="small"><InputLabel>Modalidades</InputLabel><Select multiple value={selectedModalidades} onChange={(e: SelectChangeEvent<string[]>) => setSelectedModalidades(e.target.value as string[])} input={<OutlinedInput label="Modalidades" />} renderValue={(selected) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map(v => <Chip key={v} label={v} size="small" />)}</Box>}>{modalidades.map(m => <MenuItem key={m} value={m}><Checkbox checked={selectedModalidades.includes(m)} />{m}</MenuItem>)}</Select></FormControl></Grid>
       </Grid>
     </Box>
   );
@@ -305,18 +305,18 @@ const EscolasPage = () => {
 
       <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
         <Typography variant="h4" sx={{ mb: 3, fontWeight: 700, color: 'text.primary' }}>Gestão de Escolas</Typography>
-        
-        <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', p: 3, mb: 3 }}>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 3 }}>
-            <TextField placeholder="Buscar escolas..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} sx={{ flex: 1, minWidth: '200px', '& .MuiOutlinedInput-root': { borderRadius: '12px' } }} InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon sx={{ color: 'text.secondary' }} /></InputAdornment>), endAdornment: searchTerm && (<InputAdornment position="end"><IconButton size="small" onClick={() => setSearchTerm('')}><ClearIcon fontSize="small" /></IconButton></InputAdornment>)}}/>
+
+        <Card sx={{ borderRadius: '12px', p: 2, mb: 3 }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 2 }}>
+            <TextField placeholder="Buscar escolas..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} size="small" sx={{ flex: 1, minWidth: '200px', '& .MuiOutlinedInput-root': { borderRadius: '8px' } }} InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon sx={{ color: 'text.secondary' }} /></InputAdornment>), endAdornment: searchTerm && (<InputAdornment position="end"><IconButton size="small" onClick={() => setSearchTerm('')}><ClearIcon fontSize="small" /></IconButton></InputAdornment>) }} />
             <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button variant={filtersExpanded || hasActiveFilters ? 'contained' : 'outlined'} startIcon={filtersExpanded ? <ExpandLess /> : <TuneRounded />} onClick={toggleFilters}>Filtros{hasActiveFilters && !filtersExpanded && (<Box sx={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', bgcolor: 'error.main' }}/>)}</Button>
-              <Button startIcon={<AddIcon />} onClick={openModal} variant="contained" color="success">Nova Escola</Button>
-              <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)}><MoreVert /></IconButton>
+              <Button variant={filtersExpanded || hasActiveFilters ? 'contained' : 'outlined'} startIcon={filtersExpanded ? <ExpandLess /> : <TuneRounded />} onClick={toggleFilters} size="small">Filtros{hasActiveFilters && !filtersExpanded && (<Box sx={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', bgcolor: 'error.main' }} />)}</Button>
+              <Button startIcon={<AddIcon />} onClick={openModal} variant="contained" color="success" size="small">Nova Escola</Button>
+              <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)} size="small"><MoreVert /></IconButton>
             </Box>
           </Box>
-          <Collapse in={filtersExpanded} timeout={400}><Box sx={{ mb: 3 }}><FiltersContent /></Box></Collapse>
-          <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>{`Mostrando ${Math.min((page * rowsPerPage) + 1, filteredEscolas.length)}-${Math.min((page + 1) * rowsPerPage, filteredEscolas.length)} de ${filteredEscolas.length} escolas`}</Typography>
+          <Collapse in={filtersExpanded} timeout={300}><Box sx={{ mb: 2 }}><FiltersContent /></Box></Collapse>
+          <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>{`Mostrando ${Math.min((page * rowsPerPage) + 1, filteredEscolas.length)}-${Math.min((page + 1) * rowsPerPage, filteredEscolas.length)} de ${filteredEscolas.length} escolas`}</Typography>
         </Card>
 
         {errosImportacao.length > 0 && (
@@ -327,15 +327,15 @@ const EscolasPage = () => {
           </Alert>
         )}
 
-        {loading ? ( <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><CircularProgress size={60} /></CardContent></Card>
-        ) : error && escolas.length === 0 ? ( <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={loadEscolas}>Tentar Novamente</Button></CardContent></Card>
-        ) : filteredEscolas.length === 0 ? ( <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><School sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} /><Typography variant="h6" sx={{ color: 'text.secondary' }}>Nenhuma escola encontrada</Typography></CardContent></Card>
+        {loading ? (<Card><CardContent sx={{ textAlign: 'center', py: 6 }}><CircularProgress size={60} /></CardContent></Card>
+        ) : error && escolas.length === 0 ? (<Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={loadEscolas}>Tentar Novamente</Button></CardContent></Card>
+        ) : filteredEscolas.length === 0 ? (<Card><CardContent sx={{ textAlign: 'center', py: 6 }}><School sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} /><Typography variant="h6" sx={{ color: 'text.secondary' }}>Nenhuma escola encontrada</Typography></CardContent></Card>
         ) : (
           <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px' }}>
             <TableContainer>
               <Table>
                 <TableHead><TableRow><TableCell>Nome da Escola</TableCell><TableCell align="center">Total de Alunos</TableCell><TableCell>Modalidades</TableCell><TableCell>Município</TableCell><TableCell align="center">Status</TableCell><TableCell align="center">Ações</TableCell></TableRow></TableHead>
-                <TableBody>{paginatedEscolas.map((escola) => (<TableRow key={escola.id} hover><TableCell><Typography variant="body2" sx={{ fontWeight: 600 }}>{escola.nome}</Typography>{escola.endereco && <Typography variant="caption" color="text.secondary" display="block">{escola.endereco}</Typography>}</TableCell><TableCell align="center"><Typography variant="body2" sx={{ fontWeight: 600, color: 'primary.main' }}>{escola.total_alunos || 0}</Typography></TableCell><TableCell><Typography variant="body2" color="text.secondary">{escola.modalidades || '-'}</Typography></TableCell><TableCell><Typography variant="body2" color="text.secondary">{escola.municipio || '-'}</Typography></TableCell><TableCell align="center"><Chip label={escola.ativo ? 'Ativa' : 'Inativa'} size="small" color={escola.ativo ? 'success' : 'error'} variant="outlined" /></TableCell><TableCell align="center"><Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => handleViewDetails(escola)} color="primary"><Info fontSize="small" /></IconButton></Tooltip></TableCell></TableRow>))}</TableBody>
+                <TableBody>{paginatedEscolas.map((escola) => (<TableRow key={escola.id} hover><TableCell><Typography variant="body2" sx={{ fontWeight: 600 }}>{escola.nome}</Typography>{escola.endereco && <Typography variant="caption" color="text.secondary" display="block">{escola.endereco}</Typography>}</TableCell><TableCell align="center"><Typography variant="body2" sx={{ fontWeight: 600, color: 'primary.main' }}>{escola.total_alunos || 0}</Typography></TableCell><TableCell><Typography variant="body2" color="text.secondary">{escola.modalidades || '-'}</Typography></TableCell><TableCell><Typography variant="body2" color="text.secondary">{escola.municipio || '-'}</Typography></TableCell><TableCell align="center"><Chip label={escola.ativo ? 'Ativa' : 'Inativa'} size="small" color={escola.ativo ? 'success' : 'error'} /></TableCell><TableCell align="center"><Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => handleViewDetails(escola)} color="primary"><Visibility fontSize="small" /></IconButton></Tooltip></TableCell></TableRow>))}</TableBody>
               </Table>
             </TableContainer>
             <TablePagination component="div" count={filteredEscolas.length} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage} onRowsPerPageChange={handleChangeRowsPerPage} rowsPerPageOptions={[5, 10, 25, 50]} labelRowsPerPage="Itens por página:" />
@@ -351,7 +351,7 @@ const EscolasPage = () => {
           <Grid item xs={12} sm={6}><TextField name="codigo" label="Código INEP" value={formData.codigo} onChange={handleFormChange} fullWidth /></Grid>
           <Grid item xs={12} sm={6}><FormControl fullWidth><InputLabel>Administração</InputLabel><Select name="administracao" value={formData.administracao} label="Administração" onChange={handleFormChange}><MenuItem value="municipal">Municipal</MenuItem><MenuItem value="estadual">Estadual</MenuItem><MenuItem value="federal">Federal</MenuItem><MenuItem value="particular">Particular</MenuItem></Select></FormControl></Grid>
           <Grid item xs={12}><TextField name="endereco" label="Endereço Completo" value={formData.endereco} onChange={handleFormChange} fullWidth /></Grid>
-          <Grid item xs={12}><LocationSelector value={formData.municipio} onChange={(m) => setFormData(p => ({...p, municipio: m}))} label="Município" placeholder="Digite o nome do município ou cole uma URL do Google Maps" /></Grid>
+          <Grid item xs={12}><LocationSelector value={formData.municipio} onChange={(m) => setFormData(p => ({ ...p, municipio: m }))} label="Município" placeholder="Digite o nome do município ou cole uma URL do Google Maps" /></Grid>
           <Grid item xs={12} sm={6}><TextField name="telefone" label="Telefone" value={formData.telefone} onChange={handleFormChange} fullWidth /></Grid>
           <Grid item xs={12} sm={6}><TextField name="email" label="Email" type="email" value={formData.email} onChange={handleFormChange} fullWidth /></Grid>
           <Grid item xs={12}><TextField name="nome_gestor" label="Nome do Gestor" value={formData.nome_gestor} onChange={handleFormChange} fullWidth /></Grid>
@@ -359,7 +359,7 @@ const EscolasPage = () => {
         </Grid></DialogContent>
         <DialogActions><Button onClick={closeModal} variant="outlined" disabled={loadingSave}>Cancelar</Button><Button onClick={handleSave} variant="contained" disabled={loadingSave}>{loadingSave ? <CircularProgress size={24} /> : 'Salvar Escola'}</Button></DialogActions>
       </Dialog>
-      
+
       {/* Modal de Importação */}
       <ImportacaoEscolas open={importModalOpen} onClose={() => setImportModalOpen(false)} onImport={handleImportEscolas} />
 
