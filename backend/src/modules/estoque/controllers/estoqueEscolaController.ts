@@ -212,7 +212,7 @@ export async function listarHistoricoEstoque(req: Request, res: Response) {
       SELECT 
         eeh.*,
         p.nome as produto_nome,
-        COALESCE(eeh.unidade_medida, p.unidade) as unidade_medida,
+        p.unidade as unidade_medida,
         u.nome as usuario_nome
       FROM estoque_escolas_historico eeh
       LEFT JOIN produtos p ON eeh.produto_id = p.id
@@ -419,9 +419,8 @@ export async function registrarMovimentacao(req: Request, res: Response) {
           motivo,
           documento_referencia,
           usuario_id,
-          unidade_medida,
           data_movimentacao
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)
         RETURNING *
       `, [
         item.id,
@@ -433,8 +432,7 @@ export async function registrarMovimentacao(req: Request, res: Response) {
         quantidadePosterior,
         motivo,
         documento_referencia,
-        usuario_id,
-        unidadeMedida
+        usuario_id
       ]);
 
       return {
@@ -570,17 +568,21 @@ export async function resetarEstoqueComBackup(req: Request, res: Response) {
           await client.query(`
             INSERT INTO estoque_escolas_historico (
               estoque_escola_id,
+              escola_id,
+              produto_id,
               tipo_movimentacao,
               quantidade_anterior,
               quantidade_movimentada,
-              quantidade_atual,
+              quantidade_posterior,
               motivo,
               documento_referencia,
               usuario_id,
               created_at
-            ) VALUES ($1, 'reset', $2, $3, 0, $4, $5, $6, NOW())
+            ) VALUES ($1, $2, $3, 'reset', $4, $5, 0, $6, $7, $8, NOW())
           `, [
             item.id,
+            escola_id,
+            item.produto_id,
             item.quantidade_atual,
             -item.quantidade_atual,
             motivo || 'Reset do estoque - backup criado',
