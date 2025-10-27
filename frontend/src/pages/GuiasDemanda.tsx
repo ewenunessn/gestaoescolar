@@ -478,17 +478,6 @@ const GuiasDemanda: React.FC = () => {
                             <ViewIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
-                        {guia.status === 'aberta' && (
-                          <Tooltip title="Excluir Guia">
-                            <IconButton
-                              size="small"
-                              onClick={() => handleDeleteGuia(guia.id)}
-                              color="error"
-                            >
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        )}
                       </TableCell>
                     </TableRow>
                   ))}

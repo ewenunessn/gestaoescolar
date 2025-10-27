@@ -4,11 +4,12 @@ import {
     TableCell, TableContainer, TableHead, TableRow, Paper, CircularProgress, Alert,
     Dialog, DialogTitle, DialogContent, DialogActions, Chip, InputAdornment, FormControl,
     InputLabel, Select, MenuItem, Grid, IconButton, Tooltip, Menu, TablePagination,
-    Collapse, Divider,
+    Collapse, Divider, Autocomplete,
 } from '@mui/material';
 import {
     Search, Inventory, Visibility, School, Assessment, CheckCircle, Warning,
-    Refresh, Download, FilterList, MoreVert, RestartAlt, TuneRounded, ExpandLess, ExpandMore, Clear as ClearIcon
+    Refresh, Download, FilterList, MoreVert, RestartAlt, TuneRounded, ExpandLess, ExpandMore, Clear as ClearIcon,
+    ViewList, ViewModule, SwapHoriz
 } from '@mui/icons-material';
 import * as ExcelJS from 'exceljs';
 import {
@@ -33,6 +34,30 @@ const EstoqueEscolarPage = () => {
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+    // Função para formatar números de forma limpa
+    const formatarNumero = (valor: any): string => {
+        const numero = parseFloat(valor);
+
+        if (isNaN(numero) || numero === 0) return '-';
+
+        // Se for um número inteiro, mostrar sem casas decimais
+        if (Number.isInteger(numero)) {
+            return numero.toLocaleString('pt-BR');
+        }
+
+        // Se tiver casas decimais, mostrar apenas as necessárias (remove zeros à direita)
+        const numeroFormatado = numero.toLocaleString('pt-BR', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 3
+        });
+
+        return numeroFormatado;
+    };
+
+    // Estado para alternar visualização
+    const [modoVisualizacao, setModoVisualizacao] = useState<'produtos' | 'escolas'>('produtos');
+    const [dadosMatriz, setDadosMatriz] = useState<any[]>([]);
+
     // Estados de filtros
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategoria, setSelectedCategoria] = useState('');
@@ -40,10 +65,13 @@ const EstoqueEscolarPage = () => {
     const [filtersExpanded, setFiltersExpanded] = useState(false);
     const [hasActiveFilters, setHasActiveFilters] = useState(false);
 
+    // Filtro de produtos para modo escolas
+    const [selectedProdutos, setSelectedProdutos] = useState<number[]>([]);
+
     // Estados de paginação
     const [page, setPage] = useState(0);
-    const [rowsPerPage, setRowsPerPage] = useState(10);
-    
+    const [rowsPerPage, setRowsPerPage] = useState(100);
+
     // Estados de modais e menus
     const [actionsMenuAnchor, setActionsMenuAnchor] = useState<null | HTMLElement>(null);
     const [resetModalOpen, setResetModalOpen] = useState(false);
@@ -52,6 +80,15 @@ const EstoqueEscolarPage = () => {
     const [produtoSelecionado, setProdutoSelecionado] = useState<ProdutoComEstoque | null>(null);
     const [estoqueDetalhado, setEstoqueDetalhado] = useState<EstoqueEscolarProduto | null>(null);
     const [loadingDetalhes, setLoadingDetalhes] = useState(false);
+
+    // Estados para movimentação
+    const [movimentacaoModalOpen, setMovimentacaoModalOpen] = useState(false);
+    const [escolaSelecionada, setEscolaSelecionada] = useState<any>(null);
+    const [tipoMovimentacao, setTipoMovimentacao] = useState<'entrada' | 'saida' | 'ajuste'>('entrada');
+    const [quantidadeMovimentacao, setQuantidadeMovimentacao] = useState('');
+    const [motivoMovimentacao, setMotivoMovimentacao] = useState('');
+    const [documentoReferencia, setDocumentoReferencia] = useState('');
+    const [loadingMovimentacao, setLoadingMovimentacao] = useState(false);
 
     // Carregar dados
     const loadEstoque = useCallback(async () => {
@@ -69,42 +106,145 @@ const EstoqueEscolarPage = () => {
                 total_escolas: item.total_escolas
             }));
             setProdutosComEstoque(produtosFormatados);
+
+            // Não carregar matriz aqui para evitar loop infinito
         } catch (err) {
             setError('Erro ao carregar dados de estoque. Tente novamente.');
         } finally {
             setLoading(false);
         }
+    }, [modoVisualizacao]);
+
+    // Carregar dados para visualização em matriz (escolas x produtos)
+    const loadDadosMatriz = useCallback(async () => {
+        try {
+            setLoading(true);
+            setError(null);
+
+            const estoqueData = await listarEstoqueEscolar();
+            const matrizData: any[] = [];
+            const escolasMap = new Map<number, any>();
+            const produtosMap = new Map<number, string>();
+
+            // Primeiro, coletar todos os produtos
+            estoqueData.forEach((produto: any) => {
+                produtosMap.set(produto.produto_id, produto.produto_nome);
+            });
+
+            // Buscar detalhes de cada produto para obter dados por escola
+            for (const produto of estoqueData) {
+                try {
+                    const detalhes = await buscarEstoqueEscolarProduto(produto.produto_id);
+
+                    detalhes.escolas?.forEach((escola: any) => {
+                        if (!escolasMap.has(escola.escola_id)) {
+                            escolasMap.set(escola.escola_id, {
+                                escola_id: escola.escola_id,
+                                escola_nome: escola.escola_nome,
+                                produtos: new Map()
+                            });
+                        }
+
+                        const escolaData = escolasMap.get(escola.escola_id);
+                        escolaData.produtos.set(produto.produto_id, {
+                            quantidade: escola.quantidade_atual || 0,
+                            unidade: escola.unidade || produto.unidade
+                        });
+                    });
+                } catch (err) {
+                    console.warn(`Erro ao carregar detalhes do produto ${produto.produto_id}:`, err);
+                }
+            }
+
+            // Converter para array
+            const escolasArray = Array.from(escolasMap.values()).map(escola => ({
+                ...escola,
+                produtos: Object.fromEntries(escola.produtos)
+            }));
+
+            setDadosMatriz(escolasArray);
+
+        } catch (err) {
+            setError('Erro ao carregar dados da matriz. Tente novamente.');
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
+
+
     useEffect(() => {
-        loadEstoque();
-    }, [loadEstoque]);
+        if (modoVisualizacao === 'produtos') {
+            loadEstoque();
+        } else {
+            loadDadosMatriz();
+        }
+    }, [loadEstoque, loadDadosMatriz, modoVisualizacao]);
+
+    // Função para alternar modo de visualização
+    const alternarVisualizacao = useCallback(() => {
+        setModoVisualizacao(prev => prev === 'produtos' ? 'escolas' : 'produtos');
+        setPage(0); // Reset pagination
+        setSelectedProdutos([]); // Limpar produtos selecionados ao trocar modo
+    }, []);
 
     // Lógica de UI
     const categorias = useMemo(() => [...new Set(produtosComEstoque.map(p => p.categoria).filter(Boolean))].sort(), [produtosComEstoque]);
-    useEffect(() => { setHasActiveFilters(!!(searchTerm || selectedCategoria)); }, [searchTerm, selectedCategoria]);
+
+    // Produtos filtrados para exibição na matriz (modo escolas)
+    const produtosParaExibir = useMemo(() => {
+        if (modoVisualizacao !== 'escolas') return produtosComEstoque.slice(0, 10);
+
+        if (selectedProdutos.length === 0) {
+            return produtosComEstoque.slice(0, 10); // Mostra os primeiros 10 se nenhum selecionado
+        }
+
+        return produtosComEstoque.filter(p => selectedProdutos.includes(p.id));
+    }, [produtosComEstoque, selectedProdutos, modoVisualizacao]);
+
+    useEffect(() => {
+        setHasActiveFilters(!!(searchTerm || selectedCategoria || (modoVisualizacao === 'escolas' && selectedProdutos.length > 0)));
+    }, [searchTerm, selectedCategoria, selectedProdutos, modoVisualizacao]);
 
     // Filtros e Paginação
     const filteredProdutos = useMemo(() => {
-        return produtosComEstoque.filter(p => 
+        return produtosComEstoque.filter(p =>
             p.nome.toLowerCase().includes(searchTerm.toLowerCase()) &&
             (!selectedCategoria || p.categoria === selectedCategoria)
         ).sort((a, b) => a.nome.localeCompare(b.nome));
     }, [produtosComEstoque, searchTerm, selectedCategoria]);
+
+    // Filtros para visualização por escolas
+    const filteredEscolas = useMemo(() => {
+        if (modoVisualizacao !== 'escolas') return [];
+
+        return dadosMatriz.filter(escola =>
+            escola.escola_nome.toLowerCase().includes(searchTerm.toLowerCase())
+        ).sort((a, b) => a.escola_nome.localeCompare(b.escola_nome));
+    }, [dadosMatriz, searchTerm, modoVisualizacao]);
 
     const paginatedProdutos = useMemo(() => {
         const startIndex = page * rowsPerPage;
         return filteredProdutos.slice(startIndex, startIndex + rowsPerPage);
     }, [filteredProdutos, page, rowsPerPage]);
 
+    const paginatedEscolas = useMemo(() => {
+        const startIndex = page * rowsPerPage;
+        return filteredEscolas.slice(startIndex, startIndex + rowsPerPage);
+    }, [filteredEscolas, page, rowsPerPage]);
+
     const handleChangePage = useCallback((event: unknown, newPage: number) => setPage(newPage), []);
     const handleChangeRowsPerPage = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
         setRowsPerPage(parseInt(event.target.value, 10));
         setPage(0);
     }, []);
-    useEffect(() => setPage(0), [searchTerm, selectedCategoria]);
+    useEffect(() => setPage(0), [searchTerm, selectedCategoria, selectedProdutos]);
 
-    const clearFilters = useCallback(() => { setSearchTerm(''); setSelectedCategoria(''); }, []);
+    const clearFilters = useCallback(() => {
+        setSearchTerm('');
+        setSelectedCategoria('');
+        setSelectedProdutos([]);
+    }, []);
     const toggleFilters = useCallback(() => setFiltersExpanded(!filtersExpanded), [filtersExpanded]);
 
     // Funções de Ações
@@ -113,16 +253,16 @@ const EstoqueEscolarPage = () => {
             setLoadingReset(true);
             setError(null);
             setResetModalOpen(false);
-            
+
             const result = await resetEstoqueGlobal();
-            
+
             if (result.success) {
                 setSuccessMessage(`Estoque global resetado com sucesso! ${result.data.estoques_resetados} itens foram resetados.`);
                 await loadEstoque(); // Recarregar os dados
             } else {
                 throw new Error(result.message || 'Erro ao resetar estoque');
             }
-            
+
         } catch (err: any) {
             console.error('Erro ao resetar estoque:', err);
             setError('Erro ao resetar estoque global. Tente novamente.');
@@ -186,10 +326,10 @@ const EstoqueEscolarPage = () => {
                 setError('Nenhum produto selecionado para exportar.');
                 return;
             }
-    
+
             const workbook = new ExcelJS.Workbook();
             const worksheet = workbook.addWorksheet(`Detalhes - ${produtoSelecionado.nome}`);
-    
+
             const thinBorder = {
                 top: { style: 'thin' as const },
                 left: { style: 'thin' as const },
@@ -204,16 +344,16 @@ const EstoqueEscolarPage = () => {
             titleCell.font = { bold: true, size: 14 };
             titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
             worksheet.getRow(1).height = 25;
-    
+
             // Seção: INFORMAÇÕES DO PRODUTO
             worksheet.mergeCells('A3:F3');
             const infoHeader = worksheet.getCell('A3');
             infoHeader.value = 'INFORMAÇÕES DO PRODUTO';
-            infoHeader.font = { bold: true, color: { argb: 'FF000000'} };
+            infoHeader.font = { bold: true, color: { argb: 'FF000000' } };
             infoHeader.alignment = { horizontal: 'center' };
             infoHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9D9D9' } };
             infoHeader.border = thinBorder;
-            
+
             worksheet.getRow(4).values = ['Produto:', produtoSelecionado.nome, '', 'Categoria:', produtoSelecionado.categoria || 'N/A'];
             worksheet.getRow(5).values = ['Unidade:', produtoSelecionado.unidade, '', 'Data do Relatório:', new Date().toLocaleDateString('pt-BR')];
 
@@ -223,26 +363,26 @@ const EstoqueEscolarPage = () => {
                     cell.border = thinBorder;
                 });
             }
-    
+
             // Seção: RESUMO ESTATÍSTICO
             worksheet.mergeCells('A7:F7');
             const resumoHeader = worksheet.getCell('A7');
             resumoHeader.value = 'RESUMO ESTATÍSTICO';
-            resumoHeader.font = { bold: true, color: { argb: 'FF000000'} };
+            resumoHeader.font = { bold: true, color: { argb: 'FF000000' } };
             resumoHeader.alignment = { horizontal: 'center' };
             resumoHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9D9D9' } };
             resumoHeader.border = thinBorder;
-            
-            worksheet.getRow(8).values = ['Total de Escolas:', estoqueDetalhado.resumo?.total_escolas || 0, '', 'Escolas com Estoque:', estoqueDetalhado.resumo?.escolas_com_estoque || 0];
-            worksheet.getRow(9).values = ['Escolas sem Estoque:', estoqueDetalhado.resumo?.escolas_sem_estoque || 0, '', 'Quantidade Total:', `${estoqueDetalhado.resumo?.quantidade_total || 0} ${produtoSelecionado.unidade}`];
-            
+
+            worksheet.getRow(8).values = ['Total de Escolas:', estoqueDetalhado.total_escolas || 0, '', 'Escolas com Estoque:', estoqueDetalhado.total_escolas_com_estoque || 0];
+            worksheet.getRow(9).values = ['Escolas sem Estoque:', (estoqueDetalhado.total_escolas || 0) - (estoqueDetalhado.total_escolas_com_estoque || 0), '', 'Quantidade Total:', `${estoqueDetalhado.total_quantidade || 0} ${produtoSelecionado.unidade}`];
+
             // Aplicar bordas à seção de resumo
             for (let rowNum = 8; rowNum <= 9; rowNum++) {
                 worksheet.getRow(rowNum).eachCell({ includeEmpty: true }, cell => {
                     cell.border = thinBorder;
                 });
             }
-    
+
             // Seção: DISTRIBUIÇÃO POR ESCOLA
             worksheet.mergeCells('A11:F11');
             const distribuicaoHeader = worksheet.getCell('A11');
@@ -258,7 +398,7 @@ const EstoqueEscolarPage = () => {
             headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
             headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF059669' } };
             headerRow.eachCell(cell => { cell.border = thinBorder; });
-    
+
             // Definir larguras das colunas
             worksheet.columns = [
                 { key: 'escola', width: 35 },
@@ -268,7 +408,7 @@ const EstoqueEscolarPage = () => {
                 { key: 'atualizacao', width: 20 },
                 { key: 'obs', width: 30 }
             ];
-    
+
             // Dados das escolas
             if (estoqueDetalhado.escolas && estoqueDetalhado.escolas.length > 0) {
                 estoqueDetalhado.escolas.forEach((escola: any) => {
@@ -280,12 +420,12 @@ const EstoqueEscolarPage = () => {
                         escola.data_ultima_atualizacao ? new Date(escola.data_ultima_atualizacao).toLocaleDateString('pt-BR') : 'Nunca atualizado',
                         escola.observacoes || ''
                     ]);
-    
+
                     // Itera sobre cada célula da linha para aplicar bordas e a cor de fundo condicionalmente
                     row.eachCell(cell => {
                         // 1. Aplica a borda a todas as células da linha
                         cell.border = thinBorder;
-    
+
                         // 2. Aplica a cor de fundo SOMENTE se a condição for atendida
                         if (escola.quantidade_atual <= 0) {
                             cell.fill = {
@@ -302,7 +442,7 @@ const EstoqueEscolarPage = () => {
                 row.getCell('A').alignment = { horizontal: 'center' };
                 row.getCell('A').font = { italic: true };
             }
-    
+
             // Gerar e baixar arquivo
             const buffer = await workbook.xlsx.writeBuffer();
             const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -312,14 +452,14 @@ const EstoqueEscolarPage = () => {
             link.download = `detalhes-estoque-${produtoSelecionado.nome.replace(/[^a-zA-Z0-9]/g, '-')}-${new Date().toISOString().split('T')[0]}.xlsx`;
             link.click();
             window.URL.revokeObjectURL(url);
-    
+
             setDetalhesModalOpen(false);
         } catch (error) {
             console.error('Erro ao exportar detalhes Excel:', error);
             setError('Erro ao exportar detalhes em Excel.');
         }
     };
-    
+
     const verDetalhesEstoque = async (produto: ProdutoComEstoque) => {
         try {
             setLoadingDetalhes(true);
@@ -333,7 +473,7 @@ const EstoqueEscolarPage = () => {
             setLoadingDetalhes(false);
         }
     };
-    
+
     // Componente de Filtros
     const FiltersContent = () => (
         <Box sx={{ bgcolor: 'background.paper', borderRadius: '12px', p: 2 }}>
@@ -342,13 +482,46 @@ const EstoqueEscolarPage = () => {
                 {hasActiveFilters && <Button size="small" onClick={clearFilters} sx={{ color: 'text.secondary', textTransform: 'none', fontSize: '0.8rem' }}>Limpar</Button>}
             </Box>
             <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                <FormControl sx={{ minWidth: 200 }} size="small">
-                    <InputLabel>Categoria</InputLabel>
-                    <Select value={selectedCategoria} onChange={(e) => setSelectedCategoria(e.target.value)} label="Categoria">
-                        <MenuItem value="">Todas</MenuItem>
-                        {categorias.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)}
-                    </Select>
-                </FormControl>
+                {modoVisualizacao === 'produtos' ? (
+                    <FormControl sx={{ minWidth: 200 }} size="small">
+                        <InputLabel>Categoria</InputLabel>
+                        <Select value={selectedCategoria} onChange={(e) => setSelectedCategoria(e.target.value)} label="Categoria">
+                            <MenuItem value="">Todas</MenuItem>
+                            {categorias.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)}
+                        </Select>
+                    </FormControl>
+                ) : (
+                    <Autocomplete
+                        multiple
+                        options={produtosComEstoque}
+                        getOptionLabel={(option) => option.nome}
+                        value={produtosComEstoque.filter(p => selectedProdutos.includes(p.id))}
+                        onChange={(event, newValue) => {
+                            setSelectedProdutos(newValue.map(p => p.id));
+                        }}
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                label="Produtos para exibir"
+                                placeholder="Selecione os produtos..."
+                                size="small"
+                            />
+                        )}
+                        renderTags={(value, getTagProps) =>
+                            value.map((option, index) => (
+                                <Chip
+                                    variant="outlined"
+                                    label={option.nome}
+                                    size="small"
+                                    {...getTagProps({ index })}
+                                />
+                            ))
+                        }
+                        sx={{ minWidth: 300 }}
+                        limitTags={3}
+                        disableCloseOnSelect
+                    />
+                )}
             </Box>
         </Box>
     );
@@ -357,11 +530,11 @@ const EstoqueEscolarPage = () => {
         <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
             <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
                 <Typography variant="h4" sx={{ mb: 3, fontWeight: 700, color: 'text.primary' }}>Estoque Escolar</Typography>
-                
+
                 {/* Mensagem de Sucesso */}
                 {successMessage && (
-                    <Alert 
-                        severity="success" 
+                    <Alert
+                        severity="success"
                         sx={{ mb: 3 }}
                         onClose={() => setSuccessMessage(null)}
                     >
@@ -370,49 +543,214 @@ const EstoqueEscolarPage = () => {
                 )}
                 <Card sx={{ borderRadius: '12px', p: 2, mb: 3 }}>
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 2 }}>
-                        <TextField placeholder="Buscar produtos..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} size="small" sx={{ flex: 1, minWidth: '200px', '& .MuiOutlinedInput-root': { borderRadius: '8px' } }} InputProps={{ startAdornment: (<InputAdornment position="start"><Search sx={{ color: 'text.secondary' }} /></InputAdornment>), endAdornment: searchTerm && (<InputAdornment position="end"><IconButton size="small" onClick={() => setSearchTerm('')}><ClearIcon fontSize="small" /></IconButton></InputAdornment>)}}/>
+                        <TextField
+                            placeholder={modoVisualizacao === 'produtos' ? "Buscar produtos..." : "Buscar escolas..."}
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            size="small"
+                            sx={{ flex: 1, minWidth: '200px', '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+                            InputProps={{
+                                startAdornment: (<InputAdornment position="start"><Search sx={{ color: 'text.secondary' }} /></InputAdornment>),
+                                endAdornment: searchTerm && (<InputAdornment position="end"><IconButton size="small" onClick={() => setSearchTerm('')}><ClearIcon fontSize="small" /></IconButton></InputAdornment>)
+                            }}
+                        />
                         <Box sx={{ display: 'flex', gap: 1 }}>
-                            <Button variant={filtersExpanded || hasActiveFilters ? 'contained' : 'outlined'} startIcon={filtersExpanded ? <ExpandLess /> : <TuneRounded />} onClick={toggleFilters} size="small">Filtros{hasActiveFilters && !filtersExpanded && (<Box sx={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', bgcolor: 'error.main' }}/>)}</Button>
+                            <Button
+                                variant="outlined"
+                                startIcon={modoVisualizacao === 'produtos' ? <ViewModule /> : <ViewList />}
+                                onClick={alternarVisualizacao}
+                                size="small"
+                            >
+                                {modoVisualizacao === 'produtos' ? 'Ver por Escolas' : 'Ver por Produtos'}
+                            </Button>
+                            <Button variant={filtersExpanded || hasActiveFilters ? 'contained' : 'outlined'} startIcon={filtersExpanded ? <ExpandLess /> : <TuneRounded />} onClick={toggleFilters} size="small">Filtros{hasActiveFilters && !filtersExpanded && (<Box sx={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', bgcolor: 'error.main' }} />)}</Button>
                             <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)} size="small"><MoreVert /></IconButton>
                         </Box>
                     </Box>
                     <Collapse in={filtersExpanded} timeout={300}><Box sx={{ mb: 2 }}><FiltersContent /></Box></Collapse>
-                    <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>{`Mostrando ${Math.min((page * rowsPerPage) + 1, filteredProdutos.length)}-${Math.min((page + 1) * rowsPerPage, filteredProdutos.length)} de ${filteredProdutos.length} produtos`}</Typography>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>
+                        {modoVisualizacao === 'produtos'
+                            ? `Mostrando ${Math.min((page * rowsPerPage) + 1, filteredProdutos.length)}-${Math.min((page + 1) * rowsPerPage, filteredProdutos.length)} de ${filteredProdutos.length} produtos`
+                            : `Mostrando ${Math.min((page * rowsPerPage) + 1, filteredEscolas.length)}-${Math.min((page + 1) * rowsPerPage, filteredEscolas.length)} de ${filteredEscolas.length} escolas`
+                        }
+                    </Typography>
                 </Card>
 
                 {loading ? (
                     <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><CircularProgress size={60} /></CardContent></Card>
                 ) : error ? (
                     <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={loadEstoque}>Tentar Novamente</Button></CardContent></Card>
-                ) : filteredProdutos.length === 0 ? (
-                    <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Inventory sx={{ fontSize: 64, color: '#d1d5db', mb: 2 }} /><Typography variant="h6" sx={{ color: '#6b7280' }}>Nenhum produto encontrado</Typography></CardContent></Card>
+                ) : (modoVisualizacao === 'produtos' ? filteredProdutos.length === 0 : filteredEscolas.length === 0) ? (
+                    <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Inventory sx={{ fontSize: 64, color: '#d1d5db', mb: 2 }} /><Typography variant="h6" sx={{ color: '#6b7280' }}>Nenhum {modoVisualizacao === 'produtos' ? 'produto' : 'dado'} encontrado</Typography></CardContent></Card>
                 ) : (
                     <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px' }}>
-                        <TableContainer>
-                            <Table>
-                                <TableHead><TableRow><TableCell>Produto</TableCell><TableCell>Categoria</TableCell><TableCell align="center">Qtd. Total</TableCell><TableCell align="center">Escolas c/ Estoque</TableCell><TableCell align="center">Ações</TableCell></TableRow></TableHead>
-                                <TableBody>
-                                    {paginatedProdutos.map((produto) => (
-                                        <TableRow key={produto.id} hover>
-                                            <TableCell><Typography variant="body2" sx={{ fontWeight: 600 }}>{produto.nome}</Typography></TableCell>
-                                            <TableCell align="center"><Typography variant="body2">{produto.categoria || '-'}</Typography></TableCell>
-                                            <TableCell align="center"><Typography variant="body2" sx={{ fontWeight: 600 }}>{`${produto.total_quantidade || 0} ${produto.unidade}`}</Typography></TableCell>
-                                            <TableCell align="center"><Typography variant="body2">{`${produto.total_escolas_com_estoque || 0} de ${produto.total_escolas || 0}`}</Typography></TableCell>
-                                            <TableCell align="center"><Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => verDetalhesEstoque(produto)} color="primary"><Visibility fontSize="small" /></IconButton></Tooltip></TableCell>
+                        {modoVisualizacao === 'produtos' ? (
+                            // Visualização por Produtos (original)
+                            <>
+                                <TableContainer>
+                                    <Table size="small">
+                                        <TableHead>
+                                            <TableRow>
+                                                <TableCell sx={{ py: 1 }}>Produto</TableCell>
+                                                <TableCell sx={{ py: 1 }}>Categoria</TableCell>
+                                                <TableCell align="center" sx={{ py: 1 }}>Qtd. Total</TableCell>
+                                                <TableCell align="center" sx={{ py: 1 }}>Escolas c/ Estoque</TableCell>
+                                                <TableCell align="center" sx={{ py: 1 }}>Ações</TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            {paginatedProdutos.map((produto) => (
+                                                <TableRow key={produto.id} hover>
+                                                    <TableCell sx={{ py: 1 }}>
+                                                        <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
+                                                            {produto.nome}
+                                                        </Typography>
+                                                    </TableCell>
+                                                    <TableCell sx={{ py: 1 }}>
+                                                        <Typography variant="body2" color="text.secondary">
+                                                            {produto.categoria || '-'}
+                                                        </Typography>
+                                                    </TableCell>
+                                                    <TableCell align="center" sx={{ py: 1 }}>
+                                                        <Typography variant="body2" sx={{ fontWeight: 600, color: 'primary.main', lineHeight: 1.2 }}>
+                                                            {formatarNumero(produto.total_quantidade || 0)} {produto.unidade}
+                                                        </Typography>
+                                                    </TableCell>
+                                                    <TableCell align="center" sx={{ py: 1 }}>
+                                                        <Typography variant="body2">
+                                                            {`${produto.total_escolas_com_estoque || 0} de ${produto.total_escolas || 0}`}
+                                                        </Typography>
+                                                    </TableCell>
+                                                    <TableCell align="center" sx={{ py: 1 }}>
+                                                        <Tooltip title="Ver Detalhes">
+                                                            <IconButton size="small" onClick={() => verDetalhesEstoque(produto)} color="primary">
+                                                                <Visibility fontSize="small" />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+                                <TablePagination component="div" count={filteredProdutos.length} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage} onRowsPerPageChange={handleChangeRowsPerPage} rowsPerPageOptions={[5, 10, 25, 50, 100]} labelRowsPerPage="Itens por página:" />
+                            </>
+                        ) : (
+                            // Visualização por Escolas (matriz)
+                            <TableContainer sx={{
+                                maxHeight: 'calc(100vh - 300px)',
+                                minHeight: 400,
+                                overflow: 'auto',
+                                position: 'relative',
+                                '& .MuiTableHead-root': {
+                                    '& .MuiTableCell-root': {
+                                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                                    }
+                                }
+                            }}>
+                                <Table stickyHeader size="small">
+                                    <TableHead>
+                                        <TableRow>
+                                            <TableCell sx={{
+                                                fontWeight: 'bold',
+                                                bgcolor: '#2563eb !important',
+                                                color: 'white !important',
+                                                minWidth: 200,
+                                                position: 'sticky',
+                                                top: 0,
+                                                zIndex: 100,
+                                                borderBottom: '2px solid #1d4ed8',
+                                                py: 1
+                                            }}>
+                                                Escola
+                                            </TableCell>
+                                            {produtosParaExibir.map((produto) => (
+                                                <TableCell
+                                                    key={produto.id}
+                                                    align="center"
+                                                    sx={{
+                                                        fontWeight: 'bold',
+                                                        bgcolor: '#2563eb !important',
+                                                        color: 'white !important',
+                                                        minWidth: 120,
+                                                        fontSize: '0.75rem',
+                                                        position: 'sticky',
+                                                        top: 0,
+                                                        zIndex: 100,
+                                                        borderBottom: '2px solid #1d4ed8',
+                                                        py: 1
+                                                    }}
+                                                >
+                                                    {produto.nome}
+                                                    <Typography variant="caption" display="block" sx={{ color: 'rgba(255, 255, 255, 0.8)' }}>
+                                                        ({produto.unidade})
+                                                    </Typography>
+                                                </TableCell>
+                                            ))}
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
-                        <TablePagination component="div" count={filteredProdutos.length} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage} onRowsPerPageChange={handleChangeRowsPerPage} rowsPerPageOptions={[5, 10, 25, 50]} labelRowsPerPage="Itens por página:" />
+                                    </TableHead>
+                                    <TableBody>
+                                        {paginatedEscolas.map((escola) => (
+                                            <TableRow key={escola.escola_id} hover>
+                                                <TableCell sx={{ fontWeight: 600, bgcolor: '#f8fafc', color: '#1e293b', py: 1 }}>
+                                                    <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
+                                                        {escola.escola_nome}
+                                                    </Typography>
+                                                </TableCell>
+                                                {produtosParaExibir.map((produto) => {
+                                                    const estoqueProduto = escola.produtos[produto.id];
+                                                    const quantidade = estoqueProduto?.quantidade || 0;
+
+                                                    return (
+                                                        <TableCell
+                                                            key={produto.id}
+                                                            align="center"
+                                                            sx={{
+                                                                bgcolor: quantidade > 0 ? '#f0fdf4' : '#f8fafc',
+                                                                color: quantidade > 0 ? '#059669' : '#64748b',
+                                                                py: 1
+                                                            }}
+                                                        >
+                                                            <Typography
+                                                                variant="body2"
+                                                                sx={{
+                                                                    fontWeight: quantidade > 0 ? 600 : 400,
+                                                                    fontSize: '0.875rem',
+                                                                    lineHeight: 1.2
+                                                                }}
+                                                            >
+                                                                {formatarNumero(quantidade)}
+                                                            </Typography>
+                                                        </TableCell>
+                                                    );
+                                                })}
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
+                        )}
+
+                        {modoVisualizacao === 'escolas' && (
+                            <TablePagination
+                                component="div"
+                                count={filteredEscolas.length}
+                                page={page}
+                                onPageChange={handleChangePage}
+                                rowsPerPage={rowsPerPage}
+                                onRowsPerPageChange={handleChangeRowsPerPage}
+                                rowsPerPageOptions={[5, 10, 25, 50, 100]}
+                                labelRowsPerPage="Escolas por página:"
+                            />
+                        )}
                     </Paper>
                 )}
             </Box>
 
             {/* Modal de Detalhes */}
             <Dialog open={detalhesModalOpen} onClose={() => setDetalhesModalOpen(false)} maxWidth="lg" fullWidth>
-                <DialogTitle sx={{ 
-                    bgcolor: '#f8fafc', 
+                <DialogTitle sx={{
+                    bgcolor: '#f8fafc',
                     borderBottom: '1px solid #e2e8f0',
                     display: 'flex',
                     alignItems: 'center',
@@ -441,7 +779,7 @@ const EstoqueEscolarPage = () => {
                                     <Grid item xs={12} sm={4}>
                                         <Card sx={{ textAlign: 'center', p: 2 }}>
                                             <Typography variant="h4" sx={{ fontWeight: 700, color: '#059669' }}>
-                                                {estoqueDetalhado.resumo?.quantidade_total || 0}
+                                                {estoqueDetalhado.total_quantidade || 0}
                                             </Typography>
                                             <Typography variant="body2" color="text.secondary">
                                                 Total Geral ({produtoSelecionado?.unidade})
@@ -451,7 +789,7 @@ const EstoqueEscolarPage = () => {
                                     <Grid item xs={12} sm={4}>
                                         <Card sx={{ textAlign: 'center', p: 2 }}>
                                             <Typography variant="h4" sx={{ fontWeight: 700, color: '#2563eb' }}>
-                                                {estoqueDetalhado.resumo?.escolas_com_estoque || 0}
+                                                {estoqueDetalhado.total_escolas_com_estoque || 0}
                                             </Typography>
                                             <Typography variant="body2" color="text.secondary">
                                                 Escolas com Estoque
@@ -461,7 +799,7 @@ const EstoqueEscolarPage = () => {
                                     <Grid item xs={12} sm={4}>
                                         <Card sx={{ textAlign: 'center', p: 2 }}>
                                             <Typography variant="h4" sx={{ fontWeight: 700, color: '#dc2626' }}>
-                                                {estoqueDetalhado.resumo?.escolas_sem_estoque || 0}
+                                                {(estoqueDetalhado.total_escolas || 0) - (estoqueDetalhado.total_escolas_com_estoque || 0)}
                                             </Typography>
                                             <Typography variant="body2" color="text.secondary">
                                                 Escolas sem Estoque
@@ -490,41 +828,41 @@ const EstoqueEscolarPage = () => {
                                             {estoqueDetalhado.escolas?.map((escola: any) => (
                                                 <TableRow key={escola.escola_id} hover>
                                                     <TableCell>
-                                                         <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                                                             {escola.escola_nome}
-                                                         </Typography>
-                                                     </TableCell>
-                                                     <TableCell align="center">
-                                                         <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                                                             {escola.quantidade_atual || 0} {produtoSelecionado?.unidade}
-                                                         </Typography>
-                                                     </TableCell>
-                                                     <TableCell align="center">
-                                                         <Chip 
-                                                             label={escola.quantidade_atual > 0 ? 'Com Estoque' : 'Sem Estoque'}
-                                                             size="small"
-                                                             color={escola.quantidade_atual > 0 ? 'success' : 'error'}
-                                                             variant="outlined"
-                                                         />
-                                                     </TableCell>
-                                                     <TableCell>
-                                                         <Typography variant="body2" color="text.secondary">
-                                                             {escola.data_ultima_atualizacao ? 
-                                                                 new Date(escola.data_ultima_atualizacao).toLocaleDateString('pt-BR') : 
-                                                                 'Nunca atualizado'
-                                                             }
-                                                         </Typography>
-                                                     </TableCell>
-                                                </TableRow>
-                                            )) || (
-                                                <TableRow>
-                                                    <TableCell colSpan={4} align="center">
-                                                        <Typography color="text.secondary">
-                                                            Nenhum dado de escola encontrado
+                                                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                                            {escola.escola_nome}
+                                                        </Typography>
+                                                    </TableCell>
+                                                    <TableCell align="center">
+                                                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                                            {escola.quantidade_atual || 0} {produtoSelecionado?.unidade}
+                                                        </Typography>
+                                                    </TableCell>
+                                                    <TableCell align="center">
+                                                        <Chip
+                                                            label={escola.quantidade_atual > 0 ? 'Com Estoque' : 'Sem Estoque'}
+                                                            size="small"
+                                                            color={escola.quantidade_atual > 0 ? 'success' : 'error'}
+                                                            variant="outlined"
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Typography variant="body2" color="text.secondary">
+                                                            {escola.data_ultima_atualizacao ?
+                                                                new Date(escola.data_ultima_atualizacao).toLocaleDateString('pt-BR') :
+                                                                'Nunca atualizado'
+                                                            }
                                                         </Typography>
                                                     </TableCell>
                                                 </TableRow>
-                                            )}
+                                            )) || (
+                                                    <TableRow>
+                                                        <TableCell colSpan={4} align="center">
+                                                            <Typography color="text.secondary">
+                                                                Nenhum dado de escola encontrado
+                                                            </Typography>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )}
                                         </TableBody>
                                     </Table>
                                 </TableContainer>
@@ -539,18 +877,18 @@ const EstoqueEscolarPage = () => {
                     )}
                 </DialogContent>
                 <DialogActions sx={{ p: 3, borderTop: '1px solid #e2e8f0' }}>
-                    <Button 
-                        onClick={() => exportarDetalhesExcel()} 
+                    <Button
+                        onClick={() => exportarDetalhesExcel()}
                         variant="contained"
                         startIcon={<Download />}
-                        sx={{ 
+                        sx={{
                             mr: 1
                         }}
                         color="success"
                     >
                         Exportar Excel
                     </Button>
-                    <Button 
+                    <Button
                         onClick={() => setDetalhesModalOpen(false)}
                         variant="outlined"
                     >
@@ -566,8 +904,8 @@ const EstoqueEscolarPage = () => {
                 maxWidth="sm"
                 fullWidth
             >
-                <DialogTitle sx={{ 
-                    bgcolor: '#fef2f2', 
+                <DialogTitle sx={{
+                    bgcolor: '#fef2f2',
                     color: '#dc2626',
                     display: 'flex',
                     alignItems: 'center',

@@ -1,5 +1,6 @@
 import AppRouter from "./routes/AppRouter";
 import { NotificationProvider } from "./context/NotificationContext";
+import { ConfigProvider } from "./context/ConfigContext";
 import ToastContainer from "./components/Toast";
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -19,8 +20,10 @@ export default function App({ routerConfig }: AppProps) {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <NotificationProvider>
-        <AppRouter routerConfig={routerConfig} />
-        <ToastContainer />
+        <ConfigProvider>
+          <AppRouter routerConfig={routerConfig} />
+          <ToastContainer />
+        </ConfigProvider>
       </NotificationProvider>
     </ThemeProvider>
   );

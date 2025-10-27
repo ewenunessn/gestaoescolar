@@ -51,7 +51,6 @@ import {
     Delete as DeleteIcon,
     Route as RouteIcon,
     School as SchoolIcon,
-    ColorLens as ColorIcon,
 
     Save as SaveIcon,
     Cancel as CancelIcon,
@@ -109,12 +108,7 @@ const GestaoRotas: React.FC = () => {
     const [salvando, setSalvando] = useState(false);
 
 
-    // Cores predefinidas para as rotas
-    const coresPredefinidas = [
-        '#1976d2', '#388e3c', '#f57c00', '#7b1fa2', '#d32f2f',
-        '#0288d1', '#689f38', '#fbc02d', '#512da8', '#c2185b',
-        '#00796b', '#5d4037', '#455a64', '#e64a19', '#303f9f'
-    ];
+
 
 
 
@@ -410,7 +404,6 @@ const GestaoRotas: React.FC = () => {
                                 <TableHead>
                                     <TableRow>
                                         <TableCell>Nome da Rota</TableCell>
-                                        <TableCell align="center">Cor</TableCell>
                                         <TableCell align="center">Total de Escolas</TableCell>
                                         <TableCell>Descrição</TableCell>
                                         <TableCell align="center">Status</TableCell>
@@ -429,19 +422,6 @@ const GestaoRotas: React.FC = () => {
                                                         {rota.nome}
                                                     </Typography>
                                                 </Box>
-                                            </TableCell>
-                                            <TableCell align="center">
-                                                <Box
-                                                    sx={{
-                                                        width: 24,
-                                                        height: 24,
-                                                        borderRadius: '50%',
-                                                        bgcolor: rota.cor,
-                                                        mx: 'auto',
-                                                        border: '2px solid #fff',
-                                                        boxShadow: 1
-                                                    }}
-                                                />
                                             </TableCell>
                                             <TableCell align="center">
                                                 <Typography variant="body2" sx={{ fontWeight: 600, color: 'primary.main' }}>
@@ -541,38 +521,7 @@ const GestaoRotas: React.FC = () => {
                                 />
                             </Grid>
 
-                            <Grid item xs={12}>
-                                <Typography variant="subtitle2" gutterBottom>
-                                    Cor da Rota
-                                </Typography>
-                                <Box display="flex" flexWrap="wrap" gap={1}>
-                                    {coresPredefinidas.map((cor) => (
-                                        <Box
-                                            key={cor}
-                                            sx={{
-                                                width: 40,
-                                                height: 40,
-                                                backgroundColor: cor,
-                                                borderRadius: '50%',
-                                                cursor: 'pointer',
-                                                border: formRota.cor === cor ? '3px solid #000' : '2px solid #ddd',
-                                                '&:hover': {
-                                                    transform: 'scale(1.1)',
-                                                    transition: 'transform 0.2s'
-                                                }
-                                            }}
-                                            onClick={() => setFormRota(prev => ({ ...prev, cor }))}
-                                        />
-                                    ))}
-                                </Box>
-                                <TextField
-                                    label="Cor personalizada"
-                                    type="color"
-                                    value={formRota.cor}
-                                    onChange={(e) => setFormRota(prev => ({ ...prev, cor: e.target.value }))}
-                                    sx={{ mt: 2, width: 100 }}
-                                />
-                            </Grid>
+
                         </Grid>
                     </DialogContent>
 

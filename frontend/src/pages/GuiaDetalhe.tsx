@@ -24,6 +24,11 @@ import {
   CircularProgress,
   Checkbox,
   FormControlLabel,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
+  TextField,
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -34,6 +39,8 @@ import {
   PendingActions as PendingIcon,
   History as HistoryIcon,
   Assignment as AssignmentIcon,
+  Edit as EditIcon,
+  MoreVert as MoreVertIcon,
 } from '@mui/icons-material';
 import { useNotification } from '../context/NotificationContext';
 import { guiaService, Guia, GuiaProdutoEscola } from '../services/guiaService';
@@ -76,6 +83,11 @@ const GuiaDetalhe: React.FC = () => {
   const [itensSelecionados, setItensSelecionados] = useState<Set<string>>(new Set());
   const [removendoItens, setRemovendoItens] = useState(false);
   const [dadosEntrega, setDadosEntrega] = useState<{[key: string]: any}>({});
+  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
+  const [openEditDialog, setOpenEditDialog] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    observacao: ''
+  });
 
   useEffect(() => {
     if (id) {
@@ -294,6 +306,58 @@ const GuiaDetalhe: React.FC = () => {
     }
   };
 
+  const handleOpenMenu = (event: React.MouseEvent<HTMLElement>) => {
+    setMenuAnchor(event.currentTarget);
+  };
+
+  const handleCloseMenu = () => {
+    setMenuAnchor(null);
+  };
+
+  const handleEditGuia = () => {
+    if (guia) {
+      setEditFormData({
+        observacao: guia.observacao || ''
+      });
+      setOpenEditDialog(true);
+    }
+    handleCloseMenu();
+  };
+
+  const handleSaveEdit = async () => {
+    if (!guia) return;
+
+    try {
+      await guiaService.atualizarGuia(guia.id, {
+        observacao: editFormData.observacao
+      });
+      success('Guia atualizada com sucesso!');
+      setOpenEditDialog(false);
+      await carregarGuia();
+    } catch (err: any) {
+      error('Erro ao atualizar guia');
+    }
+  };
+
+  const handleDeleteGuia = async () => {
+    if (!guia) return;
+
+    const confirmacao = window.confirm(
+      `Tem certeza que deseja excluir esta guia?\n\nGuia: ${guia.mes}/${guia.ano}\nEsta ação não pode ser desfeita e removerá todos os produtos associados.`
+    );
+
+    if (!confirmacao) return;
+
+    try {
+      await guiaService.deletarGuia(guia.id);
+      success('Guia excluída com sucesso!');
+      navigate('/guias-demanda');
+    } catch (err: any) {
+      error('Erro ao excluir guia');
+    }
+    handleCloseMenu();
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
@@ -320,10 +384,49 @@ const GuiaDetalhe: React.FC = () => {
           ]}
         />
         {/* Cabeçalho */}
-        <Box sx={{ mb: 3 }}>
+        <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h4" sx={{ fontWeight: 700, color: 'text.primary' }}>
             Guia de Demanda - {guia.mes}/{guia.ano}
           </Typography>
+          
+          {guia.status === 'aberta' && (
+            <Box>
+              <IconButton
+                onClick={handleOpenMenu}
+                sx={{
+                  bgcolor: 'background.paper',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  '&:hover': {
+                    bgcolor: 'action.hover'
+                  }
+                }}
+              >
+                <MoreVertIcon />
+              </IconButton>
+              
+              <Menu
+                anchorEl={menuAnchor}
+                open={Boolean(menuAnchor)}
+                onClose={handleCloseMenu}
+                transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+              >
+                <MenuItem onClick={handleEditGuia}>
+                  <ListItemIcon>
+                    <EditIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText>Editar Guia</ListItemText>
+                </MenuItem>
+                <MenuItem onClick={handleDeleteGuia} sx={{ color: 'error.main' }}>
+                  <ListItemIcon>
+                    <DeleteIcon fontSize="small" sx={{ color: 'error.main' }} />
+                  </ListItemIcon>
+                  <ListItemText>Excluir Guia</ListItemText>
+                </MenuItem>
+              </Menu>
+            </Box>
+          )}
         </Box>
 
         {/* Informações da Guia */}
@@ -894,6 +997,41 @@ const GuiaDetalhe: React.FC = () => {
               </Button>
             </Box>
           </Box>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog para editar guia */}
+      <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          <Typography variant="h6" component="div">
+            Editar Guia - {guia?.mes}/{guia?.ano}
+          </Typography>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Box sx={{ pt: 1 }}>
+            <TextField
+              label="Observação"
+              multiline
+              rows={4}
+              value={editFormData.observacao}
+              onChange={(e) => setEditFormData({ ...editFormData, observacao: e.target.value })}
+              fullWidth
+              placeholder="Adicione uma observação sobre esta guia..."
+              helperText="Descreva informações importantes sobre esta guia de demanda"
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button onClick={() => setOpenEditDialog(false)} color="inherit">
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleSaveEdit}
+            variant="contained"
+            startIcon={<EditIcon />}
+          >
+            Salvar Alterações
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

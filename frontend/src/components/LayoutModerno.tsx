@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   Box,
   Drawer,
@@ -13,6 +13,7 @@ import {
   useTheme,
   useMediaQuery,
   Button,
+  CircularProgress,
 } from "@mui/material";
 import {
   Menu as MenuIcon,
@@ -36,61 +37,100 @@ import {
 import { useNavigate, useLocation } from "react-router-dom";
 import { logout } from "../services/auth";
 import { getLogo } from "../theme/theme";
+import { useConfigContext } from "../context/ConfigContext";
+import { useConfigChangeIndicator } from "../hooks/useConfigChangeIndicator";
+import { useCurrentUser } from "../hooks/useCurrentUser";
 
 
 const drawerWidth = 200;
 const collapsedDrawerWidth = 80;
 
-// Estrutura de Dados Aprimorada
-const menuConfig = [
-  {
-    category: "Principal",
-    items: [
-      { text: "Dashboard", icon: <Dashboard />, path: "/dashboard" },
-      { text: "Demandas SEMED", icon: <RequestPage />, path: "/demandas" },
-    ],
-  },
-  {
-    category: "Cadastros",
-    items: [
-      { text: "Escolas", icon: <School />, path: "/escolas" },
-      { text: "Modalidades", icon: <Category />, path: "/modalidades" },
-      { text: "Produtos", icon: <Inventory />, path: "/produtos" },
-      { text: "Refeições", icon: <Restaurant />, path: "/refeicoes" },
-    ],
-  },
-  {
-    category: "Planejamento",
-    items: [
-      { text: "Cardápios", icon: <MenuBook />, path: "/cardapios" },
-      { text: "Gerar Demanda", icon: <Calculate />, path: "/gerar-demanda" },
-    ],
-  },
-  {
-    category: "Compras",
-    items: [
-      { text: "Fornecedores", icon: <Business />, path: "/fornecedores" },
-      { text: "Contratos", icon: <Assignment />, path: "/contratos" },
-      { text: "Pedidos", icon: <LocalShipping />, path: "/pedidos" },
-      { text: "Saldo por Modalidade", icon: <Category />, path: "/saldos-contratos-modalidades" },
-    ],
-  },
-  {
-    category: "Estoque",
-    items: [
-      { text: "Estoque Escolar", icon: <Assessment />, path: "/estoque-escolar" },
-    ],
-  },
-  {
-    category: "Guias",
-    items: [
-      { text: "Guias de Demanda", icon: <ListAlt />, path: "/guias-demanda" },
-      { text: "Gestão de Rotas", icon: <Business />, path: "/gestao-rotas" },
-      { text: "Configuração de Entrega", icon: <Settings />, path: "/configuracao-entrega" },
-      { text: "Entregas", icon: <LocalShipping />, path: "/entregas" },
-    ],
-  },
-];
+// Função para gerar configuração do menu baseada nas configurações do sistema
+const getMenuConfig = (configModuloSaldo: any) => {
+  const saldoItems = [];
+
+  if (configModuloSaldo.mostrar_ambos) {
+    // Mostrar ambos, mas o principal primeiro
+    if (configModuloSaldo.modulo_principal === 'modalidades') {
+      saldoItems.push(
+        { text: "Saldo por Modalidade", icon: <Category />, path: "/saldos-contratos-modalidades", isPrimary: true },
+        { text: "Saldo Geral", icon: <Assessment />, path: "/saldos-contratos", isPrimary: false }
+      );
+    } else {
+      saldoItems.push(
+        { text: "Saldo Geral", icon: <Assessment />, path: "/saldos-contratos", isPrimary: true },
+        { text: "Saldo por Modalidade", icon: <Category />, path: "/saldos-contratos-modalidades", isPrimary: false }
+      );
+    }
+  } else {
+    // Mostrar apenas o principal
+    if (configModuloSaldo.modulo_principal === 'modalidades') {
+      saldoItems.push(
+        { text: "Saldo de Contratos", icon: <Category />, path: "/saldos-contratos-modalidades", isPrimary: true }
+      );
+    } else {
+      saldoItems.push(
+        { text: "Saldo de Contratos", icon: <Assessment />, path: "/saldos-contratos", isPrimary: true }
+      );
+    }
+  }
+
+  return [
+    {
+      category: "Principal",
+      items: [
+        { text: "Dashboard", icon: <Dashboard />, path: "/dashboard" },
+        { text: "Demandas SEMED", icon: <RequestPage />, path: "/demandas" },
+      ],
+    },
+    {
+      category: "Cadastros",
+      items: [
+        { text: "Escolas", icon: <School />, path: "/escolas" },
+        { text: "Modalidades", icon: <Category />, path: "/modalidades" },
+        { text: "Produtos", icon: <Inventory />, path: "/produtos" },
+        { text: "Refeições", icon: <Restaurant />, path: "/refeicoes" },
+      ],
+    },
+    {
+      category: "Planejamento",
+      items: [
+        { text: "Cardápios", icon: <MenuBook />, path: "/cardapios" },
+        { text: "Gerar Demanda", icon: <Calculate />, path: "/gerar-demanda" },
+      ],
+    },
+    {
+      category: "Compras",
+      items: [
+        { text: "Fornecedores", icon: <Business />, path: "/fornecedores" },
+        { text: "Contratos", icon: <Assignment />, path: "/contratos" },
+        { text: "Pedidos", icon: <LocalShipping />, path: "/pedidos" },
+        ...saldoItems,
+      ],
+    },
+    {
+      category: "Estoque",
+      items: [
+        { text: "Estoque Escolar", icon: <Assessment />, path: "/estoque-escolar" },
+      ],
+    },
+    {
+      category: "Guias",
+      items: [
+        { text: "Guias de Demanda", icon: <ListAlt />, path: "/guias-demanda" },
+        { text: "Gestão de Rotas", icon: <Business />, path: "/gestao-rotas" },
+        { text: "Configuração de Entrega", icon: <Settings />, path: "/configuracao-entrega" },
+        { text: "Entregas", icon: <LocalShipping />, path: "/entregas" },
+      ],
+    },
+    {
+      category: "Sistema",
+      items: [
+        { text: "Configurações", icon: <Settings />, path: "/configuracoes-sistema" },
+      ],
+    },
+  ];
+};
 
 interface NavItemProps {
   item: any;
@@ -204,12 +244,30 @@ const NavItem: React.FC<NavItemProps> = ({ item, isActive, onClick, collapsed })
           {item.icon}
         </ListItemIcon>
         <ListItemText
-          primary={item.text}
-          primaryTypographyProps={{
-            fontSize: "0.8rem",
-            fontWeight: isActive ? 600 : 400,
-            fontFamily: 'Inter, sans-serif'
-          }}
+          primary={
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography
+                sx={{
+                  fontSize: "0.8rem",
+                  fontWeight: isActive ? 600 : 400,
+                  fontFamily: 'Inter, sans-serif'
+                }}
+              >
+                {item.text}
+              </Typography>
+              {item.isPrimary && (
+                <Box
+                  sx={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    bgcolor: 'primary.main',
+                    flexShrink: 0
+                  }}
+                />
+              )}
+            </Box>
+          }
         />
       </ListItemButton>
     </ListItem>
@@ -222,10 +280,30 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     const saved = localStorage.getItem('sidebar-collapsed');
     return saved ? JSON.parse(saved) : false;
   });
+
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+
+  // Carregar configurações do módulo de saldo
+  const { configModuloSaldo, loading: loadingConfig, onConfigChanged } = useConfigContext();
+
+  // Indicador de mudanças recentes
+  const { hasRecentChange, showChangeIndicator } = useConfigChangeIndicator();
+
+  // Dados do usuário atual
+  const { user, loading: loadingUser } = useCurrentUser();
+
+  // Configurar callback para mostrar indicador quando config mudar
+  useEffect(() => {
+    if (onConfigChanged) {
+      onConfigChanged(showChangeIndicator);
+    }
+  }, [onConfigChanged, showChangeIndicator]);
+
+  // Gerar menu baseado nas configurações
+  const menuConfig = getMenuConfig(configModuloSaldo);
 
   const handleDrawerToggle = useCallback(() => setMobileOpen(prev => !prev), []);
   const handleCollapseToggle = useCallback(() => {
@@ -238,6 +316,8 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const handleLogout = () => {
     logout();
   };
+
+
   const handleNavigation = useCallback((path: string) => {
     navigate(path);
     if (isMobile) {
@@ -252,6 +332,29 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     <Box sx={{ height: "100%", display: "flex", flexDirection: "column", bgcolor: 'background.sidebar' }}>
       {/* Espaço para o header fixo */}
       <Box sx={{ height: 56 }} />
+
+      {/* Indicador de mudanças recentes */}
+      {hasRecentChange && !loadingConfig && (
+        <Box sx={{
+          mx: 1,
+          mb: 1,
+          p: 1,
+          bgcolor: 'success.main',
+          color: 'success.contrastText',
+          borderRadius: 1,
+          fontSize: '0.75rem',
+          textAlign: 'center',
+          animation: 'fadeInOut 3s ease-in-out',
+          '@keyframes fadeInOut': {
+            '0%': { opacity: 0, transform: 'translateY(-10px)' },
+            '20%': { opacity: 1, transform: 'translateY(0)' },
+            '80%': { opacity: 1, transform: 'translateY(0)' },
+            '100%': { opacity: 0, transform: 'translateY(-10px)' }
+          }
+        }}>
+          ✅ Menu atualizado!
+        </Box>
+      )}
 
       <Box sx={{
         flexGrow: 1,
@@ -271,46 +374,68 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           background: 'action.hover',
         },
       }}>
-        {menuConfig.map(({ category, items }) => (
-          <Box key={category} sx={{ mb: collapsed ? 0 : 1 }}>
-            {!collapsed && category !== "Principal" && (
-              <Box sx={{
-                px: 2,
-                py: 0.75,
-                borderBottom: 1,
-                borderColor: 'divider',
-                mb: 0.5
-              }}>
-                <Typography
-                  variant="caption"
-                  sx={{
-                    fontWeight: "500",
-                    color: 'text.disabled',
-                    fontSize: "0.7rem",
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.3px'
-                  }}
-                >
-                  {category}
-                </Typography>
-              </Box>
+        {loadingConfig ? (
+          <Box sx={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            py: 4,
+            transition: 'all 0.3s ease-in-out'
+          }}>
+            <CircularProgress size={24} />
+            {!collapsed && (
+              <Typography variant="caption" sx={{ ml: 1, color: 'text.secondary' }}>
+                Carregando configurações...
+              </Typography>
             )}
-            <List dense sx={{ py: 0 }}>
-              {items.map((item) => {
-                const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
-                return (
-                  <NavItem
-                    key={item.text}
-                    item={item}
-                    isActive={isActive}
-                    onClick={handleNavigation}
-                    collapsed={collapsed}
-                  />
-                );
-              })}
-            </List>
           </Box>
-        ))}
+        ) : (
+          <Box sx={{
+            transition: 'all 0.3s ease-in-out',
+            opacity: loadingConfig ? 0 : 1
+          }}>
+            {menuConfig.map(({ category, items }) => (
+              <Box key={category} sx={{ mb: collapsed ? 0 : 1 }}>
+                {!collapsed && category !== "Principal" && (
+                  <Box sx={{
+                    px: 2,
+                    py: 0.75,
+                    borderBottom: 1,
+                    borderColor: 'divider',
+                    mb: 0.5
+                  }}>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontWeight: "500",
+                        color: 'text.disabled',
+                        fontSize: "0.7rem",
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.3px'
+                      }}
+                    >
+                      {category}
+                    </Typography>
+                  </Box>
+                )}
+                <List dense sx={{ py: 0 }}>
+                  {items.map((item) => {
+                    const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
+                    return (
+                      <NavItem
+                        key={item.text}
+                        item={item}
+                        isActive={isActive}
+                        onClick={handleNavigation}
+                        collapsed={collapsed}
+                      />
+                    );
+                  })}
+                </List>
+              </Box>
+            ))}
+          </Box>
+        )}
       </Box>
 
       <Box sx={{
@@ -383,7 +508,7 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           <MenuIcon />
         </IconButton>
 
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
           <img
             src={getLogo()}
             alt="Logo"
@@ -393,6 +518,22 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               objectFit: 'contain'
             }}
           />
+        </Box>
+
+        {/* Informações do usuário */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {loadingUser ? (
+            <CircularProgress size={16} />
+          ) : user ? (
+            <>
+              <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }}>
+                Logado como:
+              </Typography>
+              <Typography variant="body2" fontWeight="medium" color="text.primary">
+                {user.nome}
+              </Typography>
+            </>
+          ) : null}
         </Box>
       </Box>
 

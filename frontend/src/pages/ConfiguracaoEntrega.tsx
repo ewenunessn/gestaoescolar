@@ -103,6 +103,12 @@ const ConfiguracaoEntrega: React.FC = () => {
       tipoCaixa: 'caixa' | 'fardo';
     }
   }>({});
+
+  // Estado para modal de seleção de rotas
+  const [modalEscolherRotasAberto, setModalEscolherRotasAberto] = useState(false);
+  const [rotasDisponiveis, setRotasDisponiveis] = useState<RotaEntrega[]>([]);
+  const [rotasEscolhidas, setRotasEscolhidas] = useState<RotaEntrega[]>([]);
+  const [conflitosEscolas, setConflitosEscolas] = useState<{[key: number]: number[]}>({});
   
   // Estado local para os campos de input durante a digitação
   const [inputValues, setInputValues] = useState<{
@@ -505,6 +511,104 @@ const ConfiguracaoEntrega: React.FC = () => {
     setModalConfigUnidadesAberto(false);
   };
 
+  const abrirModalEscolherRotas = async () => {
+    try {
+      // Carregar todas as rotas disponíveis
+      const todasRotas = await rotaService.listarRotas();
+      setRotasDisponiveis(todasRotas);
+      
+      // Carregar rotas já escolhidas
+      const rotasJaEscolhidas = rotas.filter(rota => configuracao.rotasSelecionadas.includes(rota.id));
+      setRotasEscolhidas(rotasJaEscolhidas);
+      
+      // Verificar conflitos de escolas
+      await verificarConflitosEscolas(rotasJaEscolhidas);
+      
+      setModalEscolherRotasAberto(true);
+    } catch (err) {
+      console.error('Erro ao carregar rotas:', err);
+      setError('Erro ao carregar rotas disponíveis');
+    }
+  };
+
+  const verificarConflitosEscolas = async (rotasParaVerificar: RotaEntrega[]) => {
+    const conflitos: {[key: number]: number[]} = {};
+    const escolasPorRota: {[key: number]: number[]} = {};
+
+    // Buscar escolas de cada rota
+    for (const rota of rotasParaVerificar) {
+      try {
+        const escolasRota = await rotaService.listarEscolasRota(rota.id);
+        escolasPorRota[rota.id] = escolasRota.map(e => e.escola_id);
+      } catch (err) {
+        console.warn(`Erro ao carregar escolas da rota ${rota.id}:`, err);
+        escolasPorRota[rota.id] = [];
+      }
+    }
+
+    // Verificar conflitos entre rotas
+    const rotasIds = Object.keys(escolasPorRota).map(Number);
+    for (let i = 0; i < rotasIds.length; i++) {
+      for (let j = i + 1; j < rotasIds.length; j++) {
+        const rotaA = rotasIds[i];
+        const rotaB = rotasIds[j];
+        const escolasA = escolasPorRota[rotaA];
+        const escolasB = escolasPorRota[rotaB];
+        
+        // Encontrar escolas em comum
+        const escolasComuns = escolasA.filter(escolaId => escolasB.includes(escolaId));
+        
+        if (escolasComuns.length > 0) {
+          if (!conflitos[rotaA]) conflitos[rotaA] = [];
+          if (!conflitos[rotaB]) conflitos[rotaB] = [];
+          
+          conflitos[rotaA].push(rotaB);
+          conflitos[rotaB].push(rotaA);
+        }
+      }
+    }
+
+    setConflitosEscolas(conflitos);
+  };
+
+  const adicionarRota = async (rota: RotaEntrega) => {
+    const novasRotasEscolhidas = [...rotasEscolhidas, rota];
+    
+    // Verificar se há conflitos
+    await verificarConflitosEscolas(novasRotasEscolhidas);
+    
+    // Se há conflitos, mostrar aviso mas permitir adicionar
+    if (conflitosEscolas[rota.id] && conflitosEscolas[rota.id].length > 0) {
+      const rotasConflitantes = conflitosEscolas[rota.id].map(id => 
+        rotasEscolhidas.find(r => r.id === id)?.nome
+      ).join(', ');
+      
+      const confirmar = window.confirm(
+        `A rota "${rota.nome}" possui escolas em comum com: ${rotasConflitantes}.\n\nDeseja adicionar mesmo assim?`
+      );
+      
+      if (!confirmar) {
+        return;
+      }
+    }
+    
+    setRotasEscolhidas(novasRotasEscolhidas);
+  };
+
+  const removerRota = async (rotaId: number) => {
+    const novasRotasEscolhidas = rotasEscolhidas.filter(r => r.id !== rotaId);
+    setRotasEscolhidas(novasRotasEscolhidas);
+    await verificarConflitosEscolas(novasRotasEscolhidas);
+  };
+
+  const confirmarSelecaoRotas = () => {
+    setConfiguracao(prev => ({
+      ...prev,
+      rotasSelecionadas: rotasEscolhidas.map(r => r.id)
+    }));
+    setModalEscolherRotasAberto(false);
+  };
+
   const imprimirRomaneio = () => {
     // Criar uma nova janela para impressão
     const printWindow = window.open('', '_blank');
@@ -652,8 +756,17 @@ const ConfiguracaoEntrega: React.FC = () => {
       setSalvando(true);
       setError(null);
 
+      // Se não há guia selecionada, salvar configuração "limpa" (desativa configuração)
       if (!configuracao.guiaId) {
-        setError('Selecione uma guia de demanda');
+        const resultado = await rotaService.salvarConfiguracao({
+          guiaId: 0,
+          rotasSelecionadas: [],
+          itensSelecionados: [],
+          ativa: false // Desativa a configuração
+        });
+
+        setSuccess('Configuração limpa salva com sucesso! O mobile não terá filtros ativos.');
+        setTimeout(() => setSuccess(null), 5000);
         return;
       }
 
@@ -667,7 +780,7 @@ const ConfiguracaoEntrega: React.FC = () => {
         return;
       }
 
-      // Salvar configuração na API
+      // Salvar configuração ativa na API
       const resultado = await rotaService.salvarConfiguracao({
         guiaId: configuracao.guiaId,
         rotasSelecionadas: configuracao.rotasSelecionadas,
@@ -751,124 +864,148 @@ const ConfiguracaoEntrega: React.FC = () => {
         )}
 
         <Grid container spacing={3}>
-          {/* Seção 1: Guia de Demanda */}
+          {/* Seção 1 e 2: Guia e Rotas - Card Compacto */}
           <Grid item xs={12}>
             <Card>
-              <CardContent>
-                <Box display="flex" alignItems="center" gap={1} mb={2}>
-                  <GuiaIcon color="primary" />
-                  <Typography variant="h6">
-                    1. Selecionar Guia de Demanda
-                  </Typography>
-                </Box>
-
-                <FormControl fullWidth>
-                  <InputLabel>Guia de Demanda</InputLabel>
-                  <Select
-                    value={configuracao.guiaId || ''}
-                    onChange={(e) => setConfiguracao(prev => ({
-                      ...prev,
-                      guiaId: Number(e.target.value),
-                      itensSelecionados: [] // Reset itens quando muda guia
-                    }))}
-                    label="Guia de Demanda"
-                  >
-                    {guias.map((guia) => (
-                      <MenuItem key={guia.id} value={guia.id}>
-                        <Box display="flex" alignItems="center" gap={1}>
-                          <GuiaIcon fontSize="small" />
-                          {guia.mes}/{guia.ano}
-                          {guia.observacao && ` - ${guia.observacao}`}
-                        </Box>
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {/* Seção 2: Rotas */}
-          <Grid item xs={12} md={6}>
-            <Card>
-              <CardContent>
-                <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                  <Box display="flex" alignItems="center" gap={1}>
-                    <RouteIcon color="primary" />
-                    <Typography variant="h6">
-                      2. Selecionar Rotas
-                    </Typography>
-                  </Box>
-                  <Box>
-                    <Button size="small" onClick={selecionarTodasRotas} sx={{ mr: 1 }}>
-                      Todas
-                    </Button>
-                    <Button size="small" onClick={deselecionarTodasRotas}>
-                      Nenhuma
-                    </Button>
-                  </Box>
-                </Box>
-
-                <Grid container spacing={2}>
-                  {rotas.map((rota) => (
-                    <Grid item xs={12} key={rota.id}>
-                      <Card
-                        sx={{
-                          cursor: 'pointer',
-                          border: configuracao.rotasSelecionadas.includes(rota.id) ? 2 : 1,
-                          borderColor: configuracao.rotasSelecionadas.includes(rota.id) ? 'primary.main' : 'divider',
-                          '&:hover': { borderColor: 'primary.main' }
-                        }}
-                        onClick={() => toggleRota(rota.id)}
+              <CardContent sx={{ py: 2 }}>
+                <Grid container spacing={3} alignItems="center">
+                  {/* Guia de Demanda */}
+                  <Grid item xs={12} md={5}>
+                    <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <GuiaIcon color="primary" fontSize="small" />
+                        <Typography variant="subtitle1" fontWeight="bold">
+                          1. Guia de Demanda
+                        </Typography>
+                      </Box>
+                      {configuracao.guiaId > 0 && (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="error"
+                          onClick={() => setConfiguracao(prev => ({
+                            ...prev,
+                            guiaId: 0,
+                            itensSelecionados: []
+                          }))}
+                          sx={{ minWidth: 'auto', px: 1 }}
+                        >
+                          Limpar
+                        </Button>
+                      )}
+                    </Box>
+                    <FormControl fullWidth size="small">
+                      <InputLabel>Selecionar Guia</InputLabel>
+                      <Select
+                        value={configuracao.guiaId || ''}
+                        onChange={(e) => setConfiguracao(prev => ({
+                          ...prev,
+                          guiaId: Number(e.target.value) || 0,
+                          itensSelecionados: [] // Reset itens quando muda guia
+                        }))}
+                        label="Selecionar Guia"
                       >
-                        <CardContent sx={{ py: 2 }}>
+                        <MenuItem value="">
                           <Box display="flex" alignItems="center" gap={1}>
-                            <Checkbox
-                              checked={configuracao.rotasSelecionadas.includes(rota.id)}
-                              onChange={() => toggleRota(rota.id)}
-                            />
-                            <Box
-                              sx={{
-                                width: 16,
-                                height: 16,
-                                borderRadius: '50%',
-                                backgroundColor: rota.cor
-                              }}
-                            />
-                            <Box flex={1}>
-                              <Typography variant="subtitle2" fontWeight="bold">
-                                {rota.nome}
-                              </Typography>
-                              {rota.descricao && (
-                                <Typography variant="caption" color="text.secondary">
-                                  {rota.descricao}
-                                </Typography>
-                              )}
-                            </Box>
-                            <Box display="flex" alignItems="center" gap={0.5}>
-                              <SchoolIcon fontSize="small" color="action" />
-                              <Typography variant="caption">
-                                {rota.total_escolas || 0}
-                              </Typography>
-                            </Box>
+                            <Typography variant="body2" color="text.secondary" fontStyle="italic">
+                              Nenhuma guia selecionada
+                            </Typography>
                           </Box>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                  ))}
-                </Grid>
+                        </MenuItem>
+                        {guias.map((guia) => (
+                          <MenuItem key={guia.id} value={guia.id}>
+                            <Box display="flex" alignItems="center" gap={1}>
+                              <GuiaIcon fontSize="small" />
+                              {guia.mes}/{guia.ano}
+                              {guia.observacao && ` - ${guia.observacao}`}
+                            </Box>
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
 
-                <Box mt={2}>
-                  <Typography variant="body2" color="primary">
-                    {configuracao.rotasSelecionadas.length} de {rotas.length} rotas selecionadas
-                  </Typography>
-                </Box>
+                  {/* Separador Visual */}
+                  <Grid item xs={12} md={1}>
+                    <Box display="flex" justifyContent="center">
+                      <Box sx={{ width: 2, height: 40, bgcolor: 'divider', borderRadius: 1 }} />
+                    </Box>
+                  </Grid>
+
+                  {/* Rotas */}
+                  <Grid item xs={12} md={6}>
+                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <RouteIcon color="primary" fontSize="small" />
+                        <Typography variant="subtitle1" fontWeight="bold">
+                          2. Rotas ({configuracao.rotasSelecionadas.length})
+                        </Typography>
+                      </Box>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        startIcon={<RouteIcon />}
+                        onClick={abrirModalEscolherRotas}
+                      >
+                        Escolher
+                      </Button>
+                    </Box>
+
+                    {configuracao.rotasSelecionadas.length === 0 ? (
+                      <Alert severity="info" sx={{ py: 0.5 }}>
+                        <Typography variant="body2">
+                          Clique em "Escolher" para selecionar rotas
+                        </Typography>
+                      </Alert>
+                    ) : (
+                      <Box sx={{ maxHeight: 120, overflow: 'auto' }}>
+                        <Grid container spacing={0.5}>
+                          {rotas.filter(rota => configuracao.rotasSelecionadas.includes(rota.id)).map((rota) => (
+                            <Grid item xs={12} key={rota.id}>
+                              <Box
+                                sx={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 1,
+                                  p: 1,
+                                  bgcolor: 'success.50',
+                                  borderRadius: 1,
+                                  border: '1px solid',
+                                  borderColor: 'success.200'
+                                }}
+                              >
+                                <Box
+                                  sx={{
+                                    width: 12,
+                                    height: 12,
+                                    borderRadius: '50%',
+                                    backgroundColor: rota.cor,
+                                    flexShrink: 0
+                                  }}
+                                />
+                                <Typography variant="body2" fontWeight="medium" sx={{ flex: 1 }}>
+                                  {rota.nome}
+                                </Typography>
+                                <Box display="flex" alignItems="center" gap={0.5}>
+                                  <SchoolIcon fontSize="small" color="action" sx={{ fontSize: 14 }} />
+                                  <Typography variant="caption">
+                                    {rota.total_escolas || 0}
+                                  </Typography>
+                                </Box>
+                              </Box>
+                            </Grid>
+                          ))}
+                        </Grid>
+                      </Box>
+                    )}
+                  </Grid>
+                </Grid>
               </CardContent>
             </Card>
           </Grid>
 
           {/* Seção 3: Itens */}
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12}>
             <Card>
               <CardContent>
                 <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
@@ -1234,6 +1371,169 @@ const ConfiguracaoEntrega: React.FC = () => {
           </Box>
         </Dialog>
 
+        {/* Modal de Escolher Rotas */}
+        <Dialog
+          open={modalEscolherRotasAberto}
+          onClose={() => setModalEscolherRotasAberto(false)}
+          maxWidth="lg"
+          fullWidth
+        >
+          <DialogTitle>
+            <Box display="flex" justifyContent="space-between" alignItems="center">
+              <Typography variant="h6">Escolher Rotas</Typography>
+              <IconButton onClick={() => setModalEscolherRotasAberto(false)}>
+                <CloseIcon />
+              </IconButton>
+            </Box>
+          </DialogTitle>
+          
+          <DialogContent>
+            <Grid container spacing={3}>
+              {/* Rotas Disponíveis */}
+              <Grid item xs={12} md={6}>
+                <Typography variant="h6" gutterBottom>
+                  Rotas Disponíveis
+                </Typography>
+                <Box sx={{ maxHeight: 400, overflow: 'auto' }}>
+                  {rotasDisponiveis.filter(rota => !rotasEscolhidas.find(r => r.id === rota.id)).map((rota) => (
+                    <Card key={rota.id} sx={{ mb: 1 }}>
+                      <CardContent sx={{ py: 2 }}>
+                        <Box display="flex" alignItems="center" gap={1}>
+                          <Box
+                            sx={{
+                              width: 16,
+                              height: 16,
+                              borderRadius: '50%',
+                              backgroundColor: rota.cor
+                            }}
+                          />
+                          <Box flex={1}>
+                            <Typography variant="subtitle2" fontWeight="bold">
+                              {rota.nome}
+                            </Typography>
+                            {rota.descricao && (
+                              <Typography variant="caption" color="text.secondary">
+                                {rota.descricao}
+                              </Typography>
+                            )}
+                          </Box>
+                          <Box display="flex" alignItems="center" gap={0.5} mr={1}>
+                            <SchoolIcon fontSize="small" color="action" />
+                            <Typography variant="caption">
+                              {rota.total_escolas || 0}
+                            </Typography>
+                          </Box>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={() => adicionarRota(rota)}
+                          >
+                            Adicionar
+                          </Button>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </Box>
+              </Grid>
+
+              {/* Rotas Escolhidas */}
+              <Grid item xs={12} md={6}>
+                <Typography variant="h6" gutterBottom>
+                  Rotas Escolhidas ({rotasEscolhidas.length})
+                </Typography>
+                <Box sx={{ maxHeight: 400, overflow: 'auto' }}>
+                  {rotasEscolhidas.length === 0 ? (
+                    <Alert severity="info">
+                      Nenhuma rota selecionada
+                    </Alert>
+                  ) : (
+                    rotasEscolhidas.map((rota) => (
+                      <Card 
+                        key={rota.id} 
+                        sx={{ 
+                          mb: 1,
+                          bgcolor: conflitosEscolas[rota.id] && conflitosEscolas[rota.id].length > 0 ? 'warning.50' : 'success.50',
+                          border: conflitosEscolas[rota.id] && conflitosEscolas[rota.id].length > 0 ? '1px solid' : 'none',
+                          borderColor: 'warning.main'
+                        }}
+                      >
+                        <CardContent sx={{ py: 2 }}>
+                          <Box display="flex" alignItems="center" gap={1}>
+                            <Box
+                              sx={{
+                                width: 16,
+                                height: 16,
+                                borderRadius: '50%',
+                                backgroundColor: rota.cor
+                              }}
+                            />
+                            <Box flex={1}>
+                              <Typography variant="subtitle2" fontWeight="bold">
+                                {rota.nome}
+                              </Typography>
+                              {rota.descricao && (
+                                <Typography variant="caption" color="text.secondary">
+                                  {rota.descricao}
+                                </Typography>
+                              )}
+                              {conflitosEscolas[rota.id] && conflitosEscolas[rota.id].length > 0 && (
+                                <Typography variant="caption" color="warning.main" display="block">
+                                  ⚠️ Conflito com outras rotas
+                                </Typography>
+                              )}
+                            </Box>
+                            <Box display="flex" alignItems="center" gap={0.5} mr={1}>
+                              <SchoolIcon fontSize="small" color="action" />
+                              <Typography variant="caption">
+                                {rota.total_escolas || 0}
+                              </Typography>
+                            </Box>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              color="error"
+                              onClick={() => removerRota(rota.id)}
+                            >
+                              Remover
+                            </Button>
+                          </Box>
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </Box>
+              </Grid>
+            </Grid>
+
+            {/* Aviso sobre conflitos */}
+            {Object.keys(conflitosEscolas).length > 0 && (
+              <Alert severity="warning" sx={{ mt: 2 }}>
+                <Typography variant="body2" fontWeight="bold" gutterBottom>
+                  Atenção: Conflitos de Escolas Detectados
+                </Typography>
+                <Typography variant="body2">
+                  Algumas rotas selecionadas possuem escolas em comum. Isso pode causar problemas na entrega.
+                  Verifique se isso é intencional antes de confirmar.
+                </Typography>
+              </Alert>
+            )}
+          </DialogContent>
+
+          <DialogActions>
+            <Button onClick={() => setModalEscolherRotasAberto(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="contained"
+              onClick={confirmarSelecaoRotas}
+              disabled={rotasEscolhidas.length === 0}
+            >
+              Confirmar Seleção ({rotasEscolhidas.length} rotas)
+            </Button>
+          </DialogActions>
+        </Dialog>
+
         {/* Modal de Romaneio */}
         <Dialog
           open={modalRomaneioAberto}
@@ -1508,7 +1808,7 @@ const ConfiguracaoEntrega: React.FC = () => {
                         onChange={(e) => {
                           const novaConfig = { ...configUnidades };
                           if (!novaConfig[produto.produto_nome]) {
-                            novaConfig[produto.produto_nome] = { ativo: false, unidade: 1, pacote: 5, caixa: 20 };
+                            novaConfig[produto.produto_nome] = { ativo: false, pacote: 5, caixa: 20, tipoCaixa: 'caixa' };
                           }
                           novaConfig[produto.produto_nome].ativo = e.target.checked;
                           setConfigUnidades(novaConfig);
