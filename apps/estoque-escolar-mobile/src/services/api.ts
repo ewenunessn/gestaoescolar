@@ -100,7 +100,7 @@ class ApiService {
         data_ultima_atualizacao: item.data_ultima_atualizacao || new Date().toISOString(),
         produto_nome: item.produto_nome || 'Produto sem nome',
         produto_descricao: item.produto_descricao || '',
-        unidade_medida: item.unidade || 'un',
+        unidade_medida: item.unidade_medida || 'un',
         categoria: item.categoria || 'Geral',
         escola_nome: item.escola_nome || 'Escola',
         lotes: [], // Inicializar vazio, carregar sob demanda
@@ -108,7 +108,7 @@ class ApiService {
           id: item.produto_id,
           nome: item.produto_nome || 'Produto sem nome',
           descricao: item.produto_descricao || '',
-          unidade_medida: item.unidade || 'un',
+          unidade_medida: item.unidade_medida || 'un',
           categoria: item.categoria || 'Geral'
         },
         escola: {

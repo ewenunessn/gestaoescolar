@@ -40,7 +40,7 @@ const ModalLotesEstoque: React.FC<ModalLotesEstoqueProps> = ({
       
       // Verificar se deve usar lotes por padrão
       const temLotes = item.lotes && item.lotes.length > 0;
-      const deveUsarLotes = item.categoria === 'Perecível' || item.categoria === 'Medicamento' || temLotes;
+      const deveUsarLotes = Boolean(item.categoria === 'Perecível' || item.categoria === 'Medicamento' || temLotes);
       
       setUsarLotes(deveUsarLotes);
       atualizarLotesPorTipo(tipoInicial);
@@ -674,11 +674,6 @@ const styles = StyleSheet.create({
     color: '#333',
     marginRight: 8,
   },
-  unidadeText: {
-    fontSize: 16,
-    color: '#666',
-    fontWeight: '500',
-  },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -704,10 +699,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginLeft: 8,
   },
-});
-
-export default ModalLotesEstoque; 
- loteInputContainer: {
+  loteInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -730,3 +722,6 @@ export default ModalLotesEstoque;
     borderWidth: 1,
     borderColor: '#2196f3',
   },
+});
+
+export default ModalLotesEstoque;

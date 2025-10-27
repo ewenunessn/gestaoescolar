@@ -798,6 +798,8 @@ export async function criarLote(req: Request, res: Response) {
 // Processar movimentação com lotes
 export async function processarMovimentacaoLotes(req: Request, res: Response) {
   try {
+    console.log('🔄 Processando movimentação por lotes:', JSON.stringify(req.body, null, 2));
+    
     const { escola_id } = req.params;
     const {
       produto_id,
@@ -809,11 +811,14 @@ export async function processarMovimentacaoLotes(req: Request, res: Response) {
     } = req.body;
 
     if (!produto_id || !tipo_movimentacao || !lotes || !Array.isArray(lotes) || lotes.length === 0) {
+      console.log('❌ Validação falhou:', { produto_id, tipo_movimentacao, lotes: Array.isArray(lotes) ? lotes.length : 'não é array' });
       return res.status(400).json({
         success: false,
         message: "Produto, tipo de movimentação e lotes são obrigatórios"
       });
     }
+
+    console.log('✅ Validação passou, processando lotes...');
 
     const client = await db.connect();
     
