@@ -58,6 +58,8 @@ import { itemGuiaService, ItemGuia } from '../services/itemGuiaService';
 import { RotaEntrega, ConfiguracaoEntrega as ConfiguracaoEntregaType } from '../modules/entregas/types/rota';
 import { buscarEscola } from '../services/escolas';
 import { useNavigate } from 'react-router-dom';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface ItemGuiaComSelecao extends ItemGuia {
   selecionado: boolean;
@@ -507,31 +509,279 @@ const ConfiguracaoEntrega: React.FC = () => {
 
   const baixarGuiasPDF = async () => {
     try {
-      // Gerar HTML completo das guias
-      const htmlContent = await gerarHTMLGuiasCompletas();
-
-      if (!htmlContent) {
+      const guiaAtual = guias.find(g => g.id === configuracao.guiaId);
+      if (!guiaAtual || dadosRomaneio.length === 0) {
         alert('Não foi possível gerar as guias. Verifique se há dados selecionados.');
         return;
       }
 
-      // Criar uma nova janela para gerar PDF
-      const printWindow = window.open('', '_blank');
-      if (!printWindow) {
-        alert('Não foi possível abrir nova janela. Verifique se o bloqueador de pop-ups está desabilitado.');
+      // Função auxiliar para formatar o mês
+      const formatarMes = (mes: any) => {
+        if (typeof mes === 'string') return mes.toUpperCase();
+        if (typeof mes === 'number') {
+          const meses = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO',
+            'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
+          return meses[mes - 1] || String(mes);
+        }
+        return String(mes).toUpperCase();
+      };
+
+      // Obter escolas reais que têm itens na guia
+      const escolasComItens: any[] = [];
+      const escolasProcessadas = new Set();
+
+      // Buscar escolas reais das rotas selecionadas
+      for (const rotaId of configuracao.rotasSelecionadas) {
+        try {
+          const rota = rotas.find(r => r.id === rotaId);
+          const escolasRota = await rotaService.listarEscolasRota(rotaId);
+          
+          const rotaTemItens = dadosRomaneio.some(produto => 
+            produto.rotasArray?.some((r: any) => r.rota_id === rotaId && r.quantidade > 0)
+          );
+
+          if (rotaTemItens && escolasRota.length > 0) {
+            for (let index = 0; index < escolasRota.length; index++) {
+              const escolaRota = escolasRota[index];
+              const escolaKey = `${escolaRota.escola_id}`;
+              
+              if (!escolasProcessadas.has(escolaKey)) {
+                escolasProcessadas.add(escolaKey);
+
+                try {
+                  const dadosEscola = await buscarEscola(escolaRota.escola_id);
+                  
+                  let modalidadeTexto = 'FUNDAMENTAL';
+                  if (dadosEscola?.modalidades) {
+                    if (typeof dadosEscola.modalidades === 'object') {
+                      if (Array.isArray(dadosEscola.modalidades)) {
+                        const nomes = dadosEscola.modalidades
+                          .map((m: any) => m.nome || m.modalidade_nome || String(m))
+                          .filter((n: string) => n && n !== 'null')
+                          .join(', ');
+                        if (nomes) modalidadeTexto = nomes.toUpperCase();
+                      } else if (dadosEscola.modalidades.nome) {
+                        modalidadeTexto = String(dadosEscola.modalidades.nome).toUpperCase();
+                      }
+                    } else {
+                      const modalidadesStr = String(dadosEscola.modalidades).trim();
+                      if (modalidadesStr !== '' && modalidadesStr !== 'null' && modalidadesStr !== 'undefined') {
+                        modalidadeTexto = modalidadesStr.toUpperCase();
+                      }
+                    }
+                  }
+
+                  const totalAlunos = dadosEscola?.total_alunos && dadosEscola.total_alunos > 0 
+                    ? dadosEscola.total_alunos 
+                    : 200;
+
+                  escolasComItens.push({
+                    id: escolaRota.escola_id,
+                    nome: escolaRota.escola_nome || dadosEscola?.nome || `Escola ${escolaRota.escola_id}`,
+                    total_alunos: totalAlunos,
+                    rota_id: rotaId,
+                    rota_nome: rota?.nome || `ROTA ${rotaId}`,
+                    rota_cor: rota?.cor || '#4a90e2',
+                    modalidade: modalidadeTexto,
+                    posicao_na_rota: escolaRota.ordem || (index + 1),
+                    itens: []
+                  });
+                } catch (err) {
+                  console.warn(`Erro ao buscar dados da escola ${escolaRota.escola_id}:`, err);
+                }
+              }
+            }
+          }
+        } catch (err) {
+          console.warn(`Erro ao carregar escolas da rota ${rotaId}:`, err);
+        }
+      }
+
+      // Preencher itens para cada escola
+      escolasComItens.forEach(escola => {
+        const itensEscola = itensGuia.filter(item =>
+          item.escola_id === escola.id &&
+          configuracao.itensSelecionados.includes(item.id)
+        );
+
+        escola.itens = itensEscola
+          .map(item => ({
+            nome: item.produto_nome,
+            quantidade: Number(item.quantidade) || 0,
+            unidade: item.unidade
+          }))
+          .filter(item => item.quantidade > 0)
+          .slice(0, 15);
+      });
+
+      // Filtrar apenas escolas que têm itens
+      const escolasComItensValidos = escolasComItens.filter(escola => escola.itens.length > 0);
+
+      if (escolasComItensValidos.length === 0) {
+        alert('Nenhuma escola com itens encontrada');
         return;
       }
 
-      printWindow.document.write(htmlContent);
-      printWindow.document.close();
-      printWindow.focus();
+      // Criar PDF com jsPDF
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4'
+      });
 
-      // Aguardar um pouco antes de imprimir
-      setTimeout(() => {
-        printWindow.print();
-      }, 500);
+      escolasComItensValidos.forEach((escola, escolaIndex) => {
+        if (escolaIndex > 0) {
+          pdf.addPage();
+        }
+
+        // Cabeçalho
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('PREFEITURA MUNICIPAL DE BENEVIDES', pdf.internal.pageSize.getWidth() / 2, 15, { align: 'center' });
+        pdf.setFontSize(11);
+        pdf.text('SECRETARIA MUNICIPAL DE EDUCAÇÃO', pdf.internal.pageSize.getWidth() / 2, 21, { align: 'center' });
+        pdf.text('DEPARTAMENTO DE ALIMENTAÇÃO ESCOLAR', pdf.internal.pageSize.getWidth() / 2, 27, { align: 'center' });
+
+        // Badges de rota e posição
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        pdf.setFillColor(escola.rota_cor || '#4a90e2');
+        pdf.roundedRect(pageWidth - 80, 10, 35, 8, 2, 2, 'F');
+        pdf.roundedRect(pageWidth - 40, 10, 30, 8, 2, 2, 'F');
+        
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFontSize(10);
+        pdf.text(escola.rota_nome || `ROTA ${escola.rota_id}`, pageWidth - 62.5, 15, { align: 'center' });
+        pdf.text(`Nº ${escola.posicao_na_rota}`, pageWidth - 25, 15, { align: 'center' });
+        pdf.setTextColor(0, 0, 0);
+
+        // Nome da escola
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(escola.nome, 15, 38);
+
+        // Detalhes da escola
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'normal');
+        const detalhes = `${escola.modalidade}                    TOTAL DE ALUNOS: ${escola.total_alunos}                    MÊS: ${formatarMes(guiaAtual.mes)}/${guiaAtual.ano}`;
+        pdf.text(detalhes, 15, 44);
+        pdf.line(15, 46, pageWidth - 15, 46);
+
+        // Preparar dados da tabela
+        const tableData: any[] = [];
+        
+        // Adicionar itens da escola
+        escola.itens.forEach((item: any, index: number) => {
+          const config = configUnidades[item.nome] || { ativo: false, pacote: 1, caixa: 10, tipoCaixa: 'caixa' };
+          let quantidadeFormatada = item.quantidade.toString();
+
+          if (config.ativo && item.quantidade > 0) {
+            const kgPorCaixa = config.pacote * config.caixa;
+            const caixas = Math.floor(item.quantidade / kgPorCaixa);
+            const restoKg = item.quantidade % kgPorCaixa;
+            const pacotes = Math.floor(restoKg / config.pacote);
+            const kgAvulso = restoKg % config.pacote;
+
+            let conversao = '';
+            if (caixas > 0) conversao += `${caixas}${config.tipoCaixa === 'fardo' ? 'fd' : 'cx'} `;
+            if (pacotes > 0) conversao += `${pacotes}pc `;
+            if (kgAvulso > 0) conversao += `${kgAvulso}${item.unidade}`;
+
+            quantidadeFormatada = conversao.trim() || quantidadeFormatada;
+          }
+
+          tableData.push([
+            String(index + 1).padStart(2, '0'),
+            item.nome,
+            '0',
+            '0',
+            item.unidade,
+            quantidadeFormatada,
+            '',
+            '',
+            ''
+          ]);
+        });
+
+        // Preencher linhas vazias até 15
+        for (let i = escola.itens.length; i < 15; i++) {
+          tableData.push([
+            String(i + 1).padStart(2, '0'),
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            ''
+          ]);
+        }
+
+        // Gerar tabela
+        autoTable(pdf, {
+          startY: 50,
+          head: [[
+            'ID',
+            'ITEM',
+            'FREQ',
+            'PER CAPITA',
+            'UNIDADE',
+            'ENTREGA 1',
+            'CONF.',
+            'ENTREGA 2',
+            'CONF.'
+          ]],
+          body: tableData,
+          theme: 'grid',
+          styles: {
+            fontSize: 8,
+            cellPadding: 1.5,
+            lineColor: [0, 0, 0],
+            lineWidth: 0.1
+          },
+          headStyles: {
+            fillColor: [240, 240, 240],
+            textColor: [0, 0, 0],
+            fontStyle: 'bold',
+            halign: 'center',
+            fontSize: 7
+          },
+          columnStyles: {
+            0: { cellWidth: 10, halign: 'center' },
+            1: { cellWidth: 80, halign: 'left' },
+            2: { cellWidth: 15, halign: 'center' },
+            3: { cellWidth: 20, halign: 'center' },
+            4: { cellWidth: 20, halign: 'center', fontStyle: 'bold' },
+            5: { cellWidth: 25, halign: 'center', fontStyle: 'bold' },
+            6: { cellWidth: 25, halign: 'center' },
+            7: { cellWidth: 25, halign: 'center' },
+            8: { cellWidth: 25, halign: 'center' }
+          },
+          margin: { left: 15, right: 15 }
+        });
+
+        // Rodapé
+        const finalY = (pdf as any).lastAutoTable.finalY + 10;
+        pdf.setFontSize(8);
+        pdf.text(
+          `Recebi os gêneros acima em: Entrega 1 ____/____/________ Ass: ________________________________________________, Entrega 2 ____/____/________ Ass: ________________________________________________`,
+          15,
+          finalY,
+          { maxWidth: pageWidth - 30 }
+        );
+        
+        pdf.text(
+          `Expedido em ${new Date().toLocaleDateString('pt-BR')} Ass: Coordenadora: ________________________________________________`,
+          15,
+          finalY + 6
+        );
+      });
+
+      // Salvar PDF
+      pdf.save(`Guias_Entrega_${formatarMes(guiaAtual.mes)}_${guiaAtual.ano}.pdf`);
+
     } catch (err) {
-      console.error('Erro ao gerar guias:', err);
+      console.error('Erro ao gerar PDF:', err);
       alert('Erro ao gerar as guias. Tente novamente.');
     }
   };
