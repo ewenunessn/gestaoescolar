@@ -12,7 +12,14 @@ export async function listarEstoqueEscola(req: Request, res: Response) {
         ee.id,
         $1::integer as escola_id,
         p.id as produto_id,
-        COALESCE(ee.quantidade_atual, 0) as quantidade_atual,
+        -- Somar quantidade dos lotes se existirem, senão usar a do estoque principal
+        COALESCE(
+          (SELECT SUM(el.quantidade_atual) 
+           FROM estoque_lotes el 
+           WHERE el.produto_id = p.id AND el.status = 'ativo'),
+          ee.quantidade_atual,
+          0
+        ) as quantidade_atual,
         -- Usar a validade mais próxima dos lotes se existirem, senão usar a do estoque principal
         COALESCE(
           (SELECT MIN(el.data_validade) 
@@ -28,7 +35,13 @@ export async function listarEstoqueEscola(req: Request, res: Response) {
         p.categoria,
         e.nome as escola_nome,
         CASE 
-          WHEN COALESCE(ee.quantidade_atual, 0) = 0 THEN 'sem_estoque'
+          WHEN COALESCE(
+            (SELECT SUM(el.quantidade_atual) 
+             FROM estoque_lotes el 
+             WHERE el.produto_id = p.id AND el.status = 'ativo'),
+            ee.quantidade_atual,
+            0
+          ) = 0 THEN 'sem_estoque'
           WHEN COALESCE(
             (SELECT MIN(el.data_validade) 
              FROM estoque_lotes el 
