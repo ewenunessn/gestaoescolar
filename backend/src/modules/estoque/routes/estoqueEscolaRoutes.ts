@@ -43,8 +43,9 @@ router.get("/:id", buscarItemEstoqueEscola);
 // Atualizar quantidade de um item específico
 router.put("/:id", atualizarQuantidadeEstoque);
 
-export default router;// Rotas p
-ara lotes (sem autenticação JWT)
+// Rotas para lotes (sem autenticação JWT)
 router.get("/produtos/:produto_id/lotes", listarLotesProduto);
 router.post("/lotes", criarLote);
 router.post("/escola/:escola_id/movimentacao-lotes", processarMovimentacaoLotes);
+
+export default router;
