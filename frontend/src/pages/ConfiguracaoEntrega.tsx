@@ -629,42 +629,63 @@ const ConfiguracaoEntrega: React.FC = () => {
         format: 'a4'
       });
 
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const margin = 15;
+
       escolasComItensValidos.forEach((escola, escolaIndex) => {
         if (escolaIndex > 0) {
           pdf.addPage();
         }
 
-        // Cabeçalho
-        pdf.setFontSize(12);
+        // Cabeçalho centralizado
+        pdf.setFontSize(10);
         pdf.setFont('helvetica', 'bold');
-        pdf.text('PREFEITURA MUNICIPAL DE BENEVIDES', pdf.internal.pageSize.getWidth() / 2, 15, { align: 'center' });
-        pdf.setFontSize(11);
-        pdf.text('SECRETARIA MUNICIPAL DE EDUCAÇÃO', pdf.internal.pageSize.getWidth() / 2, 21, { align: 'center' });
-        pdf.text('DEPARTAMENTO DE ALIMENTAÇÃO ESCOLAR', pdf.internal.pageSize.getWidth() / 2, 27, { align: 'center' });
+        pdf.text('PREFEITURA MUNICIPAL DE BENEVIDES', pageWidth / 2, 15, { align: 'center' });
+        pdf.setFontSize(9);
+        pdf.text('SECRETARIA MUNICIPAL DE EDUCAÇÃO', pageWidth / 2, 20, { align: 'center' });
+        pdf.text('DEPARTAMENTO DE ALIMENTAÇÃO ESCOLAR', pageWidth / 2, 25, { align: 'center' });
 
-        // Badges de rota e posição
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        pdf.setFillColor(escola.rota_cor || '#4a90e2');
-        pdf.roundedRect(pageWidth - 80, 10, 35, 8, 2, 2, 'F');
-        pdf.roundedRect(pageWidth - 40, 10, 30, 8, 2, 2, 'F');
+        // Badges de rota e posição (canto superior direito)
+        const hexToRgb = (hex: string) => {
+          const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+          return result ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16)
+          } : { r: 74, g: 144, b: 226 };
+        };
+        
+        const corRgb = hexToRgb(escola.rota_cor || '#4a90e2');
+        pdf.setFillColor(corRgb.r, corRgb.g, corRgb.b);
+        
+        // Badge Rota
+        pdf.roundedRect(pageWidth - 70, 10, 28, 6, 1, 1, 'F');
+        // Badge Número
+        pdf.roundedRect(pageWidth - 38, 10, 23, 6, 1, 1, 'F');
         
         pdf.setTextColor(255, 255, 255);
-        pdf.setFontSize(10);
-        pdf.text(escola.rota_nome || `ROTA ${escola.rota_id}`, pageWidth - 62.5, 15, { align: 'center' });
-        pdf.text(`Nº ${escola.posicao_na_rota}`, pageWidth - 25, 15, { align: 'center' });
+        pdf.setFontSize(8);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(escola.rota_nome || `ROTA ${escola.rota_id}`, pageWidth - 56, 14, { align: 'center' });
+        pdf.text(`Nº ${escola.posicao_na_rota}`, pageWidth - 26.5, 14, { align: 'center' });
         pdf.setTextColor(0, 0, 0);
 
         // Nome da escola
-        pdf.setFontSize(11);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text(escola.nome, 15, 38);
-
-        // Detalhes da escola
         pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(escola.nome, margin, 35);
+
+        // Linha de detalhes (modalidade, alunos, mês) - distribuída uniformemente
+        pdf.setFontSize(7.5);
         pdf.setFont('helvetica', 'normal');
-        const detalhes = `${escola.modalidade}                    TOTAL DE ALUNOS: ${escola.total_alunos}                    MÊS: ${formatarMes(guiaAtual.mes)}/${guiaAtual.ano}`;
-        pdf.text(detalhes, 15, 44);
-        pdf.line(15, 46, pageWidth - 15, 46);
+        const detalhesY = 40;
+        pdf.text(escola.modalidade, margin, detalhesY);
+        pdf.text(`TOTAL DE ALUNOS: ${escola.total_alunos}`, pageWidth / 2 - 20, detalhesY);
+        pdf.text(`MÊS: ${formatarMes(guiaAtual.mes)}/${guiaAtual.ano}`, pageWidth - margin - 45, detalhesY);
+        
+        // Linha separadora
+        pdf.setLineWidth(0.2);
+        pdf.line(margin, 42, pageWidth - margin, 42);
 
         // Preparar dados da tabela
         const tableData: any[] = [];
@@ -717,9 +738,9 @@ const ConfiguracaoEntrega: React.FC = () => {
           ]);
         }
 
-        // Gerar tabela
+        // Gerar tabela com autoTable
         autoTable(pdf, {
-          startY: 50,
+          startY: 45,
           head: [[
             'ID',
             'ITEM',
@@ -734,47 +755,49 @@ const ConfiguracaoEntrega: React.FC = () => {
           body: tableData,
           theme: 'grid',
           styles: {
-            fontSize: 8,
-            cellPadding: 1.5,
+            fontSize: 7.5,
+            cellPadding: 1.2,
             lineColor: [0, 0, 0],
-            lineWidth: 0.1
+            lineWidth: 0.15,
+            halign: 'center',
+            valign: 'middle',
+            overflow: 'linebreak'
           },
           headStyles: {
-            fillColor: [240, 240, 240],
+            fillColor: [235, 235, 235],
             textColor: [0, 0, 0],
             fontStyle: 'bold',
             halign: 'center',
-            fontSize: 7
+            fontSize: 7,
+            cellPadding: 1.5
           },
           columnStyles: {
             0: { cellWidth: 10, halign: 'center' },
-            1: { cellWidth: 80, halign: 'left' },
-            2: { cellWidth: 15, halign: 'center' },
-            3: { cellWidth: 20, halign: 'center' },
-            4: { cellWidth: 20, halign: 'center', fontStyle: 'bold' },
-            5: { cellWidth: 25, halign: 'center', fontStyle: 'bold' },
-            6: { cellWidth: 25, halign: 'center' },
-            7: { cellWidth: 25, halign: 'center' },
-            8: { cellWidth: 25, halign: 'center' }
+            1: { cellWidth: 90, halign: 'left', cellPadding: { left: 2 } },
+            2: { cellWidth: 16, halign: 'center' },
+            3: { cellWidth: 24, halign: 'center' },
+            4: { cellWidth: 22, halign: 'center', fontStyle: 'bold' },
+            5: { cellWidth: 26, halign: 'center', fontStyle: 'bold' },
+            6: { cellWidth: 24, halign: 'center' },
+            7: { cellWidth: 26, halign: 'center' },
+            8: { cellWidth: 24, halign: 'center' }
           },
-          margin: { left: 15, right: 15 }
+          margin: { left: margin, right: margin },
+          tableWidth: 'auto'
         });
 
-        // Rodapé
-        const finalY = (pdf as any).lastAutoTable.finalY + 10;
-        pdf.setFontSize(8);
-        pdf.text(
-          `Recebi os gêneros acima em: Entrega 1 ____/____/________ Ass: ________________________________________________, Entrega 2 ____/____/________ Ass: ________________________________________________`,
-          15,
-          finalY,
-          { maxWidth: pageWidth - 30 }
-        );
+        // Rodapé com linhas de assinatura
+        const finalY = (pdf as any).lastAutoTable.finalY + 6;
+        pdf.setFontSize(7);
+        pdf.setFont('helvetica', 'normal');
         
-        pdf.text(
-          `Expedido em ${new Date().toLocaleDateString('pt-BR')} Ass: Coordenadora: ________________________________________________`,
-          15,
-          finalY + 6
-        );
+        // Linha 1: Recebi os gêneros
+        const linha1 = 'Recebi os gêneros acima em: Entrega 1 ___/___/______ Ass: ________________________________, Entrega 2 ___/___/______ Ass: ________________________________';
+        pdf.text(linha1, margin, finalY);
+        
+        // Linha 2: Expedido em
+        const linha2 = `Expedido em ${new Date().toLocaleDateString('pt-BR')} Ass: Coordenadora: ________________________________________________`;
+        pdf.text(linha2, margin, finalY + 5);
       });
 
       // Salvar PDF
