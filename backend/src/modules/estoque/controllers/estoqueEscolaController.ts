@@ -528,13 +528,14 @@ export async function registrarMovimentacao(req: Request, res: Response) {
               const novaQuantidadeLote = quantidadeDisponivel - quantidadeConsumida;
               
               // Atualizar quantidade do lote
+              const novoStatus = novaQuantidadeLote === 0 ? 'esgotado' : 'ativo';
               await client.query(`
                 UPDATE estoque_lotes 
                 SET quantidade_atual = $1,
-                    status = CASE WHEN $1 = 0 THEN 'esgotado' ELSE 'ativo' END,
+                    status = $2,
                     updated_at = NOW()
-                WHERE id = $2
-              `, [novaQuantidadeLote, lote.id]);
+                WHERE id = $3
+              `, [novaQuantidadeLote, novoStatus, lote.id]);
               
               quantidadeRestante -= quantidadeConsumida;
             }
