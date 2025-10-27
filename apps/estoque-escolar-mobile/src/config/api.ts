@@ -2,7 +2,11 @@ import Constants from 'expo-constants';
 
 // Configuração da API baseada no ambiente
 const getApiUrl = (): string => {
-  // Usar sempre o backend do Vercel
+  // Para desenvolvimento local, usar localhost
+  if (__DEV__) {
+    return 'http://localhost:3000';
+  }
+  // Para produção, usar o backend do Vercel
   return 'https://gestaoescolar-backend.vercel.app';
 };
 

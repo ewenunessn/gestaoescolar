@@ -994,8 +994,9 @@ export async function processarMovimentacaoLotes(req: Request, res: Response) {
       error: error.message
     });
   }
-}// Endpoin
-t de teste para verificar se as rotas de lotes estão funcionando
+}
+
+// Endpoint de teste para verificar se as rotas de lotes estão funcionando
 export async function testarLotes(req: Request, res: Response) {
   try {
     res.json({
