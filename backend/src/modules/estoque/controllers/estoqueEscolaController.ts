@@ -485,7 +485,15 @@ export async function registrarMovimentacao(req: Request, res: Response) {
         item = estoqueAtual.rows[0];
       }
 
-      const quantidadeAnterior = parseFloat(item.quantidade_atual);
+      // Calcular quantidade real considerando lotes se existirem
+      const lotesResult = await client.query(`
+        SELECT SUM(quantidade_atual) as total_lotes
+        FROM estoque_lotes 
+        WHERE produto_id = $1 AND status = 'ativo'
+      `, [produto_id]);
+      
+      const quantidadeLotes = parseFloat(lotesResult.rows[0]?.total_lotes || 0);
+      const quantidadeAnterior = quantidadeLotes > 0 ? quantidadeLotes : parseFloat(item.quantidade_atual);
       let quantidadePosterior = quantidadeAnterior;
 
       // Calcular nova quantidade baseada no tipo de movimentação
@@ -497,6 +505,39 @@ export async function registrarMovimentacao(req: Request, res: Response) {
           quantidadePosterior = quantidadeAnterior - parseFloat(quantidade);
           if (quantidadePosterior < 0) {
             throw new Error('Quantidade insuficiente em estoque');
+          }
+          
+          // Se há lotes, implementar saída inteligente (FIFO por validade)
+          if (quantidadeLotes > 0) {
+            const lotesDisponiveis = await client.query(`
+              SELECT id, lote, quantidade_atual, data_validade
+              FROM estoque_lotes
+              WHERE produto_id = $1 AND status = 'ativo' AND quantidade_atual > 0
+              ORDER BY 
+                CASE WHEN data_validade IS NULL THEN 1 ELSE 0 END,
+                data_validade ASC
+            `, [produto_id]);
+
+            let quantidadeRestante = parseFloat(quantidade);
+            
+            for (const lote of lotesDisponiveis.rows) {
+              if (quantidadeRestante <= 0) break;
+              
+              const quantidadeDisponivel = parseFloat(lote.quantidade_atual);
+              const quantidadeConsumida = Math.min(quantidadeRestante, quantidadeDisponivel);
+              const novaQuantidadeLote = quantidadeDisponivel - quantidadeConsumida;
+              
+              // Atualizar quantidade do lote
+              await client.query(`
+                UPDATE estoque_lotes 
+                SET quantidade_atual = $1,
+                    status = CASE WHEN $1 = 0 THEN 'esgotado' ELSE 'ativo' END,
+                    updated_at = NOW()
+                WHERE id = $2
+              `, [novaQuantidadeLote, lote.id]);
+              
+              quantidadeRestante -= quantidadeConsumida;
+            }
           }
           break;
         case 'ajuste':
