@@ -487,10 +487,10 @@ export async function registrarMovimentacao(req: Request, res: Response) {
 
       // Calcular quantidade real considerando lotes se existirem
       const lotesResult = await client.query(`
-        SELECT SUM(quantidade_atual) as total_lotes
+        SELECT COALESCE(SUM(quantidade_atual), 0) as total_lotes
         FROM estoque_lotes 
         WHERE produto_id = $1 AND status = 'ativo'
-      `, [produto_id]);
+      `, [parseInt(produto_id)]);
       
       const quantidadeLotes = parseFloat(lotesResult.rows[0]?.total_lotes || 0);
       const quantidadeAnterior = quantidadeLotes > 0 ? quantidadeLotes : parseFloat(item.quantidade_atual);
@@ -516,7 +516,7 @@ export async function registrarMovimentacao(req: Request, res: Response) {
               ORDER BY 
                 CASE WHEN data_validade IS NULL THEN 1 ELSE 0 END,
                 data_validade ASC
-            `, [produto_id]);
+            `, [parseInt(produto_id)]);
 
             let quantidadeRestante = parseFloat(quantidade);
             
