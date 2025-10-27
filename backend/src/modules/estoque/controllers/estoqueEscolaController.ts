@@ -30,7 +30,7 @@ export async function listarEstoqueEscola(req: Request, res: Response) {
         END as status_estoque,
         CASE 
           WHEN ee.data_validade IS NOT NULL THEN 
-            EXTRACT(DAY FROM ee.data_validade - CURRENT_DATE)::integer
+            (ee.data_validade - CURRENT_DATE)::integer
           ELSE NULL
         END as dias_para_vencimento
       FROM produtos p
@@ -231,7 +231,7 @@ export async function listarHistoricoEstoque(req: Request, res: Response) {
         p.nome as produto_nome,
         p.unidade as unidade_medida,
         u.nome as usuario_nome
-      FROM historico_estoque he
+      FROM estoque_escolas_historico he
       LEFT JOIN produtos p ON he.produto_id = p.id
       LEFT JOIN usuarios u ON he.usuario_id = u.id
       ${whereClause.replace('eeh.', 'he.')}
@@ -449,7 +449,7 @@ export async function registrarMovimentacao(req: Request, res: Response) {
       }
 
       const historicoResult = await client.query(`
-        INSERT INTO historico_estoque (
+        INSERT INTO estoque_escolas_historico (
           estoque_escola_id,
           escola_id,
           produto_id,
@@ -457,12 +457,11 @@ export async function registrarMovimentacao(req: Request, res: Response) {
           quantidade_anterior,
           quantidade_movimentada,
           quantidade_posterior,
-          data_validade,
           motivo,
           documento_referencia,
           usuario_id,
           data_movimentacao
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)
         RETURNING *
       `, [
         item.id,
@@ -472,7 +471,6 @@ export async function registrarMovimentacao(req: Request, res: Response) {
         quantidadeAnterior,
         parseFloat(quantidade),
         quantidadePosterior,
-        data_validade || null,
         motivo,
         documento_referencia,
         usuarioIdValido
