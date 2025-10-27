@@ -215,6 +215,7 @@ app.use("/api/entregas", rotaRoutes);
 app.use("/api/pedidos", pedidoRoutes);
 app.use("/api/faturamentos", faturamentoRoutes);
 app.use("/api/demandas", demandasRoutes);
+app.use("/api/configuracoes", require("./routes/configuracaoRoutes").default);
 
 // Rotas de gás removidas
 

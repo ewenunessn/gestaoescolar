@@ -15,6 +15,7 @@ export function devAuthMiddleware(
     
     if (isDevelopment) {
       // Em desenvolvimento, sempre permitir acesso com usuário padrão
+      // Usar ID 1 que deve existir no banco de dados
       (req as any).user = { 
         id: 1, 
         nome: 'Usuário Desenvolvimento',
