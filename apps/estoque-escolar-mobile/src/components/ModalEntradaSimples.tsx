@@ -46,6 +46,14 @@ const ModalEntradaSimples: React.FC<ModalEntradaSimplesProps> = ({
     setDocumentoReferencia('');
   };
 
+  const formatarDataParaEnvio = (data: Date): string => {
+    // Usar o fuso horário local para evitar problemas de timezone
+    const ano = data.getFullYear();
+    const mes = String(data.getMonth() + 1).padStart(2, '0');
+    const dia = String(data.getDate()).padStart(2, '0');
+    return `${ano}-${mes}-${dia}`;
+  };
+
   const handleClose = () => {
     resetForm();
     onClose();
@@ -66,7 +74,7 @@ const ModalEntradaSimples: React.FC<ModalEntradaSimplesProps> = ({
       setLoading(true);
       await onConfirm({
         quantidade: parseFloat(quantidade),
-        data_validade: dataValidade ? dataValidade.toISOString().split('T')[0] : undefined,
+        data_validade: dataValidade ? formatarDataParaEnvio(dataValidade) : undefined,
         motivo: motivo.trim(),
         documento_referencia: documentoReferencia.trim() || undefined,
       });

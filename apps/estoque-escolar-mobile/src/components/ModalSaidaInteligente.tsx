@@ -158,7 +158,9 @@ const ModalSaidaInteligente: React.FC<ModalSaidaInteligenteProps> = ({
     };
 
     const formatarData = (data: string): string => {
-        return new Date(data).toLocaleDateString('pt-BR');
+        // Criar data considerando o fuso horário local para evitar problemas de timezone
+        const dataLocal = new Date(data + 'T00:00:00');
+        return dataLocal.toLocaleDateString('pt-BR');
     };
 
     const formatarQuantidade = (quantidade: number): string => {
@@ -170,7 +172,9 @@ const ModalSaidaInteligente: React.FC<ModalSaidaInteligenteProps> = ({
 
     const calcularDiasParaVencimento = (dataValidade: string): number => {
         const hoje = new Date();
-        const validade = new Date(dataValidade);
+        hoje.setHours(0, 0, 0, 0); // Zerar horas para comparação apenas de datas
+        
+        const validade = new Date(dataValidade + 'T00:00:00');
         const diffTime = validade.getTime() - hoje.getTime();
         return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     };

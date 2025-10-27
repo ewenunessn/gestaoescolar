@@ -94,7 +94,9 @@ const ModalDetalhesValidade: React.FC<ModalDetalhesValidadeProps> = ({
   };
 
   const formatarData = (data: string): string => {
-    return new Date(data).toLocaleDateString('pt-BR');
+    // Criar data considerando o fuso horário local para evitar problemas de timezone
+    const dataLocal = new Date(data + 'T00:00:00');
+    return dataLocal.toLocaleDateString('pt-BR');
   };
 
   const formatarQuantidade = (quantidade: number): string => {
@@ -106,7 +108,9 @@ const ModalDetalhesValidade: React.FC<ModalDetalhesValidadeProps> = ({
 
   const calcularDiasParaVencimento = (dataValidade: string): number => {
     const hoje = new Date();
-    const validade = new Date(dataValidade);
+    hoje.setHours(0, 0, 0, 0); // Zerar horas para comparação apenas de datas
+    
+    const validade = new Date(dataValidade + 'T00:00:00');
     const diffTime = validade.getTime() - hoje.getTime();
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
@@ -216,7 +220,7 @@ const ModalDetalhesValidade: React.FC<ModalDetalhesValidadeProps> = ({
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <Text style={styles.titulo}>Detalhes por Validade</Text>
+            <Text style={styles.titulo}>Estoque por Validade</Text>
             <Text style={styles.subtitulo}>{item.produto_nome}</Text>
           </View>
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
@@ -311,56 +315,12 @@ const ModalDetalhesValidade: React.FC<ModalDetalhesValidadeProps> = ({
                           </View>
                         </View>
                         <Text style={styles.grupoSubtitulo}>
-                          {lotesGrupo.length === 1 && lotesGrupo[0].lote === 'Estoque Principal' 
-                            ? `${formatarQuantidade(totalGrupo)} ${item.unidade_medida}`
-                            : `${lotesGrupo.length} lote(s) • ${formatarQuantidade(totalGrupo)} ${item.unidade_medida}`
-                          }
+                          {formatarQuantidade(totalGrupo)} {item.unidade_medida}
                         </Text>
                       </View>
                     </View>
 
-                    {/* Lotes do grupo */}
-                    <View style={styles.lotesGrupo}>
-                      {lotesGrupo.map((lote, index) => (
-                        <View key={lote.id} style={styles.loteItem}>
-                          <View style={styles.loteHeader}>
-                            <View style={styles.loteInfo}>
-                              <Text style={styles.loteNome}>Lote: {lote.lote}</Text>
-                              <Text style={styles.loteQuantidade}>
-                                {formatarQuantidade(lote.quantidade_atual)} {item.unidade_medida}
-                              </Text>
-                            </View>
-                            <View style={[styles.loteStatus, { backgroundColor: statusInfo.cor }]}>
-                              <Text style={styles.loteStatusText}>
-                                {lote.status === 'ativo' ? 'Ativo' : 'Inativo'}
-                              </Text>
-                            </View>
-                          </View>
 
-                          {/* Informações adicionais do lote */}
-                          {lote.lote !== 'Estoque Principal' && (
-                            <View style={styles.loteDetalhes}>
-                              {lote.data_fabricacao && (
-                                <View style={styles.loteDetalheItem}>
-                                  <Ionicons name="calendar-outline" size={16} color="#6B7280" />
-                                  <Text style={styles.loteDetalheTexto}>
-                                    Fabricação: {formatarData(lote.data_fabricacao)}
-                                  </Text>
-                                </View>
-                              )}
-                              {lote.observacoes && lote.observacoes !== 'Controle de validade simples' && lote.observacoes !== 'Dados do estoque principal' && (
-                                <View style={styles.loteDetalheItem}>
-                                  <Ionicons name="document-text-outline" size={16} color="#6B7280" />
-                                  <Text style={styles.loteDetalheTexto}>
-                                    {lote.observacoes}
-                                  </Text>
-                                </View>
-                              )}
-                            </View>
-                          )}
-                        </View>
-                      ))}
-                    </View>
                   </View>
                 );
               })}
@@ -565,58 +525,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     fontWeight: '500',
   },
-  lotesGrupo: {
-    backgroundColor: '#F9FAFB',
-  },
-  loteItem: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  loteHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  loteInfo: {
-    flex: 1,
-  },
-  loteNome: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 2,
-  },
-  loteQuantidade: {
-    fontSize: 13,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  loteStatus: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  loteStatusText: {
-    fontSize: 11,
-    color: '#FFFFFF',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-  },
-  loteDetalhes: {
-    gap: 6,
-  },
-  loteDetalheItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  loteDetalheTexto: {
-    fontSize: 13,
-    color: '#6B7280',
-    flex: 1,
-  },
+
 });
 
 export default ModalDetalhesValidade;

@@ -20,7 +20,9 @@ const formatarQuantidade = (quantidade: number | null | undefined): string => {
 
 const formatarDataValidade = (dataValidade: string): string => {
   const hoje = new Date();
-  const validade = new Date(dataValidade);
+  hoje.setHours(0, 0, 0, 0); // Zerar horas para comparação apenas de datas
+  
+  const validade = new Date(dataValidade + 'T00:00:00');
   const diffTime = validade.getTime() - hoje.getTime();
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   
@@ -206,7 +208,7 @@ const ItemEstoque: React.FC<ItemEstoqueProps> = ({ item, onPress, onHistorico, o
             <View style={styles.validadeInfo}>
               <Text style={styles.validadeLabel}>Validade</Text>
               <Text style={styles.validadeData}>
-                {new Date(item.data_validade).toLocaleDateString('pt-BR')}
+                {new Date(item.data_validade + 'T00:00:00').toLocaleDateString('pt-BR')}
               </Text>
             </View>
             <View style={[
