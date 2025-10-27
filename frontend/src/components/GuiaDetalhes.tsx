@@ -34,7 +34,7 @@ interface GuiaDetalhesProps {
   onClose: () => void;
 }
 
-// Componente otimizado para lista de produtos
+// Componente otimizado e compacto para lista de produtos
 const ProdutoItem = React.memo(({ produto, index, totalProdutos, onSelecionarProduto }: {
   produto: any;
   index: number;
@@ -43,7 +43,7 @@ const ProdutoItem = React.memo(({ produto, index, totalProdutos, onSelecionarPro
 }) => (
   <Box
     sx={{
-      p: 2,
+      p: 1.5,
       cursor: 'pointer',
       borderBottom: index < totalProdutos - 1 ? '1px solid' : 'none',
       borderColor: 'divider',
@@ -55,24 +55,27 @@ const ProdutoItem = React.memo(({ produto, index, totalProdutos, onSelecionarPro
       },
       display: 'flex',
       alignItems: 'center',
-      justifyContent: 'space-between'
+      justifyContent: 'space-between',
+      minHeight: '60px'
     }}
     onClick={() => onSelecionarProduto(produto)}
   >
     <Box sx={{ flex: 1 }}>
-      <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 0.5 }}>
+      <Typography variant="body1" fontWeight="600" sx={{ mb: 0.25, lineHeight: 1.2 }}>
         {produto.nome}
       </Typography>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
         {produto.unidade && (
           <Chip
             label={produto.unidade}
             size="small"
             sx={{
-              bgcolor: (theme) => theme.palette.mode === 'dark' ? '#10b981' : '#2563eb',
-              color: (theme) => theme.palette.mode === 'dark' ? '#000000' : '#ffffff',
-              border: (theme) => theme.palette.mode === 'dark' ? '1px solid #34d399' : 'none',
-              fontWeight: 'bold'
+              bgcolor: '#2563eb',
+              color: '#ffffff',
+              fontWeight: 'bold',
+              fontSize: '0.7rem',
+              height: '20px',
+              '& .MuiChip-label': { px: 1 }
             }}
           />
         )}
@@ -81,19 +84,17 @@ const ProdutoItem = React.memo(({ produto, index, totalProdutos, onSelecionarPro
             label={produto.categoria}
             size="small"
             sx={{
-              bgcolor: (theme) => theme.palette.mode === 'dark' ? '#374151' : '#f3f4f6',
-              color: (theme) => theme.palette.mode === 'dark' ? '#e5e7eb' : '#374151',
-              border: (theme) => theme.palette.mode === 'dark' ? '1px solid #4b5563' : '1px solid #d1d5db',
-              fontWeight: 'medium'
+              bgcolor: '#f3f4f6',
+              color: '#374151',
+              border: '1px solid #d1d5db',
+              fontWeight: 'medium',
+              fontSize: '0.7rem',
+              height: '20px',
+              '& .MuiChip-label': { px: 1 }
             }}
           />
         )}
       </Box>
-      {produto.descricao && (
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          {produto.descricao}
-        </Typography>
-      )}
     </Box>
     <Box
       className="produto-arrow"
@@ -114,6 +115,8 @@ const ProdutosList = React.memo(({ produtos, filtro, onSelecionarProduto }: {
   filtro: string;
   onSelecionarProduto: (produto: any) => void;
 }) => {
+  const [itensVisiveis, setItensVisiveis] = useState(50); // Mostrar 50 itens inicialmente
+  
   const produtosFiltrados = useMemo(() =>
     produtos?.filter(produto =>
       !filtro || produto.nome.toLowerCase().includes(filtro.toLowerCase())
@@ -121,10 +124,26 @@ const ProdutosList = React.memo(({ produtos, filtro, onSelecionarProduto }: {
     [produtos, filtro]
   );
 
+  const produtosVisiveis = useMemo(() => 
+    produtosFiltrados.slice(0, itensVisiveis),
+    [produtosFiltrados, itensVisiveis]
+  );
+
+  const carregarMais = useCallback(() => {
+    if (itensVisiveis < produtosFiltrados.length) {
+      setItensVisiveis(prev => Math.min(prev + 50, produtosFiltrados.length));
+    }
+  }, [itensVisiveis, produtosFiltrados.length]);
+
+  // Reset quando filtro muda
+  useEffect(() => {
+    setItensVisiveis(50);
+  }, [filtro]);
+
   if (produtosFiltrados.length === 0) {
     return (
-      <Box sx={{ p: 4, textAlign: 'center' }}>
-        <Typography color="text.secondary">
+      <Box sx={{ p: 3, textAlign: 'center' }}>
+        <Typography color="text.secondary" variant="body2">
           {filtro ? 'Nenhum produto encontrado' : 'Nenhum produto disponível'}
         </Typography>
       </Box>
@@ -133,15 +152,27 @@ const ProdutosList = React.memo(({ produtos, filtro, onSelecionarProduto }: {
 
   return (
     <>
-      {produtosFiltrados.map((produto, index) => (
+      {produtosVisiveis.map((produto, index) => (
         <ProdutoItem
           key={produto.id}
           produto={produto}
           index={index}
-          totalProdutos={produtosFiltrados.length}
+          totalProdutos={produtosVisiveis.length}
           onSelecionarProduto={onSelecionarProduto}
         />
       ))}
+      {itensVisiveis < produtosFiltrados.length && (
+        <Box sx={{ p: 2, textAlign: 'center', borderTop: '1px solid', borderColor: 'divider' }}>
+          <Button 
+            variant="outlined" 
+            size="small" 
+            onClick={carregarMais}
+            sx={{ fontSize: '0.8rem' }}
+          >
+            Carregar mais ({produtosFiltrados.length - itensVisiveis} restantes)
+          </Button>
+        </Box>
+      )}
     </>
   );
 });
@@ -647,13 +678,23 @@ const GuiaDetalhes: React.FC<GuiaDetalhesProps> = ({ guia, onUpdate, onClose }) 
 
   return (
     <>
-      <DialogTitle>
-        Adicionar Produto em Massa - {guia.mes}/{guia.ano}
+      <DialogTitle sx={{ pb: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Typography variant="h6" component="div">
+            Adicionar Produto em Massa
+          </Typography>
+          <Chip 
+            label={`${guia.mes}/${guia.ano}`} 
+            size="small" 
+            color="primary" 
+            sx={{ fontWeight: 'bold' }}
+          />
+        </Box>
       </DialogTitle>
-      <DialogContent>
+      <DialogContent sx={{ pt: 2 }}>
         {!selectedProdutoMassa ? (
-          <Box sx={{ mt: 2 }}>
-            <Typography variant="h6" sx={{ mb: 3 }}>
+          <Box>
+            <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600 }}>
               Selecione um produto:
             </Typography>
 
@@ -662,11 +703,17 @@ const GuiaDetalhes: React.FC<GuiaDetalhesProps> = ({ guia, onUpdate, onClose }) 
               placeholder="Buscar produto..."
               value={inputEscolaNome}
               onChange={(e) => setInputEscolaNome(e.target.value)}
-              sx={{ mb: 3 }}
+              size="small"
+              sx={{ 
+                mb: 2,
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '8px'
+                }
+              }}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <SearchIcon />
+                    <SearchIcon fontSize="small" />
                   </InputAdornment>
                 ),
                 endAdornment: inputEscolaNome && (
@@ -679,7 +726,27 @@ const GuiaDetalhes: React.FC<GuiaDetalhesProps> = ({ guia, onUpdate, onClose }) 
               }}
             />
 
-            <Box sx={{ maxHeight: 400, overflow: 'auto', border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+            <Box sx={{ 
+              maxHeight: 500, 
+              overflow: 'auto', 
+              border: '1px solid', 
+              borderColor: 'divider', 
+              borderRadius: 2,
+              '&::-webkit-scrollbar': {
+                width: '8px',
+              },
+              '&::-webkit-scrollbar-track': {
+                background: '#f1f1f1',
+                borderRadius: '4px',
+              },
+              '&::-webkit-scrollbar-thumb': {
+                background: '#c1c1c1',
+                borderRadius: '4px',
+                '&:hover': {
+                  background: '#a8a8a8',
+                },
+              },
+            }}>
               <ProdutosList
                 produtos={produtosList}
                 filtro={inputEscolaNome}
@@ -687,11 +754,18 @@ const GuiaDetalhes: React.FC<GuiaDetalhesProps> = ({ guia, onUpdate, onClose }) 
               />
             </Box>
 
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 2, textAlign: 'center' }}>
-              {produtosList?.filter(produto =>
-                !inputEscolaNome || produto.nome.toLowerCase().includes(inputEscolaNome.toLowerCase())
-              ).length || 0} produto(s) disponível(eis)
-            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1, px: 1 }}>
+              <Typography variant="caption" color="text.secondary">
+                {produtosList?.filter(produto =>
+                  !inputEscolaNome || produto.nome.toLowerCase().includes(inputEscolaNome.toLowerCase())
+                ).length || 0} produto(s) encontrado(s)
+              </Typography>
+              {inputEscolaNome && (
+                <Typography variant="caption" color="primary.main" sx={{ fontWeight: 500 }}>
+                  Filtrado por: "{inputEscolaNome}"
+                </Typography>
+              )}
+            </Box>
           </Box>
         ) : (
           <Box sx={{ mt: 2 }}>
