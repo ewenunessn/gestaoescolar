@@ -1,3 +1,18 @@
+export interface LoteEstoque {
+  id: number;
+  produto_id: number;
+  lote: string;
+  quantidade_inicial: number;
+  quantidade_atual: number;
+  data_fabricacao?: string;
+  data_validade?: string;
+  fornecedor_id?: number;
+  observacoes?: string;
+  status: 'ativo' | 'vencido' | 'bloqueado';
+  created_at: string;
+  updated_at: string;
+}
+
 export interface ItemEstoqueEscola {
   id: number;
   produto_id: number;
@@ -14,6 +29,8 @@ export interface ItemEstoqueEscola {
   unidade_medida: string;
   categoria: string;
   escola_nome: string;
+  // Novos campos para lotes
+  lotes?: LoteEstoque[];
   // Campos opcionais para compatibilidade
   produto?: {
     id: number;
@@ -71,6 +88,15 @@ export interface AtualizacaoLote {
   observacoes?: string;
 }
 
+export interface MovimentoLote {
+  lote_id?: number;
+  lote?: string;
+  quantidade: number;
+  data_validade?: string;
+  data_fabricacao?: string;
+  observacoes?: string;
+}
+
 export interface MovimentoEstoque {
   tipo?: 'entrada' | 'saida' | 'ajuste'; // Campo antigo para compatibilidade
   tipo_movimentacao?: 'entrada' | 'saida' | 'ajuste';
@@ -80,6 +106,8 @@ export interface MovimentoEstoque {
   observacoes?: string;
   documento_referencia?: string;
   usuario_id?: number;
+  // Novos campos para lotes
+  lotes?: MovimentoLote[];
 }
 
 export interface FiltrosEstoque {

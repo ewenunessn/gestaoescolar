@@ -18,6 +18,42 @@ const formatarQuantidade = (quantidade: number | null | undefined): string => {
   return numeroFormatado % 1 === 0 ? numeroFormatado.toString() : numeroFormatado.toFixed(2).replace(/\.?0+$/, '');
 };
 
+const formatarDataValidade = (dataValidade: string): string => {
+  const hoje = new Date();
+  const validade = new Date(dataValidade);
+  const diffTime = validade.getTime() - hoje.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays < 0) return 'Vencido';
+  if (diffDays === 0) return 'Vence hoje';
+  if (diffDays === 1) return 'Vence amanhã';
+  if (diffDays <= 7) return `${diffDays} dias`;
+  if (diffDays <= 30) return `${Math.ceil(diffDays / 7)} sem`;
+  return `${Math.ceil(diffDays / 30)} mês`;
+};
+
+const getValidadeColor = (dataValidade: string): string => {
+  const hoje = new Date();
+  const validade = new Date(dataValidade);
+  const diffTime = validade.getTime() - hoje.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays < 0) return '#ffebee'; // Vencido - vermelho claro
+  if (diffDays <= 7) return '#fff3e0'; // Próximo ao vencimento - laranja claro
+  return '#e8f5e8'; // Normal - verde claro
+};
+
+const getValidadeTextColor = (dataValidade: string): string => {
+  const hoje = new Date();
+  const validade = new Date(dataValidade);
+  const diffTime = validade.getTime() - hoje.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays < 0) return '#d32f2f'; // Vencido - vermelho
+  if (diffDays <= 7) return '#f57c00'; // Próximo ao vencimento - laranja
+  return '#388e3c'; // Normal - verde
+};
+
 const ItemEstoque: React.FC<ItemEstoqueProps> = ({ item, onPress, onHistorico, onMovimentar }) => {
   const getStatusColor = (quantidadeAtual: number): string => {
     const quantidade = Number(quantidadeAtual) || 0;
@@ -162,6 +198,41 @@ const ItemEstoque: React.FC<ItemEstoqueProps> = ({ item, onPress, onHistorico, o
           </Text>
         </View>
       </View>
+
+      {/* Lotes Section */}
+      {item.lotes && item.lotes.length > 0 && (
+        <View style={styles.lotesSection}>
+          <Text style={styles.lotesLabel}>Lotes ({item.lotes.length})</Text>
+          <View style={styles.lotesContainer}>
+            {item.lotes.slice(0, 3).map((lote, index) => (
+              <View key={lote.id} style={styles.loteItem}>
+                <View style={styles.loteInfo}>
+                  <Text style={styles.loteNome} numberOfLines={1}>{lote.lote}</Text>
+                  <Text style={styles.loteQuantidade}>
+                    {formatarQuantidade(lote.quantidade_atual)} {item.unidade_medida}
+                  </Text>
+                </View>
+                {lote.data_validade && (
+                  <View style={[
+                    styles.validadeBadge,
+                    { backgroundColor: getValidadeColor(lote.data_validade) }
+                  ]}>
+                    <Text style={[
+                      styles.validadeText,
+                      { color: getValidadeTextColor(lote.data_validade) }
+                    ]}>
+                      {formatarDataValidade(lote.data_validade)}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            ))}
+            {item.lotes.length > 3 && (
+              <Text style={styles.maisLotes}>+{item.lotes.length - 3} lotes</Text>
+            )}
+          </View>
+        </View>
+      )}
     </TouchableOpacity>
   );
 };
@@ -286,6 +357,65 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     letterSpacing: -0.1,
+  },
+  lotesSection: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#f8f9fa',
+  },
+  lotesLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  lotesContainer: {
+    gap: 6,
+  },
+  loteItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+  },
+  loteInfo: {
+    flex: 1,
+    marginRight: 8,
+  },
+  loteNome: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+  },
+  loteQuantidade: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
+  validadeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  validadeText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  maisLotes: {
+    fontSize: 12,
+    color: '#666',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 4,
   },
 });
 

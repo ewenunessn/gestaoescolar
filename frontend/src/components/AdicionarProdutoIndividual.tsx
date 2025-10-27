@@ -149,7 +149,7 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
           .filter((item: any) => item.produto_id === produtoId && item.lote)
           .map((item: any) => item.lote)
           .filter((lote: any): lote is string => typeof lote === 'string')
-      )];
+      )] as string[];
       setLotesExistentes(lotesUnicos);
     } catch (err) {
       console.error('Erro ao carregar lotes:', err);
@@ -196,10 +196,60 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
     }
   };
 
+  // Função para gerar lote automático
+  const gerarLoteAutomatico = async () => {
+    const hoje = new Date();
+    const ano = hoje.getFullYear().toString().slice(-2); // Últimos 2 dígitos do ano
+    const mes = (hoje.getMonth() + 1).toString().padStart(2, '0');
+    const dia = hoje.getDate().toString().padStart(2, '0');
+    
+    // Buscar lotes existentes para gerar um número sequencial
+    try {
+      const response = await guiaService.listarProdutosGuia(guia!.id);
+      const itensGuia = response.data || response;
+      
+      // Filtrar lotes que começam com a data de hoje
+      const prefixoData = `${ano}${mes}${dia}`;
+      const lotesHoje = itensGuia
+        .filter((item: any) => item.lote && item.lote.startsWith(prefixoData))
+        .map((item: any) => item.lote)
+        .filter((lote: any): lote is string => typeof lote === 'string');
+      
+      // Encontrar o próximo número sequencial
+      let proximoNumero = 1;
+      if (lotesHoje.length > 0) {
+        const numeros = lotesHoje
+          .map(lote => {
+            const numero = lote.slice(6); // Remove os 6 primeiros caracteres (AAMMDD)
+            return parseInt(numero) || 0;
+          })
+          .filter(num => !isNaN(num));
+        
+        if (numeros.length > 0) {
+          proximoNumero = Math.max(...numeros) + 1;
+        }
+      }
+      
+      // Gerar lote no formato AAMMDD + número sequencial (3 dígitos)
+      return `${prefixoData}${proximoNumero.toString().padStart(3, '0')}`;
+    } catch (err) {
+      console.error('Erro ao gerar lote automático:', err);
+      // Fallback: usar apenas data + 001
+      return `${ano}${mes}${dia}001`;
+    }
+  };
+
   const handleSalvar = async (atualizarExistente = false) => {
     if (!guia || !selectedProduto || !selectedEscola || !quantidade || !unidade) {
       error('Preencha todos os campos obrigatórios');
       return;
+    }
+
+    // Gerar lote automático se não foi informado
+    let loteParaUsar = lote;
+    if (!loteParaUsar || loteParaUsar.trim() === '') {
+      loteParaUsar = await gerarLoteAutomatico();
+      setLote(loteParaUsar); // Atualizar o campo para mostrar o lote gerado
     }
 
     // Validação de estoque
@@ -212,11 +262,11 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
     }
 
     // Se há item existente e não foi confirmada a atualização, verificar primeiro
-    if (!atualizarExistente && lote && selectedProduto && selectedEscola) {
+    if (!atualizarExistente && loteParaUsar && selectedProduto && selectedEscola) {
       const podeAdicionar = await verificarItemExistente(
         parseInt(selectedProduto),
         parseInt(selectedEscola),
-        lote
+        loteParaUsar
       );
       if (!podeAdicionar) return;
     }
@@ -238,7 +288,7 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
           escolaId: itemExistente.escola_id,
           quantidade: parseFloat(quantidade),
           unidade,
-          lote: lote || undefined,
+          lote: loteParaUsar || undefined,
           observacao: observacao || itemExistente.observacao,
           para_entrega: true // Marcar automaticamente para entrega
         };
@@ -252,7 +302,7 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
           escolaId: parseInt(selectedEscola),
           quantidade: parseFloat(quantidade),
           unidade,
-          lote: lote || undefined,
+          lote: loteParaUsar || undefined,
           observacao,
           para_entrega: true // Marcar automaticamente para entrega
         };
@@ -459,9 +509,13 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
                 renderInput={(params) => (
                   <TextField
                     {...params}
-                    label="Lote"
-                    placeholder="Digite um novo lote ou selecione existente"
-                    helperText={lotesExistentes.length > 0 ? "Lotes existentes disponíveis" : "Nenhum lote existente para este produto"}
+                    label="Lote (Opcional)"
+                    placeholder="Digite um lote ou deixe vazio para gerar automaticamente"
+                    helperText={
+                      lotesExistentes.length > 0 
+                        ? "Lotes existentes disponíveis ou deixe vazio para gerar automaticamente" 
+                        : "Deixe vazio para gerar lote automático (formato: AAMMDDXXX)"
+                    }
                   />
                 )}
                 renderOption={(props, option) => (
@@ -471,6 +525,17 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
                   </Box>
                 )}
               />
+              {!lote && (
+                <Typography variant="caption" color="primary" sx={{ mt: 0.5, display: 'block' }}>
+                  💡 Um lote será gerado automaticamente no formato: {(() => {
+                    const hoje = new Date();
+                    const ano = hoje.getFullYear().toString().slice(-2);
+                    const mes = (hoje.getMonth() + 1).toString().padStart(2, '0');
+                    const dia = hoje.getDate().toString().padStart(2, '0');
+                    return `${ano}${mes}${dia}001`;
+                  })()}
+                </Typography>
+              )}
             </Grid>
 
             <Grid item xs={12}>

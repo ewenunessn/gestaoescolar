@@ -12,9 +12,11 @@ import {
   RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { ItemEstoqueEscola, ResumoEstoque, MovimentoEstoque } from '../types';
+import { ItemEstoqueEscola, ResumoEstoque, MovimentoEstoque, MovimentoLote } from '../types';
 import ItemEstoque from '../components/ItemEstoque';
 import ModalHistoricoItem from '../components/ModalHistoricoItem';
+import ModalLotesEstoque from '../components/ModalLotesEstoque';
+import ModalDetalhesLotes from '../components/ModalDetalhesLotes';
 import Header from '../components/Header';
 
 import { useEstoque } from '../hooks/useEstoque';
@@ -33,6 +35,7 @@ const EstoqueScreen: React.FC<EstoqueScreenProps> = ({ navigation }) => {
     loading,
     error,
     escolaId,
+    carregarLotesProduto,
     adicionarItem,
     atualizarItem,
     excluirItem,
@@ -45,8 +48,11 @@ const EstoqueScreen: React.FC<EstoqueScreenProps> = ({ navigation }) => {
   const [ordenacao, setOrdenacao] = useState<'nenhuma' | 'crescente' | 'decrescente'>('nenhuma');
   const [filtrosVisiveis, setFiltrosVisiveis] = useState(false);
   const [modalMovimento, setModalMovimento] = useState(false);
+  const [modalLotes, setModalLotes] = useState(false);
+  const [modalDetalhes, setModalDetalhes] = useState(false);
   const [modalHistoricoVisible, setModalHistoricoVisible] = useState(false);
   const [itemSelecionado, setItemSelecionado] = useState<ItemEstoqueEscola | null>(null);
+  const [itemDetalhes, setItemDetalhes] = useState<ItemEstoqueEscola | null>(null);
   const [itemHistorico, setItemHistorico] = useState<ItemEstoqueEscola | null>(null);
   const [tipoMovimento, setTipoMovimento] = useState<'entrada' | 'saida' | 'ajuste'>('entrada');
   const [quantidade, setQuantidade] = useState('');
@@ -144,12 +150,23 @@ const EstoqueScreen: React.FC<EstoqueScreenProps> = ({ navigation }) => {
     return itensFiltrados;
   };
 
-  const abrirModalMovimento = (item: ItemEstoqueEscola) => {
+  const abrirModalMovimento = async (item: ItemEstoqueEscola) => {
     setItemSelecionado(item);
-    setModalMovimento(true);
-    setQuantidade('');
-    setMotivo('');
-
+    
+    // Verificar se o item tem lotes ou se é um produto que deve usar lotes
+    const deveUsarLotes = item.categoria === 'Perecível' || item.categoria === 'Medicamento';
+    
+    if (deveUsarLotes) {
+      // Carregar lotes se ainda não foram carregados
+      if (!item.lotes || item.lotes.length === 0) {
+        await carregarLotesProduto(item.produto_id);
+      }
+      setModalLotes(true);
+    } else {
+      setModalMovimento(true);
+      setQuantidade('');
+      setMotivo('');
+    }
   };
 
   const abrirModalHistorico = (item: ItemEstoqueEscola) => {
@@ -211,9 +228,47 @@ const EstoqueScreen: React.FC<EstoqueScreenProps> = ({ navigation }) => {
     }
   };
 
+  const salvarMovimentoLotes = async (lotes: MovimentoLote[], tipo: 'entrada' | 'saida' | 'ajuste') => {
+    if (!itemSelecionado || !escolaId) {
+      Alert.alert('Erro', 'Dados insuficientes para registrar movimento');
+      return;
+    }
+
+    try {
+      const quantidadeTotal = lotes.reduce((total, lote) => total + lote.quantidade, 0);
+      
+      const movimento: MovimentoEstoque = {
+        tipo_movimentacao: tipo,
+        quantidade_movimentada: quantidadeTotal,
+        motivo: `Movimento por lotes: ${lotes.length} lote(s)`,
+        lotes: lotes
+      };
+
+      await apiService.atualizarQuantidadeItem(escolaId, itemSelecionado.produto_id, movimento);
+      setModalLotes(false);
+      await refresh();
+      Alert.alert('Sucesso', `Movimento registrado com sucesso! ${lotes.length} lote(s) processado(s).`);
+    } catch (error) {
+      console.error('Erro ao salvar movimento por lotes:', error);
+      Alert.alert('Erro', 'Não foi possível registrar o movimento por lotes');
+    }
+  };
+
+  const abrirModalDetalhes = async (item: ItemEstoqueEscola) => {
+    setItemDetalhes(item);
+    
+    // Carregar lotes se ainda não foram carregados
+    if (!item.lotes || item.lotes.length === 0) {
+      await carregarLotesProduto(item.produto_id);
+    }
+    
+    setModalDetalhes(true);
+  };
+
   const renderItem = ({ item }: { item: ItemEstoqueEscola }) => (
     <ItemEstoque
       item={item}
+      onPress={() => abrirModalDetalhes(item)}
       onHistorico={() => abrirModalHistorico(item)}
       onMovimentar={() => abrirModalMovimento(item)}
     />
@@ -253,7 +308,7 @@ const EstoqueScreen: React.FC<EstoqueScreenProps> = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <Header title="Estoque" schoolName={usuario?.escola?.nome} />
+      <Header title="Estoque" schoolName="Escola" />
       {renderResumo()}
       
       <View style={styles.filtroToggleContainer}>
@@ -448,6 +503,21 @@ const EstoqueScreen: React.FC<EstoqueScreenProps> = ({ navigation }) => {
         onClose={fecharModalHistorico}
         item={itemHistorico}
         escolaId={escolaId}
+      />
+
+      <ModalLotesEstoque
+        visible={modalLotes}
+        item={itemSelecionado}
+        tipoMovimento={tipoMovimento}
+        onClose={() => setModalLotes(false)}
+        onSave={salvarMovimentoLotes}
+      />
+
+      <ModalDetalhesLotes
+        visible={modalDetalhes}
+        item={itemDetalhes}
+        onClose={() => setModalDetalhes(false)}
+        onMovimentar={abrirModalMovimento}
       />
     </View>
   );

@@ -8,7 +8,10 @@ import {
   obterResumoEstoque,
   inicializarEstoqueEscola,
   registrarMovimentacao,
-  resetarEstoqueComBackup
+  resetarEstoqueComBackup,
+  listarLotesProduto,
+  criarLote,
+  processarMovimentacaoLotes
 } from "../controllers/estoqueEscolaController";
 
 const router = Router();
@@ -40,4 +43,8 @@ router.get("/:id", buscarItemEstoqueEscola);
 // Atualizar quantidade de um item específico
 router.put("/:id", atualizarQuantidadeEstoque);
 
-export default router;
+export default router;// Rotas p
+ara lotes (sem autenticação JWT)
+router.get("/produtos/:produto_id/lotes", listarLotesProduto);
+router.post("/lotes", criarLote);
+router.post("/escola/:escola_id/movimentacao-lotes", processarMovimentacaoLotes);

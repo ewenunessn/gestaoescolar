@@ -76,7 +76,11 @@ const TabNavigator = () => {
 };
 
 const AuthStack = () => {
-  const { usuario } = useAuth();
+  const { usuario, loading } = useAuth();
+
+  if (loading) {
+    return <LoadingScreen />;
+  }
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -92,13 +96,6 @@ const AuthStack = () => {
           }}
         />
       )}
-      <Stack.Screen 
-        name="EstoqueEscola" 
-        component={TabNavigator}
-        options={{
-          headerShown: false
-        }}
-      />
     </Stack.Navigator>
   );
 };

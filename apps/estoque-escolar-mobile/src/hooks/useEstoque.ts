@@ -20,6 +20,7 @@ export interface UseEstoqueReturn {
   carregarResumo: () => Promise<void>;
   carregarHistorico: (reset?: boolean) => Promise<void>;
   carregarMaisHistorico: () => Promise<void>;
+  carregarLotesProduto: (produtoId: number) => Promise<void>;
   adicionarItem: (item: Partial<ItemEstoqueEscola>) => Promise<void>;
   atualizarItem: (itemId: number, item: Partial<ItemEstoqueEscola>) => Promise<void>;
   excluirItem: (itemId: number) => Promise<void>;
@@ -224,6 +225,23 @@ export const useEstoque = (escolaIdProp?: number): UseEstoqueReturn => {
     }
   }, [usuario, escolaId, handleError, carregarResumo, carregarHistorico]);
 
+  const carregarLotesProduto = useCallback(async (produtoId: number) => {
+    if (!usuario || !escolaId) return;
+    
+    try {
+      const lotes = await apiService.listarLotesProduto(produtoId);
+      
+      // Atualizar o item específico com os lotes carregados
+      setItens(prev => prev.map(item => 
+        item.produto_id === produtoId 
+          ? { ...item, lotes }
+          : item
+      ));
+    } catch (error) {
+      console.error('Erro ao carregar lotes do produto:', error);
+    }
+  }, [usuario, escolaId]);
+
   const refresh = useCallback(async () => {
     await Promise.all([
       carregarItens(),
@@ -253,6 +271,7 @@ export const useEstoque = (escolaIdProp?: number): UseEstoqueReturn => {
     carregarResumo,
     carregarHistorico,
     carregarMaisHistorico,
+    carregarLotesProduto,
     adicionarItem,
     atualizarItem,
     excluirItem,

@@ -17,10 +17,10 @@ export const API_CONFIG = {
 
 // Configurações específicas para desenvolvimento
 export const DEV_CONFIG = {
-  // Habilitar logs detalhados em desenvolvimento
-  ENABLE_LOGS: __DEV__,
-  // Simular delay de rede em desenvolvimento (ms)
-  NETWORK_DELAY: __DEV__ ? 500 : 0,
+  // Desabilitar logs para evitar spam no console
+  ENABLE_LOGS: false,
+  // Sem delay de rede
+  NETWORK_DELAY: 0,
 };
 
 // Endpoints da API - Atualizados para as rotas do Vercel

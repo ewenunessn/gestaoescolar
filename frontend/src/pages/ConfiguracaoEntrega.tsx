@@ -535,8 +535,8 @@ const ConfiguracaoEntrega: React.FC = () => {
         try {
           const rota = rotas.find(r => r.id === rotaId);
           const escolasRota = await rotaService.listarEscolasRota(rotaId);
-          
-          const rotaTemItens = dadosRomaneio.some(produto => 
+
+          const rotaTemItens = dadosRomaneio.some(produto =>
             produto.rotasArray?.some((r: any) => r.rota_id === rotaId && r.quantidade > 0)
           );
 
@@ -544,26 +544,37 @@ const ConfiguracaoEntrega: React.FC = () => {
             for (let index = 0; index < escolasRota.length; index++) {
               const escolaRota = escolasRota[index];
               const escolaKey = `${escolaRota.escola_id}`;
-              
+
               if (!escolasProcessadas.has(escolaKey)) {
                 escolasProcessadas.add(escolaKey);
 
                 try {
                   const dadosEscola = await buscarEscola(escolaRota.escola_id);
-                  
-                  let modalidadeTexto = 'FUNDAMENTAL';
+
+                  let modalidadeTexto = '-'; // Padrão quando não há modalidade
+
+                  console.log(`Escola ${escolaRota.escola_nome} - modalidades:`, dadosEscola?.modalidades);
+
                   if (dadosEscola?.modalidades) {
                     if (typeof dadosEscola.modalidades === 'object') {
                       if (Array.isArray(dadosEscola.modalidades)) {
                         const nomes = dadosEscola.modalidades
-                          .map((m: any) => m.nome || m.modalidade_nome || String(m))
-                          .filter((n: string) => n && n !== 'null')
+                          .map((m: any) => {
+                            // Tentar diferentes propriedades
+                            return m.nome || m.modalidade_nome || m.modalidade || m.name || String(m);
+                          })
+                          .filter((n: string) => n && n !== 'null' && n !== 'undefined' && n.trim() !== '')
                           .join(', ');
                         if (nomes) modalidadeTexto = nomes.toUpperCase();
                       } else if (dadosEscola.modalidades.nome) {
                         modalidadeTexto = String(dadosEscola.modalidades.nome).toUpperCase();
+                      } else {
+                        // Se for objeto mas não tem .nome, tentar converter para string
+                        const objStr = JSON.stringify(dadosEscola.modalidades);
+                        console.log(`Objeto modalidades não reconhecido:`, objStr);
                       }
                     } else {
+                      // Se for string
                       const modalidadesStr = String(dadosEscola.modalidades).trim();
                       if (modalidadesStr !== '' && modalidadesStr !== 'null' && modalidadesStr !== 'undefined') {
                         modalidadeTexto = modalidadesStr.toUpperCase();
@@ -571,9 +582,11 @@ const ConfiguracaoEntrega: React.FC = () => {
                     }
                   }
 
-                  const totalAlunos = dadosEscola?.total_alunos && dadosEscola.total_alunos > 0 
-                    ? dadosEscola.total_alunos 
-                    : 200;
+                  console.log(`Escola ${escolaRota.escola_nome} - modalidade final:`, modalidadeTexto);
+
+                  const totalAlunos = dadosEscola?.total_alunos && dadosEscola.total_alunos > 0
+                    ? dadosEscola.total_alunos
+                    : '-';
 
                   escolasComItens.push({
                     id: escolaRota.escola_id,
@@ -654,26 +667,32 @@ const ConfiguracaoEntrega: React.FC = () => {
             b: parseInt(result[3], 16)
           } : { r: 74, g: 144, b: 226 };
         };
-        
+
         const corRgb = hexToRgb(escola.rota_cor || '#4a90e2');
         pdf.setFillColor(corRgb.r, corRgb.g, corRgb.b);
-        
-        // Badge Rota
-        pdf.roundedRect(pageWidth - 70, 10, 28, 6, 1, 1, 'F');
-        // Badge Número
-        pdf.roundedRect(pageWidth - 38, 10, 23, 6, 1, 1, 'F');
-        
+
+        // Badge Rota (alinhado com "PREFEITURA MUNICIPAL DE BENEVIDES")
+        pdf.roundedRect(pageWidth - 70, 12, 28, 6, 1, 1, 'F');
+        // Badge Número (alinhado com "PREFEITURA MUNICIPAL DE BENEVIDES")
+        pdf.roundedRect(pageWidth - 38, 12, 23, 6, 1, 1, 'F');
+
         pdf.setTextColor(255, 255, 255);
         pdf.setFontSize(8);
         pdf.setFont('helvetica', 'bold');
-        pdf.text(escola.rota_nome || `ROTA ${escola.rota_id}`, pageWidth - 56, 14, { align: 'center' });
-        pdf.text(`Nº ${escola.posicao_na_rota}`, pageWidth - 26.5, 14, { align: 'center' });
+        pdf.text(escola.rota_nome || `ROTA ${escola.rota_id}`, pageWidth - 56, 16, { align: 'center' });
+        pdf.text(`Nº ${escola.posicao_na_rota}`, pageWidth - 26.5, 16, { align: 'center' });
         pdf.setTextColor(0, 0, 0);
 
         // Nome da escola
         pdf.setFontSize(9);
         pdf.setFont('helvetica', 'bold');
         pdf.text(escola.nome, margin, 35);
+
+        // Linha separadora entre nome da escola e detalhes (mesmo comprimento da tabela)
+        const tabelaMargemEsquerda = (pageWidth - 270) / 2;
+        const tabelaMargemDireita = (pageWidth - 270) / 2;
+        pdf.setLineWidth(0.2);
+        pdf.line(tabelaMargemEsquerda, 37, pageWidth - tabelaMargemDireita, 37);
 
         // Linha de detalhes (modalidade, alunos, mês) - distribuída uniformemente
         pdf.setFontSize(7.5);
@@ -682,14 +701,10 @@ const ConfiguracaoEntrega: React.FC = () => {
         pdf.text(escola.modalidade, margin, detalhesY);
         pdf.text(`TOTAL DE ALUNOS: ${escola.total_alunos}`, pageWidth / 2 - 20, detalhesY);
         pdf.text(`MÊS: ${formatarMes(guiaAtual.mes)}/${guiaAtual.ano}`, pageWidth - margin - 45, detalhesY);
-        
-        // Linha separadora
-        pdf.setLineWidth(0.2);
-        pdf.line(margin, 42, pageWidth - margin, 42);
 
         // Preparar dados da tabela
         const tableData: any[] = [];
-        
+
         // Adicionar itens da escola
         escola.itens.forEach((item: any, index: number) => {
           const config = configUnidades[item.nome] || { ativo: false, pacote: 1, caixa: 10, tipoCaixa: 'caixa' };
@@ -755,49 +770,55 @@ const ConfiguracaoEntrega: React.FC = () => {
           body: tableData,
           theme: 'grid',
           styles: {
-            fontSize: 7.5,
-            cellPadding: 1.2,
+            fontSize: 8,
+            cellPadding: 2,
             lineColor: [0, 0, 0],
             lineWidth: 0.15,
             halign: 'center',
             valign: 'middle',
-            overflow: 'linebreak'
+            overflow: 'linebreak',
+            minCellHeight: 6
           },
           headStyles: {
             fillColor: [235, 235, 235],
             textColor: [0, 0, 0],
             fontStyle: 'bold',
             halign: 'center',
-            fontSize: 7,
-            cellPadding: 1.5
+            fontSize: 8,
+            cellPadding: 2,
+            minCellHeight: 6
           },
           columnStyles: {
-            0: { cellWidth: 10, halign: 'center' },
-            1: { cellWidth: 90, halign: 'left', cellPadding: { left: 2 } },
-            2: { cellWidth: 16, halign: 'center' },
-            3: { cellWidth: 24, halign: 'center' },
-            4: { cellWidth: 22, halign: 'center', fontStyle: 'bold' },
-            5: { cellWidth: 26, halign: 'center', fontStyle: 'bold' },
-            6: { cellWidth: 24, halign: 'center' },
-            7: { cellWidth: 26, halign: 'center' },
-            8: { cellWidth: 24, halign: 'center' }
+            0: { cellWidth: 15, halign: 'center' },
+            1: { cellWidth: 80, halign: 'left', cellPadding: { left: 2 } },
+            2: { cellWidth: 25, halign: 'center' },
+            3: { cellWidth: 25, halign: 'center' },
+            4: { cellWidth: 25, halign: 'center', fontStyle: 'bold' },
+            5: { cellWidth: 25, halign: 'center', fontStyle: 'bold' },
+            6: { cellWidth: 25, halign: 'center' },
+            7: { cellWidth: 25, halign: 'center' },
+            8: { cellWidth: 25, halign: 'center' }
           },
-          margin: { left: margin, right: margin },
-          tableWidth: 'auto'
+          // Centralizar tabela: largura total = 270mm, página = 297mm, margem = (297-270)/2 = 13.5mm
+          margin: {
+            left: (pageWidth - 270) / 2,
+            right: (pageWidth - 270) / 2
+          },
+          tableWidth: 270
         });
 
         // Rodapé com linhas de assinatura
-        const finalY = (pdf as any).lastAutoTable.finalY + 6;
+        const finalY = (pdf as any).lastAutoTable.finalY + 10;
         pdf.setFontSize(7);
         pdf.setFont('helvetica', 'normal');
-        
+
         // Linha 1: Recebi os gêneros
-        const linha1 = 'Recebi os gêneros acima em: Entrega 1 ___/___/______ Ass: ________________________________, Entrega 2 ___/___/______ Ass: ________________________________';
+        const linha1 = 'Recebi os gêneros acima em: Entrega 1 ___/___/______ Ass: _______________________________________________,      Entrega 2 ___/___/______ Ass: _______________________________________________';
         pdf.text(linha1, margin, finalY);
-        
+
         // Linha 2: Expedido em
-        const linha2 = `Expedido em ${new Date().toLocaleDateString('pt-BR')} Ass: Coordenadora: ________________________________________________`;
-        pdf.text(linha2, margin, finalY + 5);
+        const linha2 = `Expedido em ${new Date().toLocaleDateString('pt-BR')} Ass: Coordenadora: _______________________________________________`;
+        pdf.text(linha2, margin, finalY + 8);
       });
 
       // Salvar PDF
@@ -868,7 +889,7 @@ const ConfiguracaoEntrega: React.FC = () => {
                 console.log(`Dados da escola ${escolaRota.escola_id}:`, dadosEscola);
 
                 // Processar modalidades (pode vir como string, array ou objeto)
-                let modalidadeTexto = 'FUNDAMENTAL'; // Padrão
+                let modalidadeTexto = '-'; // Padrão quando não há modalidade
                 if (dadosEscola?.modalidades) {
                   // Se for objeto ou array, tentar extrair os nomes
                   if (typeof dadosEscola.modalidades === 'object') {
@@ -895,7 +916,7 @@ const ConfiguracaoEntrega: React.FC = () => {
                 // Usar total de alunos real ou padrão
                 const totalAlunos = dadosEscola?.total_alunos && dadosEscola.total_alunos > 0
                   ? dadosEscola.total_alunos
-                  : 200;
+                  : '-';
 
                 console.log(`Escola ${escolaRota.escola_nome}: ${totalAlunos} alunos, modalidade: ${modalidadeTexto}`);
 
@@ -916,11 +937,11 @@ const ConfiguracaoEntrega: React.FC = () => {
                 escolasComItens.push({
                   id: escolaRota.escola_id,
                   nome: escolaRota.escola_nome || `Escola ${escolaRota.escola_id}`,
-                  total_alunos: 200,
+                  total_alunos: '-', // Padrão quando não há dados
                   rota_id: rotaId,
                   rota_nome: rota?.nome || `ROTA ${rotaId}`,
                   rota_cor: rota?.cor || '#4a90e2',
-                  modalidade: 'FUNDAMENTAL',
+                  modalidade: '-', // Padrão quando não há dados
                   posicao_na_rota: escolaRota.ordem || (index + 1),
                   itens: []
                 });
@@ -1948,14 +1969,25 @@ const ConfiguracaoEntrega: React.FC = () => {
                 <Typography variant="h6">
                   Resumo da Configuração
                 </Typography>
-                <Button
-                  variant="outlined"
-                  startIcon={<VisibilityIcon />}
-                  onClick={gerarRomaneio}
-                  disabled={configuracao.rotasSelecionadas.length === 0 || configuracao.itensSelecionados.length === 0}
-                >
-                  Exibir Romaneio
-                </Button>
+                <Box display="flex" gap={1}>
+                  <Button
+                    variant="outlined"
+                    startIcon={<VisibilityIcon />}
+                    onClick={gerarRomaneio}
+                    disabled={configuracao.rotasSelecionadas.length === 0 || configuracao.itensSelecionados.length === 0}
+                  >
+                    Exibir Romaneio
+                  </Button>
+                  <Button
+                    variant="contained"
+                    startIcon={<PdfIcon />}
+                    onClick={baixarGuiasPDF}
+                    color="secondary"
+                    disabled={!configuracao.guiaId || configuracao.rotasSelecionadas.length === 0 || configuracao.itensSelecionados.length === 0}
+                  >
+                    Baixar Guias De Remessa
+                  </Button>
+                </Box>
               </Box>
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={4}>
@@ -2305,16 +2337,7 @@ const ConfiguracaoEntrega: React.FC = () => {
               >
                 Imprimir
               </Button>
-              <Button
-                variant="contained"
-                size="small"
-                startIcon={<PdfIcon />}
-                onClick={baixarGuiasPDF}
-                color="secondary"
-                disabled={!configuracao.guiaId || dadosRomaneio.length === 0}
-              >
-                Baixar Guias
-              </Button>
+
               <IconButton onClick={() => setModalRomaneioAberto(false)}>
                 <CloseIcon />
               </IconButton>

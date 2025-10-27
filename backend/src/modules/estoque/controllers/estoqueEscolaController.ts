@@ -629,3 +629,364 @@ export async function resetarEstoqueComBackup(req: Request, res: Response) {
     });
   }
 }
+
+// Listar lotes de um produto específico
+export async function listarLotesProduto(req: Request, res: Response) {
+  try {
+    const { produto_id } = req.params;
+    const apenas_ativos = req.query.apenas_ativos !== 'false';
+
+    if (!produto_id) {
+      return res.status(400).json({
+        success: false,
+        message: "ID do produto é obrigatório"
+      });
+    }
+
+    // Verificar se produto existe
+    const produto = await db.query(`
+      SELECT id, nome, unidade FROM produtos WHERE id = $1 AND ativo = true
+    `, [produto_id]);
+
+    if (produto.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Produto não encontrado"
+      });
+    }
+
+    let whereClause = "WHERE el.produto_id = $1";
+    const params = [produto_id];
+
+    if (apenas_ativos) {
+      whereClause += " AND el.status = 'ativo' AND el.quantidade_atual > 0";
+    }
+
+    const query = `
+      SELECT 
+        el.id,
+        el.produto_id,
+        el.lote,
+        el.quantidade_inicial,
+        el.quantidade_atual,
+        el.data_validade,
+        el.data_fabricacao,
+        el.fornecedor_id,
+        f.nome as fornecedor_nome,
+        el.status,
+        el.observacoes,
+        el.created_at,
+        el.updated_at
+      FROM estoque_lotes el
+      LEFT JOIN fornecedores f ON el.fornecedor_id = f.id
+      ${whereClause}
+      ORDER BY 
+        CASE WHEN el.data_validade IS NULL THEN 1 ELSE 0 END,
+        el.data_validade ASC,
+        el.created_at DESC
+    `;
+
+    const result = await db.query(query, params);
+    
+    res.json({
+      success: true,
+      data: result.rows,
+      produto: produto.rows[0]
+    });
+  } catch (error: any) {
+    console.error("❌ Erro ao listar lotes do produto:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao listar lotes do produto",
+      error: error.message
+    });
+  }
+}
+
+// Criar novo lote
+export async function criarLote(req: Request, res: Response) {
+  try {
+    const {
+      produto_id,
+      lote,
+      quantidade,
+      data_fabricacao,
+      data_validade,
+      fornecedor_id,
+      observacoes
+    } = req.body;
+
+    // Validações básicas
+    if (!produto_id || !lote || quantidade === null || quantidade === undefined || quantidade < 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Produto, lote e quantidade são obrigatórios"
+      });
+    }
+
+    // Verificar se produto existe
+    const produto = await db.query(`
+      SELECT id, nome FROM produtos WHERE id = $1 AND ativo = true
+    `, [produto_id]);
+
+    if (produto.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Produto não encontrado"
+      });
+    }
+
+    // Verificar se lote já existe para este produto
+    const loteExistente = await db.query(`
+      SELECT id FROM estoque_lotes 
+      WHERE produto_id = $1 AND lote = $2
+    `, [produto_id, lote.toString().trim()]);
+
+    if (loteExistente.rows.length > 0) {
+      return res.status(409).json({
+        success: false,
+        message: `Lote '${lote}' já existe para este produto`
+      });
+    }
+
+    // Validar datas se fornecidas
+    if (data_fabricacao && data_validade) {
+      const fabricacao = new Date(data_fabricacao);
+      const validade = new Date(data_validade);
+      
+      if (validade <= fabricacao) {
+        return res.status(400).json({
+          success: false,
+          message: "Data de validade deve ser posterior à data de fabricação"
+        });
+      }
+    }
+
+    // Criar o lote
+    const novoLote = await db.query(`
+      INSERT INTO estoque_lotes (
+        produto_id, lote, quantidade_inicial, quantidade_atual,
+        data_fabricacao, data_validade, fornecedor_id, observacoes,
+        status, created_at, updated_at
+      ) VALUES ($1, $2, $3, $3, $4, $5, $6, $7, 'ativo', NOW(), NOW())
+      RETURNING *
+    `, [
+      produto_id,
+      lote.toString().trim(),
+      Number(quantidade),
+      data_fabricacao || null,
+      data_validade || null,
+      fornecedor_id || null,
+      observacoes || null
+    ]);
+
+    res.status(201).json({
+      success: true,
+      message: "Lote criado com sucesso",
+      data: novoLote.rows[0]
+    });
+  } catch (error: any) {
+    console.error("❌ Erro ao criar lote:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao criar lote",
+      error: error.message
+    });
+  }
+}
+
+// Processar movimentação com lotes
+export async function processarMovimentacaoLotes(req: Request, res: Response) {
+  try {
+    const { escola_id } = req.params;
+    const {
+      produto_id,
+      tipo_movimentacao,
+      lotes,
+      motivo,
+      documento_referencia,
+      usuario_id
+    } = req.body;
+
+    if (!produto_id || !tipo_movimentacao || !lotes || !Array.isArray(lotes) || lotes.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Produto, tipo de movimentação e lotes são obrigatórios"
+      });
+    }
+
+    const client = await db.connect();
+    
+    try {
+      await client.query('BEGIN');
+
+      const movimentacoes = [];
+      let quantidadeTotal = 0;
+
+      for (const loteMovimento of lotes) {
+        const { lote_id, lote, quantidade, data_validade, data_fabricacao, observacoes } = loteMovimento;
+
+        if (quantidade <= 0) continue;
+
+        quantidadeTotal += quantidade;
+
+        if (tipo_movimentacao === 'entrada') {
+          // Para entrada, criar novo lote ou atualizar existente
+          let loteAtual;
+          
+          if (lote_id) {
+            // Atualizar lote existente
+            const updateResult = await client.query(`
+              UPDATE estoque_lotes 
+              SET quantidade_atual = quantidade_atual + $1,
+                  updated_at = NOW()
+              WHERE id = $2 AND produto_id = $3
+              RETURNING *
+            `, [quantidade, lote_id, produto_id]);
+            
+            loteAtual = updateResult.rows[0];
+          } else {
+            // Criar novo lote
+            const insertResult = await client.query(`
+              INSERT INTO estoque_lotes (
+                produto_id, lote, quantidade_inicial, quantidade_atual,
+                data_fabricacao, data_validade, observacoes,
+                status, created_at, updated_at
+              ) VALUES ($1, $2, $3, $3, $4, $5, $6, 'ativo', NOW(), NOW())
+              RETURNING *
+            `, [
+              produto_id,
+              lote,
+              quantidade,
+              data_fabricacao || null,
+              data_validade || null,
+              observacoes || null
+            ]);
+            
+            loteAtual = insertResult.rows[0];
+          }
+
+          movimentacoes.push({
+            lote_id: loteAtual.id,
+            lote: loteAtual.lote,
+            quantidade,
+            tipo: 'entrada'
+          });
+
+        } else if (tipo_movimentacao === 'saida') {
+          // Para saída, reduzir quantidade do lote
+          if (!lote_id) {
+            throw new Error('ID do lote é obrigatório para saída');
+          }
+
+          const loteAtual = await client.query(`
+            SELECT * FROM estoque_lotes WHERE id = $1 AND produto_id = $2
+          `, [lote_id, produto_id]);
+
+          if (loteAtual.rows.length === 0) {
+            throw new Error(`Lote não encontrado`);
+          }
+
+          if (loteAtual.rows[0].quantidade_atual < quantidade) {
+            throw new Error(`Quantidade insuficiente no lote ${loteAtual.rows[0].lote}`);
+          }
+
+          const novaQuantidade = loteAtual.rows[0].quantidade_atual - quantidade;
+          const novoStatus = novaQuantidade === 0 ? 'esgotado' : 'ativo';
+
+          await client.query(`
+            UPDATE estoque_lotes 
+            SET quantidade_atual = $1,
+                status = $2,
+                updated_at = NOW()
+            WHERE id = $3
+          `, [novaQuantidade, novoStatus, lote_id]);
+
+          movimentacoes.push({
+            lote_id,
+            lote: loteAtual.rows[0].lote,
+            quantidade,
+            tipo: 'saida'
+          });
+        }
+      }
+
+      // Atualizar estoque da escola
+      const estoqueEscola = await client.query(`
+        SELECT * FROM estoque_escolas 
+        WHERE escola_id = $1 AND produto_id = $2
+      `, [escola_id, produto_id]);
+
+      let quantidadeAnterior = 0;
+      let quantidadePosterior = 0;
+
+      if (estoqueEscola.rows.length > 0) {
+        quantidadeAnterior = estoqueEscola.rows[0].quantidade_atual;
+        
+        if (tipo_movimentacao === 'entrada') {
+          quantidadePosterior = quantidadeAnterior + quantidadeTotal;
+        } else if (tipo_movimentacao === 'saida') {
+          quantidadePosterior = quantidadeAnterior - quantidadeTotal;
+        }
+
+        await client.query(`
+          UPDATE estoque_escolas 
+          SET quantidade_atual = $1, updated_at = NOW()
+          WHERE escola_id = $2 AND produto_id = $3
+        `, [quantidadePosterior, escola_id, produto_id]);
+      } else {
+        // Criar registro no estoque da escola se não existir
+        quantidadePosterior = tipo_movimentacao === 'entrada' ? quantidadeTotal : 0;
+        
+        await client.query(`
+          INSERT INTO estoque_escolas (escola_id, produto_id, quantidade_atual)
+          VALUES ($1, $2, $3)
+        `, [escola_id, produto_id, quantidadePosterior]);
+      }
+
+      // Registrar no histórico
+      await client.query(`
+        INSERT INTO estoque_escolas_historico (
+          estoque_escola_id, escola_id, produto_id, tipo_movimentacao,
+          quantidade_anterior, quantidade_movimentada, quantidade_posterior,
+          motivo, documento_referencia, usuario_id, data_movimentacao
+        ) VALUES (
+          (SELECT id FROM estoque_escolas WHERE escola_id = $1 AND produto_id = $2),
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, NOW()
+        )
+      `, [
+        escola_id, produto_id, tipo_movimentacao,
+        quantidadeAnterior, quantidadeTotal, quantidadePosterior,
+        motivo || `Movimentação por lotes: ${movimentacoes.length} lote(s)`,
+        documento_referencia, usuario_id || 1
+      ]);
+
+      await client.query('COMMIT');
+
+      res.json({
+        success: true,
+        message: `Movimentação processada com sucesso`,
+        data: {
+          tipo_movimentacao,
+          quantidade_total: quantidadeTotal,
+          lotes_processados: movimentacoes.length,
+          movimentacoes
+        }
+      });
+
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+
+  } catch (error: any) {
+    console.error("❌ Erro ao processar movimentação com lotes:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao processar movimentação",
+      error: error.message
+    });
+  }
+}

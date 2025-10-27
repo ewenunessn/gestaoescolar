@@ -59,6 +59,12 @@ class ApiService {
         if (DEV_CONFIG.ENABLE_LOGS) {
           console.error(`API Error: ${response.status} - ${errorText}`);
         }
+        
+        // Se for erro 401, limpar token
+        if (response.status === 401) {
+          await this.removeToken();
+        }
+        
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
@@ -81,21 +87,28 @@ class ApiService {
       const response = await this.request<any>(`/api/estoque-escola/escola/${escolaId}`);
       // Adaptar dados do backend para o formato esperado pelo app
       const dados = response.data || [];
-      return dados.map((item: any) => ({
+      
+      // Mapear dados sem buscar lotes por enquanto para evitar muitas requisições
+      const itens = dados.map((item: any) => ({
         id: item.id,
         produto_id: item.produto_id,
         escola_id: item.escola_id,
         quantidade_atual: item.quantidade_atual || 0,
         quantidade_minima: item.quantidade_minima || 0,
         quantidade_maxima: item.quantidade_maxima || 0,
-        // Manter status_estoque do backend e criar status para compatibilidade
-        status: this.mapearStatusParaCompatibilidade(item.status_estoque),
+        status_estoque: item.status_estoque || 'normal',
         data_ultima_atualizacao: item.data_ultima_atualizacao || new Date().toISOString(),
+        produto_nome: item.produto_nome || 'Produto sem nome',
+        produto_descricao: item.produto_descricao || '',
+        unidade_medida: item.unidade || 'un',
+        categoria: item.categoria || 'Geral',
+        escola_nome: item.escola_nome || 'Escola',
+        lotes: [], // Inicializar vazio, carregar sob demanda
         produto: {
           id: item.produto_id,
           nome: item.produto_nome || 'Produto sem nome',
           descricao: item.produto_descricao || '',
-          unidade_medida: item.unidade  || 'un',
+          unidade_medida: item.unidade || 'un',
           categoria: item.categoria || 'Geral'
         },
         escola: {
@@ -103,6 +116,8 @@ class ApiService {
           nome: item.escola_nome || 'Escola'
         }
       }));
+
+      return itens;
     } catch (error) {
       console.error('Erro ao listar estoque:', error);
       return [];
@@ -254,19 +269,85 @@ class ApiService {
     produtoId: number,
     movimento: MovimentoEstoque
   ): Promise<ItemEstoqueEscola> {
-    const dadosMovimentacao = {
-      produto_id: produtoId,
-      tipo_movimentacao: movimento.tipo_movimentacao || movimento.tipo || 'ajuste',
-      quantidade: movimento.quantidade_movimentada !== undefined ? movimento.quantidade_movimentada : movimento.quantidade,
-      motivo: movimento.motivo || '',
-      documento_referencia: movimento.documento_referencia || '',
-      usuario_id: movimento.usuario_id || 1
-    };
-    
-    return this.request<ItemEstoqueEscola>(API_ENDPOINTS.MOVIMENTO_ESTOQUE(escolaId), {
-      method: 'POST',
-      body: JSON.stringify(dadosMovimentacao),
-    });
+    // Se tem lotes, usar endpoint específico para lotes
+    if (movimento.lotes && movimento.lotes.length > 0) {
+      const dadosMovimentacao = {
+        produto_id: produtoId,
+        tipo_movimentacao: movimento.tipo_movimentacao || movimento.tipo || 'ajuste',
+        lotes: movimento.lotes,
+        motivo: movimento.motivo || '',
+        documento_referencia: movimento.documento_referencia || '',
+        usuario_id: movimento.usuario_id || 1
+      };
+      
+      return this.request<ItemEstoqueEscola>(`/api/estoque-escola/escola/${escolaId}/movimentacao-lotes`, {
+        method: 'POST',
+        body: JSON.stringify(dadosMovimentacao),
+      });
+    } else {
+      // Usar endpoint tradicional para movimentação simples
+      const dadosMovimentacao = {
+        produto_id: produtoId,
+        tipo_movimentacao: movimento.tipo_movimentacao || movimento.tipo || 'ajuste',
+        quantidade: movimento.quantidade_movimentada !== undefined ? movimento.quantidade_movimentada : movimento.quantidade,
+        motivo: movimento.motivo || '',
+        documento_referencia: movimento.documento_referencia || '',
+        usuario_id: movimento.usuario_id || 1
+      };
+      
+      return this.request<ItemEstoqueEscola>(API_ENDPOINTS.MOVIMENTO_ESTOQUE(escolaId), {
+        method: 'POST',
+        body: JSON.stringify(dadosMovimentacao),
+      });
+    }
+  }
+
+  // Métodos para gerenciar lotes (usando endpoints do estoque escolar)
+  async listarLotesProduto(produtoId: number): Promise<any[]> {
+    try {
+      const response = await this.request<any>(`/api/estoque-escola/produtos/${produtoId}/lotes`);
+      return (response.data || []).map((lote: any) => ({
+        id: lote.id,
+        produto_id: lote.produto_id,
+        lote: lote.lote,
+        quantidade_inicial: lote.quantidade_inicial || 0,
+        quantidade_atual: lote.quantidade_atual || 0,
+        data_fabricacao: lote.data_fabricacao,
+        data_validade: lote.data_validade,
+        fornecedor_id: lote.fornecedor_id,
+        observacoes: lote.observacoes,
+        status: lote.status || 'ativo',
+        created_at: lote.created_at,
+        updated_at: lote.updated_at
+      }));
+    } catch (error: any) {
+      console.error('Erro ao listar lotes:', error);
+      return [];
+    }
+  }
+
+  async criarLote(lote: any): Promise<any> {
+    try {
+      return this.request<any>('/api/estoque-escola/lotes', {
+        method: 'POST',
+        body: JSON.stringify(lote),
+      });
+    } catch (error) {
+      console.error('Erro ao criar lote:', error);
+      throw error;
+    }
+  }
+
+  async processarMovimentacaoLotes(escolaId: number, dados: any): Promise<any> {
+    try {
+      return this.request<any>(`/api/estoque-escola/escola/${escolaId}/movimentacao-lotes`, {
+        method: 'POST',
+        body: JSON.stringify(dados),
+      });
+    } catch (error) {
+      console.error('Erro ao processar movimentação com lotes:', error);
+      throw error;
+    }
   }
 
   async atualizarLoteItens(

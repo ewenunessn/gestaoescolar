@@ -89,8 +89,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
       
       return false;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro no login do gestor:', error);
+      
+      // Limpar qualquer token inválido
+      try {
+        await apiService.removeToken();
+        const { limparSessaoGestor } = await import('../services/gestorEscola');
+        await limparSessaoGestor();
+      } catch (cleanupError) {
+        console.error('Erro ao limpar dados após falha no login:', cleanupError);
+      }
+      
       return false;
     } finally {
       setLoading(false);

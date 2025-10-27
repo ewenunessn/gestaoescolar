@@ -521,6 +521,61 @@ const GestaoRotas: React.FC = () => {
                                 />
                             </Grid>
 
+                            <Grid item xs={12}>
+                                <Box>
+                                    <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                                        Cor da Rota
+                                    </Typography>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                                        <TextField
+                                            type="color"
+                                            value={formRota.cor}
+                                            onChange={(e) => setFormRota(prev => ({ ...prev, cor: e.target.value }))}
+                                            sx={{ width: 80 }}
+                                            size="small"
+                                        />
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <Avatar sx={{ bgcolor: formRota.cor, width: 28, height: 28 }}>
+                                                <RouteIcon fontSize="small" />
+                                            </Avatar>
+                                            <Typography variant="body2" color="text.secondary">
+                                                Prévia nos badges das guias
+                                            </Typography>
+                                        </Box>
+                                    </Box>
+                                    
+                                    <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                                        Cores sugeridas:
+                                    </Typography>
+                                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                                        {[
+                                            { cor: '#2563eb', nome: 'Azul' },
+                                            { cor: '#dc2626', nome: 'Vermelho' },
+                                            { cor: '#16a34a', nome: 'Verde' },
+                                            { cor: '#ca8a04', nome: 'Amarelo' },
+                                            { cor: '#9333ea', nome: 'Roxo' },
+                                            { cor: '#ea580c', nome: 'Laranja' },
+                                            { cor: '#0891b2', nome: 'Ciano' },
+                                            { cor: '#be123c', nome: 'Rosa' }
+                                        ].map((cor) => (
+                                            <Tooltip key={cor.cor} title={cor.nome}>
+                                                <IconButton
+                                                    size="small"
+                                                    onClick={() => setFormRota(prev => ({ ...prev, cor: cor.cor }))}
+                                                    sx={{
+                                                        bgcolor: cor.cor,
+                                                        width: 24,
+                                                        height: 24,
+                                                        border: formRota.cor === cor.cor ? '2px solid #000' : '1px solid #ccc',
+                                                        '&:hover': { bgcolor: cor.cor, opacity: 0.8 }
+                                                    }}
+                                                />
+                                            </Tooltip>
+                                        ))}
+                                    </Box>
+                                </Box>
+                            </Grid>
+
 
                         </Grid>
                     </DialogContent>

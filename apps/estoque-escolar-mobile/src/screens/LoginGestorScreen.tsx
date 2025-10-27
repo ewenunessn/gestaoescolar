@@ -77,6 +77,8 @@ const LoginGestorScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleLogin = async () => {
+    if (loading) return; // Evitar múltiplos cliques
+    
     if (!escolaSelecionada || !codigoAcesso.trim()) {
       Alert.alert('Atenção', 'Por favor, complete todos os campos');
       return;
@@ -99,7 +101,8 @@ const LoginGestorScreen: React.FC<Props> = ({ navigation }) => {
         Alert.alert('Erro', 'Código de acesso inválido para esta escola');
       }
     } catch (err: any) {
-      Alert.alert('Erro', err.message || 'Código de acesso inválido');
+      console.error('Erro no login:', err);
+      Alert.alert('Erro', err.message || 'Erro ao fazer login. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -145,11 +148,15 @@ const LoginGestorScreen: React.FC<Props> = ({ navigation }) => {
           )}
 
           <TouchableOpacity
-            style={[styles.button, !escolaSelecionada && styles.buttonDisabled]}
+            style={[styles.button, (!escolaSelecionada || loading) && styles.buttonDisabled]}
             onPress={handleEscolaNext}
-            disabled={!escolaSelecionada}
+            disabled={!escolaSelecionada || loading}
           >
-            <Text style={styles.buttonText}>Continuar</Text>
+            {loading ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <Text style={styles.buttonText}>Continuar</Text>
+            )}
           </TouchableOpacity>
         </>
       )}
