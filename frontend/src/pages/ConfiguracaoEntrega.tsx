@@ -49,12 +49,14 @@ import {
   Visibility as VisibilityIcon,
   Close as CloseIcon,
   Print as PrintIcon,
-  Settings as ConfigIcon
+  Settings as ConfigIcon,
+  PictureAsPdf as PdfIcon
 } from '@mui/icons-material';
 import { guiaService } from '../services/guiaService';
 import { rotaService } from '../modules/entregas/services/rotaService';
 import { itemGuiaService, ItemGuia } from '../services/itemGuiaService';
 import { RotaEntrega, ConfiguracaoEntrega as ConfiguracaoEntregaType } from '../modules/entregas/types/rota';
+import { buscarEscola } from '../services/escolas';
 import { useNavigate } from 'react-router-dom';
 
 interface ItemGuiaComSelecao extends ItemGuia {
@@ -108,8 +110,8 @@ const ConfiguracaoEntrega: React.FC = () => {
   const [modalEscolherRotasAberto, setModalEscolherRotasAberto] = useState(false);
   const [rotasDisponiveis, setRotasDisponiveis] = useState<RotaEntrega[]>([]);
   const [rotasEscolhidas, setRotasEscolhidas] = useState<RotaEntrega[]>([]);
-  const [conflitosEscolas, setConflitosEscolas] = useState<{[key: number]: number[]}>({});
-  
+  const [conflitosEscolas, setConflitosEscolas] = useState<{ [key: number]: number[] }>({});
+
   // Estado local para os campos de input durante a digitação
   const [inputValues, setInputValues] = useState<{
     [key: string]: {
@@ -473,7 +475,7 @@ const ConfiguracaoEntrega: React.FC = () => {
       // Inicializar configuração de unidades se não existir
       const novaConfigUnidades = { ...configUnidades };
       const novosInputValues = { ...inputValues };
-      
+
       dadosRomaneio.forEach(produto => {
         if (!novaConfigUnidades[produto.produto_nome]) {
           novaConfigUnidades[produto.produto_nome] = {
@@ -483,7 +485,7 @@ const ConfiguracaoEntrega: React.FC = () => {
             tipoCaixa: 'caixa' // Padrão é caixa
           };
         }
-        
+
         // Inicializar valores de input se não existirem
         if (!novosInputValues[produto.produto_nome]) {
           novosInputValues[produto.produto_nome] = {
@@ -493,7 +495,7 @@ const ConfiguracaoEntrega: React.FC = () => {
           };
         }
       });
-      
+
       setConfigUnidades(novaConfigUnidades);
       setInputValues(novosInputValues);
 
@@ -502,6 +504,459 @@ const ConfiguracaoEntrega: React.FC = () => {
       setError('Erro ao gerar romaneio');
     }
   };
+
+  const baixarGuiasPDF = async () => {
+    try {
+      // Gerar HTML completo das guias
+      const htmlContent = await gerarHTMLGuiasCompletas();
+
+      if (!htmlContent) {
+        alert('Não foi possível gerar as guias. Verifique se há dados selecionados.');
+        return;
+      }
+
+      // Criar uma nova janela para gerar PDF
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        alert('Não foi possível abrir nova janela. Verifique se o bloqueador de pop-ups está desabilitado.');
+        return;
+      }
+
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      printWindow.focus();
+
+      // Aguardar um pouco antes de imprimir
+      setTimeout(() => {
+        printWindow.print();
+      }, 500);
+    } catch (err) {
+      console.error('Erro ao gerar guias:', err);
+      alert('Erro ao gerar as guias. Tente novamente.');
+    }
+  };
+
+  const gerarHTMLGuiasCompletas = async () => {
+    const guiaAtual = guias.find(g => g.id === configuracao.guiaId);
+    if (!guiaAtual || dadosRomaneio.length === 0) return '';
+
+    // Função auxiliar para formatar o mês
+    const formatarMes = (mes: any) => {
+      if (typeof mes === 'string') return mes.toUpperCase();
+      if (typeof mes === 'number') {
+        const meses = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO',
+          'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
+        return meses[mes - 1] || String(mes);
+      }
+      return String(mes).toUpperCase();
+    };
+
+    // Função para ajustar cor para impressão
+    const ajustarCorParaImpressao = (cor: string) => {
+      // Se a cor for muito clara, escurecer para impressão
+      const coresEscuras: { [key: string]: string } = {
+        '#87CEEB': '#4682B4', // SkyBlue -> SteelBlue
+        '#90EE90': '#228B22', // LightGreen -> ForestGreen
+        '#FFB6C1': '#DC143C', // LightPink -> Crimson
+        '#FFFFE0': '#DAA520', // LightYellow -> GoldenRod
+        '#E0E0E0': '#696969', // LightGray -> DimGray
+      };
+
+      return coresEscuras[cor.toUpperCase()] || cor;
+    };
+
+    // Obter escolas reais que têm itens na guia
+    const escolasComItens: any[] = [];
+    const escolasProcessadas = new Set();
+
+    // Buscar escolas reais das rotas selecionadas
+    for (const rotaId of configuracao.rotasSelecionadas) {
+      try {
+        const rota = rotas.find(r => r.id === rotaId);
+        const escolasRota = await rotaService.listarEscolasRota(rotaId);
+
+        // Verificar se esta rota tem itens no romaneio
+        const rotaTemItens = dadosRomaneio.some(produto =>
+          produto.rotasArray?.some((r: any) => r.rota_id === rotaId && r.quantidade > 0)
+        );
+
+        if (rotaTemItens && escolasRota.length > 0) {
+          for (let index = 0; index < escolasRota.length; index++) {
+            const escolaRota = escolasRota[index];
+            const escolaKey = `${escolaRota.escola_id}`;
+
+            if (!escolasProcessadas.has(escolaKey)) {
+              escolasProcessadas.add(escolaKey);
+
+              try {
+                // Buscar dados completos da escola para obter total_alunos e modalidades reais
+                const dadosEscola = await buscarEscola(escolaRota.escola_id);
+
+                console.log(`Dados da escola ${escolaRota.escola_id}:`, dadosEscola);
+
+                // Processar modalidades (pode vir como string, array ou objeto)
+                let modalidadeTexto = 'FUNDAMENTAL'; // Padrão
+                if (dadosEscola?.modalidades) {
+                  // Se for objeto ou array, tentar extrair os nomes
+                  if (typeof dadosEscola.modalidades === 'object') {
+                    // Se for array de objetos com nome
+                    if (Array.isArray(dadosEscola.modalidades)) {
+                      const nomes = dadosEscola.modalidades
+                        .map((m: any) => m.nome || m.modalidade_nome || String(m))
+                        .filter((n: string) => n && n !== 'null')
+                        .join(', ');
+                      if (nomes) modalidadeTexto = nomes.toUpperCase();
+                    } else if (dadosEscola.modalidades.nome) {
+                      // Se for objeto único com nome
+                      modalidadeTexto = String(dadosEscola.modalidades.nome).toUpperCase();
+                    }
+                  } else {
+                    // Se for string
+                    const modalidadesStr = String(dadosEscola.modalidades).trim();
+                    if (modalidadesStr !== '' && modalidadesStr !== 'null' && modalidadesStr !== 'undefined') {
+                      modalidadeTexto = modalidadesStr.toUpperCase();
+                    }
+                  }
+                }
+
+                // Usar total de alunos real ou padrão
+                const totalAlunos = dadosEscola?.total_alunos && dadosEscola.total_alunos > 0
+                  ? dadosEscola.total_alunos
+                  : 200;
+
+                console.log(`Escola ${escolaRota.escola_nome}: ${totalAlunos} alunos, modalidade: ${modalidadeTexto}`);
+
+                escolasComItens.push({
+                  id: escolaRota.escola_id,
+                  nome: escolaRota.escola_nome || dadosEscola?.nome || `Escola ${escolaRota.escola_id}`,
+                  total_alunos: totalAlunos,
+                  rota_id: rotaId,
+                  rota_nome: rota?.nome || `ROTA ${rotaId}`,
+                  rota_cor: rota?.cor || '#4a90e2',
+                  modalidade: modalidadeTexto,
+                  posicao_na_rota: escolaRota.ordem || (index + 1),
+                  itens: []
+                });
+              } catch (err) {
+                console.warn(`Erro ao buscar dados da escola ${escolaRota.escola_id}:`, err);
+                // Em caso de erro, usar dados básicos
+                escolasComItens.push({
+                  id: escolaRota.escola_id,
+                  nome: escolaRota.escola_nome || `Escola ${escolaRota.escola_id}`,
+                  total_alunos: 200,
+                  rota_id: rotaId,
+                  rota_nome: rota?.nome || `ROTA ${rotaId}`,
+                  rota_cor: rota?.cor || '#4a90e2',
+                  modalidade: 'FUNDAMENTAL',
+                  posicao_na_rota: escolaRota.ordem || (index + 1),
+                  itens: []
+                });
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.warn(`Erro ao carregar escolas da rota ${rotaId}:`, err);
+      }
+    }
+
+    // Preencher itens para cada escola baseado nos itens reais da guia
+    escolasComItens.forEach(escola => {
+      // Buscar itens reais desta escola na guia atual
+      const itensEscola = itensGuia.filter(item =>
+        item.escola_id === escola.id &&
+        configuracao.itensSelecionados.includes(item.id)
+      );
+
+      escola.itens = itensEscola
+        .map(item => ({
+          nome: item.produto_nome,
+          quantidade: Number(item.quantidade) || 0,
+          unidade: item.unidade
+        }))
+        .filter(item => item.quantidade > 0)
+        .slice(0, 15); // Máximo 15 itens
+    });
+
+    let html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Guias de Entrega - ${guiaAtual.mes}/${guiaAtual.ano}</title>
+  <style>
+    @page {
+      size: A4 landscape;
+      margin: 8mm;
+    }
+    
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 9px;
+      margin: 0;
+      padding: 0;
+      line-height: 1.0;
+    }
+    
+    .page {
+      page-break-after: always;
+      width: 100%;
+      height: 100vh;
+      padding: 5px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .page:last-child {
+      page-break-after: avoid;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 8px;
+      padding-bottom: 5px;
+    }
+    
+    .header h1 {
+      margin: 0;
+      font-size: 11px;
+      font-weight: bold;
+      line-height: 1.1;
+    }
+    
+    .header h2 {
+      margin: 1px 0;
+      font-size: 10px;
+      font-weight: bold;
+      line-height: 1.1;
+    }
+    
+
+    
+    .rota-badge {
+      color: #fff;
+      padding: 6px 16px;
+      border: 2px solid #000;
+      font-weight: bold;
+      font-size: 12px;
+      border-radius: 6px;
+      text-shadow: 1px 1px 1px rgba(0,0,0,0.5);
+      letter-spacing: 0.3px;
+      display: inline-block;
+    }
+    
+    .numero-badge {
+      color: #fff;
+      padding: 6px 16px;
+      border: 2px solid #000;
+      font-weight: bold;
+      font-size: 12px;
+      border-radius: 6px;
+      text-shadow: 1px 1px 1px rgba(0,0,0,0.5);
+      letter-spacing: 0.3px;
+      display: inline-block;
+    }
+    
+    .tabela {
+      width: 100%;
+      border-collapse: collapse;
+      flex: 1;
+      margin-bottom: 8px;
+      margin-top: 5px;
+    }
+    
+    .tabela th,
+    .tabela td {
+      border: 1px solid #000;
+      padding: 2px;
+      text-align: center;
+      vertical-align: middle;
+      font-size: 8px;
+      height: 18px;
+    }
+    
+    .tabela th {
+      background-color: #f0f0f0;
+      font-weight: bold;
+      font-size: 7px;
+      height: 20px;
+    }
+    
+    .tabela .col-id {
+      width: 25px;
+    }
+    
+    .tabela .col-item {
+      width: 160px;
+      text-align: left;
+      padding-left: 4px;
+    }
+    
+    .tabela .col-freq {
+      width: 50px;
+    }
+    
+    .tabela .col-capita {
+      width: 50px;
+    }
+    
+    .tabela .col-unidade {
+      width: 60px;
+      font-weight: bold;
+    }
+    
+    .tabela .col-entrega {
+      width: 60px;
+      font-weight: bold;
+    }
+    
+    .tabela .col-confirm {
+      width: 70px;
+    }
+    
+    .footer {
+      margin-top: auto;
+      font-size: 8px;
+      padding-top: 10px;
+      line-height: 1.5;
+    }
+    
+    /* Estilos específicos para impressão */
+    @media print {
+      .rota-badge, .numero-badge {
+        -webkit-print-color-adjust: exact !important;
+        color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      
+      body {
+        -webkit-print-color-adjust: exact !important;
+        color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+    }
+  </style>
+</head>
+<body>`;
+
+    // Gerar uma página para cada escola que tem itens
+    escolasComItens.forEach((escola) => {
+      html += `
+<div class="page">
+  <div class="header">
+    <h1>PREFEITURA MUNICIPAL DE BENEVIDES</h1>
+    <h2>SECRETARIA MUNICIPAL DE EDUCAÇÃO</h2>
+    <h2>DEPARTAMENTO DE ALIMENTAÇÃO ESCOLAR</h2>
+  </div>
+  
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+    <div style="flex: 1;"></div>
+    <div style="display: flex; gap: 10px;">
+      <div class="rota-badge" style="background-color: ${ajustarCorParaImpressao(escola.rota_cor || '#4a90e2')} !important; -webkit-print-color-adjust: exact !important; color-adjust: exact !important;">${escola.rota_nome || 'ROTA ' + escola.rota_id}</div>
+      <div class="numero-badge" style="background-color: ${ajustarCorParaImpressao(escola.rota_cor || '#4a90e2')} !important; -webkit-print-color-adjust: exact !important; color-adjust: exact !important;">Nº ${escola.posicao_na_rota}</div>
+    </div>
+  </div>
+  
+  <div style="text-align: left; font-size: 11px; font-weight: bold; margin-bottom: 8px; padding: 4px 0;">
+    ${escola.nome}
+  </div>
+  
+  <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 9px; border-top: 1px solid #000; border-bottom: 1px solid #000;">
+    <div>${escola.modalidade}</div>
+    <div>TOTAL DE ALUNOS: ${escola.total_alunos}</div>
+    <div>MÊS: ${formatarMes(guiaAtual.mes)}/${guiaAtual.ano}</div>
+  </div>
+  
+  <table class="tabela">
+    <thead>
+      <tr>
+        <th class="col-id">ID</th>
+        <th class="col-item">ITEM</th>
+        <th class="col-freq">FREQUÊNCIA</th>
+        <th class="col-capita">PER CAPITA</th>
+        <th class="col-unidade">UNIDADE MEDIDA</th>
+        <th class="col-entrega">ENTREGA 1</th>
+        <th class="col-confirm">CONFIRMAÇÃO</th>
+        <th class="col-entrega">ENTREGA 2</th>
+        <th class="col-confirm">CONFIRMAÇÃO</th>
+      </tr>
+    </thead>
+    <tbody>`;
+
+      // Adicionar itens da escola (máximo 15)
+      escola.itens.forEach((item: any, index: number) => {
+        // Aplicar conversões de unidade se configurado
+        const config = configUnidades[item.nome] || { ativo: false, pacote: 1, caixa: 10, tipoCaixa: 'caixa' };
+        let quantidadeFormatada = item.quantidade.toString();
+
+        if (config.ativo && item.quantidade > 0) {
+          const kgPorCaixa = config.pacote * config.caixa;
+          const caixas = Math.floor(item.quantidade / kgPorCaixa);
+          const restoKg = item.quantidade % kgPorCaixa;
+          const pacotes = Math.floor(restoKg / config.pacote);
+          const kgAvulso = restoKg % config.pacote;
+
+          let conversao = '';
+          if (caixas > 0) conversao += `${caixas}${config.tipoCaixa === 'fardo' ? 'fd' : 'cx'} `;
+          if (pacotes > 0) conversao += `${pacotes}pc `;
+          if (kgAvulso > 0) conversao += `${kgAvulso}${item.unidade}`;
+
+          quantidadeFormatada = conversao.trim() || quantidadeFormatada;
+        }
+
+        html += `
+      <tr>
+        <td class="col-id">${String(index + 1).padStart(2, '0')}</td>
+        <td class="col-item">${item.nome}</td>
+        <td class="col-freq">0</td>
+        <td class="col-capita">0</td>
+        <td class="col-unidade">${item.unidade}</td>
+        <td class="col-entrega">${quantidadeFormatada}</td>
+        <td class="col-confirm"></td>
+        <td class="col-entrega"></td>
+        <td class="col-confirm"></td>
+      </tr>`;
+      });
+
+      // Preencher linhas vazias até completar 15 linhas
+      for (let i = escola.itens.length; i < 15; i++) {
+        html += `
+      <tr>
+        <td class="col-id">${String(i + 1).padStart(2, '0')}</td>
+        <td class="col-item"></td>
+        <td class="col-freq"></td>
+        <td class="col-capita"></td>
+        <td class="col-unidade"></td>
+        <td class="col-entrega"></td>
+        <td class="col-confirm"></td>
+        <td class="col-entrega"></td>
+        <td class="col-confirm"></td>
+      </tr>`;
+      }
+
+      html += `
+    </tbody>
+  </table>
+  
+  <div class="footer">
+    <div style="margin-bottom: 8px;">
+      Recebi os gêneros acima em: Entrega 1 ____/____/________ Ass: ________________________________________________, Entrega 2 ____/____/________ Ass: ________________________________________________
+    </div>
+    <div>
+      Expedido em ${new Date().toLocaleDateString('pt-BR')} Ass: Coordenadora: ________________________________________________
+    </div>
+  </div>
+</div>`;
+    });
+
+    html += `
+</body>
+</html>`;
+
+    return html;
+  };
+
+
 
   const abrirConfigUnidades = () => {
     setModalConfigUnidadesAberto(true);
@@ -516,14 +971,14 @@ const ConfiguracaoEntrega: React.FC = () => {
       // Carregar todas as rotas disponíveis
       const todasRotas = await rotaService.listarRotas();
       setRotasDisponiveis(todasRotas);
-      
+
       // Carregar rotas já escolhidas
       const rotasJaEscolhidas = rotas.filter(rota => configuracao.rotasSelecionadas.includes(rota.id));
       setRotasEscolhidas(rotasJaEscolhidas);
-      
+
       // Verificar conflitos de escolas
       await verificarConflitosEscolas(rotasJaEscolhidas);
-      
+
       setModalEscolherRotasAberto(true);
     } catch (err) {
       console.error('Erro ao carregar rotas:', err);
@@ -532,8 +987,8 @@ const ConfiguracaoEntrega: React.FC = () => {
   };
 
   const verificarConflitosEscolas = async (rotasParaVerificar: RotaEntrega[]) => {
-    const conflitos: {[key: number]: number[]} = {};
-    const escolasPorRota: {[key: number]: number[]} = {};
+    const conflitos: { [key: number]: number[] } = {};
+    const escolasPorRota: { [key: number]: number[] } = {};
 
     // Buscar escolas de cada rota
     for (const rota of rotasParaVerificar) {
@@ -554,14 +1009,14 @@ const ConfiguracaoEntrega: React.FC = () => {
         const rotaB = rotasIds[j];
         const escolasA = escolasPorRota[rotaA];
         const escolasB = escolasPorRota[rotaB];
-        
+
         // Encontrar escolas em comum
         const escolasComuns = escolasA.filter(escolaId => escolasB.includes(escolaId));
-        
+
         if (escolasComuns.length > 0) {
           if (!conflitos[rotaA]) conflitos[rotaA] = [];
           if (!conflitos[rotaB]) conflitos[rotaB] = [];
-          
+
           conflitos[rotaA].push(rotaB);
           conflitos[rotaB].push(rotaA);
         }
@@ -573,25 +1028,25 @@ const ConfiguracaoEntrega: React.FC = () => {
 
   const adicionarRota = async (rota: RotaEntrega) => {
     const novasRotasEscolhidas = [...rotasEscolhidas, rota];
-    
+
     // Verificar se há conflitos
     await verificarConflitosEscolas(novasRotasEscolhidas);
-    
+
     // Se há conflitos, mostrar aviso mas permitir adicionar
     if (conflitosEscolas[rota.id] && conflitosEscolas[rota.id].length > 0) {
-      const rotasConflitantes = conflitosEscolas[rota.id].map(id => 
+      const rotasConflitantes = conflitosEscolas[rota.id].map(id =>
         rotasEscolhidas.find(r => r.id === id)?.nome
       ).join(', ');
-      
+
       const confirmar = window.confirm(
         `A rota "${rota.nome}" possui escolas em comum com: ${rotasConflitantes}.\n\nDeseja adicionar mesmo assim?`
       );
-      
+
       if (!confirmar) {
         return;
       }
     }
-    
+
     setRotasEscolhidas(novasRotasEscolhidas);
   };
 
@@ -720,7 +1175,7 @@ const ConfiguracaoEntrega: React.FC = () => {
         if (caixasTotal > 0) conversaoTotal += `${caixasTotal}${config.tipoCaixa === 'fardo' ? 'fd' : 'cx'} `;
         if (pacotesTotal > 0) conversaoTotal += `${pacotesTotal}pc `;
         if (kgAvulsoTotal > 0) conversaoTotal += `${kgAvulsoTotal.toLocaleString('pt-BR')} ${produto.unidade}`;
-        
+
         totalConteudo = conversaoTotal.trim() || `${total.toLocaleString('pt-BR')} ${produto.unidade}`;
       } else {
         totalConteudo = `${total.toLocaleString('pt-BR')} ${produto.unidade}`;
@@ -1386,7 +1841,7 @@ const ConfiguracaoEntrega: React.FC = () => {
               </IconButton>
             </Box>
           </DialogTitle>
-          
+
           <DialogContent>
             <Grid container spacing={3}>
               {/* Rotas Disponíveis */}
@@ -1449,9 +1904,9 @@ const ConfiguracaoEntrega: React.FC = () => {
                     </Alert>
                   ) : (
                     rotasEscolhidas.map((rota) => (
-                      <Card 
-                        key={rota.id} 
-                        sx={{ 
+                      <Card
+                        key={rota.id}
+                        sx={{
                           mb: 1,
                           bgcolor: conflitosEscolas[rota.id] && conflitosEscolas[rota.id].length > 0 ? 'warning.50' : 'success.50',
                           border: conflitosEscolas[rota.id] && conflitosEscolas[rota.id].length > 0 ? '1px solid' : 'none',
@@ -1567,6 +2022,16 @@ const ConfiguracaoEntrega: React.FC = () => {
               >
                 Imprimir
               </Button>
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<PdfIcon />}
+                onClick={baixarGuiasPDF}
+                color="secondary"
+                disabled={!configuracao.guiaId || dadosRomaneio.length === 0}
+              >
+                Baixar Guias
+              </Button>
               <IconButton onClick={() => setModalRomaneioAberto(false)}>
                 <CloseIcon />
               </IconButton>
@@ -1579,8 +2044,8 @@ const ConfiguracaoEntrega: React.FC = () => {
                 Nenhum item selecionado para gerar romaneio
               </Alert>
             ) : (
-              <TableContainer 
-                component={Paper} 
+              <TableContainer
+                component={Paper}
                 variant="outlined"
                 sx={{
                   borderRadius: 2,
@@ -1591,7 +2056,7 @@ const ConfiguracaoEntrega: React.FC = () => {
               >
                 <Table size="small">
                   <TableHead>
-                    <TableRow sx={{ 
+                    <TableRow sx={{
                       bgcolor: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)',
                       '& .MuiTableCell-root': {
                         borderBottom: 'none'
@@ -1642,7 +2107,7 @@ const ConfiguracaoEntrega: React.FC = () => {
                     {dadosRomaneio.map((produto, index) => {
                       const total = produto.rotasArray.reduce((sum: number, rota: any) => sum + rota.quantidade, 0);
                       const config = configUnidades[produto.produto_nome] || { ativo: false, pacote: 1, caixa: 10, tipoCaixa: 'caixa' };
-                      
+
                       // Calcular conversão para visualização
                       let conversaoVisual = 'N/A';
                       if (config.ativo) {
@@ -1656,13 +2121,13 @@ const ConfiguracaoEntrega: React.FC = () => {
                         if (caixasTotal > 0) conv += `${caixasTotal}${config.tipoCaixa === 'fardo' ? 'fd' : 'cx'} `;
                         if (pacotesTotal > 0) conv += `${pacotesTotal}pc `;
                         if (kgAvulsoTotal > 0) conv += `${kgAvulsoTotal.toLocaleString('pt-BR')} ${produto.unidade}`;
-                        
+
                         conversaoVisual = conv.trim() || 'N/A';
                       }
-                      
+
                       return (
-                        <TableRow 
-                          key={index} 
+                        <TableRow
+                          key={index}
                           sx={{
                             '&:nth-of-type(odd)': {
                               bgcolor: 'rgba(0, 0, 0, 0.02)'
@@ -1840,11 +2305,11 @@ const ConfiguracaoEntrega: React.FC = () => {
                       onBlur={(e) => {
                         const novaConfig = { ...configUnidades };
                         const novosInputs = { ...inputValues };
-                        
+
                         if (!novaConfig[produto.produto_nome]) {
                           novaConfig[produto.produto_nome] = { ativo: false, pacote: 1, caixa: 10, tipoCaixa: 'caixa' };
                         }
-                        
+
                         const valor = parseFloat(e.target.value.replace(',', '.'));
                         if (isNaN(valor) || valor <= 0) {
                           novaConfig[produto.produto_nome].pacote = 1;
@@ -1853,7 +2318,7 @@ const ConfiguracaoEntrega: React.FC = () => {
                           novaConfig[produto.produto_nome].pacote = valor;
                           novosInputs[produto.produto_nome].pacote = valor.toString();
                         }
-                        
+
                         setConfigUnidades(novaConfig);
                         setInputValues(novosInputs);
                       }}
@@ -1868,17 +2333,17 @@ const ConfiguracaoEntrega: React.FC = () => {
                         onChange={(e) => {
                           const novosInputs = { ...inputValues };
                           const novaConfig = { ...configUnidades };
-                          
+
                           if (!novosInputs[produto.produto_nome]) {
                             novosInputs[produto.produto_nome] = { pacote: '1', caixa: '10', tipoCaixa: 'caixa' };
                           }
                           if (!novaConfig[produto.produto_nome]) {
                             novaConfig[produto.produto_nome] = { ativo: false, pacote: 1, caixa: 10, tipoCaixa: 'caixa' };
                           }
-                          
+
                           novosInputs[produto.produto_nome].tipoCaixa = e.target.value as 'caixa' | 'fardo';
                           novaConfig[produto.produto_nome].tipoCaixa = e.target.value as 'caixa' | 'fardo';
-                          
+
                           setInputValues(novosInputs);
                           setConfigUnidades(novaConfig);
                         }}
@@ -1910,11 +2375,11 @@ const ConfiguracaoEntrega: React.FC = () => {
                       onBlur={(e) => {
                         const novaConfig = { ...configUnidades };
                         const novosInputs = { ...inputValues };
-                        
+
                         if (!novaConfig[produto.produto_nome]) {
                           novaConfig[produto.produto_nome] = { ativo: false, pacote: 1, caixa: 10, tipoCaixa: 'caixa' };
                         }
-                        
+
                         const valor = parseFloat(e.target.value.replace(',', '.'));
                         if (isNaN(valor) || valor <= 0) {
                           novaConfig[produto.produto_nome].caixa = 10;
@@ -1923,13 +2388,13 @@ const ConfiguracaoEntrega: React.FC = () => {
                           novaConfig[produto.produto_nome].caixa = valor;
                           novosInputs[produto.produto_nome].caixa = valor.toString();
                         }
-                        
+
                         setConfigUnidades(novaConfig);
                         setInputValues(novosInputs);
                       }}
                     />
                   </Grid>
-                  
+
                   <Grid item xs={4}>
                     <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
                       1 {configUnidades[produto.produto_nome]?.tipoCaixa || 'caixa'} = {((configUnidades[produto.produto_nome]?.caixa || 10) * (configUnidades[produto.produto_nome]?.pacote || 1))} {produto.unidade}
