@@ -678,6 +678,16 @@ const ConfiguracaoEntrega: React.FC = () => {
         .slice(0, 15); // Máximo 15 itens
     });
 
+    // Filtrar apenas escolas que têm itens
+    const escolasComItensValidos = escolasComItens.filter(escola => escola.itens.length > 0);
+
+    if (escolasComItensValidos.length === 0) {
+      console.warn('Nenhuma escola com itens encontrada');
+      return '';
+    }
+
+    console.log(`Gerando guias para ${escolasComItensValidos.length} escola(s) com itens`);
+
     let html = `<!DOCTYPE html>
 <html>
 <head>
@@ -840,7 +850,7 @@ const ConfiguracaoEntrega: React.FC = () => {
 <body>`;
 
     // Gerar uma página para cada escola que tem itens
-    escolasComItens.forEach((escola) => {
+    escolasComItensValidos.forEach((escola) => {
       html += `
 <div class="page">
   <div class="header">
