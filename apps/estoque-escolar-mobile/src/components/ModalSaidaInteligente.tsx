@@ -131,7 +131,17 @@ const ModalSaidaInteligente: React.FC<ModalSaidaInteligenteProps> = ({
             if (!a.data_validade) return 1;
             if (!b.data_validade) return -1;
 
-            return new Date(a.data_validade).getTime() - new Date(b.data_validade).getTime();
+            // CORREÇÃO: Processar datas corrigindo problema de timezone
+            const getDateCorrect = (dataStr: string) => {
+              if (dataStr.includes('T')) {
+                return new Date(dataStr);
+              } else {
+                const [ano, mes, dia] = dataStr.split('-').map(Number);
+                return new Date(ano, mes - 1, dia);
+              }
+            };
+            
+            return getDateCorrect(a.data_validade).getTime() - getDateCorrect(b.data_validade).getTime();
         });
 
         const novaDistribuicao: DistribuicaoSaida[] = [];
@@ -158,9 +168,31 @@ const ModalSaidaInteligente: React.FC<ModalSaidaInteligenteProps> = ({
     };
 
     const formatarData = (data: string): string => {
-        // Criar data considerando o fuso horário local para evitar problemas de timezone
-        const dataLocal = new Date(data + 'T00:00:00');
-        return dataLocal.toLocaleDateString('pt-BR');
+        try {
+            if (!data) return 'Data não informada';
+            
+            // Tentar diferentes formatos de data
+            let dataLocal: Date;
+            
+            if (data.includes('T')) {
+                // Se já tem timezone, usar diretamente
+                dataLocal = new Date(data);
+            } else {
+                // CORREÇÃO: Para datas apenas (YYYY-MM-DD), criar data local sem timezone
+                const [ano, mes, dia] = data.split('-').map(Number);
+                dataLocal = new Date(ano, mes - 1, dia);
+            }
+            
+            // Verificar se a data é válida
+            if (isNaN(dataLocal.getTime())) {
+                return 'Data inválida';
+            }
+            
+            return dataLocal.toLocaleDateString('pt-BR');
+        } catch (error) {
+            console.error('Erro ao formatar data:', error);
+            return 'Data inválida';
+        }
     };
 
     const formatarQuantidade = (quantidade: number): string => {
@@ -171,12 +203,35 @@ const ModalSaidaInteligente: React.FC<ModalSaidaInteligenteProps> = ({
     };
 
     const calcularDiasParaVencimento = (dataValidade: string): number => {
-        const hoje = new Date();
-        hoje.setHours(0, 0, 0, 0); // Zerar horas para comparação apenas de datas
-        
-        const validade = new Date(dataValidade + 'T00:00:00');
-        const diffTime = validade.getTime() - hoje.getTime();
-        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        try {
+            if (!dataValidade) return 0;
+            
+            const hoje = new Date();
+            hoje.setHours(0, 0, 0, 0); // Zerar horas para comparação apenas de datas
+            
+            // Tentar diferentes formatos de data
+            let validade: Date;
+            
+            if (dataValidade.includes('T')) {
+                // Se já tem timezone, usar diretamente
+                validade = new Date(dataValidade);
+            } else {
+                // CORREÇÃO: Para datas apenas (YYYY-MM-DD), criar data local sem timezone
+                const [ano, mes, dia] = dataValidade.split('-').map(Number);
+                validade = new Date(ano, mes - 1, dia);
+            }
+            
+            // Verificar se a data é válida
+            if (isNaN(validade.getTime())) {
+                return 0;
+            }
+            
+            const diffTime = validade.getTime() - hoje.getTime();
+            return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        } catch (error) {
+            console.error('Erro ao calcular dias para vencimento:', error);
+            return 0;
+        }
     };
 
     const getStatusValidade = (dataValidade?: string): { cor: string; texto: string } => {

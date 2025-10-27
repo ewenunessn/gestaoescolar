@@ -17,6 +17,7 @@ import ModalHistoricoItem from '../components/ModalHistoricoItem';
 import ModalEntradaSimples from '../components/ModalEntradaSimples';
 import ModalDetalhesValidade from '../components/ModalDetalhesValidade';
 import ModalSaidaInteligente from '../components/ModalSaidaInteligente';
+import ModalLotesValidade from '../components/ModalLotesValidade';
 import Header from '../components/Header';
 
 import { useEstoque } from '../hooks/useEstoque';
@@ -51,6 +52,7 @@ const EstoqueScreen: React.FC<EstoqueScreenProps> = ({ navigation }) => {
   const [modalHistoricoVisible, setModalHistoricoVisible] = useState(false);
   const [modalDetalhesVisible, setModalDetalhesVisible] = useState(false);
   const [modalSaidaInteligenteVisible, setModalSaidaInteligenteVisible] = useState(false);
+  const [modalAjusteVisible, setModalAjusteVisible] = useState(false);
   const [itemSelecionado, setItemSelecionado] = useState<ItemEstoqueEscola | null>(null);
   const [itemHistorico, setItemHistorico] = useState<ItemEstoqueEscola | null>(null);
   const [itemDetalhes, setItemDetalhes] = useState<ItemEstoqueEscola | null>(null);
@@ -178,6 +180,17 @@ const EstoqueScreen: React.FC<EstoqueScreenProps> = ({ navigation }) => {
     setModalSaidaInteligenteVisible(true);
     // Fechar modal de detalhes se estiver aberto
     setModalDetalhesVisible(false);
+  };
+
+  const abrirModalAjuste = (item: ItemEstoqueEscola) => {
+    setItemSelecionado(item);
+    setModalAjusteVisible(true);
+    setModalDetalhesVisible(false);
+  };
+
+  const fecharModalAjuste = () => {
+    setModalAjusteVisible(false);
+    setItemSelecionado(null);
   };
 
   const fecharModalSaidaInteligente = () => {
@@ -390,12 +403,13 @@ const EstoqueScreen: React.FC<EstoqueScreenProps> = ({ navigation }) => {
         onClose={fecharModalDetalhes}
         item={itemDetalhes}
         onMovimentacao={(item, tipo) => {
+          setModalDetalhesVisible(false);
           if (tipo === 'saida') {
             abrirModalSaidaInteligente(item);
           } else if (tipo === 'entrada') {
-            // Fechar modal de detalhes e abrir modal de entrada
-            setModalDetalhesVisible(false);
             abrirModalEntrada(item);
+          } else if (tipo === 'ajuste') {
+            abrirModalAjuste(item);
           }
         }}
       />
@@ -413,6 +427,33 @@ const EstoqueScreen: React.FC<EstoqueScreenProps> = ({ navigation }) => {
         item={itemSelecionado}
         onClose={() => setModalEntradaVisible(false)}
         onConfirm={confirmarEntrada}
+      />
+
+      <ModalLotesValidade
+        visible={modalAjusteVisible}
+        onClose={fecharModalAjuste}
+        item={itemSelecionado}
+        tipoMovimento="ajuste"
+        onConfirmar={async (lotes) => {
+          try {
+            if (!itemSelecionado || !escolaId) return;
+            
+            await apiService.processarMovimentacaoLotes(escolaId, {
+              produto_id: itemSelecionado.produto_id,
+              tipo_movimentacao: 'ajuste',
+              lotes: lotes,
+              motivo: 'Ajuste de estoque',
+              usuario_id: 1,
+            });
+            
+            Alert.alert('Sucesso', 'Ajuste realizado com sucesso!');
+            fecharModalAjuste();
+            refresh();
+          } catch (error) {
+            console.error('Erro ao processar ajuste:', error);
+            Alert.alert('Erro', 'Não foi possível realizar o ajuste');
+          }
+        }}
       />
     </View>
   );

@@ -111,7 +111,13 @@ const HistoricoScreen: React.FC<HistoricoScreenProps> = ({ navigation }) => {
   // Função para formatar data para exibição
   const formatarDataExibicao = (data: string) => {
     if (!data) return 'Data';
-    return new Date(data).toLocaleDateString('pt-BR');
+    if (data.includes('T')) {
+      return new Date(data).toLocaleDateString('pt-BR');
+    } else {
+      // CORREÇÃO: Para datas apenas (YYYY-MM-DD), criar data local
+      const [ano, mes, dia] = data.split('-').map(Number);
+      return new Date(ano, mes - 1, dia).toLocaleDateString('pt-BR');
+    }
   };
 
   // Função para filtrar os dados do histórico

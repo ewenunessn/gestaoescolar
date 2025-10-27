@@ -27,7 +27,7 @@ interface ModalDetalhesValidadeProps {
   visible: boolean;
   onClose: () => void;
   item: ItemEstoqueEscola | null;
-  onMovimentacao?: (item: ItemEstoqueEscola, tipo: 'entrada' | 'saida', quantidade?: number) => void;
+  onMovimentacao?: (item: ItemEstoqueEscola, tipo: 'entrada' | 'saida' | 'ajuste', quantidade?: number) => void;
 }
 
 const ModalDetalhesValidade: React.FC<ModalDetalhesValidadeProps> = ({
@@ -94,9 +94,27 @@ const ModalDetalhesValidade: React.FC<ModalDetalhesValidadeProps> = ({
   };
 
   const formatarData = (data: string): string => {
-    // Criar data considerando o fuso horário local para evitar problemas de timezone
-    const dataLocal = new Date(data + 'T00:00:00');
-    return dataLocal.toLocaleDateString('pt-BR');
+    try {
+      if (!data) return 'Data não informada';
+      
+      // IMPORTANTE: Garantir que data é string
+      const dataStr = String(data);
+      
+      // CORREÇÃO: Extrair apenas a parte da data (YYYY-MM-DD)
+      const dataApenas = dataStr.split('T')[0];
+      const [ano, mes, dia] = dataApenas.split('-').map(Number);
+      const dataLocal = new Date(ano, mes - 1, dia);
+      
+      // Verificar se a data é válida
+      if (isNaN(dataLocal.getTime())) {
+        return 'Data inválida';
+      }
+      
+      return dataLocal.toLocaleDateString('pt-BR');
+    } catch (error) {
+      console.error('Erro ao formatar data:', error, 'Data recebida:', data);
+      return 'Data inválida';
+    }
   };
 
   const formatarQuantidade = (quantidade: number): string => {
@@ -107,12 +125,28 @@ const ModalDetalhesValidade: React.FC<ModalDetalhesValidadeProps> = ({
   };
 
   const calcularDiasParaVencimento = (dataValidade: string): number => {
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0); // Zerar horas para comparação apenas de datas
-    
-    const validade = new Date(dataValidade + 'T00:00:00');
-    const diffTime = validade.getTime() - hoje.getTime();
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    try {
+      if (!dataValidade) return 0;
+      
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0); // Zerar horas para comparação apenas de datas
+      
+      // CORREÇÃO: Extrair apenas a parte da data (YYYY-MM-DD)
+      const dataApenas = String(dataValidade).split('T')[0];
+      const [ano, mes, dia] = dataApenas.split('-').map(Number);
+      const validade = new Date(ano, mes - 1, dia);
+      
+      // Verificar se a data é válida
+      if (isNaN(validade.getTime())) {
+        return 0;
+      }
+      
+      const diffTime = validade.getTime() - hoje.getTime();
+      return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    } catch (error) {
+      console.error('Erro ao calcular dias para vencimento:', error, 'Data recebida:', dataValidade);
+      return 0;
+    }
   };
 
   const getStatusValidade = (dataValidade?: string): { 
@@ -166,7 +200,13 @@ const ModalDetalhesValidade: React.FC<ModalDetalhesValidadeProps> = ({
   const agruparLotesPorValidade = () => {
     const grupos: { [key: string]: LoteValidade[] } = {};
     
-    lotes.forEach((lote) => {
+    // FILTRO: Apenas lotes com quantidade > 0
+    const lotesComEstoque = lotes.filter(lote => {
+      const quantidade = Number(lote.quantidade_atual) || 0;
+      return quantidade > 0;
+    });
+    
+    lotesComEstoque.forEach((lote) => {
       const statusInfo = getStatusValidade(lote.data_validade);
       const chave = lote.data_validade 
         ? `${statusInfo.status}_${lote.data_validade}`
@@ -196,7 +236,17 @@ const ModalDetalhesValidade: React.FC<ModalDetalhesValidadeProps> = ({
       const dataB = chaveB.includes('_') ? chaveB.split('_')[1] : '';
       
       if (dataA && dataB) {
-        return new Date(dataA).getTime() - new Date(dataB).getTime();
+        // CORREÇÃO: Processar datas corrigindo problema de timezone
+        const getDateCorrect = (dataStr: string) => {
+          if (dataStr.includes('T')) {
+            return new Date(dataStr);
+          } else {
+            const [ano, mes, dia] = dataStr.split('-').map(Number);
+            return new Date(ano, mes - 1, dia);
+          }
+        };
+        
+        return getDateCorrect(dataA).getTime() - getDateCorrect(dataB).getTime();
       }
       
       return 0;
@@ -220,8 +270,8 @@ const ModalDetalhesValidade: React.FC<ModalDetalhesValidadeProps> = ({
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <Text style={styles.titulo}>Estoque por Validade</Text>
-            <Text style={styles.subtitulo}>{item.produto_nome}</Text>
+            <Text style={styles.titulo}>Estoque {item.produto_nome}</Text>
+            <Text style={styles.subtitulo}>Controle por validade</Text>
           </View>
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <Ionicons name="close" size={24} color="#6B7280" />
@@ -230,15 +280,11 @@ const ModalDetalhesValidade: React.FC<ModalDetalhesValidadeProps> = ({
 
         {/* Resumo do produto */}
         <View style={styles.resumoProduto}>
-          <View style={styles.resumoItem}>
+          <View style={styles.resumoItemCentro}>
             <Text style={styles.resumoLabel}>Quantidade Total</Text>
             <Text style={styles.resumoValor}>
               {formatarQuantidade(item.quantidade_atual || 0)} {item.unidade_medida}
             </Text>
-          </View>
-          <View style={styles.resumoItem}>
-            <Text style={styles.resumoLabel}>Categoria</Text>
-            <Text style={styles.resumoValor}>{item.categoria}</Text>
           </View>
         </View>
 
@@ -253,7 +299,7 @@ const ModalDetalhesValidade: React.FC<ModalDetalhesValidadeProps> = ({
                 }
               }}
             >
-              <Ionicons name="trending-up" size={20} color="#FFFFFF" />
+              <Ionicons name="add-circle" size={20} color="#FFFFFF" />
               <Text style={styles.botaoTexto}>Entrada</Text>
             </TouchableOpacity>
             
@@ -266,10 +312,22 @@ const ModalDetalhesValidade: React.FC<ModalDetalhesValidadeProps> = ({
                   }
                 }}
               >
-                <Ionicons name="trending-down" size={20} color="#FFFFFF" />
-                <Text style={styles.botaoTexto}>Saída Inteligente</Text>
+                <Ionicons name="remove-circle" size={20} color="#FFFFFF" />
+                <Text style={styles.botaoTexto}>Saída</Text>
               </TouchableOpacity>
             )}
+
+            <TouchableOpacity 
+              style={styles.botaoAjuste}
+              onPress={() => {
+                if (onMovimentacao) {
+                  onMovimentacao(item, 'ajuste');
+                }
+              }}
+            >
+              <Ionicons name="create" size={20} color="#FFFFFF" />
+              <Text style={styles.botaoTexto}>Ajuste</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -280,15 +338,23 @@ const ModalDetalhesValidade: React.FC<ModalDetalhesValidadeProps> = ({
               <ActivityIndicator size="large" color="#3B82F6" />
               <Text style={styles.loadingText}>Carregando lotes...</Text>
             </View>
-          ) : lotes.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="cube-outline" size={48} color="#9CA3AF" />
-              <Text style={styles.emptyTitle}>Sem estoque</Text>
-              <Text style={styles.emptySubtitle}>
-                Este produto não possui quantidade em estoque no momento
-              </Text>
-            </View>
-          ) : (
+          ) : (() => {
+              // Verificar se há lotes com quantidade > 0
+              const lotesComEstoque = lotes.filter(l => (Number(l.quantidade_atual) || 0) > 0);
+              
+              if (lotesComEstoque.length === 0) {
+                return (
+                  <View style={styles.emptyContainer}>
+                    <Ionicons name="cube-outline" size={48} color="#9CA3AF" />
+                    <Text style={styles.emptyTitle}>Sem estoque</Text>
+                    <Text style={styles.emptySubtitle}>
+                      Este produto não possui quantidade em estoque no momento
+                    </Text>
+                  </View>
+                );
+              }
+              
+              return (
             <View style={styles.lotesContainer}>
               {agruparLotesPorValidade().map(([chave, lotesGrupo]) => {
                 const primeiroLote = lotesGrupo[0];
@@ -325,7 +391,8 @@ const ModalDetalhesValidade: React.FC<ModalDetalhesValidadeProps> = ({
                 );
               })}
             </View>
-          )}
+              );
+            })()}
         </ScrollView>
       </View>
     </Modal>
@@ -377,10 +444,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
   },
   resumoItem: {
     flex: 1,
+  },
+  resumoItemCentro: {
+    alignItems: 'center',
   },
   resumoLabel: {
     fontSize: 12,
@@ -421,6 +491,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#DC2626',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    gap: 8,
+  },
+  botaoAjuste: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F59E0B',
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 8,

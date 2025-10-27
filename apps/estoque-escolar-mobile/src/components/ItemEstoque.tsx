@@ -19,24 +19,50 @@ const formatarQuantidade = (quantidade: number | null | undefined): string => {
 };
 
 const formatarDataValidade = (dataValidade: string): string => {
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0); // Zerar horas para comparação apenas de datas
-  
-  const validade = new Date(dataValidade + 'T00:00:00');
-  const diffTime = validade.getTime() - hoje.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
-  if (diffDays < 0) return 'Vencido';
-  if (diffDays === 0) return 'Vence hoje';
-  if (diffDays === 1) return 'Vence amanhã';
-  if (diffDays <= 7) return `${diffDays} dias`;
-  if (diffDays <= 30) return `${Math.ceil(diffDays / 7)} sem`;
-  return `${Math.ceil(diffDays / 30)} mês`;
+  try {
+    if (!dataValidade) return 'Sem validade';
+    
+    // IMPORTANTE: Garantir que dataValidade é string
+    const dataStr = String(dataValidade);
+    
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0); // Zerar horas para comparação apenas de datas
+    
+    // CORREÇÃO: Extrair apenas a parte da data (YYYY-MM-DD)
+    // Isso resolve o problema de datas com T00:00:00.000Z
+    const dataApenas = dataStr.split('T')[0];
+    const [ano, mes, dia] = dataApenas.split('-').map(Number);
+    const validade = new Date(ano, mes - 1, dia);
+    
+    // Verificar se a data é válida
+    if (isNaN(validade.getTime())) {
+      return 'Data inválida';
+    }
+    
+    const diffTime = validade.getTime() - hoje.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) return 'Vencido';
+    if (diffDays === 0) return 'Vence hoje';
+    if (diffDays === 1) return 'Vence amanhã';
+    if (diffDays <= 7) return `${diffDays} dias`;
+    if (diffDays <= 30) return `${Math.ceil(diffDays / 7)} sem`;
+    return `${Math.ceil(diffDays / 30)} mês`;
+  } catch (error) {
+    console.error('Erro ao formatar data de validade:', error);
+    return 'Data inválida';
+  }
 };
 
 const getValidadeColor = (dataValidade: string): string => {
   const hoje = new Date();
-  const validade = new Date(dataValidade);
+  hoje.setHours(0, 0, 0, 0);
+  
+  // CORREÇÃO: Extrair apenas a parte da data (YYYY-MM-DD)
+  const dataApenas = String(dataValidade).split('T')[0];
+  const [ano, mes, dia] = dataApenas.split('-').map(Number);
+  const validade = new Date(ano, mes - 1, dia);
+  
   const diffTime = validade.getTime() - hoje.getTime();
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   
@@ -47,7 +73,13 @@ const getValidadeColor = (dataValidade: string): string => {
 
 const getValidadeTextColor = (dataValidade: string): string => {
   const hoje = new Date();
-  const validade = new Date(dataValidade);
+  hoje.setHours(0, 0, 0, 0);
+  
+  // CORREÇÃO: Extrair apenas a parte da data (YYYY-MM-DD)
+  const dataApenas = String(dataValidade).split('T')[0];
+  const [ano, mes, dia] = dataApenas.split('-').map(Number);
+  const validade = new Date(ano, mes - 1, dia);
+  
   const diffTime = validade.getTime() - hoje.getTime();
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   
@@ -129,9 +161,29 @@ const ItemEstoque: React.FC<ItemEstoqueProps> = ({ item, onPress, onHistorico, o
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <View style={styles.headerInfo}>
-            <Text style={styles.nome} numberOfLines={1}>
-              {item.produto?.nome || 'Produto sem nome'}
-            </Text>
+            <View style={styles.nomeLinha}>
+              <Text style={styles.nome} numberOfLines={1}>
+                {item.produto?.nome || 'Produto sem nome'}
+              </Text>
+              <View style={[
+                styles.statusBadgeCompacto,
+                { 
+                  backgroundColor: getStatusBackgroundColor(item.quantidade_atual || 0),
+                  borderColor: getStatusColor(item.quantidade_atual || 0)
+                }
+              ]}>
+                <View style={[
+                  styles.statusDot,
+                  { backgroundColor: getStatusColor(item.quantidade_atual || 0) }
+                ]} />
+                <Text style={[
+                  styles.statusTextCompacto,
+                  { color: getStatusColor(item.quantidade_atual || 0) }
+                ]}>
+                  {getStatusText(item.quantidade_atual || 0)}
+                </Text>
+              </View>
+            </View>
             <Text style={styles.categoria}>
               {formatDate(item.data_ultima_atualizacao ? new Date(item.data_ultima_atualizacao) : new Date())}
             </Text>
@@ -139,37 +191,14 @@ const ItemEstoque: React.FC<ItemEstoqueProps> = ({ item, onPress, onHistorico, o
         </View>
         
         <View style={styles.actionButtons}>
-          {onMovimentar && (
-            <TouchableOpacity 
-              style={styles.actionButton}
-              onPress={(e) => {
-                e.stopPropagation();
-                onMovimentar(item);
-              }}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Ionicons name="swap-horizontal-outline" size={22} color="#2196F3" />
-            </TouchableOpacity>
-          )}
-          {onHistorico && (
-            <TouchableOpacity 
-              style={styles.actionButton}
-              onPress={(e) => {
-                e.stopPropagation();
-                onHistorico(item);
-              }}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Ionicons name="time-outline" size={22} color="#6B7280" />
-            </TouchableOpacity>
-          )}
+          <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
         </View>
       </View>
 
-      {/* Quantity Section */}
-      <View style={styles.quantitySection}>
+      {/* Quantity and Validade Section */}
+      <View style={styles.infoSection}>
         <View style={styles.quantityContainer}>
-          <Text style={styles.quantidadeLabel}>Quantidade Atual</Text>
+          <Text style={styles.quantidadeLabel}>Quantidade</Text>
           <View style={styles.quantityValue}>
             <Text style={[
               styles.quantidadeNumero,
@@ -181,50 +210,40 @@ const ItemEstoque: React.FC<ItemEstoqueProps> = ({ item, onPress, onHistorico, o
           </View>
         </View>
 
-        <View style={[
-          styles.statusBadge,
-          { 
-            backgroundColor: getStatusBackgroundColor(item.quantidade_atual || 0),
-            borderColor: getStatusColor(item.quantidade_atual || 0)
-          }
-        ]}>
-          <View style={[
-            styles.statusDot,
-            { backgroundColor: getStatusColor(item.quantidade_atual || 0) }
-          ]} />
-          <Text style={[
-            styles.statusText,
-            { color: getStatusColor(item.quantidade_atual || 0) }
-          ]}>
-            {getStatusText(item.quantidade_atual || 0)}
-          </Text>
-        </View>
-      </View>
-
-      {/* Validade Section */}
-      {item.data_validade && (
-        <View style={styles.validadeSection}>
-          <View style={styles.validadeContainer}>
-            <View style={styles.validadeInfo}>
-              <Text style={styles.validadeLabel}>Validade</Text>
+        {item.data_validade && (
+          <View style={styles.validadeContainerCompacto}>
+            <Text style={styles.validadeLabel}>Validade</Text>
+            <View style={styles.validadeValor}>
               <Text style={styles.validadeData}>
-                {new Date(item.data_validade + 'T00:00:00').toLocaleDateString('pt-BR')}
+                {(() => {
+                  try {
+                    if (!item.data_validade) return 'Sem validade';
+                    const dataStr = String(item.data_validade);
+                    const dataApenas = dataStr.split('T')[0];
+                    const [ano, mes, dia] = dataApenas.split('-').map(Number);
+                    const data = new Date(ano, mes - 1, dia);
+                    if (isNaN(data.getTime())) return 'Data inválida';
+                    return data.toLocaleDateString('pt-BR');
+                  } catch (error) {
+                    return 'Data inválida';
+                  }
+                })()}
               </Text>
-            </View>
-            <View style={[
-              styles.validadeBadge,
-              { backgroundColor: getValidadeColor(item.data_validade) }
-            ]}>
-              <Text style={[
-                styles.validadeText,
-                { color: getValidadeTextColor(item.data_validade) }
+              <View style={[
+                styles.validadeBadgeCompacto,
+                { backgroundColor: getValidadeColor(item.data_validade) }
               ]}>
-                {formatarDataValidade(item.data_validade)}
-              </Text>
+                <Text style={[
+                  styles.validadeTextCompacto,
+                  { color: getValidadeTextColor(item.data_validade) }
+                ]}>
+                  {formatarDataValidade(item.data_validade)}
+                </Text>
+              </View>
             </View>
           </View>
-        </View>
-      )}
+        )}
+      </View>
     </TouchableOpacity>
   );
 };
@@ -251,8 +270,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 12,
+    paddingTop: 12,
+    paddingBottom: 8,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -271,15 +290,21 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 8,
   },
+  nomeLinha: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 2,
+  },
   nome: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '600',
     color: '#1F2937',
-    marginBottom: 2,
     letterSpacing: -0.2,
+    flex: 1,
   },
   categoria: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#6B7280',
     fontWeight: '500',
   },
@@ -296,12 +321,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  infoSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 16,
+  },
   quantitySection: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
   },
@@ -321,10 +354,10 @@ const styles = StyleSheet.create({
     alignItems: 'baseline',
   },
   quantidadeNumero: {
-    fontSize: 36,
+    fontSize: 28,
     fontWeight: '700',
     marginRight: 4,
-    letterSpacing: -1,
+    letterSpacing: -0.5,
   },
   unidade: {
     fontSize: 16,
@@ -339,6 +372,14 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
   },
+  statusBadgeCompacto: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
   statusDot: {
     width: 6,
     height: 6,
@@ -347,6 +388,11 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: -0.1,
+  },
+  statusTextCompacto: {
+    fontSize: 11,
     fontWeight: '600',
     letterSpacing: -0.1,
   },
@@ -409,9 +455,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 4,
   },
+  validadeContainerCompacto: {
+    flex: 1,
+  },
+  validadeValor: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   validadeSection: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 10,
     backgroundColor: '#f8f9fa',
   },
   validadeContainer: {
@@ -429,17 +483,26 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   validadeLabel: {
-    fontSize: 12,
+    fontSize: 10,
     color: '#6B7280',
     fontWeight: '500',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    marginBottom: 2,
+    marginBottom: 3,
   },
   validadeData: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     color: '#1F2937',
+  },
+  validadeBadgeCompacto: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  validadeTextCompacto: {
+    fontSize: 10,
+    fontWeight: '600',
   },
 });
 

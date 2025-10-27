@@ -43,7 +43,13 @@ const ValidadeScreen: React.FC<ValidadeScreenProps> = ({ navigation }) => {
         item.lotes.forEach(lote => {
           if (lote.data_validade && lote.quantidade_atual > 0) {
             const hoje = new Date();
-            const dataVencimento = new Date(lote.data_validade);
+            hoje.setHours(0, 0, 0, 0);
+            
+            // CORREÇÃO: Extrair apenas a parte da data (YYYY-MM-DD)
+            const dataApenas = String(lote.data_validade).split('T')[0];
+            const [ano, mes, dia] = dataApenas.split('-').map(Number);
+            const dataVencimento = new Date(ano, mes - 1, dia);
+            
             const diasRestantes = Math.ceil((dataVencimento.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
 
             let statusValidade: 'vencido' | 'critico' | 'atencao' | 'normal' = 'normal';
@@ -130,7 +136,10 @@ const ValidadeScreen: React.FC<ValidadeScreenProps> = ({ navigation }) => {
   };
 
   const formatarData = (data: string): string => {
-    return new Date(data).toLocaleDateString('pt-BR');
+    // CORREÇÃO: Extrair apenas a parte da data (YYYY-MM-DD)
+    const dataApenas = String(data).split('T')[0];
+    const [ano, mes, dia] = dataApenas.split('-').map(Number);
+    return new Date(ano, mes - 1, dia).toLocaleDateString('pt-BR');
   };
 
   const processarLoteInteligente = async (item: ItemValidadeExtendido) => {

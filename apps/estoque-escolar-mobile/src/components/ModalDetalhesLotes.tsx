@@ -27,7 +27,13 @@ const ModalDetalhesLotes: React.FC<ModalDetalhesLotesProps> = ({
   const formatarData = (data: string | undefined) => {
     if (!data) return 'Não informado';
     try {
-      return new Date(data).toLocaleDateString('pt-BR');
+      if (data.includes('T')) {
+        return new Date(data).toLocaleDateString('pt-BR');
+      } else {
+        // CORREÇÃO: Para datas apenas (YYYY-MM-DD), criar data local
+        const [ano, mes, dia] = data.split('-').map(Number);
+        return new Date(ano, mes - 1, dia).toLocaleDateString('pt-BR');
+      }
     } catch {
       return 'Data inválida';
     }
@@ -46,7 +52,17 @@ const ModalDetalhesLotes: React.FC<ModalDetalhesLotesProps> = ({
     
     if (lote.data_validade) {
       const hoje = new Date();
-      const validade = new Date(lote.data_validade);
+      hoje.setHours(0, 0, 0, 0);
+      
+      // CORREÇÃO: Processar data corrigindo problema de timezone
+      let validade: Date;
+      if (lote.data_validade.includes('T')) {
+        validade = new Date(lote.data_validade);
+      } else {
+        const [ano, mes, dia] = lote.data_validade.split('-').map(Number);
+        validade = new Date(ano, mes - 1, dia);
+      }
+      
       const diffTime = validade.getTime() - hoje.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       
@@ -61,7 +77,17 @@ const ModalDetalhesLotes: React.FC<ModalDetalhesLotesProps> = ({
     if (!dataValidade) return null;
     
     const hoje = new Date();
-    const validade = new Date(dataValidade);
+    hoje.setHours(0, 0, 0, 0);
+    
+    // CORREÇÃO: Processar data corrigindo problema de timezone
+    let validade: Date;
+    if (dataValidade.includes('T')) {
+      validade = new Date(dataValidade);
+    } else {
+      const [ano, mes, dia] = dataValidade.split('-').map(Number);
+      validade = new Date(ano, mes - 1, dia);
+    }
+    
     const diffTime = validade.getTime() - hoje.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
@@ -78,7 +104,17 @@ const ModalDetalhesLotes: React.FC<ModalDetalhesLotesProps> = ({
     
     // Depois por data de validade (mais próximos primeiro)
     if (a.data_validade && b.data_validade) {
-      return new Date(a.data_validade).getTime() - new Date(b.data_validade).getTime();
+      // CORREÇÃO: Processar datas corrigindo problema de timezone
+      const getDateCorrect = (dataStr: string) => {
+        if (dataStr.includes('T')) {
+          return new Date(dataStr);
+        } else {
+          const [ano, mes, dia] = dataStr.split('-').map(Number);
+          return new Date(ano, mes - 1, dia);
+        }
+      };
+      
+      return getDateCorrect(a.data_validade).getTime() - getDateCorrect(b.data_validade).getTime();
     }
     
     // Por último por data de criação (mais recentes primeiro)

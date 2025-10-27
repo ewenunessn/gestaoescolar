@@ -2,6 +2,15 @@ import { storage } from '../utils/storage';
 import { ItemEstoqueEscola, HistoricoEstoque, ResumoEstoque, AtualizacaoLote, MovimentoEstoque } from '../types';
 import { API_CONFIG, API_ENDPOINTS, DEV_CONFIG } from '../config/api';
 
+// Função auxiliar para processar datas corrigindo problema de timezone
+const processarDataCorreta = (dataStr: string): Date => {
+  // CORREÇÃO DEFINITIVA: Sempre extrair apenas YYYY-MM-DD
+  // Isso resolve o problema de datas com T00:00:00.000Z que são interpretadas como UTC
+  const dataApenas = String(dataStr).split('T')[0];
+  const [ano, mes, dia] = dataApenas.split('-').map(Number);
+  return new Date(ano, mes - 1, dia);
+};
+
 class ApiService {
   // Métodos para gerenciar tokens
   async getToken(): Promise<string | null> {
@@ -105,12 +114,13 @@ class ApiService {
           // Ordenar lotes por data de validade
           const lotesComValidade = lotesAtivos
             .filter(l => l.data_validade)
-            .sort((a, b) => new Date(a.data_validade!).getTime() - new Date(b.data_validade!).getTime());
+            .sort((a, b) => processarDataCorreta(a.data_validade!).getTime() - processarDataCorreta(b.data_validade!).getTime());
 
           if (lotesComValidade.length > 0) {
             proximoVencimento = lotesComValidade[0].data_validade;
             const hoje = new Date();
-            const dataVencimento = new Date(proximoVencimento!);
+            hoje.setHours(0, 0, 0, 0);
+            const dataVencimento = processarDataCorreta(proximoVencimento!);
             diasProximoVencimento = Math.ceil((dataVencimento.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
 
             // Determinar status de validade
@@ -126,12 +136,12 @@ class ApiService {
 
             // Verificar se há lotes vencidos ou críticos
             temLotesVencidos = lotesComValidade.some(l => {
-              const dias = Math.ceil((new Date(l.data_validade!).getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+              const dias = Math.ceil((processarDataCorreta(l.data_validade!).getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
               return dias <= 0;
             });
 
             temLotesCriticos = lotesComValidade.some(l => {
-              const dias = Math.ceil((new Date(l.data_validade!).getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+              const dias = Math.ceil((processarDataCorreta(l.data_validade!).getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
               return dias > 0 && dias <= 7;
             });
           }
@@ -152,8 +162,9 @@ class ApiService {
           categoria: item.categoria || 'Geral',
           escola_nome: item.escola_nome || 'Escola',
           // Dados de validade do backend (controle simples)
-          data_validade: item.data_validade,
-          data_entrada: item.data_entrada,
+          // IMPORTANTE: Garantir que datas são strings, não objetos Date
+          data_validade: item.data_validade ? (item.data_validade instanceof Date ? item.data_validade.toISOString().split('T')[0] : String(item.data_validade)) : undefined,
+          data_entrada: item.data_entrada ? (item.data_entrada instanceof Date ? item.data_entrada.toISOString().split('T')[0] : String(item.data_entrada)) : undefined,
           dias_para_vencimento: item.dias_para_vencimento,
           // Informações de validade calculadas (para compatibilidade)
           lotes: lotesAtivos,
@@ -371,8 +382,9 @@ class ApiService {
         lote: lote.lote,
         quantidade_inicial: lote.quantidade_inicial || 0,
         quantidade_atual: lote.quantidade_atual || 0,
-        data_fabricacao: lote.data_fabricacao,
-        data_validade: lote.data_validade,
+        // IMPORTANTE: Garantir que datas são strings, não objetos Date
+        data_fabricacao: lote.data_fabricacao ? (lote.data_fabricacao instanceof Date ? lote.data_fabricacao.toISOString().split('T')[0] : String(lote.data_fabricacao)) : undefined,
+        data_validade: lote.data_validade ? (lote.data_validade instanceof Date ? lote.data_validade.toISOString().split('T')[0] : String(lote.data_validade)) : undefined,
         fornecedor_id: lote.fornecedor_id,
         observacoes: lote.observacoes,
         status: lote.status || 'ativo',

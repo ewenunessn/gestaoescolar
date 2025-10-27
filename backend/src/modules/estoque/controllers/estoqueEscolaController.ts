@@ -1114,6 +1114,41 @@ export async function processarMovimentacaoLotes(req: Request, res: Response) {
             quantidade,
             tipo: 'saida'
           });
+        } else if (tipo_movimentacao === 'ajuste') {
+          // Para ajuste, definir a quantidade exata do lote
+          if (!lote_id) {
+            throw new Error('ID do lote é obrigatório para ajuste');
+          }
+
+          const loteAtual = await client.query(`
+            SELECT * FROM estoque_lotes WHERE id = $1 AND produto_id = $2
+          `, [lote_id, produto_id]);
+
+          if (loteAtual.rows.length === 0) {
+            throw new Error(`Lote não encontrado`);
+          }
+
+          const quantidadeAnterior = loteAtual.rows[0].quantidade_atual;
+          const novoStatus = quantidade === 0 ? 'esgotado' : 'ativo';
+
+          await client.query(`
+            UPDATE estoque_lotes 
+            SET quantidade_atual = $1,
+                status = $2,
+                updated_at = NOW()
+            WHERE id = $3
+          `, [quantidade, novoStatus, lote_id]);
+
+          // Para o cálculo total, considerar a diferença
+          quantidadeTotal += (quantidade - quantidadeAnterior);
+
+          movimentacoes.push({
+            lote_id,
+            lote: loteAtual.rows[0].lote,
+            quantidade,
+            quantidadeAnterior,
+            tipo: 'ajuste'
+          });
         }
       }
 

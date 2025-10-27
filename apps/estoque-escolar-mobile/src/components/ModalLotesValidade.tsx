@@ -133,8 +133,18 @@ const ModalLotesValidade: React.FC<ModalLotesValidadeProps> = ({
     if (tipoMovimento === 'entrada') {
       const lotesComValidadeInvalida = lotesValidos.filter(l => {
         if (!l.data_validade) return false;
-        const dataValidade = new Date(l.data_validade);
+        
+        // CORREÇÃO: Processar data corrigindo problema de timezone
+        let dataValidade: Date;
+        if (l.data_validade.includes('T')) {
+          dataValidade = new Date(l.data_validade);
+        } else {
+          const [ano, mes, dia] = l.data_validade.split('-').map(Number);
+          dataValidade = new Date(ano, mes - 1, dia);
+        }
+        
         const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
         return dataValidade <= hoje;
       });
 
@@ -156,13 +166,29 @@ const ModalLotesValidade: React.FC<ModalLotesValidadeProps> = ({
 
   const formatarData = (data: string): string => {
     if (!data) return '';
-    return new Date(data).toLocaleDateString('pt-BR');
+    if (data.includes('T')) {
+      return new Date(data).toLocaleDateString('pt-BR');
+    } else {
+      // CORREÇÃO: Para datas apenas (YYYY-MM-DD), criar data local
+      const [ano, mes, dia] = data.split('-').map(Number);
+      return new Date(ano, mes - 1, dia).toLocaleDateString('pt-BR');
+    }
   };
 
   const calcularDiasVencimento = (dataValidade: string): number => {
     if (!dataValidade) return 0;
     const hoje = new Date();
-    const vencimento = new Date(dataValidade);
+    hoje.setHours(0, 0, 0, 0);
+    
+    let vencimento: Date;
+    if (dataValidade.includes('T')) {
+      vencimento = new Date(dataValidade);
+    } else {
+      // CORREÇÃO: Para datas apenas (YYYY-MM-DD), criar data local
+      const [ano, mes, dia] = dataValidade.split('-').map(Number);
+      vencimento = new Date(ano, mes - 1, dia);
+    }
+    
     const diffTime = vencimento.getTime() - hoje.getTime();
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
@@ -175,6 +201,7 @@ const ModalLotesValidade: React.FC<ModalLotesValidadeProps> = ({
   };
 
   const renderLotesExistentes = () => {
+    // Para ajuste e saída, mostrar lotes existentes
     if (tipoMovimento === 'entrada' || lotes.length === 0) return null;
 
     // Ordenar lotes por prioridade (FEFO - First Expired, First Out)
@@ -182,7 +209,17 @@ const ModalLotesValidade: React.FC<ModalLotesValidadeProps> = ({
       .filter(l => l.status === 'ativo' && l.quantidade_atual > 0)
       .sort((a, b) => {
         if (a.data_validade && b.data_validade) {
-          return new Date(a.data_validade).getTime() - new Date(b.data_validade).getTime();
+          // CORREÇÃO: Processar datas corrigindo problema de timezone
+          const getDateCorrect = (dataStr: string) => {
+            if (dataStr.includes('T')) {
+              return new Date(dataStr);
+            } else {
+              const [ano, mes, dia] = dataStr.split('-').map(Number);
+              return new Date(ano, mes - 1, dia);
+            }
+          };
+          
+          return getDateCorrect(a.data_validade).getTime() - getDateCorrect(b.data_validade).getTime();
         }
         return 0;
       });
@@ -227,7 +264,8 @@ const ModalLotesValidade: React.FC<ModalLotesValidadeProps> = ({
                   value={loteMovimento?.quantidade.toString() || ''}
                   onChangeText={(text) => {
                     const quantidade = parseFloat(text) || 0;
-                    if (quantidade <= lote.quantidade_atual) {
+                    // Para ajuste, permitir qualquer quantidade
+                    if (tipoMovimento === 'ajuste' || quantidade <= lote.quantidade_atual) {
                       selecionarLoteExistente(lote, quantidade);
                     } else {
                       Alert.alert('Erro', 'Quantidade não pode ser maior que o disponível');
@@ -333,14 +371,14 @@ const ModalLotesValidade: React.FC<ModalLotesValidadeProps> = ({
     <Modal
       visible={visible}
       animationType="slide"
-      transparent={true}
+      presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
       <View style={styles.modalOverlay}>
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>
-              {tipoMovimento === 'entrada' ? 'Entrada com Lotes' : 'Saída por Lotes'}
+              {tipoMovimento === 'entrada' ? 'Entrada com Lotes' : tipoMovimento === 'ajuste' ? 'Ajuste de Lotes' : 'Saída por Lotes'}
             </Text>
             <TouchableOpacity onPress={onClose}>
               <Ionicons name="close" size={24} color="#666" />
@@ -401,14 +439,11 @@ const ModalLotesValidade: React.FC<ModalLotesValidadeProps> = ({
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: '#F9FAFB',
   },
   modalContainer: {
+    flex: 1,
     backgroundColor: 'white',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '90%',
   },
   modalHeader: {
     flexDirection: 'row',
