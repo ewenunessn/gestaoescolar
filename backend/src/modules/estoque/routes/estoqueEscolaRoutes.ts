@@ -11,7 +11,8 @@ import {
   resetarEstoqueComBackup,
   listarLotesProduto,
   criarLote,
-  processarMovimentacaoLotes
+  processarMovimentacaoLotes,
+  testarLotes
 } from "../controllers/estoqueEscolaController";
 
 const router = Router();
@@ -44,6 +45,7 @@ router.get("/:id", buscarItemEstoqueEscola);
 router.put("/:id", atualizarQuantidadeEstoque);
 
 // Rotas para lotes (sem autenticação JWT)
+router.get("/test-lotes", testarLotes);
 router.get("/produtos/:produto_id/lotes", listarLotesProduto);
 router.post("/lotes", criarLote);
 router.post("/escola/:escola_id/movimentacao-lotes", processarMovimentacaoLotes);

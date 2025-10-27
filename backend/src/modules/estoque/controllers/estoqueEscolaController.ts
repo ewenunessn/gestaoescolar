@@ -749,15 +749,15 @@ export async function criarLote(req: Request, res: Response) {
       });
     }
 
-    // Validar datas se fornecidas
-    if (data_fabricacao && data_validade) {
-      const fabricacao = new Date(data_fabricacao);
+    // Validar data de validade se fornecida (data de fabricação é opcional)
+    if (data_validade) {
       const validade = new Date(data_validade);
+      const hoje = new Date();
       
-      if (validade <= fabricacao) {
+      if (validade <= hoje) {
         return res.status(400).json({
           success: false,
-          message: "Data de validade deve ser posterior à data de fabricação"
+          message: "Data de validade deve ser futura"
         });
       }
     }
@@ -986,6 +986,27 @@ export async function processarMovimentacaoLotes(req: Request, res: Response) {
     res.status(500).json({
       success: false,
       message: "Erro ao processar movimentação",
+      error: error.message
+    });
+  }
+}// Endpoin
+t de teste para verificar se as rotas de lotes estão funcionando
+export async function testarLotes(req: Request, res: Response) {
+  try {
+    res.json({
+      success: true,
+      message: "Endpoint de lotes funcionando!",
+      timestamp: new Date().toISOString(),
+      routes: [
+        "GET /api/estoque-escola/produtos/:produto_id/lotes",
+        "POST /api/estoque-escola/lotes", 
+        "POST /api/estoque-escola/escola/:escola_id/movimentacao-lotes"
+      ]
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: "Erro no teste de lotes",
       error: error.message
     });
   }

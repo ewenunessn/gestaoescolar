@@ -153,20 +153,13 @@ const EstoqueScreen: React.FC<EstoqueScreenProps> = ({ navigation }) => {
   const abrirModalMovimento = async (item: ItemEstoqueEscola) => {
     setItemSelecionado(item);
     
-    // Verificar se o item tem lotes ou se é um produto que deve usar lotes
-    const deveUsarLotes = item.categoria === 'Perecível' || item.categoria === 'Medicamento';
-    
-    if (deveUsarLotes) {
-      // Carregar lotes se ainda não foram carregados
-      if (!item.lotes || item.lotes.length === 0) {
-        await carregarLotesProduto(item.produto_id);
-      }
-      setModalLotes(true);
-    } else {
-      setModalMovimento(true);
-      setQuantidade('');
-      setMotivo('');
+    // Sempre usar o modal de lotes (que suporta tanto lotes quanto movimentação simples)
+    // Carregar lotes se ainda não foram carregados
+    if (!item.lotes || item.lotes.length === 0) {
+      await carregarLotesProduto(item.produto_id);
     }
+    
+    setModalLotes(true);
   };
 
   const abrirModalHistorico = (item: ItemEstoqueEscola) => {

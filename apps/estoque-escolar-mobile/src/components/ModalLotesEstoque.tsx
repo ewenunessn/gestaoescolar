@@ -31,28 +31,46 @@ const ModalLotesEstoque: React.FC<ModalLotesEstoqueProps> = ({
 }) => {
   const [lotes, setLotes] = useState<MovimentoLote[]>([]);
   const [tipoMovimento, setTipoMovimento] = useState<'entrada' | 'saida' | 'ajuste'>(tipoInicial);
+  const [usarLotes, setUsarLotes] = useState(true);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (visible && item) {
       setTipoMovimento(tipoInicial);
+      
+      // Verificar se deve usar lotes por padrão
+      const temLotes = item.lotes && item.lotes.length > 0;
+      const deveUsarLotes = item.categoria === 'Perecível' || item.categoria === 'Medicamento' || temLotes;
+      
+      setUsarLotes(deveUsarLotes);
       atualizarLotesPorTipo(tipoInicial);
     }
   }, [visible, item, tipoInicial]);
+
+  const gerarLoteAutomatico = () => {
+    const agora = new Date();
+    const dia = agora.getDate().toString().padStart(2, '0');
+    const mes = (agora.getMonth() + 1).toString().padStart(2, '0');
+    const ano = agora.getFullYear().toString().slice(-2);
+    const hora = agora.getHours().toString().padStart(2, '0');
+    const minuto = agora.getMinutes().toString().padStart(2, '0');
+    
+    return `L${dia}${mes}${ano}-${hora}${minuto}`;
+  };
 
   const atualizarLotesPorTipo = (tipo: 'entrada' | 'saida' | 'ajuste') => {
     if (!item) return;
     
     if (tipo === 'entrada') {
-      // Para entrada, começar com um lote vazio
+      // Para entrada, começar com um lote com código gerado automaticamente
       setLotes([{
-        lote: '',
+        lote: gerarLoteAutomatico(),
         quantidade: 0,
         data_validade: '',
         data_fabricacao: '',
         observacoes: ''
       }]);
-    } else if (tipo === 'saida' && item.lotes) {
+    } else if (tipo === 'saida' && item.lotes && item.lotes.length > 0) {
       // Para saída, mostrar lotes existentes com quantidade 0
       setLotes(item.lotes
         .filter(lote => lote.quantidade_atual > 0)
@@ -66,14 +84,20 @@ const ModalLotesEstoque: React.FC<ModalLotesEstoqueProps> = ({
         }))
       );
     } else {
-      // Para ajuste, começar vazio
-      setLotes([]);
+      // Para ajuste ou quando não há lotes, começar com um lote simples
+      setLotes([{
+        lote: 'SIMPLES',
+        quantidade: 0,
+        data_validade: '',
+        data_fabricacao: '',
+        observacoes: ''
+      }]);
     }
   };
 
   const adicionarLote = () => {
     setLotes(prev => [...prev, {
-      lote: '',
+      lote: gerarLoteAutomatico(),
       quantidade: 0,
       data_validade: '',
       data_fabricacao: '',
@@ -112,20 +136,29 @@ const ModalLotesEstoque: React.FC<ModalLotesEstoqueProps> = ({
     for (let i = 0; i < lotes.length; i++) {
       const lote = lotes[i];
       
-      if (tipoMovimento === 'entrada' && !lote.lote?.trim()) {
-        Alert.alert('Erro', `Lote ${i + 1}: Nome do lote é obrigatório`);
-        return false;
+      // Para movimentação com lotes, gerar código automaticamente se estiver vazio
+      if (usarLotes && tipoMovimento === 'entrada' && !lote.lote?.trim()) {
+        // Gerar código automaticamente se estiver vazio
+        lote.lote = gerarLoteAutomatico();
       }
       
       if (lote.quantidade <= 0) {
-        Alert.alert('Erro', `Lote ${i + 1}: Quantidade deve ser maior que zero`);
+        Alert.alert('Erro', `${usarLotes ? `Lote ${i + 1}` : 'Movimentação'}: Quantidade deve ser maior que zero`);
         return false;
       }
 
-      if (tipoMovimento === 'saida' && item?.lotes) {
+      if (tipoMovimento === 'saida' && item?.lotes && usarLotes) {
         const loteOriginal = item.lotes.find(l => l.id === lote.lote_id);
         if (loteOriginal && lote.quantidade > loteOriginal.quantidade_atual) {
           Alert.alert('Erro', `Lote ${lote.lote}: Quantidade de saída (${lote.quantidade}) não pode ser maior que a disponível (${loteOriginal.quantidade_atual})`);
+          return false;
+        }
+      }
+
+      // Para movimentação simples de saída, validar contra quantidade total
+      if (tipoMovimento === 'saida' && !usarLotes && item) {
+        if (lote.quantidade > item.quantidade_atual) {
+          Alert.alert('Erro', `Quantidade de saída (${lote.quantidade}) não pode ser maior que a disponível (${item.quantidade_atual})`);
           return false;
         }
       }
@@ -209,9 +242,14 @@ const ModalLotesEstoque: React.FC<ModalLotesEstoqueProps> = ({
         {item && (
           <View style={styles.produtoInfo}>
             <Text style={styles.produtoNome}>{item.produto_nome}</Text>
-            <Text style={styles.quantidadeAtual}>
-              Quantidade atual: {item.quantidade_atual} {item.unidade_medida}
-            </Text>
+            <View style={styles.produtoDetalhes}>
+              <Text style={styles.quantidadeAtual}>
+                Quantidade atual: {item.quantidade_atual} {item.unidade_medida}
+              </Text>
+              <View style={styles.unidadeBadge}>
+                <Text style={styles.unidadeText}>{item.unidade_medida}</Text>
+              </View>
+            </View>
             
             <View style={styles.tipoMovimentoContainer}>
               {(['entrada', 'saida', 'ajuste'] as const).map((tipo) => (
@@ -235,6 +273,50 @@ const ModalLotesEstoque: React.FC<ModalLotesEstoqueProps> = ({
                 </TouchableOpacity>
               ))}
             </View>
+            
+            <View style={styles.modoContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.modoButton,
+                  !usarLotes && styles.modoButtonActive
+                ]}
+                onPress={() => {
+                  setUsarLotes(false);
+                  setLotes([{
+                    lote: 'SIMPLES',
+                    quantidade: 0,
+                    data_validade: '',
+                    data_fabricacao: '',
+                    observacoes: ''
+                  }]);
+                }}
+              >
+                <Text style={[
+                  styles.modoButtonText,
+                  !usarLotes && styles.modoButtonTextActive
+                ]}>
+                  Simples
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[
+                  styles.modoButton,
+                  usarLotes && styles.modoButtonActive
+                ]}
+                onPress={() => {
+                  setUsarLotes(true);
+                  atualizarLotesPorTipo(tipoMovimento);
+                }}
+              >
+                <Text style={[
+                  styles.modoButtonText,
+                  usarLotes && styles.modoButtonTextActive
+                ]}>
+                  Com Lotes
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
 
@@ -253,7 +335,7 @@ const ModalLotesEstoque: React.FC<ModalLotesEstoqueProps> = ({
                 )}
               </View>
 
-              {tipoMovimento === 'entrada' && (
+              {tipoMovimento === 'entrada' && usarLotes && (
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>Nome do Lote *</Text>
                   <TextInput
@@ -266,7 +348,7 @@ const ModalLotesEstoque: React.FC<ModalLotesEstoqueProps> = ({
                 </View>
               )}
 
-              {tipoMovimento === 'saida' && (
+              {tipoMovimento === 'saida' && usarLotes && (
                 <View style={styles.loteInfo}>
                   <Text style={styles.loteNome}>Lote: {lote.lote || 'N/A'}</Text>
                   <Text style={styles.quantidadeDisponivel}>
@@ -297,30 +379,36 @@ const ModalLotesEstoque: React.FC<ModalLotesEstoqueProps> = ({
                 </View>
               </View>
 
-              {tipoMovimento === 'entrada' && (
+              {tipoMovimento === 'entrada' && usarLotes && (
                 <>
-                  <View style={styles.row}>
-                    <View style={[styles.inputGroup, styles.halfWidth]}>
-                      <Text style={styles.label}>Data de Fabricação</Text>
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Código do Lote</Text>
+                    <View style={styles.loteInputContainer}>
                       <TextInput
-                        style={styles.input}
-                        value={formatarData(lote.data_fabricacao || '')}
-                        onChangeText={(value) => atualizarLote(index, 'data_fabricacao', value)}
-                        placeholder="DD/MM/AAAA"
-                        maxLength={10}
+                        style={styles.loteInput}
+                        value={lote.lote}
+                        onChangeText={(value) => atualizarLote(index, 'lote', value)}
+                        placeholder="Código será gerado automaticamente"
+                        maxLength={50}
                       />
+                      <TouchableOpacity
+                        style={styles.gerarLoteButton}
+                        onPress={() => atualizarLote(index, 'lote', gerarLoteAutomatico())}
+                      >
+                        <Ionicons name="refresh" size={16} color="#2196f3" />
+                      </TouchableOpacity>
                     </View>
+                  </View>
 
-                    <View style={[styles.inputGroup, styles.halfWidth]}>
-                      <Text style={styles.label}>Data de Validade</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={formatarData(lote.data_validade || '')}
-                        onChangeText={(value) => atualizarLote(index, 'data_validade', value)}
-                        placeholder="DD/MM/AAAA"
-                        maxLength={10}
-                      />
-                    </View>
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Data de Validade</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={formatarData(lote.data_validade || '')}
+                      onChangeText={(value) => atualizarLote(index, 'data_validade', value)}
+                      placeholder="DD/MM/AAAA (opcional)"
+                      maxLength={10}
+                    />
                   </View>
 
                   <View style={styles.inputGroup}>
@@ -337,16 +425,34 @@ const ModalLotesEstoque: React.FC<ModalLotesEstoqueProps> = ({
                   </View>
                 </>
               )}
+
+              {/* Campo de observações para movimentação simples */}
+              {!usarLotes && (
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Motivo/Observações</Text>
+                  <TextInput
+                    style={[styles.input, styles.textArea]}
+                    value={lote.observacoes}
+                    onChangeText={(value) => atualizarLote(index, 'observacoes', value)}
+                    placeholder="Motivo da movimentação"
+                    multiline
+                    numberOfLines={2}
+                    maxLength={200}
+                  />
+                </View>
+              )}
             </View>
           ))}
 
-          <TouchableOpacity 
-            style={styles.adicionarLoteButton}
-            onPress={adicionarLote}
-          >
-            <Ionicons name="add" size={20} color="#2196f3" />
-            <Text style={styles.adicionarLoteText}>Adicionar Lote</Text>
-          </TouchableOpacity>
+          {usarLotes && (
+            <TouchableOpacity 
+              style={styles.adicionarLoteButton}
+              onPress={adicionarLote}
+            >
+              <Ionicons name="add" size={20} color="#2196f3" />
+              <Text style={styles.adicionarLoteText}>Adicionar Lote</Text>
+            </TouchableOpacity>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </Modal>
@@ -400,11 +506,30 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
   },
+  produtoDetalhes: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 4,
+    marginBottom: 16,
+  },
   quantidadeAtual: {
     fontSize: 14,
     color: '#666',
-    marginTop: 4,
-    marginBottom: 16,
+    flex: 1,
+  },
+  unidadeBadge: {
+    backgroundColor: '#e3f2fd',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#2196f3',
+  },
+  unidadeText: {
+    fontSize: 12,
+    color: '#2196f3',
+    fontWeight: '600',
   },
   tipoMovimentoContainer: {
     flexDirection: 'row',
@@ -428,6 +553,37 @@ const styles = StyleSheet.create({
   },
   tipoButtonTextActive: {
     color: 'white',
+  },
+  modoContainer: {
+    flexDirection: 'row',
+    marginTop: 12,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+    padding: 4,
+  },
+  modoButton: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  modoButtonActive: {
+    backgroundColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  modoButtonText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
+  modoButtonTextActive: {
+    color: '#2196f3',
+    fontWeight: '600',
   },
   form: {
     flex: 1,
@@ -550,4 +706,27 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ModalLotesEstoque;
+export default ModalLotesEstoque; 
+ loteInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  loteInput: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#333',
+    marginRight: 8,
+  },
+  gerarLoteButton: {
+    backgroundColor: '#e3f2fd',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#2196f3',
+  },
