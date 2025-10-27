@@ -57,6 +57,13 @@ const EstoqueEscolarPage = () => {
     // Estado para alternar visualização
     const [modoVisualizacao, setModoVisualizacao] = useState<'produtos' | 'escolas'>('produtos');
     const [dadosMatriz, setDadosMatriz] = useState<any[]>([]);
+    const [matrizCarregada, setMatrizCarregada] = useState(false);
+    const [loadingMatriz, setLoadingMatriz] = useState(false);
+
+    // Estados para atualização incremental
+    const [ultimaAtualizacao, setUltimaAtualizacao] = useState<Date | null>(null);
+    const [cacheProdutos, setCacheProdutos] = useState<Map<number, any>>(new Map());
+    const [cacheEscolas, setCacheEscolas] = useState<Map<number, any>>(new Map());
 
     // Estados de filtros
     const [searchTerm, setSearchTerm] = useState('');
@@ -107,6 +114,13 @@ const EstoqueEscolarPage = () => {
             }));
             setProdutosComEstoque(produtosFormatados);
 
+            // Atualizar cache de produtos
+            const novoCacheProdutos = new Map();
+            estoqueData.forEach((produto: any) => {
+                novoCacheProdutos.set(produto.produto_id, produto);
+            });
+            setCacheProdutos(novoCacheProdutos);
+
             // Não carregar matriz aqui para evitar loop infinito
         } catch (err) {
             setError('Erro ao carregar dados de estoque. Tente novamente.');
@@ -115,71 +129,176 @@ const EstoqueEscolarPage = () => {
         }
     }, [modoVisualizacao]);
 
-    // Carregar dados para visualização em matriz (escolas x produtos)
+    // Carregar dados para visualização em matriz (escolas x produtos) - OTIMIZADO
     const loadDadosMatriz = useCallback(async () => {
         try {
-            setLoading(true);
+            setLoadingMatriz(true);
             setError(null);
 
+            // Carregar apenas os primeiros produtos para otimizar
             const estoqueData = await listarEstoqueEscolar();
-            const matrizData: any[] = [];
+            const produtosLimitados = estoqueData.slice(0, 10); // Limitar a 10 produtos inicialmente
+
             const escolasMap = new Map<number, any>();
-            const produtosMap = new Map<number, string>();
 
-            // Primeiro, coletar todos os produtos
-            estoqueData.forEach((produto: any) => {
-                produtosMap.set(produto.produto_id, produto.produto_nome);
-            });
-
-            // Buscar detalhes de cada produto para obter dados por escola
-            for (const produto of estoqueData) {
+            // Buscar detalhes apenas dos produtos limitados em paralelo
+            const promessas = produtosLimitados.map(async (produto: any) => {
                 try {
                     const detalhes = await buscarEstoqueEscolarProduto(produto.produto_id);
-
-                    detalhes.escolas?.forEach((escola: any) => {
-                        if (!escolasMap.has(escola.escola_id)) {
-                            escolasMap.set(escola.escola_id, {
-                                escola_id: escola.escola_id,
-                                escola_nome: escola.escola_nome,
-                                produtos: new Map()
-                            });
-                        }
-
-                        const escolaData = escolasMap.get(escola.escola_id);
-                        escolaData.produtos.set(produto.produto_id, {
-                            quantidade: escola.quantidade_atual || 0,
-                            unidade: escola.unidade || produto.unidade
-                        });
-                    });
+                    return { produto, detalhes };
                 } catch (err) {
                     console.warn(`Erro ao carregar detalhes do produto ${produto.produto_id}:`, err);
+                    return { produto, detalhes: null };
                 }
-            }
+            });
+
+            // Executar todas as chamadas em paralelo
+            const resultados = await Promise.all(promessas);
+
+            // Processar resultados
+            resultados.forEach(({ produto, detalhes }) => {
+                if (!detalhes) return;
+
+                detalhes.escolas?.forEach((escola: any) => {
+                    if (!escolasMap.has(escola.escola_id)) {
+                        escolasMap.set(escola.escola_id, {
+                            escola_id: escola.escola_id,
+                            escola_nome: escola.escola_nome,
+                            produtos: {}
+                        });
+                    }
+
+                    const escolaData = escolasMap.get(escola.escola_id);
+                    escolaData.produtos[produto.produto_id] = {
+                        quantidade: escola.quantidade_atual || 0,
+                        unidade: escola.unidade || produto.unidade
+                    };
+                });
+            });
 
             // Converter para array
-            const escolasArray = Array.from(escolasMap.values()).map(escola => ({
-                ...escola,
-                produtos: Object.fromEntries(escola.produtos)
-            }));
-
+            const escolasArray = Array.from(escolasMap.values());
             setDadosMatriz(escolasArray);
+            setMatrizCarregada(true);
 
         } catch (err) {
             setError('Erro ao carregar dados da matriz. Tente novamente.');
         } finally {
-            setLoading(false);
+            setLoadingMatriz(false);
         }
     }, []);
 
+    // Função para atualização incremental otimizada
+    const atualizarDadosIncrementais = useCallback(async () => {
+        try {
+            setLoadingMatriz(true);
+            setError(null);
 
+            // Buscar dados atualizados
+            const estoqueDataAtual = await listarEstoqueEscolar();
+            const agora = new Date();
+
+            // Comparar com dados em cache para identificar mudanças
+            const produtosAlterados: number[] = [];
+            const novosCacheProdutos = new Map(cacheProdutos);
+
+            estoqueDataAtual.forEach((produto: any) => {
+                const produtoCache = cacheProdutos.get(produto.produto_id);
+
+                // Verificar se produto mudou
+                if (!produtoCache ||
+                    produtoCache.total_quantidade !== produto.total_quantidade ||
+                    produtoCache.total_escolas_com_estoque !== produto.total_escolas_com_estoque) {
+
+                    produtosAlterados.push(produto.produto_id);
+                    novosCacheProdutos.set(produto.produto_id, produto);
+                }
+            });
+
+            // Atualizar visualização por produtos
+            const produtosFormatados = estoqueDataAtual.map((item: any) => ({
+                id: item.produto_id,
+                nome: item.produto_nome,
+                unidade: item.unidade,
+                categoria: item.categoria,
+                total_quantidade: item.total_quantidade,
+                total_escolas_com_estoque: item.total_escolas_com_estoque,
+                total_escolas: item.total_escolas
+            }));
+            setProdutosComEstoque(produtosFormatados);
+
+            // Atualizar apenas dados da matriz que mudaram
+            if (matrizCarregada && produtosAlterados.length > 0) {
+                console.log(`Atualizando ${produtosAlterados.length} produtos alterados`);
+
+                // Buscar detalhes apenas dos produtos alterados em paralelo
+                const promessasAtualizacao = produtosAlterados.map(async (produtoId) => {
+                    try {
+                        const detalhes = await buscarEstoqueEscolarProduto(produtoId);
+                        return { produtoId, detalhes };
+                    } catch (err) {
+                        console.warn(`Erro ao atualizar produto ${produtoId}:`, err);
+                        return { produtoId, detalhes: null };
+                    }
+                });
+
+                const resultadosAtualizacao = await Promise.all(promessasAtualizacao);
+
+                // Atualizar matriz existente
+                const novaMatriz = [...dadosMatriz];
+
+                resultadosAtualizacao.forEach(({ produtoId, detalhes }) => {
+                    if (!detalhes) return;
+
+                    detalhes.escolas?.forEach((escola: any) => {
+                        // Encontrar escola na matriz existente
+                        const escolaIndex = novaMatriz.findIndex(e => e.escola_id === escola.escola_id);
+                        if (escolaIndex >= 0) {
+                            // Atualizar produto existente
+                            novaMatriz[escolaIndex].produtos[produtoId] = {
+                                quantidade: escola.quantidade_atual || 0,
+                                unidade: escola.unidade
+                            };
+                        } else {
+                            // Adicionar nova escola se não existir
+                            novaMatriz.push({
+                                escola_id: escola.escola_id,
+                                escola_nome: escola.escola_nome,
+                                produtos: {
+                                    [produtoId]: {
+                                        quantidade: escola.quantidade_atual || 0,
+                                        unidade: escola.unidade
+                                    }
+                                }
+                            });
+                        }
+                    });
+                });
+
+                setDadosMatriz(novaMatriz);
+            }
+
+            // Atualizar caches e timestamp
+            setCacheProdutos(novosCacheProdutos);
+            setUltimaAtualizacao(agora);
+
+            console.log(`Atualização incremental concluída. ${produtosAlterados.length} produtos alterados.`);
+
+        } catch (err) {
+            setError('Erro ao atualizar dados. Tente novamente.');
+            console.error('Erro na atualização incremental:', err);
+        } finally {
+            setLoadingMatriz(false);
+        }
+    }, [cacheProdutos, dadosMatriz, matrizCarregada]);
 
     useEffect(() => {
         if (modoVisualizacao === 'produtos') {
             loadEstoque();
-        } else {
+        } else if (modoVisualizacao === 'escolas' && !matrizCarregada) {
             loadDadosMatriz();
         }
-    }, [loadEstoque, loadDadosMatriz, modoVisualizacao]);
+    }, [loadEstoque, loadDadosMatriz, modoVisualizacao, matrizCarregada]);
 
     // Função para alternar modo de visualização
     const alternarVisualizacao = useCallback(() => {
@@ -563,21 +682,44 @@ const EstoqueEscolarPage = () => {
                             >
                                 {modoVisualizacao === 'produtos' ? 'Ver por Escolas' : 'Ver por Produtos'}
                             </Button>
+                            <Button
+                                variant="outlined"
+                                startIcon={<Refresh />}
+                                onClick={atualizarDadosIncrementais}
+                                size="small"
+                                disabled={loadingMatriz}
+                            >
+                                {loadingMatriz ? 'Atualizando...' : 'Atualizar'}
+                            </Button>
                             <Button variant={filtersExpanded || hasActiveFilters ? 'contained' : 'outlined'} startIcon={filtersExpanded ? <ExpandLess /> : <TuneRounded />} onClick={toggleFilters} size="small">Filtros{hasActiveFilters && !filtersExpanded && (<Box sx={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', bgcolor: 'error.main' }} />)}</Button>
                             <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)} size="small"><MoreVert /></IconButton>
                         </Box>
                     </Box>
                     <Collapse in={filtersExpanded} timeout={300}><Box sx={{ mb: 2 }}><FiltersContent /></Box></Collapse>
-                    <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>
-                        {modoVisualizacao === 'produtos'
-                            ? `Mostrando ${Math.min((page * rowsPerPage) + 1, filteredProdutos.length)}-${Math.min((page + 1) * rowsPerPage, filteredProdutos.length)} de ${filteredProdutos.length} produtos`
-                            : `Mostrando ${Math.min((page * rowsPerPage) + 1, filteredEscolas.length)}-${Math.min((page + 1) * rowsPerPage, filteredEscolas.length)} de ${filteredEscolas.length} escolas`
-                        }
-                    </Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>
+                            {modoVisualizacao === 'produtos'
+                                ? `Mostrando ${Math.min((page * rowsPerPage) + 1, filteredProdutos.length)}-${Math.min((page + 1) * rowsPerPage, filteredProdutos.length)} de ${filteredProdutos.length} produtos`
+                                : `Mostrando ${Math.min((page * rowsPerPage) + 1, filteredEscolas.length)}-${Math.min((page + 1) * rowsPerPage, filteredEscolas.length)} de ${filteredEscolas.length} escolas`
+                            }
+                        </Typography>
+                        {ultimaAtualizacao && (
+                            <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>
+                                Última atualização: {ultimaAtualizacao.toLocaleTimeString('pt-BR')}
+                            </Typography>
+                        )}
+                    </Box>
                 </Card>
 
-                {loading ? (
-                    <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><CircularProgress size={60} /></CardContent></Card>
+                {(loading || loadingMatriz) ? (
+                    <Card><CardContent sx={{ textAlign: 'center', py: 6 }}>
+                        <CircularProgress size={60} />
+                        {loadingMatriz && (
+                            <Typography variant="body2" sx={{ mt: 2, color: 'text.secondary' }}>
+                                Carregando dados da matriz...
+                            </Typography>
+                        )}
+                    </CardContent></Card>
                 ) : error ? (
                     <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={loadEstoque}>Tentar Novamente</Button></CardContent></Card>
                 ) : (modoVisualizacao === 'produtos' ? filteredProdutos.length === 0 : filteredEscolas.length === 0) ? (
