@@ -30,14 +30,14 @@ class ApiService {
   }
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const token = await this.getToken();
-    
+
     // Simular delay de rede em desenvolvimento
     if (DEV_CONFIG.NETWORK_DELAY > 0) {
       await new Promise(resolve => setTimeout(resolve, DEV_CONFIG.NETWORK_DELAY));
     }
-    
+
     const url = `${API_CONFIG.BASE_URL}${endpoint}`;
-    
+
     const config: RequestInit = {
       headers: {
         ...API_CONFIG.HEADERS,
@@ -53,27 +53,27 @@ class ApiService {
 
     try {
       const response = await fetch(url, config);
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         if (DEV_CONFIG.ENABLE_LOGS) {
           console.error(`API Error: ${response.status} - ${errorText}`);
         }
-        
+
         // Se for erro 401, limpar token
         if (response.status === 401) {
           await this.removeToken();
         }
-        
+
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const result = await response.json();
-      
+
       if (DEV_CONFIG.ENABLE_LOGS) {
         console.log(`API Response:`, result);
       }
-      
+
       return result;
     } catch (error) {
       console.error('API request failed:', error);
@@ -87,34 +87,93 @@ class ApiService {
       const response = await this.request<any>(`/api/estoque-escola/escola/${escolaId}`);
       // Adaptar dados do backend para o formato esperado pelo app
       const dados = response.data || [];
-      
-      // Mapear dados sem buscar lotes por enquanto para evitar muitas requisições
-      const itens = dados.map((item: any) => ({
-        id: item.id,
-        produto_id: item.produto_id,
-        escola_id: item.escola_id,
-        quantidade_atual: item.quantidade_atual || 0,
-        quantidade_minima: item.quantidade_minima || 0,
-        quantidade_maxima: item.quantidade_maxima || 0,
-        status_estoque: item.status_estoque || 'normal',
-        data_ultima_atualizacao: item.data_ultima_atualizacao || new Date().toISOString(),
-        produto_nome: item.produto_nome || 'Produto sem nome',
-        produto_descricao: item.produto_descricao || '',
-        unidade_medida: item.unidade_medida || 'un',
-        categoria: item.categoria || 'Geral',
-        escola_nome: item.escola_nome || 'Escola',
-        lotes: [], // Inicializar vazio, carregar sob demanda
-        produto: {
-          id: item.produto_id,
-          nome: item.produto_nome || 'Produto sem nome',
-          descricao: item.produto_descricao || '',
-          unidade_medida: item.unidade_medida || 'un',
-          categoria: item.categoria || 'Geral'
-        },
-        escola: {
-          id: item.escola_id,
-          nome: item.escola_nome || 'Escola'
+
+      // Mapear dados e incluir informações de validade
+      const itens = await Promise.all(dados.map(async (item: any) => {
+        // Buscar lotes do produto para calcular informações de validade
+        const lotes = await this.listarLotesProduto(item.produto_id);
+        const lotesAtivos = lotes.filter(l => l.status === 'ativo' && l.quantidade_atual > 0);
+        
+        // Calcular informações de validade
+        let proximoVencimento: string | undefined;
+        let diasProximoVencimento: number | undefined;
+        let statusValidade: 'vencido' | 'critico' | 'atencao' | 'normal' = 'normal';
+        let temLotesVencidos = false;
+        let temLotesCriticos = false;
+
+        if (lotesAtivos.length > 0) {
+          // Ordenar lotes por data de validade
+          const lotesComValidade = lotesAtivos
+            .filter(l => l.data_validade)
+            .sort((a, b) => new Date(a.data_validade!).getTime() - new Date(b.data_validade!).getTime());
+
+          if (lotesComValidade.length > 0) {
+            proximoVencimento = lotesComValidade[0].data_validade;
+            const hoje = new Date();
+            const dataVencimento = new Date(proximoVencimento!);
+            diasProximoVencimento = Math.ceil((dataVencimento.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+
+            // Determinar status de validade
+            if (diasProximoVencimento <= 0) {
+              statusValidade = 'vencido';
+              temLotesVencidos = true;
+            } else if (diasProximoVencimento <= 7) {
+              statusValidade = 'critico';
+              temLotesCriticos = true;
+            } else if (diasProximoVencimento <= 30) {
+              statusValidade = 'atencao';
+            }
+
+            // Verificar se há lotes vencidos ou críticos
+            temLotesVencidos = lotesComValidade.some(l => {
+              const dias = Math.ceil((new Date(l.data_validade!).getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+              return dias <= 0;
+            });
+
+            temLotesCriticos = lotesComValidade.some(l => {
+              const dias = Math.ceil((new Date(l.data_validade!).getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+              return dias > 0 && dias <= 7;
+            });
+          }
         }
+
+        return {
+          id: item.id,
+          produto_id: item.produto_id,
+          escola_id: item.escola_id,
+          quantidade_atual: item.quantidade_atual || 0,
+          quantidade_minima: item.quantidade_minima || 0,
+          quantidade_maxima: item.quantidade_maxima || 0,
+          status_estoque: item.status_estoque || 'normal',
+          data_ultima_atualizacao: item.data_ultima_atualizacao || new Date().toISOString(),
+          produto_nome: item.produto_nome || 'Produto sem nome',
+          produto_descricao: item.produto_descricao || '',
+          unidade_medida: item.unidade_medida || 'un',
+          categoria: item.categoria || 'Geral',
+          escola_nome: item.escola_nome || 'Escola',
+          // Dados de validade do backend (controle simples)
+          data_validade: item.data_validade,
+          data_entrada: item.data_entrada,
+          dias_para_vencimento: item.dias_para_vencimento,
+          // Informações de validade calculadas (para compatibilidade)
+          lotes: lotesAtivos,
+          proximo_vencimento: proximoVencimento || item.data_validade,
+          dias_proximo_vencimento: diasProximoVencimento || item.dias_para_vencimento,
+          status_validade: statusValidade,
+          tem_lotes_vencidos: temLotesVencidos,
+          tem_lotes_criticos: temLotesCriticos,
+          produto: {
+            id: item.produto_id,
+            nome: item.produto_nome || 'Produto sem nome',
+            descricao: item.produto_descricao || '',
+            unidade_medida: item.unidade_medida || 'un',
+            categoria: item.categoria || 'Geral'
+          },
+          escola: {
+            id: item.escola_id,
+            nome: item.escola_nome || 'Escola'
+          }
+        };
       }));
 
       return itens;
@@ -157,7 +216,7 @@ class ApiService {
   async listarHistoricoMovimentos(escolaId: number, limit?: number, offset?: number): Promise<HistoricoEstoque[]> {
     try {
       let endpoint = API_ENDPOINTS.ESTOQUE_HISTORICO(escolaId);
-      
+
       // Adicionar parâmetros de paginação se fornecidos
       if (limit !== undefined || offset !== undefined) {
         const params = new URLSearchParams();
@@ -165,16 +224,16 @@ class ApiService {
         if (offset !== undefined) params.append('offset', offset.toString());
         endpoint += `?${params.toString()}`;
       }
-      
+
       const response = await this.request<any>(endpoint);
-      
+
       // Verificar se a resposta tem o formato esperado
       if (response && response.data && Array.isArray(response.data)) {
         return response.data;
       } else if (Array.isArray(response)) {
         return response;
       }
-      
+
       console.warn('Formato de resposta inesperado para histórico:', response);
       return [];
     } catch (error) {
@@ -279,7 +338,7 @@ class ApiService {
         documento_referencia: movimento.documento_referencia || '',
         usuario_id: movimento.usuario_id || 1
       };
-      
+
       return this.request<ItemEstoqueEscola>(`/api/estoque-escola/escola/${escolaId}/movimentacao-lotes`, {
         method: 'POST',
         body: JSON.stringify(dadosMovimentacao),
@@ -294,7 +353,7 @@ class ApiService {
         documento_referencia: movimento.documento_referencia || '',
         usuario_id: movimento.usuario_id || 1
       };
-      
+
       return this.request<ItemEstoqueEscola>(API_ENDPOINTS.MOVIMENTO_ESTOQUE(escolaId), {
         method: 'POST',
         body: JSON.stringify(dadosMovimentacao),
@@ -351,7 +410,7 @@ class ApiService {
   }
 
   async atualizarLoteItens(
-    escolaId: number, 
+    escolaId: number,
     atualizacoes: AtualizacaoLote[]
   ): Promise<{ sucesso: boolean; itens_atualizados: number }> {
     return this.request(API_ENDPOINTS.ESTOQUE_LOTE(escolaId), {
@@ -381,12 +440,12 @@ class ApiService {
           codigo_acesso
         })
       });
-      
+
       if (response.success && response.data) {
         // Salvar token automaticamente após login bem-sucedido
         await this.setToken(response.data.token);
       }
-      
+
       return response;
     } catch (error: any) {
       console.error('Erro na autenticação:', error);
@@ -412,29 +471,29 @@ class ApiService {
     try {
       // Verificar se o backend está online
       const healthCheck = await this.request('/health');
-      
+
       // Como o backend do Vercel não tem endpoint de login POST ativo,
       // vamos usar os dados dos usuários disponíveis via GET
       const usuarios = await this.request('/api/usuarios') as { data?: any[] };
-      
+
       // Buscar usuário por email
       const usuario = usuarios.data?.find((u: any) => u.email === email);
-      
+
       if (!usuario) {
         throw new Error('Usuário não encontrado');
       }
-      
+
       // Simular validação de senha (em produção, isso seria feito no backend)
       if (senha !== 'admin123' && senha !== '123456') {
         throw new Error('Senha incorreta');
       }
-      
+
       // Gerar token mock
       const token = `mock_token_${usuario.id}_${Date.now()}`;
-      
+
       // Salvar token automaticamente após login bem-sucedido
       await this.setToken(token);
-      
+
       return {
         token,
         usuario: {
@@ -464,7 +523,7 @@ class ApiService {
         const userId = token.split('_')[2];
         const usuarios = await this.request('/api/usuarios') as { data?: any[] };
         const usuario = usuarios.data?.find((u: any) => u.id.toString() === userId);
-        
+
         if (usuario) {
           return {
             valida: true,
@@ -503,21 +562,21 @@ class ApiService {
   }
 
   // Método auxiliar para mapear status_estoque do backend para compatibilidade
-   private mapearStatusParaCompatibilidade(statusEstoque: string): string {
-     // Mapear os valores do backend para os valores esperados pelo app
-     switch (statusEstoque) {
-       case 'sem_estoque':
-         return 'sem_estoque';
-       case 'baixo':
-         return 'baixo';
-       case 'normal':
-         return 'normal';
-       case 'alto':
-         return 'excesso';
-       default:
-         return 'normal';
-     }
-   }
+  private mapearStatusParaCompatibilidade(statusEstoque: string): string {
+    // Mapear os valores do backend para os valores esperados pelo app
+    switch (statusEstoque) {
+      case 'sem_estoque':
+        return 'sem_estoque';
+      case 'baixo':
+        return 'baixo';
+      case 'normal':
+        return 'normal';
+      case 'alto':
+        return 'excesso';
+      default:
+        return 'normal';
+    }
+  }
 
 
 

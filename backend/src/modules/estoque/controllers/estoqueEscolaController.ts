@@ -13,7 +13,13 @@ export async function listarEstoqueEscola(req: Request, res: Response) {
         $1::integer as escola_id,
         p.id as produto_id,
         COALESCE(ee.quantidade_atual, 0) as quantidade_atual,
-        ee.data_validade,
+        -- Usar a validade mais próxima dos lotes se existirem, senão usar a do estoque principal
+        COALESCE(
+          (SELECT MIN(el.data_validade) 
+           FROM estoque_lotes el 
+           WHERE el.produto_id = p.id AND el.status = 'ativo' AND el.quantidade_atual > 0),
+          ee.data_validade
+        ) as data_validade,
         ee.data_entrada,
         ee.updated_at as data_ultima_atualizacao,
         p.nome as produto_nome,
@@ -23,14 +29,54 @@ export async function listarEstoqueEscola(req: Request, res: Response) {
         e.nome as escola_nome,
         CASE 
           WHEN COALESCE(ee.quantidade_atual, 0) = 0 THEN 'sem_estoque'
-          WHEN ee.data_validade IS NOT NULL AND ee.data_validade < CURRENT_DATE THEN 'vencido'
-          WHEN ee.data_validade IS NOT NULL AND ee.data_validade <= CURRENT_DATE + INTERVAL '7 days' THEN 'critico'
-          WHEN ee.data_validade IS NOT NULL AND ee.data_validade <= CURRENT_DATE + INTERVAL '30 days' THEN 'atencao'
+          WHEN COALESCE(
+            (SELECT MIN(el.data_validade) 
+             FROM estoque_lotes el 
+             WHERE el.produto_id = p.id AND el.status = 'ativo' AND el.quantidade_atual > 0),
+            ee.data_validade
+          ) IS NOT NULL AND COALESCE(
+            (SELECT MIN(el.data_validade) 
+             FROM estoque_lotes el 
+             WHERE el.produto_id = p.id AND el.status = 'ativo' AND el.quantidade_atual > 0),
+            ee.data_validade
+          ) < CURRENT_DATE THEN 'vencido'
+          WHEN COALESCE(
+            (SELECT MIN(el.data_validade) 
+             FROM estoque_lotes el 
+             WHERE el.produto_id = p.id AND el.status = 'ativo' AND el.quantidade_atual > 0),
+            ee.data_validade
+          ) IS NOT NULL AND COALESCE(
+            (SELECT MIN(el.data_validade) 
+             FROM estoque_lotes el 
+             WHERE el.produto_id = p.id AND el.status = 'ativo' AND el.quantidade_atual > 0),
+            ee.data_validade
+          ) <= CURRENT_DATE + INTERVAL '7 days' THEN 'critico'
+          WHEN COALESCE(
+            (SELECT MIN(el.data_validade) 
+             FROM estoque_lotes el 
+             WHERE el.produto_id = p.id AND el.status = 'ativo' AND el.quantidade_atual > 0),
+            ee.data_validade
+          ) IS NOT NULL AND COALESCE(
+            (SELECT MIN(el.data_validade) 
+             FROM estoque_lotes el 
+             WHERE el.produto_id = p.id AND el.status = 'ativo' AND el.quantidade_atual > 0),
+            ee.data_validade
+          ) <= CURRENT_DATE + INTERVAL '30 days' THEN 'atencao'
           ELSE 'normal'
         END as status_estoque,
         CASE 
-          WHEN ee.data_validade IS NOT NULL THEN 
-            (ee.data_validade - CURRENT_DATE)::integer
+          WHEN COALESCE(
+            (SELECT MIN(el.data_validade) 
+             FROM estoque_lotes el 
+             WHERE el.produto_id = p.id AND el.status = 'ativo' AND el.quantidade_atual > 0),
+            ee.data_validade
+          ) IS NOT NULL THEN 
+            (COALESCE(
+              (SELECT MIN(el.data_validade) 
+               FROM estoque_lotes el 
+               WHERE el.produto_id = p.id AND el.status = 'ativo' AND el.quantidade_atual > 0),
+              ee.data_validade
+            ) - CURRENT_DATE)::integer
           ELSE NULL
         END as dias_para_vencimento
       FROM produtos p
@@ -41,9 +87,39 @@ export async function listarEstoqueEscola(req: Request, res: Response) {
         AND e.ativo = true
       ORDER BY 
         CASE 
-          WHEN ee.data_validade IS NOT NULL AND ee.data_validade < CURRENT_DATE THEN 1
-          WHEN ee.data_validade IS NOT NULL AND ee.data_validade <= CURRENT_DATE + INTERVAL '7 days' THEN 2
-          WHEN ee.data_validade IS NOT NULL AND ee.data_validade <= CURRENT_DATE + INTERVAL '30 days' THEN 3
+          WHEN COALESCE(
+            (SELECT MIN(el.data_validade) 
+             FROM estoque_lotes el 
+             WHERE el.produto_id = p.id AND el.status = 'ativo' AND el.quantidade_atual > 0),
+            ee.data_validade
+          ) IS NOT NULL AND COALESCE(
+            (SELECT MIN(el.data_validade) 
+             FROM estoque_lotes el 
+             WHERE el.produto_id = p.id AND el.status = 'ativo' AND el.quantidade_atual > 0),
+            ee.data_validade
+          ) < CURRENT_DATE THEN 1
+          WHEN COALESCE(
+            (SELECT MIN(el.data_validade) 
+             FROM estoque_lotes el 
+             WHERE el.produto_id = p.id AND el.status = 'ativo' AND el.quantidade_atual > 0),
+            ee.data_validade
+          ) IS NOT NULL AND COALESCE(
+            (SELECT MIN(el.data_validade) 
+             FROM estoque_lotes el 
+             WHERE el.produto_id = p.id AND el.status = 'ativo' AND el.quantidade_atual > 0),
+            ee.data_validade
+          ) <= CURRENT_DATE + INTERVAL '7 days' THEN 2
+          WHEN COALESCE(
+            (SELECT MIN(el.data_validade) 
+             FROM estoque_lotes el 
+             WHERE el.produto_id = p.id AND el.status = 'ativo' AND el.quantidade_atual > 0),
+            ee.data_validade
+          ) IS NOT NULL AND COALESCE(
+            (SELECT MIN(el.data_validade) 
+             FROM estoque_lotes el 
+             WHERE el.produto_id = p.id AND el.status = 'ativo' AND el.quantidade_atual > 0),
+            ee.data_validade
+          ) <= CURRENT_DATE + INTERVAL '30 days' THEN 3
           ELSE 4
         END,
         p.categoria, p.nome
@@ -423,10 +499,39 @@ export async function registrarMovimentacao(req: Request, res: Response) {
       `;
       let updateParams = [quantidadePosterior];
       
-      // Se for entrada e tem data de validade, atualizar também a validade
+      // Para entradas com validade, criar lote automático se não existir
       if (tipo_movimentacao === 'entrada' && data_validade) {
-        updateQuery += `, data_validade = $${updateParams.length + 1}, data_entrada = CURRENT_DATE`;
-        updateParams.push(data_validade);
+        // Verificar se já existe um lote com a mesma validade
+        const loteExistente = await client.query(`
+          SELECT id FROM estoque_lotes 
+          WHERE produto_id = $1 AND data_validade = $2 AND status = 'ativo'
+        `, [produto_id, data_validade]);
+
+        if (loteExistente.rows.length === 0) {
+          // Criar novo lote automaticamente
+          await client.query(`
+            INSERT INTO estoque_lotes (
+              produto_id, lote, quantidade_inicial, quantidade_atual,
+              data_validade, status, created_at, updated_at
+            ) VALUES ($1, $2, $3, $3, $4, 'ativo', NOW(), NOW())
+          `, [
+            produto_id,
+            `LOTE_${Date.now()}`, // Gerar nome único do lote
+            parseFloat(quantidade),
+            data_validade
+          ]);
+        } else {
+          // Atualizar lote existente
+          await client.query(`
+            UPDATE estoque_lotes 
+            SET quantidade_atual = quantidade_atual + $1,
+                updated_at = NOW()
+            WHERE id = $2
+          `, [parseFloat(quantidade), loteExistente.rows[0].id]);
+        }
+        
+        // Não atualizar a validade no estoque principal para manter compatibilidade
+        // A validade será calculada dinamicamente pelos lotes
       }
       
       updateQuery += ` WHERE escola_id = $${updateParams.length + 1} AND produto_id = $${updateParams.length + 2} RETURNING *`;

@@ -15,6 +15,8 @@ import { ItemEstoqueEscola, ResumoEstoque } from '../types';
 import ItemEstoque from '../components/ItemEstoque';
 import ModalHistoricoItem from '../components/ModalHistoricoItem';
 import ModalEntradaSimples from '../components/ModalEntradaSimples';
+import ModalDetalhesValidade from '../components/ModalDetalhesValidade';
+import ModalSaidaInteligente from '../components/ModalSaidaInteligente';
 import Header from '../components/Header';
 
 import { useEstoque } from '../hooks/useEstoque';
@@ -47,8 +49,12 @@ const EstoqueScreen: React.FC<EstoqueScreenProps> = ({ navigation }) => {
   const [filtrosVisiveis, setFiltrosVisiveis] = useState(false);
   const [modalEntradaVisible, setModalEntradaVisible] = useState(false);
   const [modalHistoricoVisible, setModalHistoricoVisible] = useState(false);
+  const [modalDetalhesVisible, setModalDetalhesVisible] = useState(false);
+  const [modalSaidaInteligenteVisible, setModalSaidaInteligenteVisible] = useState(false);
   const [itemSelecionado, setItemSelecionado] = useState<ItemEstoqueEscola | null>(null);
   const [itemHistorico, setItemHistorico] = useState<ItemEstoqueEscola | null>(null);
+  const [itemDetalhes, setItemDetalhes] = useState<ItemEstoqueEscola | null>(null);
+  const [itemSaidaInteligente, setItemSaidaInteligente] = useState<ItemEstoqueEscola | null>(null);
 
 
   // Mostrar erro se houver
@@ -157,6 +163,28 @@ const EstoqueScreen: React.FC<EstoqueScreenProps> = ({ navigation }) => {
     setItemHistorico(null);
   };
 
+  const abrirModalDetalhes = (item: ItemEstoqueEscola) => {
+    setItemDetalhes(item);
+    setModalDetalhesVisible(true);
+  };
+
+  const fecharModalDetalhes = () => {
+    setModalDetalhesVisible(false);
+    setItemDetalhes(null);
+  };
+
+  const abrirModalSaidaInteligente = (item: ItemEstoqueEscola) => {
+    setItemSaidaInteligente(item);
+    setModalSaidaInteligenteVisible(true);
+    // Fechar modal de detalhes se estiver aberto
+    setModalDetalhesVisible(false);
+  };
+
+  const fecharModalSaidaInteligente = () => {
+    setModalSaidaInteligenteVisible(false);
+    setItemSaidaInteligente(null);
+  };
+
   const confirmarEntrada = async (dados: {
     quantidade: number;
     data_validade?: string;
@@ -208,7 +236,7 @@ const EstoqueScreen: React.FC<EstoqueScreenProps> = ({ navigation }) => {
   const renderItem = ({ item }: { item: ItemEstoqueEscola }) => (
     <ItemEstoque
       item={item}
-      onPress={() => {}}
+      onPress={() => abrirModalDetalhes(item)}
       onHistorico={() => abrirModalHistorico(item)}
       onMovimentar={() => abrirModalEntrada(item)}
     />
@@ -355,6 +383,29 @@ const EstoqueScreen: React.FC<EstoqueScreenProps> = ({ navigation }) => {
         onClose={fecharModalHistorico}
         item={itemHistorico}
         escolaId={escolaId}
+      />
+
+      <ModalDetalhesValidade
+        visible={modalDetalhesVisible}
+        onClose={fecharModalDetalhes}
+        item={itemDetalhes}
+        onMovimentacao={(item, tipo) => {
+          if (tipo === 'saida') {
+            abrirModalSaidaInteligente(item);
+          } else if (tipo === 'entrada') {
+            // Fechar modal de detalhes e abrir modal de entrada
+            setModalDetalhesVisible(false);
+            abrirModalEntrada(item);
+          }
+        }}
+      />
+
+      <ModalSaidaInteligente
+        visible={modalSaidaInteligenteVisible}
+        onClose={fecharModalSaidaInteligente}
+        item={itemSaidaInteligente}
+        escolaId={escolaId}
+        onSuccess={refresh}
       />
 
       <ModalEntradaSimples
