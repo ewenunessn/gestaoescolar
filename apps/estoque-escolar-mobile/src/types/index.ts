@@ -20,7 +20,7 @@ export interface ItemEstoqueEscola {
   quantidade_atual: number;
   quantidade_minima?: number;
   quantidade_maxima?: number;
-  status_estoque: 'sem_estoque' | 'baixo' | 'normal' | 'alto';
+  status_estoque: 'sem_estoque' | 'baixo' | 'normal' | 'alto' | 'vencido' | 'critico' | 'atencao';
   data_ultima_atualizacao: string;
   observacoes?: string;
   ativo?: boolean;
@@ -29,7 +29,11 @@ export interface ItemEstoqueEscola {
   unidade_medida: string;
   categoria: string;
   escola_nome: string;
-  // Novos campos para lotes
+  // Campos de validade simples
+  data_validade?: string;
+  data_entrada?: string;
+  dias_para_vencimento?: number;
+  // Campos para lotes (opcional, para compatibilidade)
   lotes?: LoteEstoque[];
   // Campos opcionais para compatibilidade
   produto?: {

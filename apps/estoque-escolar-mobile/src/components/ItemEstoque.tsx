@@ -199,37 +199,27 @@ const ItemEstoque: React.FC<ItemEstoqueProps> = ({ item, onPress, onHistorico, o
         </View>
       </View>
 
-      {/* Lotes Section */}
-      {item.lotes && item.lotes.length > 0 && (
-        <View style={styles.lotesSection}>
-          <Text style={styles.lotesLabel}>Lotes ({item.lotes.length})</Text>
-          <View style={styles.lotesContainer}>
-            {item.lotes.slice(0, 3).map((lote, index) => (
-              <View key={lote.id} style={styles.loteItem}>
-                <View style={styles.loteInfo}>
-                  <Text style={styles.loteNome} numberOfLines={1}>{lote.lote}</Text>
-                  <Text style={styles.loteQuantidade}>
-                    {formatarQuantidade(lote.quantidade_atual)} {item.unidade_medida}
-                  </Text>
-                </View>
-                {lote.data_validade && (
-                  <View style={[
-                    styles.validadeBadge,
-                    { backgroundColor: getValidadeColor(lote.data_validade) }
-                  ]}>
-                    <Text style={[
-                      styles.validadeText,
-                      { color: getValidadeTextColor(lote.data_validade) }
-                    ]}>
-                      {formatarDataValidade(lote.data_validade)}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            ))}
-            {item.lotes.length > 3 && (
-              <Text style={styles.maisLotes}>+{item.lotes.length - 3} lotes</Text>
-            )}
+      {/* Validade Section */}
+      {item.data_validade && (
+        <View style={styles.validadeSection}>
+          <View style={styles.validadeContainer}>
+            <View style={styles.validadeInfo}>
+              <Text style={styles.validadeLabel}>Validade</Text>
+              <Text style={styles.validadeData}>
+                {new Date(item.data_validade).toLocaleDateString('pt-BR')}
+              </Text>
+            </View>
+            <View style={[
+              styles.validadeBadge,
+              { backgroundColor: getValidadeColor(item.data_validade) }
+            ]}>
+              <Text style={[
+                styles.validadeText,
+                { color: getValidadeTextColor(item.data_validade) }
+              ]}>
+                {formatarDataValidade(item.data_validade)}
+              </Text>
+            </View>
           </View>
         </View>
       )}
@@ -416,6 +406,38 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     textAlign: 'center',
     marginTop: 4,
+  },
+  validadeSection: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#f8f9fa',
+  },
+  validadeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+  },
+  validadeInfo: {
+    flex: 1,
+  },
+  validadeLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  validadeData: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1F2937',
   },
 });
 

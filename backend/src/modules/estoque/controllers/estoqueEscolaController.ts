@@ -13,6 +13,8 @@ export async function listarEstoqueEscola(req: Request, res: Response) {
         $1::integer as escola_id,
         p.id as produto_id,
         COALESCE(ee.quantidade_atual, 0) as quantidade_atual,
+        ee.data_validade,
+        ee.data_entrada,
         ee.updated_at as data_ultima_atualizacao,
         p.nome as produto_nome,
         p.descricao as produto_descricao,
@@ -21,15 +23,30 @@ export async function listarEstoqueEscola(req: Request, res: Response) {
         e.nome as escola_nome,
         CASE 
           WHEN COALESCE(ee.quantidade_atual, 0) = 0 THEN 'sem_estoque'
+          WHEN ee.data_validade IS NOT NULL AND ee.data_validade < CURRENT_DATE THEN 'vencido'
+          WHEN ee.data_validade IS NOT NULL AND ee.data_validade <= CURRENT_DATE + INTERVAL '7 days' THEN 'critico'
+          WHEN ee.data_validade IS NOT NULL AND ee.data_validade <= CURRENT_DATE + INTERVAL '30 days' THEN 'atencao'
           ELSE 'normal'
-        END as status_estoque
+        END as status_estoque,
+        CASE 
+          WHEN ee.data_validade IS NOT NULL THEN 
+            EXTRACT(DAY FROM ee.data_validade - CURRENT_DATE)::integer
+          ELSE NULL
+        END as dias_para_vencimento
       FROM produtos p
       CROSS JOIN escolas e
       LEFT JOIN estoque_escolas ee ON (ee.produto_id = p.id AND ee.escola_id = e.id)
       WHERE p.ativo = true 
         AND e.id = $1 
         AND e.ativo = true
-      ORDER BY p.categoria, p.nome
+      ORDER BY 
+        CASE 
+          WHEN ee.data_validade IS NOT NULL AND ee.data_validade < CURRENT_DATE THEN 1
+          WHEN ee.data_validade IS NOT NULL AND ee.data_validade <= CURRENT_DATE + INTERVAL '7 days' THEN 2
+          WHEN ee.data_validade IS NOT NULL AND ee.data_validade <= CURRENT_DATE + INTERVAL '30 days' THEN 3
+          ELSE 4
+        END,
+        p.categoria, p.nome
     `, [escola_id]);
 
     const estoque = result.rows;
@@ -200,25 +217,25 @@ export async function listarHistoricoEstoque(req: Request, res: Response) {
     const { escola_id } = req.params;
     const { produto_id, limite = 50 } = req.query;
 
-    let whereClause = 'WHERE eeh.escola_id = $1';
+    let whereClause = 'WHERE he.escola_id = $1';
     const params = [escola_id];
 
     if (produto_id) {
-      whereClause += ' AND eeh.produto_id = $2';
+      whereClause += ' AND he.produto_id = $2';
       params.push(produto_id as string);
     }
 
     const result = await db.query(`
       SELECT 
-        eeh.*,
+        he.*,
         p.nome as produto_nome,
         p.unidade as unidade_medida,
         u.nome as usuario_nome
-      FROM estoque_escolas_historico eeh
-      LEFT JOIN produtos p ON eeh.produto_id = p.id
-      LEFT JOIN usuarios u ON eeh.usuario_id = u.id
-      ${whereClause}
-      ORDER BY eeh.data_movimentacao DESC
+      FROM historico_estoque he
+      LEFT JOIN produtos p ON he.produto_id = p.id
+      LEFT JOIN usuarios u ON he.usuario_id = u.id
+      ${whereClause.replace('eeh.', 'he.')}
+      ORDER BY he.data_movimentacao DESC
       LIMIT $${params.length + 1}
     `, [...params, limite]);
 
@@ -328,7 +345,8 @@ export async function registrarMovimentacao(req: Request, res: Response) {
       quantidade,
       motivo,
       documento_referencia,
-      usuario_id
+      usuario_id,
+      data_validade // Novo campo para validade simples
     } = req.body;
 
     // Validações
@@ -397,18 +415,41 @@ export async function registrarMovimentacao(req: Request, res: Response) {
           break;
       }
 
-      // Atualizar o estoque
-      const updateResult = await client.query(`
+      // Atualizar o estoque (incluindo validade se for entrada)
+      let updateQuery = `
         UPDATE estoque_escolas SET
           quantidade_atual = $1,
           updated_at = CURRENT_TIMESTAMP
-        WHERE escola_id = $2 AND produto_id = $3
-        RETURNING *
-      `, [quantidadePosterior, escola_id, produto_id]);
+      `;
+      let updateParams = [quantidadePosterior];
+      
+      // Se for entrada e tem data de validade, atualizar também a validade
+      if (tipo_movimentacao === 'entrada' && data_validade) {
+        updateQuery += `, data_validade = $${updateParams.length + 1}, data_entrada = CURRENT_DATE`;
+        updateParams.push(data_validade);
+      }
+      
+      updateQuery += ` WHERE escola_id = $${updateParams.length + 1} AND produto_id = $${updateParams.length + 2} RETURNING *`;
+      updateParams.push(parseInt(escola_id), parseInt(produto_id));
+      
+      const updateResult = await client.query(updateQuery, updateParams);
 
-      // Registrar no histórico
+      // Registrar no histórico (incluindo validade)
+      // Se usuario_id não for fornecido ou não existir, usar NULL
+      let usuarioIdValido = null;
+      if (usuario_id) {
+        try {
+          const usuarioCheck = await client.query('SELECT id FROM usuarios WHERE id = $1', [usuario_id]);
+          if (usuarioCheck.rows.length > 0) {
+            usuarioIdValido = usuario_id;
+          }
+        } catch (error) {
+          console.log('Usuário não encontrado, usando NULL');
+        }
+      }
+
       const historicoResult = await client.query(`
-        INSERT INTO estoque_escolas_historico (
+        INSERT INTO historico_estoque (
           estoque_escola_id,
           escola_id,
           produto_id,
@@ -416,11 +457,12 @@ export async function registrarMovimentacao(req: Request, res: Response) {
           quantidade_anterior,
           quantidade_movimentada,
           quantidade_posterior,
+          data_validade,
           motivo,
           documento_referencia,
           usuario_id,
           data_movimentacao
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP)
         RETURNING *
       `, [
         item.id,
@@ -430,9 +472,10 @@ export async function registrarMovimentacao(req: Request, res: Response) {
         quantidadeAnterior,
         parseFloat(quantidade),
         quantidadePosterior,
+        data_validade || null,
         motivo,
         documento_referencia,
-        usuario_id
+        usuarioIdValido
       ]);
 
       return {

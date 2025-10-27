@@ -6,17 +6,15 @@ import {
   TouchableOpacity,
   StyleSheet,
   TextInput,
-  Modal,
   Alert,
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { ItemEstoqueEscola, ResumoEstoque, MovimentoEstoque, MovimentoLote } from '../types';
+import { ItemEstoqueEscola, ResumoEstoque } from '../types';
 import ItemEstoque from '../components/ItemEstoque';
 import ModalHistoricoItem from '../components/ModalHistoricoItem';
-import ModalLotesEstoque from '../components/ModalLotesEstoque';
-import ModalDetalhesLotes from '../components/ModalDetalhesLotes';
+import ModalEntradaSimples from '../components/ModalEntradaSimples';
 import Header from '../components/Header';
 
 import { useEstoque } from '../hooks/useEstoque';
@@ -47,16 +45,10 @@ const EstoqueScreen: React.FC<EstoqueScreenProps> = ({ navigation }) => {
   const [filtroStatus, setFiltroStatus] = useState<string>('todos');
   const [ordenacao, setOrdenacao] = useState<'nenhuma' | 'crescente' | 'decrescente'>('nenhuma');
   const [filtrosVisiveis, setFiltrosVisiveis] = useState(false);
-  const [modalMovimento, setModalMovimento] = useState(false);
-  const [modalLotes, setModalLotes] = useState(false);
-  const [modalDetalhes, setModalDetalhes] = useState(false);
+  const [modalEntradaVisible, setModalEntradaVisible] = useState(false);
   const [modalHistoricoVisible, setModalHistoricoVisible] = useState(false);
   const [itemSelecionado, setItemSelecionado] = useState<ItemEstoqueEscola | null>(null);
-  const [itemDetalhes, setItemDetalhes] = useState<ItemEstoqueEscola | null>(null);
   const [itemHistorico, setItemHistorico] = useState<ItemEstoqueEscola | null>(null);
-  const [tipoMovimento, setTipoMovimento] = useState<'entrada' | 'saida' | 'ajuste'>('entrada');
-  const [quantidade, setQuantidade] = useState('');
-  const [motivo, setMotivo] = useState('');
 
 
   // Mostrar erro se houver
@@ -150,16 +142,9 @@ const EstoqueScreen: React.FC<EstoqueScreenProps> = ({ navigation }) => {
     return itensFiltrados;
   };
 
-  const abrirModalMovimento = async (item: ItemEstoqueEscola) => {
+  const abrirModalEntrada = (item: ItemEstoqueEscola) => {
     setItemSelecionado(item);
-    
-    // Sempre usar o modal de lotes (que suporta tanto lotes quanto movimentação simples)
-    // Carregar lotes se ainda não foram carregados
-    if (!item.lotes || item.lotes.length === 0) {
-      await carregarLotesProduto(item.produto_id);
-    }
-    
-    setModalLotes(true);
+    setModalEntradaVisible(true);
   };
 
   const abrirModalHistorico = (item: ItemEstoqueEscola) => {
@@ -172,98 +157,60 @@ const EstoqueScreen: React.FC<EstoqueScreenProps> = ({ navigation }) => {
     setItemHistorico(null);
   };
 
-
-
-
-
-  const salvarMovimento = async () => {
-    if (!itemSelecionado || quantidade === '' || quantidade === null || quantidade === undefined) {
-      Alert.alert('Erro', 'Preencha todos os campos obrigatórios');
-      return;
-    }
-
-    // Validação da quantidade
-    const quantidadeMovimento = parseFloat(quantidade);
-    if (isNaN(quantidadeMovimento) || quantidadeMovimento < 0) {
-      Alert.alert('Erro', 'Quantidade deve ser maior ou igual a zero');
-      return;
-    }
-
-    // Validação para saída: não pode ser maior que a quantidade atual
-    if (tipoMovimento === 'saida' && quantidadeMovimento > itemSelecionado.quantidade_atual) {
-      Alert.alert(
-        'Erro de Validação', 
-        `Quantidade de saída (${formatarQuantidade(quantidadeMovimento, itemSelecionado.produto?.unidade_medida || '')}) não pode ser maior que a quantidade atual (${formatarQuantidade(itemSelecionado.quantidade_atual, itemSelecionado.produto?.unidade_medida || '')})`
-      );
-      return;
+  const confirmarEntrada = async (dados: {
+    quantidade: number;
+    data_validade?: string;
+    motivo: string;
+    documento_referencia?: string;
+  }) => {
+    if (!itemSelecionado || !escolaId || !usuario) {
+      throw new Error('Dados insuficientes para registrar entrada');
     }
 
     try {
-      if (!escolaId || !itemSelecionado) {
-        Alert.alert('Erro', 'Dados insuficientes para registrar movimento');
-        return;
+      // Usar a API para registrar movimentação
+      const response = await fetch(`https://gestaoescolar-backend.vercel.app/api/estoque-escola/escola/${escolaId}/movimentacao`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          produto_id: itemSelecionado.produto_id,
+          tipo_movimentacao: 'entrada',
+          quantidade: dados.quantidade,
+          data_validade: dados.data_validade,
+          motivo: dados.motivo,
+          documento_referencia: dados.documento_referencia,
+          usuario_id: usuario.id,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const movimento: MovimentoEstoque = {
-        tipo_movimentacao: tipoMovimento,
-        quantidade_movimentada: parseFloat(quantidade),
-        motivo,
-  
-      };
-
-      await apiService.atualizarQuantidadeItem(escolaId, itemSelecionado.produto_id, movimento);
-      setModalMovimento(false);
+      // Atualizar a lista
       await refresh();
-      Alert.alert('Sucesso', 'Movimento registrado com sucesso!');
-    } catch (error) {
-      console.error('Erro ao salvar movimento:', error);
-      Alert.alert('Erro', 'Não foi possível registrar o movimento');
-    }
-  };
-
-  const salvarMovimentoLotes = async (lotes: MovimentoLote[], tipo: 'entrada' | 'saida' | 'ajuste') => {
-    if (!itemSelecionado || !escolaId) {
-      Alert.alert('Erro', 'Dados insuficientes para registrar movimento');
-      return;
-    }
-
-    try {
-      const quantidadeTotal = lotes.reduce((total, lote) => total + lote.quantidade, 0);
       
-      const movimento: MovimentoEstoque = {
-        tipo_movimentacao: tipo,
-        quantidade_movimentada: quantidadeTotal,
-        motivo: `Movimento por lotes: ${lotes.length} lote(s)`,
-        lotes: lotes
-      };
-
-      await apiService.atualizarQuantidadeItem(escolaId, itemSelecionado.produto_id, movimento);
-      setModalLotes(false);
-      await refresh();
-      Alert.alert('Sucesso', `Movimento registrado com sucesso! ${lotes.length} lote(s) processado(s).`);
+      Alert.alert('Sucesso', 'Entrada registrada com sucesso!');
     } catch (error) {
-      console.error('Erro ao salvar movimento por lotes:', error);
-      Alert.alert('Erro', 'Não foi possível registrar o movimento por lotes');
+      console.error('Erro ao registrar entrada:', error);
+      throw error;
     }
   };
 
-  const abrirModalDetalhes = async (item: ItemEstoqueEscola) => {
-    setItemDetalhes(item);
-    
-    // Carregar lotes se ainda não foram carregados
-    if (!item.lotes || item.lotes.length === 0) {
-      await carregarLotesProduto(item.produto_id);
-    }
-    
-    setModalDetalhes(true);
-  };
+
+
+
+
+
 
   const renderItem = ({ item }: { item: ItemEstoqueEscola }) => (
     <ItemEstoque
       item={item}
-      onPress={() => abrirModalDetalhes(item)}
+      onPress={() => {}}
       onHistorico={() => abrirModalHistorico(item)}
-      onMovimentar={() => abrirModalMovimento(item)}
+      onMovimentar={() => abrirModalEntrada(item)}
     />
   );
 
@@ -401,95 +348,7 @@ const EstoqueScreen: React.FC<EstoqueScreenProps> = ({ navigation }) => {
         showsVerticalScrollIndicator={false}
       />
 
-      {/* Modal de Movimento */}
-      <Modal
-        visible={modalMovimento}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setModalMovimento(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitulo}>Registrar Movimento</Text>
-              <TouchableOpacity onPress={() => setModalMovimento(false)}>
-                <Ionicons name="close" size={24} color="#666" />
-              </TouchableOpacity>
-            </View>
-            
-            {itemSelecionado && (
-              <View style={styles.modalContent}>
-                <Text style={styles.produtoNome}>{itemSelecionado.produto?.nome}</Text>
-                <Text style={styles.quantidadeAtualModal}>
-                  Quantidade atual: {formatarQuantidade(
-                    itemSelecionado.quantidade_atual,
-                    itemSelecionado.produto?.unidade_medida || ''
-                  )}
-                </Text>
-                
-                <View style={styles.tipoMovimentoContainer}>
-                  {(['entrada', 'saida', 'ajuste'] as const).map((tipo) => (
-                    <TouchableOpacity
-                      key={tipo}
-                      style={[
-                        styles.tipoButton,
-                        tipoMovimento === tipo && styles.tipoButtonActive
-                      ]}
-                      onPress={() => setTipoMovimento(tipo)}
-                    >
-                      <Text style={[
-                        styles.tipoButtonText,
-                        tipoMovimento === tipo && styles.tipoButtonTextActive
-                      ]}>
-                        {tipo.charAt(0).toUpperCase() + tipo.slice(1)}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                
-                <View style={styles.quantidadeInputContainer}>
-                  <TextInput
-                    style={styles.quantidadeInputWithUnit}
-                    placeholder={
-                      tipoMovimento === 'entrada' ? 'Ex: 10 (quantidade a adicionar)' :
-                      tipoMovimento === 'saida' ? 'Ex: 5 (quantidade a remover)' :
-                      'Ex: 15 (nova quantidade total)'
-                    }
-                    value={quantidade}
-                    onChangeText={(text) => setQuantidade(text.replace(',', '.'))}
-                    keyboardType="numeric"
-                  />
-                  <Text style={styles.unidadeTextInside}>{itemSelecionado.produto?.unidade_medida || ''}</Text>
-                </View>
-                
-                <TextInput
-                  style={[styles.input, styles.textArea]}
-                  placeholder="Motivo (opcional)"
-                  value={motivo}
-                  onChangeText={setMotivo}
-                  multiline
-                  numberOfLines={3}
-                />
-                
-                <TouchableOpacity 
-                  style={[
-                    styles.salvarButton,
-                    tipoMovimento === 'entrada' && styles.salvarButtonEntrada,
-                    tipoMovimento === 'saida' && styles.salvarButtonSaida,
-                    tipoMovimento === 'ajuste' && styles.salvarButtonAjuste
-                  ]} 
-                  onPress={salvarMovimento}
-                >
-                  <Text style={[
-                    styles.salvarButtonText,
-                    tipoMovimento === 'ajuste' && { color: '#000' }
-                  ]}>Salvar Movimento</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        </View>
-      </Modal>
+
 
       <ModalHistoricoItem
         visible={modalHistoricoVisible}
@@ -498,19 +357,11 @@ const EstoqueScreen: React.FC<EstoqueScreenProps> = ({ navigation }) => {
         escolaId={escolaId}
       />
 
-      <ModalLotesEstoque
-        visible={modalLotes}
+      <ModalEntradaSimples
+        visible={modalEntradaVisible}
         item={itemSelecionado}
-        tipoMovimento={tipoMovimento}
-        onClose={() => setModalLotes(false)}
-        onSave={salvarMovimentoLotes}
-      />
-
-      <ModalDetalhesLotes
-        visible={modalDetalhes}
-        item={itemDetalhes}
-        onClose={() => setModalDetalhes(false)}
-        onMovimentar={abrirModalMovimento}
+        onClose={() => setModalEntradaVisible(false)}
+        onConfirm={confirmarEntrada}
       />
     </View>
   );
