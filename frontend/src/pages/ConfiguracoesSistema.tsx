@@ -29,43 +29,37 @@ import { useNotification } from '../context/NotificationContext';
 import { ConfiguracaoModuloSaldo } from '../services/configService';
 import { useConfigContext } from '../context/ConfigContext';
 import PageBreadcrumbs from '../components/PageBreadcrumbs';
+import { useConfiguracaoModuloSaldo, useSalvarConfiguracaoModuloSaldo } from '../hooks/queries';
 
 const ConfiguracoesSistema: React.FC = () => {
   const { success, error } = useNotification();
-  const { 
-    configModuloSaldo, 
-    loading, 
-    atualizarConfig, 
-    recarregarConfig 
-  } = useConfigContext();
   
-  const [saving, setSaving] = useState(false);
+  // React Query hooks
+  const configQuery = useConfiguracaoModuloSaldo();
+  const salvarMutation = useSalvarConfiguracaoModuloSaldo();
+  
   const [configuracao, setConfiguracao] = useState<ConfiguracaoModuloSaldo>({
     modulo_principal: 'modalidades',
     mostrar_ambos: true
   });
 
   useEffect(() => {
-    // Sincronizar com o contexto quando carregado
-    if (!loading) {
-      setConfiguracao(configModuloSaldo);
+    // Sincronizar com React Query quando carregado
+    if (configQuery.data) {
+      setConfiguracao(configQuery.data);
     }
-  }, [configModuloSaldo, loading]);
+  }, [configQuery.data]);
 
   const handleSalvar = async () => {
-    try {
-      setSaving(true);
-      
-      // Usar o contexto para atualizar - isso atualizará automaticamente o menu
-      await atualizarConfig(configuracao);
-      
-      success('✅ Configurações salvas! O menu foi atualizado automaticamente. Verifique a navegação lateral para ver as mudanças.');
-    } catch (err: any) {
-      console.error('Erro ao salvar configurações:', err);
-      error('Erro ao salvar configurações');
-    } finally {
-      setSaving(false);
-    }
+    salvarMutation.mutate(configuracao, {
+      onSuccess: () => {
+        success('✅ Configurações salvas! O menu foi atualizado automaticamente. Verifique a navegação lateral para ver as mudanças.');
+      },
+      onError: (err: any) => {
+        console.error('Erro ao salvar configurações:', err);
+        error('Erro ao salvar configurações');
+      }
+    });
   };
 
   const handleReset = () => {
@@ -75,7 +69,7 @@ const ConfiguracoesSistema: React.FC = () => {
     });
   };
 
-  if (loading) {
+  if (configQuery.isLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
         <CircularProgress size={60} />
@@ -292,11 +286,11 @@ const ConfiguracoesSistema: React.FC = () => {
               </Button>
               <Button
                 variant="contained"
-                startIcon={saving ? <CircularProgress size={20} /> : <SaveIcon />}
+                startIcon={salvarMutation.isPending ? <CircularProgress size={20} /> : <SaveIcon />}
                 onClick={handleSalvar}
-                disabled={saving}
+                disabled={salvarMutation.isPending}
               >
-                {saving ? 'Salvando...' : 'Salvar Configurações'}
+                {salvarMutation.isPending ? 'Salvando...' : 'Salvar Configurações'}
               </Button>
             </Box>
           </Box>

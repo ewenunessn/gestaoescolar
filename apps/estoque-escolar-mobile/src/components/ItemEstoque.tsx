@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ItemEstoqueEscola } from '../types';
+import { criarDataLocal, calcularDiasParaVencimento, formatarDataBrasileira } from '../utils/dateUtils';
 
 interface ItemEstoqueProps {
   item: ItemEstoqueEscola;
@@ -11,7 +12,7 @@ interface ItemEstoqueProps {
 }
 
 const formatarQuantidade = (quantidade: number | null | undefined): string => {
-  if (!quantidade || quantidade === 0) return 'Sem Estoque';
+  if (quantidade === null || quantidade === undefined) return '0';
   
   // Remove zeros desnecessários após a vírgula
   const numeroFormatado = parseFloat(quantidade.toString());
@@ -22,32 +23,15 @@ const formatarDataValidade = (dataValidade: string): string => {
   try {
     if (!dataValidade) return 'Sem validade';
     
-    // IMPORTANTE: Garantir que dataValidade é string
-    const dataStr = String(dataValidade);
+    const diasRestantes = calcularDiasParaVencimento(dataValidade);
+    if (diasRestantes === null) return 'Data inválida';
     
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0); // Zerar horas para comparação apenas de datas
-    
-    // CORREÇÃO: Extrair apenas a parte da data (YYYY-MM-DD)
-    // Isso resolve o problema de datas com T00:00:00.000Z
-    const dataApenas = dataStr.split('T')[0];
-    const [ano, mes, dia] = dataApenas.split('-').map(Number);
-    const validade = new Date(ano, mes - 1, dia);
-    
-    // Verificar se a data é válida
-    if (isNaN(validade.getTime())) {
-      return 'Data inválida';
-    }
-    
-    const diffTime = validade.getTime() - hoje.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays < 0) return 'Vencido';
-    if (diffDays === 0) return 'Vence hoje';
-    if (diffDays === 1) return 'Vence amanhã';
-    if (diffDays <= 7) return `${diffDays} dias`;
-    if (diffDays <= 30) return `${Math.ceil(diffDays / 7)} sem`;
-    return `${Math.ceil(diffDays / 30)} mês`;
+    if (diasRestantes < 0) return 'Vencido';
+    if (diasRestantes === 0) return 'Vence hoje';
+    if (diasRestantes === 1) return 'Vence amanhã';
+    if (diasRestantes <= 7) return `${diasRestantes} dias`;
+    if (diasRestantes <= 30) return `${Math.ceil(diasRestantes / 7)} sem`;
+    return `${Math.ceil(diasRestantes / 30)} mês`;
   } catch (error) {
     console.error('Erro ao formatar data de validade:', error);
     return 'Data inválida';
@@ -55,36 +39,20 @@ const formatarDataValidade = (dataValidade: string): string => {
 };
 
 const getValidadeColor = (dataValidade: string): string => {
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0);
+  const diasRestantes = calcularDiasParaVencimento(dataValidade);
+  if (diasRestantes === null) return '#f5f5f5'; // Cinza para data inválida
   
-  // CORREÇÃO: Extrair apenas a parte da data (YYYY-MM-DD)
-  const dataApenas = String(dataValidade).split('T')[0];
-  const [ano, mes, dia] = dataApenas.split('-').map(Number);
-  const validade = new Date(ano, mes - 1, dia);
-  
-  const diffTime = validade.getTime() - hoje.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
-  if (diffDays < 0) return '#ffebee'; // Vencido - vermelho claro
-  if (diffDays <= 7) return '#fff3e0'; // Próximo ao vencimento - laranja claro
+  if (diasRestantes < 0) return '#ffebee'; // Vencido - vermelho claro
+  if (diasRestantes <= 7) return '#fff3e0'; // Próximo ao vencimento - laranja claro
   return '#e8f5e8'; // Normal - verde claro
 };
 
 const getValidadeTextColor = (dataValidade: string): string => {
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0);
+  const diasRestantes = calcularDiasParaVencimento(dataValidade);
+  if (diasRestantes === null) return '#666'; // Cinza para data inválida
   
-  // CORREÇÃO: Extrair apenas a parte da data (YYYY-MM-DD)
-  const dataApenas = String(dataValidade).split('T')[0];
-  const [ano, mes, dia] = dataApenas.split('-').map(Number);
-  const validade = new Date(ano, mes - 1, dia);
-  
-  const diffTime = validade.getTime() - hoje.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
-  if (diffDays < 0) return '#d32f2f'; // Vencido - vermelho
-  if (diffDays <= 7) return '#f57c00'; // Próximo ao vencimento - laranja
+  if (diasRestantes < 0) return '#d32f2f'; // Vencido - vermelho
+  if (diasRestantes <= 7) return '#f57c00'; // Próximo ao vencimento - laranja
   return '#388e3c'; // Normal - verde
 };
 
@@ -218,12 +186,7 @@ const ItemEstoque: React.FC<ItemEstoqueProps> = ({ item, onPress, onHistorico, o
                 {(() => {
                   try {
                     if (!item.data_validade) return 'Sem validade';
-                    const dataStr = String(item.data_validade);
-                    const dataApenas = dataStr.split('T')[0];
-                    const [ano, mes, dia] = dataApenas.split('-').map(Number);
-                    const data = new Date(ano, mes - 1, dia);
-                    if (isNaN(data.getTime())) return 'Data inválida';
-                    return data.toLocaleDateString('pt-BR');
+                    return formatarDataBrasileira(item.data_validade);
                   } catch (error) {
                     return 'Data inválida';
                   }

@@ -56,6 +56,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { listarEscolas, criarEscola, importarEscolasLote } from '../services/escolas';
+import { useEscolas, useCriarEscola } from '../hooks/queries';
 import ImportacaoEscolas from '../components/ImportacaoEscolas';
 import LocationSelector from '../components/LocationSelector';
 import * as XLSX from 'xlsx';
@@ -88,9 +89,11 @@ const EscolasPage = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
 
-  // Estados principais
-  const [escolas, setEscolas] = useState<Escola[]>([]);
-  const [loading, setLoading] = useState(true);
+  // React Query hooks
+  const escolasQuery = useEscolas();
+  const criarEscolaMutation = useCriarEscola();
+  
+  // Estados locais (apenas UI)
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -134,19 +137,13 @@ const EscolasPage = () => {
     ativo: true,
   });
 
-  const loadEscolas = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await listarEscolas();
-      setEscolas(Array.isArray(data) ? data : []);
-    } catch (err: any) {
-      setError('Erro ao carregar escolas. Tente novamente.');
-      setEscolas([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  // Dados derivados do React Query
+  const escolas = escolasQuery.data || [];
+  const loading = escolasQuery.isLoading;
+  
+  const loadEscolas = useCallback(() => {
+    escolasQuery.refetch();
+  }, [escolasQuery]);
 
   useEffect(() => {
     loadEscolas();
@@ -210,17 +207,16 @@ const EscolasPage = () => {
       alert("O nome da escola é obrigatório.");
       return;
     }
-    try {
-      setLoadingSave(true);
-      await criarEscola(formData);
-      setSuccessMessage('Escola criada com sucesso!');
-      closeModal();
-      loadEscolas();
-    } catch (err) {
-      setError('Erro ao salvar a escola. Verifique os dados e tente novamente.');
-    } finally {
-      setLoadingSave(false);
-    }
+    
+    criarEscolaMutation.mutate(formData, {
+      onSuccess: () => {
+        setSuccessMessage('Escola criada com sucesso!');
+        closeModal();
+      },
+      onError: () => {
+        setError('Erro ao salvar a escola. Verifique os dados e tente novamente.');
+      }
+    });
   };
 
   const handleImportEscolas = async (escolasParaImportar: any[]) => {
@@ -357,7 +353,7 @@ const EscolasPage = () => {
           <Grid item xs={12}><TextField name="nome_gestor" label="Nome do Gestor" value={formData.nome_gestor} onChange={handleFormChange} fullWidth /></Grid>
           <Grid item xs={12}><FormControlLabel control={<Switch checked={formData.ativo} onChange={handleSwitchChange} name="ativo" />} label="Escola Ativa" /></Grid>
         </Grid></DialogContent>
-        <DialogActions><Button onClick={closeModal} variant="outlined" disabled={loadingSave}>Cancelar</Button><Button onClick={handleSave} variant="contained" disabled={loadingSave}>{loadingSave ? <CircularProgress size={24} /> : 'Salvar Escola'}</Button></DialogActions>
+        <DialogActions><Button onClick={closeModal} variant="outlined" disabled={criarEscolaMutation.isPending}>Cancelar</Button><Button onClick={handleSave} variant="contained" disabled={criarEscolaMutation.isPending}>{criarEscolaMutation.isPending ? <CircularProgress size={24} /> : 'Salvar Escola'}</Button></DialogActions>
       </Dialog>
 
       {/* Modal de Importação */}

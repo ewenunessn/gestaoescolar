@@ -1,14 +1,11 @@
 import { storage } from '../utils/storage';
 import { ItemEstoqueEscola, HistoricoEstoque, ResumoEstoque, AtualizacaoLote, MovimentoEstoque } from '../types';
 import { API_CONFIG, API_ENDPOINTS, DEV_CONFIG } from '../config/api';
+import { criarDataLocal, converterParaFormatoAPI } from '../utils/dateUtils';
 
 // Função auxiliar para processar datas corrigindo problema de timezone
 const processarDataCorreta = (dataStr: string): Date => {
-  // CORREÇÃO DEFINITIVA: Sempre extrair apenas YYYY-MM-DD
-  // Isso resolve o problema de datas com T00:00:00.000Z que são interpretadas como UTC
-  const dataApenas = String(dataStr).split('T')[0];
-  const [ano, mes, dia] = dataApenas.split('-').map(Number);
-  return new Date(ano, mes - 1, dia);
+  return criarDataLocal(dataStr) || new Date();
 };
 
 class ApiService {
@@ -163,8 +160,8 @@ class ApiService {
           escola_nome: item.escola_nome || 'Escola',
           // Dados de validade do backend (controle simples)
           // IMPORTANTE: Garantir que datas são strings, não objetos Date
-          data_validade: item.data_validade ? (item.data_validade instanceof Date ? item.data_validade.toISOString().split('T')[0] : String(item.data_validade)) : undefined,
-          data_entrada: item.data_entrada ? (item.data_entrada instanceof Date ? item.data_entrada.toISOString().split('T')[0] : String(item.data_entrada)) : undefined,
+          data_validade: converterParaFormatoAPI(item.data_validade),
+          data_entrada: converterParaFormatoAPI(item.data_entrada),
           dias_para_vencimento: item.dias_para_vencimento,
           // Informações de validade calculadas (para compatibilidade)
           lotes: lotesAtivos,
@@ -383,8 +380,8 @@ class ApiService {
         quantidade_inicial: lote.quantidade_inicial || 0,
         quantidade_atual: lote.quantidade_atual || 0,
         // IMPORTANTE: Garantir que datas são strings, não objetos Date
-        data_fabricacao: lote.data_fabricacao ? (lote.data_fabricacao instanceof Date ? lote.data_fabricacao.toISOString().split('T')[0] : String(lote.data_fabricacao)) : undefined,
-        data_validade: lote.data_validade ? (lote.data_validade instanceof Date ? lote.data_validade.toISOString().split('T')[0] : String(lote.data_validade)) : undefined,
+        data_fabricacao: converterParaFormatoAPI(lote.data_fabricacao),
+        data_validade: converterParaFormatoAPI(lote.data_validade),
         fornecedor_id: lote.fornecedor_id,
         observacoes: lote.observacoes,
         status: lote.status || 'ativo',

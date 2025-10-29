@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   Alert,
+  AlertButton,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ItemEstoqueEscola, LoteEstoque } from '../types';
@@ -14,18 +15,24 @@ import Header from '../components/Header';
 import { useEstoque } from '../hooks/useEstoque';
 import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '../services/api';
+import { criarDataLocal, calcularDiasParaVencimento, formatarDataBrasileira } from '../utils/dateUtils';
 
 interface ValidadeScreenProps {
   navigation: any;
 }
 
 interface ItemValidadeExtendido extends ItemEstoqueEscola {
-  loteDetalhes?: LoteEstoque;
+  loteDetalhes?: LoteEstoque & {
+    dias_para_vencimento?: number;
+    status_validade?: 'vencido' | 'critico' | 'atencao' | 'normal';
+  };
+  status_validade?: 'vencido' | 'critico' | 'atencao' | 'normal';
+  dias_proximo_vencimento?: number;
 }
 
 const ValidadeScreen: React.FC<ValidadeScreenProps> = ({ navigation }) => {
   const { usuario } = useAuth();
-  const { itens, loading, refresh } = useEstoque();
+  const { itens, refresh } = useEstoque();
   const [refreshing, setRefreshing] = useState(false);
   const [filtroValidade, setFiltroValidade] = useState<'todos' | 'vencidos' | 'criticos' | 'atencao'>('todos');
   const [itensComValidade, setItensComValidade] = useState<ItemValidadeExtendido[]>([]);
@@ -42,15 +49,7 @@ const ValidadeScreen: React.FC<ValidadeScreenProps> = ({ navigation }) => {
         // Para cada lote do item, criar uma entrada separada
         item.lotes.forEach(lote => {
           if (lote.data_validade && lote.quantidade_atual > 0) {
-            const hoje = new Date();
-            hoje.setHours(0, 0, 0, 0);
-            
-            // CORREÇÃO: Extrair apenas a parte da data (YYYY-MM-DD)
-            const dataApenas = String(lote.data_validade).split('T')[0];
-            const [ano, mes, dia] = dataApenas.split('-').map(Number);
-            const dataVencimento = new Date(ano, mes - 1, dia);
-            
-            const diasRestantes = Math.ceil((dataVencimento.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+            const diasRestantes = calcularDiasParaVencimento(lote.data_validade);
 
             let statusValidade: 'vencido' | 'critico' | 'atencao' | 'normal' = 'normal';
             if (diasRestantes <= 0) {
@@ -83,11 +82,11 @@ const ValidadeScreen: React.FC<ValidadeScreenProps> = ({ navigation }) => {
       const prioridades = { vencido: 1, critico: 2, atencao: 3, normal: 4 };
       const prioridadeA = prioridades[a.status_validade || 'normal'];
       const prioridadeB = prioridades[b.status_validade || 'normal'];
-      
+
       if (prioridadeA !== prioridadeB) {
         return prioridadeA - prioridadeB;
       }
-      
+
       // Se mesma prioridade, ordenar por dias restantes
       return (a.dias_proximo_vencimento || 0) - (b.dias_proximo_vencimento || 0);
     });
@@ -117,7 +116,7 @@ const ValidadeScreen: React.FC<ValidadeScreenProps> = ({ navigation }) => {
     }
   };
 
-  const getIconeStatus = (status?: string): string => {
+  const getIconeStatus = (status?: string): keyof typeof Ionicons.glyphMap => {
     switch (status) {
       case 'vencido': return 'close-circle';
       case 'critico': return 'warning';
@@ -136,28 +135,25 @@ const ValidadeScreen: React.FC<ValidadeScreenProps> = ({ navigation }) => {
   };
 
   const formatarData = (data: string): string => {
-    // CORREÇÃO: Extrair apenas a parte da data (YYYY-MM-DD)
-    const dataApenas = String(data).split('T')[0];
-    const [ano, mes, dia] = dataApenas.split('-').map(Number);
-    return new Date(ano, mes - 1, dia).toLocaleDateString('pt-BR');
+    return formatarDataBrasileira(data);
   };
 
   const processarLoteInteligente = async (item: ItemValidadeExtendido) => {
     if (!item.loteDetalhes) return;
 
-    const opcoes = [];
+    const opcoes: AlertButton[] = [];
 
     if (item.status_validade === 'vencido') {
       opcoes.push(
         { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Descartar Lote', 
+        {
+          text: 'Descartar Lote',
           style: 'destructive',
           onPress: () => descartarLote(item)
         },
-        { 
-          text: 'Usar Mesmo Assim', 
-          onPress: () => navigation.navigate('Estoque', { 
+        {
+          text: 'Usar Mesmo Assim',
+          onPress: () => navigation.navigate('Estoque', {
             itemParaMovimentar: item,
             tipoMovimento: 'saida'
           })
@@ -166,13 +162,13 @@ const ValidadeScreen: React.FC<ValidadeScreenProps> = ({ navigation }) => {
     } else if (item.status_validade === 'critico') {
       opcoes.push(
         { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Priorizar Saída', 
+        {
+          text: 'Priorizar Saída',
           onPress: () => priorizarSaida(item)
         },
-        { 
-          text: 'Movimentar', 
-          onPress: () => navigation.navigate('Estoque', { 
+        {
+          text: 'Movimentar',
+          onPress: () => navigation.navigate('Estoque', {
             itemParaMovimentar: item,
             tipoMovimento: 'saida'
           })
@@ -181,9 +177,9 @@ const ValidadeScreen: React.FC<ValidadeScreenProps> = ({ navigation }) => {
     } else {
       opcoes.push(
         { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Movimentar', 
-          onPress: () => navigation.navigate('Estoque', { 
+        {
+          text: 'Movimentar',
+          onPress: () => navigation.navigate('Estoque', {
             itemParaMovimentar: item
           })
         }
@@ -197,7 +193,7 @@ const ValidadeScreen: React.FC<ValidadeScreenProps> = ({ navigation }) => {
     );
   };
 
-  const descartarLote = async (item: ItemValidadeExtendido) => {
+  const descartarLote = async (_item: ItemValidadeExtendido) => {
     try {
       // Implementar descarte do lote
       Alert.alert('Funcionalidade em desenvolvimento', 'Descarte de lote será implementado');
@@ -206,7 +202,7 @@ const ValidadeScreen: React.FC<ValidadeScreenProps> = ({ navigation }) => {
     }
   };
 
-  const priorizarSaida = async (item: ItemValidadeExtendido) => {
+  const priorizarSaida = async (_item: ItemValidadeExtendido) => {
     try {
       // Implementar priorização de saída
       Alert.alert('Funcionalidade em desenvolvimento', 'Priorização de saída será implementada');
@@ -216,7 +212,7 @@ const ValidadeScreen: React.FC<ValidadeScreenProps> = ({ navigation }) => {
   };
 
   const renderItem = ({ item }: { item: ItemValidadeExtendido }) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={[
         styles.itemCard,
         { borderLeftColor: getCorStatus(item.status_validade) }
@@ -230,15 +226,15 @@ const ValidadeScreen: React.FC<ValidadeScreenProps> = ({ navigation }) => {
             Lote: {item.loteDetalhes?.lote} • {item.loteDetalhes?.quantidade_atual} {item.unidade_medida}
           </Text>
         </View>
-        
+
         <View style={[
           styles.statusBadge,
           { backgroundColor: getCorStatus(item.status_validade) + '20' }
         ]}>
-          <Ionicons 
-            name={getIconeStatus(item.status_validade)} 
-            size={16} 
-            color={getCorStatus(item.status_validade)} 
+          <Ionicons
+            name={getIconeStatus(item.status_validade)}
+            size={16}
+            color={getCorStatus(item.status_validade)}
           />
           <Text style={[
             styles.statusText,
@@ -282,8 +278,8 @@ const ValidadeScreen: React.FC<ValidadeScreenProps> = ({ navigation }) => {
   const renderFiltros = () => (
     <View style={styles.filtrosContainer}>
       {(['todos', 'vencidos', 'criticos', 'atencao'] as const).map((filtro) => {
-        const count = filtro === 'todos' 
-          ? itensComValidade.length 
+        const count = filtro === 'todos'
+          ? itensComValidade.length
           : itensComValidade.filter(item => item.status_validade === filtro).length;
 
         return (
@@ -301,10 +297,10 @@ const ValidadeScreen: React.FC<ValidadeScreenProps> = ({ navigation }) => {
               filtroValidade === filtro && styles.filtroButtonTextActive,
               filtro !== 'todos' && filtroValidade !== filtro && { color: getCorStatus(filtro) }
             ]}>
-              {filtro === 'todos' ? 'Todos' : 
-               filtro === 'vencidos' ? 'Vencidos' :
-               filtro === 'criticos' ? 'Críticos' :
-               'Atenção'} ({count})
+              {filtro === 'todos' ? 'Todos' :
+                filtro === 'vencidos' ? 'Vencidos' :
+                  filtro === 'criticos' ? 'Críticos' :
+                    'Atenção'} ({count})
             </Text>
           </TouchableOpacity>
         );
@@ -340,8 +336,8 @@ const ValidadeScreen: React.FC<ValidadeScreenProps> = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <Header title="Controle de Validade" schoolName={usuario?.escola?.nome} />
-      
+      <Header title="Controle de Validade" schoolName={usuario?.nome} />
+
       {renderResumo()}
       {renderFiltros()}
 
@@ -359,10 +355,10 @@ const ValidadeScreen: React.FC<ValidadeScreenProps> = ({ navigation }) => {
             <Ionicons name="checkmark-circle-outline" size={64} color="#4CAF50" />
             <Text style={styles.emptyTitle}>Tudo em ordem!</Text>
             <Text style={styles.emptyText}>
-              {filtroValidade === 'todos' 
+              {filtroValidade === 'todos'
                 ? 'Nenhum item com problemas de validade'
-                : `Nenhum item ${filtroValidade === 'vencidos' ? 'vencido' : 
-                    filtroValidade === 'criticos' ? 'crítico' : 'em atenção'}`
+                : `Nenhum item ${filtroValidade === 'vencidos' ? 'vencido' :
+                  filtroValidade === 'criticos' ? 'crítico' : 'em atenção'}`
               }
             </Text>
           </View>

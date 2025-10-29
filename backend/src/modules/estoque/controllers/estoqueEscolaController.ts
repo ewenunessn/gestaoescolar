@@ -1,5 +1,11 @@
 // Controller de estoque escolar para PostgreSQL
 import { Request, Response } from "express";
+import { z } from 'zod';
+import { 
+  estoqueMovimentacaoSchema,
+  estoqueAtualizacaoLoteSchema,
+  idSchema 
+} from '../../../schemas';
 const db = require("../../../database");
 
 export async function listarEstoqueEscola(req: Request, res: Response) {

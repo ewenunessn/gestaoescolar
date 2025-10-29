@@ -1,9 +1,14 @@
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import {
-  listarProdutos,
-  criarProduto,
   importarProdutosLote,
 } from "../services/produtos";
+import { 
+  useProdutos, 
+  useCriarProduto, 
+  useAtualizarProduto, 
+  useExcluirProduto,
+  useCategoriasProdutos 
+} from "../hooks/queries";
 import ImportacaoProdutos from '../components/ImportacaoProdutos';
 import {
   Box,
@@ -92,11 +97,22 @@ interface ProdutoForm {
 const ProdutosPage = () => {
   const navigate = useNavigate();
 
-  // Estados principais
-  const [produtos, setProdutos] = useState<Produto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // React Query hooks
+  const { 
+    data: produtos = [], 
+    isLoading: loading, 
+    error: queryError,
+    refetch 
+  } = useProdutos({ search: searchTerm, categoria: selectedCategoria });
+  
+  const { data: categorias = [] } = useCategoriasProdutos();
+  const criarProdutoMutation = useCriarProduto();
+  const atualizarProdutoMutation = useAtualizarProduto();
+  const excluirProdutoMutation = useExcluirProduto();
+  
+  // Estados locais
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const error = queryError?.message || null;
 
   // Estados de filtros
   const [searchTerm, setSearchTerm] = useState('');
@@ -127,24 +143,10 @@ const ProdutosPage = () => {
   // Estados do menu de ações
   const [actionsMenuAnchor, setActionsMenuAnchor] = useState<null | HTMLElement>(null);
 
-  // Carregar produtos
-  const loadProdutos = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await listarProdutos();
-      setProdutos(Array.isArray(data) ? data : []);
-    } catch (err) {
-      setError('Erro ao carregar produtos. Tente novamente.');
-      setProdutos([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadProdutos();
-  }, [loadProdutos]);
+  // Função para refresh manual (React Query já gerencia o carregamento automaticamente)
+  const handleRefresh = useCallback(() => {
+    refetch();
+  }, [refetch]);
 
   // Detectar filtros ativos
   useEffect(() => {
@@ -152,8 +154,7 @@ const ProdutosPage = () => {
     setHasActiveFilters(hasFilters);
   }, [searchTerm, selectedCategoria, selectedMarcas, selectedStatus]);
 
-  // Extrair dados únicos para filtros
-  const categorias = useMemo(() => [...new Set(produtos.map(p => p.categoria).filter(Boolean))].sort(), [produtos]);
+  // Extrair dados únicos para filtros (categorias já vem do hook useCategoriasProdutos)
   const marcas = useMemo(() => [...new Set(produtos.map(p => p.marca).filter(Boolean))].sort(), [produtos]);
 
   // Filtrar e ordenar produtos
@@ -229,14 +230,13 @@ const ProdutosPage = () => {
   const handleSave = async () => {
     try {
       setIsSaving(true);
-      const novoProduto = await criarProduto(formData);
+      const novoProduto = await criarProdutoMutation.mutateAsync(formData);
       setSuccessMessage('Produto criado com sucesso!');
       closeModal();
-      await loadProdutos();
       setTimeout(() => setSuccessMessage(null), 3000);
       navigate(`/produtos/${novoProduto.id}`);
     } catch (err) {
-      setError("Erro ao salvar produto. Tente novamente.");
+      console.error('Erro ao criar produto:', err);
     } finally {
       setIsSaving(false);
     }
@@ -249,7 +249,7 @@ const ProdutosPage = () => {
       const response = await importarProdutosLote(produtosImportacao);
       
       setSuccessMessage(`Importação concluída: ${response.resultados.insercoes} inseridos, ${response.resultados.atualizacoes} atualizados`);
-      await loadProdutos();
+      refetch(); // Recarregar dados após importação
       setTimeout(() => setSuccessMessage(null), 5000);
     } catch (err) {
       setError('Erro ao importar produtos. Verifique os dados e tente novamente.');
@@ -510,7 +510,7 @@ const ProdutosPage = () => {
         {loading ? (
           <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><CircularProgress size={60} /></CardContent></Card>
         ) : error ? (
-          <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={loadProdutos}>Tentar Novamente</Button></CardContent></Card>
+          <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={handleRefresh}>Tentar Novamente</Button></CardContent></Card>
         ) : filteredProdutos.length === 0 ? (
           <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Inventory sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} /><Typography variant="h6" sx={{ color: 'text.secondary' }}>Nenhum produto encontrado</Typography></CardContent></Card>
         ) : (

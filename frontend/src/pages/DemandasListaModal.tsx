@@ -42,7 +42,9 @@ import {
 import demandasService from '../services/demandas';
 import { listarEscolas } from '../services/escolas';
 import { Demanda, STATUS_DEMANDA } from '../types/demanda';
-import { formatarData } from '../utils/dateUtils';
+import { formatarData, obterDataAtual } from '../utils/dateUtils';
+import { useFormValidation } from '../hooks/useFormValidation';
+import { demandaFormSchema, demandaAcaoFormSchema, DemandaFormData, DemandaAcaoFormData } from '../schemas/validation';
 
 export default function DemandasListaModal() {
   const [demandas, setDemandas] = useState<Demanda[]>([]);
@@ -74,7 +76,7 @@ export default function DemandasListaModal() {
   const [formData, setFormData] = useState({
     escola_id: '',
     numero_oficio: '',
-    data_solicitacao: new Date().toISOString().split('T')[0],
+    data_solicitacao: obterDataAtual(),
     objeto: '',
     descricao_itens: '',
     observacoes: ''
@@ -137,7 +139,7 @@ export default function DemandasListaModal() {
     setFormData({
       escola_id: '',
       numero_oficio: '',
-      data_solicitacao: new Date().toISOString().split('T')[0],
+      data_solicitacao: obterDataAtual(),
       objeto: '',
       descricao_itens: '',
       observacoes: ''
@@ -160,8 +162,8 @@ export default function DemandasListaModal() {
 
   const handleVerDetalhes = (demanda: Demanda) => {
     setDemandaSelecionada(demanda);
-    setDataEnvio(new Date().toISOString().split('T')[0]);
-    setDataResposta(new Date().toISOString().split('T')[0]);
+    setDataEnvio(obterDataAtual());
+    setDataResposta(obterDataAtual());
     setModalDetalhes(true);
   };
 

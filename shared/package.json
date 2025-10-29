@@ -1,0 +1,17 @@
+{
+  "name": "@alimentacao-escolar/shared-types",
+  "version": "1.0.0",
+  "description": "Tipos compartilhados entre frontend, backend e mobile",
+  "main": "types/index.ts",
+  "types": "types/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.4"
+  },
+  "peerDependencies": {
+    "typescript": ">=4.0.0"
+  }
+}

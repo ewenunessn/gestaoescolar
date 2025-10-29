@@ -1,85 +1,7 @@
 /**
- * Utilitários para manipulação de datas
+ * Utilitários centralizados para manipulação de datas
+ * Resolve problemas de timezone e código duplicado
  */
-
-/**
- * Converte uma data ISO string para o formato yyyy-MM-dd usado em inputs HTML
- * @param isoString - String de data no formato ISO (ex: "2025-08-23T03:00:00.000Z")
- * @returns String no formato yyyy-MM-dd ou string vazia se inválida
- */
-export function formatDateForInput(isoString: string | null | undefined): string {
-  if (!isoString) return '';
-  
-  try {
-    const date = new Date(isoString);
-    if (isNaN(date.getTime())) return '';
-    
-    // Usar toISOString e pegar apenas a parte da data
-    return date.toISOString().split('T')[0];
-  } catch (error) {
-    console.warn('Erro ao formatar data para input:', error);
-    return '';
-  }
-}
-
-/**
- * Converte uma data do formato yyyy-MM-dd para ISO string
- * @param dateString - String no formato yyyy-MM-dd
- * @returns String ISO ou null se inválida
- */
-export function formatInputDateToISO(dateString: string | null | undefined): string | null {
-  if (!dateString) return null;
-  
-  try {
-    const date = new Date(dateString + 'T00:00:00.000Z');
-    if (isNaN(date.getTime())) return null;
-    
-    return date.toISOString();
-  } catch (error) {
-    console.warn('Erro ao converter data para ISO:', error);
-    return null;
-  }
-}
-
-/**
- * Formata uma data para exibição no formato brasileiro
- * @param isoString - String de data no formato ISO
- * @returns String formatada (dd/MM/yyyy) ou string vazia se inválida
- */
-export function formatDateForDisplay(isoString: string | null | undefined): string {
-  if (!isoString) return '';
-  
-  try {
-    const date = new Date(isoString);
-    if (isNaN(date.getTime())) return '';
-    
-    return date.toLocaleDateString('pt-BR');
-  } catch (error) {
-    console.warn('Erro ao formatar data para exibição:', error);
-    return '';
-  }
-}
-/**
- 
-* Formata um valor monetário para exibição
- * @param valor - Valor numérico
- * @returns String formatada (R$ 1.234,56)
- */
-export function formatarMoeda(valor: number): string {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL'
-  }).format(valor);
-}
-
-/**
- * Formata uma data para exibição (alias para formatDateForDisplay)
- * @param isoString - String de data no formato ISO
- * @returns String formatada (dd/MM/yyyy)
- */
-export function formatarData(isoString: string | null | undefined): string {
-  return formatDateForDisplay(isoString);
-}
 
 /**
  * UTILITÁRIO CENTRAL: Cria um objeto Date a partir de uma string de data, evitando problemas de timezone
@@ -156,4 +78,19 @@ export function calcularDiasParaVencimento(dataVencimento: string | null | undef
   
   const diffTime = vencimento.getTime() - hoje.getTime();
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+}
+
+/**
+ * UTILITÁRIO CENTRAL: Converte objeto Date ou string para formato seguro para API
+ * @param data - Date ou string de data
+ * @returns String no formato YYYY-MM-DD ou undefined se inválida
+ */
+export function converterParaFormatoAPI(data: Date | string | null | undefined): string | undefined {
+  if (!data) return undefined;
+  
+  if (data instanceof Date) {
+    return data.toISOString().split('T')[0];
+  }
+  
+  return String(data);
 }

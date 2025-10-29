@@ -13,8 +13,17 @@ import {
 } from '@mui/icons-material';
 import * as ExcelJS from 'exceljs';
 import {
-    buscarEstoqueEscolarProduto, listarEstoqueEscolar, EstoqueEscolarProduto, resetEstoqueGlobal
+    buscarEstoqueEscolarProduto, listarEstoqueEscolar, EstoqueEscolarProduto, resetEstoqueGlobal,
+    buscarEstoqueMultiplosProdutos, buscarMatrizEstoque
 } from '../services/estoqueEscolar';
+import { 
+    useEstoqueEscolarResumo, 
+    useMatrizEstoque, 
+    useEstoqueProduto,
+    useResetEstoqueGlobal,
+    useEstoqueLoadingState,
+    usePrefetchEstoque
+} from '../hooks/queries/useEstoqueQueries';
 
 // Interface
 interface ProdutoComEstoque {
@@ -28,17 +37,43 @@ interface ProdutoComEstoque {
 }
 
 const EstoqueEscolarPage = () => {
-    // Estados principais
-    const [produtosComEstoque, setProdutosComEstoque] = useState<ProdutoComEstoque[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    // Estados locais (declarar todos primeiro)
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const [modoVisualizacao, setModoVisualizacao] = useState<'produtos' | 'escolas'>('produtos');
+    const [selectedProdutos, setSelectedProdutos] = useState<number[]>([]);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedCategoria, setSelectedCategoria] = useState('');
+    const [sortBy, setSortBy] = useState('nome');
+    const [filtersExpanded, setFiltersExpanded] = useState(false);
+    const [hasActiveFilters, setHasActiveFilters] = useState(false);
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(100);
+    const [actionsMenuAnchor, setActionsMenuAnchor] = useState<null | HTMLElement>(null);
+    const [resetModalOpen, setResetModalOpen] = useState(false);
+    const [detalhesModalOpen, setDetalhesModalOpen] = useState(false);
+    const [produtoSelecionado, setProdutoSelecionado] = useState<ProdutoComEstoque | null>(null);
+    const [estoqueDetalhado, setEstoqueDetalhado] = useState<EstoqueEscolarProduto | null>(null);
+    const [loadingDetalhes, setLoadingDetalhes] = useState(false);
+    const [movimentacaoModalOpen, setMovimentacaoModalOpen] = useState(false);
+    const [escolaSelecionada, setEscolaSelecionada] = useState<any>(null);
+    const [tipoMovimentacao, setTipoMovimentacao] = useState<'entrada' | 'saida' | 'ajuste'>('entrada');
+    const [quantidadeMovimentacao, setQuantidadeMovimentacao] = useState('');
+    const [motivoMovimentacao, setMotivoMovimentacao] = useState('');
+    const [documentoReferencia, setDocumentoReferencia] = useState('');
+    const [loadingMovimentacao, setLoadingMovimentacao] = useState(false);
+    
+    // React Query hooks (usar após declarar estados)
+    const estoqueQuery = useEstoqueEscolarResumo();
+    const matrizQuery = useMatrizEstoque(selectedProdutos.length > 0 ? selectedProdutos : undefined, 50);
+    const resetMutation = useResetEstoqueGlobal();
+    const { prefetchProduto, prefetchMatriz } = usePrefetchEstoque();
 
     // Função para formatar números de forma limpa
     const formatarNumero = (valor: any): string => {
         const numero = parseFloat(valor);
 
-        if (isNaN(numero) || numero === 0) return '-';
+        if (isNaN(numero)) return '0';
 
         // Se for um número inteiro, mostrar sem casas decimais
         if (Number.isInteger(numero)) {
@@ -54,251 +89,53 @@ const EstoqueEscolarPage = () => {
         return numeroFormatado;
     };
 
-    // Estado para alternar visualização
-    const [modoVisualizacao, setModoVisualizacao] = useState<'produtos' | 'escolas'>('produtos');
-    const [dadosMatriz, setDadosMatriz] = useState<any[]>([]);
-    const [matrizCarregada, setMatrizCarregada] = useState(false);
-    const [loadingMatriz, setLoadingMatriz] = useState(false);
 
-    // Estados para atualização incremental
-    const [ultimaAtualizacao, setUltimaAtualizacao] = useState<Date | null>(null);
-    const [cacheProdutos, setCacheProdutos] = useState<Map<number, any>>(new Map());
-    const [cacheEscolas, setCacheEscolas] = useState<Map<number, any>>(new Map());
 
-    // Estados de filtros
-    const [searchTerm, setSearchTerm] = useState('');
-    const [selectedCategoria, setSelectedCategoria] = useState('');
-    const [sortBy, setSortBy] = useState('nome');
-    const [filtersExpanded, setFiltersExpanded] = useState(false);
-    const [hasActiveFilters, setHasActiveFilters] = useState(false);
+    // Dados derivados do React Query
+    const produtosComEstoque = (estoqueQuery.data?.produtos || []).map(produto => ({
+        id: produto.produto_id,
+        nome: produto.produto_nome,
+        unidade: produto.unidade,
+        categoria: produto.categoria,
+        total_quantidade: produto.total_quantidade,
+        total_escolas_com_estoque: produto.total_escolas_com_estoque,
+        total_escolas: produto.total_escolas
+    }));
+    const dadosMatriz = matrizQuery.data?.escolas || [];
+    const matrizCarregada = matrizQuery.data?.matriz_carregada || false;
+    const loading = estoqueQuery.isLoading;
+    const loadingMatriz = matrizQuery.isLoading;
 
-    // Filtro de produtos para modo escolas
-    const [selectedProdutos, setSelectedProdutos] = useState<number[]>([]);
+    // Variáveis derivadas
+    const loadingReset = resetMutation.isPending;
 
-    // Estados de paginação
-    const [page, setPage] = useState(0);
-    const [rowsPerPage, setRowsPerPage] = useState(100);
-
-    // Estados de modais e menus
-    const [actionsMenuAnchor, setActionsMenuAnchor] = useState<null | HTMLElement>(null);
-    const [resetModalOpen, setResetModalOpen] = useState(false);
-    const [loadingReset, setLoadingReset] = useState(false);
-    const [detalhesModalOpen, setDetalhesModalOpen] = useState(false);
-    const [produtoSelecionado, setProdutoSelecionado] = useState<ProdutoComEstoque | null>(null);
-    const [estoqueDetalhado, setEstoqueDetalhado] = useState<EstoqueEscolarProduto | null>(null);
-    const [loadingDetalhes, setLoadingDetalhes] = useState(false);
-
-    // Estados para movimentação
-    const [movimentacaoModalOpen, setMovimentacaoModalOpen] = useState(false);
-    const [escolaSelecionada, setEscolaSelecionada] = useState<any>(null);
-    const [tipoMovimentacao, setTipoMovimentacao] = useState<'entrada' | 'saida' | 'ajuste'>('entrada');
-    const [quantidadeMovimentacao, setQuantidadeMovimentacao] = useState('');
-    const [motivoMovimentacao, setMotivoMovimentacao] = useState('');
-    const [documentoReferencia, setDocumentoReferencia] = useState('');
-    const [loadingMovimentacao, setLoadingMovimentacao] = useState(false);
-
-    // Carregar dados
-    const loadEstoque = useCallback(async () => {
-        try {
-            setLoading(true);
-            setError(null);
-            const estoqueData = await listarEstoqueEscolar();
-            const produtosFormatados = estoqueData.map((item: any) => ({
-                id: item.produto_id,
-                nome: item.produto_nome,
-                unidade: item.unidade,
-                categoria: item.categoria,
-                total_quantidade: item.total_quantidade,
-                total_escolas_com_estoque: item.total_escolas_com_estoque,
-                total_escolas: item.total_escolas
-            }));
-            setProdutosComEstoque(produtosFormatados);
-
-            // Atualizar cache de produtos
-            const novoCacheProdutos = new Map();
-            estoqueData.forEach((produto: any) => {
-                novoCacheProdutos.set(produto.produto_id, produto);
-            });
-            setCacheProdutos(novoCacheProdutos);
-
-            // Não carregar matriz aqui para evitar loop infinito
-        } catch (err) {
-            setError('Erro ao carregar dados de estoque. Tente novamente.');
-        } finally {
-            setLoading(false);
+    // Função para refetch manual (se necessário)
+    const refetchEstoque = useCallback(() => {
+        estoqueQuery.refetch();
+        if (modoVisualizacao === 'escolas') {
+            matrizQuery.refetch();
         }
-    }, [modoVisualizacao]);
+    }, [estoqueQuery, matrizQuery, modoVisualizacao]);
 
-    // Carregar dados para visualização em matriz (escolas x produtos) - OTIMIZADO
-    const loadDadosMatriz = useCallback(async () => {
-        try {
-            setLoadingMatriz(true);
-            setError(null);
-
-            // Carregar apenas os primeiros produtos para otimizar
-            const estoqueData = await listarEstoqueEscolar();
-            const produtosLimitados = estoqueData.slice(0, 10); // Limitar a 10 produtos inicialmente
-
-            const escolasMap = new Map<number, any>();
-
-            // Buscar detalhes apenas dos produtos limitados em paralelo
-            const promessas = produtosLimitados.map(async (produto: any) => {
-                try {
-                    const detalhes = await buscarEstoqueEscolarProduto(produto.produto_id);
-                    return { produto, detalhes };
-                } catch (err) {
-                    console.warn(`Erro ao carregar detalhes do produto ${produto.produto_id}:`, err);
-                    return { produto, detalhes: null };
-                }
-            });
-
-            // Executar todas as chamadas em paralelo
-            const resultados = await Promise.all(promessas);
-
-            // Processar resultados
-            resultados.forEach(({ produto, detalhes }) => {
-                if (!detalhes) return;
-
-                detalhes.escolas?.forEach((escola: any) => {
-                    if (!escolasMap.has(escola.escola_id)) {
-                        escolasMap.set(escola.escola_id, {
-                            escola_id: escola.escola_id,
-                            escola_nome: escola.escola_nome,
-                            produtos: {}
-                        });
-                    }
-
-                    const escolaData = escolasMap.get(escola.escola_id);
-                    escolaData.produtos[produto.produto_id] = {
-                        quantidade: escola.quantidade_atual || 0,
-                        unidade: escola.unidade || produto.unidade
-                    };
-                });
-            });
-
-            // Converter para array
-            const escolasArray = Array.from(escolasMap.values());
-            setDadosMatriz(escolasArray);
-            setMatrizCarregada(true);
-
-        } catch (err) {
-            setError('Erro ao carregar dados da matriz. Tente novamente.');
-        } finally {
-            setLoadingMatriz(false);
+    // Prefetch da matriz quando necessário
+    const loadDadosMatriz = useCallback(() => {
+        if (modoVisualizacao === 'escolas' && !matrizCarregada) {
+            prefetchMatriz(selectedProdutos.length > 0 ? selectedProdutos : undefined);
         }
-    }, []);
+    }, [modoVisualizacao, matrizCarregada, selectedProdutos, prefetchMatriz]);
 
-    // Função para atualização incremental otimizada
-    const atualizarDadosIncrementais = useCallback(async () => {
-        try {
-            setLoadingMatriz(true);
-            setError(null);
+    // Função para atualização manual (React Query faz isso automaticamente)
+    const atualizarDadosIncrementais = useCallback(() => {
+        console.log('🔄 Atualizando dados via React Query...');
+        refetchEstoque();
+    }, [refetchEstoque]);
 
-            // Buscar dados atualizados
-            const estoqueDataAtual = await listarEstoqueEscolar();
-            const agora = new Date();
-
-            // Comparar com dados em cache para identificar mudanças
-            const produtosAlterados: number[] = [];
-            const novosCacheProdutos = new Map(cacheProdutos);
-
-            estoqueDataAtual.forEach((produto: any) => {
-                const produtoCache = cacheProdutos.get(produto.produto_id);
-
-                // Verificar se produto mudou
-                if (!produtoCache ||
-                    produtoCache.total_quantidade !== produto.total_quantidade ||
-                    produtoCache.total_escolas_com_estoque !== produto.total_escolas_com_estoque) {
-
-                    produtosAlterados.push(produto.produto_id);
-                    novosCacheProdutos.set(produto.produto_id, produto);
-                }
-            });
-
-            // Atualizar visualização por produtos
-            const produtosFormatados = estoqueDataAtual.map((item: any) => ({
-                id: item.produto_id,
-                nome: item.produto_nome,
-                unidade: item.unidade,
-                categoria: item.categoria,
-                total_quantidade: item.total_quantidade,
-                total_escolas_com_estoque: item.total_escolas_com_estoque,
-                total_escolas: item.total_escolas
-            }));
-            setProdutosComEstoque(produtosFormatados);
-
-            // Atualizar apenas dados da matriz que mudaram
-            if (matrizCarregada && produtosAlterados.length > 0) {
-                console.log(`Atualizando ${produtosAlterados.length} produtos alterados`);
-
-                // Buscar detalhes apenas dos produtos alterados em paralelo
-                const promessasAtualizacao = produtosAlterados.map(async (produtoId) => {
-                    try {
-                        const detalhes = await buscarEstoqueEscolarProduto(produtoId);
-                        return { produtoId, detalhes };
-                    } catch (err) {
-                        console.warn(`Erro ao atualizar produto ${produtoId}:`, err);
-                        return { produtoId, detalhes: null };
-                    }
-                });
-
-                const resultadosAtualizacao = await Promise.all(promessasAtualizacao);
-
-                // Atualizar matriz existente
-                const novaMatriz = [...dadosMatriz];
-
-                resultadosAtualizacao.forEach(({ produtoId, detalhes }) => {
-                    if (!detalhes) return;
-
-                    detalhes.escolas?.forEach((escola: any) => {
-                        // Encontrar escola na matriz existente
-                        const escolaIndex = novaMatriz.findIndex(e => e.escola_id === escola.escola_id);
-                        if (escolaIndex >= 0) {
-                            // Atualizar produto existente
-                            novaMatriz[escolaIndex].produtos[produtoId] = {
-                                quantidade: escola.quantidade_atual || 0,
-                                unidade: escola.unidade
-                            };
-                        } else {
-                            // Adicionar nova escola se não existir
-                            novaMatriz.push({
-                                escola_id: escola.escola_id,
-                                escola_nome: escola.escola_nome,
-                                produtos: {
-                                    [produtoId]: {
-                                        quantidade: escola.quantidade_atual || 0,
-                                        unidade: escola.unidade
-                                    }
-                                }
-                            });
-                        }
-                    });
-                });
-
-                setDadosMatriz(novaMatriz);
-            }
-
-            // Atualizar caches e timestamp
-            setCacheProdutos(novosCacheProdutos);
-            setUltimaAtualizacao(agora);
-
-            console.log(`Atualização incremental concluída. ${produtosAlterados.length} produtos alterados.`);
-
-        } catch (err) {
-            setError('Erro ao atualizar dados. Tente novamente.');
-            console.error('Erro na atualização incremental:', err);
-        } finally {
-            setLoadingMatriz(false);
-        }
-    }, [cacheProdutos, dadosMatriz, matrizCarregada]);
-
+    // React Query gerencia o carregamento automaticamente
     useEffect(() => {
-        if (modoVisualizacao === 'produtos') {
-            loadEstoque();
-        } else if (modoVisualizacao === 'escolas' && !matrizCarregada) {
+        if (modoVisualizacao === 'escolas' && !matrizCarregada) {
             loadDadosMatriz();
         }
-    }, [loadEstoque, loadDadosMatriz, modoVisualizacao, matrizCarregada]);
+    }, [modoVisualizacao, matrizCarregada, loadDadosMatriz]);
 
     // Função para alternar modo de visualização
     const alternarVisualizacao = useCallback(() => {
@@ -368,26 +205,16 @@ const EstoqueEscolarPage = () => {
 
     // Funções de Ações
     const handleResetEstoque = async () => {
-        try {
-            setLoadingReset(true);
-            setError(null);
-            setResetModalOpen(false);
-
-            const result = await resetEstoqueGlobal();
-
-            if (result.success) {
-                setSuccessMessage(`Estoque global resetado com sucesso! ${result.data.estoques_resetados} itens foram resetados.`);
-                await loadEstoque(); // Recarregar os dados
-            } else {
-                throw new Error(result.message || 'Erro ao resetar estoque');
+        setResetModalOpen(false);
+        
+        resetMutation.mutate(undefined, {
+            onSuccess: (result) => {
+                setSuccessMessage(`Estoque global resetado com sucesso! ${result.data?.estoques_resetados || 0} itens foram resetados.`);
+            },
+            onError: (err: any) => {
+                console.error('Erro ao resetar estoque:', err);
             }
-
-        } catch (err: any) {
-            console.error('Erro ao resetar estoque:', err);
-            setError('Erro ao resetar estoque global. Tente novamente.');
-        } finally {
-            setLoadingReset(false);
-        }
+        });
     };
     const exportarExcel = async () => {
         try {
@@ -703,9 +530,9 @@ const EstoqueEscolarPage = () => {
                                 : `Mostrando ${Math.min((page * rowsPerPage) + 1, filteredEscolas.length)}-${Math.min((page + 1) * rowsPerPage, filteredEscolas.length)} de ${filteredEscolas.length} escolas`
                             }
                         </Typography>
-                        {ultimaAtualizacao && (
+                        {estoqueQuery.dataUpdatedAt && (
                             <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>
-                                Última atualização: {ultimaAtualizacao.toLocaleTimeString('pt-BR')}
+                                Última atualização: {new Date(estoqueQuery.dataUpdatedAt).toLocaleTimeString('pt-BR')}
                             </Typography>
                         )}
                     </Box>
@@ -720,8 +547,8 @@ const EstoqueEscolarPage = () => {
                             </Typography>
                         )}
                     </CardContent></Card>
-                ) : error ? (
-                    <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={loadEstoque}>Tentar Novamente</Button></CardContent></Card>
+                ) : (error || estoqueQuery.error || matrizQuery.error) ? (
+                    <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Alert severity="error" sx={{ mb: 2 }}>{error || estoqueQuery.error?.message || matrizQuery.error?.message}</Alert><Button variant="contained" onClick={refetchEstoque}>Tentar Novamente</Button></CardContent></Card>
                 ) : (modoVisualizacao === 'produtos' ? filteredProdutos.length === 0 : filteredEscolas.length === 0) ? (
                     <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Inventory sx={{ fontSize: 64, color: '#d1d5db', mb: 2 }} /><Typography variant="h6" sx={{ color: '#6b7280' }}>Nenhum {modoVisualizacao === 'produtos' ? 'produto' : 'dado'} encontrado</Typography></CardContent></Card>
                 ) : (
@@ -1107,7 +934,7 @@ const EstoqueEscolarPage = () => {
 
             {/* Menu de Ações */}
             <Menu anchorEl={actionsMenuAnchor} open={Boolean(actionsMenuAnchor)} onClose={() => setActionsMenuAnchor(null)}>
-                <MenuItem onClick={() => { setActionsMenuAnchor(null); loadEstoque(); }}><Refresh sx={{ mr: 1 }} /> Atualizar Resumo</MenuItem>
+                <MenuItem onClick={() => { setActionsMenuAnchor(null); refetchEstoque(); }}><Refresh sx={{ mr: 1 }} /> Atualizar Resumo</MenuItem>
                 <MenuItem onClick={() => { setActionsMenuAnchor(null); exportarExcel(); }}><Download sx={{ mr: 1 }} /> Exportar Lista</MenuItem>
                 <Divider />
                 <MenuItem onClick={() => { setActionsMenuAnchor(null); setResetModalOpen(true); }} sx={{ color: 'error.main' }}><RestartAlt sx={{ mr: 1 }} /> Resetar Estoques</MenuItem>

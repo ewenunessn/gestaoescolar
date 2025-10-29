@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import {
   Box,
   Typography,
@@ -10,7 +10,7 @@ import {
   TableHead,
   TableRow,
   Card,
-  CardContent, // <-- ADICIONADO AQUI
+  CardContent,
   IconButton,
   Dialog,
   DialogTitle,
@@ -57,6 +57,12 @@ import {
   removerFornecedor,
   importarFornecedoresLote,
 } from "../services/fornecedores";
+import { 
+  useFornecedores, 
+  useCriarFornecedor, 
+  useAtualizarFornecedor, 
+  useExcluirFornecedor 
+} from "../hooks/queries";
 import ImportacaoFornecedores from '../components/ImportacaoFornecedores';
 import ConfirmacaoExclusaoFornecedor from '../components/ConfirmacaoExclusaoFornecedor';
 import * as XLSX from 'xlsx';
@@ -74,11 +80,22 @@ interface Fornecedor {
 const FornecedoresPage: React.FC = () => {
   const navigate = useNavigate();
 
-  // Estados principais
-  const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // React Query hooks
+  const { 
+    data: fornecedoresData, 
+    isLoading: loading, 
+    error: queryError,
+    refetch 
+  } = useFornecedores({ search: searchTerm, ativo: selectedStatus ? selectedStatus === 'ativo' : undefined });
+  
+  const criarFornecedorMutation = useCriarFornecedor();
+  const atualizarFornecedorMutation = useAtualizarFornecedor();
+  const excluirFornecedorMutation = useExcluirFornecedor();
+  
+  // Estados locais
+  const fornecedores = fornecedoresData?.fornecedores || [];
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const error = queryError?.message || null;
 
   // Estados do menu de ações
   const [actionsMenuAnchor, setActionsMenuAnchor] = useState<null | HTMLElement>(null);
@@ -102,24 +119,10 @@ const FornecedoresPage: React.FC = () => {
   const [fornecedorToDelete, setFornecedorToDelete] = useState<Fornecedor | null>(null);
   const [formData, setFormData] = useState({ nome: "", cnpj: "", email: "", ativo: true });
 
-  // Carregar fornecedores
-  const loadFornecedores = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await listarFornecedores();
-      setFornecedores(Array.isArray(data) ? data : []);
-    } catch (err) {
-      setError("Erro ao carregar fornecedores. Tente novamente.");
-      setFornecedores([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadFornecedores();
-  }, [loadFornecedores]);
+  // Função para refresh manual (React Query já gerencia o carregamento automaticamente)
+  const handleRefresh = useCallback(() => {
+    refetch();
+  }, [refetch]);
   
   // Detectar filtros ativos
   useEffect(() => {
@@ -193,17 +196,16 @@ const FornecedoresPage: React.FC = () => {
   const handleSave = async () => {
     try {
       if (editingFornecedor) {
-        await editarFornecedor(editingFornecedor.id, formData);
+        await atualizarFornecedorMutation.mutateAsync({ id: editingFornecedor.id, data: formData });
         setSuccessMessage('Fornecedor atualizado com sucesso!');
       } else {
-        await criarFornecedor(formData);
+        await criarFornecedorMutation.mutateAsync(formData);
         setSuccessMessage('Fornecedor criado com sucesso!');
       }
       closeModal();
-      await loadFornecedores();
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
-      setError(err.response?.data?.message || "Erro ao salvar fornecedor.");
+      console.error('Erro ao salvar fornecedor:', err);
     }
   };
 
@@ -220,13 +222,12 @@ const FornecedoresPage: React.FC = () => {
   const handleDelete = async () => {
     if (!fornecedorToDelete) return;
     try {
-      await removerFornecedor(fornecedorToDelete.id);
+      await excluirFornecedorMutation.mutateAsync(fornecedorToDelete.id);
       setSuccessMessage('Fornecedor removido com sucesso!');
       closeDeleteModal();
-      await loadFornecedores();
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
-      setError(err.response?.data?.message || "Erro ao remover fornecedor.");
+      console.error('Erro ao remover fornecedor:', err);
     }
   };
 
@@ -256,7 +257,7 @@ const FornecedoresPage: React.FC = () => {
         {loading ? (
           <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><CircularProgress size={60} /></CardContent></Card>
         ) : error ? (
-          <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={loadFornecedores}>Tentar Novamente</Button></CardContent></Card>
+          <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={handleRefresh}>Tentar Novamente</Button></CardContent></Card>
         ) : filteredFornecedores.length === 0 ? (
           <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Business sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} /><Typography variant="h6" sx={{ color: 'text.secondary' }}>Nenhum fornecedor encontrado</Typography></CardContent></Card>
         ) : (

@@ -3,6 +3,13 @@ import { Request, Response } from "express";
 import * as XLSX from 'xlsx';
 import * as fs from 'fs';
 import * as path from 'path';
+import { z } from 'zod';
+import { 
+  multiplosProdutosSchema, 
+  matrizEstoqueQuerySchema,
+  idSchema 
+} from '../../../schemas';
+import optimizedQueries from '../../../utils/optimizedQueries';
 const db = require("../../../database");
 
 // Função para gerar backup em Excel no formato de matriz
@@ -228,26 +235,10 @@ export async function resetEstoque(req: Request, res: Response) {
 
 export async function listarEstoqueEscolar(req: Request, res: Response) {
   try {
-    // Buscar resumo do estoque de todos os produtos
-    const result = await db.query(`
-      SELECT 
-        p.id as produto_id,
-        p.nome as produto_nome,
-        p.descricao as produto_descricao,
-        p.unidade,
-        p.categoria,
-        (SELECT COUNT(*) FROM escolas WHERE ativo = true) as total_escolas,
-        COUNT(CASE WHEN ee.quantidade_atual > 0 THEN 1 END) as total_escolas_com_estoque,
-        SUM(COALESCE(ee.quantidade_atual, 0)) as total_quantidade
-      FROM produtos p
-      LEFT JOIN estoque_escolas ee ON ee.produto_id = p.id
-      LEFT JOIN escolas e ON e.id = ee.escola_id AND e.ativo = true
-      WHERE p.ativo = true
-      GROUP BY p.id, p.nome, p.descricao, p.unidade, p.categoria
-      ORDER BY p.categoria, p.nome
-    `);
+    // Usar query otimizada
+    const produtos = await optimizedQueries.getEstoqueEscolarResumoOptimized();
 
-    const produtos = result.rows.map(row => ({
+    const produtosFormatados = produtos.map(row => ({
       produto_id: row.produto_id,
       produto_nome: row.produto_nome,
       produto_descricao: row.produto_descricao,
@@ -260,14 +251,214 @@ export async function listarEstoqueEscolar(req: Request, res: Response) {
 
     res.json({
       success: true,
-      data: produtos,
-      total: produtos.length
+      data: produtosFormatados,
+      total: produtosFormatados.length,
+      performance: {
+        query_optimized: true,
+        cache_enabled: false // TODO: implementar cache
+      }
     });
   } catch (error) {
     console.error("❌ Erro ao listar estoque escolar:", error);
     return res.status(500).json({
       success: false,
       message: "Erro ao listar estoque escolar",
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+}
+
+// NOVO ENDPOINT OTIMIZADO: Buscar dados de múltiplos produtos de uma vez
+export async function buscarEstoqueMultiplosProdutos(req: Request, res: Response) {
+  try {
+    // Validação já foi feita pelo middleware, dados estão limpos
+    const { produto_ids } = req.body;
+
+    // Buscar dados de todos os produtos de uma vez - OTIMIZAÇÃO PRINCIPAL
+    const result = await db.query(`
+      SELECT 
+        p.id as produto_id,
+        p.nome as produto_nome,
+        p.descricao as produto_descricao,
+        p.unidade,
+        p.categoria,
+        e.id as escola_id,
+        e.nome as escola_nome,
+        COALESCE(ee.quantidade_atual, 0) as quantidade_atual,
+        CASE 
+          WHEN COALESCE(ee.quantidade_atual, 0) = 0 THEN 'sem_estoque'
+          ELSE 'normal'
+        END as status_estoque,
+        ee.updated_at as data_ultima_atualizacao
+      FROM produtos p
+      CROSS JOIN escolas e
+      LEFT JOIN estoque_escolas ee ON (ee.produto_id = p.id AND ee.escola_id = e.id)
+      WHERE p.id = ANY($1::int[]) 
+        AND p.ativo = true 
+        AND e.ativo = true
+      ORDER BY p.categoria, p.nome, e.nome
+    `, [produto_ids]);
+
+    // Agrupar dados por produto
+    const produtosMap = new Map();
+    
+    result.rows.forEach(row => {
+      const produtoId = row.produto_id;
+      
+      if (!produtosMap.has(produtoId)) {
+        produtosMap.set(produtoId, {
+          produto_id: produtoId,
+          produto_nome: row.produto_nome,
+          produto_descricao: row.produto_descricao,
+          unidade: row.unidade,
+          categoria: row.categoria,
+          escolas: [],
+          total_quantidade: 0,
+          total_escolas_com_estoque: 0,
+          total_escolas: 0
+        });
+      }
+      
+      const produto = produtosMap.get(produtoId);
+      const quantidade = parseFloat(row.quantidade_atual) || 0;
+      
+      produto.escolas.push({
+        escola_id: row.escola_id,
+        escola_nome: row.escola_nome,
+        produto_id: produtoId,
+        quantidade_atual: quantidade,
+        unidade: row.unidade,
+        status_estoque: row.status_estoque,
+        data_ultima_atualizacao: row.data_ultima_atualizacao
+      });
+      
+      produto.total_quantidade += quantidade;
+      if (quantidade > 0) {
+        produto.total_escolas_com_estoque++;
+      }
+      produto.total_escolas++;
+    });
+
+    // Converter Map para Array
+    const produtos = Array.from(produtosMap.values());
+
+    res.json({
+      success: true,
+      data: produtos,
+      total: produtos.length,
+      performance: {
+        produtos_solicitados: produto_ids.length,
+        produtos_encontrados: produtos.length,
+        total_registros_processados: result.rows.length,
+        otimizacao: "Query única em vez de N+1 queries"
+      }
+    });
+
+  } catch (error) {
+    console.error("❌ Erro ao buscar múltiplos produtos:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Erro ao buscar dados de múltiplos produtos",
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+}
+
+// NOVO ENDPOINT OTIMIZADO: Buscar matriz completa (escolas x produtos) de uma vez
+export async function buscarMatrizEstoque(req: Request, res: Response) {
+  try {
+    // Validação já foi feita pelo middleware, dados estão limpos
+    const { produto_ids, limite_produtos } = req.query;
+    
+    let whereClause = "WHERE p.ativo = true AND e.ativo = true";
+    let params: any[] = [];
+    
+    // Se produtos específicos foram solicitados
+    if (produto_ids && produto_ids.length > 0) {
+      whereClause += " AND p.id = ANY($1::int[])";
+      params.push(produto_ids);
+    }
+
+    // Buscar todos os dados da matriz de uma vez - SUPER OTIMIZAÇÃO
+    const result = await db.query(`
+      SELECT 
+        e.id as escola_id,
+        e.nome as escola_nome,
+        p.id as produto_id,
+        p.nome as produto_nome,
+        p.unidade,
+        p.categoria,
+        COALESCE(ee.quantidade_atual, 0) as quantidade_atual
+      FROM escolas e
+      CROSS JOIN (
+        SELECT * FROM produtos 
+        WHERE ativo = true 
+        ${produto_ids ? 'AND id = ANY($1::int[])' : ''}
+        ORDER BY categoria, nome 
+        LIMIT $${params.length + 1}
+      ) p
+      LEFT JOIN estoque_escolas ee ON (ee.escola_id = e.id AND ee.produto_id = p.id)
+      WHERE e.ativo = true
+      ORDER BY e.nome, p.categoria, p.nome
+    `, [...params, limite_produtos]);
+
+    // Agrupar dados por escola
+    const escolasMap = new Map();
+    const produtosInfo = new Map();
+    
+    result.rows.forEach(row => {
+      const escolaId = row.escola_id;
+      const produtoId = row.produto_id;
+      
+      // Armazenar info dos produtos
+      if (!produtosInfo.has(produtoId)) {
+        produtosInfo.set(produtoId, {
+          id: produtoId,
+          nome: row.produto_nome,
+          unidade: row.unidade,
+          categoria: row.categoria
+        });
+      }
+      
+      // Agrupar por escola
+      if (!escolasMap.has(escolaId)) {
+        escolasMap.set(escolaId, {
+          escola_id: escolaId,
+          escola_nome: row.escola_nome,
+          produtos: {}
+        });
+      }
+      
+      const escola = escolasMap.get(escolaId);
+      escola.produtos[produtoId] = {
+        quantidade: parseFloat(row.quantidade_atual) || 0,
+        unidade: row.unidade
+      };
+    });
+
+    const escolas = Array.from(escolasMap.values());
+    const produtos = Array.from(produtosInfo.values());
+
+    res.json({
+      success: true,
+      data: {
+        escolas: escolas,
+        produtos: produtos,
+        matriz_carregada: true
+      },
+      performance: {
+        total_escolas: escolas.length,
+        total_produtos: produtos.length,
+        total_registros_processados: result.rows.length,
+        otimizacao: "Matriz completa em query única"
+      }
+    });
+
+  } catch (error) {
+    console.error("❌ Erro ao buscar matriz de estoque:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Erro ao buscar matriz de estoque",
       error: error instanceof Error ? error.message : 'Erro desconhecido'
     });
   }
