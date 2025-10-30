@@ -16,6 +16,7 @@ import {
     buscarEstoqueEscolarProduto, listarEstoqueEscolar, EstoqueEscolarProduto, resetEstoqueGlobal,
     buscarEstoqueMultiplosProdutos, buscarMatrizEstoque
 } from '../services/estoqueEscolar';
+import { formatarQuantidade } from '../utils/formatters';
 import { 
     useEstoqueEscolarResumo, 
     useMatrizEstoque, 
@@ -79,24 +80,8 @@ const EstoqueEscolarPage = () => {
     const { prefetchProduto, prefetchMatriz } = usePrefetchEstoque();
 
     // Função para formatar números de forma limpa
-    const formatarNumero = (valor: any): string => {
-        const numero = parseFloat(valor);
-
-        if (isNaN(numero)) return '0';
-
-        // Se for um número inteiro, mostrar sem casas decimais
-        if (Number.isInteger(numero)) {
-            return numero.toLocaleString('pt-BR');
-        }
-
-        // Se tiver casas decimais, mostrar apenas as necessárias (remove zeros à direita)
-        const numeroFormatado = numero.toLocaleString('pt-BR', {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 3
-        });
-
-        return numeroFormatado;
-    };
+    // Usar a função utilitária de formatação
+    const formatarNumero = formatarQuantidade;
 
 
 
@@ -978,7 +963,7 @@ const EstoqueEscolarPage = () => {
                                                     </TableCell>
                                                     <TableCell align="center">
                                                         <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                                                            {escola.quantidade_atual || 0} {produtoSelecionado?.unidade}
+                                                            {formatarNumero(escola.quantidade_atual || 0)} {produtoSelecionado?.unidade}
                                                         </Typography>
                                                     </TableCell>
                                                     <TableCell align="center">

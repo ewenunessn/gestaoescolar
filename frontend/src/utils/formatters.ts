@@ -6,6 +6,7 @@
  * Formata quantidade numérica para exibição
  * - Números inteiros: sem decimais (ex: 10)
  * - Números decimais: com vírgula e apenas decimais necessários (ex: 10,5 ou 10,25)
+ * - Sem separador de milhar para números < 10000
  */
 export function formatarQuantidade(quantidade: any): string {
   try {
@@ -13,19 +14,40 @@ export function formatarQuantidade(quantidade: any): string {
     if (quantidade === null || quantidade === undefined) return '0';
     if (typeof quantidade === 'string' && quantidade.trim() === '') return '0';
     
+    // Converter para número
     const num = Number(quantidade);
+    
     if (isNaN(num) || !isFinite(num)) return '0';
     
-    // Se for inteiro, não mostrar decimais
+    // Se for inteiro
     if (Number.isInteger(num)) {
-      return num.toString();
+      // Números menores que 10000: sem separador
+      if (num < 10000) {
+        return num.toString();
+      }
+      // Números >= 10000: com separador de milhar
+      return num.toLocaleString('pt-BR');
     }
     
-    // Se tiver decimais, formatar com vírgula e remover zeros desnecessários
-    return num.toLocaleString('pt-BR', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2
-    });
+    // Se tiver decimais
+    const partes = num.toFixed(2).split('.');
+    const inteiro = parseInt(partes[0]);
+    const decimal = partes[1].replace(/0+$/, ''); // Remove zeros à direita
+    
+    // Se não tem decimal significativo, tratar como inteiro
+    if (!decimal || decimal === '00') {
+      if (inteiro < 10000) {
+        return inteiro.toString();
+      }
+      return inteiro.toLocaleString('pt-BR');
+    }
+    
+    // Tem decimais significativos
+    if (inteiro < 10000) {
+      return `${inteiro},${decimal}`;
+    }
+    
+    return `${inteiro.toLocaleString('pt-BR')},${decimal}`;
   } catch (error) {
     console.error('Erro ao formatar quantidade:', quantidade, error);
     return '0';
