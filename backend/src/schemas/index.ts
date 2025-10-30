@@ -111,7 +111,7 @@ export const estoqueMovimentacaoSchema = z.object({
     message: 'Tipo de movimentação inválido'
   }),
   quantidade: quantitySchema,
-  motivo: nonEmptyStringSchema.max(200, 'Motivo muito longo'),
+  motivo: z.string().max(200, 'Motivo muito longo').optional(),
   documento_referencia: z.string().max(100, 'Documento de referência muito longo').optional(),
   usuario_id: optionalIdSchema,
   data_validade: optionalDateSchema

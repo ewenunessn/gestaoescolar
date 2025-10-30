@@ -166,7 +166,7 @@ export interface MovimentacaoEstoque {
   quantidade_anterior: number;
   quantidade_movimentada: number;
   quantidade_posterior: number;
-  motivo: string;
+  motivo?: string;
   documento_referencia?: string;
   usuario_id?: ID;
   data_movimentacao: DateString;
@@ -183,7 +183,7 @@ export interface MovimentacaoCreate {
   produto_id: ID;
   tipo_movimentacao: TipoMovimentacao;
   quantidade: number;
-  motivo: string;
+  motivo?: string;
   documento_referencia?: string;
   usuario_id?: ID;
   data_validade?: DateString;

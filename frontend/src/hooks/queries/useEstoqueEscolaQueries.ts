@@ -13,8 +13,9 @@ export const useEstoqueEscola = (escolaId: number | null) => {
     queryKey: ['estoque-escola', escolaId],
     queryFn: () => escolaId ? listarEstoqueEscola(escolaId) : Promise.resolve([]),
     enabled: !!escolaId,
-    staleTime: 5 * 60 * 1000, // 5 minutos
-    refetchOnWindowFocus: false,
+    staleTime: 30 * 1000, // 30 segundos (reduzido para atualizar mais rápido)
+    refetchOnWindowFocus: true, // Atualiza quando volta para a janela
+    refetchInterval: 60 * 1000, // Atualiza automaticamente a cada 1 minuto
   });
 };
 

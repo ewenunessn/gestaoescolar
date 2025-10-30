@@ -218,10 +218,14 @@ const EstoqueEscolarPage = () => {
         
         resetMutation.mutate(undefined, {
             onSuccess: (result) => {
-                setSuccessMessage(`Estoque global resetado com sucesso! ${result.data?.estoques_resetados || 0} itens foram resetados.`);
+                console.log('Reset result:', result);
+                const data = result?.data;
+                const message = `Estoque global resetado com sucesso! ${data?.estoques_resetados || 0} estoques, ${data?.lotes_deletados || 0} lotes e ${data?.movimentacoes_deletadas || 0} movimentações foram removidos.`;
+                setSuccessMessage(message);
             },
             onError: (err: any) => {
                 console.error('Erro ao resetar estoque:', err);
+                setError('Erro ao resetar estoque: ' + (err.message || 'Erro desconhecido'));
             }
         });
     };

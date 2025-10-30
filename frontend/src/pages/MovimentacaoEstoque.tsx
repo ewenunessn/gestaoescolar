@@ -43,11 +43,13 @@ import {
   School as SchoolIcon,
   Clear as ClearIcon,
   Visibility as VisibilityIcon,
+  Refresh,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useEscolas } from '../hooks/queries';
 import PageBreadcrumbs from '../components/PageBreadcrumbs';
 import { useEstoqueEscola, useRegistrarMovimentacao } from '../hooks/queries/useEstoqueEscolaQueries';
+import { formatarQuantidade as formatarQtd } from '../utils/formatters';
 
 // Interface Escola importada do hook useEscolas
 
@@ -187,8 +189,8 @@ const MovimentacaoEstoquePage = () => {
 
   // Salvar movimentação
   const salvarMovimentacao = async () => {
-    if (!formData.quantidade || !formData.motivo.trim()) {
-      setError('Quantidade e motivo são obrigatórios');
+    if (!formData.quantidade) {
+      setError('Quantidade é obrigatória');
       return;
     }
 
@@ -213,7 +215,7 @@ const MovimentacaoEstoquePage = () => {
         produto_id: parseInt(formData.produto_id),
         tipo_movimentacao: formData.tipo_movimentacao,
         quantidade: quantidade,
-        motivo: formData.motivo.trim(),
+        motivo: formData.motivo.trim() || undefined,
         documento_referencia: formData.documento_referencia?.trim() || undefined,
         data_validade: formData.data_validade || undefined,
         usuario_id: 1, // TODO: Pegar do contexto de usuário
@@ -284,8 +286,8 @@ const MovimentacaoEstoquePage = () => {
         console.log('Erro ao buscar estoque com lotes:', error);
       }
       
-      // Se não encontrou lotes específicos, criar um lote virtual com os dados do item
-      if (lotesEncontrados.length === 0) {
+      // Se não encontrou lotes específicos E tem estoque, criar um lote virtual
+      if (lotesEncontrados.length === 0 && item.quantidade_atual > 0) {
         lotesEncontrados = [{
           id: 'principal',
           lote: 'Estoque Principal',
@@ -299,36 +301,27 @@ const MovimentacaoEstoquePage = () => {
       setLotesItem(lotesEncontrados);
     } catch (error) {
       console.error('Erro ao carregar lotes:', error);
-      // Em caso de erro, mostrar dados básicos do item
-      setLotesItem([{
-        id: 'principal',
-        lote: 'Estoque Principal',
-        quantidade_atual: item.quantidade_atual,
-        data_validade: (item as any).data_validade || null,
-        data_fabricacao: null,
-        status: 'ativo'
-      }]);
+      // Em caso de erro, só mostrar dados se tiver estoque
+      if (item.quantidade_atual > 0) {
+        setLotesItem([{
+          id: 'principal',
+          lote: 'Estoque Principal',
+          quantidade_atual: item.quantidade_atual,
+          data_validade: (item as any).data_validade || null,
+          data_fabricacao: null,
+          status: 'ativo'
+        }]);
+      } else {
+        setLotesItem([]);
+      }
     } finally {
       setLoadingLotes(false);
     }
   };
 
   // Formatar quantidade de forma segura
-  const formatarQuantidade = (quantidade: any): string => {
-    try {
-      // Verificações adicionais de segurança
-      if (quantidade === null || quantidade === undefined) return '0.00';
-      if (typeof quantidade === 'string' && quantidade.trim() === '') return '0.00';
-      
-      const num = Number(quantidade);
-      if (isNaN(num) || !isFinite(num)) return '0.00';
-      
-      return num.toFixed(2);
-    } catch (error) {
-      console.error('Erro ao formatar quantidade:', quantidade, error);
-      return '0.00';
-    }
-  };
+  // Usar a função utilitária de formatação
+  const formatarQuantidade = formatarQtd;
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
@@ -353,9 +346,22 @@ const MovimentacaoEstoquePage = () => {
 
         {/* Header */}
         <Card sx={{ p: 3, mb: 3, borderRadius: '12px' }}>
-          <Typography variant="h4" sx={{ mb: 3, fontWeight: 700, color: 'text.primary' }}>
-            Movimentação de Estoque
-          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Typography variant="h4" sx={{ fontWeight: 700, color: 'text.primary' }}>
+              Movimentação de Estoque
+            </Typography>
+            <IconButton 
+              onClick={() => estoqueQuery.refetch()} 
+              disabled={!escolaSelecionada || estoqueQuery.isFetching}
+              color="primary"
+              sx={{ 
+                bgcolor: 'primary.50',
+                '&:hover': { bgcolor: 'primary.100' }
+              }}
+            >
+              <Refresh />
+            </IconButton>
+          </Box>
           
           <Grid container spacing={3}>
             <Grid item xs={12} md={6}>
@@ -687,7 +693,7 @@ const MovimentacaoEstoquePage = () => {
                   <Grid item xs={12}>
                     <TextField
                       fullWidth
-                      label="Motivo"
+                      label="Motivo (Opcional)"
                       multiline
                       rows={3}
                       value={formData.motivo}
@@ -716,7 +722,7 @@ const MovimentacaoEstoquePage = () => {
             <Button
               onClick={salvarMovimentacao}
               variant="contained"
-              disabled={salvando || !formData.quantidade || !formData.motivo.trim()}
+              disabled={salvando || !formData.quantidade}
             >
               {salvando ? <CircularProgress size={24} /> : 'Registrar'}
             </Button>
@@ -790,8 +796,11 @@ const MovimentacaoEstoquePage = () => {
                 {lotesItem.length === 0 ? (
                   <Box sx={{ textAlign: 'center', py: 4 }}>
                     <InventoryIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
-                    <Typography variant="body1" color="text.secondary">
-                      Nenhum lote encontrado
+                    <Typography variant="body1" color="text.secondary" gutterBottom>
+                      Produto sem estoque
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Faça uma entrada para adicionar este produto ao estoque
                     </Typography>
                   </Box>
                 ) : (

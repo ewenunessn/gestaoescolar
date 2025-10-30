@@ -17,20 +17,24 @@ export async function listarEstoqueEscola(req: Request, res: Response) {
       WITH lotes_agregados AS (
         SELECT 
           el.produto_id,
-          SUM(el.quantidade_atual) as total_quantidade_lotes,
+          0 as total_quantidade_lotes,
           MIN(CASE WHEN el.quantidade_atual > 0 THEN el.data_validade END) as min_validade_lotes
         FROM estoque_lotes el
         WHERE el.status = 'ativo'
+          AND el.escola_id = $1
         GROUP BY el.produto_id
       )
       SELECT 
         ee.id,
         $1::integer as escola_id,
         p.id as produto_id,
-        -- Usar quantidade dos lotes se existirem, senão usar a do estoque principal
-        COALESCE(la.total_quantidade_lotes, ee.quantidade_atual, 0) as quantidade_atual,
-        -- Usar a validade mais próxima dos lotes se existirem, senão usar a do estoque principal
-        COALESCE(la.min_validade_lotes, ee.data_validade) as data_validade,
+        -- Usar apenas a quantidade do estoque da escola específica
+        COALESCE(ee.quantidade_atual, 0) as quantidade_atual,
+        -- Só mostrar validade se a escola tiver o produto em estoque
+        CASE 
+          WHEN ee.quantidade_atual > 0 THEN COALESCE(la.min_validade_lotes, ee.data_validade)
+          ELSE NULL
+        END as data_validade,
         ee.data_entrada,
         ee.updated_at as data_ultima_atualizacao,
         p.nome as produto_nome,
@@ -39,7 +43,7 @@ export async function listarEstoqueEscola(req: Request, res: Response) {
         p.categoria,
         e.nome as escola_nome,
         CASE 
-          WHEN COALESCE(la.total_quantidade_lotes, ee.quantidade_atual, 0) = 0 THEN 'sem_estoque'
+          WHEN COALESCE(ee.quantidade_atual, 0) = 0 THEN 'sem_estoque'
           WHEN COALESCE(la.min_validade_lotes, ee.data_validade) IS NOT NULL 
                AND COALESCE(la.min_validade_lotes, ee.data_validade) < CURRENT_DATE THEN 'vencido'
           WHEN COALESCE(la.min_validade_lotes, ee.data_validade) IS NOT NULL 
@@ -75,10 +79,12 @@ export async function listarEstoqueEscola(req: Request, res: Response) {
 
     const estoque = result.rows;
 
-    // Buscar todos os lotes de uma vez para otimizar performance
-    const produtoIds = estoque.map(item => item.produto_id);
+    // Buscar lotes apenas dos produtos que a escola TEM em estoque
+    const produtosComEstoque = estoque
+      .filter(item => item.quantidade_atual > 0)
+      .map(item => item.produto_id);
     
-    if (produtoIds.length > 0) {
+    if (produtosComEstoque.length > 0) {
       try {
         const lotesResult = await db.query(`
           SELECT 
@@ -93,13 +99,14 @@ export async function listarEstoqueEscola(req: Request, res: Response) {
             el.observacoes
           FROM estoque_lotes el
           WHERE el.produto_id = ANY($1) 
+            AND el.escola_id = $2
             AND el.status = 'ativo' 
             AND el.quantidade_atual > 0
           ORDER BY 
             el.produto_id,
             CASE WHEN el.data_validade IS NULL THEN 1 ELSE 0 END,
             el.data_validade ASC
-        `, [produtoIds]);
+        `, [produtosComEstoque, escola_id]);
         
         // Agrupar lotes por produto_id
         const lotesPorProduto = {};
@@ -550,10 +557,11 @@ export async function registrarMovimentacao(req: Request, res: Response) {
           // Criar novo lote automaticamente
           await client.query(`
             INSERT INTO estoque_lotes (
-              produto_id, lote, quantidade_inicial, quantidade_atual,
+              escola_id, produto_id, lote, quantidade_inicial, quantidade_atual,
               data_validade, status, created_at, updated_at
-            ) VALUES ($1, $2, $3, $3, $4, 'ativo', NOW(), NOW())
+            ) VALUES ($1, $2, $3, $4, $4, $5, 'ativo', NOW(), NOW())
           `, [
+            escola_id,
             produto_id,
             `LOTE_${Date.now()}`, // Gerar nome único do lote
             parseFloat(quantidade),
@@ -892,6 +900,7 @@ export async function listarLotesProduto(req: Request, res: Response) {
 export async function criarLote(req: Request, res: Response) {
   try {
     const {
+      escola_id,
       produto_id,
       lote,
       quantidade,
@@ -902,10 +911,10 @@ export async function criarLote(req: Request, res: Response) {
     } = req.body;
 
     // Validações básicas
-    if (!produto_id || !lote || quantidade === null || quantidade === undefined || quantidade < 0) {
+    if (!escola_id || !produto_id || !lote || quantidade === null || quantidade === undefined || quantidade < 0) {
       return res.status(400).json({
         success: false,
-        message: "Produto, lote e quantidade são obrigatórios"
+        message: "Escola, produto, lote e quantidade são obrigatórios"
       });
     }
 
@@ -950,12 +959,13 @@ export async function criarLote(req: Request, res: Response) {
     // Criar o lote
     const novoLote = await db.query(`
       INSERT INTO estoque_lotes (
-        produto_id, lote, quantidade_inicial, quantidade_atual,
+        escola_id, produto_id, lote, quantidade_inicial, quantidade_atual,
         data_fabricacao, data_validade, fornecedor_id, observacoes,
         status, created_at, updated_at
-      ) VALUES ($1, $2, $3, $3, $4, $5, $6, $7, 'ativo', NOW(), NOW())
+      ) VALUES ($1, $2, $3, $4, $4, $5, $6, $7, $8, 'ativo', NOW(), NOW())
       RETURNING *
     `, [
+      escola_id,
       produto_id,
       lote.toString().trim(),
       Number(quantidade),
@@ -1039,12 +1049,13 @@ export async function processarMovimentacaoLotes(req: Request, res: Response) {
             // Criar novo lote
             const insertResult = await client.query(`
               INSERT INTO estoque_lotes (
-                produto_id, lote, quantidade_inicial, quantidade_atual,
+                escola_id, produto_id, lote, quantidade_inicial, quantidade_atual,
                 data_fabricacao, data_validade, observacoes,
                 status, created_at, updated_at
-              ) VALUES ($1, $2, $3, $3, $4, $5, $6, 'ativo', NOW(), NOW())
+              ) VALUES ($1, $2, $3, $4, $4, $5, $6, $7, 'ativo', NOW(), NOW())
               RETURNING *
             `, [
+              escola_id,
               produto_id,
               lote,
               quantidade,

@@ -66,17 +66,14 @@ const ModalEntradaSimples: React.FC<ModalEntradaSimplesProps> = ({
       return;
     }
 
-    if (!motivo.trim()) {
-      Alert.alert('Erro', 'Informe o motivo da entrada');
-      return;
-    }
+
 
     try {
       setLoading(true);
       await onConfirm({
         quantidade: parseFloat(quantidade),
         data_validade: dataValidade ? formatarDataParaEnvio(dataValidade) : undefined,
-        motivo: motivo.trim(),
+        motivo: motivo.trim() || undefined,
         documento_referencia: documentoReferencia.trim() || undefined,
       });
       handleClose();
@@ -167,7 +164,7 @@ const ModalEntradaSimples: React.FC<ModalEntradaSimplesProps> = ({
 
           {/* Motivo */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Motivo da Entrada *</Text>
+            <Text style={styles.label}>Motivo da Entrada (Opcional)</Text>
             <TextInput
               style={styles.textInput}
               value={motivo}

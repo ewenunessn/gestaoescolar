@@ -46,7 +46,7 @@ export const movimentacaoEstoqueSchema = z.object({
         errorMap: () => ({ message: 'Tipo de movimentação inválido' })
     }),
     quantidade: quantitySchema,
-    motivo: nonEmptyStringSchema.max(200, 'Motivo muito longo'),
+    motivo: z.string().max(200, 'Motivo muito longo').optional(),
     documento_referencia: z.string().max(100, 'Documento muito longo').optional(),
     data_validade: optionalDateStringSchema
 });
@@ -71,7 +71,7 @@ export const movimentoLoteSchema = z.object({
         errorMap: () => ({ message: 'Tipo de movimento inválido' })
     }),
     quantidade: quantitySchema,
-    motivo: nonEmptyStringSchema.max(200, 'Motivo muito longo'),
+    motivo: z.string().max(200, 'Motivo muito longo').optional(),
     data_movimento: dateStringSchema
 });
 
@@ -97,7 +97,7 @@ export const saidaInteligenteSchema = z.object({
     estrategia: z.enum(['fifo', 'fefo', 'manual'], {
         errorMap: () => ({ message: 'Estratégia inválida' })
     }).default('fefo'),
-    motivo: nonEmptyStringSchema.max(200, 'Motivo muito longo'),
+    motivo: z.string().max(200, 'Motivo muito longo').optional(),
     lotes_manuais: z.array(z.object({
         lote_id: idSchema,
         quantidade: quantitySchema

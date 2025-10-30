@@ -30,20 +30,41 @@ async function gerarBackupExcel(client: any) {
       ORDER BY e.nome, p.categoria, p.nome
     `);
 
+    // Buscar lotes para planilha separada
+    const lotesData = await client.query(`
+      SELECT 
+        el.id,
+        el.lote,
+        p.nome as produto_nome,
+        p.categoria,
+        p.unidade,
+        el.quantidade_inicial,
+        el.quantidade_atual,
+        el.data_fabricacao,
+        el.data_validade,
+        el.status,
+        el.observacoes,
+        el.created_at
+      FROM estoque_lotes el
+      JOIN produtos p ON p.id = el.produto_id
+      ORDER BY p.categoria, p.nome, el.data_validade
+    `);
+
     // Buscar movimentações para planilha separada
     const movimentacoesData = await client.query(`
       SELECT 
-        eeh.id,
-        'N/A' as lote_codigo,
+        em.id,
+        el.lote as lote_codigo,
         p.nome as produto_nome,
-        eeh.tipo_movimentacao as tipo,
-        eeh.quantidade_movimentada as quantidade,
-        eeh.motivo,
-        '' as observacoes,
-        eeh.data_movimentacao
-      FROM estoque_escolas_historico eeh
-      JOIN produtos p ON p.id = eeh.produto_id
-      ORDER BY eeh.data_movimentacao DESC
+        em.tipo as tipo,
+        em.quantidade as quantidade,
+        em.motivo,
+        em.observacoes,
+        em.data_movimentacao
+      FROM estoque_movimentacoes em
+      JOIN estoque_lotes el ON el.id = em.lote_id
+      JOIN produtos p ON p.id = em.produto_id
+      ORDER BY em.data_movimentacao DESC
     `);
 
     // Criar matriz de estoque (escolas x produtos)
@@ -86,6 +107,10 @@ async function gerarBackupExcel(client: any) {
     const wsEstoque = XLSX.utils.json_to_sheet(estoqueData.rows);
     XLSX.utils.book_append_sheet(wb, wsEstoque, 'Estoque Detalhado');
 
+    // Adicionar planilha de lotes
+    const wsLotes = XLSX.utils.json_to_sheet(lotesData.rows);
+    XLSX.utils.book_append_sheet(wb, wsLotes, 'Lotes');
+
     // Adicionar planilha de movimentações
     const wsMovimentacoes = XLSX.utils.json_to_sheet(movimentacoesData.rows);
     XLSX.utils.book_append_sheet(wb, wsMovimentacoes, 'Movimentacoes');
@@ -113,6 +138,7 @@ async function gerarBackupExcel(client: any) {
       total_escolas: escolas.length,
       total_produtos: produtos.length,
       total_registros_estoque: estoqueData.rows.length,
+      total_lotes: lotesData.rows.length,
       total_movimentacoes: movimentacoesData.rows.length
     };
   } catch (error) {
@@ -198,12 +224,22 @@ export async function resetEstoque(req: Request, res: Response) {
       // 1. Gerar backup em Excel antes do reset
       const backupData = await gerarBackupExcel(client);
       
-      // 2. Deletar histórico de movimentações primeiro (devido à foreign key)
+      // 2. Deletar movimentações de lotes primeiro (devido à foreign key)
+      const deleteMovimentacoes = await client.query(`
+        DELETE FROM estoque_movimentacoes
+      `);
+      
+      // 3. Deletar histórico de movimentações (devido à foreign key)
       const deleteHistorico = await client.query(`
         DELETE FROM estoque_escolas_historico
       `);
       
-      // 3. Zerar todos os estoques
+      // 4. Deletar todos os lotes
+      const deleteLotes = await client.query(`
+        DELETE FROM estoque_lotes
+      `);
+      
+      // 5. Zerar todos os estoques
       const resetEstoques = await client.query(`
         DELETE FROM estoque_escolas
       `);
@@ -211,7 +247,9 @@ export async function resetEstoque(req: Request, res: Response) {
       // Retornar dados da operação
       return {
         backup_excel: backupData,
+        movimentacoes_deletadas: deleteMovimentacoes.rowCount,
         historico_deletado: deleteHistorico.rowCount,
+        lotes_deletados: deleteLotes.rowCount,
         estoques_resetados: resetEstoques.rowCount,
         data_backup: new Date().toISOString()
       };

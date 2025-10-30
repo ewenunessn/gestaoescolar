@@ -265,11 +265,11 @@ export async function processarSaidaEstoque(req: Request, res: Response) {
     } = req.body;
 
     // Validações
-    if (!produto_id || quantidade === null || quantidade === undefined || quantidade < 0 || !motivo) {
+    if (!produto_id || quantidade === null || quantidade === undefined || quantidade < 0) {
       console.log('❌ Validação falhou:', { produto_id, quantidade, motivo });
       return res.status(400).json({
         success: false,
-        message: "Produto, quantidade e motivo são obrigatórios"
+        message: "Produto e quantidade são obrigatórios"
       });
     }
 

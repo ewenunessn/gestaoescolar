@@ -108,7 +108,7 @@ export const movimentacaoEstoqueFormSchema = z.object({
     produto_id: idSchema,
     tipo_movimentacao: z.enum(['entrada', 'saida', 'ajuste']),
     quantidade: quantitySchema,
-    motivo: nonEmptyStringSchema.max(200, 'Motivo muito longo'),
+    motivo: z.string().max(200, 'Motivo muito longo').optional(),
     documento_referencia: z.string().max(100, 'Documento de referência muito longo').optional(),
     data_validade: z.string().optional()
 });

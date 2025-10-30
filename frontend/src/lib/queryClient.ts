@@ -140,14 +140,16 @@ export const cacheConfig = {
   
   // Dados que mudam moderadamente - cache médio
   moderate: {
-    staleTime: 5 * 60 * 1000, // 5 minutos
-    gcTime: 15 * 60 * 1000, // 15 minutos
+    staleTime: 30 * 1000, // 30 segundos (reduzido)
+    gcTime: 5 * 60 * 1000, // 5 minutos
+    refetchOnWindowFocus: true, // Atualiza ao focar na janela
   },
   
   // Dados que mudam frequentemente - cache curto
   dynamic: {
-    staleTime: 1 * 60 * 1000, // 1 minuto
-    gcTime: 5 * 60 * 1000, // 5 minutos
+    staleTime: 15 * 1000, // 15 segundos (reduzido)
+    gcTime: 2 * 60 * 1000, // 2 minutos
+    refetchOnWindowFocus: true, // Atualiza ao focar na janela
   },
   
   // Dados em tempo real - sem cache

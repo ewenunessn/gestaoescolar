@@ -267,9 +267,7 @@ const ModalSaidaInteligente: React.FC<ModalSaidaInteligenteProps> = ({
             return `Quantidade insuficiente. Disponível: ${formatarQuantidade(totalDisponivel)} ${item?.unidade_medida}`;
         }
 
-        if (!motivo.trim()) {
-            return 'Motivo é obrigatório';
-        }
+
 
         return null;
     };
@@ -299,7 +297,7 @@ const ModalSaidaInteligente: React.FC<ModalSaidaInteligenteProps> = ({
                     produto_id: item.produto_id,
                     tipo_movimentacao: 'saida',
                     quantidade: parseFloat(quantidade),
-                    motivo: motivo.trim(),
+                    motivo: motivo.trim() || undefined,
                     usuario_id: usuario.id,
                 }),
             });
@@ -372,7 +370,7 @@ const ModalSaidaInteligente: React.FC<ModalSaidaInteligenteProps> = ({
                         </View>
 
                         <View style={styles.inputContainer}>
-                            <Text style={styles.label}>Motivo da saída *</Text>
+                            <Text style={styles.label}>Motivo da saída (Opcional)</Text>
                             <TextInput
                                 style={[styles.input, styles.textArea]}
                                 value={motivo}

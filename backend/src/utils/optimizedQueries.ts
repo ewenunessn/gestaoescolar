@@ -22,14 +22,15 @@ export const getEstoqueEscolarResumoOptimized = async () => {
         p.descricao as produto_descricao,
         p.unidade,
         p.categoria,
-        COUNT(DISTINCT e.id) FILTER (WHERE e.ativo = true) as total_escolas,
+        COUNT(DISTINCT e.id) as total_escolas,
         COUNT(DISTINCT ee.escola_id) FILTER (WHERE ee.quantidade_atual > 0) as total_escolas_com_estoque,
         COALESCE(SUM(ee.quantidade_atual), 0) as total_quantidade
       FROM produtos p
-      CROSS JOIN escolas e
-      LEFT JOIN estoque_escolas ee ON (ee.produto_id = p.id AND ee.escola_id = e.id)
+      INNER JOIN estoque_escolas ee ON ee.produto_id = p.id
+      INNER JOIN escolas e ON e.id = ee.escola_id
       WHERE p.ativo = true AND e.ativo = true
       GROUP BY p.id, p.nome, p.descricao, p.unidade, p.categoria
+      HAVING COALESCE(SUM(ee.quantidade_atual), 0) > 0
     )
     SELECT *
     FROM estoque_agregado
