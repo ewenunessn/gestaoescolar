@@ -843,8 +843,8 @@ const EstoqueEscolarPage = () => {
                                                                                 lineHeight: 1
                                                                             }}
                                                                         >
-                                                                            {statusValidade === 'vencido' ? 'Vencido' : 
-                                                                             statusValidade === 'critico' ? `${diasParaVencimento}d` :
+                                                                                    {statusValidade === 'vencido' ? 'Vencido' : 
+                                                                             diasParaVencimento === 0 ? 'Vence hoje' :
                                                                              `${diasParaVencimento}d`}
                                                                         </Typography>
                                                                     )}
@@ -1182,6 +1182,7 @@ const EstoqueEscolarPage = () => {
                                                                         <Chip
                                                                             label={
                                                                                 statusValidade === 'vencido' ? 'Vencido' :
+                                                                                diasParaVencimento === 0 ? 'Vence hoje' :
                                                                                 statusValidade === 'critico' ? `${diasParaVencimento} dias` :
                                                                                 statusValidade === 'atencao' ? `${diasParaVencimento} dias` :
                                                                                 'Normal'

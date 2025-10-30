@@ -248,8 +248,8 @@ const MovimentacaoEstoquePage = () => {
   const getStatusText = (status: string, dias?: number) => {
     switch (status) {
       case 'vencido': return 'Vencido';
-      case 'critico': return `${dias} dias`;
-      case 'atencao': return `${dias} dias`;
+      case 'critico': return dias === 0 ? 'Vence hoje' : `${dias} dias`;
+      case 'atencao': return dias === 0 ? 'Vence hoje' : `${dias} dias`;
       case 'sem_estoque': return 'Sem estoque';
       default: return 'Normal';
     }
