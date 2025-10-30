@@ -625,24 +625,7 @@ const GuiaDetalhes: React.FC<GuiaDetalhesProps> = ({ guia, onUpdate, onClose }) 
       return;
     }
 
-    // Validação de estoque
-    const alertasEstoque: string[] = [];
-    escolasComQuantidade.forEach(item => {
-      const estoqueEscola = estoqueEscolas[item.escolaId];
-      if (estoqueEscola && estoqueEscola.quantidade_atual < item.quantidade) {
-        const escola = escolasFiltradas.find(e => e.id === item.escolaId);
-        alertasEstoque.push(
-          `${escola?.nome}: solicitado ${item.quantidade} ${item.unidade}, disponível ${estoqueEscola.quantidade_atual} ${estoqueEscola.unidade}`
-        );
-      }
-    });
-
-    if (alertasEstoque.length > 0) {
-      const confirmar = window.confirm(
-        `ATENÇÃO: Algumas escolas têm quantidade solicitada maior que o estoque disponível:\n\n${alertasEstoque.join('\n')}\n\nDeseja continuar mesmo assim?`
-      );
-      if (!confirmar) return;
-    }
+    // Validação de estoque removida - o estoque da escola representa entregas planejadas, não disponibilidade
 
     try {
       setSalvandoMassa(true);

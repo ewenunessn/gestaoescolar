@@ -12,27 +12,25 @@ export async function listarEstoqueEscola(req: Request, res: Response) {
   try {
     const { escola_id } = req.params;
 
-    // Query dinâmica que mostra TODOS os produtos ativos, mesmo os não inicializados no estoque
+    // Query otimizada usando CTEs para evitar subqueries repetidas
     const result = await db.query(`
+      WITH lotes_agregados AS (
+        SELECT 
+          el.produto_id,
+          SUM(el.quantidade_atual) as total_quantidade_lotes,
+          MIN(CASE WHEN el.quantidade_atual > 0 THEN el.data_validade END) as min_validade_lotes
+        FROM estoque_lotes el
+        WHERE el.status = 'ativo'
+        GROUP BY el.produto_id
+      )
       SELECT 
         ee.id,
         $1::integer as escola_id,
         p.id as produto_id,
-        -- Somar quantidade dos lotes se existirem, senão usar a do estoque principal
-        COALESCE(
-          (SELECT SUM(el.quantidade_atual) 
-           FROM estoque_lotes el 
-           WHERE el.produto_id = p.id AND el.status = 'ativo'),
-          ee.quantidade_atual,
-          0
-        ) as quantidade_atual,
+        -- Usar quantidade dos lotes se existirem, senão usar a do estoque principal
+        COALESCE(la.total_quantidade_lotes, ee.quantidade_atual, 0) as quantidade_atual,
         -- Usar a validade mais próxima dos lotes se existirem, senão usar a do estoque principal
-        COALESCE(
-          (SELECT MIN(el.data_validade) 
-           FROM estoque_lotes el 
-           WHERE el.produto_id = p.id AND el.status = 'ativo' AND el.quantidade_atual > 0),
-          ee.data_validade
-        ) as data_validade,
+        COALESCE(la.min_validade_lotes, ee.data_validade) as data_validade,
         ee.data_entrada,
         ee.updated_at as data_ultima_atualizacao,
         p.nome as produto_nome,
@@ -41,110 +39,90 @@ export async function listarEstoqueEscola(req: Request, res: Response) {
         p.categoria,
         e.nome as escola_nome,
         CASE 
-          WHEN COALESCE(
-            (SELECT SUM(el.quantidade_atual) 
-             FROM estoque_lotes el 
-             WHERE el.produto_id = p.id AND el.status = 'ativo'),
-            ee.quantidade_atual,
-            0
-          ) = 0 THEN 'sem_estoque'
-          WHEN COALESCE(
-            (SELECT MIN(el.data_validade) 
-             FROM estoque_lotes el 
-             WHERE el.produto_id = p.id AND el.status = 'ativo' AND el.quantidade_atual > 0),
-            ee.data_validade
-          ) IS NOT NULL AND COALESCE(
-            (SELECT MIN(el.data_validade) 
-             FROM estoque_lotes el 
-             WHERE el.produto_id = p.id AND el.status = 'ativo' AND el.quantidade_atual > 0),
-            ee.data_validade
-          ) < CURRENT_DATE THEN 'vencido'
-          WHEN COALESCE(
-            (SELECT MIN(el.data_validade) 
-             FROM estoque_lotes el 
-             WHERE el.produto_id = p.id AND el.status = 'ativo' AND el.quantidade_atual > 0),
-            ee.data_validade
-          ) IS NOT NULL AND COALESCE(
-            (SELECT MIN(el.data_validade) 
-             FROM estoque_lotes el 
-             WHERE el.produto_id = p.id AND el.status = 'ativo' AND el.quantidade_atual > 0),
-            ee.data_validade
-          ) <= CURRENT_DATE + INTERVAL '7 days' THEN 'critico'
-          WHEN COALESCE(
-            (SELECT MIN(el.data_validade) 
-             FROM estoque_lotes el 
-             WHERE el.produto_id = p.id AND el.status = 'ativo' AND el.quantidade_atual > 0),
-            ee.data_validade
-          ) IS NOT NULL AND COALESCE(
-            (SELECT MIN(el.data_validade) 
-             FROM estoque_lotes el 
-             WHERE el.produto_id = p.id AND el.status = 'ativo' AND el.quantidade_atual > 0),
-            ee.data_validade
-          ) <= CURRENT_DATE + INTERVAL '30 days' THEN 'atencao'
+          WHEN COALESCE(la.total_quantidade_lotes, ee.quantidade_atual, 0) = 0 THEN 'sem_estoque'
+          WHEN COALESCE(la.min_validade_lotes, ee.data_validade) IS NOT NULL 
+               AND COALESCE(la.min_validade_lotes, ee.data_validade) < CURRENT_DATE THEN 'vencido'
+          WHEN COALESCE(la.min_validade_lotes, ee.data_validade) IS NOT NULL 
+               AND COALESCE(la.min_validade_lotes, ee.data_validade) <= CURRENT_DATE + INTERVAL '7 days' THEN 'critico'
+          WHEN COALESCE(la.min_validade_lotes, ee.data_validade) IS NOT NULL 
+               AND COALESCE(la.min_validade_lotes, ee.data_validade) <= CURRENT_DATE + INTERVAL '30 days' THEN 'atencao'
           ELSE 'normal'
         END as status_estoque,
         CASE 
-          WHEN COALESCE(
-            (SELECT MIN(el.data_validade) 
-             FROM estoque_lotes el 
-             WHERE el.produto_id = p.id AND el.status = 'ativo' AND el.quantidade_atual > 0),
-            ee.data_validade
-          ) IS NOT NULL THEN 
-            (COALESCE(
-              (SELECT MIN(el.data_validade) 
-               FROM estoque_lotes el 
-               WHERE el.produto_id = p.id AND el.status = 'ativo' AND el.quantidade_atual > 0),
-              ee.data_validade
-            ) - CURRENT_DATE)::integer
+          WHEN COALESCE(la.min_validade_lotes, ee.data_validade) IS NOT NULL THEN 
+            (COALESCE(la.min_validade_lotes, ee.data_validade) - CURRENT_DATE)::integer
           ELSE NULL
         END as dias_para_vencimento
       FROM produtos p
       CROSS JOIN escolas e
       LEFT JOIN estoque_escolas ee ON (ee.produto_id = p.id AND ee.escola_id = e.id)
+      LEFT JOIN lotes_agregados la ON la.produto_id = p.id
       WHERE p.ativo = true 
         AND e.id = $1 
         AND e.ativo = true
       ORDER BY 
         CASE 
-          WHEN COALESCE(
-            (SELECT MIN(el.data_validade) 
-             FROM estoque_lotes el 
-             WHERE el.produto_id = p.id AND el.status = 'ativo' AND el.quantidade_atual > 0),
-            ee.data_validade
-          ) IS NOT NULL AND COALESCE(
-            (SELECT MIN(el.data_validade) 
-             FROM estoque_lotes el 
-             WHERE el.produto_id = p.id AND el.status = 'ativo' AND el.quantidade_atual > 0),
-            ee.data_validade
-          ) < CURRENT_DATE THEN 1
-          WHEN COALESCE(
-            (SELECT MIN(el.data_validade) 
-             FROM estoque_lotes el 
-             WHERE el.produto_id = p.id AND el.status = 'ativo' AND el.quantidade_atual > 0),
-            ee.data_validade
-          ) IS NOT NULL AND COALESCE(
-            (SELECT MIN(el.data_validade) 
-             FROM estoque_lotes el 
-             WHERE el.produto_id = p.id AND el.status = 'ativo' AND el.quantidade_atual > 0),
-            ee.data_validade
-          ) <= CURRENT_DATE + INTERVAL '7 days' THEN 2
-          WHEN COALESCE(
-            (SELECT MIN(el.data_validade) 
-             FROM estoque_lotes el 
-             WHERE el.produto_id = p.id AND el.status = 'ativo' AND el.quantidade_atual > 0),
-            ee.data_validade
-          ) IS NOT NULL AND COALESCE(
-            (SELECT MIN(el.data_validade) 
-             FROM estoque_lotes el 
-             WHERE el.produto_id = p.id AND el.status = 'ativo' AND el.quantidade_atual > 0),
-            ee.data_validade
-          ) <= CURRENT_DATE + INTERVAL '30 days' THEN 3
+          WHEN COALESCE(la.min_validade_lotes, ee.data_validade) IS NOT NULL 
+               AND COALESCE(la.min_validade_lotes, ee.data_validade) < CURRENT_DATE THEN 1
+          WHEN COALESCE(la.min_validade_lotes, ee.data_validade) IS NOT NULL 
+               AND COALESCE(la.min_validade_lotes, ee.data_validade) <= CURRENT_DATE + INTERVAL '7 days' THEN 2
+          WHEN COALESCE(la.min_validade_lotes, ee.data_validade) IS NOT NULL 
+               AND COALESCE(la.min_validade_lotes, ee.data_validade) <= CURRENT_DATE + INTERVAL '30 days' THEN 3
           ELSE 4
         END,
         p.categoria, p.nome
     `, [escola_id]);
 
     const estoque = result.rows;
+
+    // Buscar todos os lotes de uma vez para otimizar performance
+    const produtoIds = estoque.map(item => item.produto_id);
+    
+    if (produtoIds.length > 0) {
+      try {
+        const lotesResult = await db.query(`
+          SELECT 
+            el.id,
+            el.produto_id,
+            el.lote,
+            el.quantidade_inicial,
+            el.quantidade_atual,
+            el.data_validade,
+            el.data_fabricacao,
+            el.status,
+            el.observacoes
+          FROM estoque_lotes el
+          WHERE el.produto_id = ANY($1) 
+            AND el.status = 'ativo' 
+            AND el.quantidade_atual > 0
+          ORDER BY 
+            el.produto_id,
+            CASE WHEN el.data_validade IS NULL THEN 1 ELSE 0 END,
+            el.data_validade ASC
+        `, [produtoIds]);
+        
+        // Agrupar lotes por produto_id
+        const lotesPorProduto = {};
+        lotesResult.rows.forEach(lote => {
+          if (!lotesPorProduto[lote.produto_id]) {
+            lotesPorProduto[lote.produto_id] = [];
+          }
+          lotesPorProduto[lote.produto_id].push(lote);
+        });
+        
+        // Adicionar lotes aos itens do estoque
+        estoque.forEach((item, index) => {
+          estoque[index].lotes = lotesPorProduto[item.produto_id] || [];
+        });
+        
+      } catch (error) {
+        console.error('Erro ao buscar lotes:', error);
+        // Em caso de erro, todos os itens ficam sem lotes
+        estoque.forEach((item, index) => {
+          estoque[index].lotes = [];
+        });
+      }
+    }
 
     res.json({
       success: true,

@@ -75,6 +75,7 @@ const NovoPedido = lazy(() => import("../pages/NovoPedido"));
 const PedidoDetalhe = lazy(() => import("../pages/PedidoDetalhe"));
 const EditarPedido = lazy(() => import("../pages/EditarPedido"));
 const FaturamentoDetalhe = lazy(() => import("../pages/FaturamentoDetalhe"));
+const MovimentacaoEstoque = lazy(() => import("../pages/MovimentacaoEstoque"));
 
 
 interface AppRouterProps {
@@ -357,6 +358,12 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
             <Route
               path="/consistencia"
               element={<LazyRoute><DashboardConsistencia /></LazyRoute>}
+            />
+
+            {/* Movimentação de Estoque */}
+            <Route
+              path="/movimentacao-estoque"
+              element={<LazyRoute><MovimentacaoEstoque /></LazyRoute>}
             />
             
 

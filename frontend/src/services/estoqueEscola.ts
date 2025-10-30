@@ -1,5 +1,17 @@
 import { apiWithRetry } from "./api";
 
+export interface LoteEstoque {
+  id: number;
+  produto_id: number;
+  lote: string;
+  quantidade_inicial: number;
+  quantidade_atual: number;
+  data_validade?: string;
+  data_fabricacao?: string;
+  status: string;
+  observacoes?: string;
+}
+
 export interface ItemEstoqueEscola {
   id: number;
   escola_id: number;
@@ -16,6 +28,7 @@ export interface ItemEstoqueEscola {
   categoria: string;
   escola_nome: string;
   status_estoque: 'sem_estoque' | 'baixo' | 'normal' | 'alto';
+  lotes?: LoteEstoque[];
 }
 
 export interface HistoricoEstoque {
@@ -129,6 +142,7 @@ export async function registrarMovimentacao(
     motivo?: string;
     documento_referencia?: string;
     usuario_id?: number;
+    data_validade?: string;
   }
 ): Promise<{estoque: ItemEstoqueEscola, historico: HistoricoEstoque}> {
   const { data } = await apiWithRetry.post(`/estoque-escola/escola/${escolaId}/movimentacao`, dadosMovimentacao);

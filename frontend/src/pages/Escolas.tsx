@@ -53,6 +53,7 @@ import {
   TuneRounded,
   ExpandMore,
   ExpandLess,
+  Inventory as InventoryIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { listarEscolas, criarEscola, importarEscolasLote } from '../services/escolas';
@@ -308,6 +309,7 @@ const EscolasPage = () => {
             <Box sx={{ display: 'flex', gap: 1 }}>
               <Button variant={filtersExpanded || hasActiveFilters ? 'contained' : 'outlined'} startIcon={filtersExpanded ? <ExpandLess /> : <TuneRounded />} onClick={toggleFilters} size="small">Filtros{hasActiveFilters && !filtersExpanded && (<Box sx={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', bgcolor: 'error.main' }} />)}</Button>
               <Button startIcon={<AddIcon />} onClick={openModal} variant="contained" color="success" size="small">Nova Escola</Button>
+              <Button startIcon={<InventoryIcon />} onClick={() => navigate('/movimentacao-estoque')} variant="contained" color="primary" size="small">Movimentar Estoque</Button>
               <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)} size="small"><MoreVert /></IconButton>
             </Box>
           </Box>

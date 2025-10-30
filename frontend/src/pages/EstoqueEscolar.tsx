@@ -63,6 +63,15 @@ const EstoqueEscolarPage = () => {
     const [documentoReferencia, setDocumentoReferencia] = useState('');
     const [loadingMovimentacao, setLoadingMovimentacao] = useState(false);
     
+    // Estados para modal de detalhes por validade
+    const [modalValidadeOpen, setModalValidadeOpen] = useState(false);
+    const [dadosValidadeSelecionados, setDadosValidadeSelecionados] = useState<{
+        escola: any;
+        produto: any;
+        lotes: any[];
+    } | null>(null);
+    const [loadingLotes, setLoadingLotes] = useState(false);
+    
     // React Query hooks (usar após declarar estados)
     const estoqueQuery = useEstoqueEscolarResumo();
     const matrizQuery = useMatrizEstoque(selectedProdutos.length > 0 ? selectedProdutos : undefined, 50);
@@ -420,6 +429,75 @@ const EstoqueEscolarPage = () => {
         }
     };
 
+    // Função para buscar lotes por validade de um produto específico em uma escola
+    const verDetalhesValidadeEstoque = async (escola: any, produto: any) => {
+        // Evitar múltiplas chamadas simultâneas
+        if (loadingLotes) {
+            return;
+        }
+
+        try {
+            setLoadingLotes(true);
+            setModalValidadeOpen(true);
+            setDadosValidadeSelecionados({
+                escola,
+                produto,
+                lotes: []
+            });
+
+            // Usar o serviço de estoque existente
+            const { listarEstoqueEscola } = await import('../services/estoqueEscola');
+            const estoqueData = await listarEstoqueEscola(escola.escola_id);
+            const itemEstoque = estoqueData?.find((item: any) => item.produto_id === produto.id);
+
+            if (!itemEstoque) {
+                throw new Error(`Produto "${produto.nome}" não encontrado no estoque da escola "${escola.escola_nome}"`);
+            }
+            
+            let lotes = [];
+            
+            // Verificar se o item tem lotes específicos (propriedade pode não existir na interface)
+            const itemComLotes = itemEstoque as any;
+            
+            if (itemComLotes?.lotes && itemComLotes.lotes.length > 0) {
+                // Se tem lotes específicos, usar eles
+                lotes = itemComLotes.lotes
+                    .filter((lote: any) => lote.quantidade_atual > 0)
+                    .map((lote: any) => ({
+                        id: lote.id,
+                        lote: lote.lote,
+                        quantidade: lote.quantidade_atual,
+                        data_validade: lote.data_validade,
+                        data_fabricacao: lote.data_fabricacao,
+                        status: lote.status
+                    }));
+            } else if (itemEstoque?.quantidade_atual > 0) {
+                // Se não tem lotes, criar um "lote virtual" com os dados principais
+                lotes = [{
+                    id: 'principal',
+                    lote: 'Estoque Principal',
+                    quantidade: itemEstoque.quantidade_atual,
+                    data_validade: (itemEstoque as any).data_validade || null,
+                    data_fabricacao: itemEstoque.data_ultima_atualizacao,
+                    status: 'ativo'
+                }];
+            }
+
+            setDadosValidadeSelecionados({
+                escola,
+                produto,
+                lotes
+            });
+        } catch (err) {
+            console.error('Erro ao carregar detalhes de validade:', err);
+            const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido ao carregar detalhes';
+            setError(`Erro ao carregar detalhes de validade: ${errorMessage}`);
+            setModalValidadeOpen(false);
+        } finally {
+            setLoadingLotes(false);
+        }
+    };
+
     // Componente de Filtros
     const FiltersContent = () => (
         <Box sx={{ bgcolor: 'background.paper', borderRadius: '12px', p: 2 }}>
@@ -523,13 +601,38 @@ const EstoqueEscolarPage = () => {
                         </Box>
                     </Box>
                     <Collapse in={filtersExpanded} timeout={300}><Box sx={{ mb: 2 }}><FiltersContent /></Box></Collapse>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
                         <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>
                             {modoVisualizacao === 'produtos'
                                 ? `Mostrando ${Math.min((page * rowsPerPage) + 1, filteredProdutos.length)}-${Math.min((page + 1) * rowsPerPage, filteredProdutos.length)} de ${filteredProdutos.length} produtos`
                                 : `Mostrando ${Math.min((page * rowsPerPage) + 1, filteredEscolas.length)}-${Math.min((page + 1) * rowsPerPage, filteredEscolas.length)} de ${filteredEscolas.length} escolas`
                             }
                         </Typography>
+                        
+                        {/* Legenda de validade para modo escolas */}
+                        {modoVisualizacao === 'escolas' && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                                <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>
+                                    Validade:
+                                </Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#fef2f2' }} />
+                                    <Typography variant="caption" sx={{ fontSize: '0.7rem', color: '#dc2626' }}>
+                                        Vencido
+                                    </Typography>
+                                </Box>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#fef3c7' }} />
+                                    <Typography variant="caption" sx={{ fontSize: '0.7rem', color: '#d97706' }}>
+                                        ≤30 dias
+                                    </Typography>
+                                </Box>
+                                <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem', fontStyle: 'italic' }}>
+                                    • Duplo clique para detalhes
+                                </Typography>
+                            </Box>
+                        )}
+                        
                         {estoqueQuery.dataUpdatedAt && (
                             <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>
                                 Última atualização: {new Date(estoqueQuery.dataUpdatedAt).toLocaleTimeString('pt-BR')}
@@ -669,27 +772,95 @@ const EstoqueEscolarPage = () => {
                                                 {produtosParaExibir.map((produto) => {
                                                     const estoqueProduto = escola.produtos[produto.id];
                                                     const quantidade = estoqueProduto?.quantidade || 0;
+                                                    const dataValidade = estoqueProduto?.data_validade;
+                                                    
+                                                    // Calcular status da validade
+                                                    let statusValidade = 'normal';
+                                                    let diasParaVencimento = null;
+                                                    let corFundo = quantidade > 0 ? '#f0fdf4' : '#f8fafc';
+                                                    let corTexto = quantidade > 0 ? '#059669' : '#64748b';
+                                                    
+                                                    if (dataValidade && quantidade > 0) {
+                                                        const hoje = new Date();
+                                                        hoje.setHours(0, 0, 0, 0);
+                                                        const validade = new Date(dataValidade);
+                                                        validade.setHours(0, 0, 0, 0);
+                                                        
+                                                        diasParaVencimento = Math.ceil((validade.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+                                                        
+                                                        if (diasParaVencimento < 0) {
+                                                            statusValidade = 'vencido';
+                                                            corFundo = '#fef2f2';
+                                                            corTexto = '#dc2626';
+                                                        } else if (diasParaVencimento <= 7) {
+                                                            statusValidade = 'critico';
+                                                            corFundo = '#fef3c7';
+                                                            corTexto = '#d97706';
+                                                        } else if (diasParaVencimento <= 30) {
+                                                            statusValidade = 'atencao';
+                                                            corFundo = '#fef3c7';
+                                                            corTexto = '#d97706';
+                                                        }
+                                                    }
 
                                                     return (
                                                         <TableCell
                                                             key={produto.id}
                                                             align="center"
                                                             sx={{
-                                                                bgcolor: quantidade > 0 ? '#f0fdf4' : '#f8fafc',
-                                                                color: quantidade > 0 ? '#059669' : '#64748b',
-                                                                py: 1
+                                                                bgcolor: corFundo,
+                                                                color: corTexto,
+                                                                py: 1,
+                                                                position: 'relative',
+                                                                cursor: quantidade > 0 ? 'pointer' : 'default',
+                                                                '&:hover': quantidade > 0 ? {
+                                                                    bgcolor: statusValidade === 'vencido' ? '#fecaca' :
+                                                                             statusValidade === 'critico' || statusValidade === 'atencao' ? '#fed7aa' :
+                                                                             '#dcfce7',
+                                                                    transition: 'background-color 0.2s'
+                                                                } : {}
+                                                            }}
+                                                            onDoubleClick={() => {
+                                                                if (quantidade > 0) {
+                                                                    verDetalhesValidadeEstoque(escola, produto);
+                                                                }
                                                             }}
                                                         >
-                                                            <Typography
-                                                                variant="body2"
-                                                                sx={{
-                                                                    fontWeight: quantidade > 0 ? 600 : 400,
-                                                                    fontSize: '0.875rem',
-                                                                    lineHeight: 1.2
-                                                                }}
+                                                            <Tooltip 
+                                                                title={quantidade > 0 ? "Duplo clique para ver detalhes por validade" : ""} 
+                                                                arrow
+                                                                placement="top"
                                                             >
-                                                                {formatarNumero(quantidade)}
-                                                            </Typography>
+                                                                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.25 }}>
+                                                                    <Typography
+                                                                        variant="body2"
+                                                                        sx={{
+                                                                            fontWeight: quantidade > 0 ? 600 : 400,
+                                                                            fontSize: '0.875rem',
+                                                                            lineHeight: 1.2
+                                                                        }}
+                                                                    >
+                                                                        {formatarNumero(quantidade)}
+                                                                    </Typography>
+                                                                    
+                                                                    {/* Indicador de validade sutil */}
+                                                                    {dataValidade && quantidade > 0 && statusValidade !== 'normal' && (
+                                                                        <Typography
+                                                                            variant="caption"
+                                                                            sx={{
+                                                                                fontSize: '0.65rem',
+                                                                                fontWeight: 500,
+                                                                                opacity: 0.8,
+                                                                                lineHeight: 1
+                                                                            }}
+                                                                        >
+                                                                            {statusValidade === 'vencido' ? 'Vencido' : 
+                                                                             statusValidade === 'critico' ? `${diasParaVencimento}d` :
+                                                                             `${diasParaVencimento}d`}
+                                                                        </Typography>
+                                                                    )}
+                                                                </Box>
+                                                            </Tooltip>
                                                         </TableCell>
                                                     );
                                                 })}
@@ -859,6 +1030,202 @@ const EstoqueEscolarPage = () => {
                     </Button>
                     <Button
                         onClick={() => setDetalhesModalOpen(false)}
+                        variant="outlined"
+                    >
+                        Fechar
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Modal de Detalhes por Validade */}
+            <Dialog 
+                open={modalValidadeOpen} 
+                onClose={() => setModalValidadeOpen(false)} 
+                maxWidth="md" 
+                fullWidth
+            >
+                <DialogTitle sx={{
+                    bgcolor: '#f8fafc',
+                    borderBottom: '1px solid #e2e8f0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 2
+                }}>
+                    <Inventory sx={{ color: '#4f46e5' }} />
+                    <Box>
+                        <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                            Detalhes por Validade
+                        </Typography>
+                        {dadosValidadeSelecionados && (
+                            <Typography variant="body2" color="text.secondary">
+                                {dadosValidadeSelecionados.produto.nome} - {dadosValidadeSelecionados.escola.escola_nome}
+                            </Typography>
+                        )}
+                    </Box>
+                </DialogTitle>
+                <DialogContent sx={{ p: 0 }}>
+                    {loadingLotes ? (
+                        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 200 }}>
+                            <CircularProgress />
+                            <Typography variant="body2" sx={{ ml: 2 }}>
+                                Carregando detalhes...
+                            </Typography>
+                        </Box>
+                    ) : dadosValidadeSelecionados ? (
+                        <Box sx={{ p: 3 }}>
+                            {dadosValidadeSelecionados.lotes.length === 0 ? (
+                                <Box sx={{ textAlign: 'center', py: 4 }}>
+                                    <Typography variant="h6" color="text.secondary">
+                                        Nenhum estoque encontrado
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary">
+                                        Este produto não possui estoque nesta escola.
+                                    </Typography>
+                                </Box>
+                            ) : (
+                                <>
+                                    {/* Resumo */}
+                                    <Box sx={{ mb: 3, p: 2, bgcolor: '#f8fafc', borderRadius: 2 }}>
+                                        <Grid container spacing={2}>
+                                            <Grid item xs={6}>
+                                                <Typography variant="body2" color="text.secondary">
+                                                    Quantidade Total
+                                                </Typography>
+                                                <Typography variant="h5" sx={{ fontWeight: 600, color: '#059669' }}>
+                                                    {dadosValidadeSelecionados.lotes.reduce((total, lote) => total + (Number(lote.quantidade) || 0), 0).toFixed(2)} {dadosValidadeSelecionados.produto.unidade}
+                                                </Typography>
+                                            </Grid>
+                                            <Grid item xs={6}>
+                                                <Typography variant="body2" color="text.secondary">
+                                                    Lotes/Grupos
+                                                </Typography>
+                                                <Typography variant="h5" sx={{ fontWeight: 600, color: '#2563eb' }}>
+                                                    {dadosValidadeSelecionados.lotes.length}
+                                                </Typography>
+                                            </Grid>
+                                        </Grid>
+                                    </Box>
+
+                                    {/* Lista de Lotes */}
+                                    <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                                        Distribuição por Validade
+                                    </Typography>
+                                    
+                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                        {dadosValidadeSelecionados.lotes
+                                            .sort((a, b) => {
+                                                // Ordenar por validade (mais próxima primeiro)
+                                                if (!a.data_validade && !b.data_validade) return 0;
+                                                if (!a.data_validade) return 1;
+                                                if (!b.data_validade) return -1;
+                                                return new Date(a.data_validade).getTime() - new Date(b.data_validade).getTime();
+                                            })
+                                            .map((lote, index) => {
+                                                // Calcular status da validade
+                                                let statusValidade = 'normal';
+                                                let diasParaVencimento = null;
+                                                let corCard = '#f0fdf4';
+                                                let corTexto = '#059669';
+                                                
+                                                if (lote.data_validade) {
+                                                    const hoje = new Date();
+                                                    hoje.setHours(0, 0, 0, 0);
+                                                    const validade = new Date(lote.data_validade);
+                                                    validade.setHours(0, 0, 0, 0);
+                                                    
+                                                    diasParaVencimento = Math.ceil((validade.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+                                                    
+                                                    if (diasParaVencimento < 0) {
+                                                        statusValidade = 'vencido';
+                                                        corCard = '#fef2f2';
+                                                        corTexto = '#dc2626';
+                                                    } else if (diasParaVencimento <= 7) {
+                                                        statusValidade = 'critico';
+                                                        corCard = '#fef3c7';
+                                                        corTexto = '#d97706';
+                                                    } else if (diasParaVencimento <= 30) {
+                                                        statusValidade = 'atencao';
+                                                        corCard = '#fef3c7';
+                                                        corTexto = '#d97706';
+                                                    }
+                                                }
+
+                                                return (
+                                                    <Card 
+                                                        key={lote.id || index} 
+                                                        sx={{ 
+                                                            bgcolor: corCard,
+                                                            border: `1px solid ${corTexto}20`,
+                                                            borderLeft: `4px solid ${corTexto}`
+                                                        }}
+                                                    >
+                                                        <CardContent sx={{ py: 2 }}>
+                                                            <Grid container spacing={2} alignItems="center">
+                                                                <Grid item xs={12} sm={4}>
+                                                                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                                                                        {lote.lote}
+                                                                    </Typography>
+                                                                    <Typography variant="body2" color="text.secondary">
+                                                                        {lote.status === 'ativo' ? 'Ativo' : lote.status}
+                                                                    </Typography>
+                                                                </Grid>
+                                                                <Grid item xs={12} sm={3}>
+                                                                    <Typography variant="body2" color="text.secondary">
+                                                                        Quantidade
+                                                                    </Typography>
+                                                                    <Typography variant="h6" sx={{ fontWeight: 600, color: corTexto }}>
+                                                                        {Number(lote.quantidade).toFixed(2)} {dadosValidadeSelecionados.produto.unidade}
+                                                                    </Typography>
+                                                                </Grid>
+                                                                <Grid item xs={12} sm={3}>
+                                                                    <Typography variant="body2" color="text.secondary">
+                                                                        Validade
+                                                                    </Typography>
+                                                                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                                                        {lote.data_validade ? 
+                                                                            new Date(lote.data_validade).toLocaleDateString('pt-BR') : 
+                                                                            'Sem validade'
+                                                                        }
+                                                                    </Typography>
+                                                                </Grid>
+                                                                <Grid item xs={12} sm={2}>
+                                                                    {lote.data_validade && (
+                                                                        <Chip
+                                                                            label={
+                                                                                statusValidade === 'vencido' ? 'Vencido' :
+                                                                                statusValidade === 'critico' ? `${diasParaVencimento} dias` :
+                                                                                statusValidade === 'atencao' ? `${diasParaVencimento} dias` :
+                                                                                'Normal'
+                                                                            }
+                                                                            size="small"
+                                                                            sx={{
+                                                                                bgcolor: corTexto + '20',
+                                                                                color: corTexto,
+                                                                                fontWeight: 600
+                                                                            }}
+                                                                        />
+                                                                    )}
+                                                                </Grid>
+                                                            </Grid>
+                                                        </CardContent>
+                                                    </Card>
+                                                );
+                                            })}
+                                    </Box>
+                                </>
+                            )}
+                        </Box>
+                    ) : (
+                        <Box sx={{ p: 3, textAlign: 'center' }}>
+                            <Typography color="text.secondary">
+                                Erro ao carregar detalhes
+                            </Typography>
+                        </Box>
+                    )}
+                </DialogContent>
+                <DialogActions sx={{ p: 3, borderTop: '1px solid #e2e8f0' }}>
+                    <Button
+                        onClick={() => setModalValidadeOpen(false)}
                         variant="outlined"
                     >
                         Fechar

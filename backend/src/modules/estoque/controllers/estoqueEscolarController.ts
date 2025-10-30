@@ -374,7 +374,7 @@ export async function buscarMatrizEstoque(req: Request, res: Response) {
     let params: any[] = [];
     
     // Se produtos específicos foram solicitados
-    if (produto_ids && produto_ids.length > 0) {
+    if (produto_ids && Array.isArray(produto_ids) && produto_ids.length > 0) {
       whereClause += " AND p.id = ANY($1::int[])";
       params.push(produto_ids);
     }

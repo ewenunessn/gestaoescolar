@@ -85,6 +85,7 @@ const PageHeader = ({ escola, totalAlunos, isEditing, onEdit, onSave, onCancel, 
                         <>
                             <Button startIcon={<EditIcon />} onClick={onEdit} variant="outlined" size="small">Editar</Button>
                             <Button startIcon={<InventoryIcon />} onClick={onEstoque} variant="contained" color="success" size="small">Estoque</Button>
+                            <Button startIcon={<InventoryIcon />} onClick={() => navigate('/movimentacao-estoque')} variant="contained" color="primary" size="small">Movimentar Estoque</Button>
                             <Button startIcon={<DeleteIcon />} onClick={onDelete} variant="contained" color="error" size="small">Excluir</Button>
                         </>
                     )}

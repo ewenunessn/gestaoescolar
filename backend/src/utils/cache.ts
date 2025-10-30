@@ -307,15 +307,7 @@ export const autoInvalidateCache = (req: any, res: any, next: any) => {
 // ============================================================================
 
 export default cache;
-export {
-  IntelligentCache,
-  cacheEstoqueResumo,
-  cacheEstoqueProduto,
-  cacheMatrizEstoque,
-  cacheEstatisticas,
-  invalidateCacheOnEstoqueChange,
-  autoInvalidateCache
-};
+export { IntelligentCache };
 
 /**
  * Função helper para usar cache em controllers

@@ -112,6 +112,7 @@ const getMenuConfig = (configModuloSaldo: any) => {
       category: "Estoque",
       items: [
         { text: "Estoque Escolar", icon: <Assessment />, path: "/estoque-escolar" },
+        { text: "Movimentação de Estoque", icon: <Inventory />, path: "/movimentacao-estoque" },
       ],
     },
     {

@@ -252,14 +252,8 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
       setLote(loteParaUsar); // Atualizar o campo para mostrar o lote gerado
     }
 
-    // Validação de estoque
+    // Validação de estoque removida - o estoque da escola representa entregas planejadas, não disponibilidade
     const quantidadeSolicitada = parseFloat(quantidade);
-    if (estoqueEscola && estoqueEscola.quantidade_atual < quantidadeSolicitada) {
-      const confirmar = window.confirm(
-        `ATENÇÃO: A quantidade solicitada (${quantidadeSolicitada} ${unidade}) é maior que o estoque disponível (${estoqueEscola.quantidade_atual} ${estoqueEscola.unidade}).\n\nDeseja continuar mesmo assim?`
-      );
-      if (!confirmar) return;
-    }
 
     // Se há item existente e não foi confirmada a atualização, verificar primeiro
     if (!atualizarExistente && loteParaUsar && selectedProduto && selectedEscola) {
