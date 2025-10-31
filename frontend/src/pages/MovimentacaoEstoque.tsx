@@ -72,8 +72,6 @@ interface MovimentacaoForm {
   produto_id: string;
   tipo_movimentacao: 'entrada' | 'saida' | 'ajuste';
   quantidade: string;
-  motivo: string;
-  documento_referencia?: string;
   data_validade?: string;
 }
 
@@ -110,8 +108,6 @@ const MovimentacaoEstoquePage = () => {
     produto_id: '',
     tipo_movimentacao: 'entrada',
     quantidade: '',
-    motivo: '',
-    documento_referencia: '',
     data_validade: '',
   });
   const salvando = registrarMovimentacaoMutation.isPending;
@@ -165,8 +161,6 @@ const MovimentacaoEstoquePage = () => {
       produto_id: item.produto_id.toString(),
       tipo_movimentacao: tipo,
       quantidade: '',
-      motivo: '',
-      documento_referencia: '',
       data_validade: '',
     });
     setModalOpen(true);
@@ -181,8 +175,6 @@ const MovimentacaoEstoquePage = () => {
       produto_id: '',
       tipo_movimentacao: 'entrada',
       quantidade: '',
-      motivo: '',
-      documento_referencia: '',
       data_validade: '',
     });
   };
@@ -211,12 +203,25 @@ const MovimentacaoEstoquePage = () => {
     setError(null);
 
     try {
+      // Gerar motivo automático baseado no tipo de movimentação
+      const gerarMotivoAutomatico = (tipo: string) => {
+        switch (tipo) {
+          case 'entrada':
+            return 'Entrada de estoque';
+          case 'saida':
+            return 'Saída de estoque';
+          case 'ajuste':
+            return 'Ajuste de estoque';
+          default:
+            return 'Movimentação de estoque';
+        }
+      };
+
       const payload = {
         produto_id: parseInt(formData.produto_id),
         tipo_movimentacao: formData.tipo_movimentacao,
         quantidade: quantidade,
-        motivo: formData.motivo.trim() || undefined,
-        documento_referencia: formData.documento_referencia?.trim() || undefined,
+        motivo: gerarMotivoAutomatico(formData.tipo_movimentacao),
         data_validade: formData.data_validade || undefined,
         usuario_id: 1, // TODO: Pegar do contexto de usuário
       };
@@ -690,27 +695,7 @@ const MovimentacaoEstoquePage = () => {
                     </Grid>
                   )}
 
-                  <Grid item xs={12}>
-                    <TextField
-                      fullWidth
-                      label="Motivo (Opcional)"
-                      multiline
-                      rows={3}
-                      value={formData.motivo}
-                      onChange={(e) => setFormData({ ...formData, motivo: e.target.value })}
-                      placeholder="Ex: Recebimento de fornecedor, Consumo na merenda, etc."
-                    />
-                  </Grid>
 
-                  <Grid item xs={12}>
-                    <TextField
-                      fullWidth
-                      label="Documento de Referência (Opcional)"
-                      value={formData.documento_referencia}
-                      onChange={(e) => setFormData({ ...formData, documento_referencia: e.target.value })}
-                      placeholder="Ex: Nota fiscal, Pedido nº, etc."
-                    />
-                  </Grid>
                 </Grid>
               </>
             )}
