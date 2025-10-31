@@ -6,11 +6,12 @@ import {
   listarHistoricoEstoque,
   ItemEstoqueEscola 
 } from '../../services/estoqueEscola';
+import { queryKeys } from '../../lib/queryClient';
 
 // Hook para listar estoque de uma escola
 export const useEstoqueEscola = (escolaId: number | null) => {
   return useQuery({
-    queryKey: ['estoque-escola', escolaId],
+    queryKey: escolaId ? queryKeys.estoque.escola(escolaId) : ['estoque-escola', null],
     queryFn: () => escolaId ? listarEstoqueEscola(escolaId) : Promise.resolve([]),
     enabled: !!escolaId,
     staleTime: 30 * 1000, // 30 segundos (reduzido para atualizar mais rápido)
@@ -22,7 +23,7 @@ export const useEstoqueEscola = (escolaId: number | null) => {
 // Hook para obter resumo do estoque
 export const useResumoEstoque = (escolaId: number | null) => {
   return useQuery({
-    queryKey: ['resumo-estoque', escolaId],
+    queryKey: escolaId ? [...queryKeys.estoque.escola(escolaId), 'resumo'] : ['resumo-estoque', null],
     queryFn: () => escolaId ? obterResumoEstoque(escolaId) : Promise.resolve(null),
     enabled: !!escolaId,
     staleTime: 5 * 60 * 1000,
@@ -33,7 +34,7 @@ export const useResumoEstoque = (escolaId: number | null) => {
 // Hook para listar histórico
 export const useHistoricoEstoque = (escolaId: number | null, produtoId?: number) => {
   return useQuery({
-    queryKey: ['historico-estoque', escolaId, produtoId],
+    queryKey: escolaId ? [...queryKeys.estoque.escola(escolaId), 'historico', produtoId] : ['historico-estoque', null, produtoId],
     queryFn: () => escolaId ? listarHistoricoEstoque(escolaId, produtoId) : Promise.resolve([]),
     enabled: !!escolaId,
     staleTime: 2 * 60 * 1000, // 2 minutos
@@ -62,10 +63,13 @@ export const useRegistrarMovimentacao = () => {
       }
     }) => registrarMovimentacao(escolaId, dadosMovimentacao),
     onSuccess: (data, variables) => {
-      // Invalidar queries relacionadas para forçar atualização
-      queryClient.invalidateQueries({ queryKey: ['estoque-escola', variables.escolaId] });
-      queryClient.invalidateQueries({ queryKey: ['resumo-estoque', variables.escolaId] });
-      queryClient.invalidateQueries({ queryKey: ['historico-estoque', variables.escolaId] });
+      // Invalidar queries relacionadas para forçar atualização usando query keys consistentes
+      queryClient.invalidateQueries({ queryKey: queryKeys.estoque.escola(variables.escolaId) });
+      queryClient.invalidateQueries({ queryKey: [...queryKeys.estoque.escola(variables.escolaId), 'resumo'] });
+      queryClient.invalidateQueries({ queryKey: [...queryKeys.estoque.escola(variables.escolaId), 'historico'] });
+      
+      // Também invalidar queries gerais de estoque
+      queryClient.invalidateQueries({ queryKey: queryKeys.estoque.all });
     },
   });
 };

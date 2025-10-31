@@ -17,7 +17,7 @@ export async function listarEstoqueEscola(req: Request, res: Response) {
       WITH lotes_agregados AS (
         SELECT 
           el.produto_id,
-          0 as total_quantidade_lotes,
+          COALESCE(SUM(el.quantidade_atual), 0) as total_quantidade_lotes,
           MIN(CASE WHEN el.quantidade_atual > 0 THEN el.data_validade END) as min_validade_lotes
         FROM estoque_lotes el
         WHERE el.status = 'ativo'
@@ -28,11 +28,11 @@ export async function listarEstoqueEscola(req: Request, res: Response) {
         ee.id,
         $1::integer as escola_id,
         p.id as produto_id,
-        -- Usar apenas a quantidade do estoque da escola específica
-        COALESCE(ee.quantidade_atual, 0) as quantidade_atual,
-        -- Só mostrar validade se a escola tiver o produto em estoque
+        -- CORREÇÃO: Somar estoque principal + lotes para ter o total real
+        (COALESCE(ee.quantidade_atual, 0) + COALESCE(la.total_quantidade_lotes, 0)) as quantidade_atual,
+        -- Só mostrar validade se a escola tiver o produto em estoque (considerando total)
         CASE 
-          WHEN ee.quantidade_atual > 0 THEN COALESCE(la.min_validade_lotes, ee.data_validade)
+          WHEN (COALESCE(ee.quantidade_atual, 0) + COALESCE(la.total_quantidade_lotes, 0)) > 0 THEN COALESCE(la.min_validade_lotes, ee.data_validade)
           ELSE NULL
         END as data_validade,
         ee.data_entrada,
@@ -43,7 +43,7 @@ export async function listarEstoqueEscola(req: Request, res: Response) {
         p.categoria,
         e.nome as escola_nome,
         CASE 
-          WHEN COALESCE(ee.quantidade_atual, 0) = 0 THEN 'sem_estoque'
+          WHEN (COALESCE(ee.quantidade_atual, 0) + COALESCE(la.total_quantidade_lotes, 0)) = 0 THEN 'sem_estoque'
           WHEN COALESCE(la.min_validade_lotes, ee.data_validade) IS NOT NULL 
                AND COALESCE(la.min_validade_lotes, ee.data_validade) < CURRENT_DATE THEN 'vencido'
           WHEN COALESCE(la.min_validade_lotes, ee.data_validade) IS NOT NULL 
@@ -79,12 +79,10 @@ export async function listarEstoqueEscola(req: Request, res: Response) {
 
     const estoque = result.rows;
 
-    // Buscar lotes apenas dos produtos que a escola TEM em estoque
-    const produtosComEstoque = estoque
-      .filter(item => item.quantidade_atual > 0)
-      .map(item => item.produto_id);
+    // Buscar lotes de todos os produtos que já tiveram movimentação na escola
+    const produtosComHistorico = estoque.map(item => item.produto_id);
     
-    if (produtosComEstoque.length > 0) {
+    if (produtosComHistorico.length > 0) {
       try {
         const lotesResult = await db.query(`
           SELECT 
@@ -100,13 +98,13 @@ export async function listarEstoqueEscola(req: Request, res: Response) {
           FROM estoque_lotes el
           WHERE el.produto_id = ANY($1) 
             AND el.escola_id = $2
-            AND el.status = 'ativo' 
-            AND el.quantidade_atual > 0
+            AND (el.status = 'ativo' OR el.status = 'esgotado')
           ORDER BY 
             el.produto_id,
+            el.status DESC, -- Ativos primeiro, depois esgotados
             CASE WHEN el.data_validade IS NULL THEN 1 ELSE 0 END,
             el.data_validade ASC
-        `, [produtosComEstoque, escola_id]);
+        `, [produtosComHistorico, escola_id]);
         
         // Agrupar lotes por produto_id
         const lotesPorProduto = {};
@@ -476,7 +474,7 @@ export async function registrarMovimentacao(req: Request, res: Response) {
         item = estoqueAtual.rows[0];
       }
 
-      // Calcular quantidade real considerando lotes se existirem
+      // Calcular quantidade real considerando lotes E estoque principal
       const lotesResult = await client.query(`
         SELECT COALESCE(SUM(quantidade_atual), 0) as total_lotes
         FROM estoque_lotes 
@@ -484,7 +482,10 @@ export async function registrarMovimentacao(req: Request, res: Response) {
       `, [parseInt(produto_id)]);
       
       const quantidadeLotes = parseFloat(lotesResult.rows[0]?.total_lotes || 0);
-      const quantidadeAnterior = quantidadeLotes > 0 ? quantidadeLotes : parseFloat(item.quantidade_atual);
+      const quantidadeEstoquePrincipal = parseFloat(item.quantidade_atual || 0);
+      
+      // Somar lotes + estoque principal para ter o total disponível
+      const quantidadeAnterior = quantidadeLotes + quantidadeEstoquePrincipal;
       let quantidadePosterior = quantidadeAnterior;
 
       // Calcular nova quantidade baseada no tipo de movimentação
@@ -498,7 +499,10 @@ export async function registrarMovimentacao(req: Request, res: Response) {
             throw new Error('Quantidade insuficiente em estoque');
           }
           
-          // Se há lotes, implementar saída inteligente (FIFO por validade)
+          // Implementar saída inteligente: primeiro lotes (FIFO por validade), depois estoque principal
+          let quantidadeRestante = parseFloat(quantidade);
+          
+          // 1. Primeiro, consumir dos lotes se existirem (FIFO por validade)
           if (quantidadeLotes > 0) {
             const lotesDisponiveis = await client.query(`
               SELECT id, lote, quantidade_atual, data_validade
@@ -509,8 +513,6 @@ export async function registrarMovimentacao(req: Request, res: Response) {
                 data_validade ASC
             `, [parseInt(produto_id)]);
 
-            let quantidadeRestante = parseFloat(quantidade);
-            
             for (const lote of lotesDisponiveis.rows) {
               if (quantidadeRestante <= 0) break;
               
@@ -531,19 +533,166 @@ export async function registrarMovimentacao(req: Request, res: Response) {
               quantidadeRestante -= quantidadeConsumida;
             }
           }
+          
+          // 2. Se ainda sobrou quantidade, consumir do estoque principal
+          if (quantidadeRestante > 0 && quantidadeEstoquePrincipal > 0) {
+            const quantidadeConsumidaPrincipal = Math.min(quantidadeRestante, quantidadeEstoquePrincipal);
+            quantidadeRestante -= quantidadeConsumidaPrincipal;
+            
+            // A quantidade do estoque principal será atualizada no final da função
+            // Aqui só ajustamos o cálculo para refletir o consumo
+            quantidadePosterior = (quantidadeLotes - (parseFloat(quantidade) - quantidadeRestante - quantidadeConsumidaPrincipal)) + 
+                                 (quantidadeEstoquePrincipal - quantidadeConsumidaPrincipal);
+          } else {
+            // Se só consumiu dos lotes, recalcular o total
+            const novoTotalLotes = await client.query(`
+              SELECT COALESCE(SUM(quantidade_atual), 0) as total_lotes
+              FROM estoque_lotes 
+              WHERE produto_id = $1 AND status = 'ativo'
+            `, [parseInt(produto_id)]);
+            
+            quantidadePosterior = parseFloat(novoTotalLotes.rows[0]?.total_lotes || 0) + quantidadeEstoquePrincipal;
+          }
           break;
         case 'ajuste':
-          quantidadePosterior = parseFloat(quantidade);
+          // Para ajuste, definir a quantidade total desejada
+          // Se há lotes, o ajuste afeta apenas o estoque principal
+          const totalLotesAtual = (await client.query(`
+            SELECT COALESCE(SUM(quantidade_atual), 0) as total_lotes
+            FROM estoque_lotes 
+            WHERE produto_id = $1 AND status = 'ativo'
+          `, [parseInt(produto_id)])).rows[0].total_lotes;
+          
+          const quantidadeTotalDesejada = parseFloat(quantidade);
+          novaQuantidadeEstoquePrincipal = Math.max(0, quantidadeTotalDesejada - parseFloat(totalLotesAtual));
+          quantidadePosterior = quantidadeTotalDesejada;
           break;
       }
 
-      // Atualizar o estoque (incluindo validade se for entrada)
+      // NOVA LÓGICA: Estoque principal será sempre calculado baseado nos lotes
+      // Isso garante consistência e evita divergências
+      
+      // Para entradas com validade, criar/atualizar lote primeiro
+      if (tipo_movimentacao === 'entrada' && data_validade) {
+        // Verificar se já existe um lote com a mesma validade
+        const loteExistente = await client.query(`
+          SELECT id FROM estoque_lotes 
+          WHERE produto_id = $1 AND data_validade = $2 AND status = 'ativo' AND escola_id = $3
+        `, [produto_id, data_validade, escola_id]);
+
+        if (loteExistente.rows.length === 0) {
+          // Criar novo lote automaticamente
+          await client.query(`
+            INSERT INTO estoque_lotes (
+              escola_id, produto_id, lote, quantidade_inicial, quantidade_atual,
+              data_validade, status, created_at, updated_at
+            ) VALUES ($1, $2, $3, $4, $4, $5, 'ativo', NOW(), NOW())
+          `, [
+            escola_id,
+            produto_id,
+            `LOTE_${Date.now()}`, // Gerar nome único do lote
+            parseFloat(quantidade),
+            data_validade
+          ]);
+        } else {
+          // Atualizar lote existente
+          await client.query(`
+            UPDATE estoque_lotes 
+            SET quantidade_atual = quantidade_atual + $1,
+                updated_at = NOW()
+            WHERE id = $2
+          `, [parseFloat(quantidade), loteExistente.rows[0].id]);
+        }
+      }
+      
+      // Para entradas sem validade, criar/atualizar lote "principal"
+      if (tipo_movimentacao === 'entrada' && !data_validade) {
+        // Verificar se já existe um lote principal (sem validade)
+        const lotePrincipal = await client.query(`
+          SELECT id FROM estoque_lotes 
+          WHERE produto_id = $1 AND data_validade IS NULL AND status = 'ativo' AND escola_id = $2
+        `, [produto_id, escola_id]);
+
+        if (lotePrincipal.rows.length === 0) {
+          // Criar lote principal
+          await client.query(`
+            INSERT INTO estoque_lotes (
+              escola_id, produto_id, lote, quantidade_inicial, quantidade_atual,
+              data_validade, status, created_at, updated_at
+            ) VALUES ($1, $2, $3, $4, $4, NULL, 'ativo', NOW(), NOW())
+          `, [
+            escola_id,
+            produto_id,
+            'PRINCIPAL',
+            parseFloat(quantidade)
+          ]);
+        } else {
+          // Atualizar lote principal
+          await client.query(`
+            UPDATE estoque_lotes 
+            SET quantidade_atual = quantidade_atual + $1,
+                updated_at = NOW()
+            WHERE id = $2
+          `, [parseFloat(quantidade), lotePrincipal.rows[0].id]);
+        }
+      }
+      
+      // Para ajustes, ajustar o lote principal
+      if (tipo_movimentacao === 'ajuste') {
+        const totalLotesComValidade = (await client.query(`
+          SELECT COALESCE(SUM(quantidade_atual), 0) as total_lotes
+          FROM estoque_lotes 
+          WHERE produto_id = $1 AND status = 'ativo' AND data_validade IS NOT NULL AND escola_id = $2
+        `, [parseInt(produto_id), escola_id])).rows[0].total_lotes;
+        
+        const quantidadePrincipalDesejada = Math.max(0, parseFloat(quantidade) - parseFloat(totalLotesComValidade));
+        
+        // Verificar se existe lote principal
+        const lotePrincipal = await client.query(`
+          SELECT id FROM estoque_lotes 
+          WHERE produto_id = $1 AND data_validade IS NULL AND status = 'ativo' AND escola_id = $2
+        `, [produto_id, escola_id]);
+
+        if (lotePrincipal.rows.length === 0 && quantidadePrincipalDesejada > 0) {
+          // Criar lote principal
+          await client.query(`
+            INSERT INTO estoque_lotes (
+              escola_id, produto_id, lote, quantidade_inicial, quantidade_atual,
+              data_validade, status, created_at, updated_at
+            ) VALUES ($1, $2, 'PRINCIPAL', $3, $3, NULL, 'ativo', NOW(), NOW())
+          `, [escola_id, produto_id, quantidadePrincipalDesejada]);
+        } else if (lotePrincipal.rows.length > 0) {
+          // Atualizar lote principal
+          const novoStatus = quantidadePrincipalDesejada === 0 ? 'esgotado' : 'ativo';
+          await client.query(`
+            UPDATE estoque_lotes 
+            SET quantidade_atual = $1,
+                status = $2,
+                updated_at = NOW()
+            WHERE id = $3
+          `, [quantidadePrincipalDesejada, novoStatus, lotePrincipal.rows[0].id]);
+        }
+      }
+      
+      // SEMPRE recalcular o estoque principal baseado na soma de todos os lotes
+      // Isso garante consistência total
+      const totalLotesAtualizado = await client.query(`
+        SELECT COALESCE(SUM(quantidade_atual), 0) as total_lotes
+        FROM estoque_lotes 
+        WHERE produto_id = $1 AND status = 'ativo' AND escola_id = $2
+      `, [parseInt(produto_id), escola_id]);
+      
+      const novaQuantidadeEstoquePrincipal = parseFloat(totalLotesAtualizado.rows[0]?.total_lotes || 0);
+      
+      // Atualizar quantidadePosterior para refletir o valor real
+      quantidadePosterior = novaQuantidadeEstoquePrincipal;
+
       let updateQuery = `
         UPDATE estoque_escolas SET
           quantidade_atual = $1,
           updated_at = CURRENT_TIMESTAMP
       `;
-      let updateParams = [quantidadePosterior];
+      let updateParams = [novaQuantidadeEstoquePrincipal];
       
       // Para entradas com validade, criar lote automático se não existir
       if (tipo_movimentacao === 'entrada' && data_validade) {

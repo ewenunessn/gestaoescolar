@@ -44,6 +44,7 @@ import {
   Clear as ClearIcon,
   Visibility as VisibilityIcon,
   Refresh,
+  Assessment,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useEscolas } from '../hooks/queries';
@@ -89,6 +90,7 @@ const MovimentacaoEstoquePage = () => {
   const [itemLotesSelecionado, setItemLotesSelecionado] = useState<ItemEstoque | null>(null);
   const [lotesItem, setLotesItem] = useState<any[]>([]);
   const [loadingLotes, setLoadingLotes] = useState(false);
+  const [mostrarLotesEsgotados, setMostrarLotesEsgotados] = useState(false);
   
   // React Query hooks
   const escolaId = escolaSelecionada ? parseInt(escolaSelecionada) : null;
@@ -130,6 +132,13 @@ const MovimentacaoEstoquePage = () => {
       console.log('Tipo de quantidade_atual:', typeof estoque[0].quantidade_atual, estoque[0].quantidade_atual);
     }
   }, [estoque, estoqueQuery.isLoading, estoqueQuery.error, escolaId]);
+
+  // Recarregar lotes quando o filtro de lotes esgotados mudar
+  useEffect(() => {
+    if (modalLotesOpen && itemLotesSelecionado) {
+      carregarLotes(itemLotesSelecionado);
+    }
+  }, [mostrarLotesEsgotados]);
 
   // Filtrar itens do estoque
   const itensFiltrados = useMemo(() => {
@@ -211,7 +220,7 @@ const MovimentacaoEstoquePage = () => {
           case 'saida':
             return 'Saída de estoque';
           case 'ajuste':
-            return 'Ajuste de estoque';
+            return 'Ajuste de estoque - conferência';
           default:
             return 'Movimentação de estoque';
         }
@@ -265,10 +274,8 @@ const MovimentacaoEstoquePage = () => {
     return new Date(data).toLocaleDateString('pt-BR');
   };
 
-  // Abrir modal de lotes/validade
-  const abrirModalLotes = async (item: ItemEstoque) => {
-    setItemLotesSelecionado(item);
-    setModalLotesOpen(true);
+  // Função para carregar lotes (reutilizável)
+  const carregarLotes = async (item: ItemEstoque) => {
     setLoadingLotes(true);
     
     try {
@@ -283,16 +290,22 @@ const MovimentacaoEstoquePage = () => {
         // Verificar se o item tem lotes específicos
         const itemComLotes = itemCompleto as any;
         if (itemCompleto && itemComLotes.lotes && Array.isArray(itemComLotes.lotes) && itemComLotes.lotes.length > 0) {
-          lotesEncontrados = itemComLotes.lotes.filter((lote: any) => 
-            lote.status === 'ativo' && lote.quantidade_atual > 0
-          );
+          lotesEncontrados = itemComLotes.lotes.filter((lote: any) => {
+            if (mostrarLotesEsgotados) {
+              // Mostrar todos os lotes (ativos e esgotados)
+              return lote.status === 'ativo' || lote.status === 'esgotado';
+            } else {
+              // Mostrar apenas lotes ativos com quantidade > 0
+              return lote.status === 'ativo' && lote.quantidade_atual > 0;
+            }
+          });
         }
       } catch (error) {
         console.log('Erro ao buscar estoque com lotes:', error);
       }
       
       // Se não encontrou lotes específicos E tem estoque, criar um lote virtual
-      if (lotesEncontrados.length === 0 && item.quantidade_atual > 0) {
+      if (lotesEncontrados.length === 0 && item.quantidade_atual > 0 && !mostrarLotesEsgotados) {
         lotesEncontrados = [{
           id: 'principal',
           lote: 'Estoque Principal',
@@ -307,7 +320,7 @@ const MovimentacaoEstoquePage = () => {
     } catch (error) {
       console.error('Erro ao carregar lotes:', error);
       // Em caso de erro, só mostrar dados se tiver estoque
-      if (item.quantidade_atual > 0) {
+      if (item.quantidade_atual > 0 && !mostrarLotesEsgotados) {
         setLotesItem([{
           id: 'principal',
           lote: 'Estoque Principal',
@@ -322,6 +335,13 @@ const MovimentacaoEstoquePage = () => {
     } finally {
       setLoadingLotes(false);
     }
+  };
+
+  // Abrir modal de lotes/validade
+  const abrirModalLotes = async (item: ItemEstoque) => {
+    setItemLotesSelecionado(item);
+    setModalLotesOpen(true);
+    await carregarLotes(item);
   };
 
   // Formatar quantidade de forma segura
@@ -634,6 +654,17 @@ const MovimentacaoEstoquePage = () => {
                                 </IconButton>
                               </span>
                             </Tooltip>
+                            <Tooltip title="Ajustar estoque (conferência)">
+                              <span>
+                                <IconButton
+                                  size="small"
+                                  color="warning"
+                                  onClick={() => abrirModalMovimentacao(itemSeguro, 'ajuste')}
+                                >
+                                  <Assessment />
+                                </IconButton>
+                              </span>
+                            </Tooltip>
                           </Stack>
                         </TableCell>
                       </TableRow>
@@ -649,7 +680,9 @@ const MovimentacaoEstoquePage = () => {
         {/* Modal de Movimentação */}
         <Dialog open={modalOpen} onClose={fecharModal} maxWidth="sm" fullWidth>
           <DialogTitle>
-            {formData.tipo_movimentacao === 'entrada' ? 'Entrada de Estoque' : 'Saída de Estoque'}
+            {formData.tipo_movimentacao === 'entrada' ? 'Entrada de Estoque' : 
+             formData.tipo_movimentacao === 'saida' ? 'Saída de Estoque' : 
+             'Ajuste de Estoque'}
           </DialogTitle>
           <DialogContent dividers>
             {itemSelecionado && (
@@ -667,7 +700,11 @@ const MovimentacaoEstoquePage = () => {
                   <Grid item xs={12} sm={6}>
                     <TextField
                       fullWidth
-                      label="Quantidade"
+                      label={
+                        formData.tipo_movimentacao === 'entrada' ? 'Quantidade a adicionar' :
+                        formData.tipo_movimentacao === 'saida' ? 'Quantidade a retirar' :
+                        'Quantidade total atual (conferência)'
+                      }
                       type="number"
                       value={formData.quantidade}
                       onChange={(e) => setFormData({ ...formData, quantidade: e.target.value })}
@@ -679,6 +716,11 @@ const MovimentacaoEstoquePage = () => {
                           </InputAdornment>
                         ),
                       }}
+                      helperText={
+                        formData.tipo_movimentacao === 'ajuste' 
+                          ? `Estoque atual: ${itemSelecionado.quantidade_atual} ${itemSelecionado.unidade_medida || itemSelecionado.unidade}. Digite a quantidade total que deveria ter após conferência.`
+                          : undefined
+                      }
                     />
                   </Grid>
                   
@@ -774,9 +816,23 @@ const MovimentacaoEstoquePage = () => {
                 </Card>
 
                 {/* Lista de lotes */}
-                <Typography variant="h6" gutterBottom>
-                  Lotes Disponíveis ({lotesItem.length})
-                </Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography variant="h6">
+                    Lotes Disponíveis ({lotesItem.length})
+                  </Typography>
+                  <FormControl size="small">
+                    <InputLabel>Filtro</InputLabel>
+                    <Select
+                      value={mostrarLotesEsgotados ? 'todos' : 'ativos'}
+                      onChange={(e) => setMostrarLotesEsgotados(e.target.value === 'todos')}
+                      label="Filtro"
+                      sx={{ minWidth: 120 }}
+                    >
+                      <MenuItem value="ativos">Apenas Ativos</MenuItem>
+                      <MenuItem value="todos">Todos os Lotes</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Box>
                 
                 {lotesItem.length === 0 ? (
                   <Box sx={{ textAlign: 'center', py: 4 }}>
@@ -797,7 +853,13 @@ const MovimentacaoEstoquePage = () => {
                       let statusValidade = 'normal';
                       let corStatus = '#4caf50';
                       
-                      if (diasParaVencimento !== null) {
+                      // Verificar se o lote está esgotado
+                      const isEsgotado = lote.status === 'esgotado' || lote.quantidade_atual === 0;
+                      
+                      if (isEsgotado) {
+                        statusValidade = 'esgotado';
+                        corStatus = '#9e9e9e';
+                      } else if (diasParaVencimento !== null) {
                         if (diasParaVencimento < 0) {
                           statusValidade = 'vencido';
                           corStatus = '#f44336';
@@ -811,7 +873,14 @@ const MovimentacaoEstoquePage = () => {
                       }
 
                       return (
-                        <Card key={lote.id || index} sx={{ border: `2px solid ${corStatus}20` }}>
+                        <Card 
+                          key={lote.id || index} 
+                          sx={{ 
+                            border: `2px solid ${corStatus}20`,
+                            opacity: isEsgotado ? 0.6 : 1,
+                            backgroundColor: isEsgotado ? 'grey.50' : 'background.paper'
+                          }}
+                        >
                           <CardContent>
                             <Grid container spacing={2} alignItems="center">
                               <Grid item xs={12} sm={3}>
@@ -819,7 +888,7 @@ const MovimentacaoEstoquePage = () => {
                                   Lote
                                 </Typography>
                                 <Typography variant="body1" fontWeight={600}>
-                                  {lote.lote}
+                                  {lote.lote} {isEsgotado && '(Esgotado)'}
                                 </Typography>
                               </Grid>
                               
@@ -847,6 +916,7 @@ const MovimentacaoEstoquePage = () => {
                                 </Typography>
                                 <Chip
                                   label={
+                                    statusValidade === 'esgotado' ? 'Esgotado' :
                                     statusValidade === 'vencido' ? 'Vencido' :
                                     statusValidade === 'critico' ? `${diasParaVencimento}d` :
                                     statusValidade === 'atencao' ? `${diasParaVencimento}d` :
@@ -875,7 +945,7 @@ const MovimentacaoEstoquePage = () => {
                                       <AddIcon />
                                     </IconButton>
                                   </Tooltip>
-                                  {lote.quantidade_atual > 0 && (
+                                  {!isEsgotado && (
                                     <Tooltip title="Saída deste lote">
                                       <IconButton
                                         size="small"
@@ -889,6 +959,18 @@ const MovimentacaoEstoquePage = () => {
                                       </IconButton>
                                     </Tooltip>
                                   )}
+                                  <Tooltip title="Ajustar estoque (conferência)">
+                                    <IconButton
+                                      size="small"
+                                      color="warning"
+                                      onClick={() => {
+                                        setModalLotesOpen(false);
+                                        abrirModalMovimentacao(itemLotesSelecionado!, 'ajuste');
+                                      }}
+                                    >
+                                      <Assessment />
+                                    </IconButton>
+                                  </Tooltip>
                                 </Stack>
                               </Grid>
                             </Grid>
