@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import {
   importarProdutosLote,
 } from "../services/produtos";
@@ -97,6 +97,15 @@ interface ProdutoForm {
 const ProdutosPage = () => {
   const navigate = useNavigate();
 
+  // Estados de filtros (devem vir antes dos hooks que os usam)
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategoria, setSelectedCategoria] = useState('');
+  const [selectedMarcas, setSelectedMarcas] = useState<string[]>([]);
+  const [selectedStatus, setSelectedStatus] = useState('');
+  const [sortBy, setSortBy] = useState('name');
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [hasActiveFilters, setHasActiveFilters] = useState(false);
+
   // React Query hooks
   const { 
     data: produtos = [], 
@@ -113,15 +122,6 @@ const ProdutosPage = () => {
   // Estados locais
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const error = queryError?.message || null;
-
-  // Estados de filtros
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategoria, setSelectedCategoria] = useState('');
-  const [selectedMarcas, setSelectedMarcas] = useState<string[]>([]);
-  const [selectedStatus, setSelectedStatus] = useState('');
-  const [sortBy, setSortBy] = useState('name');
-  const [filtersExpanded, setFiltersExpanded] = useState(false);
-  const [hasActiveFilters, setHasActiveFilters] = useState(false);
 
   // Estados de paginação
   const [page, setPage] = useState(0);
