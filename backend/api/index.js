@@ -1,6 +1,6 @@
 // Arquivo de entrada para o Vercel
-// Importa diretamente do TypeScript compilado pelo Vercel
-const path = require('path');
+// Usa ts-node para executar TypeScript diretamente
+require('ts-node/register');
 
 // Função para executar migrações e inicializar o app
 module.exports = async (req, res) => {
@@ -38,8 +38,8 @@ module.exports = async (req, res) => {
       DATABASE_URL: process.env.DATABASE_URL ? '✅ Configurado' : '❌ Ausente'
     });
 
-    // Importa dinamicamente o app compilado
-    const { default: app } = await import('../dist/index.js');
+    // Importa diretamente do TypeScript
+    const { default: app } = await import('../src/index.ts');
     
     // Executa o app
     return app(req, res);
