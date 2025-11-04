@@ -1,11 +1,10 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "api/index.js",
-      "use": "now-node@1.0.0"
+  "functions": {
+    "api/index.js": {
+      "runtime": "now-node@1.0.0"
     }
-  ],
+  },
   "routes": [
     {
       "src": "/api/(.*)",
