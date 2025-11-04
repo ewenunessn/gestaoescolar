@@ -12,8 +12,12 @@ import {
   calcularNecessidades,
   calcularCustoRefeicoes
 } from "../controllers/cardapioController";
+import { requireTenant } from "../../../middleware/tenantMiddleware";
 
 const router = Router();
+
+// Aplicar middleware de tenant para todas as rotas
+router.use(requireTenant());
 
 // CRUD Cardápios
 router.get("/", listarCardapios);

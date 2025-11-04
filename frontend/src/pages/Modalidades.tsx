@@ -47,19 +47,23 @@ import {
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import {
-  listarModalidades,
   criarModalidade,
   editarModalidade,
   removerModalidade,
   Modalidade, // <-- TIPO IMPORTADO DO SERVIÇO (AGORA CORRETO)
 } from "../services/modalidades";
+import { useModalidades, useCreateModalidade, useUpdateModalidade, useDeleteModalidade } from "../hooks/queries/useModalidadeQueries";
 
 const ModalidadesPage = () => {
   const navigate = useNavigate();
   
-  // Estados principais
-  const [modalidades, setModalidades] = useState<Modalidade[]>([]);
-  const [loading, setLoading] = useState(true);
+  // React Query hooks para modalidades
+  const { data: modalidades = [], isLoading: loading, error: queryError, refetch } = useModalidades();
+  const createModalidadeMutation = useCreateModalidade();
+  const updateModalidadeMutation = useUpdateModalidade();
+  const deleteModalidadeMutation = useDeleteModalidade();
+  
+  // Estados de UI
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   
@@ -84,24 +88,16 @@ const ModalidadesPage = () => {
   const [modalidadeToDelete, setModalidadeToDelete] = useState<Modalidade | null>(null);
   const [formData, setFormData] = useState({ nome: "", codigo_financeiro: "", valor_repasse: 0, ativo: true });
 
-  // Carregar modalidades
-  const loadModalidades = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await listarModalidades();
-      setModalidades(Array.isArray(data) ? data : []);
-    } catch (err) {
-      setError("Erro ao carregar modalidades. Tente novamente.");
-      setModalidades([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
+  // Tratar erros do React Query
   useEffect(() => {
-    loadModalidades();
-  }, [loadModalidades]);
+    if (queryError) {
+      setError("Erro ao carregar modalidades. Tente novamente.");
+    } else {
+      setError(null);
+    }
+  }, [queryError]);
+
+  // Removido useEffect para loadModalidades - React Query gerencia automaticamente
 
   // Detectar filtros ativos
   useEffect(() => {
@@ -225,14 +221,13 @@ const ModalidadesPage = () => {
     try {
       const dataToSend = { ...formData, valor_repasse: Number(formData.valor_repasse) };
       if (editingModalidade) {
-        await editarModalidade(editingModalidade.id, dataToSend);
+        await updateModalidadeMutation.mutateAsync({ id: editingModalidade.id, data: dataToSend });
         setSuccessMessage('Modalidade atualizada com sucesso!');
       } else {
-        await criarModalidade(dataToSend);
+        await createModalidadeMutation.mutateAsync(dataToSend);
         setSuccessMessage('Modalidade criada com sucesso!');
       }
       closeModal();
-      await loadModalidades();
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
       setError("Erro ao salvar modalidade. Verifique os dados e tente novamente.");
@@ -252,10 +247,9 @@ const ModalidadesPage = () => {
   const handleDelete = async () => {
     if (!modalidadeToDelete) return;
     try {
-      await removerModalidade(modalidadeToDelete.id);
+      await deleteModalidadeMutation.mutateAsync(modalidadeToDelete.id);
       setSuccessMessage('Modalidade excluída com sucesso!');
       closeDeleteModal();
-      await loadModalidades();
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
       setError("Erro ao excluir. A modalidade pode estar em uso.");

@@ -58,11 +58,31 @@ api.interceptors.request.use((config) => {
     config.headers["Authorization"] = `Bearer ${token}`;
   }
 
+  // Add tenant identification headers
+  const tenantId = localStorage.getItem("currentTenantId");
+  if (tenantId && tenantId !== 'null' && tenantId !== 'undefined') {
+    config.headers = config.headers || {};
+    config.headers["X-Tenant-ID"] = tenantId;
+  }
+
+  // Try to resolve tenant from subdomain if no explicit tenant ID
+  if (!tenantId) {
+    const subdomain = window.location.hostname.split('.')[0];
+    if (subdomain && subdomain !== 'localhost' && subdomain !== 'www') {
+      config.headers = config.headers || {};
+      config.headers["X-Tenant-Subdomain"] = subdomain;
+    }
+  }
+
   // Log em desenvolvimento
   if (apiConfig.debug) {
     apiLog(`📡 ${config.method?.toUpperCase()} ${config.url}`, {
       data: config.data,
       params: config.params,
+      headers: {
+        'X-Tenant-ID': config.headers?.["X-Tenant-ID"],
+        'X-Tenant-Subdomain': config.headers?.["X-Tenant-Subdomain"]
+      }
     });
   }
 

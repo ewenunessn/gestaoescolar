@@ -1,12 +1,16 @@
 // Controller de contratos para PostgreSQL - Versão Corrigida
 import { Request, Response } from "express";
+import { setTenantContextFromRequest } from "../../../utils/tenantContext";
 const db = require("../../../database");
 
 export async function listarContratos(req: Request, res: Response) {
   try {
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+
     const { status, fornecedor_id, busca, page = 1, limit = 50 } = req.query;
     
-    let whereClause = '1=1';
+    let whereClause = 'c.tenant_id = current_setting(\'app.current_tenant_id\')::uuid';
     const params: any[] = [];
     let paramCount = 0;
     

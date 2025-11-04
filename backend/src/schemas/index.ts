@@ -185,6 +185,130 @@ export const configuracaoSchema = z.object({
 export const configuracaoUpdateSchema = configuracaoSchema.partial().omit({ chave: true });
 
 // ============================================================================
+// SCHEMAS DE TENANT
+// ============================================================================
+
+// Schema para slug de tenant (URL-friendly)
+export const tenantSlugSchema = z.string()
+  .min(3, 'Slug deve ter pelo menos 3 caracteres')
+  .max(50, 'Slug deve ter no máximo 50 caracteres')
+  .regex(/^[a-z0-9-]+$/, 'Slug deve conter apenas letras minúsculas, números e hífens');
+
+// Schema para subdomain de tenant
+export const tenantSubdomainSchema = z.string()
+  .min(3, 'Subdomínio deve ter pelo menos 3 caracteres')
+  .max(50, 'Subdomínio deve ter no máximo 50 caracteres')
+  .regex(/^[a-z0-9-]+$/, 'Subdomínio deve conter apenas letras minúsculas, números e hífens');
+
+// Schema para configurações de tenant
+export const tenantSettingsSchema = z.object({
+  features: z.object({
+    inventory: z.boolean().default(true),
+    contracts: z.boolean().default(true),
+    deliveries: z.boolean().default(true),
+    reports: z.boolean().default(true),
+    mobile: z.boolean().default(true),
+    analytics: z.boolean().default(false)
+  }).default({}),
+  branding: z.object({
+    logo: z.string().url().optional(),
+    primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Cor deve estar no formato hexadecimal').optional(),
+    secondaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Cor deve estar no formato hexadecimal').optional(),
+    favicon: z.string().url().optional(),
+    customCss: z.string().max(10000, 'CSS customizado muito longo').optional()
+  }).default({}),
+  notifications: z.object({
+    email: z.boolean().default(true),
+    sms: z.boolean().default(false),
+    push: z.boolean().default(true)
+  }).default({}),
+  integrations: z.object({
+    whatsapp: z.boolean().default(false),
+    email: z.boolean().default(true),
+    sms: z.boolean().default(false)
+  }).default({})
+});
+
+// Schema para limites de tenant
+export const tenantLimitsSchema = z.object({
+  maxUsers: z.number().int().min(1).max(10000).default(100),
+  maxSchools: z.number().int().min(1).max(1000).default(50),
+  maxProducts: z.number().int().min(1).max(50000).default(1000),
+  storageLimit: z.number().int().min(100).max(100000).default(1024), // MB
+  apiRateLimit: z.number().int().min(10).max(10000).default(100), // requests per minute
+  maxContracts: z.number().int().min(1).max(1000).default(50),
+  maxOrders: z.number().int().min(1).max(10000).default(1000)
+});
+
+// Schema para criação de tenant
+export const tenantCreateSchema = z.object({
+  slug: tenantSlugSchema,
+  name: nonEmptyStringSchema.max(255, 'Nome muito longo'),
+  domain: z.string().url().optional(),
+  subdomain: tenantSubdomainSchema.optional(),
+  settings: tenantSettingsSchema.optional(),
+  limits: tenantLimitsSchema.optional()
+});
+
+// Schema para atualização de tenant
+export const tenantUpdateSchema = z.object({
+  name: nonEmptyStringSchema.max(255, 'Nome muito longo').optional(),
+  domain: z.string().url().optional().nullable(),
+  subdomain: tenantSubdomainSchema.optional().nullable(),
+  status: z.enum(['active', 'inactive', 'suspended']).optional(),
+  settings: tenantSettingsSchema.optional(),
+  limits: tenantLimitsSchema.optional()
+});
+
+// Schema para associação de usuário com tenant
+export const tenantUserCreateSchema = z.object({
+  tenantId: z.string().uuid('ID do tenant inválido'),
+  userId: idSchema,
+  role: z.enum(['tenant_admin', 'user', 'viewer']).default('user'),
+  status: z.enum(['active', 'inactive', 'suspended']).default('active')
+});
+
+// Schema para atualização de usuário do tenant
+export const tenantUserUpdateSchema = z.object({
+  role: z.enum(['tenant_admin', 'user', 'viewer']).optional(),
+  status: z.enum(['active', 'inactive', 'suspended']).optional()
+});
+
+// Schema para configuração de tenant
+export const tenantConfigurationCreateSchema = z.object({
+  tenantId: z.string().uuid('ID do tenant inválido'),
+  category: nonEmptyStringSchema.max(100, 'Categoria muito longa'),
+  key: nonEmptyStringSchema.max(100, 'Chave muito longa'),
+  value: z.any()
+});
+
+// Schema para atualização de configuração de tenant
+export const tenantConfigurationUpdateSchema = z.object({
+  value: z.any()
+});
+
+// Schema para provisioning de tenant
+export const tenantProvisioningSchema = z.object({
+  tenant: tenantCreateSchema,
+  adminUser: z.object({
+    nome: nonEmptyStringSchema.max(100, 'Nome muito longo'),
+    email: emailSchema,
+    senha: nonEmptyStringSchema.min(6, 'Senha deve ter pelo menos 6 caracteres')
+  }),
+  initialData: z.object({
+    schools: z.array(z.any()).optional(),
+    products: z.array(z.any()).optional(),
+    users: z.array(z.any()).optional()
+  }).optional()
+});
+
+// Schema para resolução de tenant
+export const tenantResolutionSchema = z.object({
+  method: z.enum(['subdomain', 'header', 'token', 'domain']),
+  identifier: nonEmptyStringSchema
+});
+
+// ============================================================================
 // SCHEMAS DE QUERY PARAMETERS
 // ============================================================================
 
@@ -255,3 +379,12 @@ export type PaginationQuery = z.infer<typeof paginationSchema>;
 export type DateRangeQuery = z.infer<typeof dateRangeSchema>;
 export type MultiplosProdutosInput = z.infer<typeof multiplosProdutosSchema>;
 export type MatrizEstoqueQuery = z.infer<typeof matrizEstoqueQuerySchema>;
+
+export type TenantCreateInput = z.infer<typeof tenantCreateSchema>;
+export type TenantUpdateInput = z.infer<typeof tenantUpdateSchema>;
+export type TenantUserCreateInput = z.infer<typeof tenantUserCreateSchema>;
+export type TenantUserUpdateInput = z.infer<typeof tenantUserUpdateSchema>;
+export type TenantConfigurationCreateInput = z.infer<typeof tenantConfigurationCreateSchema>;
+export type TenantConfigurationUpdateInput = z.infer<typeof tenantConfigurationUpdateSchema>;
+export type TenantProvisioningInput = z.infer<typeof tenantProvisioningSchema>;
+export type TenantResolutionInput = z.infer<typeof tenantResolutionSchema>;

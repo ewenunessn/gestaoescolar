@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -48,9 +48,13 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useEscolas } from '../hooks/queries';
+import { useTenant } from '../context/TenantContext';
 import PageBreadcrumbs from '../components/PageBreadcrumbs';
 import { useEstoqueEscola, useRegistrarMovimentacao } from '../hooks/queries/useEstoqueEscolaQueries';
 import { formatarQuantidade as formatarQtd } from '../utils/formatters';
+import TenantInventoryFilter from '../components/TenantInventoryFilter';
+import TenantInventoryList from '../components/TenantInventoryList';
+import TenantInventoryBreadcrumbs from '../components/TenantInventoryBreadcrumbs';
 
 // Interface Escola importada do hook useEscolas
 
@@ -78,11 +82,13 @@ interface MovimentacaoForm {
 
 const MovimentacaoEstoquePage = () => {
   const navigate = useNavigate();
+  const { currentTenant, loading: tenantLoading, error: tenantContextError } = useTenant();
   const escolasQuery = useEscolas();
   
   // Estados principais
   const [escolaSelecionada, setEscolaSelecionada] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
+  const [tenantError, setTenantError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   
   // Estados do modal de lotes/validade
@@ -116,7 +122,47 @@ const MovimentacaoEstoquePage = () => {
 
   const escolas = escolasQuery.data || [];
   const estoque = estoqueQuery.data || [];
-  const loading = estoqueQuery.isLoading;
+  const loading = estoqueQuery.isLoading || tenantLoading;
+
+  // Enhanced error handling for tenant-specific errors
+  const handleTenantError = useCallback((error: any) => {
+    if (error?.response?.status === 403) {
+      const errorCode = error?.response?.data?.code;
+      if (errorCode === 'TENANT_OWNERSHIP_ERROR') {
+        setTenantError('Você não tem permissão para acessar este recurso da organização.');
+      } else if (errorCode === 'CROSS_TENANT_INVENTORY_ACCESS') {
+        setTenantError('Acesso negado: operação entre organizações não permitida.');
+      } else {
+        setTenantError('Acesso negado: você não tem permissão para esta operação.');
+      }
+    } else if (error?.response?.status === 429 && error?.response?.data?.code === 'TENANT_INVENTORY_LIMIT_ERROR') {
+      setTenantError('Limite de inventário da organização excedido.');
+    } else if (error?.response?.data?.code === 'TENANT_CONTEXT_MISSING') {
+      setTenantError('Contexto de organização não encontrado. Faça login novamente.');
+    } else {
+      setError(error?.message || 'Erro desconhecido');
+    }
+  }, []);
+
+  // Check for tenant context errors
+  useEffect(() => {
+    if (tenantContextError) {
+      setTenantError('Erro ao carregar contexto da organização. Tente fazer login novamente.');
+    }
+  }, [tenantContextError]);
+
+  // Check for query errors and handle tenant-specific ones
+  useEffect(() => {
+    if (estoqueQuery.error) {
+      handleTenantError(estoqueQuery.error);
+    }
+  }, [estoqueQuery.error, handleTenantError]);
+
+  useEffect(() => {
+    if (escolasQuery.error) {
+      handleTenantError(escolasQuery.error);
+    }
+  }, [escolasQuery.error, handleTenantError]);
 
   // Debug: Log dos dados do estoque
   useEffect(() => {
@@ -210,6 +256,7 @@ const MovimentacaoEstoquePage = () => {
     }
 
     setError(null);
+    setTenantError(null);
 
     try {
       // Gerar motivo automático baseado no tipo de movimentação
@@ -242,8 +289,9 @@ const MovimentacaoEstoquePage = () => {
       
       setSuccessMessage('Movimentação registrada com sucesso!');
       fecharModal();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao registrar movimentação');
+    } catch (err: any) {
+      console.error('Erro ao registrar movimentação:', err);
+      handleTenantError(err);
     }
   };
 
@@ -300,8 +348,9 @@ const MovimentacaoEstoquePage = () => {
             }
           });
         }
-      } catch (error) {
+      } catch (error: any) {
         console.log('Erro ao buscar estoque com lotes:', error);
+        handleTenantError(error);
       }
       
       // Se não encontrou lotes específicos E tem estoque, criar um lote virtual
@@ -317,8 +366,9 @@ const MovimentacaoEstoquePage = () => {
       }
       
       setLotesItem(lotesEncontrados);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao carregar lotes:', error);
+      handleTenantError(error);
       // Em caso de erro, só mostrar dados se tiver estoque
       if (item.quantidade_atual > 0 && !mostrarLotesEsgotados) {
         setLotesItem([{
@@ -348,19 +398,62 @@ const MovimentacaoEstoquePage = () => {
   // Usar a função utilitária de formatação
   const formatarQuantidade = formatarQtd;
 
+  // Show tenant loading state
+  if (tenantLoading) {
+    return (
+      <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Box sx={{ textAlign: 'center' }}>
+          <CircularProgress size={60} />
+          <Typography variant="body1" sx={{ mt: 2, color: 'text.secondary' }}>
+            Carregando contexto da organização...
+          </Typography>
+        </Box>
+      </Box>
+    );
+  }
+
+  // Show error if no tenant context
+  if (!currentTenant && !tenantLoading) {
+    return (
+      <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Box sx={{ textAlign: 'center', maxWidth: 400 }}>
+          <Alert severity="error" sx={{ mb: 2 }}>
+            Contexto de organização não encontrado
+          </Alert>
+          <Typography variant="body2" color="text.secondary" gutterBottom>
+            Não foi possível identificar sua organização. Faça login novamente ou entre em contato com o suporte.
+          </Typography>
+          <Button 
+            variant="contained" 
+            onClick={() => window.location.reload()}
+            sx={{ mt: 2 }}
+          >
+            Recarregar Página
+          </Button>
+        </Box>
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+      <TenantInventoryBreadcrumbs 
+        items={[
+          { label: 'Início', path: '/', icon: <SchoolIcon fontSize="small" /> },
+          { label: 'Movimentação de Estoque', icon: <InventoryIcon fontSize="small" />, current: true }
+        ]}
+      />
       <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
-        <PageBreadcrumbs
-          items={[
-            { label: 'Movimentação de Estoque', icon: <InventoryIcon fontSize="small" /> }
-          ]}
-        />
 
         {/* Alertas */}
         {successMessage && (
           <Alert severity="success" onClose={() => setSuccessMessage(null)} sx={{ mb: 2 }}>
             {successMessage}
+          </Alert>
+        )}
+        {tenantError && (
+          <Alert severity="error" onClose={() => setTenantError(null)} sx={{ mb: 2 }}>
+            {tenantError}
           </Alert>
         )}
         {error && (
@@ -372,9 +465,20 @@ const MovimentacaoEstoquePage = () => {
         {/* Header */}
         <Card sx={{ p: 3, mb: 3, borderRadius: '12px' }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h4" sx={{ fontWeight: 700, color: 'text.primary' }}>
-              Movimentação de Estoque
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: 'text.primary' }}>
+                Movimentação de Estoque
+              </Typography>
+              {currentTenant && (
+                <Chip 
+                  label={currentTenant.name} 
+                  size="small" 
+                  color="primary" 
+                  variant="outlined"
+                  sx={{ fontSize: '0.75rem' }}
+                />
+              )}
+            </Box>
             <IconButton 
               onClick={() => estoqueQuery.refetch()} 
               disabled={!escolaSelecionada || estoqueQuery.isFetching}
@@ -445,236 +549,37 @@ const MovimentacaoEstoquePage = () => {
 
         {/* Filtros e Busca */}
         {escolaSelecionada && (
-          <Card sx={{ p: 2, mb: 3, borderRadius: '12px' }}>
-            <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} md={4}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  placeholder="Buscar produtos..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon />
-                      </InputAdornment>
-                    ),
-                    endAdornment: searchTerm && (
-                      <InputAdornment position="end">
-                        <IconButton size="small" onClick={() => setSearchTerm('')}>
-                          <ClearIcon />
-                        </IconButton>
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12} md={3}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>Categoria</InputLabel>
-                  <Select
-                    value={categoriaFiltro}
-                    onChange={(e) => setCategoriaFiltro(e.target.value)}
-                    label="Categoria"
-                  >
-                    <MenuItem value="">Todas</MenuItem>
-                    {categorias.map(categoria => (
-                      <MenuItem key={categoria} value={categoria}>
-                        {categoria}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} md={3}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>Status</InputLabel>
-                  <Select
-                    value={statusFiltro}
-                    onChange={(e) => setStatusFiltro(e.target.value)}
-                    label="Status"
-                  >
-                    <MenuItem value="">Todos</MenuItem>
-                    <MenuItem value="normal">Normal</MenuItem>
-                    <MenuItem value="atencao">Atenção</MenuItem>
-                    <MenuItem value="critico">Crítico</MenuItem>
-                    <MenuItem value="vencido">Vencido</MenuItem>
-                    <MenuItem value="sem_estoque">Sem Estoque</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} md={2}>
-                <Typography variant="body2" color="text.secondary">
-                  {itensFiltrados.length} produtos
-                </Typography>
-              </Grid>
-            </Grid>
-          </Card>
+          <TenantInventoryFilter
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            selectedCategory={categoriaFiltro}
+            onCategoryChange={setCategoriaFiltro}
+            selectedStatus={statusFiltro}
+            onStatusChange={setStatusFiltro}
+            categories={categorias}
+            hasActiveFilters={!!(searchTerm || categoriaFiltro || statusFiltro)}
+            onClearFilters={() => {
+              setSearchTerm('');
+              setCategoriaFiltro('');
+              setStatusFiltro('');
+            }}
+            placeholder="Buscar produtos..."
+            showTenantInfo={false}
+          />
         )}
 
-        {/* Tabela de Estoque */}
+        {/* Lista de Estoque */}
         {escolaSelecionada && (
-          <Paper sx={{ borderRadius: '12px', overflow: 'hidden' }}>
-            {loading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-                <CircularProgress />
-                <Typography variant="body2" sx={{ ml: 2 }}>
-                  Carregando estoque...
-                </Typography>
-              </Box>
-            ) : estoqueQuery.isError ? (
-              <Box sx={{ textAlign: 'center', p: 4 }}>
-                <ErrorIcon sx={{ fontSize: 64, color: 'error.main', mb: 2 }} />
-                <Typography variant="h6" color="error.main" gutterBottom>
-                  Erro ao carregar estoque
-                </Typography>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  {estoqueQuery.error?.message || 'Erro desconhecido'}
-                </Typography>
-                <Button 
-                  variant="contained" 
-                  onClick={() => estoqueQuery.refetch()}
-                  sx={{ mt: 2 }}
-                >
-                  Tentar Novamente
-                </Button>
-              </Box>
-            ) : itensFiltrados.length === 0 ? (
-              <Box sx={{ textAlign: 'center', p: 4 }}>
-                <InventoryIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-                <Typography variant="h6" color="text.secondary">
-                  {estoque.length === 0 ? 'Nenhum produto encontrado' : 'Nenhum produto corresponde aos filtros'}
-                </Typography>
-              </Box>
-            ) : (
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Produto</TableCell>
-                      <TableCell align="center">Estoque Atual</TableCell>
-                      <TableCell align="center">Validade</TableCell>
-                      <TableCell align="center">Status</TableCell>
-                      <TableCell align="center">Ações</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {itensFiltrados.map((item, index) => {
-                      // Verificação de segurança robusta
-                      if (!item || typeof item !== 'object') {
-                        console.warn('Item inválido no estoque:', item);
-                        return null;
-                      }
-                      
-                      // Verificar propriedades essenciais
-                      if (!item.produto_nome) {
-                        return null;
-                      }
-                      
-                      // Se não tem ID, usar produto_id como chave única
-                      const itemId = item.id || `produto-${item.produto_id}-${item.escola_id}`;
-                      
-                      // Garantir que quantidade_atual seja um número válido
-                      const quantidadeSegura = Number(item.quantidade_atual) || 0;
-                      const itemSeguro = {
-                        ...item,
-                        id: itemId,
-                        quantidade_atual: quantidadeSegura
-                      };
-                      
-                      return (
-                      <TableRow key={itemId} hover>
-                        <TableCell>
-                          <Box>
-                            <Typography variant="body2" fontWeight={600}>
-                              {itemSeguro.produto_nome}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {itemSeguro.categoria}
-                            </Typography>
-                          </Box>
-                        </TableCell>
-                        <TableCell align="center">
-                          <Typography variant="body2" fontWeight={600}>
-                            {formatarQuantidade(itemSeguro.quantidade_atual)} {itemSeguro.unidade_medida || itemSeguro.unidade}
-                          </Typography>
-                        </TableCell>
-                        <TableCell align="center">
-                          {itemSeguro.data_validade ? (
-                            <Typography variant="body2">
-                              {formatarData(itemSeguro.data_validade)}
-                            </Typography>
-                          ) : (
-                            <Typography variant="body2" color="text.secondary">
-                              Sem validade
-                            </Typography>
-                          )}
-                        </TableCell>
-                        <TableCell align="center">
-                          <Chip
-                            label={getStatusText(itemSeguro.status_estoque, itemSeguro.dias_para_vencimento)}
-                            color={getStatusColor(itemSeguro.status_estoque) as any}
-                            size="small"
-                          />
-                        </TableCell>
-                        <TableCell align="center">
-                          <Stack direction="row" spacing={1} justifyContent="center">
-                            <Tooltip title="Ver Lotes/Validade">
-                              <span>
-                                <IconButton
-                                  size="small"
-                                  color="info"
-                                  onClick={() => abrirModalLotes(itemSeguro)}
-                                >
-                                  <VisibilityIcon />
-                                </IconButton>
-                              </span>
-                            </Tooltip>
-                            <Tooltip title="Entrada">
-                              <span>
-                                <IconButton
-                                  size="small"
-                                  color="success"
-                                  onClick={() => abrirModalMovimentacao(itemSeguro, 'entrada')}
-                                >
-                                  <AddIcon />
-                                </IconButton>
-                              </span>
-                            </Tooltip>
-                            <Tooltip title={itemSeguro.quantidade_atual <= 0 ? "Sem estoque disponível" : "Saída"}>
-                              <span>
-                                <IconButton
-                                  size="small"
-                                  color="error"
-                                  onClick={() => abrirModalMovimentacao(itemSeguro, 'saida')}
-                                  disabled={itemSeguro.quantidade_atual <= 0}
-                                >
-                                  <RemoveIcon />
-                                </IconButton>
-                              </span>
-                            </Tooltip>
-                            <Tooltip title="Ajustar estoque (conferência)">
-                              <span>
-                                <IconButton
-                                  size="small"
-                                  color="warning"
-                                  onClick={() => abrirModalMovimentacao(itemSeguro, 'ajuste')}
-                                >
-                                  <Assessment />
-                                </IconButton>
-                              </span>
-                            </Tooltip>
-                          </Stack>
-                        </TableCell>
-                      </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-          </Paper>
+          <TenantInventoryList
+            items={itensFiltrados}
+            loading={loading}
+            error={estoqueQuery.error || tenantError}
+            onViewDetails={(item) => abrirModalLotes(item as ItemEstoque)}
+            onAddStock={(item) => abrirModalMovimentacao(item as ItemEstoque, 'entrada')}
+            onRemoveStock={(item) => abrirModalMovimentacao(item as ItemEstoque, 'saida')}
+            onAdjustStock={(item) => abrirModalMovimentacao(item as ItemEstoque, 'ajuste')}
+            emptyMessage={estoque.length === 0 ? 'Nenhum produto encontrado' : 'Nenhum produto corresponde aos filtros'}
+          />
         )}
 
         {/* Modal de Movimentação */}

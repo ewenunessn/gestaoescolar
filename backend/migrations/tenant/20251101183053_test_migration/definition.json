@@ -1,0 +1,10 @@
+{
+  "id": "20251101183053_test_migration",
+  "createdAt": "2025-11-01T18:30:53.752Z",
+  "name": "Test Migration",
+  "description": "Simple test migration",
+  "upSql": "-- Migration: Test Migration\n-- Description: Simple test migration\n\n-- Add your migration SQL here\n",
+  "downSql": "-- Rollback: Test Migration\n-- Description: Simple test migration\n\n-- Add your rollback SQL here\n",
+  "tenantSpecific": false,
+  "dependencies": []
+}

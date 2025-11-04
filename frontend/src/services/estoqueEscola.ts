@@ -1,4 +1,6 @@
 import { apiWithRetry } from "./api";
+// Note: The API already includes tenant context via interceptors
+// No need to manually add tenant headers
 
 export interface LoteEstoque {
   id: number;

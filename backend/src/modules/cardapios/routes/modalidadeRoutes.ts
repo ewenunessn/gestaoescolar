@@ -8,8 +8,12 @@ import {
   desativarModalidade,
   reativarModalidade
 } from "../controllers/modalidadeController";
+import { requireTenant } from "../../../middleware/tenantMiddleware";
 
 const router = Router();
+
+// Aplicar middleware de tenant para todas as rotas
+router.use(requireTenant());
 
 // Listar modalidades
 router.get("/", listarModalidades);

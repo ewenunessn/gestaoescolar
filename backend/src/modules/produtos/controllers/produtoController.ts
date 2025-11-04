@@ -1,10 +1,14 @@
 // Controller de produtos para PostgreSQL
 import { Request, Response } from "express";
+import { setTenantContextFromRequest } from "../../../utils/tenantContext";
 const db = require("../../../database");
 
 export async function listarProdutos(req: Request, res: Response) {
   try {
-    const produtos = await db.all(`
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+
+    const result = await db.query(`
       SELECT 
         id,
         nome,
@@ -22,10 +26,13 @@ export async function listarProdutos(req: Request, res: Response) {
       ORDER BY nome
     `);
 
+    const produtos = result.rows;
+
     res.json({
       success: true,
       data: produtos,
-      total: produtos.length
+      total: produtos.length,
+      tenant: req.tenant?.name || 'N/A'
     });
   } catch (error) {
     console.error("❌ Erro ao listar produtos:", error);
@@ -41,11 +48,14 @@ export async function buscarProduto(req: Request, res: Response) {
   try {
     const { id } = req.params;
 
-    const produto = await db.get(`
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+
+    const result = await db.query(`
       SELECT * FROM produtos WHERE id = $1
     `, [id]);
 
-    if (!produto) {
+    if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
         message: "Produto não encontrado"
@@ -54,7 +64,7 @@ export async function buscarProduto(req: Request, res: Response) {
 
     res.json({
       success: true,
-      data: produto
+      data: result.rows[0]
     });
   } catch (error) {
     console.error("❌ Erro ao buscar produto:", error);
@@ -81,18 +91,29 @@ export async function criarProduto(req: Request, res: Response) {
       ativo = true
     } = req.body;
 
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+
+    // Validar se tenant está presente
+    if (!req.tenant?.id) {
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
+
     const result = await db.query(`
       INSERT INTO produtos (
         nome, descricao, categoria, marca, unidade, 
         peso, fator_divisao, tipo_processamento,
-        perecivel, ativo, created_at
+        perecivel, ativo, tenant_id, created_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP)
       RETURNING *
     `, [
       nome, descricao, categoria, marca, unidade,
       peso, fator_divisao, tipo_processamento,
-      perecivel, ativo
+      perecivel, ativo, req.tenant.id
     ]);
 
     res.json({
@@ -125,6 +146,9 @@ export async function editarProduto(req: Request, res: Response) {
       perecivel,
       ativo
     } = req.body;
+
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
 
     const result = await db.query(`
       UPDATE produtos SET
@@ -173,6 +197,9 @@ export async function removerProduto(req: Request, res: Response) {
   try {
     const { id } = req.params;
 
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+
     const result = await db.query(`
       DELETE FROM produtos WHERE id = $1
       RETURNING *
@@ -202,6 +229,9 @@ export async function removerProduto(req: Request, res: Response) {
 export async function buscarComposicaoNutricional(req: Request, res: Response) {
   try {
     const { id } = req.params;
+
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
 
     const result = await db.query(`
       SELECT 
@@ -260,10 +290,14 @@ export async function salvarComposicaoNutricional(req: Request, res: Response) {
       sodio_mg
     } = req.body;
 
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+
     // Verificar se já existe composição para este produto
-    const existente = await db.get(`
+    const existenteResult = await db.query(`
       SELECT id FROM produto_composicao_nutricional WHERE produto_id = $1
     `, [id]);
+    const existente = existenteResult.rows[0];
 
     let result;
     if (existente) {
@@ -331,6 +365,17 @@ export async function importarProdutosLote(req: Request, res: Response) {
       });
     }
 
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+
+    // Validar se tenant está presente
+    if (!req.tenant?.id) {
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
+
     let sucessos = 0;
     let erros = 0;
     let atualizacoes = 0;
@@ -352,19 +397,20 @@ export async function importarProdutosLote(req: Request, res: Response) {
           ativo = true
         } = produto;
 
-        // Verificar se produto já existe pelo nome
-        const produtoExistente = await db.get(`
-          SELECT id FROM produtos WHERE nome = $1
-        `, [nome]);
+        // Verificar se produto já existe pelo nome e tenant
+        const produtoExistenteResult = await db.query(`
+          SELECT id FROM produtos WHERE nome = $1 AND tenant_id = $2
+        `, [nome, req.tenant.id]);
+        const produtoExistente = produtoExistenteResult.rows[0];
 
         const result = await db.query(`
           INSERT INTO produtos (
             nome, descricao, categoria, marca, unidade, 
             peso, fator_divisao, tipo_processamento,
-            perecivel, ativo, created_at
+            perecivel, ativo, tenant_id, created_at
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)
-          ON CONFLICT (nome) DO UPDATE SET
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP)
+          ON CONFLICT (nome, tenant_id) DO UPDATE SET
             descricao = EXCLUDED.descricao,
             categoria = EXCLUDED.categoria,
             marca = EXCLUDED.marca,
@@ -378,7 +424,7 @@ export async function importarProdutosLote(req: Request, res: Response) {
         `, [
           nome, descricao, categoria, marca, unidade,
           peso, fator_divisao, tipo_processamento,
-          perecivel, ativo
+          perecivel, ativo, req.tenant.id
         ]);
 
         const acao = produtoExistente ? 'atualizado' : 'inserido';

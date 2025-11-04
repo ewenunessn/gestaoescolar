@@ -14,6 +14,7 @@ import {
   EstoqueEscolarProduto
 } from '../../services/estoqueEscolar';
 import { queryKeys, cacheConfig, invalidateQueries } from '../../lib/queryClient';
+import { useTenant } from '../../context/TenantContext';
 
 // ============================================================================
 // QUERIES DE LISTAGEM
@@ -23,9 +24,12 @@ import { queryKeys, cacheConfig, invalidateQueries } from '../../lib/queryClient
  * Hook para listar resumo do estoque escolar
  */
 export function useEstoqueEscolarResumo() {
+  const { currentTenant } = useTenant();
+  
   return useQuery({
-    queryKey: queryKeys.estoque.escolar(),
+    queryKey: queryKeys.estoque.escolar(currentTenant?.id),
     queryFn: listarEstoqueEscolar,
+    enabled: !!currentTenant,
     ...cacheConfig.moderate,
     select: (data: EstoqueEscolarResumo[]) => {
       // Transformar e organizar dados
@@ -38,6 +42,14 @@ export function useEstoqueEscolarResumo() {
         categorias: [...new Set(data.map(p => p.categoria).filter(Boolean))].sort(),
       };
     },
+    throwOnError: (error: any) => {
+      // Handle tenant-specific errors
+      if (error?.response?.status === 403 && error?.response?.data?.code === 'TENANT_OWNERSHIP_ERROR') {
+        console.error('Tenant ownership error:', error.response.data.message);
+        return false; // Don't throw, handle gracefully
+      }
+      return true; // Throw other errors
+    },
   });
 }
 
@@ -45,11 +57,21 @@ export function useEstoqueEscolarResumo() {
  * Hook para buscar estoque de um produto específico
  */
 export function useEstoqueProduto(produtoId: number, enabled = true) {
+  const { currentTenant } = useTenant();
+  
   return useQuery({
-    queryKey: queryKeys.estoque.produto(produtoId),
+    queryKey: queryKeys.estoque.produto(produtoId, currentTenant?.id),
     queryFn: () => buscarEstoqueEscolarProduto(produtoId),
-    enabled: enabled && !!produtoId,
+    enabled: enabled && !!produtoId && !!currentTenant,
     ...cacheConfig.moderate,
+    throwOnError: (error: any) => {
+      // Handle tenant-specific errors
+      if (error?.response?.status === 403 && error?.response?.data?.code === 'TENANT_OWNERSHIP_ERROR') {
+        console.error('Tenant ownership error:', error.response.data.message);
+        return false; // Don't throw, handle gracefully
+      }
+      return true; // Throw other errors
+    },
   });
 }
 
@@ -57,11 +79,21 @@ export function useEstoqueProduto(produtoId: number, enabled = true) {
  * Hook para buscar múltiplos produtos (resolve N+1)
  */
 export function useEstoqueMultiplosProdutos(produtoIds: number[], enabled = true) {
+  const { currentTenant } = useTenant();
+  
   return useQuery({
-    queryKey: queryKeys.estoque.matriz(produtoIds),
+    queryKey: queryKeys.estoque.matriz(produtoIds, currentTenant?.id),
     queryFn: () => buscarEstoqueMultiplosProdutos(produtoIds),
-    enabled: enabled && produtoIds.length > 0,
+    enabled: enabled && produtoIds.length > 0 && !!currentTenant,
     ...cacheConfig.moderate,
+    throwOnError: (error: any) => {
+      // Handle tenant-specific errors
+      if (error?.response?.status === 403 && error?.response?.data?.code === 'TENANT_OWNERSHIP_ERROR') {
+        console.error('Tenant ownership error:', error.response.data.message);
+        return false; // Don't throw, handle gracefully
+      }
+      return true; // Throw other errors
+    },
   });
 }
 
@@ -69,9 +101,12 @@ export function useEstoqueMultiplosProdutos(produtoIds: number[], enabled = true
  * Hook para matriz de estoque (escolas x produtos)
  */
 export function useMatrizEstoque(produtoIds?: number[], limiteProdutos?: number) {
+  const { currentTenant } = useTenant();
+  
   return useQuery({
-    queryKey: queryKeys.estoque.matriz(produtoIds),
+    queryKey: queryKeys.estoque.matriz(produtoIds, currentTenant?.id),
     queryFn: () => buscarMatrizEstoque(produtoIds, limiteProdutos),
+    enabled: !!currentTenant,
     ...cacheConfig.moderate,
     select: (data) => {
       // Organizar dados da matriz
@@ -93,6 +128,14 @@ export function useMatrizEstoque(produtoIds?: number[], limiteProdutos?: number)
         totalEscolas: escolasMap.size,
         totalProdutos: produtosInfo.size,
       };
+    },
+    throwOnError: (error: any) => {
+      // Handle tenant-specific errors
+      if (error?.response?.status === 403 && error?.response?.data?.code === 'TENANT_OWNERSHIP_ERROR') {
+        console.error('Tenant ownership error:', error.response.data.message);
+        return false; // Don't throw, handle gracefully
+      }
+      return true; // Throw other errors
     },
   });
 }
@@ -212,15 +255,25 @@ export function useEstoqueInfinito(filters: { search?: string; categoria?: strin
  */
 export function useResetEstoqueGlobal() {
   const queryClient = useQueryClient();
+  const { currentTenant } = useTenant();
   
   return useMutation({
     mutationFn: resetEstoqueGlobal,
     onSuccess: () => {
-      // Invalidar todos os dados de estoque
-      invalidateQueries.estoque();
+      // Invalidar todos os dados de estoque para o tenant atual
+      queryClient.invalidateQueries({ queryKey: queryKeys.estoque.all(currentTenant?.id) });
       invalidateQueries.estatisticas();
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      // Handle tenant-specific errors
+      if (error?.response?.status === 403) {
+        const errorCode = error?.response?.data?.code;
+        if (errorCode === 'TENANT_OWNERSHIP_ERROR') {
+          console.error('Tenant ownership error during reset:', error.response.data.message);
+        } else if (errorCode === 'CROSS_TENANT_INVENTORY_ACCESS') {
+          console.error('Cross-tenant access error during reset:', error.response.data.message);
+        }
+      }
       console.error('Erro ao resetar estoque:', error);
     },
   });
@@ -237,7 +290,7 @@ export function useEstoqueSyncronization(enabled = true) {
   const queryClient = useQueryClient();
   
   return useQuery({
-    queryKey: [...queryKeys.estoque.all, 'sync'],
+    queryKey: [...queryKeys.estoque.all(), 'sync'],
     queryFn: async () => {
       // Verificar se há atualizações no servidor
       const lastUpdate = localStorage.getItem('estoque_last_update');
@@ -245,7 +298,7 @@ export function useEstoqueSyncronization(enabled = true) {
       
       // Se passou mais de 5 minutos, forçar atualização
       if (!lastUpdate || new Date(now).getTime() - new Date(lastUpdate).getTime() > 5 * 60 * 1000) {
-        await invalidateQueries.estoque();
+        await queryClient.invalidateQueries({ queryKey: queryKeys.estoque.all() });
         localStorage.setItem('estoque_last_update', now);
       }
       
@@ -262,10 +315,11 @@ export function useEstoqueSyncronization(enabled = true) {
  */
 export function usePrefetchEstoque() {
   const queryClient = useQueryClient();
+  const { currentTenant } = useTenant();
   
   const prefetchProduto = (produtoId: number) => {
     queryClient.prefetchQuery({
-      queryKey: queryKeys.estoque.produto(produtoId),
+      queryKey: queryKeys.estoque.produto(produtoId, currentTenant?.id),
       queryFn: () => buscarEstoqueEscolarProduto(produtoId),
       staleTime: cacheConfig.moderate.staleTime,
     });
@@ -273,7 +327,7 @@ export function usePrefetchEstoque() {
   
   const prefetchMatriz = (produtoIds?: number[]) => {
     queryClient.prefetchQuery({
-      queryKey: queryKeys.estoque.matriz(produtoIds),
+      queryKey: queryKeys.estoque.matriz(produtoIds, currentTenant?.id),
       queryFn: () => buscarMatrizEstoque(produtoIds),
       staleTime: cacheConfig.moderate.staleTime,
     });
@@ -324,7 +378,7 @@ export function useEstoqueCacheStats() {
     },
     
     clearEstoqueCache: () => {
-      queryClient.removeQueries({ queryKey: queryKeys.estoque.all });
+      queryClient.removeQueries({ queryKey: queryKeys.estoque.all() });
     },
   };
 }

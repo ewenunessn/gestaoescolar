@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { setTenantContextFromRequest } from '../utils/tenantContext';
 import db from '../database';
 
 interface ConfiguracaoSistema {
@@ -21,6 +22,9 @@ class ConfiguracaoController {
   async buscarConfiguracao(req: Request, res: Response) {
     try {
       const { chave } = req.params;
+
+      // Configurar contexto de tenant
+      await setTenantContextFromRequest(req);
 
       const query = `
         SELECT * FROM configuracoes_sistema 
@@ -45,17 +49,25 @@ class ConfiguracaoController {
     try {
       const { chave, valor, descricao, tipo, categoria } = req.body;
 
-      // Verificar se já existe
-      const existeQuery = 'SELECT id FROM configuracoes_sistema WHERE chave = $1';
-      const existe = await db.query(existeQuery, [chave]);
+      // Configurar contexto de tenant
+      await setTenantContextFromRequest(req);
+
+      // Validar se tenant está presente
+      if (!req.tenant?.id) {
+        return res.status(400).json({ error: 'Contexto de tenant não encontrado' });
+      }
+
+      // Verificar se já existe para este tenant
+      const existeQuery = 'SELECT id FROM configuracoes_sistema WHERE chave = $1 AND tenant_id = $2';
+      const existe = await db.query(existeQuery, [chave, req.tenant.id]);
 
       if (existe.rows.length > 0) {
-        return res.status(400).json({ error: 'Configuração já existe' });
+        return res.status(400).json({ error: 'Configuração já existe para este tenant' });
       }
 
       const query = `
-        INSERT INTO configuracoes_sistema (chave, valor, descricao, tipo, categoria)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO configuracoes_sistema (chave, valor, descricao, tipo, categoria, tenant_id)
+        VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING *
       `;
 
@@ -64,7 +76,8 @@ class ConfiguracaoController {
         valor,
         descricao || null,
         tipo || 'string',
-        categoria || 'geral'
+        categoria || 'geral',
+        req.tenant.id
       ]);
 
       res.status(201).json(result.rows[0]);
@@ -79,6 +92,9 @@ class ConfiguracaoController {
     try {
       const { chave } = req.params;
       const { valor, descricao } = req.body;
+
+      // Configurar contexto de tenant
+      await setTenantContextFromRequest(req);
 
       const query = `
         UPDATE configuracoes_sistema 
@@ -105,6 +121,9 @@ class ConfiguracaoController {
     try {
       const { categoria } = req.params;
 
+      // Configurar contexto de tenant
+      await setTenantContextFromRequest(req);
+
       const query = `
         SELECT * FROM configuracoes_sistema 
         WHERE categoria = $1
@@ -124,10 +143,18 @@ class ConfiguracaoController {
     try {
       const { chave, valor, descricao, tipo, categoria } = req.body;
 
+      // Configurar contexto de tenant
+      await setTenantContextFromRequest(req);
+
+      // Validar se tenant está presente
+      if (!req.tenant?.id) {
+        return res.status(400).json({ error: 'Contexto de tenant não encontrado' });
+      }
+
       const query = `
-        INSERT INTO configuracoes_sistema (chave, valor, descricao, tipo, categoria)
-        VALUES ($1, $2, $3, $4, $5)
-        ON CONFLICT (chave) 
+        INSERT INTO configuracoes_sistema (chave, valor, descricao, tipo, categoria, tenant_id)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        ON CONFLICT (chave, tenant_id) 
         DO UPDATE SET 
           valor = EXCLUDED.valor,
           descricao = COALESCE(EXCLUDED.descricao, configuracoes_sistema.descricao),
@@ -140,7 +167,8 @@ class ConfiguracaoController {
         valor,
         descricao || null,
         tipo || 'string',
-        categoria || 'geral'
+        categoria || 'geral',
+        req.tenant.id
       ]);
 
       res.json(result.rows[0]);
@@ -154,6 +182,9 @@ class ConfiguracaoController {
   async deletarConfiguracao(req: Request, res: Response) {
     try {
       const { chave } = req.params;
+
+      // Configurar contexto de tenant
+      await setTenantContextFromRequest(req);
 
       const query = 'DELETE FROM configuracoes_sistema WHERE chave = $1 RETURNING *';
       const result = await db.query(query, [chave]);
@@ -172,6 +203,9 @@ class ConfiguracaoController {
   // Listar todas as configurações
   async listarTodas(req: Request, res: Response) {
     try {
+      // Configurar contexto de tenant
+      await setTenantContextFromRequest(req);
+
       const query = `
         SELECT * FROM configuracoes_sistema 
         ORDER BY categoria, chave

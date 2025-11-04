@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -80,6 +80,13 @@ interface Fornecedor {
 const FornecedoresPage: React.FC = () => {
   const navigate = useNavigate();
 
+  // Estados de filtros (moved up before React Query hooks)
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState("");
+  const [sortBy, setSortBy] = useState("nome");
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [hasActiveFilters, setHasActiveFilters] = useState(false);
+
   // React Query hooks
   const { 
     data: fornecedoresData, 
@@ -99,13 +106,6 @@ const FornecedoresPage: React.FC = () => {
 
   // Estados do menu de ações
   const [actionsMenuAnchor, setActionsMenuAnchor] = useState<null | HTMLElement>(null);
-
-  // Estados de filtros
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState("");
-  const [sortBy, setSortBy] = useState("nome");
-  const [filtersExpanded, setFiltersExpanded] = useState(false);
-  const [hasActiveFilters, setHasActiveFilters] = useState(false);
 
   // Estados de paginação
   const [page, setPage] = useState(0);

@@ -40,6 +40,8 @@ import { getLogo } from "../theme/theme";
 import { useConfigContext } from "../context/ConfigContext";
 import { useConfigChangeIndicator } from "../hooks/useConfigChangeIndicator";
 import { useCurrentUser } from "../hooks/useCurrentUser";
+import TenantSelector from "./TenantSelector";
+import TenantBranding from "./TenantBranding";
 
 
 const drawerWidth = 200;
@@ -128,6 +130,7 @@ const getMenuConfig = (configModuloSaldo: any) => {
       category: "Sistema",
       items: [
         { text: "Configurações", icon: <Settings />, path: "/configuracoes-sistema" },
+        { text: "Gerenciar Tenants", icon: <Business />, path: "/tenant-management", adminOnly: true },
       ],
     },
   ];
@@ -420,18 +423,20 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                   </Box>
                 )}
                 <List dense sx={{ py: 0 }}>
-                  {items.map((item) => {
-                    const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
-                    return (
-                      <NavItem
-                        key={item.text}
-                        item={item}
-                        isActive={isActive}
-                        onClick={handleNavigation}
-                        collapsed={collapsed}
-                      />
-                    );
-                  })}
+                  {items
+                    .filter((item) => !item.adminOnly || user?.tipo === 'admin')
+                    .map((item) => {
+                      const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
+                      return (
+                        <NavItem
+                          key={item.text}
+                          item={item}
+                          isActive={isActive}
+                          onClick={handleNavigation}
+                          collapsed={collapsed}
+                        />
+                      );
+                    })}
                 </List>
               </Box>
             ))}
@@ -521,6 +526,11 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           />
         </Box>
 
+        {/* Tenant Selector for System Admins */}
+        <Box sx={{ mr: 2 }}>
+          <TenantSelector variant="compact" />
+        </Box>
+
         {/* Informações do usuário */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {loadingUser ? (
@@ -591,7 +601,9 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           pt: '56px', // Espaço para o header fixo
         }}
       >
-        <Box>{children}</Box>
+        <TenantBranding showLogo={false} showName={false}>
+          <Box>{children}</Box>
+        </TenantBranding>
       </Box>
     </Box>
   );

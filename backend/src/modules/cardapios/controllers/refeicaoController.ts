@@ -1,5 +1,6 @@
 // Controller de refeições para PostgreSQL - CRUD Completo
 import { Request, Response } from "express";
+import { setTenantContextFromRequest } from "../../../utils/tenantContext";
 const db = require("../../../database");
 
 // Interface para tipagem
@@ -16,6 +17,9 @@ interface Refeicao {
 // Listar todas as refeições
 export async function listarRefeicoes(req: Request, res: Response) {
   try {
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+
     const { ativo, tipo, search } = req.query;
     
     let query = `
@@ -28,7 +32,7 @@ export async function listarRefeicoes(req: Request, res: Response) {
         created_at,
         updated_at
       FROM refeicoes 
-      WHERE 1=1
+      WHERE tenant_id = current_setting('app.current_tenant_id')::uuid
     `;
     
     const params: any[] = [];

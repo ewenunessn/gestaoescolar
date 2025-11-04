@@ -273,8 +273,16 @@ export async function resetEstoque(req: Request, res: Response) {
 
 export async function listarEstoqueEscolar(req: Request, res: Response) {
   try {
-    // Usar query otimizada
-    const produtos = await optimizedQueries.getEstoqueEscolarResumoOptimized();
+    // Configurar contexto de tenant
+    const { setTenantContextFromRequest } = await import('../../../utils/tenantContext');
+    await setTenantContextFromRequest(req);
+
+    // Extrair e validar tenant da requisição
+    const { tenantInventoryValidator } = await import('../../../services/tenantInventoryValidator');
+    const tenantId = tenantInventoryValidator.extractTenantFromRequest(req);
+
+    // Usar query otimizada COM filtro de tenant
+    const produtos = await optimizedQueries.getEstoqueEscolarResumoOptimized(tenantId);
 
     const produtosFormatados = produtos.map(row => ({
       produto_id: row.produto_id,
@@ -298,11 +306,10 @@ export async function listarEstoqueEscolar(req: Request, res: Response) {
     });
   } catch (error) {
     console.error("❌ Erro ao listar estoque escolar:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Erro ao listar estoque escolar",
-      error: error instanceof Error ? error.message : 'Erro desconhecido'
-    });
+    
+    // Tratar erros específicos de tenant
+    const { handleTenantInventoryError } = await import('../../../services/tenantInventoryValidator');
+    return handleTenantInventoryError(error, res);
   }
 }
 

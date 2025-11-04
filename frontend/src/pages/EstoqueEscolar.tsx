@@ -16,6 +16,7 @@ import {
     buscarEstoqueEscolarProduto, listarEstoqueEscolar, EstoqueEscolarProduto, resetEstoqueGlobal,
     buscarEstoqueMultiplosProdutos, buscarMatrizEstoque
 } from '../services/estoqueEscolar';
+import { useTenant } from '../context/TenantContext';
 import { formatarQuantidade } from '../utils/formatters';
 import { 
     useEstoqueEscolarResumo, 
@@ -25,6 +26,8 @@ import {
     useEstoqueLoadingState,
     usePrefetchEstoque
 } from '../hooks/queries/useEstoqueQueries';
+import TenantInventoryFilter from '../components/TenantInventoryFilter';
+import TenantInventoryBreadcrumbs from '../components/TenantInventoryBreadcrumbs';
 
 // Interface
 interface ProdutoComEstoque {
@@ -41,6 +44,7 @@ const EstoqueEscolarPage = () => {
     // Estados locais (declarar todos primeiro)
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [tenantError, setTenantError] = useState<string | null>(null);
     const [modoVisualizacao, setModoVisualizacao] = useState<'produtos' | 'escolas'>('produtos');
     const [selectedProdutos, setSelectedProdutos] = useState<number[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -74,10 +78,51 @@ const EstoqueEscolarPage = () => {
     const [loadingLotes, setLoadingLotes] = useState(false);
     
     // React Query hooks (usar após declarar estados)
+    const { currentTenant, loading: tenantLoading, error: tenantContextError } = useTenant();
     const estoqueQuery = useEstoqueEscolarResumo();
     const matrizQuery = useMatrizEstoque(selectedProdutos.length > 0 ? selectedProdutos : undefined, 50);
     const resetMutation = useResetEstoqueGlobal();
     const { prefetchProduto, prefetchMatriz } = usePrefetchEstoque();
+
+    // Enhanced error handling for tenant-specific errors
+    const handleTenantError = useCallback((error: any) => {
+        if (error?.response?.status === 403) {
+            const errorCode = error?.response?.data?.code;
+            if (errorCode === 'TENANT_OWNERSHIP_ERROR') {
+                setTenantError('Você não tem permissão para acessar este recurso da organização.');
+            } else if (errorCode === 'CROSS_TENANT_INVENTORY_ACCESS') {
+                setTenantError('Acesso negado: operação entre organizações não permitida.');
+            } else {
+                setTenantError('Acesso negado: você não tem permissão para esta operação.');
+            }
+        } else if (error?.response?.status === 429 && error?.response?.data?.code === 'TENANT_INVENTORY_LIMIT_ERROR') {
+            setTenantError('Limite de inventário da organização excedido.');
+        } else if (error?.response?.data?.code === 'TENANT_CONTEXT_MISSING') {
+            setTenantError('Contexto de organização não encontrado. Faça login novamente.');
+        } else {
+            setError(error?.message || 'Erro desconhecido');
+        }
+    }, []);
+
+    // Check for tenant context errors
+    useEffect(() => {
+        if (tenantContextError) {
+            setTenantError('Erro ao carregar contexto da organização. Tente fazer login novamente.');
+        }
+    }, [tenantContextError]);
+
+    // Check for query errors and handle tenant-specific ones
+    useEffect(() => {
+        if (estoqueQuery.error) {
+            handleTenantError(estoqueQuery.error);
+        }
+    }, [estoqueQuery.error, handleTenantError]);
+
+    useEffect(() => {
+        if (matrizQuery.error) {
+            handleTenantError(matrizQuery.error);
+        }
+    }, [matrizQuery.error, handleTenantError]);
 
     // Função para formatar números de forma limpa
     // Usar a função utilitária de formatação
@@ -97,8 +142,8 @@ const EstoqueEscolarPage = () => {
     }));
     const dadosMatriz = matrizQuery.data?.escolas || [];
     const matrizCarregada = matrizQuery.data?.matriz_carregada || false;
-    const loading = estoqueQuery.isLoading;
-    const loadingMatriz = matrizQuery.isLoading;
+    const loading = estoqueQuery.isLoading || tenantLoading;
+    const loadingMatriz = matrizQuery.isLoading || tenantLoading;
 
     // Variáveis derivadas
     const loadingReset = resetMutation.isPending;
@@ -207,10 +252,11 @@ const EstoqueEscolarPage = () => {
                 const data = result?.data;
                 const message = `Estoque global resetado com sucesso! ${data?.estoques_resetados || 0} estoques, ${data?.lotes_deletados || 0} lotes e ${data?.movimentacoes_deletadas || 0} movimentações foram removidos.`;
                 setSuccessMessage(message);
+                setTenantError(null); // Clear any previous tenant errors
             },
             onError: (err: any) => {
                 console.error('Erro ao resetar estoque:', err);
-                setError('Erro ao resetar estoque: ' + (err.message || 'Erro desconhecido'));
+                handleTenantError(err);
             }
         });
     };
@@ -411,8 +457,10 @@ const EstoqueEscolarPage = () => {
             setDetalhesModalOpen(true);
             const detalhes = await buscarEstoqueEscolarProduto(produto.id);
             setEstoqueDetalhado(detalhes);
-        } catch (err) {
-            setError('Erro ao carregar detalhes do estoque.');
+            setTenantError(null); // Clear any previous tenant errors
+        } catch (err: any) {
+            console.error('Erro ao carregar detalhes do estoque:', err);
+            handleTenantError(err);
         } finally {
             setLoadingDetalhes(false);
         }
@@ -477,10 +525,9 @@ const EstoqueEscolarPage = () => {
                 produto,
                 lotes
             });
-        } catch (err) {
+        } catch (err: any) {
             console.error('Erro ao carregar detalhes de validade:', err);
-            const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido ao carregar detalhes';
-            setError(`Erro ao carregar detalhes de validade: ${errorMessage}`);
+            handleTenantError(err);
             setModalValidadeOpen(false);
         } finally {
             setLoadingLotes(false);
@@ -539,10 +586,57 @@ const EstoqueEscolarPage = () => {
         </Box>
     );
 
+    // Show tenant loading state
+    if (tenantLoading) {
+        return (
+            <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Box sx={{ textAlign: 'center' }}>
+                    <CircularProgress size={60} />
+                    <Typography variant="body1" sx={{ mt: 2, color: 'text.secondary' }}>
+                        Carregando contexto da organização...
+                    </Typography>
+                </Box>
+            </Box>
+        );
+    }
+
+    // Show error if no tenant context
+    if (!currentTenant && !tenantLoading) {
+        return (
+            <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Box sx={{ textAlign: 'center', maxWidth: 400 }}>
+                    <Alert severity="error" sx={{ mb: 2 }}>
+                        Contexto de organização não encontrado
+                    </Alert>
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                        Não foi possível identificar sua organização. Faça login novamente ou entre em contato com o suporte.
+                    </Typography>
+                    <Button 
+                        variant="contained" 
+                        onClick={() => window.location.reload()}
+                        sx={{ mt: 2 }}
+                    >
+                        Recarregar Página
+                    </Button>
+                </Box>
+            </Box>
+        );
+    }
+
     return (
         <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+            <TenantInventoryBreadcrumbs 
+                items={[
+                    { label: 'Início', path: '/', icon: <School fontSize="small" /> },
+                    { label: 'Estoque Escolar', icon: <Inventory fontSize="small" />, current: true }
+                ]}
+            />
             <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
-                <Typography variant="h4" sx={{ mb: 3, fontWeight: 700, color: 'text.primary' }}>Estoque Escolar</Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                    <Typography variant="h4" sx={{ fontWeight: 700, color: 'text.primary' }}>
+                        Estoque Escolar
+                    </Typography>
+                </Box>
 
                 {/* Mensagem de Sucesso */}
                 {successMessage && (
@@ -552,6 +646,28 @@ const EstoqueEscolarPage = () => {
                         onClose={() => setSuccessMessage(null)}
                     >
                         {successMessage}
+                    </Alert>
+                )}
+
+                {/* Mensagem de Erro de Tenant */}
+                {tenantError && (
+                    <Alert
+                        severity="error"
+                        sx={{ mb: 3 }}
+                        onClose={() => setTenantError(null)}
+                    >
+                        {tenantError}
+                    </Alert>
+                )}
+
+                {/* Mensagem de Erro Geral */}
+                {error && (
+                    <Alert
+                        severity="error"
+                        sx={{ mb: 3 }}
+                        onClose={() => setError(null)}
+                    >
+                        {error}
                     </Alert>
                 )}
                 <Card sx={{ borderRadius: '12px', p: 2, mb: 3 }}>

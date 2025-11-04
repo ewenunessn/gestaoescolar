@@ -8,7 +8,7 @@ const db = require("../../../database");
 // Registro de novo usuário
 export async function register(req: Request, res: Response) {
   try {
-    const { nome, email, senha, perfil, telefone, cargo, departamento } = req.body;
+    const { nome, email, senha, perfil, telefone, cargo, departamento, tenantId } = req.body;
     
     // Validar campos obrigatórios
     if (!nome || !email || !senha || !perfil) {
@@ -29,20 +29,46 @@ export async function register(req: Request, res: Response) {
     // Resetar sequência para evitar conflitos de ID
     await resetUserSequence();
     
+    // Determinar tenant_id (usar o fornecido ou o padrão)
+    let finalTenantId = tenantId;
+    if (!finalTenantId) {
+      // Buscar tenant padrão
+      const defaultTenantResult = await db.query(`
+        SELECT id FROM tenants WHERE id = '00000000-0000-0000-0000-000000000000'
+      `);
+      
+      if (defaultTenantResult.rows.length > 0) {
+        finalTenantId = defaultTenantResult.rows[0].id;
+      } else {
+        return res.status(400).json({ 
+          message: "Tenant não especificado e tenant padrão não encontrado." 
+        });
+      }
+    }
+    
     // Criar usuário com campos básicos (usando 'tipo' em vez de 'perfil')
     const novo = await createUser({ 
       nome, 
       email, 
       senha: hash, 
       tipo: perfil,  // Mapear perfil para tipo
-      ativo: true    // Campo obrigatório
+      ativo: true,   // Campo obrigatório
+      tenant_id: finalTenantId
     });
+
+    // Criar associação na tabela tenant_users
+    await db.query(`
+      INSERT INTO tenant_users (tenant_id, user_id, role, status)
+      VALUES ($1, $2, $3, $4)
+      ON CONFLICT (tenant_id, user_id) DO NOTHING
+    `, [finalTenantId, novo.id, perfil === 'admin' ? 'tenant_admin' : 'user', 'active']);
 
     res.status(201).json({
       id: novo.id,
       nome: novo.nome,
       email: novo.email,
-      tipo: novo.tipo
+      tipo: novo.tipo,
+      tenant_id: novo.tenant_id
     });
   } catch (err) {
     console.error('Erro no registro:', err);
@@ -82,15 +108,95 @@ export async function login(req: Request, res: Response) {
     const jwtSecret = process.env.JWT_SECRET || 'sua_chave_jwt_super_secreta_minimo_32_caracteres_producao_2024';
     console.log("🔐 [LOGIN] NODE_ENV:", process.env.NODE_ENV);
     console.log("🔐 [LOGIN] JWT_SECRET configurado:", jwtSecret ? 'Sim' : 'Não');
-    const token = jwt.sign(
-      { id: user.id, tipo: user.tipo, email: user.email, nome: user.nome },
-      jwtSecret,
-      { expiresIn: '24h' }
-    );
+    
+    // Buscar associações de tenant do usuário
+    const tenantAssociations = await db.query(`
+      SELECT 
+        tu.tenant_id,
+        tu.role as tenant_role,
+        tu.status as tenant_status,
+        t.slug as tenant_slug,
+        t.name as tenant_name,
+        t.status as tenant_active_status
+      FROM tenant_users tu
+      JOIN tenants t ON tu.tenant_id = t.id
+      WHERE tu.user_id = $1 AND tu.status = 'active' AND t.status = 'active'
+      ORDER BY tu.created_at ASC
+    `, [user.id]);
+
+    // Determinar tenant principal (primeiro ativo ou padrão)
+    let primaryTenant = null;
+    let tenantRole = 'user';
+    
+    if (tenantAssociations.rows.length > 0) {
+      const firstAssociation = tenantAssociations.rows[0];
+      primaryTenant = {
+        id: firstAssociation.tenant_id,
+        slug: firstAssociation.tenant_slug,
+        name: firstAssociation.tenant_name,
+        role: firstAssociation.tenant_role
+      };
+      tenantRole = firstAssociation.tenant_role;
+    } else {
+      // Se não tem associação, usar tenant padrão
+      const defaultTenant = await db.query(`
+        SELECT id, slug, name FROM tenants WHERE id = '00000000-0000-0000-0000-000000000000'
+      `);
+      
+      if (defaultTenant.rows.length > 0) {
+        primaryTenant = {
+          id: defaultTenant.rows[0].id,
+          slug: defaultTenant.rows[0].slug,
+          name: defaultTenant.rows[0].name,
+          role: 'user'
+        };
+        
+        // Criar associação com tenant padrão
+        await db.query(`
+          INSERT INTO tenant_users (tenant_id, user_id, role, status)
+          VALUES ($1, $2, $3, $4)
+          ON CONFLICT (tenant_id, user_id) DO NOTHING
+        `, [primaryTenant.id, user.id, 'user', 'active']);
+      }
+    }
+
+    // Verificar se é administrador do sistema (tipo 'admin')
+    const isSystemAdmin = user.tipo === 'admin';
+    
+    const tokenPayload = {
+      id: user.id,
+      tipo: user.tipo,
+      email: user.email,
+      nome: user.nome,
+      tenant: primaryTenant,
+      tenantRole,
+      isSystemAdmin,
+      tenants: tenantAssociations.rows.map(row => ({
+        id: row.tenant_id,
+        slug: row.tenant_slug,
+        name: row.tenant_name,
+        role: row.tenant_role
+      }))
+    };
+
+    const token = jwt.sign(tokenPayload, jwtSecret, { expiresIn: '24h' });
     console.log("🔐 [LOGIN] Token gerado:", token.substring(0, 20) + '...');
 
     console.log("✅ Login realizado com sucesso para:", email);
-    res.json({ token, tipo: user.tipo, nome: user.nome });
+    res.json({ 
+      token, 
+      tipo: user.tipo, 
+      nome: user.nome,
+      tenant: primaryTenant,
+      tenantRole,
+      isSystemAdmin,
+      availableTenants: tenantAssociations.rows.map(row => ({
+        id: row.tenant_id,
+        slug: row.tenant_slug,
+        name: row.tenant_name,
+        role: row.tenant_role
+      }))
+    });
   } catch (err) {
     console.error("💥 Erro crítico no login:", err);
     res.status(500).json({ message: "Erro ao fazer login." });

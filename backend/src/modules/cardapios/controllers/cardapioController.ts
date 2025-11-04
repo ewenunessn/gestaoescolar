@@ -1,9 +1,13 @@
 // Controller de cardápios para PostgreSQL
 import { Request, Response } from "express";
+import { setTenantContextFromRequest } from "../../../utils/tenantContext";
 const db = require("../../../database");
 
 export async function listarCardapios(req: Request, res: Response) {
   try {
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+
     const result = await db.query(`
       SELECT 
         c.id,
@@ -19,6 +23,7 @@ export async function listarCardapios(req: Request, res: Response) {
         m.nome as modalidade_nome
       FROM cardapios c
       LEFT JOIN modalidades m ON c.modalidade_id = m.id
+      WHERE c.tenant_id = current_setting('app.current_tenant_id')::uuid
       ORDER BY c.created_at DESC
     `);
 

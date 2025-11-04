@@ -1,9 +1,13 @@
 // Controller de modalidades para PostgreSQL
 import { Request, Response } from "express";
+import { setTenantContextFromRequest } from "../../../utils/tenantContext";
 const db = require("../../../database");
 
 export async function listarModalidades(req: Request, res: Response) {
   try {
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+
     const modalidades = await db.all(`
       SELECT 
         id,
@@ -15,6 +19,7 @@ export async function listarModalidades(req: Request, res: Response) {
         created_at,
         updated_at
       FROM modalidades 
+      WHERE tenant_id = current_setting('app.current_tenant_id')::uuid
       ORDER BY nome
     `);
 
@@ -35,13 +40,16 @@ export async function listarModalidades(req: Request, res: Response) {
 
 export async function desativarModalidade(req: Request, res: Response) {
   try {
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+
     const { id } = req.params;
 
     const result = await db.query(`
       UPDATE modalidades SET
         ativo = false,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $1
+      WHERE id = $1 AND tenant_id = current_setting('app.current_tenant_id')::uuid
       RETURNING *
     `, [id]);
 
@@ -69,13 +77,16 @@ export async function desativarModalidade(req: Request, res: Response) {
 
 export async function reativarModalidade(req: Request, res: Response) {
   try {
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+
     const { id } = req.params;
 
     const result = await db.query(`
       UPDATE modalidades SET
         ativo = true,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $1
+      WHERE id = $1 AND tenant_id = current_setting('app.current_tenant_id')::uuid
       RETURNING *
     `, [id]);
 
@@ -103,10 +114,14 @@ export async function reativarModalidade(req: Request, res: Response) {
 
 export async function buscarModalidade(req: Request, res: Response) {
   try {
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+
     const { id } = req.params;
     
     const modalidade = await db.get(`
-      SELECT * FROM modalidades WHERE id = $1
+      SELECT * FROM modalidades 
+      WHERE id = $1 AND tenant_id = current_setting('app.current_tenant_id')::uuid
     `, [id]);
 
     if (!modalidade) {
@@ -132,11 +147,14 @@ export async function buscarModalidade(req: Request, res: Response) {
 
 export async function criarModalidade(req: Request, res: Response) {
   try {
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+
     const { nome, descricao, codigo_financeiro, ativo = true, valor_repasse = 0.00 } = req.body;
 
     const result = await db.query(`
-      INSERT INTO modalidades (nome, descricao, codigo_financeiro, ativo, valor_repasse)
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO modalidades (nome, descricao, codigo_financeiro, ativo, valor_repasse, tenant_id)
+      VALUES ($1, $2, $3, $4, $5, current_setting('app.current_tenant_id')::uuid)
       RETURNING *
     `, [nome, descricao, codigo_financeiro, ativo, valor_repasse]);
 
@@ -157,6 +175,9 @@ export async function criarModalidade(req: Request, res: Response) {
 
 export async function editarModalidade(req: Request, res: Response) {
   try {
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+
     const { id } = req.params;
     const { nome, descricao, codigo_financeiro, ativo, valor_repasse } = req.body;
 
@@ -168,7 +189,7 @@ export async function editarModalidade(req: Request, res: Response) {
         ativo = $4,
         valor_repasse = $5,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $6
+      WHERE id = $6 AND tenant_id = current_setting('app.current_tenant_id')::uuid
       RETURNING *
     `, [nome, descricao, codigo_financeiro, ativo, valor_repasse, id]);
 
@@ -199,9 +220,13 @@ export async function removerModalidade(req: Request, res: Response) {
     const { id } = req.params;
     const { forceDelete = false } = req.query;
 
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+
     // Verificar se a modalidade existe
     const modalidade = await db.get(`
-      SELECT * FROM modalidades WHERE id = $1
+      SELECT * FROM modalidades 
+      WHERE id = $1 AND tenant_id = current_setting('app.current_tenant_id')::uuid
     `, [id]);
 
     if (!modalidade) {
@@ -211,12 +236,14 @@ export async function removerModalidade(req: Request, res: Response) {
       });
     }
 
-    // Verificar se há referências em outras tabelas
+    // Verificar se há referências em outras tabelas (dentro do mesmo tenant)
     const referencias = await db.all(`
       SELECT 
         'escola_modalidades' as tabela, COUNT(*) as total
-      FROM escola_modalidades 
-      WHERE modalidade_id = $1
+      FROM escola_modalidades em
+      JOIN escolas e ON em.escola_id = e.id
+      WHERE em.modalidade_id = $1 
+        AND e.tenant_id = current_setting('app.current_tenant_id')::uuid
     `, [id]);
 
     const totalReferencias = referencias.reduce((sum, ref) => sum + parseInt(ref.total), 0);
@@ -243,19 +270,27 @@ export async function removerModalidade(req: Request, res: Response) {
         console.log(`   - ${ref.tabela}: ${ref.total} registro(s)`);
       });
       
-      // Exclusão forçada - remover referências primeiro
+      // Exclusão forçada - remover referências primeiro (apenas do tenant atual)
       let removidosEscolaModalidades = 0;
       
-      const resultEscola = await db.query('DELETE FROM escola_modalidades WHERE modalidade_id = $1', [id]);
+      const resultEscola = await db.query(`
+        DELETE FROM escola_modalidades 
+        WHERE modalidade_id = $1 
+          AND escola_id IN (
+            SELECT id FROM escolas 
+            WHERE tenant_id = current_setting('app.current_tenant_id')::uuid
+          )
+      `, [id]);
       removidosEscolaModalidades = resultEscola.rowCount || 0;
       
       console.log(`✅ Referências removidas:`);
       console.log(`   - escola_modalidades: ${removidosEscolaModalidades} registro(s)`);
     }
 
-    // Excluir a modalidade
+    // Excluir a modalidade (apenas se pertencer ao tenant atual)
     const result = await db.query(`
-      DELETE FROM modalidades WHERE id = $1
+      DELETE FROM modalidades 
+      WHERE id = $1 AND tenant_id = current_setting('app.current_tenant_id')::uuid
       RETURNING *
     `, [id]);
 

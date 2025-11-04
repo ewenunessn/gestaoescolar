@@ -3,3 +3,16 @@ export { devAuthMiddleware, allowAllMiddleware } from './devAuthMiddleware';
 export { validateCardapio, validateCardapioRefeicao } from './validationMiddleware';
 export { authenticateToken } from './auth.js';
 export { authMiddleware } from './authMiddleware';
+export { 
+  tenantAuthMiddleware,
+  requireAuth,
+  requireTenantAdmin,
+  requireSystemAdmin,
+  requireAdminAccess,
+  requirePermissions,
+  canAccessTenant,
+  hasRole,
+  hasPermission,
+  isSystemAdmin,
+  isTenantAdmin
+} from './tenantAuthMiddleware';

@@ -1,9 +1,13 @@
 // Controller de fornecedores para PostgreSQL - SIMPLIFICADO
 import { Request, Response } from "express";
+import { setTenantContextFromRequest } from "../../../utils/tenantContext";
 const db = require("../../../database");
 
 export async function listarFornecedores(req: Request, res: Response) {
   try {
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+
     const result = await db.query(`
       SELECT 
         f.id,
@@ -13,6 +17,7 @@ export async function listarFornecedores(req: Request, res: Response) {
         f.ativo,
         f.created_at
       FROM fornecedores f
+      WHERE f.tenant_id = current_setting('app.current_tenant_id')::uuid
       ORDER BY f.nome
     `);
 

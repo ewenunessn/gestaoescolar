@@ -1,0 +1,10 @@
+{
+  "id": "20251101182923_test_add_tenant_id",
+  "createdAt": "2025-11-01T18:29:23.464Z",
+  "name": "test_add_tenant_id",
+  "description": "Test migration for adding tenant_id column",
+  "upSql": "-- Add tenant_id column to test_migration_table\nALTER TABLE test_migration_table ADD COLUMN IF NOT EXISTS tenant_id UUID DEFAULT '00000000-0000-0000-0000-000000000000' NOT NULL;\n\n-- Add foreign key constraint\nALTER TABLE test_migration_table ADD CONSTRAINT fk_test_migration_table_tenant_id \n  FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;\n\n-- Add index for performance\nCREATE INDEX IF NOT EXISTS idx_test_migration_table_tenant_id ON test_migration_table(tenant_id);\n\n",
+  "downSql": "-- Remove tenant_id column from test_migration_table\nALTER TABLE test_migration_table DROP CONSTRAINT IF EXISTS fk_test_migration_table_tenant_id;\nDROP INDEX IF EXISTS idx_test_migration_table_tenant_id;\nALTER TABLE test_migration_table DROP COLUMN IF EXISTS tenant_id;\n",
+  "tenantSpecific": false,
+  "dependencies": []
+}

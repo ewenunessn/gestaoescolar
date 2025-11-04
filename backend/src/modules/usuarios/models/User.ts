@@ -8,6 +8,7 @@ export interface User {
   senha: string;
   tipo: string;
   ativo: boolean;
+  tenant_id: string;
   created_at: string;
   updated_at: string;
 }
@@ -60,10 +61,10 @@ export async function findUserByEmail(email: string): Promise<User | undefined> 
 export async function createUser(user: Omit<User, "id" | "created_at" | "updated_at">): Promise<User> {
   try {
     const result = await db.query(`
-      INSERT INTO usuarios (nome, email, senha, tipo, ativo) 
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO usuarios (nome, email, senha, tipo, ativo, tenant_id) 
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
-    `, [user.nome, user.email, user.senha, user.tipo, user.ativo ?? true]);
+    `, [user.nome, user.email, user.senha, user.tipo, user.ativo ?? true, user.tenant_id]);
     
     return result.rows[0];
   } catch (error) {

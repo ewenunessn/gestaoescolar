@@ -34,6 +34,25 @@ import rotaRoutes from "./modules/entregas/routes/rotaRoutes";
 import pedidoRoutes from "./modules/pedidos/routes/pedidoRoutes";
 import faturamentoRoutes from "./modules/pedidos/routes/faturamentoRoutes";
 import demandasRoutes from "./modules/demandas/routes/demandaRoutes";
+import tenantRoutes from "./routes/tenantRoutes";
+import tenantConfigurationRoutes from "./routes/tenantConfigurationRoutes";
+import tenantUserRoutes from "./routes/tenantUserRoutes";
+
+import tenantPerformanceRoutes from "./routes/tenantPerformanceRoutes";
+import tenantAuditRoutes from "./routes/tenantAuditRoutes";
+import tenantProvisioningRoutes from "./routes/tenantProvisioningRoutes";
+import tenantMonitoringRoutes from "./routes/tenantMonitoringRoutes";
+import { createTenantBackupRoutes } from "./routes/tenantBackupRoutes";
+import cacheRoutes from "./routes/cacheRoutes";
+
+// Importar middleware de performance e auditoria
+import { tenantPerformanceMonitor } from "./middleware/tenantPerformanceMiddleware";
+import { tenantMiddleware } from "./middleware/tenantMiddleware";
+import AuditMiddleware from "./middleware/auditMiddleware";
+import { tenantRealtimeMonitoringService } from "./services/tenantRealtimeMonitoringService";
+import { createServer } from 'http';
+import { cacheMiddlewareStack } from "./middleware/cacheMiddleware";
+import { initializeRedisCache } from "./config/redis";
 
 // Módulo de gás removido
 
@@ -48,6 +67,7 @@ const db = process.env.VERCEL === '1' ? require("./database-vercel") : require("
 dotenv.config();
 
 const app = express();
+const httpServer = createServer(app);
 app.use(express.json());
 
 // Configuração CORS usando config.json
@@ -108,7 +128,10 @@ const corsOptions = {
     "Accept",
     "Origin",
     "Access-Control-Request-Method",
-    "Access-Control-Request-Headers"
+    "Access-Control-Request-Headers",
+    "X-Tenant-ID",
+    "X-Tenant-Subdomain",
+    "X-Tenant-Domain"
   ],
   exposedHeaders: ["Content-Length", "X-Foo", "X-Bar"],
   maxAge: 86400, // 24 horas
@@ -120,6 +143,22 @@ app.use(cors(corsOptions));
 
 // CORS já está configurado corretamente acima com as origens específicas
 // Removido middleware que forçava '*' e conflitava com credentials: true
+
+// Middleware de tenant (deve vir antes das rotas)
+app.use(tenantMiddleware({ 
+  required: false, 
+  fallbackToDefault: true,
+  skipPaths: ['/health', '/api/test-db', '/api/performance', '/']
+}));
+
+// Middleware de monitoramento de performance
+app.use(tenantPerformanceMonitor.monitor());
+
+// Middleware de auditoria (deve vir após o tenant middleware)
+app.use(AuditMiddleware.auditLogger());
+
+// Cache middleware stack
+app.use(cacheMiddlewareStack);
 
 
 
@@ -215,6 +254,15 @@ app.use("/api/entregas", rotaRoutes);
 app.use("/api/pedidos", pedidoRoutes);
 app.use("/api/faturamentos", faturamentoRoutes);
 app.use("/api/demandas", demandasRoutes);
+app.use("/api/tenants", tenantRoutes);
+app.use("/api", tenantConfigurationRoutes);
+app.use("/api/tenant-users", tenantUserRoutes);
+app.use("/api/performance", tenantPerformanceRoutes);
+app.use("/api/audit", tenantAuditRoutes);
+app.use("/api/provisioning", tenantProvisioningRoutes);
+app.use("/api/monitoring", tenantMonitoringRoutes);
+app.use("/api/backup", createTenantBackupRoutes(db.pool));
+app.use("/api/cache", cacheRoutes);
 app.use("/api/configuracoes", require("./routes/configuracaoRoutes").default);
 
 // Rotas de gás removidas
@@ -237,6 +285,7 @@ app.get("/", (req, res) => {
     endpoints: {
       health: "/health",
       database_test: "/api/test-db",
+      performance: "/api/performance",
       documentation: "Rotas disponíveis listadas abaixo"
     },
     availableRoutes: [
@@ -260,6 +309,9 @@ app.get("/", (req, res) => {
 
       "/api/estoque-moderno",
       "/api/estoque-escolar",
+      "/api/tenants",
+      "/api/performance",
+      "/api/backup",
       "/api/test-db",
       "/health"
     ],
@@ -295,6 +347,7 @@ app.use("*", (req, res) => {
 
       "/api/estoque-moderno",
       "/api/estoque-escolar",
+      "/api/backup",
       "/api/test-db",
       "/health"
     ],
@@ -333,6 +386,10 @@ async function iniciarServidor() {
       // ORM removido - usando SQL puro
       console.log('✅ Sistema configurado para usar SQL puro');
 
+      // Initialize cache system
+      console.log('🔧 Inicializando sistema de cache...');
+      await initializeRedisCache();
+
       // Inicializar módulos
       console.log('🔧 Inicializando módulos...');
       const { initEstoqueCentral } = await import('./modules/estoque/controllers/estoqueCentralController');
@@ -342,8 +399,12 @@ async function iniciarServidor() {
 
       console.log('✅ Módulos inicializados com sucesso!');
 
+      // Initialize real-time monitoring service
+      console.log('🔄 Inicializando serviço de monitoramento em tempo real...');
+      tenantRealtimeMonitoringService.initialize(httpServer);
+
       // Iniciar servidor
-      app.listen(config.backend.port, config.backend.host, () => {
+      httpServer.listen(config.backend.port, config.backend.host, () => {
         console.log(`🚀 Servidor PostgreSQL rodando em ${config.backend.host}:${config.backend.port}`);
 
         // Tratar CORS origins que pode ser array ou boolean

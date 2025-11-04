@@ -7,8 +7,12 @@ import {
   removerEscola,
   importarEscolasLote 
 } from "../controllers/escolaController";
+import { requireTenant } from "../../../middleware/tenantMiddleware";
 
 const router = Router();
+
+// Aplicar middleware de tenant para todas as rotas
+router.use(requireTenant());
 
 // Listar escolas
 router.get("/", listarEscolas);

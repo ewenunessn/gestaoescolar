@@ -1,88 +1,70 @@
 // Controller de estoque escolar para PostgreSQL
 import { Request, Response } from "express";
 import { z } from 'zod';
-import { 
+import {
   estoqueMovimentacaoSchema,
   estoqueAtualizacaoLoteSchema,
-  idSchema 
+  idSchema
 } from '../../../schemas';
+import { setTenantContextFromRequest } from "../../../utils/tenantContext";
+import { 
+  tenantInventoryValidator, 
+  handleTenantInventoryError,
+  TenantOwnershipError,
+  TenantContextMissingError,
+  TenantInventoryNotFoundError,
+  TenantInventoryConflictError,
+  TenantInventoryInsufficientStockError,
+  logTenantInventoryOperation
+} from '../../../services/tenantInventoryValidator';
+import {
+  cacheTenantEstoqueEscola,
+  cacheTenantEstoqueResumo,
+  cacheTenantEstoqueProduto,
+  cacheTenantEstoqueLotes,
+  invalidateTenantCacheOnEstoqueChange,
+  withTenantCache,
+  getTenantIdFromRequest
+} from '../../../utils/tenantInventoryCache';
 const db = require("../../../database");
 
 export async function listarEstoqueEscola(req: Request, res: Response) {
   try {
     const { escola_id } = req.params;
 
-    // Query otimizada usando CTEs para evitar subqueries repetidas
-    const result = await db.query(`
-      WITH lotes_agregados AS (
-        SELECT 
-          el.produto_id,
-          COALESCE(SUM(el.quantidade_atual), 0) as total_quantidade_lotes,
-          MIN(CASE WHEN el.quantidade_atual > 0 THEN el.data_validade END) as min_validade_lotes
-        FROM estoque_lotes el
-        WHERE el.status = 'ativo'
-          AND el.escola_id = $1
-        GROUP BY el.produto_id
-      )
-      SELECT 
-        ee.id,
-        $1::integer as escola_id,
-        p.id as produto_id,
-        -- CORREÇÃO: Somar estoque principal + lotes para ter o total real
-        (COALESCE(ee.quantidade_atual, 0) + COALESCE(la.total_quantidade_lotes, 0)) as quantidade_atual,
-        -- Só mostrar validade se a escola tiver o produto em estoque (considerando total)
-        CASE 
-          WHEN (COALESCE(ee.quantidade_atual, 0) + COALESCE(la.total_quantidade_lotes, 0)) > 0 THEN COALESCE(la.min_validade_lotes, ee.data_validade)
-          ELSE NULL
-        END as data_validade,
-        ee.data_entrada,
-        ee.updated_at as data_ultima_atualizacao,
-        p.nome as produto_nome,
-        p.descricao as produto_descricao,
-        p.unidade as unidade_medida,
-        p.categoria,
-        e.nome as escola_nome,
-        CASE 
-          WHEN (COALESCE(ee.quantidade_atual, 0) + COALESCE(la.total_quantidade_lotes, 0)) = 0 THEN 'sem_estoque'
-          WHEN COALESCE(la.min_validade_lotes, ee.data_validade) IS NOT NULL 
-               AND COALESCE(la.min_validade_lotes, ee.data_validade) < CURRENT_DATE THEN 'vencido'
-          WHEN COALESCE(la.min_validade_lotes, ee.data_validade) IS NOT NULL 
-               AND COALESCE(la.min_validade_lotes, ee.data_validade) <= CURRENT_DATE + INTERVAL '7 days' THEN 'critico'
-          WHEN COALESCE(la.min_validade_lotes, ee.data_validade) IS NOT NULL 
-               AND COALESCE(la.min_validade_lotes, ee.data_validade) <= CURRENT_DATE + INTERVAL '30 days' THEN 'atencao'
-          ELSE 'normal'
-        END as status_estoque,
-        CASE 
-          WHEN COALESCE(la.min_validade_lotes, ee.data_validade) IS NOT NULL THEN 
-            (COALESCE(la.min_validade_lotes, ee.data_validade) - CURRENT_DATE)::integer
-          ELSE NULL
-        END as dias_para_vencimento
-      FROM produtos p
-      CROSS JOIN escolas e
-      LEFT JOIN estoque_escolas ee ON (ee.produto_id = p.id AND ee.escola_id = e.id)
-      LEFT JOIN lotes_agregados la ON la.produto_id = p.id
-      WHERE p.ativo = true 
-        AND e.id = $1 
-        AND e.ativo = true
-      ORDER BY 
-        CASE 
-          WHEN COALESCE(la.min_validade_lotes, ee.data_validade) IS NOT NULL 
-               AND COALESCE(la.min_validade_lotes, ee.data_validade) < CURRENT_DATE THEN 1
-          WHEN COALESCE(la.min_validade_lotes, ee.data_validade) IS NOT NULL 
-               AND COALESCE(la.min_validade_lotes, ee.data_validade) <= CURRENT_DATE + INTERVAL '7 days' THEN 2
-          WHEN COALESCE(la.min_validade_lotes, ee.data_validade) IS NOT NULL 
-               AND COALESCE(la.min_validade_lotes, ee.data_validade) <= CURRENT_DATE + INTERVAL '30 days' THEN 3
-          ELSE 4
-        END,
-        p.categoria, p.nome
-    `, [escola_id]);
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
 
-    const estoque = result.rows;
+    // Extrair e validar tenant da requisição
+    const tenantId = tenantInventoryValidator.extractTenantFromRequest(req);
 
-    // Buscar lotes de todos os produtos que já tiveram movimentação na escola
-    const produtosComHistorico = estoque.map(item => item.produto_id);
-    
-    if (produtosComHistorico.length > 0) {
+    // Validar se a escola pertence ao tenant
+    await tenantInventoryValidator.validateSchoolTenantOwnership(parseInt(escola_id), tenantId);
+
+    // Try to get from tenant cache first
+    const cachedData = await cacheTenantEstoqueEscola.get(tenantId, parseInt(escola_id));
+    if (cachedData) {
+      console.log(`🎯 Cache hit for tenant ${tenantId} school ${escola_id} inventory`);
+      return res.json({
+        success: true,
+        data: (cachedData as any).estoque,
+        total: (cachedData as any).estoque.length,
+        cached: true
+      });
+    }
+
+    // Usar query otimizada que elimina CROSS JOIN e melhora performance
+    const { getEstoqueEscolaOptimized } = require('../../../utils/optimizedInventoryQueries');
+    const estoque = await getEstoqueEscolaOptimized(parseInt(escola_id), tenantId, {
+      incluirLotes: true,
+      incluirSemEstoque: true
+    });
+
+    // A query otimizada já inclui os lotes agregados
+    // Buscar lotes detalhados apenas se necessário
+    const produtosComEstoque = estoque.filter(item => item.quantidade_atual > 0).map(item => item.produto_id);
+
+    if (produtosComEstoque.length > 0) {
       try {
         const lotesResult = await db.query(`
           SELECT 
@@ -98,14 +80,15 @@ export async function listarEstoqueEscola(req: Request, res: Response) {
           FROM estoque_lotes el
           WHERE el.produto_id = ANY($1) 
             AND el.escola_id = $2
+            AND el.tenant_id = $3
             AND (el.status = 'ativo' OR el.status = 'esgotado')
           ORDER BY 
             el.produto_id,
             el.status DESC, -- Ativos primeiro, depois esgotados
             CASE WHEN el.data_validade IS NULL THEN 1 ELSE 0 END,
             el.data_validade ASC
-        `, [produtosComHistorico, escola_id]);
-        
+        `, [produtosComEstoque, escola_id, tenantId]);
+
         // Agrupar lotes por produto_id
         const lotesPorProduto = {};
         lotesResult.rows.forEach(lote => {
@@ -114,12 +97,12 @@ export async function listarEstoqueEscola(req: Request, res: Response) {
           }
           lotesPorProduto[lote.produto_id].push(lote);
         });
-        
+
         // Adicionar lotes aos itens do estoque
         estoque.forEach((item, index) => {
           estoque[index].lotes = lotesPorProduto[item.produto_id] || [];
         });
-        
+
       } catch (error) {
         console.error('Erro ao buscar lotes:', error);
         // Em caso de erro, todos os itens ficam sem lotes
@@ -129,18 +112,19 @@ export async function listarEstoqueEscola(req: Request, res: Response) {
       }
     }
 
+    // Cache the results for future requests
+    await cacheTenantEstoqueEscola.set(tenantId, parseInt(escola_id), { estoque });
+    console.log(`📦 Cached tenant ${tenantId} school ${escola_id} inventory data`);
+
     res.json({
       success: true,
       data: estoque,
-      total: estoque.length
+      total: estoque.length,
+      cached: false
     });
   } catch (error) {
     console.error("❌ Erro ao listar estoque da escola:", error);
-    res.status(500).json({
-      success: false,
-      message: "Erro ao listar estoque da escola",
-      error: error instanceof Error ? error.message : 'Erro desconhecido'
-    });
+    handleTenantInventoryError(error, res);
   }
 }
 
@@ -148,6 +132,15 @@ export async function buscarItemEstoqueEscola(req: Request, res: Response) {
   try {
     const { id } = req.params;
 
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+
+    // Extrair e validar tenant da requisição
+    const tenantId = tenantInventoryValidator.extractTenantFromRequest(req);
+
+    // Validar se o item de estoque pertence ao tenant
+    await tenantInventoryValidator.validateInventoryItemTenantOwnership(parseInt(id), tenantId);
+    
     const result = await db.query(`
       SELECT 
         ee.*,
@@ -160,7 +153,10 @@ export async function buscarItemEstoqueEscola(req: Request, res: Response) {
       LEFT JOIN produtos p ON ee.produto_id = p.id
       LEFT JOIN escolas e ON ee.escola_id = e.id
       WHERE ee.id = $1
-    `, [id]);
+        AND (ee.tenant_id = $2 OR ee.tenant_id IS NULL)
+        AND (p.tenant_id = $2 OR p.tenant_id IS NULL)
+        AND (e.tenant_id = $2 OR e.tenant_id IS NULL)
+    `, [id, tenantId]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -175,11 +171,7 @@ export async function buscarItemEstoqueEscola(req: Request, res: Response) {
     });
   } catch (error) {
     console.error("❌ Erro ao buscar item de estoque:", error);
-    res.status(500).json({
-      success: false,
-      message: "Erro ao buscar item de estoque",
-      error: error instanceof Error ? error.message : 'Erro desconhecido'
-    });
+    handleTenantInventoryError(error, res);
   }
 }
 
@@ -190,6 +182,15 @@ export async function atualizarQuantidadeEstoque(req: Request, res: Response) {
       quantidade_atual,
       usuario_id
     } = req.body;
+
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+
+    // Extrair e validar tenant da requisição
+    const tenantId = tenantInventoryValidator.extractTenantFromRequest(req);
+
+    // Validar se o item de estoque pertence ao tenant
+    await tenantInventoryValidator.validateInventoryItemTenantOwnership(parseInt(id), tenantId);
 
     // Validar quantidade
     if (quantidade_atual < 0) {
@@ -217,6 +218,12 @@ export async function atualizarQuantidadeEstoque(req: Request, res: Response) {
       });
     }
 
+    // Invalidate tenant cache after successful update
+    invalidateTenantCacheOnEstoqueChange(tenantId, { 
+      operation: 'adjustment',
+      produtoId: parseInt(id) 
+    });
+
     res.json({
       success: true,
       message: "Quantidade atualizada com sucesso",
@@ -224,11 +231,7 @@ export async function atualizarQuantidadeEstoque(req: Request, res: Response) {
     });
   } catch (error) {
     console.error("❌ Erro ao atualizar quantidade:", error);
-    res.status(500).json({
-      success: false,
-      message: "Erro ao atualizar quantidade",
-      error: error instanceof Error ? error.message : 'Erro desconhecido'
-    });
+    handleTenantInventoryError(error, res);
   }
 }
 
@@ -237,12 +240,25 @@ export async function atualizarLoteQuantidades(req: Request, res: Response) {
     const { escola_id } = req.params;
     const { itens, usuario_id } = req.body;
 
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+
+    // Extrair e validar tenant da requisição
+    const tenantId = tenantInventoryValidator.extractTenantFromRequest(req);
+
+    // Validar se a escola pertence ao tenant
+    await tenantInventoryValidator.validateSchoolTenantOwnership(parseInt(escola_id), tenantId);
+
     if (!Array.isArray(itens) || itens.length === 0) {
       return res.status(400).json({
         success: false,
         message: "Lista de itens inválida"
       });
     }
+
+    // Validar se todos os produtos pertencem ao tenant
+    const produtoIds = itens.map(item => item.produto_id);
+    await tenantInventoryValidator.validateBulkTenantOwnership('produto', produtoIds, tenantId);
 
     // Usar transação para atualizar todos os itens
     const result = await db.transaction(async (client: any) => {
@@ -275,6 +291,12 @@ export async function atualizarLoteQuantidades(req: Request, res: Response) {
       return resultados;
     });
 
+    // Invalidate tenant cache after successful batch update
+    invalidateTenantCacheOnEstoqueChange(tenantId, { 
+      operation: 'adjustment',
+      escolaId: parseInt(escola_id)
+    });
+
     res.json({
       success: true,
       message: `${result.length} itens atualizados com sucesso`,
@@ -282,11 +304,7 @@ export async function atualizarLoteQuantidades(req: Request, res: Response) {
     });
   } catch (error) {
     console.error("❌ Erro ao atualizar lote de quantidades:", error);
-    res.status(500).json({
-      success: false,
-      message: "Erro ao atualizar quantidades",
-      error: error instanceof Error ? error.message : 'Erro desconhecido'
-    });
+    handleTenantInventoryError(error, res);
   }
 }
 
@@ -295,11 +313,25 @@ export async function listarHistoricoEstoque(req: Request, res: Response) {
     const { escola_id } = req.params;
     const { produto_id, limite = 50 } = req.query;
 
-    let whereClause = 'WHERE he.escola_id = $1';
-    const params = [escola_id];
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+
+    // Extrair e validar tenant da requisição
+    const tenantId = tenantInventoryValidator.extractTenantFromRequest(req);
+
+    // Validar se a escola pertence ao tenant
+    await tenantInventoryValidator.validateSchoolTenantOwnership(parseInt(escola_id), tenantId);
+
+    // Se produto_id foi especificado, validar se pertence ao tenant
+    if (produto_id) {
+      await tenantInventoryValidator.validateProductTenantOwnership(parseInt(produto_id as string), tenantId);
+    }
+
+    let whereClause = 'WHERE he.escola_id = $1 AND (he.tenant_id = $2 OR he.tenant_id IS NULL)';
+    const params = [escola_id, tenantId];
 
     if (produto_id) {
-      whereClause += ' AND he.produto_id = $2';
+      whereClause += ' AND he.produto_id = $3';
       params.push(produto_id as string);
     }
 
@@ -310,8 +342,8 @@ export async function listarHistoricoEstoque(req: Request, res: Response) {
         p.unidade as unidade_medida,
         u.nome as usuario_nome
       FROM estoque_escolas_historico he
-      LEFT JOIN produtos p ON he.produto_id = p.id
-      LEFT JOIN usuarios u ON he.usuario_id = u.id
+      LEFT JOIN produtos p ON he.produto_id = p.id AND (p.tenant_id = $2 OR p.tenant_id IS NULL)
+      LEFT JOIN usuarios u ON he.usuario_id = u.id AND (u.tenant_id = $2 OR u.tenant_id IS NULL)
       ${whereClause.replace('eeh.', 'he.')}
       ORDER BY he.data_movimentacao DESC
       LIMIT $${params.length + 1}
@@ -324,17 +356,33 @@ export async function listarHistoricoEstoque(req: Request, res: Response) {
     });
   } catch (error) {
     console.error("❌ Erro ao listar histórico:", error);
-    res.status(500).json({
-      success: false,
-      message: "Erro ao listar histórico",
-      error: error instanceof Error ? error.message : 'Erro desconhecido'
-    });
+    handleTenantInventoryError(error, res);
   }
 }
 
 export async function obterResumoEstoque(req: Request, res: Response) {
   try {
     const { escola_id } = req.params;
+
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+
+    // Extrair e validar tenant da requisição
+    const tenantId = tenantInventoryValidator.extractTenantFromRequest(req);
+
+    // Validar se a escola pertence ao tenant
+    await tenantInventoryValidator.validateSchoolTenantOwnership(parseInt(escola_id), tenantId);
+
+    // Try to get from tenant cache first
+    const cachedResumo = await cacheTenantEstoqueResumo.get(tenantId);
+    if (cachedResumo && (cachedResumo as any).escola_id === parseInt(escola_id)) {
+      console.log(`🎯 Cache hit for tenant ${tenantId} inventory summary`);
+      return res.json({
+        success: true,
+        data: (cachedResumo as any).data,
+        cached: true
+      });
+    }
 
     // Resumo dinâmico considerando todos os produtos ativos
     const result = await db.query(`
@@ -345,31 +393,35 @@ export async function obterResumoEstoque(req: Request, res: Response) {
         MAX(COALESCE(ee.updated_at, CURRENT_TIMESTAMP)) as ultima_atualizacao
       FROM produtos p
       CROSS JOIN escolas e
-      LEFT JOIN estoque_escolas ee ON (ee.produto_id = p.id AND ee.escola_id = e.id)
+      LEFT JOIN estoque_escolas ee ON (ee.produto_id = p.id AND ee.escola_id = e.id AND (ee.tenant_id = $2 OR ee.tenant_id IS NULL))
       WHERE p.ativo = true 
         AND e.id = $1 
         AND e.ativo = true
-    `, [escola_id]);
+        AND (p.tenant_id = $2 OR p.tenant_id IS NULL)
+        AND (e.tenant_id = $2 OR e.tenant_id IS NULL)
+    `, [escola_id, tenantId]);
 
     const resumo = result.rows[0];
+    const resumoData = {
+      total_itens: parseInt(resumo.total_produtos),
+      itens_normais: parseInt(resumo.produtos_com_estoque),
+      itens_baixos: 0, // Por enquanto não temos lógica de baixo estoque
+      itens_sem_estoque: parseInt(resumo.produtos_sem_estoque),
+      ultima_atualizacao: resumo.ultima_atualizacao
+    };
+
+    // Cache the summary for future requests
+    await cacheTenantEstoqueResumo.set(tenantId, { escola_id: parseInt(escola_id), data: resumoData });
+    console.log(`📦 Cached tenant ${tenantId} inventory summary`);
 
     res.json({
       success: true,
-      data: {
-        total_itens: parseInt(resumo.total_produtos),
-        itens_normais: parseInt(resumo.produtos_com_estoque),
-        itens_baixos: 0, // Por enquanto não temos lógica de baixo estoque
-        itens_sem_estoque: parseInt(resumo.produtos_sem_estoque),
-        ultima_atualizacao: resumo.ultima_atualizacao
-      }
+      data: resumoData,
+      cached: false
     });
   } catch (error) {
     console.error("❌ Erro ao obter resumo:", error);
-    res.status(500).json({
-      success: false,
-      message: "Erro ao obter resumo do estoque",
-      error: error instanceof Error ? error.message : 'Erro desconhecido'
-    });
+    handleTenantInventoryError(error, res);
   }
 }
 
@@ -377,8 +429,17 @@ export async function inicializarEstoqueEscola(req: Request, res: Response) {
   try {
     const { escola_id } = req.params;
 
-    // Verificar se a escola existe
-    const escolaResult = await db.query('SELECT id, nome FROM escolas WHERE id = $1', [escola_id]);
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+
+    // Extrair e validar tenant da requisição
+    const tenantId = tenantInventoryValidator.extractTenantFromRequest(req);
+
+    // Validar se a escola pertence ao tenant
+    await tenantInventoryValidator.validateSchoolTenantOwnership(parseInt(escola_id), tenantId);
+
+    // Verificar se a escola existe (com filtro de tenant)
+    const escolaResult = await db.query('SELECT id, nome FROM escolas WHERE id = $1 AND tenant_id = $2', [escola_id, tenantId]);
     if (escolaResult.rows.length === 0) {
       return res.status(404).json({
         success: false,
@@ -406,11 +467,7 @@ export async function inicializarEstoqueEscola(req: Request, res: Response) {
     });
   } catch (error) {
     console.error("❌ Erro ao inicializar estoque:", error);
-    res.status(500).json({
-      success: false,
-      message: "Erro ao inicializar estoque",
-      error: error instanceof Error ? error.message : 'Erro desconhecido'
-    });
+    handleTenantInventoryError(error, res);
   }
 }
 
@@ -426,6 +483,24 @@ export async function registrarMovimentacao(req: Request, res: Response) {
       usuario_id,
       data_validade // Novo campo para validade simples
     } = req.body;
+
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+
+    // Extrair e validar tenant da requisição
+    const tenantId = tenantInventoryValidator.extractTenantFromRequest(req);
+
+    // Validar se a escola e produto pertencem ao tenant
+    await tenantInventoryValidator.validateSchoolTenantOwnership(parseInt(escola_id), tenantId);
+    await tenantInventoryValidator.validateProductTenantOwnership(parseInt(produto_id), tenantId);
+
+    // Validar consistência entre escola e produto no mesmo tenant
+    await tenantInventoryValidator.validateSchoolProductTenantConsistency(parseInt(escola_id), parseInt(produto_id), tenantId);
+
+    // Validar usuário se fornecido
+    if (usuario_id) {
+      await tenantInventoryValidator.validateUserTenantAccess(parseInt(usuario_id), tenantId);
+    }
 
     // Validações
     if (!['entrada', 'saida', 'ajuste'].includes(tipo_movimentacao)) {
@@ -444,22 +519,24 @@ export async function registrarMovimentacao(req: Request, res: Response) {
 
     // Usar transação para garantir consistência
     const result = await db.transaction(async (client: any) => {
-      // Buscar a unidade de medida do produto
+      // Buscar a unidade de medida do produto (com filtro de tenant)
       const produtoResult = await client.query(`
-        SELECT unidade FROM produtos WHERE id = $1
-      `, [produto_id]);
-      
+        SELECT unidade FROM produtos 
+        WHERE id = $1 AND (tenant_id = $2 OR tenant_id IS NULL)
+      `, [produto_id, tenantId]);
+
       if (produtoResult.rows.length === 0) {
         throw new Error('Produto não encontrado');
       }
-      
+
       const unidadeMedida = produtoResult.rows[0].unidade;
 
-      // Buscar ou criar o item no estoque
+      // Buscar ou criar o item no estoque (com filtro de tenant)
       let estoqueAtual = await client.query(`
         SELECT * FROM estoque_escolas 
-        WHERE escola_id = $1 AND produto_id = $2
-      `, [escola_id, produto_id]);
+        WHERE escola_id = $1 AND produto_id = $2 
+        AND (tenant_id = $3 OR tenant_id IS NULL)
+      `, [escola_id, produto_id, tenantId]);
 
       let item;
       if (estoqueAtual.rows.length === 0) {
@@ -478,12 +555,12 @@ export async function registrarMovimentacao(req: Request, res: Response) {
       const lotesResult = await client.query(`
         SELECT COALESCE(SUM(quantidade_atual), 0) as total_lotes
         FROM estoque_lotes 
-        WHERE produto_id = $1 AND status = 'ativo'
-      `, [parseInt(produto_id)]);
-      
+        WHERE produto_id = $1 AND status = 'ativo' AND (tenant_id = $2 OR tenant_id IS NULL)
+      `, [parseInt(produto_id), tenantId]);
+
       const quantidadeLotes = parseFloat(lotesResult.rows[0]?.total_lotes || 0);
       const quantidadeEstoquePrincipal = parseFloat(item.quantidade_atual || 0);
-      
+
       // Somar lotes + estoque principal para ter o total disponível
       const quantidadeAnterior = quantidadeLotes + quantidadeEstoquePrincipal;
       let quantidadePosterior = quantidadeAnterior;
@@ -498,28 +575,29 @@ export async function registrarMovimentacao(req: Request, res: Response) {
           if (quantidadePosterior < 0) {
             throw new Error('Quantidade insuficiente em estoque');
           }
-          
+
           // Implementar saída inteligente: primeiro lotes (FIFO por validade), depois estoque principal
           let quantidadeRestante = parseFloat(quantidade);
-          
+
           // 1. Primeiro, consumir dos lotes se existirem (FIFO por validade)
           if (quantidadeLotes > 0) {
             const lotesDisponiveis = await client.query(`
               SELECT id, lote, quantidade_atual, data_validade
               FROM estoque_lotes
               WHERE produto_id = $1 AND status = 'ativo' AND quantidade_atual > 0
+                AND (tenant_id = $2 OR tenant_id IS NULL)
               ORDER BY 
                 CASE WHEN data_validade IS NULL THEN 1 ELSE 0 END,
                 data_validade ASC
-            `, [parseInt(produto_id)]);
+            `, [parseInt(produto_id), tenantId]);
 
             for (const lote of lotesDisponiveis.rows) {
               if (quantidadeRestante <= 0) break;
-              
+
               const quantidadeDisponivel = parseFloat(lote.quantidade_atual);
               const quantidadeConsumida = Math.min(quantidadeRestante, quantidadeDisponivel);
               const novaQuantidadeLote = quantidadeDisponivel - quantidadeConsumida;
-              
+
               // Atualizar quantidade do lote
               const novoStatus = novaQuantidadeLote === 0 ? 'esgotado' : 'ativo';
               await client.query(`
@@ -529,28 +607,28 @@ export async function registrarMovimentacao(req: Request, res: Response) {
                     updated_at = NOW()
                 WHERE id = $3
               `, [novaQuantidadeLote, novoStatus, lote.id]);
-              
+
               quantidadeRestante -= quantidadeConsumida;
             }
           }
-          
+
           // 2. Se ainda sobrou quantidade, consumir do estoque principal
           if (quantidadeRestante > 0 && quantidadeEstoquePrincipal > 0) {
             const quantidadeConsumidaPrincipal = Math.min(quantidadeRestante, quantidadeEstoquePrincipal);
             quantidadeRestante -= quantidadeConsumidaPrincipal;
-            
+
             // A quantidade do estoque principal será atualizada no final da função
             // Aqui só ajustamos o cálculo para refletir o consumo
-            quantidadePosterior = (quantidadeLotes - (parseFloat(quantidade) - quantidadeRestante - quantidadeConsumidaPrincipal)) + 
-                                 (quantidadeEstoquePrincipal - quantidadeConsumidaPrincipal);
+            quantidadePosterior = (quantidadeLotes - (parseFloat(quantidade) - quantidadeRestante - quantidadeConsumidaPrincipal)) +
+              (quantidadeEstoquePrincipal - quantidadeConsumidaPrincipal);
           } else {
             // Se só consumiu dos lotes, recalcular o total
             const novoTotalLotes = await client.query(`
               SELECT COALESCE(SUM(quantidade_atual), 0) as total_lotes
               FROM estoque_lotes 
-              WHERE produto_id = $1 AND status = 'ativo'
-            `, [parseInt(produto_id)]);
-            
+              WHERE produto_id = $1 AND status = 'ativo' AND (tenant_id = $2 OR tenant_id IS NULL)
+            `, [parseInt(produto_id), tenantId]);
+
             quantidadePosterior = parseFloat(novoTotalLotes.rows[0]?.total_lotes || 0) + quantidadeEstoquePrincipal;
           }
           break;
@@ -560,25 +638,26 @@ export async function registrarMovimentacao(req: Request, res: Response) {
           const totalLotesAtual = (await client.query(`
             SELECT COALESCE(SUM(quantidade_atual), 0) as total_lotes
             FROM estoque_lotes 
-            WHERE produto_id = $1 AND status = 'ativo'
-          `, [parseInt(produto_id)])).rows[0].total_lotes;
-          
+            WHERE produto_id = $1 AND status = 'ativo' AND (tenant_id = $2 OR tenant_id IS NULL)
+          `, [parseInt(produto_id), tenantId])).rows[0].total_lotes;
+
           const quantidadeTotalDesejada = parseFloat(quantidade);
-          novaQuantidadeEstoquePrincipal = Math.max(0, quantidadeTotalDesejada - parseFloat(totalLotesAtual));
+          const novaQuantidadeEstoquePrincipalAjuste = Math.max(0, quantidadeTotalDesejada - parseFloat(totalLotesAtual));
           quantidadePosterior = quantidadeTotalDesejada;
           break;
       }
 
       // NOVA LÓGICA: Estoque principal será sempre calculado baseado nos lotes
       // Isso garante consistência e evita divergências
-      
+
       // Para entradas com validade, criar/atualizar lote primeiro
       if (tipo_movimentacao === 'entrada' && data_validade) {
         // Verificar se já existe um lote com a mesma validade
         const loteExistente = await client.query(`
           SELECT id FROM estoque_lotes 
           WHERE produto_id = $1 AND data_validade = $2 AND status = 'ativo' AND escola_id = $3
-        `, [produto_id, data_validade, escola_id]);
+            AND (tenant_id = $4 OR tenant_id IS NULL)
+        `, [produto_id, data_validade, escola_id, tenantId]);
 
         if (loteExistente.rows.length === 0) {
           // Criar novo lote automaticamente
@@ -604,14 +683,15 @@ export async function registrarMovimentacao(req: Request, res: Response) {
           `, [parseFloat(quantidade), loteExistente.rows[0].id]);
         }
       }
-      
+
       // Para entradas sem validade, criar/atualizar lote "principal"
       if (tipo_movimentacao === 'entrada' && !data_validade) {
         // Verificar se já existe um lote principal (sem validade)
         const lotePrincipal = await client.query(`
           SELECT id FROM estoque_lotes 
           WHERE produto_id = $1 AND data_validade IS NULL AND status = 'ativo' AND escola_id = $2
-        `, [produto_id, escola_id]);
+            AND (tenant_id = $3 OR tenant_id IS NULL)
+        `, [produto_id, escola_id, tenantId]);
 
         if (lotePrincipal.rows.length === 0) {
           // Criar lote principal
@@ -636,22 +716,24 @@ export async function registrarMovimentacao(req: Request, res: Response) {
           `, [parseFloat(quantidade), lotePrincipal.rows[0].id]);
         }
       }
-      
+
       // Para ajustes, ajustar o lote principal
       if (tipo_movimentacao === 'ajuste') {
         const totalLotesComValidade = (await client.query(`
           SELECT COALESCE(SUM(quantidade_atual), 0) as total_lotes
           FROM estoque_lotes 
           WHERE produto_id = $1 AND status = 'ativo' AND data_validade IS NOT NULL AND escola_id = $2
-        `, [parseInt(produto_id), escola_id])).rows[0].total_lotes;
-        
+            AND (tenant_id = $3 OR tenant_id IS NULL)
+        `, [parseInt(produto_id), escola_id, tenantId])).rows[0].total_lotes;
+
         const quantidadePrincipalDesejada = Math.max(0, parseFloat(quantidade) - parseFloat(totalLotesComValidade));
-        
+
         // Verificar se existe lote principal
         const lotePrincipal = await client.query(`
           SELECT id FROM estoque_lotes 
           WHERE produto_id = $1 AND data_validade IS NULL AND status = 'ativo' AND escola_id = $2
-        `, [produto_id, escola_id]);
+            AND (tenant_id = $3 OR tenant_id IS NULL)
+        `, [produto_id, escola_id, tenantId]);
 
         if (lotePrincipal.rows.length === 0 && quantidadePrincipalDesejada > 0) {
           // Criar lote principal
@@ -673,17 +755,18 @@ export async function registrarMovimentacao(req: Request, res: Response) {
           `, [quantidadePrincipalDesejada, novoStatus, lotePrincipal.rows[0].id]);
         }
       }
-      
+
       // SEMPRE recalcular o estoque principal baseado na soma de todos os lotes
       // Isso garante consistência total
       const totalLotesAtualizado = await client.query(`
         SELECT COALESCE(SUM(quantidade_atual), 0) as total_lotes
         FROM estoque_lotes 
         WHERE produto_id = $1 AND status = 'ativo' AND escola_id = $2
-      `, [parseInt(produto_id), escola_id]);
-      
+          AND (tenant_id = $3 OR tenant_id IS NULL)
+      `, [parseInt(produto_id), escola_id, tenantId]);
+
       const novaQuantidadeEstoquePrincipal = parseFloat(totalLotesAtualizado.rows[0]?.total_lotes || 0);
-      
+
       // Atualizar quantidadePosterior para refletir o valor real
       quantidadePosterior = novaQuantidadeEstoquePrincipal;
 
@@ -693,14 +776,15 @@ export async function registrarMovimentacao(req: Request, res: Response) {
           updated_at = CURRENT_TIMESTAMP
       `;
       let updateParams = [novaQuantidadeEstoquePrincipal];
-      
+
       // Para entradas com validade, criar lote automático se não existir
       if (tipo_movimentacao === 'entrada' && data_validade) {
         // Verificar se já existe um lote com a mesma validade
         const loteExistente = await client.query(`
           SELECT id FROM estoque_lotes 
           WHERE produto_id = $1 AND data_validade = $2 AND status = 'ativo'
-        `, [produto_id, data_validade]);
+            AND (tenant_id = $3 OR tenant_id IS NULL)
+        `, [produto_id, data_validade, tenantId]);
 
         if (loteExistente.rows.length === 0) {
           // Criar novo lote automaticamente
@@ -725,14 +809,14 @@ export async function registrarMovimentacao(req: Request, res: Response) {
             WHERE id = $2
           `, [parseFloat(quantidade), loteExistente.rows[0].id]);
         }
-        
+
         // Não atualizar a validade no estoque principal para manter compatibilidade
         // A validade será calculada dinamicamente pelos lotes
       }
-      
+
       updateQuery += ` WHERE escola_id = $${updateParams.length + 1} AND produto_id = $${updateParams.length + 2} RETURNING *`;
       updateParams.push(parseInt(escola_id), parseInt(produto_id));
-      
+
       const updateResult = await client.query(updateQuery, updateParams);
 
       // Registrar no histórico (incluindo validade)
@@ -740,14 +824,20 @@ export async function registrarMovimentacao(req: Request, res: Response) {
       let usuarioIdValido = null;
       if (usuario_id) {
         try {
-          const usuarioCheck = await client.query('SELECT id FROM usuarios WHERE id = $1', [usuario_id]);
+          const usuarioCheck = await client.query(`
+            SELECT id FROM usuarios 
+            WHERE id = $1 AND (tenant_id = $2 OR tenant_id IS NULL)
+          `, [usuario_id, tenantId]);
           if (usuarioCheck.rows.length > 0) {
             usuarioIdValido = usuario_id;
           }
         } catch (error) {
-          console.log('Usuário não encontrado, usando NULL');
+          console.log('Usuário não encontrado ou não pertence ao tenant, usando NULL');
         }
       }
+
+      // Criar motivo com contexto de tenant para auditoria
+      const motivoComTenant = `${motivo || 'Movimentação de estoque'} [Tenant: ${tenantId}]`;
 
       const historicoResult = await client.query(`
         INSERT INTO estoque_escolas_historico (
@@ -772,7 +862,7 @@ export async function registrarMovimentacao(req: Request, res: Response) {
         quantidadeAnterior,
         parseFloat(quantidade),
         quantidadePosterior,
-        motivo,
+        motivoComTenant,
         documento_referencia,
         usuarioIdValido
       ]);
@@ -783,6 +873,27 @@ export async function registrarMovimentacao(req: Request, res: Response) {
       };
     });
 
+    // Invalidate tenant cache after successful movement
+    invalidateTenantCacheOnEstoqueChange(tenantId, { 
+      operation: 'movement',
+      escolaId: parseInt(escola_id),
+      produtoId: parseInt(produto_id)
+    });
+
+    // Log da operação bem-sucedida
+    logTenantInventoryOperation(
+      'MOVEMENT_REGISTERED',
+      tenantId,
+      {
+        escola_id,
+        produto_id,
+        tipo_movimentacao,
+        quantidade,
+        usuario_id
+      },
+      'info'
+    );
+
     res.json({
       success: true,
       message: `Movimentação de ${tipo_movimentacao} registrada com sucesso`,
@@ -790,8 +901,13 @@ export async function registrarMovimentacao(req: Request, res: Response) {
     });
   } catch (error) {
     console.error("❌ Erro ao registrar movimentação:", error);
-    
-    // Tratar erros específicos
+
+    // Primeiro verificar se é erro de tenant
+    if (error instanceof TenantOwnershipError || error instanceof TenantContextMissingError) {
+      return handleTenantInventoryError(error, res);
+    }
+
+    // Tratar erros específicos de negócio
     if (error instanceof Error) {
       // Erro de duplicata (constraint violation)
       if (error.message.includes('duplicate key') || error.message.includes('idx_historico_unique_movement')) {
@@ -801,7 +917,7 @@ export async function registrarMovimentacao(req: Request, res: Response) {
           error: "Movimentação duplicada"
         });
       }
-      
+
       // Erro de quantidade insuficiente
       if (error.message.includes('Quantidade insuficiente')) {
         return res.status(400).json({
@@ -810,7 +926,7 @@ export async function registrarMovimentacao(req: Request, res: Response) {
           error: "Estoque insuficiente"
         });
       }
-      
+
       // Erro de item não encontrado
       if (error.message.includes('Item não encontrado')) {
         return res.status(404).json({
@@ -820,13 +936,9 @@ export async function registrarMovimentacao(req: Request, res: Response) {
         });
       }
     }
-    
+
     // Erro genérico
-    res.status(500).json({
-      success: false,
-      message: "Erro interno do servidor. Tente novamente.",
-      error: error instanceof Error ? error.message : 'Erro desconhecido'
-    });
+    handleTenantInventoryError(error, res);
   }
 }
 
@@ -835,8 +947,17 @@ export async function resetarEstoqueComBackup(req: Request, res: Response) {
     const { escola_id } = req.params;
     const { usuario_id, motivo } = req.body;
 
-    // Verificar se a escola existe
-    const escolaResult = await db.query('SELECT id, nome FROM escolas WHERE id = $1 AND ativo = true', [escola_id]);
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+
+    // Extrair e validar tenant da requisição
+    const tenantId = tenantInventoryValidator.extractTenantFromRequest(req);
+
+    // Validar se a escola pertence ao tenant
+    await tenantInventoryValidator.validateSchoolTenantOwnership(parseInt(escola_id), tenantId);
+
+    // Verificar se a escola existe (com filtro de tenant)
+    const escolaResult = await db.query('SELECT id, nome FROM escolas WHERE id = $1 AND tenant_id = $2 AND ativo = true', [escola_id, tenantId]);
     if (escolaResult.rows.length === 0) {
       return res.status(404).json({
         success: false,
@@ -927,7 +1048,7 @@ export async function resetarEstoqueComBackup(req: Request, res: Response) {
             item.produto_id,
             item.quantidade_atual,
             -item.quantidade_atual,
-            motivo || 'Reset do estoque - backup criado',
+            `${motivo || 'Reset do estoque - backup criado'} [Tenant: ${tenantId}]`,
             nomeBackup,
             usuario_id
           ]);
@@ -964,11 +1085,7 @@ export async function resetarEstoqueComBackup(req: Request, res: Response) {
 
   } catch (error) {
     console.error("❌ Erro ao resetar estoque com backup:", error);
-    res.status(500).json({
-      success: false,
-      message: "Erro ao resetar estoque",
-      error: error instanceof Error ? error.message : 'Erro desconhecido'
-    });
+    handleTenantInventoryError(error, res);
   }
 }
 
@@ -978,6 +1095,12 @@ export async function listarLotesProduto(req: Request, res: Response) {
     const { produto_id } = req.params;
     const apenas_ativos = req.query.apenas_ativos !== 'false';
 
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+
+    // Extrair e validar tenant da requisição
+    const tenantId = tenantInventoryValidator.extractTenantFromRequest(req);
+
     if (!produto_id) {
       return res.status(400).json({
         success: false,
@@ -985,10 +1108,26 @@ export async function listarLotesProduto(req: Request, res: Response) {
       });
     }
 
-    // Verificar se produto existe
+    // Validar se o produto pertence ao tenant
+    await tenantInventoryValidator.validateProductTenantOwnership(parseInt(produto_id), tenantId);
+
+    // Try to get from tenant cache first
+    const cachedLotes = await cacheTenantEstoqueLotes.get(tenantId, parseInt(produto_id));
+    if (cachedLotes && (cachedLotes as any).apenas_ativos === apenas_ativos) {
+      console.log(`🎯 Cache hit for tenant ${tenantId} product ${produto_id} batches`);
+      return res.json({
+        success: true,
+        data: (cachedLotes as any).lotes,
+        produto: (cachedLotes as any).produto,
+        cached: true
+      });
+    }
+
+    // Verificar se produto existe (com filtro de tenant)
     const produto = await db.query(`
-      SELECT id, nome, unidade FROM produtos WHERE id = $1 AND ativo = true
-    `, [produto_id]);
+      SELECT id, nome, unidade FROM produtos 
+      WHERE id = $1 AND tenant_id = $2 AND ativo = true
+    `, [produto_id, tenantId]);
 
     if (produto.rows.length === 0) {
       return res.status(404).json({
@@ -1029,19 +1168,25 @@ export async function listarLotesProduto(req: Request, res: Response) {
     `;
 
     const result = await db.query(query, params);
-    
+
+    // Cache the results for future requests
+    const cacheData = {
+      lotes: result.rows,
+      produto: produto.rows[0],
+      apenas_ativos
+    };
+    await cacheTenantEstoqueLotes.set(tenantId, parseInt(produto_id), undefined, cacheData);
+    console.log(`📦 Cached tenant ${tenantId} product ${produto_id} batches`);
+
     res.json({
       success: true,
       data: result.rows,
-      produto: produto.rows[0]
+      produto: produto.rows[0],
+      cached: false
     });
   } catch (error: any) {
     console.error("❌ Erro ao listar lotes do produto:", error);
-    res.status(500).json({
-      success: false,
-      message: "Erro ao listar lotes do produto",
-      error: error.message
-    });
+    handleTenantInventoryError(error, res);
   }
 }
 
@@ -1059,6 +1204,12 @@ export async function criarLote(req: Request, res: Response) {
       observacoes
     } = req.body;
 
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+
+    // Extrair e validar tenant da requisição
+    const tenantId = tenantInventoryValidator.extractTenantFromRequest(req);
+
     // Validações básicas
     if (!escola_id || !produto_id || !lote || quantidade === null || quantidade === undefined || quantidade < 0) {
       return res.status(400).json({
@@ -1067,36 +1218,39 @@ export async function criarLote(req: Request, res: Response) {
       });
     }
 
-    // Verificar se produto existe
+    // Validar se escola e produto pertencem ao tenant
+    await tenantInventoryValidator.validateSchoolTenantOwnership(parseInt(escola_id), tenantId);
+    await tenantInventoryValidator.validateProductTenantOwnership(parseInt(produto_id), tenantId);
+
+    // Validar consistência entre escola e produto no mesmo tenant
+    await tenantInventoryValidator.validateSchoolProductTenantConsistency(parseInt(escola_id), parseInt(produto_id), tenantId);
+
+    // Verificar se produto existe (com filtro de tenant)
     const produto = await db.query(`
-      SELECT id, nome FROM produtos WHERE id = $1 AND ativo = true
-    `, [produto_id]);
+      SELECT id, nome FROM produtos 
+      WHERE id = $1 AND (tenant_id = $2 OR tenant_id IS NULL) AND ativo = true
+    `, [produto_id, tenantId]);
 
     if (produto.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Produto não encontrado"
-      });
+      throw new TenantInventoryNotFoundError('Produto', produto_id, tenantId);
     }
 
-    // Verificar se lote já existe para este produto
+    // Verificar se lote já existe para este produto (com filtro de tenant)
     const loteExistente = await db.query(`
-      SELECT id FROM estoque_lotes 
-      WHERE produto_id = $1 AND lote = $2
-    `, [produto_id, lote.toString().trim()]);
+      SELECT el.id FROM estoque_lotes el
+      JOIN escolas e ON e.id = el.escola_id
+      WHERE el.produto_id = $1 AND el.lote = $2 AND e.tenant_id = $3
+    `, [produto_id, lote.toString().trim(), tenantId]);
 
     if (loteExistente.rows.length > 0) {
-      return res.status(409).json({
-        success: false,
-        message: `Lote '${lote}' já existe para este produto`
-      });
+      throw new TenantInventoryConflictError('duplicate_batch', `Lote '${lote}' já existe para este produto`);
     }
 
     // Validar data de validade se fornecida (data de fabricação é opcional)
     if (data_validade) {
       const validade = new Date(data_validade);
       const hoje = new Date();
-      
+
       if (validade <= hoje) {
         return res.status(400).json({
           success: false,
@@ -1124,6 +1278,13 @@ export async function criarLote(req: Request, res: Response) {
       observacoes || null
     ]);
 
+    // Invalidate tenant cache after creating new batch
+    invalidateTenantCacheOnEstoqueChange(tenantId, { 
+      operation: 'batch',
+      escolaId: parseInt(escola_id),
+      produtoId: parseInt(produto_id)
+    });
+
     res.status(201).json({
       success: true,
       message: "Lote criado com sucesso",
@@ -1131,11 +1292,7 @@ export async function criarLote(req: Request, res: Response) {
     });
   } catch (error: any) {
     console.error("❌ Erro ao criar lote:", error);
-    res.status(500).json({
-      success: false,
-      message: "Erro ao criar lote",
-      error: error.message
-    });
+    handleTenantInventoryError(error, res);
   }
 }
 
@@ -1143,8 +1300,14 @@ export async function criarLote(req: Request, res: Response) {
 export async function processarMovimentacaoLotes(req: Request, res: Response) {
   try {
     console.log('🔄 Processando movimentação por lotes:', JSON.stringify(req.body, null, 2));
-    
+
     const { escola_id } = req.params;
+
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+
+    // Extrair e validar tenant da requisição
+    const tenantId = tenantInventoryValidator.extractTenantFromRequest(req);
     const {
       produto_id,
       tipo_movimentacao,
@@ -1153,6 +1316,24 @@ export async function processarMovimentacaoLotes(req: Request, res: Response) {
       documento_referencia,
       usuario_id
     } = req.body;
+
+    // Validar se escola e produto pertencem ao tenant
+    await tenantInventoryValidator.validateSchoolTenantOwnership(parseInt(escola_id), tenantId);
+    await tenantInventoryValidator.validateProductTenantOwnership(parseInt(produto_id), tenantId);
+
+    // Validar consistência entre escola e produto no mesmo tenant
+    await tenantInventoryValidator.validateSchoolProductTenantConsistency(parseInt(escola_id), parseInt(produto_id), tenantId);
+
+    // Validar usuário se fornecido
+    if (usuario_id) {
+      await tenantInventoryValidator.validateUserTenantAccess(parseInt(usuario_id), tenantId);
+    }
+
+    // Validar lotes se fornecidos (para operações de saída/ajuste)
+    const loteIds = lotes.filter((l: any) => l.lote_id).map((l: any) => l.lote_id);
+    if (loteIds.length > 0) {
+      await tenantInventoryValidator.validateActiveBatchesTenantOwnership(loteIds, tenantId);
+    }
 
     if (!produto_id || !tipo_movimentacao || !lotes || !Array.isArray(lotes) || lotes.length === 0) {
       console.log('❌ Validação falhou:', { produto_id, tipo_movimentacao, lotes: Array.isArray(lotes) ? lotes.length : 'não é array' });
@@ -1165,7 +1346,7 @@ export async function processarMovimentacaoLotes(req: Request, res: Response) {
     console.log('✅ Validação passou, processando lotes...');
 
     const client = await db.connect();
-    
+
     try {
       await client.query('BEGIN');
 
@@ -1182,7 +1363,7 @@ export async function processarMovimentacaoLotes(req: Request, res: Response) {
         if (tipo_movimentacao === 'entrada') {
           // Para entrada, criar novo lote ou atualizar existente
           let loteAtual;
-          
+
           if (lote_id) {
             // Atualizar lote existente
             const updateResult = await client.query(`
@@ -1192,7 +1373,7 @@ export async function processarMovimentacaoLotes(req: Request, res: Response) {
               WHERE id = $2 AND produto_id = $3
               RETURNING *
             `, [quantidade, lote_id, produto_id]);
-            
+
             loteAtual = updateResult.rows[0];
           } else {
             // Criar novo lote
@@ -1212,7 +1393,7 @@ export async function processarMovimentacaoLotes(req: Request, res: Response) {
               data_validade || null,
               observacoes || null
             ]);
-            
+
             loteAtual = insertResult.rows[0];
           }
 
@@ -1307,7 +1488,7 @@ export async function processarMovimentacaoLotes(req: Request, res: Response) {
 
       if (estoqueEscola.rows.length > 0) {
         quantidadeAnterior = estoqueEscola.rows[0].quantidade_atual;
-        
+
         if (tipo_movimentacao === 'entrada') {
           quantidadePosterior = quantidadeAnterior + quantidadeTotal;
         } else if (tipo_movimentacao === 'saida') {
@@ -1322,14 +1503,16 @@ export async function processarMovimentacaoLotes(req: Request, res: Response) {
       } else {
         // Criar registro no estoque da escola se não existir
         quantidadePosterior = tipo_movimentacao === 'entrada' ? quantidadeTotal : 0;
-        
+
         await client.query(`
           INSERT INTO estoque_escolas (escola_id, produto_id, quantidade_atual)
           VALUES ($1, $2, $3)
         `, [escola_id, produto_id, quantidadePosterior]);
       }
 
-      // Registrar no histórico
+      // Registrar no histórico com contexto de tenant
+      const motivoComTenant = `${motivo || `Movimentação por lotes: ${movimentacoes.length} lote(s)`} [Tenant: ${tenantId}]`;
+      
       await client.query(`
         INSERT INTO estoque_escolas_historico (
           estoque_escola_id, escola_id, produto_id, tipo_movimentacao,
@@ -1342,11 +1525,18 @@ export async function processarMovimentacaoLotes(req: Request, res: Response) {
       `, [
         escola_id, produto_id, tipo_movimentacao,
         quantidadeAnterior, quantidadeTotal, quantidadePosterior,
-        motivo || `Movimentação por lotes: ${movimentacoes.length} lote(s)`,
+        motivoComTenant,
         documento_referencia, usuario_id || 1
       ]);
 
       await client.query('COMMIT');
+
+      // Invalidate tenant cache after successful batch movement
+      invalidateTenantCacheOnEstoqueChange(tenantId, { 
+        operation: 'batch',
+        escolaId: parseInt(escola_id),
+        produtoId: parseInt(produto_id)
+      });
 
       res.json({
         success: true,
@@ -1368,11 +1558,7 @@ export async function processarMovimentacaoLotes(req: Request, res: Response) {
 
   } catch (error: any) {
     console.error("❌ Erro ao processar movimentação com lotes:", error);
-    res.status(500).json({
-      success: false,
-      message: "Erro ao processar movimentação",
-      error: error.message
-    });
+    handleTenantInventoryError(error, res);
   }
 }
 
@@ -1385,7 +1571,7 @@ export async function testarLotes(req: Request, res: Response) {
       timestamp: new Date().toISOString(),
       routes: [
         "GET /api/estoque-escola/produtos/:produto_id/lotes",
-        "POST /api/estoque-escola/lotes", 
+        "POST /api/estoque-escola/lotes",
         "POST /api/estoque-escola/escola/:escola_id/movimentacao-lotes"
       ]
     });
