@@ -1,2 +1,20 @@
-*
-!api/index.js
+# Ignorar arquivos que não são necessários para o deploy
+node_modules/
+dist/
+src/
+tests/
+test/
+*.test.js
+*.spec.js
+*.test.ts
+*.spec.ts
+.env*
+.git/
+.vscode/
+.idea/
+*.log
+coverage/
+uploads/
+*.sqlite
+*.db
+__tests__/
