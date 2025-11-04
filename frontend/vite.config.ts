@@ -24,6 +24,18 @@ export default defineConfig(({ command, mode }) => {
   
   return {
     plugins: [react()],
+    resolve: {
+      alias: {
+        // Polyfills para módulos Node.js
+        'path': 'path-browserify',
+        'fs': false,
+        'os': false,
+        'crypto': false,
+        'stream': false,
+        'util': false,
+        'events': false
+      }
+    },
     esbuild: {
       // Skip type checking during build for faster builds
       logOverride: { 'this-is-undefined-in-esm': 'silent' }
@@ -70,6 +82,10 @@ export default defineConfig(({ command, mode }) => {
             utils: ['axios', 'date-fns']
           }
         }
+      },
+      commonjsOptions: {
+        transformMixedEsModules: true,
+        exclude: ['node_modules/lodash-es/**', 'node_modules/@types/lodash-es/**']
       }
     },
     base: '/',
@@ -79,7 +95,8 @@ export default defineConfig(({ command, mode }) => {
       __PROD__: isProd
     },
     optimizeDeps: {
-      include: ['react', 'react-dom', '@mui/material', '@mui/icons-material']
+      include: ['react', 'react-dom', '@mui/material', '@mui/icons-material'],
+      exclude: ['fs', 'path', 'os', 'crypto', 'stream', 'util', 'events']
     }
   };
 });
