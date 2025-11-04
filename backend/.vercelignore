@@ -1,3 +1,17 @@
-*
-!api/index.js
-!vercel.json
+# Ignorar arquivos desnecessários para a função serverless
+node_modules/
+dist/
+src/
+tests/
+*.test.js
+*.spec.js
+.env*
+.git/
+.vscode/
+.idea/
+logs/
+coverage/
+uploads/
+*.db
+*.sqlite
+*.log
