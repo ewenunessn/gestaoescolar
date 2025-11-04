@@ -2,32 +2,57 @@
 require('ts-node/register');
 
 module.exports = async (req, res) => {
-  try {
-    // Configurar CORS headers IMEDIATAMENTE
-    res.setHeader('Access-Control-Allow-Origin', 'https://nutriescola.vercel.app');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Access-Control-Request-Method, Access-Control-Request-Headers, X-Tenant-ID, X-Tenant-Subdomain, X-Tenant-Domain');
-    res.setHeader('Access-Control-Expose-Headers', 'Content-Length, X-Foo, X-Bar');
-    res.setHeader('Access-Control-Max-Age', '86400');
-    
-    console.log('🚀 NOVO ENTRY POINT - CORS Configurado!');
-    console.log('📋 Headers CORS aplicados:', {
-      origin: 'https://nutriescola.vercel.app',
-      methods: 'GET, POST, PUT, DELETE, OPTIONS, PATCH',
-      headers: 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Access-Control-Request-Method, Access-Control-Request-Headers, X-Tenant-ID, X-Tenant-Subdomain, X-Tenant-Domain'
-    });
-    
-    // Responder a requisições OPTIONS (preflight)
-    if (req.method === 'OPTIONS') {
-      console.log('✅ CORS: Respondendo preflight');
-      res.status(200).end();
-      return;
-    }
+  // Configurar CORS headers IMEDIATAMENTE - SOLUÇÃO DEFINITIVA
+  const allowedHeaders = [
+    'Content-Type', 
+    'Authorization', 
+    'X-Requested-With', 
+    'Accept', 
+    'Origin', 
+    'Access-Control-Request-Method', 
+    'Access-Control-Request-Headers',
+    'X-Tenant-ID',
+    'X-Tenant-Subdomain', 
+    'X-Tenant-Domain',
+    'x-tenant-id',
+    'x-tenant-subdomain',
+    'x-tenant-domain'
+  ].join(', ');
 
-    // Importar e executar o app principal
-    const { default: app } = await import('../src/index.ts');
-    return app(req, res);
+  res.setHeader('Access-Control-Allow-Origin', 'https://nutriescola.vercel.app');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+  res.setHeader('Access-Control-Allow-Headers', allowedHeaders);
+  res.setHeader('Access-Control-Expose-Headers', 'Content-Length, X-Foo, X-Bar');
+  res.setHeader('Access-Control-Max-Age', '86400');
+  
+  console.log('🚀 NOVO ENTRY POINT - CORS Configurado com headers de tenant!');
+  console.log('📋 Headers CORS aplicados:', {
+    origin: 'https://nutriescola.vercel.app',
+    methods: 'GET, POST, PUT, DELETE, OPTIONS, PATCH',
+    headers: allowedHeaders
+  });
+  
+  // Responder a requisições OPTIONS (preflight)
+  if (req.method === 'OPTIONS') {
+    console.log('✅ CORS: Respondendo preflight com headers de tenant');
+    res.status(200).end();
+    return;
+  }
+
+  try {
+    // Importar o app principal de forma síncrona
+    const app = require('../src/index.ts');
+    
+    // Verificar se é uma função ou objeto Express
+    const handler = app.default || app;
+    
+    if (typeof handler === 'function') {
+      return handler(req, res);
+    } else {
+      // Se for um objeto Express, usar o callback
+      return handler(req, res);
+    }
     
   } catch (error) {
     console.error('❌ Erro no novo entry point:', error);
