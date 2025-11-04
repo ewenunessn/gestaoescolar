@@ -62,6 +62,7 @@ export default defineConfig(({ command, mode }) => {
       minify: isProd,
       chunkSizeWarningLimit: 1000,
       rollupOptions: {
+        external: ['fs', 'path', 'os', 'crypto', 'stream', 'util', 'events'],
         output: {
           manualChunks: {
             vendor: ['react', 'react-dom'],
