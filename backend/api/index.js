@@ -9,19 +9,14 @@ module.exports = async (req, res) => {
     const origin = req.headers.origin;
     console.log('🔍 CORS Check - Origin:', origin);
     
-    // Permitir todos os domínios .vercel.app e localhost
-    if (!origin || 
-        origin.includes('.vercel.app') || 
-        origin.includes('localhost') ||
-        origin.includes('127.0.0.1')) {
-      res.setHeader('Access-Control-Allow-Origin', origin || '*');
-      res.setHeader('Access-Control-Allow-Credentials', 'true');
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Access-Control-Request-Method, Access-Control-Request-Headers, X-Tenant-ID, X-Tenant-Subdomain, X-Tenant-Domain');
-      res.setHeader('Access-Control-Expose-Headers', 'Content-Length, X-Foo, X-Bar');
-      res.setHeader('Access-Control-Max-Age', '86400');
-      console.log('✅ CORS: Headers configurados para', origin);
-    }
+    // Definir headers CORS para TODAS as requisições
+    res.setHeader('Access-Control-Allow-Origin', 'https://nutriescola.vercel.app');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Access-Control-Request-Method, Access-Control-Request-Headers, X-Tenant-ID, X-Tenant-Subdomain, X-Tenant-Domain');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Length, X-Foo, X-Bar');
+    res.setHeader('Access-Control-Max-Age', '86400');
+    console.log('✅ CORS: Headers configurados para', origin);
     
     // Responder a requisições OPTIONS (preflight)
     if (req.method === 'OPTIONS') {
