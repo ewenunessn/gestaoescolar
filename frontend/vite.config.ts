@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig(({ command, mode }) => {
   // Carregar variáveis de ambiente baseadas no modo
-  const env = loadEnv(mode, process.cwd(), 'VITE_');
+  const env = loadEnv(mode, '.', 'VITE_');
   
   // Determinar se é desenvolvimento ou produção
   const isDev = mode === 'development';
@@ -62,7 +62,6 @@ export default defineConfig(({ command, mode }) => {
       minify: isProd,
       chunkSizeWarningLimit: 1000,
       rollupOptions: {
-        external: ['fs', 'path', 'os', 'crypto', 'stream', 'util', 'events'],
         output: {
           manualChunks: {
             vendor: ['react', 'react-dom'],
