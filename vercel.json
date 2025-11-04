@@ -2,13 +2,13 @@
   "version": 2,
   "functions": {
     "api/index.js": {
-      "runtime": "now-node@1.0.0"
+      "runtime": "nodejs18.x"
     }
   },
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "api/index.js"
+      "source": "/api/(.*)",
+      "destination": "/api/index.js"
     }
   ]
 }
