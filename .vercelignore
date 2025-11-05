@@ -1,4 +1,11 @@
-# Ignore backend and apps, but keep frontend
+# Este projeto é APENAS para o frontend
+# Backend roda em projeto Vercel separado
 backend/
 apps/
 shared/
+api/
+*.md
+!frontend/README.md
+.git/
+node_modules/
+!frontend/node_modules/
