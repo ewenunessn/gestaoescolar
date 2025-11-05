@@ -1,0 +1,48 @@
+# Backend files (não necessários para o frontend)
+backend/
+apps/
+shared/
+
+# Development files
+*.log
+.env.local
+.env.development
+.env.test
+
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Build artifacts
+.next/
+.nuxt/
+dist/
+build/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test files
+coverage/
+*.test.js
+*.spec.js
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Git
+.git/
+.gitignore
+
+# Temporary files
+tmp/
+temp/
