@@ -5,7 +5,7 @@
   "description": "Frontend do Sistema de Gerenciamento de Alimentação Escolar",
   "scripts": {
     "dev": "vite",
-    "build": "vite build --mode production",
+    "build": "npm ci && vite build --mode production",
     "vercel-build": "vite build --mode production",
     "preview": "vite preview",
     "deploy": "vercel --prod",

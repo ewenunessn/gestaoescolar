@@ -9,15 +9,9 @@ shared/
 .env.development
 .env.test
 
-# Dependencies
-node_modules/
-*/node_modules/
-
 # Build artifacts
 .next/
 .nuxt/
-dist/
-build/
 
 # IDE files
 .vscode/
@@ -38,10 +32,6 @@ coverage/
 docs/
 *.md
 !README.md
-
-# Git
-.git/
-.gitignore
 
 # Temporary files
 tmp/
