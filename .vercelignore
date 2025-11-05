@@ -1,0 +1,4 @@
+# Ignore backend and apps, but keep frontend
+backend/
+apps/
+shared/

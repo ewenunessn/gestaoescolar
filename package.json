@@ -8,10 +8,7 @@
     "backend"
   ],
   "scripts": {
-    "build": "cd frontend && npm run build",
-    "start": "echo 'Production build completed'",
-    "dev": "concurrently \"cd backend && npm run dev\" \"cd frontend && npm run dev\"",
-    "vercel-build": "cd frontend && npm run build"
+    "dev": "concurrently \"cd backend && npm run dev\" \"cd frontend && npm run dev\""
   },
   "devDependencies": {
     "@types/node": "^24.3.1",
