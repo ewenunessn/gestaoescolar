@@ -2,10 +2,5 @@
   "name": "gestao-escolar-frontend",
   "version": "1.0.0",
   "description": "Frontend do Sistema de Gerenciamento de Alimentação Escolar",
-  "private": true,
-  "scripts": {
-    "build": "cd frontend && npm run build",
-    "start": "cd frontend && npm run preview",
-    "dev": "cd frontend && npm run dev"
-  }
+  "private": true
 }
