@@ -1,0 +1,10 @@
+{
+  "name": "frontend-only",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "echo 'Building frontend...' && cd frontend && npm ci && npm run build",
+    "start": "echo 'Frontend built successfully'",
+    "dev": "cd frontend && npm run dev"
+  }
+}
