@@ -16,5 +16,6 @@
     }
   ],
   "installCommand": "cd api && npm install",
-  "buildCommand": "echo 'No build needed'"
+  "buildCommand": "mkdir -p public && echo 'API' > public/index.html",
+  "outputDirectory": "public"
 }
