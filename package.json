@@ -7,9 +7,9 @@
     "frontend"
   ],
   "scripts": {
-    "build": "cd frontend && npm run build",
     "dev": "concurrently \"cd backend && npm run dev\" \"cd frontend && npm run dev\"",
-    "start": "cd backend && npm start"
+    "start": "cd backend && npm start",
+    "vercel-build": "echo 'No build needed for serverless function'"
   },
   "devDependencies": {
     "@types/node": "^24.3.1",
