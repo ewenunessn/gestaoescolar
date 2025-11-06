@@ -4,8 +4,7 @@
   "description": "Sistema de Gerenciamento de Alimentação Escolar",
   "private": true,
   "workspaces": [
-    "frontend",
-    "backend"
+    "frontend"
   ],
   "scripts": {
     "build": "cd frontend && npm run build",
