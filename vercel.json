@@ -1,4 +1,6 @@
 {
+  "buildCommand": "echo 'No build needed'",
+  "outputDirectory": "api",
   "functions": {
     "api/index.ts": {
       "maxDuration": 30
