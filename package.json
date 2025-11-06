@@ -1,22 +1,5 @@
 {
   "name": "gestao-escolar",
   "version": "1.0.0",
-  "description": "Sistema de Gerenciamento de Alimentação Escolar",
-  "private": true,
-  "workspaces": [
-    "frontend"
-  ],
-  "scripts": {
-    "dev": "concurrently \"cd backend && npm run dev\" \"cd frontend && npm run dev\"",
-    "start": "cd backend && npm start",
-    "vercel-build": "exit 0"
-  },
-  "devDependencies": {
-    "@types/node": "^24.3.1",
-    "concurrently": "^8.2.2",
-    "tsx": "^4.7.0"
-  },
-  "dependencies": {
-    "emailjs-com": "^3.2.0"
-  }
+  "private": true
 }
