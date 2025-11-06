@@ -1,9 +1,4 @@
-backend/node_modules
-backend/dist
-backend/tests
-backend/*.test.js
-backend/*.spec.js
-backend/.env*
+backend/
 frontend/
 apps/
 shared/
