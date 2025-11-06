@@ -1,7 +1,6 @@
 {
   "name": "vercel-api",
   "version": "1.0.0",
-  "type": "module",
   "dependencies": {
     "@types/xlsx": "^0.0.35",
     "@vercel/node": "^3.0.0",

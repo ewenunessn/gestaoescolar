@@ -1,4 +1,9 @@
 // Vercel serverless function entry point
-import app from '../backend/src/index.js';
+import { VercelRequest, VercelResponse } from '@vercel/node';
 
-export default app;
+// Import the Express app
+const app = require('../backend/src/index');
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  return app(req, res);
+}
