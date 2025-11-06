@@ -5,7 +5,8 @@
       "src": "api/index.js",
       "use": "@vercel/node",
       "config": {
-        "includeFiles": ["backend/src/**"]
+        "includeFiles": ["backend/src/**"],
+        "maxLambdaSize": "50mb"
       }
     }
   ],
@@ -16,6 +17,6 @@
     }
   ],
   "installCommand": "cd api && npm install",
-  "buildCommand": "mkdir -p public && echo 'API' > public/index.html",
+  "buildCommand": "mkdir -p public && echo 'API v2' > public/index.html",
   "outputDirectory": "public"
 }
