@@ -12,5 +12,6 @@
       "dest": "/api/index.ts"
     }
   ],
-  "installCommand": "cd api && npm install"
+  "installCommand": "cd api && npm install",
+  "buildCommand": "echo 'Serverless function - no build needed'"
 }
