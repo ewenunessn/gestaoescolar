@@ -13,5 +13,6 @@
     }
   ],
   "installCommand": "cd api && npm install",
-  "buildCommand": "echo 'Serverless function - no build needed'"
+  "buildCommand": "mkdir -p public && echo 'API' > public/index.html",
+  "outputDirectory": "public"
 }
