@@ -1,29 +1,14 @@
 {
   "version": 2,
-  "builds": [
+  "rewrites": [
     {
-      "src": "backend/src/index.ts",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": ["backend/**"]
-      }
+      "source": "/(.*)",
+      "destination": "/api"
     }
   ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/backend/src/index.ts"
-    },
-    {
-      "src": "/health",
-      "dest": "/backend/src/index.ts"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/backend/src/index.ts"
+  "functions": {
+    "api/index.ts": {
+      "maxDuration": 30
     }
-  ],
-  "env": {
-    "NODE_ENV": "production"
   }
 }
