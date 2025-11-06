@@ -1,0 +1,216 @@
+/* Página de Formulário de Interesse */
+.interest-form-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+
+/* Animações */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Aplicar animações */
+.interest-form-page .MuiPaper-root {
+  animation: fadeIn 0.6s ease-out;
+}
+
+.interest-form-page .MuiTextField-root {
+  animation: slideUp 0.4s ease-out;
+}
+
+.interest-form-page .MuiButton-root:hover {
+  animation: pulse 0.3s ease-in-out;
+}
+
+/* Estilos responsivos */
+@media (max-width: 768px) {
+  .interest-form-page {
+    padding: 1rem 0.5rem;
+  }
+  
+  .interest-form-page .MuiContainer-root {
+    padding: 0;
+  }
+  
+  .interest-form-page .MuiPaper-root {
+    margin: 0;
+    border-radius: 0;
+  }
+}
+
+/* Efeitos de hover personalizados */
+.interest-form-page .MuiTextField-root:hover .MuiOutlinedInput-root {
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.15);
+  transition: box-shadow 0.3s ease;
+}
+
+.interest-form-page .MuiTextField-root .MuiOutlinedInput-root.Mui-focused {
+  box-shadow: 0 6px 20px rgba(79, 70, 229, 0.25);
+}
+
+/* Estilo para o botão de envio */
+.interest-form-page .MuiButton-contained {
+  box-shadow: 0 8px 25px rgba(79, 70, 229, 0.3);
+  transition: all 0.3s ease;
+}
+
+.interest-form-page .MuiButton-contained:hover {
+  box-shadow: 0 12px 35px rgba(79, 70, 229, 0.4);
+  transform: translateY(-2px);
+}
+
+/* Estilo para alertas */
+.interest-form-page .MuiAlert-root {
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Gradiente de fundo alternativo para diferentes seções */
+.interest-form-page::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: 
+    radial-gradient(circle at 20% 80%, rgba(120, 58, 237, 0.3) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(79, 70, 229, 0.3) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(139, 92, 246, 0.2) 0%, transparent 50%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Estilo para ícones */
+.interest-form-page .MuiInputAdornment-root .MuiSvgIcon-root {
+  transition: color 0.3s ease;
+}
+
+.interest-form-page .MuiTextField-root:hover .MuiInputAdornment-root .MuiSvgIcon-root {
+  color: #4f46e5 !important;
+}
+
+/* Estilo para o header do formulário */
+.interest-form-page .MuiBox-root:first-child {
+  position: relative;
+  overflow: hidden;
+}
+
+.interest-form-page .MuiBox-root:first-child::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: 
+    radial-gradient(circle at 30% 70%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+/* Melhorias de acessibilidade */
+.interest-form-page .MuiButton-root:focus {
+  outline: 2px solid #4f46e5;
+  outline-offset: 2px;
+}
+
+.interest-form-page .MuiTextField-root .MuiOutlinedInput-root:focus-within {
+  outline: 2px solid rgba(79, 70, 229, 0.2);
+  outline-offset: 2px;
+}
+
+/* Estilo para loading state */
+.interest-form-page .MuiButton-root.Mui-disabled {
+  background: rgba(0, 0, 0, 0.12) !important;
+  color: rgba(0, 0, 0, 0.26) !important;
+}
+
+/* Animação para o estado de sucesso */
+.interest-form-page .success-container {
+  animation: fadeIn 0.8s ease-out;
+}
+
+.interest-form-page .success-container .MuiTypography-h4 {
+  animation: pulse 1s ease-in-out;
+}
+
+/* Estilo para dividers */
+.interest-form-page .MuiDivider-root {
+  background: linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, 0.12) 50%, transparent 100%);
+}
+
+/* Melhorias para dispositivos touch */
+@media (hover: none) and (pointer: coarse) {
+  .interest-form-page .MuiButton-root {
+    min-height: 48px;
+  }
+  
+  .interest-form-page .MuiTextField-root .MuiOutlinedInput-root {
+    min-height: 48px;
+  }
+}
+
+/* Estilo para campos obrigatórios */
+.interest-form-page .MuiTextField-root .MuiInputLabel-root.Mui-required::after {
+  content: ' *';
+  color: #f44336;
+}
+
+/* Transições suaves */
+.interest-form-page * {
+  transition: all 0.3s ease;
+}
+
+/* Estilo para o container principal em telas grandes */
+@media (min-width: 1200px) {
+  .interest-form-page .MuiContainer-root {
+    max-width: 800px;
+  }
+}
+
+/* Estilo para o grid em dispositivos móveis */
+@media (max-width: 600px) {
+  .interest-form-page .MuiGrid-container {
+    margin: 0;
+    width: 100%;
+  }
+  
+  .interest-form-page .MuiGrid-item {
+    padding: 8px;
+  }
+}

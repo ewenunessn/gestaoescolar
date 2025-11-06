@@ -4,11 +4,16 @@
   "private": true,
   "description": "Frontend do Sistema de Gerenciamento de Alimentação Escolar",
   "scripts": {
-    "dev": "cd frontend && vite",
-    "build": "cd frontend && vite build --mode production",
-    "vercel-build": "cd frontend && vite build --mode production",
-    "preview": "cd frontend && vite preview",
-    "start": "echo 'Frontend deployment successful'"
+    "dev": "vite",
+    "build": "vite build --mode production",
+    "vercel-build": "vite build --mode production",
+    "preview": "vite preview",
+    "deploy": "vercel --prod",
+    "deploy:dev": "vercel",
+    "lint": "eslint . --ext .ts,.tsx",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -64,5 +69,11 @@
     "typescript": "^5.4.4",
     "vite": "^5.2.8",
     "vitest": "^1.0.4"
+  },
+  "reactRouter": {
+    "future": {
+      "v7_startTransition": true,
+      "v7_relativeSplatPath": true
+    }
   }
 }
