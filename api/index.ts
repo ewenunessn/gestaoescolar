@@ -1,8 +1,4 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
-
-// Import Express app
+// Vercel serverless function that loads the Express app
 const app = require('../backend/src/index');
 
-export default function handler(req: VercelRequest, res: VercelResponse) {
-  return app(req, res);
-}
+module.exports = app;
