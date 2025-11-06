@@ -1,0 +1,7 @@
+backend/src
+backend/tests
+backend/dist
+backend/node_modules
+frontend
+apps
+shared
