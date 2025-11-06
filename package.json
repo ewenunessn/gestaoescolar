@@ -1,9 +1,5 @@
 {
   "name": "gestao-escolar",
   "version": "1.0.0",
-  "private": true,
-  "scripts": {
-    "build": "echo 'Build completed'",
-    "start": "echo 'Using Vercel serverless functions'"
-  }
+  "private": true
 }
