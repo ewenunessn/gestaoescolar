@@ -38,25 +38,32 @@ export function TenantProvider({ children }: TenantProviderProps) {
       console.log('🔍 Resolvendo tenant...');
 
       // Try to resolve tenant from current context
-      const result = await tenantService.resolveTenant();
+      const result: any = await tenantService.resolveTenant();
       console.log('🔍 Resultado da resolução:', result);
       
-      if (result && result.data && result.data.tenant) {
-        console.log(`✅ Tenant resolvido: ${result.data.tenant.name} (${result.data.tenant.id})`);
-        setCurrentTenant(result.data.tenant);
+      // A API retorna { success: true, data: { tenant, method } }
+      const resolvedTenant = result?.data?.tenant || result?.tenant;
+      
+      if (resolvedTenant) {
+        console.log(`✅ Tenant resolvido: ${resolvedTenant.name} (${resolvedTenant.id})`);
+        setCurrentTenant(resolvedTenant);
+        
+        // CRÍTICO: Salvar currentTenantId no localStorage para o axios usar
+        localStorage.setItem('currentTenantId', resolvedTenant.id);
+        console.log('💾 currentTenantId salvo no localStorage:', resolvedTenant.id);
         
         // Build tenant context
         if (user) {
           const context: ITenantContext = {
-            tenantId: result.data.tenant.id,
-            tenant: result.data.tenant,
+            tenantId: resolvedTenant.id,
+            tenant: resolvedTenant,
             user: {
               ...user,
               tenantRole: 'user' // This would come from tenant-user association
             },
             permissions: [], // This would be resolved based on user role
-            settings: result.data.tenant.settings,
-            limits: result.data.tenant.limits
+            settings: resolvedTenant.settings,
+            limits: resolvedTenant.limits
           };
           setTenantContext(context);
         }
@@ -65,6 +72,7 @@ export function TenantProvider({ children }: TenantProviderProps) {
         console.log('🔍 Estrutura da resposta:', result);
         setCurrentTenant(null);
         setTenantContext(null);
+        localStorage.removeItem('currentTenantId');
       }
 
 
@@ -151,6 +159,7 @@ export function TenantProvider({ children }: TenantProviderProps) {
       console.log('👤 Usuário não encontrado, limpando contexto de tenant');
       setCurrentTenant(null);
       setTenantContext(null);
+      localStorage.removeItem('currentTenantId');
       setLoading(false);
     }
   }, [user]);
