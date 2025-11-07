@@ -96,6 +96,14 @@ export default function TenantSelector({
     isAdmin: user?.tipo === 'admin'
   });
 
+  // Debug logs
+  console.log('👤 TenantSelector - Usuário atual:', {
+    id: user?.id,
+    nome: user?.nome,
+    tipo: user?.tipo,
+    isAdmin: user?.tipo === 'admin'
+  });
+  
   // Show for system administrators and gestors (temporarily)
   if (user?.tipo !== 'admin' && user?.tipo !== 'gestor') {
     console.log('🚫 TenantSelector não exibido - usuário não é admin nem gestor');

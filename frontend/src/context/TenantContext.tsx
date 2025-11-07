@@ -67,22 +67,7 @@ export function TenantProvider({ children }: TenantProviderProps) {
         setTenantContext(null);
       }
 
-      // Load available tenants from localStorage (saved during login)
-      console.log('👤 Verificando tipo de usuário:', user?.tipo);
-      try {
-        const savedTenants = localStorage.getItem('availableTenants');
-        if (savedTenants) {
-          const tenants = JSON.parse(savedTenants);
-          console.log(`📋 Tenants disponíveis (localStorage): ${tenants.length}`, tenants);
-          setAvailableTenants(tenants);
-        } else {
-          console.log('⚠️ Nenhum tenant salvo no localStorage');
-          setAvailableTenants([]);
-        }
-      } catch (err) {
-        console.error('❌ Erro ao carregar tenants do localStorage:', err);
-        setAvailableTenants([]);
-      }
+
     } catch (err: any) {
       console.error('❌ Erro ao resolver tenant:', err);
       setError(err.message || 'Failed to resolve tenant');
@@ -147,6 +132,24 @@ export function TenantProvider({ children }: TenantProviderProps) {
     }
   };
 
+  // Load available tenants from localStorage on mount
+  useEffect(() => {
+    const loadAvailableTenants = () => {
+      try {
+        const savedTenants = localStorage.getItem('availableTenants');
+        if (savedTenants) {
+          const tenants = JSON.parse(savedTenants);
+          console.log(`📋 Carregando tenants do localStorage: ${tenants.length}`, tenants);
+          setAvailableTenants(tenants);
+        }
+      } catch (err) {
+        console.error('❌ Erro ao carregar tenants do localStorage:', err);
+      }
+    };
+    
+    loadAvailableTenants();
+  }, []);
+
   // Initialize tenant resolution when user changes
   useEffect(() => {
     if (user) {
@@ -156,7 +159,6 @@ export function TenantProvider({ children }: TenantProviderProps) {
       console.log('👤 Usuário não encontrado, limpando contexto de tenant');
       setCurrentTenant(null);
       setTenantContext(null);
-      setAvailableTenants([]);
       setLoading(false);
     }
   }, [user]);
