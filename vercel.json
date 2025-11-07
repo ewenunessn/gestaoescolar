@@ -16,7 +16,5 @@
       "dest": "/api/index.js"
     }
   ],
-  "installCommand": "cd api && npm install",
-  "buildCommand": "mkdir -p public && echo 'API v2' > public/index.html",
-  "outputDirectory": "public"
+  "installCommand": "cd api && npm install"
 }

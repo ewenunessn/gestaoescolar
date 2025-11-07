@@ -29,46 +29,107 @@ export async function register(req: Request, res: Response) {
     // Resetar sequência para evitar conflitos de ID
     await resetUserSequence();
     
-    // Determinar tenant_id (usar o fornecido ou o padrão)
+    // Determinar tenant_id (usar o fornecido ou criar/buscar o padrão)
     let finalTenantId = tenantId;
+    let isFirstUser = false;
+    
     if (!finalTenantId) {
-      // Buscar tenant padrão
-      const defaultTenantResult = await db.query(`
-        SELECT id FROM tenants WHERE id = '00000000-0000-0000-0000-000000000000'
-      `);
+      // Verificar se existem tenants no sistema
+      const tenantsCount = await db.query(`SELECT COUNT(*) as count FROM tenants`);
+      const hasNoTenants = parseInt(tenantsCount.rows[0].count) === 0;
       
-      if (defaultTenantResult.rows.length > 0) {
-        finalTenantId = defaultTenantResult.rows[0].id;
+      if (hasNoTenants) {
+        // Primeiro usuário do sistema - criar tenant padrão
+        console.log('🏢 Primeiro usuário do sistema - criando tenant padrão...');
+        isFirstUser = true;
+        
+        const newTenant = await db.query(`
+          INSERT INTO tenants (
+            id,
+            slug,
+            name,
+            status,
+            settings,
+            limits,
+            created_at,
+            updated_at
+          ) VALUES (
+            '00000000-0000-0000-0000-000000000000',
+            'sistema-principal',
+            'Sistema Principal',
+            'active',
+            '{"features":{"inventory":true,"contracts":true,"deliveries":true,"reports":true,"mobile":true}}'::jsonb,
+            '{"maxUsers":100,"maxSchools":50,"maxProducts":1000,"storageLimit":1024,"apiRateLimit":100}'::jsonb,
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP
+          )
+          ON CONFLICT (id) DO UPDATE SET updated_at = CURRENT_TIMESTAMP
+          RETURNING id
+        `);
+        
+        finalTenantId = newTenant.rows[0].id;
+        console.log('✅ Tenant padrão criado:', finalTenantId);
       } else {
-        return res.status(400).json({ 
-          message: "Tenant não especificado e tenant padrão não encontrado." 
-        });
+        // Buscar tenant padrão existente
+        const defaultTenantResult = await db.query(`
+          SELECT id FROM tenants WHERE id = '00000000-0000-0000-0000-000000000000'
+        `);
+        
+        if (defaultTenantResult.rows.length > 0) {
+          finalTenantId = defaultTenantResult.rows[0].id;
+        } else {
+          // Se não existe o tenant padrão, pegar o primeiro tenant ativo
+          const firstTenant = await db.query(`
+            SELECT id FROM tenants WHERE status = 'active' ORDER BY created_at ASC LIMIT 1
+          `);
+          
+          if (firstTenant.rows.length > 0) {
+            finalTenantId = firstTenant.rows[0].id;
+          } else {
+            return res.status(400).json({ 
+              message: "Nenhum tenant ativo encontrado. Entre em contato com o administrador." 
+            });
+          }
+        }
       }
     }
     
     // Criar usuário com campos básicos (usando 'tipo' em vez de 'perfil')
+    // Se for o primeiro usuário, torná-lo admin do sistema
+    const userType = isFirstUser ? 'admin' : perfil;
+    
     const novo = await createUser({ 
       nome, 
       email, 
       senha: hash, 
-      tipo: perfil,  // Mapear perfil para tipo
-      ativo: true,   // Campo obrigatório
+      tipo: userType,  // Mapear perfil para tipo (admin se for primeiro usuário)
+      ativo: true,     // Campo obrigatório
       tenant_id: finalTenantId
     });
 
     // Criar associação na tabela tenant_users
+    // Se for o primeiro usuário, torná-lo tenant_admin
+    const tenantRole = isFirstUser ? 'tenant_admin' : (perfil === 'admin' ? 'tenant_admin' : 'user');
+    
     await db.query(`
       INSERT INTO tenant_users (tenant_id, user_id, role, status)
       VALUES ($1, $2, $3, $4)
       ON CONFLICT (tenant_id, user_id) DO NOTHING
-    `, [finalTenantId, novo.id, perfil === 'admin' ? 'tenant_admin' : 'user', 'active']);
+    `, [finalTenantId, novo.id, tenantRole, 'active']);
+
+    console.log(`✅ Usuário criado: ${novo.nome} (${novo.email}) - Tipo: ${userType}, Role: ${tenantRole}`);
+    if (isFirstUser) {
+      console.log('🎉 Primeiro usuário do sistema criado com privilégios de administrador!');
+    }
 
     res.status(201).json({
       id: novo.id,
       nome: novo.nome,
       email: novo.email,
       tipo: novo.tipo,
-      tenant_id: novo.tenant_id
+      tenant_id: novo.tenant_id,
+      isFirstUser,
+      message: isFirstUser ? 'Primeiro usuário criado com sucesso! Você é o administrador do sistema.' : 'Usuário criado com sucesso!'
     });
   } catch (err) {
     console.error('Erro no registro:', err);
@@ -260,6 +321,45 @@ export const getProfile = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Erro ao obter perfil do usuário',
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+};
+
+// Verificar status de inicialização do sistema
+export const checkSystemStatus = async (req: Request, res: Response) => {
+  try {
+    // Verificar se existem usuários
+    const usersCount = await db.query(`SELECT COUNT(*) as count FROM usuarios`);
+    const hasUsers = parseInt(usersCount.rows[0].count) > 0;
+    
+    // Verificar se existem tenants
+    const tenantsCount = await db.query(`SELECT COUNT(*) as count FROM tenants`);
+    const hasTenants = parseInt(tenantsCount.rows[0].count) > 0;
+    
+    // Verificar se existe tenant padrão
+    const defaultTenant = await db.query(`
+      SELECT id, slug, name, status FROM tenants 
+      WHERE id = '00000000-0000-0000-0000-000000000000'
+    `);
+    const hasDefaultTenant = defaultTenant.rows.length > 0;
+    
+    res.json({
+      success: true,
+      data: {
+        initialized: hasUsers && hasTenants,
+        hasUsers,
+        hasTenants,
+        hasDefaultTenant,
+        defaultTenant: hasDefaultTenant ? defaultTenant.rows[0] : null,
+        needsSetup: !hasUsers || !hasTenants
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao verificar status do sistema:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao verificar status do sistema',
       error: error instanceof Error ? error.message : 'Erro desconhecido'
     });
   }

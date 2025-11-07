@@ -1,12 +1,15 @@
 import { Router } from "express";
-import { register, login, getUsers, getProfile } from "../controllers/userController";
+import { register, login, getUsers, getProfile, checkSystemStatus } from "../controllers/userController";
 import { devAuthMiddleware as authMiddleware } from "../../../middlewares";
 
 const router = Router();
 
-// Rotas de usuário
+// Rotas públicas
+router.get("/system-status", checkSystemStatus);
 router.post("/register", register);
 router.post("/login", login);
+
+// Rotas protegidas
 router.get("/me", authMiddleware, getProfile);
 router.get("/", getUsers); // Listar usuários
 
