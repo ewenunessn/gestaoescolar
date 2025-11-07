@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "mkdir -p public && echo '{}' > public/.gitkeep"
-  }
+    "build": "echo 'Serverless API - No build needed' && mkdir -p public && echo '{\"api\":\"serverless\"}' > public/index.json"
+  },
+  "workspaces": [
+    "api",
+    "backend"
+  ]
 }
