@@ -245,11 +245,8 @@ export class TenantService implements TenantServiceInterface {
           id,
           slug,
           nome as name,
-          email as domain,
-          slug as subdomain,
           status,
           config as settings,
-          config as limits,
           created_at as "createdAt",
           updated_at as "updatedAt"
         FROM tenants 
@@ -259,9 +256,21 @@ export class TenantService implements TenantServiceInterface {
       console.log('🔍 [getTenant] Resultado:', result.rows.length > 0 ? 'Encontrado' : 'Não encontrado');
       if (result.rows.length > 0) {
         console.log('🔍 [getTenant] Dados:', result.rows[0]);
+        return {
+          id: result.rows[0].id,
+          slug: result.rows[0].slug,
+          name: result.rows[0].name,
+          status: result.rows[0].status,
+          settings: result.rows[0].settings || {},
+          limits: {},
+          domain: null,
+          subdomain: null,
+          createdAt: result.rows[0].createdAt,
+          updatedAt: result.rows[0].updatedAt
+        };
       }
 
-      return result.rows.length > 0 ? this.mapTenantFromDb(result.rows[0]) : null;
+      return null;
     } catch (error) {
       console.error('❌ [getTenant] Erro ao buscar tenant:', error);
       return null;
@@ -278,18 +287,29 @@ export class TenantService implements TenantServiceInterface {
           id,
           slug,
           nome as name,
-          email as domain,
-          slug as subdomain,
           status,
           config as settings,
-          config as limits,
           created_at as "createdAt",
           updated_at as "updatedAt"
         FROM tenants 
         WHERE slug = $1
       `, [slug]);
 
-      return result.rows.length > 0 ? this.mapTenantFromDb(result.rows[0]) : null;
+      if (result.rows.length > 0) {
+        return {
+          id: result.rows[0].id,
+          slug: result.rows[0].slug,
+          name: result.rows[0].name,
+          status: result.rows[0].status,
+          settings: result.rows[0].settings || {},
+          limits: {},
+          domain: null,
+          subdomain: null,
+          createdAt: result.rows[0].createdAt,
+          updatedAt: result.rows[0].updatedAt
+        };
+      }
+      return null;
     } catch (error) {
       console.error('Erro ao buscar tenant por slug:', error);
       return null;
