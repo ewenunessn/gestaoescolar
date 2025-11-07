@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { register, login, getUsers, getProfile, checkSystemStatus } from "../controllers/userController";
+import { debugLogin } from "../controllers/debugLoginController";
 import { devAuthMiddleware as authMiddleware } from "../../../middlewares";
 
 const router = Router();
@@ -8,6 +9,7 @@ const router = Router();
 router.get("/system-status", checkSystemStatus);
 router.post("/register", register);
 router.post("/login", login);
+router.post("/debug-login", debugLogin);
 
 // Rotas protegidas
 router.get("/me", authMiddleware, getProfile);
