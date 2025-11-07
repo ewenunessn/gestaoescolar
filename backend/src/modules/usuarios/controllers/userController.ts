@@ -166,9 +166,8 @@ export async function login(req: Request, res: Response) {
     }
 
     console.log("✅ Senha correta, gerando token...");
-    const jwtSecret = process.env.JWT_SECRET || 'sua_chave_jwt_super_secreta_minimo_32_caracteres_producao_2024';
     console.log("🔐 [LOGIN] NODE_ENV:", process.env.NODE_ENV);
-    console.log("🔐 [LOGIN] JWT_SECRET configurado:", jwtSecret ? 'Sim' : 'Não');
+    console.log("🔐 [LOGIN] JWT_SECRET configurado:", config.jwtSecret ? 'Sim' : 'Não');
     
     // Buscar associações de tenant do usuário
     const tenantAssociations = await db.query(`
@@ -240,7 +239,7 @@ export async function login(req: Request, res: Response) {
       }))
     };
 
-    const token = jwt.sign(tokenPayload, jwtSecret, { expiresIn: '24h' });
+    const token = jwt.sign(tokenPayload, config.jwtSecret, { expiresIn: '24h' });
     console.log("🔐 [LOGIN] Token gerado:", token.substring(0, 20) + '...');
 
     console.log("✅ Login realizado com sucesso para:", email);
