@@ -245,11 +245,11 @@ export class TenantService implements TenantServiceInterface {
           id,
           slug,
           nome as name,
-          domain,
-          subdomain,
+          email as domain,
+          slug as subdomain,
           status,
-          settings,
-          limits,
+          config as settings,
+          config as limits,
           created_at as "createdAt",
           updated_at as "updatedAt"
         FROM tenants 
@@ -278,11 +278,11 @@ export class TenantService implements TenantServiceInterface {
           id,
           slug,
           nome as name,
-          domain,
-          subdomain,
+          email as domain,
+          slug as subdomain,
           status,
-          settings,
-          limits,
+          config as settings,
+          config as limits,
           created_at as "createdAt",
           updated_at as "updatedAt"
         FROM tenants 
@@ -306,15 +306,15 @@ export class TenantService implements TenantServiceInterface {
           id,
           slug,
           nome as name,
-          domain,
-          subdomain,
+          email as domain,
+          slug as subdomain,
           status,
-          settings,
-          limits,
+          config as settings,
+          config as limits,
           created_at as "createdAt",
           updated_at as "updatedAt"
         FROM tenants 
-        WHERE subdomain = $1
+        WHERE slug = $1
       `, [subdomain]);
 
       return result.rows.length > 0 ? this.mapTenantFromDb(result.rows[0]) : null;
@@ -359,11 +359,11 @@ export class TenantService implements TenantServiceInterface {
           id,
           slug,
           nome as name,
-          domain,
-          subdomain,
+          email as domain,
+          slug as subdomain,
           status,
-          settings,
-          limits,
+          config as settings,
+          config as limits,
           created_at as "createdAt",
           updated_at as "updatedAt"
         FROM tenants 
