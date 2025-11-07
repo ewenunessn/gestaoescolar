@@ -11,5 +11,11 @@
       "src": "/(.*)",
       "dest": "api/index.js"
     }
-  ]
+  ],
+  "github": {
+    "silent": true
+  },
+  "installCommand": "npm install --prefix api",
+  "buildCommand": "echo 'No build needed for serverless'",
+  "outputDirectory": "api"
 }
