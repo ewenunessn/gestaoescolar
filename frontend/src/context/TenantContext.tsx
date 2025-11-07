@@ -88,19 +88,11 @@ export function TenantProvider({ children }: TenantProviderProps) {
       // Force a small delay to ensure token is updated
       await new Promise(resolve => setTimeout(resolve, 300));
       
-      console.log(`🔄 Resolving tenant after switch...`);
-      await resolveTenant();
+      console.log(`✅ Tenant switch completed successfully`);
+      console.log('🔄 Recarregando página para aplicar novo contexto...');
       
-      // Invalidate ALL React Query cache to force refresh of all data for new tenant
-      console.log('🔄 Invalidating all queries for tenant switch...');
-      
-      // Clear all cached data to ensure fresh data from new tenant
-      queryClient.clear();
-      
-      // Force refetch of all data for the new tenant
-      await queryClient.refetchQueries();
-      
-      console.log(`✅ Tenant switch completed successfully - all data refreshed for new tenant`);
+      // Recarregar a página para aplicar o novo token e contexto
+      window.location.reload();
     } catch (err: any) {
       console.error('❌ Error switching tenant:', err);
       setError(err.message || 'Failed to switch tenant');
