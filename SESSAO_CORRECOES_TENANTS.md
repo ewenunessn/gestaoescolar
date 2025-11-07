@@ -100,3 +100,59 @@
 - **Senha:** @Nunes8922
 - **Tipo:** gestor
 - **Tenants:** 3 (Sistema Principal, SEMED, Escola Municipal)
+
+
+## 7. ✅ CORREÇÃO CRÍTICA: Tenant Resolver
+
+### Problema Identificado
+**Erro:** "TENANT_NOT_FOUND" mesmo com header X-Tenant-ID e token JWT corretos
+
+**Causa Raiz:**
+- O JWT estava sendo gerado com `tenant` (objeto completo) no payload
+- O `tenantResolver.resolveByToken()` estava procurando por `decoded.tenant_id` (campo inexistente)
+- Resultado: tenant NUNCA era resolvido do token JWT
+
+### Correções Aplicadas
+
+#### 1. `backend/src/services/tenantResolver.ts` - resolveByToken()
+```typescript
+// ANTES (ERRADO):
+if (!decoded.tenant_id) {
+  return null;
+}
+return await this.resolveByHeader(decoded.tenant_id);
+
+// DEPOIS (CORRETO):
+const tenantId = decoded.tenant?.id || decoded.tenant_id;
+if (!tenantId) {
+  console.log('⚠️ Token JWT não contém informação de tenant');
+  return null;
+}
+console.log('🔍 Resolvendo tenant do token:', tenantId);
+return await this.resolveByHeader(tenantId);
+```
+
+#### 2. `backend/src/services/tenantResolver.ts` - resolveByHeader()
+- Adicionados logs detalhados para rastrear a resolução
+- Busca por slug primeiro, depois por UUID
+- Melhor tratamento de erros e feedback
+
+#### 3. `backend/src/middleware/tenantMiddleware.ts`
+- Adicionados logs nas tentativas de resolução por header e token
+- Melhor visibilidade do fluxo de resolução
+
+### Como Testar
+```bash
+node testar-tenant-resolver.js
+```
+
+Este script testa:
+1. Login e obtenção do token
+2. Resolução por header X-Tenant-ID para cada tenant
+3. Resolução apenas por token (sem header)
+
+### Status Esperado
+- ✅ Resolução por header X-Tenant-ID deve funcionar
+- ✅ Resolução por token JWT deve funcionar
+- ✅ API de escolas deve retornar dados corretamente
+- ✅ Switch de tenant deve funcionar no frontend

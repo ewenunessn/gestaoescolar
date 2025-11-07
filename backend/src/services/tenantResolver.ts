@@ -61,11 +61,16 @@ export class TenantResolver implements TenantResolverInterface {
    */
   async resolveByHeader(tenantId: string): Promise<Tenant | null> {
     try {
+      console.log('🔍 resolveByHeader chamado com:', tenantId);
       const cacheKey = `header:${tenantId}`;
       const cached = this.getFromCache(cacheKey);
-      if (cached) return cached;
+      if (cached) {
+        console.log('✅ Tenant encontrado no cache');
+        return cached;
+      }
 
       // Tentar primeiro por slug (string)
+      console.log('🔍 Buscando por slug:', tenantId);
       let result = await db.query(`
         SELECT 
           id,
@@ -84,6 +89,7 @@ export class TenantResolver implements TenantResolverInterface {
 
       // Se não encontrou por slug, tentar por ID (UUID)
       if (result.rows.length === 0) {
+        console.log('❌ Não encontrado por slug, tentando por UUID');
         try {
           result = await db.query(`
             SELECT 
@@ -100,21 +106,30 @@ export class TenantResolver implements TenantResolverInterface {
             FROM tenants 
             WHERE id = $1::uuid AND status = 'active'
           `, [tenantId]);
+          
+          if (result.rows.length > 0) {
+            console.log('✅ Tenant encontrado por UUID');
+          }
         } catch (uuidError) {
+          console.log('❌ Erro ao converter para UUID:', uuidError);
           // Se falhar a conversão para UUID, significa que não é um UUID válido
           // Retorna resultado vazio da busca por slug
         }
+      } else {
+        console.log('✅ Tenant encontrado por slug');
       }
 
       if (result.rows.length === 0) {
+        console.log('❌ Tenant não encontrado no banco');
         return null;
       }
 
       const tenant = this.mapTenantFromDb(result.rows[0]);
       this.setCache(cacheKey, tenant);
+      console.log('✅ Tenant resolvido:', tenant.name);
       return tenant;
     } catch (error) {
-      console.error('Erro ao resolver tenant por header:', error);
+      console.error('❌ Erro ao resolver tenant por header:', error);
       return null;
     }
   }
@@ -129,11 +144,16 @@ export class TenantResolver implements TenantResolverInterface {
       const { config } = require('../config/config');
       const decoded = jwt.verify(token, config.jwtSecret);
       
-      if (!decoded.tenant_id) {
+      // Suportar ambos os formatos: tenant.id (novo) e tenant_id (antigo)
+      const tenantId = decoded.tenant?.id || decoded.tenant_id;
+      
+      if (!tenantId) {
+        console.log('⚠️ Token JWT não contém informação de tenant');
         return null;
       }
 
-      return await this.resolveByHeader(decoded.tenant_id);
+      console.log('🔍 Resolvendo tenant do token:', tenantId);
+      return await this.resolveByHeader(tenantId);
     } catch (error) {
       console.error('Erro ao resolver tenant por token:', error);
       return null;
