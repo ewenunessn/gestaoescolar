@@ -31,12 +31,9 @@ export class TenantResolver implements TenantResolverInterface {
         SELECT 
           id,
           slug,
-          name,
-          domain,
-          subdomain,
+          nome as name,
+          config as settings,
           status,
-          settings,
-          limits,
           created_at as "createdAt",
           updated_at as "updatedAt"
         FROM tenants 
@@ -75,12 +72,9 @@ export class TenantResolver implements TenantResolverInterface {
         SELECT 
           id,
           slug,
-          name,
-          domain,
-          subdomain,
+          nome as name,
+          config as settings,
           status,
-          settings,
-          limits,
           created_at as "createdAt",
           updated_at as "updatedAt"
         FROM tenants 
@@ -95,12 +89,9 @@ export class TenantResolver implements TenantResolverInterface {
             SELECT 
               id,
               slug,
-              name,
-              domain,
-              subdomain,
+              nome as name,
+              config as settings,
               status,
-              settings,
-              limits,
               created_at as "createdAt",
               updated_at as "updatedAt"
             FROM tenants 
@@ -173,12 +164,9 @@ export class TenantResolver implements TenantResolverInterface {
         SELECT 
           id,
           slug,
-          name,
-          domain,
-          subdomain,
+          nome as name,
+          config as settings,
           status,
-          settings,
-          limits,
           created_at as "createdAt",
           updated_at as "updatedAt"
         FROM tenants 
@@ -297,8 +285,8 @@ export class TenantResolver implements TenantResolverInterface {
       id: row.id,
       slug: row.slug,
       name: row.name,
-      domain: row.domain,
-      subdomain: row.subdomain,
+      domain: row.domain || null,
+      subdomain: row.subdomain || null,
       status: row.status,
       settings: row.settings || {},
       limits: row.limits || {},
