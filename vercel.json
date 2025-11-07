@@ -11,5 +11,8 @@
       "source": "/(.*)",
       "destination": "/api/index.js"
     }
-  ]
+  ],
+  "installCommand": "cd api && npm install",
+  "buildCommand": "cd backend && npm run build",
+  "outputDirectory": "backend/dist"
 }
