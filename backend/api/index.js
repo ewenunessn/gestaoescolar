@@ -36,7 +36,7 @@ module.exports = async (req, res) => {
 
     // Importa dinamicamente o app com TypeScript support
     require('tsx/cjs');
-    const appModule = require('../src/index.ts');
+    const appModule = require('../backend/src/index.ts');
     const app = appModule.default || appModule;
 
     // Executa o app
