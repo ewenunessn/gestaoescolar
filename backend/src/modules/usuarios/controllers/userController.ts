@@ -178,10 +178,10 @@ export async function login(req: Request, res: Response) {
         tu.status as tenant_status,
         t.slug as tenant_slug,
         t.nome as tenant_name,
-        t.ativo as tenant_active_status
+        t.status as tenant_active_status
       FROM tenant_users tu
       JOIN tenants t ON tu.tenant_id = t.id
-      WHERE tu.user_id = $1 AND tu.status = 'active' AND t.ativo = true
+      WHERE tu.user_id = $1 AND tu.status = 'active' AND t.status = 'active'
       ORDER BY tu.created_at ASC
     `, [user.id]);
 
