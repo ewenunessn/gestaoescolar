@@ -11,5 +11,7 @@
       "src": "/(.*)",
       "dest": "api/index.js"
     }
-  ]
+  ],
+  "buildCommand": "echo 'Serverless function - no build needed'",
+  "outputDirectory": "public"
 }
