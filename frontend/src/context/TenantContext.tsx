@@ -67,20 +67,20 @@ export function TenantProvider({ children }: TenantProviderProps) {
         setTenantContext(null);
       }
 
-      // Load available tenants for system admin and gestors (temporarily)
+      // Load available tenants from localStorage (saved during login)
       console.log('👤 Verificando tipo de usuário:', user?.tipo);
-      if (user?.tipo === 'admin' || user?.tipo === 'gestor') {
-        console.log('👑 Usuário é admin/gestor, carregando tenants disponíveis...');
-        try {
-          const tenants = await tenantService.listTenants();
-          console.log(`📋 Tenants disponíveis: ${tenants.length}`, tenants);
+      try {
+        const savedTenants = localStorage.getItem('availableTenants');
+        if (savedTenants) {
+          const tenants = JSON.parse(savedTenants);
+          console.log(`📋 Tenants disponíveis (localStorage): ${tenants.length}`, tenants);
           setAvailableTenants(tenants);
-        } catch (err) {
-          console.error('❌ Erro ao carregar tenants:', err);
+        } else {
+          console.log('⚠️ Nenhum tenant salvo no localStorage');
           setAvailableTenants([]);
         }
-      } else {
-        console.log('👤 Usuário não é admin nem gestor, não carregando tenants');
+      } catch (err) {
+        console.error('❌ Erro ao carregar tenants do localStorage:', err);
         setAvailableTenants([]);
       }
     } catch (err: any) {

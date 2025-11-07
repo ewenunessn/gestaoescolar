@@ -70,6 +70,12 @@ export default function Login() {
       localStorage.setItem("perfil", response.tipo); // Backend retorna 'tipo', não 'perfil'
       localStorage.setItem("nome", response.nome);
       
+      // Salvar tenants disponíveis
+      if (response.availableTenants) {
+        localStorage.setItem("availableTenants", JSON.stringify(response.availableTenants));
+        console.log('🏢 Tenants disponíveis salvos:', response.availableTenants);
+      }
+      
       // Extrair ID do token JWT e criar objeto user completo
       try {
         const tokenPayload = JSON.parse(atob(response.token.split('.')[1]));
