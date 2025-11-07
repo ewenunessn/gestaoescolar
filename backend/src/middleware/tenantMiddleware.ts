@@ -219,8 +219,9 @@ async function createTenantContext(tenant: Tenant, req: Request): Promise<Tenant
   if (authHeader && authHeader.startsWith('Bearer ')) {
     try {
       const jwt = require('jsonwebtoken');
+      const { config } = require('../config/config');
       const token = authHeader.substring(7);
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, config.jwtSecret);
       
       if (decoded.id) {
         // Usar informações do token se disponíveis (novo formato)

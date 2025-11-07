@@ -103,7 +103,7 @@ export async function debugLogin(req: Request, res: Response) {
     debugInfo.data.primaryTenant = primaryTenant;
 
     debugInfo.step = '6. Gerando token';
-    const jwtSecret = process.env.JWT_SECRET || 'sua_chave_jwt_super_secreta_minimo_32_caracteres_producao_2024';
+    const { config } = require('../../../config/config');
     debugInfo.data.jwtSecretConfigured = !!process.env.JWT_SECRET;
 
     const tokenPayload = {
@@ -116,7 +116,7 @@ export async function debugLogin(req: Request, res: Response) {
       isSystemAdmin: user.tipo === 'admin'
     };
 
-    const token = jwt.sign(tokenPayload, jwtSecret, { expiresIn: '24h' });
+    const token = jwt.sign(tokenPayload, config.jwtSecret, { expiresIn: '24h' });
     debugInfo.data.tokenGerado = !!token;
     debugInfo.data.tokenPreview = token.substring(0, 30) + '...';
 

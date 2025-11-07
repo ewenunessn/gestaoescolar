@@ -126,7 +126,8 @@ export class TenantResolver implements TenantResolverInterface {
     try {
       // Implementar decodificação do JWT para extrair tenant_id
       const jwt = require('jsonwebtoken');
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const { config } = require('../config/config');
+      const decoded = jwt.verify(token, config.jwtSecret);
       
       if (!decoded.tenant_id) {
         return null;

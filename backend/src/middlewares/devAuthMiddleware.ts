@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import { config } from "../config/config";
 
 /**
  * Middleware de autenticação para desenvolvimento
@@ -45,8 +46,7 @@ export function devAuthMiddleware(
     const token = authHeader.replace('Bearer ', '');
     
     try {
-      const jwtSecret = process.env.JWT_SECRET || 'sua_chave_jwt_super_secreta_minimo_32_caracteres_producao_2024';
-      const decoded = jwt.verify(token, jwtSecret) as any;
+      const decoded = jwt.verify(token, config.jwtSecret) as any;
       (req as any).user = decoded;
       
       console.log('✅ [PROD] Token válido:', {
