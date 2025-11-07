@@ -17,5 +17,6 @@
     }
   ],
   "installCommand": "cd api && npm install",
-  "buildCommand": "echo 'Build completed successfully'"
+  "buildCommand": "mkdir -p public && echo '{\"message\":\"API Serverless\"}' > public/index.json",
+  "outputDirectory": "public"
 }
