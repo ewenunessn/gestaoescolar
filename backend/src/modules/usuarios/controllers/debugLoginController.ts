@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import db from '../../../config/database';
+const db = require('../../../database');
 
 // Função auxiliar para buscar usuário
 async function findUserByEmail(email: string) {
