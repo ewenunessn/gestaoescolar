@@ -44,8 +44,11 @@ export class TenantSwitchController {
       }
 
       // Buscar informações do tenant
+      console.log('🔍 [SWITCH] Buscando tenant:', tenantId);
       const tenant = await tenantService.getTenant(tenantId);
+      console.log('🔍 [SWITCH] Tenant encontrado:', tenant ? 'Sim' : 'Não');
       if (!tenant) {
+        console.log('❌ [SWITCH] Tenant não encontrado no banco:', tenantId);
         return res.status(404).json({
           success: false,
           message: 'Tenant não encontrado'
