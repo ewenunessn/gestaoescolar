@@ -177,11 +177,11 @@ export async function login(req: Request, res: Response) {
         tu.role as tenant_role,
         tu.status as tenant_status,
         t.slug as tenant_slug,
-        t.name as tenant_name,
-        t.status as tenant_active_status
+        t.nome as tenant_name,
+        t.ativo as tenant_active_status
       FROM tenant_users tu
       JOIN tenants t ON tu.tenant_id = t.id
-      WHERE tu.user_id = $1 AND tu.status = 'active' AND t.status = 'active'
+      WHERE tu.user_id = $1 AND tu.status = 'active' AND t.ativo = true
       ORDER BY tu.created_at ASC
     `, [user.id]);
 
@@ -201,7 +201,7 @@ export async function login(req: Request, res: Response) {
     } else {
       // Se não tem associação, usar tenant padrão
       const defaultTenant = await db.query(`
-        SELECT id, slug, name FROM tenants WHERE id = '00000000-0000-0000-0000-000000000000'
+        SELECT id, slug, nome as name FROM tenants WHERE id = '00000000-0000-0000-0000-000000000000'
       `);
       
       if (defaultTenant.rows.length > 0) {
