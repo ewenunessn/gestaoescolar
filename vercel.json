@@ -16,5 +16,6 @@
       "dest": "/api/index.js"
     }
   ],
-  "installCommand": "cd api && npm install"
+  "installCommand": "cd api && npm install",
+  "buildCommand": "echo 'Build completed successfully'"
 }
