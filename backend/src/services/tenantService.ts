@@ -243,7 +243,7 @@ export class TenantService implements TenantServiceInterface {
         SELECT 
           id,
           slug,
-          name,
+          nome as name,
           domain,
           subdomain,
           status,
@@ -271,7 +271,7 @@ export class TenantService implements TenantServiceInterface {
         SELECT 
           id,
           slug,
-          name,
+          nome as name,
           domain,
           subdomain,
           status,
@@ -299,7 +299,7 @@ export class TenantService implements TenantServiceInterface {
         SELECT 
           id,
           slug,
-          name,
+          nome as name,
           domain,
           subdomain,
           status,
@@ -352,7 +352,7 @@ export class TenantService implements TenantServiceInterface {
         SELECT 
           id,
           slug,
-          name,
+          nome as name,
           domain,
           subdomain,
           status,
