@@ -1,9 +1,11 @@
 backend/tests
 backend/dist
 backend/node_modules
-backend/package.json
-backend/package-lock.json
-backend/tsconfig.json
+backend/api
 frontend
 apps
 shared
+node_modules
+.git
+.vscode
+.kiro
