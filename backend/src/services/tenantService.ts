@@ -239,6 +239,7 @@ export class TenantService implements TenantServiceInterface {
    */
   async getTenant(id: string): Promise<Tenant | null> {
     try {
+      console.log('🔍 [getTenant] Buscando tenant:', id);
       const result = await db.query(`
         SELECT 
           id,
@@ -255,9 +256,14 @@ export class TenantService implements TenantServiceInterface {
         WHERE id = $1
       `, [id]);
 
+      console.log('🔍 [getTenant] Resultado:', result.rows.length > 0 ? 'Encontrado' : 'Não encontrado');
+      if (result.rows.length > 0) {
+        console.log('🔍 [getTenant] Dados:', result.rows[0]);
+      }
+
       return result.rows.length > 0 ? this.mapTenantFromDb(result.rows[0]) : null;
     } catch (error) {
-      console.error('Erro ao buscar tenant:', error);
+      console.error('❌ [getTenant] Erro ao buscar tenant:', error);
       return null;
     }
   }
