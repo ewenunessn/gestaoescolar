@@ -56,23 +56,21 @@ export function tenantMiddleware(options: TenantMiddlewareOptions = {}) {
         }
       }
 
-      // 2. Tentar por header X-Tenant-ID
-      if (!tenant) {
-        const tenantHeader = req.get('X-Tenant-ID');
-        if (tenantHeader) {
-          console.log('🔍 Tentando resolver por header X-Tenant-ID:', tenantHeader);
-          const result = await tenantResolver.resolve('header', tenantHeader);
-          if (result.tenant) {
-            tenant = result.tenant;
-            method = 'header';
-            console.log('✅ Tenant resolvido por header:', tenant.name);
-          } else {
-            console.log('❌ Não foi possível resolver tenant por header');
-          }
+      // 2. Tentar por header X-Tenant-ID (PRIORIDADE MÁXIMA)
+      const tenantHeader = req.get('X-Tenant-ID');
+      if (tenantHeader) {
+        console.log('🔍 Tentando resolver por header X-Tenant-ID:', tenantHeader);
+        const result = await tenantResolver.resolve('header', tenantHeader);
+        if (result.tenant) {
+          tenant = result.tenant;
+          method = 'header';
+          console.log('✅ Tenant resolvido por header (prioridade):', tenant.name);
+        } else {
+          console.log('❌ Não foi possível resolver tenant por header');
         }
       }
 
-      // 3. Tentar por token JWT
+      // 3. Tentar por token JWT (apenas se não tiver header)
       if (!tenant) {
         const authHeader = req.get('Authorization');
         if (authHeader && authHeader.startsWith('Bearer ')) {
