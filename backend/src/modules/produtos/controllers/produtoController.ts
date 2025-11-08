@@ -8,6 +8,15 @@ export async function listarProdutos(req: Request, res: Response) {
     // Configurar contexto de tenant
     await setTenantContextFromRequest(req);
 
+    // Aplicar filtro de tenant
+    const tenantId = req.tenant?.id;
+    if (!tenantId) {
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
+
     const result = await db.query(`
       SELECT 
         id,
@@ -23,8 +32,9 @@ export async function listarProdutos(req: Request, res: Response) {
         ativo,
         created_at
       FROM produtos 
+      WHERE tenant_id = $1
       ORDER BY nome
-    `);
+    `, [tenantId]);
 
     const produtos = result.rows;
 
