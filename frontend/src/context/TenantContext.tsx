@@ -183,10 +183,11 @@ export function TenantProvider({ children }: TenantProviderProps) {
       console.log('👤 Usuário carregado, iniciando resolução de tenant:', user);
       resolveTenant();
     } else {
-      console.log('👤 Usuário não encontrado, limpando contexto de tenant');
+      // Não limpar currentTenantId aqui, pois o usuário pode ainda estar carregando
+      // Apenas limpar o estado do contexto
+      console.log('👤 Usuário não encontrado (ainda carregando ou deslogado)');
       setCurrentTenant(null);
       setTenantContext(null);
-      localStorage.removeItem('currentTenantId');
       setLoading(false);
     }
   }, [user]);
