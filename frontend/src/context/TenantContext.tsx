@@ -40,13 +40,15 @@ export function TenantProvider({ children }: TenantProviderProps) {
       // Try to resolve tenant from current context
       const result: any = await tenantService.resolveTenant();
       console.log('🔍 Resultado da resolução:', result);
-      console.log('🔍 result.data:', result?.data);
-      console.log('🔍 result.data.tenant:', result?.data?.tenant);
-      console.log('🔍 result.tenant:', result?.tenant);
       
       // A API retorna { success: true, data: { tenant, method } }
-      const resolvedTenant = result?.data?.tenant || result?.tenant;
-      console.log('🔍 resolvedTenant final:', resolvedTenant);
+      let resolvedTenant = result?.data?.tenant || result?.tenant;
+      
+      // Se não conseguiu resolver pela API, usar o primeiro tenant disponível
+      if (!resolvedTenant && availableTenants.length > 0) {
+        console.log('⚠️ API não resolveu tenant, usando primeiro disponível');
+        resolvedTenant = availableTenants[0];
+      }
       
       if (resolvedTenant) {
         console.log(`✅ Tenant resolvido: ${resolvedTenant.name} (${resolvedTenant.id})`);
@@ -66,14 +68,13 @@ export function TenantProvider({ children }: TenantProviderProps) {
               tenantRole: 'user' // This would come from tenant-user association
             },
             permissions: [], // This would be resolved based on user role
-            settings: resolvedTenant.settings,
-            limits: resolvedTenant.limits
+            settings: resolvedTenant.settings || {},
+            limits: resolvedTenant.limits || {}
           };
           setTenantContext(context);
         }
       } else {
-        console.log('⚠️ Nenhum tenant resolvido, limpando currentTenant');
-        console.log('🔍 Estrutura da resposta:', result);
+        console.log('⚠️ Nenhum tenant disponível');
         setCurrentTenant(null);
         setTenantContext(null);
         localStorage.removeItem('currentTenantId');
