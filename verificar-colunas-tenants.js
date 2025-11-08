@@ -8,16 +8,18 @@ async function verificarColunas() {
   try {
     await client.connect();
     
+    console.log('📋 Verificando estrutura da tabela tenants...\n');
+    
     const result = await client.query(`
-      SELECT column_name, data_type 
-      FROM information_schema.columns 
+      SELECT column_name, data_type, is_nullable
+      FROM information_schema.columns
       WHERE table_name = 'tenants'
       ORDER BY ordinal_position
     `);
     
-    console.log('📋 Colunas da tabela tenants:');
-    result.rows.forEach(row => {
-      console.log(`  - ${row.column_name} (${row.data_type})`);
+    console.log('Colunas da tabela tenants:');
+    result.rows.forEach(col => {
+      console.log(`  - ${col.column_name} (${col.data_type}) ${col.is_nullable === 'NO' ? 'NOT NULL' : 'NULL'}`);
     });
     
   } finally {

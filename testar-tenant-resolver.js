@@ -13,8 +13,8 @@ async function testarResolucaoTenant() {
     // 1. Fazer login
     console.log('1️⃣ Fazendo login...');
     const loginResponse = await axios.post(`${API_URL}/api/usuarios/login`, {
-      email: 'admin@sistema.com',
-      senha: 'admin123'
+      email: 'ewenunes0@gmail.com',
+      senha: '@Nunes8922'
     });
 
     const { token, tenant, availableTenants } = loginResponse.data;

@@ -40,9 +40,13 @@ export function TenantProvider({ children }: TenantProviderProps) {
       // Try to resolve tenant from current context
       const result: any = await tenantService.resolveTenant();
       console.log('🔍 Resultado da resolução:', result);
+      console.log('🔍 result.data:', result?.data);
+      console.log('🔍 result.data.tenant:', result?.data?.tenant);
+      console.log('🔍 result.tenant:', result?.tenant);
       
       // A API retorna { success: true, data: { tenant, method } }
       const resolvedTenant = result?.data?.tenant || result?.tenant;
+      console.log('🔍 resolvedTenant final:', resolvedTenant);
       
       if (resolvedTenant) {
         console.log(`✅ Tenant resolvido: ${resolvedTenant.name} (${resolvedTenant.id})`);
