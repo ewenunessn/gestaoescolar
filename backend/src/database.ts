@@ -11,13 +11,25 @@ console.log('🔍 POSTGRES_URL presente?', !!process.env.POSTGRES_URL);
 if (process.env.DATABASE_URL || process.env.POSTGRES_URL) {
     // Usar DATABASE_URL ou POSTGRES_URL (produção - Vercel/Neon)
     const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
-    console.log('✅ Usando connection string para Neon/Vercel');
-    pool = new Pool({
-        connectionString,
-        ssl: {
-            rejectUnauthorized: false
-        }
-    });
+    
+    // Detectar se é ambiente local (localhost) ou produção (Neon/Vercel)
+    const isLocalDatabase = connectionString.includes('localhost') || connectionString.includes('127.0.0.1');
+    
+    if (isLocalDatabase) {
+        console.log('✅ Usando connection string LOCAL (sem SSL)');
+        pool = new Pool({
+            connectionString,
+            ssl: false
+        });
+    } else {
+        console.log('✅ Usando connection string para Neon/Vercel (com SSL)');
+        pool = new Pool({
+            connectionString,
+            ssl: {
+                rejectUnauthorized: false
+            }
+        });
+    }
 } else {
     // Usar variáveis individuais (desenvolvimento local)
     const dbConfig = {

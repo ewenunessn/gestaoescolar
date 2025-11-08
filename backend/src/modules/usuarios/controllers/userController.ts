@@ -176,7 +176,7 @@ export async function login(req: Request, res: Response) {
         tu.role as tenant_role,
         tu.status as tenant_status,
         t.slug as tenant_slug,
-        t.nome as tenant_name,
+        t.name as tenant_name,
         t.status as tenant_active_status
       FROM tenant_users tu
       JOIN tenants t ON tu.tenant_id = t.id
