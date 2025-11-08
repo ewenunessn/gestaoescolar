@@ -112,6 +112,10 @@ export function TenantProvider({ children }: TenantProviderProps) {
       console.log(`🔄 Switching to tenant: ${tenantId}`);
       const response = await tenantService.switchTenant(tenantId);
       
+      // CRÍTICO: Salvar o tenantId no localStorage ANTES de recarregar
+      localStorage.setItem('currentTenantId', tenantId);
+      console.log('💾 currentTenantId salvo antes do reload:', tenantId);
+      
       // Force a small delay to ensure token is updated
       await new Promise(resolve => setTimeout(resolve, 300));
       
