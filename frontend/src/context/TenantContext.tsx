@@ -44,10 +44,24 @@ export function TenantProvider({ children }: TenantProviderProps) {
       // A API retorna { success: true, data: { tenant, method } }
       let resolvedTenant = result?.data?.tenant || result?.tenant;
       
-      // Se não conseguiu resolver pela API, usar o primeiro tenant disponível
+      // Se não conseguiu resolver pela API, tentar usar o tenant salvo no localStorage
       if (!resolvedTenant && availableTenants.length > 0) {
-        console.log('⚠️ API não resolveu tenant, usando primeiro disponível');
-        resolvedTenant = availableTenants[0];
+        const savedTenantId = localStorage.getItem('currentTenantId');
+        
+        if (savedTenantId) {
+          // Procurar o tenant salvo na lista de disponíveis
+          const savedTenant = availableTenants.find(t => t.id === savedTenantId);
+          if (savedTenant) {
+            console.log('⚠️ API não resolveu tenant, usando tenant salvo:', savedTenant.name);
+            resolvedTenant = savedTenant;
+          } else {
+            console.log('⚠️ Tenant salvo não encontrado, usando primeiro disponível');
+            resolvedTenant = availableTenants[0];
+          }
+        } else {
+          console.log('⚠️ Nenhum tenant salvo, usando primeiro disponível');
+          resolvedTenant = availableTenants[0];
+        }
       }
       
       if (resolvedTenant) {
