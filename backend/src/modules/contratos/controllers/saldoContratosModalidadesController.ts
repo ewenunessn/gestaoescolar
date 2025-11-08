@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { setTenantContextFromRequest } from '../../../utils/tenantContext';
 const db = require('../../../database');
 
 /**
@@ -12,6 +13,9 @@ class SaldoContratosModalidadesController {
    */
   async listarSaldosModalidades(req: Request, res: Response): Promise<void> {
     try {
+      // Configurar contexto de tenant
+      await setTenantContextFromRequest(req);
+
       const {
         page = 1,
         limit = 50,
@@ -34,6 +38,7 @@ class SaldoContratosModalidadesController {
         JOIN fornecedores f ON c.fornecedor_id = f.id
         WHERE cp.ativo = true
           AND c.ativo = true
+          AND c.tenant_id = current_setting('app.current_tenant_id')::uuid
       `;
 
       const produtosParams: any[] = [];
@@ -176,6 +181,7 @@ class SaldoContratosModalidadesController {
         JOIN fornecedores f ON c.fornecedor_id = f.id
         WHERE cp.ativo = true
           AND c.ativo = true
+          AND c.tenant_id = current_setting('app.current_tenant_id')::uuid
       `;
 
       const countParams: any[] = [];
@@ -236,6 +242,7 @@ class SaldoContratosModalidadesController {
         WHERE cp.ativo = true
           AND c.ativo = true
           AND m.ativo = true
+          AND c.tenant_id = current_setting('app.current_tenant_id')::uuid
       `;
 
       // Construir a parte adicional do WHERE para estatísticas
@@ -299,10 +306,14 @@ class SaldoContratosModalidadesController {
    */
   async listarModalidades(req: Request, res: Response): Promise<void> {
     try {
+      // Configurar contexto de tenant
+      await setTenantContextFromRequest(req);
+
       const query = `
         SELECT id, nome, codigo_financeiro, valor_repasse
         FROM modalidades
         WHERE ativo = true
+          AND tenant_id = current_setting('app.current_tenant_id')::uuid
         ORDER BY nome
       `;
 
@@ -320,6 +331,9 @@ class SaldoContratosModalidadesController {
    */
   async listarProdutosContratos(req: Request, res: Response): Promise<void> {
     try {
+      // Configurar contexto de tenant
+      await setTenantContextFromRequest(req);
+
       const query = `
         SELECT 
           cp.id, cp.contrato_id, cp.produto_id, cp.preco_unitario,
@@ -331,6 +345,7 @@ class SaldoContratosModalidadesController {
         JOIN produtos p ON cp.produto_id = p.id
         JOIN fornecedores f ON c.fornecedor_id = f.id
         WHERE cp.ativo = true AND c.ativo = true AND c.status = 'ativo'
+          AND c.tenant_id = current_setting('app.current_tenant_id')::uuid
         ORDER BY c.numero, p.nome
       `;
 
@@ -348,6 +363,9 @@ class SaldoContratosModalidadesController {
    */
   async cadastrarSaldoModalidade(req: Request, res: Response): Promise<void> {
     try {
+      // Configurar contexto de tenant
+      await setTenantContextFromRequest(req);
+
       const { contrato_produto_id, modalidade_id, quantidade_inicial } = req.body;
 
       if (!contrato_produto_id || !modalidade_id || quantidade_inicial === undefined) {
@@ -364,8 +382,10 @@ class SaldoContratosModalidadesController {
       const contratoResult = await db.query(`
         SELECT cp.quantidade_contratada, p.nome as produto_nome
         FROM contrato_produtos cp
+        JOIN contratos c ON cp.contrato_id = c.id
         JOIN produtos p ON cp.produto_id = p.id
         WHERE cp.id = $1
+          AND c.tenant_id = current_setting('app.current_tenant_id')::uuid
       `, [contrato_produto_id]);
 
       if (contratoResult.rows.length === 0) {
@@ -442,6 +462,9 @@ class SaldoContratosModalidadesController {
    */
   async registrarConsumoModalidade(req: Request, res: Response): Promise<void> {
     try {
+      // Configurar contexto de tenant
+      await setTenantContextFromRequest(req);
+
       const { id } = req.params;
       const { quantidade, observacao, usuario_id, data_consumo } = req.body;
 
@@ -456,7 +479,12 @@ class SaldoContratosModalidadesController {
       }
 
       const saldoResult = await db.query(`
-        SELECT * FROM contrato_produtos_modalidades WHERE id = $1
+        SELECT cpm.* 
+        FROM contrato_produtos_modalidades cpm
+        JOIN contrato_produtos cp ON cpm.contrato_produto_id = cp.id
+        JOIN contratos c ON cp.contrato_id = c.id
+        WHERE cpm.id = $1
+          AND c.tenant_id = current_setting('app.current_tenant_id')::uuid
       `, [id]);
 
       if (saldoResult.rows.length === 0) {
@@ -519,12 +547,20 @@ class SaldoContratosModalidadesController {
    */
   async excluirConsumoModalidade(req: Request, res: Response): Promise<void> {
     try {
+      // Configurar contexto de tenant
+      await setTenantContextFromRequest(req);
+
       const { id, consumoId } = req.params;
 
       // Buscar o consumo para obter a quantidade
       const consumoResult = await db.query(`
-        SELECT * FROM movimentacoes_consumo_modalidade 
-        WHERE id = $1 AND contrato_produto_modalidade_id = $2
+        SELECT mcm.* 
+        FROM movimentacoes_consumo_modalidade mcm
+        JOIN contrato_produtos_modalidades cpm ON mcm.contrato_produto_modalidade_id = cpm.id
+        JOIN contrato_produtos cp ON cpm.contrato_produto_id = cp.id
+        JOIN contratos c ON cp.contrato_id = c.id
+        WHERE mcm.id = $1 AND mcm.contrato_produto_modalidade_id = $2
+          AND c.tenant_id = current_setting('app.current_tenant_id')::uuid
       `, [consumoId, id]);
 
       if (consumoResult.rows.length === 0) {
@@ -572,6 +608,9 @@ class SaldoContratosModalidadesController {
    */
   async buscarHistoricoConsumoModalidade(req: Request, res: Response): Promise<void> {
     try {
+      // Configurar contexto de tenant
+      await setTenantContextFromRequest(req);
+
       const { id } = req.params;
 
       const query = `
@@ -580,8 +619,12 @@ class SaldoContratosModalidadesController {
           mcm.created_at as data_consumo,
           u.nome as responsavel_nome
         FROM movimentacoes_consumo_modalidade mcm
+        JOIN contrato_produtos_modalidades cpm ON mcm.contrato_produto_modalidade_id = cpm.id
+        JOIN contrato_produtos cp ON cpm.contrato_produto_id = cp.id
+        JOIN contratos c ON cp.contrato_id = c.id
         LEFT JOIN usuarios u ON mcm.usuario_id = u.id
         WHERE mcm.contrato_produto_modalidade_id = $1
+          AND c.tenant_id = current_setting('app.current_tenant_id')::uuid
         ORDER BY mcm.created_at DESC
       `;
 
