@@ -23,6 +23,28 @@ O painel estará disponível em: http://localhost:5174
 - Email: admin@empresa.com
 - Senha: admin123
 
+## 🌐 Deploy para Produção
+
+### ⚡ Pronto para Deploy!
+
+**✅ Não precisa editar código!** Configure apenas via Vercel Dashboard:
+
+**Passos:**
+1. **Deploy no Vercel**:
+   - Root Directory: `admin-panel`
+   - Framework: Vite
+
+2. **Environment Variable**:
+   - `VITE_API_URL` = `https://seu-backend.vercel.app/api`
+
+3. **Configurar CORS no Backend**:
+   ```env
+   CORS_ORIGIN=https://admin-panel-xxx.vercel.app
+   ```
+
+📖 **Guia Completo**: [DEPLOY_GUIDE.md](./DEPLOY_GUIDE.md)  
+⚡ **Guia Rápido**: [QUICK_DEPLOY.md](./QUICK_DEPLOY.md)
+
 ## 📋 Funcionalidades
 
 - ✅ Dashboard com estatísticas

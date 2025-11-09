@@ -8,7 +8,12 @@
     "start": "tsx src/index.ts",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
-    "test": "jest"
+    "test": "jest",
+    "check-neon": "node check-neon-tables.js",
+    "sync-neon": "node run-neon-migrations.js",
+    "sync-neon-full": "node sync-to-neon.js",
+    "create-admin": "node create-system-admin.js",
+    "create-institution": "node create-example-institution.js"
   },
   "dependencies": {
     "@types/xlsx": "^0.0.35",
