@@ -45,6 +45,12 @@ import tenantMonitoringRoutes from "./routes/tenantMonitoringRoutes";
 import { createTenantBackupRoutes } from "./routes/tenantBackupRoutes";
 import cacheRoutes from "./routes/cacheRoutes";
 
+// Institution hierarchy routes
+import institutionRoutes from "./routes/institutionRoutes";
+import provisioningRoutes from "./routes/provisioningRoutes";
+import systemAdminAuthRoutes from "./routes/systemAdminAuthRoutes";
+import planRoutes from "./routes/planRoutes";
+
 // Importar middleware de performance e auditoria
 import { tenantPerformanceMonitor } from "./middleware/tenantPerformanceMiddleware";
 import { tenantMiddleware } from "./middleware/tenantMiddleware";
@@ -144,7 +150,13 @@ app.use(cors(corsOptions));
 // CORS já está configurado corretamente acima com as origens específicas
 // Removido middleware que forçava '*' e conflitava com credentials: true
 
-// Middleware de tenant (deve vir antes das rotas)
+// System admin routes (BEFORE tenant middleware - no tenant required)
+app.use("/api/system-admin/auth", systemAdminAuthRoutes);
+app.use("/api/institutions", institutionRoutes);
+app.use("/api/provisioning", provisioningRoutes);
+app.use("/api/plans", planRoutes);
+
+// Middleware de tenant (deve vir antes das outras rotas)
 app.use(tenantMiddleware({ 
   required: false, 
   fallbackToDefault: true,
@@ -264,6 +276,8 @@ app.use("/api/monitoring", tenantMonitoringRoutes);
 app.use("/api/backup", createTenantBackupRoutes(db.pool));
 app.use("/api/cache", cacheRoutes);
 app.use("/api/configuracoes", require("./routes/configuracaoRoutes").default);
+
+// Institution hierarchy routes already registered before tenant middleware
 
 // Rotas de gás removidas
 

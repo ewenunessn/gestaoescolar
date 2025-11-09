@@ -165,6 +165,44 @@ export async function criarEscola(req: Request, res: Response) {
       });
     }
 
+    // Verificar limite de escolas da instituição
+    const tenantResult = await db.query(
+      'SELECT institution_id FROM tenants WHERE id = $1',
+      [req.tenant.id]
+    );
+
+    if (tenantResult.rows.length > 0 && tenantResult.rows[0].institution_id) {
+      const institutionId = tenantResult.rows[0].institution_id;
+      
+      // Buscar limites da instituição
+      const institutionResult = await db.query(
+        'SELECT limits FROM institutions WHERE id = $1',
+        [institutionId]
+      );
+
+      if (institutionResult.rows.length > 0) {
+        const limits = institutionResult.rows[0].limits;
+        const maxSchools = limits?.max_schools || 999;
+
+        // Contar escolas da instituição (em todos os tenants)
+        const schoolCountResult = await db.query(`
+          SELECT COUNT(*) as count 
+          FROM escolas e
+          JOIN tenants t ON e.tenant_id = t.id
+          WHERE t.institution_id = $1
+        `, [institutionId]);
+
+        const currentSchools = parseInt(schoolCountResult.rows[0].count);
+
+        if (currentSchools >= maxSchools) {
+          return res.status(403).json({
+            success: false,
+            message: `Limite de ${maxSchools} escolas atingido para esta instituição. Faça upgrade do plano para criar mais escolas.`
+          });
+        }
+      }
+    }
+
     // Gerar código de acesso único de 6 dígitos se não fornecido
     const codigoAcessoFinal = codigo_acesso || Math.random().toString().slice(2, 8).padStart(6, '0');
 

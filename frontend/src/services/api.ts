@@ -150,22 +150,20 @@ api.interceptors.response.use(
             throw new Error("Sessão expirada. Faça login novamente.");
           }
         case 403:
-          throw new Error(
-            "Acesso negado. Você não tem permissão para esta ação."
-          );
+          const forbiddenMessage = (data as any)?.message || "Acesso negado. Você não tem permissão para esta ação.";
+          throw new Error(forbiddenMessage);
         case 404:
-          throw new Error(`Recurso não encontrado: ${originalRequest.url}`);
+          const notFoundMessage = (data as any)?.message || `Recurso não encontrado: ${originalRequest.url}`;
+          throw new Error(notFoundMessage);
         case 409:
           const conflictMessage = (data as any)?.message || "Conflito de dados";
           throw new Error(conflictMessage);
         case 422:
-          const validationErrors =
-            (data as any)?.errors || (data as any)?.message;
-          throw new Error(`Dados inválidos: ${validationErrors}`);
+          const validationMessage = (data as any)?.message || (data as any)?.errors || "Dados inválidos";
+          throw new Error(validationMessage);
         case 500:
-          throw new Error(
-            "Erro interno do servidor. Tente novamente mais tarde."
-          );
+          const serverMessage = (data as any)?.message || "Erro interno do servidor. Tente novamente mais tarde.";
+          throw new Error(serverMessage);
         default:
           const message =
             (data as any)?.message || `Erro ${status}: ${error.message}`;

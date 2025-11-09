@@ -244,9 +244,9 @@ export class TenantService implements TenantServiceInterface {
         SELECT 
           id,
           slug,
-          nome as name,
+          name,
           status,
-          config as settings,
+          settings,
           created_at as "createdAt",
           updated_at as "updatedAt"
         FROM tenants 
@@ -286,9 +286,9 @@ export class TenantService implements TenantServiceInterface {
         SELECT 
           id,
           slug,
-          nome as name,
+          name,
           status,
-          config as settings,
+          settings,
           created_at as "createdAt",
           updated_at as "updatedAt"
         FROM tenants 
@@ -325,12 +325,12 @@ export class TenantService implements TenantServiceInterface {
         SELECT 
           id,
           slug,
-          nome as name,
-          email as domain,
+          name,
+          domain,
           slug as subdomain,
           status,
-          config as settings,
-          config as limits,
+          settings,
+          limits,
           created_at as "createdAt",
           updated_at as "updatedAt"
         FROM tenants 
@@ -378,12 +378,12 @@ export class TenantService implements TenantServiceInterface {
         SELECT 
           id,
           slug,
-          nome as name,
-          email as domain,
+          name,
+          domain,
           slug as subdomain,
           status,
-          config as settings,
-          config as limits,
+          settings,
+          limits,
           created_at as "createdAt",
           updated_at as "updatedAt"
         FROM tenants 

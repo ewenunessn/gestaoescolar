@@ -70,6 +70,13 @@ export default function Login() {
       localStorage.setItem("perfil", response.tipo); // Backend retorna 'tipo', não 'perfil'
       localStorage.setItem("nome", response.nome);
       
+      // Salvar tenant principal
+      if (response.tenant) {
+        localStorage.setItem("currentTenantId", response.tenant.id);
+        localStorage.setItem("currentTenant", response.tenant.name);
+        console.log('🏢 Tenant principal salvo:', response.tenant);
+      }
+      
       // Salvar tenants disponíveis
       if (response.availableTenants) {
         localStorage.setItem("availableTenants", JSON.stringify(response.availableTenants));

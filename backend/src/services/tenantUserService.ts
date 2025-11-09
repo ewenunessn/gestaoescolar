@@ -130,7 +130,7 @@ export class TenantUserService {
         u.nome as user_nome,
         u.email as user_email,
         u.tipo as user_tipo,
-        t.nome as tenant_name,
+        t.name as tenant_name,
         t.slug as tenant_slug
       FROM tenant_users tu
       JOIN usuarios u ON tu.user_id = u.id
@@ -155,7 +155,7 @@ export class TenantUserService {
         u.nome as user_nome,
         u.email as user_email,
         u.tipo as user_tipo,
-        t.nome as tenant_name,
+        t.name as tenant_name,
         t.slug as tenant_slug
       FROM tenant_users tu
       JOIN usuarios u ON tu.user_id = u.id
@@ -182,7 +182,7 @@ export class TenantUserService {
         u.nome as user_nome,
         u.email as user_email,
         u.tipo as user_tipo,
-        t.nome as tenant_name,
+        t.name as tenant_name,
         t.slug as tenant_slug
       FROM tenant_users tu
       JOIN usuarios u ON tu.user_id = u.id
@@ -236,7 +236,7 @@ export class TenantUserService {
         u.nome as user_nome,
         u.email as user_email,
         u.tipo as user_tipo,
-        t.nome as tenant_name,
+        t.name as tenant_name,
         t.slug as tenant_slug
       FROM tenant_users tu
       JOIN usuarios u ON tu.user_id = u.id

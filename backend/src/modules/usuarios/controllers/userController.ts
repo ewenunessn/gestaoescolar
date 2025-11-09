@@ -169,20 +169,62 @@ export async function login(req: Request, res: Response) {
     console.log("🔐 [LOGIN] NODE_ENV:", process.env.NODE_ENV);
     console.log("🔐 [LOGIN] JWT_SECRET configurado:", config.jwtSecret ? 'Sim' : 'Não');
     
-    // Buscar associações de tenant do usuário
-    const tenantAssociations = await db.query(`
-      SELECT 
-        tu.tenant_id,
-        tu.role as tenant_role,
-        tu.status as tenant_status,
-        t.slug as tenant_slug,
-        t.name as tenant_name,
-        t.status as tenant_active_status
-      FROM tenant_users tu
-      JOIN tenants t ON tu.tenant_id = t.id
-      WHERE tu.user_id = $1 AND tu.status = 'active' AND t.status = 'active'
-      ORDER BY tu.created_at ASC
-    `, [user.id]);
+    // Verificar se é administrador do sistema (tipo 'admin')
+    const isSystemAdmin = user.tipo === 'admin';
+    
+    // Se for admin, buscar TODOS os tenants. Senão, apenas os associados
+    let tenantAssociations;
+    
+    // Buscar tenants da instituição do usuário (institution_id é opcional no tipo User)
+    if (user.institution_id) {
+      console.log("🏛️  Usuário pertence a instituição - buscando tenants da instituição");
+      tenantAssociations = await db.query(`
+        SELECT 
+          t.id as tenant_id,
+          COALESCE(tu.role, 'user') as tenant_role,
+          COALESCE(tu.status, 'active') as tenant_status,
+          t.slug as tenant_slug,
+          t.name as tenant_name,
+          t.status as tenant_active_status
+        FROM tenants t
+        LEFT JOIN tenant_users tu ON tu.tenant_id = t.id AND tu.user_id = $1
+        WHERE t.institution_id = $2 AND t.status = 'active'
+        ORDER BY t.name ASC
+      `, [user.id, user.institution_id]);
+      console.log(`✅ Encontrados ${tenantAssociations.rows.length} tenants da instituição:`, 
+        tenantAssociations.rows.map(t => t.tenant_name).join(', '));
+    } else if (isSystemAdmin) {
+      console.log("🔑 Usuário é admin do sistema sem instituição - buscando TODOS os tenants");
+      tenantAssociations = await db.query(`
+        SELECT 
+          t.id as tenant_id,
+          'tenant_admin' as tenant_role,
+          'active' as tenant_status,
+          t.slug as tenant_slug,
+          t.name as tenant_name,
+          t.status as tenant_active_status
+        FROM tenants t
+        WHERE t.status = 'active'
+        ORDER BY t.name ASC
+      `);
+      console.log(`✅ Encontrados ${tenantAssociations.rows.length} tenants ativos:`, 
+        tenantAssociations.rows.map(t => t.tenant_name).join(', '));
+    } else {
+      console.log("👤 Usuário comum - buscando apenas tenants associados");
+      tenantAssociations = await db.query(`
+        SELECT 
+          tu.tenant_id,
+          tu.role as tenant_role,
+          tu.status as tenant_status,
+          t.slug as tenant_slug,
+          t.name as tenant_name,
+          t.status as tenant_active_status
+        FROM tenant_users tu
+        JOIN tenants t ON tu.tenant_id = t.id
+        WHERE tu.user_id = $1 AND tu.status = 'active' AND t.status = 'active'
+        ORDER BY tu.created_at ASC
+      `, [user.id]);
+    }
 
     // Determinar tenant principal (primeiro ativo ou padrão)
     let primaryTenant = null;
@@ -200,7 +242,7 @@ export async function login(req: Request, res: Response) {
     } else {
       // Se não tem associação, usar tenant padrão
       const defaultTenant = await db.query(`
-        SELECT id, slug, nome as name FROM tenants WHERE id = '00000000-0000-0000-0000-000000000000'
+        SELECT id, slug, name FROM tenants WHERE id = '00000000-0000-0000-0000-000000000000'
       `);
       
       if (defaultTenant.rows.length > 0) {
@@ -220,9 +262,6 @@ export async function login(req: Request, res: Response) {
       }
     }
 
-    // Verificar se é administrador do sistema (tipo 'admin')
-    const isSystemAdmin = user.tipo === 'admin';
-    
     const tokenPayload = {
       id: user.id,
       tipo: user.tipo,

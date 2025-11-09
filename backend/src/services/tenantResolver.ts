@@ -31,8 +31,8 @@ export class TenantResolver implements TenantResolverInterface {
         SELECT 
           id,
           slug,
-          nome as name,
-          config as settings,
+          name,
+          settings,
           status,
           created_at as "createdAt",
           updated_at as "updatedAt"
@@ -72,13 +72,13 @@ export class TenantResolver implements TenantResolverInterface {
         SELECT 
           id,
           slug,
-          nome as name,
-          config as settings,
+          name,
+          settings,
           status,
           created_at as "createdAt",
           updated_at as "updatedAt"
         FROM tenants 
-        WHERE slug = $1 AND status = 'active'
+        WHERE slug = $1
       `, [tenantId]);
 
       // Se não encontrou por slug, tentar por ID (UUID)
@@ -89,13 +89,13 @@ export class TenantResolver implements TenantResolverInterface {
             SELECT 
               id,
               slug,
-              nome as name,
-              config as settings,
+              name,
+              settings,
               status,
               created_at as "createdAt",
               updated_at as "updatedAt"
             FROM tenants 
-            WHERE id = $1::uuid AND status = 'active'
+            WHERE id = $1::uuid
           `, [tenantId]);
           
           if (result.rows.length > 0) {
@@ -164,8 +164,8 @@ export class TenantResolver implements TenantResolverInterface {
         SELECT 
           id,
           slug,
-          nome as name,
-          config as settings,
+          name,
+          settings,
           status,
           created_at as "createdAt",
           updated_at as "updatedAt"

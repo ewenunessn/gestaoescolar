@@ -151,7 +151,7 @@ export default function TenantSelector({
     return (
       <Box display="flex" alignItems="center" gap={1}>
         <CircularProgress size={20} />
-        <Typography variant="body2">Loading tenants...</Typography>
+        <Typography variant="body2">Carregando unidades...</Typography>
       </Box>
     );
   }
@@ -165,82 +165,37 @@ export default function TenantSelector({
   }
 
   if (variant === 'compact') {
-    // Debug logs
-    console.log('🔍 TenantSelector Debug:', {
-      currentTenant: currentTenant?.name,
-      currentTenantId: currentTenant?.id,
-      availableTenantsCount: availableTenants.length,
-      availableTenants: availableTenants.map(t => ({ id: t.id, name: t.name })),
-      loading,
-      switching,
-      selectValue: currentTenant?.id || ""
-    });
-
     return (
-      <Box display="flex" alignItems="center" gap={2}>
-        {/* Show current tenant info */}
-        {currentTenant && (
-          <Box display="flex" alignItems="center" gap={1}>
-            <Typography variant="body2" color="text.secondary">
-              Tenant atual:
-            </Typography>
-            <Chip
-              icon={<Business />}
-              label={currentTenant.name}
-              color="primary"
-              size="small"
-            />
-          </Box>
-        )}
-        
-        <FormControl size="small" sx={{ minWidth: 200 }}>
-          <InputLabel id="tenant-select-label">
-            Selecionar Tenant
-          </InputLabel>
+      <Box display="flex" alignItems="center" gap={1.5}>
+        <FormControl size="small" sx={{ minWidth: 280 }}>
+          <InputLabel id="tenant-select-label">Unidade</InputLabel>
           <Select
             labelId="tenant-select-label"
             value={currentTenant?.id || ""}
-            label="Selecionar Tenant"
+            label="Unidade"
             disabled={switching || loading}
             onChange={(e) => handleTenantSwitch(e.target.value)}
             displayEmpty
-            renderValue={(selected) => {
-              if (!selected || selected === "") {
-                return <Typography color="text.secondary">Selecionar Tenant</Typography>;
+            sx={{ 
+              '& .MuiSelect-select': { 
+                py: 1,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1
               }
-              const selectedTenant = availableTenants.find(t => t.id === selected);
-              if (selectedTenant) {
-                return (
-                  <Box display="flex" alignItems="center" gap={1}>
-                    <Business fontSize="small" />
-                    <Typography>{selectedTenant.name}</Typography>
-                  </Box>
-                );
-              }
-              return <Typography color="error">Tenant não encontrado</Typography>;
             }}
           >
-            {!currentTenant && (
-              <MenuItem value="" disabled>
-                <Typography color="text.secondary">Nenhum tenant selecionado</Typography>
-              </MenuItem>
-            )}
             {availableTenants.map((tenant) => (
               <MenuItem key={tenant.id} value={tenant.id}>
-                <Box display="flex" alignItems="center" gap={1}>
-                  <Business fontSize="small" />
-                  {tenant.name}
-                  <Chip 
-                    label={tenant.status} 
-                    size="small" 
-                    color={tenant.status === 'active' ? 'success' : 'default'}
-                  />
+                <Box display="flex" alignItems="center" gap={1} width="100%">
+                  <Business fontSize="small" color="action" />
+                  <Typography sx={{ flex: 1 }}>{tenant.name}</Typography>
                   {currentTenant?.id === tenant.id && (
                     <Chip 
                       label="Atual" 
                       size="small" 
                       color="primary"
-                      variant="outlined"
+                      sx={{ height: 20, fontSize: '0.7rem' }}
                     />
                   )}
                 </Box>
@@ -249,7 +204,7 @@ export default function TenantSelector({
           </Select>
         </FormControl>
         
-        {switching && <CircularProgress size={16} />}
+        {switching && <CircularProgress size={18} />}
         
         {showCreateButton && (
           <Button
@@ -257,20 +212,21 @@ export default function TenantSelector({
             startIcon={<Add />}
             onClick={() => setCreateDialogOpen(true)}
             variant="outlined"
+            sx={{ whiteSpace: 'nowrap' }}
           >
-            New Tenant
+            Nova Unidade
           </Button>
         )}
 
         {/* Create Tenant Dialog */}
         <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} maxWidth="sm" fullWidth>
-          <DialogTitle>Create New Tenant</DialogTitle>
+          <DialogTitle>Criar Nova Unidade</DialogTitle>
           <DialogContent>
             <Grid container spacing={2} sx={{ mt: 1 }}>
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="Tenant Name"
+                  label="Nome da Unidade"
                   value={newTenant.name}
                   onChange={(e) => setNewTenant({ ...newTenant, name: e.target.value })}
                   required
@@ -279,32 +235,32 @@ export default function TenantSelector({
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
-                  label="Slug"
+                  label="Identificador"
                   value={newTenant.slug}
                   onChange={(e) => setNewTenant({ ...newTenant, slug: e.target.value.toLowerCase() })}
-                  helperText="URL-friendly identifier"
+                  helperText="Identificador único (URL)"
                   required
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
-                  label="Subdomain"
+                  label="Subdomínio"
                   value={newTenant.subdomain}
                   onChange={(e) => setNewTenant({ ...newTenant, subdomain: e.target.value.toLowerCase() })}
-                  helperText="Optional subdomain"
+                  helperText="Opcional"
                 />
               </Grid>
             </Grid>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
+            <Button onClick={() => setCreateDialogOpen(false)}>Cancelar</Button>
             <Button 
               onClick={handleCreateTenant} 
               variant="contained"
               disabled={creating || !newTenant.name || !newTenant.slug}
             >
-              {creating ? <CircularProgress size={20} /> : 'Create'}
+              {creating ? <CircularProgress size={20} /> : 'Criar'}
             </Button>
           </DialogActions>
         </Dialog>
@@ -317,20 +273,20 @@ export default function TenantSelector({
     <Box>
       <Typography variant="h6" gutterBottom display="flex" alignItems="center" gap={1}>
         <AdminPanelSettings />
-        Tenant Management
+        Gerenciamento de Unidades
       </Typography>
       
       {currentTenant && (
         <Alert severity="info" sx={{ mb: 2 }}>
-          Currently managing: <strong>{currentTenant.name}</strong>
+          Gerenciando: <strong>{currentTenant.name}</strong>
         </Alert>
       )}
 
       <FormControl fullWidth sx={{ mb: 2 }}>
-        <InputLabel>Select Tenant to Manage</InputLabel>
+        <InputLabel>Selecionar Unidade</InputLabel>
         <Select
           value={currentTenant?.id || ''}
-          label="Select Tenant to Manage"
+          label="Selecionar Unidade"
           disabled={switching}
           onChange={(e) => handleTenantSwitch(e.target.value)}
         >
@@ -347,7 +303,7 @@ export default function TenantSelector({
                   </Box>
                 </Box>
                 <Chip 
-                  label={tenant.status} 
+                  label={tenant.status === 'active' ? 'Ativo' : 'Inativo'} 
                   size="small" 
                   color={tenant.status === 'active' ? 'success' : 'default'}
                 />
@@ -364,7 +320,7 @@ export default function TenantSelector({
           startIcon={<Add />}
           onClick={() => setCreateDialogOpen(true)}
         >
-          Create New Tenant
+          Criar Nova Unidade
         </Button>
       )}
     </Box>

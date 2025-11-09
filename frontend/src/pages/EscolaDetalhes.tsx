@@ -117,10 +117,10 @@ const EscolaInfoCard = ({ isEditing, formData, setFormData, associacoes, totalAl
                 {isEditing ? (
                     <>
                         <TextField label="Nome da Escola" value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} fullWidth margin="dense" required />
-
+                        <TextField label="Código INEP" value={formData.codigo} onChange={(e) => setFormData({ ...formData, codigo: e.target.value })} fullWidth margin="dense" helperText="Código do INEP (opcional)" />
                         <TextField label="Endereço" value={formData.endereco} onChange={(e) => setFormData({ ...formData, endereco: e.target.value })} fullWidth margin="dense" multiline rows={2} />
                         <TextField label="Município" value={formData.municipio} onChange={(e) => setFormData({ ...formData, municipio: e.target.value })} fullWidth margin="dense" />
-                        <TextField label="Código de Acesso (6 dígitos)" value={formData.codigo_acesso} onChange={(e) => setFormData({ ...formData, codigo_acesso: e.target.value.replace(/\D/g, '') })} fullWidth margin="dense" required inputProps={{ maxLength: 6 }} />
+                        <TextField label="Código de Acesso (6 dígitos)" value={formData.codigo_acesso} onChange={(e) => setFormData({ ...formData, codigo_acesso: e.target.value.replace(/\D/g, '') })} fullWidth margin="dense" required inputProps={{ maxLength: 6, inputMode: 'numeric', pattern: '[0-9]*' }} helperText="Código numérico de 6 dígitos para acesso da escola" />
                         <TextField label="Telefone" value={formData.telefone} onChange={(e) => setFormData({ ...formData, telefone: e.target.value })} fullWidth margin="dense" />
                         <TextField label="E-mail" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} type="email" fullWidth margin="dense" />
                         <TextField label="Nome do(a) Gestor(a)" value={formData.nome_gestor} onChange={(e) => setFormData({ ...formData, nome_gestor: e.target.value })} fullWidth margin="dense" />
@@ -134,7 +134,7 @@ const EscolaInfoCard = ({ isEditing, formData, setFormData, associacoes, totalAl
                     </>
                 ) : (
                     <>
-
+                        <InfoItem icon={<SchoolIcon color="action" />} label="Código INEP" value={formData.codigo} />
                         <InfoItem icon={<LocationOnIcon color="action" />} label="Endereço" value={formData.endereco} />
                         <InfoItem icon={<LocationOnIcon color="action" />} label="Município" value={formData.municipio} />
                         <InfoItem icon={<VpnKeyIcon color="action" />} label="Código de Acesso" value={formData.codigo_acesso} />

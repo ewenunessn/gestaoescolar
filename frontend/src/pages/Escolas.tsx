@@ -196,6 +196,14 @@ const EscolasPage = () => {
 
   const handleFormChange = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | SelectChangeEvent<string>) => {
     const { name, value } = event.target;
+    
+    // Validação especial para codigo_acesso: apenas números, máximo 6 dígitos
+    if (name === 'codigo_acesso') {
+      const numericValue = value.replace(/\D/g, '').slice(0, 6);
+      setFormData(prev => ({ ...prev, [name!]: numericValue }));
+      return;
+    }
+    
     setFormData(prev => ({ ...prev, [name!]: value as string }));
   };
 
@@ -214,8 +222,9 @@ const EscolasPage = () => {
         setSuccessMessage('Escola criada com sucesso!');
         closeModal();
       },
-      onError: () => {
-        setError('Erro ao salvar a escola. Verifique os dados e tente novamente.');
+      onError: (error: any) => {
+        const errorMessage = error?.response?.data?.message || error?.message || 'Erro ao salvar a escola. Verifique os dados e tente novamente.';
+        setError(errorMessage);
       }
     });
   };
@@ -347,7 +356,8 @@ const EscolasPage = () => {
         <DialogContent dividers><Grid container spacing={2} sx={{ pt: 1 }}>
           <Grid item xs={12}><TextField name="nome" label="Nome da Escola" value={formData.nome} onChange={handleFormChange} fullWidth required /></Grid>
           <Grid item xs={12} sm={6}><TextField name="codigo" label="Código INEP" value={formData.codigo} onChange={handleFormChange} fullWidth /></Grid>
-          <Grid item xs={12} sm={6}><FormControl fullWidth><InputLabel>Administração</InputLabel><Select name="administracao" value={formData.administracao} label="Administração" onChange={handleFormChange}><MenuItem value="municipal">Municipal</MenuItem><MenuItem value="estadual">Estadual</MenuItem><MenuItem value="federal">Federal</MenuItem><MenuItem value="particular">Particular</MenuItem></Select></FormControl></Grid>
+          <Grid item xs={12} sm={6}><TextField name="codigo_acesso" label="Código de Acesso (6 dígitos)" value={formData.codigo_acesso} onChange={handleFormChange} fullWidth required inputProps={{ maxLength: 6, inputMode: 'numeric', pattern: '[0-9]*' }} helperText="Código numérico de 6 dígitos para acesso da escola" /></Grid>
+          <Grid item xs={12}><FormControl fullWidth><InputLabel>Administração</InputLabel><Select name="administracao" value={formData.administracao} label="Administração" onChange={handleFormChange}><MenuItem value=""><em>Nenhuma</em></MenuItem><MenuItem value="municipal">Municipal</MenuItem><MenuItem value="estadual">Estadual</MenuItem><MenuItem value="federal">Federal</MenuItem><MenuItem value="particular">Particular</MenuItem></Select></FormControl></Grid>
           <Grid item xs={12}><TextField name="endereco" label="Endereço Completo" value={formData.endereco} onChange={handleFormChange} fullWidth /></Grid>
           <Grid item xs={12}><LocationSelector value={formData.municipio} onChange={(m) => setFormData(p => ({ ...p, municipio: m }))} label="Município" placeholder="Digite o nome do município ou cole uma URL do Google Maps" /></Grid>
           <Grid item xs={12} sm={6}><TextField name="telefone" label="Telefone" value={formData.telefone} onChange={handleFormChange} fullWidth /></Grid>
