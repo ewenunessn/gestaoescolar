@@ -75,8 +75,15 @@ export const ConfigProvider: React.FC<ConfigProviderProps> = ({ children }) => {
   }, [onConfigChanged]);
 
   useEffect(() => {
-    carregarConfig();
-  }, []);
+    // Só carregar configurações se houver token (usuário autenticado)
+    const token = localStorage.getItem('token');
+    if (token) {
+      carregarConfig();
+    } else {
+      // Se não houver token, apenas marcar como não carregando
+      setLoading(false);
+    }
+  }, [carregarConfig]);
 
   const value: ConfigContextType = useMemo(() => ({
     configModuloSaldo,
