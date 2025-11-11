@@ -267,6 +267,7 @@ export async function login(req: Request, res: Response) {
       tipo: user.tipo,
       email: user.email,
       nome: user.nome,
+      institution_id: user.institution_id, // Adicionar institution_id ao token
       tenant: primaryTenant,
       tenantRole,
       isSystemAdmin,
