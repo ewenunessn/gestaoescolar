@@ -89,7 +89,8 @@ export default function Login() {
         const user = {
           id: tokenPayload.id,
           nome: response.nome,
-          perfil: response.tipo // Backend retorna 'tipo', não 'perfil'
+          perfil: response.tipo, // Backend retorna 'tipo', não 'perfil'
+          institution_id: tokenPayload.institution_id || response.institution_id // Incluir institution_id
         };
         localStorage.setItem("user", JSON.stringify(user));
         console.log('👤 Dados do usuário salvos:', user);
@@ -99,7 +100,8 @@ export default function Login() {
         const user = {
           id: 1, // Fallback para admin
           nome: response.nome,
-          perfil: response.tipo // Backend retorna 'tipo', não 'perfil'
+          perfil: response.tipo, // Backend retorna 'tipo', não 'perfil'
+          institution_id: response.institution_id // Incluir institution_id do response
         };
         localStorage.setItem("user", JSON.stringify(user));
       }

@@ -75,12 +75,14 @@ export const ConfigProvider: React.FC<ConfigProviderProps> = ({ children }) => {
   }, [onConfigChanged]);
 
   useEffect(() => {
-    // Só carregar configurações se houver token (usuário autenticado)
+    // Só carregar configurações se houver token E tenant (usuário autenticado e tenant resolvido)
     const token = localStorage.getItem('token');
-    if (token) {
+    const tenantId = localStorage.getItem('currentTenantId');
+    
+    if (token && tenantId) {
       carregarConfig();
     } else {
-      // Se não houver token, apenas marcar como não carregando
+      // Se não houver token ou tenant, apenas marcar como não carregando
       setLoading(false);
     }
   }, [carregarConfig]);
