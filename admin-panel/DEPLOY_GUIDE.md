@@ -35,11 +35,17 @@ git push origin main
 1. Acesse [vercel.com](https://vercel.com)
 2. Clique em "Add New Project"
 3. Importe o repositório do GitHub
-4. **IMPORTANTE**: Configure o Root Directory:
-   - Root Directory: `admin-panel`
+4. **🚨 CRÍTICO - Configure o Root Directory**:
+   
+   **⚠️ SEM ISSO O BUILD VAI FALHAR!**
+   
+   - **Root Directory**: `admin-panel` ← OBRIGATÓRIO!
    - Framework Preset: `Vite`
-   - Build Command: `npm run build`
-   - Output Directory: `dist`
+   - Build Command: `npm run build` (deixe padrão)
+   - Output Directory: `dist` (deixe padrão)
+   - Install Command: `npm install` (deixe padrão)
+
+   **Por quê?** O projeto está em um monorepo. O Vercel precisa saber que deve instalar as dependências dentro da pasta `admin-panel`, não na raiz do repositório.
 
 ### Passo 3: Configurar Variáveis de Ambiente
 
