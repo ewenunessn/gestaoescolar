@@ -352,6 +352,8 @@ export class InstitutionController {
       });
     } catch (error) {
       console.error('Erro ao buscar tenants:', error);
+      console.error('Institution ID:', id);
+      console.error('Error details:', error);
       res.status(500).json({
         success: false,
         message: 'Erro ao buscar tenants',
