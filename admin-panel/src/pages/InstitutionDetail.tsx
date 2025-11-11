@@ -17,6 +17,8 @@ export default function InstitutionDetail() {
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
   const [showCreateTenantModal, setShowCreateTenantModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [editingUser, setEditingUser] = useState<any>(null);
 
   useEffect(() => {
     if (id) {
@@ -510,8 +512,8 @@ export default function InstitutionDetail() {
                     </span>
                     <button
                       onClick={() => {
-                        // TODO: Implementar edição de usuário
-                        alert('Funcionalidade de edição em desenvolvimento');
+                        setEditingUser(user);
+                        setShowEditUserModal(true);
                       }}
                       style={{
                         padding: '6px 12px',
@@ -700,6 +702,127 @@ export default function InstitutionDetail() {
                   <button
                     type="button"
                     onClick={() => setShowCreateUserModal(false)}
+                    style={{
+                      flex: 1,
+                      padding: '12px',
+                      background: '#e0e0e0',
+                      color: '#333',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontWeight: '600'
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Editar Usuário */}
+        {showEditUserModal && editingUser && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}>
+            <div style={{
+              background: 'white',
+              borderRadius: '12px',
+              padding: '30px',
+              width: '90%',
+              maxWidth: '500px',
+              maxHeight: '90vh',
+              overflow: 'auto'
+            }}>
+              <h2 style={{ marginBottom: '20px', fontSize: '20px', fontWeight: 'bold' }}>
+                Editar Usuário
+              </h2>
+              
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                const form = e.target as HTMLFormElement;
+                const formData = new FormData(form);
+                
+                try {
+                  await institutionService.updateUser(id!, editingUser.user_id, {
+                    institution_role: formData.get('institution_role')
+                  });
+                  alert('Usuário atualizado com sucesso!');
+                  setShowEditUserModal(false);
+                  setEditingUser(null);
+                  loadData();
+                } catch (error: any) {
+                  alert(error.response?.data?.message || 'Erro ao atualizar usuário');
+                }
+              }}>
+                <div style={{ marginBottom: '15px', padding: '15px', background: '#f5f5f5', borderRadius: '8px' }}>
+                  <div style={{ marginBottom: '8px' }}>
+                    <strong>Nome:</strong> {editingUser.user_name}
+                  </div>
+                  <div style={{ marginBottom: '8px' }}>
+                    <strong>Email:</strong> {editingUser.user_email}
+                  </div>
+                  <div>
+                    <strong>Tipo:</strong> {editingUser.user_type}
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '15px' }}>
+                  <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', fontWeight: '500' }}>
+                    Nível de Acesso na Instituição
+                  </label>
+                  <select
+                    name="institution_role"
+                    defaultValue={editingUser.role}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      border: '2px solid #e0e0e0',
+                      borderRadius: '8px',
+                      fontSize: '14px'
+                    }}
+                  >
+                    <option value="user">Usuário - Acesso básico</option>
+                    <option value="manager">Gerente - Pode gerenciar dados</option>
+                    <option value="institution_admin">Admin - Acesso total</option>
+                  </select>
+                  <small style={{ display: 'block', marginTop: '5px', color: '#666', fontSize: '12px' }}>
+                    Define as permissões do usuário nesta instituição
+                  </small>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                  <button
+                    type="submit"
+                    style={{
+                      flex: 1,
+                      padding: '12px',
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontWeight: '600'
+                    }}
+                  >
+                    Salvar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowEditUserModal(false);
+                      setEditingUser(null);
+                    }}
                     style={{
                       flex: 1,
                       padding: '12px',

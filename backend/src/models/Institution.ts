@@ -286,6 +286,17 @@ export class InstitutionModel {
     return result.rows;
   }
 
+  // Update user role in institution
+  async updateUserRole(institutionId: string, userId: number, role: string): Promise<boolean> {
+    const query = `
+      UPDATE institution_users 
+      SET role = $3, updated_at = CURRENT_TIMESTAMP
+      WHERE institution_id = $1 AND user_id = $2
+    `;
+    const result = await this.db.query(query, [institutionId, userId, role]);
+    return result.rowCount > 0;
+  }
+
   // Get institution tenants
   async getTenants(institutionId: string): Promise<any[]> {
     const query = `

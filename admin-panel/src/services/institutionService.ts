@@ -61,4 +61,9 @@ export const institutionService = {
     const response = await api.delete(`/institutions/${institutionId}/users/${userId}`);
     return response.data;
   },
+
+  async updateUser(institutionId: string, userId: number, data: any) {
+    const response = await api.put(`/institutions/${institutionId}/users/${userId}`, data);
+    return response.data;
+  },
 };

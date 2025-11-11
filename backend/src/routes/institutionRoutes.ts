@@ -21,6 +21,7 @@ router.get('/:id/stats', institutionController.getStats.bind(institutionControll
 // Institution users management
 router.get('/:id/users', institutionController.getUsers.bind(institutionController));
 router.post('/:id/users', institutionController.addUser.bind(institutionController));
+router.put('/:id/users/:userId', institutionController.updateUser.bind(institutionController));
 router.delete('/:id/users/:userId', institutionController.removeUser.bind(institutionController));
 
 // Institution tenants

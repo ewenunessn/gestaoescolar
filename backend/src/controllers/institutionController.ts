@@ -300,6 +300,36 @@ export class InstitutionController {
     }
   }
 
+  // Update user in institution
+  async updateUser(req: Request, res: Response) {
+    try {
+      const { id, userId } = req.params;
+      const { institution_role } = req.body;
+
+      const institution = await institutionModel.findById(id);
+      if (!institution) {
+        return res.status(404).json({
+          success: false,
+          message: 'Instituição não encontrada'
+        });
+      }
+
+      await institutionModel.updateUserRole(id, parseInt(userId), institution_role);
+
+      res.json({
+        success: true,
+        message: 'Usuário atualizado com sucesso'
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar usuário:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erro ao atualizar usuário',
+        error: error.message
+      });
+    }
+  }
+
   // Get institution users
   async getUsers(req: Request, res: Response) {
     try {
