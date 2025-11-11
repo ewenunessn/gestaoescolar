@@ -19,9 +19,13 @@ import {
 // ============================================================================
 
 export function useEscolas(filters?: { search?: string; ativo?: boolean }) {
+  // Só executar query se houver token (usuário autenticado)
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  
   return useQuery({
     queryKey: queryKeys.escolas.list(filters),
     queryFn: listarEscolas,
+    enabled: !!token, // Só executar se houver token
     ...cacheConfig.static,
     select: (data: Escola[]) => {
       let filteredData = [...data];
