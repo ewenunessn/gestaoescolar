@@ -489,24 +489,69 @@ export default function InstitutionDetail() {
                     alignItems: 'center'
                   }}
                 >
-                  <div>
+                  <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: '600', marginBottom: '4px' }}>
                       {user.user_name}
                     </div>
                     <div style={{ fontSize: '13px', color: '#666' }}>
-                      {user.user_email} • {user.user_type}
+                      {user.user_email} • {user.user_type} • Função: {user.role}
                     </div>
                   </div>
-                  <span style={{
-                    padding: '4px 12px',
-                    borderRadius: '20px',
-                    fontSize: '12px',
-                    fontWeight: '500',
-                    background: '#e3f2fd',
-                    color: '#1976d2'
-                  }}>
-                    {user.role}
-                  </span>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <span style={{
+                      padding: '4px 12px',
+                      borderRadius: '20px',
+                      fontSize: '12px',
+                      fontWeight: '500',
+                      background: '#e3f2fd',
+                      color: '#1976d2'
+                    }}>
+                      {user.role}
+                    </span>
+                    <button
+                      onClick={() => {
+                        // TODO: Implementar edição de usuário
+                        alert('Funcionalidade de edição em desenvolvimento');
+                      }}
+                      style={{
+                        padding: '6px 12px',
+                        background: '#fff',
+                        border: '1px solid #ddd',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        color: '#666'
+                      }}
+                      title="Editar usuário"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (confirm(`Tem certeza que deseja remover ${user.user_name} desta instituição?`)) {
+                          try {
+                            await institutionService.removeUser(id!, user.user_id);
+                            alert('Usuário removido com sucesso!');
+                            loadData();
+                          } catch (error: any) {
+                            alert(error.response?.data?.message || 'Erro ao remover usuário');
+                          }
+                        }
+                      }}
+                      style={{
+                        padding: '6px 12px',
+                        background: '#fff',
+                        border: '1px solid #f44336',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        color: '#f44336'
+                      }}
+                      title="Remover usuário"
+                    >
+                      Remover
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

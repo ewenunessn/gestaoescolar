@@ -141,6 +141,7 @@ export default function CreateInstitution() {
                 <input
                   type="text"
                   required
+                  placeholder="Ex: Prefeitura de São Paulo"
                   value={formData.institution.name}
                   onChange={(e) => updateField('institution', 'name', e.target.value)}
                   style={{
@@ -151,15 +152,17 @@ export default function CreateInstitution() {
                     fontSize: '14px'
                   }}
                 />
+                <small style={{ color: '#666', fontSize: '12px' }}>Nome completo da instituição</small>
               </div>
 
               <div>
                 <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '500' }}>
-                  Slug *
+                  Identificador (Slug) *
                 </label>
                 <input
                   type="text"
                   required
+                  placeholder="Ex: prefeitura-sp"
                   value={formData.institution.slug}
                   onChange={(e) => updateField('institution', 'slug', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
                   style={{
@@ -171,6 +174,7 @@ export default function CreateInstitution() {
                     fontFamily: 'monospace'
                   }}
                 />
+                <small style={{ color: '#666', fontSize: '12px' }}>Identificador único (apenas letras minúsculas, números e hífen)</small>
               </div>
 
               <div>
@@ -179,6 +183,7 @@ export default function CreateInstitution() {
                 </label>
                 <input
                   type="text"
+                  placeholder="Ex: Prefeitura Municipal de São Paulo"
                   value={formData.institution.legal_name}
                   onChange={(e) => updateField('institution', 'legal_name', e.target.value)}
                   style={{
@@ -189,6 +194,7 @@ export default function CreateInstitution() {
                     fontSize: '14px'
                   }}
                 />
+                <small style={{ color: '#666', fontSize: '12px' }}>Nome oficial registrado (opcional)</small>
               </div>
 
               <div>
@@ -197,6 +203,7 @@ export default function CreateInstitution() {
                 </label>
                 <input
                   type="text"
+                  placeholder="00.000.000/0000-00"
                   value={formData.institution.document_number}
                   onChange={(e) => updateField('institution', 'document_number', e.target.value)}
                   style={{
@@ -255,14 +262,16 @@ export default function CreateInstitution() {
                     </option>
                   ))}
                 </select>
+                <small style={{ color: '#666', fontSize: '12px' }}>Define os limites de usuários, escolas e tenants</small>
               </div>
 
               <div>
                 <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '500' }}>
-                  Email
+                  Email de Contato
                 </label>
                 <input
                   type="email"
+                  placeholder="contato@instituicao.gov.br"
                   value={formData.institution.email}
                   onChange={(e) => updateField('institution', 'email', e.target.value)}
                   style={{
@@ -273,6 +282,7 @@ export default function CreateInstitution() {
                     fontSize: '14px'
                   }}
                 />
+                <small style={{ color: '#666', fontSize: '12px' }}>Email principal da instituição (opcional)</small>
               </div>
             </div>
           </div>
@@ -285,18 +295,22 @@ export default function CreateInstitution() {
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
             marginBottom: '20px'
           }}>
-            <h2 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '20px' }}>
-              Tenant Inicial
+            <h2 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '10px' }}>
+              Unidade Inicial (Tenant)
             </h2>
+            <p style={{ color: '#666', fontSize: '14px', marginBottom: '20px' }}>
+              Cada instituição precisa de pelo menos uma unidade. Por exemplo: "Secretaria de Educação" ou "Sede Principal".
+            </p>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '500' }}>
-                  Nome do Tenant *
+                  Nome da Unidade *
                 </label>
                 <input
                   type="text"
                   required
+                  placeholder="Ex: Secretaria de Educação"
                   value={formData.tenant.name}
                   onChange={(e) => updateField('tenant', 'name', e.target.value)}
                   style={{
@@ -307,15 +321,17 @@ export default function CreateInstitution() {
                     fontSize: '14px'
                   }}
                 />
+                <small style={{ color: '#666', fontSize: '12px' }}>Nome que aparecerá no sistema</small>
               </div>
 
               <div>
                 <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '500' }}>
-                  Slug do Tenant *
+                  Identificador da Unidade *
                 </label>
                 <input
                   type="text"
                   required
+                  placeholder="Ex: secretaria-educacao"
                   value={formData.tenant.slug}
                   onChange={(e) => updateField('tenant', 'slug', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
                   style={{
@@ -327,6 +343,7 @@ export default function CreateInstitution() {
                     fontFamily: 'monospace'
                   }}
                 />
+                <small style={{ color: '#666', fontSize: '12px' }}>Identificador único (apenas letras minúsculas, números e hífen)</small>
               </div>
             </div>
           </div>
@@ -339,14 +356,17 @@ export default function CreateInstitution() {
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
             marginBottom: '20px'
           }}>
-            <h2 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '20px' }}>
-              Usuário Administrador
+            <h2 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '10px' }}>
+              Primeiro Administrador
             </h2>
+            <p style={{ color: '#666', fontSize: '14px', marginBottom: '20px' }}>
+              Crie o primeiro usuário administrador que terá acesso total à instituição.
+            </p>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '500' }}>
-                  Nome *
+                  Nome Completo *
                 </label>
                 <input
                   type="text"

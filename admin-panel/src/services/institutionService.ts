@@ -56,4 +56,9 @@ export const institutionService = {
     const response = await api.get(`/provisioning/institutions/${id}/hierarchy`);
     return response.data;
   },
+
+  async removeUser(institutionId: string, userId: number) {
+    const response = await api.delete(`/institutions/${institutionId}/users/${userId}`);
+    return response.data;
+  },
 };
