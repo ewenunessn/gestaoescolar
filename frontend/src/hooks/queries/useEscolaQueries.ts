@@ -2,6 +2,7 @@
  * Hooks do React Query para operações de escolas
  */
 
+import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys, cacheConfig, invalidateQueries } from '../../lib/queryClient';
 import { Escola, EscolaCreate, EscolaUpdate } from '../../../../shared/types';
@@ -23,10 +24,20 @@ export function useEscolas(filters?: { search?: string; ativo?: boolean }) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const tenantId = typeof window !== 'undefined' ? localStorage.getItem('currentTenantId') : null;
   
+  // Adicionar um pequeno delay para garantir que o tenant foi resolvido
+  const [isReady, setIsReady] = React.useState(false);
+  
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsReady(true);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, []);
+  
   return useQuery({
     queryKey: queryKeys.escolas.list(filters),
     queryFn: listarEscolas,
-    enabled: !!token && !!tenantId, // Só executar se houver token E tenant
+    enabled: isReady && !!token && !!tenantId, // Só executar se estiver pronto E houver token E tenant
     ...cacheConfig.static,
     select: (data: Escola[]) => {
       let filteredData = [...data];
