@@ -1,11 +1,21 @@
 import axios from 'axios';
 
-// Vite injeta as variáveis de ambiente em tempo de build
-const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000/api';
+// Detectar ambiente e usar URL apropriada
+const isProduction = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
+const productionApiUrl = 'https://gestaoescolar-backend-seven.vercel.app/api';
+const developmentApiUrl = 'http://localhost:3000/api';
+
+// Tentar pegar do env, senão usar baseado no hostname
+const envApiUrl = (import.meta as any).env?.VITE_API_URL;
+const apiUrl = envApiUrl || (isProduction ? productionApiUrl : developmentApiUrl);
 
 console.log('🔧 API Configuration:', {
-  VITE_API_URL: (import.meta as any).env?.VITE_API_URL,
-  apiUrl: apiUrl,
+  hostname: typeof window !== 'undefined' ? window.location.hostname : 'server',
+  isProduction,
+  VITE_API_URL: envApiUrl,
+  productionApiUrl,
+  developmentApiUrl,
+  finalApiUrl: apiUrl,
   allEnvVars: (import.meta as any).env
 });
 
