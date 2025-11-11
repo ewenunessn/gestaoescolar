@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { institutionService } from '../services/institutionService';
-import { Building2, Users, Server, TrendingUp } from 'lucide-react';
+import { Building2, Server, TrendingUp } from 'lucide-react';
 
 export default function Dashboard() {
   const [stats, setStats] = useState<any>(null);

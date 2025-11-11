@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { institutionService } from '../services/institutionService';
-import { Building2, Plus, Search, Filter } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 
 export default function Institutions() {
   const [institutions, setInstitutions] = useState<any[]>([]);

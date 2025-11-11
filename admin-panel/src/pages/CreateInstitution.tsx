@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { institutionService } from '../services/institutionService';
 import { planService } from '../services/planService';
-import { ArrowLeft, Building2, Save } from 'lucide-react';
+import { ArrowLeft, Save } from 'lucide-react';
 
 export default function CreateInstitution() {
   const navigate = useNavigate();
@@ -33,6 +33,7 @@ export default function CreateInstitution() {
       type: 'prefeitura',
       email: '',
       phone: '',
+      plan_id: '',
       address: {
         street: '',
         number: '',
@@ -73,24 +74,13 @@ export default function CreateInstitution() {
     setFormData(prev => ({
       ...prev,
       [section]: {
-        ...prev[section],
+        ...(prev as any)[section],
         [field]: value
       }
     }));
   };
 
-  const updateAddressField = (field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      institution: {
-        ...prev.institution,
-        address: {
-          ...prev.institution.address,
-          [field]: value
-        }
-      }
-    }));
-  };
+
 
   return (
     <Layout>
