@@ -1,12 +1,12 @@
 import axios from 'axios';
 
 // Vite injeta as variáveis de ambiente em tempo de build
-const apiUrl = import.meta.env?.VITE_API_URL || 'http://localhost:3000/api';
+const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000/api';
 
 console.log('🔧 API Configuration:', {
-  VITE_API_URL: import.meta.env?.VITE_API_URL,
+  VITE_API_URL: (import.meta as any).env?.VITE_API_URL,
   apiUrl: apiUrl,
-  allEnvVars: import.meta.env
+  allEnvVars: (import.meta as any).env
 });
 
 const api = axios.create({
