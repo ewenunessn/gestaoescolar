@@ -12,6 +12,7 @@ interface ProvisionInstitutionData {
     type?: 'prefeitura' | 'secretaria' | 'organizacao' | 'empresa';
     email?: string;
     phone?: string;
+    plan_id?: string;
     address?: {
       street?: string;
       number?: string;
@@ -62,10 +63,10 @@ export class InstitutionProvisioningService {
       const institutionQuery = `
         INSERT INTO institutions (
           slug, name, legal_name, document_number, type, status,
-          email, phone,
+          email, phone, plan_id,
           address_street, address_number, address_complement,
           address_neighborhood, address_city, address_state, address_zipcode
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
         RETURNING *
       `;
       
@@ -78,6 +79,7 @@ export class InstitutionProvisioningService {
         'active',
         data.institution.email,
         data.institution.phone,
+        data.institution.plan_id || null,
         data.institution.address?.street,
         data.institution.address?.number,
         data.institution.address?.complement,

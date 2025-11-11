@@ -10,9 +10,9 @@ export class ProvisioningController {
    * POST /api/provisioning/complete
    */
   async provisionComplete(req: Request, res: Response) {
+    const data = req.body;
+    
     try {
-      const data = req.body;
-
       // Validate required fields
       if (!data.institution?.name || !data.institution?.slug) {
         return res.status(400).json({
