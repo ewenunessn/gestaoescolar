@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import api from '../services/api';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -41,21 +42,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     try {
       console.log('Tentando fazer login...');
-      const response = await fetch('http://localhost:3000/api/system-admin/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
+      const response = await api.post('/system-admin/auth/login', {
+        email,
+        password
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Erro ao fazer login');
-      }
-
-      const { token, admin } = data.data;
+      const { token, admin } = response.data.data;
 
       console.log('Login bem-sucedido, salvando token');
       localStorage.setItem('admin_token', token);
@@ -65,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(admin);
     } catch (error: any) {
       console.error('Erro no login:', error);
-      throw new Error(error.message || 'Erro ao fazer login');
+      throw new Error(error.response?.data?.message || error.message || 'Erro ao fazer login');
     }
   };
 
