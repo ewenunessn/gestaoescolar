@@ -167,7 +167,17 @@ export function TenantProvider({ children }: TenantProviderProps) {
         if (savedTenants) {
           const tenants = JSON.parse(savedTenants);
           console.log(`📋 Carregando tenants do localStorage: ${tenants.length}`, tenants);
-          setAvailableTenants(tenants);
+          
+          // Filtrar tenants pela instituição do usuário
+          if (user?.institution_id) {
+            const filteredTenants = tenants.filter((t: Tenant) => t.institution_id === user.institution_id);
+            console.log(`🔍 Filtrando tenants pela instituição ${user.institution_id}: ${filteredTenants.length} de ${tenants.length}`);
+            setAvailableTenants(filteredTenants);
+          } else {
+            // Se não tem institution_id, mostrar todos (para compatibilidade)
+            console.log('⚠️ Usuário sem institution_id, mostrando todos os tenants');
+            setAvailableTenants(tenants);
+          }
         }
       } catch (err) {
         console.error('❌ Erro ao carregar tenants do localStorage:', err);
@@ -175,7 +185,7 @@ export function TenantProvider({ children }: TenantProviderProps) {
     };
     
     loadAvailableTenants();
-  }, []);
+  }, [user?.institution_id]);
 
   // Initialize tenant resolution when user changes
   useEffect(() => {
