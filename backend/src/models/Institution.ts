@@ -114,7 +114,18 @@ export class InstitutionModel {
 
   // Get institution by ID
   async findById(id: string): Promise<Institution | null> {
-    const query = 'SELECT * FROM institutions WHERE id = $1';
+    const query = `
+      SELECT 
+        i.*,
+        p.name as plan_name,
+        p.price as plan_price,
+        p.max_users as plan_max_users,
+        p.max_schools as plan_max_schools,
+        p.max_tenants as plan_max_tenants
+      FROM institutions i
+      LEFT JOIN institution_plans p ON p.id = i.plan_id
+      WHERE i.id = $1
+    `;
     const result = await this.db.query(query, [id]);
     return result.rows[0] || null;
   }
