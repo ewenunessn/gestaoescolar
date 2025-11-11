@@ -19,13 +19,14 @@ import {
 // ============================================================================
 
 export function useEscolas(filters?: { search?: string; ativo?: boolean }) {
-  // Só executar query se houver token (usuário autenticado)
+  // Só executar query se houver token E tenant (usuário autenticado e tenant resolvido)
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const tenantId = typeof window !== 'undefined' ? localStorage.getItem('currentTenantId') : null;
   
   return useQuery({
     queryKey: queryKeys.escolas.list(filters),
     queryFn: listarEscolas,
-    enabled: !!token, // Só executar se houver token
+    enabled: !!token && !!tenantId, // Só executar se houver token E tenant
     ...cacheConfig.static,
     select: (data: Escola[]) => {
       let filteredData = [...data];
