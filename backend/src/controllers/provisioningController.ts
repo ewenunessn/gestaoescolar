@@ -38,21 +38,25 @@ export class ProvisioningController {
       const result = await provisioningService.provisionComplete(data);
 
       res.status(201).json(result);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro no provisionamento completo:', error);
+      console.error('Stack trace:', error.stack);
+      console.error('Dados recebidos:', JSON.stringify(data, null, 2));
       
       // Handle specific errors
       if (error.message?.includes('duplicate key')) {
         return res.status(400).json({
           success: false,
-          message: 'Slug, email ou CNPJ já está em uso'
+          message: 'Slug, email ou CNPJ já está em uso',
+          error: error.message
         });
       }
 
       res.status(500).json({
         success: false,
         message: 'Erro ao provisionar instituição',
-        error: error.message
+        error: error.message,
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
       });
     }
   }
