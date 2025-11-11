@@ -246,19 +246,19 @@ export default function InstitutionDetail() {
               <div>
                 <div style={{ fontSize: '12px', opacity: 0.8 }}>Tenants</div>
                 <div style={{ fontSize: '18px', fontWeight: 'bold' }}>
-                  {stats?.total_tenants || 0} / {institution.limits.max_tenants}
+                  {stats?.total_tenants || 0} / {institution.plan_max_tenants || institution.limits.max_tenants}
                 </div>
               </div>
               <div>
                 <div style={{ fontSize: '12px', opacity: 0.8 }}>Usuários</div>
                 <div style={{ fontSize: '18px', fontWeight: 'bold' }}>
-                  {stats?.total_users || 0} / {institution.limits.max_users}
+                  {stats?.total_users || 0} / {institution.plan_max_users || institution.limits.max_users}
                 </div>
               </div>
               <div>
                 <div style={{ fontSize: '12px', opacity: 0.8 }}>Escolas</div>
                 <div style={{ fontSize: '18px', fontWeight: 'bold' }}>
-                  {stats?.total_schools || 0} / {institution.limits.max_schools}
+                  {stats?.total_schools || 0} / {institution.plan_max_schools || institution.limits.max_schools}
                 </div>
               </div>
             </div>
