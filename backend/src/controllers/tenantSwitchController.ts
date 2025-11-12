@@ -153,6 +153,7 @@ export class TenantSwitchController {
           id: tenant.id,
           slug: tenant.slug,
           name: tenant.name,
+          institution_id: tenant.institution_id,
           role: 'tenant_admin',
           status: 'active',
           isSystemAdmin: true
@@ -184,6 +185,7 @@ export class TenantSwitchController {
           id: tenant.id,
           slug: tenant.slug,
           name: tenant.name,
+          institution_id: tenant.institution_id,
           role: 'tenant_admin',
           status: 'active',
           isSystemAdmin: true
@@ -195,6 +197,7 @@ export class TenantSwitchController {
           id: ut.tenantId,
           slug: ut.tenant?.slug,
           name: ut.tenant?.name,
+          institution_id: ut.tenant?.institution_id,
           role: ut.role,
           status: ut.status,
           isSystemAdmin: false

@@ -381,6 +381,7 @@ export class TenantService implements TenantServiceInterface {
           name,
           domain,
           slug as subdomain,
+          institution_id,
           status,
           settings,
           limits,
