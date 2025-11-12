@@ -114,19 +114,28 @@ export function TenantProvider({ children }: TenantProviderProps) {
       setError(null);
 
       console.log(`🔄 Switching to tenant: ${tenantId}`);
-      const response = await tenantService.switchTenant(tenantId);
       
-      // CRÍTICO: Salvar o tenantId no localStorage ANTES de recarregar
+      // SOLUÇÃO TEMPORÁRIA: Apenas atualizar localStorage e recarregar
+      // O backend tem um bug no endpoint /tenants/switch que retorna 404
+      // Por enquanto, vamos apenas trocar o tenant localmente
+      const selectedTenant = availableTenants.find(t => t.id === tenantId);
+      
+      if (!selectedTenant) {
+        throw new Error('Tenant não encontrado na lista de disponíveis');
+      }
+      
+      console.log('✅ Tenant selecionado:', selectedTenant.name);
+      
+      // Salvar o tenantId no localStorage
       localStorage.setItem('currentTenantId', tenantId);
-      console.log('💾 currentTenantId salvo antes do reload:', tenantId);
+      console.log('💾 currentTenantId salvo:', tenantId);
       
-      // Force a small delay to ensure token is updated
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Atualizar o estado local
+      setCurrentTenant(selectedTenant);
       
-      console.log(`✅ Tenant switch completed successfully`);
       console.log('🔄 Recarregando página para aplicar novo contexto...');
       
-      // Recarregar a página para aplicar o novo token e contexto
+      // Recarregar a página para aplicar o novo contexto
       window.location.reload();
     } catch (err: any) {
       console.error('❌ Error switching tenant:', err);
