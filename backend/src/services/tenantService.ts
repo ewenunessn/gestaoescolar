@@ -365,6 +365,7 @@ export class TenantService implements TenantServiceInterface {
    */
   async listTenants(filters: TenantFilters = {}): Promise<Tenant[]> {
     try {
+      console.log('🔍 [listTenants] Listando tenants com filtros:', filters);
       let whereClause = 'WHERE 1=1';
       const params: any[] = [];
       let paramIndex = 1;
@@ -407,6 +408,15 @@ export class TenantService implements TenantServiceInterface {
         ${whereClause}
         ORDER BY created_at DESC
       `, params);
+
+      console.log(`🔍 [listTenants] Encontrados ${result.rows.length} tenants`);
+      if (result.rows.length > 0) {
+        console.log('🔍 [listTenants] Primeiro tenant:', {
+          id: result.rows[0].id,
+          name: result.rows[0].name,
+          institution_id: result.rows[0].institution_id
+        });
+      }
 
       return result.rows.map(row => this.mapTenantFromDb(row));
     } catch (error) {
