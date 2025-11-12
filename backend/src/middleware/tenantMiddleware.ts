@@ -125,7 +125,15 @@ export function tenantMiddleware(options: TenantMiddlewareOptions = {}) {
                 name: fallbackResult.rows[0].name,
                 status: fallbackResult.rows[0].status,
                 settings: fallbackResult.rows[0].settings || {},
-                limits: {},
+                limits: fallbackResult.rows[0].limits || {
+                  maxUsers: 100,
+                  maxSchools: 50,
+                  maxProducts: 1000,
+                  storageLimit: 1024,
+                  apiRateLimit: 100,
+                  maxContracts: 50,
+                  maxOrders: 1000
+                },
                 createdAt: fallbackResult.rows[0].createdAt,
                 updatedAt: fallbackResult.rows[0].updatedAt
               };

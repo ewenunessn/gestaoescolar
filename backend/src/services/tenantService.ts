@@ -262,7 +262,15 @@ export class TenantService implements TenantServiceInterface {
           name: result.rows[0].name,
           status: result.rows[0].status,
           settings: result.rows[0].settings || {},
-          limits: {},
+          limits: result.rows[0].limits || {
+            maxUsers: 100,
+            maxSchools: 50,
+            maxProducts: 1000,
+            storageLimit: 1024,
+            apiRateLimit: 100,
+            maxContracts: 50,
+            maxOrders: 1000
+          },
           domain: null,
           subdomain: null,
           createdAt: result.rows[0].createdAt,
@@ -302,7 +310,15 @@ export class TenantService implements TenantServiceInterface {
           name: result.rows[0].name,
           status: result.rows[0].status,
           settings: result.rows[0].settings || {},
-          limits: {},
+          limits: result.rows[0].limits || {
+            maxUsers: 100,
+            maxSchools: 50,
+            maxProducts: 1000,
+            storageLimit: 1024,
+            apiRateLimit: 100,
+            maxContracts: 50,
+            maxOrders: 1000
+          },
           domain: null,
           subdomain: null,
           createdAt: result.rows[0].createdAt,
