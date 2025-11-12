@@ -45,10 +45,26 @@ export class TenantSwitchController {
 
       // Buscar informações do tenant
       console.log('🔍 [SWITCH] Buscando tenant:', tenantId);
+      console.log('🔍 [SWITCH] Tipo do tenantId:', typeof tenantId);
+      console.log('🔍 [SWITCH] Usuário:', { id: userId, isSystemAdmin: req.user?.isSystemAdmin });
+      
       const tenant = await tenantService.getTenant(tenantId);
       console.log('🔍 [SWITCH] Tenant encontrado:', tenant ? 'Sim' : 'Não');
+      
       if (!tenant) {
         console.log('❌ [SWITCH] Tenant não encontrado no banco:', tenantId);
+        
+        // Debug: listar alguns tenants disponíveis
+        try {
+          const allTenants = await tenantService.listTenants({ status: 'active' });
+          console.log('📋 [SWITCH] Tenants disponíveis:', allTenants.length);
+          if (allTenants.length > 0) {
+            console.log('📋 [SWITCH] Primeiro tenant:', allTenants[0]);
+          }
+        } catch (debugError) {
+          console.error('❌ [SWITCH] Erro ao listar tenants para debug:', debugError);
+        }
+        
         return res.status(404).json({
           success: false,
           message: 'Tenant não encontrado'
