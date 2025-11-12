@@ -183,10 +183,34 @@ export function TenantProvider({ children }: TenantProviderProps) {
           const tenants = JSON.parse(savedTenants);
           console.log(`📋 Carregando tenants do localStorage: ${tenants.length}`, tenants);
           
+          // CORREÇÃO: Se os tenants não têm institution_id, limpar localStorage e forçar reload
+          // Isso acontece quando os tenants foram salvos antes da correção do backend
+          const tenantsHaveInstitutionId = tenants.some((t: Tenant) => t.institution_id);
+          
+          if (!tenantsHaveInstitutionId && user.institution_id) {
+            console.log('🔧 Tenants no localStorage estão desatualizados (sem institution_id)');
+            console.log('🔄 Limpando localStorage e forçando reload...');
+            localStorage.removeItem('availableTenants');
+            localStorage.removeItem('currentTenantId');
+            // Recarregar a página para buscar tenants atualizados do backend
+            window.location.reload();
+            return;
+          }
+          
           // Filtrar tenants pela instituição do usuário
           if (user.institution_id) {
             const filteredTenants = tenants.filter((t: Tenant) => t.institution_id === user.institution_id);
             console.log(`🔍 Filtrando tenants pela instituição ${user.institution_id}: ${filteredTenants.length} de ${tenants.length}`);
+            
+            if (filteredTenants.length === 0 && tenants.length > 0) {
+              console.log('⚠️ Nenhum tenant encontrado para esta instituição');
+              console.log('🔄 Limpando localStorage e forçando reload...');
+              localStorage.removeItem('availableTenants');
+              localStorage.removeItem('currentTenantId');
+              window.location.reload();
+              return;
+            }
+            
             setAvailableTenants(filteredTenants);
           } else {
             // Se não tem institution_id, mostrar todos (para compatibilidade)
