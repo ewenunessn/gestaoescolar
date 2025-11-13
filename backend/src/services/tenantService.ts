@@ -362,6 +362,7 @@ export class TenantService implements TenantServiceInterface {
 
   /**
    * Lista tenants com filtros
+   * Updated: 2025-01-13 - Added institution_id to SELECT
    */
   async listTenants(filters: TenantFilters = {}): Promise<Tenant[]> {
     try {
