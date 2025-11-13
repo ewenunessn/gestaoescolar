@@ -31,7 +31,7 @@ export default function Tenants() {
 
   const loadTenants = async () => {
     try {
-      const token = localStorage.getItem('adminToken');
+      const token = localStorage.getItem('admin_token');
       const response = await axios.get(`${API_URL}/api/system-admin/data/tenants`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -45,7 +45,7 @@ export default function Tenants() {
 
   const updateTenantStatus = async (tenantId: string, newStatus: string) => {
     try {
-      const token = localStorage.getItem('adminToken');
+      const token = localStorage.getItem('admin_token');
       await axios.patch(
         `${API_URL}/api/system-admin/data/tenants/${tenantId}/status`,
         { status: newStatus },

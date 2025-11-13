@@ -42,7 +42,7 @@ export default function TenantData() {
 
   const loadTenantData = async () => {
     try {
-      const token = localStorage.getItem('adminToken');
+      const token = localStorage.getItem('admin_token');
       const response = await axios.get(`${API_URL}/api/system-admin/data/tenants/${tenantId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });

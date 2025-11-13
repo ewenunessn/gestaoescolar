@@ -31,7 +31,7 @@ export function Layout({ children }: LayoutProps) {
           <h1 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '5px' }}>
             Painel Admin
           </h1>
-          <p style={{ fontSize: '12px', opacity: 0.7 }}>Gestão de Instituições</p>
+          <p style={{ fontSize: '12px', opacity: 0.7 }}>Gestão do Sistema</p>
         </div>
 
         <nav style={{ flex: 1 }}>
