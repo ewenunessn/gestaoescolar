@@ -48,44 +48,46 @@ export function tenantMiddleware(options: TenantMiddlewareOptions = {}) {
       let tenant: Tenant | null = null;
       let method: string | null = null;
 
-      // 1. Tentar por subdomínio
-      const host = req.get('host') || '';
-      const subdomain = extractSubdomain(host);
-      if (subdomain && subdomain !== 'www') {
-        const result = await tenantResolver.resolve('subdomain', subdomain);
+      // 1. Tentar por header X-Tenant-ID PRIMEIRO (maior prioridade para troca de tenant)
+      const tenantHeader = req.get('X-Tenant-ID');
+      if (tenantHeader) {
+        console.log('🔍 Tentando resolver por header X-Tenant-ID:', tenantHeader);
+        const result = await tenantResolver.resolve('header', tenantHeader);
         if (result.tenant) {
           tenant = result.tenant;
-          method = 'subdomain';
-        }
-      }
-
-      // 2. Tentar por token JWT PRIMEIRO (mais confiável)
-      const authHeader = req.get('Authorization');
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        const token = authHeader.substring(7);
-        console.log('🔍 Tentando resolver por token JWT');
-        const result = await tenantResolver.resolve('token', token);
-        if (result.tenant) {
-          tenant = result.tenant;
-          method = 'token';
-          console.log('✅ Tenant resolvido por token:', tenant.name);
+          method = 'header';
+          console.log('✅ Tenant resolvido por header:', tenant.name);
         } else {
-          console.log('❌ Não foi possível resolver tenant por token');
+          console.log('❌ Não foi possível resolver tenant por header');
         }
       }
 
-      // 3. Tentar por header X-Tenant-ID (se não resolveu por token)
+      // 2. Tentar por subdomínio (se não resolveu por header)
       if (!tenant) {
-        const tenantHeader = req.get('X-Tenant-ID');
-        if (tenantHeader) {
-          console.log('🔍 Tentando resolver por header X-Tenant-ID:', tenantHeader);
-          const result = await tenantResolver.resolve('header', tenantHeader);
+        const host = req.get('host') || '';
+        const subdomain = extractSubdomain(host);
+        if (subdomain && subdomain !== 'www') {
+          const result = await tenantResolver.resolve('subdomain', subdomain);
           if (result.tenant) {
             tenant = result.tenant;
-            method = 'header';
-            console.log('✅ Tenant resolvido por header:', tenant.name);
+            method = 'subdomain';
+          }
+        }
+      }
+
+      // 3. Tentar por token JWT (fallback se não tem header)
+      if (!tenant) {
+        const authHeader = req.get('Authorization');
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+          const token = authHeader.substring(7);
+          console.log('🔍 Tentando resolver por token JWT');
+          const result = await tenantResolver.resolve('token', token);
+          if (result.tenant) {
+            tenant = result.tenant;
+            method = 'token';
+            console.log('✅ Tenant resolvido por token:', tenant.name);
           } else {
-            console.log('❌ Não foi possível resolver tenant por header');
+            console.log('❌ Não foi possível resolver tenant por token');
           }
         }
       }
