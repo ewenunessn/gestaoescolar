@@ -150,8 +150,12 @@ app.use(cors(corsOptions));
 // CORS já está configurado corretamente acima com as origens específicas
 // Removido middleware que forçava '*' e conflitava com credentials: true
 
+// Import admin data routes
+import adminDataRoutes from "./routes/adminDataRoutes";
+
 // System admin routes (BEFORE tenant middleware - no tenant required)
 app.use("/api/system-admin/auth", systemAdminAuthRoutes);
+app.use("/api/system-admin/data", adminDataRoutes);
 app.use("/api/institutions", institutionRoutes);
 app.use("/api/provisioning", provisioningRoutes);
 app.use("/api/plans", planRoutes);
