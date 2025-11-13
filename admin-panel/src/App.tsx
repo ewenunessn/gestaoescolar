@@ -6,6 +6,8 @@ import Dashboard from './pages/Dashboard';
 import Institutions from './pages/Institutions';
 import InstitutionDetail from './pages/InstitutionDetail';
 import CreateInstitution from './pages/CreateInstitution';
+import Tenants from './pages/Tenants';
+import TenantData from './pages/TenantData';
 
 function App() {
   return (
@@ -18,6 +20,8 @@ function App() {
           <Route path="/institutions" element={<ProtectedRoute><Institutions /></ProtectedRoute>} />
           <Route path="/institutions/new" element={<ProtectedRoute><CreateInstitution /></ProtectedRoute>} />
           <Route path="/institutions/:id" element={<ProtectedRoute><InstitutionDetail /></ProtectedRoute>} />
+          <Route path="/tenants" element={<ProtectedRoute><Tenants /></ProtectedRoute>} />
+          <Route path="/tenants/:tenantId" element={<ProtectedRoute><TenantData /></ProtectedRoute>} />
           
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

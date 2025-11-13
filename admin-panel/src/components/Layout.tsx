@@ -68,6 +68,23 @@ export function Layout({ children }: LayoutProps) {
             <Building2 size={20} />
             Instituições
           </Link>
+
+          <Link to="/tenants" style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            padding: '12px',
+            color: 'white',
+            textDecoration: 'none',
+            borderRadius: '8px',
+            marginBottom: '8px',
+            transition: 'background 0.2s'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+            <Building2 size={20} />
+            Tenants
+          </Link>
         </nav>
 
         <div style={{
