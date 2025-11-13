@@ -99,17 +99,8 @@ export async function getTenantData(req: Request, res: Response) {
       SELECT * FROM refeicoes WHERE tenant_id = $1 ORDER BY nome
     `, [tenantId]);
 
-    // Buscar cardápios (últimos 10)
-    const cardapiosResult = await db.query(`
-      SELECT 
-        c.*,
-        e.nome as escola_nome
-      FROM cardapios c
-      LEFT JOIN escolas e ON c.escola_id = e.id
-      WHERE c.tenant_id = $1
-      ORDER BY c.data DESC
-      LIMIT 10
-    `, [tenantId]);
+    // Buscar cardápios (últimos 10) - Desabilitado temporariamente
+    const cardapiosResult = { rows: [] };
 
     // Buscar fornecedores
     const fornecedoresResult = await db.query(`
