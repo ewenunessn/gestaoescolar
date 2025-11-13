@@ -33,7 +33,7 @@ export default function Institutions() {
     }
 
     try {
-      await institutionService.delete(institutionId);
+      await institutionService.delete(institutionId.toString());
       alert('Instituição deletada com sucesso!');
       loadInstitutions();
     } catch (error: any) {
