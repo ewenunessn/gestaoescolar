@@ -23,9 +23,7 @@ export async function listTenantsWithStats(req: Request, res: Response) {
         i.name as institution_name,
         i.slug as institution_subdomain,
         (SELECT COUNT(*) FROM escolas WHERE tenant_id = t.id) as total_escolas,
-        (SELECT COUNT(*) FROM usuarios u 
-         JOIN usuarios_tenants ut ON u.id = ut.usuario_id 
-         WHERE ut.tenant_id = t.id) as total_usuarios,
+        (SELECT COUNT(*) FROM tenant_users WHERE tenant_id = t.id) as total_usuarios,
         (SELECT COUNT(*) FROM produtos WHERE tenant_id = t.id) as total_produtos,
         (SELECT COUNT(*) FROM contratos WHERE tenant_id = t.id) as total_contratos,
         (SELECT COUNT(*) FROM pedidos WHERE tenant_id = t.id) as total_pedidos
@@ -150,11 +148,11 @@ export async function getTenantData(req: Request, res: Response) {
         u.nome,
         u.email,
         u.tipo,
-        ut.role as tenant_role,
-        ut.status as tenant_status
+        tu.role as tenant_role,
+        tu.status as tenant_status
       FROM usuarios u
-      JOIN usuarios_tenants ut ON u.id = ut.usuario_id
-      WHERE ut.tenant_id = $1
+      JOIN tenant_users tu ON u.id = tu.user_id
+      WHERE tu.tenant_id = $1
       ORDER BY u.nome
     `, [tenantId]);
 
