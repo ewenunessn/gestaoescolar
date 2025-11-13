@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Layout } from '../components/Layout';
 import axios from 'axios';
 
 const API_URL = 'https://gestaoescolar-backend-seven.vercel.app';
@@ -63,10 +64,17 @@ export default function Tenants() {
     return t.status === filter;
   });
 
-  if (loading) return <div className="p-6">Carregando...</div>;
+  if (loading) {
+    return (
+      <Layout>
+        <div style={{ textAlign: 'center', padding: '50px' }}>Carregando...</div>
+      </Layout>
+    );
+  }
 
   return (
-    <div className="p-6">
+    <Layout>
+      <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Gerenciar Tenants</h1>
         <div className="flex gap-2">
@@ -150,10 +158,11 @@ export default function Tenants() {
       </div>
 
       {filteredTenants.length === 0 && (
-        <div className="text-center py-12 text-gray-500">
+        <div style={{ textAlign: 'center', padding: '50px', color: '#999' }}>
           Nenhum tenant encontrado com o filtro selecionado.
         </div>
       )}
-    </div>
+      </div>
+    </Layout>
   );
 }

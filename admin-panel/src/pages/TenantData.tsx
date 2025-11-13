@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { Layout } from '../components/Layout';
 import axios from 'axios';
 
 const API_URL = 'https://gestaoescolar-backend-seven.vercel.app';
@@ -54,11 +55,25 @@ export default function TenantData() {
     }
   };
 
-  if (loading) return <div className="p-6">Carregando...</div>;
-  if (!data) return <div className="p-6">Tenant não encontrado</div>;
+  if (loading) {
+    return (
+      <Layout>
+        <div style={{ textAlign: 'center', padding: '50px' }}>Carregando...</div>
+      </Layout>
+    );
+  }
+  
+  if (!data) {
+    return (
+      <Layout>
+        <div style={{ textAlign: 'center', padding: '50px' }}>Tenant não encontrado</div>
+      </Layout>
+    );
+  }
 
   return (
-    <div className="p-6">
+    <Layout>
+      <div>
       {/* Header */}
       <div className="mb-6">
         <button onClick={() => navigate('/tenants')} className="text-blue-600 hover:underline mb-4">
@@ -312,6 +327,7 @@ export default function TenantData() {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </Layout>
   );
 }
