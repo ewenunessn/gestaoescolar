@@ -57,11 +57,9 @@ export async function getTenantData(req: Request, res: Response) {
         t.*,
         i.name as institution_name,
         i.slug as institution_subdomain,
-        i.plan_id,
-        p.name as plan_name
+        i.plan_id
       FROM tenants t
       LEFT JOIN institutions i ON t.institution_id = i.id
-      LEFT JOIN plans p ON i.plan_id = p.id
       WHERE t.id = $1
     `, [tenantId]);
 
