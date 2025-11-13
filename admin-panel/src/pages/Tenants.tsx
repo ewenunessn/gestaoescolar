@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import axios from 'axios';
+import { Building2 } from 'lucide-react';
 
 const API_URL = 'https://gestaoescolar-backend-seven.vercel.app';
 
@@ -11,20 +12,15 @@ interface Tenant {
   slug: string;
   status: string;
   institution_name: string;
-  institution_subdomain: string;
   total_escolas: number;
   total_usuarios: number;
   total_produtos: number;
-  total_contratos: number;
-  total_pedidos: number;
-  created_at: string;
 }
 
 export default function Tenants() {
   const navigate = useNavigate();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
   useEffect(() => {
     loadTenants();
@@ -59,11 +55,6 @@ export default function Tenants() {
     }
   };
 
-  const filteredTenants = tenants.filter(t => {
-    if (filter === 'all') return true;
-    return t.status === filter;
-  });
-
   if (loading) {
     return (
       <Layout>
@@ -75,93 +66,110 @@ export default function Tenants() {
   return (
     <Layout>
       <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Gerenciar Tenants</h1>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setFilter('all')}
-            className={`px-4 py-2 rounded ${filter === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
-          >
-            Todos ({tenants.length})
-          </button>
-          <button
-            onClick={() => setFilter('active')}
-            className={`px-4 py-2 rounded ${filter === 'active' ? 'bg-green-600 text-white' : 'bg-gray-200'}`}
-          >
-            Ativos ({tenants.filter(t => t.status === 'active').length})
-          </button>
-          <button
-            onClick={() => setFilter('inactive')}
-            className={`px-4 py-2 rounded ${filter === 'inactive' ? 'bg-red-600 text-white' : 'bg-gray-200'}`}
-          >
-            Inativos ({tenants.filter(t => t.status === 'inactive').length})
-          </button>
-        </div>
-      </div>
+        <h1 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '30px' }}>
+          Gerenciar Tenants
+        </h1>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tenant</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Instituição</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Escolas</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Usuários</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Produtos</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {filteredTenants.map(tenant => (
-              <tr key={tenant.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4">
-                  <div className="text-sm font-medium text-gray-900">{tenant.name}</div>
-                  <div className="text-sm text-gray-500">{tenant.slug}</div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="text-sm text-gray-900">{tenant.institution_name}</div>
-                  <div className="text-sm text-gray-500">{tenant.institution_subdomain}</div>
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-500">{tenant.total_escolas}</td>
-                <td className="px-6 py-4 text-sm text-gray-500">{tenant.total_usuarios}</td>
-                <td className="px-6 py-4 text-sm text-gray-500">{tenant.total_produtos}</td>
-                <td className="px-6 py-4">
-                  <select
-                    value={tenant.status}
-                    onChange={(e) => updateTenantStatus(tenant.id, e.target.value)}
-                    className={`px-3 py-1 rounded text-sm font-medium ${
-                      tenant.status === 'active'
-                        ? 'bg-green-100 text-green-800'
-                        : tenant.status === 'inactive'
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}
-                  >
-                    <option value="active">Ativo</option>
-                    <option value="inactive">Inativo</option>
-                    <option value="suspended">Suspenso</option>
-                  </select>
-                </td>
-                <td className="px-6 py-4 text-sm">
-                  <button
-                    onClick={() => navigate(`/tenants/${tenant.id}`)}
-                    className="text-blue-600 hover:text-blue-900 font-medium"
-                  >
-                    Ver Detalhes →
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+        <div style={{
+          background: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          overflow: 'hidden'
+        }}>
+          {tenants.map((tenant, index) => (
+            <div
+              key={tenant.id}
+              style={{
+                padding: '20px',
+                borderBottom: index < tenants.length - 1 ? '1px solid #e5e7eb' : 'none',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                transition: 'background 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+            >
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                  <Building2 size={20} color="#667eea" />
+                  <div>
+                    <div style={{ fontWeight: '600', fontSize: '16px' }}>{tenant.name}</div>
+                    <div style={{ fontSize: '13px', color: '#666' }}>{tenant.slug}</div>
+                  </div>
+                </div>
+                <div style={{ fontSize: '13px', color: '#666', marginLeft: '30px' }}>
+                  {tenant.institution_name || 'Sem instituição'}
+                </div>
+              </div>
 
-      {filteredTenants.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '50px', color: '#999' }}>
-          Nenhum tenant encontrado com o filtro selecionado.
+              <div style={{ display: 'flex', gap: '30px', alignItems: 'center' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#667eea' }}>
+                    {tenant.total_escolas}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#666' }}>Escolas</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#11998e' }}>
+                    {tenant.total_usuarios}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#666' }}>Usuários</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#f093fb' }}>
+                    {tenant.total_produtos}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#666' }}>Produtos</div>
+                </div>
+
+                <select
+                  value={tenant.status}
+                  onChange={(e) => updateTenantStatus(tenant.id, e.target.value)}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid #ddd',
+                    fontSize: '13px',
+                    fontWeight: '500',
+                    background: tenant.status === 'active' ? '#d4edda' : '#f8d7da',
+                    color: tenant.status === 'active' ? '#155724' : '#721c24',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value="active">Ativo</option>
+                  <option value="inactive">Inativo</option>
+                  <option value="suspended">Suspenso</option>
+                </select>
+
+                <button
+                  onClick={() => navigate(`/tenants/${tenant.id}`)}
+                  style={{
+                    padding: '8px 16px',
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'transform 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                  onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                >
+                  Ver Detalhes →
+                </button>
+              </div>
+            </div>
+          ))}
+
+          {tenants.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '50px', color: '#999' }}>
+              Nenhum tenant encontrado.
+            </div>
+          )}
         </div>
-      )}
       </div>
     </Layout>
   );
