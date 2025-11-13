@@ -33,16 +33,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('Token encontrado, validando...');
         try {
           // Tentar fazer uma requisição simples para validar o token
-          await api.get('/system-admin/data/stats');
+          // Usar endpoint de institutions que é mais confiável
+          await api.get('/institutions');
           console.log('Token válido, restaurando sessão');
           setIsAuthenticated(true);
           setUser(JSON.parse(userData));
-        } catch (error) {
-          console.error('Token inválido ou expirado, fazendo logout');
-          localStorage.removeItem('admin_token');
-          localStorage.removeItem('admin_user');
-          setIsAuthenticated(false);
-          setUser(null);
+        } catch (error: any) {
+          // Só fazer logout se for erro 401 (não autorizado)
+          // Outros erros (500, timeout) não devem deslogar
+          if (error.response?.status === 401) {
+            console.error('Token inválido ou expirado, fazendo logout');
+            localStorage.removeItem('admin_token');
+            localStorage.removeItem('admin_user');
+            setIsAuthenticated(false);
+            setUser(null);
+          } else {
+            // Para outros erros, manter a sessão
+            console.warn('Erro ao validar token, mas mantendo sessão:', error.message);
+            setIsAuthenticated(true);
+            setUser(JSON.parse(userData));
+          }
         }
       } else {
         console.log('Nenhum token encontrado');
