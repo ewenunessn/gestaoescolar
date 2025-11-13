@@ -183,11 +183,12 @@ export function TenantProvider({ children }: TenantProviderProps) {
           const tenants = JSON.parse(savedTenants);
           console.log(`📋 Carregando tenants do localStorage: ${tenants.length}`, tenants);
           
-          // CORREÇÃO: Se os tenants não têm institution_id, limpar localStorage e forçar reload
-          // Isso acontece quando os tenants foram salvos antes da correção do backend
+          // CORREÇÃO TEMPORÁRIA: Desabilitada verificação de institution_id
+          // O backend ainda não está retornando institution_id nos tenants
+          // TODO: Reativar quando o backend estiver 100% atualizado
           const tenantsHaveInstitutionId = tenants.some((t: Tenant) => t.institution_id);
           
-          if (!tenantsHaveInstitutionId && user.institution_id) {
+          if (false && !tenantsHaveInstitutionId && user.institution_id) {
             console.log('🔧 Tenants no localStorage estão desatualizados (sem institution_id)');
             console.log('🔄 Limpando localStorage e forçando reload...');
             localStorage.removeItem('availableTenants');
@@ -197,8 +198,9 @@ export function TenantProvider({ children }: TenantProviderProps) {
             return;
           }
           
+          // CORREÇÃO TEMPORÁRIA: Não filtrar por institution_id até backend estar atualizado
           // Filtrar tenants pela instituição do usuário
-          if (user.institution_id) {
+          if (false && user.institution_id) {
             const filteredTenants = tenants.filter((t: Tenant) => t.institution_id === user.institution_id);
             console.log(`🔍 Filtrando tenants pela instituição ${user.institution_id}: ${filteredTenants.length} de ${tenants.length}`);
             
@@ -213,8 +215,8 @@ export function TenantProvider({ children }: TenantProviderProps) {
             
             setAvailableTenants(filteredTenants);
           } else {
-            // Se não tem institution_id, mostrar todos (para compatibilidade)
-            console.log('⚠️ Usuário sem institution_id, mostrando todos os tenants');
+            // TEMPORÁRIO: Mostrar todos os tenants sem filtrar
+            console.log('⚠️ Mostrando todos os tenants (filtro desabilitado temporariamente)');
             setAvailableTenants(tenants);
           }
         }
