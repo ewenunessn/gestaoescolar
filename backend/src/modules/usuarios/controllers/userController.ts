@@ -202,6 +202,7 @@ export async function login(req: Request, res: Response) {
           'active' as tenant_status,
           t.slug as tenant_slug,
           t.name as tenant_name,
+          t.institution_id,
           t.status as tenant_active_status
         FROM tenants t
         WHERE t.status = 'active'
@@ -218,6 +219,7 @@ export async function login(req: Request, res: Response) {
           tu.status as tenant_status,
           t.slug as tenant_slug,
           t.name as tenant_name,
+          t.institution_id,
           t.status as tenant_active_status
         FROM tenant_users tu
         JOIN tenants t ON tu.tenant_id = t.id
@@ -294,6 +296,7 @@ export async function login(req: Request, res: Response) {
         id: row.tenant_id,
         slug: row.tenant_slug,
         name: row.tenant_name,
+        institution_id: row.institution_id,
         role: row.tenant_role
       }))
     });
