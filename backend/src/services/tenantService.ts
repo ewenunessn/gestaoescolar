@@ -558,6 +558,7 @@ export class TenantService implements TenantServiceInterface {
       name: row.name,
       domain: row.domain,
       subdomain: row.subdomain,
+      institution_id: row.institution_id,
       status: row.status,
       settings: row.settings || {},
       limits: row.limits || {},
