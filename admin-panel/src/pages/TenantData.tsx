@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://gestaoescolar-backend-seven.vercel.app';
+const API_URL = 'https://gestaoescolar-backend-seven.vercel.app';
 
 interface TenantData {
   tenant: any;
