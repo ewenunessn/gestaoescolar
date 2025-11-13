@@ -191,7 +191,6 @@ export class InstitutionController {
       }
 
       // Use hard delete from deleteController
-      const db = require('../database');
       const client = await db.connect();
       
       try {
