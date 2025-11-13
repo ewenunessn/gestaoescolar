@@ -5,12 +5,12 @@ import {
   updateTenantStatus,
   getSystemStats
 } from '../controllers/adminDataController';
-import { systemAdminAuth } from '../middlewares/systemAdminAuth';
+import { authenticateSystemAdmin } from '../middlewares/systemAdminAuth';
 
 const router = Router();
 
 // Todas as rotas requerem autenticação de system admin
-router.use(systemAdminAuth);
+router.use(authenticateSystemAdmin);
 
 // Listar todos os tenants com estatísticas
 router.get('/tenants', listTenantsWithStats);
