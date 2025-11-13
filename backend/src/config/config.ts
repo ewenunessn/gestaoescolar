@@ -27,18 +27,24 @@ export const config = {
   jwtSecret: process.env.JWT_SECRET || "sua_chave_jwt_super_secreta_minimo_32_caracteres",
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "24h",
 
-  // Configurações CORS
-  corsOrigin: isVercel 
-    ? [
-        "https://gestaoescolar-frontend.vercel.app",
-        "*.vercel.app",
-        "http://localhost:5173",
-        "http://localhost:3000"
-      ]
-    : process.env.CORS_ORIGIN?.split(',') || [
-        "http://localhost:5173",
-        "http://192.168.18.12:5173"
-      ],
+  // Configurações do backend (para compatibilidade com index.ts)
+  backend: {
+    cors: {
+      origin: isVercel 
+        ? [
+            "https://gestaoescolar-frontend.vercel.app",
+            "https://gestaoescolar-frontend-painel.vercel.app",
+            "*.vercel.app",
+            "http://localhost:5173",
+            "http://localhost:3000"
+          ]
+        : process.env.CORS_ORIGIN?.split(',') || [
+            "http://localhost:5173",
+            "http://192.168.18.12:5173"
+          ],
+      credentials: true
+    }
+  },
 
   // Configurações da API
   apiBasePath: process.env.API_BASE_PATH || "/api",
