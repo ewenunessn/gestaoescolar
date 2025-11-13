@@ -101,9 +101,9 @@ export function tenantMiddleware(options: TenantMiddlewareOptions = {}) {
         }
       }
 
-      // 5. Fallback para tenant padrão se permitido
+      // 5. Fallback para tenant padrão se permitido (APENAS para rotas públicas)
       if (!tenant && fallbackToDefault) {
-        console.log('🔄 Usando fallback para tenant padrão');
+        console.log('🔄 Usando fallback para tenant padrão (apenas para rotas públicas)');
         const result = await tenantResolver.resolve('header', '00000000-0000-0000-0000-000000000000');
         if (result.tenant) {
           tenant = result.tenant;

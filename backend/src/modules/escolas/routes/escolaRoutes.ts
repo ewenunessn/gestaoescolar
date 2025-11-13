@@ -8,11 +8,15 @@ import {
   importarEscolasLote 
 } from "../controllers/escolaController";
 import { tenantMiddleware } from "../../../middleware/tenantMiddleware";
+import { authenticateToken } from "../../../middleware/authMiddleware";
 
 const router = Router();
 
-// Aplicar middleware de tenant para todas as rotas (com fallback para tenant padrão)
-router.use(tenantMiddleware({ required: true, fallbackToDefault: true }));
+// Aplicar middleware de autenticação PRIMEIRO (obrigatório)
+router.use(authenticateToken);
+
+// Aplicar middleware de tenant para todas as rotas (sem fallback - usar tenant do header ou token)
+router.use(tenantMiddleware({ required: true, fallbackToDefault: false }));
 
 // Listar escolas
 router.get("/", listarEscolas);
