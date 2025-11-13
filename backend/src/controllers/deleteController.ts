@@ -32,20 +32,20 @@ export async function deleteTenant(req: Request, res: Response) {
       await client.query('DELETE FROM escola_modalidades WHERE escola_id IN (SELECT id FROM escolas WHERE tenant_id = $1)', [tenantId]);
       await client.query('DELETE FROM contrato_produtos WHERE contrato_id IN (SELECT id FROM contratos WHERE tenant_id = $1)', [tenantId]);
       
-      // Deletar dados principais
-      await client.query(`
-        DELETE FROM estoque_escolas_historico WHERE tenant_id = $1;
-        DELETE FROM estoque_lotes WHERE tenant_id = $1;
-        DELETE FROM estoque_escolas WHERE tenant_id = $1;
-        DELETE FROM escolas WHERE tenant_id = $1;
-        DELETE FROM produtos WHERE tenant_id = $1;
-        DELETE FROM contratos WHERE tenant_id = $1;
-        DELETE FROM fornecedores WHERE tenant_id = $1;
-        DELETE FROM modalidades WHERE tenant_id = $1;
-        DELETE FROM refeicoes WHERE tenant_id = $1;
-        DELETE FROM pedidos WHERE tenant_id = $1;
-        DELETE FROM tenant_users WHERE tenant_id = $1;
-      `, [tenantId]);
+      // Deletar dados principais (tabelas que podem não existir)
+      const tables = [
+        'estoque_escolas_historico', 'estoque_lotes', 'estoque_escolas',
+        'escolas', 'produtos', 'contratos', 'fornecedores',
+        'modalidades', 'refeicoes', 'pedidos', 'tenant_users'
+      ];
+      
+      for (const table of tables) {
+        try {
+          await client.query(`DELETE FROM ${table} WHERE tenant_id = $1`, [tenantId]);
+        } catch (e: any) {
+          if (e.code !== '42P01') console.warn(`⚠️ ${table}:`, e.message);
+        }
+      }
       
       console.log('✅ Dados do tenant deletados');
     } catch (err: any) {
@@ -121,21 +121,21 @@ export async function deleteInstitution(req: Request, res: Response) {
         await client.query('DELETE FROM escola_modalidades WHERE escola_id IN (SELECT id FROM escolas WHERE tenant_id = ANY($1))', [tenantIds]);
         await client.query('DELETE FROM contrato_produtos WHERE contrato_id IN (SELECT id FROM contratos WHERE tenant_id = ANY($1))', [tenantIds]);
         
-        // Deletar dados principais de todos os tenants de uma vez
-        await client.query(`
-          DELETE FROM estoque_escolas_historico WHERE tenant_id = ANY($1);
-          DELETE FROM estoque_lotes WHERE tenant_id = ANY($1);
-          DELETE FROM estoque_escolas WHERE tenant_id = ANY($1);
-          DELETE FROM escolas WHERE tenant_id = ANY($1);
-          DELETE FROM produtos WHERE tenant_id = ANY($1);
-          DELETE FROM contratos WHERE tenant_id = ANY($1);
-          DELETE FROM fornecedores WHERE tenant_id = ANY($1);
-          DELETE FROM modalidades WHERE tenant_id = ANY($1);
-          DELETE FROM refeicoes WHERE tenant_id = ANY($1);
-          DELETE FROM pedidos WHERE tenant_id = ANY($1);
-          DELETE FROM tenant_users WHERE tenant_id = ANY($1);
-          DELETE FROM tenants WHERE id = ANY($1);
-        `, [tenantIds]);
+        // Deletar dados principais de todos os tenants
+        const tables = [
+          'estoque_escolas_historico', 'estoque_lotes', 'estoque_escolas',
+          'escolas', 'produtos', 'contratos', 'fornecedores',
+          'modalidades', 'refeicoes', 'pedidos', 'tenant_users', 'tenants'
+        ];
+        
+        for (const table of tables) {
+          try {
+            const col = table === 'tenants' ? 'id' : 'tenant_id';
+            await client.query(`DELETE FROM ${table} WHERE ${col} = ANY($1)`, [tenantIds]);
+          } catch (e: any) {
+            if (e.code !== '42P01') console.warn(`⚠️ ${table}:`, e.message);
+          }
+        }
         
         console.log(`✅ ${tenants.length} tenants deletados`);
       } catch (err: any) {
