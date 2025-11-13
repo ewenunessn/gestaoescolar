@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { institutionService } from '../services/institutionService';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Trash2 } from 'lucide-react';
 
 export default function Institutions() {
   const [institutions, setInstitutions] = useState<any[]>([]);
@@ -22,6 +22,23 @@ export default function Institutions() {
       console.error('Erro ao carregar instituições:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async (e: React.MouseEvent, institutionId: number, institutionName: string) => {
+    e.stopPropagation();
+    
+    if (!confirm(`Tem certeza que deseja deletar a instituição "${institutionName}"?\n\nISSO IRÁ DELETAR:\n- Todos os tenants da instituição\n- Todas as escolas dos tenants\n- Todos os produtos dos tenants\n- Todos os usuários dos tenants\n- Todos os contratos dos tenants\n\nEsta ação NÃO PODE ser desfeita!`)) {
+      return;
+    }
+
+    try {
+      await institutionService.delete(institutionId);
+      alert('Instituição deletada com sucesso!');
+      loadInstitutions();
+    } catch (error: any) {
+      console.error('Erro ao deletar instituição:', error);
+      alert(error.response?.data?.error || 'Erro ao deletar instituição');
     }
   };
 
@@ -158,6 +175,9 @@ export default function Institutions() {
                   <th style={{ padding: '15px', textAlign: 'left', fontWeight: '600', fontSize: '14px' }}>
                     Criado em
                   </th>
+                  <th style={{ padding: '15px', textAlign: 'center', fontWeight: '600', fontSize: '14px', width: '100px' }}>
+                    Ações
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -211,6 +231,36 @@ export default function Institutions() {
                     </td>
                     <td style={{ padding: '15px', fontSize: '14px', color: '#666' }}>
                       {new Date(inst.created_at).toLocaleDateString('pt-BR')}
+                    </td>
+                    <td style={{ padding: '15px', textAlign: 'center' }}>
+                      <button
+                        onClick={(e) => handleDelete(e, inst.id, inst.name)}
+                        style={{
+                          padding: '8px 12px',
+                          background: '#dc3545',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          fontSize: '13px',
+                          fontWeight: '500',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = '#c82333';
+                          e.currentTarget.style.transform = 'scale(1.05)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = '#dc3545';
+                          e.currentTarget.style.transform = 'scale(1)';
+                        }}
+                      >
+                        <Trash2 size={14} />
+                        Deletar
+                      </button>
                     </td>
                   </tr>
                 ))}

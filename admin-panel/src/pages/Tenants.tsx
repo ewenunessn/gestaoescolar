@@ -55,6 +55,24 @@ export default function Tenants() {
     }
   };
 
+  const deleteTenant = async (tenantId: string, tenantName: string) => {
+    if (!confirm(`⚠️ ATENÇÃO!\n\nVocê está prestes a deletar o tenant "${tenantName}" e TODOS os seus dados:\n\n• Escolas\n• Produtos\n• Contratos\n• Pedidos\n• Usuários\n• Todos os outros dados\n\nEsta ação é IRREVERSÍVEL!\n\nDeseja continuar?`)) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('admin_token');
+      await axios.delete(`${API_URL}/api/system-admin/data/tenants/${tenantId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert('Tenant deletado com sucesso!');
+      loadTenants();
+    } catch (error) {
+      console.error('Erro ao deletar tenant:', error);
+      alert('Erro ao deletar tenant');
+    }
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -142,24 +160,51 @@ export default function Tenants() {
                   <option value="suspended">Suspenso</option>
                 </select>
 
-                <button
-                  onClick={() => navigate(`/tenants/${tenant.id}`)}
-                  style={{
-                    padding: '8px 16px',
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontSize: '13px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    transition: 'transform 0.2s'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-                  onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-                >
-                  Ver Detalhes →
-                </button>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    onClick={() => navigate(`/tenants/${tenant.id}`)}
+                    style={{
+                      padding: '8px 16px',
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      transition: 'transform 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                    onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                  >
+                    Ver Detalhes →
+                  </button>
+                  
+                  <button
+                    onClick={() => deleteTenant(tenant.id, tenant.name)}
+                    style={{
+                      padding: '8px 16px',
+                      background: '#dc3545',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      transition: 'transform 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.background = '#c82333';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.background = '#dc3545';
+                    }}
+                  >
+                    🗑️ Deletar
+                  </button>
+                </div>
               </div>
             </div>
           ))}

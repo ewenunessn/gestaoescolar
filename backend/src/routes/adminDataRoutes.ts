@@ -24,4 +24,13 @@ router.patch('/tenants/:tenantId/status', updateTenantStatus);
 // Obter estatísticas gerais do sistema
 router.get('/stats', getSystemStats);
 
+// Importar funções de deleção
+import { deleteTenant, deleteInstitution } from '../controllers/deleteController';
+
+// Deletar tenant (com todos os dados em cascata)
+router.delete('/tenants/:tenantId', deleteTenant);
+
+// Deletar instituição (com todos os tenants e dados em cascata)
+router.delete('/institutions/:institutionId', deleteInstitution);
+
 export default router;
