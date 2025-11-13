@@ -177,7 +177,7 @@ export class InstitutionController {
     }
   }
 
-  // Delete institution
+  // Delete institution (hard delete - remove from database)
   async delete(req: Request, res: Response) {
     try {
       const { id } = req.params;
@@ -190,12 +190,35 @@ export class InstitutionController {
         });
       }
 
-      await institutionModel.delete(id);
-
-      res.json({
-        success: true,
-        message: 'Instituição desativada com sucesso'
-      });
+      // Use hard delete from deleteController
+      const db = require('../database');
+      const client = await db.connect();
+      
+      try {
+        // Buscar tenants
+        const tenantsResult = await client.query(
+          'SELECT id FROM tenants WHERE institution_id = $1',
+          [id]
+        );
+        
+        const tenantIds = tenantsResult.rows.map((t: any) => t.id);
+        
+        // Deletar tenant_users e tenants
+        if (tenantIds.length > 0) {
+          await client.query('DELETE FROM tenant_users WHERE tenant_id = ANY($1)', [tenantIds]);
+          await client.query('DELETE FROM tenants WHERE id = ANY($1)', [tenantIds]);
+        }
+        
+        // Deletar instituição
+        await client.query('DELETE FROM institutions WHERE id = $1', [id]);
+        
+        res.json({
+          success: true,
+          message: `Instituição "${institution.name}" deletada com sucesso`
+        });
+      } finally {
+        client.release();
+      }
     } catch (error) {
       console.error('Erro ao deletar instituição:', error);
       res.status(500).json({
