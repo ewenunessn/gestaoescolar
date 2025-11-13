@@ -851,8 +851,9 @@ export async function registrarMovimentacao(req: Request, res: Response) {
           motivo,
           documento_referencia,
           usuario_id,
+          usuario_nome,
           data_movimentacao
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP)
         RETURNING *
       `, [
         item.id,
@@ -864,7 +865,8 @@ export async function registrarMovimentacao(req: Request, res: Response) {
         quantidadePosterior,
         motivoComTenant,
         documento_referencia,
-        usuarioIdValido
+        usuarioIdValido,
+        req.user?.nome || 'Sistema'
       ]);
 
       return {
@@ -1040,8 +1042,9 @@ export async function resetarEstoqueComBackup(req: Request, res: Response) {
               motivo,
               documento_referencia,
               usuario_id,
+              usuario_nome,
               created_at
-            ) VALUES ($1, $2, $3, 'reset', $4, $5, 0, $6, $7, $8, NOW())
+            ) VALUES ($1, $2, $3, 'reset', $4, $5, 0, $6, $7, $8, $9, NOW())
           `, [
             item.id,
             escola_id,
@@ -1050,7 +1053,8 @@ export async function resetarEstoqueComBackup(req: Request, res: Response) {
             -item.quantidade_atual,
             `${motivo || 'Reset do estoque - backup criado'} [Tenant: ${tenantId}]`,
             nomeBackup,
-            usuario_id
+            usuario_id,
+            req.user?.nome || 'Sistema'
           ]);
         }
       }
@@ -1517,16 +1521,16 @@ export async function processarMovimentacaoLotes(req: Request, res: Response) {
         INSERT INTO estoque_escolas_historico (
           estoque_escola_id, escola_id, produto_id, tipo_movimentacao,
           quantidade_anterior, quantidade_movimentada, quantidade_posterior,
-          motivo, documento_referencia, usuario_id, data_movimentacao
+          motivo, documento_referencia, usuario_id, usuario_nome, data_movimentacao
         ) VALUES (
           (SELECT id FROM estoque_escolas WHERE escola_id = $1 AND produto_id = $2),
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, NOW()
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW()
         )
       `, [
         escola_id, produto_id, tipo_movimentacao,
         quantidadeAnterior, quantidadeTotal, quantidadePosterior,
         motivoComTenant,
-        documento_referencia, usuario_id || 1
+        documento_referencia, usuario_id || 1, req.user?.nome || 'Sistema'
       ]);
 
       await client.query('COMMIT');
