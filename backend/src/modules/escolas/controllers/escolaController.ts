@@ -8,19 +8,26 @@ export async function listarEscolas(req: Request, res: Response) {
     // Configurar contexto de tenant
     await setTenantContextFromRequest(req);
 
-    // Log para debug (apenas em desenvolvimento)
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`🏢 Listando escolas para tenant: ${req.tenant?.name} (${req.tenant?.id})`);
-    }
+    // Log para debug
+    console.log(`\n🏢 [ESCOLAS] ========== LISTANDO ESCOLAS ==========`);
+    console.log(`🏢 [ESCOLAS] Tenant do req.tenant: ${req.tenant?.name} (${req.tenant?.id})`);
+    console.log(`🏢 [ESCOLAS] Headers recebidos:`, {
+      'x-tenant-id': req.headers['x-tenant-id'],
+      'authorization': req.headers.authorization ? 'Present' : 'Absent'
+    });
+    console.log(`🏢 [ESCOLAS] Tenant que será usado na query: ${req.tenant?.id}`);
 
     // Aplicar filtro de tenant diretamente na query (fallback para RLS)
     const tenantId = req.tenant?.id;
     if (!tenantId) {
+      console.log('❌ [ESCOLAS] Tenant ID não encontrado no contexto!');
       return res.status(400).json({
         success: false,
         message: "Contexto de tenant não encontrado"
       });
     }
+    
+    console.log(`🔍 [ESCOLAS] Filtrando escolas por tenant_id: ${tenantId}`);
 
     const result = await db.query(`
       SELECT 
