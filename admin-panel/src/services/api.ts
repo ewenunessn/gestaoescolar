@@ -53,8 +53,17 @@ api.interceptors.response.use(
       message: error.response?.data?.message || error.message
     });
     
-    // NÃO fazer logout automático
-    // Deixar o componente decidir o que fazer
+    // Se token inválido ou expirado (401), limpar localStorage
+    if (error.response?.status === 401) {
+      console.warn('Token inválido ou expirado, limpando sessão');
+      localStorage.removeItem('admin_token');
+      localStorage.removeItem('admin_user');
+      
+      // Redirecionar para login se não estiver na página de login
+      if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
+    }
     
     return Promise.reject(error);
   }

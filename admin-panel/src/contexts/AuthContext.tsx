@@ -24,19 +24,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    console.log('AuthContext: Verificando autenticação...');
-    const token = localStorage.getItem('admin_token');
-    const userData = localStorage.getItem('admin_user');
-    
-    if (token && userData) {
-      console.log('Token encontrado, restaurando sessão');
-      setIsAuthenticated(true);
-      setUser(JSON.parse(userData));
-    } else {
-      console.log('Nenhum token encontrado');
-    }
-    
-    setLoading(false);
+    const validateToken = async () => {
+      console.log('AuthContext: Verificando autenticação...');
+      const token = localStorage.getItem('admin_token');
+      const userData = localStorage.getItem('admin_user');
+      
+      if (token && userData) {
+        console.log('Token encontrado, validando...');
+        try {
+          // Tentar fazer uma requisição simples para validar o token
+          await api.get('/system-admin/data/stats');
+          console.log('Token válido, restaurando sessão');
+          setIsAuthenticated(true);
+          setUser(JSON.parse(userData));
+        } catch (error) {
+          console.error('Token inválido ou expirado, fazendo logout');
+          localStorage.removeItem('admin_token');
+          localStorage.removeItem('admin_user');
+          setIsAuthenticated(false);
+          setUser(null);
+        }
+      } else {
+        console.log('Nenhum token encontrado');
+      }
+      
+      setLoading(false);
+    };
+
+    validateToken();
   }, []);
 
   const login = async (email: string, password: string) => {

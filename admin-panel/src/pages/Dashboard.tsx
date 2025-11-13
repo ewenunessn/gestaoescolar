@@ -32,13 +32,17 @@ export default function Dashboard() {
       });
     } catch (error: any) {
       console.error('Erro ao carregar estatísticas:', error);
-      // Não fazer nada, deixar o loading false e mostrar 0
-      setStats({
-        totalInstitutions: 0,
-        activeInstitutions: 0,
-        pendingInstitutions: 0,
-        recentInstitutions: []
-      });
+      
+      // Se for erro 401, o interceptor já vai redirecionar para login
+      // Para outros erros, mostrar dados zerados
+      if (error.response?.status !== 401) {
+        setStats({
+          totalInstitutions: 0,
+          activeInstitutions: 0,
+          pendingInstitutions: 0,
+          recentInstitutions: []
+        });
+      }
     } finally {
       setLoading(false);
     }
