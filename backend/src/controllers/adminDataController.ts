@@ -21,7 +21,7 @@ export async function listTenantsWithStats(req: Request, res: Response) {
         t.created_at,
         t.updated_at,
         i.name as institution_name,
-        i.subdomain as institution_subdomain,
+        i.slug as institution_subdomain,
         (SELECT COUNT(*) FROM escolas WHERE tenant_id = t.id) as total_escolas,
         (SELECT COUNT(*) FROM usuarios u 
          JOIN usuarios_tenants ut ON u.id = ut.usuario_id 
@@ -58,7 +58,7 @@ export async function getTenantData(req: Request, res: Response) {
       SELECT 
         t.*,
         i.name as institution_name,
-        i.subdomain as institution_subdomain,
+        i.slug as institution_subdomain,
         i.plan_id,
         p.name as plan_name
       FROM tenants t
