@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import axios from 'axios';
 
@@ -7,7 +7,6 @@ const API_URL = 'https://gestaoescolar-backend-seven.vercel.app';
 
 export default function TenantData() {
   const { tenantId } = useParams();
-  const navigate = useNavigate();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
