@@ -191,7 +191,7 @@ export class InstitutionController {
       }
 
       // Use hard delete from deleteController
-      const client = await db.connect();
+      const client = await db.pool.connect();
       
       try {
         // Buscar tenants
