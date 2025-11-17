@@ -125,7 +125,7 @@ const ProdutosPage = () => {
 
   // Estados de paginação
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [rowsPerPage, setRowsPerPage] = useState(50);
 
   // Estados do modal
   const [modalOpen, setModalOpen] = useState(false);
@@ -516,22 +516,22 @@ const ProdutosPage = () => {
         ) : (
           <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px' }}>
             <TableContainer>
-              <Table stickyHeader>
-                <TableHead><TableRow><TableCell>Nome do Produto</TableCell><TableCell>Categoria</TableCell><TableCell>Marca</TableCell><TableCell>Status</TableCell><TableCell align="center">Ações</TableCell></TableRow></TableHead>
+              <Table stickyHeader size="small">
+                <TableHead><TableRow><TableCell sx={{ py: 1 }}>Nome do Produto</TableCell><TableCell sx={{ py: 1 }}>Categoria</TableCell><TableCell sx={{ py: 1 }}>Marca</TableCell><TableCell sx={{ py: 1 }}>Status</TableCell><TableCell align="center" sx={{ py: 1 }}>Ações</TableCell></TableRow></TableHead>
                 <TableBody>
                   {paginatedProdutos.map((produto) => (
-                    <TableRow key={produto.id} hover>
-                      <TableCell><Typography variant="body2" sx={{ fontWeight: 600 }}>{produto.nome}</Typography>{produto.descricao && <Typography variant="caption" color="text.secondary">{produto.descricao}</Typography>}</TableCell>
-                      <TableCell><Typography variant="body2" color="text.secondary">{produto.categoria || 'N/A'}</Typography></TableCell>
-                      <TableCell><Typography variant="body2" color="text.secondary">{produto.marca || 'N/A'}</Typography></TableCell>
-                      <TableCell><Chip label={produto.ativo ? 'Ativo' : 'Inativo'} size="small" color={produto.ativo ? 'success' : 'error'} /></TableCell>
+                    <TableRow key={produto.id} hover sx={{ '& td': { py: 0.75 } }}>
+                      <TableCell><Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>{produto.nome}</Typography>{produto.descricao && <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>{produto.descricao}</Typography>}</TableCell>
+                      <TableCell><Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>{produto.categoria || 'N/A'}</Typography></TableCell>
+                      <TableCell><Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>{produto.marca || 'N/A'}</Typography></TableCell>
+                      <TableCell><Chip label={produto.ativo ? 'Ativo' : 'Inativo'} size="small" color={produto.ativo ? 'success' : 'error'} sx={{ height: '20px', fontSize: '0.75rem' }} /></TableCell>
                       <TableCell align="center"><Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => navigate(`/produtos/${produto.id}`)} color="primary"><Info fontSize="small" /></IconButton></Tooltip></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </TableContainer>
-            <TablePagination component="div" count={filteredProdutos.length} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage} onRowsPerPageChange={handleChangeRowsPerPage} rowsPerPageOptions={[5, 10, 25, 50]} labelRowsPerPage="Itens por página:" />
+            <TablePagination component="div" count={filteredProdutos.length} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage} onRowsPerPageChange={handleChangeRowsPerPage} rowsPerPageOptions={[10, 25, 50, 100]} labelRowsPerPage="Itens por página:" />
           </Paper>
         )}
       </Box>

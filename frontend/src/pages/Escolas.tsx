@@ -118,7 +118,7 @@ const EscolasPage = () => {
 
   // Estados de paginação
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [rowsPerPage, setRowsPerPage] = useState(100);
 
   // Estados do modal
   const [modalOpen, setModalOpen] = useState(false);
@@ -340,12 +340,12 @@ const EscolasPage = () => {
         ) : (
           <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px' }}>
             <TableContainer>
-              <Table>
-                <TableHead><TableRow><TableCell>Nome da Escola</TableCell><TableCell align="center">Total de Alunos</TableCell><TableCell>Modalidades</TableCell><TableCell>Município</TableCell><TableCell align="center">Status</TableCell><TableCell align="center">Ações</TableCell></TableRow></TableHead>
-                <TableBody>{paginatedEscolas.map((escola) => (<TableRow key={escola.id} hover><TableCell><Typography variant="body2" sx={{ fontWeight: 600 }}>{escola.nome}</Typography>{escola.endereco && <Typography variant="caption" color="text.secondary" display="block">{escola.endereco}</Typography>}</TableCell><TableCell align="center"><Typography variant="body2" sx={{ fontWeight: 600, color: 'primary.main' }}>{escola.total_alunos || 0}</Typography></TableCell><TableCell><Typography variant="body2" color="text.secondary">{escola.modalidades || '-'}</Typography></TableCell><TableCell><Typography variant="body2" color="text.secondary">{escola.municipio || '-'}</Typography></TableCell><TableCell align="center"><Chip label={escola.ativo ? 'Ativa' : 'Inativa'} size="small" color={escola.ativo ? 'success' : 'error'} /></TableCell><TableCell align="center"><Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => handleViewDetails(escola)} color="primary"><Visibility fontSize="small" /></IconButton></Tooltip></TableCell></TableRow>))}</TableBody>
+              <Table size="small">
+                <TableHead><TableRow><TableCell sx={{ py: 1 }}>Nome da Escola</TableCell><TableCell align="center" sx={{ py: 1 }}>Total de Alunos</TableCell><TableCell sx={{ py: 1 }}>Modalidades</TableCell><TableCell sx={{ py: 1 }}>Município</TableCell><TableCell align="center" sx={{ py: 1 }}>Status</TableCell><TableCell align="center" sx={{ py: 1 }}>Ações</TableCell></TableRow></TableHead>
+                <TableBody>{paginatedEscolas.map((escola) => (<TableRow key={escola.id} hover sx={{ '& td': { py: 0.75 } }}><TableCell><Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>{escola.nome}</Typography>{escola.endereco && <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.75rem' }}>{escola.endereco}</Typography>}</TableCell><TableCell align="center"><Typography variant="body2" sx={{ fontWeight: 600, color: 'primary.main', fontSize: '0.875rem' }}>{escola.total_alunos || 0}</Typography></TableCell><TableCell><Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>{escola.modalidades || '-'}</Typography></TableCell><TableCell><Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>{escola.municipio || '-'}</Typography></TableCell><TableCell align="center"><Chip label={escola.ativo ? 'Ativa' : 'Inativa'} size="small" color={escola.ativo ? 'success' : 'error'} sx={{ height: '20px', fontSize: '0.75rem' }} /></TableCell><TableCell align="center"><Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => handleViewDetails(escola)} color="primary"><Visibility fontSize="small" /></IconButton></Tooltip></TableCell></TableRow>))}</TableBody>
               </Table>
             </TableContainer>
-            <TablePagination component="div" count={filteredEscolas.length} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage} onRowsPerPageChange={handleChangeRowsPerPage} rowsPerPageOptions={[5, 10, 25, 50]} labelRowsPerPage="Itens por página:" />
+            <TablePagination component="div" count={filteredEscolas.length} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage} onRowsPerPageChange={handleChangeRowsPerPage} rowsPerPageOptions={[25, 50, 100, 200]} labelRowsPerPage="Itens por página:" />
           </Paper>
         )}
       </Box>

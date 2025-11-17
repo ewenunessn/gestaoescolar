@@ -120,6 +120,9 @@ export async function buscarRefeicao(req: Request, res: Response) {
 // Criar nova refeição
 export async function criarRefeicao(req: Request, res: Response) {
   try {
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+    
     const { nome, descricao, tipo, ativo = true }: Refeicao = req.body;
     
     // Validações
@@ -137,9 +140,11 @@ export async function criarRefeicao(req: Request, res: Response) {
       });
     }
     
-    // Verificar se já existe refeição com o mesmo nome
+    // Verificar se já existe refeição com o mesmo nome NO MESMO TENANT
     const existente = await db.query(
-      'SELECT id FROM refeicoes WHERE LOWER(nome) = LOWER($1)',
+      `SELECT id FROM refeicoes 
+       WHERE LOWER(nome) = LOWER($1) 
+       AND tenant_id = current_setting('app.current_tenant_id')::uuid`,
       [nome.trim()]
     );
     
@@ -151,8 +156,8 @@ export async function criarRefeicao(req: Request, res: Response) {
     }
     
     const result = await db.query(`
-      INSERT INTO refeicoes (nome, descricao, tipo, ativo, updated_at) 
-      VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP) 
+      INSERT INTO refeicoes (nome, descricao, tipo, ativo, tenant_id, updated_at) 
+      VALUES ($1, $2, $3, $4, current_setting('app.current_tenant_id')::uuid, CURRENT_TIMESTAMP) 
       RETURNING *
     `, [nome.trim(), descricao?.trim() || null, tipo?.trim() || null, ativo]);
     
@@ -176,6 +181,9 @@ export async function criarRefeicao(req: Request, res: Response) {
 // Atualizar refeição
 export async function atualizarRefeicao(req: Request, res: Response) {
   try {
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+    
     const { id } = req.params;
     const { nome, descricao, tipo, ativo }: Partial<Refeicao> = req.body;
     
@@ -186,8 +194,13 @@ export async function atualizarRefeicao(req: Request, res: Response) {
       });
     }
     
-    // Verificar se a refeição existe
-    const existeResult = await db.query('SELECT id FROM refeicoes WHERE id = $1', [id]);
+    // Verificar se a refeição existe NO MESMO TENANT
+    const existeResult = await db.query(
+      `SELECT id FROM refeicoes 
+       WHERE id = $1 
+       AND tenant_id = current_setting('app.current_tenant_id')::uuid`, 
+      [id]
+    );
     if (existeResult.rows.length === 0) {
       return res.status(404).json({
         success: false,
@@ -211,9 +224,12 @@ export async function atualizarRefeicao(req: Request, res: Response) {
         });
       }
       
-      // Verificar se já existe outra refeição com o mesmo nome
+      // Verificar se já existe outra refeição com o mesmo nome NO MESMO TENANT
       const existente = await db.query(
-        'SELECT id FROM refeicoes WHERE LOWER(nome) = LOWER($1) AND id != $2',
+        `SELECT id FROM refeicoes 
+         WHERE LOWER(nome) = LOWER($1) 
+         AND id != $2 
+         AND tenant_id = current_setting('app.current_tenant_id')::uuid`,
         [nome.trim(), id]
       );
       

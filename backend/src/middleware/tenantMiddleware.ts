@@ -38,15 +38,25 @@ export function tenantMiddleware(options: TenantMiddlewareOptions = {}) {
     try {
       console.log(`\n🔍 [TENANT MIDDLEWARE] ${req.method} ${req.path}`);
       
+      // Se já foi processado, pular
+      if ((req as any)._tenantProcessed) {
+        console.log('⏭️ Tenant já processado, pulando');
+        return next();
+      }
+      
       // Verificar se o path deve ser ignorado
       if (skipPaths.some(path => req.path.startsWith(path))) {
         console.log('⏭️ Path ignorado pelo middleware de tenant');
         return next();
       }
+      
+      // Marcar como processado
+      (req as any)._tenantProcessed = true;
 
       // Tentar resolver tenant por diferentes métodos
       let tenant: Tenant | null = null;
       let method: string | null = null;
+      const host = req.get('host') || '';
 
       // 1. Tentar por header X-Tenant-ID PRIMEIRO (maior prioridade para troca de tenant)
       const tenantHeader = req.get('X-Tenant-ID');
@@ -64,7 +74,6 @@ export function tenantMiddleware(options: TenantMiddlewareOptions = {}) {
 
       // 2. Tentar por subdomínio (se não resolveu por header)
       if (!tenant) {
-        const host = req.get('host') || '';
         const subdomain = extractSubdomain(host);
         if (subdomain && subdomain !== 'www') {
           const result = await tenantResolver.resolve('subdomain', subdomain);
@@ -150,6 +159,7 @@ export function tenantMiddleware(options: TenantMiddlewareOptions = {}) {
 
       // Verificar se tenant é obrigatório
       if (!tenant && required) {
+        const subdomain = extractSubdomain(host);
         console.log('❌ Tenant não encontrado e é obrigatório');
         console.log('Detalhes:', {
           host,

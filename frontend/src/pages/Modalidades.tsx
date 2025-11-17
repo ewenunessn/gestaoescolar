@@ -79,7 +79,7 @@ const ModalidadesPage = () => {
 
   // Estados de paginação
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [rowsPerPage, setRowsPerPage] = useState(20);
 
   // Estados de modais
   const [modalOpen, setModalOpen] = useState(false);
@@ -290,15 +290,15 @@ const ModalidadesPage = () => {
               <Button startIcon={<AddIcon />} onClick={() => openModal()} variant="contained" color="success" size="small">
                 Nova Modalidade
               </Button>
-              <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)}>
+              <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)} size="small">
                 <MoreVert />
               </IconButton>
             </Box>
           </Box>
 
-          <Collapse in={filtersExpanded} timeout={400}><Box sx={{ mb: 3 }}><FiltersContent /></Box></Collapse>
+          <Collapse in={filtersExpanded} timeout={300}><Box sx={{ mb: 2 }}><FiltersContent /></Box></Collapse>
 
-          <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+          <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>
             {`Mostrando ${Math.min((page * rowsPerPage) + 1, filteredModalidades.length)}-${Math.min((page + 1) * rowsPerPage, filteredModalidades.length)} de ${filteredModalidades.length} modalidades`}
           </Typography>
         </Card>
@@ -311,31 +311,31 @@ const ModalidadesPage = () => {
           <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Category sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} /><Typography variant="h6" sx={{ color: 'text.secondary' }}>Nenhuma modalidade encontrada</Typography></CardContent></Card>
         ) : (
           <TableContainer component={Paper} sx={{ mt: 2, borderRadius: '12px' }}>
-            <Table>
+            <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell>Nome da Modalidade</TableCell>
-                  <TableCell align="center">Código Financeiro</TableCell>
-                  <TableCell align="center">Valor Repasse</TableCell>
-                  <TableCell align="center">Status</TableCell>
-                  <TableCell align="center">Ações</TableCell>
+                  <TableCell sx={{ py: 1 }}>Nome da Modalidade</TableCell>
+                  <TableCell align="center" sx={{ py: 1 }}>Código Financeiro</TableCell>
+                  <TableCell align="center" sx={{ py: 1 }}>Valor Repasse</TableCell>
+                  <TableCell align="center" sx={{ py: 1 }}>Status</TableCell>
+                  <TableCell align="center" sx={{ py: 1 }}>Ações</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {paginatedModalidades.map((modalidade) => (
-                  <TableRow key={modalidade.id} hover>
+                  <TableRow key={modalidade.id} hover sx={{ '& td': { py: 0.75 } }}>
                     <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>
                         {modalidade.nome}
                       </Typography>
                     </TableCell>
                     <TableCell align="center">
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
                         {modalidade.codigo_financeiro || '-'}
                       </Typography>
                     </TableCell>
                     <TableCell align="center">
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
                         {formatCurrency(modalidade.valor_repasse)}
                       </Typography>
                     </TableCell>
@@ -343,7 +343,8 @@ const ModalidadesPage = () => {
                       <Chip 
                         label={modalidade.ativo ? 'Ativa' : 'Inativa'} 
                         size="small" 
-                        color={modalidade.ativo ? 'success' : 'error'} 
+                        color={modalidade.ativo ? 'success' : 'error'}
+                        sx={{ height: '20px', fontSize: '0.75rem' }}
                       />
                     </TableCell>
                     <TableCell align="center">
@@ -362,7 +363,7 @@ const ModalidadesPage = () => {
                 ))}
               </TableBody>
             </Table>
-            <TablePagination component="div" count={filteredModalidades.length} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage} onRowsPerPageChange={handleChangeRowsPerPage} rowsPerPageOptions={[5, 10, 25, 50]} labelRowsPerPage="Linhas por página:" />
+            <TablePagination component="div" count={filteredModalidades.length} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage} onRowsPerPageChange={handleChangeRowsPerPage} rowsPerPageOptions={[10, 20, 50, 100]} labelRowsPerPage="Linhas por página:" />
           </TableContainer>
         )}
       </Box>

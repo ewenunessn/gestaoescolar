@@ -13,8 +13,12 @@ class SaldoContratosModalidadesController {
    */
   async listarSaldosModalidades(req: Request, res: Response): Promise<void> {
     try {
-      // Configurar contexto de tenant
-      await setTenantContextFromRequest(req);
+      // Obter tenant_id do header
+      const tenantId = req.get('X-Tenant-ID');
+      if (!tenantId) {
+        res.status(400).json({ success: false, message: 'Header X-Tenant-ID é obrigatório' });
+        return;
+      }
 
       const {
         page = 1,
@@ -38,11 +42,11 @@ class SaldoContratosModalidadesController {
         JOIN fornecedores f ON c.fornecedor_id = f.id
         WHERE cp.ativo = true
           AND c.ativo = true
-          AND c.tenant_id = current_setting('app.current_tenant_id')::uuid
+          AND c.tenant_id = $1
       `;
 
-      const produtosParams: any[] = [];
-      let produtosParamIndex = 1;
+      const produtosParams: any[] = [tenantId];
+      let produtosParamIndex = 2;
 
       if (contrato_numero) {
         produtosQuery += ` AND c.numero ILIKE $${produtosParamIndex}`;
@@ -306,18 +310,22 @@ class SaldoContratosModalidadesController {
    */
   async listarModalidades(req: Request, res: Response): Promise<void> {
     try {
-      // Configurar contexto de tenant
-      await setTenantContextFromRequest(req);
+      // Obter tenant_id do header
+      const tenantId = req.get('X-Tenant-ID');
+      if (!tenantId) {
+        res.status(400).json({ success: false, message: 'Header X-Tenant-ID é obrigatório' });
+        return;
+      }
 
       const query = `
         SELECT id, nome, codigo_financeiro, valor_repasse
         FROM modalidades
         WHERE ativo = true
-          AND tenant_id = current_setting('app.current_tenant_id')::uuid
+          AND tenant_id = $1
         ORDER BY nome
       `;
 
-      const result = await db.query(query);
+      const result = await db.query(query, [tenantId]);
       res.json({ success: true, data: result.rows });
 
     } catch (error: any) {
@@ -331,8 +339,12 @@ class SaldoContratosModalidadesController {
    */
   async listarProdutosContratos(req: Request, res: Response): Promise<void> {
     try {
-      // Configurar contexto de tenant
-      await setTenantContextFromRequest(req);
+      // Obter tenant_id do header
+      const tenantId = req.get('X-Tenant-ID');
+      if (!tenantId) {
+        res.status(400).json({ success: false, message: 'Header X-Tenant-ID é obrigatório' });
+        return;
+      }
 
       const query = `
         SELECT 
@@ -345,11 +357,11 @@ class SaldoContratosModalidadesController {
         JOIN produtos p ON cp.produto_id = p.id
         JOIN fornecedores f ON c.fornecedor_id = f.id
         WHERE cp.ativo = true AND c.ativo = true AND c.status = 'ativo'
-          AND c.tenant_id = current_setting('app.current_tenant_id')::uuid
+          AND c.tenant_id = $1
         ORDER BY c.numero, p.nome
       `;
 
-      const result = await db.query(query);
+      const result = await db.query(query, [tenantId]);
       res.json({ success: true, data: result.rows });
 
     } catch (error: any) {
@@ -363,8 +375,7 @@ class SaldoContratosModalidadesController {
    */
   async cadastrarSaldoModalidade(req: Request, res: Response): Promise<void> {
     try {
-      // Configurar contexto de tenant
-      await setTenantContextFromRequest(req);
+      // O contexto de tenant já foi configurado pelo middleware
 
       const { contrato_produto_id, modalidade_id, quantidade_inicial } = req.body;
 
@@ -462,8 +473,7 @@ class SaldoContratosModalidadesController {
    */
   async registrarConsumoModalidade(req: Request, res: Response): Promise<void> {
     try {
-      // Configurar contexto de tenant
-      await setTenantContextFromRequest(req);
+      // O contexto de tenant já foi configurado pelo middleware
 
       const { id } = req.params;
       const { quantidade, observacao, usuario_id, data_consumo } = req.body;
@@ -547,8 +557,7 @@ class SaldoContratosModalidadesController {
    */
   async excluirConsumoModalidade(req: Request, res: Response): Promise<void> {
     try {
-      // Configurar contexto de tenant
-      await setTenantContextFromRequest(req);
+      // O contexto de tenant já foi configurado pelo middleware
 
       const { id, consumoId } = req.params;
 
@@ -608,8 +617,7 @@ class SaldoContratosModalidadesController {
    */
   async buscarHistoricoConsumoModalidade(req: Request, res: Response): Promise<void> {
     try {
-      // Configurar contexto de tenant
-      await setTenantContextFromRequest(req);
+      // O contexto de tenant já foi configurado pelo middleware
 
       const { id } = req.params;
 

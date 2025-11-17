@@ -11,6 +11,9 @@ import {
 
 const router = Router();
 
+// NOTA: Middleware de tenant removido temporariamente devido a problemas de performance
+// As queries usarão o tenant_id diretamente do header X-Tenant-ID
+
 // Listar saldos por modalidade
 router.get('/', listarSaldosModalidades);
 
