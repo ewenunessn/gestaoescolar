@@ -5,6 +5,7 @@ const TABLE_NAME = process.env.NODE_ENV === 'production' ? 'demandas_escolas' : 
 
 export interface Demanda {
   id: number;
+  tenant_id: string;
   escola_id?: number;
   escola_nome: string;
   numero_oficio: string;
@@ -30,24 +31,22 @@ export const demandaModel = {
   async criar(demanda: Partial<Demanda>): Promise<Demanda> {
     const query = `
       INSERT INTO ${TABLE_NAME} (
-        escola_id, escola_nome, numero_oficio, data_solicitacao,
+        tenant_id, escola_id, escola_nome, numero_oficio, data_solicitacao,
         objeto, descricao_itens,
         status, observacoes, usuario_criacao_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *,
       CASE 
         WHEN data_semead IS NULL THEN NULL
         WHEN data_resposta_semead IS NOT NULL THEN 
-          CASE 
-            WHEN data_resposta_semead::date = data_semead::date THEN 0
-            ELSE (data_resposta_semead::date - data_semead::date)::integer
-          END
-        WHEN data_semead::date = CURRENT_DATE THEN 0
-        ELSE (CURRENT_DATE - data_semead::date)::integer
+          (data_resposta_semead::date - data_semead::date)::integer
+        ELSE 
+          (CURRENT_DATE - data_semead::date)::integer
       END as dias_solicitacao
     `;
 
     const values = [
+      demanda.tenant_id,
       demanda.escola_id || null,
       demanda.escola_nome,
       demanda.numero_oficio,
@@ -63,7 +62,7 @@ export const demandaModel = {
     return result.rows[0];
   },
 
-  async buscarPorId(id: number): Promise<DemandaDetalhada | null> {
+  async buscarPorId(id: number, tenantId: string): Promise<DemandaDetalhada | null> {
     const query = `
       SELECT 
         d.*,
@@ -72,24 +71,21 @@ export const demandaModel = {
         CASE 
           WHEN d.data_semead IS NULL THEN NULL
           WHEN d.data_resposta_semead IS NOT NULL THEN 
-            CASE 
-              WHEN d.data_resposta_semead::date = d.data_semead::date THEN 0
-              ELSE (d.data_resposta_semead::date - d.data_semead::date)::integer
-            END
-          WHEN d.data_semead::date = CURRENT_DATE THEN 0
-          ELSE (CURRENT_DATE - d.data_semead::date)::integer
+            (d.data_resposta_semead::date - d.data_semead::date)::integer
+          ELSE 
+            (CURRENT_DATE - d.data_semead::date)::integer
         END as dias_solicitacao
       FROM ${TABLE_NAME} d
-      LEFT JOIN escolas e ON d.escola_id = e.id
+      LEFT JOIN escolas e ON d.escola_id = e.id AND e.tenant_id = d.tenant_id
       LEFT JOIN usuarios u ON d.usuario_criacao_id = u.id
-      WHERE d.id = $1
+      WHERE d.id = $1 AND d.tenant_id = $2
     `;
 
-    const result = await db.query(query, [id]);
+    const result = await db.query(query, [id, tenantId]);
     return result.rows[0] || null;
   },
 
-  async listar(filtros?: {
+  async listar(tenantId: string, filtros?: {
     escola_id?: number;
     escola_nome?: string;
     objeto?: string;
@@ -105,21 +101,18 @@ export const demandaModel = {
         CASE 
           WHEN d.data_semead IS NULL THEN NULL
           WHEN d.data_resposta_semead IS NOT NULL THEN 
-            CASE 
-              WHEN d.data_resposta_semead::date = d.data_semead::date THEN 0
-              ELSE (d.data_resposta_semead::date - d.data_semead::date)::integer
-            END
-          WHEN d.data_semead::date = CURRENT_DATE THEN 0
-          ELSE (CURRENT_DATE - d.data_semead::date)::integer
+            (d.data_resposta_semead::date - d.data_semead::date)::integer
+          ELSE 
+            (CURRENT_DATE - d.data_semead::date)::integer
         END as dias_solicitacao
       FROM ${TABLE_NAME} d
-      LEFT JOIN escolas e ON d.escola_id = e.id
+      LEFT JOIN escolas e ON d.escola_id = e.id AND e.tenant_id = d.tenant_id
       LEFT JOIN usuarios u ON d.usuario_criacao_id = u.id
-      WHERE 1=1
+      WHERE d.tenant_id = $1
     `;
 
-    const values: any[] = [];
-    let paramCount = 1;
+    const values: any[] = [tenantId];
+    let paramCount = 2;
 
     if (filtros?.escola_id) {
       query += ` AND d.escola_id = $${paramCount}`;
@@ -128,7 +121,7 @@ export const demandaModel = {
     }
 
     if (filtros?.escola_nome) {
-      query += ` AND COALESCE(d.escola_nome, e.nome) ILIKE $${paramCount}`;
+      query += ` AND (d.escola_nome ILIKE $${paramCount} OR e.nome ILIKE $${paramCount})`;
       values.push(`%${filtros.escola_nome}%`);
       paramCount++;
     }
@@ -163,10 +156,15 @@ export const demandaModel = {
     return result.rows;
   },
 
-  async atualizar(id: number, dados: Partial<Demanda>): Promise<Demanda> {
+  async atualizar(id: number, tenantId: string, dados: Partial<Demanda>): Promise<Demanda> {
     const campos: string[] = [];
     const values: any[] = [];
     let paramCount = 1;
+
+    // tenant_id não pode ser alterado
+    if (dados.tenant_id) {
+      delete dados.tenant_id;
+    }
 
     if (dados.escola_id !== undefined) {
       campos.push(`escola_id = $${paramCount}`);
@@ -216,8 +214,6 @@ export const demandaModel = {
       paramCount++;
     }
 
-
-
     if (dados.status !== undefined) {
       campos.push(`status = $${paramCount}`);
       values.push(dados.status);
@@ -233,20 +229,19 @@ export const demandaModel = {
     campos.push(`updated_at = CURRENT_TIMESTAMP`);
 
     values.push(id);
+    values.push(tenantId);
+    
     const query = `
       UPDATE ${TABLE_NAME} 
       SET ${campos.join(', ')}
-      WHERE id = $${paramCount}
+      WHERE id = $${paramCount} AND tenant_id = $${paramCount + 1}
       RETURNING *,
       CASE 
         WHEN data_semead IS NULL THEN NULL
         WHEN data_resposta_semead IS NOT NULL THEN 
-          CASE 
-            WHEN data_resposta_semead::date = data_semead::date THEN 0
-            ELSE (data_resposta_semead::date - data_semead::date)::integer
-          END
-        WHEN data_semead::date = CURRENT_DATE THEN 0
-        ELSE (CURRENT_DATE - data_semead::date)::integer
+          (data_resposta_semead::date - data_semead::date)::integer
+        ELSE 
+          (CURRENT_DATE - data_semead::date)::integer
       END as dias_solicitacao
     `;
 
@@ -254,20 +249,20 @@ export const demandaModel = {
     return result.rows[0];
   },
 
-  async excluir(id: number): Promise<void> {
-    await db.query(`DELETE FROM ${TABLE_NAME} WHERE id = $1`, [id]);
+  async excluir(id: number, tenantId: string): Promise<void> {
+    await db.query(`DELETE FROM ${TABLE_NAME} WHERE id = $1 AND tenant_id = $2`, [id, tenantId]);
   },
 
-  async listarSolicitantes(): Promise<string[]> {
+  async listarSolicitantes(tenantId: string): Promise<string[]> {
     const query = `
       SELECT DISTINCT COALESCE(d.escola_nome, e.nome) as escola_nome
       FROM ${TABLE_NAME} d
-      LEFT JOIN escolas e ON d.escola_id = e.id
-      WHERE COALESCE(d.escola_nome, e.nome) IS NOT NULL
+      LEFT JOIN escolas e ON d.escola_id = e.id AND e.tenant_id = d.tenant_id
+      WHERE d.tenant_id = $1 AND COALESCE(d.escola_nome, e.nome) IS NOT NULL
       ORDER BY escola_nome
     `;
     
-    const result = await db.query(query);
-    return result.rows.map(row => row.escola_nome);
+    const result = await db.query(query, [tenantId]);
+    return result.rows.map((row: any) => row.escola_nome);
   }
 };

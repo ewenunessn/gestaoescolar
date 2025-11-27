@@ -385,19 +385,31 @@ export default function DemandaDetalhesModal({
                       {getStatusChip(demanda.status)}
                     </Box>
 
-                    <Box sx={{ mb: 2 }}>
-                      <Typography variant="body2" color="text.secondary">
-                        {demanda.data_resposta_semead ? 'Tempo de Resposta da SEMAD' : 'Aguardando Resposta da SEMAD'}
-                      </Typography>
-                      {demanda.dias_solicitacao !== null ? (
+                    {demanda.data_semead && (
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          {demanda.data_resposta_semead ? 'Tempo de Resposta da SEMAD' : 'Aguardando Resposta da SEMAD'}
+                        </Typography>
+                        {demanda.dias_solicitacao !== null && (
+                          <Chip
+                            label={`${demanda.dias_solicitacao} dias`}
+                            color={demanda.data_resposta_semead ? 'success' : 'warning'}
+                            size="medium"
+                          />
+                        )}
+                      </Box>
+                    )}
+
+                    {!demanda.data_semead && (
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="body2" color="text.secondary">Status do Envio</Typography>
                         <Chip
-                          label={`${demanda.dias_solicitacao} dias`}
-                          color={demanda.data_resposta_semead ? 'success' : 'primary'}
+                          label="Ainda não enviado à SEMAD"
+                          color="default"
+                          size="medium"
                         />
-                      ) : (
-                        <Typography variant="body2" color="text.secondary">Ainda não enviado à SEMAD</Typography>
-                      )}
-                    </Box>
+                      </Box>
+                    )}
 
                     {demanda.data_semead && (
                       <Box sx={{ mb: 2 }}>

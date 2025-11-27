@@ -132,9 +132,21 @@ export async function buscarCardapio(req: Request, res: Response) {
   try {
     const { id } = req.params;
     
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+    
+    // Validar se tenant está presente
+    if (!req.tenant?.id) {
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
+    
+    // IMPORTANTE: Filtrar por tenant_id para segurança
     const result = await db.query(`
-      SELECT * FROM cardapios WHERE id = $1
-    `, [id]);
+      SELECT * FROM cardapios WHERE id = $1 AND tenant_id = $2
+    `, [id, req.tenant.id]);
 
     const cardapio = result.rows[0];
 
@@ -212,6 +224,9 @@ export async function listarCardapioRefeicoes(req: Request, res: Response) {
 
 export async function criarCardapio(req: Request, res: Response) {
   try {
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+    
     const { nome, descricao, periodo_dias, data_inicio, data_fim, modalidade_id, ativo } = req.body;
 
     // Validações básicas
@@ -223,8 +238,8 @@ export async function criarCardapio(req: Request, res: Response) {
     }
 
     const result = await db.query(`
-      INSERT INTO cardapios (nome, descricao, periodo_dias, data_inicio, data_fim, modalidade_id, ativo)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      INSERT INTO cardapios (nome, descricao, periodo_dias, data_inicio, data_fim, modalidade_id, ativo, tenant_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, current_setting('app.current_tenant_id')::uuid)
       RETURNING *
     `, [nome, descricao, periodo_dias || 30, data_inicio, data_fim, modalidade_id, ativo !== false]);
 
@@ -304,8 +319,19 @@ export async function deletarCardapio(req: Request, res: Response) {
   try {
     const { id } = req.params;
 
-    // Verificar se o cardápio existe
-    const existeResult = await db.query('SELECT id FROM cardapios WHERE id = $1', [id]);
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+    
+    // Validar se tenant está presente
+    if (!req.tenant?.id) {
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
+
+    // IMPORTANTE: Verificar se o cardápio existe NO MESMO TENANT
+    const existeResult = await db.query('SELECT id FROM cardapios WHERE id = $1 AND tenant_id = $2', [id, req.tenant.id]);
     if (existeResult.rows.length === 0) {
       return res.status(404).json({
         success: false,
@@ -313,8 +339,8 @@ export async function deletarCardapio(req: Request, res: Response) {
       });
     }
 
-    // Deletar cardápio (cascade irá remover as refeições associadas)
-    await db.query('DELETE FROM cardapios WHERE id = $1', [id]);
+    // IMPORTANTE: Deletar cardápio apenas do tenant atual (cascade irá remover as refeições associadas)
+    await db.query('DELETE FROM cardapios WHERE id = $1 AND tenant_id = $2', [id, req.tenant.id]);
 
     res.json({
       success: true,

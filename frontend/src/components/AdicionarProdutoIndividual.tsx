@@ -367,12 +367,15 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
                     required
                   />
                 )}
-                renderOption={(props, option) => (
-                  <Box component="li" {...props}>
-                    <SchoolIcon sx={{ mr: 1, color: 'text.secondary' }} fontSize="small" />
-                    {option.nome}
-                  </Box>
-                )}
+                renderOption={(props, option) => {
+                  const { key, ...otherProps } = props;
+                  return (
+                    <Box component="li" key={key} {...otherProps}>
+                      <SchoolIcon sx={{ mr: 1, color: 'text.secondary' }} fontSize="small" />
+                      {option.nome}
+                    </Box>
+                  );
+                }}
                 noOptionsText="Nenhuma escola encontrada"
               />
               {escolaPreSelecionada && (

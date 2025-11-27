@@ -107,6 +107,18 @@ export async function buscarContrato(req: Request, res: Response) {
   try {
     const { id } = req.params;
     
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+    
+    // Validar se tenant está presente
+    if (!req.tenant?.id) {
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
+    
+    // IMPORTANTE: Filtrar por tenant_id para segurança
     const contratoResult = await db.query(`
       SELECT 
         c.*,
@@ -115,9 +127,9 @@ export async function buscarContrato(req: Request, res: Response) {
       FROM contratos c
       LEFT JOIN fornecedores f ON c.fornecedor_id = f.id
       LEFT JOIN contrato_produtos cp ON c.id = cp.contrato_id
-      WHERE c.id = $1
+      WHERE c.id = $1 AND c.tenant_id = $2
       GROUP BY c.id, f.nome
-    `, [id]);
+    `, [id, req.tenant.id]);
 
     if (contratoResult.rows.length === 0) {
       return res.status(404).json({
@@ -144,6 +156,18 @@ export async function listarContratosPorFornecedor(req: Request, res: Response) 
   try {
     const { fornecedor_id } = req.params;
     
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+    
+    // Validar se tenant está presente
+    if (!req.tenant?.id) {
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
+    
+    // IMPORTANTE: Filtrar por tenant_id para segurança
     const contratosResult = await db.query(`
       SELECT 
         c.*,
@@ -152,10 +176,10 @@ export async function listarContratosPorFornecedor(req: Request, res: Response) 
       FROM contratos c
       LEFT JOIN fornecedores f ON c.fornecedor_id = f.id
       LEFT JOIN contrato_produtos cp ON c.id = cp.contrato_id
-      WHERE c.fornecedor_id = $1
+      WHERE c.fornecedor_id = $1 AND c.tenant_id = $2
       GROUP BY c.id, f.nome
       ORDER BY c.created_at DESC
-    `, [fornecedor_id]);
+    `, [fornecedor_id, req.tenant.id]);
 
     res.json({
       success: true,
@@ -183,6 +207,17 @@ export async function criarContrato(req: Request, res: Response) {
       status = 'ativo',
       ativo = true
     } = req.body;
+
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+    
+    // Validar se tenant está presente
+    if (!req.tenant?.id) {
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
 
     // Validações
     if (!numero || numero.trim().length < 3) {
@@ -238,14 +273,15 @@ export async function criarContrato(req: Request, res: Response) {
       });
     }
 
+    // IMPORTANTE: Incluir tenant_id no INSERT
     const result = await db.query(`
       INSERT INTO contratos (
         numero, fornecedor_id, data_inicio, data_fim, valor_total, 
-        status, ativo, created_at
+        status, ativo, tenant_id, created_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)
       RETURNING *
-    `, [numero, fornecedor_id, data_inicio, data_fim, valor_total || 0, status, ativo]);
+    `, [numero, fornecedor_id, data_inicio, data_fim, valor_total || 0, status, ativo, req.tenant.id]);
 
     // Buscar dados completos do contrato criado
     const contratoCompletoResult = await db.query(`
@@ -286,6 +322,18 @@ export async function editarContrato(req: Request, res: Response) {
       ativo
     } = req.body;
 
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+    
+    // Validar se tenant está presente
+    if (!req.tenant?.id) {
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
+
+    // IMPORTANTE: Filtrar por tenant_id para segurança
     const result = await db.query(`
       UPDATE contratos SET
         numero = $1,
@@ -295,9 +343,9 @@ export async function editarContrato(req: Request, res: Response) {
         valor_total = $5,
         status = $6,
         ativo = $7
-      WHERE id = $8
+      WHERE id = $8 AND tenant_id = $9
       RETURNING *
-    `, [numero, fornecedor_id, data_inicio, data_fim, valor_total, status, ativo, id]);
+    `, [numero, fornecedor_id, data_inicio, data_fim, valor_total, status, ativo, id, req.tenant.id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -326,7 +374,18 @@ export async function removerContrato(req: Request, res: Response) {
     const { id } = req.params;
     const { force } = req.query; // Parâmetro opcional para forçar exclusão
 
-    // Verificar se há dependências vinculadas ao contrato
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+    
+    // Validar se tenant está presente
+    if (!req.tenant?.id) {
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
+
+    // IMPORTANTE: Verificar se há dependências vinculadas ao contrato NO MESMO TENANT
     const dependenciasResult = await db.query(`
       SELECT 
         (SELECT COUNT(*) FROM contrato_produtos WHERE contrato_id = $1) as produtos
@@ -364,10 +423,11 @@ export async function removerContrato(req: Request, res: Response) {
       console.log(`✅ Dependências removidas com sucesso`);
     }
 
+    // IMPORTANTE: Deletar apenas do tenant atual
     const result = await db.query(`
-      DELETE FROM contratos WHERE id = $1
+      DELETE FROM contratos WHERE id = $1 AND tenant_id = $2
       RETURNING *
-    `, [id]);
+    `, [id, req.tenant.id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -393,6 +453,18 @@ export async function removerContrato(req: Request, res: Response) {
 
 export async function obterEstatisticasContratos(req: Request, res: Response) {
   try {
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+    
+    // Validar se tenant está presente
+    if (!req.tenant?.id) {
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
+    
+    // IMPORTANTE: Filtrar por tenant_id para segurança
     const statsResult = await db.query(`
       SELECT 
         COUNT(*) as total_contratos,
@@ -403,7 +475,8 @@ export async function obterEstatisticasContratos(req: Request, res: Response) {
         COALESCE(AVG(valor_total), 0) as valor_medio_contratos,
         COUNT(DISTINCT fornecedor_id) as fornecedores_com_contratos
       FROM contratos
-    `);
+      WHERE tenant_id = $1
+    `, [req.tenant.id]);
 
     const estatisticasPorMesResult = await db.query(`
       SELECT 
@@ -412,9 +485,10 @@ export async function obterEstatisticasContratos(req: Request, res: Response) {
         COALESCE(SUM(valor_total), 0) as valor_total_mes
       FROM contratos
       WHERE created_at >= CURRENT_DATE - INTERVAL '12 months'
+        AND tenant_id = $1
       GROUP BY DATE_TRUNC('month', created_at)
       ORDER BY mes DESC
-    `);
+    `, [req.tenant.id]);
 
     const contratosPorFornecedorResult = await db.query(`
       SELECT 
@@ -422,12 +496,13 @@ export async function obterEstatisticasContratos(req: Request, res: Response) {
         COUNT(c.id) as total_contratos,
         COALESCE(SUM(c.valor_total), 0) as valor_total
       FROM fornecedores f
-      LEFT JOIN contratos c ON f.id = c.fornecedor_id
+      LEFT JOIN contratos c ON f.id = c.fornecedor_id AND c.tenant_id = $1
+      WHERE f.tenant_id = $1
       GROUP BY f.id, f.nome
       HAVING COUNT(c.id) > 0
       ORDER BY COUNT(c.id) DESC
       LIMIT 10
-    `);
+    `, [req.tenant.id]);
 
     res.json({
       success: true,
@@ -550,6 +625,18 @@ export const buscarContratoPorId = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+    
+    // Validar se tenant está presente
+    if (!req.tenant?.id) {
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
+    
+    // IMPORTANTE: Filtrar por tenant_id para segurança
     const query = `
       SELECT 
         c.*,
@@ -563,11 +650,11 @@ export const buscarContratoPorId = async (req: Request, res: Response) => {
       JOIN fornecedores f ON c.fornecedor_id = f.id
       JOIN escolas e ON c.escola_id = e.id
       LEFT JOIN contrato_produtos cp ON c.id = cp.contrato_id AND cp.ativo = true
-      WHERE c.id = $1
+      WHERE c.id = $1 AND c.tenant_id = $2
       GROUP BY c.id, f.nome, f.cnpj, f.email, e.nome, e.cnpj
     `;
     
-    const result = await db.query(query, [id]);
+    const result = await db.query(query, [id, req.tenant.id]);
     
     if (result.rows.length === 0) {
       return res.status(404).json({ erro: 'Contrato não encontrado' });

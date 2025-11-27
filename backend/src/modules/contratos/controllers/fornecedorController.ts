@@ -40,9 +40,20 @@ export async function buscarFornecedor(req: Request, res: Response) {
   try {
     const { id } = req.params;
 
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+    
+    // Validar se tenant está presente
+    if (!req.tenant?.id) {
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
+
     const result = await db.query(`
-      SELECT * FROM fornecedores WHERE id = $1
-    `, [id]);
+      SELECT * FROM fornecedores WHERE id = $1 AND tenant_id = $2
+    `, [id, req.tenant.id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -107,6 +118,17 @@ export async function editarFornecedor(req: Request, res: Response) {
       ativo
     } = req.body;
 
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+    
+    // Validar se tenant está presente
+    if (!req.tenant?.id) {
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
+
     const fields: string[] = [];
     const values: any[] = [];
     let paramIndex = 1;
@@ -143,7 +165,7 @@ export async function editarFornecedor(req: Request, res: Response) {
       WHERE id = $${paramIndex}
       RETURNING *
     `;
-    values.push(id);
+    values.push(id, req.tenant.id);
 
     const result = await db.query(query, values);
 
@@ -241,10 +263,21 @@ export async function removerFornecedor(req: Request, res: Response) {
   try {
     const { id } = req.params;
 
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+    
+    // Validar se tenant está presente
+    if (!req.tenant?.id) {
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
+
     const result = await db.query(`
-      DELETE FROM fornecedores WHERE id = $1
+      DELETE FROM fornecedores WHERE id = $1 AND tenant_id = $2
       RETURNING *
-    `, [id]);
+    `, [id, req.tenant.id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({

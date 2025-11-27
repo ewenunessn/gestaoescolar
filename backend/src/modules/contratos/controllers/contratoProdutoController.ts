@@ -1,9 +1,22 @@
-// Controller de contrato-produtos para PostgreSQL
+// Controller de contrato-produtos para PostgreSQL - Versão Segura
 import { Request, Response } from "express";
+import { setTenantContextFromRequest } from "../../../utils/tenantContext";
 const db = require("../../../database");
 
 export async function listarContratoProdutos(req: Request, res: Response) {
   try {
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+    
+    // Validar se tenant está presente
+    if (!req.tenant?.id) {
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
+    
+    // IMPORTANTE: Filtrar por tenant_id através do contrato
     const result = await db.query(`
       SELECT 
         cp.id,
@@ -19,8 +32,9 @@ export async function listarContratoProdutos(req: Request, res: Response) {
       FROM contrato_produtos cp
       LEFT JOIN produtos p ON cp.produto_id = p.id
       LEFT JOIN contratos c ON cp.contrato_id = c.id
+      WHERE c.tenant_id = $1
       ORDER BY c.numero, p.nome
-    `);
+    `, [req.tenant.id]);
 
     const contratoProdutos = result.rows;
     
@@ -43,6 +57,18 @@ export async function listarProdutosPorContrato(req: Request, res: Response) {
   try {
     const { contrato_id } = req.params;
     
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+    
+    // Validar se tenant está presente
+    if (!req.tenant?.id) {
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
+    
+    // IMPORTANTE: Filtrar por tenant_id através do contrato
     const result = await db.query(`
       SELECT 
         cp.id,
@@ -62,9 +88,9 @@ export async function listarProdutosPorContrato(req: Request, res: Response) {
       LEFT JOIN produtos p ON cp.produto_id = p.id
       LEFT JOIN contratos c ON cp.contrato_id = c.id
       LEFT JOIN fornecedores f ON c.fornecedor_id = f.id
-      WHERE cp.contrato_id = $1
+      WHERE cp.contrato_id = $1 AND c.tenant_id = $2
       ORDER BY p.nome
-    `, [contrato_id]);
+    `, [contrato_id, req.tenant.id]);
 
     const produtos = result.rows;
     
@@ -87,6 +113,18 @@ export async function listarProdutosPorFornecedor(req: Request, res: Response) {
   try {
     const { fornecedor_id } = req.params;
     
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+    
+    // Validar se tenant está presente
+    if (!req.tenant?.id) {
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
+    
+    // IMPORTANTE: Filtrar por tenant_id através do contrato
     const result = await db.query(`
       SELECT 
         cp.id,
@@ -101,9 +139,9 @@ export async function listarProdutosPorFornecedor(req: Request, res: Response) {
       FROM contrato_produtos cp
       INNER JOIN produtos p ON cp.produto_id = p.id
       INNER JOIN contratos c ON cp.contrato_id = c.id
-      WHERE c.fornecedor_id = $1 AND cp.ativo = true
+      WHERE c.fornecedor_id = $1 AND cp.ativo = true AND c.tenant_id = $2
       ORDER BY c.numero, p.nome
-    `, [fornecedor_id]);
+    `, [fornecedor_id, req.tenant.id]);
 
     const produtos = result.rows;
     
@@ -126,6 +164,18 @@ export async function buscarContratoProduto(req: Request, res: Response) {
   try {
     const { id } = req.params;
     
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+    
+    // Validar se tenant está presente
+    if (!req.tenant?.id) {
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
+    
+    // IMPORTANTE: Filtrar por tenant_id através do contrato
     const result = await db.query(`
       SELECT 
         cp.*,
@@ -135,8 +185,8 @@ export async function buscarContratoProduto(req: Request, res: Response) {
       FROM contrato_produtos cp
       LEFT JOIN produtos p ON cp.produto_id = p.id
       LEFT JOIN contratos c ON cp.contrato_id = c.id
-      WHERE cp.id = $1
-    `, [id]);
+      WHERE cp.id = $1 AND c.tenant_id = $2
+    `, [id, req.tenant.id]);
 
     const contratoProduto = result.rows[0];
 
@@ -165,9 +215,32 @@ export async function criarContratoProduto(req: Request, res: Response) {
   try {
     const { contrato_id, produto_id, preco_unitario, quantidade_contratada, ativo = true } = req.body;
 
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+    
+    // Validar se tenant está presente
+    if (!req.tenant?.id) {
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
+
     if (!contrato_id || !produto_id || preco_unitario === undefined || quantidade_contratada === undefined) {
       return res.status(400).json({ 
         erro: 'Campos obrigatórios: contrato_id, produto_id, preco_unitario, quantidade_contratada' 
+      });
+    }
+
+    // IMPORTANTE: Verificar se o contrato pertence ao tenant
+    const contratoCheck = await db.query(`
+      SELECT id FROM contratos WHERE id = $1 AND tenant_id = $2
+    `, [contrato_id, req.tenant.id]);
+
+    if (contratoCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Contrato não encontrado ou você não tem permissão"
       });
     }
 
@@ -202,6 +275,17 @@ export async function editarContratoProduto(req: Request, res: Response) {
       preco_unitario,
       ativo
     } = req.body;
+
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+    
+    // Validar se tenant está presente
+    if (!req.tenant?.id) {
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
 
     const campos: string[] = [];
     const valores: any[] = [];
@@ -242,12 +326,17 @@ export async function editarContratoProduto(req: Request, res: Response) {
     }
 
     valores.push(id);
+    valores.push(req.tenant.id);
 
+    // IMPORTANTE: Filtrar por tenant_id através do contrato
     const query = `
-      UPDATE contrato_produtos 
+      UPDATE contrato_produtos cp
       SET ${campos.join(', ')}, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $${paramCount}
-      RETURNING *
+      FROM contratos c
+      WHERE cp.id = $${paramCount} 
+        AND cp.contrato_id = c.id 
+        AND c.tenant_id = $${paramCount + 1}
+      RETURNING cp.*
     `;
 
     const result = await db.query(query, valores);
@@ -278,71 +367,51 @@ export async function removerContratoProduto(req: Request, res: Response) {
   try {
     const { id } = req.params;
 
-    // Usar transação para exclusão em cascata
-    const result = await db.transaction(async (client) => {
-      // Verificar se o contrato-produto existe
-      const contratoProdutoResult = await client.query(`
-        SELECT * FROM contrato_produtos WHERE id = $1
-      `, [id]);
-
-      if (contratoProdutoResult.rows.length === 0) {
-        throw new Error("Contrato-produto não encontrado");
-      }
-
-      // Contar dependências para informar o usuário
-      const dependencias = await client.query(`
-        SELECT 0 as aditivos
-      `);
-
-      const deps = dependencias.rows[0];
-      // const totalAditivos = Number(deps.aditivos); // Removido - módulo de aditivos excluído
-      // let removidosAditivos = 0; // Removido - módulo de aditivos excluído
-      const removidosAditivos = 0; // Módulo de aditivos foi excluído
-
-      // Remover o contrato-produto
-      const resultContratoProduto = await client.query(`
-        DELETE FROM contrato_produtos WHERE id = $1
-        RETURNING *
-      `, [id]);
-
-      return {
-        contratoProduto: resultContratoProduto.rows[0],
-        removidosAditivos: 0, // Módulo de aditivos foi excluído
-        totalAditivos: 0 // Módulo de aditivos foi excluído
-      };
-    });
-
-    // Construir mensagem de sucesso informativa
-    let mensagem = "Contrato-produto removido com sucesso";
-    const detalhes = [];
-
-    // if (result.removidosAditivos > 0) { // Removido - módulo de aditivos excluído
-    //   detalhes.push(`${result.removidosAditivos} aditivos removidos`);
-    // }
-
-    if (detalhes.length > 0) {
-      mensagem += ` (${detalhes.join(', ')})`;
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+    
+    // Validar se tenant está presente
+    if (!req.tenant?.id) {
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
     }
+
+    // IMPORTANTE: Verificar se o contrato-produto pertence ao tenant antes de remover
+    const checkResult = await db.query(`
+      SELECT cp.* 
+      FROM contrato_produtos cp
+      INNER JOIN contratos c ON cp.contrato_id = c.id
+      WHERE cp.id = $1 AND c.tenant_id = $2
+    `, [id, req.tenant.id]);
+
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Contrato-produto não encontrado"
+      });
+    }
+
+    // Remover o contrato-produto
+    const result = await db.query(`
+      DELETE FROM contrato_produtos cp
+      USING contratos c
+      WHERE cp.id = $1 
+        AND cp.contrato_id = c.id 
+        AND c.tenant_id = $2
+      RETURNING cp.*
+    `, [id, req.tenant.id]);
 
     res.json({
       success: true,
-      message: mensagem,
+      message: "Contrato-produto removido com sucesso",
       data: {
-        contrato_produto: result.contratoProduto,
-        dependencias_removidas: {
-          // aditivos: result.removidosAditivos // Removido - módulo de aditivos excluído
-        }
+        contrato_produto: result.rows[0]
       }
     });
   } catch (error) {
     console.error("❌ Erro ao remover contrato-produto:", error);
-    
-    if (error instanceof Error && error.message === "Contrato-produto não encontrado") {
-      return res.status(404).json({
-        success: false,
-        message: error.message
-      });
-    }
     
     res.status(500).json({
       success: false,

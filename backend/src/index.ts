@@ -24,7 +24,7 @@ import estoqueCentralRoutes from "./modules/estoque/routes/estoqueCentralRoutes"
 import estoqueEscolaRoutes from "./modules/estoque/routes/estoqueEscolaRoutes";
 import gestorEscolaRoutes from "./modules/guias/routes/gestorEscolaRoutes";
 import estoqueEscolarRoutes from "./modules/estoque/routes/estoqueEscolarRoutes";
-import demandaRoutes from "./modules/estoque/routes/demandaRoutes";
+// import demandaRoutes from "./modules/estoque/routes/demandaRoutes"; // REMOVIDO - usar demandasRoutes do módulo demandas
 
 import saldoContratosRoutes from "./modules/contratos/routes/saldoContratosRoutes";
 import saldoContratosModalidadesRoutes from "./modules/contratos/routes/saldoContratosModalidadesRoutes";
@@ -242,6 +242,7 @@ app.get("/api/test-db", async (req, res) => {
 // Registrar rotas essenciais
 app.use("/api/usuarios", userRoutes);
 app.use("/api/auth", userRoutes); // compatibilidade para login
+app.use("/api/permissoes", require("./routes/permissoesRoutes").default);
 
 // Registrar rotas essenciais
 app.use("/api/escolas", escolaRoutes);
@@ -254,7 +255,7 @@ app.use("/api/contrato-produtos", contratoProdutoRoutes);
 app.use("/api/refeicoes", refeicaoRoutes);
 app.use("/api/refeicao-produtos", refeicaoProdutoRoutes);
 app.use("/api/cardapios", cardapioRoutes);
-app.use("/api/demandas", demandaRoutes);
+// app.use("/api/demandas", demandaRoutes); // REMOVIDO - rota duplicada, usar demandasRoutes
 app.use("/api/produtos", produtoRoutes);
 app.use("/api/produto-modalidades", produtoModalidadeRoutes);
 app.use("/api/estoque-central", estoqueCentralRoutes);

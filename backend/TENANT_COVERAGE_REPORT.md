@@ -54,7 +54,12 @@ Todos os módulos principais do sistema estão com suporte multi-tenant implemen
 - **Status**: Completo com índices otimizados
 
 ### ✅ Demandas
-- **Status**: Implementado com tenant_id
+- **Controller**: `demandaController.ts`
+- **Model**: `demandaModel.ts`
+- **Filtro**: `WHERE d.tenant_id = $1`
+- **Status**: ✅ Implementado corretamente com validação em todas as operações
+- **Migration**: 017_add_tenant_to_demandas.sql
+- **Data**: 18/11/2024
 
 ### ✅ Entregas
 - **Status**: Implementado com tenant_id

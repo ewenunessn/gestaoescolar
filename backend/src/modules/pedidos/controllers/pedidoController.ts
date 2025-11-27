@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { setTenantContextFromRequest } from "../../../utils/tenantContext";
 const db = require("../../../database");
 
 const STATUS_PEDIDO = {
@@ -13,11 +14,26 @@ const STATUS_PEDIDO = {
 
 export async function listarPedidos(req: Request, res: Response) {
   try {
+    // Configurar contexto de tenant
+
+    await setTenantContextFromRequest(req);
+    
+    // Obter tenant_id do req.tenant ou do header
+    const tenantId = req.tenant?.id || req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
+    
+    // Validar se tenant está presente
+    if (!tenantId) {
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
+    
     const { status, contrato_id, escola_id, data_inicio, data_fim, page = 1, limit = 50 } = req.query;
 
-    let whereClause = '1=1';
-    const params: any[] = [];
-    let paramCount = 0;
+    let whereClause = 'p.tenant_id = $1';
+    const params: any[] = [tenantId];
+    let paramCount = 1;
 
     if (status) {
       paramCount++;
@@ -106,6 +122,22 @@ export async function buscarPedido(req: Request, res: Response) {
   try {
     const { id } = req.params;
 
+    // Configurar contexto de tenant
+
+    await setTenantContextFromRequest(req);
+    
+    // Obter tenant_id do req.tenant ou do header
+    const tenantId = req.tenant?.id || req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
+    
+    // Validar se tenant está presente
+    if (!tenantId) {
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
+
+    // IMPORTANTE: Filtrar por tenant_id para segurança
     const pedidoResult = await db.query(`
       SELECT 
         p.*,
@@ -114,8 +146,8 @@ export async function buscarPedido(req: Request, res: Response) {
       FROM pedidos p
       JOIN usuarios u ON p.usuario_criacao_id = u.id
       LEFT JOIN usuarios ua ON p.usuario_aprovacao_id = ua.id
-      WHERE p.id = $1
-    `, [id]);
+      WHERE p.id = $1 AND p.tenant_id = $2
+    `, [id, tenantId]);
 
     if (pedidoResult.rows.length === 0) {
       return res.status(404).json({
@@ -172,6 +204,22 @@ export async function criarPedido(req: Request, res: Response) {
   try {
     await client.query('BEGIN');
 
+    // Configurar contexto de tenant
+
+    await setTenantContextFromRequest(req);
+    
+    // Obter tenant_id do req.tenant ou do header
+    const tenantId = req.tenant?.id || req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
+    
+    // Validar se tenant está presente
+    if (!tenantId) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
+
     const {
       observacoes,
       itens,
@@ -181,6 +229,7 @@ export async function criarPedido(req: Request, res: Response) {
     const usuario_criacao_id = (req as any).user?.id || 1;
 
     if (!itens || !Array.isArray(itens) || itens.length === 0) {
+      await client.query('ROLLBACK');
       return res.status(400).json({
         success: false,
         message: "É necessário incluir pelo menos um item no pedido"
@@ -199,13 +248,14 @@ export async function criarPedido(req: Request, res: Response) {
 
     let valor_total = 0;
     for (const item of itens) {
+      // IMPORTANTE: Verificar se o contrato_produto pertence ao tenant
       const cpResult = await client.query(`
         SELECT cp.*, p.nome as produto_nome, c.status as contrato_status
         FROM contrato_produtos cp
         JOIN produtos p ON cp.produto_id = p.id
         JOIN contratos c ON cp.contrato_id = c.id
-        WHERE cp.id = $1 AND cp.ativo = true
-      `, [item.contrato_produto_id]);
+        WHERE cp.id = $1 AND cp.ativo = true AND c.tenant_id = $2
+      `, [item.contrato_produto_id, tenantId]);
 
       if (cpResult.rows.length === 0) {
         await client.query('ROLLBACK');
@@ -238,13 +288,14 @@ export async function criarPedido(req: Request, res: Response) {
 
     const status_inicial = salvar_como_rascunho ? 'rascunho' : 'pendente';
 
+    // IMPORTANTE: Incluir tenant_id no INSERT
     const pedidoResult = await client.query(`
       INSERT INTO pedidos (
-        numero, data_pedido, status, valor_total, observacoes, usuario_criacao_id
+        numero, data_pedido, status, valor_total, observacoes, usuario_criacao_id, tenant_id
       )
-      VALUES ($1, CURRENT_DATE, $2, $3, $4, $5)
+      VALUES ($1, CURRENT_DATE, $2, $3, $4, $5, $6)
       RETURNING *
-    `, [numero, status_inicial, valor_total, observacoes, usuario_criacao_id]);
+    `, [numero, status_inicial, valor_total, observacoes, usuario_criacao_id, tenantId]);
 
     const pedido_id = pedidoResult.rows[0].id;
 
@@ -309,12 +360,28 @@ export async function criarPedido(req: Request, res: Response) {
 
 export async function atualizarPedido(req: Request, res: Response) {
   try {
+    // Configurar contexto de tenant
+
+    await setTenantContextFromRequest(req);
+    
+    // Obter tenant_id do req.tenant ou do header
+    const tenantId = req.tenant?.id || req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
+    
+    // Validar se tenant está presente
+    if (!tenantId) {
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
+
     const { id } = req.params;
     const { observacoes } = req.body;
 
+    // IMPORTANTE: Filtrar por tenant_id para segurança
     const pedidoResult = await db.query(`
-      SELECT status FROM pedidos WHERE id = $1
-    `, [id]);
+      SELECT status FROM pedidos WHERE id = $1 AND tenant_id = $2
+    `, [id, tenantId]);
 
     if (pedidoResult.rows.length === 0) {
       return res.status(404).json({
@@ -330,12 +397,13 @@ export async function atualizarPedido(req: Request, res: Response) {
       });
     }
 
+    // IMPORTANTE: Filtrar por tenant_id no UPDATE
     const result = await db.query(`
       UPDATE pedidos 
       SET observacoes = $1, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $2
+      WHERE id = $2 AND tenant_id = $3
       RETURNING *
-    `, [observacoes, id]);
+    `, [observacoes, id, tenantId]);
 
     res.json({
       success: true,
@@ -354,6 +422,21 @@ export async function atualizarPedido(req: Request, res: Response) {
 
 export async function atualizarStatusPedido(req: Request, res: Response) {
   try {
+    // Configurar contexto de tenant
+
+    await setTenantContextFromRequest(req);
+    
+    // Obter tenant_id do req.tenant ou do header
+    const tenantId = req.tenant?.id || req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
+    
+    // Validar se tenant está presente
+    if (!tenantId) {
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
+
     const { id } = req.params;
     const { status } = req.body;
     const usuario_id = (req as any).user?.id || 1;
@@ -610,13 +693,29 @@ export async function atualizarItensPedido(req: Request, res: Response) {
   try {
     await client.query('BEGIN');
 
+    // Configurar contexto de tenant
+
+    await setTenantContextFromRequest(req);
+    
+    // Obter tenant_id do req.tenant ou do header
+    const tenantId = req.tenant?.id || req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
+    
+    // Validar se tenant está presente
+    if (!tenantId) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
+
     const { id } = req.params;
     const { itens } = req.body;
 
-    // Verificar se o pedido existe e está em rascunho
+    // IMPORTANTE: Verificar se o pedido existe, está em rascunho E pertence ao tenant
     const pedidoResult = await client.query(`
-      SELECT status FROM pedidos WHERE id = $1
-    `, [id]);
+      SELECT status FROM pedidos WHERE id = $1 AND tenant_id = $2
+    `, [id, tenantId]);
 
     if (pedidoResult.rows.length === 0) {
       await client.query('ROLLBACK');
@@ -640,13 +739,14 @@ export async function atualizarItensPedido(req: Request, res: Response) {
     // Adicionar novos itens
     let valor_total = 0;
     for (const item of itens) {
+      // IMPORTANTE: Verificar se o contrato_produto pertence ao tenant
       const cpResult = await client.query(`
         SELECT cp.*, p.nome as produto_nome, c.status as contrato_status
         FROM contrato_produtos cp
         JOIN produtos p ON cp.produto_id = p.id
         JOIN contratos c ON cp.contrato_id = c.id
-        WHERE cp.id = $1 AND cp.ativo = true
-      `, [item.contrato_produto_id]);
+        WHERE cp.id = $1 AND cp.ativo = true AND c.tenant_id = $2
+      `, [item.contrato_produto_id, tenantId]);
 
       if (cpResult.rows.length === 0) {
         await client.query('ROLLBACK');
@@ -719,6 +819,22 @@ export async function listarProdutosContrato(req: Request, res: Response) {
   try {
     const { contrato_id } = req.params;
 
+    // Configurar contexto de tenant
+
+    await setTenantContextFromRequest(req);
+    
+    // Obter tenant_id do req.tenant ou do header
+    const tenantId = req.tenant?.id || req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
+    
+    // Validar se tenant está presente
+    if (!tenantId) {
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
+
+    // IMPORTANTE: Filtrar por tenant_id para segurança
     const produtosResult = await db.query(`
       SELECT 
         cp.*,
@@ -731,9 +847,9 @@ export async function listarProdutosContrato(req: Request, res: Response) {
       JOIN produtos p ON cp.produto_id = p.id
       JOIN contratos c ON cp.contrato_id = c.id
       JOIN fornecedores f ON c.fornecedor_id = f.id
-      WHERE cp.contrato_id = $1 AND cp.ativo = true AND c.status = 'ativo'
+      WHERE cp.contrato_id = $1 AND cp.ativo = true AND c.status = 'ativo' AND c.tenant_id = $2
       ORDER BY p.nome
-    `, [contrato_id]);
+    `, [contrato_id, tenantId]);
 
     res.json({
       success: true,
@@ -751,6 +867,24 @@ export async function listarProdutosContrato(req: Request, res: Response) {
 
 export async function listarTodosProdutosDisponiveis(req: Request, res: Response) {
   try {
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+    
+    // Obter tenant_id do req.tenant ou do header
+    const tenantId = req.tenant?.id || req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
+    
+    // Validar se tenant está presente
+    if (!tenantId) {
+      console.error("❌ Nenhum tenant encontrado - req.tenant:", req.tenant, "headers:", req.headers);
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
+    
+    console.log(`✅ Listando produtos disponíveis para tenant: ${tenantId}`);
+    
+    // IMPORTANTE: Filtrar por tenant_id para segurança
     const produtosResult = await db.query(`
       SELECT 
         cp.id as contrato_produto_id,
@@ -769,9 +903,9 @@ export async function listarTodosProdutosDisponiveis(req: Request, res: Response
       JOIN produtos p ON cp.produto_id = p.id
       JOIN contratos c ON cp.contrato_id = c.id
       JOIN fornecedores f ON c.fornecedor_id = f.id
-      WHERE cp.ativo = true AND c.status = 'ativo'
+      WHERE cp.ativo = true AND c.status = 'ativo' AND c.tenant_id = $1
       ORDER BY f.nome, p.nome
-    `);
+    `, [tenantId]);
 
     res.json({
       success: true,

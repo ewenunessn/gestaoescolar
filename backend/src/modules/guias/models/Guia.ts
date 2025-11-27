@@ -2,6 +2,7 @@ const db = require('../../../database');
 
 export interface Guia {
   id: number;
+  tenant_id: string;
   mes: number;
   ano: number;
   observacao?: string;
@@ -31,6 +32,7 @@ export interface GuiaProdutoEscola {
 }
 
 export interface CreateGuiaData {
+  tenant_id: string;
   mes: number;
   ano: number;
   nome?: string;
@@ -54,37 +56,45 @@ export interface CreateGuiaProdutoEscolaData {
 }
 
 class GuiaModel {
-  async listarGuias(): Promise<Guia[]> {
-    const result = await db.all(`
-      SELECT 
-        g.*,
-        COUNT(DISTINCT gpe.id) as total_produtos
-      FROM guias g
-      LEFT JOIN guia_produto_escola gpe ON g.id = gpe.guia_id
-      GROUP BY g.id
-      ORDER BY g.created_at DESC
-    `);
-    return result;
+  async listarGuias(tenantId: string): Promise<Guia[]> {
+    try {
+      console.log('🔍 [GuiaModel] Listando guias para tenant:', tenantId);
+      const result = await db.all(`
+        SELECT 
+          g.*,
+          COUNT(DISTINCT gpe.id) as total_produtos
+        FROM guias g
+        LEFT JOIN guia_produto_escola gpe ON g.id = gpe.guia_id
+        WHERE g.tenant_id = $1
+        GROUP BY g.id, g.mes, g.ano, g.observacao, g.status, g.created_at, g.updated_at, g.tenant_id
+        ORDER BY g.created_at DESC
+      `, [tenantId]);
+      console.log('✅ [GuiaModel] Encontradas', result.length, 'guias');
+      return result;
+    } catch (error) {
+      console.error('❌ [GuiaModel] Erro ao listar guias:', error);
+      throw error;
+    }
   }
 
-  async buscarGuia(id: number): Promise<Guia | null> {
+  async buscarGuia(id: number, tenantId: string): Promise<Guia | null> {
     const result = await db.get(`
-      SELECT * FROM guias WHERE id = $1
-    `, [id]);
+      SELECT * FROM guias WHERE id = $1 AND tenant_id = $2
+    `, [id, tenantId]);
     return result;
   }
 
   async criarGuia(data: CreateGuiaData): Promise<Guia> {
     const result = await db.run(`
-      INSERT INTO guias (mes, ano, nome, observacao, status, created_at, updated_at)
-      VALUES ($1, $2, $3, $4, 'aberta', NOW(), NOW())
+      INSERT INTO guias (tenant_id, mes, ano, nome, observacao, status, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, 'aberta', NOW(), NOW())
       RETURNING *
-    `, [data.mes, data.ano, data.nome || null, data.observacao || null]);
+    `, [data.tenant_id, data.mes, data.ano, data.nome || null, data.observacao || null]);
 
-    return await this.buscarGuia(result.lastID);
+    return await this.buscarGuia(result.lastID, data.tenant_id);
   }
 
-  async atualizarGuia(id: number, data: Partial<CreateGuiaData>): Promise<Guia> {
+  async atualizarGuia(id: number, tenantId: string, data: Partial<CreateGuiaData>): Promise<Guia> {
     const fields = [];
     const values = [];
     let paramCount = 1;
@@ -107,24 +117,25 @@ class GuiaModel {
 
     fields.push(`updated_at = NOW()`);
     values.push(id);
+    values.push(tenantId);
 
     await db.run(`
       UPDATE guias 
       SET ${fields.join(', ')}
-      WHERE id = $${paramCount}
+      WHERE id = $${paramCount} AND tenant_id = $${paramCount + 1}
     `, values);
 
-    return await this.buscarGuia(id);
+    return await this.buscarGuia(id, tenantId);
   }
 
-  async deletarGuia(id: number): Promise<boolean> {
+  async deletarGuia(id: number, tenantId: string): Promise<boolean> {
     const result = await db.run(`
-      DELETE FROM guias WHERE id = $1
-    `, [id]);
+      DELETE FROM guias WHERE id = $1 AND tenant_id = $2
+    `, [id, tenantId]);
     return result.changes > 0;
   }
 
-  async listarProdutosPorGuia(guiaId: number): Promise<GuiaProdutoEscola[]> {
+  async listarProdutosPorGuia(guiaId: number, tenantId: string): Promise<GuiaProdutoEscola[]> {
     const result = await db.all(`
       SELECT 
         gpe.*,
@@ -133,11 +144,12 @@ class GuiaModel {
         e.nome as escola_nome,
         DATE(gpe.created_at) as data_criacao
       FROM guia_produto_escola gpe
-      JOIN produtos p ON gpe.produto_id = p.id
-      JOIN escolas e ON gpe.escola_id = e.id
+      JOIN produtos p ON gpe.produto_id = p.id AND p.tenant_id = $2
+      JOIN escolas e ON gpe.escola_id = e.id AND e.tenant_id = $2
+      JOIN guias g ON gpe.guia_id = g.id AND g.tenant_id = $2
       WHERE gpe.guia_id = $1
       ORDER BY gpe.created_at DESC, gpe.lote, p.nome, e.nome
-    `, [guiaId]);
+    `, [guiaId, tenantId]);
     return result;
   }
 
@@ -272,7 +284,7 @@ class GuiaModel {
   }
 
   // Métodos específicos para entregas
-  async listarEscolasComItensParaEntrega(): Promise<any[]> {
+  async listarEscolasComItensParaEntrega(tenantId: string): Promise<any[]> {
     const result = await db.all(`
       SELECT DISTINCT
         e.id,
@@ -286,13 +298,15 @@ class GuiaModel {
       INNER JOIN guias g ON gpe.guia_id = g.id
       WHERE gpe.para_entrega = true 
         AND g.status = 'aberta'
+        AND e.tenant_id = $1
+        AND g.tenant_id = $1
       GROUP BY e.id, e.nome, e.endereco, e.telefone
       ORDER BY e.nome
-    `);
+    `, [tenantId]);
     return result;
   }
 
-  async listarItensParaEntregaPorEscola(escolaId: number): Promise<any[]> {
+  async listarItensParaEntregaPorEscola(escolaId: number, tenantId: string): Promise<any[]> {
     const result = await db.all(`
       SELECT 
         gpe.*,
@@ -302,13 +316,14 @@ class GuiaModel {
         g.ano,
         g.observacao as guia_observacao
       FROM guia_produto_escola gpe
-      INNER JOIN produtos p ON gpe.produto_id = p.id
-      INNER JOIN guias g ON gpe.guia_id = g.id
+      INNER JOIN produtos p ON gpe.produto_id = p.id AND p.tenant_id = $2
+      INNER JOIN guias g ON gpe.guia_id = g.id AND g.tenant_id = $2
+      INNER JOIN escolas e ON gpe.escola_id = e.id AND e.tenant_id = $2
       WHERE gpe.escola_id = $1 
         AND gpe.para_entrega = true
         AND g.status = 'aberta'
       ORDER BY g.mes DESC, g.ano DESC, p.nome, gpe.lote
-    `, [escolaId]);
+    `, [escolaId, tenantId]);
     return result;
   }
 

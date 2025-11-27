@@ -190,22 +190,22 @@ const CardapiosPage = () => {
         ) : (
           <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px' }}>
             <TableContainer>
-              <Table>
-                <TableHead><TableRow><TableCell>Cardápio</TableCell><TableCell>Modalidade</TableCell><TableCell>Vigência</TableCell><TableCell align="center">Status</TableCell><TableCell align="center">Ações</TableCell></TableRow></TableHead>
+              <Table size="small">
+                <TableHead><TableRow><TableCell sx={{ py: 1 }}>Cardápio</TableCell><TableCell sx={{ py: 1 }}>Modalidade</TableCell><TableCell sx={{ py: 1 }}>Vigência</TableCell><TableCell align="center" sx={{ py: 1 }}>Status</TableCell><TableCell align="center" sx={{ py: 1 }}>Ações</TableCell></TableRow></TableHead>
                 <TableBody>
                   {paginatedCardapios.map((cardapio) => (
-                    <TableRow key={cardapio.id} hover>
-                      <TableCell><Typography variant="body2" sx={{ fontWeight: 600 }}>{cardapio.nome}</Typography><Typography variant="caption" color="text.secondary">{cardapio.periodo_dias} dias</Typography></TableCell>
-                      <TableCell><Typography variant="body2" color="text.secondary">{cardapio.modalidade_nome || 'N/A'}</Typography></TableCell>
-                      <TableCell><Typography variant="body2" color="text.secondary">{`${formatarData(cardapio.data_inicio)} a ${formatarData(cardapio.data_fim)}`}</Typography></TableCell>
-                      <TableCell align="center"><Chip label={cardapio.ativo ? 'Ativo' : 'Inativo'} size="small" color={cardapio.ativo ? 'success' : 'error'} /></TableCell>
+                    <TableRow key={cardapio.id} hover sx={{ '& td': { py: 0.75 } }}>
+                      <TableCell><Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>{cardapio.nome}</Typography><Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>{cardapio.periodo_dias} dias</Typography></TableCell>
+                      <TableCell><Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>{cardapio.modalidade_nome || 'N/A'}</Typography></TableCell>
+                      <TableCell><Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>{`${formatarData(cardapio.data_inicio)} a ${formatarData(cardapio.data_fim)}`}</Typography></TableCell>
+                      <TableCell align="center"><Chip label={cardapio.ativo ? 'Ativo' : 'Inativo'} size="small" color={cardapio.ativo ? 'success' : 'error'} sx={{ height: '20px', fontSize: '0.75rem' }} /></TableCell>
                       <TableCell align="center"><Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => navigate(`/cardapios/${cardapio.id}`)} color="primary"><Info fontSize="small" /></IconButton></Tooltip></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </TableContainer>
-            <TablePagination component="div" count={filteredCardapios.length} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage} onRowsPerPageChange={handleChangeRowsPerPage} rowsPerPageOptions={[5, 10, 25, 50]} labelRowsPerPage="Itens por página:" />
+            <TablePagination component="div" count={filteredCardapios.length} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage} onRowsPerPageChange={handleChangeRowsPerPage} rowsPerPageOptions={[10, 25, 50, 100]} labelRowsPerPage="Itens por página:" />
           </Paper>
         )}
       </Box>

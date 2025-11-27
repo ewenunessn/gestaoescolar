@@ -85,6 +85,9 @@ export default function DemandasLista() {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [demandasPaginadas, setDemandasPaginadas] = useState<Demanda[]>([]);
 
+  // Controle de visibilidade dos filtros
+  const [mostrarFiltros, setMostrarFiltros] = useState(false);
+
   useEffect(() => {
     carregarDados();
   }, []);
@@ -458,9 +461,9 @@ export default function DemandasLista() {
             />
             <Box sx={{ display: 'flex', gap: 1 }}>
               <Button 
-                variant="outlined" 
+                variant={mostrarFiltros ? "contained" : "outlined"}
                 startIcon={<FilterListIcon />} 
-                onClick={() => {/* Toggle filtros avançados */}}
+                onClick={() => setMostrarFiltros(!mostrarFiltros)}
               >
                 Filtros
               </Button>
@@ -475,73 +478,75 @@ export default function DemandasLista() {
             </Box>
           </Box>
           
-          {/* Filtros Avançados */}
-          <Box sx={{ mb: 3 }}>
-            <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} md={3}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="Buscar no Objeto"
-                  value={filtroObjeto}
-                  onChange={(e) => setFiltroObjeto(e.target.value)}
-                  placeholder="Palavras-chave..."
-                />
-              </Grid>
+          {/* Filtros Avançados - Mostrar apenas quando ativado */}
+          {mostrarFiltros && (
+            <Box sx={{ mb: 3 }}>
+              <Grid container spacing={2} alignItems="center">
+                <Grid item xs={12} md={3}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Buscar no Objeto"
+                    value={filtroObjeto}
+                    onChange={(e) => setFiltroObjeto(e.target.value)}
+                    placeholder="Palavras-chave..."
+                  />
+                </Grid>
 
-              <Grid item xs={12} md={2}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>Status</InputLabel>
-                  <Select
-                    value={filtroStatus}
-                    onChange={(e) => setFiltroStatus(e.target.value)}
-                    label="Status"
+                <Grid item xs={12} md={2}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Status</InputLabel>
+                    <Select
+                      value={filtroStatus}
+                      onChange={(e) => setFiltroStatus(e.target.value)}
+                      label="Status"
+                    >
+                      <MenuItem value="">Todos</MenuItem>
+                      <MenuItem value="pendente">Pendente</MenuItem>
+                      <MenuItem value="enviado_semead">Enviado à SEMAD</MenuItem>
+                      <MenuItem value="atendido">Atendido</MenuItem>
+                      <MenuItem value="nao_atendido">Não Atendido</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12} md={2}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    type="date"
+                    label="Data Início"
+                    value={filtroDataInicio}
+                    onChange={(e) => setFiltroDataInicio(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={2}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    type="date"
+                    label="Data Fim"
+                    value={filtroDataFim}
+                    onChange={(e) => setFiltroDataFim(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={3}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={limparFiltros}
+                    fullWidth
                   >
-                    <MenuItem value="">Todos</MenuItem>
-                    <MenuItem value="pendente">Pendente</MenuItem>
-                    <MenuItem value="enviado_semead">Enviado à SEMAD</MenuItem>
-                    <MenuItem value="atendido">Atendido</MenuItem>
-                    <MenuItem value="nao_atendido">Não Atendido</MenuItem>
-                  </Select>
-                </FormControl>
+                    Limpar Filtros
+                  </Button>
+                </Grid>
               </Grid>
-
-              <Grid item xs={12} md={2}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  type="date"
-                  label="Data Início"
-                  value={filtroDataInicio}
-                  onChange={(e) => setFiltroDataInicio(e.target.value)}
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={2}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  type="date"
-                  label="Data Fim"
-                  value={filtroDataFim}
-                  onChange={(e) => setFiltroDataFim(e.target.value)}
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={3}>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={limparFiltros}
-                  fullWidth
-                >
-                  Limpar Filtros
-                </Button>
-              </Grid>
-            </Grid>
-          </Box>
+            </Box>
+          )}
 
           <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
             {`Mostrando ${Math.min(page * rowsPerPage + 1, demandas.length)}-${Math.min((page + 1) * rowsPerPage, demandas.length)} de ${demandas.length} demandas`}

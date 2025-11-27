@@ -120,6 +120,12 @@ export class ProvisioningController {
       const userData = req.body;
       const creatorUserId = (req as any).systemAdmin?.id || (req as any).user?.id;
 
+      console.log('📝 [CREATE USER] Dados recebidos:', {
+        institutionId,
+        userData: { ...userData, senha: '***' },
+        creatorUserId
+      });
+
       if (!userData.nome || !userData.email || !userData.senha) {
         return res.status(400).json({
           success: false,
@@ -133,9 +139,11 @@ export class ProvisioningController {
         creatorUserId
       );
 
+      console.log('✅ [CREATE USER] Usuário criado com sucesso');
       res.status(201).json(result);
-    } catch (error) {
-      console.error('Erro ao criar usuário:', error);
+    } catch (error: any) {
+      console.error('❌ [CREATE USER] Erro ao criar usuário:', error);
+      console.error('❌ [CREATE USER] Stack:', error.stack);
       
       if (error.message?.includes('Limite')) {
         return res.status(403).json({

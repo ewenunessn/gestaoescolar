@@ -90,9 +90,21 @@ export async function buscarRefeicao(req: Request, res: Response) {
       });
     }
     
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+    
+    // Validar se tenant está presente
+    if (!req.tenant?.id) {
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
+    
+    // IMPORTANTE: Filtrar por tenant_id para segurança
     const result = await db.query(`
-      SELECT * FROM refeicoes WHERE id = $1
-    `, [id]);
+      SELECT * FROM refeicoes WHERE id = $1 AND tenant_id = $2
+    `, [id, req.tenant.id]);
     
     const refeicao = result.rows[0];
 
@@ -323,8 +335,19 @@ export async function deletarRefeicao(req: Request, res: Response) {
       });
     }
     
-    // Verificar se a refeição existe
-    const existeResult = await db.query('SELECT id, nome FROM refeicoes WHERE id = $1', [id]);
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+    
+    // Validar se tenant está presente
+    if (!req.tenant?.id) {
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
+    
+    // IMPORTANTE: Verificar se a refeição existe NO MESMO TENANT
+    const existeResult = await db.query('SELECT id, nome FROM refeicoes WHERE id = $1 AND tenant_id = $2', [id, req.tenant.id]);
     if (existeResult.rows.length === 0) {
       return res.status(404).json({
         success: false,
@@ -353,8 +376,8 @@ export async function deletarRefeicao(req: Request, res: Response) {
       console.warn('Aviso: Não foi possível verificar uso em cardápios:', checkError instanceof Error ? checkError.message : 'Erro desconhecido');
     }
     
-    // Deletar a refeição
-    const result = await db.query('DELETE FROM refeicoes WHERE id = $1', [id]);
+    // IMPORTANTE: Deletar a refeição apenas do tenant atual
+    const result = await db.query('DELETE FROM refeicoes WHERE id = $1 AND tenant_id = $2', [id, req.tenant.id]);
     
     if (result.rowCount === 0) {
       return res.status(404).json({
@@ -389,8 +412,19 @@ export async function toggleAtivoRefeicao(req: Request, res: Response) {
       });
     }
     
-    // Buscar estado atual
-    const result = await db.query('SELECT id, nome, ativo FROM refeicoes WHERE id = $1', [id]);
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+    
+    // Validar se tenant está presente
+    if (!req.tenant?.id) {
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
+    
+    // IMPORTANTE: Buscar estado atual NO MESMO TENANT
+    const result = await db.query('SELECT id, nome, ativo FROM refeicoes WHERE id = $1 AND tenant_id = $2', [id, req.tenant.id]);
     
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -402,13 +436,13 @@ export async function toggleAtivoRefeicao(req: Request, res: Response) {
     const refeicao = result.rows[0];
     const novoStatus = !refeicao.ativo;
     
-    // Atualizar status
+    // IMPORTANTE: Atualizar status apenas no tenant atual
     const updateResult = await db.query(`
       UPDATE refeicoes 
       SET ativo = $1, updated_at = CURRENT_TIMESTAMP 
-      WHERE id = $2 
+      WHERE id = $2 AND tenant_id = $3
       RETURNING *
-    `, [novoStatus, id]);
+    `, [novoStatus, id, req.tenant.id]);
     
     const refeicaoAtualizada = updateResult.rows[0];
 

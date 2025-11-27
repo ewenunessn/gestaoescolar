@@ -4,7 +4,7 @@ import { config } from "../config/config";
 
 /**
  * Middleware de autenticação para desenvolvimento
- * Permite acesso sem token em ambiente de desenvolvimento
+ * Valida token JWT se fornecido, caso contrário permite acesso com usuário fake
  */
 export function devAuthMiddleware(
   req: Request,
@@ -13,10 +13,36 @@ export function devAuthMiddleware(
 ) {
   try {
     const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
+    const authHeader = req.headers.authorization;
     
+    // Se há token, validar mesmo em desenvolvimento
+    if (authHeader) {
+      const token = authHeader.replace('Bearer ', '');
+      
+      try {
+        const decoded = jwt.verify(token, config.jwtSecret) as any;
+        (req as any).user = decoded;
+        
+        console.log('✅ [DEV] Token válido:', {
+          userId: decoded.id,
+          nome: decoded.nome,
+          url: req.originalUrl
+        });
+        
+        return next();
+      } catch (jwtError) {
+        console.error('❌ [DEV] Token inválido:', jwtError);
+        
+        // Em desenvolvimento, se o token é inválido, retornar erro
+        return res.status(401).json({ 
+          success: false,
+          message: "Token inválido ou expirado" 
+        });
+      }
+    }
+    
+    // Se não há token e estamos em desenvolvimento, permitir com usuário fake
     if (isDevelopment) {
-      // Em desenvolvimento, sempre permitir acesso com usuário padrão
-      // Usar ID 1 que deve existir no banco de dados
       (req as any).user = { 
         id: 1, 
         nome: 'Usuário Desenvolvimento',
@@ -33,35 +59,12 @@ export function devAuthMiddleware(
       return next();
     }
 
-    // Em produção, validar token JWT
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      console.log('❌ [PROD] Token não fornecido:', req.originalUrl);
-      return res.status(401).json({ 
-        success: false,
-        message: "Token de autorização necessário" 
-      });
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    
-    try {
-      const decoded = jwt.verify(token, config.jwtSecret) as any;
-      (req as any).user = decoded;
-      
-      console.log('✅ [PROD] Token válido:', {
-        userId: decoded.id,
-        url: req.originalUrl
-      });
-      
-      next();
-    } catch (jwtError) {
-      console.error('❌ [PROD] Token inválido:', jwtError);
-      return res.status(401).json({ 
-        success: false,
-        message: "Token inválido ou expirado" 
-      });
-    }
+    // Em produção sem token, retornar erro
+    console.log('❌ [PROD] Token não fornecido:', req.originalUrl);
+    return res.status(401).json({ 
+      success: false,
+      message: "Token de autorização necessário" 
+    });
 
   } catch (error) {
     console.error('❌ Erro no middleware de desenvolvimento:', error);

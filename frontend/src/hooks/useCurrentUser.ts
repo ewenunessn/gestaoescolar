@@ -17,8 +17,40 @@ export interface CurrentUser {
 }
 
 export const useCurrentUser = () => {
-  const [user, setUser] = useState<CurrentUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Inicializar com dados do localStorage se disponíveis
+  const [user, setUser] = useState<CurrentUser | null>(() => {
+    try {
+      const token = getToken();
+      if (!token) return null;
+      
+      // Tentar carregar do localStorage primeiro
+      const savedUser = localStorage.getItem('user');
+      if (savedUser) {
+        const userData = JSON.parse(savedUser);
+        console.log('🚀 [INIT] Usuário carregado do localStorage:', userData);
+        return userData;
+      }
+      
+      // Tentar extrair do token JWT
+      const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+      if (tokenPayload) {
+        const userData = {
+          id: tokenPayload.id,
+          nome: tokenPayload.nome,
+          email: tokenPayload.email,
+          tipo: tokenPayload.tipo,
+          perfil: tokenPayload.tipo,
+        };
+        console.log('🚀 [INIT] Usuário extraído do token:', userData);
+        return userData;
+      }
+    } catch (err) {
+      console.error('❌ [INIT] Erro ao carregar usuário inicial:', err);
+    }
+    return null;
+  });
+  
+  const [loading, setLoading] = useState(false); // Mudar para false já que carregamos do localStorage
   const [error, setError] = useState<string | null>(null);
 
   const fetchUser = async () => {
@@ -38,20 +70,36 @@ export const useCurrentUser = () => {
       // Mapear o campo 'tipo' para 'perfil' para compatibilidade
       if (userData) {
         userData.perfil = userData.tipo;
+        // Atualizar localStorage com dados frescos
+        localStorage.setItem('user', JSON.stringify(userData));
       }
       
       setUser(userData);
     } catch (err: any) {
       console.error('Erro ao buscar dados do usuário:', err);
       setError('Erro ao carregar dados do usuário');
-      setUser(null);
+      // Não limpar o user do estado se já temos dados do localStorage
+      if (!user) {
+        setUser(null);
+      }
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchUser();
+    // Só buscar do servidor se temos token
+    const token = getToken();
+    console.log('🔄 [useCurrentUser] useEffect executado:', {
+      hasToken: !!token,
+      userFromInit: user?.nome
+    });
+    
+    if (token) {
+      fetchUser();
+    } else {
+      setLoading(false);
+    }
   }, []);
 
   const refreshUser = () => {

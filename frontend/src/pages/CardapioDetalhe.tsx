@@ -493,6 +493,7 @@ export default function CardapioDetalhe() {
       const response = await calcularCustoRefeicoes(cardapioId);
       // A API retorna { data: { refeicoes: [...] } }
       const custosData = response?.refeicoes || [];
+      console.log('Custos recebidos da API:', custosData);
       setCustosRefeicoes(Array.isArray(custosData) ? custosData : []);
     } catch (error) {
       console.error("Erro ao carregar custos das refeições:", error);

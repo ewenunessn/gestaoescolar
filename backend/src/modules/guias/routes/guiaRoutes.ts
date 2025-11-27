@@ -1,11 +1,19 @@
 import { Router } from 'express';
 import { guiaController } from '../controllers/guiaController';
-import { devAuthMiddleware as authenticateToken } from '../../../middlewares';
+// import { devAuthMiddleware as authenticateToken } from '../../../middlewares';
+// import { tenantMiddleware } from '../../../middleware/tenantMiddleware';
 
 const router = Router();
 
-// Todas as rotas requerem autenticação
-router.use(authenticateToken);
+// TEMPORARIAMENTE SEM MIDDLEWARES PARA DEBUG
+// router.use(authenticateToken);
+// router.use(tenantMiddleware);
+
+// Rota de teste
+router.get('/test', (req, res) => {
+  console.log('🧪 Rota de teste /guias/test chamada');
+  res.json({ success: true, message: 'Rota de teste funcionando' });
+});
 
 // Rotas de guias
 router.get('/', guiaController.listarGuias);

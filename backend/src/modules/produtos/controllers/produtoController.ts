@@ -61,9 +61,18 @@ export async function buscarProduto(req: Request, res: Response) {
     // Configurar contexto de tenant
     await setTenantContextFromRequest(req);
 
+    // Validar se tenant está presente
+    if (!req.tenant?.id) {
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
+
+    // IMPORTANTE: Filtrar por tenant_id para segurança
     const result = await db.query(`
-      SELECT * FROM produtos WHERE id = $1
-    `, [id]);
+      SELECT * FROM produtos WHERE id = $1 AND tenant_id = $2
+    `, [id, req.tenant.id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -160,6 +169,15 @@ export async function editarProduto(req: Request, res: Response) {
     // Configurar contexto de tenant
     await setTenantContextFromRequest(req);
 
+    // Validar se tenant está presente
+    if (!req.tenant?.id) {
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
+
+    // IMPORTANTE: Filtrar por tenant_id para segurança
     const result = await db.query(`
       UPDATE produtos SET
         nome = $1,
@@ -173,12 +191,12 @@ export async function editarProduto(req: Request, res: Response) {
         perecivel = $9,
         ativo = $10,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $11
+      WHERE id = $11 AND tenant_id = $12
       RETURNING *
     `, [
       nome, descricao, categoria, marca, unidade,
       peso, fator_divisao, tipo_processamento,
-      perecivel, ativo, id
+      perecivel, ativo, id, req.tenant.id
     ]);
 
     if (result.rows.length === 0) {
@@ -210,10 +228,19 @@ export async function removerProduto(req: Request, res: Response) {
     // Configurar contexto de tenant
     await setTenantContextFromRequest(req);
 
+    // Validar se tenant está presente
+    if (!req.tenant?.id) {
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
+
+    // IMPORTANTE: Filtrar por tenant_id para segurança
     const result = await db.query(`
-      DELETE FROM produtos WHERE id = $1
+      DELETE FROM produtos WHERE id = $1 AND tenant_id = $2
       RETURNING *
-    `, [id]);
+    `, [id, req.tenant.id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({

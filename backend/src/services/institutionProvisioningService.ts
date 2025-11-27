@@ -340,9 +340,9 @@ export class InstitutionProvisioningService {
       // Create user
       const userQuery = `
         INSERT INTO usuarios (
-          nome, email, senha, tipo, ativo, institution_id, tenant_id
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING id, nome, email, tipo, ativo, institution_id, tenant_id, created_at
+          nome, email, senha, tipo, ativo, institution_id
+        ) VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING id, nome, email, tipo, ativo, institution_id, created_at
       `;
       
       const userValues = [
@@ -351,8 +351,7 @@ export class InstitutionProvisioningService {
         hashedPassword,
         userData.tipo || 'usuario',
         true,
-        institutionId,
-        userData.tenant_id || null
+        institutionId
       ];
       
       const userResult = await client.query(userQuery, userValues);

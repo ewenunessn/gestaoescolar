@@ -190,7 +190,19 @@ export default function ContratoDetalhe() {
       setProdutosContrato(produtosMapeados);
 
     } catch (error: any) {
-      setErro(error.message.includes('404') ? 'Contrato não encontrado.' : 'Erro ao carregar dados do contrato.');
+      console.error('❌ Erro ao carregar contrato:', error);
+      
+      // O interceptor já transforma o erro em uma mensagem amigável
+      if (error.message) {
+        // Se a mensagem contém "não encontrado", adiciona contexto de permissão
+        if (error.message.toLowerCase().includes('não encontrado')) {
+          setErro('Contrato não encontrado ou você não tem permissão para acessá-lo.');
+        } else {
+          setErro(error.message);
+        }
+      } else {
+        setErro('Erro ao carregar dados do contrato.');
+      }
     } finally {
       setLoading(false);
     }

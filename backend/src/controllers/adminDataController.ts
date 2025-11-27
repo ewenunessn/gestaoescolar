@@ -195,6 +195,22 @@ export async function updateTenantStatus(req: Request, res: Response) {
       });
     }
 
+    // Verificar se o tenant é padrão de alguma instituição
+    if (status !== 'active') {
+      const isDefault = await db.query(`
+        SELECT i.id, i.name 
+        FROM institutions i 
+        WHERE i.default_tenant_id = $1
+      `, [tenantId]);
+
+      if (isDefault.rows.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Não é possível desativar este tenant pois ele é o padrão da instituição "${isDefault.rows[0].name}". Primeiro defina outro tenant como padrão.`
+        });
+      }
+    }
+
     const result = await db.query(`
       UPDATE tenants 
       SET status = $1, updated_at = CURRENT_TIMESTAMP

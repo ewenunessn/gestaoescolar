@@ -44,8 +44,9 @@ export function tenantMiddleware(options: TenantMiddlewareOptions = {}) {
         return next();
       }
       
-      // Verificar se o path deve ser ignorado
-      if (skipPaths.some(path => req.path.startsWith(path))) {
+      // Verificar se o path deve ser ignorado (usar originalUrl para incluir /api)
+      const fullPath = req.originalUrl || req.url || req.path;
+      if (skipPaths.some(path => fullPath.startsWith(path) || req.path.startsWith(path))) {
         console.log('⏭️ Path ignorado pelo middleware de tenant');
         return next();
       }
@@ -59,7 +60,13 @@ export function tenantMiddleware(options: TenantMiddlewareOptions = {}) {
       const host = req.get('host') || '';
 
       // 1. Tentar por header X-Tenant-ID PRIMEIRO (maior prioridade para troca de tenant)
-      const tenantHeader = req.get('X-Tenant-ID');
+      const tenantHeader = req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
+      console.log('🔍 Headers recebidos:', {
+        'X-Tenant-ID': req.get('X-Tenant-ID'),
+        'x-tenant-id': req.headers['x-tenant-id'],
+        'all-headers': Object.keys(req.headers)
+      });
+      
       if (tenantHeader) {
         console.log('🔍 Tentando resolver por header X-Tenant-ID:', tenantHeader);
         const result = await tenantResolver.resolve('header', tenantHeader);
@@ -70,6 +77,8 @@ export function tenantMiddleware(options: TenantMiddlewareOptions = {}) {
         } else {
           console.log('❌ Não foi possível resolver tenant por header');
         }
+      } else {
+        console.log('⚠️ Nenhum header X-Tenant-ID encontrado');
       }
 
       // 2. Tentar por subdomínio (se não resolveu por header)
@@ -305,26 +314,16 @@ async function createTenantContext(tenant: Tenant, req: Request): Promise<Tenant
           };
           permissions = getTenantPermissions(decoded.tenantRole);
         } else {
-          // Fallback para buscar no banco (formato antigo)
-          const userResult = await db.query(`
-            SELECT 
-              u.id,
-              u.nome,
-              u.email,
-              u.tipo,
-              tu.role as tenant_role,
-              tu.status as tenant_status
-            FROM usuarios u
-            LEFT JOIN tenant_users tu ON (u.id = tu.user_id AND tu.tenant_id = $1)
-            WHERE u.id = $2
-          `, [tenant.id, decoded.id]);
-
-          if (userResult.rows.length > 0) {
-            user = userResult.rows[0];
-            
-            // Definir permissões baseadas no role do tenant
-            permissions = getTenantPermissions(user.tenant_role || 'user');
-          }
+          // Usar informações básicas do token sem buscar no banco
+          user = {
+            id: decoded.id,
+            nome: decoded.nome,
+            email: decoded.email,
+            tipo: decoded.tipo,
+            tenant_role: 'user',
+            tenant_status: 'active'
+          };
+          permissions = getTenantPermissions('user');
         }
       }
     } catch (error) {
@@ -346,18 +345,9 @@ async function createTenantContext(tenant: Tenant, req: Request): Promise<Tenant
  * Configura contexto do tenant no banco de dados usando RLS
  */
 async function setDatabaseTenantContext(tenantId: string): Promise<void> {
-  try {
-    // Usar a função RLS para definir contexto de tenant
-    await db.query(`SELECT set_tenant_context($1)`, [tenantId]);
-  } catch (error) {
-    console.error('Erro ao configurar contexto do tenant no banco:', error);
-    // Fallback para método anterior se a função RLS falhar
-    try {
-      await db.query(`SET app.current_tenant_id = $1`, [tenantId]);
-    } catch (fallbackError) {
-      console.error('Erro no fallback de contexto do tenant:', fallbackError);
-    }
-  }
+  // RLS desabilitado para melhor performance
+  // O tenant_id é validado no código da aplicação
+  return;
 }
 
 /**

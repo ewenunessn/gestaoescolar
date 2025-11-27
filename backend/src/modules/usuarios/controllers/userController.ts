@@ -228,12 +228,41 @@ export async function login(req: Request, res: Response) {
       `, [user.id]);
     }
 
-    // Determinar tenant principal (primeiro ativo ou padrão)
+    // Determinar tenant principal
     let primaryTenant = null;
     let tenantRole = 'user';
     
-    if (tenantAssociations.rows.length > 0) {
+    // Se o usuário tem instituição, tentar usar o tenant padrão dela
+    if (user.institution_id) {
+      const institutionResult = await db.query(`
+        SELECT default_tenant_id FROM institutions WHERE id = $1
+      `, [user.institution_id]);
+      
+      if (institutionResult.rows.length > 0 && institutionResult.rows[0].default_tenant_id) {
+        const defaultTenantId = institutionResult.rows[0].default_tenant_id;
+        
+        // Verificar se o tenant padrão está na lista de tenants disponíveis
+        const defaultTenantAssoc = tenantAssociations.rows.find(
+          row => row.tenant_id === defaultTenantId
+        );
+        
+        if (defaultTenantAssoc) {
+          console.log(`✅ Usando tenant padrão da instituição: ${defaultTenantAssoc.tenant_name}`);
+          primaryTenant = {
+            id: defaultTenantAssoc.tenant_id,
+            slug: defaultTenantAssoc.tenant_slug,
+            name: defaultTenantAssoc.tenant_name,
+            role: defaultTenantAssoc.tenant_role
+          };
+          tenantRole = defaultTenantAssoc.tenant_role;
+        }
+      }
+    }
+    
+    // Se não encontrou tenant padrão da instituição, usar o primeiro disponível
+    if (!primaryTenant && tenantAssociations.rows.length > 0) {
       const firstAssociation = tenantAssociations.rows[0];
+      console.log(`✅ Usando primeiro tenant disponível: ${firstAssociation.tenant_name}`);
       primaryTenant = {
         id: firstAssociation.tenant_id,
         slug: firstAssociation.tenant_slug,
@@ -241,13 +270,16 @@ export async function login(req: Request, res: Response) {
         role: firstAssociation.tenant_role
       };
       tenantRole = firstAssociation.tenant_role;
-    } else {
-      // Se não tem associação, usar tenant padrão
+    }
+    
+    // Se ainda não tem tenant, usar tenant padrão do sistema
+    if (!primaryTenant) {
       const defaultTenant = await db.query(`
         SELECT id, slug, name FROM tenants WHERE id = '00000000-0000-0000-0000-000000000000'
       `);
       
       if (defaultTenant.rows.length > 0) {
+        console.log(`✅ Usando tenant padrão do sistema: ${defaultTenant.rows[0].name}`);
         primaryTenant = {
           id: defaultTenant.rows[0].id,
           slug: defaultTenant.rows[0].slug,

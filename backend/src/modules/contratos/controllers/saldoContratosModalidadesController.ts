@@ -185,11 +185,11 @@ class SaldoContratosModalidadesController {
         JOIN fornecedores f ON c.fornecedor_id = f.id
         WHERE cp.ativo = true
           AND c.ativo = true
-          AND c.tenant_id = current_setting('app.current_tenant_id')::uuid
+          AND c.tenant_id = $1
       `;
 
-      const countParams: any[] = [];
-      let countParamIndex = 1;
+      const countParams: any[] = [tenantId];
+      let countParamIndex = 2;
 
       if (contrato_numero) {
         countQuery += ` AND c.numero ILIKE $${countParamIndex}`;
@@ -246,13 +246,13 @@ class SaldoContratosModalidadesController {
         WHERE cp.ativo = true
           AND c.ativo = true
           AND m.ativo = true
-          AND c.tenant_id = current_setting('app.current_tenant_id')::uuid
+          AND c.tenant_id = $1
       `;
 
       // Construir a parte adicional do WHERE para estatísticas
       let statsWhereAdditional = '';
-      const statsParams: any[] = [];
-      let statsParamIndex = 1;
+      const statsParams: any[] = [tenantId];
+      let statsParamIndex = 2;
 
       if (contrato_numero) {
         statsWhereAdditional += ` AND c.numero ILIKE $${statsParamIndex}`;
@@ -375,9 +375,20 @@ class SaldoContratosModalidadesController {
    */
   async cadastrarSaldoModalidade(req: Request, res: Response): Promise<void> {
     try {
-      // O contexto de tenant já foi configurado pelo middleware
+      console.log('🔄 [CADASTRAR SALDO] Iniciando...');
+      
+      // Obter tenant_id do header
+      const tenantId = req.get('X-Tenant-ID') || (req as any).tenant?.id;
+      
+      if (!tenantId) {
+        console.error('❌ [CADASTRAR SALDO] Tenant ID não encontrado');
+        res.status(400).json({ success: false, message: 'Tenant ID não encontrado' });
+        return;
+      }
 
       const { contrato_produto_id, modalidade_id, quantidade_inicial } = req.body;
+      
+      console.log('🔍 [CADASTRAR SALDO] Dados:', { contrato_produto_id, modalidade_id, quantidade_inicial, tenantId });
 
       if (!contrato_produto_id || !modalidade_id || quantidade_inicial === undefined) {
         res.status(400).json({ success: false, message: 'Contrato produto, modalidade e quantidade inicial são obrigatórios' });
@@ -396,8 +407,8 @@ class SaldoContratosModalidadesController {
         JOIN contratos c ON cp.contrato_id = c.id
         JOIN produtos p ON cp.produto_id = p.id
         WHERE cp.id = $1
-          AND c.tenant_id = current_setting('app.current_tenant_id')::uuid
-      `, [contrato_produto_id]);
+          AND c.tenant_id = $2
+      `, [contrato_produto_id, tenantId]);
 
       if (contratoResult.rows.length === 0) {
         res.status(404).json({ success: false, message: 'Produto do contrato não encontrado' });
@@ -473,10 +484,21 @@ class SaldoContratosModalidadesController {
    */
   async registrarConsumoModalidade(req: Request, res: Response): Promise<void> {
     try {
-      // O contexto de tenant já foi configurado pelo middleware
+      console.log('🔄 [CONSUMO MODALIDADE] Iniciando registro...');
+      
+      // Obter tenant_id do header
+      const tenantId = req.get('X-Tenant-ID') || (req as any).tenant?.id;
+      
+      if (!tenantId) {
+        console.error('❌ [CONSUMO MODALIDADE] Tenant ID não encontrado');
+        res.status(400).json({ success: false, message: 'Tenant ID não encontrado' });
+        return;
+      }
 
       const { id } = req.params;
       const { quantidade, observacao, usuario_id, data_consumo } = req.body;
+
+      console.log('🔍 [CONSUMO MODALIDADE] Dados:', { id, quantidade, usuario_id, tenantId });
 
       if (!quantidade || quantidade <= 0) {
         res.status(400).json({ success: false, message: 'Quantidade deve ser maior que zero' });
@@ -494,10 +516,13 @@ class SaldoContratosModalidadesController {
         JOIN contrato_produtos cp ON cpm.contrato_produto_id = cp.id
         JOIN contratos c ON cp.contrato_id = c.id
         WHERE cpm.id = $1
-          AND c.tenant_id = current_setting('app.current_tenant_id')::uuid
-      `, [id]);
+          AND c.tenant_id = $2
+      `, [id, tenantId]);
+
+      console.log('🔍 [CONSUMO MODALIDADE] Saldo encontrado:', saldoResult.rows.length);
 
       if (saldoResult.rows.length === 0) {
+        console.error('❌ [CONSUMO MODALIDADE] Saldo não encontrado para ID:', id);
         res.status(404).json({ success: false, message: 'Saldo por modalidade não encontrado' });
         return;
       }
@@ -557,7 +582,16 @@ class SaldoContratosModalidadesController {
    */
   async excluirConsumoModalidade(req: Request, res: Response): Promise<void> {
     try {
-      // O contexto de tenant já foi configurado pelo middleware
+      console.log('🔄 [EXCLUIR CONSUMO] Iniciando...');
+      
+      // Obter tenant_id do header
+      const tenantId = req.get('X-Tenant-ID') || (req as any).tenant?.id;
+      
+      if (!tenantId) {
+        console.error('❌ [EXCLUIR CONSUMO] Tenant ID não encontrado');
+        res.status(400).json({ success: false, message: 'Tenant ID não encontrado' });
+        return;
+      }
 
       const { id, consumoId } = req.params;
 
@@ -569,8 +603,8 @@ class SaldoContratosModalidadesController {
         JOIN contrato_produtos cp ON cpm.contrato_produto_id = cp.id
         JOIN contratos c ON cp.contrato_id = c.id
         WHERE mcm.id = $1 AND mcm.contrato_produto_modalidade_id = $2
-          AND c.tenant_id = current_setting('app.current_tenant_id')::uuid
-      `, [consumoId, id]);
+          AND c.tenant_id = $3
+      `, [consumoId, id, tenantId]);
 
       if (consumoResult.rows.length === 0) {
         res.status(404).json({ success: false, message: 'Registro de consumo não encontrado' });
@@ -617,7 +651,16 @@ class SaldoContratosModalidadesController {
    */
   async buscarHistoricoConsumoModalidade(req: Request, res: Response): Promise<void> {
     try {
-      // O contexto de tenant já foi configurado pelo middleware
+      console.log('🔄 [HISTÓRICO CONSUMO] Iniciando...');
+      
+      // Obter tenant_id do header
+      const tenantId = req.get('X-Tenant-ID') || (req as any).tenant?.id;
+      
+      if (!tenantId) {
+        console.error('❌ [HISTÓRICO CONSUMO] Tenant ID não encontrado');
+        res.status(400).json({ success: false, message: 'Tenant ID não encontrado' });
+        return;
+      }
 
       const { id } = req.params;
 
@@ -632,11 +675,11 @@ class SaldoContratosModalidadesController {
         JOIN contratos c ON cp.contrato_id = c.id
         LEFT JOIN usuarios u ON mcm.usuario_id = u.id
         WHERE mcm.contrato_produto_modalidade_id = $1
-          AND c.tenant_id = current_setting('app.current_tenant_id')::uuid
+          AND c.tenant_id = $2
         ORDER BY mcm.created_at DESC
       `;
 
-      const result = await db.query(query, [id]);
+      const result = await db.query(query, [id, tenantId]);
       res.json({ success: true, data: result.rows });
 
     } catch (error: any) {

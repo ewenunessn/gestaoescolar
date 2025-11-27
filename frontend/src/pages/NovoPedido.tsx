@@ -374,7 +374,7 @@ export default function NovoPedido() {
                               size="small"
                               value={item.quantidade}
                               onChange={(e) => atualizarQuantidade(index, parseFloat(e.target.value) || 0)}
-                              inputProps={{ min: 0, step: 0.001 }}
+                              inputProps={{ min: 0, step: 0.01 }}
                               fullWidth
                             />
                           </TableCell>

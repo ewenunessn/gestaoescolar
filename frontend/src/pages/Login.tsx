@@ -83,25 +83,32 @@ export default function Login() {
         console.log('🏢 Tenants disponíveis salvos:', response.availableTenants);
       }
       
+      // Disparar evento customizado para notificar TenantContext
+      window.dispatchEvent(new Event('tenantDataUpdated'));
+      
       // Extrair ID do token JWT e criar objeto user completo
       try {
         const tokenPayload = JSON.parse(atob(response.token.split('.')[1]));
         const user = {
           id: tokenPayload.id,
           nome: response.nome,
-          perfil: response.tipo, // Backend retorna 'tipo', não 'perfil'
-          institution_id: tokenPayload.institution_id || response.institution_id // Incluir institution_id
+          email: response.email || email,
+          tipo: response.tipo, // Campo principal
+          perfil: response.tipo, // Compatibilidade
+          institution_id: tokenPayload.institution_id || response.institution_id
         };
         localStorage.setItem("user", JSON.stringify(user));
         console.log('👤 Dados do usuário salvos:', user);
       } catch (tokenError) {
         console.error('❌ Erro ao extrair dados do token:', tokenError);
-        // Fallback: criar user sem ID (será tratado no iniciarRecebimento)
+        // Fallback: criar user básico
         const user = {
-          id: 1, // Fallback para admin
+          id: response.id || 1,
           nome: response.nome,
-          perfil: response.tipo, // Backend retorna 'tipo', não 'perfil'
-          institution_id: response.institution_id // Incluir institution_id do response
+          email: response.email || email,
+          tipo: response.tipo,
+          perfil: response.tipo,
+          institution_id: response.institution_id
         };
         localStorage.setItem("user", JSON.stringify(user));
       }

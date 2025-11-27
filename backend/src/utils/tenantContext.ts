@@ -92,7 +92,18 @@ export const tenantContext = new DatabaseTenantContext();
  * Middleware helper para definir contexto de tenant baseado na requisição
  */
 export async function setTenantContextFromRequest(req: any): Promise<void> {
-  const tenantId = req.tenant?.id || req.tenantContext?.tenantId;
+  let tenantId = req.tenant?.id || req.tenantContext?.tenantId;
+  
+  // Se não encontrou no req.tenant, tentar buscar do header diretamente
+  if (!tenantId) {
+    const tenantHeader = req.get?.('X-Tenant-ID') || req.headers?.['x-tenant-id'];
+    if (tenantHeader) {
+      tenantId = tenantHeader;
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`🔧 Tenant obtido do header X-Tenant-ID: ${tenantId}`);
+      }
+    }
+  }
   
   if (process.env.NODE_ENV === 'development') {
     console.log(`🔧 setTenantContextFromRequest - tenantId: ${tenantId}, req.tenant: ${req.tenant?.name}`);

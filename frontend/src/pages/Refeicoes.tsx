@@ -394,29 +394,29 @@ const RefeicoesPage = () => {
           </Card>
         ) : (
           <TableContainer component={Paper} sx={{ mt: 2, borderRadius: '12px' }}>
-            <Table>
+            <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell>Nome da Refeição</TableCell>
-                  <TableCell>Tipo</TableCell>
-                  <TableCell align="center">Status</TableCell>
-                  <TableCell align="center">Ações</TableCell>
+                  <TableCell sx={{ py: 1 }}>Nome da Refeição</TableCell>
+                  <TableCell sx={{ py: 1 }}>Tipo</TableCell>
+                  <TableCell align="center" sx={{ py: 1 }}>Status</TableCell>
+                  <TableCell align="center" sx={{ py: 1 }}>Ações</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {paginatedRefeicoes.map((refeicao) => (
-                  <TableRow key={refeicao.id} hover>
+                  <TableRow key={refeicao.id} hover sx={{ '& td': { py: 0.75 } }}>
                     <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>{refeicao.nome}</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>{refeicao.nome}</Typography>
                       {refeicao.descricao && (
-                        <Typography variant="caption" color="text.secondary">{refeicao.descricao}</Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>{refeicao.descricao}</Typography>
                       )}
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" color="text.secondary">{tiposRefeicao[refeicao.tipo]}</Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>{tiposRefeicao[refeicao.tipo]}</Typography>
                     </TableCell>
                     <TableCell align="center">
-                      <Chip label={refeicao.ativo ? 'Ativa' : 'Inativa'} size="small" color={refeicao.ativo ? 'success' : 'error'} />
+                      <Chip label={refeicao.ativo ? 'Ativa' : 'Inativa'} size="small" color={refeicao.ativo ? 'success' : 'error'} sx={{ height: '20px', fontSize: '0.75rem' }} />
                     </TableCell>
                     <TableCell align="center">
                         <Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => handleViewDetails(refeicao)} color="default"><Visibility fontSize="small" /></IconButton></Tooltip>
@@ -434,7 +434,7 @@ const RefeicoesPage = () => {
               onPageChange={handleChangePage}
               rowsPerPage={rowsPerPage}
               onRowsPerPageChange={handleChangeRowsPerPage}
-              rowsPerPageOptions={[5, 10, 25, 50]}
+              rowsPerPageOptions={[10, 25, 50, 100]}
               labelRowsPerPage="Linhas por página:"
             />
           </TableContainer>

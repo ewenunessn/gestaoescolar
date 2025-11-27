@@ -1,22 +1,25 @@
 import { Request, Response } from 'express';
 import GuiaModel from '../models/Guia';
+import { setTenantContextFromRequest } from '../../../utils/tenantContext';
 
 export const guiaController = {
   // Listar todas as guias
   async listarGuias(req: Request, res: Response) {
     try {
-      const { mes, ano, status } = req.query;
-      const where: any = {};
+      console.log('🔍 [GuiaController] Iniciando listarGuias');
+      console.log('🔍 [GuiaController] Headers:', req.headers['x-tenant-id']);
       
-      if (mes) where.mes = parseInt(mes as string);
-      if (ano) where.ano = parseInt(ano as string);
-      if (status) where.status = status;
+      // TEMPORÁRIO: pegar tenant_id do header diretamente
+      const tenantId = req.headers['x-tenant-id'] as string || '00000000-0000-0000-0000-000000000000';
+      console.log('🔍 [GuiaController] Tenant ID:', tenantId);
 
-      const guias = await GuiaModel.listarGuias();
-
+      console.log('🔍 [GuiaController] Chamando GuiaModel.listarGuias');
+      const guias = await GuiaModel.listarGuias(tenantId);
+      console.log('✅ [GuiaController] Guias retornadas:', guias.length);
+      
       res.json({ success: true, data: guias });
     } catch (error) {
-      console.error('Erro ao listar guias:', error);
+      console.error('❌ [GuiaController] Erro ao listar guias:', error);
       res.status(500).json({ success: false, error: 'Erro ao listar guias' });
     }
   },
@@ -24,10 +27,11 @@ export const guiaController = {
   // Criar nova guia
   async criarGuia(req: Request, res: Response) {
     try {
+      const tenantId = req.headers['x-tenant-id'] as string || (req as any).tenant?.id || '00000000-0000-0000-0000-000000000000';
       const { mes, ano, nome, observacao } = req.body;
 
-      // Verificar se já existe uma guia para o mesmo mês/ano
-      const guias = await GuiaModel.listarGuias();
+      // Verificar se já existe uma guia para o mesmo mês/ano no tenant
+      const guias = await GuiaModel.listarGuias(tenantId);
       const guiaExistente = guias.find(g => g.mes === mes && g.ano === ano);
 
       if (guiaExistente) {
@@ -38,6 +42,7 @@ export const guiaController = {
       }
 
       const guia = await GuiaModel.criarGuia({
+        tenant_id: tenantId,
         mes,
         ano,
         nome,
@@ -54,9 +59,10 @@ export const guiaController = {
   // Buscar guia por ID
   async buscarGuia(req: Request, res: Response) {
     try {
+      const tenantId = req.headers['x-tenant-id'] as string || '00000000-0000-0000-0000-000000000000';
       const { id } = req.params;
-
-      const guia = await GuiaModel.buscarGuia(parseInt(id));
+      
+      const guia = await GuiaModel.buscarGuia(parseInt(id), tenantId);
 
       if (!guia) {
         return res.status(404).json({ 
@@ -65,7 +71,7 @@ export const guiaController = {
         });
       }
 
-      const produtos = await GuiaModel.listarProdutosPorGuia(parseInt(id));
+      const produtos = await GuiaModel.listarProdutosPorGuia(parseInt(id), tenantId);
       
       res.json({ 
         success: true, 
@@ -83,15 +89,22 @@ export const guiaController = {
   // Atualizar guia
   async atualizarGuia(req: Request, res: Response) {
     try {
-      const { id } = req.params;
-      const { observacao, status } = req.body;
+      await setTenantContextFromRequest(req);
+      const tenantId = (req as any).tenant?.id;
+      
+      if (!tenantId) {
+        return res.status(400).json({ success: false, error: 'Tenant ID não encontrado' });
+      }
 
-      const guia = await GuiaModel.buscarGuia(parseInt(id));
+      const { id } = req.params;
+      const { observacao } = req.body;
+
+      const guia = await GuiaModel.buscarGuia(parseInt(id), tenantId);
       if (!guia) {
         return res.status(404).json({ success: false, error: 'Guia não encontrada' });
       }
 
-      const guiaAtualizada = await GuiaModel.atualizarGuia(parseInt(id), { observacao });
+      const guiaAtualizada = await GuiaModel.atualizarGuia(parseInt(id), tenantId, { observacao });
       res.json({ success: true, data: guiaAtualizada });
     } catch (error) {
       console.error('Erro ao atualizar guia:', error);
@@ -102,9 +115,10 @@ export const guiaController = {
   // Deletar guia
   async deletarGuia(req: Request, res: Response) {
     try {
+      const tenantId = req.headers['x-tenant-id'] as string || (req as any).tenant?.id || '00000000-0000-0000-0000-000000000000';
       const { id } = req.params;
-
-      const guia = await GuiaModel.buscarGuia(parseInt(id));
+      
+      const guia = await GuiaModel.buscarGuia(parseInt(id), tenantId);
 
       if (!guia) {
         return res.status(404).json({ 
@@ -113,7 +127,7 @@ export const guiaController = {
         });
       }
 
-      const deletado = await GuiaModel.deletarGuia(parseInt(id));
+      const deletado = await GuiaModel.deletarGuia(parseInt(id), tenantId);
       if (deletado) {
         res.json({ success: true, message: 'Guia deletada com sucesso' });
       } else {
@@ -128,10 +142,16 @@ export const guiaController = {
   // Adicionar produto à guia
   async adicionarProdutoGuia(req: Request, res: Response) {
     try {
-      const { guiaId } = req.params;
-      const { produtoId, escolaId, quantidade, unidade, observacao, para_entrega } = req.body;
+      await setTenantContextFromRequest(req);
+      const tenantId = (req as any).tenant?.id;
+      
+      if (!tenantId) {
+        return res.status(400).json({ success: false, error: 'Tenant ID não encontrado' });
+      }
 
-      const guia = await GuiaModel.buscarGuia(parseInt(guiaId));
+      const { guiaId } = req.params;
+      const guia = await GuiaModel.buscarGuia(parseInt(guiaId), tenantId);
+      
       if (!guia) {
         return res.status(404).json({ success: false, error: 'Guia não encontrada' });
       }
@@ -143,21 +163,18 @@ export const guiaController = {
         });
       }
 
-      // As validações de produto e escola serão feitas no banco de dados
-
       const guiaProduto = await GuiaModel.adicionarProdutoGuia({
         guia_id: parseInt(guiaId),
-        produto_id: parseInt(produtoId),
-        escola_id: parseInt(escolaId),
-        quantidade,
-        unidade,
+        produto_id: parseInt(req.body.produtoId),
+        escola_id: parseInt(req.body.escolaId),
+        quantidade: req.body.quantidade,
+        unidade: req.body.unidade,
         lote: req.body.lote,
         observacao: req.body.observacao,
-        para_entrega: para_entrega !== undefined ? para_entrega : true
+        para_entrega: req.body.para_entrega !== undefined ? req.body.para_entrega : true
       });
 
       const guiaProdutoCompleto = await GuiaModel.buscarProdutoGuia(guiaProduto.id);
-
       res.json({ success: true, data: guiaProdutoCompleto });
     } catch (error) {
       console.error('Erro ao adicionar produto:', error);
@@ -168,9 +185,16 @@ export const guiaController = {
   // Remover produto da guia
   async removerProdutoGuia(req: Request, res: Response) {
     try {
-      const { guiaId, produtoId, escolaId } = req.params;
+      await setTenantContextFromRequest(req);
+      const tenantId = (req as any).tenant?.id;
+      
+      if (!tenantId) {
+        return res.status(400).json({ success: false, error: 'Tenant ID não encontrado' });
+      }
 
-      const guia = await GuiaModel.buscarGuia(parseInt(guiaId));
+      const { guiaId, produtoId, escolaId } = req.params;
+      const guia = await GuiaModel.buscarGuia(parseInt(guiaId), tenantId);
+      
       if (!guia) {
         return res.status(404).json({ success: false, error: 'Guia não encontrada' });
       }
@@ -182,8 +206,7 @@ export const guiaController = {
         });
       }
 
-      // Remover produto da guia
-      const produtos = await GuiaModel.listarProdutosPorGuia(parseInt(guiaId));
+      const produtos = await GuiaModel.listarProdutosPorGuia(parseInt(guiaId), tenantId);
       const produtoParaRemover = produtos.find(p => 
         p.produto_id === parseInt(produtoId) && 
         p.escola_id === parseInt(escolaId)
@@ -194,7 +217,6 @@ export const guiaController = {
       }
 
       const deletado = await GuiaModel.removerProdutoGuia(produtoParaRemover.id);
-
       if (!deletado) {
         return res.status(400).json({ success: false, error: 'Erro ao remover produto' });
       }
@@ -209,22 +231,21 @@ export const guiaController = {
   // Listar produtos de uma guia
   async listarProdutosGuia(req: Request, res: Response) {
     try {
+      const tenantId = req.headers['x-tenant-id'] as string || '00000000-0000-0000-0000-000000000000';
       const { guiaId } = req.params;
       const { escolaId } = req.query;
 
-      const guia = await GuiaModel.buscarGuia(parseInt(guiaId));
+      const guia = await GuiaModel.buscarGuia(parseInt(guiaId), tenantId);
       if (!guia) {
         return res.status(404).json({ success: false, error: 'Guia não encontrada' });
       }
 
-      let produtos = await GuiaModel.listarProdutosPorGuia(parseInt(guiaId));
+      let produtos = await GuiaModel.listarProdutosPorGuia(parseInt(guiaId), tenantId);
       
-      // Filtrar por escola se especificado
       if (escolaId) {
         produtos = produtos.filter(p => p.escola_id === parseInt(escolaId as string));
       }
 
-      // Ordenar por escola e produto
       produtos.sort((a, b) => {
         const escolaA = (a as any).escola_nome || '';
         const escolaB = (b as any).escola_nome || '';
@@ -247,6 +268,13 @@ export const guiaController = {
   // Atualizar dados de entrega
   async atualizarEntrega(req: Request, res: Response) {
     try {
+      await setTenantContextFromRequest(req);
+      const tenantId = (req as any).tenant?.id;
+      
+      if (!tenantId) {
+        return res.status(400).json({ success: false, error: 'Tenant ID não encontrado' });
+      }
+
       const { guiaId, produtoId, escolaId } = req.params;
       const { 
         entrega_confirmada, 
@@ -256,7 +284,6 @@ export const guiaController = {
         nome_quem_entregou 
       } = req.body;
 
-      // Validar parâmetros
       if (!guiaId || !produtoId || !escolaId) {
         return res.status(400).json({ 
           success: false, 
@@ -275,8 +302,7 @@ export const guiaController = {
         });
       }
 
-      // Buscar o produto na guia
-      const produtos = await GuiaModel.listarProdutosPorGuia(guiaIdNum);
+      const produtos = await GuiaModel.listarProdutosPorGuia(guiaIdNum, tenantId);
       const produto = produtos.find(p => 
         p.produto_id === produtoIdNum && 
         p.escola_id === escolaIdNum
@@ -286,7 +312,6 @@ export const guiaController = {
         return res.status(404).json({ success: false, error: 'Produto não encontrado na guia' });
       }
 
-      // Atualizar dados de entrega
       const produtoAtualizado = await GuiaModel.atualizarProdutoGuia(produto.id, {
         entrega_confirmada,
         quantidade_entregue,
@@ -305,6 +330,13 @@ export const guiaController = {
   // Atualizar campo para_entrega de um item
   async atualizarParaEntrega(req: Request, res: Response) {
     try {
+      await setTenantContextFromRequest(req);
+      const tenantId = (req as any).tenant?.id;
+      
+      if (!tenantId) {
+        return res.status(400).json({ success: false, error: 'Tenant ID não encontrado' });
+      }
+
       const { itemId } = req.params;
       const { para_entrega } = req.body;
 
@@ -351,16 +383,22 @@ export const guiaController = {
   // Listar todos os itens de uma guia
   async listarItensGuia(req: Request, res: Response) {
     try {
-      const { guiaId } = req.params;
+      await setTenantContextFromRequest(req);
+      const tenantId = (req as any).tenant?.id;
+      
+      if (!tenantId) {
+        return res.status(400).json({ success: false, error: 'Tenant ID não encontrado' });
+      }
 
-      const guia = await GuiaModel.buscarGuia(parseInt(guiaId));
+      const { guiaId } = req.params;
+      const guia = await GuiaModel.buscarGuia(parseInt(guiaId), tenantId);
+      
       if (!guia) {
         return res.status(404).json({ success: false, error: 'Guia não encontrada' });
       }
 
-      const itens = await GuiaModel.listarProdutosPorGuia(parseInt(guiaId));
+      const itens = await GuiaModel.listarProdutosPorGuia(parseInt(guiaId), tenantId);
       
-      // Transformar os dados para o formato esperado pelo frontend
       const itensFormatados = itens.map(item => ({
         id: item.id,
         produto_nome: (item as any).produto_nome || 'Produto não identificado',

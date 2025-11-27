@@ -7,6 +7,29 @@ import {
   idSchema
 } from '../../../schemas';
 import { setTenantContextFromRequest } from "../../../utils/tenantContext";
+
+/**
+ * Extrai o tenant ID do usuário logado (via token JWT processado pelo middleware)
+ * Prioriza o tenant do usuário autenticado sobre o header X-Tenant-ID
+ */
+function getTenantIdFromUser(req: Request): string | null {
+  // 1. Prioridade: tenant do usuário autenticado (extraído do token JWT)
+  const tenantFromUser = (req as any).tenant?.id;
+  if (tenantFromUser) {
+    console.log(`🔐 Tenant extraído do usuário autenticado: ${tenantFromUser}`);
+    return tenantFromUser;
+  }
+
+  // 2. Fallback: header X-Tenant-ID (para compatibilidade)
+  const tenantFromHeader = req.headers['x-tenant-id'] as string;
+  if (tenantFromHeader) {
+    console.log(`📋 Tenant extraído do header: ${tenantFromHeader}`);
+    return tenantFromHeader;
+  }
+
+  console.log('⚠️  Nenhum tenant encontrado na requisição');
+  return null;
+}
 import { 
   tenantInventoryValidator, 
   handleTenantInventoryError,
@@ -35,8 +58,15 @@ export async function listarEstoqueEscola(req: Request, res: Response) {
     // Configurar contexto de tenant
     await setTenantContextFromRequest(req);
 
-    // Extrair e validar tenant da requisição
-    const tenantId = tenantInventoryValidator.extractTenantFromRequest(req);
+    // Extrair tenant do usuário logado (do token JWT via middleware)
+    const tenantId = (req as any).tenant?.id || req.headers['x-tenant-id'] as string;
+    
+    if (!tenantId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tenant ID não encontrado. Faça login novamente.'
+      });
+    }
 
     // Validar se a escola pertence ao tenant
     await tenantInventoryValidator.validateSchoolTenantOwnership(parseInt(escola_id), tenantId);
@@ -135,8 +165,15 @@ export async function buscarItemEstoqueEscola(req: Request, res: Response) {
     // Configurar contexto de tenant
     await setTenantContextFromRequest(req);
 
-    // Extrair e validar tenant da requisição
-    const tenantId = tenantInventoryValidator.extractTenantFromRequest(req);
+    // Extrair tenant do usuário logado (via token JWT)
+    const tenantId = getTenantIdFromUser(req);
+    
+    if (!tenantId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tenant ID não encontrado. Faça login novamente.'
+      });
+    }
 
     // Validar se o item de estoque pertence ao tenant
     await tenantInventoryValidator.validateInventoryItemTenantOwnership(parseInt(id), tenantId);
@@ -186,8 +223,15 @@ export async function atualizarQuantidadeEstoque(req: Request, res: Response) {
     // Configurar contexto de tenant
     await setTenantContextFromRequest(req);
 
-    // Extrair e validar tenant da requisição
-    const tenantId = tenantInventoryValidator.extractTenantFromRequest(req);
+    // Extrair tenant do usuário logado (via token JWT)
+    const tenantId = getTenantIdFromUser(req);
+    
+    if (!tenantId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tenant ID não encontrado. Faça login novamente.'
+      });
+    }
 
     // Validar se o item de estoque pertence ao tenant
     await tenantInventoryValidator.validateInventoryItemTenantOwnership(parseInt(id), tenantId);
@@ -243,8 +287,15 @@ export async function atualizarLoteQuantidades(req: Request, res: Response) {
     // Configurar contexto de tenant
     await setTenantContextFromRequest(req);
 
-    // Extrair e validar tenant da requisição
-    const tenantId = tenantInventoryValidator.extractTenantFromRequest(req);
+    // Extrair tenant do usuário logado (via token JWT)
+    const tenantId = getTenantIdFromUser(req);
+    
+    if (!tenantId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tenant ID não encontrado. Faça login novamente.'
+      });
+    }
 
     // Validar se a escola pertence ao tenant
     await tenantInventoryValidator.validateSchoolTenantOwnership(parseInt(escola_id), tenantId);
@@ -316,8 +367,15 @@ export async function listarHistoricoEstoque(req: Request, res: Response) {
     // Configurar contexto de tenant
     await setTenantContextFromRequest(req);
 
-    // Extrair e validar tenant da requisição
-    const tenantId = tenantInventoryValidator.extractTenantFromRequest(req);
+    // Extrair tenant do usuário logado (via token JWT)
+    const tenantId = getTenantIdFromUser(req);
+    
+    if (!tenantId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tenant ID não encontrado. Faça login novamente.'
+      });
+    }
 
     // Validar se a escola pertence ao tenant
     await tenantInventoryValidator.validateSchoolTenantOwnership(parseInt(escola_id), tenantId);
@@ -367,8 +425,15 @@ export async function obterResumoEstoque(req: Request, res: Response) {
     // Configurar contexto de tenant
     await setTenantContextFromRequest(req);
 
-    // Extrair e validar tenant da requisição
-    const tenantId = tenantInventoryValidator.extractTenantFromRequest(req);
+    // Extrair tenant do usuário logado (via token JWT)
+    const tenantId = getTenantIdFromUser(req);
+    
+    if (!tenantId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tenant ID não encontrado. Faça login novamente.'
+      });
+    }
 
     // Validar se a escola pertence ao tenant
     await tenantInventoryValidator.validateSchoolTenantOwnership(parseInt(escola_id), tenantId);
@@ -432,8 +497,15 @@ export async function inicializarEstoqueEscola(req: Request, res: Response) {
     // Configurar contexto de tenant
     await setTenantContextFromRequest(req);
 
-    // Extrair e validar tenant da requisição
-    const tenantId = tenantInventoryValidator.extractTenantFromRequest(req);
+    // Extrair tenant do usuário logado (via token JWT)
+    const tenantId = getTenantIdFromUser(req);
+    
+    if (!tenantId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tenant ID não encontrado. Faça login novamente.'
+      });
+    }
 
     // Validar se a escola pertence ao tenant
     await tenantInventoryValidator.validateSchoolTenantOwnership(parseInt(escola_id), tenantId);
@@ -487,8 +559,15 @@ export async function registrarMovimentacao(req: Request, res: Response) {
     // Configurar contexto de tenant
     await setTenantContextFromRequest(req);
 
-    // Extrair e validar tenant da requisição
-    const tenantId = tenantInventoryValidator.extractTenantFromRequest(req);
+    // Extrair tenant do usuário logado (via token JWT)
+    const tenantId = getTenantIdFromUser(req);
+    
+    if (!tenantId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tenant ID não encontrado. Faça login novamente.'
+      });
+    }
 
     // Validar se a escola e produto pertencem ao tenant
     await tenantInventoryValidator.validateSchoolTenantOwnership(parseInt(escola_id), tenantId);
@@ -540,12 +619,14 @@ export async function registrarMovimentacao(req: Request, res: Response) {
 
       let item;
       if (estoqueAtual.rows.length === 0) {
-        // Criar registro no estoque se não existir
+        // Criar registro no estoque se não existir (incluindo tenant_id)
         const novoItem = await client.query(`
-          INSERT INTO estoque_escolas (escola_id, produto_id, quantidade_atual)
-          VALUES ($1, $2, 0)
+          INSERT INTO estoque_escolas (escola_id, produto_id, quantidade_atual, tenant_id)
+          VALUES ($1, $2, 0, $3)
+          ON CONFLICT (escola_id, produto_id) DO UPDATE 
+          SET updated_at = CURRENT_TIMESTAMP
           RETURNING *
-        `, [escola_id, produto_id]);
+        `, [escola_id, produto_id, tenantId]);
         item = novoItem.rows[0];
       } else {
         item = estoqueAtual.rows[0];
@@ -851,9 +932,8 @@ export async function registrarMovimentacao(req: Request, res: Response) {
           motivo,
           documento_referencia,
           usuario_id,
-          usuario_nome,
           data_movimentacao
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)
         RETURNING *
       `, [
         item.id,
@@ -865,8 +945,7 @@ export async function registrarMovimentacao(req: Request, res: Response) {
         quantidadePosterior,
         motivoComTenant,
         documento_referencia,
-        usuarioIdValido,
-        req.user?.nome || 'Sistema'
+        usuarioIdValido
       ]);
 
       return {
@@ -952,8 +1031,15 @@ export async function resetarEstoqueComBackup(req: Request, res: Response) {
     // Configurar contexto de tenant
     await setTenantContextFromRequest(req);
 
-    // Extrair e validar tenant da requisição
-    const tenantId = tenantInventoryValidator.extractTenantFromRequest(req);
+    // Extrair tenant do usuário logado (via token JWT)
+    const tenantId = getTenantIdFromUser(req);
+    
+    if (!tenantId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tenant ID não encontrado. Faça login novamente.'
+      });
+    }
 
     // Validar se a escola pertence ao tenant
     await tenantInventoryValidator.validateSchoolTenantOwnership(parseInt(escola_id), tenantId);
@@ -1102,8 +1188,15 @@ export async function listarLotesProduto(req: Request, res: Response) {
     // Configurar contexto de tenant
     await setTenantContextFromRequest(req);
 
-    // Extrair e validar tenant da requisição
-    const tenantId = tenantInventoryValidator.extractTenantFromRequest(req);
+    // Extrair tenant do usuário logado (via token JWT)
+    const tenantId = getTenantIdFromUser(req);
+    
+    if (!tenantId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tenant ID não encontrado. Faça login novamente.'
+      });
+    }
 
     if (!produto_id) {
       return res.status(400).json({
@@ -1211,8 +1304,15 @@ export async function criarLote(req: Request, res: Response) {
     // Configurar contexto de tenant
     await setTenantContextFromRequest(req);
 
-    // Extrair e validar tenant da requisição
-    const tenantId = tenantInventoryValidator.extractTenantFromRequest(req);
+    // Extrair tenant do usuário logado (via token JWT)
+    const tenantId = getTenantIdFromUser(req);
+    
+    if (!tenantId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tenant ID não encontrado. Faça login novamente.'
+      });
+    }
 
     // Validações básicas
     if (!escola_id || !produto_id || !lote || quantidade === null || quantidade === undefined || quantidade < 0) {
@@ -1310,8 +1410,15 @@ export async function processarMovimentacaoLotes(req: Request, res: Response) {
     // Configurar contexto de tenant
     await setTenantContextFromRequest(req);
 
-    // Extrair e validar tenant da requisição
-    const tenantId = tenantInventoryValidator.extractTenantFromRequest(req);
+    // Extrair tenant do usuário logado (via token JWT)
+    const tenantId = getTenantIdFromUser(req);
+    
+    if (!tenantId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tenant ID não encontrado. Faça login novamente.'
+      });
+    }
     const {
       produto_id,
       tipo_movimentacao,
@@ -1521,16 +1628,16 @@ export async function processarMovimentacaoLotes(req: Request, res: Response) {
         INSERT INTO estoque_escolas_historico (
           estoque_escola_id, escola_id, produto_id, tipo_movimentacao,
           quantidade_anterior, quantidade_movimentada, quantidade_posterior,
-          motivo, documento_referencia, usuario_id, usuario_nome, data_movimentacao
+          motivo, documento_referencia, usuario_id, data_movimentacao
         ) VALUES (
           (SELECT id FROM estoque_escolas WHERE escola_id = $1 AND produto_id = $2),
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW()
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, NOW()
         )
       `, [
         escola_id, produto_id, tipo_movimentacao,
         quantidadeAnterior, quantidadeTotal, quantidadePosterior,
         motivoComTenant,
-        documento_referencia, usuario_id || 1, req.user?.nome || 'Sistema'
+        documento_referencia, usuario_id || 1
       ]);
 
       await client.query('COMMIT');

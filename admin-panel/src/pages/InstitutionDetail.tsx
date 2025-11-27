@@ -394,42 +394,163 @@ export default function InstitutionDetail() {
             </button>
           </div>
 
+          {/* Tenant Configuration Info */}
+          {tenants.length > 0 && (
+            <div style={{
+              background: '#f8f9fa',
+              padding: '15px',
+              borderRadius: '8px',
+              marginBottom: '20px',
+              border: '1px solid #e9ecef'
+            }}>
+              <div style={{ marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>
+                Configuração de Tenants
+              </div>
+              <div style={{ fontSize: '13px', color: '#666' }}>
+                • Marque o checkbox para definir o tenant padrão (usado no login)<br/>
+                • Use o toggle para ativar/desativar a visibilidade do tenant para usuários
+              </div>
+            </div>
+          )}
+
           {tenants.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '30px', color: '#999' }}>
               Nenhum tenant cadastrado
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {tenants.map((tenant) => (
                 <div
                   key={tenant.id}
                   style={{
-                    padding: '15px',
+                    padding: '16px',
                     background: '#f8f9fa',
                     borderRadius: '8px',
+                    border: '1px solid #e9ecef',
                     display: 'flex',
                     justifyContent: 'space-between',
-                    alignItems: 'center'
+                    alignItems: 'center',
+                    gap: '16px'
                   }}
                 >
-                  <div>
-                    <div style={{ fontWeight: '600', marginBottom: '4px' }}>
-                      {tenant.name}
-                    </div>
-                    <div style={{ fontSize: '13px', color: '#666' }}>
-                      {tenant.slug} • {tenant.subdomain}
+                  {/* Checkbox para tenant padrão */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <input
+                      type="checkbox"
+                      checked={institution.default_tenant_id === tenant.id}
+                      onChange={async (e) => {
+                        try {
+                          const newDefaultId = e.target.checked ? tenant.id : null;
+                          await institutionService.updateDefaultTenant(id!, newDefaultId);
+                          await loadData();
+                        } catch (error) {
+                          console.error('Erro ao atualizar tenant padrão:', error);
+                          alert('Erro ao atualizar tenant padrão');
+                        }
+                      }}
+                      style={{
+                        width: '18px',
+                        height: '18px',
+                        cursor: 'pointer',
+                        accentColor: '#667eea'
+                      }}
+                      title="Marcar como tenant padrão"
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ 
+                        fontWeight: '600', 
+                        marginBottom: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                      }}>
+                        {tenant.name}
+                        {institution.default_tenant_id === tenant.id && (
+                          <span style={{
+                            padding: '2px 8px',
+                            borderRadius: '12px',
+                            fontSize: '11px',
+                            fontWeight: '600',
+                            background: '#667eea',
+                            color: 'white'
+                          }}>
+                            PADRÃO
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#666' }}>
+                        {tenant.slug} • {tenant.subdomain || 'sem subdomínio'}
+                      </div>
                     </div>
                   </div>
-                  <span style={{
-                    padding: '4px 12px',
-                    borderRadius: '20px',
-                    fontSize: '12px',
-                    fontWeight: '500',
-                    background: tenant.status === 'active' ? '#d4edda' : '#fff3cd',
-                    color: tenant.status === 'active' ? '#155724' : '#856404'
-                  }}>
-                    {tenant.status === 'active' ? 'Ativo' : 'Inativo'}
-                  </span>
+
+                  {/* Toggle para ativar/desativar */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <label style={{
+                      position: 'relative',
+                      display: 'inline-block',
+                      width: '50px',
+                      height: '24px',
+                      cursor: institution.default_tenant_id === tenant.id && tenant.status === 'active' ? 'not-allowed' : 'pointer',
+                      opacity: institution.default_tenant_id === tenant.id && tenant.status === 'active' ? 0.6 : 1
+                    }}
+                    title={institution.default_tenant_id === tenant.id && tenant.status === 'active' ? 'Tenant padrão não pode ser desativado' : ''}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={tenant.status === 'active'}
+                        disabled={institution.default_tenant_id === tenant.id && tenant.status === 'active'}
+                        onChange={async (e) => {
+                          // Validar se é o tenant padrão tentando desativar
+                          if (institution.default_tenant_id === tenant.id && !e.target.checked) {
+                            alert('Não é possível desativar o tenant padrão. Primeiro defina outro tenant como padrão.');
+                            return;
+                          }
+                          
+                          try {
+                            const newStatus = e.target.checked ? 'active' : 'inactive';
+                            await institutionService.updateTenantStatus(tenant.id, newStatus);
+                            await loadData();
+                          } catch (error) {
+                            console.error('Erro ao atualizar status:', error);
+                            alert('Erro ao atualizar status do tenant');
+                          }
+                        }}
+                        style={{ opacity: 0, width: 0, height: 0 }}
+                      />
+                      <span style={{
+                        position: 'absolute',
+                        cursor: 'pointer',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: tenant.status === 'active' ? '#11998e' : '#ccc',
+                        transition: '0.4s',
+                        borderRadius: '24px'
+                      }}>
+                        <span style={{
+                          position: 'absolute',
+                          content: '',
+                          height: '18px',
+                          width: '18px',
+                          left: tenant.status === 'active' ? '28px' : '3px',
+                          bottom: '3px',
+                          backgroundColor: 'white',
+                          transition: '0.4s',
+                          borderRadius: '50%'
+                        }} />
+                      </span>
+                    </label>
+                    <span style={{
+                      fontSize: '13px',
+                      fontWeight: '500',
+                      color: tenant.status === 'active' ? '#11998e' : '#999',
+                      minWidth: '50px'
+                    }}>
+                      {tenant.status === 'active' ? 'Ativo' : 'Inativo'}
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>

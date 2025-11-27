@@ -27,4 +27,7 @@ router.delete('/:id/users/:userId', institutionController.removeUser.bind(instit
 // Institution tenants
 router.get('/:id/tenants', institutionController.getTenants.bind(institutionController));
 
+// Update default tenant
+router.patch('/:id/default-tenant', institutionController.updateDefaultTenant.bind(institutionController));
+
 export default router;

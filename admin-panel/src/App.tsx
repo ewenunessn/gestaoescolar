@@ -8,6 +8,7 @@ import InstitutionDetail from './pages/InstitutionDetail';
 import CreateInstitution from './pages/CreateInstitution';
 import Tenants from './pages/Tenants';
 import TenantData from './pages/TenantData';
+import GerenciarUsuario from './pages/GerenciarUsuario';
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
           <Route path="/institutions/:id" element={<ProtectedRoute><InstitutionDetail /></ProtectedRoute>} />
           <Route path="/tenants" element={<ProtectedRoute><Tenants /></ProtectedRoute>} />
           <Route path="/tenants/:tenantId" element={<ProtectedRoute><TenantData /></ProtectedRoute>} />
+          <Route path="/usuarios/:id" element={<ProtectedRoute><GerenciarUsuario /></ProtectedRoute>} />
           
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

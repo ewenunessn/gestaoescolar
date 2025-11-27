@@ -66,4 +66,18 @@ export const institutionService = {
     const response = await api.put(`/institutions/${institutionId}/users/${userId}`, data);
     return response.data;
   },
+
+  async updateDefaultTenant(institutionId: string, tenantId: string | null) {
+    const response = await api.patch(`/institutions/${institutionId}/default-tenant`, {
+      default_tenant_id: tenantId
+    });
+    return response.data;
+  },
+
+  async updateTenantStatus(tenantId: string, status: 'active' | 'inactive') {
+    const response = await api.patch(`/system-admin/data/tenants/${tenantId}/status`, {
+      status
+    });
+    return response.data;
+  },
 };

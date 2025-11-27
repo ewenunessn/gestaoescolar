@@ -90,9 +90,9 @@ export default function EditarPedido() {
                 unidade: item.unidade || '',
                 fornecedor_nome: item.fornecedor_nome || '',
                 contrato_numero: item.contrato_numero || '',
-                quantidade: item.quantidade,
-                preco_unitario: item.preco_unitario,
-                valor_total: item.valor_total,
+                quantidade: parseFloat(item.quantidade) || 0, // Remove zeros desnecessários
+                preco_unitario: parseFloat(item.preco_unitario) || 0, // Garantir que é número
+                valor_total: parseFloat(item.valor_total) || 0, // Garantir que é número
                 data_entrega_prevista: item.data_entrega_prevista || getDataPadrao(),
                 observacoes: item.observacoes || ''
             }));
@@ -154,7 +154,10 @@ export default function EditarPedido() {
     };
 
     const calcularValorTotal = () => {
-        return itens.reduce((total, item) => total + item.valor_total, 0);
+        return itens.reduce((total, item) => {
+            const valor = parseFloat(item.valor_total) || 0;
+            return total + valor;
+        }, 0);
     };
 
     const agruparPorFornecedor = () => {
@@ -444,7 +447,7 @@ export default function EditarPedido() {
                                                             size="small"
                                                             value={item.quantidade}
                                                             onChange={(e) => atualizarQuantidade(index, parseFloat(e.target.value) || 0)}
-                                                            inputProps={{ min: 0, step: 0.001 }}
+                                                            inputProps={{ min: 0, step: 0.01 }}
                                                             fullWidth
                                                         />
                                                     </TableCell>

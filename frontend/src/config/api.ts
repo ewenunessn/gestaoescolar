@@ -49,7 +49,7 @@ const createApiConfig = (): ApiConfig => {
   return {
     baseURL,
     healthURL,
-    timeout: isDevelopment ? 10000 : 30000, // 10s dev, 30s prod
+    timeout: isDevelopment ? 30000 : 60000, // 30s dev, 60s prod
     retries: isDevelopment ? 2 : 3,
     isDevelopment,
     isProduction,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   Box,
   FormControl,
@@ -8,20 +8,11 @@ import {
   Chip,
   Typography,
   CircularProgress,
-  Alert,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Grid
+  Alert
 } from '@mui/material';
-import { Business, Add, AdminPanelSettings } from '@mui/icons-material';
+import { Business, AdminPanelSettings } from '@mui/icons-material';
 import { useTenant } from '../context/TenantContext';
 import { useCurrentUser } from '../hooks/useCurrentUser';
-import { tenantService } from '../services/tenantService';
-import { CreateTenantInput, TenantSettings, TenantLimits } from '../../../shared/types/tenant';
 
 interface TenantSelectorProps {
   variant?: 'compact' | 'full';
@@ -42,71 +33,22 @@ export default function TenantSelector({
   } = useTenant();
   
   const [switching, setSwitching] = useState(false);
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [creating, setCreating] = useState(false);
-  // Default tenant settings
-  const defaultSettings: TenantSettings = {
-    features: {
-      inventory: true,
-      contracts: true,
-      deliveries: true,
-      reports: true,
-      mobile: true,
-      analytics: false,
-    },
-    branding: {
-      primaryColor: '#1976d2',
-      secondaryColor: '#dc004e',
-    },
-    notifications: {
-      email: true,
-      sms: false,
-      push: true,
-    },
-    integrations: {
-      whatsapp: false,
-      email: true,
-      sms: false,
-    },
-  };
 
-  const defaultLimits: TenantLimits = {
-    maxUsers: 100,
-    maxSchools: 50,
-    maxProducts: 1000,
-    storageLimit: 1024,
-    apiRateLimit: 100,
-    maxContracts: 50,
-    maxOrders: 1000,
-  };
-
-  const [newTenant, setNewTenant] = useState<CreateTenantInput>({
-    slug: '',
-    name: '',
-    subdomain: '',
-    settings: defaultSettings,
-    limits: defaultLimits
-  });
-
-  // Debug: mostrar informações do usuário
-  console.log('👤 TenantSelector - Usuário atual:', {
-    id: user?.id,
-    nome: user?.nome,
-    tipo: user?.tipo,
-    isAdmin: user?.tipo === 'admin'
-  });
-
-  // Debug logs
-  console.log('👤 TenantSelector - Usuário atual:', {
-    id: user?.id,
-    nome: user?.nome,
-    tipo: user?.tipo,
-    isAdmin: user?.tipo === 'admin'
+  // Debug: mostrar informações completas
+  console.log('👤 TenantSelector - Estado completo:', {
+    user: user,
+    currentTenant: currentTenant?.name,
+    availableTenants: availableTenants.length,
+    loading: loading
   });
   
+  // IMPORTANTE: Verificar usuário ANTES de verificar loading
   // Show for system administrators and gestors (temporarily)
   if (user?.tipo !== 'admin' && user?.tipo !== 'gestor') {
-    console.log('🚫 TenantSelector não exibido - usuário não é admin nem gestor');
+    console.log('🚫 TenantSelector não exibido - usuário não é admin nem gestor', {
+      tipo: user?.tipo,
+      user: user
+    });
     return null;
   }
 
@@ -123,30 +65,7 @@ export default function TenantSelector({
     }
   };
 
-  const handleCreateTenant = async () => {
-    if (!newTenant.name || !newTenant.slug) return;
-
-    setCreating(true);
-    try {
-      await tenantService.createTenant(newTenant);
-      setCreateDialogOpen(false);
-      setNewTenant({ 
-        slug: '', 
-        name: '', 
-        subdomain: '',
-        settings: defaultSettings,
-        limits: defaultLimits
-      });
-      // Refresh available tenants
-      window.location.reload();
-    } catch (err: any) {
-      console.error('Failed to create tenant:', err);
-      alert(err.message || 'Failed to create tenant');
-    } finally {
-      setCreating(false);
-    }
-  };
-
+  // Só mostrar loading se o usuário for admin/gestor
   if (loading) {
     return (
       <Box display="flex" alignItems="center" gap={1}>
@@ -165,6 +84,14 @@ export default function TenantSelector({
   }
 
   if (variant === 'compact') {
+    // Debug do valor do Select
+    console.log('🎯 TenantSelector - Renderizando Select:', {
+      currentTenantId: currentTenant?.id,
+      currentTenantName: currentTenant?.name,
+      value: currentTenant?.id || "",
+      availableCount: availableTenants.length
+    });
+    
     return (
       <Box display="flex" alignItems="center" gap={1.5}>
         <FormControl size="small" sx={{ minWidth: 280 }}>
@@ -205,65 +132,6 @@ export default function TenantSelector({
         </FormControl>
         
         {switching && <CircularProgress size={18} />}
-        
-        {showCreateButton && (
-          <Button
-            size="small"
-            startIcon={<Add />}
-            onClick={() => setCreateDialogOpen(true)}
-            variant="outlined"
-            sx={{ whiteSpace: 'nowrap' }}
-          >
-            Nova Unidade
-          </Button>
-        )}
-
-        {/* Create Tenant Dialog */}
-        <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} maxWidth="sm" fullWidth>
-          <DialogTitle>Criar Nova Unidade</DialogTitle>
-          <DialogContent>
-            <Grid container spacing={2} sx={{ mt: 1 }}>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Nome da Unidade"
-                  value={newTenant.name}
-                  onChange={(e) => setNewTenant({ ...newTenant, name: e.target.value })}
-                  required
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Identificador"
-                  value={newTenant.slug}
-                  onChange={(e) => setNewTenant({ ...newTenant, slug: e.target.value.toLowerCase() })}
-                  helperText="Identificador único (URL)"
-                  required
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Subdomínio"
-                  value={newTenant.subdomain}
-                  onChange={(e) => setNewTenant({ ...newTenant, subdomain: e.target.value.toLowerCase() })}
-                  helperText="Opcional"
-                />
-              </Grid>
-            </Grid>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setCreateDialogOpen(false)}>Cancelar</Button>
-            <Button 
-              onClick={handleCreateTenant} 
-              variant="contained"
-              disabled={creating || !newTenant.name || !newTenant.slug}
-            >
-              {creating ? <CircularProgress size={20} /> : 'Criar'}
-            </Button>
-          </DialogActions>
-        </Dialog>
       </Box>
     );
   }
@@ -313,16 +181,6 @@ export default function TenantSelector({
         </Select>
       </FormControl>
 
-      {showCreateButton && (
-        <Button
-          fullWidth
-          variant="outlined"
-          startIcon={<Add />}
-          onClick={() => setCreateDialogOpen(true)}
-        >
-          Criar Nova Unidade
-        </Button>
-      )}
     </Box>
   );
 }
