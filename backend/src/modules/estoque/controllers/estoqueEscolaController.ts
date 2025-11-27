@@ -545,6 +545,8 @@ export async function inicializarEstoqueEscola(req: Request, res: Response) {
 
 export async function registrarMovimentacao(req: Request, res: Response) {
   try {
+    console.log('🔄 [MOVIMENTACAO] Iniciando registro...');
+    
     const { escola_id } = req.params;
     const {
       produto_id,
@@ -556,21 +558,35 @@ export async function registrarMovimentacao(req: Request, res: Response) {
       data_validade // Novo campo para validade simples
     } = req.body;
 
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
+    console.log('🔍 [MOVIMENTACAO] Dados:', { escola_id, produto_id, tipo_movimentacao, quantidade });
 
-    // Extrair tenant do usuário logado (via token JWT)
-    const tenantId = getTenantIdFromUser(req);
+    // Extrair tenant do usuário logado (via token JWT) ou header
+    const tenantId = (req as any).tenant?.id || req.headers['x-tenant-id'] as string;
+    
+    console.log('🔍 [MOVIMENTACAO] Tenant extraído:', {
+      fromMiddleware: (req as any).tenant?.id,
+      fromHeader: req.headers['x-tenant-id'],
+      final: tenantId
+    });
     
     if (!tenantId) {
+      console.error('❌ [MOVIMENTACAO] Tenant ID não encontrado');
       return res.status(400).json({
         success: false,
         message: 'Tenant ID não encontrado. Faça login novamente.'
       });
     }
 
+    console.log('🔍 [MOVIMENTACAO] Validando escola...');
+    
     // Validar se a escola e produto pertencem ao tenant
-    await tenantInventoryValidator.validateSchoolTenantOwnership(parseInt(escola_id), tenantId);
+    try {
+      await tenantInventoryValidator.validateSchoolTenantOwnership(parseInt(escola_id), tenantId);
+      console.log('✅ [MOVIMENTACAO] Escola validada');
+    } catch (error: any) {
+      console.error('❌ [MOVIMENTACAO] Erro na validação da escola:', error.message);
+      throw error;
+    }
     await tenantInventoryValidator.validateProductTenantOwnership(parseInt(produto_id), tenantId);
 
     // Validar consistência entre escola e produto no mesmo tenant
