@@ -9,22 +9,23 @@ import {
 import { setTenantContextFromRequest } from "../../../utils/tenantContext";
 
 /**
- * Extrai o tenant ID do usuário logado (via token JWT processado pelo middleware)
- * Prioriza o tenant do usuário autenticado sobre o header X-Tenant-ID
+ * Extrai o tenant ID da requisição
+ * IMPORTANTE: Prioriza o header X-Tenant-ID (enviado pelo frontend) sobre o tenant do usuário
+ * O tenant do usuário é apenas para autenticação, não para filtrar dados
  */
 function getTenantIdFromUser(req: Request): string | null {
-  // 1. Prioridade: tenant do usuário autenticado (extraído do token JWT)
-  const tenantFromUser = (req as any).tenant?.id;
-  if (tenantFromUser) {
-    console.log(`🔐 Tenant extraído do usuário autenticado: ${tenantFromUser}`);
-    return tenantFromUser;
-  }
-
-  // 2. Fallback: header X-Tenant-ID (para compatibilidade)
+  // 1. PRIORIDADE: header X-Tenant-ID (enviado pelo frontend para indicar qual tenant está sendo usado)
   const tenantFromHeader = req.headers['x-tenant-id'] as string;
   if (tenantFromHeader) {
-    console.log(`📋 Tenant extraído do header: ${tenantFromHeader}`);
+    console.log(`📋 Tenant extraído do header X-Tenant-ID: ${tenantFromHeader}`);
     return tenantFromHeader;
+  }
+
+  // 2. Fallback: tenant do middleware (extraído do token JWT ou subdomínio)
+  const tenantFromMiddleware = (req as any).tenant?.id;
+  if (tenantFromMiddleware) {
+    console.log(`🔐 Tenant extraído do middleware: ${tenantFromMiddleware}`);
+    return tenantFromMiddleware;
   }
 
   console.log('⚠️  Nenhum tenant encontrado na requisição');
@@ -71,24 +72,54 @@ export async function listarEstoqueEscola(req: Request, res: Response) {
     // Validar se a escola pertence ao tenant
     await tenantInventoryValidator.validateSchoolTenantOwnership(parseInt(escola_id), tenantId);
 
-    // Try to get from tenant cache first
-    const cachedData = await cacheTenantEstoqueEscola.get(tenantId, parseInt(escola_id));
-    if (cachedData) {
-      console.log(`🎯 Cache hit for tenant ${tenantId} school ${escola_id} inventory`);
-      return res.json({
-        success: true,
-        data: (cachedData as any).estoque,
-        total: (cachedData as any).estoque.length,
-        cached: true
-      });
-    }
+    // CACHE DESABILITADO - sempre buscar dados atualizados do banco
+    // const cachedData = await cacheTenantEstoqueEscola.get(tenantId, parseInt(escola_id));
+    // if (cachedData) {
+    //   console.log(`🎯 Cache hit for tenant ${tenantId} school ${escola_id} inventory`);
+    //   return res.json({
+    //     success: true,
+    //     data: (cachedData as any).estoque,
+    //     total: (cachedData as any).estoque.length,
+    //     cached: true
+    //   });
+    // }
 
-    // Usar query otimizada que elimina CROSS JOIN e melhora performance
-    const { getEstoqueEscolaOptimized } = require('../../../utils/optimizedInventoryQueries');
-    const estoque = await getEstoqueEscolaOptimized(parseInt(escola_id), tenantId, {
-      incluirLotes: true,
-      incluirSemEstoque: true
-    });
+    // Query simples e direta - sem otimizações complexas
+    const estoqueResult = await db.query(`
+      SELECT 
+        ee.id,
+        ee.escola_id,
+        ee.produto_id,
+        p.nome as produto_nome,
+        p.descricao as produto_descricao,
+        p.unidade,
+        p.categoria,
+        ee.quantidade_atual,
+        ee.data_validade,
+        ee.data_entrada,
+        ee.updated_at as data_ultima_atualizacao,
+        CASE 
+          WHEN ee.quantidade_atual = 0 THEN 'sem_estoque'
+          WHEN ee.data_validade IS NOT NULL AND ee.data_validade < CURRENT_DATE THEN 'vencido'
+          WHEN ee.data_validade IS NOT NULL AND ee.data_validade <= CURRENT_DATE + INTERVAL '7 days' THEN 'critico'
+          WHEN ee.data_validade IS NOT NULL AND ee.data_validade <= CURRENT_DATE + INTERVAL '30 days' THEN 'atencao'
+          ELSE 'normal'
+        END as status_estoque,
+        CASE 
+          WHEN ee.data_validade IS NOT NULL THEN (ee.data_validade - CURRENT_DATE)::integer
+          ELSE NULL
+        END as dias_para_vencimento
+      FROM produtos p
+      LEFT JOIN estoque_escolas ee ON (ee.produto_id = p.id AND ee.escola_id = $1 AND ee.tenant_id = $2)
+      WHERE p.ativo = true AND p.tenant_id = $2
+      ORDER BY p.categoria NULLS LAST, p.nome
+    `, [escola_id, tenantId]);
+    
+    const estoque = estoqueResult.rows.map(item => ({
+      ...item,
+      quantidade_atual: item.quantidade_atual || 0,
+      lotes: [] // Será preenchido abaixo se houver estoque
+    }));
 
     // A query otimizada já inclui os lotes agregados
     // Buscar lotes detalhados apenas se necessário
@@ -142,9 +173,9 @@ export async function listarEstoqueEscola(req: Request, res: Response) {
       }
     }
 
-    // Cache the results for future requests
-    await cacheTenantEstoqueEscola.set(tenantId, parseInt(escola_id), { estoque });
-    console.log(`📦 Cached tenant ${tenantId} school ${escola_id} inventory data`);
+    // CACHE DESABILITADO - não salvar em cache
+    // await cacheTenantEstoqueEscola.set(tenantId, parseInt(escola_id), { estoque });
+    // console.log(`📦 Cached tenant ${tenantId} school ${escola_id} inventory data`);
 
     res.json({
       success: true,
@@ -560,12 +591,13 @@ export async function registrarMovimentacao(req: Request, res: Response) {
 
     console.log('🔍 [MOVIMENTACAO] Dados:', { escola_id, produto_id, tipo_movimentacao, quantidade });
 
-    // Extrair tenant do usuário logado (via token JWT) ou header
-    const tenantId = (req as any).tenant?.id || req.headers['x-tenant-id'] as string;
+    // IMPORTANTE: Usar SEMPRE o tenant do header X-Tenant-ID (enviado pelo frontend)
+    // O tenant do usuário é apenas para autenticação, não para filtrar dados
+    const tenantId = req.headers['x-tenant-id'] as string || (req as any).tenant?.id;
     
     console.log('🔍 [MOVIMENTACAO] Tenant extraído:', {
-      fromMiddleware: (req as any).tenant?.id,
       fromHeader: req.headers['x-tenant-id'],
+      fromMiddleware: (req as any).tenant?.id,
       final: tenantId
     });
     
@@ -587,14 +619,36 @@ export async function registrarMovimentacao(req: Request, res: Response) {
       console.error('❌ [MOVIMENTACAO] Erro na validação da escola:', error.message);
       throw error;
     }
-    await tenantInventoryValidator.validateProductTenantOwnership(parseInt(produto_id), tenantId);
+    
+    console.log('🔍 [MOVIMENTACAO] Validando produto...');
+    try {
+      await tenantInventoryValidator.validateProductTenantOwnership(parseInt(produto_id), tenantId);
+      console.log('✅ [MOVIMENTACAO] Produto validado');
+    } catch (error: any) {
+      console.error('❌ [MOVIMENTACAO] Erro na validação do produto:', error.message);
+      throw error;
+    }
 
     // Validar consistência entre escola e produto no mesmo tenant
-    await tenantInventoryValidator.validateSchoolProductTenantConsistency(parseInt(escola_id), parseInt(produto_id), tenantId);
+    console.log('🔍 [MOVIMENTACAO] Validando consistência escola-produto...');
+    try {
+      await tenantInventoryValidator.validateSchoolProductTenantConsistency(parseInt(escola_id), parseInt(produto_id), tenantId);
+      console.log('✅ [MOVIMENTACAO] Consistência validada');
+    } catch (error: any) {
+      console.error('❌ [MOVIMENTACAO] Erro na validação de consistência:', error.message);
+      throw error;
+    }
 
-    // Validar usuário se fornecido
+    // Validar usuário se fornecido (não bloquear se falhar, apenas logar)
     if (usuario_id) {
-      await tenantInventoryValidator.validateUserTenantAccess(parseInt(usuario_id), tenantId);
+      console.log('🔍 [MOVIMENTACAO] Validando usuário...');
+      try {
+        await tenantInventoryValidator.validateUserTenantAccess(parseInt(usuario_id), tenantId);
+        console.log('✅ [MOVIMENTACAO] Usuário validado');
+      } catch (error: any) {
+        console.warn('⚠️  [MOVIMENTACAO] Usuário não pertence ao tenant, mas continuando:', error.message);
+        // Não bloquear a operação, apenas logar o aviso
+      }
     }
 
     // Validações
@@ -652,8 +706,8 @@ export async function registrarMovimentacao(req: Request, res: Response) {
       const lotesResult = await client.query(`
         SELECT COALESCE(SUM(quantidade_atual), 0) as total_lotes
         FROM estoque_lotes 
-        WHERE produto_id = $1 AND status = 'ativo' AND (tenant_id = $2 OR tenant_id IS NULL)
-      `, [parseInt(produto_id), tenantId]);
+        WHERE escola_id = $1 AND produto_id = $2 AND status = 'ativo' AND tenant_id = $3
+      `, [escola_id, parseInt(produto_id), tenantId]);
 
       const quantidadeLotes = parseFloat(lotesResult.rows[0]?.total_lotes || 0);
       const quantidadeEstoquePrincipal = parseFloat(item.quantidade_atual || 0);
@@ -681,12 +735,12 @@ export async function registrarMovimentacao(req: Request, res: Response) {
             const lotesDisponiveis = await client.query(`
               SELECT id, lote, quantidade_atual, data_validade
               FROM estoque_lotes
-              WHERE produto_id = $1 AND status = 'ativo' AND quantidade_atual > 0
-                AND (tenant_id = $2 OR tenant_id IS NULL)
+              WHERE escola_id = $1 AND produto_id = $2 AND status = 'ativo' AND quantidade_atual > 0
+                AND tenant_id = $3
               ORDER BY 
                 CASE WHEN data_validade IS NULL THEN 1 ELSE 0 END,
                 data_validade ASC
-            `, [parseInt(produto_id), tenantId]);
+            `, [escola_id, parseInt(produto_id), tenantId]);
 
             for (const lote of lotesDisponiveis.rows) {
               if (quantidadeRestante <= 0) break;
@@ -723,8 +777,8 @@ export async function registrarMovimentacao(req: Request, res: Response) {
             const novoTotalLotes = await client.query(`
               SELECT COALESCE(SUM(quantidade_atual), 0) as total_lotes
               FROM estoque_lotes 
-              WHERE produto_id = $1 AND status = 'ativo' AND (tenant_id = $2 OR tenant_id IS NULL)
-            `, [parseInt(produto_id), tenantId]);
+              WHERE escola_id = $1 AND produto_id = $2 AND status = 'ativo' AND tenant_id = $3
+            `, [escola_id, parseInt(produto_id), tenantId]);
 
             quantidadePosterior = parseFloat(novoTotalLotes.rows[0]?.total_lotes || 0) + quantidadeEstoquePrincipal;
           }
@@ -735,8 +789,8 @@ export async function registrarMovimentacao(req: Request, res: Response) {
           const totalLotesAtual = (await client.query(`
             SELECT COALESCE(SUM(quantidade_atual), 0) as total_lotes
             FROM estoque_lotes 
-            WHERE produto_id = $1 AND status = 'ativo' AND (tenant_id = $2 OR tenant_id IS NULL)
-          `, [parseInt(produto_id), tenantId])).rows[0].total_lotes;
+            WHERE escola_id = $1 AND produto_id = $2 AND status = 'ativo' AND tenant_id = $3
+          `, [escola_id, parseInt(produto_id), tenantId])).rows[0].total_lotes;
 
           const quantidadeTotalDesejada = parseFloat(quantidade);
           const novaQuantidadeEstoquePrincipalAjuste = Math.max(0, quantidadeTotalDesejada - parseFloat(totalLotesAtual));
@@ -781,37 +835,21 @@ export async function registrarMovimentacao(req: Request, res: Response) {
         }
       }
 
-      // Para entradas sem validade, criar/atualizar lote "principal"
+      // Para entradas sem validade, SEMPRE criar novo lote (nunca atualizar existente)
       if (tipo_movimentacao === 'entrada' && !data_validade) {
-        // Verificar se já existe um lote principal (sem validade)
-        const lotePrincipal = await client.query(`
-          SELECT id FROM estoque_lotes 
-          WHERE produto_id = $1 AND data_validade IS NULL AND status = 'ativo' AND escola_id = $2
-            AND (tenant_id = $3 OR tenant_id IS NULL)
-        `, [produto_id, escola_id, tenantId]);
-
-        if (lotePrincipal.rows.length === 0) {
-          // Criar lote principal
-          await client.query(`
-            INSERT INTO estoque_lotes (
-              escola_id, produto_id, lote, quantidade_inicial, quantidade_atual,
-              data_validade, status, created_at, updated_at
-            ) VALUES ($1, $2, $3, $4, $4, NULL, 'ativo', NOW(), NOW())
-          `, [
-            escola_id,
-            produto_id,
-            'PRINCIPAL',
-            parseFloat(quantidade)
-          ]);
-        } else {
-          // Atualizar lote principal
-          await client.query(`
-            UPDATE estoque_lotes 
-            SET quantidade_atual = quantidade_atual + $1,
-                updated_at = NOW()
-            WHERE id = $2
-          `, [parseFloat(quantidade), lotePrincipal.rows[0].id]);
-        }
+        // Criar novo lote automaticamente - cada entrada é um lote separado
+        await client.query(`
+          INSERT INTO estoque_lotes (
+            escola_id, produto_id, lote, quantidade_inicial, quantidade_atual,
+            data_validade, status, tenant_id, created_at, updated_at
+          ) VALUES ($1, $2, $3, $4, $4, NULL, 'ativo', $5, NOW(), NOW())
+        `, [
+          escola_id,
+          produto_id,
+          `LOTE_${Date.now()}`, // Gerar nome único do lote
+          parseFloat(quantidade),
+          tenantId
+        ]);
       }
 
       // Para ajustes, ajustar o lote principal
@@ -819,18 +857,16 @@ export async function registrarMovimentacao(req: Request, res: Response) {
         const totalLotesComValidade = (await client.query(`
           SELECT COALESCE(SUM(quantidade_atual), 0) as total_lotes
           FROM estoque_lotes 
-          WHERE produto_id = $1 AND status = 'ativo' AND data_validade IS NOT NULL AND escola_id = $2
-            AND (tenant_id = $3 OR tenant_id IS NULL)
-        `, [parseInt(produto_id), escola_id, tenantId])).rows[0].total_lotes;
+          WHERE escola_id = $1 AND produto_id = $2 AND status = 'ativo' AND data_validade IS NOT NULL AND tenant_id = $3
+        `, [escola_id, parseInt(produto_id), tenantId])).rows[0].total_lotes;
 
         const quantidadePrincipalDesejada = Math.max(0, parseFloat(quantidade) - parseFloat(totalLotesComValidade));
 
         // Verificar se existe lote principal
         const lotePrincipal = await client.query(`
           SELECT id FROM estoque_lotes 
-          WHERE produto_id = $1 AND data_validade IS NULL AND status = 'ativo' AND escola_id = $2
-            AND (tenant_id = $3 OR tenant_id IS NULL)
-        `, [produto_id, escola_id, tenantId]);
+          WHERE escola_id = $1 AND produto_id = $2 AND data_validade IS NULL AND status = 'ativo' AND tenant_id = $3
+        `, [escola_id, produto_id, tenantId]);
 
         if (lotePrincipal.rows.length === 0 && quantidadePrincipalDesejada > 0) {
           // Criar lote principal
@@ -858,9 +894,8 @@ export async function registrarMovimentacao(req: Request, res: Response) {
       const totalLotesAtualizado = await client.query(`
         SELECT COALESCE(SUM(quantidade_atual), 0) as total_lotes
         FROM estoque_lotes 
-        WHERE produto_id = $1 AND status = 'ativo' AND escola_id = $2
-          AND (tenant_id = $3 OR tenant_id IS NULL)
-      `, [parseInt(produto_id), escola_id, tenantId]);
+        WHERE escola_id = $1 AND produto_id = $2 AND status = 'ativo' AND tenant_id = $3
+      `, [escola_id, parseInt(produto_id), tenantId]);
 
       const novaQuantidadeEstoquePrincipal = parseFloat(totalLotesAtualizado.rows[0]?.total_lotes || 0);
 
@@ -874,41 +909,22 @@ export async function registrarMovimentacao(req: Request, res: Response) {
       `;
       let updateParams = [novaQuantidadeEstoquePrincipal];
 
-      // Para entradas com validade, criar lote automático se não existir
+      // Para entradas com validade, SEMPRE criar novo lote (nunca atualizar existente)
       if (tipo_movimentacao === 'entrada' && data_validade) {
-        // Verificar se já existe um lote com a mesma validade
-        const loteExistente = await client.query(`
-          SELECT id FROM estoque_lotes 
-          WHERE produto_id = $1 AND data_validade = $2 AND status = 'ativo'
-            AND (tenant_id = $3 OR tenant_id IS NULL)
-        `, [produto_id, data_validade, tenantId]);
-
-        if (loteExistente.rows.length === 0) {
-          // Criar novo lote automaticamente
-          await client.query(`
-            INSERT INTO estoque_lotes (
-              escola_id, produto_id, lote, quantidade_inicial, quantidade_atual,
-              data_validade, status, created_at, updated_at
-            ) VALUES ($1, $2, $3, $4, $4, $5, 'ativo', NOW(), NOW())
-          `, [
-            escola_id,
-            produto_id,
-            `LOTE_${Date.now()}`, // Gerar nome único do lote
-            parseFloat(quantidade),
-            data_validade
-          ]);
-        } else {
-          // Atualizar lote existente
-          await client.query(`
-            UPDATE estoque_lotes 
-            SET quantidade_atual = quantidade_atual + $1,
-                updated_at = NOW()
-            WHERE id = $2
-          `, [parseFloat(quantidade), loteExistente.rows[0].id]);
-        }
-
-        // Não atualizar a validade no estoque principal para manter compatibilidade
-        // A validade será calculada dinamicamente pelos lotes
+        // Criar novo lote automaticamente - cada entrada é um lote separado
+        await client.query(`
+          INSERT INTO estoque_lotes (
+            escola_id, produto_id, lote, quantidade_inicial, quantidade_atual,
+            data_validade, status, tenant_id, created_at, updated_at
+          ) VALUES ($1, $2, $3, $4, $4, $5, 'ativo', $6, NOW(), NOW())
+        `, [
+          escola_id,
+          produto_id,
+          `LOTE_${Date.now()}`, // Gerar nome único do lote
+          parseFloat(quantidade),
+          data_validade,
+          tenantId
+        ]);
       }
 
       updateQuery += ` WHERE escola_id = $${updateParams.length + 1} AND produto_id = $${updateParams.length + 2} RETURNING *`;

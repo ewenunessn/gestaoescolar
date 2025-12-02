@@ -60,7 +60,8 @@ export function tenantMiddleware(options: TenantMiddlewareOptions = {}) {
       const host = req.get('host') || '';
 
       // 1. Tentar por header X-Tenant-ID PRIMEIRO (maior prioridade para troca de tenant)
-      const tenantHeader = req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
+      const tenantHeaderValue = req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
+      const tenantHeader = Array.isArray(tenantHeaderValue) ? tenantHeaderValue[0] : tenantHeaderValue;
       console.log('🔍 Headers recebidos:', {
         'X-Tenant-ID': req.get('X-Tenant-ID'),
         'x-tenant-id': req.headers['x-tenant-id'],

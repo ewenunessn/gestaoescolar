@@ -17,9 +17,9 @@ export const useEstoqueEscola = (escolaId: number | null) => {
     queryKey: escolaId ? queryKeys.estoque.escola(escolaId, currentTenant?.id) : ['estoque-escola', null, currentTenant?.id],
     queryFn: () => escolaId ? listarEstoqueEscola(escolaId) : Promise.resolve([]),
     enabled: !!escolaId && !!currentTenant,
-    staleTime: 30 * 1000, // 30 segundos (reduzido para atualizar mais rápido)
+    staleTime: 0, // Sempre considerar dados desatualizados - buscar sempre do servidor
     refetchOnWindowFocus: true, // Atualiza quando volta para a janela
-    refetchInterval: 60 * 1000, // Atualiza automaticamente a cada 1 minuto
+    refetchOnMount: true, // Sempre refetch ao montar o componente
     throwOnError: (error: any) => {
       // Handle tenant-specific errors
       if (error?.response?.status === 403 && error?.response?.data?.code === 'TENANT_OWNERSHIP_ERROR') {
@@ -94,15 +94,24 @@ export const useRegistrarMovimentacao = () => {
         data_validade?: string;
       }
     }) => registrarMovimentacao(escolaId, dadosMovimentacao),
-    onSuccess: (data, variables) => {
-      // Invalidar queries relacionadas para forçar atualização usando query keys consistentes com tenant
-      queryClient.invalidateQueries({ queryKey: queryKeys.estoque.escola(variables.escolaId, currentTenant?.id) });
-      queryClient.invalidateQueries({ queryKey: [...queryKeys.estoque.escola(variables.escolaId, currentTenant?.id), 'resumo'] });
-      queryClient.invalidateQueries({ queryKey: [...queryKeys.estoque.escola(variables.escolaId, currentTenant?.id), 'historico'] });
-      
-      // Também invalidar queries gerais de estoque para o tenant atual
-      queryClient.invalidateQueries({ queryKey: queryKeys.estoque.all(currentTenant?.id) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.estoque.escolar(currentTenant?.id) });
+    
+    // Após sucesso, REFETCH IMEDIATO (não apenas invalida)
+    onSuccess: async (data, variables) => {
+      // Refetch forçado - busca dados imediatamente
+      await Promise.all([
+        queryClient.refetchQueries({ 
+          queryKey: queryKeys.estoque.escola(variables.escolaId, currentTenant?.id),
+          type: 'active'
+        }),
+        queryClient.refetchQueries({ 
+          queryKey: [...queryKeys.estoque.escola(variables.escolaId, currentTenant?.id), 'resumo'],
+          type: 'active'
+        }),
+        queryClient.refetchQueries({ 
+          queryKey: [...queryKeys.estoque.escola(variables.escolaId, currentTenant?.id), 'historico'],
+          type: 'active'
+        })
+      ]);
     },
     onError: (error: any) => {
       // Handle tenant-specific errors

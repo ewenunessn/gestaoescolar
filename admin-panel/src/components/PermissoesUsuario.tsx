@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box,
   Card,
@@ -184,7 +184,6 @@ export default function PermissoesUsuario({ usuarioId, onSave }: PermissoesUsuar
             <TableBody>
               {modulos.map((modulo) => {
                 const nivelAtual = permissoes.get(modulo.id) || 1;
-                const nivel = niveis.find(n => n.id === nivelAtual);
 
                 return (
                   <TableRow key={modulo.id}>
@@ -205,7 +204,7 @@ export default function PermissoesUsuario({ usuarioId, onSave }: PermissoesUsuar
                       <FormControl fullWidth size="small">
                         <Select
                           value={nivelAtual}
-                          onChange={(e) => handleChangePermissao(modulo.id, Number(e.target.value))}
+                          onChange={(e: any) => handleChangePermissao(modulo.id, Number(e.target.value))}
                         >
                           {niveis.map((n) => (
                             <MenuItem key={n.id} value={n.id}>

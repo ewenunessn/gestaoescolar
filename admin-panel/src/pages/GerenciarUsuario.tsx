@@ -133,7 +133,7 @@ export default function GerenciarUsuario() {
       </Card>
 
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-        <Tabs value={tabAtual} onChange={(e, newValue) => setTabAtual(newValue)}>
+        <Tabs value={tabAtual} onChange={(_e: any, newValue: any) => setTabAtual(newValue)}>
           <Tab label="Dados Básicos" />
           <Tab label="Permissões" />
         </Tabs>

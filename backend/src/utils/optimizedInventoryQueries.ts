@@ -85,7 +85,7 @@ export const getEstoqueEscolaOptimized = async (
         $1::integer as escola_id,
         COALESCE(ee.quantidade_atual, 0) as quantidade_estoque_principal,
         ${incluirLotes ? 'COALESCE(la.total_lotes, 0)' : '0'} as quantidade_lotes,
-        (COALESCE(ee.quantidade_atual, 0) + ${incluirLotes ? 'COALESCE(la.total_lotes, 0)' : '0'}) as quantidade_atual,
+        COALESCE(ee.quantidade_atual, 0) as quantidade_atual,
         ${incluirLotes ? 'la.min_validade' : 'ee.data_validade'} as data_validade,
         ee.data_entrada,
         COALESCE(ee.updated_at, CURRENT_TIMESTAMP) as data_ultima_atualizacao
