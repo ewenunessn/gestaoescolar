@@ -400,6 +400,7 @@ export class InstitutionProvisioningService {
 
       // Create audit log
       console.log('🔧 [SERVICE] Criando log de auditoria...');
+      console.log('🔧 [SERVICE] creatorUserId:', creatorUserId, 'tipo:', typeof creatorUserId);
       await client.query(`
         INSERT INTO institution_audit_log (
           institution_id, operation, entity_type, entity_id, new_values, user_id
@@ -410,7 +411,7 @@ export class InstitutionProvisioningService {
         'user',
         user.id.toString(),
         JSON.stringify({ email: user.email, nome: user.nome }),
-        creatorUserId
+        creatorUserId || null // Garantir que seja null se undefined
       ]);
       console.log('✅ [SERVICE] Log de auditoria criado');
 
