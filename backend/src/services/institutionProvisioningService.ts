@@ -304,24 +304,30 @@ export class InstitutionProvisioningService {
    * Create user for institution
    */
   async createUser(institutionId: string, userData: any, creatorUserId: number): Promise<any> {
+    console.log('🔧 [SERVICE] createUser iniciado:', { institutionId, creatorUserId });
     const client = await this.db.connect();
     
     try {
       await client.query('BEGIN');
+      console.log('🔧 [SERVICE] Transação iniciada');
 
       // Check institution exists and limits
+      console.log('🔧 [SERVICE] Verificando instituição...');
       const institutionResult = await client.query(
         'SELECT * FROM institutions WHERE id = $1',
         [institutionId]
       );
       
       if (institutionResult.rows.length === 0) {
+        console.log('❌ [SERVICE] Instituição não encontrada:', institutionId);
         throw new Error('Instituição não encontrada');
       }
 
       const institution = institutionResult.rows[0];
+      console.log('✅ [SERVICE] Instituição encontrada:', institution.name);
 
       // Check user limit
+      console.log('🔧 [SERVICE] Verificando limite de usuários...');
       const userCountResult = await client.query(
         'SELECT COUNT(*) as count FROM institution_users WHERE institution_id = $1 AND status = $2',
         [institutionId, 'active']
@@ -329,15 +335,19 @@ export class InstitutionProvisioningService {
       
       const userCount = parseInt(userCountResult.rows[0].count);
       const maxUsers = institution.limits?.max_users || 100;
+      console.log(`🔧 [SERVICE] Usuários: ${userCount}/${maxUsers}`);
 
       if (userCount >= maxUsers) {
+        console.log('❌ [SERVICE] Limite de usuários atingido');
         throw new Error(`Limite de ${maxUsers} usuários atingido para esta instituição`);
       }
 
       // Hash password
+      console.log('🔧 [SERVICE] Gerando hash da senha...');
       const hashedPassword = await bcrypt.hash(userData.senha, 10);
 
       // Create user
+      console.log('🔧 [SERVICE] Criando usuário no banco...');
       const userQuery = `
         INSERT INTO usuarios (
           nome, email, senha, tipo, ativo, institution_id
@@ -356,8 +366,10 @@ export class InstitutionProvisioningService {
       
       const userResult = await client.query(userQuery, userValues);
       const user = userResult.rows[0];
+      console.log('✅ [SERVICE] Usuário criado:', user.id);
 
       // Link to institution
+      console.log('🔧 [SERVICE] Vinculando usuário à instituição...');
       await client.query(`
         INSERT INTO institution_users (
           institution_id, user_id, role, status
@@ -368,9 +380,11 @@ export class InstitutionProvisioningService {
         userData.institution_role || 'user',
         'active'
       ]);
+      console.log('✅ [SERVICE] Vínculo com instituição criado');
 
       // Link to tenant if specified
       if (userData.tenant_id) {
+        console.log('🔧 [SERVICE] Vinculando usuário ao tenant:', userData.tenant_id);
         await client.query(`
           INSERT INTO tenant_users (
             tenant_id, user_id, role, status
@@ -381,9 +395,11 @@ export class InstitutionProvisioningService {
           userData.tenant_role || 'user',
           'active'
         ]);
+        console.log('✅ [SERVICE] Vínculo com tenant criado');
       }
 
       // Create audit log
+      console.log('🔧 [SERVICE] Criando log de auditoria...');
       await client.query(`
         INSERT INTO institution_audit_log (
           institution_id, operation, entity_type, entity_id, new_values, user_id
@@ -396,8 +412,10 @@ export class InstitutionProvisioningService {
         JSON.stringify({ email: user.email, nome: user.nome }),
         creatorUserId
       ]);
+      console.log('✅ [SERVICE] Log de auditoria criado');
 
       await client.query('COMMIT');
+      console.log('✅ [SERVICE] Transação commitada com sucesso');
 
       return {
         success: true,
@@ -405,10 +423,13 @@ export class InstitutionProvisioningService {
         data: user
       };
     } catch (error) {
+      console.error('❌ [SERVICE] Erro durante criação:', error);
       await client.query('ROLLBACK');
+      console.log('🔄 [SERVICE] Transação revertida');
       throw error;
     } finally {
       client.release();
+      console.log('🔧 [SERVICE] Conexão liberada');
     }
   }
 

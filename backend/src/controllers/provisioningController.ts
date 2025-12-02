@@ -123,27 +123,32 @@ export class ProvisioningController {
       console.log('📝 [CREATE USER] Dados recebidos:', {
         institutionId,
         userData: { ...userData, senha: '***' },
-        creatorUserId
+        creatorUserId,
+        headers: req.headers.authorization ? 'Token presente' : 'Sem token'
       });
 
       if (!userData.nome || !userData.email || !userData.senha) {
+        console.log('❌ [CREATE USER] Validação falhou - campos obrigatórios faltando');
         return res.status(400).json({
           success: false,
           message: 'Nome, email e senha são obrigatórios'
         });
       }
 
+      console.log('🔄 [CREATE USER] Chamando provisioningService.createUser...');
       const result = await provisioningService.createUser(
         institutionId,
         userData,
         creatorUserId
       );
 
-      console.log('✅ [CREATE USER] Usuário criado com sucesso');
+      console.log('✅ [CREATE USER] Usuário criado com sucesso:', result.data?.id);
       res.status(201).json(result);
     } catch (error: any) {
       console.error('❌ [CREATE USER] Erro ao criar usuário:', error);
+      console.error('❌ [CREATE USER] Mensagem:', error.message);
       console.error('❌ [CREATE USER] Stack:', error.stack);
+      console.error('❌ [CREATE USER] Código:', error.code);
       
       if (error.message?.includes('Limite')) {
         return res.status(403).json({
@@ -162,7 +167,9 @@ export class ProvisioningController {
       res.status(500).json({
         success: false,
         message: 'Erro ao criar usuário',
-        error: error.message
+        error: error.message,
+        code: error.code,
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
       });
     }
   }
