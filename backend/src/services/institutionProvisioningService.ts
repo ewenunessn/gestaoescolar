@@ -111,8 +111,8 @@ export class InstitutionProvisioningService {
       const tenantResult = await client.query(tenantQuery, tenantValues);
       const tenant = tenantResult.rows[0];
 
-      // 3. Create admin user
-      const hashedPassword = await bcrypt.hash(data.admin.senha, 10);
+      // 3. Create admin user (salt 8 para melhor performance no Vercel)
+      const hashedPassword = await bcrypt.hash(data.admin.senha, 8);
       
       const userQuery = `
         INSERT INTO usuarios (
@@ -342,9 +342,9 @@ export class InstitutionProvisioningService {
         throw new Error(`Limite de ${maxUsers} usuários atingido para esta instituição`);
       }
 
-      // Hash password
+      // Hash password (salt 8 para melhor performance no Vercel)
       console.log('🔧 [SERVICE] Gerando hash da senha...');
-      const hashedPassword = await bcrypt.hash(userData.senha, 10);
+      const hashedPassword = await bcrypt.hash(userData.senha, 8);
 
       // Create user
       console.log('🔧 [SERVICE] Criando usuário no banco...');
