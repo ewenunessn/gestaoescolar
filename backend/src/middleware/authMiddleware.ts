@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { config } from '../config/config';
 
+import { TenantUserRole } from '../types/tenant';
+
 export interface AuthenticatedRequest extends Request {
   user?: {
     id: number;
@@ -12,7 +14,7 @@ export interface AuthenticatedRequest extends Request {
       id: string;
       slug: string;
       name: string;
-      role: string;
+      role: TenantUserRole;
     };
     tenantRole?: string;
     isSystemAdmin?: boolean;

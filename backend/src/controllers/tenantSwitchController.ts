@@ -197,7 +197,7 @@ export class TenantSwitchController {
           id: ut.tenantId,
           slug: ut.tenant?.slug,
           name: ut.tenant?.name,
-          institution_id: ut.tenant?.institution_id,
+          institution_id: (ut.tenant as any)?.institution_id,
           role: ut.role,
           status: ut.status,
           isSystemAdmin: false

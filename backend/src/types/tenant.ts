@@ -17,6 +17,7 @@ export interface Tenant {
   name: string;
   domain?: string;
   subdomain?: string;
+  institution_id?: string;
   status: TenantStatus;
   settings: TenantSettings;
   limits: TenantLimits;
