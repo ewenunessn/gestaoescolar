@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Box, Typography, Card, CardContent, Grid, Button, Chip, Alert,
   CircularProgress, Table, TableBody, TableCell, TableContainer,
@@ -91,6 +92,7 @@ const InfoItem = ({ icon, label, value }) => (
 export default function FornecedorDetalhe() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [fornecedor, setFornecedor] = useState<Fornecedor | null>(null);
   const [contratos, setContratos] = useState<Contrato[]>([]);
   const [loading, setLoading] = useState(true);

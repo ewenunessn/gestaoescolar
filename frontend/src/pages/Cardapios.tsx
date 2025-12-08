@@ -35,7 +35,7 @@ import {
   Search as SearchIcon,
   Add as AddIcon,
   MenuBook,
-  Info,
+  Visibility,
   Clear as ClearIcon,
   MoreVert,
   TuneRounded,
@@ -186,20 +186,20 @@ const CardapiosPage = () => {
         ) : error ? (
           <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={loadCardapios}>Tentar Novamente</Button></CardContent></Card>
         ) : filteredCardapios.length === 0 ? (
-          <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><MenuBook sx={{ fontSize: 64, color: '#d1d5db', mb: 2 }} /><Typography variant="h6" sx={{ color: '#6b7280' }}>Nenhum cardápio encontrado</Typography></CardContent></Card>
+          <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><MenuBook sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} /><Typography variant="h6" sx={{ color: 'text.secondary' }}>Nenhum cardápio encontrado</Typography></CardContent></Card>
         ) : (
           <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px' }}>
             <TableContainer>
               <Table size="small">
-                <TableHead><TableRow><TableCell sx={{ py: 1 }}>Cardápio</TableCell><TableCell sx={{ py: 1 }}>Modalidade</TableCell><TableCell sx={{ py: 1 }}>Vigência</TableCell><TableCell align="center" sx={{ py: 1 }}>Status</TableCell><TableCell align="center" sx={{ py: 1 }}>Ações</TableCell></TableRow></TableHead>
+                <TableHead><TableRow><TableCell sx={{ py: 1 }}>Cardápio</TableCell><TableCell align="center" sx={{ py: 1 }}>Modalidade</TableCell><TableCell align="center" sx={{ py: 1 }}>Vigência</TableCell><TableCell align="center" sx={{ py: 1 }}>Status</TableCell><TableCell align="center" sx={{ py: 1 }}>Ações</TableCell></TableRow></TableHead>
                 <TableBody>
                   {paginatedCardapios.map((cardapio) => (
                     <TableRow key={cardapio.id} hover sx={{ '& td': { py: 0.75 } }}>
                       <TableCell><Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>{cardapio.nome}</Typography><Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>{cardapio.periodo_dias} dias</Typography></TableCell>
-                      <TableCell><Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>{cardapio.modalidade_nome || 'N/A'}</Typography></TableCell>
-                      <TableCell><Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>{`${formatarData(cardapio.data_inicio)} a ${formatarData(cardapio.data_fim)}`}</Typography></TableCell>
+                      <TableCell align="center"><Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>{cardapio.modalidade_nome || 'N/A'}</Typography></TableCell>
+                      <TableCell align="center"><Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>{`${formatarData(cardapio.data_inicio)} a ${formatarData(cardapio.data_fim)}`}</Typography></TableCell>
                       <TableCell align="center"><Chip label={cardapio.ativo ? 'Ativo' : 'Inativo'} size="small" color={cardapio.ativo ? 'success' : 'error'} sx={{ height: '20px', fontSize: '0.75rem' }} /></TableCell>
-                      <TableCell align="center"><Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => navigate(`/cardapios/${cardapio.id}`)} color="primary"><Info fontSize="small" /></IconButton></Tooltip></TableCell>
+                      <TableCell align="center"><Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => navigate(`/cardapios/${cardapio.id}`)} color="primary"><Visibility fontSize="small" /></IconButton></Tooltip></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

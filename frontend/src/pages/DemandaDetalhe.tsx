@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import {
     Box,
     Button,
@@ -32,6 +33,7 @@ import { formatarData } from '../utils/dateUtils';
 export default function DemandaDetalhe() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const [demanda, setDemanda] = useState<Demanda | null>(null);
     const [loading, setLoading] = useState(true);
     const [erro, setErro] = useState('');
@@ -77,6 +79,7 @@ export default function DemandaDetalhe() {
                 status: 'enviado_semead'
             });
             setDialogEnviar(false);
+            queryClient.invalidateQueries({ queryKey: ['demandas'] });
             await carregarDemanda();
         } catch (error: any) {
             console.error('Erro ao enviar:', error);
@@ -94,6 +97,7 @@ export default function DemandaDetalhe() {
                 observacoes: `RECUSADO IMEDIATAMENTE: ${motivoRecusa}`
             });
             setDialogRecusar(false);
+            queryClient.invalidateQueries({ queryKey: ['demandas'] });
             await carregarDemanda();
         } catch (error: any) {
             console.error('Erro ao recusar:', error);
@@ -112,6 +116,7 @@ export default function DemandaDetalhe() {
                 observacoes: observacoes || demanda?.observacoes
             });
             setDialogAtender(false);
+            queryClient.invalidateQueries({ queryKey: ['demandas'] });
             await carregarDemanda();
         } catch (error: any) {
             console.error('Erro ao atender:', error);
@@ -130,6 +135,7 @@ export default function DemandaDetalhe() {
                 observacoes: observacoes || demanda?.observacoes
             });
             setDialogNaoAtender(false);
+            queryClient.invalidateQueries({ queryKey: ['demandas'] });
             await carregarDemanda();
         } catch (error: any) {
             console.error('Erro ao registrar:', error);

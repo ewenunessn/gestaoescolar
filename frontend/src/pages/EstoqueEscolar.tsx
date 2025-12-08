@@ -758,7 +758,7 @@ const EstoqueEscolarPage = () => {
                 ) : (error || estoqueQuery.error || matrizQuery.error) ? (
                     <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Alert severity="error" sx={{ mb: 2 }}>{error || estoqueQuery.error?.message || matrizQuery.error?.message}</Alert><Button variant="contained" onClick={refetchEstoque}>Tentar Novamente</Button></CardContent></Card>
                 ) : (modoVisualizacao === 'produtos' ? filteredProdutos.length === 0 : filteredEscolas.length === 0) ? (
-                    <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Inventory sx={{ fontSize: 64, color: '#d1d5db', mb: 2 }} /><Typography variant="h6" sx={{ color: '#6b7280' }}>Nenhum {modoVisualizacao === 'produtos' ? 'produto' : 'dado'} encontrado</Typography></CardContent></Card>
+                    <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Inventory sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} /><Typography variant="h6" sx={{ color: 'text.secondary' }}>Nenhum {modoVisualizacao === 'produtos' ? 'produto' : 'dado'} encontrado</Typography></CardContent></Card>
                 ) : (
                     <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px' }}>
                         {modoVisualizacao === 'produtos' ? (

@@ -1,4 +1,4 @@
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { isAuthenticated } from "../services/auth";
 import LayoutModerno from "../components/LayoutModerno";
@@ -32,6 +32,15 @@ const PageLoader = () => (
     Carregando...
   </div>
 );
+
+// Componente que verifica autenticação e redireciona de forma síncrona
+function RootRedirect() {
+  // Verifica autenticação de forma síncrona e redireciona imediatamente
+  const isAuth = isAuthenticated();
+  
+  // Retorna o Navigate diretamente, sem useEffect
+  return <Navigate to={isAuth ? "/dashboard" : "/login"} replace />;
+}
 
 // Lazy loading para páginas menos críticas
 const Escolas = lazy(() => import("../pages/Escolas"));
@@ -88,8 +97,14 @@ interface AppRouterProps {
   };
 }
 
+// Protege rotas privadas - redireciona para login se não autenticado
 function PrivateRoute({ children }: { children: JSX.Element }) {
-  return isAuthenticated() ? children : <Navigate to="/login" />;
+  return isAuthenticated() ? children : <Navigate to="/login" replace />;
+}
+
+// Protege rotas públicas (login/registro) - redireciona para dashboard se já autenticado
+function PublicRoute({ children }: { children: JSX.Element }) {
+  return !isAuthenticated() ? children : <Navigate to="/dashboard" replace />;
 }
 
 // Wrapper para rotas com lazy loading
@@ -106,12 +121,21 @@ function LazyRoute({ children }: { children: JSX.Element }) {
 }
 
 export default function AppRouter({ routerConfig }: AppRouterProps) {
+  // Remove o loader inicial assim que o React montar
+  useEffect(() => {
+    const loader = document.getElementById('initial-loader');
+    if (loader) {
+      loader.remove();
+    }
+  }, []);
+
   return (
     <BrowserRouter future={routerConfig?.future}>
       <EscolasProvider>
         <Routes>
-            {/* Landing Page Pública */}
-            <Route path="/" element={<LandingPage />} />
+            {/* Redireciona para dashboard se logado, senão para login */}
+            <Route path="/" element={<RootRedirect />} />
+            {/* Landing Page Pública (desativada) */}
             <Route path="/home" element={<LandingPage />} />
             
             {/* Formulário de Interesse */}
@@ -119,17 +143,25 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
             
             {/* Login administrativo */}
             <Route path="/login" element={
-              <LoginWrapper>
-                <Login />
-              </LoginWrapper>
+              <PublicRoute>
+                <LoginWrapper>
+                  <Login />
+                </LoginWrapper>
+              </PublicRoute>
             } />
-            <Route path="/registro" element={<Registro />} />
+            <Route path="/registro" element={
+              <PublicRoute>
+                <Registro />
+              </PublicRoute>
+            } />
             
             {/* Sistema de Gestores de Escola */}
             <Route path="/login-gestor" element={
-              <Suspense fallback={<PageLoader />}>
-                <LoginGestorEscola />
-              </Suspense>
+              <PublicRoute>
+                <Suspense fallback={<PageLoader />}>
+                  <LoginGestorEscola />
+                </Suspense>
+              </PublicRoute>
             } />
             {/* Rota única para estoque escola - versão mobile */}
             <Route path="/estoque-escola/:escolaId" element={

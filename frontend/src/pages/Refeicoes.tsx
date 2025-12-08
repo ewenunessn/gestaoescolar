@@ -398,7 +398,7 @@ const RefeicoesPage = () => {
               <TableHead>
                 <TableRow>
                   <TableCell sx={{ py: 1 }}>Nome da Refeição</TableCell>
-                  <TableCell sx={{ py: 1 }}>Tipo</TableCell>
+                  <TableCell align="center" sx={{ py: 1 }}>Tipo</TableCell>
                   <TableCell align="center" sx={{ py: 1 }}>Status</TableCell>
                   <TableCell align="center" sx={{ py: 1 }}>Ações</TableCell>
                 </TableRow>
@@ -412,7 +412,7 @@ const RefeicoesPage = () => {
                         <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>{refeicao.descricao}</Typography>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell align="center">
                       <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>{tiposRefeicao[refeicao.tipo]}</Typography>
                     </TableCell>
                     <TableCell align="center">

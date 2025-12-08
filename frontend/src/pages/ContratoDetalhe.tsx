@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   buscarContrato,
   editarContrato,
@@ -121,6 +122,7 @@ export default function ContratoDetalhe() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const queryClient = useQueryClient();
   
   // Detectar de onde o usuário veio
   const fromFornecedor = searchParams.get('from') === 'fornecedor';
@@ -275,6 +277,7 @@ export default function ContratoDetalhe() {
     try {
       await editarContrato(contrato.id, formContrato);
       setDialogState(prev => ({ ...prev, editarContrato: false }));
+      queryClient.invalidateQueries({ queryKey: ['contratos'] });
       await carregarDados();
     } catch (error: any) { setErro(error.message || "Erro ao editar contrato."); }
   };

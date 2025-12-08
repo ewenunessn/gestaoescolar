@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Typography,
@@ -72,6 +73,7 @@ const GuiaDetalhe: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { success, error } = useNotification();
+  const queryClient = useQueryClient();
 
   const [guia, setGuia] = useState<Guia | null>(null);
   const [produtos, setProdutos] = useState<GuiaProdutoEscola[]>([]);
@@ -333,6 +335,7 @@ const GuiaDetalhe: React.FC = () => {
       });
       success('Guia atualizada com sucesso!');
       setOpenEditDialog(false);
+      queryClient.invalidateQueries({ queryKey: ['guias'] });
       await carregarGuia();
     } catch (err: any) {
       error('Erro ao atualizar guia');

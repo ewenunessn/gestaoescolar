@@ -53,13 +53,13 @@ import {
   TuneRounded,
   ExpandMore,
   ExpandLess,
-  Inventory as InventoryIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { listarEscolas, criarEscola, importarEscolasLote } from '../services/escolas';
 import { useEscolas, useCriarEscola } from '../hooks/queries';
 import ImportacaoEscolas from '../components/ImportacaoEscolas';
 import LocationSelector from '../components/LocationSelector';
+import { LoadingScreen } from '../components';
 import * as XLSX from 'xlsx';
 
 // Interfaces
@@ -110,6 +110,7 @@ const EscolasPage = () => {
   // Estados de filtros
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMunicipio, setSelectedMunicipio] = useState('');
+  const [selectedAdministracao, setSelectedAdministracao] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
   const [selectedModalidades, setSelectedModalidades] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState('name');
@@ -151,9 +152,9 @@ const EscolasPage = () => {
   }, [loadEscolas]);
 
   useEffect(() => {
-    const hasFilters = !!(selectedMunicipio || selectedStatus || searchTerm || selectedModalidades.length > 0);
+    const hasFilters = !!(selectedMunicipio || selectedAdministracao || selectedStatus || searchTerm || selectedModalidades.length > 0);
     setHasActiveFilters(hasFilters);
-  }, [selectedMunicipio, selectedStatus, searchTerm, selectedModalidades]);
+  }, [selectedMunicipio, selectedAdministracao, selectedStatus, searchTerm, selectedModalidades]);
 
   const municipios = useMemo(() => [...new Set(escolas.map(e => e.municipio).filter(Boolean))].sort(), [escolas]);
   const modalidades = useMemo(() => [...new Set(escolas.flatMap(e => e.modalidades?.split(',').map(mod => mod.trim()) || []).filter(Boolean))].sort(), [escolas]);
@@ -163,15 +164,16 @@ const EscolasPage = () => {
       const searchLower = searchTerm.toLowerCase();
       const matchesSearch = escola.nome.toLowerCase().includes(searchLower) || escola.municipio?.toLowerCase().includes(searchLower);
       const matchesMunicipio = !selectedMunicipio || escola.municipio === selectedMunicipio;
+      const matchesAdministracao = !selectedAdministracao || escola.administracao === selectedAdministracao;
       const matchesStatus = !selectedStatus || (selectedStatus === 'ativo' ? escola.ativo : !escola.ativo);
       const matchesModalidades = selectedModalidades.length === 0 || (escola.modalidades && selectedModalidades.some(modalidade => escola.modalidades!.split(',').map(m => m.trim()).includes(modalidade)));
-      return matchesSearch && matchesMunicipio && matchesStatus && matchesModalidades;
+      return matchesSearch && matchesMunicipio && matchesAdministracao && matchesStatus && matchesModalidades;
     }).sort((a, b) => {
       if (sortBy === 'municipio') return (a.municipio || '').localeCompare(b.municipio || '');
       if (sortBy === 'status') return Number(b.ativo) - Number(a.ativo);
       return a.nome.localeCompare(b.nome);
     });
-  }, [escolas, searchTerm, selectedMunicipio, selectedStatus, selectedModalidades, sortBy]);
+  }, [escolas, searchTerm, selectedMunicipio, selectedAdministracao, selectedStatus, selectedModalidades, sortBy]);
 
   const paginatedEscolas = useMemo(() => {
     const startIndex = page * rowsPerPage;
@@ -183,11 +185,12 @@ const EscolasPage = () => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   }, []);
-  useEffect(() => { setPage(0); }, [searchTerm, selectedMunicipio, selectedStatus, selectedModalidades, sortBy]);
+  useEffect(() => { setPage(0); }, [searchTerm, selectedMunicipio, selectedAdministracao, selectedStatus, selectedModalidades, sortBy]);
 
   const clearFilters = useCallback(() => {
     setSearchTerm('');
     setSelectedMunicipio('');
+    setSelectedAdministracao('');
     setSelectedStatus('');
     setSelectedModalidades([]);
     setSortBy('name');
@@ -296,10 +299,11 @@ const EscolasPage = () => {
         {hasActiveFilters && <Button size="small" onClick={clearFilters} sx={{ color: 'text.secondary', textTransform: 'none', fontSize: '0.8rem' }}>Limpar</Button>}
       </Box>
       <Grid container spacing={2}>
-        <Grid item xs={12} sm={6} md={3}><FormControl fullWidth size="small"><InputLabel>Município</InputLabel><Select value={selectedMunicipio} onChange={(e: SelectChangeEvent<string>) => setSelectedMunicipio(e.target.value)} label="Município"><MenuItem value="">Todos</MenuItem>{municipios.map(m => <MenuItem key={m} value={m}>{m}</MenuItem>)}</Select></FormControl></Grid>
-        <Grid item xs={12} sm={6} md={3}><FormControl fullWidth size="small"><InputLabel>Status</InputLabel><Select value={selectedStatus} onChange={(e: SelectChangeEvent<string>) => setSelectedStatus(e.target.value)} label="Status"><MenuItem value="">Todos</MenuItem><MenuItem value="ativo">Ativas</MenuItem><MenuItem value="inativo">Inativas</MenuItem></Select></FormControl></Grid>
-        <Grid item xs={12} sm={6} md={3}><FormControl fullWidth size="small"><InputLabel>Ordenar por</InputLabel><Select value={sortBy} onChange={(e: SelectChangeEvent<string>) => setSortBy(e.target.value)} label="Ordenar por"><MenuItem value="name">Nome</MenuItem><MenuItem value="municipio">Município</MenuItem><MenuItem value="status">Status</MenuItem></Select></FormControl></Grid>
-        <Grid item xs={12} sm={6} md={3}><FormControl fullWidth size="small"><InputLabel>Modalidades</InputLabel><Select multiple value={selectedModalidades} onChange={(e: SelectChangeEvent<string[]>) => setSelectedModalidades(e.target.value as string[])} input={<OutlinedInput label="Modalidades" />} renderValue={(selected) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map(v => <Chip key={v} label={v} size="small" />)}</Box>}>{modalidades.map(m => <MenuItem key={m} value={m}><Checkbox checked={selectedModalidades.includes(m)} />{m}</MenuItem>)}</Select></FormControl></Grid>
+        <Grid item xs={12} sm={6} md={2.4}><FormControl fullWidth size="small"><InputLabel>Município</InputLabel><Select value={selectedMunicipio} onChange={(e: SelectChangeEvent<string>) => setSelectedMunicipio(e.target.value)} label="Município"><MenuItem value="">Todos</MenuItem>{municipios.map(m => <MenuItem key={m} value={m}>{m}</MenuItem>)}</Select></FormControl></Grid>
+        <Grid item xs={12} sm={6} md={2.4}><FormControl fullWidth size="small"><InputLabel>Administração</InputLabel><Select value={selectedAdministracao} onChange={(e: SelectChangeEvent<string>) => setSelectedAdministracao(e.target.value)} label="Administração"><MenuItem value="">Todas</MenuItem><MenuItem value="municipal">Municipal</MenuItem><MenuItem value="estadual">Estadual</MenuItem><MenuItem value="federal">Federal</MenuItem><MenuItem value="particular">Particular</MenuItem></Select></FormControl></Grid>
+        <Grid item xs={12} sm={6} md={2.4}><FormControl fullWidth size="small"><InputLabel>Status</InputLabel><Select value={selectedStatus} onChange={(e: SelectChangeEvent<string>) => setSelectedStatus(e.target.value)} label="Status"><MenuItem value="">Todos</MenuItem><MenuItem value="ativo">Ativas</MenuItem><MenuItem value="inativo">Inativas</MenuItem></Select></FormControl></Grid>
+        <Grid item xs={12} sm={6} md={2.4}><FormControl fullWidth size="small"><InputLabel>Ordenar por</InputLabel><Select value={sortBy} onChange={(e: SelectChangeEvent<string>) => setSortBy(e.target.value)} label="Ordenar por"><MenuItem value="name">Nome</MenuItem><MenuItem value="municipio">Município</MenuItem><MenuItem value="status">Status</MenuItem></Select></FormControl></Grid>
+        <Grid item xs={12} sm={6} md={2.4}><FormControl fullWidth size="small"><InputLabel>Modalidades</InputLabel><Select multiple value={selectedModalidades} onChange={(e: SelectChangeEvent<string[]>) => setSelectedModalidades(e.target.value as string[])} input={<OutlinedInput label="Modalidades" />} renderValue={(selected) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map(v => <Chip key={v} label={v} size="small" />)}</Box>}>{modalidades.map(m => <MenuItem key={m} value={m}><Checkbox checked={selectedModalidades.includes(m)} />{m}</MenuItem>)}</Select></FormControl></Grid>
       </Grid>
     </Box>
   );
@@ -318,7 +322,6 @@ const EscolasPage = () => {
             <Box sx={{ display: 'flex', gap: 1 }}>
               <Button variant={filtersExpanded || hasActiveFilters ? 'contained' : 'outlined'} startIcon={filtersExpanded ? <ExpandLess /> : <TuneRounded />} onClick={toggleFilters} size="small">Filtros{hasActiveFilters && !filtersExpanded && (<Box sx={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', bgcolor: 'error.main' }} />)}</Button>
               <Button startIcon={<AddIcon />} onClick={openModal} variant="contained" color="success" size="small">Nova Escola</Button>
-              <Button startIcon={<InventoryIcon />} onClick={() => navigate('/movimentacao-estoque')} variant="contained" color="primary" size="small">Movimentar Estoque</Button>
               <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)} size="small"><MoreVert /></IconButton>
             </Box>
           </Box>
@@ -334,15 +337,15 @@ const EscolasPage = () => {
           </Alert>
         )}
 
-        {loading ? (<Card><CardContent sx={{ textAlign: 'center', py: 6 }}><CircularProgress size={60} /></CardContent></Card>
+        {loading ? (<LoadingScreen message="Carregando escolas..." />
         ) : error && escolas.length === 0 ? (<Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={loadEscolas}>Tentar Novamente</Button></CardContent></Card>
         ) : filteredEscolas.length === 0 ? (<Card><CardContent sx={{ textAlign: 'center', py: 6 }}><School sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} /><Typography variant="h6" sx={{ color: 'text.secondary' }}>Nenhuma escola encontrada</Typography></CardContent></Card>
         ) : (
           <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px' }}>
             <TableContainer>
               <Table size="small">
-                <TableHead><TableRow><TableCell sx={{ py: 1 }}>Nome da Escola</TableCell><TableCell align="center" sx={{ py: 1 }}>Total de Alunos</TableCell><TableCell sx={{ py: 1 }}>Modalidades</TableCell><TableCell sx={{ py: 1 }}>Município</TableCell><TableCell align="center" sx={{ py: 1 }}>Status</TableCell><TableCell align="center" sx={{ py: 1 }}>Ações</TableCell></TableRow></TableHead>
-                <TableBody>{paginatedEscolas.map((escola) => (<TableRow key={escola.id} hover sx={{ '& td': { py: 0.75 } }}><TableCell><Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>{escola.nome}</Typography>{escola.endereco && <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.75rem' }}>{escola.endereco}</Typography>}</TableCell><TableCell align="center"><Typography variant="body2" sx={{ fontWeight: 600, color: 'primary.main', fontSize: '0.875rem' }}>{escola.total_alunos || 0}</Typography></TableCell><TableCell><Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>{escola.modalidades || '-'}</Typography></TableCell><TableCell><Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>{escola.municipio || '-'}</Typography></TableCell><TableCell align="center"><Chip label={escola.ativo ? 'Ativa' : 'Inativa'} size="small" color={escola.ativo ? 'success' : 'error'} sx={{ height: '20px', fontSize: '0.75rem' }} /></TableCell><TableCell align="center"><Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => handleViewDetails(escola)} color="primary"><Visibility fontSize="small" /></IconButton></Tooltip></TableCell></TableRow>))}</TableBody>
+                <TableHead><TableRow><TableCell sx={{ py: 1 }}>Nome da Escola</TableCell><TableCell align="center" sx={{ py: 1 }}>Total de Alunos</TableCell><TableCell align="center" sx={{ py: 1 }}>Modalidades</TableCell><TableCell align="center" sx={{ py: 1 }}>Município</TableCell><TableCell align="center" sx={{ py: 1 }}>Administração</TableCell><TableCell align="center" sx={{ py: 1 }}>Status</TableCell><TableCell align="center" sx={{ py: 1 }}>Ações</TableCell></TableRow></TableHead>
+                <TableBody>{paginatedEscolas.map((escola) => (<TableRow key={escola.id} hover sx={{ '& td': { py: 0.75 } }}><TableCell><Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>{escola.nome}</Typography>{escola.endereco && <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.75rem' }}>{escola.endereco}</Typography>}</TableCell><TableCell align="center"><Typography variant="body2" sx={{ fontWeight: 600, color: 'primary.main', fontSize: '0.875rem' }}>{escola.total_alunos || 0}</Typography></TableCell><TableCell align="center"><Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>{escola.modalidades || '-'}</Typography></TableCell><TableCell align="center"><Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>{escola.municipio || '-'}</Typography></TableCell><TableCell align="center"><Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', textTransform: 'capitalize' }}>{escola.administracao || '-'}</Typography></TableCell><TableCell align="center"><Chip label={escola.ativo ? 'Ativa' : 'Inativa'} size="small" color={escola.ativo ? 'success' : 'error'} sx={{ height: '20px', fontSize: '0.75rem' }} /></TableCell><TableCell align="center"><Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => handleViewDetails(escola)} color="primary"><Visibility fontSize="small" /></IconButton></Tooltip></TableCell></TableRow>))}</TableBody>
               </Table>
             </TableContainer>
             <TablePagination component="div" count={filteredEscolas.length} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage} onRowsPerPageChange={handleChangeRowsPerPage} rowsPerPageOptions={[25, 50, 100, 200]} labelRowsPerPage="Itens por página:" />

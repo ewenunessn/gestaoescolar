@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   buscarRefeicao,
   editarRefeicao,
@@ -272,6 +273,7 @@ function DraggableProduct({
 export default function RefeicaoDetalhe() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [refeicao, setRefeicao] = useState<any>(null);
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [associacoes, setAssociacoes] = useState<RefeicaoProduto[]>([]);
@@ -342,6 +344,7 @@ export default function RefeicaoDetalhe() {
       const atualizado = await editarRefeicao(Number(id), form);
       setRefeicao(atualizado);
       setEditando(false);
+      queryClient.invalidateQueries({ queryKey: ['refeicoes'] });
     } catch {
       setErro("Erro ao salvar alterações");
     } finally {

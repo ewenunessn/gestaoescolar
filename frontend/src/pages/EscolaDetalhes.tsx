@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import {
     Box, Typography, TextField, Button, IconButton, Select, MenuItem,
     FormControl, InputLabel, Card, CircularProgress, Alert, FormControlLabel,
@@ -63,7 +64,7 @@ interface EscolaModalidade {
 
 // --- Subcomponentes de UI ---
 
-const PageHeader = ({ escola, totalAlunos, isEditing, onEdit, onSave, onCancel, onEstoque, onDelete, salvando }) => (
+const PageHeader = ({ escola, totalAlunos, isEditing, onEdit, onSave, onCancel, onDelete, salvando }) => (
     <Card sx={{ p: 3, mb: 3, borderRadius: '12px' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -84,8 +85,6 @@ const PageHeader = ({ escola, totalAlunos, isEditing, onEdit, onSave, onCancel, 
                     ) : (
                         <>
                             <Button startIcon={<EditIcon />} onClick={onEdit} variant="outlined" size="small">Editar</Button>
-                            <Button startIcon={<InventoryIcon />} onClick={onEstoque} variant="contained" color="success" size="small">Estoque</Button>
-                            <Button startIcon={<InventoryIcon />} onClick={() => navigate('/movimentacao-estoque')} variant="contained" color="primary" size="small">Movimentar Estoque</Button>
                             <Button startIcon={<DeleteIcon />} onClick={onDelete} variant="contained" color="error" size="small">Excluir</Button>
                         </>
                     )}
@@ -201,6 +200,7 @@ const EscolaInfoCard = ({ isEditing, formData, setFormData, associacoes, totalAl
 const EscolaDetalhesPage = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
 
     // (Estados principais e de edição mantidos)
     const [escola, setEscola] = useState<Escola | null>(null);
@@ -257,9 +257,11 @@ const EscolaDetalhesPage = () => {
             setEscola(escolaAtualizada);
             setIsEditing(false);
             setSuccessMessage('Escola atualizada com sucesso!');
+            // Invalidar cache do React Query
+            queryClient.invalidateQueries({ queryKey: ['escolas'] });
         } catch (err: any) { setError('Erro ao salvar alterações da escola'); }
         finally { setIsSaving(false); setTimeout(() => setSuccessMessage(null), 3000); }
-    }, [id, formData]);
+    }, [id, formData, queryClient]);
 
     const handleCancelEdit = useCallback(() => {
         setIsEditing(false);
@@ -332,7 +334,7 @@ const EscolaDetalhesPage = () => {
                 <PageHeader
                     escola={escola} totalAlunos={totalAlunos} isEditing={isEditing}
                     onEdit={() => setIsEditing(true)} onSave={handleSaveEscola} onCancel={handleCancelEdit}
-                    onEstoque={() => navigate(`/escolas/${id}/estoque`)} onDelete={() => setDeleteDialogOpen(true)}
+                    onDelete={() => setDeleteDialogOpen(true)}
                     salvando={isSaving}
                 />
 

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Box, Typography, Button, Card, CardContent, CircularProgress,
   Alert, Dialog, DialogTitle, DialogContent, DialogActions, TextField,
-  Chip, FormControlLabel, Switch, Paper, Grid, Stack
+  Chip, FormControlLabel, Switch, Paper, Grid, Stack, FormControl, InputLabel, Select, MenuItem
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon, Edit as EditIcon, Delete as DeleteIcon, Save as SaveIcon,
@@ -115,6 +116,7 @@ export default function ProdutoDetalhe() {
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingComp, setIsSavingComp] = useState(false);
   const [openExcluir, setOpenExcluir] = useState(false);
+  const queryClient = useQueryClient();
 
   const loadData = useCallback(async () => {
     if (!id) return;
@@ -146,9 +148,12 @@ export default function ProdutoDetalhe() {
       const atualizado = await editarProduto(Number(id), dataToSend);
       setProduto(atualizado); setIsEditing(false);
       setSuccessMessage('Produto atualizado com sucesso!');
+      // Invalidar cache do React Query para atualizar a listagem
+      queryClient.invalidateQueries({ queryKey: ['produtos'] });
+      queryClient.invalidateQueries({ queryKey: ['categorias-produtos'] });
     } catch { setError("Erro ao salvar alterações"); } 
     finally { setIsSaving(false); setTimeout(() => setSuccessMessage(null), 3000); }
-  }, [id, form]);
+  }, [id, form, queryClient]);
 
   const handleSaveComposition = useCallback(async (compData) => {
     setIsSavingComp(true);
@@ -204,7 +209,22 @@ export default function ProdutoDetalhe() {
                         {isEditing ? <TextField label="Marca" value={form.marca || ""} onChange={e => setForm({ ...form, marca: e.target.value })} fullWidth /> : <InfoItem label="Tipo de Processamento" value={produto.tipo_processamento}/>}
                     </Grid>
                     <Grid item xs={12}>
-                        {isEditing ? <TextField label="Tipo de Processamento" value={form.tipo_processamento || ""} onChange={e => setForm({ ...form, tipo_processamento: e.target.value })} fullWidth /> : null}
+                        {isEditing ? (
+                            <FormControl fullWidth>
+                                <InputLabel>Tipo de Processamento</InputLabel>
+                                <Select 
+                                    value={form.tipo_processamento || ""} 
+                                    onChange={e => setForm({ ...form, tipo_processamento: e.target.value })}
+                                    label="Tipo de Processamento"
+                                >
+                                    <MenuItem value="">Nenhum</MenuItem>
+                                    <MenuItem value="in natura">In Natura</MenuItem>
+                                    <MenuItem value="minimamente processado">Minimamente Processado</MenuItem>
+                                    <MenuItem value="processado">Processado</MenuItem>
+                                    <MenuItem value="ultraprocessado">Ultraprocessado</MenuItem>
+                                </Select>
+                            </FormControl>
+                        ) : null}
                     </Grid>
                     <Grid item xs={12}>
                         {isEditing && <FormControlLabel control={<Switch checked={form.ativo} onChange={e => setForm({ ...form, ativo: e.target.checked })}/>} label="Produto Ativo" />}

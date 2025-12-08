@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Button,
@@ -47,6 +48,7 @@ import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 export default function PedidoDetalhe() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [pedido, setPedido] = useState<PedidoDetalhado | null>(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState('');
@@ -149,6 +151,7 @@ export default function PedidoDetalhe() {
     try {
       setProcessando(true);
       await pedidosService.atualizarStatus(Number(id), novoStatus);
+      queryClient.invalidateQueries({ queryKey: ['pedidos'] });
       await carregarPedido();
       setErro('');
     } catch (error: any) {

@@ -35,13 +35,14 @@ import {
   FilterList as FilterListIcon,
   Search as SearchIcon,
   Save as SaveIcon,
-  Cancel as CancelIcon
+  Cancel as CancelIcon,
+  Assignment as AssignmentIcon
 } from '@mui/icons-material';
 import demandasService from '../services/demandas';
 import { listarEscolas } from '../services/escolas';
 import { Demanda, STATUS_DEMANDA } from '../types/demanda';
 import { formatarData } from '../utils/dateUtils';
-import { DemandaDetalhesModal } from '../components';
+import { DemandaDetalhesModal, LoadingScreen } from '../components';
 
 export default function DemandasLista() {
   const [demandas, setDemandas] = useState<Demanda[]>([]);
@@ -410,11 +411,7 @@ export default function DemandasLista() {
   };
 
   if (loading) {
-    return (
-      <Box sx={{ p: 3 }}>
-        <Typography>Carregando...</Typography>
-      </Box>
-    );
+    return <LoadingScreen message="Carregando demandas..." />;
   }
 
   return (
@@ -429,7 +426,7 @@ export default function DemandasLista() {
 
       <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
         <Typography variant="h4" sx={{ mb: 3, fontWeight: 700, color: 'text.primary' }}>
-          Demandas SEMED
+          Gerenciamento de Demandas
         </Typography>
         
         <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', p: 3, mb: 3 }}>
@@ -562,6 +559,7 @@ export default function DemandasLista() {
         ) : demandasPaginadas.length === 0 && !modoEdicao ? (
           <Card>
             <CardContent sx={{ textAlign: 'center', py: 6 }}>
+              <AssignmentIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
               <Typography variant="h6" sx={{ color: 'text.secondary' }}>
                 Nenhuma demanda encontrada
               </Typography>

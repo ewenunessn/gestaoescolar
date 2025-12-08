@@ -49,11 +49,12 @@ import {
   ListItemText,
   Collapse,
   Divider,
+  Autocomplete,
 } from "@mui/material";
 import {
   Search as SearchIcon,
   Add as AddIcon,
-  Info,
+  Visibility,
   Inventory,
   Download,
   MoreVert,
@@ -137,6 +138,10 @@ const ProdutosPage = () => {
     unidade: "",
     categoria: "",
     marca: "",
+    peso: undefined,
+    fator_divisao: undefined,
+    tipo_processamento: "",
+    perecivel: false,
     ativo: true,
   });
 
@@ -225,7 +230,21 @@ const ProdutosPage = () => {
     setFormData({ nome: "", descricao: "", unidade: "", categoria: "", marca: "", ativo: true });
     setModalOpen(true);
   };
-  const closeModal = () => setModalOpen(false);
+  const closeModal = () => {
+    setModalOpen(false);
+    setFormData({
+      nome: "",
+      descricao: "",
+      unidade: "",
+      categoria: "",
+      marca: "",
+      peso: undefined,
+      fator_divisao: undefined,
+      tipo_processamento: "",
+      perecivel: false,
+      ativo: true,
+    });
+  };
 
   const handleSave = async () => {
     try {
@@ -517,15 +536,15 @@ const ProdutosPage = () => {
           <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px' }}>
             <TableContainer>
               <Table stickyHeader size="small">
-                <TableHead><TableRow><TableCell sx={{ py: 1 }}>Nome do Produto</TableCell><TableCell sx={{ py: 1 }}>Categoria</TableCell><TableCell sx={{ py: 1 }}>Marca</TableCell><TableCell sx={{ py: 1 }}>Status</TableCell><TableCell align="center" sx={{ py: 1 }}>Ações</TableCell></TableRow></TableHead>
+                <TableHead><TableRow><TableCell sx={{ py: 1 }}>Nome do Produto</TableCell><TableCell align="center" sx={{ py: 1 }}>Categoria</TableCell><TableCell align="center" sx={{ py: 1 }}>Marca</TableCell><TableCell align="center" sx={{ py: 1 }}>Status</TableCell><TableCell align="center" sx={{ py: 1 }}>Ações</TableCell></TableRow></TableHead>
                 <TableBody>
                   {paginatedProdutos.map((produto) => (
                     <TableRow key={produto.id} hover sx={{ '& td': { py: 0.75 } }}>
                       <TableCell><Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>{produto.nome}</Typography>{produto.descricao && <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>{produto.descricao}</Typography>}</TableCell>
-                      <TableCell><Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>{produto.categoria || 'N/A'}</Typography></TableCell>
-                      <TableCell><Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>{produto.marca || 'N/A'}</Typography></TableCell>
-                      <TableCell><Chip label={produto.ativo ? 'Ativo' : 'Inativo'} size="small" color={produto.ativo ? 'success' : 'error'} sx={{ height: '20px', fontSize: '0.75rem' }} /></TableCell>
-                      <TableCell align="center"><Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => navigate(`/produtos/${produto.id}`)} color="primary"><Info fontSize="small" /></IconButton></Tooltip></TableCell>
+                      <TableCell align="center"><Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>{produto.categoria || 'N/A'}</Typography></TableCell>
+                      <TableCell align="center"><Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>{produto.marca || 'N/A'}</Typography></TableCell>
+                      <TableCell align="center"><Chip label={produto.ativo ? 'Ativo' : 'Inativo'} size="small" color={produto.ativo ? 'success' : 'error'} sx={{ height: '20px', fontSize: '0.75rem' }} /></TableCell>
+                      <TableCell align="center"><Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => navigate(`/produtos/${produto.id}`)} color="primary"><Visibility fontSize="small" /></IconButton></Tooltip></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -537,14 +556,67 @@ const ProdutosPage = () => {
       </Box>
 
       {/* Modal de Criação */}
-      <Dialog open={modalOpen} onClose={closeModal} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: '12px' } }}>
+      <Dialog open={modalOpen} onClose={closeModal} maxWidth="md" fullWidth PaperProps={{ sx: { borderRadius: '12px' } }}>
         <DialogTitle sx={{ fontWeight: 600 }}>Novo Produto</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
           <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <TextField label="Nome do Produto" value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} required />
-            <TextField label="Descrição" value={formData.descricao} onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} multiline rows={2} />
-            <Box sx={{ display: 'flex', gap: 2 }}><TextField label="Categoria" value={formData.categoria} onChange={(e) => setFormData({ ...formData, categoria: e.target.value })} sx={{ flex: 1 }} /><TextField label="Marca" value={formData.marca} onChange={(e) => setFormData({ ...formData, marca: e.target.value })} sx={{ flex: 1 }} /></Box>
-            <FormControlLabel control={<Switch checked={formData.ativo} onChange={(e) => setFormData({ ...formData, ativo: e.target.checked })} />} label="Produto Ativo" />
+            <TextField label="Nome do Produto" value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} required fullWidth />
+            <TextField label="Descrição" value={formData.descricao} onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} multiline rows={2} fullWidth />
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <Autocomplete
+                freeSolo
+                options={categorias}
+                value={formData.categoria}
+                onChange={(event, newValue) => setFormData({ ...formData, categoria: newValue || '' })}
+                onInputChange={(event, newInputValue) => setFormData({ ...formData, categoria: newInputValue })}
+                renderInput={(params) => <TextField {...params} label="Categoria" />}
+                sx={{ flex: 1 }}
+              />
+              <Autocomplete
+                freeSolo
+                options={marcas}
+                value={formData.marca}
+                onChange={(event, newValue) => setFormData({ ...formData, marca: newValue || '' })}
+                onInputChange={(event, newInputValue) => setFormData({ ...formData, marca: newInputValue })}
+                renderInput={(params) => <TextField {...params} label="Marca" />}
+                sx={{ flex: 1 }}
+              />
+            </Box>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <TextField label="Unidade" value={formData.unidade} onChange={(e) => setFormData({ ...formData, unidade: e.target.value })} placeholder="kg, g, L, ml, un" sx={{ flex: 1 }} />
+              <TextField 
+                label="Peso (g)" 
+                type="number" 
+                value={formData.peso ?? ''} 
+                onChange={(e) => setFormData({ ...formData, peso: e.target.value ? parseFloat(e.target.value) : undefined })} 
+                inputProps={{ step: 0.1, min: 0 }}
+                sx={{ flex: 1 }} 
+              />
+            </Box>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <TextField 
+                label="Fator de Divisão" 
+                type="number" 
+                value={formData.fator_divisao ?? ''} 
+                onChange={(e) => setFormData({ ...formData, fator_divisao: e.target.value ? parseFloat(e.target.value) : undefined })} 
+                inputProps={{ step: 0.1, min: 0 }}
+                sx={{ flex: 1 }} 
+              />
+              <FormControl sx={{ flex: 1 }}>
+                <InputLabel>Tipo de Processamento</InputLabel>
+                <Select value={formData.tipo_processamento || ''} onChange={(e) => setFormData({ ...formData, tipo_processamento: e.target.value })} label="Tipo de Processamento">
+                  <MenuItem value="">Nenhum</MenuItem>
+                  <MenuItem value="in natura">In Natura</MenuItem>
+                  <MenuItem value="minimamente processado">Minimamente Processado</MenuItem>
+                  <MenuItem value="processado">Processado</MenuItem>
+                  <MenuItem value="ultraprocessado">Ultraprocessado</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <FormControlLabel control={<Switch checked={formData.perecivel || false} onChange={(e) => setFormData({ ...formData, perecivel: e.target.checked })} />} label="Produto Perecível" />
+              <FormControlLabel control={<Switch checked={formData.ativo} onChange={(e) => setFormData({ ...formData, ativo: e.target.checked })} />} label="Produto Ativo" />
+            </Box>
           </Box>
         </DialogContent>
         <DialogActions sx={{ p: 3, pt: 1 }}>

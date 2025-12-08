@@ -6,6 +6,7 @@ import {
   useLocation,
   Link as RouterLink,
 } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   buscarCardapio,
   criarCardapio,
@@ -296,6 +297,7 @@ export default function CardapioDetalhe() {
   const isNovo = location.pathname.endsWith("/novo");
   const navigate = useNavigate();
   const { safeString, safeDate } = useSafeData();
+  const queryClient = useQueryClient();
   
   // Estados principais
   const [cardapio, setCardapio] = useState<any>(isNovo ? {} : null);
@@ -535,6 +537,8 @@ export default function CardapioDetalhe() {
         console.log('ID do cardápio:', novoCardapio?.id);
         console.log('Tipo do ID:', typeof novoCardapio?.id);
         
+        queryClient.invalidateQueries({ queryKey: ['cardapios'] });
+        
         if (novoCardapio && novoCardapio.id) {
           const targetUrl = `/cardapios/${novoCardapio.id}`;
           console.log('Navegando para:', targetUrl);
@@ -547,6 +551,7 @@ export default function CardapioDetalhe() {
         const cardapioAtualizado = await editarCardapio(parseInt(id!), dadosParaEnviar);
         setCardapio(cardapioAtualizado);
         setEditando(false);
+        queryClient.invalidateQueries({ queryKey: ['cardapios'] });
       }
     } catch (error) {
       console.error("Erro ao salvar:", error);

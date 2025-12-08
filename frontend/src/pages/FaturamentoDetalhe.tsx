@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Button,
@@ -40,6 +41,7 @@ import { exportarContratoParaExcel } from '../utils/exportarFaturamentoExcel';
 export default function FaturamentoDetalhe() {
   const { pedidoId } = useParams<{ pedidoId: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState('');
   const [faturamentos, setFaturamentos] = useState<any[]>([]);
@@ -175,6 +177,9 @@ export default function FaturamentoDetalhe() {
       setErro('');
 
       await faturamentoService.excluir(faturamentos[0].id);
+      
+      queryClient.invalidateQueries({ queryKey: ['faturamentos'] });
+      queryClient.invalidateQueries({ queryKey: ['pedidos'] });
       
       // Redirecionar de volta para o pedido
       navigate(`/pedidos/${pedidoId}`, {

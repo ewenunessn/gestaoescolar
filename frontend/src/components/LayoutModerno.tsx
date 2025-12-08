@@ -82,7 +82,7 @@ const getMenuConfig = (configModuloSaldo: any) => {
       category: "Principal",
       items: [
         { text: "Dashboard", icon: <Dashboard />, path: "/dashboard" },
-        { text: "Demandas SEMED", icon: <RequestPage />, path: "/demandas" },
+        { text: "Gerenciamento de Demandas", icon: <RequestPage />, path: "/demandas" },
       ],
     },
     {
