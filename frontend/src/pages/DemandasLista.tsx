@@ -706,7 +706,12 @@ export default function DemandasLista() {
                   }}
                   onClick={() => setLinhaSelecionada(index)}
                 >
-                  <TableCell sx={{ minWidth: 200, width: 250 }}>{demanda.escola_nome}</TableCell>
+                  <TableCell sx={{ minWidth: 200, width: 250 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <StatusIndicator status={demanda.status} size="small" />
+                      <Typography variant="body2">{demanda.escola_nome}</Typography>
+                    </Box>
+                  </TableCell>
                   <TableCell>{demanda.numero_oficio}</TableCell>
                   <TableCell>{formatarData(demanda.data_solicitacao)}</TableCell>
                   <TableCell sx={{ maxWidth: 300, minWidth: 250 }}>

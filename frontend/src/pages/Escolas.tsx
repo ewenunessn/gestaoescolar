@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import StatusIndicator from '../components/StatusIndicator';
 import {
   Box,
   Typography,
@@ -344,8 +345,27 @@ const EscolasPage = () => {
           <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px' }}>
             <TableContainer>
               <Table size="small">
-                <TableHead><TableRow><TableCell sx={{ py: 1 }}>Nome da Escola</TableCell><TableCell align="center" sx={{ py: 1 }}>Total de Alunos</TableCell><TableCell align="center" sx={{ py: 1 }}>Modalidades</TableCell><TableCell align="center" sx={{ py: 1 }}>Município</TableCell><TableCell align="center" sx={{ py: 1 }}>Administração</TableCell><TableCell align="center" sx={{ py: 1 }}>Status</TableCell><TableCell align="center" sx={{ py: 1 }}>Ações</TableCell></TableRow></TableHead>
-                <TableBody>{paginatedEscolas.map((escola) => (<TableRow key={escola.id} hover sx={{ '& td': { py: 0.75 } }}><TableCell><Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>{escola.nome}</Typography>{escola.endereco && <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.75rem' }}>{escola.endereco}</Typography>}</TableCell><TableCell align="center"><Typography variant="body2" sx={{ fontWeight: 600, color: 'primary.main', fontSize: '0.875rem' }}>{escola.total_alunos || 0}</Typography></TableCell><TableCell align="center"><Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>{escola.modalidades || '-'}</Typography></TableCell><TableCell align="center"><Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>{escola.municipio || '-'}</Typography></TableCell><TableCell align="center"><Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', textTransform: 'capitalize' }}>{escola.administracao || '-'}</Typography></TableCell><TableCell align="center"><Chip label={escola.ativo ? 'Ativa' : 'Inativa'} size="small" color={escola.ativo ? 'success' : 'error'} sx={{ height: '20px', fontSize: '0.75rem' }} /></TableCell><TableCell align="center"><Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => handleViewDetails(escola)} color="primary"><Visibility fontSize="small" /></IconButton></Tooltip></TableCell></TableRow>))}</TableBody>
+                <TableHead><TableRow><TableCell sx={{ py: 1 }}>Nome da Escola</TableCell><TableCell align="center" sx={{ py: 1 }}>Total de Alunos</TableCell><TableCell align="center" sx={{ py: 1 }}>Modalidades</TableCell><TableCell align="center" sx={{ py: 1 }}>Município</TableCell><TableCell align="center" sx={{ py: 1 }}>Administração</TableCell><TableCell align="center" sx={{ py: 1 }}>Ações</TableCell></TableRow></TableHead>
+                <TableBody>
+                  {paginatedEscolas.map((escola) => (
+                    <TableRow key={escola.id} hover sx={{ '& td': { py: 0.75 } }}>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <StatusIndicator status={escola.ativo ? 'ativo' : 'inativo'} size="small" />
+                          <Box>
+                            <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>{escola.nome}</Typography>
+                            {escola.endereco && <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.75rem' }}>{escola.endereco}</Typography>}
+                          </Box>
+                        </Box>
+                      </TableCell>
+                      <TableCell align="center"><Typography variant="body2" sx={{ fontWeight: 600, color: 'primary.main', fontSize: '0.875rem' }}>{escola.total_alunos || 0}</Typography></TableCell>
+                      <TableCell align="center"><Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>{escola.modalidades || '-'}</Typography></TableCell>
+                      <TableCell align="center"><Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>{escola.municipio || '-'}</Typography></TableCell>
+                      <TableCell align="center"><Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', textTransform: 'capitalize' }}>{escola.administracao || '-'}</Typography></TableCell>
+                      <TableCell align="center"><Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => handleViewDetails(escola)} color="primary"><Visibility fontSize="small" /></IconButton></Tooltip></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
               </Table>
             </TableContainer>
             <TablePagination component="div" count={filteredEscolas.length} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage} onRowsPerPageChange={handleChangeRowsPerPage} rowsPerPageOptions={[25, 50, 100, 200]} labelRowsPerPage="Itens por página:" />

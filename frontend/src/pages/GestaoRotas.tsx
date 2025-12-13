@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import StatusIndicator from '../components/StatusIndicator';
 import { useNavigate } from 'react-router-dom';
 import {
     Box,
@@ -406,7 +407,6 @@ const GestaoRotas: React.FC = () => {
                                         <TableCell>Nome da Rota</TableCell>
                                         <TableCell align="center">Total de Escolas</TableCell>
                                         <TableCell>Descrição</TableCell>
-                                        <TableCell align="center">Status</TableCell>
                                         <TableCell align="center">Ações</TableCell>
                                     </TableRow>
                                 </TableHead>
@@ -415,6 +415,7 @@ const GestaoRotas: React.FC = () => {
                                         <TableRow key={rota.id} hover>
                                             <TableCell>
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                                    <StatusIndicator status={rota.ativo ? 'ativo' : 'inativo'} size="small" />
                                                     <Avatar sx={{ bgcolor: rota.cor, width: 32, height: 32 }}>
                                                         <RouteIcon fontSize="small" />
                                                     </Avatar>
@@ -433,14 +434,7 @@ const GestaoRotas: React.FC = () => {
                                                     {rota.descricao || '-'}
                                                 </Typography>
                                             </TableCell>
-                                            <TableCell align="center">
-                                                <Chip
-                                                    label={rota.ativo ? 'Ativa' : 'Inativa'}
-                                                    size="small"
-                                                    color={rota.ativo ? 'success' : 'error'}
-                                                    variant="outlined"
-                                                />
-                                            </TableCell>
+
                                             <TableCell align="center">
                                                 <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
                                                     <Tooltip title="Gerenciar Escolas">

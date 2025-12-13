@@ -28,6 +28,7 @@ import {
   TablePagination,
   Tooltip,
 } from "@mui/material";
+import StatusIndicator from "../components/StatusIndicator";
 import {
   Add as AddIcon,
   Info as InfoIcon,
@@ -210,17 +211,22 @@ const ContratosPage: React.FC = () => {
           <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px' }}>
             <TableContainer>
               <Table>
-                <TableHead><TableRow><TableCell>Número</TableCell><TableCell>Fornecedor</TableCell><TableCell>Vigência</TableCell><TableCell align="right">Valor Total</TableCell><TableCell align="center">Status</TableCell><TableCell align="center">Ações</TableCell></TableRow></TableHead>
+                <TableHead><TableRow><TableCell>Número</TableCell><TableCell>Fornecedor</TableCell><TableCell>Vigência</TableCell><TableCell align="right">Valor Total</TableCell><TableCell align="center">Ações</TableCell></TableRow></TableHead>
                 <TableBody>
                   {paginatedContratos.map((contrato) => {
                     const status = getStatusContrato(contrato);
                     return (
                       <TableRow key={contrato.id} hover>
-                        <TableCell><Typography variant="body2" sx={{ fontWeight: 600 }}>{contrato.numero}</Typography></TableCell>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <StatusIndicator status={contrato.status} size="small" />
+                            <Typography variant="body2" sx={{ fontWeight: 600 }}>{contrato.numero}</Typography>
+                          </Box>
+                        </TableCell>
                         <TableCell><Typography variant="body2" color="text.secondary">{fornecedorMap.get(contrato.fornecedor_id) || "N/A"}</Typography></TableCell>
                         <TableCell><Typography variant="body2" color="text.secondary">{`${formatarData(contrato.data_inicio)} a ${formatarData(contrato.data_fim)}`}</Typography></TableCell>
                         <TableCell align="right"><Typography variant="body2" color="text.secondary">{formatarValor(contrato.valor_total_contrato)}</Typography></TableCell>
-                        <TableCell align="center"><Chip label={status.status} size="small" color={status.color} /></TableCell>
+
                         <TableCell align="center"><Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => navigate(`/contratos/${contrato.id}`)} color="primary"><InfoIcon fontSize="small" /></IconButton></Tooltip></TableCell>
                       </TableRow>
                     );

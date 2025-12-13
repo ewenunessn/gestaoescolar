@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import StatusIndicator from '../components/StatusIndicator';
 import {
   Box,
   Typography,
@@ -399,7 +400,6 @@ const RefeicoesPage = () => {
                 <TableRow>
                   <TableCell sx={{ py: 1 }}>Nome da Refeição</TableCell>
                   <TableCell align="center" sx={{ py: 1 }}>Tipo</TableCell>
-                  <TableCell align="center" sx={{ py: 1 }}>Status</TableCell>
                   <TableCell align="center" sx={{ py: 1 }}>Ações</TableCell>
                 </TableRow>
               </TableHead>
@@ -407,17 +407,20 @@ const RefeicoesPage = () => {
                 {paginatedRefeicoes.map((refeicao) => (
                   <TableRow key={refeicao.id} hover sx={{ '& td': { py: 0.75 } }}>
                     <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>{refeicao.nome}</Typography>
-                      {refeicao.descricao && (
-                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>{refeicao.descricao}</Typography>
-                      )}
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <StatusIndicator status={refeicao.ativo ? 'ativo' : 'inativo'} size="small" />
+                        <Box>
+                          <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>{refeicao.nome}</Typography>
+                          {refeicao.descricao && (
+                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>{refeicao.descricao}</Typography>
+                          )}
+                        </Box>
+                      </Box>
                     </TableCell>
                     <TableCell align="center">
                       <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>{tiposRefeicao[refeicao.tipo]}</Typography>
                     </TableCell>
-                    <TableCell align="center">
-                      <Chip label={refeicao.ativo ? 'Ativa' : 'Inativa'} size="small" color={refeicao.ativo ? 'success' : 'error'} sx={{ height: '20px', fontSize: '0.75rem' }} />
-                    </TableCell>
+
                     <TableCell align="center">
                         <Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => handleViewDetails(refeicao)} color="default"><Visibility fontSize="small" /></IconButton></Tooltip>
                         <Tooltip title="Editar"><IconButton size="small" onClick={() => openModal(refeicao)} color="primary"><Edit fontSize="small" /></IconButton></Tooltip>

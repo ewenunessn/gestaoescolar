@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import StatusIndicator from "../components/StatusIndicator";
 import {
   Table,
   TableBody,
@@ -317,7 +318,6 @@ const ModalidadesPage = () => {
                   <TableCell sx={{ py: 1 }}>Nome da Modalidade</TableCell>
                   <TableCell align="center" sx={{ py: 1 }}>Código Financeiro</TableCell>
                   <TableCell align="center" sx={{ py: 1 }}>Valor Repasse</TableCell>
-                  <TableCell align="center" sx={{ py: 1 }}>Status</TableCell>
                   <TableCell align="center" sx={{ py: 1 }}>Ações</TableCell>
                 </TableRow>
               </TableHead>
@@ -325,9 +325,12 @@ const ModalidadesPage = () => {
                 {paginatedModalidades.map((modalidade) => (
                   <TableRow key={modalidade.id} hover sx={{ '& td': { py: 0.75 } }}>
                     <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>
-                        {modalidade.nome}
-                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <StatusIndicator status={modalidade.ativo ? 'ativo' : 'inativo'} size="small" />
+                        <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                          {modalidade.nome}
+                        </Typography>
+                      </Box>
                     </TableCell>
                     <TableCell align="center">
                       <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
@@ -339,14 +342,7 @@ const ModalidadesPage = () => {
                         {formatCurrency(modalidade.valor_repasse)}
                       </Typography>
                     </TableCell>
-                    <TableCell align="center">
-                      <Chip 
-                        label={modalidade.ativo ? 'Ativa' : 'Inativa'} 
-                        size="small" 
-                        color={modalidade.ativo ? 'success' : 'error'}
-                        sx={{ height: '20px', fontSize: '0.75rem' }}
-                      />
-                    </TableCell>
+
                     <TableCell align="center">
                       <Tooltip title="Editar">
                         <IconButton size="small" onClick={() => openModal(modalidade)} color="primary">

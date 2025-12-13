@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import StatusIndicator from '../components/StatusIndicator';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -390,7 +391,6 @@ const GuiasDemanda: React.FC = () => {
                   <TableRow>
                     <TableCell>Mês/Ano</TableCell>
                     <TableCell>Observação</TableCell>
-                    <TableCell align="center">Status</TableCell>
                     <TableCell align="center">Produtos</TableCell>
                     <TableCell>Criado em</TableCell>
                     <TableCell align="center">Ações</TableCell>
@@ -400,43 +400,26 @@ const GuiasDemanda: React.FC = () => {
                   {paginatedGuias.map((guia) => (
                     <TableRow key={guia.id} hover>
                       <TableCell>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {guia.nome || `${guia.mes}/${guia.ano}`}
-                        </Typography>
-                        {guia.nome && (
-                          <Typography variant="caption" color="text.secondary" display="block">
-                            {guia.mes}/{guia.ano}
-                          </Typography>
-                        )}
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <StatusIndicator status={guia.status} size="small" />
+                          <Box>
+                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                              {guia.nome || `${guia.mes}/${guia.ano}`}
+                            </Typography>
+                            {guia.nome && (
+                              <Typography variant="caption" color="text.secondary" display="block">
+                                {guia.mes}/{guia.ano}
+                              </Typography>
+                            )}
+                          </Box>
+                        </Box>
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2" color="text.secondary">
                           {guia.observacao || '-'}
                         </Typography>
                       </TableCell>
-                      <TableCell align="center">
-                        <Chip
-                          label={getStatusLabel(guia.status)}
-                          color={getStatusColor(guia.status)}
-                          size="small"
-                          sx={{
-                            fontWeight: 'bold',
-                            minWidth: '70px',
-                            ...(guia.status === 'aberta' && {
-                              bgcolor: 'success.main',
-                              color: 'success.contrastText'
-                            }),
-                            ...(guia.status === 'fechada' && {
-                              bgcolor: 'grey.600',
-                              color: 'white'
-                            }),
-                            ...(guia.status === 'cancelada' && {
-                              bgcolor: 'error.main',
-                              color: 'error.contrastText'
-                            })
-                          }}
-                        />
-                      </TableCell>
+
                       <TableCell align="center">
                         {(() => {
                           const count = parseInt(guia.total_produtos?.toString() || '0') || guia.produtosEscola?.length || 0;

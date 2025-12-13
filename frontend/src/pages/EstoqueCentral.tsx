@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import StatusIndicator from "../components/StatusIndicator";
 import {
   Box,
   Typography,
@@ -241,17 +242,25 @@ const EstoqueCentralPage: React.FC = () => {
           <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px' }}>
             <TableContainer>
               <Table>
-                <TableHead><TableRow><TableCell>Produto</TableCell><TableCell align="right">Qtd. Disponível</TableCell><TableCell align="right">Qtd. Vencida</TableCell><TableCell>Próximo Vencimento</TableCell><TableCell align="center">Status</TableCell><TableCell align="center">Ações</TableCell></TableRow></TableHead>
+                <TableHead><TableRow><TableCell>Produto</TableCell><TableCell align="right">Qtd. Disponível</TableCell><TableCell align="right">Qtd. Vencida</TableCell><TableCell>Próximo Vencimento</TableCell><TableCell align="center">Ações</TableCell></TableRow></TableHead>
                 <TableBody>
                   {paginatedPosicoes.map((posicao) => {
                     const status = getStatusProduto(posicao);
                     return (
                       <TableRow key={posicao.produto_id} hover>
-                        <TableCell><Typography variant="body2" sx={{ fontWeight: 600 }}>{posicao.produto_nome}</Typography><Typography variant="caption" color="text.secondary">Un: {posicao.produto_unidade}</Typography></TableCell>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <StatusIndicator status={status.status} size="small" />
+                            <Box>
+                              <Typography variant="body2" sx={{ fontWeight: 600 }}>{posicao.produto_nome}</Typography>
+                              <Typography variant="caption" color="text.secondary">Un: {posicao.produto_unidade}</Typography>
+                            </Box>
+                          </Box>
+                        </TableCell>
                         <TableCell align="right"><Typography variant="body2" fontWeight="bold">{formatarQuantidade(posicao.quantidade_disponivel, posicao.produto_unidade)}</Typography></TableCell>
                         <TableCell align="right"><Typography variant="body2" color={Number(posicao.quantidade_vencida) > 0 ? 'error' : 'text.secondary'}>{formatarQuantidade(posicao.quantidade_vencida, posicao.produto_unidade)}</Typography></TableCell>
                         <TableCell><Typography variant="body2">{posicao.proximo_vencimento ? formatarData(posicao.proximo_vencimento) : '-'}</Typography></TableCell>
-                        <TableCell align="center"><Chip label={status.label} size="small" color={status.color} variant="outlined" /></TableCell>
+
                         <TableCell align="center">
                           <Tooltip title="Ver Lotes"><IconButton size="small" onClick={() => navigate(`/estoque-moderno/produtos/${posicao.produto_id}/lotes`)}><InfoIcon fontSize="small" /></IconButton></Tooltip>
                           <Tooltip title="Movimentações"><IconButton size="small" onClick={() => navigate(`/estoque-moderno/produtos/${posicao.produto_id}/movimentacoes`)}><History fontSize="small" /></IconButton></Tooltip>

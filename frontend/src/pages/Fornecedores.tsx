@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
+import StatusIndicator from "../components/StatusIndicator";
 import {
   Box,
   Typography,
@@ -264,14 +265,19 @@ const FornecedoresPage: React.FC = () => {
           <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px' }}>
             <TableContainer>
               <Table>
-                <TableHead><TableRow><TableCell>Nome</TableCell><TableCell>CNPJ</TableCell><TableCell>Email</TableCell><TableCell align="center">Status</TableCell><TableCell align="center">Ações</TableCell></TableRow></TableHead>
+                <TableHead><TableRow><TableCell>Nome</TableCell><TableCell>CNPJ</TableCell><TableCell>Email</TableCell><TableCell align="center">Ações</TableCell></TableRow></TableHead>
                 <TableBody>
                   {paginatedFornecedores.map((f) => (
                     <TableRow key={f.id} hover>
-                      <TableCell><Typography variant="body2" sx={{ fontWeight: 600 }}>{f.nome}</Typography></TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <StatusIndicator status={f.ativo ? 'ativo' : 'inativo'} size="small" />
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>{f.nome}</Typography>
+                        </Box>
+                      </TableCell>
                       <TableCell><Typography variant="body2" color="text.secondary" fontFamily="monospace">{formatarDocumento(f.cnpj)}</Typography></TableCell>
                       <TableCell><Typography variant="body2" color="text.secondary">{f.email || 'Não informado'}</Typography></TableCell>
-                      <TableCell align="center"><Chip label={f.ativo ? 'Ativo' : 'Inativo'} size="small" color={f.ativo ? 'success' : 'error'} /></TableCell>
+
                       <TableCell align="center">
                         <Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => navigate(`/fornecedores/${f.id}`)} color="primary"><InfoIcon fontSize="small" /></IconButton></Tooltip>
                         <Tooltip title="Editar"><IconButton size="small" onClick={() => openModal(f)} color="secondary"><EditIcon fontSize="small" /></IconButton></Tooltip>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import StatusIndicator from '../components/StatusIndicator';
 import {
   Box,
   Card,

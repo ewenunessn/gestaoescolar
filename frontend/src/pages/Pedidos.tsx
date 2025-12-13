@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import StatusIndicator from '../components/StatusIndicator';
 import {
   Box,
   Typography,
@@ -393,9 +394,12 @@ const PedidosPage = () => {
                   {paginatedPedidos.map((pedido) => (
                     <TableRow key={pedido.id} hover>
                       <TableCell>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {pedido.numero}
-                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <StatusIndicator status={pedido.status} size="small" />
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            {pedido.numero}
+                          </Typography>
+                        </Box>
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2" color="text.secondary">
