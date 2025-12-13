@@ -10,8 +10,12 @@ import {
   reverterConsumoItem,
   removerItensModalidade
 } from "../controllers/faturamentoController";
+import { requireTenant } from "../../../middleware/tenantMiddleware";
 
 const router = Router();
+
+// Aplicar middleware de tenant para todas as rotas
+router.use(requireTenant());
 
 // Rotas gerais de faturamento
 router.get("/", listarFaturamentos);

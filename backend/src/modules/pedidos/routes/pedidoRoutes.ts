@@ -18,8 +18,12 @@ import {
   gerarFaturamento,
   buscarFaturamentosPorPedido
 } from "../controllers/faturamentoController";
+import { requireTenant } from "../../../middleware/tenantMiddleware";
 
 const router = Router();
+
+// Aplicar middleware de tenant para todas as rotas
+router.use(requireTenant());
 
 // Rotas de pedidos
 router.get("/estatisticas", obterEstatisticasPedidos);

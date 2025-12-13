@@ -5,8 +5,12 @@ import {
   editarRefeicaoProduto,
   removerRefeicaoProduto,
 } from "../controllers/refeicaoProdutoController";
+import { requireTenant } from "../../../middleware/tenantMiddleware";
 
 const router = Router();
+
+// Aplicar middleware de tenant para todas as rotas
+router.use(requireTenant());
 
 router.get("/:refeicaoId/produtos", listarRefeicaoProdutos);
 router.post("/:refeicaoId/produtos", adicionarRefeicaoProduto);

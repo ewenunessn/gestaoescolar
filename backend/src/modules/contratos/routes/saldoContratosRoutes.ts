@@ -1,11 +1,15 @@
 import express from 'express';
 import * as saldoContratosController from '../controllers/saldoContratosController';
 import { devAuthMiddleware as authMiddleware } from '../../../middlewares';
+import { requireTenant } from '../../../middleware/tenantMiddleware';
 
 const router = express.Router();
 
 // Aplicar autenticação a todas as rotas (usando devAuthMiddleware para desenvolvimento)
 router.use(authMiddleware);
+
+// Aplicar middleware de tenant para todas as rotas
+router.use(requireTenant());
 
 /**
  * @route GET /api/saldos-contratos
