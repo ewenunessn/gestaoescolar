@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import StatusIndicator from "../components/StatusIndicator";
+import PageHeader from "../components/PageHeader";
 import {
   Box,
   Typography,
@@ -240,7 +241,14 @@ const FornecedoresPage: React.FC = () => {
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       {successMessage && (<Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}><Alert severity="success" onClose={() => setSuccessMessage(null)}>{successMessage}</Alert></Box>)}
       <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
-          <Typography variant="h4" sx={{ mb: 3, fontWeight: 700, color: 'text.primary' }}>Fornecedores</Typography>
+          <PageHeader 
+            title="Fornecedores"
+            totalCount={filteredFornecedores.length}
+            statusLegend={[
+              { status: 'ativo', label: 'ATIVOS', count: filteredFornecedores.filter(f => f.ativo).length },
+              { status: 'inativo', label: 'INATIVOS', count: filteredFornecedores.filter(f => !f.ativo).length }
+            ]}
+          />
 
         <Card sx={{ borderRadius: '12px', p: 2, mb: 3 }}>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 2 }}>

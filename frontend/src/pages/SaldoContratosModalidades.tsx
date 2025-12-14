@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import StatusIndicator from '../components/StatusIndicator';
+import PageHeader from '../components/PageHeader';
 import {
   Box,
   Card,
@@ -992,9 +993,18 @@ const SaldoContratosModalidades: React.FC = () => {
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
-        <Typography variant="h4" sx={{ mb: 3, fontWeight: 700, color: 'text.primary' }}>
-          Saldo de Contratos por Modalidade
-        </Typography>
+        <PageHeader 
+          title="Saldo de Contratos por Modalidade"
+          totalCount={agruparPorProduto(dados).length}
+          statusLegend={(() => {
+            const produtosAgrupados = agruparPorProduto(dados);
+            return [
+              { status: 'success', label: 'DISPONÍVEL', count: produtosAgrupados.filter(p => p.status === 'DISPONIVEL').length },
+              { status: 'warning', label: 'BAIXO ESTOQUE', count: produtosAgrupados.filter(p => p.status === 'BAIXO_ESTOQUE').length },
+              { status: 'error', label: 'ESGOTADO', count: produtosAgrupados.filter(p => p.status === 'ESGOTADO').length }
+            ];
+          })()}
+        />
 
         <Card sx={{ borderRadius: '12px', p: 2, mb: 3 }}>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 2 }}>
@@ -1027,16 +1037,11 @@ const SaldoContratosModalidades: React.FC = () => {
             </Box>
           </Box>
 
-          <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary', fontSize: '0.8rem' }}>
-            {`Mostrando ${Math.min(page * rowsPerPage + 1, total)}-${Math.min((page + 1) * rowsPerPage, total)} de ${total} produtos`}
-          </Typography>
+
         </Card>
 
         {/* Ações */}
         <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-          <Typography variant="h6">
-            Resultados ({agruparPorProduto(dados).length} produtos)
-          </Typography>
 
           <Box sx={{ flexGrow: 1 }} />
 
@@ -1077,28 +1082,27 @@ const SaldoContratosModalidades: React.FC = () => {
         ) : (
           <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px' }}>
             <TableContainer>
-              <Table sx={{ minWidth: 1200 }}>
+              <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell sx={{ fontWeight: 600 }}>Produto</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Unidade</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 600 }}>Total Inicial</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 600 }}>Total Consumido</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 600 }}>Total Disponível</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 600 }}>Status</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 600 }}>Ações</TableCell>
+                    <TableCell sx={{ fontWeight: 600, width: '30%' }}>Produto</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 600, width: '10%' }}>Unidade</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 600, width: '15%' }}>Total Inicial</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 600, width: '15%' }}>Total Consumido</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 600, width: '15%' }}>Total Disponível</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 600, width: '15%' }}>Ações</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {loading && dados.length > 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} align="center">
+                      <TableCell colSpan={6} align="center">
                         <CircularProgress size={24} />
                       </TableCell>
                     </TableRow>
                   ) : dados.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} align="center">
+                      <TableCell colSpan={6} align="center">
                         Nenhum resultado encontrado
                       </TableCell>
                     </TableRow>
@@ -1119,29 +1123,25 @@ const SaldoContratosModalidades: React.FC = () => {
                         onDoubleClick={() => produto.contratos.length > 1 ? abrirDialogSelecionarContrato(produto) : abrirDialogGerenciarModalidades(produto.contratos[0])}
                       >
                         <TableCell>
-                          <Box>
-                            <Typography variant="body2" fontWeight="bold">
-                              {produto.produto_nome}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {produto.contratos.length} contrato(s)
-                            </Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <StatusIndicator status={produto.status === 'ESGOTADO' ? 'error' : produto.status === 'BAIXO_ESTOQUE' ? 'warning' : 'success'} size="small" />
+                            <Box>
+                              <Typography variant="body2" fontWeight="bold">
+                                {produto.produto_nome}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {produto.contratos.length} contrato(s)
+                              </Typography>
+                            </Box>
                           </Box>
                         </TableCell>
-                        <TableCell>{produto.unidade}</TableCell>
-                        <TableCell align="right">{formatarNumero(produto.total_inicial)}</TableCell>
-                        <TableCell align="right">{formatarNumero(produto.total_consumido)}</TableCell>
-                        <TableCell align="right">
+                        <TableCell align="center">{produto.unidade}</TableCell>
+                        <TableCell align="center">{formatarNumero(produto.total_inicial)}</TableCell>
+                        <TableCell align="center">{formatarNumero(produto.total_consumido)}</TableCell>
+                        <TableCell align="center">
                           <Typography variant="body2" fontWeight="bold" color="primary">
                             {formatarNumero(produto.total_disponivel)}
                           </Typography>
-                        </TableCell>
-                        <TableCell align="center">
-                          <Chip
-                            label={produto.status}
-                            color={getStatusColor(produto.status) as any}
-                            size="small"
-                          />
                         </TableCell>
                         <TableCell align="center">
                           <Button

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import StatusIndicator from '../components/StatusIndicator';
+import PageHeader from '../components/PageHeader';
 import {
   Box,
   Card,
@@ -324,6 +325,16 @@ const SaldoContratos: React.FC = () => {
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+        <PageHeader 
+          title="Saldo de Contratos"
+          totalCount={dados.length}
+          statusLegend={estatisticas ? [
+            { status: 'success', label: 'DISPONÍVEIS', count: estatisticas.itens_disponiveis },
+            { status: 'warning', label: 'BAIXO ESTOQUE', count: estatisticas.itens_baixo_estoque },
+            { status: 'error', label: 'ESGOTADOS', count: estatisticas.itens_esgotados }
+          ] : []}
+        />
+        
         {/* Estatísticas */}
         {estatisticas && (
           <Grid container spacing={2} sx={{ mb: 3 }}>
@@ -476,9 +487,6 @@ const SaldoContratos: React.FC = () => {
 
         {/* Ações */}
         <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-          <Typography variant="h6">
-            Resultados ({total} itens)
-          </Typography>
           
           <Box sx={{ flexGrow: 1 }} />
           
@@ -521,30 +529,29 @@ const SaldoContratos: React.FC = () => {
             bgcolor: 'background.paper'
           }}
         >
-          <Table sx={{ minWidth: 1200, borderCollapse: 'separate' }}>
+          <Table sx={{ borderCollapse: 'separate' }}>
             <TableHead>
               <TableRow>
-                <TableCell sx={{ fontWeight: 600 }}>Produto</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Unidade</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 600 }}>Qtd Total</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 600 }}>Qtd Utilizada</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 600 }}>Qtd Disponível</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 600 }}>Valor Unit.</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 600 }}>Valor Total Disp.</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 600 }}>Status</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 600 }}>Ações</TableCell>
+                <TableCell sx={{ fontWeight: 600, width: '20%' }}>Produto</TableCell>
+                <TableCell align="center" sx={{ fontWeight: 600, width: '8%' }}>Unidade</TableCell>
+                <TableCell align="center" sx={{ fontWeight: 600, width: '12%' }}>Qtd Total</TableCell>
+                <TableCell align="center" sx={{ fontWeight: 600, width: '12%' }}>Qtd Utilizada</TableCell>
+                <TableCell align="center" sx={{ fontWeight: 600, width: '12%' }}>Qtd Disponível</TableCell>
+                <TableCell align="center" sx={{ fontWeight: 600, width: '12%' }}>Valor Unit.</TableCell>
+                <TableCell align="center" sx={{ fontWeight: 600, width: '12%' }}>Valor Total Disp.</TableCell>
+                <TableCell align="center" sx={{ fontWeight: 600, width: '12%' }}>Ações</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {loading && dados.length > 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} align="center">
+                  <TableCell colSpan={8} align="center">
                     <CircularProgress size={24} />
                   </TableCell>
                 </TableRow>
               ) : dados.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} align="center">
+                  <TableCell colSpan={8} align="center">
                     Nenhum resultado encontrado
                   </TableCell>
                 </TableRow>
@@ -553,7 +560,7 @@ const SaldoContratos: React.FC = () => {
                   <React.Fragment key={`${grupo.fornecedor_id}-${grupo.contrato_id}`}>
                     {/* Cabeçalho do Grupo */}
                     <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                      <TableCell colSpan={9}>
+                      <TableCell colSpan={8}>
                         <Box display="flex" alignItems="center" gap={2}>
                           <BusinessIcon sx={{ color: '#666' }} />
                           <Typography variant="h6" component="div" sx={{ fontWeight: 600 }}>
@@ -569,20 +576,20 @@ const SaldoContratos: React.FC = () => {
                     {/* Itens do Grupo */}
                     {grupo.itens.map((item) => (
                       <TableRow key={item.id} hover>
-                        <TableCell>{item.produto_nome}</TableCell>
-                        <TableCell>{item.unidade}</TableCell>
-                        <TableCell align="right">{formatarNumero(item.quantidade_total)}</TableCell>
-                        <TableCell align="right">{formatarNumero(item.quantidade_utilizada)}</TableCell>
-                        <TableCell align="right">{formatarNumero(item.quantidade_disponivel_real)}</TableCell>
-                        <TableCell align="right">{formatarMoeda(item.preco_unitario)}</TableCell>
-                        <TableCell align="right">{formatarMoeda(item.valor_total_disponivel)}</TableCell>
-                        <TableCell align="center">
-                          <Chip
-                            label={item.status}
-                            color={getStatusColor(item.status) as any}
-                            size="small"
-                          />
+                        <TableCell>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <StatusIndicator status={item.status === 'ESGOTADO' ? 'error' : item.status === 'BAIXO_ESTOQUE' ? 'warning' : 'success'} size="small" />
+                            <Typography variant="body2">
+                              {item.produto_nome}
+                            </Typography>
+                          </Box>
                         </TableCell>
+                        <TableCell align="center">{item.unidade}</TableCell>
+                        <TableCell align="center">{formatarNumero(item.quantidade_total)}</TableCell>
+                        <TableCell align="center">{formatarNumero(item.quantidade_utilizada)}</TableCell>
+                        <TableCell align="center">{formatarNumero(item.quantidade_disponivel_real)}</TableCell>
+                        <TableCell align="center">{formatarMoeda(item.preco_unitario)}</TableCell>
+                        <TableCell align="center">{formatarMoeda(item.valor_total_disponivel)}</TableCell>
                         <TableCell align="center">
                           <Box display="flex" justifyContent="center" gap={1}>
                             <Tooltip title="Registrar Consumo">

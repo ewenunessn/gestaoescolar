@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import StatusIndicator from '../components/StatusIndicator';
+import PageHeader from '../components/PageHeader';
 import { useNavigate } from 'react-router-dom';
 import {
     Box,
@@ -313,9 +314,14 @@ const GestaoRotas: React.FC = () => {
                         { label: 'Gestão de Rotas', icon: <RouteIcon fontSize="small" /> }
                     ]}
                 />
-                <Typography variant="h4" sx={{ mb: 3, fontWeight: 700, color: 'text.primary' }}>
-                    Gestão de Rotas de Entrega
-                </Typography>
+                <PageHeader 
+                    title="Gestão de Rotas de Entrega"
+                    totalCount={filteredRotas.length}
+                    statusLegend={[
+                      { status: 'ativo', label: 'ATIVAS', count: filteredRotas.filter(r => r.ativo).length },
+                      { status: 'inativo', label: 'INATIVAS', count: filteredRotas.filter(r => !r.ativo).length }
+                    ]}
+                />
 
                 <Card sx={{ borderRadius: '12px', p: 2, mb: 3 }}>
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 2 }}>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import StatusIndicator from '../components/StatusIndicator';
+import PageHeader from '../components/PageHeader';
 import {
   Box,
   Typography,
@@ -134,6 +135,22 @@ const PedidosPage = () => {
       return new Date(b.data_pedido).getTime() - new Date(a.data_pedido).getTime();
     });
   }, [pedidos, searchTerm, sortBy]);
+
+  // Legenda de status
+  const statusLegend = useMemo(() => {
+    const statusCounts = filteredPedidos.reduce((acc, pedido) => {
+      const status = pedido.status || 'rascunho';
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return [
+      { status: 'rascunho', label: 'RASCUNHO', count: statusCounts.rascunho || 0 },
+      { status: 'enviado', label: 'ENVIADO', count: statusCounts.enviado || 0 },
+      { status: 'confirmado', label: 'CONFIRMADO', count: statusCounts.confirmado || 0 },
+      { status: 'cancelado', label: 'CANCELADO', count: statusCounts.cancelado || 0 }
+    ];
+  }, [filteredPedidos]);
 
   const paginatedPedidos = useMemo(() => {
     const startIndex = page * rowsPerPage;
@@ -288,9 +305,11 @@ const PedidosPage = () => {
       )}
 
       <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
-        <Typography variant="h4" sx={{ mb: 3, fontWeight: 700, color: 'text.primary' }}>
-          Pedidos de Compra
-        </Typography>
+        <PageHeader 
+          title="Pedidos de Compra" 
+          totalCount={filteredPedidos.length}
+          statusLegend={statusLegend}
+        />
         
         <Card sx={{ borderRadius: '12px', p: 2, mb: 3 }}>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 2 }}>

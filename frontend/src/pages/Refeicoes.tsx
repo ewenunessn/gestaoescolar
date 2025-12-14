@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import StatusIndicator from '../components/StatusIndicator';
+import PageHeader from '../components/PageHeader';
 import {
   Box,
   Typography,
@@ -324,9 +325,14 @@ const RefeicoesPage = () => {
       )}
 
       <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
-        <Typography variant="h4" sx={{ mb: 3, fontWeight: 700, color: 'text.primary' }}>
-          Refeições
-        </Typography>
+        <PageHeader 
+          title="Refeições"
+          totalCount={filteredRefeicoes.length}
+          statusLegend={[
+            { status: 'ativo', label: 'ATIVAS', count: filteredRefeicoes.filter(r => r.ativo).length },
+            { status: 'inativo', label: 'INATIVAS', count: filteredRefeicoes.filter(r => !r.ativo).length }
+          ]}
+        />
         
         <Card sx={{ borderRadius: '12px', p: 2, mb: 3 }}>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 2 }}>

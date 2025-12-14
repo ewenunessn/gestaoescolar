@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import StatusIndicator from "../components/StatusIndicator";
+import PageHeader from "../components/PageHeader";
 import {
   Box,
   Typography,
@@ -205,7 +206,16 @@ const EstoqueCentralPage: React.FC = () => {
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       {successMessage && (<Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}><Alert severity="success" onClose={() => setSuccessMessage(null)}>{successMessage}</Alert></Box>)}
       <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
-          <Typography variant="h4" sx={{ mb: 3, fontWeight: 700, color: 'text.primary' }}>Estoque Central</Typography>
+          <PageHeader 
+            title="Estoque Central"
+            totalCount={filteredPosicoes.length}
+            statusLegend={[
+              { status: 'success', label: 'NORMAL', count: filteredPosicoes.filter(p => Number(p.quantidade_disponivel) > 0 && Number(p.quantidade_vencida) === 0).length },
+              { status: 'warning', label: 'VENCE EM BREVE', count: filteredPosicoes.filter(p => p.proximo_vencimento && isVencimentoProximo(p.proximo_vencimento)).length },
+              { status: 'error', label: 'COM VENCIDOS', count: filteredPosicoes.filter(p => Number(p.quantidade_vencida) > 0).length },
+              { status: 'default', label: 'SEM ESTOQUE', count: filteredPosicoes.filter(p => Number(p.quantidade_disponivel) === 0).length }
+            ]}
+          />
 
         <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', p: 3, mb: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
@@ -250,7 +260,7 @@ const EstoqueCentralPage: React.FC = () => {
                       <TableRow key={posicao.produto_id} hover>
                         <TableCell>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <StatusIndicator status={status.status} size="small" />
+                            <StatusIndicator status={status.label === 'Com Vencidos' ? 'error' : status.label === 'Sem Estoque' ? 'inativo' : status.label === 'Vence em Breve' ? 'warning' : 'ativo'} size="small" />
                             <Box>
                               <Typography variant="body2" sx={{ fontWeight: 600 }}>{posicao.produto_nome}</Typography>
                               <Typography variant="caption" color="text.secondary">Un: {posicao.produto_unidade}</Typography>

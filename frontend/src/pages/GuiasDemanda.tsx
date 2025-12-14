@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import StatusIndicator from '../components/StatusIndicator';
+import PageHeader from '../components/PageHeader';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -289,9 +290,15 @@ const GuiasDemanda: React.FC = () => {
             { label: 'Guias de Demanda', icon: <AssignmentIcon fontSize="small" /> }
           ]}
         />
-        <Typography variant="h4" sx={{ mb: 3, fontWeight: 700, color: 'text.primary' }}>
-          Guias de Demanda
-        </Typography>
+        <PageHeader 
+          title="Guias de Demanda"
+          totalCount={filteredGuias.length}
+          statusLegend={[
+            { status: 'aberta', label: 'ABERTAS', count: filteredGuias.filter(g => g.status === 'aberta').length },
+            { status: 'fechada', label: 'FECHADAS', count: filteredGuias.filter(g => g.status === 'fechada').length },
+            { status: 'cancelada', label: 'CANCELADAS', count: filteredGuias.filter(g => g.status === 'cancelada').length }
+          ]}
+        />
 
         <Card sx={{ borderRadius: '12px', p: 2, mb: 3 }}>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 2 }}>

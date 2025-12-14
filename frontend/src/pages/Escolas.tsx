@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import StatusIndicator from '../components/StatusIndicator';
+import PageHeader from '../components/PageHeader';
 import {
   Box,
   Typography,
@@ -315,7 +316,14 @@ const EscolasPage = () => {
       {error && (<Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}><Alert severity="error" onClose={() => setError(null)}>{error}</Alert></Box>)}
 
       <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
-        <Typography variant="h4" sx={{ mb: 3, fontWeight: 700, color: 'text.primary' }}>Gestão de Escolas</Typography>
+        <PageHeader 
+          title="Gestão de Escolas"
+          totalCount={filteredEscolas.length}
+          statusLegend={[
+            { status: 'ativo', label: 'ATIVAS', count: filteredEscolas.filter(e => e.ativo).length },
+            { status: 'inativo', label: 'INATIVAS', count: filteredEscolas.filter(e => !e.ativo).length }
+          ]}
+        />
 
         <Card sx={{ borderRadius: '12px', p: 2, mb: 3 }}>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 2 }}>

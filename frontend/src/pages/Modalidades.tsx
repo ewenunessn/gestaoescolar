@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import StatusIndicator from "../components/StatusIndicator";
+import PageHeader from "../components/PageHeader";
 import {
   Table,
   TableBody,
@@ -268,7 +269,14 @@ const ModalidadesPage = () => {
       )}
 
       <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
-        <Typography variant="h4" sx={{ mb: 3, fontWeight: 700, color: 'text.primary' }}>Modalidades</Typography>
+        <PageHeader 
+          title="Modalidades"
+          totalCount={filteredModalidades.length}
+          statusLegend={[
+            { status: 'ativo', label: 'ATIVAS', count: filteredModalidades.filter(m => m.ativo).length },
+            { status: 'inativo', label: 'INATIVAS', count: filteredModalidades.filter(m => !m.ativo).length }
+          ]}
+        />
 
         <Card sx={{ borderRadius: '12px', p: 2, mb: 3 }}>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 2 }}>
@@ -307,7 +315,7 @@ const ModalidadesPage = () => {
         {loading ? (
           <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><CircularProgress size={60} /></CardContent></Card>
         ) : error ? (
-          <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={loadModalidades}>Tentar Novamente</Button></CardContent></Card>
+          <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={() => refetch()}>Tentar Novamente</Button></CardContent></Card>
         ) : filteredModalidades.length === 0 ? (
           <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Category sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} /><Typography variant="h6" sx={{ color: 'text.secondary' }}>Nenhuma modalidade encontrada</Typography></CardContent></Card>
         ) : (

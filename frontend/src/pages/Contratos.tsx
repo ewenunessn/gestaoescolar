@@ -29,6 +29,7 @@ import {
   Tooltip,
 } from "@mui/material";
 import StatusIndicator from "../components/StatusIndicator";
+import PageHeader from "../components/PageHeader";
 import {
   Add as AddIcon,
   Info as InfoIcon,
@@ -145,6 +146,22 @@ const ContratosPage: React.FC = () => {
     return filteredContratos.slice(startIndex, startIndex + rowsPerPage);
   }, [filteredContratos, page, rowsPerPage]);
 
+  // Legenda de status
+  const statusLegend = useMemo(() => {
+    const statusCounts = filteredContratos.reduce((acc, contrato) => {
+      const statusInfo = getStatusContrato(contrato);
+      const status = statusInfo.status.toLowerCase();
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return [
+      { status: 'vigente', label: 'VIGENTE', count: statusCounts.vigente || 0 },
+      { status: 'vencido', label: 'VENCIDO', count: statusCounts.vencido || 0 },
+      { status: 'suspenso', label: 'SUSPENSO', count: statusCounts.suspenso || 0 }
+    ];
+  }, [filteredContratos, getStatusContrato]);
+
   // Funções de paginação
   const handleChangePage = useCallback((event: unknown, newPage: number) => setPage(newPage), []);
   const handleChangeRowsPerPage = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -186,7 +203,11 @@ const ContratosPage: React.FC = () => {
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       {successMessage && (<Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}><Alert severity="success" onClose={() => setSuccessMessage(null)}>{successMessage}</Alert></Box>)}
       <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
-          <Typography variant="h4" sx={{ mb: 3, fontWeight: 700, color: 'text.primary' }}>Contratos</Typography>
+          <PageHeader 
+            title="Contratos" 
+            totalCount={filteredContratos.length}
+            statusLegend={statusLegend}
+          />
 
         <Card sx={{ borderRadius: '12px', p: 2, mb: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
@@ -219,7 +240,7 @@ const ContratosPage: React.FC = () => {
                       <TableRow key={contrato.id} hover>
                         <TableCell>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <StatusIndicator status={contrato.status} size="small" />
+                            <StatusIndicator status={getStatusContrato(contrato).status} size="small" />
                             <Typography variant="body2" sx={{ fontWeight: 600 }}>{contrato.numero}</Typography>
                           </Box>
                         </TableCell>

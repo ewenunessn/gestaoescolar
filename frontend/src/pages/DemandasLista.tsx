@@ -43,6 +43,8 @@ import { listarEscolas } from '../services/escolas';
 import { Demanda, STATUS_DEMANDA } from '../types/demanda';
 import { formatarData } from '../utils/dateUtils';
 import { DemandaDetalhesModal, LoadingScreen } from '../components';
+import StatusIndicator from '../components/StatusIndicator';
+import PageHeader from '../components/PageHeader';
 
 export default function DemandasLista() {
   const [demandas, setDemandas] = useState<Demanda[]>([]);
@@ -425,9 +427,16 @@ export default function DemandasLista() {
       )}
 
       <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
-        <Typography variant="h4" sx={{ mb: 3, fontWeight: 700, color: 'text.primary' }}>
-          Gerenciamento de Demandas
-        </Typography>
+        <PageHeader 
+          title="Gerenciamento de Demandas"
+          totalCount={demandas.length}
+          statusLegend={[
+            { status: 'pendente', label: 'PENDENTES', count: demandas.filter(d => d.status === 'pendente').length },
+            { status: 'enviado_semead', label: 'ENVIADAS', count: demandas.filter(d => d.status === 'enviado_semead').length },
+            { status: 'atendido', label: 'ATENDIDAS', count: demandas.filter(d => d.status === 'atendido').length },
+            { status: 'nao_atendido', label: 'NÃO ATENDIDAS', count: demandas.filter(d => d.status === 'nao_atendido').length }
+          ]}
+        />
         
         <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', p: 3, mb: 3 }}>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 3 }}>

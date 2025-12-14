@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import StatusIndicator from "../components/StatusIndicator";
+import PageHeader from "../components/PageHeader";
 import {
   importarProdutosLote,
 } from "../services/produtos";
@@ -178,6 +179,17 @@ const ProdutosPage = () => {
       return a.nome.localeCompare(b.nome);
     });
   }, [produtos, searchTerm, selectedCategoria, selectedMarcas, selectedStatus, sortBy]);
+
+  // Legenda de status
+  const statusLegend = useMemo(() => {
+    const ativosCount = filteredProdutos.filter(p => p.ativo).length;
+    const inativosCount = filteredProdutos.filter(p => !p.ativo).length;
+    
+    return [
+      { status: 'ativo', label: 'ATIVO', count: ativosCount },
+      { status: 'inativo', label: 'INATIVO', count: inativosCount }
+    ];
+  }, [filteredProdutos]);
 
   // Produtos paginados
   const paginatedProdutos = useMemo(() => {
@@ -512,7 +524,11 @@ const ProdutosPage = () => {
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       {successMessage && (<Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}><Alert severity="success" onClose={() => setSuccessMessage(null)}>{successMessage}</Alert></Box>)}
       <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
-        <Typography variant="h4" sx={{ mb: 3, fontWeight: 700, color: 'text.primary' }}>Produtos</Typography>
+        <PageHeader 
+          title="Produtos" 
+          totalCount={filteredProdutos.length}
+          statusLegend={statusLegend}
+        />
 
         <Card sx={{ borderRadius: '12px', p: 2, mb: 3 }}>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 2 }}>
