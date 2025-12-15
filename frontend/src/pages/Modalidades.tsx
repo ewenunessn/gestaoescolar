@@ -33,6 +33,8 @@ import {
   Select,
   MenuItem,
   Menu,
+  Switch,
+  FormControlLabel,
 } from "@mui/material";
 import {
   Edit as EditIcon,
@@ -394,6 +396,17 @@ const ModalidadesPage = () => {
               value={formData.valor_repasse} 
               onChange={(e) => setFormData({ ...formData, valor_repasse: parseFloat(e.target.value) || 0 })} 
               inputProps={{ step: "0.01", min: "0" }} 
+            />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={formData.ativo}
+                  onChange={(e) => setFormData({ ...formData, ativo: e.target.checked })}
+                  color="primary"
+                />
+              }
+              label="Modalidade Ativa"
+              sx={{ mt: 1 }}
             />
           </Box>
         </DialogContent>

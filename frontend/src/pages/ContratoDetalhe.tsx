@@ -70,7 +70,7 @@ const PageHeader = ({ onEdit, onDelete }) => (
             <Button variant="outlined" color="primary" startIcon={<EditIcon />} onClick={onEdit}>
                 Editar
             </Button>
-            <Button variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={onDelete}>
+            <Button variant="contained" color="error" startIcon={<DeleteIcon />} onClick={onDelete}>
                 Excluir
             </Button>
         </Stack>
@@ -314,11 +314,7 @@ export default function ContratoDetalhe() {
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
         <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
         <PageBreadcrumbs 
-          items={fromFornecedor && fornecedor ? [
-            { label: 'Fornecedores', path: '/fornecedores', icon: <BusinessIcon fontSize="small" /> },
-            { label: fornecedor.nome, path: `/fornecedores/${fornecedorId}` },
-            { label: contrato ? `Contrato ${contrato.numero}` : 'Detalhes do Contrato' }
-          ] : [
+          items={[
             { label: 'Contratos', path: '/contratos', icon: <DescriptionIcon fontSize="small" /> },
             { label: contrato ? `Contrato ${contrato.numero}` : 'Detalhes do Contrato' }
           ]}
@@ -349,8 +345,8 @@ export default function ContratoDetalhe() {
                 <TableContainer>
                     <Table>
                         <TableHead><TableRow>
-                            <TableCell sx={{ fontWeight: 600 }}>Produto</TableCell><TableCell sx={{ fontWeight: 600 }}>Quantidade</TableCell><TableCell sx={{ fontWeight: 600 }}>Preço Unitário</TableCell>
-                            <TableCell sx={{ fontWeight: 600 }}>Valor Total</TableCell><TableCell sx={{ fontWeight: 600 }}>Saldo</TableCell><TableCell align="right" sx={{ fontWeight: 600 }}>Ações</TableCell>
+                            <TableCell sx={{ fontWeight: 600 }}>Produto</TableCell><TableCell align="center" sx={{ fontWeight: 600 }}>Quantidade</TableCell><TableCell align="center" sx={{ fontWeight: 600 }}>Preço Unitário</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 600 }}>Valor Total</TableCell><TableCell align="center" sx={{ fontWeight: 600 }}>Saldo</TableCell><TableCell align="center" sx={{ fontWeight: 600 }}>Ações</TableCell>
                         </TableRow></TableHead>
                         <TableBody>
                             {produtosContrato.map((produto) => {
@@ -358,13 +354,13 @@ export default function ContratoDetalhe() {
                                 return (
                                 <TableRow key={produto.id} hover>
                                     <TableCell>{produtoInfo?.nome || `Produto #${produto.produto_id}`}</TableCell>
-                                    <TableCell>{produto.quantidade}</TableCell>
-                                    <TableCell>{formatarMoeda(produto.preco_unitario)}</TableCell>
-                                    <TableCell>{formatarMoeda(produto.valor_total)}</TableCell>
-                                    <TableCell><Chip label={produto.saldo} color={produto.saldo > 0 ? "success" : "error"} size="small"/></TableCell>
-                                    <TableCell align="right">
-                                        <Tooltip title="Editar Item"><IconButton size="small" onClick={() => abrirModalProduto(produto)}><EditIcon fontSize="small" /></IconButton></Tooltip>
-                                        <Tooltip title="Remover Item"><IconButton size="small" onClick={() => confirmarRemoverProduto(produto.id)}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
+                                    <TableCell align="center">{produto.quantidade}</TableCell>
+                                    <TableCell align="center">{formatarMoeda(produto.preco_unitario)}</TableCell>
+                                    <TableCell align="center">{formatarMoeda(produto.valor_total)}</TableCell>
+                                    <TableCell align="center"><Chip label={produto.saldo} color={produto.saldo > 0 ? "success" : "error"} size="small"/></TableCell>
+                                    <TableCell align="center">
+                                        <Tooltip title="Editar Item"><IconButton size="small" onClick={() => abrirModalProduto(produto)} color="primary"><EditIcon fontSize="small" /></IconButton></Tooltip>
+                                        <Tooltip title="Remover Item"><IconButton size="small" onClick={() => confirmarRemoverProduto(produto.id)} color="error"><DeleteIcon fontSize="small" /></IconButton></Tooltip>
                                     </TableCell>
                                 </TableRow>
                                 );

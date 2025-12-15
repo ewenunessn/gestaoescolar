@@ -54,7 +54,7 @@ import { useEstoqueEscola, useRegistrarMovimentacao } from '../hooks/queries/use
 import { formatarQuantidade as formatarQtd } from '../utils/formatters';
 import TenantInventoryFilter from '../components/TenantInventoryFilter';
 import TenantInventoryList from '../components/TenantInventoryList';
-import TenantInventoryBreadcrumbs from '../components/TenantInventoryBreadcrumbs';
+import PageHeader from '../components/PageHeader';
 
 // Interface Escola importada do hook useEscolas
 
@@ -437,13 +437,12 @@ const MovimentacaoEstoquePage = () => {
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <TenantInventoryBreadcrumbs 
-        items={[
-          { label: 'Início', path: '/', icon: <SchoolIcon fontSize="small" /> },
-          { label: 'Movimentação de Estoque', icon: <InventoryIcon fontSize="small" />, current: true }
-        ]}
-      />
       <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+        <PageHeader 
+          title="Movimentação de Estoque"
+          totalCount={estoque.length}
+          statusLegend={[]}
+        />
 
         {/* Alertas */}
         {successMessage && (
@@ -465,20 +464,6 @@ const MovimentacaoEstoquePage = () => {
         {/* Header */}
         <Card sx={{ p: 3, mb: 3, borderRadius: '12px' }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Typography variant="h4" sx={{ fontWeight: 700, color: 'text.primary' }}>
-                Movimentação de Estoque
-              </Typography>
-              {currentTenant && (
-                <Chip 
-                  label={currentTenant.name} 
-                  size="small" 
-                  color="primary" 
-                  variant="outlined"
-                  sx={{ fontSize: '0.75rem' }}
-                />
-              )}
-            </Box>
             <IconButton 
               onClick={() => estoqueQuery.refetch()} 
               disabled={!escolaSelecionada || estoqueQuery.isFetching}

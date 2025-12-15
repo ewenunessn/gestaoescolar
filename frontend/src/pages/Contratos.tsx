@@ -120,11 +120,11 @@ const ContratosPage: React.FC = () => {
 
   // Funções de status e data
   const getStatusContrato = useCallback((contrato: Contrato) => {
-    if (!contrato.ativo) return { status: "Inativo", color: "default" as const };
+    if (!contrato.ativo) return { status: "suspenso", color: "default" as const };
     const hoje = new Date();
     const fim = new Date(contrato.data_fim);
-    if (hoje > fim) return { status: "Expirado", color: "error" as const };
-    return { status: "Ativo", color: "success" as const };
+    if (hoje > fim) return { status: "vencido", color: "error" as const };
+    return { status: "vigente", color: "success" as const };
   }, []);
 
   // Filtrar e ordenar contratos
@@ -134,7 +134,7 @@ const ContratosPage: React.FC = () => {
       const matchesSearch = contrato.numero.toLowerCase().includes(searchTerm.toLowerCase()) || fornecedorNome.includes(searchTerm.toLowerCase());
       const matchesFornecedor = !selectedFornecedor || contrato.fornecedor_id === selectedFornecedor;
       const statusInfo = getStatusContrato(contrato);
-      const matchesStatus = !selectedStatus || statusInfo.status.toLowerCase() === selectedStatus;
+      const matchesStatus = !selectedStatus || statusInfo.status === selectedStatus;
       
       return matchesSearch && matchesFornecedor && matchesStatus;
     }).sort((a, b) => a.numero.localeCompare(b.numero));
@@ -150,7 +150,7 @@ const ContratosPage: React.FC = () => {
   const statusLegend = useMemo(() => {
     const statusCounts = filteredContratos.reduce((acc, contrato) => {
       const statusInfo = getStatusContrato(contrato);
-      const status = statusInfo.status.toLowerCase();
+      const status = statusInfo.status;
       acc[status] = (acc[status] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
@@ -193,7 +193,7 @@ const ContratosPage: React.FC = () => {
       </Box>
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 2 }}>
         <FormControl fullWidth size="small"><InputLabel>Fornecedor</InputLabel><Select value={selectedFornecedor} onChange={(e) => setSelectedFornecedor(e.target.value)} label="Fornecedor"><MenuItem value="">Todos</MenuItem>{fornecedores.map(f => <MenuItem key={f.id} value={f.id}>{f.nome}</MenuItem>)}</Select></FormControl>
-        <FormControl fullWidth size="small"><InputLabel>Status</InputLabel><Select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)} label="Status"><MenuItem value="">Todos</MenuItem><MenuItem value="ativo">Ativo</MenuItem><MenuItem value="expirado">Expirado</MenuItem><MenuItem value="inativo">Inativo</MenuItem></Select></FormControl>
+        <FormControl fullWidth size="small"><InputLabel>Status</InputLabel><Select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)} label="Status"><MenuItem value="">Todos</MenuItem><MenuItem value="vigente">Vigente</MenuItem><MenuItem value="vencido">Vencido</MenuItem><MenuItem value="suspenso">Suspenso</MenuItem></Select></FormControl>
         <FormControl fullWidth size="small"><InputLabel>Ordenar por</InputLabel><Select value={sortBy} onChange={(e) => setSortBy(e.target.value)} label="Ordenar por"><MenuItem value="numero">Número</MenuItem></Select></FormControl>
       </Box>
     </Box>
@@ -232,7 +232,7 @@ const ContratosPage: React.FC = () => {
           <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px' }}>
             <TableContainer>
               <Table>
-                <TableHead><TableRow><TableCell>Número</TableCell><TableCell>Fornecedor</TableCell><TableCell>Vigência</TableCell><TableCell align="right">Valor Total</TableCell><TableCell align="center">Ações</TableCell></TableRow></TableHead>
+                <TableHead><TableRow><TableCell>Número</TableCell><TableCell align="center">Fornecedor</TableCell><TableCell align="center">Vigência</TableCell><TableCell align="center">Valor Total</TableCell><TableCell align="center">Ações</TableCell></TableRow></TableHead>
                 <TableBody>
                   {paginatedContratos.map((contrato) => {
                     const status = getStatusContrato(contrato);
@@ -244,9 +244,9 @@ const ContratosPage: React.FC = () => {
                             <Typography variant="body2" sx={{ fontWeight: 600 }}>{contrato.numero}</Typography>
                           </Box>
                         </TableCell>
-                        <TableCell><Typography variant="body2" color="text.secondary">{fornecedorMap.get(contrato.fornecedor_id) || "N/A"}</Typography></TableCell>
-                        <TableCell><Typography variant="body2" color="text.secondary">{`${formatarData(contrato.data_inicio)} a ${formatarData(contrato.data_fim)}`}</Typography></TableCell>
-                        <TableCell align="right"><Typography variant="body2" color="text.secondary">{formatarValor(contrato.valor_total_contrato)}</Typography></TableCell>
+                        <TableCell align="center"><Typography variant="body2" color="text.secondary">{fornecedorMap.get(contrato.fornecedor_id) || "N/A"}</Typography></TableCell>
+                        <TableCell align="center"><Typography variant="body2" color="text.secondary">{`${formatarData(contrato.data_inicio)} a ${formatarData(contrato.data_fim)}`}</Typography></TableCell>
+                        <TableCell align="center"><Typography variant="body2" color="text.secondary">{formatarValor(contrato.valor_total_contrato)}</Typography></TableCell>
 
                         <TableCell align="center"><Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => navigate(`/contratos/${contrato.id}`)} color="primary"><InfoIcon fontSize="small" /></IconButton></Tooltip></TableCell>
                       </TableRow>

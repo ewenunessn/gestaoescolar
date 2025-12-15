@@ -27,7 +27,7 @@ import {
     usePrefetchEstoque
 } from '../hooks/queries/useEstoqueQueries';
 import TenantInventoryFilter from '../components/TenantInventoryFilter';
-import TenantInventoryBreadcrumbs from '../components/TenantInventoryBreadcrumbs';
+import PageHeader from '../components/PageHeader';
 
 // Interface
 interface ProdutoComEstoque {
@@ -625,18 +625,12 @@ const EstoqueEscolarPage = () => {
 
     return (
         <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-            <TenantInventoryBreadcrumbs 
-                items={[
-                    { label: 'Início', path: '/', icon: <School fontSize="small" /> },
-                    { label: 'Estoque Escolar', icon: <Inventory fontSize="small" />, current: true }
-                ]}
-            />
             <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-                    <Typography variant="h4" sx={{ fontWeight: 700, color: 'text.primary' }}>
-                        Estoque Escolar
-                    </Typography>
-                </Box>
+                <PageHeader 
+                    title="Estoque Escolar"
+                    totalCount={produtosComEstoque.length}
+                    statusLegend={[]}
+                />
 
                 {/* Mensagem de Sucesso */}
                 {successMessage && (
@@ -769,7 +763,7 @@ const EstoqueEscolarPage = () => {
                                         <TableHead>
                                             <TableRow>
                                                 <TableCell sx={{ py: 1 }}>Produto</TableCell>
-                                                <TableCell sx={{ py: 1 }}>Categoria</TableCell>
+                                                <TableCell align="center" sx={{ py: 1 }}>Categoria</TableCell>
                                                 <TableCell align="center" sx={{ py: 1 }}>Qtd. Total</TableCell>
                                                 <TableCell align="center" sx={{ py: 1 }}>Escolas c/ Estoque</TableCell>
                                                 <TableCell align="center" sx={{ py: 1 }}>Ações</TableCell>
@@ -783,7 +777,7 @@ const EstoqueEscolarPage = () => {
                                                             {produto.nome}
                                                         </Typography>
                                                     </TableCell>
-                                                    <TableCell sx={{ py: 1 }}>
+                                                    <TableCell align="center" sx={{ py: 1 }}>
                                                         <Typography variant="body2" color="text.secondary">
                                                             {produto.categoria || '-'}
                                                         </Typography>

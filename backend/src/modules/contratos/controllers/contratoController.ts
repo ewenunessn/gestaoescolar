@@ -614,7 +614,11 @@ export const buscarContratos = async (req: Request, res: Response) => {
     `;
 
     const result = await db.query(query, values);
-    res.json(result.rows);
+    res.json({
+      success: true,
+      data: result.rows,
+      total: result.rows.length
+    });
   } catch (error) {
     console.error('Erro ao buscar contratos:', error);
     res.status(500).json({ erro: 'Erro ao buscar contratos' });
@@ -660,7 +664,10 @@ export const buscarContratoPorId = async (req: Request, res: Response) => {
       return res.status(404).json({ erro: 'Contrato não encontrado' });
     }
     
-    res.json(result.rows[0]);
+    res.json({
+      success: true,
+      data: result.rows[0]
+    });
   } catch (error) {
     console.error('Erro ao buscar contrato:', error);
     res.status(500).json({ erro: 'Erro ao buscar contrato' });

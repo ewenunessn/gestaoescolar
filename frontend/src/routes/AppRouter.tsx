@@ -54,7 +54,7 @@ const Refeicoes = lazy(() => import("../pages/Refeicoes"));
 const Cardapios = lazy(() => import("../pages/Cardapios"));
 const CardapioDetalhe = lazy(() => import("../pages/CardapioDetalhe"));
 const CardapioRefeicoes = lazy(() => import("../pages/CardapioRefeicoes"));
-const GerarDemanda = lazy(() => import("../pages/GerarDemanda"));
+
 const Fornecedores = lazy(() => import("../pages/Fornecedores"));
 const FornecedorDetalhe = lazy(() => import("../pages/FornecedorDetalhe"));
 const VisualizacaoEntregas = lazy(() => import("../pages/VisualizacaoEntregas"));
@@ -258,10 +258,7 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
               path="/cardapios/:cardapioId/refeicoes"
               element={<LazyRoute><CardapioRefeicoes /></LazyRoute>}
             />
-            <Route
-              path="/gerar-demanda"
-              element={<LazyRoute><GerarDemanda /></LazyRoute>}
-            />
+
             <Route
               path="/guias-demanda"
               element={<LazyRoute><GuiasDemanda /></LazyRoute>}

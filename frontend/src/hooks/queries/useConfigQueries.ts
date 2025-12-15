@@ -31,7 +31,7 @@ export function useConfiguracoesPorCategoria(categoria: string, enabled = true) 
 export function useConfiguracaoModuloSaldo() {
   return useQuery({
     queryKey: [...queryKeys.configuracoes.all, 'modulo-saldo'],
-    queryFn: configService.buscarConfiguracaoModuloSaldo,
+    queryFn: () => configService.buscarConfiguracaoModuloSaldo(),
     ...cacheConfig.static,
   });
 }
@@ -53,7 +53,7 @@ export function useSalvarConfiguracao() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: configService.salvarConfiguracao,
+    mutationFn: (config) => configService.salvarConfiguracao(config),
     onSuccess: (savedConfig) => {
       // Atualizar configuração no cache
       queryClient.setQueryData(
@@ -100,7 +100,7 @@ export function useSalvarConfiguracaoModuloSaldo() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: configService.salvarConfiguracaoModuloSaldo,
+    mutationFn: (config) => configService.salvarConfiguracaoModuloSaldo(config),
     onSuccess: () => {
       // Invalidar configuração do módulo de saldo
       queryClient.invalidateQueries({ 

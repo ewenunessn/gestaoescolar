@@ -27,7 +27,6 @@ import {
   Assignment,
   LocalShipping,
   Logout,
-  Calculate,
   Assessment,
   ListAlt,
   RequestPage,
@@ -98,7 +97,6 @@ const getMenuConfig = (configModuloSaldo: any) => {
       category: "Planejamento",
       items: [
         { text: "Cardápios", icon: <MenuBook />, path: "/cardapios" },
-        { text: "Gerar Demanda", icon: <Calculate />, path: "/gerar-demanda" },
       ],
     },
     {

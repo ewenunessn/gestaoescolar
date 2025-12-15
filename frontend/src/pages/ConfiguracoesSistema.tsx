@@ -238,10 +238,10 @@ const ConfiguracoesSistema: React.FC = () => {
                 </Box>
 
                 <Alert 
-                  severity={JSON.stringify(configuracao) === JSON.stringify(configModuloSaldo) ? "success" : "info"} 
+                  severity={JSON.stringify(configuracao) === JSON.stringify(configQuery.data) ? "success" : "info"} 
                   sx={{ fontSize: '0.875rem' }}
                 >
-                  {JSON.stringify(configuracao) === JSON.stringify(configModuloSaldo) ? (
+                  {JSON.stringify(configuracao) === JSON.stringify(configQuery.data) ? (
                     <>
                       ✅ Configuração ativa: {configuracao.mostrar_ambos 
                         ? `O módulo "${configuracao.modulo_principal === 'modalidades' ? 'Saldo por Modalidades' : 'Saldo Geral'}" é o principal, ambos estão no menu.`
@@ -269,7 +269,7 @@ const ConfiguracoesSistema: React.FC = () => {
               variant="outlined"
               startIcon={<RefreshIcon />}
               onClick={handleReset}
-              disabled={saving}
+              disabled={salvarMutation.isPending}
             >
               Restaurar Padrão
             </Button>
@@ -278,9 +278,11 @@ const ConfiguracoesSistema: React.FC = () => {
               <Button
                 variant="outlined"
                 onClick={() => {
-                  setConfiguracao(configModuloSaldo);
+                  if (configQuery.data) {
+                    setConfiguracao(configQuery.data);
+                  }
                 }}
-                disabled={saving}
+                disabled={salvarMutation.isPending}
               >
                 Cancelar
               </Button>

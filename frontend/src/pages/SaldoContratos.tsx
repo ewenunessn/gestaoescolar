@@ -759,12 +759,7 @@ const SaldoContratos: React.FC = () => {
                                 size="small"
                                 onClick={() => deletarConsumo(consumo.id)}
                                 disabled={deletandoConsumo === consumo.id}
-                                sx={{
-                                  color: '#d32f2f',
-                                  '&:hover': {
-                                    backgroundColor: 'rgba(211, 47, 47, 0.04)'
-                                  }
-                                }}
+                                color="error"
                               >
                                 {deletandoConsumo === consumo.id ? (
                                   <CircularProgress size={16} />

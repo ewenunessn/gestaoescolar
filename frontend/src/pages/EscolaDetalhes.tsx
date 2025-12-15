@@ -182,7 +182,7 @@ const EscolaInfoCard = ({ isEditing, formData, setFormData, associacoes, totalAl
                                         </IconButton>
                                     </Tooltip>
                                     <Tooltip title="Remover">
-                                        <IconButton size="small" onClick={() => handleDeleteModalidade(assoc.id)}>
+                                        <IconButton size="small" onClick={() => handleDeleteModalidade(assoc.id)} color="error">
                                             <DeleteIcon fontSize="small" />
                                         </IconButton>
                                     </Tooltip>
