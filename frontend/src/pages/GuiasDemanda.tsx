@@ -365,9 +365,7 @@ const GuiasDemanda: React.FC = () => {
             </Box>
           </Collapse>
 
-          <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
-            {`Mostrando ${Math.min((page * rowsPerPage) + 1, filteredGuias.length)}-${Math.min((page + 1) * rowsPerPage, filteredGuias.length)} de ${filteredGuias.length} guias`}
-          </Typography>
+
         </Card>
 
         {loading ? (

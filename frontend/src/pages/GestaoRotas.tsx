@@ -377,9 +377,7 @@ const GestaoRotas: React.FC = () => {
                             <FiltersContent />
                         </Box>
                     </Collapse>
-                    <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary', fontSize: '0.8rem' }}>
-                        {`Mostrando ${Math.min((page * rowsPerPage) + 1, filteredRotas.length)}-${Math.min((page + 1) * rowsPerPage, filteredRotas.length)} de ${filteredRotas.length} rotas`}
-                    </Typography>
+
                 </Card>
 
                 {loading ? (

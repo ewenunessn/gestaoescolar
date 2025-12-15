@@ -227,7 +227,7 @@ const EstoqueCentralPage: React.FC = () => {
             </Box>
           </Box>
           <Collapse in={filtersExpanded} timeout={400}><Box sx={{ mb: 3 }}><FiltersContent /></Box></Collapse>
-          <Typography variant="body2" sx={{ mb: 2, color: '#64748b' }}>{`Mostrando ${Math.min((page * rowsPerPage) + 1, filteredPosicoes.length)}-${Math.min((page + 1) * rowsPerPage, filteredPosicoes.length)} de ${filteredPosicoes.length} posições de estoque`}</Typography>
+
         </Card>
         
         {/* Cards de Estatísticas e Alertas */}

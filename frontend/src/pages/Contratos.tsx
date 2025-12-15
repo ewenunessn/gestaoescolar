@@ -219,7 +219,7 @@ const ContratosPage: React.FC = () => {
             </Box>
           </Box>
           <Collapse in={filtersExpanded} timeout={300}><Box sx={{ mb: 2 }}><FiltersContent /></Box></Collapse>
-          <Typography variant="body2" sx={{ mb: 2, color: '#64748b', fontSize: '0.8rem' }}>{`Mostrando ${Math.min((page * rowsPerPage) + 1, filteredContratos.length)}-${Math.min((page + 1) * rowsPerPage, filteredContratos.length)} de ${filteredContratos.length} contratos`}</Typography>
+
         </Card>
 
         {loading ? (

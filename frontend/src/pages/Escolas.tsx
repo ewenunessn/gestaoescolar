@@ -335,7 +335,7 @@ const EscolasPage = () => {
             </Box>
           </Box>
           <Collapse in={filtersExpanded} timeout={300}><Box sx={{ mb: 2 }}><FiltersContent /></Box></Collapse>
-          <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>{`Mostrando ${Math.min((page * rowsPerPage) + 1, filteredEscolas.length)}-${Math.min((page + 1) * rowsPerPage, filteredEscolas.length)} de ${filteredEscolas.length} escolas`}</Typography>
+
         </Card>
 
         {errosImportacao.length > 0 && (

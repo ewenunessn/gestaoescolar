@@ -284,10 +284,14 @@ export default function DemandaDetalhesModal({
       <Dialog
         open={open}
         onClose={handleClose}
-        maxWidth="lg"
+        maxWidth="md"
         fullWidth
         PaperProps={{
-          sx: { minHeight: '700px' }
+          sx: { 
+            maxHeight: '90vh',
+            height: 'auto',
+            m: 2
+          }
         }}
       >
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -321,7 +325,11 @@ export default function DemandaDetalhesModal({
           </IconButton>
         </DialogTitle>
 
-        <DialogContent>
+        <DialogContent sx={{ 
+          maxHeight: 'calc(90vh - 120px)', 
+          overflowY: 'auto',
+          p: 2
+        }}>
           {loading ? (
             <Box sx={{ p: 3, textAlign: 'center' }}>
               <Typography>Carregando...</Typography>
@@ -331,113 +339,132 @@ export default function DemandaDetalhesModal({
               {erro}
             </Alert>
           ) : demanda ? (
-            <Grid container spacing={3}>
+            <Grid container spacing={2}>
               {/* Informações Básicas */}
               <Grid item xs={12} md={6}>
-                <Card>
+                <Card sx={{ height: 'fit-content' }}>
                   <CardContent>
-                    <Typography variant="h6" gutterBottom>
+                    <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.primary' }}>
                       Informações da Solicitação
                     </Typography>
-                    <Divider sx={{ mb: 2 }} />
+                    <Divider sx={{ mb: 3 }} />
 
-                    <Box sx={{ mb: 2 }}>
-                      <Typography variant="body2" color="text.secondary">Escola Solicitante</Typography>
-                      <Typography variant="body1" fontWeight="bold">{demanda.escola_nome}</Typography>
-                    </Box>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12}>
+                        <Box sx={{ p: 2, bgcolor: 'primary.50', borderRadius: 1, border: '1px solid', borderColor: 'primary.200' }}>
+                          <Typography variant="caption" color="primary.main" fontWeight="bold">ESCOLA SOLICITANTE</Typography>
+                          <Typography variant="h6" sx={{ mt: 0.5, color: 'primary.dark' }}>{demanda.escola_nome}</Typography>
+                        </Box>
+                      </Grid>
+                      
+                      <Grid item xs={6}>
+                        <Typography variant="caption" color="text.secondary" fontWeight="bold">OFÍCIO Nº</Typography>
+                        <Typography variant="body1" fontWeight="600">{demanda.numero_oficio}</Typography>
+                      </Grid>
+                      
+                      <Grid item xs={6}>
+                        <Typography variant="caption" color="text.secondary" fontWeight="bold">DATA SOLICITAÇÃO</Typography>
+                        <Typography variant="body1" fontWeight="600">{formatarData(demanda.data_solicitacao)}</Typography>
+                      </Grid>
 
-                    <Box sx={{ mb: 2 }}>
-                      <Typography variant="body2" color="text.secondary">Número do Ofício</Typography>
-                      <Typography variant="body1">{demanda.numero_oficio}</Typography>
-                    </Box>
+                      <Grid item xs={12}>
+                        <Typography variant="caption" color="text.secondary" fontWeight="bold">OBJETO DA DEMANDA</Typography>
+                        <Typography variant="body1" sx={{ mt: 0.5, p: 1.5, bgcolor: 'grey.50', borderRadius: 1, border: '1px solid', borderColor: 'grey.200' }}>
+                          {demanda.objeto}
+                        </Typography>
+                      </Grid>
 
-                    <Box sx={{ mb: 2 }}>
-                      <Typography variant="body2" color="text.secondary">Data Solicitação à SEMED</Typography>
-                      <Typography variant="body1">{formatarData(demanda.data_solicitacao)}</Typography>
-                    </Box>
-
-                    <Box sx={{ mb: 2 }}>
-                      <Typography variant="body2" color="text.secondary">Objeto</Typography>
-                      <Typography variant="body1">{demanda.objeto}</Typography>
-                    </Box>
-
-                    <Box sx={{ mb: 2 }}>
-                      <Typography variant="body2" color="text.secondary">Descrição dos Itens</Typography>
-                      <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
-                        {demanda.descricao_itens}
-                      </Typography>
-                    </Box>
+                      {demanda.descricao_itens && (
+                        <Grid item xs={12}>
+                          <Typography variant="caption" color="text.secondary" fontWeight="bold">DESCRIÇÃO DETALHADA</Typography>
+                          <Typography variant="body2" sx={{ mt: 0.5, p: 1.5, bgcolor: 'grey.50', borderRadius: 1, border: '1px solid', borderColor: 'grey.200', whiteSpace: 'pre-wrap' }}>
+                            {demanda.descricao_itens}
+                          </Typography>
+                        </Grid>
+                      )}
+                    </Grid>
                   </CardContent>
                 </Card>
               </Grid>
 
               {/* Acompanhamento */}
               <Grid item xs={12} md={6}>
-                <Card>
+                <Card sx={{ height: 'fit-content' }}>
                   <CardContent>
-                    <Typography variant="h6" gutterBottom>
+                    <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.primary' }}>
                       Acompanhamento
                     </Typography>
-                    <Divider sx={{ mb: 2 }} />
+                    <Divider sx={{ mb: 3 }} />
 
-                    <Box sx={{ mb: 2 }}>
-                      <Typography variant="body2" color="text.secondary">Status</Typography>
-                      {getStatusChip(demanda.status)}
-                    </Box>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12}>
+                        <Box sx={{ p: 2, bgcolor: 'success.50', borderRadius: 1, border: '1px solid', borderColor: 'success.200' }}>
+                          <Typography variant="caption" color="success.main" fontWeight="bold">STATUS ATUAL</Typography>
+                          <Typography 
+                            variant="h6" 
+                            sx={{ 
+                              mt: 0.5, 
+                              color: `${STATUS_DEMANDA[demanda.status as keyof typeof STATUS_DEMANDA]?.color || 'default'}.dark` 
+                            }}
+                          >
+                            {STATUS_DEMANDA[demanda.status as keyof typeof STATUS_DEMANDA]?.label || demanda.status}
+                          </Typography>
+                        </Box>
+                      </Grid>
 
-                    {demanda.data_semead && (
-                      <Box sx={{ mb: 2 }}>
-                        <Typography variant="body2" color="text.secondary">
-                          {demanda.data_resposta_semead ? 'Tempo de Resposta da SEMAD' : 'Aguardando Resposta da SEMAD'}
-                        </Typography>
-                        {demanda.dias_solicitacao !== null && (
-                          <Chip
-                            label={`${demanda.dias_solicitacao} dias`}
-                            color={demanda.data_resposta_semead ? 'success' : 'warning'}
-                            size="medium"
-                          />
-                        )}
-                      </Box>
-                    )}
+                      {demanda.data_semead ? (
+                        <>
+                          <Grid item xs={6}>
+                            <Typography variant="caption" color="text.secondary" fontWeight="bold">ENVIADO EM</Typography>
+                            <Typography variant="body1" fontWeight="600">{formatarData(demanda.data_semead)}</Typography>
+                          </Grid>
+                          
+                          <Grid item xs={6}>
+                            <Typography variant="caption" color="text.secondary" fontWeight="bold">
+                              {demanda.data_resposta_semead ? 'RESPONDIDO EM' : 'AGUARDANDO HÁ'}
+                            </Typography>
+                            {demanda.data_resposta_semead ? (
+                              <Box>
+                                <Typography variant="body1" fontWeight="600">{formatarData(demanda.data_resposta_semead)}</Typography>
+                                {demanda.dias_solicitacao !== null && (
+                                  <Typography variant="body2" color="info.main" sx={{ mt: 0.5, fontWeight: 600 }}>
+                                    TEMPO DE RESPOSTA: {demanda.dias_solicitacao} {demanda.dias_solicitacao === 1 ? 'dia' : 'dias'}
+                                  </Typography>
+                                )}
+                              </Box>
+                            ) : (
+                              <Chip label={`${demanda.dias_solicitacao || 0} dias`} color="warning" size="small" />
+                            )}
+                          </Grid>
+                        </>
+                      ) : (
+                        <Grid item xs={12}>
+                          <Box sx={{ p: 2, bgcolor: 'warning.50', borderRadius: 1, border: '1px solid', borderColor: 'warning.200', textAlign: 'center' }}>
+                            <Typography variant="caption" color="warning.main" fontWeight="bold">PENDENTE DE ENVIO</Typography>
+                            <Typography variant="body2" sx={{ mt: 0.5, color: 'warning.dark' }}>
+                              Ainda não foi enviado à SEMAD
+                            </Typography>
+                          </Box>
+                        </Grid>
+                      )}
 
-                    {!demanda.data_semead && (
-                      <Box sx={{ mb: 2 }}>
-                        <Typography variant="body2" color="text.secondary">Status do Envio</Typography>
-                        <Chip
-                          label="Ainda não enviado à SEMAD"
-                          color="default"
-                          size="medium"
-                        />
-                      </Box>
-                    )}
+                      {demanda.observacoes && (
+                        <Grid item xs={12}>
+                          <Typography variant="caption" color="text.secondary" fontWeight="bold">OBSERVAÇÕES</Typography>
+                          <Typography variant="body2" sx={{ mt: 0.5, p: 1.5, bgcolor: 'grey.50', borderRadius: 1, border: '1px solid', borderColor: 'grey.200', whiteSpace: 'pre-wrap' }}>
+                            {demanda.observacoes}
+                          </Typography>
+                        </Grid>
+                      )}
 
-                    {demanda.data_semead && (
-                      <Box sx={{ mb: 2 }}>
-                        <Typography variant="body2" color="text.secondary">Data de Envio à SEMAD</Typography>
-                        <Typography variant="body1">{formatarData(demanda.data_semead)}</Typography>
-                      </Box>
-                    )}
-
-                    {demanda.data_resposta_semead && (
-                      <Box sx={{ mb: 2 }}>
-                        <Typography variant="body2" color="text.secondary">Data da Resposta SEMAD</Typography>
-                        <Typography variant="body1">{formatarData(demanda.data_resposta_semead)}</Typography>
-                      </Box>
-                    )}
-
-                    {demanda.observacoes && (
-                      <Box sx={{ mb: 2 }}>
-                        <Typography variant="body2" color="text.secondary">Observações</Typography>
-                        <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
-                          {demanda.observacoes}
-                        </Typography>
-                      </Box>
-                    )}
-
-                    <Box sx={{ mb: 2 }}>
-                      <Typography variant="body2" color="text.secondary">Criado por</Typography>
-                      <Typography variant="body1">{demanda.usuario_criacao_nome}</Typography>
-                    </Box>
+                      <Grid item xs={12}>
+                        <Divider sx={{ my: 1 }} />
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography variant="caption" color="text.secondary">Criado por:</Typography>
+                          <Typography variant="body2" fontWeight="600">{demanda.usuario_criacao_nome}</Typography>
+                        </Box>
+                      </Grid>
+                    </Grid>
                   </CardContent>
                 </Card>
               </Grid>

@@ -307,9 +307,7 @@ const ModalidadesPage = () => {
 
           <Collapse in={filtersExpanded} timeout={300}><Box sx={{ mb: 2 }}><FiltersContent /></Box></Collapse>
 
-          <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>
-            {`Mostrando ${Math.min((page * rowsPerPage) + 1, filteredModalidades.length)}-${Math.min((page + 1) * rowsPerPage, filteredModalidades.length)} de ${filteredModalidades.length} modalidades`}
-          </Typography>
+
         </Card>
 
         {loading ? (

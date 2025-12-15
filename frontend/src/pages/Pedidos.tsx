@@ -367,9 +367,7 @@ const PedidosPage = () => {
             </Box>
           </Collapse>
           
-          <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
-            {`Mostrando ${Math.min((page * rowsPerPage) + 1, filteredPedidos.length)}-${Math.min((page + 1) * rowsPerPage, filteredPedidos.length)} de ${filteredPedidos.length} pedidos`}
-          </Typography>
+
         </Card>
 
         {loading ? (
@@ -401,10 +399,10 @@ const PedidosPage = () => {
                 <TableHead>
                   <TableRow>
                     <TableCell>Número</TableCell>
-                    <TableCell>Data</TableCell>
-                    <TableCell>Fornecedores</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell align="right">Valor Total</TableCell>
+                    <TableCell align="center">Data</TableCell>
+                    <TableCell align="center">Fornecedores</TableCell>
+                    <TableCell align="center">Status</TableCell>
+                    <TableCell align="center">Valor Total</TableCell>
                     <TableCell align="center">Itens</TableCell>
                     <TableCell align="center">Ações</TableCell>
                   </TableRow>
@@ -420,12 +418,12 @@ const PedidosPage = () => {
                           </Typography>
                         </Box>
                       </TableCell>
-                      <TableCell>
+                      <TableCell align="center">
                         <Typography variant="body2" color="text.secondary">
                           {formatarData(pedido.data_pedido)}
                         </Typography>
                       </TableCell>
-                      <TableCell>
+                      <TableCell align="center">
                         <Typography variant="body2" color="text.secondary">
                           {pedido.total_fornecedores && pedido.total_fornecedores > 1 ? (
                             <Tooltip title={pedido.fornecedores_nomes || ''}>
@@ -441,10 +439,10 @@ const PedidosPage = () => {
                           )}
                         </Typography>
                       </TableCell>
-                      <TableCell>
+                      <TableCell align="center">
                         {getStatusChip(pedido.status)}
                       </TableCell>
-                      <TableCell align="right">
+                      <TableCell align="center">
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>
                           {formatarMoeda(pedido.valor_total)}
                         </Typography>

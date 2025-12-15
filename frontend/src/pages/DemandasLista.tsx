@@ -27,7 +27,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  TablePagination
+  TablePagination,
+  Tooltip
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -36,7 +37,9 @@ import {
   Search as SearchIcon,
   Save as SaveIcon,
   Cancel as CancelIcon,
-  Assignment as AssignmentIcon
+  Assignment as AssignmentIcon,
+  ArrowUpward as ArrowUpwardIcon,
+  ArrowDownward as ArrowDownwardIcon
 } from '@mui/icons-material';
 import demandasService from '../services/demandas';
 import { listarEscolas } from '../services/escolas';
@@ -45,6 +48,7 @@ import { formatarData } from '../utils/dateUtils';
 import { DemandaDetalhesModal, LoadingScreen } from '../components';
 import StatusIndicator from '../components/StatusIndicator';
 import PageHeader from '../components/PageHeader';
+
 
 export default function DemandasLista() {
   const [demandas, setDemandas] = useState<Demanda[]>([]);
@@ -90,6 +94,10 @@ export default function DemandasLista() {
 
   // Controle de visibilidade dos filtros
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
+
+  // Ordenação
+  const [orderBy, setOrderBy] = useState<string>('');
+  const [order, setOrder] = useState<'asc' | 'desc'>('asc');
 
   useEffect(() => {
     carregarDados();
@@ -203,6 +211,55 @@ export default function DemandasLista() {
     }
   };
 
+  // Função de ordenação
+  const ordenarDemandas = useCallback((demandasParaOrdenar: Demanda[]) => {
+    if (!orderBy) return demandasParaOrdenar;
+
+    return [...demandasParaOrdenar].sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      switch (orderBy) {
+        case 'escola_nome':
+          aValue = a.escola_nome.toLowerCase();
+          bValue = b.escola_nome.toLowerCase();
+          break;
+        case 'data_solicitacao':
+          aValue = new Date(a.data_solicitacao);
+          bValue = new Date(b.data_solicitacao);
+          break;
+        case 'data_semead':
+          aValue = a.data_semead ? new Date(a.data_semead) : new Date(0);
+          bValue = b.data_semead ? new Date(b.data_semead) : new Date(0);
+          break;
+        case 'data_resposta_semead':
+          aValue = a.data_resposta_semead ? new Date(a.data_resposta_semead) : new Date(0);
+          bValue = b.data_resposta_semead ? new Date(b.data_resposta_semead) : new Date(0);
+          break;
+        case 'status':
+          // Ordenar por prioridade de status
+          const statusOrder = { 'pendente': 1, 'enviado_semead': 2, 'atendido': 3, 'nao_atendido': 4 };
+          aValue = statusOrder[a.status as keyof typeof statusOrder] || 5;
+          bValue = statusOrder[b.status as keyof typeof statusOrder] || 5;
+          break;
+        case 'numero_oficio':
+          aValue = a.numero_oficio.toLowerCase();
+          bValue = b.numero_oficio.toLowerCase();
+          break;
+        default:
+          return 0;
+      }
+
+      if (aValue < bValue) {
+        return order === 'asc' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return order === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
+  }, [orderBy, order]);
+
   // Filtro local em tempo real
   const filtrarDemandas = useCallback(() => {
     let demandasFiltradas = [...demandasOriginais];
@@ -242,11 +299,14 @@ export default function DemandasLista() {
       );
     }
 
+    // Aplicar ordenação
+    demandasFiltradas = ordenarDemandas(demandasFiltradas);
+
     setDemandas(demandasFiltradas);
     // Reset página e linha selecionada quando filtros mudarem
     setPage(0);
     setLinhaSelecionada(-1);
-  }, [demandasOriginais, filtroSolicitante, filtroObjeto, filtroStatus, filtroDataInicio, filtroDataFim]);
+  }, [demandasOriginais, filtroSolicitante, filtroObjeto, filtroStatus, filtroDataInicio, filtroDataFim, ordenarDemandas]);
 
   // Calcular paginação
   const calcularPaginacao = useCallback(() => {
@@ -391,6 +451,12 @@ export default function DemandasLista() {
     }
   };
 
+  const handleRequestSort = (property: string) => {
+    const isAsc = orderBy === property && order === 'asc';
+    setOrder(isAsc ? 'desc' : 'asc');
+    setOrderBy(property);
+  };
+
 
 
 
@@ -410,6 +476,15 @@ export default function DemandasLista() {
         size="small"
       />
     );
+  };
+
+  const getSortIcon = (column: string) => {
+    if (orderBy !== column) {
+      return <ArrowUpwardIcon sx={{ fontSize: 14, opacity: 0.3, ml: 0.5 }} />;
+    }
+    return order === 'asc' ? 
+      <ArrowUpwardIcon sx={{ fontSize: 14, ml: 0.5 }} /> : 
+      <ArrowDownwardIcon sx={{ fontSize: 14, ml: 0.5 }} />;
   };
 
   if (loading) {
@@ -554,9 +629,7 @@ export default function DemandasLista() {
             </Box>
           )}
 
-          <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
-            {`Mostrando ${Math.min(page * rowsPerPage + 1, demandas.length)}-${Math.min((page + 1) * rowsPerPage, demandas.length)} de ${demandas.length} demandas`}
-          </Typography>
+
         </Card>
 
         {loading ? (
@@ -580,22 +653,68 @@ export default function DemandasLista() {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell sx={{ fontWeight: 600, minWidth: 200, width: 250 }}>Solicitante</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Nº Ofício</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Data Solicitação</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Objeto</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Data Envio SEMAD</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Data Resposta</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Tempo SEMAD</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-              <TableCell align="center" sx={{ fontWeight: 600 }}>Ações</TableCell>
+              <TableCell 
+                sx={{ fontWeight: 600, width: '22%', cursor: 'pointer', userSelect: 'none' }}
+                onClick={() => handleRequestSort('escola_nome')}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  Escola Solicitante
+                  {getSortIcon('escola_nome')}
+                </Box>
+              </TableCell>
+              <TableCell 
+                align="center" 
+                sx={{ fontWeight: 600, width: '12%', cursor: 'pointer', userSelect: 'none' }}
+                onClick={() => handleRequestSort('numero_oficio')}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  Ofício
+                  {getSortIcon('numero_oficio')}
+                </Box>
+              </TableCell>
+              <TableCell 
+                align="center" 
+                sx={{ fontWeight: 600, width: '12%', cursor: 'pointer', userSelect: 'none' }}
+                onClick={() => handleRequestSort('data_solicitacao')}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  Solicitação
+                  {getSortIcon('data_solicitacao')}
+                </Box>
+              </TableCell>
+              <TableCell sx={{ fontWeight: 600, width: '30%' }}>
+                Objeto da Demanda
+              </TableCell>
+              <TableCell 
+                align="center" 
+                sx={{ fontWeight: 600, width: '12%', cursor: 'pointer', userSelect: 'none' }}
+                onClick={() => handleRequestSort('data_semead')}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  Envio SEMAD
+                  {getSortIcon('data_semead')}
+                </Box>
+              </TableCell>
+              <TableCell 
+                align="center" 
+                sx={{ fontWeight: 600, width: '12%', cursor: 'pointer', userSelect: 'none' }}
+                onClick={() => handleRequestSort('data_resposta_semead')}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  Resposta SEMAD
+                  {getSortIcon('data_resposta_semead')}
+                </Box>
+              </TableCell>
+              <TableCell align="center" sx={{ fontWeight: 600, width: '8%' }}>
+                Ações
+              </TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {/* Linha de formulário para nova demanda */}
             {modoEdicao && (
               <TableRow sx={{ bgcolor: 'rgba(25, 118, 210, 0.04)' }}>
-                <TableCell sx={{ py: 1, minWidth: 200, width: 250 }}>
+                <TableCell sx={{ py: 1, width: '22%' }}>
                   <Autocomplete
                     freeSolo
                     size="small"
@@ -670,9 +789,6 @@ export default function DemandasLista() {
                     -
                   </Typography>
                 </TableCell>
-                <TableCell sx={{ py: 1 }}>
-                  <Chip label="Pendente" color="warning" size="small" />
-                </TableCell>
                 <TableCell align="center" sx={{ py: 1 }}>
                   <IconButton
                     size="small"
@@ -698,7 +814,7 @@ export default function DemandasLista() {
 
             {demandasPaginadas.length === 0 && !modoEdicao ? (
               <TableRow>
-                <TableCell colSpan={9} align="center">
+                <TableCell colSpan={7} align="center">
                   <Typography variant="body2" color="text.secondary" sx={{ py: 3 }}>
                     Nenhuma demanda encontrada
                   </Typography>
@@ -715,40 +831,54 @@ export default function DemandasLista() {
                   }}
                   onClick={() => setLinhaSelecionada(index)}
                 >
-                  <TableCell sx={{ minWidth: 200, width: 250 }}>
+                  <TableCell sx={{ width: '22%' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <StatusIndicator status={demanda.status} size="small" />
-                      <Typography variant="body2">{demanda.escola_nome}</Typography>
+                      <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>{demanda.escola_nome}</Typography>
                     </Box>
                   </TableCell>
-                  <TableCell>{demanda.numero_oficio}</TableCell>
-                  <TableCell>{formatarData(demanda.data_solicitacao)}</TableCell>
-                  <TableCell sx={{ maxWidth: 300, minWidth: 250 }}>
+                  <TableCell align="center" sx={{ width: '12%' }}>
+                    <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>{demanda.numero_oficio}</Typography>
+                  </TableCell>
+                  <TableCell align="center" sx={{ width: '12%' }}>
+                    <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>{formatarData(demanda.data_solicitacao)}</Typography>
+                  </TableCell>
+                  <TableCell sx={{ width: '30%' }}>
                     <Typography
                       variant="body2"
                       sx={{
-                        whiteSpace: 'pre-wrap',
-                        wordBreak: 'break-word',
-                        lineHeight: 1.4
+                        fontSize: '0.875rem',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        maxWidth: '100%'
                       }}
+                      title={demanda.objeto}
                     >
                       {demanda.objeto}
                     </Typography>
                   </TableCell>
-                  <TableCell>{formatarData(demanda.data_semead)}</TableCell>
-
-                  <TableCell>
-                    {demanda.data_resposta_semead ? formatarData(demanda.data_resposta_semead) : '-'}
-                  </TableCell>
-                  <TableCell align="center">
-                    {demanda.dias_solicitacao !== null ? (
-                      <Chip label={`${demanda.dias_solicitacao} dias`} size="small" />
+                  <TableCell align="center" sx={{ width: '12%' }}>
+                    {demanda.data_semead ? (
+                      <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>{formatarData(demanda.data_semead)}</Typography>
                     ) : (
-                      <Typography variant="body2" color="text.secondary">-</Typography>
+                      <Chip label="Pendente" size="small" color="warning" sx={{ fontSize: '0.7rem' }} />
                     )}
                   </TableCell>
-                  <TableCell align="center">
-                    {getStatusChip(demanda.status)}
+                  <TableCell align="center" sx={{ width: '12%' }}>
+                    {demanda.data_resposta_semead ? (
+                      <Tooltip title={demanda.dias_solicitacao !== null ? `Prazo: ${demanda.dias_solicitacao} dias` : 'Prazo não calculado'}>
+                        <Typography variant="body2" sx={{ fontSize: '0.875rem', cursor: 'help' }}>
+                          {formatarData(demanda.data_resposta_semead)}
+                        </Typography>
+                      </Tooltip>
+                    ) : demanda.data_semead ? (
+                      <Tooltip title={demanda.dias_solicitacao !== null ? `Aguardando resposta (${demanda.dias_solicitacao} dias até agora)` : 'Aguardando resposta'}>
+                        <Chip label="Aguardando" size="small" color="info" sx={{ fontSize: '0.7rem', cursor: 'help' }} />
+                      </Tooltip>
+                    ) : (
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>-</Typography>
+                    )}
                   </TableCell>
                   <TableCell align="center">
                     <IconButton

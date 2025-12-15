@@ -540,7 +540,7 @@ const ProdutosPage = () => {
             </Box>
           </Box>
           <Collapse in={filtersExpanded} timeout={300}><Box sx={{ mb: 2 }}><FiltersContent /></Box></Collapse>
-          <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>{`Mostrando ${Math.min((page * rowsPerPage) + 1, filteredProdutos.length)}-${Math.min((page + 1) * rowsPerPage, filteredProdutos.length)} de ${filteredProdutos.length} produtos`}</Typography>
+
         </Card>
 
         {loading ? (

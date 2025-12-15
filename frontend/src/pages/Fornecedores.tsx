@@ -260,7 +260,7 @@ const FornecedoresPage: React.FC = () => {
             </Box>
           </Box>
           <Collapse in={filtersExpanded} timeout={400}><Box sx={{ mb: 3 }}><FiltersContent /></Box></Collapse>
-          <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>{`Mostrando ${Math.min((page * rowsPerPage) + 1, filteredFornecedores.length)}-${Math.min((page + 1) * rowsPerPage, filteredFornecedores.length)} de ${filteredFornecedores.length} fornecedores`}</Typography>
+
         </Card>
 
         {loading ? (
@@ -273,7 +273,7 @@ const FornecedoresPage: React.FC = () => {
           <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px' }}>
             <TableContainer>
               <Table>
-                <TableHead><TableRow><TableCell>Nome</TableCell><TableCell>CNPJ</TableCell><TableCell>Email</TableCell><TableCell align="center">Ações</TableCell></TableRow></TableHead>
+                <TableHead><TableRow><TableCell>Nome</TableCell><TableCell align="center">CNPJ</TableCell><TableCell align="center">Email</TableCell><TableCell align="center">Ações</TableCell></TableRow></TableHead>
                 <TableBody>
                   {paginatedFornecedores.map((f) => (
                     <TableRow key={f.id} hover>
@@ -283,8 +283,8 @@ const FornecedoresPage: React.FC = () => {
                           <Typography variant="body2" sx={{ fontWeight: 600 }}>{f.nome}</Typography>
                         </Box>
                       </TableCell>
-                      <TableCell><Typography variant="body2" color="text.secondary" fontFamily="monospace">{formatarDocumento(f.cnpj)}</Typography></TableCell>
-                      <TableCell><Typography variant="body2" color="text.secondary">{f.email || 'Não informado'}</Typography></TableCell>
+                      <TableCell align="center"><Typography variant="body2" color="text.secondary" fontFamily="monospace">{formatarDocumento(f.cnpj)}</Typography></TableCell>
+                      <TableCell align="center"><Typography variant="body2" color="text.secondary">{f.email || 'Não informado'}</Typography></TableCell>
 
                       <TableCell align="center">
                         <Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => navigate(`/fornecedores/${f.id}`)} color="primary"><InfoIcon fontSize="small" /></IconButton></Tooltip>

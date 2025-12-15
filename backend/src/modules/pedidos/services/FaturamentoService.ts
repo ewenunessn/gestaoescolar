@@ -57,6 +57,7 @@ export class FaturamentoService {
       SELECT id, nome, codigo_financeiro, valor_repasse
       FROM modalidades 
       WHERE ativo = true 
+        AND tenant_id = get_current_tenant_id()
       ORDER BY nome
     `;
     
@@ -156,6 +157,7 @@ export class FaturamentoService {
       SELECT id, numero, status, valor_total
       FROM pedidos 
       WHERE id = $1
+        AND tenant_id = get_current_tenant_id()
     `;
     const pedidoResult = await db.get(pedidoQuery, [pedidoId]);
     
@@ -506,6 +508,7 @@ export class FaturamentoService {
       await client.query(`
         SELECT id FROM pedidos 
         WHERE id = $1 
+          AND tenant_id = get_current_tenant_id()
         FOR UPDATE
       `, [pedidoId]);
       
@@ -626,10 +629,13 @@ export class FaturamentoService {
       await client.query('BEGIN');
       
       // Verificar se o faturamento existe
-      const faturamentoResult = await client.query(
-        'SELECT id, status FROM faturamentos WHERE id = $1',
-        [faturamentoId]
-      );
+      const faturamentoResult = await client.query(`
+        SELECT f.id, f.status 
+        FROM faturamentos f
+        JOIN pedidos p ON f.pedido_id = p.id
+        WHERE f.id = $1 
+          AND p.tenant_id = get_current_tenant_id()
+      `, [faturamentoId]);
       
       if (faturamentoResult.rows.length === 0) {
         throw new Error('Faturamento não encontrado');
@@ -1058,10 +1064,13 @@ export class FaturamentoService {
       await client.query('BEGIN');
       
       // Verificar se o faturamento existe
-      const faturamentoResult = await client.query(
-        'SELECT id, status FROM faturamentos WHERE id = $1',
-        [faturamentoId]
-      );
+      const faturamentoResult = await client.query(`
+        SELECT f.id, f.status 
+        FROM faturamentos f
+        JOIN pedidos p ON f.pedido_id = p.id
+        WHERE f.id = $1 
+          AND p.tenant_id = get_current_tenant_id()
+      `, [faturamentoId]);
       
       if (faturamentoResult.rows.length === 0) {
         throw new Error('Faturamento não encontrado');

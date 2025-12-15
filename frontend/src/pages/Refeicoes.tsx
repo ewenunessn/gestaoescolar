@@ -378,9 +378,7 @@ const RefeicoesPage = () => {
             <Box sx={{ mb: 2 }}><FiltersContent /></Box>
           </Collapse>
 
-          <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>
-            {`Mostrando ${Math.min((page * rowsPerPage) + 1, filteredRefeicoes.length)}-${Math.min((page + 1) * rowsPerPage, filteredRefeicoes.length)} de ${filteredRefeicoes.length} refeições`}
-          </Typography>
+
         </Card>
 
         {loading ? (

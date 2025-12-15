@@ -100,6 +100,7 @@ export class FaturamentoModel {
       JOIN pedidos p ON f.pedido_id = p.id
       JOIN usuarios u ON f.usuario_criacao_id = u.id
       WHERE f.id = $1
+        AND p.tenant_id = get_current_tenant_id()
     `;
     
     const result = await this.pool.query(query, [id]);
@@ -116,6 +117,7 @@ export class FaturamentoModel {
       JOIN pedidos p ON f.pedido_id = p.id
       JOIN usuarios u ON f.usuario_criacao_id = u.id
       WHERE f.pedido_id = $1
+        AND p.tenant_id = get_current_tenant_id()
       ORDER BY f.created_at DESC
     `;
     
@@ -143,7 +145,10 @@ export class FaturamentoModel {
       JOIN contratos c ON fi.contrato_id = c.id
       JOIN fornecedores f ON fi.fornecedor_id = f.id
       JOIN produtos pr ON fi.produto_id = pr.id
+      JOIN faturamentos fat ON fi.faturamento_id = fat.id
+      JOIN pedidos p ON fat.pedido_id = p.id
       WHERE fi.faturamento_id = $1
+        AND p.tenant_id = get_current_tenant_id()
       ORDER BY c.numero, m.nome, pr.nome
     `;
     
@@ -212,7 +217,7 @@ export class FaturamentoModel {
       JOIN pedidos p ON f.pedido_id = p.id
       JOIN usuarios u ON f.usuario_criacao_id = u.id
       LEFT JOIN faturamento_itens fi ON f.id = fi.faturamento_id
-      WHERE 1=1
+      WHERE p.tenant_id = get_current_tenant_id()
     `;
     
     const values: any[] = [];
@@ -252,8 +257,10 @@ export class FaturamentoModel {
     const ano = new Date().getFullYear();
     const query = `
       SELECT COUNT(*) as total 
-      FROM faturamentos 
-      WHERE EXTRACT(YEAR FROM created_at) = $1
+      FROM faturamentos f
+      JOIN pedidos p ON f.pedido_id = p.id
+      WHERE EXTRACT(YEAR FROM f.created_at) = $1
+        AND p.tenant_id = get_current_tenant_id()
     `;
     
     const result = await this.pool.query(query, [ano]);
@@ -264,9 +271,12 @@ export class FaturamentoModel {
 
   async atualizarStatus(id: number, status: string): Promise<boolean> {
     const query = `
-      UPDATE faturamentos 
+      UPDATE faturamentos f
       SET status = $1, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $2
+      FROM pedidos p
+      WHERE f.id = $2
+        AND f.pedido_id = p.id
+        AND p.tenant_id = get_current_tenant_id()
     `;
 
     const result = await this.pool.query(query, [status, id]);
@@ -282,9 +292,12 @@ export class FaturamentoModel {
       // Verificar se algum item do faturamento tem consumo registrado
       const itensComConsumoResult = await client.query(`
         SELECT COUNT(*) as total
-        FROM faturamento_itens
-        WHERE faturamento_id = $1
-          AND consumo_registrado = true
+        FROM faturamento_itens fi
+        JOIN faturamentos f ON fi.faturamento_id = f.id
+        JOIN pedidos p ON f.pedido_id = p.id
+        WHERE fi.faturamento_id = $1
+          AND fi.consumo_registrado = true
+          AND p.tenant_id = get_current_tenant_id()
       `, [id]);
       
       const temConsumoRegistrado = parseInt(itensComConsumoResult.rows[0].total) > 0;
@@ -297,10 +310,23 @@ export class FaturamentoModel {
       }
       
       // Excluir itens do faturamento
-      await client.query('DELETE FROM faturamento_itens WHERE faturamento_id = $1', [id]);
+      await client.query(`
+        DELETE FROM faturamento_itens fi
+        USING faturamentos f, pedidos p
+        WHERE fi.faturamento_id = f.id
+          AND f.pedido_id = p.id
+          AND fi.faturamento_id = $1
+          AND p.tenant_id = get_current_tenant_id()
+      `, [id]);
       
       // Excluir faturamento
-      const result = await client.query('DELETE FROM faturamentos WHERE id = $1', [id]);
+      const result = await client.query(`
+        DELETE FROM faturamentos f
+        USING pedidos p
+        WHERE f.pedido_id = p.id
+          AND f.id = $1
+          AND p.tenant_id = get_current_tenant_id()
+      `, [id]);
       
       await client.query('COMMIT');
       return result.rowCount > 0;
