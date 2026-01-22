@@ -7,20 +7,20 @@ export const demandaController = {
     try {
       console.log('🔄 [DEMANDAS] Iniciando criar...');
       
-      // Obter tenant_id de múltiplas fontes
-      const tenantId = (req as any).tenant?.id || req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
+      // Configurar contexto de tenant
+      await setTenantContextFromRequest(req);
       
-      console.log('🔍 [DEMANDAS] Tenant ID:', tenantId);
-      console.log('🔍 [DEMANDAS] req.tenant:', (req as any).tenant);
-      console.log('🔍 [DEMANDAS] Headers:', req.headers);
-      
-      if (!tenantId) {
+      // Validar se tenant está presente
+      if (!req.tenant?.id) {
         console.error('❌ [DEMANDAS] Tenant ID não encontrado');
         return res.status(400).json({
           success: false,
-          message: 'Tenant ID não encontrado'
+          message: 'Contexto de tenant não encontrado'
         });
       }
+      
+      console.log('🔍 [DEMANDAS] Tenant ID:', req.tenant.id);
+      console.log('🔍 [DEMANDAS] req.tenant:', req.tenant);
 
       const usuarioId = (req as any).usuario?.id || (req as any).user?.id || 1;
       
@@ -29,7 +29,7 @@ export const demandaController = {
 
       const demanda = await demandaModel.criar({
         ...req.body,
-        tenant_id: tenantId,
+        tenant_id: req.tenant.id,
         data_semead: req.body.data_semead || null,
         status: 'pendente',
         usuario_criacao_id: usuarioId

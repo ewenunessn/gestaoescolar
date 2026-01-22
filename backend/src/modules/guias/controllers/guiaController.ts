@@ -27,11 +27,21 @@ export const guiaController = {
   // Criar nova guia
   async criarGuia(req: Request, res: Response) {
     try {
-      const tenantId = req.headers['x-tenant-id'] as string || (req as any).tenant?.id || '00000000-0000-0000-0000-000000000000';
+      // Configurar contexto de tenant
+      await setTenantContextFromRequest(req);
+      
+      // Validar se tenant está presente
+      if (!req.tenant?.id) {
+        return res.status(400).json({
+          success: false,
+          error: "Contexto de tenant não encontrado"
+        });
+      }
+
       const { mes, ano, nome, observacao } = req.body;
 
       // Verificar se já existe uma guia para o mesmo mês/ano no tenant
-      const guias = await GuiaModel.listarGuias(tenantId);
+      const guias = await GuiaModel.listarGuias(req.tenant.id);
       const guiaExistente = guias.find(g => g.mes === mes && g.ano === ano);
 
       if (guiaExistente) {
@@ -42,7 +52,7 @@ export const guiaController = {
       }
 
       const guia = await GuiaModel.criarGuia({
-        tenant_id: tenantId,
+        tenant_id: req.tenant.id,
         mes,
         ano,
         nome,

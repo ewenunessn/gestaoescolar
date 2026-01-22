@@ -356,14 +356,14 @@ export async function atualizarLoteQuantidades(req: Request, res: Response) {
 
         // Primeiro tentar atualizar, se não existir, criar o registro
         const updateResult = await client.query(`
-          INSERT INTO estoque_escolas (escola_id, produto_id, quantidade_atual)
-          VALUES ($2, $3, $1)
+          INSERT INTO estoque_escolas (escola_id, produto_id, quantidade_atual, tenant_id)
+          VALUES ($2, $3, $1, $4)
           ON CONFLICT (escola_id, produto_id) 
           DO UPDATE SET
             quantidade_atual = $1,
             updated_at = CURRENT_TIMESTAMP
           RETURNING *
-        `, [quantidade_atual, escola_id, produto_id]);
+        `, [quantidade_atual, escola_id, produto_id, tenantId]);
 
         if (updateResult.rows.length > 0) {
           resultados.push(updateResult.rows[0]);
@@ -552,16 +552,16 @@ export async function inicializarEstoqueEscola(req: Request, res: Response) {
 
     // Inserir produtos que ainda não existem no estoque da escola
     const result = await db.query(`
-      INSERT INTO estoque_escolas (escola_id, produto_id, quantidade_atual)
-      SELECT $1, p.id, 0.000
+      INSERT INTO estoque_escolas (escola_id, produto_id, quantidade_atual, tenant_id)
+      SELECT $1, p.id, 0.000, $2
       FROM produtos p
       WHERE p.id NOT IN (
         SELECT produto_id 
         FROM estoque_escolas 
         WHERE escola_id = $1
-      )
+      ) AND p.tenant_id = $2
       RETURNING *
-    `, [escola_id]);
+    `, [escola_id, tenantId]);
 
     res.json({
       success: true,
@@ -809,14 +809,15 @@ export async function registrarMovimentacao(req: Request, res: Response) {
           await client.query(`
             INSERT INTO estoque_lotes (
               escola_id, produto_id, lote, quantidade_inicial, quantidade_atual,
-              data_validade, status, created_at, updated_at
-            ) VALUES ($1, $2, $3, $4, $4, $5, 'ativo', NOW(), NOW())
+              data_validade, status, tenant_id, created_at, updated_at
+            ) VALUES ($1, $2, $3, $4, $4, $5, 'ativo', $6, NOW(), NOW())
           `, [
             escola_id,
             produto_id,
             `LOTE_${Date.now()}`, // Gerar nome único do lote
             parseFloat(quantidade),
-            data_validade
+            data_validade,
+            tenantId
           ]);
         } else {
           // Atualizar lote existente
@@ -867,9 +868,9 @@ export async function registrarMovimentacao(req: Request, res: Response) {
           await client.query(`
             INSERT INTO estoque_lotes (
               escola_id, produto_id, lote, quantidade_inicial, quantidade_atual,
-              data_validade, status, created_at, updated_at
-            ) VALUES ($1, $2, 'PRINCIPAL', $3, $3, NULL, 'ativo', NOW(), NOW())
-          `, [escola_id, produto_id, quantidadePrincipalDesejada]);
+              data_validade, status, tenant_id, created_at, updated_at
+            ) VALUES ($1, $2, 'PRINCIPAL', $3, $3, NULL, 'ativo', $4, NOW(), NOW())
+          `, [escola_id, produto_id, quantidadePrincipalDesejada, tenantId]);
         } else if (lotePrincipal.rows.length > 0) {
           // Atualizar lote principal
           const novoStatus = quantidadePrincipalDesejada === 0 ? 'esgotado' : 'ativo';
@@ -958,8 +959,9 @@ export async function registrarMovimentacao(req: Request, res: Response) {
           motivo,
           documento_referencia,
           usuario_id,
+          tenant_id,
           data_movimentacao
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP)
         RETURNING *
       `, [
         item.id,
@@ -971,7 +973,8 @@ export async function registrarMovimentacao(req: Request, res: Response) {
         quantidadePosterior,
         motivoComTenant,
         documento_referencia,
-        usuarioIdValido
+        usuarioIdValido,
+        tenantId
       ]);
 
       return {
@@ -1155,8 +1158,9 @@ export async function resetarEstoqueComBackup(req: Request, res: Response) {
               documento_referencia,
               usuario_id,
               usuario_nome,
+              tenant_id,
               created_at
-            ) VALUES ($1, $2, $3, 'reset', $4, $5, 0, $6, $7, $8, $9, NOW())
+            ) VALUES ($1, $2, $3, 'reset', $4, $5, 0, $6, $7, $8, $9, $10, NOW())
           `, [
             item.id,
             escola_id,
@@ -1166,7 +1170,8 @@ export async function resetarEstoqueComBackup(req: Request, res: Response) {
             `${motivo || 'Reset do estoque - backup criado'} [Tenant: ${tenantId}]`,
             nomeBackup,
             usuario_id,
-            req.user?.nome || 'Sistema'
+            req.user?.nome || 'Sistema',
+            tenantId
           ]);
         }
       }
@@ -1394,8 +1399,8 @@ export async function criarLote(req: Request, res: Response) {
       INSERT INTO estoque_lotes (
         escola_id, produto_id, lote, quantidade_inicial, quantidade_atual,
         data_fabricacao, data_validade, fornecedor_id, observacoes,
-        status, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $4, $5, $6, $7, $8, 'ativo', NOW(), NOW())
+        status, tenant_id, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $4, $5, $6, $7, $8, 'ativo', $9, NOW(), NOW())
       RETURNING *
     `, [
       escola_id,
@@ -1405,7 +1410,8 @@ export async function criarLote(req: Request, res: Response) {
       data_fabricacao || null,
       data_validade || null,
       fornecedor_id || null,
-      observacoes || null
+      observacoes || null,
+      tenantId
     ]);
 
     // Invalidate tenant cache after creating new batch
@@ -1518,8 +1524,8 @@ export async function processarMovimentacaoLotes(req: Request, res: Response) {
               INSERT INTO estoque_lotes (
                 escola_id, produto_id, lote, quantidade_inicial, quantidade_atual,
                 data_fabricacao, data_validade, observacoes,
-                status, created_at, updated_at
-              ) VALUES ($1, $2, $3, $4, $4, $5, $6, $7, 'ativo', NOW(), NOW())
+                status, tenant_id, created_at, updated_at
+              ) VALUES ($1, $2, $3, $4, $4, $5, $6, $7, 'ativo', $8, NOW(), NOW())
               RETURNING *
             `, [
               escola_id,
@@ -1528,7 +1534,8 @@ export async function processarMovimentacaoLotes(req: Request, res: Response) {
               quantidade,
               data_fabricacao || null,
               data_validade || null,
-              observacoes || null
+              observacoes || null,
+              tenantId
             ]);
 
             loteAtual = insertResult.rows[0];
@@ -1642,9 +1649,9 @@ export async function processarMovimentacaoLotes(req: Request, res: Response) {
         quantidadePosterior = tipo_movimentacao === 'entrada' ? quantidadeTotal : 0;
 
         await client.query(`
-          INSERT INTO estoque_escolas (escola_id, produto_id, quantidade_atual)
-          VALUES ($1, $2, $3)
-        `, [escola_id, produto_id, quantidadePosterior]);
+          INSERT INTO estoque_escolas (escola_id, produto_id, quantidade_atual, tenant_id)
+          VALUES ($1, $2, $3, $4)
+        `, [escola_id, produto_id, quantidadePosterior, tenantId]);
       }
 
       // Registrar no histórico com contexto de tenant
@@ -1654,16 +1661,16 @@ export async function processarMovimentacaoLotes(req: Request, res: Response) {
         INSERT INTO estoque_escolas_historico (
           estoque_escola_id, escola_id, produto_id, tipo_movimentacao,
           quantidade_anterior, quantidade_movimentada, quantidade_posterior,
-          motivo, documento_referencia, usuario_id, data_movimentacao
+          motivo, documento_referencia, usuario_id, tenant_id, data_movimentacao
         ) VALUES (
           (SELECT id FROM estoque_escolas WHERE escola_id = $1 AND produto_id = $2),
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, NOW()
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW()
         )
       `, [
         escola_id, produto_id, tipo_movimentacao,
         quantidadeAnterior, quantidadeTotal, quantidadePosterior,
         motivoComTenant,
-        documento_referencia, usuario_id || 1
+        documento_referencia, usuario_id || 1, tenantId
       ]);
 
       await client.query('COMMIT');

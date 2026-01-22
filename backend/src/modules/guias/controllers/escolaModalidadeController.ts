@@ -1,5 +1,6 @@
 // Controller de escola-modalidades para PostgreSQL
 import { Request, Response } from "express";
+import { setTenantContextFromRequest } from "../../../utils/tenantContext";
 const db = require("../../../database");
 
 export async function listarEscolaModalidades(req: Request, res: Response) {
@@ -107,7 +108,41 @@ export async function listarModalidadesPorEscola(req: Request, res: Response) {
 
 export async function criarEscolaModalidade(req: Request, res: Response) {
   try {
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+    
+    // Validar se tenant está presente
+    if (!req.tenant?.id) {
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
+
     const { escola_id, modalidade_id, quantidade_alunos } = req.body;
+
+    // Validar se escola e modalidade pertencem ao mesmo tenant
+    const validacao = await db.query(`
+      SELECT 
+        (SELECT COUNT(*) FROM escolas WHERE id = $1 AND tenant_id = $3) as escola_valida,
+        (SELECT COUNT(*) FROM modalidades WHERE id = $2 AND tenant_id = $3) as modalidade_valida
+    `, [escola_id, modalidade_id, req.tenant.id]);
+
+    const { escola_valida, modalidade_valida } = validacao.rows[0];
+    
+    if (escola_valida === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Escola não encontrada ou não pertence ao tenant"
+      });
+    }
+    
+    if (modalidade_valida === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Modalidade não encontrada ou não pertence ao tenant"
+      });
+    }
 
     // Se quantidade_alunos for 0 ou vazio, remove o registro se existir
     if (!quantidade_alunos || quantidade_alunos === 0) {

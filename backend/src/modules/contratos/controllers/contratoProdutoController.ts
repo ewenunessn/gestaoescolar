@@ -410,9 +410,9 @@ export async function criarContratoProduto(req: Request, res: Response) {
     const hasPeso = existingColumns.includes('peso');
 
     let result;
-    const fields = ['contrato_id', 'produto_id', 'preco_unitario', 'quantidade_contratada'];
-    const values = [contrato_id, produto_id, preco_unitario, quantidade_contratada];
-    let paramCount = 5;
+    const fields = ['contrato_id', 'produto_id', 'preco_unitario', 'quantidade_contratada', 'tenant_id'];
+    const values = [contrato_id, produto_id, preco_unitario, quantidade_contratada, req.tenant.id];
+    let paramCount = 6;
     
     if (hasUnidade && unidade) {
       fields.push('unidade');

@@ -1,5 +1,6 @@
 // Controller de produto-modalidades para PostgreSQL
 import { Request, Response } from "express";
+import { setTenantContextFromRequest } from "../../../utils/tenantContext";
 const db = require("../../../database");
 
 export async function listarProdutoModalidades(req: Request, res: Response) {
@@ -78,7 +79,41 @@ export async function buscarProdutoModalidade(req: Request, res: Response) {
 
 export async function criarProdutoModalidade(req: Request, res: Response) {
   try {
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+    
+    // Validar se tenant está presente
+    if (!req.tenant?.id) {
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
+
     const { produto_id, modalidade_id, ativo = true } = req.body;
+
+    // Validar se produto e modalidade pertencem ao mesmo tenant
+    const validacao = await db.query(`
+      SELECT 
+        (SELECT COUNT(*) FROM produtos WHERE id = $1 AND tenant_id = $3) as produto_valido,
+        (SELECT COUNT(*) FROM modalidades WHERE id = $2 AND tenant_id = $3) as modalidade_valida
+    `, [produto_id, modalidade_id, req.tenant.id]);
+
+    const { produto_valido, modalidade_valida } = validacao.rows[0];
+    
+    if (produto_valido === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Produto não encontrado ou não pertence ao tenant"
+      });
+    }
+    
+    if (modalidade_valida === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Modalidade não encontrada ou não pertence ao tenant"
+      });
+    }
 
     // Verificar se já existe a associação
     const existente = await db.get(`
