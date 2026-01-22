@@ -50,31 +50,10 @@ const collapsedDrawerWidth = 80;
 const getMenuConfig = (configModuloSaldo: any) => {
   const saldoItems = [];
 
-  if (configModuloSaldo.mostrar_ambos) {
-    // Mostrar ambos, mas o principal primeiro
-    if (configModuloSaldo.modulo_principal === 'modalidades') {
-      saldoItems.push(
-        { text: "Saldo por Modalidade", icon: <Category />, path: "/saldos-contratos-modalidades", isPrimary: true },
-        { text: "Saldo Geral", icon: <Assessment />, path: "/saldos-contratos", isPrimary: false }
-      );
-    } else {
-      saldoItems.push(
-        { text: "Saldo Geral", icon: <Assessment />, path: "/saldos-contratos", isPrimary: true },
-        { text: "Saldo por Modalidade", icon: <Category />, path: "/saldos-contratos-modalidades", isPrimary: false }
-      );
-    }
-  } else {
-    // Mostrar apenas o principal
-    if (configModuloSaldo.modulo_principal === 'modalidades') {
-      saldoItems.push(
-        { text: "Saldo de Contratos", icon: <Category />, path: "/saldos-contratos-modalidades", isPrimary: true }
-      );
-    } else {
-      saldoItems.push(
-        { text: "Saldo de Contratos", icon: <Assessment />, path: "/saldos-contratos", isPrimary: true }
-      );
-    }
-  }
+  // Sempre mostrar apenas Saldo por Modalidades
+  saldoItems.push(
+    { text: "Saldo de Contratos", icon: <Category />, path: "/saldos-contratos-modalidades", isPrimary: true }
+  );
 
   return [
     {

@@ -117,6 +117,7 @@ class SaldoContratosModalidadesController {
           cp.quantidade_contratada as quantidade_contrato,
           cp.preco_unitario,
           cp.saldo as saldo_contrato,
+          cp.unidade,
           
           c.numero as contrato_numero,
           c.data_inicio,
@@ -124,7 +125,6 @@ class SaldoContratosModalidadesController {
           c.status as contrato_status,
           
           p.nome as produto_nome,
-          p.unidade,
           
           m.nome as modalidade_nome,
           m.codigo_financeiro as modalidade_codigo_financeiro,
@@ -348,9 +348,9 @@ class SaldoContratosModalidadesController {
 
       const query = `
         SELECT 
-          cp.id, cp.contrato_id, cp.produto_id, cp.preco_unitario,
+          cp.id, cp.contrato_id, cp.produto_id, cp.preco_unitario, cp.unidade,
           c.numero as contrato_numero, c.data_inicio, c.data_fim,
-          p.nome as produto_nome, p.unidade,
+          p.nome as produto_nome,
           f.nome as fornecedor_nome
         FROM contrato_produtos cp
         JOIN contratos c ON cp.contrato_id = c.id

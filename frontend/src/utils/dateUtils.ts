@@ -73,12 +73,12 @@ export function formatarMoeda(valor: number): string {
 }
 
 /**
- * Formata uma data para exibição (alias para formatDateForDisplay)
+ * Formata uma data para exibição (alias para formatarDataBrasileira)
  * @param isoString - String de data no formato ISO
  * @returns String formatada (dd/MM/yyyy)
  */
 export function formatarData(isoString: string | null | undefined): string {
-  return formatDateForDisplay(isoString);
+  return formatarDataBrasileira(isoString);
 }
 
 /**

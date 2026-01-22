@@ -43,6 +43,7 @@ export default function NovoContrato() {
     numero: "",
     data_inicio: "",
     data_fim: "",
+    tipo_licitacao: "pregao_eletronico",
   });
 
   useEffect(() => {
@@ -254,6 +255,26 @@ export default function NovoContrato() {
                 fullWidth
                 InputLabelProps={{ shrink: true }}
               />
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Modalidade de Licitação *</InputLabel>
+                <Select
+                  value={formData.tipo_licitacao}
+                  label="Modalidade de Licitação *"
+                  onChange={(e) => handleInputChange("tipo_licitacao", e.target.value)}
+                >
+                  <MenuItem value="pregao_eletronico">Pregão Eletrônico</MenuItem>
+                  <MenuItem value="pregao_presencial">Pregão Presencial</MenuItem>
+                  <MenuItem value="chamada_publica_pnae">Chamada Pública PNAE</MenuItem>
+                  <MenuItem value="dispensa_licitacao">Dispensa de Licitação</MenuItem>
+                  <MenuItem value="inexigibilidade">Inexigibilidade</MenuItem>
+                  <MenuItem value="concorrencia">Concorrência</MenuItem>
+                  <MenuItem value="tomada_precos">Tomada de Preços</MenuItem>
+                  <MenuItem value="convite">Convite</MenuItem>
+                </Select>
+              </FormControl>
             </Grid>
           </Grid>
 

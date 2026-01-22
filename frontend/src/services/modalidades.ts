@@ -6,6 +6,7 @@ export interface Modalidade {
   codigo_financeiro?: string;
   valor_repasse: number;
   ativo: boolean;
+  total_alunos?: number;
 }
 
 export interface ModalidadeInput {

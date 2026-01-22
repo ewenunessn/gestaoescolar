@@ -37,6 +37,7 @@ export interface PedidoItem {
   fornecedor_id?: number;
   fornecedor_nome?: string;
   fornecedor_cnpj?: string;
+  saldo_disponivel?: number;
 }
 
 export interface PedidoDetalhado extends Pedido {
@@ -101,6 +102,7 @@ export interface ContratoProduto {
   unidade: string;
   preco_unitario: number;
   quantidade_contratada: number;
+  saldo_disponivel: number;
   contrato_id: number;
   contrato_numero: string;
   fornecedor_id: number;

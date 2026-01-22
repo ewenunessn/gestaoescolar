@@ -10,17 +10,21 @@ export async function listarModalidades(req: Request, res: Response) {
 
     const modalidades = await db.all(`
       SELECT 
-        id,
-        nome,
-        descricao,
-        codigo_financeiro,
-        ativo,
-        COALESCE(valor_repasse, 0.00) as valor_repasse,
-        created_at,
-        updated_at
-      FROM modalidades 
-      WHERE tenant_id = current_setting('app.current_tenant_id')::uuid
-      ORDER BY nome
+        m.id,
+        m.nome,
+        m.descricao,
+        m.codigo_financeiro,
+        m.ativo,
+        COALESCE(m.valor_repasse, 0.00) as valor_repasse,
+        m.created_at,
+        m.updated_at,
+        COALESCE(SUM(em.quantidade_alunos), 0) as total_alunos
+      FROM modalidades m
+      LEFT JOIN escola_modalidades em ON m.id = em.modalidade_id
+      LEFT JOIN escolas e ON em.escola_id = e.id AND e.tenant_id = current_setting('app.current_tenant_id')::uuid
+      WHERE m.tenant_id = current_setting('app.current_tenant_id')::uuid
+      GROUP BY m.id, m.nome, m.descricao, m.codigo_financeiro, m.ativo, m.valor_repasse, m.created_at, m.updated_at
+      ORDER BY m.nome
     `);
 
     res.json({

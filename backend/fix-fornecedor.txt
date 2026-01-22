@@ -1,0 +1,53 @@
+export async function editarFornecedor(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const {
+      nome,
+      cnpj,
+      email,
+      ativo
+    } = req.body;
+
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+    
+    // Validar se tenant está presente
+    if (!req.tenant?.id) {
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
+
+    const result = await db.query(`
+      UPDATE fornecedores SET
+        nome = $1,
+        cnpj = $2,
+        email = $3,
+        ativo = $4,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $5 AND tenant_id = $6
+      RETURNING *
+    `, [nome, cnpj, email || null, ativo, id, req.tenant.id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Fornecedor não encontrado"
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Fornecedor atualizado com sucesso",
+      data: result.rows[0]
+    });
+  } catch (error) {
+    console.error("❌ Erro ao editar fornecedor:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao editar fornecedor",
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+}

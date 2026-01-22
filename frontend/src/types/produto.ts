@@ -1,12 +1,8 @@
 export interface Produto {
   id: number;
   nome: string;
-  unidade: string;
   categoria?: string;
   descricao?: string;
-  marca?: string;
-  peso?: number;
-  fator_divisao?: number;
   tipo_processamento?: string;
   perecivel?: boolean;
   per_capita?: number;
@@ -18,19 +14,20 @@ export interface Produto {
 
 export interface CriarProdutoRequest {
   nome: string;
-  unidade: string;
   categoria?: string;
   descricao?: string;
-  marca?: string;
-  peso?: number;
-  fator_divisao?: number;
   tipo_processamento?: string;
   perecivel?: boolean;
   ativo?: boolean;
 }
 
-export interface AtualizarProdutoRequest extends Partial<CriarProdutoRequest> {
-  id: number;
+export interface AtualizarProdutoRequest {
+  nome?: string;
+  categoria?: string;
+  descricao?: string;
+  tipo_processamento?: string;
+  perecivel?: boolean;
+  ativo?: boolean;
 }
 
 export interface ComposicaoNutricional {
@@ -53,12 +50,8 @@ export interface ComposicaoNutricional {
 
 export interface ImportarProdutoRequest {
   nome: string;
-  unidade: string;
   categoria?: string;
   descricao?: string;
-  marca?: string;
-  peso?: number;
-  fator_divisao?: number;
   tipo_processamento?: string;
   perecivel?: boolean;
 }

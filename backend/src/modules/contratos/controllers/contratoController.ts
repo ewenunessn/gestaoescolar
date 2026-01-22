@@ -205,7 +205,8 @@ export async function criarContrato(req: Request, res: Response) {
       data_fim,
       valor_total,
       status = 'ativo',
-      ativo = true
+      ativo = true,
+      tipo_licitacao = 'pregao_eletronico'
     } = req.body;
 
     // Configurar contexto de tenant
@@ -277,11 +278,11 @@ export async function criarContrato(req: Request, res: Response) {
     const result = await db.query(`
       INSERT INTO contratos (
         numero, fornecedor_id, data_inicio, data_fim, valor_total, 
-        status, ativo, tenant_id, created_at
+        status, ativo, tipo_licitacao, tenant_id, created_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
       RETURNING *
-    `, [numero, fornecedor_id, data_inicio, data_fim, valor_total || 0, status, ativo, req.tenant.id]);
+    `, [numero, fornecedor_id, data_inicio, data_fim, valor_total || 0, status, ativo, tipo_licitacao, req.tenant.id]);
 
     // Buscar dados completos do contrato criado
     const contratoCompletoResult = await db.query(`
@@ -319,7 +320,8 @@ export async function editarContrato(req: Request, res: Response) {
       data_fim,
       valor_total,
       status,
-      ativo
+      ativo,
+      tipo_licitacao
     } = req.body;
 
     // Configurar contexto de tenant
@@ -342,10 +344,11 @@ export async function editarContrato(req: Request, res: Response) {
         data_fim = $4,
         valor_total = $5,
         status = $6,
-        ativo = $7
-      WHERE id = $8 AND tenant_id = $9
+        ativo = $7,
+        tipo_licitacao = $8
+      WHERE id = $9 AND tenant_id = $10
       RETURNING *
-    `, [numero, fornecedor_id, data_inicio, data_fim, valor_total, status, ativo, id, req.tenant.id]);
+    `, [numero, fornecedor_id, data_inicio, data_fim, valor_total, status, ativo, tipo_licitacao, id, req.tenant.id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({

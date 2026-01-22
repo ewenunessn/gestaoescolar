@@ -11,11 +11,6 @@ export interface ConfiguracaoSistema {
   updated_at?: string;
 }
 
-export interface ConfiguracaoModuloSaldo {
-  modulo_principal: 'geral' | 'modalidades';
-  mostrar_ambos: boolean;
-}
-
 class ConfigService {
   // Buscar configuração específica
   async buscarConfiguracao(chave: string): Promise<ConfiguracaoSistema | null> {
@@ -55,50 +50,6 @@ class ConfigService {
     try {
       const response = await api.get(`/configuracoes/categoria/${categoria}`);
       return response.data;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  // Configurações específicas para módulo de saldo
-  async buscarConfiguracaoModuloSaldo(): Promise<ConfiguracaoModuloSaldo> {
-    try {
-      const config = await this.buscarConfiguracao('modulo_saldo_contratos');
-      if (config) {
-        return JSON.parse(config.valor);
-      }
-      
-      // Configuração padrão
-      return {
-        modulo_principal: 'modalidades',
-        mostrar_ambos: true
-      };
-    } catch (error) {
-      console.error('Erro ao buscar configuração do módulo de saldo:', error);
-      return {
-        modulo_principal: 'modalidades',
-        mostrar_ambos: true
-      };
-    }
-  }
-
-  async salvarConfiguracaoModuloSaldo(config: ConfiguracaoModuloSaldo): Promise<void> {
-    try {
-      const configuracao = {
-        chave: 'modulo_saldo_contratos',
-        valor: JSON.stringify(config),
-        descricao: 'Configuração do módulo principal de saldo de contratos',
-        tipo: 'json' as const,
-        categoria: 'sistema'
-      };
-
-      const existente = await this.buscarConfiguracao('modulo_saldo_contratos');
-      
-      if (existente) {
-        await this.atualizarConfiguracao('modulo_saldo_contratos', configuracao.valor);
-      } else {
-        await this.salvarConfiguracao(configuracao);
-      }
     } catch (error) {
       throw error;
     }

@@ -17,78 +17,22 @@ interface ConfigProviderProps {
 }
 
 export const ConfigProvider: React.FC<ConfigProviderProps> = ({ children }) => {
-  const [configModuloSaldo, setConfigModuloSaldo] = useState<ConfiguracaoModuloSaldo>({
+  // Configuração fixa: sempre usar modalidades
+  const [configModuloSaldo] = useState<ConfiguracaoModuloSaldo>({
     modulo_principal: 'modalidades',
-    mostrar_ambos: true
+    mostrar_ambos: false
   });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [onConfigChanged, setOnConfigChanged] = useState<(() => void) | undefined>();
-
-  const carregarConfig = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const config = await configService.buscarConfiguracaoModuloSaldo();
-      
-      // Só atualizar se a configuração realmente mudou
-      setConfigModuloSaldo(prevConfig => {
-        const configChanged = JSON.stringify(prevConfig) !== JSON.stringify(config);
-        if (configChanged) {
-          console.log('Configuração carregada do servidor:', config);
-          return config;
-        }
-        return prevConfig;
-      });
-    } catch (err: any) {
-      console.error('Erro ao carregar configuração do módulo de saldo:', err);
-      setError('Erro ao carregar configurações');
-      // Manter configuração padrão em caso de erro
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const [loading] = useState(false);
+  const [error] = useState<string | null>(null);
 
   const recarregarConfig = useCallback(async () => {
-    await carregarConfig();
-  }, [carregarConfig]);
+    // Não faz nada, configuração é fixa
+  }, []);
 
   const atualizarConfig = useCallback(async (novaConfig: ConfiguracaoModuloSaldo) => {
-    try {
-      await configService.salvarConfiguracaoModuloSaldo(novaConfig);
-      
-      // Limpar cache
-      configService.limparCache();
-      
-      // Atualizar estado local imediatamente
-      console.log('Atualizando configuração para:', novaConfig);
-      setConfigModuloSaldo(novaConfig);
-      
-      // Chamar callback se definido
-      if (onConfigChanged) {
-        onConfigChanged();
-      }
-    } catch (err: any) {
-      console.error('Erro ao atualizar configuração:', err);
-      throw err;
-    }
-  }, [onConfigChanged]);
-
-  useEffect(() => {
-    // Aguardar um pouco para garantir que o tenant foi resolvido
-    const timer = setTimeout(() => {
-      const token = localStorage.getItem('token');
-      const tenantId = localStorage.getItem('currentTenantId');
-      
-      if (token && tenantId) {
-        carregarConfig();
-      } else {
-        setLoading(false);
-      }
-    }, 1000); // Aguardar 1 segundo
-
-    return () => clearTimeout(timer);
-  }, [carregarConfig]);
+    // Não faz nada, configuração é fixa
+    console.log('Configuração é fixa em modalidades');
+  }, []);
 
   const value: ConfigContextType = useMemo(() => ({
     configModuloSaldo,
@@ -96,7 +40,7 @@ export const ConfigProvider: React.FC<ConfigProviderProps> = ({ children }) => {
     error,
     recarregarConfig,
     atualizarConfig,
-    onConfigChanged: (callback: () => void) => setOnConfigChanged(() => callback)
+    onConfigChanged: (callback: () => void) => {}
   }), [configModuloSaldo, loading, error, recarregarConfig, atualizarConfig]);
 
   return (

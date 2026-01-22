@@ -26,7 +26,9 @@ import {
   Alert,
   Stepper,
   Step,
-  StepLabel
+  StepLabel,
+  Popover,
+  Badge
 } from '@mui/material';
 import {
   CheckCircle as CheckCircleIcon,
@@ -36,7 +38,8 @@ import {
   Done as DoneIcon,
   Send as SendIcon,
   Edit as EditIcon,
-  Receipt as ReceiptIcon
+  Receipt as ReceiptIcon,
+  Comment as CommentIcon
 } from '@mui/icons-material';
 import pedidosService from '../services/pedidos';
 import faturamentoService from '../services/faturamento';
@@ -44,6 +47,12 @@ import { PedidoDetalhado, STATUS_PEDIDO } from '../types/pedido';
 import PageBreadcrumbs from '../components/PageBreadcrumbs';
 import { formatarMoeda, formatarData } from '../utils/dateUtils';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+
+// Função para formatar números removendo zeros desnecessários
+const formatarNumero = (numero: number): string => {
+  // Remove zeros desnecessários após a vírgula
+  return parseFloat(numero.toString()).toString();
+};
 
 export default function PedidoDetalhe() {
   const { id } = useParams<{ id: string }>();
@@ -60,6 +69,22 @@ export default function PedidoDetalhe() {
   const [temFaturamento, setTemFaturamento] = useState(false);
   const [temConsumoRegistrado, setTemConsumoRegistrado] = useState(false);
   const [mensagemConsumo, setMensagemConsumo] = useState('');
+
+  // Estado para o popover de observações
+  const [obsAnchorEl, setObsAnchorEl] = useState<HTMLButtonElement | null>(null);
+  const [obsItemSelecionado, setObsItemSelecionado] = useState<any>(null);
+
+  const obsPopoverOpen = Boolean(obsAnchorEl);
+
+  const abrirObservacoes = (event: React.MouseEvent<HTMLButtonElement>, item: any) => {
+    setObsAnchorEl(event.currentTarget);
+    setObsItemSelecionado(item);
+  };
+
+  const fecharObservacoes = () => {
+    setObsAnchorEl(null);
+    setObsItemSelecionado(null);
+  };
 
   useEffect(() => {
     carregarPedido();
@@ -78,6 +103,7 @@ export default function PedidoDetalhe() {
       const dados = await pedidosService.buscarPorId(Number(id));
       console.log('📊 Dados do pedido:', dados);
       console.log('📦 Primeiro item:', dados.itens[0]);
+      console.log('📦 Quantidade do primeiro item:', dados.itens[0]?.quantidade, typeof dados.itens[0]?.quantidade);
       setPedido(dados);
     } catch (error) {
       console.error('Erro ao carregar pedido:', error);
@@ -299,12 +325,12 @@ export default function PedidoDetalhe() {
 
       {/* Card especial para rascunhos */}
       {ehRascunho && (
-        <Card sx={{ mb: 3, bgcolor: 'warning.light', color: 'warning.contrastText' }}>
+        <Card sx={{ mb: 3, bgcolor: 'warning.lighter', borderLeft: 4, borderColor: 'warning.main' }}>
           <CardContent>
-            <Typography variant="h6" gutterBottom>
+            <Typography variant="h6" gutterBottom color="warning.dark">
               📝 Pedido em Rascunho
             </Typography>
-            <Typography variant="body2">
+            <Typography variant="body2" color="text.primary">
               Este pedido foi salvo como rascunho e ainda não foi enviado.
               Você pode editá-lo ou enviá-lo quando estiver pronto.
             </Typography>
@@ -373,7 +399,6 @@ export default function PedidoDetalhe() {
                       key={fornecedor}
                       label={fornecedor}
                       color="primary"
-                      variant="outlined"
                     />
                   ))}
                 </Box>
@@ -395,14 +420,13 @@ export default function PedidoDetalhe() {
                   <TableHead>
                     <TableRow>
                       <TableCell>Produto</TableCell>
-                      <TableCell>Fornecedor</TableCell>
-                      <TableCell>Contrato</TableCell>
-                      <TableCell>Unidade</TableCell>
-                      <TableCell align="right">Quantidade</TableCell>
-                      <TableCell>Data Entrega</TableCell>
-                      <TableCell align="right">Preço Unitário</TableCell>
-                      <TableCell align="right">Valor Total</TableCell>
-                      <TableCell>Observações</TableCell>
+                      <TableCell>Fornecedor / Contrato</TableCell>
+                      <TableCell align="center">Unidade</TableCell>
+                      <TableCell align="center">Quantidade</TableCell>
+                      <TableCell align="center">Data Entrega</TableCell>
+                      <TableCell align="center">Preço Unitário</TableCell>
+                      <TableCell align="center">Valor Total</TableCell>
+                      <TableCell align="center" width="80">Obs</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -411,32 +435,54 @@ export default function PedidoDetalhe() {
                         <TableCell>{item.produto_nome}</TableCell>
                         <TableCell>
                           <Typography variant="body2">{item.fornecedor_nome}</Typography>
-                          {item.fornecedor_cnpj && (
-                            <Typography variant="caption" color="text.secondary">
-                              {item.fornecedor_cnpj}
-                            </Typography>
-                          )}
+                          <Typography variant="caption" color="text.secondary">
+                            {item.fornecedor_cnpj && `${item.fornecedor_cnpj} - `}Contrato {item.contrato_numero}
+                          </Typography>
                         </TableCell>
-                        <TableCell>{item.contrato_numero}</TableCell>
-                        <TableCell>{item.unidade || item.unidade || '-'}</TableCell>
-                        <TableCell align="right">{item.quantidade}</TableCell>
-                        <TableCell>
+                        <TableCell align="center">{item.unidade || '-'}</TableCell>
+                        <TableCell align="center">
+                          {item.quantidade ? formatarNumero(Number(item.quantidade)) : '0'}
+                        </TableCell>
+                        <TableCell align="center">
                           {item.data_entrega_prevista ? formatarData(item.data_entrega_prevista) : '-'}
                         </TableCell>
-                        <TableCell align="right">{formatarMoeda(item.preco_unitario)}</TableCell>
-                        <TableCell align="right">
+                        <TableCell align="center">{formatarMoeda(item.preco_unitario)}</TableCell>
+                        <TableCell align="center">
                           <Typography fontWeight="bold">
                             {formatarMoeda(item.valor_total)}
                           </Typography>
                         </TableCell>
-                        <TableCell>{item.observacoes || '-'}</TableCell>
+                        <TableCell align="center">
+                          {item.observacoes ? (
+                            <IconButton
+                              size="small"
+                              color="primary"
+                              onClick={(e) => abrirObservacoes(e, item)}
+                            >
+                              <Badge variant="dot" color="primary">
+                                <CommentIcon fontSize="small" />
+                              </Badge>
+                            </IconButton>
+                          ) : (
+                            ehRascunho ? (
+                              <IconButton
+                                size="small"
+                                onClick={(e) => abrirObservacoes(e, item)}
+                              >
+                                <CommentIcon fontSize="small" />
+                              </IconButton>
+                            ) : (
+                              <Typography variant="body2" color="text.secondary">-</Typography>
+                            )
+                          )}
+                        </TableCell>
                       </TableRow>
                     ))}
                     <TableRow>
-                      <TableCell colSpan={7} align="right">
+                      <TableCell colSpan={6} align="right">
                         <Typography variant="h6">Total:</Typography>
                       </TableCell>
-                      <TableCell align="right">
+                      <TableCell align="center">
                         <Typography variant="h6" color="primary" fontWeight="bold">
                           {formatarMoeda(pedido.valor_total)}
                         </Typography>
@@ -446,6 +492,43 @@ export default function PedidoDetalhe() {
                   </TableBody>
                 </Table>
               </TableContainer>
+
+              {/* Popover para observações */}
+              <Popover
+                open={obsPopoverOpen}
+                anchorEl={obsAnchorEl}
+                onClose={fecharObservacoes}
+                anchorOrigin={{
+                  vertical: 'bottom',
+                  horizontal: 'center',
+                }}
+                transformOrigin={{
+                  vertical: 'top',
+                  horizontal: 'center',
+                }}
+              >
+                <Box sx={{ p: 2, width: 350 }}>
+                  <Typography variant="subtitle2" gutterBottom fontWeight="bold">
+                    Observações do Item
+                  </Typography>
+                  {obsItemSelecionado && (
+                    <>
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
+                        {obsItemSelecionado.produto_nome}
+                      </Typography>
+                      <Divider sx={{ my: 1 }} />
+                      <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                        {obsItemSelecionado.observacoes}
+                      </Typography>
+                    </>
+                  )}
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+                    <Button size="small" onClick={fecharObservacoes}>
+                      Fechar
+                    </Button>
+                  </Box>
+                </Box>
+              </Popover>
             </CardContent>
           </Card>
         </Grid>

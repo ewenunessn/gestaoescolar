@@ -326,6 +326,7 @@ const ModalidadesPage = () => {
                   <TableCell sx={{ py: 1 }}>Nome da Modalidade</TableCell>
                   <TableCell align="center" sx={{ py: 1 }}>Código Financeiro</TableCell>
                   <TableCell align="center" sx={{ py: 1 }}>Valor Repasse</TableCell>
+                  <TableCell align="center" sx={{ py: 1 }}>Alunos</TableCell>
                   <TableCell align="center" sx={{ py: 1 }}>Ações</TableCell>
                 </TableRow>
               </TableHead>
@@ -349,6 +350,14 @@ const ModalidadesPage = () => {
                       <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
                         {formatCurrency(modalidade.valor_repasse)}
                       </Typography>
+                    </TableCell>
+                    <TableCell align="center">
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
+                        <PeopleIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', fontWeight: 500 }}>
+                          {modalidade.total_alunos || 0}
+                        </Typography>
+                      </Box>
                     </TableCell>
 
                     <TableCell align="center">

@@ -167,22 +167,13 @@ export default function FornecedorDetalhe() {
             </Card>
           </Grid>
           <Grid item xs={12} lg={4}>
-            <Stack spacing={4} height="100%">
-              <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', flex: 1 }}>
-                <CardContent sx={{ p: 3, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
-                  <DescriptionIcon color="primary" sx={{ fontSize: 40, mb: 1 }}/>
-                  <Typography variant="h4" fontWeight="bold">{contratos.length}</Typography>
-                  <Typography color="text.secondary">Contrato(s) Cadastrado(s)</Typography>
-                </CardContent>
-              </Card>
-              <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', flex: 1 }}>
-                <CardContent sx={{ p: 3, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
-                  <MonetizationOnIcon color="primary" sx={{ fontSize: 40, mb: 1 }}/>
-                  <Typography variant="h4" fontWeight="bold">{formatarMoeda(valorTotalContratos)}</Typography>
-                  <Typography color="text.secondary">em Valor Total de Contratos</Typography>
-                </CardContent>
-              </Card>
-            </Stack>
+            <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', height: '100%' }}>
+              <CardContent sx={{ p: 3, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+                <MonetizationOnIcon color="primary" sx={{ fontSize: 40, mb: 1 }}/>
+                <Typography variant="h4" fontWeight="bold">{formatarMoeda(valorTotalContratos)}</Typography>
+                <Typography color="text.secondary">em Valor Total de Contratos</Typography>
+              </CardContent>
+            </Card>
           </Grid>
         </Grid>
 

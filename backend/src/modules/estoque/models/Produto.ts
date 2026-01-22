@@ -13,7 +13,7 @@ export async function getProdutoById(id: number): Promise<Produto | null> {
   
   try {
     const result = await db.query(
-      'SELECT id, nome, unidade, categoria, ativo FROM produtos WHERE id = $1',
+      'SELECT id, nome, categoria, ativo FROM produtos WHERE id = $1',
       [id]
     );
     

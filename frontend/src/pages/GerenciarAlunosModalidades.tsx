@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, TextField, CircularProgress, Alert, IconButton,
@@ -74,6 +75,7 @@ InputCell.displayName = 'InputCell';
 
 const GerenciarAlunosModalidades: React.FC = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [escolas, setEscolas] = useState<Escola[]>([]);
   const [modalidades, setModalidades] = useState<Modalidade[]>([]);
   const [escolaModalidades, setEscolaModalidades] = useState<{ [key: string]: EscolaModalidade }>({});
@@ -138,6 +140,8 @@ const GerenciarAlunosModalidades: React.FC = () => {
           const newEscolaModalidades = { ...escolaModalidades };
           delete newEscolaModalidades[key];
           setEscolaModalidades(newEscolaModalidades);
+          // Invalidar cache de modalidades para atualizar contagem de alunos
+          queryClient.invalidateQueries({ queryKey: ['modalidades'] });
         } catch (err) {
           setError('Erro ao remover registro');
         } finally {
@@ -162,6 +166,8 @@ const GerenciarAlunosModalidades: React.FC = () => {
             quantidade_alunos: quantidade
           }
         }));
+        // Invalidar cache de modalidades para atualizar contagem de alunos
+        queryClient.invalidateQueries({ queryKey: ['modalidades'] });
       } else {
         // Criar
         const response = await adicionarEscolaModalidade(escolaId, modalidadeId, quantidade);
@@ -174,13 +180,15 @@ const GerenciarAlunosModalidades: React.FC = () => {
             id: response.id
           }
         }));
+        // Invalidar cache de modalidades para atualizar contagem de alunos
+        queryClient.invalidateQueries({ queryKey: ['modalidades'] });
       }
     } catch (err) {
       setError('Erro ao salvar quantidade de alunos');
     } finally {
       setSaving(prev => ({ ...prev, [key]: false }));
     }
-  }, [escolaModalidades]);
+  }, [escolaModalidades, queryClient]);
 
   const getQuantidade = useCallback((escolaId: number, modalidadeId: number): number => {
     const key = `${escolaId}-${modalidadeId}`;

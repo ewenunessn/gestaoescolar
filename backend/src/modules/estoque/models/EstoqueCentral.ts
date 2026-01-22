@@ -194,11 +194,11 @@ export async function registrarMovimentacao(dados: {
   unidade_medida?: string;
 }): Promise<MovimentacaoEstoque> {
 
-  // Se unidade_medida não foi fornecida, buscar do produto
+  // Since units are now defined in contracts, use provided unit or default
   let unidadeMedida = dados.unidade_medida;
   if (!unidadeMedida) {
-    const produto = await db.query('SELECT unidade FROM produtos WHERE id = $1', [dados.produto_id]);
-    unidadeMedida = produto.rows[0]?.unidade || null;
+    // Use default unit since units are no longer stored in products table
+    unidadeMedida = 'kg'; // Default unit for inventory tracking
   }
 
   const result = await db.query(`

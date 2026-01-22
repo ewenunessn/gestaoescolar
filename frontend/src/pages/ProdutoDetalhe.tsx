@@ -141,9 +141,14 @@ export default function ProdutoDetalhe() {
   const handleSave = useCallback(async () => {
     setIsSaving(true);
     try {
-      const dataToSend = { ...form,
-        fator_divisao: form.fator_divisao === "" ? null : Number(form.fator_divisao),
-        peso: form.peso === "" ? null : Number(form.peso),
+      // Only send the fields that still exist in the database
+      const dataToSend: any = {
+        nome: form.nome,
+        descricao: form.descricao,
+        categoria: form.categoria,
+        tipo_processamento: form.tipo_processamento,
+        perecivel: form.perecivel,
+        ativo: form.ativo
       };
       const atualizado = await editarProduto(Number(id), dataToSend);
       setProduto(atualizado); setIsEditing(false);
@@ -203,10 +208,13 @@ export default function ProdutoDetalhe() {
                         {isEditing ? <TextField label="Nome do Produto" value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} fullWidth required /> : null}
                     </Grid>
                     <Grid item xs={12} sm={6}>
-                        {isEditing ? <TextField label="Categoria" value={form.categoria || ""} onChange={e => setForm({ ...form, categoria: e.target.value })} fullWidth /> : <InfoItem label="Marca" value={produto.marca}/>}
+                        {isEditing ? <TextField label="Categoria" value={form.categoria || ""} onChange={e => setForm({ ...form, categoria: e.target.value })} fullWidth /> : <InfoItem label="Categoria" value={produto.categoria}/>}
                     </Grid>
                     <Grid item xs={12} sm={6}>
-                        {isEditing ? <TextField label="Marca" value={form.marca || ""} onChange={e => setForm({ ...form, marca: e.target.value })} fullWidth /> : <InfoItem label="Tipo de Processamento" value={produto.tipo_processamento}/>}
+                        {!isEditing && <InfoItem label="Tipo de Processamento" value={produto.tipo_processamento}/>}
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                        {!isEditing && <InfoItem label="Perecível" value={produto.perecivel ? 'Sim' : 'Não'}/>}
                     </Grid>
                     <Grid item xs={12}>
                         {isEditing ? (
@@ -227,25 +235,19 @@ export default function ProdutoDetalhe() {
                         ) : null}
                     </Grid>
                     <Grid item xs={12}>
-                        {isEditing && <FormControlLabel control={<Switch checked={form.ativo} onChange={e => setForm({ ...form, ativo: e.target.checked })}/>} label="Produto Ativo" />}
-                    </Grid>
-                </Grid>
-            </SectionPaper>
-
-            {/* Seção de Detalhes Físicos e Logísticos */}
-            <SectionPaper title="Detalhes Físicos e Logísticos" icon={<InventoryIcon color="primary"/>}>
-                <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6}>
-                        {isEditing ? <TextField label="Unidade" value={form.unidade || ""} onChange={e => setForm({ ...form, unidade: e.target.value })} fullWidth /> : <InfoItem label="Unidade" value={produto.unidade}/>}
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                        {isEditing ? <TextField label="Peso (gramas)" value={form.peso ?? ""} onChange={e => setForm({ ...form, peso: e.target.value })} type="number" fullWidth /> : <InfoItem label="Peso" value={produto.peso ? `${Math.round(produto.peso)}g` : ''}/>}
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                        {isEditing ? <TextField label="Fator de Divisão" value={form.fator_divisao ?? ""} onChange={e => setForm({ ...form, fator_divisao: e.target.value })} type="number" fullWidth /> : <InfoItem label="Fator de Divisão" value={produto.fator_divisao}/>}
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                        {isEditing ? <FormControlLabel control={<Switch checked={form.perecivel || false} onChange={e => setForm({ ...form, perecivel: e.target.checked })}/>} label="Produto Perecível" /> : <InfoItem label="Perecível" value={produto.perecivel ? 'Sim' : 'Não'}/>}
+                        {isEditing && (
+                            <>
+                                <FormControlLabel 
+                                    control={<Switch checked={form.perecivel || false} onChange={e => setForm({ ...form, perecivel: e.target.checked })}/>} 
+                                    label="Produto Perecível" 
+                                    sx={{ mr: 3 }}
+                                />
+                                <FormControlLabel 
+                                    control={<Switch checked={form.ativo} onChange={e => setForm({ ...form, ativo: e.target.checked })}/>} 
+                                    label="Produto Ativo" 
+                                />
+                            </>
+                        )}
                     </Grid>
                 </Grid>
             </SectionPaper>

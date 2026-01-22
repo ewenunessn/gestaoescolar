@@ -100,10 +100,8 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
 
   const handleProdutoChange = async (produtoId: string) => {
     setSelectedProduto(produtoId);
-    const produto = produtosList.find(p => p.id.toString() === produtoId);
-    if (produto) {
-      setUnidade(produto.unidade || 'kg');
-    }
+    // Units are now defined in contracts, not products
+    setUnidade('kg'); // Default unit
 
     // Carregar lotes existentes para este produto
     if (produtoId && guia) {

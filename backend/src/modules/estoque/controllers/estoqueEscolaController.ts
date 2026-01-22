@@ -668,15 +668,9 @@ export async function registrarMovimentacao(req: Request, res: Response) {
 
     // Usar transação para garantir consistência
     const result = await db.transaction(async (client: any) => {
-      // Buscar a unidade de medida do produto (com filtro de tenant)
-      const produtoResult = await client.query(`
-        SELECT unidade FROM produtos 
-        WHERE id = $1 AND (tenant_id = $2 OR tenant_id IS NULL)
-      `, [produto_id, tenantId]);
-
-      if (produtoResult.rows.length === 0) {
-        throw new Error('Produto não encontrado');
-      }
+      // Since units are now defined in contracts, we'll use a default unit for inventory
+      // The actual unit will come from the contract context when needed
+      const unidadePadrao = 'kg'; // Default unit for inventory tracking
 
       const unidadeMedida = produtoResult.rows[0].unidade;
 
@@ -1254,7 +1248,7 @@ export async function listarLotesProduto(req: Request, res: Response) {
 
     // Verificar se produto existe (com filtro de tenant)
     const produto = await db.query(`
-      SELECT id, nome, unidade FROM produtos 
+      SELECT id, nome FROM produtos 
       WHERE id = $1 AND tenant_id = $2 AND ativo = true
     `, [produto_id, tenantId]);
 

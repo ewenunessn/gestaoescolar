@@ -402,7 +402,7 @@ const RefeicoesPage = () => {
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ py: 1 }}>Nome da Refeição</TableCell>
+                  <TableCell align="left" sx={{ py: 1 }}>Nome da Refeição</TableCell>
                   <TableCell align="center" sx={{ py: 1 }}>Tipo</TableCell>
                   <TableCell align="center" sx={{ py: 1 }}>Ações</TableCell>
                 </TableRow>
@@ -410,7 +410,7 @@ const RefeicoesPage = () => {
               <TableBody>
                 {paginatedRefeicoes.map((refeicao) => (
                   <TableRow key={refeicao.id} hover sx={{ '& td': { py: 0.75 } }}>
-                    <TableCell>
+                    <TableCell align="left">
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <StatusIndicator status={refeicao.ativo ? 'ativo' : 'inativo'} size="small" />
                         <Box>

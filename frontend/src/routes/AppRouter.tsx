@@ -68,7 +68,6 @@ const EstoqueCentral = lazy(() => import("../pages/EstoqueCentral"));
 const EstoqueLotes = lazy(() => import("../pages/EstoqueLotes"));
 const EstoqueMovimentacoes = lazy(() => import("../pages/EstoqueMovimentacoes"));
 const EstoqueAlertas = lazy(() => import("../pages/EstoqueAlertas"));
-const SaldoContratos = lazy(() => import("../pages/SaldoContratos"));
 const SaldoContratosModalidades = lazy(() => import("../pages/SaldoContratosModalidades"));
 const ConfiguracoesSistema = lazy(() => import("../pages/ConfiguracoesSistema"));
 const TenantManagement = lazy(() => import("../pages/TenantManagement"));
@@ -311,10 +310,6 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
             <Route
               path="/contratos/:id"
               element={<LazyRoute><ContratoDetalhe /></LazyRoute>}
-            />
-            <Route
-              path="/saldos-contratos"
-              element={<LazyRoute><SaldoContratos /></LazyRoute>}
             />
             <Route
               path="/saldos-contratos-modalidades"

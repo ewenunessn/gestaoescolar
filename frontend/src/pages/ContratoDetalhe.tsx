@@ -39,11 +39,17 @@ import PageBreadcrumbs from '../components/PageBreadcrumbs';
 
 // --- Constantes e Funções Utilitárias (Fora do Componente) ---
 
-const produtoVazio = { produto_id: "", quantidade: "", preco_unitario: "" };
+const produtoVazio = { produto_id: "", quantidade: "", preco_unitario: "", unidade: "Kg", marca: "", peso: "" };
 const contratoVazio = { fornecedor_id: "", numero: "", data_inicio: "", data_fim: "", ativo: true };
 
 const formatarData = (data: string) => new Date(data).toLocaleDateString("pt-BR", { timeZone: 'UTC' });
 const formatarMoeda = (valor: number = 0) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(valor);
+const formatarNumero = (valor: number | string | null | undefined): string => {
+  if (valor === null || valor === undefined || valor === '') return '';
+  const num = typeof valor === 'string' ? parseFloat(valor) : valor;
+  if (isNaN(num)) return '';
+  return num % 1 === 0 ? num.toString() : num.toFixed(2).replace(/\.?0+$/, '');
+};
 
 const getStatusContrato = (contrato: any) => {
   if (!contrato) return { status: "Desconhecido", color: "default" as const };
@@ -79,6 +85,22 @@ const PageHeader = ({ onEdit, onDelete }) => (
 
 const ContratoInfoCard = ({ contrato, fornecedor, valorTotal }) => {
   const status = getStatusContrato(contrato);
+  
+  // Mapear tipo de licitação para exibição
+  const tipoLicitacaoLabel = {
+    'pregao_eletronico': 'Pregão Eletrônico',
+    'pregao_presencial': 'Pregão Presencial', 
+    'chamada_publica_pnae': 'Chamada Pública PNAE',
+    'dispensa_licitacao': 'Dispensa de Licitação',
+    'inexigibilidade': 'Inexigibilidade',
+    'concorrencia': 'Concorrência',
+    'tomada_precos': 'Tomada de Preços',
+    'convite': 'Convite',
+    // Manter compatibilidade com valores antigos
+    'pregao': 'Pregão Eletrônico',
+    'chamada_publica_agricultura': 'Chamada Pública PNAE'
+  };
+  
   return (
     <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', mb: 4 }}>
       <CardContent sx={{ p: 3 }}>
@@ -101,6 +123,16 @@ const ContratoInfoCard = ({ contrato, fornecedor, valorTotal }) => {
               <Stack direction="row" alignItems="center" spacing={1.5}>
                 <CalendarTodayIcon fontSize="small" color="action" />
                 <Typography variant="body2"><strong>Vigência:</strong> {`${formatarData(contrato.data_inicio)} a ${formatarData(contrato.data_fim)}`}</Typography>
+              </Stack>
+              <Stack direction="row" alignItems="center" spacing={1.5}>
+                <DescriptionIcon fontSize="small" color="action" />
+                <Typography variant="body2">
+                  <strong>Modalidade de Licitação:</strong> {
+                    tipoLicitacaoLabel[contrato.tipo_licitacao] || 
+                    tipoLicitacaoLabel['pregao_eletronico'] || 
+                    'Pregão Eletrônico'
+                  }
+                </Typography>
               </Stack>
             </Stack>
           </Grid>
@@ -140,7 +172,7 @@ export default function ContratoDetalhe() {
 
   // Estados de Modais (Dialogs)
   const [dialogState, setDialogState] = useState({ produto: false, editarContrato: false, removerContrato: false, removerProduto: false });
-  const [formProduto, setFormProduto] = useState<any>(produtoVazio);
+  const [formProduto, setFormProduto] = useState<any>({ produto_id: "", quantidade: "", preco_unitario: "", unidade: "Kg" });
   const [formContrato, setFormContrato] = useState<any>(contratoVazio);
   const [editandoProduto, setEditandoProduto] = useState<any | null>(null);
   const [removerId, setRemoverId] = useState<number | null>(null);
@@ -232,7 +264,14 @@ export default function ContratoDetalhe() {
     if (produto) {
       const produtoInfo = produtosDisponiveis.find(p => p.id === produto.produto_id);
       setProdutoSelecionado(produtoInfo || null);
-      setFormProduto({ produto_id: produto.produto_id, quantidade: produto.quantidade, preco_unitario: produto.preco_unitario });
+      setFormProduto({ 
+        produto_id: produto.produto_id, 
+        quantidade: produto.quantidade, 
+        preco_unitario: produto.preco_unitario,
+        unidade: produto.unidade_medida || "Kg",
+        marca: produto.marca || "",
+        peso: produto.peso ? formatarNumero(produto.peso) : ""
+      });
     } else {
       setProdutoSelecionado(null);
       setFormProduto(produtoVazio);
@@ -241,9 +280,19 @@ export default function ContratoDetalhe() {
   };
 
   const salvarProduto = async () => {
-    if (!formProduto.produto_id || !formProduto.quantidade || !formProduto.preco_unitario) { return setErro("Produto, quantidade e preço são obrigatórios."); }
+    if (!formProduto.produto_id || !formProduto.quantidade || !formProduto.preco_unitario) { 
+      return setErro("Produto, quantidade e preço são obrigatórios."); 
+    }
     try {
-      const payload = { contrato_id: Number(id), produto_id: formProduto.produto_id, quantidade_contratada: formProduto.quantidade, preco_unitario: formProduto.preco_unitario };
+      const payload = { 
+        contrato_id: Number(id), 
+        produto_id: Number(formProduto.produto_id), 
+        quantidade_contratada: Number(formProduto.quantidade), 
+        preco_unitario: Number(formProduto.preco_unitario),
+        ...(formProduto.unidade && { unidade: formProduto.unidade }),
+        ...(formProduto.marca && { marca: formProduto.marca }),
+        ...(formProduto.peso && { peso: Number(formProduto.peso) })
+      };
       if (editandoProduto) { await editarContratoProduto(editandoProduto.id, payload); } 
       else { await adicionarContratoProduto(payload); }
       setDialogState(prev => ({ ...prev, produto: false }));
@@ -345,7 +394,7 @@ export default function ContratoDetalhe() {
                 <TableContainer>
                     <Table>
                         <TableHead><TableRow>
-                            <TableCell sx={{ fontWeight: 600 }}>Produto</TableCell><TableCell align="center" sx={{ fontWeight: 600 }}>Quantidade</TableCell><TableCell align="center" sx={{ fontWeight: 600 }}>Preço Unitário</TableCell>
+                            <TableCell sx={{ fontWeight: 600 }}>Produto</TableCell><TableCell align="center" sx={{ fontWeight: 600 }}>Marca</TableCell><TableCell align="center" sx={{ fontWeight: 600 }}>Peso</TableCell><TableCell align="center" sx={{ fontWeight: 600 }}>Unidade</TableCell><TableCell align="center" sx={{ fontWeight: 600 }}>Quantidade</TableCell><TableCell align="center" sx={{ fontWeight: 600 }}>Preço Unitário</TableCell>
                             <TableCell align="center" sx={{ fontWeight: 600 }}>Valor Total</TableCell><TableCell align="center" sx={{ fontWeight: 600 }}>Saldo</TableCell><TableCell align="center" sx={{ fontWeight: 600 }}>Ações</TableCell>
                         </TableRow></TableHead>
                         <TableBody>
@@ -354,6 +403,9 @@ export default function ContratoDetalhe() {
                                 return (
                                 <TableRow key={produto.id} hover>
                                     <TableCell>{produtoInfo?.nome || `Produto #${produto.produto_id}`}</TableCell>
+                                    <TableCell align="center">{produto.marca || "N/A"}</TableCell>
+                                    <TableCell align="center">{produto.peso ? `${formatarNumero(produto.peso)}g` : "N/A"}</TableCell>
+                                    <TableCell align="center">{produto.unidade_medida || "Kg"}</TableCell>
                                     <TableCell align="center">{produto.quantidade}</TableCell>
                                     <TableCell align="center">{formatarMoeda(produto.preco_unitario)}</TableCell>
                                     <TableCell align="center">{formatarMoeda(produto.valor_total)}</TableCell>
@@ -408,6 +460,30 @@ export default function ContratoDetalhe() {
                   sx={{ mt: 2, mb: 2 }}
                 />
                 <TextField label="Quantidade Contratada *" type="number" value={formProduto.quantidade} onChange={e => setFormProduto({ ...formProduto, quantidade: e.target.value })} fullWidth sx={{ mb: 2 }} required inputProps={{ min: 0 }} />
+                <TextField label="Marca" value={formProduto.marca || ""} onChange={e => setFormProduto({ ...formProduto, marca: e.target.value })} fullWidth sx={{ mb: 2 }} placeholder="Ex: Tio João, Camil, etc." />
+                <TextField label="Peso (gramas)" type="number" value={formProduto.peso || ""} onChange={e => setFormProduto({ ...formProduto, peso: e.target.value })} fullWidth sx={{ mb: 2 }} placeholder="Ex: 1000 para 1kg" inputProps={{ min: 0 }} />
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                  <InputLabel>Unidade de Medida *</InputLabel>
+                  <Select
+                    value={formProduto.unidade || "Kg"}
+                    label="Unidade de Medida *"
+                    onChange={e => setFormProduto({ ...formProduto, unidade: e.target.value })}
+                    required
+                  >
+                    <MenuItem value="Kg">Quilograma (Kg)</MenuItem>
+                    <MenuItem value="g">Grama (g)</MenuItem>
+                    <MenuItem value="L">Litro (L)</MenuItem>
+                    <MenuItem value="mL">Mililitro (mL)</MenuItem>
+                    <MenuItem value="Un">Unidade (Un)</MenuItem>
+                    <MenuItem value="Cx">Caixa (Cx)</MenuItem>
+                    <MenuItem value="Pct">Pacote (Pct)</MenuItem>
+                    <MenuItem value="Dz">Dúzia (Dz)</MenuItem>
+                    <MenuItem value="m">Metro (m)</MenuItem>
+                    <MenuItem value="cm">Centímetro (cm)</MenuItem>
+                    <MenuItem value="m²">Metro Quadrado (m²)</MenuItem>
+                    <MenuItem value="m³">Metro Cúbico (m³)</MenuItem>
+                  </Select>
+                </FormControl>
                 <TextField label="Preço Unitário *" type="number" value={formProduto.preco_unitario} onChange={e => setFormProduto({ ...formProduto, preco_unitario: e.target.value })} fullWidth required inputProps={{ min: 0, step: 0.01 }} />
             </DialogContent>
             <DialogActions><Button onClick={() => setDialogState(p => ({...p, produto: false}))}>Cancelar</Button><Button onClick={salvarProduto} variant="contained">{editandoProduto ? "Salvar" : "Adicionar"}</Button></DialogActions>
@@ -418,7 +494,24 @@ export default function ContratoDetalhe() {
             <DialogContent dividers>
                 <TextField label="Número do Contrato" value={formContrato.numero} onChange={e => setFormContrato({ ...formContrato, numero: e.target.value })} fullWidth sx={{ mt: 2, mb: 2 }} required />
                 <TextField label="Data de Início" type="date" value={formContrato.data_inicio} onChange={e => setFormContrato({ ...formContrato, data_inicio: e.target.value })} fullWidth sx={{ mb: 2 }} InputLabelProps={{ shrink: true }} required />
-                <TextField label="Data de Fim" type="date" value={formContrato.data_fim} onChange={e => setFormContrato({ ...formContrato, data_fim: e.target.value })} fullWidth InputLabelProps={{ shrink: true }} required />
+                <TextField label="Data de Fim" type="date" value={formContrato.data_fim} onChange={e => setFormContrato({ ...formContrato, data_fim: e.target.value })} fullWidth sx={{ mb: 2 }} InputLabelProps={{ shrink: true }} required />
+                <FormControl fullWidth>
+                  <InputLabel>Modalidade de Licitação</InputLabel>
+                  <Select
+                    value={formContrato.tipo_licitacao || 'pregao_eletronico'}
+                    label="Modalidade de Licitação"
+                    onChange={e => setFormContrato({ ...formContrato, tipo_licitacao: e.target.value })}
+                  >
+                    <MenuItem value="pregao_eletronico">Pregão Eletrônico</MenuItem>
+                    <MenuItem value="pregao_presencial">Pregão Presencial</MenuItem>
+                    <MenuItem value="chamada_publica_pnae">Chamada Pública PNAE</MenuItem>
+                    <MenuItem value="dispensa_licitacao">Dispensa de Licitação</MenuItem>
+                    <MenuItem value="inexigibilidade">Inexigibilidade</MenuItem>
+                    <MenuItem value="concorrencia">Concorrência</MenuItem>
+                    <MenuItem value="tomada_precos">Tomada de Preços</MenuItem>
+                    <MenuItem value="convite">Convite</MenuItem>
+                  </Select>
+                </FormControl>
             </DialogContent>
             <DialogActions><Button onClick={() => setDialogState(p => ({...p, editarContrato: false}))}>Cancelar</Button><Button onClick={salvarContratoEditado} variant="contained">Salvar Alterações</Button></DialogActions>
         </Dialog>

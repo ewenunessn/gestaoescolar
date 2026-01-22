@@ -26,7 +26,6 @@ import gestorEscolaRoutes from "./modules/guias/routes/gestorEscolaRoutes";
 import estoqueEscolarRoutes from "./modules/estoque/routes/estoqueEscolarRoutes";
 // import demandaRoutes from "./modules/estoque/routes/demandaRoutes"; // REMOVIDO - usar demandasRoutes do módulo demandas
 
-import saldoContratosRoutes from "./modules/contratos/routes/saldoContratosRoutes";
 import saldoContratosModalidadesRoutes from "./modules/contratos/routes/saldoContratosModalidadesRoutes";
 import guiaRoutes from "./modules/guias/routes/guiaRoutes";
 import entregaRoutes from "./modules/entregas/routes/entregaRoutes";
@@ -263,7 +262,6 @@ app.use("/api/estoque-escola", estoqueEscolaRoutes);
 app.use("/api/gestor-escola", gestorEscolaRoutes);
 app.use("/api/estoque-escolar", estoqueEscolarRoutes);
 
-app.use("/api/saldo-contratos", saldoContratosRoutes);
 app.use("/api/saldo-contratos-modalidades", saldoContratosModalidadesRoutes);
 app.use("/api/guias", guiaRoutes);
 app.use("/api/entregas", entregaRoutes);

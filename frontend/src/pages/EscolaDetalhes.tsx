@@ -301,18 +301,22 @@ const EscolaDetalhesPage = () => {
             }
             setModalOpen(false);
             await loadData();
+            // Invalidar cache de modalidades para atualizar contagem de alunos
+            queryClient.invalidateQueries({ queryKey: ['modalidades'] });
         } catch (err) { setError('Erro ao salvar modalidade'); }
         finally { setIsSavingModalidade(false); setTimeout(() => setSuccessMessage(null), 3000); }
-    }, [editingModalidade, modalidadeForm, id, loadData]);
+    }, [editingModalidade, modalidadeForm, id, loadData, queryClient]);
 
     const handleDeleteModalidade = useCallback(async (associacaoId: number) => {
         try {
             await removerEscolaModalidade(associacaoId);
             setSuccessMessage('Modalidade removida com sucesso!');
             await loadData();
+            // Invalidar cache de modalidades para atualizar contagem de alunos
+            queryClient.invalidateQueries({ queryKey: ['modalidades'] });
         } catch (err) { setError('Erro ao remover modalidade'); }
         finally { setTimeout(() => setSuccessMessage(null), 3000); }
-    }, [loadData]);
+    }, [loadData, queryClient]);
 
     const totalAlunos = useMemo(() => associacoes.reduce((total, assoc) => total + assoc.quantidade_alunos, 0), [associacoes]);
 

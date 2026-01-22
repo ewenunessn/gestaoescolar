@@ -108,6 +108,9 @@ export function useAtualizarEscola() {
       // Invalidar lista de escolas
       queryClient.invalidateQueries({ queryKey: queryKeys.escolas.lists() });
       
+      // Invalidar modalidades (pois o total de alunos pode ter mudado)
+      invalidateQueries.modalidades();
+      
       // Invalidar estoque relacionado
       invalidateQueries.estoqueEscola(id);
     },

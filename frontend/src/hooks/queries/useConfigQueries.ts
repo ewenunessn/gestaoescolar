@@ -4,7 +4,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys, cacheConfig } from '../../lib/queryClient';
-import configService, { ConfiguracaoSistema, ConfiguracaoModuloSaldo } from '../../services/configService';
+import configService, { ConfiguracaoSistema } from '../../services/configService';
 
 // ============================================================================
 // QUERIES
@@ -24,14 +24,6 @@ export function useConfiguracoesPorCategoria(categoria: string, enabled = true) 
     queryKey: queryKeys.configuracoes.list({ categoria }),
     queryFn: () => configService.listarConfiguracoesPorCategoria(categoria),
     enabled: enabled && !!categoria,
-    ...cacheConfig.static,
-  });
-}
-
-export function useConfiguracaoModuloSaldo() {
-  return useQuery({
-    queryKey: [...queryKeys.configuracoes.all, 'modulo-saldo'],
-    queryFn: () => configService.buscarConfiguracaoModuloSaldo(),
     ...cacheConfig.static,
   });
 }
@@ -88,23 +80,6 @@ export function useAtualizarConfiguracao() {
       // Invalidar lista de configurações da categoria
       queryClient.invalidateQueries({ 
         queryKey: queryKeys.configuracoes.list({ categoria: updatedConfig.categoria }) 
-      });
-      
-      // Limpar cache do serviço
-      configService.limparCache();
-    },
-  });
-}
-
-export function useSalvarConfiguracaoModuloSaldo() {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: (config) => configService.salvarConfiguracaoModuloSaldo(config),
-    onSuccess: () => {
-      // Invalidar configuração do módulo de saldo
-      queryClient.invalidateQueries({ 
-        queryKey: [...queryKeys.configuracoes.all, 'modulo-saldo'] 
       });
       
       // Limpar cache do serviço

@@ -23,10 +23,6 @@ export async function listarProdutos(req: Request, res: Response) {
         nome,
         descricao,
         categoria,
-        marca,
-        unidade,
-        peso,
-        fator_divisao,
         tipo_processamento,
         perecivel,
         ativo,
@@ -101,10 +97,6 @@ export async function criarProduto(req: Request, res: Response) {
       nome,
       descricao,
       categoria,
-      marca,
-      unidade,
-      peso,
-      fator_divisao,
       tipo_processamento,
       perecivel = false,
       ativo = true
@@ -123,16 +115,14 @@ export async function criarProduto(req: Request, res: Response) {
 
     const result = await db.query(`
       INSERT INTO produtos (
-        nome, descricao, categoria, marca, unidade, 
-        peso, fator_divisao, tipo_processamento,
-        perecivel, ativo, tenant_id, created_at
+        nome, descricao, categoria, 
+        tipo_processamento, perecivel, ativo, tenant_id, created_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
       RETURNING *
     `, [
-      nome, descricao, categoria, marca, unidade,
-      peso, fator_divisao, tipo_processamento,
-      perecivel, ativo, req.tenant.id
+      nome, descricao, categoria,
+      tipo_processamento, perecivel, ativo, req.tenant.id
     ]);
 
     res.json({
@@ -157,10 +147,6 @@ export async function editarProduto(req: Request, res: Response) {
       nome,
       descricao,
       categoria,
-      marca,
-      unidade,
-      peso,
-      fator_divisao,
       tipo_processamento,
       perecivel,
       ativo
@@ -183,20 +169,15 @@ export async function editarProduto(req: Request, res: Response) {
         nome = $1,
         descricao = $2,
         categoria = $3,
-        marca = $4,
-        unidade = $5,
-        peso = $6,
-        fator_divisao = $7,
-        tipo_processamento = $8,
-        perecivel = $9,
-        ativo = $10,
+        tipo_processamento = $4,
+        perecivel = $5,
+        ativo = $6,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $11 AND tenant_id = $12
+      WHERE id = $7 AND tenant_id = $8
       RETURNING *
     `, [
-      nome, descricao, categoria, marca, unidade,
-      peso, fator_divisao, tipo_processamento,
-      perecivel, ativo, id, req.tenant.id
+      nome, descricao, categoria,
+      tipo_processamento, perecivel, ativo, id, req.tenant.id
     ]);
 
     if (result.rows.length === 0) {
@@ -425,10 +406,6 @@ export async function importarProdutosLote(req: Request, res: Response) {
           nome,
           descricao,
           categoria,
-          marca,
-          unidade,
-          peso,
-          fator_divisao,
           tipo_processamento,
           perecivel = false,
           ativo = true
@@ -442,26 +419,20 @@ export async function importarProdutosLote(req: Request, res: Response) {
 
         const result = await db.query(`
           INSERT INTO produtos (
-            nome, descricao, categoria, marca, unidade, 
-            peso, fator_divisao, tipo_processamento,
-            perecivel, ativo, tenant_id, created_at
+            nome, descricao, categoria, 
+            tipo_processamento, perecivel, ativo, tenant_id, created_at
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
           ON CONFLICT (nome, tenant_id) DO UPDATE SET
             descricao = EXCLUDED.descricao,
             categoria = EXCLUDED.categoria,
-            marca = EXCLUDED.marca,
-            unidade = EXCLUDED.unidade,
-            peso = EXCLUDED.peso,
-            fator_divisao = EXCLUDED.fator_divisao,
             tipo_processamento = EXCLUDED.tipo_processamento,
             perecivel = EXCLUDED.perecivel,
             ativo = EXCLUDED.ativo
           RETURNING *
         `, [
-          nome, descricao, categoria, marca, unidade,
-          peso, fator_divisao, tipo_processamento,
-          perecivel, ativo, req.tenant.id
+          nome, descricao, categoria,
+          tipo_processamento, perecivel, ativo, req.tenant.id
         ]);
 
         const acao = produtoExistente ? 'atualizado' : 'inserido';

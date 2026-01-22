@@ -172,29 +172,64 @@ export class FaturamentoService {
     // Buscar modalidades com percentuais
     const modalidades = await this.obterModalidadesComPercentuais();
     
+    // Check if unidade column exists in contrato_produtos table
+    const columnCheck = await db.all(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'contrato_produtos' AND column_name = 'unidade'
+    `);
+    const unidadeColumnExists = columnCheck.length > 0;
+
+    let itensQuery;
+    if (unidadeColumnExists) {
+      itensQuery = `
+        SELECT 
+          pi.id as pedido_item_id,
+          pi.quantidade,
+          pi.preco_unitario,
+          pi.valor_total,
+          cp.contrato_id,
+          c.numero as contrato_numero,
+          c.fornecedor_id,
+          f.nome as fornecedor_nome,
+          f.cnpj as fornecedor_cnpj,
+          p.id as produto_id,
+          p.nome as produto_nome,
+          COALESCE(cp.unidade, 'Kg') as unidade 
+        FROM pedido_itens pi
+        JOIN contrato_produtos cp ON pi.contrato_produto_id = cp.id
+        JOIN contratos c ON cp.contrato_id = c.id
+        JOIN fornecedores f ON c.fornecedor_id = f.id
+        JOIN produtos p ON pi.produto_id = p.id
+        WHERE pi.pedido_id = $1
+        ORDER BY c.numero, f.nome, p.nome
+      `;
+    } else {
+      itensQuery = `
+        SELECT 
+          pi.id as pedido_item_id,
+          pi.quantidade,
+          pi.preco_unitario,
+          pi.valor_total,
+          cp.contrato_id,
+          c.numero as contrato_numero,
+          c.fornecedor_id,
+          f.nome as fornecedor_nome,
+          f.cnpj as fornecedor_cnpj,
+          p.id as produto_id,
+          p.nome as produto_nome,
+          'Kg' as unidade 
+        FROM pedido_itens pi
+        JOIN contrato_produtos cp ON pi.contrato_produto_id = cp.id
+        JOIN contratos c ON cp.contrato_id = c.id
+        JOIN fornecedores f ON c.fornecedor_id = f.id
+        JOIN produtos p ON pi.produto_id = p.id
+        WHERE pi.pedido_id = $1
+        ORDER BY c.numero, f.nome, p.nome
+      `;
+    }
+
     // Buscar itens do pedido agrupados por contrato
-    const itensQuery = `
-      SELECT 
-        pi.id as pedido_item_id,
-        pi.quantidade,
-        pi.preco_unitario,
-        pi.valor_total,
-        cp.contrato_id,
-        c.numero as contrato_numero,
-        c.fornecedor_id,
-        f.nome as fornecedor_nome,
-        f.cnpj as fornecedor_cnpj,
-        p.id as produto_id,
-        p.nome as produto_nome,
-        p.unidade as unidade 
-      FROM pedido_itens pi
-      JOIN contrato_produtos cp ON pi.contrato_produto_id = cp.id
-      JOIN contratos c ON cp.contrato_id = c.id
-      JOIN fornecedores f ON c.fornecedor_id = f.id
-      JOIN produtos p ON pi.produto_id = p.id
-      WHERE pi.pedido_id = $1
-      ORDER BY c.numero, f.nome, p.nome
-    `;
     
     const itensResult = await db.all(itensQuery, [pedidoId]);
     

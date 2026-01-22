@@ -169,11 +169,11 @@ export default function ItensFornecedor() {
                 <TableRow>
                   <TableCell sx={{ fontWeight: 600, bgcolor: 'grey.100' }}>Contrato</TableCell>
                   <TableCell sx={{ fontWeight: 600, bgcolor: 'grey.100' }}>Produto</TableCell>
-                  <TableCell sx={{ fontWeight: 600, bgcolor: 'grey.100' }}>Marca</TableCell>
-                  <TableCell sx={{ fontWeight: 600, bgcolor: 'grey.100' }}>Unidade</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 600, bgcolor: 'grey.100' }}>Preço Unitário</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 600, bgcolor: 'grey.100' }}>Quantidade</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 600, bgcolor: 'grey.100' }}>Valor Total</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 600, bgcolor: 'grey.100' }}>Marca</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 600, bgcolor: 'grey.100' }}>Unidade</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 600, bgcolor: 'grey.100' }}>Preço Unitário</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 600, bgcolor: 'grey.100' }}>Quantidade</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 600, bgcolor: 'grey.100' }}>Valor Total</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -195,11 +195,11 @@ export default function ItensFornecedor() {
                         <Chip label={item.contrato_numero} size="small" variant="outlined" />
                       </TableCell>
                       <TableCell>{item.produto_nome}</TableCell>
-                      <TableCell>{item.marca}</TableCell>
-                      <TableCell>{item.unidade}</TableCell>
-                      <TableCell align="right">{formatarMoeda(item.preco_unitario)}</TableCell>
-                      <TableCell align="right">{item.quantidade.toLocaleString('pt-BR')}</TableCell>
-                      <TableCell align="right">
+                      <TableCell align="center">{item.marca}</TableCell>
+                      <TableCell align="center">{item.unidade}</TableCell>
+                      <TableCell align="center">{formatarMoeda(item.preco_unitario)}</TableCell>
+                      <TableCell align="center">{item.quantidade.toLocaleString('pt-BR')}</TableCell>
+                      <TableCell align="center">
                         <Typography fontWeight="600" color="primary.main">
                           {formatarMoeda(item.valor_total)}
                         </Typography>

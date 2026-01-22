@@ -74,11 +74,7 @@ interface Produto {
   id: number;
   nome: string;
   descricao?: string;
-  unidade?: string;
   categoria?: string;
-  marca?: string;
-  peso?: number;
-  fator_divisao?: number;
   tipo_processamento?: string;
   perecivel?: boolean;
   ativo: boolean;
@@ -87,11 +83,7 @@ interface Produto {
 interface ProdutoForm {
   nome: string;
   descricao: string;
-  unidade: string;
   categoria: string;
-  marca: string;
-  peso?: number;
-  fator_divisao?: number;
   tipo_processamento?: string;
   perecivel?: boolean;
   ativo: boolean;
@@ -103,7 +95,6 @@ const ProdutosPage = () => {
   // Estados de filtros (devem vir antes dos hooks que os usam)
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategoria, setSelectedCategoria] = useState('');
-  const [selectedMarcas, setSelectedMarcas] = useState<string[]>([]);
   const [selectedStatus, setSelectedStatus] = useState('');
   const [sortBy, setSortBy] = useState('name');
   const [filtersExpanded, setFiltersExpanded] = useState(false);
@@ -137,11 +128,7 @@ const ProdutosPage = () => {
   const [formData, setFormData] = useState<ProdutoForm>({
     nome: "",
     descricao: "",
-    unidade: "",
     categoria: "",
-    marca: "",
-    peso: undefined,
-    fator_divisao: undefined,
     tipo_processamento: "",
     perecivel: false,
     ativo: true,
@@ -157,28 +144,27 @@ const ProdutosPage = () => {
 
   // Detectar filtros ativos
   useEffect(() => {
-    const hasFilters = !!(searchTerm || selectedCategoria || selectedMarcas.length > 0 || selectedStatus);
+    const hasFilters = !!(searchTerm || selectedCategoria || selectedStatus);
     setHasActiveFilters(hasFilters);
-  }, [searchTerm, selectedCategoria, selectedMarcas, selectedStatus]);
+  }, [searchTerm, selectedCategoria, selectedStatus]);
 
   // Extrair dados únicos para filtros (categorias já vem do hook useCategoriasProdutos)
-  const marcas = useMemo(() => [...new Set(produtos.map(p => p.marca).filter(Boolean))].sort(), [produtos]);
+  // Marcas agora são definidas nos contratos, não mais nos produtos
 
   // Filtrar e ordenar produtos
   const filteredProdutos = useMemo(() => {
     return produtos.filter(produto => {
       const matchesSearch = produto.nome.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategoria = !selectedCategoria || produto.categoria === selectedCategoria;
-      const matchesMarca = selectedMarcas.length === 0 || (produto.marca && selectedMarcas.includes(produto.marca));
       const matchesStatus = !selectedStatus ||
         (selectedStatus === 'ativo' && produto.ativo) ||
         (selectedStatus === 'inativo' && !produto.ativo);
-      return matchesSearch && matchesCategoria && matchesMarca && matchesStatus;
+      return matchesSearch && matchesCategoria && matchesStatus;
     }).sort((a, b) => {
       // Lógica de ordenação
       return a.nome.localeCompare(b.nome);
     });
-  }, [produtos, searchTerm, selectedCategoria, selectedMarcas, selectedStatus, sortBy]);
+  }, [produtos, searchTerm, selectedCategoria, selectedStatus, sortBy]);
 
   // Legenda de status
   const statusLegend = useMemo(() => {
@@ -210,12 +196,11 @@ const ProdutosPage = () => {
   // Reset da página quando filtros mudam
   useEffect(() => {
     setPage(0);
-  }, [searchTerm, selectedCategoria, selectedMarcas, selectedStatus, sortBy]);
+  }, [searchTerm, selectedCategoria, selectedStatus, sortBy]);
 
   const clearFilters = useCallback(() => {
     setSearchTerm('');
     setSelectedCategoria('');
-    setSelectedMarcas([]);
     setSelectedStatus('');
     setSortBy('name');
   }, []);
@@ -231,16 +216,15 @@ const ProdutosPage = () => {
       </Box>
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2 }}>
         <FormControl fullWidth size="small"><InputLabel>Categoria</InputLabel><Select value={selectedCategoria} onChange={(e) => setSelectedCategoria(e.target.value)} label="Categoria"><MenuItem value="">Todas</MenuItem>{categorias.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)}</Select></FormControl>
-        <FormControl fullWidth size="small"><InputLabel>Marcas</InputLabel><Select multiple value={selectedMarcas} onChange={(e) => setSelectedMarcas(e.target.value as string[])} input={<OutlinedInput label="Marcas" />} renderValue={(selected) => selected.join(', ')}>{marcas.map(m => <MenuItem key={m} value={m}><Checkbox checked={selectedMarcas.includes(m)} />{m}</MenuItem>)}</Select></FormControl>
         <FormControl fullWidth size="small"><InputLabel>Status</InputLabel><Select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)} label="Status"><MenuItem value="">Todos</MenuItem><MenuItem value="ativo">Ativos</MenuItem><MenuItem value="inativo">Inativos</MenuItem></Select></FormControl>
-        <FormControl fullWidth size="small"><InputLabel>Ordenar por</InputLabel><Select value={sortBy} onChange={(e) => setSortBy(e.target.value)} label="Ordenar por"><MenuItem value="name">Nome</MenuItem><MenuItem value="categoria">Categoria</MenuItem><MenuItem value="marca">Marca</MenuItem></Select></FormControl>
+        <FormControl fullWidth size="small"><InputLabel>Ordenar por</InputLabel><Select value={sortBy} onChange={(e) => setSortBy(e.target.value)} label="Ordenar por"><MenuItem value="name">Nome</MenuItem><MenuItem value="categoria">Categoria</MenuItem></Select></FormControl>
       </Box>
     </Box>
   );
 
   // Funções do modal
   const openModal = () => {
-    setFormData({ nome: "", descricao: "", unidade: "", categoria: "", marca: "", ativo: true });
+    setFormData({ nome: "", descricao: "", categoria: "", ativo: true });
     setModalOpen(true);
   };
   const closeModal = () => {
@@ -248,11 +232,7 @@ const ProdutosPage = () => {
     setFormData({
       nome: "",
       descricao: "",
-      unidade: "",
       categoria: "",
-      marca: "",
-      peso: undefined,
-      fator_divisao: undefined,
       tipo_processamento: "",
       perecivel: false,
       ativo: true,
@@ -298,10 +278,6 @@ const ProdutosPage = () => {
         nome: produto.nome,
         descricao: produto.descricao || '',
         categoria: produto.categoria || '',
-        marca: produto.marca || '',
-        unidade: produto.unidade || '',
-        peso: produto.peso || 0,
-        fator_divisao: produto.fator_divisao || 1,
         tipo_processamento: produto.tipo_processamento || '',
         perecivel: produto.perecivel || false,
         ativo: produto.ativo
@@ -321,10 +297,6 @@ const ProdutosPage = () => {
         { wch: 30 }, // nome
         { wch: 35 }, // descricao
         { wch: 15 }, // categoria
-        { wch: 15 }, // marca
-        { wch: 12 }, // unidade
-        { wch: 8 },  // peso
-        { wch: 12 }, // fator_divisao
         { wch: 25 }, // tipo_processamento (aumentado para caber o texto)
         { wch: 10 }, // perecivel
         { wch: 8 }   // ativo
@@ -335,12 +307,12 @@ const ProdutosPage = () => {
       // Adicionar validação para perecivel (coluna I) e ativo (coluna J)
       if (!ws['!dataValidation']) ws['!dataValidation'] = [];
       
-      // Validação para tipo_processamento (coluna H, linhas 2 em diante)
+      // Validação para tipo_processamento (coluna D, linhas 2 em diante)
       for (let i = 2; i <= dadosExportacao.length + 1; i++) {
         ws['!dataValidation'].push({
           type: 'list',
           allowBlank: true,
-          sqref: `H${i}`,
+          sqref: `D${i}`,
           formulas: ['"in natura,minimamente processado,processado,ultraprocessado"'],
           promptTitle: 'Tipo de Processamento',
           prompt: 'Selecione uma das opções',
@@ -349,12 +321,12 @@ const ProdutosPage = () => {
         });
       }
 
-      // Validação para perecivel (coluna I)
+      // Validação para perecivel (coluna E)
       for (let i = 2; i <= dadosExportacao.length + 1; i++) {
         ws['!dataValidation'].push({
           type: 'list',
           allowBlank: false,
-          sqref: `I${i}`,
+          sqref: `E${i}`,
           formulas: ['"true,false"'],
           promptTitle: 'Perecível',
           prompt: 'Selecione true ou false',
@@ -363,12 +335,12 @@ const ProdutosPage = () => {
         });
       }
 
-      // Validação para ativo (coluna J)
+      // Validação para ativo (coluna F)
       for (let i = 2; i <= dadosExportacao.length + 1; i++) {
         ws['!dataValidation'].push({
           type: 'list',
           allowBlank: false,
-          sqref: `J${i}`,
+          sqref: `F${i}`,
           formulas: ['"true,false"'],
           promptTitle: 'Ativo',
           prompt: 'Selecione true ou false',
@@ -399,8 +371,7 @@ const ProdutosPage = () => {
     try {
       // Criar modelo com headers e exemplo
       const headers = [
-        'nome', 'descricao', 'categoria', 'marca', 
-        'unidade', 'peso', 'fator_divisao', 
+        'nome', 'descricao', 'categoria', 
         'tipo_processamento', 'perecivel', 'ativo'
       ];
 
@@ -408,10 +379,6 @@ const ProdutosPage = () => {
         'Arroz Branco Tipo 1',
         'Arroz branco polido, tipo 1, classe longo fino',
         'Cereais',
-        'Tio João',
-        'kg',
-        1000,
-        1,
         'processado',
         false,
         true
@@ -425,10 +392,6 @@ const ProdutosPage = () => {
         { wch: 30 }, // nome
         { wch: 35 }, // descricao
         { wch: 15 }, // categoria
-        { wch: 15 }, // marca
-        { wch: 12 }, // unidade
-        { wch: 8 },  // peso
-        { wch: 12 }, // fator_divisao
         { wch: 25 }, // tipo_processamento (aumentado)
         { wch: 10 }, // perecivel
         { wch: 8 }   // ativo
@@ -438,11 +401,11 @@ const ProdutosPage = () => {
       // Adicionar validação de dados para facilitar o preenchimento
       if (!ws['!dataValidation']) ws['!dataValidation'] = [];
       
-      // Validação para tipo_processamento (coluna H, linhas 2 a 100)
+      // Validação para tipo_processamento (coluna D, linhas 2 a 100)
       ws['!dataValidation'].push({
         type: 'list',
         allowBlank: true,
-        sqref: 'H2:H100',
+        sqref: 'D2:D100',
         formulas: ['"in natura,minimamente processado,processado,ultraprocessado"'],
         promptTitle: 'Tipo de Processamento',
         prompt: 'Selecione uma das opções',
@@ -450,11 +413,11 @@ const ProdutosPage = () => {
         error: 'Escolha: in natura, minimamente processado, processado ou ultraprocessado'
       });
 
-      // Validação para perecivel (coluna I, linhas 2 a 100)
+      // Validação para perecivel (coluna E, linhas 2 a 100)
       ws['!dataValidation'].push({
         type: 'list',
         allowBlank: false,
-        sqref: 'I2:I100',
+        sqref: 'E2:E100',
         formulas: ['"true,false"'],
         promptTitle: 'Perecível',
         prompt: 'Selecione true ou false',
@@ -462,11 +425,11 @@ const ProdutosPage = () => {
         error: 'Escolha: true ou false'
       });
 
-      // Validação para ativo (coluna J, linhas 2 a 100)
+      // Validação para ativo (coluna F, linhas 2 a 100)
       ws['!dataValidation'].push({
         type: 'list',
         allowBlank: false,
-        sqref: 'J2:J100',
+        sqref: 'F2:F100',
         formulas: ['"true,false"'],
         promptTitle: 'Ativo',
         prompt: 'Selecione true ou false',
@@ -486,19 +449,15 @@ const ProdutosPage = () => {
         ['nome', 'Nome do produto', 'SIM', 'Arroz Branco'],
         ['descricao', 'Descrição detalhada do produto', 'NÃO', 'Arroz branco tipo 1'],
         ['categoria', 'Categoria do produto', 'NÃO', 'Cereais'],
-        ['marca', 'Marca do produto', 'NÃO', 'Tio João'],
-        ['unidade', 'Unidade de medida (kg, litro, unidade, etc)', 'NÃO', 'kg'],
-        ['peso', 'Peso em gramas', 'NÃO', '1000'],
-        ['fator_divisao', 'Fator de divisão', 'NÃO', '1'],
         ['tipo_processamento', 'Tipo: in natura, minimamente processado, processado, ultraprocessado', 'NÃO', 'processado'],
         ['perecivel', 'Produto perecível (true/false)', 'NÃO', 'false'],
         ['ativo', 'Produto ativo (true/false)', 'NÃO', 'true'],
         [''],
         ['NOTAS:'],
         ['- Preencha apenas os campos necessários'],
-        ['- Use valores numéricos para peso e fator_divisao'],
         ['- Use true ou false para os campos perecivel e ativo'],
-        ['- O sistema identificará produtos existentes pelo nome e fará atualização']
+        ['- O sistema identificará produtos existentes pelo nome e fará atualização'],
+        ['- Marca e peso agora são definidos nos contratos, não mais nos produtos']
       ];
 
       const wsInstrucoes = XLSX.utils.aoa_to_sheet(instrucoes);
@@ -553,7 +512,7 @@ const ProdutosPage = () => {
           <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px' }}>
             <TableContainer>
               <Table stickyHeader size="small">
-                <TableHead><TableRow><TableCell sx={{ py: 1 }}>Nome do Produto</TableCell><TableCell align="center" sx={{ py: 1 }}>Categoria</TableCell><TableCell align="center" sx={{ py: 1 }}>Marca</TableCell><TableCell align="center" sx={{ py: 1 }}>Ações</TableCell></TableRow></TableHead>
+                <TableHead><TableRow><TableCell sx={{ py: 1 }}>Nome do Produto</TableCell><TableCell align="center" sx={{ py: 1 }}>Categoria</TableCell><TableCell align="center" sx={{ py: 1 }}>Ações</TableCell></TableRow></TableHead>
                 <TableBody>
                   {paginatedProdutos.map((produto) => (
                     <TableRow key={produto.id} hover sx={{ '& td': { py: 0.75 } }}>
@@ -567,7 +526,6 @@ const ProdutosPage = () => {
                         </Box>
                       </TableCell>
                       <TableCell align="center"><Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>{produto.categoria || 'N/A'}</Typography></TableCell>
-                      <TableCell align="center"><Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>{produto.marca || 'N/A'}</Typography></TableCell>
 
                       <TableCell align="center"><Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => navigate(`/produtos/${produto.id}`)} color="primary"><Visibility fontSize="small" /></IconButton></Tooltip></TableCell>
                     </TableRow>
@@ -597,36 +555,8 @@ const ProdutosPage = () => {
                 renderInput={(params) => <TextField {...params} label="Categoria" />}
                 sx={{ flex: 1 }}
               />
-              <Autocomplete
-                freeSolo
-                options={marcas}
-                value={formData.marca}
-                onChange={(event, newValue) => setFormData({ ...formData, marca: newValue || '' })}
-                onInputChange={(event, newInputValue) => setFormData({ ...formData, marca: newInputValue })}
-                renderInput={(params) => <TextField {...params} label="Marca" />}
-                sx={{ flex: 1 }}
-              />
             </Box>
             <Box sx={{ display: 'flex', gap: 2 }}>
-              <TextField label="Unidade" value={formData.unidade} onChange={(e) => setFormData({ ...formData, unidade: e.target.value })} placeholder="kg, g, L, ml, un" sx={{ flex: 1 }} />
-              <TextField 
-                label="Peso (g)" 
-                type="number" 
-                value={formData.peso ?? ''} 
-                onChange={(e) => setFormData({ ...formData, peso: e.target.value ? parseFloat(e.target.value) : undefined })} 
-                inputProps={{ step: 0.1, min: 0 }}
-                sx={{ flex: 1 }} 
-              />
-            </Box>
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <TextField 
-                label="Fator de Divisão" 
-                type="number" 
-                value={formData.fator_divisao ?? ''} 
-                onChange={(e) => setFormData({ ...formData, fator_divisao: e.target.value ? parseFloat(e.target.value) : undefined })} 
-                inputProps={{ step: 0.1, min: 0 }}
-                sx={{ flex: 1 }} 
-              />
               <FormControl sx={{ flex: 1 }}>
                 <InputLabel>Tipo de Processamento</InputLabel>
                 <Select value={formData.tipo_processamento || ''} onChange={(e) => setFormData({ ...formData, tipo_processamento: e.target.value })} label="Tipo de Processamento">

@@ -134,7 +134,7 @@ const EstoqueEscolarPage = () => {
     const produtosComEstoque = (estoqueQuery.data?.produtos || []).map(produto => ({
         id: produto.produto_id,
         nome: produto.produto_nome,
-        unidade: produto.unidade,
+        unidade: produto.unidade || 'kg', // Use contract unit or default
         categoria: produto.categoria,
         total_quantidade: produto.total_quantidade,
         total_escolas_com_estoque: produto.total_escolas_com_estoque,
@@ -280,7 +280,7 @@ const EstoqueEscolarPage = () => {
                 worksheet.addRow({
                     nome: produto.nome,
                     categoria: produto.categoria || 'Sem categoria',
-                    unidade: produto.unidade,
+                    unidade: produto.unidade || 'kg', // Use contract unit or default
                     total_quantidade: produto.total_quantidade,
                     total_escolas_com_estoque: produto.total_escolas_com_estoque,
                     total_escolas: produto.total_escolas

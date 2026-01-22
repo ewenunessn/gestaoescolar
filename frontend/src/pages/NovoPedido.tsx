@@ -19,18 +19,29 @@ import {
   Alert,
   Divider,
   Autocomplete,
-  Chip
+  Chip,
+  Popover,
+  Badge
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
   Add as AddIcon,
   Delete as DeleteIcon,
   Save as SaveIcon,
-  Send as SendIcon
+  Send as SendIcon,
+  Comment as CommentIcon
 } from '@mui/icons-material';
 import pedidosService from '../services/pedidos';
 import { ContratoProduto } from '../types/pedido';
 import { formatarMoeda } from '../utils/dateUtils';
+
+// Função para formatar números removendo zeros desnecessários
+const formatarNumero = (numero: number): string => {
+  // Remove zeros desnecessários após a vírgula
+  const numeroFormatado = parseFloat(numero.toString());
+  // Se for número inteiro, não mostra decimais
+  return numeroFormatado % 1 === 0 ? numeroFormatado.toFixed(0) : numeroFormatado.toString();
+};
 
 interface ItemPedido {
   contrato_produto_id: number;
@@ -43,6 +54,7 @@ interface ItemPedido {
   valor_total: number;
   data_entrega_prevista: string;
   observacoes?: string;
+  saldo_disponivel?: number;
 }
 
 export default function NovoPedido() {
@@ -54,6 +66,11 @@ export default function NovoPedido() {
   const [observacoes, setObservacoes] = useState('');
   const [itens, setItens] = useState<ItemPedido[]>([]);
   const [erro, setErro] = useState('');
+
+  // Estado para o popover de observações
+  const [obsAnchorEl, setObsAnchorEl] = useState<HTMLButtonElement | null>(null);
+  const [obsItemIndex, setObsItemIndex] = useState<number | null>(null);
+  const [obsTemp, setObsTemp] = useState('');
 
   // Data padrão: 7 dias a partir de hoje
   const getDataPadrao = () => {
@@ -82,6 +99,15 @@ export default function NovoPedido() {
       return;
     }
 
+    // Verificar se o produto já foi adicionado
+    const produtoJaAdicionado = itens.find(item => item.contrato_produto_id === produtoSelecionado.contrato_produto_id);
+    if (produtoJaAdicionado) {
+      setErro('Este produto já foi adicionado ao pedido');
+      return;
+    }
+
+    const saldoDisponivel = Number(produtoSelecionado.saldo_disponivel) || Number(produtoSelecionado.quantidade_contratada) || 0;
+
     const novoItem: ItemPedido = {
       contrato_produto_id: produtoSelecionado.contrato_produto_id,
       produto_nome: produtoSelecionado.produto_nome,
@@ -92,7 +118,8 @@ export default function NovoPedido() {
       preco_unitario: produtoSelecionado.preco_unitario,
       valor_total: produtoSelecionado.preco_unitario,
       data_entrega_prevista: getDataPadrao(),
-      observacoes: ''
+      observacoes: '',
+      saldo_disponivel: saldoDisponivel
     };
 
     setItens([...itens, novoItem]);
@@ -122,6 +149,27 @@ export default function NovoPedido() {
     novosItens[index].observacoes = observacoes;
     setItens(novosItens);
   };
+
+  const abrirObservacoes = (event: React.MouseEvent<HTMLButtonElement>, index: number) => {
+    setObsAnchorEl(event.currentTarget);
+    setObsItemIndex(index);
+    setObsTemp(itens[index].observacoes || '');
+  };
+
+  const fecharObservacoes = () => {
+    setObsAnchorEl(null);
+    setObsItemIndex(null);
+    setObsTemp('');
+  };
+
+  const salvarObservacoes = () => {
+    if (obsItemIndex !== null) {
+      atualizarObservacoes(obsItemIndex, obsTemp);
+    }
+    fecharObservacoes();
+  };
+
+  const obsPopoverOpen = Boolean(obsAnchorEl);
 
   const calcularValorTotal = () => {
     return itens.reduce((total, item) => total + item.valor_total, 0);
@@ -291,13 +339,6 @@ export default function NovoPedido() {
                 <Typography fontWeight="bold">{totalFornecedores}</Typography>
               </Box>
               
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                <Typography>Quantidade Total:</Typography>
-                <Typography fontWeight="bold">
-                  {itens.reduce((sum, item) => sum + item.quantidade, 0)}
-                </Typography>
-              </Box>
-              
               <Divider sx={{ my: 2 }} />
               
               <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -320,7 +361,6 @@ export default function NovoPedido() {
                         label={`${fornecedor} (${gruposFornecedores[fornecedor].length})`}
                         size="small"
                         color="primary"
-                        variant="outlined"
                       />
                     ))}
                   </Box>
@@ -339,46 +379,56 @@ export default function NovoPedido() {
               <Divider sx={{ mb: 2 }} />
 
               <TableContainer component={Paper} variant="outlined">
-                <Table size="small">
+                <Table>
                   <TableHead>
                     <TableRow>
                       <TableCell>Produto</TableCell>
-                      <TableCell>Fornecedor</TableCell>
-                      <TableCell>Contrato</TableCell>
-                      <TableCell>Unidade</TableCell>
-                      <TableCell width="100">Quantidade</TableCell>
-                      <TableCell width="140">Data Entrega</TableCell>
-                      <TableCell align="right">Preço Unit.</TableCell>
-                      <TableCell align="right">Valor Total</TableCell>
-                      <TableCell width="150">Observações</TableCell>
-                      <TableCell align="center" width="60">Ações</TableCell>
+                      <TableCell>Fornecedor / Contrato</TableCell>
+                      <TableCell align="center">Unidade</TableCell>
+                      <TableCell align="center">Saldo Disponível</TableCell>
+                      <TableCell align="center" width="120">Quantidade</TableCell>
+                      <TableCell align="center" width="160">Data Entrega</TableCell>
+                      <TableCell align="center">Preço Unit.</TableCell>
+                      <TableCell align="center">Valor Total</TableCell>
+                      <TableCell align="center" width="100">Ações</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {itens.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={10} align="center">
-                          Nenhum item adicionado
+                        <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
+                          <Typography color="text.secondary">
+                            Nenhum item adicionado
+                          </Typography>
                         </TableCell>
                       </TableRow>
                     ) : (
                       itens.map((item, index) => (
                         <TableRow key={index}>
                           <TableCell>{item.produto_nome}</TableCell>
-                          <TableCell>{item.fornecedor_nome}</TableCell>
-                          <TableCell>{item.contrato_numero}</TableCell>
-                          <TableCell>{item.unidade}</TableCell>
                           <TableCell>
+                            <Typography variant="body2">{item.fornecedor_nome}</Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Contrato {item.contrato_numero}
+                            </Typography>
+                          </TableCell>
+                          <TableCell align="center">{item.unidade}</TableCell>
+                          <TableCell align="center">
+                            <Typography variant="body2" color="primary" fontWeight="bold">
+                              {formatarNumero(Number(item.saldo_disponivel) || 0)}
+                            </Typography>
+                          </TableCell>
+                          <TableCell align="center" sx={{ py: 1.5 }}>
                             <TextField
                               type="number"
                               size="small"
-                              value={item.quantidade}
+                              value={formatarNumero(item.quantidade)}
                               onChange={(e) => atualizarQuantidade(index, parseFloat(e.target.value) || 0)}
-                              inputProps={{ min: 0, step: 0.01 }}
+                              inputProps={{ min: 0, step: 1 }}
                               fullWidth
                             />
                           </TableCell>
-                          <TableCell>
+                          <TableCell align="center" sx={{ py: 1.5 }}>
                             <TextField
                               type="date"
                               size="small"
@@ -388,31 +438,37 @@ export default function NovoPedido() {
                               InputLabelProps={{ shrink: true }}
                             />
                           </TableCell>
-                          <TableCell align="right">
+                          <TableCell align="center">
                             {formatarMoeda(item.preco_unitario)}
                           </TableCell>
-                          <TableCell align="right">
+                          <TableCell align="center">
                             <Typography fontWeight="bold">
                               {formatarMoeda(item.valor_total)}
                             </Typography>
                           </TableCell>
-                          <TableCell>
-                            <TextField
-                              size="small"
-                              value={item.observacoes || ''}
-                              onChange={(e) => atualizarObservacoes(index, e.target.value)}
-                              fullWidth
-                              placeholder="Obs. do item"
-                            />
-                          </TableCell>
                           <TableCell align="center">
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={() => removerItem(index)}
-                            >
-                              <DeleteIcon />
-                            </IconButton>
+                            <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
+                              <IconButton
+                                size="small"
+                                onClick={(e) => abrirObservacoes(e, index)}
+                                color={item.observacoes ? 'primary' : 'default'}
+                              >
+                                <Badge 
+                                  variant="dot" 
+                                  color="primary" 
+                                  invisible={!item.observacoes}
+                                >
+                                  <CommentIcon fontSize="small" />
+                                </Badge>
+                              </IconButton>
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => removerItem(index)}
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Box>
                           </TableCell>
                         </TableRow>
                       ))
@@ -420,6 +476,45 @@ export default function NovoPedido() {
                   </TableBody>
                 </Table>
               </TableContainer>
+
+              {/* Popover para observações */}
+              <Popover
+                open={obsPopoverOpen}
+                anchorEl={obsAnchorEl}
+                onClose={fecharObservacoes}
+                anchorOrigin={{
+                  vertical: 'bottom',
+                  horizontal: 'center',
+                }}
+                transformOrigin={{
+                  vertical: 'top',
+                  horizontal: 'center',
+                }}
+              >
+                <Box sx={{ p: 2, width: 350 }}>
+                  <Typography variant="subtitle2" gutterBottom>
+                    Observações do Item
+                  </Typography>
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={4}
+                    value={obsTemp}
+                    onChange={(e) => setObsTemp(e.target.value)}
+                    placeholder="Digite observações específicas para este item..."
+                    autoFocus
+                    sx={{ mb: 2 }}
+                  />
+                  <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                    <Button size="small" onClick={fecharObservacoes}>
+                      Cancelar
+                    </Button>
+                    <Button size="small" variant="contained" onClick={salvarObservacoes}>
+                      Salvar
+                    </Button>
+                  </Box>
+                </Box>
+              </Popover>
             </CardContent>
           </Card>
         </Grid>

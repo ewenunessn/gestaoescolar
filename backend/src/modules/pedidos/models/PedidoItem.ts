@@ -45,20 +45,44 @@ export class PedidoItemModel {
   }
 
   async buscarPorPedido(pedidoId: number): Promise<any[]> {
-    const query = `
-      SELECT 
-        pi.*,
-        p.nome as produto_nome,
-        p.unidade as unidade ,
-        p.unidade as unidade,
-        cp.quantidade_contratada,
-        cp.preco_unitario as preco_contrato
-      FROM pedido_itens pi
-      JOIN produtos p ON pi.produto_id = p.id
-      JOIN contrato_produtos cp ON pi.contrato_produto_id = cp.id
-      WHERE pi.pedido_id = $1
-      ORDER BY p.nome
-    `;
+    // Check if unidade column exists in contrato_produtos table
+    const columnCheck = await this.pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'contrato_produtos' AND column_name = 'unidade'
+    `);
+    const unidadeColumnExists = columnCheck.rows.length > 0;
+
+    let query;
+    if (unidadeColumnExists) {
+      query = `
+        SELECT 
+          pi.*,
+          p.nome as produto_nome,
+          COALESCE(cp.unidade, p.unidade, 'Kg') as unidade,
+          cp.quantidade_contratada,
+          cp.preco_unitario as preco_contrato
+        FROM pedido_itens pi
+        JOIN produtos p ON pi.produto_id = p.id
+        JOIN contrato_produtos cp ON pi.contrato_produto_id = cp.id
+        WHERE pi.pedido_id = $1
+        ORDER BY p.nome
+      `;
+    } else {
+      query = `
+        SELECT 
+          pi.*,
+          p.nome as produto_nome,
+          p.unidade as unidade,
+          cp.quantidade_contratada,
+          cp.preco_unitario as preco_contrato
+        FROM pedido_itens pi
+        JOIN produtos p ON pi.produto_id = p.id
+        JOIN contrato_produtos cp ON pi.contrato_produto_id = cp.id
+        WHERE pi.pedido_id = $1
+        ORDER BY p.nome
+      `;
+    }
     
     const result = await this.pool.query(query, [pedidoId]);
     return result.rows;

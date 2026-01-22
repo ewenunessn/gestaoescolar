@@ -162,7 +162,7 @@ export async function editarFornecedor(req: Request, res: Response) {
     const query = `
       UPDATE fornecedores SET
         ${fields.join(', ')}
-      WHERE id = $${paramIndex}
+      WHERE id = $${paramIndex} AND tenant_id = $${paramIndex + 1}
       RETURNING *
     `;
     values.push(id, req.tenant.id);

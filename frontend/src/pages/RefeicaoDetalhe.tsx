@@ -157,8 +157,14 @@ function DraggableProduct({
   useEffect(() => {
     // Debug: verificar o valor recebido
     console.log('perCapita recebido:', perCapita, typeof perCapita);
-    // Garantir que o valor não seja formatado automaticamente
-    setLocalPerCapita(perCapita ? String(perCapita) : "");
+    // Formatar o número removendo zeros desnecessários
+    if (perCapita !== undefined && perCapita !== null) {
+      // Remove zeros desnecessários após a vírgula
+      const formatted = parseFloat(perCapita.toString()).toString();
+      setLocalPerCapita(formatted);
+    } else {
+      setLocalPerCapita("");
+    }
   }, [perCapita]);
 
   useEffect(() => {
@@ -178,13 +184,16 @@ function DraggableProduct({
 
     if (isNaN(numericValue)) {
       numericValue = 0;
-      setLocalPerCapita("0");
     }
     
     // Limites diferentes para gramas e unidades
     const limite = localTipoMedida === 'unidades' ? 100 : 1000;
     numericValue = Math.max(0, Math.min(limite, numericValue));
     console.log('handlePerCapitaBlur - valor final enviado:', numericValue);
+
+    // Formatar o valor removendo zeros desnecessários
+    const formatted = parseFloat(numericValue.toString()).toString();
+    setLocalPerCapita(formatted);
 
     onPerCapitaChange?.(numericValue);
   };

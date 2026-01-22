@@ -67,10 +67,10 @@ const ProdutoItem = React.memo(({ produto, index, totalProdutos, onSelecionarPro
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
         {produto.unidade && (
           <Chip
-            label={produto.unidade}
+            label="Definir no contrato"
             size="small"
             sx={{
-              bgcolor: '#2563eb',
+              bgcolor: '#f59e0b',
               color: '#ffffff',
               fontWeight: 'bold',
               fontSize: '0.7rem',
@@ -550,7 +550,8 @@ const GuiaDetalhes: React.FC<GuiaDetalhesProps> = ({ guia, onUpdate, onClose }) 
   const selecionarProdutoMassa = useCallback(async (produto: any) => {
     setCarregandoEscolas(true);
     setSelectedProdutoMassa(produto);
-    setUnidadeGlobal(produto.unidade || 'kg');
+    // Units are now defined in contracts, not products
+    setUnidadeGlobal('kg'); // Default unit
 
     // Gerar lote automático baseado na data e produto
     const agora = new Date();
