@@ -461,10 +461,10 @@ class SaldoContratosModalidadesController {
       } else {
         result = await db.query(`
           INSERT INTO contrato_produtos_modalidades 
-          (contrato_produto_id, modalidade_id, quantidade_inicial)
-          VALUES ($1, $2, $3)
+          (contrato_produto_id, modalidade_id, quantidade_inicial, tenant_id)
+          VALUES ($1, $2, $3, $4)
           RETURNING *
-        `, [contrato_produto_id, modalidade_id, quantidade_inicial]);
+        `, [contrato_produto_id, modalidade_id, quantidade_inicial, tenantId]);
       }
 
       res.json({

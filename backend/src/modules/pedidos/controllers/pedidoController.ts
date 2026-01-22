@@ -361,10 +361,10 @@ export async function criarPedido(req: Request, res: Response) {
       await client.query(`
         INSERT INTO pedido_itens (
           pedido_id, contrato_produto_id, produto_id, quantidade,
-          preco_unitario, valor_total, data_entrega_prevista, observacoes
+          preco_unitario, valor_total, data_entrega_prevista, observacoes, tenant_id
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      `, [pedido_id, item.contrato_produto_id, produto_id, item.quantidade, preco_unitario, valor_item, item.data_entrega_prevista, item.observacoes]);
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `, [pedido_id, item.contrato_produto_id, produto_id, item.quantidade, preco_unitario, valor_item, item.data_entrega_prevista, item.observacoes, tenantId]);
     }
 
     await client.query('COMMIT');
@@ -830,10 +830,10 @@ export async function atualizarItensPedido(req: Request, res: Response) {
       await client.query(`
         INSERT INTO pedido_itens (
           pedido_id, contrato_produto_id, produto_id, quantidade,
-          preco_unitario, valor_total, data_entrega_prevista, observacoes
+          preco_unitario, valor_total, data_entrega_prevista, observacoes, tenant_id
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      `, [id, item.contrato_produto_id, produto_id, item.quantidade, preco_unitario, valor_item, item.data_entrega_prevista, item.observacoes]);
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `, [id, item.contrato_produto_id, produto_id, item.quantidade, preco_unitario, valor_item, item.data_entrega_prevista, item.observacoes, tenantId]);
     }
 
     // Atualizar valor total do pedido
