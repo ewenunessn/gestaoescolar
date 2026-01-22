@@ -78,6 +78,17 @@ export async function buscarFornecedor(req: Request, res: Response) {
 
 export async function criarFornecedor(req: Request, res: Response) {
   try {
+    // Configurar contexto de tenant
+    await setTenantContextFromRequest(req);
+    
+    // Validar se tenant está presente
+    if (!req.tenant?.id) {
+      return res.status(400).json({
+        success: false,
+        message: "Contexto de tenant não encontrado"
+      });
+    }
+
     const {
       nome,
       cnpj,
@@ -87,11 +98,11 @@ export async function criarFornecedor(req: Request, res: Response) {
 
     const result = await db.query(`
       INSERT INTO fornecedores (
-        nome, cnpj, email, ativo, created_at
+        nome, cnpj, email, ativo, tenant_id, created_at
       )
-      VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+      VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
       RETURNING *
-    `, [nome, cnpj, email || null, ativo]);
+    `, [nome, cnpj, email || null, ativo, req.tenant.id]);
 
     res.json({
       success: true,
