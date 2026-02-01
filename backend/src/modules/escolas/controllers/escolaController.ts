@@ -1,13 +1,9 @@
 // Controller de escolas para PostgreSQL
 import { Request, Response } from "express";
-import { setTenantContextFromRequest } from "../../../utils/tenantContext";
 const db = require("../../../database");
 
 export async function listarEscolas(req: Request, res: Response) {
   try {
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-
     // Log para debug
     console.log(`\n🏢 [ESCOLAS] ========== LISTANDO ESCOLAS ==========`);
     console.log(`🏢 [ESCOLAS] Tenant do req.tenant: ${req.tenant?.name} (${req.tenant?.id})`);
@@ -43,8 +39,7 @@ export async function listarEscolas(req: Request, res: Response) {
         e.nome_gestor,
         e.administracao,
         e.ativo,
-        e.tenant_id,
-        e.created_at,
+        e.e.created_at,
         COALESCE(SUM(em.quantidade_alunos), 0) as total_alunos,
         STRING_AGG(DISTINCT m.nome, ', ' ORDER BY m.nome) as modalidades
       FROM escolas e
@@ -52,7 +47,7 @@ export async function listarEscolas(req: Request, res: Response) {
       LEFT JOIN modalidades m ON em.modalidade_id = m.id
       WHERE e.tenant_id = $1
       GROUP BY e.id, e.nome, e.codigo, e.codigo_acesso, e.endereco, e.municipio, e.endereco_maps, 
-               e.telefone, e.email, e.nome_gestor, e.administracao, e.ativo, e.tenant_id, e.created_at
+               e.telefone, e.email, e.nome_gestor, e.administracao, e.ativo, e.e.created_at
       ORDER BY e.nome
     `, [tenantId]);
 
@@ -65,8 +60,7 @@ export async function listarEscolas(req: Request, res: Response) {
       success: true,
       data: escolas,
       total: escolas.length,
-      tenant: req.tenant?.name || 'N/A',
-      tenantId: req.tenant?.id || 'N/A'
+      tenant: req.tenant?.name || 'N/A': req.tenant?.id || 'N/A'
     });
   } catch (error) {
     console.error("❌ Erro ao listar escolas:", error);
@@ -82,9 +76,6 @@ export async function buscarEscola(req: Request, res: Response) {
   try {
     const { id } = req.params;
 
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-
     // Aplicar filtro de tenant
     const tenantId = req.tenant?.id;
     if (!tenantId) {
@@ -97,7 +88,7 @@ export async function buscarEscola(req: Request, res: Response) {
     // Buscar dados básicos da escola com filtro de tenant
     const escolaResult = await db.query(`
       SELECT * FROM escolas WHERE id = $1 AND tenant_id = $2
-    `, [id, tenantId]);
+    `, [id]);
 
     if (escolaResult.rows.length === 0) {
       return res.status(404).json({
@@ -161,15 +152,7 @@ export async function criarEscola(req: Request, res: Response) {
       ativo = true
     } = req.body;
 
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-
-    // Validar se tenant está presente
-    if (!req.tenant?.id) {
-      return res.status(400).json({
-        success: false,
-        message: "Contexto de tenant não encontrado"
-      });
+    );
     }
 
     // Verificar limite de escolas da instituição
@@ -216,13 +199,13 @@ export async function criarEscola(req: Request, res: Response) {
     const result = await db.query(`
       INSERT INTO escolas (
         nome, codigo, codigo_acesso, endereco, municipio, endereco_maps, 
-        telefone, email, nome_gestor, administracao, ativo, tenant_id, created_at
+        telefone, email, nome_gestor, administracao, ativo, created_at
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, CURRENT_TIMESTAMP)
       RETURNING *
     `, [
       nome, codigo, codigoAcessoFinal, endereco, municipio, endereco_maps,
-      telefone, email, nome_gestor, administracao, ativo, req.tenant.id
+      telefone, email, nome_gestor, administracao, ativo
     ]);
 
     res.json({
@@ -257,9 +240,6 @@ export async function editarEscola(req: Request, res: Response) {
       ativo
     } = req.body;
 
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-
     // Aplicar filtro de tenant
     const tenantId = req.tenant?.id;
     if (!tenantId) {
@@ -287,7 +267,7 @@ export async function editarEscola(req: Request, res: Response) {
       RETURNING *
     `, [
       nome, codigo, codigo_acesso, endereco, municipio, endereco_maps, 
-      telefone, email, nome_gestor, administracao, ativo, id, tenantId
+      telefone, email, nome_gestor, administracao, ativo, id
     ]);
 
     if (result.rows.length === 0) {
@@ -316,9 +296,6 @@ export async function removerEscola(req: Request, res: Response) {
   try {
     const { id } = req.params;
 
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-
     // Aplicar filtro de tenant
     const tenantId = req.tenant?.id;
     if (!tenantId) {
@@ -331,7 +308,7 @@ export async function removerEscola(req: Request, res: Response) {
     const result = await db.query(`
       DELETE FROM escolas WHERE id = $1 AND tenant_id = $2
       RETURNING *
-    `, [id, tenantId]);
+    `, [id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -365,15 +342,7 @@ export async function importarEscolasLote(req: Request, res: Response) {
       });
     }
 
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-
-    // Validar se tenant está presente
-    if (!req.tenant?.id) {
-      return res.status(400).json({
-        success: false,
-        message: "Contexto de tenant não encontrado"
-      });
+    );
     }
 
     console.log(`📥 Iniciando importação de ${escolas.length} escolas para tenant ${req.tenant.name}...`);
@@ -479,16 +448,16 @@ export async function importarEscolasLote(req: Request, res: Response) {
             // Primeiro, verificar se existe para saber se foi inserção ou atualização
             const existeResult = await db.query(`
               SELECT id FROM escolas WHERE nome = $1 AND tenant_id = $2
-            `, [nomeClean, req.tenant.id]);
+            `, [nomeClean]);
             const escolaExistente = existeResult.rows.length > 0 ? existeResult.rows[0] : null;
 
             const result = await db.query(`
               INSERT INTO escolas (
                 nome, codigo, codigo_acesso, endereco, municipio, endereco_maps, 
-                telefone, email, nome_gestor, administracao, ativo, tenant_id
+                telefone, email, nome_gestor, administracao, ativo
               )
               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-              ON CONFLICT (nome, tenant_id) DO UPDATE SET
+              ON CONFLICT (nome) DO UPDATE SET
                 codigo = EXCLUDED.codigo,
                 codigo_acesso = EXCLUDED.codigo_acesso,
                 endereco = EXCLUDED.endereco,
@@ -503,7 +472,7 @@ export async function importarEscolasLote(req: Request, res: Response) {
               RETURNING *
             `, [
               nomeClean, codigoClean, codigoAcessoFinal, enderecoClean, municipioClean, 
-              endereco_maps, telefoneClean, emailClean, nomeGestorClean, administracaoClean, ativo, req.tenant.id
+              endereco_maps, telefoneClean, emailClean, nomeGestorClean, administracaoClean, ativo
             ]);
 
             const acao = escolaExistente ? 'atualizada' : 'inserida';

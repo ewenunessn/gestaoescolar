@@ -8,12 +8,8 @@ import {
   editarContratoProduto,
   removerContratoProduto
 } from "../controllers/contratoProdutoController";
-import { requireTenant } from "../../../middleware/tenantMiddleware";
 
 const router = Router();
-
-// Aplicar middleware de tenant para todas as rotas
-router.use(requireTenant());
 
 // Listar todos os contrato-produtos
 router.get("/", listarContratoProdutos);

@@ -55,8 +55,7 @@ export async function debugLogin(req: Request, res: Response) {
     debugInfo.step = '4. Buscando tenants';
     const tenantQuery = `
       SELECT 
-        tu.tenant_id,
-        tu.role as tenant_role,
+        tu.tu.role as tenant_role,
         tu.status as tenant_status,
         t.slug as tenant_slug,
         t.nome as tenant_name,

@@ -1,19 +1,10 @@
 // Controller de contrato-produtos para PostgreSQL - Versão Segura
 import { Request, Response } from "express";
-import { setTenantContextFromRequest } from "../../../utils/tenantContext";
 const db = require("../../../database");
 
 export async function listarContratoProdutos(req: Request, res: Response) {
   try {
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-    
-    // Validar se tenant está presente
-    if (!req.tenant?.id) {
-      return res.status(400).json({
-        success: false,
-        message: "Contexto de tenant não encontrado"
-      });
+    );
     }
     
     // Check if unidade column exists in contrato_produtos table
@@ -91,15 +82,7 @@ export async function listarProdutosPorContrato(req: Request, res: Response) {
   try {
     const { contrato_id } = req.params;
     
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-    
-    // Validar se tenant está presente
-    if (!req.tenant?.id) {
-      return res.status(400).json({
-        success: false,
-        message: "Contexto de tenant não encontrado"
-      });
+    );
     }
     
     // Check if unidade column exists in contrato_produtos table
@@ -189,15 +172,7 @@ export async function listarProdutosPorFornecedor(req: Request, res: Response) {
   try {
     const { fornecedor_id } = req.params;
     
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-    
-    // Validar se tenant está presente
-    if (!req.tenant?.id) {
-      return res.status(400).json({
-        success: false,
-        message: "Contexto de tenant não encontrado"
-      });
+    );
     }
     
     // Check if unidade column exists in contrato_produtos table
@@ -273,15 +248,7 @@ export async function buscarContratoProduto(req: Request, res: Response) {
   try {
     const { id } = req.params;
     
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-    
-    // Validar se tenant está presente
-    if (!req.tenant?.id) {
-      return res.status(400).json({
-        success: false,
-        message: "Contexto de tenant não encontrado"
-      });
+    );
     }
     
     // Check if unidade column exists in contrato_produtos table
@@ -353,17 +320,6 @@ export async function criarContratoProduto(req: Request, res: Response) {
   try {
     const { contrato_id, produto_id, preco_unitario, quantidade_contratada, unidade, marca, peso, ativo = true } = req.body;
 
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-    
-    // Validar se tenant está presente
-    if (!req.tenant?.id) {
-      return res.status(400).json({
-        success: false,
-        message: "Contexto de tenant não encontrado"
-      });
-    }
-
     if (!contrato_id || !produto_id || preco_unitario === undefined || quantidade_contratada === undefined) {
       return res.status(400).json({ 
         success: false,
@@ -371,7 +327,7 @@ export async function criarContratoProduto(req: Request, res: Response) {
       });
     }
 
-    // IMPORTANTE: Verificar se o contrato existe (sem tenant_id pois contratos não tem essa coluna)
+    // Verificar se o contrato existe
     const contratoCheck = await db.query(`
       SELECT id FROM contratos WHERE id = $1
     `, [contrato_id]);
@@ -410,9 +366,9 @@ export async function criarContratoProduto(req: Request, res: Response) {
     const hasPeso = existingColumns.includes('peso');
 
     let result;
-    const fields = ['contrato_id', 'produto_id', 'preco_unitario', 'quantidade_contratada', 'tenant_id'];
-    const values = [contrato_id, produto_id, preco_unitario, quantidade_contratada, req.tenant.id];
-    let paramCount = 6;
+    const fields = ['contrato_id', 'produto_id', 'preco_unitario', 'quantidade_contratada'];
+    const values = [contrato_id, produto_id, preco_unitario, quantidade_contratada];
+    let paramCount = 5;
     
     if (hasUnidade && unidade) {
       fields.push('unidade');
@@ -481,15 +437,7 @@ export async function editarContratoProduto(req: Request, res: Response) {
       ativo
     } = req.body;
 
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-    
-    // Validar se tenant está presente
-    if (!req.tenant?.id) {
-      return res.status(400).json({
-        success: false,
-        message: "Contexto de tenant não encontrado"
-      });
+    );
     }
 
     // Check if unidade, marca, and peso columns exist
@@ -597,15 +545,7 @@ export async function removerContratoProduto(req: Request, res: Response) {
   try {
     const { id } = req.params;
 
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-    
-    // Validar se tenant está presente
-    if (!req.tenant?.id) {
-      return res.status(400).json({
-        success: false,
-        message: "Contexto de tenant não encontrado"
-      });
+    );
     }
 
     // IMPORTANTE: Verificar se o contrato-produto existe

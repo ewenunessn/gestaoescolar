@@ -35,7 +35,7 @@ export class TenantSwitchController {
       }
 
       // Verificar se o usuário tem acesso ao tenant
-      const hasAccess = await tenantUserService.hasUserAccessToTenant(userId, tenantId);
+      const hasAccess = await tenantUserService.hasUserAccessToTenant(userId);
       if (!hasAccess && !req.user?.isSystemAdmin) {
         return res.status(403).json({
           success: false,
@@ -44,7 +44,7 @@ export class TenantSwitchController {
       }
 
       // Buscar informações do tenant
-      console.log('🔍 [SWITCH] Buscando tenant:', tenantId);
+      console.log('🔍 [SWITCH] Buscando tenant:');
       console.log('🔍 [SWITCH] Tipo do tenantId:', typeof tenantId);
       console.log('🔍 [SWITCH] Usuário:', { id: userId, isSystemAdmin: req.user?.isSystemAdmin });
       
@@ -52,7 +52,7 @@ export class TenantSwitchController {
       console.log('🔍 [SWITCH] Tenant encontrado:', tenant ? 'Sim' : 'Não');
       
       if (!tenant) {
-        console.log('❌ [SWITCH] Tenant não encontrado no banco:', tenantId);
+        console.log('❌ [SWITCH] Tenant não encontrado no banco:');
         
         // Debug: listar alguns tenants disponíveis
         try {
@@ -81,7 +81,7 @@ export class TenantSwitchController {
       // Buscar role do usuário no tenant
       let tenantRole = 'user';
       if (!req.user?.isSystemAdmin) {
-        const userRole = await tenantUserService.getUserRoleInTenant(userId, tenantId);
+        const userRole = await tenantUserService.getUserRoleInTenant(userId);
         if (userRole) {
           tenantRole = userRole;
         }
@@ -107,8 +107,7 @@ export class TenantSwitchController {
         tenantRole,
         isSystemAdmin: req.user.isSystemAdmin,
         tenants: userTenants.map(ut => ({
-          id: ut.tenantId,
-          slug: ut.tenant?.slug,
+          id: ut.slug: ut.tenant?.slug,
           name: ut.tenant?.name,
           role: ut.role
         }))
@@ -194,8 +193,7 @@ export class TenantSwitchController {
         // Regular user - get their tenant associations
         const userTenants = await tenantUserService.getUserTenants(userId);
         availableTenants = userTenants.map(ut => ({
-          id: ut.tenantId,
-          slug: ut.tenant?.slug,
+          id: ut.slug: ut.tenant?.slug,
           name: ut.tenant?.name,
           institution_id: (ut.tenant as any)?.institution_id,
           role: ut.role,
@@ -269,8 +267,7 @@ export class TenantSwitchController {
           if (userTenants.length > 0) {
             const firstTenant = userTenants[0];
             currentTenant = {
-              id: firstTenant.tenantId,
-              slug: firstTenant.tenant?.slug || '',
+              id: firstTenant.slug: firstTenant.tenant?.slug || '',
               name: firstTenant.tenant?.name || '',
               role: firstTenant.role
             };
@@ -284,8 +281,7 @@ export class TenantSwitchController {
         // Se não tinha tenant, usar o primeiro disponível
         const firstTenant = userTenants[0];
         currentTenant = {
-          id: firstTenant.tenantId,
-          slug: firstTenant.tenant?.slug || '',
+          id: firstTenant.slug: firstTenant.tenant?.slug || '',
           name: firstTenant.tenant?.name || '',
           role: firstTenant.role
         };
@@ -302,8 +298,7 @@ export class TenantSwitchController {
         tenantRole,
         isSystemAdmin: req.user?.isSystemAdmin || false,
         tenants: userTenants.map(ut => ({
-          id: ut.tenantId,
-          slug: ut.tenant?.slug,
+          id: ut.slug: ut.tenant?.slug,
           name: ut.tenant?.name,
           role: ut.role
         }))
@@ -325,8 +320,7 @@ export class TenantSwitchController {
           tenant: currentTenant,
           tenantRole,
           availableTenants: userTenants.map(ut => ({
-            id: ut.tenantId,
-            slug: ut.tenant?.slug,
+            id: ut.slug: ut.tenant?.slug,
             name: ut.tenant?.name,
             role: ut.role
           }))

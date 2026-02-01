@@ -1,13 +1,9 @@
 // Controller de contratos para PostgreSQL - Versão Corrigida
 import { Request, Response } from "express";
-import { setTenantContextFromRequest } from "../../../utils/tenantContext";
 const db = require("../../../database");
 
 export async function listarContratos(req: Request, res: Response) {
   try {
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-
     const { status, fornecedor_id, busca, page = 1, limit = 50 } = req.query;
     
     let whereClause = 'c.tenant_id = current_setting(\'app.current_tenant_id\')::uuid';
@@ -107,15 +103,7 @@ export async function buscarContrato(req: Request, res: Response) {
   try {
     const { id } = req.params;
     
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-    
-    // Validar se tenant está presente
-    if (!req.tenant?.id) {
-      return res.status(400).json({
-        success: false,
-        message: "Contexto de tenant não encontrado"
-      });
+    );
     }
     
     // IMPORTANTE: Filtrar por tenant_id para segurança
@@ -129,7 +117,7 @@ export async function buscarContrato(req: Request, res: Response) {
       LEFT JOIN contrato_produtos cp ON c.id = cp.contrato_id
       WHERE c.id = $1 AND c.tenant_id = $2
       GROUP BY c.id, f.nome
-    `, [id, req.tenant.id]);
+    `, [id]);
 
     if (contratoResult.rows.length === 0) {
       return res.status(404).json({
@@ -156,15 +144,7 @@ export async function listarContratosPorFornecedor(req: Request, res: Response) 
   try {
     const { fornecedor_id } = req.params;
     
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-    
-    // Validar se tenant está presente
-    if (!req.tenant?.id) {
-      return res.status(400).json({
-        success: false,
-        message: "Contexto de tenant não encontrado"
-      });
+    );
     }
     
     // IMPORTANTE: Filtrar por tenant_id para segurança
@@ -179,7 +159,7 @@ export async function listarContratosPorFornecedor(req: Request, res: Response) 
       WHERE c.fornecedor_id = $1 AND c.tenant_id = $2
       GROUP BY c.id, f.nome
       ORDER BY c.created_at DESC
-    `, [fornecedor_id, req.tenant.id]);
+    `, [fornecedor_id]);
 
     res.json({
       success: true,
@@ -209,15 +189,7 @@ export async function criarContrato(req: Request, res: Response) {
       tipo_licitacao = 'pregao_eletronico'
     } = req.body;
 
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-    
-    // Validar se tenant está presente
-    if (!req.tenant?.id) {
-      return res.status(400).json({
-        success: false,
-        message: "Contexto de tenant não encontrado"
-      });
+    );
     }
 
     // Validações
@@ -278,11 +250,11 @@ export async function criarContrato(req: Request, res: Response) {
     const result = await db.query(`
       INSERT INTO contratos (
         numero, fornecedor_id, data_inicio, data_fim, valor_total, 
-        status, ativo, tipo_licitacao, tenant_id, created_at
+        status, ativo, tipo_licitacao, created_at
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
       RETURNING *
-    `, [numero, fornecedor_id, data_inicio, data_fim, valor_total || 0, status, ativo, tipo_licitacao, req.tenant.id]);
+    `, [numero, fornecedor_id, data_inicio, data_fim, valor_total || 0, status, ativo, tipo_licitacao]);
 
     // Buscar dados completos do contrato criado
     const contratoCompletoResult = await db.query(`
@@ -324,15 +296,7 @@ export async function editarContrato(req: Request, res: Response) {
       tipo_licitacao
     } = req.body;
 
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-    
-    // Validar se tenant está presente
-    if (!req.tenant?.id) {
-      return res.status(400).json({
-        success: false,
-        message: "Contexto de tenant não encontrado"
-      });
+    );
     }
 
     // IMPORTANTE: Filtrar por tenant_id para segurança
@@ -348,7 +312,7 @@ export async function editarContrato(req: Request, res: Response) {
         tipo_licitacao = $8
       WHERE id = $9 AND tenant_id = $10
       RETURNING *
-    `, [numero, fornecedor_id, data_inicio, data_fim, valor_total, status, ativo, tipo_licitacao, id, req.tenant.id]);
+    `, [numero, fornecedor_id, data_inicio, data_fim, valor_total, status, ativo, tipo_licitacao, id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -377,15 +341,7 @@ export async function removerContrato(req: Request, res: Response) {
     const { id } = req.params;
     const { force } = req.query; // Parâmetro opcional para forçar exclusão
 
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-    
-    // Validar se tenant está presente
-    if (!req.tenant?.id) {
-      return res.status(400).json({
-        success: false,
-        message: "Contexto de tenant não encontrado"
-      });
+    );
     }
 
     // IMPORTANTE: Verificar se há dependências vinculadas ao contrato NO MESMO TENANT
@@ -430,7 +386,7 @@ export async function removerContrato(req: Request, res: Response) {
     const result = await db.query(`
       DELETE FROM contratos WHERE id = $1 AND tenant_id = $2
       RETURNING *
-    `, [id, req.tenant.id]);
+    `, [id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -456,15 +412,7 @@ export async function removerContrato(req: Request, res: Response) {
 
 export async function obterEstatisticasContratos(req: Request, res: Response) {
   try {
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-    
-    // Validar se tenant está presente
-    if (!req.tenant?.id) {
-      return res.status(400).json({
-        success: false,
-        message: "Contexto de tenant não encontrado"
-      });
+    );
     }
     
     // IMPORTANTE: Filtrar por tenant_id para segurança
@@ -632,15 +580,7 @@ export const buscarContratoPorId = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-    
-    // Validar se tenant está presente
-    if (!req.tenant?.id) {
-      return res.status(400).json({
-        success: false,
-        message: "Contexto de tenant não encontrado"
-      });
+    );
     }
     
     // IMPORTANTE: Filtrar por tenant_id para segurança
@@ -661,7 +601,7 @@ export const buscarContratoPorId = async (req: Request, res: Response) => {
       GROUP BY c.id, f.nome, f.cnpj, f.email, e.nome, e.cnpj
     `;
     
-    const result = await db.query(query, [id, req.tenant.id]);
+    const result = await db.query(query, [id]);
     
     if (result.rows.length === 0) {
       return res.status(404).json({ erro: 'Contrato não encontrado' });

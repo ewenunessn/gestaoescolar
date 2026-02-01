@@ -19,7 +19,6 @@ export class TenantConfigurationController {
       const includeInheritance = req.query.includeInheritance !== 'false';
 
       const configuration = await tenantConfigurationService.getTenantConfiguration(
-        tenantId,
         includeInheritance
       );
 
@@ -48,7 +47,6 @@ export class TenantConfigurationController {
       const userId = req.user?.id;
 
       const result = await tenantConfigurationService.updateTenantConfiguration(
-        tenantId,
         configurations,
         {
           description,
@@ -110,10 +108,9 @@ export class TenantConfigurationController {
    */
   async getVersion(req: Request, res: Response): Promise<void> {
     try {
-      const { tenantId, version } = req.params;
+      const { version } = req.params;
 
       const versionData = await tenantConfigurationService.getConfigurationVersion(
-        tenantId,
         parseInt(version)
       );
 
@@ -150,7 +147,6 @@ export class TenantConfigurationController {
       const userId = req.user?.id;
 
       const rollbackRequest: ConfigurationRollbackRequest = {
-        tenantId,
         targetVersion,
         reason,
         requestedBy: userId
@@ -183,7 +179,6 @@ export class TenantConfigurationController {
       const userId = req.user?.id;
 
       const changeRequest: ConfigurationChangeRequest = {
-        tenantId,
         changes,
         description,
         requestedBy: userId,
@@ -309,7 +304,7 @@ export class TenantConfigurationController {
       const { templateId } = req.body;
       const userId = req.user?.id;
 
-      const result = await tenantConfigurationService.applyTemplate(tenantId, templateId, userId);
+      const result = await tenantConfigurationService.applyTemplate(templateId, userId);
 
       res.json({
         success: true,
@@ -335,8 +330,7 @@ export class TenantConfigurationController {
       const { configurations } = req.body;
 
       const validationResult = await tenantConfigurationService.validateConfiguration(
-        configurations,
-        tenantId
+        configurations
       );
 
       res.json({
@@ -359,10 +353,9 @@ export class TenantConfigurationController {
    */
   async getConfigurationDiff(req: Request, res: Response): Promise<void> {
     try {
-      const { tenantId, fromVersion, toVersion } = req.params;
+      const { fromVersion, toVersion } = req.params;
 
       const diff = await tenantConfigurationService.getConfigurationDiff(
-        tenantId,
         parseInt(fromVersion),
         parseInt(toVersion)
       );
@@ -391,7 +384,6 @@ export class TenantConfigurationController {
       const { version } = req.query;
 
       const exportData = await tenantConfigurationService.exportConfiguration(
-        tenantId,
         version ? parseInt(version as string) : undefined
       );
 
@@ -420,7 +412,6 @@ export class TenantConfigurationController {
       const userId = req.user?.id;
 
       const result = await tenantConfigurationService.importConfiguration(
-        tenantId,
         configurationData,
         {
           validateOnly,

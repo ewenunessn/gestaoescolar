@@ -1,13 +1,9 @@
 // Controller de fornecedores para PostgreSQL - SIMPLIFICADO
 import { Request, Response } from "express";
-import { setTenantContextFromRequest } from "../../../utils/tenantContext";
 const db = require("../../../database");
 
 export async function listarFornecedores(req: Request, res: Response) {
   try {
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-
     const result = await db.query(`
       SELECT 
         f.id,
@@ -17,7 +13,6 @@ export async function listarFornecedores(req: Request, res: Response) {
         f.ativo,
         f.created_at
       FROM fornecedores f
-      WHERE f.tenant_id = current_setting('app.current_tenant_id')::uuid
       ORDER BY f.nome
     `);
 
@@ -40,20 +35,12 @@ export async function buscarFornecedor(req: Request, res: Response) {
   try {
     const { id } = req.params;
 
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-    
-    // Validar se tenant está presente
-    if (!req.tenant?.id) {
-      return res.status(400).json({
-        success: false,
-        message: "Contexto de tenant não encontrado"
-      });
+    );
     }
 
     const result = await db.query(`
       SELECT * FROM fornecedores WHERE id = $1 AND tenant_id = $2
-    `, [id, req.tenant.id]);
+    `, [id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -78,17 +65,6 @@ export async function buscarFornecedor(req: Request, res: Response) {
 
 export async function criarFornecedor(req: Request, res: Response) {
   try {
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-    
-    // Validar se tenant está presente
-    if (!req.tenant?.id) {
-      return res.status(400).json({
-        success: false,
-        message: "Contexto de tenant não encontrado"
-      });
-    }
-
     const {
       nome,
       cnpj,
@@ -98,11 +74,11 @@ export async function criarFornecedor(req: Request, res: Response) {
 
     const result = await db.query(`
       INSERT INTO fornecedores (
-        nome, cnpj, email, ativo, tenant_id, created_at
+        nome, cnpj, email, ativo, created_at
       )
-      VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+      VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
       RETURNING *
-    `, [nome, cnpj, email || null, ativo, req.tenant.id]);
+    `, [nome, cnpj, email || null, ativo]);
 
     res.json({
       success: true,
@@ -129,15 +105,7 @@ export async function editarFornecedor(req: Request, res: Response) {
       ativo
     } = req.body;
 
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-    
-    // Validar se tenant está presente
-    if (!req.tenant?.id) {
-      return res.status(400).json({
-        success: false,
-        message: "Contexto de tenant não encontrado"
-      });
+    );
     }
 
     const fields: string[] = [];
@@ -176,7 +144,7 @@ export async function editarFornecedor(req: Request, res: Response) {
       WHERE id = $${paramIndex} AND tenant_id = $${paramIndex + 1}
       RETURNING *
     `;
-    values.push(id, req.tenant.id);
+    values.push(id);
 
     const result = await db.query(query, values);
 
@@ -274,21 +242,13 @@ export async function removerFornecedor(req: Request, res: Response) {
   try {
     const { id } = req.params;
 
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-    
-    // Validar se tenant está presente
-    if (!req.tenant?.id) {
-      return res.status(400).json({
-        success: false,
-        message: "Contexto de tenant não encontrado"
-      });
+    );
     }
 
     const result = await db.query(`
       DELETE FROM fornecedores WHERE id = $1 AND tenant_id = $2
       RETURNING *
-    `, [id, req.tenant.id]);
+    `, [id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({

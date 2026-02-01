@@ -216,7 +216,7 @@ export async function updateTenantStatus(req: Request, res: Response) {
       SET status = $1, updated_at = CURRENT_TIMESTAMP
       WHERE id = $2
       RETURNING *
-    `, [status, tenantId]);
+    `, [status]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({

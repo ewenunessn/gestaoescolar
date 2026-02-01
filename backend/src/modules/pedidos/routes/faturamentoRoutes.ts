@@ -10,15 +10,12 @@ import {
   reverterConsumoItem,
   removerItensModalidade
 } from "../controllers/faturamentoController";
-import { requireTenant } from "../../../middleware/tenantMiddleware";
 import { authenticateToken } from "../../../middleware/authMiddleware";
 
 const router = Router();
 
 // Aplicar middleware de autenticação e tenant para todas as rotas
 router.use(authenticateToken);
-router.use(requireTenant());
-
 // Rotas gerais de faturamento
 router.get("/", listarFaturamentos);
 router.get("/:id", buscarFaturamento);

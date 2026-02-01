@@ -8,12 +8,7 @@ import {
   removerContrato,
   obterEstatisticasContratos
 } from "../controllers/contratoController";
-import { requireTenant } from "../../../middleware/tenantMiddleware";
-
 const router = Router();
-
-// Aplicar middleware de tenant para todas as rotas
-router.use(requireTenant());
 
 // Obter estatísticas de contratos
 router.get("/estatisticas", obterEstatisticasContratos);

@@ -23,7 +23,7 @@ export class TenantUserController {
       if (!input.tenantId || !input.userId || !input.role) {
         return res.status(400).json({
           success: false,
-          message: 'Campos obrigatórios: tenantId, userId, role'
+          message: 'Campos obrigatórios: userId, role'
         });
       }
 
@@ -296,7 +296,7 @@ export class TenantUserController {
    */
   async promoteToTenantAdmin(req: Request, res: Response) {
     try {
-      const { tenantId, userId } = req.params;
+      const { userId } = req.params;
       const userIdNum = parseInt(userId);
 
       // Check if user has permission to manage users in this tenant
@@ -307,7 +307,7 @@ export class TenantUserController {
         });
       }
 
-      const tenantUser = await tenantUserService.promoteToTenantAdmin(tenantId, userIdNum);
+      const tenantUser = await tenantUserService.promoteToTenantAdmin(userIdNum);
 
       res.json({
         success: true,
@@ -328,7 +328,7 @@ export class TenantUserController {
    */
   async demoteFromTenantAdmin(req: Request, res: Response) {
     try {
-      const { tenantId, userId } = req.params;
+      const { userId } = req.params;
       const userIdNum = parseInt(userId);
 
       // Check if user has permission to manage users in this tenant
@@ -348,7 +348,7 @@ export class TenantUserController {
         });
       }
 
-      const tenantUser = await tenantUserService.demoteFromTenantAdmin(tenantId, userIdNum);
+      const tenantUser = await tenantUserService.demoteFromTenantAdmin(userIdNum);
 
       res.json({
         success: true,
@@ -369,7 +369,7 @@ export class TenantUserController {
    */
   async suspendUserAccess(req: Request, res: Response) {
     try {
-      const { tenantId, userId } = req.params;
+      const { userId } = req.params;
       const userIdNum = parseInt(userId);
 
       // Check if user has permission to manage users in this tenant
@@ -380,7 +380,7 @@ export class TenantUserController {
         });
       }
 
-      const tenantUser = await tenantUserService.suspendUserAccess(tenantId, userIdNum);
+      const tenantUser = await tenantUserService.suspendUserAccess(userIdNum);
 
       res.json({
         success: true,
@@ -401,7 +401,7 @@ export class TenantUserController {
    */
   async restoreUserAccess(req: Request, res: Response) {
     try {
-      const { tenantId, userId } = req.params;
+      const { userId } = req.params;
       const userIdNum = parseInt(userId);
 
       // Check if user has permission to manage users in this tenant
@@ -412,7 +412,7 @@ export class TenantUserController {
         });
       }
 
-      const tenantUser = await tenantUserService.restoreUserAccess(tenantId, userIdNum);
+      const tenantUser = await tenantUserService.restoreUserAccess(userIdNum);
 
       res.json({
         success: true,
@@ -487,8 +487,7 @@ export class TenantUserController {
           currentTenant: req.user.tenant,
           tenantRole: req.user.tenantRole,
           availableTenants: userTenants.map(tu => ({
-            id: tu.tenantId,
-            name: tu.tenant?.name,
+            id: tu.name: tu.tenant?.name,
             slug: tu.tenant?.slug,
             role: tu.role,
             status: tu.status

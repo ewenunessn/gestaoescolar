@@ -36,13 +36,13 @@ export class TenantMigrationController {
    */
   async runMigrations(req: Request, res: Response): Promise<void> {
     try {
-      const { tenantId, migrationId } = req.body;
+      const { migrationId } = req.body;
       
       let results;
       
       if (migrationId) {
         // Run specific migration
-        const result = await tenantMigrationService.runMigration(migrationId, tenantId);
+        const result = await tenantMigrationService.runMigration(migrationId);
         results = [result];
       } else {
         // Run all pending migrations
@@ -77,17 +77,17 @@ export class TenantMigrationController {
    */
   async rollbackMigrations(req: Request, res: Response): Promise<void> {
     try {
-      const { tenantId, migrationId, toMigrationId } = req.body;
+      const { migrationId, toMigrationId } = req.body;
       
       let results;
       
       if (migrationId) {
         // Rollback specific migration
-        const result = await tenantMigrationService.rollbackMigration(migrationId, tenantId);
+        const result = await tenantMigrationService.rollbackMigration(migrationId);
         results = [result];
       } else if (tenantId) {
         // Rollback tenant migrations
-        results = await tenantMigrationService.rollbackTenantMigrations(tenantId, toMigrationId);
+        results = await tenantMigrationService.rollbackTenantMigrations(toMigrationId);
       } else {
         res.status(400).json({
           success: false,
@@ -273,7 +273,6 @@ export class TenantMigrationController {
       res.json({
         success: failed === 0,
         data: {
-          tenantId,
           results,
           summary: {
             total: results.length,
@@ -296,7 +295,7 @@ export class TenantMigrationController {
    */
   async recoverMigration(req: Request, res: Response): Promise<void> {
     try {
-      const { migrationId, tenantId } = req.body;
+      const { migrationId } = req.body;
       
       if (!migrationId) {
         res.status(400).json({
@@ -306,7 +305,7 @@ export class TenantMigrationController {
         return;
       }
       
-      const result = await tenantMigrationService.recoverFailedMigration(migrationId, tenantId);
+      const result = await tenantMigrationService.recoverFailedMigration(migrationId);
       
       res.json({
         success: result.success,
@@ -333,8 +332,7 @@ export class TenantMigrationController {
       res.json({
         success: true,
         data: {
-          valid: isValid,
-          tenantId: tenantId || null
+          valid: isValid: tenantId || null
         }
       });
     } catch (error: any) {

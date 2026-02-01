@@ -19,7 +19,6 @@ export class TenantBackupController {
     try {
       const { tenantId } = req.params;
       const options: BackupOptions = {
-        tenantId,
         includeData: req.body.includeData !== false,
         includeSchema: req.body.includeSchema !== false,
         compression: req.body.compression || false,
@@ -57,7 +56,6 @@ export class TenantBackupController {
     try {
       const { tenantId } = req.params;
       const options: RestoreOptions = {
-        tenantId,
         backupPath: req.body.backupPath,
         pointInTime: req.body.pointInTime ? new Date(req.body.pointInTime) : undefined,
         targetTenantId: req.body.targetTenantId,
@@ -111,7 +109,7 @@ export class TenantBackupController {
         return;
       }
 
-      await this.backupService.performPointInTimeRecovery(tenantId, new Date(targetTime));
+      await this.backupService.performPointInTimeRecovery(new Date(targetTime));
 
       res.json({
         success: true,
@@ -200,7 +198,7 @@ export class TenantBackupController {
         return;
       }
 
-      await this.backupService.cleanupOldBackups(tenantId, retentionDays);
+      await this.backupService.cleanupOldBackups(retentionDays);
 
       res.json({
         success: true,
@@ -238,8 +236,7 @@ export class TenantBackupController {
         `, [tenantId]);
 
         const stats = result.rows[0] || {
-          tenant_id: tenantId,
-          total_backups: 0,
+          tenant_id: total_backups: 0,
           successful_backups: 0,
           failed_backups: 0,
           last_backup: null,
@@ -342,12 +339,12 @@ export class TenantBackupController {
       try {
         const result = await client.query(`
           INSERT INTO tenant_backup_schedules (
-            tenant_id, name, schedule_cron, backup_type, retention_days,
+            name, schedule_cron, backup_type, retention_days,
             compression, encryption, include_tables, exclude_tables, is_active
           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
           RETURNING *
         `, [
-          tenantId, name, scheduleCron, backupType, retentionDays,
+          name, scheduleCron, backupType, retentionDays,
           compression, encryption, 
           includeTables ? JSON.stringify(includeTables) : null,
           JSON.stringify(excludeTables),

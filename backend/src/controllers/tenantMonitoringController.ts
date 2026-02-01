@@ -102,16 +102,16 @@ export class TenantMonitoringController {
       const days = this.parseTimeRange(timeRange as string);
       const startDate = new Date(endDate.getTime() - (days * 24 * 60 * 60 * 1000));
       
-      const usageMetrics = await tenantAuditService.getTenantUsageMetrics(tenantId, startDate, endDate);
+      const usageMetrics = await tenantAuditService.getTenantUsageMetrics(startDate, endDate);
       
       // Get alerts
-      const alerts = await tenantMonitoringService.getTenantAlerts(tenantId, {
+      const alerts = await tenantMonitoringService.getTenantAlerts({
         limit: 50,
         acknowledged: false
       });
       
       // Get security events
-      const securityEvents = await tenantAuditService.getTenantSecurityEvents(tenantId, {
+      const securityEvents = await tenantAuditService.getTenantSecurityEvents({
         limit: 20,
         startDate,
         endDate
@@ -210,11 +210,10 @@ export class TenantMonitoringController {
    */
   async testAlertNotification(req: Request, res: Response): Promise<void> {
     try {
-      const { alertType = 'test', severity = 'medium', tenantId } = req.body;
+      const { alertType = 'test', severity = 'medium' } = req.body;
 
       const testAlert = {
         id: `test-alert-${Date.now()}`,
-        tenantId,
         alertType,
         severity,
         message: 'This is a test alert to verify the notification system',
@@ -230,7 +229,6 @@ export class TenantMonitoringController {
 
       // Log the test alert
       await tenantMonitoringService.createAlert({
-        tenantId,
         alertType: 'test_notification',
         severity: severity as any,
         message: 'Test notification sent',
@@ -275,10 +273,10 @@ export class TenantMonitoringController {
         FROM tenants t
         LEFT JOIN (
           SELECT DISTINCT ON (tenant_id)
-            tenant_id, overall_score, performance_score, security_score, 
+            overall_score, performance_score, security_score, 
             usage_score, factors, calculated_at
           FROM tenant_health_scores
-          ORDER BY tenant_id, calculated_at DESC
+          ORDER BY calculated_at DESC
         ) hs ON t.id = hs.tenant_id
         WHERE t.status = 'active'
         ORDER BY COALESCE(hs.overall_score, 100) ASC
@@ -337,7 +335,6 @@ export class TenantMonitoringController {
       res.json({
         success: true,
         data: {
-          tenantId,
           healthScore,
           calculatedAt: new Date()
         }

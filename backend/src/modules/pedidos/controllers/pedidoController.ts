@@ -1,5 +1,4 @@
 import { Request, Response } from "express";
-import { setTenantContextFromRequest } from "../../../utils/tenantContext";
 const db = require("../../../database");
 
 const STATUS_PEDIDO = {
@@ -14,14 +13,9 @@ const STATUS_PEDIDO = {
 
 export async function listarPedidos(req: Request, res: Response) {
   try {
-    // Configurar contexto de tenant
-
-    await setTenantContextFromRequest(req);
-    
     // Obter tenant_id do req.tenant ou do header
     const tenantId = req.tenant?.id || req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
     
-    // Validar se tenant está presente
     if (!tenantId) {
       return res.status(400).json({
         success: false,
@@ -122,14 +116,9 @@ export async function buscarPedido(req: Request, res: Response) {
   try {
     const { id } = req.params;
 
-    // Configurar contexto de tenant
-
-    await setTenantContextFromRequest(req);
-    
     // Obter tenant_id do req.tenant ou do header
     const tenantId = req.tenant?.id || req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
     
-    // Validar se tenant está presente
     if (!tenantId) {
       return res.status(400).json({
         success: false,
@@ -147,7 +136,7 @@ export async function buscarPedido(req: Request, res: Response) {
       JOIN usuarios u ON p.usuario_criacao_id = u.id
       LEFT JOIN usuarios ua ON p.usuario_aprovacao_id = ua.id
       WHERE p.id = $1 AND p.tenant_id = $2
-    `, [id, tenantId]);
+    `, [id]);
 
     if (pedidoResult.rows.length === 0) {
       return res.status(404).json({
@@ -250,14 +239,9 @@ export async function criarPedido(req: Request, res: Response) {
   try {
     await client.query('BEGIN');
 
-    // Configurar contexto de tenant
-
-    await setTenantContextFromRequest(req);
-    
     // Obter tenant_id do req.tenant ou do header
     const tenantId = req.tenant?.id || req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
     
-    // Validar se tenant está presente
     if (!tenantId) {
       await client.query('ROLLBACK');
       return res.status(400).json({
@@ -289,7 +273,7 @@ export async function criarPedido(req: Request, res: Response) {
       SELECT COALESCE(MAX(CAST(SUBSTRING(numero FROM 8) AS INTEGER)), 0) as max_sequencial
       FROM pedidos 
       WHERE EXTRACT(YEAR FROM created_at) = $1 AND tenant_id = $2 AND numero LIKE $3
-    `, [ano, tenantId, `PED${ano}%`]);
+    `, [ano, `PED${ano}%`]);
 
     const proximoSequencial = (parseInt(maxNumeroResult.rows[0].max_sequencial) + 1).toString().padStart(6, '0');
     const numero = `PED${ano}${proximoSequencial}`;
@@ -303,7 +287,7 @@ export async function criarPedido(req: Request, res: Response) {
         JOIN produtos p ON cp.produto_id = p.id
         JOIN contratos c ON cp.contrato_id = c.id
         WHERE cp.id = $1 AND cp.ativo = true AND c.tenant_id = $2
-      `, [item.contrato_produto_id, tenantId]);
+      `, [item.contrato_produto_id]);
 
       if (cpResult.rows.length === 0) {
         await client.query('ROLLBACK');
@@ -339,11 +323,11 @@ export async function criarPedido(req: Request, res: Response) {
     // IMPORTANTE: Incluir tenant_id no INSERT
     const pedidoResult = await client.query(`
       INSERT INTO pedidos (
-        numero, data_pedido, status, valor_total, observacoes, usuario_criacao_id, tenant_id
+        numero, data_pedido, status, valor_total, observacoes, usuario_criacao_id
       )
       VALUES ($1, CURRENT_DATE, $2, $3, $4, $5, $6)
       RETURNING *
-    `, [numero, status_inicial, valor_total, observacoes, usuario_criacao_id, tenantId]);
+    `, [numero, status_inicial, valor_total, observacoes, usuario_criacao_id]);
 
     const pedido_id = pedidoResult.rows[0].id;
 
@@ -361,10 +345,10 @@ export async function criarPedido(req: Request, res: Response) {
       await client.query(`
         INSERT INTO pedido_itens (
           pedido_id, contrato_produto_id, produto_id, quantidade,
-          preco_unitario, valor_total, data_entrega_prevista, observacoes, tenant_id
+          preco_unitario, valor_total, data_entrega_prevista, observacoes
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-      `, [pedido_id, item.contrato_produto_id, produto_id, item.quantidade, preco_unitario, valor_item, item.data_entrega_prevista, item.observacoes, tenantId]);
+      `, [pedido_id, item.contrato_produto_id, produto_id, item.quantidade, preco_unitario, valor_item, item.data_entrega_prevista, item.observacoes]);
     }
 
     await client.query('COMMIT');
@@ -408,14 +392,9 @@ export async function criarPedido(req: Request, res: Response) {
 
 export async function atualizarPedido(req: Request, res: Response) {
   try {
-    // Configurar contexto de tenant
-
-    await setTenantContextFromRequest(req);
-    
     // Obter tenant_id do req.tenant ou do header
     const tenantId = req.tenant?.id || req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
     
-    // Validar se tenant está presente
     if (!tenantId) {
       return res.status(400).json({
         success: false,
@@ -429,7 +408,7 @@ export async function atualizarPedido(req: Request, res: Response) {
     // IMPORTANTE: Filtrar por tenant_id para segurança
     const pedidoResult = await db.query(`
       SELECT status FROM pedidos WHERE id = $1 AND tenant_id = $2
-    `, [id, tenantId]);
+    `, [id]);
 
     if (pedidoResult.rows.length === 0) {
       return res.status(404).json({
@@ -451,7 +430,7 @@ export async function atualizarPedido(req: Request, res: Response) {
       SET observacoes = $1, updated_at = CURRENT_TIMESTAMP
       WHERE id = $2 AND tenant_id = $3
       RETURNING *
-    `, [observacoes, id, tenantId]);
+    `, [observacoes, id]);
 
     res.json({
       success: true,
@@ -470,14 +449,9 @@ export async function atualizarPedido(req: Request, res: Response) {
 
 export async function atualizarStatusPedido(req: Request, res: Response) {
   try {
-    // Configurar contexto de tenant
-
-    await setTenantContextFromRequest(req);
-    
     // Obter tenant_id do req.tenant ou do header
     const tenantId = req.tenant?.id || req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
     
-    // Validar se tenant está presente
     if (!tenantId) {
       return res.status(400).json({
         success: false,
@@ -741,14 +715,9 @@ export async function atualizarItensPedido(req: Request, res: Response) {
   try {
     await client.query('BEGIN');
 
-    // Configurar contexto de tenant
-
-    await setTenantContextFromRequest(req);
-    
     // Obter tenant_id do req.tenant ou do header
     const tenantId = req.tenant?.id || req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
     
-    // Validar se tenant está presente
     if (!tenantId) {
       await client.query('ROLLBACK');
       return res.status(400).json({
@@ -763,7 +732,7 @@ export async function atualizarItensPedido(req: Request, res: Response) {
     // IMPORTANTE: Verificar se o pedido existe, está em rascunho E pertence ao tenant
     const pedidoResult = await client.query(`
       SELECT status FROM pedidos WHERE id = $1 AND tenant_id = $2
-    `, [id, tenantId]);
+    `, [id]);
 
     if (pedidoResult.rows.length === 0) {
       await client.query('ROLLBACK');
@@ -794,7 +763,7 @@ export async function atualizarItensPedido(req: Request, res: Response) {
         JOIN produtos p ON cp.produto_id = p.id
         JOIN contratos c ON cp.contrato_id = c.id
         WHERE cp.id = $1 AND cp.ativo = true AND c.tenant_id = $2
-      `, [item.contrato_produto_id, tenantId]);
+      `, [item.contrato_produto_id]);
 
       if (cpResult.rows.length === 0) {
         await client.query('ROLLBACK');
@@ -830,10 +799,10 @@ export async function atualizarItensPedido(req: Request, res: Response) {
       await client.query(`
         INSERT INTO pedido_itens (
           pedido_id, contrato_produto_id, produto_id, quantidade,
-          preco_unitario, valor_total, data_entrega_prevista, observacoes, tenant_id
+          preco_unitario, valor_total, data_entrega_prevista, observacoes
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-      `, [id, item.contrato_produto_id, produto_id, item.quantidade, preco_unitario, valor_item, item.data_entrega_prevista, item.observacoes, tenantId]);
+      `, [id, item.contrato_produto_id, produto_id, item.quantidade, preco_unitario, valor_item, item.data_entrega_prevista, item.observacoes]);
     }
 
     // Atualizar valor total do pedido
@@ -867,14 +836,9 @@ export async function listarProdutosContrato(req: Request, res: Response) {
   try {
     const { contrato_id } = req.params;
 
-    // Configurar contexto de tenant
-
-    await setTenantContextFromRequest(req);
-    
     // Obter tenant_id do req.tenant ou do header
     const tenantId = req.tenant?.id || req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
     
-    // Validar se tenant está presente
     if (!tenantId) {
       return res.status(400).json({
         success: false,
@@ -956,13 +920,9 @@ export async function listarProdutosContrato(req: Request, res: Response) {
 
 export async function listarTodosProdutosDisponiveis(req: Request, res: Response) {
   try {
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-    
     // Obter tenant_id do req.tenant ou do header
     const tenantId = req.tenant?.id || req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
     
-    // Validar se tenant está presente
     if (!tenantId) {
       console.error("❌ Nenhum tenant encontrado - req.tenant:", req.tenant, "headers:", req.headers);
       return res.status(400).json({

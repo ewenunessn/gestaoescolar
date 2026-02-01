@@ -8,7 +8,7 @@ const db = require("../../../database");
 // Registro de novo usuário
 export async function register(req: Request, res: Response) {
   try {
-    const { nome, email, senha, perfil, telefone, cargo, departamento, tenantId } = req.body;
+    const { nome, email, senha, perfil, telefone, cargo, departamento } = req.body;
     
     // Validar campos obrigatórios
     if (!nome || !email || !senha || !perfil) {
@@ -112,9 +112,9 @@ export async function register(req: Request, res: Response) {
     const tenantRole = isFirstUser ? 'tenant_admin' : (perfil === 'admin' ? 'tenant_admin' : 'user');
     
     await db.query(`
-      INSERT INTO tenant_users (tenant_id, user_id, role, status)
+      INSERT INTO tenant_users (user_id, role, status)
       VALUES ($1, $2, $3, $4)
-      ON CONFLICT (tenant_id, user_id) DO NOTHING
+      ON CONFLICT (user_id) DO NOTHING
     `, [finalTenantId, novo.id, tenantRole, 'active']);
 
     console.log(`✅ Usuário criado: ${novo.nome} (${novo.email}) - Tipo: ${userType}, Role: ${tenantRole}`);
@@ -127,8 +127,7 @@ export async function register(req: Request, res: Response) {
       nome: novo.nome,
       email: novo.email,
       tipo: novo.tipo,
-      tenant_id: novo.tenant_id,
-      isFirstUser,
+      isFirstUser: novo.isFirstUser,
       message: isFirstUser ? 'Primeiro usuário criado com sucesso! Você é o administrador do sistema.' : 'Usuário criado com sucesso!'
     });
   } catch (err) {
@@ -180,8 +179,7 @@ export async function login(req: Request, res: Response) {
       console.log("🏛️  Usuário pertence a instituição - buscando tenants da instituição");
       tenantAssociations = await db.query(`
         SELECT 
-          t.id as tenant_id,
-          COALESCE(tu.role, 'user') as tenant_role,
+          t.id as COALESCE(tu.role, 'user') as tenant_role,
           COALESCE(tu.status, 'active') as tenant_status,
           t.slug as tenant_slug,
           t.name as tenant_name,
@@ -197,8 +195,7 @@ export async function login(req: Request, res: Response) {
       console.log("🔑 Usuário é admin do sistema sem instituição - buscando TODOS os tenants");
       tenantAssociations = await db.query(`
         SELECT 
-          t.id as tenant_id,
-          'tenant_admin' as tenant_role,
+          t.id as 'tenant_admin' as tenant_role,
           'active' as tenant_status,
           t.slug as tenant_slug,
           t.name as tenant_name,
@@ -214,8 +211,7 @@ export async function login(req: Request, res: Response) {
       console.log("👤 Usuário comum - buscando apenas tenants associados");
       tenantAssociations = await db.query(`
         SELECT 
-          tu.tenant_id,
-          tu.role as tenant_role,
+          tu.tu.role as tenant_role,
           tu.status as tenant_status,
           t.slug as tenant_slug,
           t.name as tenant_name,
@@ -289,9 +285,9 @@ export async function login(req: Request, res: Response) {
         
         // Criar associação com tenant padrão
         await db.query(`
-          INSERT INTO tenant_users (tenant_id, user_id, role, status)
+          INSERT INTO tenant_users (user_id, role, status)
           VALUES ($1, $2, $3, $4)
-          ON CONFLICT (tenant_id, user_id) DO NOTHING
+          ON CONFLICT (user_id) DO NOTHING
         `, [primaryTenant.id, user.id, 'user', 'active']);
       }
     }

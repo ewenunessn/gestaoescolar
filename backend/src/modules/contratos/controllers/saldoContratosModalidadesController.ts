@@ -1,5 +1,4 @@
 import { Request, Response } from 'express';
-import { setTenantContextFromRequest } from '../../../utils/tenantContext';
 const db = require('../../../database');
 
 /**
@@ -388,7 +387,7 @@ class SaldoContratosModalidadesController {
 
       const { contrato_produto_id, modalidade_id, quantidade_inicial } = req.body;
       
-      console.log('🔍 [CADASTRAR SALDO] Dados:', { contrato_produto_id, modalidade_id, quantidade_inicial, tenantId });
+      console.log('🔍 [CADASTRAR SALDO] Dados:', { contrato_produto_id, modalidade_id, quantidade_inicial });
 
       if (!contrato_produto_id || !modalidade_id || quantidade_inicial === undefined) {
         res.status(400).json({ success: false, message: 'Contrato produto, modalidade e quantidade inicial são obrigatórios' });
@@ -408,7 +407,7 @@ class SaldoContratosModalidadesController {
         JOIN produtos p ON cp.produto_id = p.id
         WHERE cp.id = $1
           AND c.tenant_id = $2
-      `, [contrato_produto_id, tenantId]);
+      `, [contrato_produto_id]);
 
       if (contratoResult.rows.length === 0) {
         res.status(404).json({ success: false, message: 'Produto do contrato não encontrado' });
@@ -461,10 +460,10 @@ class SaldoContratosModalidadesController {
       } else {
         result = await db.query(`
           INSERT INTO contrato_produtos_modalidades 
-          (contrato_produto_id, modalidade_id, quantidade_inicial, tenant_id)
+          (contrato_produto_id, modalidade_id, quantidade_inicial)
           VALUES ($1, $2, $3, $4)
           RETURNING *
-        `, [contrato_produto_id, modalidade_id, quantidade_inicial, tenantId]);
+        `, [contrato_produto_id, modalidade_id, quantidade_inicial]);
       }
 
       res.json({
@@ -498,7 +497,7 @@ class SaldoContratosModalidadesController {
       const { id } = req.params;
       const { quantidade, observacao, usuario_id, data_consumo } = req.body;
 
-      console.log('🔍 [CONSUMO MODALIDADE] Dados:', { id, quantidade, usuario_id, tenantId });
+      console.log('🔍 [CONSUMO MODALIDADE] Dados:', { id, quantidade, usuario_id });
 
       if (!quantidade || quantidade <= 0) {
         res.status(400).json({ success: false, message: 'Quantidade deve ser maior que zero' });
@@ -517,7 +516,7 @@ class SaldoContratosModalidadesController {
         JOIN contratos c ON cp.contrato_id = c.id
         WHERE cpm.id = $1
           AND c.tenant_id = $2
-      `, [id, tenantId]);
+      `, [id]);
 
       console.log('🔍 [CONSUMO MODALIDADE] Saldo encontrado:', saldoResult.rows.length);
 
@@ -604,7 +603,7 @@ class SaldoContratosModalidadesController {
         JOIN contratos c ON cp.contrato_id = c.id
         WHERE mcm.id = $1 AND mcm.contrato_produto_modalidade_id = $2
           AND c.tenant_id = $3
-      `, [consumoId, id, tenantId]);
+      `, [consumoId, id]);
 
       if (consumoResult.rows.length === 0) {
         res.status(404).json({ success: false, message: 'Registro de consumo não encontrado' });
@@ -679,7 +678,7 @@ class SaldoContratosModalidadesController {
         ORDER BY mcm.created_at DESC
       `;
 
-      const result = await db.query(query, [id, tenantId]);
+      const result = await db.query(query, [id]);
       res.json({ success: true, data: result.rows });
 
     } catch (error: any) {

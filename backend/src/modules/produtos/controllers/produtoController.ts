@@ -1,13 +1,9 @@
 // Controller de produtos para PostgreSQL
 import { Request, Response } from "express";
-import { setTenantContextFromRequest } from "../../../utils/tenantContext";
 const db = require("../../../database");
 
 export async function listarProdutos(req: Request, res: Response) {
   try {
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-
     // Aplicar filtro de tenant
     const tenantId = req.tenant?.id;
     if (!tenantId) {
@@ -54,21 +50,13 @@ export async function buscarProduto(req: Request, res: Response) {
   try {
     const { id } = req.params;
 
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-
-    // Validar se tenant está presente
-    if (!req.tenant?.id) {
-      return res.status(400).json({
-        success: false,
-        message: "Contexto de tenant não encontrado"
-      });
+    );
     }
 
     // IMPORTANTE: Filtrar por tenant_id para segurança
     const result = await db.query(`
       SELECT * FROM produtos WHERE id = $1 AND tenant_id = $2
-    `, [id, req.tenant.id]);
+    `, [id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -102,27 +90,19 @@ export async function criarProduto(req: Request, res: Response) {
       ativo = true
     } = req.body;
 
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-
-    // Validar se tenant está presente
-    if (!req.tenant?.id) {
-      return res.status(400).json({
-        success: false,
-        message: "Contexto de tenant não encontrado"
-      });
+    );
     }
 
     const result = await db.query(`
       INSERT INTO produtos (
         nome, descricao, categoria, 
-        tipo_processamento, perecivel, ativo, tenant_id, created_at
+        tipo_processamento, perecivel, ativo, created_at
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
       RETURNING *
     `, [
       nome, descricao, categoria,
-      tipo_processamento, perecivel, ativo, req.tenant.id
+      tipo_processamento, perecivel, ativo
     ]);
 
     res.json({
@@ -152,15 +132,7 @@ export async function editarProduto(req: Request, res: Response) {
       ativo
     } = req.body;
 
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-
-    // Validar se tenant está presente
-    if (!req.tenant?.id) {
-      return res.status(400).json({
-        success: false,
-        message: "Contexto de tenant não encontrado"
-      });
+    );
     }
 
     // IMPORTANTE: Filtrar por tenant_id para segurança
@@ -177,7 +149,7 @@ export async function editarProduto(req: Request, res: Response) {
       RETURNING *
     `, [
       nome, descricao, categoria,
-      tipo_processamento, perecivel, ativo, id, req.tenant.id
+      tipo_processamento, perecivel, ativo, id
     ]);
 
     if (result.rows.length === 0) {
@@ -206,22 +178,14 @@ export async function removerProduto(req: Request, res: Response) {
   try {
     const { id } = req.params;
 
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-
-    // Validar se tenant está presente
-    if (!req.tenant?.id) {
-      return res.status(400).json({
-        success: false,
-        message: "Contexto de tenant não encontrado"
-      });
+    );
     }
 
     // IMPORTANTE: Filtrar por tenant_id para segurança
     const result = await db.query(`
       DELETE FROM produtos WHERE id = $1 AND tenant_id = $2
       RETURNING *
-    `, [id, req.tenant.id]);
+    `, [id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -247,9 +211,6 @@ export async function removerProduto(req: Request, res: Response) {
 export async function buscarComposicaoNutricional(req: Request, res: Response) {
   try {
     const { id } = req.params;
-
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
 
     const result = await db.query(`
       SELECT 
@@ -307,9 +268,6 @@ export async function salvarComposicaoNutricional(req: Request, res: Response) {
       fibra_alimentar_g,
       sodio_mg
     } = req.body;
-
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
 
     // Verificar se já existe composição para este produto
     const existenteResult = await db.query(`
@@ -383,15 +341,7 @@ export async function importarProdutosLote(req: Request, res: Response) {
       });
     }
 
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-
-    // Validar se tenant está presente
-    if (!req.tenant?.id) {
-      return res.status(400).json({
-        success: false,
-        message: "Contexto de tenant não encontrado"
-      });
+    );
     }
 
     let sucessos = 0;
@@ -414,16 +364,16 @@ export async function importarProdutosLote(req: Request, res: Response) {
         // Verificar se produto já existe pelo nome e tenant
         const produtoExistenteResult = await db.query(`
           SELECT id FROM produtos WHERE nome = $1 AND tenant_id = $2
-        `, [nome, req.tenant.id]);
+        `, [nome]);
         const produtoExistente = produtoExistenteResult.rows[0];
 
         const result = await db.query(`
           INSERT INTO produtos (
             nome, descricao, categoria, 
-            tipo_processamento, perecivel, ativo, tenant_id, created_at
+            tipo_processamento, perecivel, ativo, created_at
           )
           VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
-          ON CONFLICT (nome, tenant_id) DO UPDATE SET
+          ON CONFLICT (nome) DO UPDATE SET
             descricao = EXCLUDED.descricao,
             categoria = EXCLUDED.categoria,
             tipo_processamento = EXCLUDED.tipo_processamento,
@@ -432,7 +382,7 @@ export async function importarProdutosLote(req: Request, res: Response) {
           RETURNING *
         `, [
           nome, descricao, categoria,
-          tipo_processamento, perecivel, ativo, req.tenant.id
+          tipo_processamento, perecivel, ativo
         ]);
 
         const acao = produtoExistente ? 'atualizado' : 'inserido';

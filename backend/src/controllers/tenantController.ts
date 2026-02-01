@@ -258,7 +258,7 @@ export async function resolveTenant(req: Request, res: Response) {
     // 1. Tentar por header X-Tenant-ID
     const tenantIdHeader = req.headers['x-tenant-id'] as string;
     if (tenantIdHeader) {
-      console.log('🔍 [RESOLVE-TENANT] Tentando resolver por header X-Tenant-ID:', tenantIdHeader);
+      console.log('🔍 [RESOLVE-TENANT] Tentando resolver por header X-Tenant-ID:'Header);
       // Primeiro tentar por ID (UUID), depois por slug
       tenant = await tenantService.getTenant(tenantIdHeader);
       if (!tenant) {
@@ -294,8 +294,7 @@ export async function resolveTenant(req: Request, res: Response) {
 
     console.log('🔍 [RESOLVE-TENANT] Resultado final:', {
       tenant: tenant ? tenant.name : null,
-      method,
-      tenantId: tenant ? tenant.id : null
+      method: tenant ? tenant.id : null
     });
 
     res.json({

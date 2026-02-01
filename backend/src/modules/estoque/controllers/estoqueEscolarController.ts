@@ -273,10 +273,7 @@ export async function resetEstoque(req: Request, res: Response) {
 
 export async function listarEstoqueEscolar(req: Request, res: Response) {
   try {
-    // Configurar contexto de tenant
     const { setTenantContextFromRequest } = await import('../../../utils/tenantContext');
-    await setTenantContextFromRequest(req);
-
     // Extrair e validar tenant da requisição
     const { tenantInventoryValidator } = await import('../../../services/tenantInventoryValidator');
     const tenantId = tenantInventoryValidator.extractTenantFromRequest(req);

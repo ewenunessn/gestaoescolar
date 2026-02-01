@@ -431,7 +431,7 @@ export class InstitutionController {
       if (default_tenant_id) {
         const tenantCheck = await db.pool.query(
           'SELECT id FROM tenants WHERE id = $1 AND institution_id = $2',
-          [default_tenant_id, id]
+          [default_id]
         );
 
         if (tenantCheck.rows.length === 0) {

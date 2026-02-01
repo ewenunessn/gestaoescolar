@@ -298,7 +298,7 @@ export async function deprovisionTenant(req: Request, res: Response) {
     const { tenantId } = req.params;
     const options = req.body || {};
 
-    const progress = await tenantProvisioningService.deprovisionTenant(tenantId, options);
+    const progress = await tenantProvisioningService.deprovisionTenant(options);
 
     res.status(202).json({
       success: true,
@@ -331,7 +331,6 @@ export async function scheduleDeprovisioning(req: Request, res: Response) {
     }
 
     await tenantProvisioningService.scheduleDeprovisioning(
-      tenantId,
       new Date(scheduledAt),
       options
     );

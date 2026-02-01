@@ -8,12 +8,7 @@ import {
   buscarHistoricoConsumoModalidade,
   excluirConsumoModalidade
 } from '../controllers/saldoContratosModalidadesController';
-import { requireTenant } from '../../../middleware/tenantMiddleware';
-
 const router = Router();
-
-// Aplicar middleware de tenant para todas as rotas
-router.use(requireTenant());
 
 // Listar saldos por modalidade
 router.get('/', listarSaldosModalidades);

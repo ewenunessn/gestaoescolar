@@ -7,12 +7,8 @@ import {
   removerFornecedor,
   verificarRelacionamentosFornecedor
 } from "../controllers/fornecedorController";
-import { requireTenant } from "../../../middleware/tenantMiddleware";
 
 const router = Router();
-
-// Aplicar middleware de tenant para todas as rotas
-router.use(requireTenant());
 
 // Listar fornecedores (com filtros e paginação)
 router.get("/", listarFornecedores);

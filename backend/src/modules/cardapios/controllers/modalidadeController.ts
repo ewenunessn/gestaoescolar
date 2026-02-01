@@ -1,13 +1,9 @@
 // Controller de modalidades para PostgreSQL
 import { Request, Response } from "express";
-import { setTenantContextFromRequest } from "../../../utils/tenantContext";
 const db = require("../../../database");
 
 export async function listarModalidades(req: Request, res: Response) {
   try {
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-
     const modalidades = await db.all(`
       SELECT 
         m.id,
@@ -22,7 +18,6 @@ export async function listarModalidades(req: Request, res: Response) {
       FROM modalidades m
       LEFT JOIN escola_modalidades em ON m.id = em.modalidade_id
       LEFT JOIN escolas e ON em.escola_id = e.id AND e.tenant_id = current_setting('app.current_tenant_id')::uuid
-      WHERE m.tenant_id = current_setting('app.current_tenant_id')::uuid
       GROUP BY m.id, m.nome, m.descricao, m.codigo_financeiro, m.ativo, m.valor_repasse, m.created_at, m.updated_at
       ORDER BY m.nome
     `);
@@ -44,9 +39,6 @@ export async function listarModalidades(req: Request, res: Response) {
 
 export async function desativarModalidade(req: Request, res: Response) {
   try {
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-
     const { id } = req.params;
 
     const result = await db.query(`
@@ -81,9 +73,6 @@ export async function desativarModalidade(req: Request, res: Response) {
 
 export async function reativarModalidade(req: Request, res: Response) {
   try {
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-
     const { id } = req.params;
 
     const result = await db.query(`
@@ -118,9 +107,6 @@ export async function reativarModalidade(req: Request, res: Response) {
 
 export async function buscarModalidade(req: Request, res: Response) {
   try {
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-
     const { id } = req.params;
     
     const modalidade = await db.get(`
@@ -151,13 +137,10 @@ export async function buscarModalidade(req: Request, res: Response) {
 
 export async function criarModalidade(req: Request, res: Response) {
   try {
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-
     const { nome, descricao, codigo_financeiro, ativo = true, valor_repasse = 0.00 } = req.body;
 
     const result = await db.query(`
-      INSERT INTO modalidades (nome, descricao, codigo_financeiro, ativo, valor_repasse, tenant_id)
+      INSERT INTO modalidades (nome, descricao, codigo_financeiro, ativo, valor_repasse)
       VALUES ($1, $2, $3, $4, $5, current_setting('app.current_tenant_id')::uuid)
       RETURNING *
     `, [nome, descricao, codigo_financeiro, ativo, valor_repasse]);
@@ -179,9 +162,6 @@ export async function criarModalidade(req: Request, res: Response) {
 
 export async function editarModalidade(req: Request, res: Response) {
   try {
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
-
     const { id } = req.params;
     const { nome, descricao, codigo_financeiro, ativo, valor_repasse } = req.body;
 
@@ -223,9 +203,6 @@ export async function removerModalidade(req: Request, res: Response) {
   try {
     const { id } = req.params;
     const { forceDelete = false } = req.query;
-
-    // Configurar contexto de tenant
-    await setTenantContextFromRequest(req);
 
     // Verificar se a modalidade existe
     const modalidade = await db.get(`

@@ -1,11 +1,6 @@
 import { Router } from 'express';
 import configuracaoController from '../controllers/configuracaoController';
-import { requireTenant } from '../middleware/tenantMiddleware';
-
 const router = Router();
-
-// Aplicar middleware de tenant para todas as rotas
-router.use(requireTenant());
 
 // Rotas para configurações do sistema
 router.get('/', configuracaoController.listarTodas);

@@ -14,13 +14,9 @@ import {
   processarMovimentacaoLotes,
   testarLotes
 } from "../controllers/estoqueEscolaController";
-import { requireTenant, optionalTenant } from "../../../middleware/tenantMiddleware";
-
 const router = Router();
 
 // Aplicar middleware de tenant para a maioria das rotas
-router.use(requireTenant());
-
 // Listar estoque de uma escola específica
 router.get("/escola/:escola_id", listarEstoqueEscola);
 

@@ -1,26 +1,10 @@
 import { Request, Response } from 'express';
 import { demandaModel } from '../models/demandaModel';
-import { setTenantContextFromRequest } from '../../../utils/tenantContext';
 
 export const demandaController = {
   async criar(req: Request, res: Response) {
     try {
       console.log('🔄 [DEMANDAS] Iniciando criar...');
-      
-      // Configurar contexto de tenant
-      await setTenantContextFromRequest(req);
-      
-      // Validar se tenant está presente
-      if (!req.tenant?.id) {
-        console.error('❌ [DEMANDAS] Tenant ID não encontrado');
-        return res.status(400).json({
-          success: false,
-          message: 'Contexto de tenant não encontrado'
-        });
-      }
-      
-      console.log('🔍 [DEMANDAS] Tenant ID:', req.tenant.id);
-      console.log('🔍 [DEMANDAS] req.tenant:', req.tenant);
 
       const usuarioId = (req as any).usuario?.id || (req as any).user?.id || 1;
       
@@ -29,7 +13,6 @@ export const demandaController = {
 
       const demanda = await demandaModel.criar({
         ...req.body,
-        tenant_id: req.tenant.id,
         data_semead: req.body.data_semead || null,
         status: 'pendente',
         usuario_criacao_id: usuarioId
@@ -59,7 +42,7 @@ export const demandaController = {
       // Obter tenant_id diretamente do header (mais rápido)
       const tenantId = (req as any).tenant?.id || req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
       
-      console.log('🔍 [DEMANDAS] Tenant ID:', tenantId);
+      console.log('🔍 [DEMANDAS] Tenant ID:');
       
       if (!tenantId) {
         console.error('❌ [DEMANDAS] Tenant ID não encontrado');
@@ -74,7 +57,7 @@ export const demandaController = {
       console.log('🔍 [DEMANDAS] Chamando demandaModel.listar...');
       const startTime = Date.now();
       
-      const demandas = await demandaModel.listar(tenantId, {
+      const demandas = await demandaModel.listar({
         escola_id: escola_id ? Number(escola_id) : undefined,
         escola_nome: escola_nome as string,
         objeto: objeto as string,
@@ -144,7 +127,7 @@ export const demandaController = {
       // Obter tenant_id de múltiplas fontes
       const tenantId = (req as any).tenant?.id || req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
       
-      console.log('🔍 [DEMANDAS] Tenant ID:', tenantId);
+      console.log('🔍 [DEMANDAS] Tenant ID:');
       
       if (!tenantId) {
         console.error('❌ [DEMANDAS] Tenant ID não encontrado');
@@ -157,7 +140,7 @@ export const demandaController = {
       const { id } = req.params;
       console.log('🔍 [DEMANDAS] Buscando demanda ID:', id);
       
-      const demanda = await demandaModel.buscarPorId(Number(id), tenantId);
+      const demanda = await demandaModel.buscarPorId(Number(id));
 
       if (!demanda) {
         console.log('❌ [DEMANDAS] Demanda não encontrada');
@@ -201,7 +184,7 @@ export const demandaController = {
       const { id } = req.params;
       console.log('🔍 [DEMANDAS] Atualizando demanda ID:', id);
       
-      const demanda = await demandaModel.atualizar(Number(id), tenantId, req.body);
+      const demanda = await demandaModel.atualizar(Number(id), req.body);
 
       console.log('✅ [DEMANDAS] Demanda atualizada:', demanda.id);
 
@@ -238,7 +221,7 @@ export const demandaController = {
       const { id } = req.params;
       console.log('🔍 [DEMANDAS] Excluindo demanda ID:', id);
       
-      await demandaModel.excluir(Number(id), tenantId);
+      await demandaModel.excluir(Number(id));
 
       console.log('✅ [DEMANDAS] Demanda excluída:', id);
 
@@ -286,7 +269,7 @@ export const demandaController = {
         dados.observacoes = observacoes;
       }
 
-      const demanda = await demandaModel.atualizar(Number(id), tenantId, dados);
+      const demanda = await demandaModel.atualizar(Number(id), dados);
 
       console.log('✅ [DEMANDAS] Status atualizado:', demanda.id);
 
