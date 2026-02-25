@@ -62,7 +62,7 @@ class RotaModel {
         COUNT(re.escola_id) as total_escolas
       FROM rotas_entrega r
       LEFT JOIN rota_escolas re ON r.id = re.rota_id
-      GROUP BY r.id
+      GROUP BY r.id, r.nome, r.descricao, r.cor, r.ativo, r.created_at, r.updated_at
       ORDER BY r.nome
     `);
     return result;

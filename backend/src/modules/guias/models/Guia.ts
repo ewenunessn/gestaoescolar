@@ -336,8 +336,8 @@ class GuiaModel {
         query += ` AND (gpe.status != 'cancelado' OR gpe.status IS NULL)`;
       }
 
-      query += ` GROUP BY gpe.id, p.nome, e.nome`;
-      query += ` ORDER BY gpe.data_entrega, escola_rota, e.nome, p.nome`;
+      query += ` GROUP BY gpe.id, gpe.data_entrega, gpe.quantidade, gpe.unidade, gpe.observacao, gpe.status, p.nome, e.nome`;
+      query += ` ORDER BY gpe.data_entrega, e.nome, p.nome`;
 
       const result = await db.all(query, params);
       return result;
