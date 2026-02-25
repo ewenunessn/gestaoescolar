@@ -109,6 +109,27 @@ export interface CreateGuiaProdutoEscolaData {
   status?: 'pendente' | 'entregue' | 'cancelado' | 'em_rota' | 'programada';
 }
 
+export async function createEssentialTables() {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS escolas (
+      id SERIAL PRIMARY KEY,
+      nome TEXT NOT NULL,
+      codigo TEXT,
+      codigo_acesso TEXT,
+      endereco TEXT,
+      municipio TEXT,
+      endereco_maps TEXT,
+      telefone TEXT,
+      email TEXT,
+      nome_gestor TEXT,
+      administracao TEXT,
+      ativo BOOLEAN DEFAULT TRUE,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+}
+
 class GuiaModel {
   async listarGuias(): Promise<Guia[]> {
     try {

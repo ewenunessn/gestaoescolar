@@ -416,3 +416,17 @@ export default app;
 
 // Para compatibilidade CommonJS
 module.exports = app;
+
+// Inicialização de schema essencial em ambiente Vercel (cold start)
+(async function safeInitSchemaForVercel() {
+  if (process.env.VERCEL === '1') {
+    try {
+      const { createEssentialTables, createGuiaTables } = await import('./modules/guias/models/Guia');
+      await createEssentialTables();
+      await createGuiaTables();
+      console.log('✅ Schema essencial de guias/escolas garantido (Vercel)');
+    } catch (e) {
+      console.error('⚠️ Falha ao inicializar schema essencial (Vercel):', e);
+    }
+  }
+})();
