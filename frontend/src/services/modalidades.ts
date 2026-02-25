@@ -3,16 +3,22 @@ import { apiWithRetry } from "./api";
 export interface Modalidade {
   id: number;
   nome: string;
+  descricao?: string;
   codigo_financeiro?: string;
   valor_repasse: number;
   ativo: boolean;
   total_alunos?: number;
+  total_escolas?: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface ModalidadeInput {
   nome: string;
+  descricao?: string;
   codigo_financeiro?: string;
   valor_repasse?: number;
+  ativo?: boolean;
 }
 
 export async function listarModalidades(): Promise<Modalidade[]> {

@@ -42,6 +42,10 @@ import {
   Assignment as AssignmentIcon,
   Edit as EditIcon,
   MoreVert as MoreVertIcon,
+  Block as BlockIcon,
+  Cancel as CancelIcon,
+  LocalShipping as LocalShippingIcon,
+  Schedule as ScheduleIcon,
 } from '@mui/icons-material';
 import { useNotification } from '../context/NotificationContext';
 import { guiaService, Guia, GuiaProdutoEscola } from '../services/guiaService';
@@ -90,6 +94,9 @@ const GuiaDetalhe: React.FC = () => {
   const [editFormData, setEditFormData] = useState({
     observacao: ''
   });
+
+  const [statusMenuAnchor, setStatusMenuAnchor] = useState<null | HTMLElement>(null);
+  const [itemStatusEditing, setItemStatusEditing] = useState<any>(null);
 
   useEffect(() => {
     if (id) {
@@ -169,6 +176,21 @@ const GuiaDetalhe: React.FC = () => {
       return a.nome.localeCompare(b.nome);
     });
   }, [produtos]);
+
+  useEffect(() => {
+    if (produtoSelecionado && produtosAgrupados.length > 0) {
+      // Tentar reencontrar o produto selecionado na lista atualizada
+      const chaveAtual = `${produtoSelecionado.data_criacao}_${produtoSelecionado.lote}_${produtoSelecionado.nome}`;
+      
+      const produtoAtualizado = produtosAgrupados.find(p => 
+        `${p.data_criacao}_${p.lote}_${p.nome}` === chaveAtual
+      );
+      
+      if (produtoAtualizado) {
+        setProdutoSelecionado(produtoAtualizado);
+      }
+    }
+  }, [produtosAgrupados]);
 
   const handleVerEscolas = async (produto: ProdutoAgrupado) => {
     setProdutoSelecionado(produto);
@@ -253,7 +275,7 @@ const GuiaDetalhe: React.FC = () => {
           const escolaId = (item as any).escola_id || item.escolaId;
 
           // Remover diretamente sem confirmação adicional (já confirmou acima)
-          await handleRemoverProdutoSemConfirmacao(produtoId, escolaId);
+          await handleRemoverProdutoSemConfirmacao(produtoId, escolaId, (item as any).id);
         }
       }
 
@@ -268,11 +290,15 @@ const GuiaDetalhe: React.FC = () => {
     }
   };
 
-  const handleRemoverProduto = async (produtoId: number, escolaId: number) => {
+  const handleRemoverProduto = async (produtoId: number, escolaId: number, itemId?: number) => {
     if (!guia || !window.confirm('Tem certeza que deseja remover este item?')) return;
 
     try {
-      await guiaService.removerProdutoGuia(guia.id, produtoId, escolaId);
+      if (itemId) {
+        await guiaService.removerItemGuia(itemId);
+      } else {
+        await guiaService.removerProdutoGuia(guia.id, produtoId, escolaId);
+      }
       success('Item removido com sucesso!');
       await carregarGuia();
     } catch (err: any) {
@@ -280,13 +306,92 @@ const GuiaDetalhe: React.FC = () => {
     }
   };
 
-  const handleRemoverProdutoSemConfirmacao = async (produtoId: number, escolaId: number) => {
+  const handleRemoverProdutoSemConfirmacao = async (produtoId: number, escolaId: number, itemId?: number) => {
     if (!guia) return;
 
     try {
-      await guiaService.removerProdutoGuia(guia.id, produtoId, escolaId);
+      if (itemId) {
+        await guiaService.removerItemGuia(itemId);
+      } else {
+        await guiaService.removerProdutoGuia(guia.id, produtoId, escolaId);
+      }
     } catch (err: any) {
       throw err; // Propagar erro para função chamadora
+    }
+  };
+
+  const getStatusItemIcon = (status: string) => {
+    switch (status) {
+      case 'entregue': return <CheckCircleIcon fontSize="small" />;
+      case 'em_rota': return <LocalShippingIcon fontSize="small" />;
+      case 'programada': return <ScheduleIcon fontSize="small" />;
+      case 'suspenso': return <BlockIcon fontSize="small" />;
+      case 'cancelado': return <CancelIcon fontSize="small" />;
+      default: return <PendingIcon fontSize="small" />;
+    }
+  };
+
+  const getStatusItemLabel = (status: string) => {
+    switch (status) {
+      case 'entregue': return 'Entregue';
+      case 'em_rota': return 'Em Rota';
+      case 'programada': return 'Programada';
+      case 'suspenso': return 'Suspenso';
+      case 'cancelado': return 'Cancelado';
+      default: return 'Pendente';
+    }
+  };
+
+  const getStatusItemColor = (status: string) => {
+    switch (status) {
+      case 'entregue': return 'success';
+      case 'em_rota': return 'info';
+      case 'programada': return 'primary';
+      case 'suspenso': return 'warning';
+      case 'cancelado': return 'error';
+      default: return 'default';
+    }
+  };
+
+  const handleOpenStatusMenu = (event: React.MouseEvent<HTMLElement>, item: any) => {
+    setStatusMenuAnchor(event.currentTarget);
+    setItemStatusEditing(item);
+  };
+
+  const handleCloseStatusMenu = () => {
+    setStatusMenuAnchor(null);
+    setItemStatusEditing(null);
+  };
+
+  const handleChangeStatus = async (newStatus: string) => {
+    if (!itemStatusEditing) return;
+
+    try {
+      const itemId = (itemStatusEditing as any).id;
+      
+      // Se não tiver ID, tentar encontrar pelo produto/escola
+      if (!itemId) {
+        error('Item sem identificador para atualização');
+        return;
+      }
+
+      await guiaService.atualizarProdutoEscola(itemId, { status: newStatus });
+      success(`Status atualizado para ${getStatusItemLabel(newStatus)}`);
+      
+      await carregarGuia();
+      
+      // Atualizar o produto selecionado na lista para refletir a mudança no modal
+      if (produtoSelecionado) {
+        // Encontrar o grupo correspondente na nova lista de produtos
+        // Precisamos esperar o carregarGuia atualizar o estado
+        // Mas como é async, o estado pode não ter atualizado ainda aqui
+        // O useEffect do produtoSelecionado cuidará disso se implementado
+      }
+    } catch (err: any) {
+      console.error('Erro ao atualizar status:', err);
+      error('Erro ao atualizar status do item');
+    } finally {
+      handleCloseStatusMenu();
     }
   };
 
@@ -673,6 +778,51 @@ const GuiaDetalhe: React.FC = () => {
       </Dialog>
 
       {/* Modal para ver escolas do produto */}
+      <Menu
+        anchorEl={statusMenuAnchor}
+        open={Boolean(statusMenuAnchor)}
+        onClose={handleCloseStatusMenu}
+        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+      >
+        <MenuItem onClick={() => handleChangeStatus('pendente')}>
+          <ListItemIcon>
+            <PendingIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Pendente</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => handleChangeStatus('programada')}>
+          <ListItemIcon>
+            <ScheduleIcon fontSize="small" color="primary" />
+          </ListItemIcon>
+          <ListItemText>Programada</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => handleChangeStatus('em_rota')}>
+          <ListItemIcon>
+            <LocalShippingIcon fontSize="small" color="info" />
+          </ListItemIcon>
+          <ListItemText>Em Rota</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => handleChangeStatus('entregue')}>
+          <ListItemIcon>
+            <CheckCircleIcon fontSize="small" color="success" />
+          </ListItemIcon>
+          <ListItemText>Entregue</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => handleChangeStatus('suspenso')}>
+          <ListItemIcon>
+            <BlockIcon fontSize="small" color="warning" />
+          </ListItemIcon>
+          <ListItemText>Suspenso</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => handleChangeStatus('cancelado')}>
+          <ListItemIcon>
+            <CancelIcon fontSize="small" color="error" />
+          </ListItemIcon>
+          <ListItemText>Cancelado</ListItemText>
+        </MenuItem>
+      </Menu>
+
       <Dialog open={openEscolasProduto} onClose={() => setOpenEscolasProduto(false)} maxWidth="lg" fullWidth>
         <DialogTitle>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -792,35 +942,26 @@ const GuiaDetalhe: React.FC = () => {
                       
                       {/* Status de Entrega */}
                       <TableCell align="center">
-                        {(() => {
-                          const escolaId = (item as any).escola_id || item.escolaId;
-                          const produtoId = (item as any).produto_id || item.produtoId;
-                          const lote = item.lote || 'sem_lote';
-                          const chaveEntrega = `${escolaId}_${produtoId}_${lote}`;
-                          const dadosItem = dadosEntrega[chaveEntrega];
-                          
-                          if (dadosItem?.entrega_confirmada) {
-                            return (
-                              <Chip
-                                icon={<CheckCircleIcon />}
-                                label="Entregue"
-                                size="small"
-                                color="success"
-                                sx={{ fontWeight: 'bold' }}
-                              />
-                            );
-                          } else {
-                            return (
-                              <Chip
-                                icon={<PendingIcon />}
-                                label="Pendente"
-                                size="small"
-                                color="warning"
-                                variant="outlined"
-                              />
-                            );
-                          }
-                        })()}
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Chip
+                            icon={getStatusItemIcon(item.status || 'pendente')}
+                            label={getStatusItemLabel(item.status || 'pendente')}
+                            size="small"
+                            color={getStatusItemColor(item.status || 'pendente') as any}
+                            variant={item.status === 'pendente' || !item.status ? 'outlined' : 'filled'}
+                            sx={{ fontWeight: 'bold' }}
+                          />
+                          <Tooltip title="Alterar Status">
+                            <IconButton 
+                              size="small" 
+                              onClick={(e) => handleOpenStatusMenu(e, item)}
+                              sx={{ ml: 1 }}
+                              color="primary"
+                            >
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
                       </TableCell>
                       
                       {/* Quantidade Entregue */}
@@ -868,7 +1009,11 @@ const GuiaDetalhe: React.FC = () => {
                             <IconButton
                               size="small"
                               onClick={() => {
-                                handleRemoverProduto((item as any).produto_id || item.produtoId, (item as any).escola_id || item.escolaId);
+                                handleRemoverProduto(
+                                  (item as any).produto_id || item.produtoId, 
+                                  (item as any).escola_id || item.escolaId,
+                                  (item as any).id
+                                );
                                 setOpenEscolasProduto(false);
                               }}
                               color="error"

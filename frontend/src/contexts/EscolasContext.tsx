@@ -89,6 +89,14 @@ export function EscolasProvider({ children }: { children: React.ReactNode }) {
   // Carregar escolas do banco de dados
   useEffect(() => {
     const carregarEscolas = async () => {
+      // Verificar se há token antes de tentar carregar
+      const token = localStorage.getItem('token');
+      if (!token || token === 'null' || token === 'undefined' || token.length < 10) {
+        // Não tentar carregar se não houver token válido
+        console.log('Token inválido ou ausente, não carregando escolas');
+        return;
+      }
+
       dispatch({ type: 'SET_LOADING', payload: true });
       
       try {
@@ -103,6 +111,11 @@ export function EscolasProvider({ children }: { children: React.ReactNode }) {
         dispatch({ type: 'SET_ESCOLAS', payload: escolasFormatadas });
       } catch (error) {
         console.error('Erro ao carregar escolas:', error);
+        // Não mostrar erro se for 401 (não autenticado) - apenas limpar o estado
+        if ((error as any)?.message?.includes('401') || (error as any)?.message?.includes('Credenciais inválidas')) {
+          // Silenciosamente não fazer nada - o redirect já foi feito pelo api.ts
+          return;
+        }
         dispatch({ type: 'SET_ERROR', payload: 'Erro ao carregar escolas do banco de dados' });
       }
     };

@@ -3,9 +3,6 @@
  * Facilita importação e organização
  */
 
-// Hooks de Estoque
-export * from './useEstoqueQueries';
-
 // Hooks de Produtos
 export * from './useProdutoQueries';
 

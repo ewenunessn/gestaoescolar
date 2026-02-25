@@ -1,6 +1,5 @@
 // Tipos genéricos para respostas da API
-
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data: T;
   message?: string;
@@ -11,7 +10,7 @@ export interface ApiError {
   message: string;
   status?: number;
   code?: string;
-  details?: any;
+  details?: unknown;
   response?: {
     status: number;
     data?: {
@@ -35,7 +34,7 @@ export function getErrorMessage(error: unknown, defaultMessage: string = 'Erro d
   return defaultMessage;
 }
 
-export interface PaginatedResponse<T = any> {
+export interface PaginatedResponse<T = unknown> {
   data: T[];
   pagination: {
     page: number;
@@ -73,7 +72,7 @@ export type OperationStatus = 'idle' | 'loading' | 'success' | 'error';
 
 // Tipos para dados de formulário
 export interface FormData {
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 // Tipos para validação

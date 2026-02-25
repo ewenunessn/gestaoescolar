@@ -235,11 +235,6 @@ export class QueryAnalyzer {
     }
     
     // Recomendações específicas para queries de estoque
-    if (this.isInventoryQuery(planAnalysis?.query || '')) {
-      if (!planAnalysis?.indexesUsed.some(idx => idx.includes('tenant'))) {
-        recommendations.push('Query de estoque sem uso de índice tenant - verifique filtros de tenant');
-      }
-    }
     
     return recommendations;
   }
@@ -372,7 +367,7 @@ export const executeOptimizedQuery = async (
 /**
  * Função para testar performance de queries de estoque
  */
-export const testInventoryQueryPerformance = async (tenantId: string) => {
+export const testInventoryQueryPerformance = async () => {
   const testQueries = [
     {
       name: 'Listar Estoque Escola',
@@ -380,10 +375,9 @@ export const testInventoryQueryPerformance = async (tenantId: string) => {
         SELECT ee.*, p.nome as produto_nome 
         FROM estoque_escolas ee 
         JOIN produtos p ON p.id = ee.produto_id 
-        WHERE ee.tenant_id = $1 AND p.tenant_id = $1
         LIMIT 100
       `,
-      params: [tenantId]
+      params: []
     },
     {
       name: 'Produtos Próximos Vencimento',
@@ -391,11 +385,11 @@ export const testInventoryQueryPerformance = async (tenantId: string) => {
         SELECT el.*, p.nome as produto_nome 
         FROM estoque_lotes el 
         JOIN produtos p ON p.id = el.produto_id 
-        WHERE el.tenant_id = $1 AND el.data_validade <= CURRENT_DATE + INTERVAL '30 days'
+        WHERE el.data_validade <= CURRENT_DATE + INTERVAL '30 days'
         ORDER BY el.data_validade ASC
         LIMIT 50
       `,
-      params: [tenantId]
+      params: []
     },
     {
       name: 'Histórico Movimentações',
@@ -404,11 +398,11 @@ export const testInventoryQueryPerformance = async (tenantId: string) => {
         FROM estoque_escolas_historico eeh
         JOIN produtos p ON p.id = eeh.produto_id
         JOIN escolas e ON e.id = eeh.escola_id
-        WHERE eeh.tenant_id = $1 AND eeh.data_movimentacao >= CURRENT_DATE - INTERVAL '30 days'
+        WHERE eeh.data_movimentacao >= CURRENT_DATE - INTERVAL '30 days'
         ORDER BY eeh.data_movimentacao DESC
         LIMIT 100
       `,
-      params: [tenantId]
+      params: []
     }
   ];
   

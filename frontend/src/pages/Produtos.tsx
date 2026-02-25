@@ -7,8 +7,6 @@ import {
 import { 
   useProdutos, 
   useCriarProduto, 
-  useAtualizarProduto, 
-  useExcluirProduto,
   useCategoriasProdutos 
 } from "../hooks/queries";
 import ImportacaoProdutos from '../components/ImportacaoProdutos';
@@ -23,9 +21,6 @@ import {
   FormControl,
   InputLabel,
   InputAdornment,
-  Chip,
-  useTheme,
-  useMediaQuery,
   Card,
   CardContent,
   Table,
@@ -46,11 +41,7 @@ import {
   Paper,
   Menu,
   TablePagination,
-  Checkbox,
-  OutlinedInput,
-  ListItemText,
   Collapse,
-  Divider,
   Autocomplete,
 } from "@mui/material";
 import {
@@ -62,23 +53,11 @@ import {
   MoreVert,
   Upload,
   TuneRounded,
-  ExpandMore,
   ExpandLess,
   Clear as ClearIcon,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import * as XLSX from 'xlsx';
-
-// Interfaces
-interface Produto {
-  id: number;
-  nome: string;
-  descricao?: string;
-  categoria?: string;
-  tipo_processamento?: string;
-  perecivel?: boolean;
-  ativo: boolean;
-}
 
 interface ProdutoForm {
   nome: string;
@@ -110,8 +89,6 @@ const ProdutosPage = () => {
   
   const { data: categorias = [] } = useCategoriasProdutos();
   const criarProdutoMutation = useCriarProduto();
-  const atualizarProdutoMutation = useAtualizarProduto();
-  const excluirProdutoMutation = useExcluirProduto();
   
   // Estados locais
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -255,7 +232,7 @@ const ProdutosPage = () => {
   };
 
   // Funções de Importação/Exportação
-  const handleImportProdutos = async (produtosImportacao: any[]) => {
+  const handleImportProdutos = async (produtosImportacao: Array<Record<string, unknown>>) => {
     try {
       setLoading(true);
       const response = await importarProdutosLote(produtosImportacao);
@@ -514,13 +491,26 @@ const ProdutosPage = () => {
               <Table stickyHeader size="small">
                 <TableHead><TableRow><TableCell sx={{ py: 1 }}>Nome do Produto</TableCell><TableCell align="center" sx={{ py: 1 }}>Categoria</TableCell><TableCell align="center" sx={{ py: 1 }}>Ações</TableCell></TableRow></TableHead>
                 <TableBody>
-                  {paginatedProdutos.map((produto) => (
-                    <TableRow key={produto.id} hover sx={{ '& td': { py: 0.75 } }}>
+                  {paginatedProdutos.map((produto) => {
+                    const isInativo = !produto.ativo;
+                    return (
+                    <TableRow 
+                      key={produto.id} 
+                      hover 
+                      sx={{ 
+                        '& td': { py: 0.75 },
+                        opacity: isInativo ? 0.5 : 1,
+                        backgroundColor: isInativo ? 'action.hover' : 'inherit'
+                      }}
+                    >
                       <TableCell>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                           <StatusIndicator status={produto.ativo ? 'ativo' : 'inativo'} size="small" />
                           <Box>
-                            <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>{produto.nome}</Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                              {produto.nome}
+                              {isInativo && <Chip label="Inativo" size="small" color="default" sx={{ ml: 1 }} />}
+                            </Typography>
                             {produto.descricao && <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>{produto.descricao}</Typography>}
                           </Box>
                         </Box>
@@ -529,7 +519,8 @@ const ProdutosPage = () => {
 
                       <TableCell align="center"><Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => navigate(`/produtos/${produto.id}`)} color="primary"><Visibility fontSize="small" /></IconButton></Tooltip></TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             </TableContainer>

@@ -5,6 +5,7 @@ import {
   CardContent,
   Typography,
   Button,
+  Checkbox,
   Chip,
   Alert,
   CircularProgress,
@@ -16,7 +17,16 @@ import {
   Grid,
   Divider,
   IconButton,
-  Tooltip
+  Tooltip,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Tabs,
+  Tab
 } from '@mui/material';
 import {
   ArrowBack as BackIcon,
@@ -31,21 +41,26 @@ import { entregaService } from '../services/entregaService';
 interface ItensEntregaListProps {
   escola: EscolaEntrega;
   onVoltar: () => void;
-  filtros: { guiaId?: number; rotaId?: number };
+  filtros: {
+    guiaId?: number;
+    rotaId?: number;
+    dataInicio?: string;
+    dataFim?: string;
+    somentePendentes?: boolean;
+  };
 }
 
 export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVoltar, filtros }) => {
   const [itens, setItens] = useState<ItemEntrega[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [dialogAberto, setDialogAberto] = useState(false);
-  const [itemSelecionado, setItemSelecionado] = useState<ItemEntrega | null>(null);
-  const [dadosEntrega, setDadosEntrega] = useState<ConfirmarEntregaData>({
-    quantidade_entregue: 0,
-    nome_quem_entregou: '',
-    nome_quem_recebeu: ''
-  });
+  const [selecionados, setSelecionados] = useState<number[]>([]);
+  const [quantidadesSelecionadas, setQuantidadesSelecionadas] = useState<Record<number, number>>({});
+  const [nomeRecebedor, setNomeRecebedor] = useState('');
+  const [dialogRevisaoAberto, setDialogRevisaoAberto] = useState(false);
+  const [dialogSucessoAberto, setDialogSucessoAberto] = useState(false);
   const [processando, setProcessando] = useState(false);
+  const [abaAtiva, setAbaAtiva] = useState<'pendentes' | 'entregues'>('pendentes');
 
   useEffect(() => {
     carregarItens();
@@ -55,8 +70,18 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
     try {
       setLoading(true);
       setError(null);
-      const data = await entregaService.listarItensPorEscola(escola.id, filtros.guiaId);
+      const data = await entregaService.listarItensPorEscola(
+        escola.id,
+        filtros.guiaId,
+        undefined,
+        filtros.dataInicio,
+        filtros.dataFim,
+        undefined
+      );
       setItens(data);
+      setSelecionados([]);
+      setQuantidadesSelecionadas({});
+      setNomeRecebedor('');
     } catch (err) {
       console.error('Erro ao carregar itens:', err);
       setError('Erro ao carregar itens para entrega');
@@ -65,34 +90,74 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
     }
   };
 
-  const abrirDialogEntrega = (item: ItemEntrega) => {
-    setItemSelecionado(item);
-    setDadosEntrega({
-      quantidade_entregue: item.quantidade,
-      nome_quem_entregou: '',
-      nome_quem_recebeu: ''
+  const alternarSelecionado = (item: ItemEntrega) => {
+    if (item.entrega_confirmada) return;
+    setSelecionados((prev) => {
+      const jaSelecionado = prev.includes(item.id);
+      if (jaSelecionado) {
+        return prev.filter((id) => id !== item.id);
+      }
+      return [...prev, item.id];
     });
-    setDialogAberto(true);
-  };
-
-  const fecharDialog = () => {
-    setDialogAberto(false);
-    setItemSelecionado(null);
-    setDadosEntrega({
-      quantidade_entregue: 0,
-      nome_quem_entregou: '',
-      nome_quem_recebeu: ''
+    setQuantidadesSelecionadas((prev) => {
+      if (prev[item.id] !== undefined) return prev;
+      return { ...prev, [item.id]: item.quantidade };
     });
   };
 
-  const confirmarEntrega = async () => {
-    if (!itemSelecionado) return;
+  const handleAbaChange = (_: React.SyntheticEvent, value: 'pendentes' | 'entregues') => {
+    setAbaAtiva(value);
+    setSelecionados([]);
+    setQuantidadesSelecionadas({});
+    setNomeRecebedor('');
+  };
 
+  const selecionarTodosPendentes = () => {
+    const pendentes = itens.filter((item) => !item.entrega_confirmada);
+    const ids = pendentes.map((item) => item.id);
+    setSelecionados(ids);
+    setQuantidadesSelecionadas((prev) => {
+      const atualizado = { ...prev };
+      pendentes.forEach((item) => {
+        if (atualizado[item.id] === undefined) {
+          atualizado[item.id] = item.quantidade;
+        }
+      });
+      return atualizado;
+    });
+  };
+
+  const limparSelecao = () => {
+    setSelecionados([]);
+  };
+
+  const abrirRevisao = () => {
+    setDialogRevisaoAberto(true);
+  };
+
+  const fecharRevisao = () => {
+    if (processando) return;
+    setDialogRevisaoAberto(false);
+  };
+
+  const confirmarEntregaSelecionados = async () => {
+    const nome = nomeRecebedor.trim();
+    if (!nome) return;
     try {
       setProcessando(true);
-      await entregaService.confirmarEntrega(itemSelecionado.id, dadosEntrega);
-      await carregarItens(); // Recarregar lista
-      fecharDialog();
+      const itensSelecionados = itens.filter((item) => selecionados.includes(item.id));
+      await Promise.all(
+        itensSelecionados.map((item) =>
+          entregaService.confirmarEntrega(item.id, {
+            quantidade_entregue: Number(quantidadesSelecionadas[item.id] ?? item.quantidade),
+            nome_quem_entregou: nome,
+            nome_quem_recebeu: nome
+          } as ConfirmarEntregaData)
+        )
+      );
+      await carregarItens();
+      setDialogRevisaoAberto(false);
+      setDialogSucessoAberto(true);
     } catch (err) {
       console.error('Erro ao confirmar entrega:', err);
       setError('Erro ao confirmar entrega');
@@ -123,6 +188,15 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
     return <Chip label="Pendente" color="warning" size="small" />;
   };
 
+  const itensSelecionados = itens.filter((item) => selecionados.includes(item.id));
+  const possuiQuantidadeInvalida = itensSelecionados.some((item) => {
+    const valor = Number(quantidadesSelecionadas[item.id]);
+    return Number.isNaN(valor) || valor <= 0;
+  });
+  const itensPendentes = itens.filter((item) => !item.entrega_confirmada);
+  const itensEntregues = itens.filter((item) => item.entrega_confirmada);
+  const itensExibidos = abaAtiva === 'pendentes' ? itensPendentes : itensEntregues;
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
@@ -141,7 +215,7 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
         <Box>
           <Typography variant="h5">{escola.nome}</Typography>
           <Typography variant="body2" color="text.secondary">
-            {itens.length} itens para entrega
+            {itensExibidos.length} itens
           </Typography>
         </Box>
       </Box>
@@ -152,9 +226,14 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
         </Alert>
       )}
 
+      <Tabs value={abaAtiva} onChange={handleAbaChange} sx={{ mb: 2 }}>
+        <Tab value="pendentes" label={`Pendentes (${itensPendentes.length})`} />
+        <Tab value="entregues" label={`Entregues (${itensEntregues.length})`} />
+      </Tabs>
+
       {/* Lista de Itens */}
       <Grid container spacing={2}>
-        {itens.map((item) => (
+        {itensExibidos.map((item) => (
           <Grid item xs={12} key={item.id}>
             <Card>
               <CardContent>
@@ -166,7 +245,15 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
                       {item.lote && ` • Lote: ${item.lote}`}
                     </Typography>
                   </Box>
-                  {getStatusChip(item)}
+                  <Box display="flex" alignItems="center" gap={1}>
+                    {abaAtiva === 'pendentes' && !item.entrega_confirmada && (
+                      <Checkbox
+                        checked={selecionados.includes(item.id)}
+                        onChange={() => alternarSelecionado(item)}
+                      />
+                    )}
+                    {getStatusChip(item)}
+                  </Box>
                 </Box>
 
                 <Grid container spacing={2} sx={{ mb: 2 }}>
@@ -220,18 +307,28 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
                   </Box>
                 )}
 
-                <Box display="flex" gap={1} mt={2}>
-                  {!item.entrega_confirmada ? (
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      startIcon={<DeliveryIcon />}
-                      onClick={() => abrirDialogEntrega(item)}
-                      disabled={processando}
-                    >
-                      Confirmar Entrega
-                    </Button>
-                  ) : (
+                {abaAtiva === 'pendentes' && !item.entrega_confirmada && selecionados.includes(item.id) && (
+                  <Grid container spacing={2} sx={{ mb: 2 }}>
+                    <Grid item xs={12} sm={4}>
+                      <TextField
+                        label="Quantidade a entregar"
+                        type="number"
+                        fullWidth
+                        value={quantidadesSelecionadas[item.id] ?? item.quantidade}
+                        onChange={(e) =>
+                          setQuantidadesSelecionadas((prev) => ({
+                            ...prev,
+                            [item.id]: Number(e.target.value)
+                          }))
+                        }
+                        inputProps={{ min: 0, step: 0.001 }}
+                      />
+                    </Grid>
+                  </Grid>
+                )}
+
+                {abaAtiva === 'entregues' && item.entrega_confirmada && (
+                  <Box display="flex" gap={1} mt={2}>
                     <Button
                       variant="outlined"
                       color="error"
@@ -241,93 +338,111 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
                     >
                       Cancelar Entrega
                     </Button>
-                  )}
-                </Box>
+                  </Box>
+                )}
               </CardContent>
             </Card>
           </Grid>
         ))}
       </Grid>
 
-      {itens.length === 0 && (
+      {itensExibidos.length === 0 && (
         <Box textAlign="center" py={4}>
           <Typography variant="h6" color="text.secondary">
-            Nenhum item para entrega encontrado
+            {abaAtiva === 'pendentes' ? 'Nenhum item pendente encontrado' : 'Nenhum item entregue encontrado'}
           </Typography>
         </Box>
       )}
 
-      {/* Dialog de Confirmação de Entrega */}
-      <Dialog open={dialogAberto} onClose={fecharDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          Confirmar Entrega
-          {itemSelecionado && (
-            <Typography variant="body2" color="text.secondary">
-              {itemSelecionado.produto_nome}
-            </Typography>
-          )}
-        </DialogTitle>
-        
+      {abaAtiva === 'pendentes' && itensPendentes.length > 0 && (
+        <Box display="flex" justifyContent="space-between" alignItems="center" mt={3}>
+          <Box display="flex" gap={1}>
+            <Button variant="outlined" onClick={selecionarTodosPendentes}>
+              Selecionar todos pendentes
+            </Button>
+            {selecionados.length > 0 && (
+              <Button variant="text" onClick={limparSelecao}>
+                Limpar seleção
+              </Button>
+            )}
+          </Box>
+          <Button
+            variant="contained"
+            startIcon={<DeliveryIcon />}
+            onClick={abrirRevisao}
+            disabled={selecionados.length === 0 || possuiQuantidadeInvalida}
+          >
+            Prosseguir
+          </Button>
+        </Box>
+      )}
+
+      <Dialog open={dialogRevisaoAberto} onClose={fecharRevisao} maxWidth="md" fullWidth>
+        <DialogTitle>Revisar Entrega</DialogTitle>
         <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12}>
-              <TextField
-                label="Quantidade Entregue"
-                type="number"
-                fullWidth
-                value={dadosEntrega.quantidade_entregue}
-                onChange={(e) => setDadosEntrega(prev => ({
-                  ...prev,
-                  quantidade_entregue: Number(e.target.value)
-                }))}
-                inputProps={{ min: 0, step: 0.001 }}
-                helperText={itemSelecionado ? `Quantidade original: ${itemSelecionado.quantidade} ${itemSelecionado.unidade}` : ''}
-              />
-            </Grid>
-            
-            <Grid item xs={12}>
-              <TextField
-                label="Nome de Quem Entregou"
-                fullWidth
-                value={dadosEntrega.nome_quem_entregou}
-                onChange={(e) => setDadosEntrega(prev => ({
-                  ...prev,
-                  nome_quem_entregou: e.target.value
-                }))}
-                required
-              />
-            </Grid>
-            
-            <Grid item xs={12}>
-              <TextField
-                label="Nome de Quem Recebeu"
-                fullWidth
-                value={dadosEntrega.nome_quem_recebeu}
-                onChange={(e) => setDadosEntrega(prev => ({
-                  ...prev,
-                  nome_quem_recebeu: e.target.value
-                }))}
-                required
-              />
-            </Grid>
-          </Grid>
+          <TableContainer component={Paper} sx={{ mt: 1 }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Produto</TableCell>
+                  <TableCell>Guia</TableCell>
+                  <TableCell align="right">Quantidade</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {itensSelecionados.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>{item.produto_nome}</TableCell>
+                    <TableCell>{item.mes}/{item.ano}</TableCell>
+                    <TableCell align="right">
+                      {quantidadesSelecionadas[item.id] ?? item.quantidade} {item.unidade}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+          <Box mt={2}>
+            <TextField
+              label="Nome de quem recebeu"
+              fullWidth
+              value={nomeRecebedor}
+              onChange={(e) => setNomeRecebedor(e.target.value)}
+              required
+            />
+          </Box>
         </DialogContent>
-        
         <DialogActions>
-          <Button onClick={fecharDialog} disabled={processando}>
-            Cancelar
+          <Button onClick={fecharRevisao} disabled={processando}>
+            Voltar
           </Button>
           <Button
-            onClick={confirmarEntrega}
+            onClick={confirmarEntregaSelecionados}
             variant="contained"
-            disabled={
-              processando ||
-              !dadosEntrega.nome_quem_entregou.trim() ||
-              !dadosEntrega.nome_quem_recebeu.trim() ||
-              dadosEntrega.quantidade_entregue <= 0
-            }
+            disabled={processando || !nomeRecebedor.trim() || selecionados.length === 0 || possuiQuantidadeInvalida}
           >
-            {processando ? <CircularProgress size={20} /> : 'Confirmar Entrega'}
+            {processando ? <CircularProgress size={20} /> : 'Realizar entrega'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={dialogSucessoAberto} onClose={() => setDialogSucessoAberto(false)} maxWidth="sm" fullWidth>
+        <DialogContent>
+          <Box display="flex" flexDirection="column" alignItems="center" py={3}>
+            <CheckIcon className="bounce" color="success" sx={{ fontSize: 64, mb: 2 }} />
+            <Typography variant="h6">Entrega confirmada com sucesso</Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            variant="contained"
+            onClick={() => {
+              setDialogSucessoAberto(false);
+              onVoltar();
+            }}
+          >
+            Voltar para entregas
           </Button>
         </DialogActions>
       </Dialog>

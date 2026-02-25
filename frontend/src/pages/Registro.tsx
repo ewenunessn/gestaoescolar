@@ -6,10 +6,6 @@ import {
   Typography,
   Paper,
   Alert,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   IconButton,
   InputAdornment,
   Stepper,
@@ -18,7 +14,6 @@ import {
   Card,
   CardContent,
   Divider,
-  Chip,
   LinearProgress
 } from '@mui/material';
 import {

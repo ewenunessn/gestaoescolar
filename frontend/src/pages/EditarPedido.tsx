@@ -109,7 +109,7 @@ export default function EditarPedido() {
                 quantidade: parseFloat(item.quantidade) || 0, // Remove zeros desnecessários
                 preco_unitario: parseFloat(item.preco_unitario) || 0, // Garantir que é número
                 valor_total: parseFloat(item.valor_total) || 0, // Garantir que é número
-                data_entrega_prevista: item.data_entrega_prevista || getDataPadrao(),
+                data_entrega_prevista: item.data_entrega_prevista ? item.data_entrega_prevista.split('T')[0] : getDataPadrao(),
                 observacoes: item.observacoes || '',
                 saldo_disponivel: parseFloat((item as any).saldo_disponivel) || 0
             }));

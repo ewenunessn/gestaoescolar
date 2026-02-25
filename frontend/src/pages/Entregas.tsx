@@ -9,7 +9,16 @@ import PageBreadcrumbs from '../components/PageBreadcrumbs';
 
 const Entregas: React.FC = () => {
   const [escolaSelecionada, setEscolaSelecionada] = useState<EscolaEntrega | null>(null);
-  const [filtros, setFiltros] = useState<{ guiaId?: number; rotaId?: number }>({});
+  const [filtros, setFiltros] = useState<{
+    guiaId?: number;
+    rotaId?: number;
+    dataInicio?: string;
+    dataFim?: string;
+    somentePendentes?: boolean;
+  }>({
+    somentePendentes: true,
+    dataFim: new Date().toISOString().split('T')[0]
+  });
 
   const handleEscolaSelect = (escola: EscolaEntrega) => {
     setEscolaSelecionada(escola);
@@ -19,8 +28,14 @@ const Entregas: React.FC = () => {
     setEscolaSelecionada(null);
   };
 
-  const handleFiltroChange = (guiaId?: number, rotaId?: number) => {
-    setFiltros({ guiaId, rotaId });
+  const handleFiltroChange = (novosFiltros: {
+    guiaId?: number;
+    rotaId?: number;
+    dataInicio?: string;
+    dataFim?: string;
+    somentePendentes?: boolean;
+  }) => {
+    setFiltros(novosFiltros);
     // Reset escola selecionada quando filtros mudarem
     setEscolaSelecionada(null);
   };

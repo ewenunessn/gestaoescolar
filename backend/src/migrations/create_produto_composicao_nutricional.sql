@@ -1,52 +1,33 @@
--- Criação da tabela de composição nutricional de produtos
--- Executar este script no banco de dados PostgreSQL
-
+-- Criar tabela para composição nutricional dos produtos
 CREATE TABLE IF NOT EXISTS produto_composicao_nutricional (
-    produto_id INTEGER PRIMARY KEY REFERENCES produtos(id) ON DELETE CASCADE,
-    valor_energetico_kcal DECIMAL(10,2),
-    valor_energetico_kj DECIMAL(10,2),
-    carboidratos DECIMAL(10,2),
-    proteinas DECIMAL(10,2),
-    gorduras_totais DECIMAL(10,2),
-    gorduras_saturadas DECIMAL(10,2),
-    gorduras_trans DECIMAL(10,2),
-    fibra_alimentar DECIMAL(10,2),
-    sodio DECIMAL(10,2),
-    acucares_totais DECIMAL(10,2),
-    acucares_adicionados DECIMAL(10,2),
-    colesterol DECIMAL(10,2),
-    calcio DECIMAL(10,2),
-    ferro DECIMAL(10,2),
-    vitamina_c DECIMAL(10,2),
-    porcao_referencia DECIMAL(10,2) DEFAULT 100,
-    unidade_porcao VARCHAR(20) DEFAULT 'g',
+    id SERIAL PRIMARY KEY,
+    produto_id INTEGER NOT NULL REFERENCES produtos(id) ON DELETE CASCADE,
+    calorias DECIMAL(8,2),
+    proteinas DECIMAL(8,2),
+    carboidratos DECIMAL(8,2),
+    gorduras DECIMAL(8,2),
+    fibras DECIMAL(8,2),
+    sodio DECIMAL(8,2),
+    acucares DECIMAL(8,2),
+    gorduras_saturadas DECIMAL(8,2),
+    gorduras_trans DECIMAL(8,2),
+    colesterol DECIMAL(8,2),
+    calcio DECIMAL(8,2),
+    ferro DECIMAL(8,2),
+    vitamina_c DECIMAL(8,2),
+    vitamina_a DECIMAL(8,2),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(produto_id)
 );
 
--- Índice para melhorar performance
-CREATE INDEX IF NOT EXISTS idx_produto_composicao_produto_id 
-ON produto_composicao_nutricional(produto_id);
+-- Criar índice para melhor performance
+CREATE INDEX IF NOT EXISTS idx_produto_composicao_produto_id ON produto_composicao_nutricional(produto_id);
 
--- Função para atualizar o timestamp
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
-    RETURN NEW;
-END;
-$$ language 'plpgsql';
-
--- Trigger para atualizar updated_at
-DROP TRIGGER IF EXISTS update_produto_composicao_updated_at ON produto_composicao_nutricional;
-CREATE TRIGGER update_produto_composicao_updated_at
-    BEFORE UPDATE ON produto_composicao_nutricional
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
-
--- Comentários das colunas
-COMMENT ON TABLE produto_composicao_nutricional IS 'Composição nutricional dos produtos';
-COMMENT ON COLUMN produto_composicao_nutricional.valor_energetico_kcal IS 'Valor energético em kcal por porção';
-COMMENT ON COLUMN produto_composicao_nutricional.carboidratos IS 'Carboidratos em gramas por porção';
-COMMENT ON COLUMN produto_composicao_nutricional.proteinas IS 'Proteínas em gramas por porção';
-COMMENT ON COLUMN produto_composicao_nutricional.gorduras_totais IS 'Gorduras totais em gramas por porção';
+-- Comentários para documentação
+COMMENT ON TABLE produto_composicao_nutricional IS 'Armazena informações nutricionais dos produtos';
+COMMENT ON COLUMN produto_composicao_nutricional.produto_id IS 'Referência ao produto';
+COMMENT ON COLUMN produto_composicao_nutricional.calorias IS 'Calorias por 100g';
+COMMENT ON COLUMN produto_composicao_nutricional.proteinas IS 'Proteínas em gramas por 100g';
+COMMENT ON COLUMN produto_composicao_nutricional.carboidratos IS 'Carboidratos em gramas por 100g';
+COMMENT ON COLUMN produto_composicao_nutricional.gorduras IS 'Gorduras totais em gramas por 100g';

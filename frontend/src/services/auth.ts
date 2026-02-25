@@ -2,7 +2,7 @@
 import { apiWithRetry } from "./api";
 import { config } from "../config/config";
 
-export async function login(email: string, password: string, tenantId?: string) {
+export async function login(email: string, password: string) {
   try {
     console.log("🔐 Tentando login...");
     const loginData: any = {
@@ -10,19 +10,10 @@ export async function login(email: string, password: string, tenantId?: string) 
       senha: password,
     };
     
-    // Include tenant context if provided
-    if (tenantId) {
-      loginData.tenantId = tenantId;
-    }
-    
     const { data } = await apiWithRetry.post("/auth/login", loginData);
     console.log("✅ Login realizado com sucesso");
     
-    // Store tenant context if returned
     const result = data.data || data;
-    if (result.tenant) {
-      localStorage.setItem('currentTenantId', result.tenant.id);
-    }
     
     return result;
   } catch (err) {
@@ -59,7 +50,6 @@ export function isAuthenticated(): boolean {
 export function logout() {
   console.log("🚪 Fazendo logout...");
   localStorage.removeItem("token");
-  localStorage.removeItem("currentTenantId");
   window.location.href = "/login";
 }
 

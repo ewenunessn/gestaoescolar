@@ -1,12 +1,11 @@
 /**
  * Queries otimizadas para operações de estoque
- * Versão simplificada sem filtros complexos de tenant
+ * Versão simplificada
  */
 
 const db = require("../database");
 
 export const getEstoqueEscolarResumoOptimized = async (
-  tenantId?: string, 
   options: { limit?: number; offset?: number; categoria?: string } = {}
 ) => {
   const { limit = 100, offset = 0 } = options;
@@ -16,8 +15,15 @@ export const getEstoqueEscolarResumoOptimized = async (
       p.id as produto_id,
       p.nome as produto_nome,
       p.descricao as produto_descricao,
-      'Kg' as unidade,
       p.categoria,
+      COALESCE(
+        (SELECT cp.unidade 
+         FROM contrato_produtos cp 
+         WHERE cp.produto_id = p.id 
+         ORDER BY cp.ativo DESC, cp.created_at DESC
+         LIMIT 1), 
+        'un'
+      ) as unidade,
       COUNT(DISTINCT e.id) as total_escolas,
       COUNT(DISTINCT ee.escola_id) FILTER (WHERE ee.quantidade_atual > 0) as total_escolas_com_estoque,
       COALESCE(SUM(ee.quantidade_atual), 0) as total_quantidade
@@ -34,21 +40,34 @@ export const getEstoqueEscolarResumoOptimized = async (
   return result.rows;
 };
 
-export const getMatrizEstoqueOptimized = async (produtoIds?: number[], limiteProdutos: number = 50, tenantId?: string) => {
+export const getMatrizEstoqueOptimized = async (produtoIds?: number[], limiteProdutos: number = 50) => {
   const query = `
     SELECT 
       e.id as escola_id,
       e.nome as escola_nome,
       p.id as produto_id,
       p.nome as produto_nome,
-      'Kg' as unidade,
       p.categoria,
-      COALESCE(ee.quantidade_atual, 0) as quantidade_atual
+      p.unidade,
+      COALESCE(ee.quantidade_atual, 0) as quantidade_atual,
+      (SELECT MIN(data_validade) FROM estoque_lotes el WHERE el.escola_id = e.id AND el.produto_id = p.id AND el.status = 'ativo') as data_validade
     FROM escolas e
     CROSS JOIN (
-      SELECT * FROM produtos 
-      WHERE ativo = true 
-      ORDER BY categoria NULLS LAST, nome
+      SELECT 
+        p.id, 
+        p.nome, 
+        p.categoria,
+        COALESCE(
+          (SELECT cp.unidade 
+           FROM contrato_produtos cp 
+           WHERE cp.produto_id = p.id 
+           ORDER BY cp.ativo DESC, cp.created_at DESC
+           LIMIT 1), 
+          'un'
+        ) as unidade
+      FROM produtos p
+      WHERE p.ativo = true 
+      ORDER BY p.categoria NULLS LAST, p.nome
       LIMIT $1
     ) p
     LEFT JOIN estoque_escolas ee ON (ee.escola_id = e.id AND ee.produto_id = p.id)
@@ -62,7 +81,6 @@ export const getMatrizEstoqueOptimized = async (produtoIds?: number[], limitePro
 
 export const getEstoqueMultiplosProdutosOptimized = async (
   produtoIds: number[], 
-  tenantId?: string,
   options: { escolaId?: number; incluirLotes?: boolean } = {}
 ) => {
   if (!produtoIds || produtoIds.length === 0) {
@@ -74,8 +92,15 @@ export const getEstoqueMultiplosProdutosOptimized = async (
       p.id as produto_id,
       p.nome as produto_nome,
       p.descricao as produto_descricao,
-      'Kg' as unidade,
       p.categoria,
+      COALESCE(
+        (SELECT cp.unidade 
+         FROM contrato_produtos cp 
+         WHERE cp.produto_id = p.id 
+         ORDER BY cp.ativo DESC, cp.created_at DESC
+         LIMIT 1), 
+        'un'
+      ) as unidade,
       e.id as escola_id,
       e.nome as escola_nome,
       COALESCE(ee.quantidade_atual, 0) as quantidade_atual,
@@ -99,7 +124,6 @@ export const getProdutosProximosVencimentoOptimized = async (diasLimite: number 
     SELECT 
       el.produto_id,
       p.nome as produto_nome,
-      'Kg' as unidade,
       el.lote,
       el.quantidade_atual,
       el.data_validade,
@@ -128,8 +152,15 @@ export const getRelatorioValidadePorEscolaOptimized = async (escolaId: number, d
     SELECT 
       p.id as produto_id,
       p.nome as produto_nome,
-      'Kg' as unidade,
       p.categoria,
+      COALESCE(
+        (SELECT cp.unidade 
+         FROM contrato_produtos cp 
+         WHERE cp.produto_id = p.id 
+         ORDER BY cp.ativo DESC, cp.created_at DESC
+         LIMIT 1), 
+        'un'
+      ) as unidade,
       COALESCE(ee.quantidade_atual, 0) as quantidade_atual
     FROM produtos p
     LEFT JOIN estoque_escolas ee ON (ee.produto_id = p.id AND ee.escola_id = $1)
@@ -189,7 +220,6 @@ export const getHistoricoMovimentacoesOptimized = async (
       eeh.documento_referencia,
       eeh.data_movimentacao,
       p.nome as produto_nome,
-      'Kg' as unidade,
       e.nome as escola_nome,
       u.nome as usuario_nome
     FROM estoque_escolas_historico eeh

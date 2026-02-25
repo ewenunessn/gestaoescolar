@@ -12,7 +12,6 @@ router.delete('/rotas/:id', RotaController.deletarRota);
 
 // Escolas da Rota
 router.get('/rotas/:rotaId/escolas', RotaController.listarEscolasRota);
-router.get('/escolas-filtradas', RotaController.listarEscolasFiltradas);
 router.post('/rotas/:rotaId/escolas', RotaController.adicionarEscolaRota);
 router.delete('/rotas/:rotaId/escolas/:escolaId', RotaController.removerEscolaRota);
 router.put('/rotas/:rotaId/escolas/ordem', RotaController.atualizarOrdemEscolas);
@@ -28,13 +27,6 @@ router.delete('/planejamentos/:id', RotaController.deletarPlanejamento);
 router.get('/escolas-disponiveis', RotaController.listarEscolasDisponiveis);
 router.get('/escolas/:escolaId/verificar-rota', RotaController.verificarEscolaEmRota);
 
-// Para o módulo de entregas
-router.get('/rotas-entregas', RotaController.listarRotasComEntregas);
-router.get('/rotas-filtradas', RotaController.listarRotasFiltradas);
 
-// Configuração de Entrega
-router.get('/configuracao-ativa', RotaController.buscarConfiguracaoAtiva);
-router.post('/configuracao', RotaController.salvarConfiguracao);
-router.get('/configuracoes', RotaController.listarConfiguracoes);
 
 export default router;

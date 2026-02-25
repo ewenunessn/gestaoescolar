@@ -53,7 +53,7 @@ interface Cardapio {
   periodo_dias: number;
   data_inicio: string;
   data_fim: string;
-  modalidade_nome?: string;
+  modalidades?: string;
   ativo: boolean;
 }
 
@@ -107,14 +107,14 @@ const CardapiosPage = () => {
 
   // Extrair modalidades únicas para filtros
   const modalidades = useMemo(() => {
-    return [...new Set(cardapios.map(c => c.modalidade_nome).filter(Boolean))].sort();
+    return [...new Set(cardapios.map(c => c.modalidades).filter(Boolean))].sort();
   }, [cardapios]);
 
   // Filtrar e ordenar cardápios
   const filteredCardapios = useMemo(() => {
     return cardapios.filter(cardapio => {
       const matchesSearch = cardapio.nome.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesModalidade = !selectedModalidade || cardapio.modalidade_nome === selectedModalidade;
+      const matchesModalidade = !selectedModalidade || cardapio.modalidades === selectedModalidade;
       const matchesStatus = !selectedStatus ||
         (selectedStatus === 'ativo' && cardapio.ativo) ||
         (selectedStatus === 'inativo' && !cardapio.ativo);
@@ -215,7 +215,7 @@ const CardapiosPage = () => {
                           </Box>
                         </Box>
                       </TableCell>
-                      <TableCell align="center"><Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>{cardapio.modalidade_nome || 'N/A'}</Typography></TableCell>
+                      <TableCell align="center"><Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>{cardapio.modalidades || 'Sem modalidades'}</Typography></TableCell>
                       <TableCell align="center"><Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>{`${formatarData(cardapio.data_inicio)} a ${formatarData(cardapio.data_fim)}`}</Typography></TableCell>
 
                       <TableCell align="center"><Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => navigate(`/cardapios/${cardapio.id}`)} color="primary"><Visibility fontSize="small" /></IconButton></Tooltip></TableCell>

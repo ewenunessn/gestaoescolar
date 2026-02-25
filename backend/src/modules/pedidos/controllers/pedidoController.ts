@@ -13,21 +13,11 @@ const STATUS_PEDIDO = {
 
 export async function listarPedidos(req: Request, res: Response) {
   try {
-    // Obter tenant_id do req.tenant ou do header
-    const tenantId = req.tenant?.id || req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
-    
-    if (!tenantId) {
-      return res.status(400).json({
-        success: false,
-        message: "Contexto de tenant não encontrado"
-      });
-    }
-    
     const { status, contrato_id, escola_id, data_inicio, data_fim, page = 1, limit = 50 } = req.query;
 
-    let whereClause = 'p.tenant_id = $1';
-    const params: any[] = [tenantId];
-    let paramCount = 1;
+    let whereClause = '1=1';
+    const params: any[] = [];
+    let paramCount = 0;
 
     if (status) {
       paramCount++;
@@ -116,17 +106,6 @@ export async function buscarPedido(req: Request, res: Response) {
   try {
     const { id } = req.params;
 
-    // Obter tenant_id do req.tenant ou do header
-    const tenantId = req.tenant?.id || req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
-    
-    if (!tenantId) {
-      return res.status(400).json({
-        success: false,
-        message: "Contexto de tenant não encontrado"
-      });
-    }
-
-    // IMPORTANTE: Filtrar por tenant_id para segurança
     const pedidoResult = await db.query(`
       SELECT 
         p.*,
@@ -135,7 +114,7 @@ export async function buscarPedido(req: Request, res: Response) {
       FROM pedidos p
       JOIN usuarios u ON p.usuario_criacao_id = u.id
       LEFT JOIN usuarios ua ON p.usuario_aprovacao_id = ua.id
-      WHERE p.id = $1 AND p.tenant_id = $2
+      WHERE p.id = $1
     `, [id]);
 
     if (pedidoResult.rows.length === 0) {
@@ -239,17 +218,6 @@ export async function criarPedido(req: Request, res: Response) {
   try {
     await client.query('BEGIN');
 
-    // Obter tenant_id do req.tenant ou do header
-    const tenantId = req.tenant?.id || req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
-    
-    if (!tenantId) {
-      await client.query('ROLLBACK');
-      return res.status(400).json({
-        success: false,
-        message: "Contexto de tenant não encontrado"
-      });
-    }
-
     const {
       observacoes,
       itens,
@@ -272,7 +240,7 @@ export async function criarPedido(req: Request, res: Response) {
     const maxNumeroResult = await client.query(`
       SELECT COALESCE(MAX(CAST(SUBSTRING(numero FROM 8) AS INTEGER)), 0) as max_sequencial
       FROM pedidos 
-      WHERE EXTRACT(YEAR FROM created_at) = $1 AND tenant_id = $2 AND numero LIKE $3
+      WHERE EXTRACT(YEAR FROM created_at) = $1 AND numero LIKE $2
     `, [ano, `PED${ano}%`]);
 
     const proximoSequencial = (parseInt(maxNumeroResult.rows[0].max_sequencial) + 1).toString().padStart(6, '0');
@@ -280,13 +248,12 @@ export async function criarPedido(req: Request, res: Response) {
 
     let valor_total = 0;
     for (const item of itens) {
-      // IMPORTANTE: Verificar se o contrato_produto pertence ao tenant
       const cpResult = await client.query(`
         SELECT cp.*, p.nome as produto_nome, c.status as contrato_status
         FROM contrato_produtos cp
         JOIN produtos p ON cp.produto_id = p.id
         JOIN contratos c ON cp.contrato_id = c.id
-        WHERE cp.id = $1 AND cp.ativo = true AND c.tenant_id = $2
+        WHERE cp.id = $1 AND cp.ativo = true
       `, [item.contrato_produto_id]);
 
       if (cpResult.rows.length === 0) {
@@ -320,12 +287,11 @@ export async function criarPedido(req: Request, res: Response) {
 
     const status_inicial = salvar_como_rascunho ? 'rascunho' : 'pendente';
 
-    // IMPORTANTE: Incluir tenant_id no INSERT
     const pedidoResult = await client.query(`
       INSERT INTO pedidos (
         numero, data_pedido, status, valor_total, observacoes, usuario_criacao_id
       )
-      VALUES ($1, CURRENT_DATE, $2, $3, $4, $5, $6)
+      VALUES ($1, CURRENT_DATE, $2, $3, $4, $5)
       RETURNING *
     `, [numero, status_inicial, valor_total, observacoes, usuario_criacao_id]);
 
@@ -347,7 +313,7 @@ export async function criarPedido(req: Request, res: Response) {
           pedido_id, contrato_produto_id, produto_id, quantidade,
           preco_unitario, valor_total, data_entrega_prevista, observacoes
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       `, [pedido_id, item.contrato_produto_id, produto_id, item.quantidade, preco_unitario, valor_item, item.data_entrega_prevista, item.observacoes]);
     }
 
@@ -392,22 +358,11 @@ export async function criarPedido(req: Request, res: Response) {
 
 export async function atualizarPedido(req: Request, res: Response) {
   try {
-    // Obter tenant_id do req.tenant ou do header
-    const tenantId = req.tenant?.id || req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
-    
-    if (!tenantId) {
-      return res.status(400).json({
-        success: false,
-        message: "Contexto de tenant não encontrado"
-      });
-    }
-
     const { id } = req.params;
     const { observacoes } = req.body;
 
-    // IMPORTANTE: Filtrar por tenant_id para segurança
     const pedidoResult = await db.query(`
-      SELECT status FROM pedidos WHERE id = $1 AND tenant_id = $2
+      SELECT status FROM pedidos WHERE id = $1
     `, [id]);
 
     if (pedidoResult.rows.length === 0) {
@@ -424,11 +379,10 @@ export async function atualizarPedido(req: Request, res: Response) {
       });
     }
 
-    // IMPORTANTE: Filtrar por tenant_id no UPDATE
     const result = await db.query(`
       UPDATE pedidos 
       SET observacoes = $1, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $2 AND tenant_id = $3
+      WHERE id = $2
       RETURNING *
     `, [observacoes, id]);
 
@@ -449,16 +403,6 @@ export async function atualizarPedido(req: Request, res: Response) {
 
 export async function atualizarStatusPedido(req: Request, res: Response) {
   try {
-    // Obter tenant_id do req.tenant ou do header
-    const tenantId = req.tenant?.id || req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
-    
-    if (!tenantId) {
-      return res.status(400).json({
-        success: false,
-        message: "Contexto de tenant não encontrado"
-      });
-    }
-
     const { id } = req.params;
     const { status } = req.body;
     const usuario_id = (req as any).user?.id || 1;
@@ -715,23 +659,12 @@ export async function atualizarItensPedido(req: Request, res: Response) {
   try {
     await client.query('BEGIN');
 
-    // Obter tenant_id do req.tenant ou do header
-    const tenantId = req.tenant?.id || req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
-    
-    if (!tenantId) {
-      await client.query('ROLLBACK');
-      return res.status(400).json({
-        success: false,
-        message: "Contexto de tenant não encontrado"
-      });
-    }
-
     const { id } = req.params;
     const { itens } = req.body;
 
-    // IMPORTANTE: Verificar se o pedido existe, está em rascunho E pertence ao tenant
+    // Verificar se o pedido existe e está em rascunho
     const pedidoResult = await client.query(`
-      SELECT status FROM pedidos WHERE id = $1 AND tenant_id = $2
+      SELECT status FROM pedidos WHERE id = $1
     `, [id]);
 
     if (pedidoResult.rows.length === 0) {
@@ -756,13 +689,12 @@ export async function atualizarItensPedido(req: Request, res: Response) {
     // Adicionar novos itens
     let valor_total = 0;
     for (const item of itens) {
-      // IMPORTANTE: Verificar se o contrato_produto pertence ao tenant
       const cpResult = await client.query(`
         SELECT cp.*, p.nome as produto_nome, c.status as contrato_status
         FROM contrato_produtos cp
         JOIN produtos p ON cp.produto_id = p.id
         JOIN contratos c ON cp.contrato_id = c.id
-        WHERE cp.id = $1 AND cp.ativo = true AND c.tenant_id = $2
+        WHERE cp.id = $1 AND cp.ativo = true
       `, [item.contrato_produto_id]);
 
       if (cpResult.rows.length === 0) {
@@ -801,7 +733,7 @@ export async function atualizarItensPedido(req: Request, res: Response) {
           pedido_id, contrato_produto_id, produto_id, quantidade,
           preco_unitario, valor_total, data_entrega_prevista, observacoes
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       `, [id, item.contrato_produto_id, produto_id, item.quantidade, preco_unitario, valor_item, item.data_entrega_prevista, item.observacoes]);
     }
 
@@ -836,16 +768,6 @@ export async function listarProdutosContrato(req: Request, res: Response) {
   try {
     const { contrato_id } = req.params;
 
-    // Obter tenant_id do req.tenant ou do header
-    const tenantId = req.tenant?.id || req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
-    
-    if (!tenantId) {
-      return res.status(400).json({
-        success: false,
-        message: "Contexto de tenant não encontrado"
-      });
-    }
-
     // Check if unidade column exists in contrato_produtos table
     const columnCheck = await db.query(`
       SELECT column_name 
@@ -901,7 +823,6 @@ export async function listarProdutosContrato(req: Request, res: Response) {
       `;
     }
 
-    // IMPORTANTE: Filtrar por contrato
     const produtosResult = await db.query(query, [contrato_id]);
 
     res.json({
@@ -920,18 +841,7 @@ export async function listarProdutosContrato(req: Request, res: Response) {
 
 export async function listarTodosProdutosDisponiveis(req: Request, res: Response) {
   try {
-    // Obter tenant_id do req.tenant ou do header
-    const tenantId = req.tenant?.id || req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
-    
-    if (!tenantId) {
-      console.error("❌ Nenhum tenant encontrado - req.tenant:", req.tenant, "headers:", req.headers);
-      return res.status(400).json({
-        success: false,
-        message: "Contexto de tenant não encontrado"
-      });
-    }
-    
-    console.log(`✅ Listando produtos disponíveis para tenant: ${tenantId}`);
+    console.log(`✅ Listando produtos disponíveis`);
     
     // Check if unidade column exists in contrato_produtos table
     const columnCheck = await db.query(`
@@ -969,7 +879,6 @@ export async function listarTodosProdutosDisponiveis(req: Request, res: Response
         JOIN fornecedores f ON c.fornecedor_id = f.id
         WHERE cp.ativo = true 
           AND c.status = 'ativo'
-          AND c.tenant_id = $1
         ORDER BY f.nome, p.nome
       `;
     } else {
@@ -999,13 +908,11 @@ export async function listarTodosProdutosDisponiveis(req: Request, res: Response
         JOIN fornecedores f ON c.fornecedor_id = f.id
         WHERE cp.ativo = true 
           AND c.status = 'ativo'
-          AND c.tenant_id = $1
         ORDER BY f.nome, p.nome
       `;
     }
 
-    // IMPORTANTE: Filtrar por tenant_id
-    const produtosResult = await db.query(query, [tenantId]);
+    const produtosResult = await db.query(query);
 
     console.log(`📊 Produtos encontrados: ${produtosResult.rows.length}`);
     if (produtosResult.rows.length > 0) {

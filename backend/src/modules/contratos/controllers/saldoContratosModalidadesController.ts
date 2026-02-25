@@ -12,13 +12,6 @@ class SaldoContratosModalidadesController {
    */
   async listarSaldosModalidades(req: Request, res: Response): Promise<void> {
     try {
-      // Obter tenant_id do header
-      const tenantId = req.get('X-Tenant-ID');
-      if (!tenantId) {
-        res.status(400).json({ success: false, message: 'Header X-Tenant-ID é obrigatório' });
-        return;
-      }
-
       const {
         page = 1,
         limit = 50,
@@ -41,11 +34,10 @@ class SaldoContratosModalidadesController {
         JOIN fornecedores f ON c.fornecedor_id = f.id
         WHERE cp.ativo = true
           AND c.ativo = true
-          AND c.tenant_id = $1
       `;
 
-      const produtosParams: any[] = [tenantId];
-      let produtosParamIndex = 2;
+      const produtosParams: any[] = [];
+      let produtosParamIndex = 1;
 
       if (contrato_numero) {
         produtosQuery += ` AND c.numero ILIKE $${produtosParamIndex}`;
@@ -101,81 +93,61 @@ class SaldoContratosModalidadesController {
       // Agora buscar todas as modalidades para esses produtos
       let query = `
         SELECT 
-          COALESCE(cpm.id, 0) as id,
           cp.id as contrato_produto_id,
+          p.nome as produto_nome,
+          cp.unidade,
+          c.numero as contrato_numero,
+          c.id as contrato_id,
+          f.nome as fornecedor_nome,
+          f.id as fornecedor_id,
+          cp.preco_unitario,
+          cp.quantidade_contratada,
           m.id as modalidade_id,
+          m.nome as modalidade_nome,
           COALESCE(cpm.quantidade_inicial, 0) as quantidade_inicial,
           COALESCE(cpm.quantidade_consumida, 0) as quantidade_consumida,
           COALESCE(cpm.quantidade_disponivel, 0) as quantidade_disponivel,
-          COALESCE(cpm.ativo, true) as ativo,
-          cpm.created_at,
-          cpm.updated_at,
-          
-          cp.contrato_id,
-          cp.produto_id,
-          cp.quantidade_contratada as quantidade_contrato,
-          cp.preco_unitario,
-          cp.saldo as saldo_contrato,
-          cp.unidade,
-          
-          c.numero as contrato_numero,
-          c.data_inicio,
-          c.data_fim,
-          c.status as contrato_status,
-          
-          p.nome as produto_nome,
-          
-          m.nome as modalidade_nome,
-          m.codigo_financeiro as modalidade_codigo_financeiro,
-          m.valor_repasse as modalidade_valor_repasse,
-          
-          f.id as fornecedor_id,
-          f.nome as fornecedor_nome,
-          
-          (COALESCE(cpm.quantidade_disponivel, 0) * cp.preco_unitario) as valor_disponivel,
-          
-          CASE 
-            WHEN COALESCE(cpm.quantidade_disponivel, 0) <= 0 THEN 'ESGOTADO'
-            WHEN COALESCE(cpm.quantidade_disponivel, 0) <= (COALESCE(cpm.quantidade_inicial, 0) * 0.1) THEN 'BAIXO_ESTOQUE'
-            ELSE 'DISPONIVEL'
-          END as status
-          
+          COALESCE(cpm.ativo, false) as modalidade_ativa,
+          cpm.id as saldo_id,
+          (COALESCE(cpm.quantidade_disponivel, 0) * cp.preco_unitario) as valor_disponivel
         FROM contrato_produtos cp
-        CROSS JOIN modalidades m
-        LEFT JOIN contrato_produtos_modalidades cpm 
-          ON cp.id = cpm.contrato_produto_id 
-          AND m.id = cpm.modalidade_id
         JOIN contratos c ON cp.contrato_id = c.id
         JOIN produtos p ON cp.produto_id = p.id
         JOIN fornecedores f ON c.fornecedor_id = f.id
+        CROSS JOIN modalidades m
+        LEFT JOIN contrato_produtos_modalidades cpm ON (
+          cpm.contrato_produto_id = cp.id AND cpm.modalidade_id = m.id
+        )
         WHERE cp.id = ANY($1)
+          AND cp.ativo = true
+          AND c.ativo = true
           AND m.ativo = true
       `;
 
       const queryParams: any[] = [produtoIds];
-      let queryParamIndex = 2;
-
-      if (status) {
-        query += ` AND (CASE 
-            WHEN COALESCE(cpm.quantidade_disponivel, 0) <= 0 THEN 'ESGOTADO'
-            WHEN COALESCE(cpm.quantidade_disponivel, 0) <= (COALESCE(cpm.quantidade_inicial, 0) * 0.1) THEN 'BAIXO_ESTOQUE'
-            ELSE 'DISPONIVEL'
-          END) = $${queryParamIndex}`;
-        queryParams.push(status);
-        queryParamIndex++;
-      }
+      let paramIndex = 2;
 
       if (modalidade_id) {
-        query += ` AND m.id = $${queryParamIndex}`;
+        query += ` AND m.id = $${paramIndex}`;
         queryParams.push(parseInt(modalidade_id as string));
-        queryParamIndex++;
+        paramIndex++;
       }
 
-      query += ` ORDER BY c.numero, p.nome, m.nome`;
+      if (status) {
+        if (status === 'disponivel') {
+          query += ` AND COALESCE(cpm.quantidade_disponivel, 0) > 0`;
+        } else if (status === 'esgotado') {
+          query += ` AND COALESCE(cpm.quantidade_disponivel, 0) = 0`;
+        } else if (status === 'baixo_estoque') {
+          query += ` AND COALESCE(cpm.quantidade_disponivel, 0) > 0 AND COALESCE(cpm.quantidade_disponivel, 0) <= 10`;
+        }
+      }
+
+      query += ` ORDER BY p.nome, m.nome`;
 
       const result = await db.query(query, queryParams);
 
-      // Count query - contar produtos únicos por nome (agrupados)
+      // Contar total de produtos únicos para paginação
       let countQuery = `
         SELECT COUNT(DISTINCT p.nome) as total
         FROM contrato_produtos cp
@@ -184,11 +156,10 @@ class SaldoContratosModalidadesController {
         JOIN fornecedores f ON c.fornecedor_id = f.id
         WHERE cp.ativo = true
           AND c.ativo = true
-          AND c.tenant_id = $1
       `;
 
-      const countParams: any[] = [tenantId];
-      let countParamIndex = 2;
+      const countParams: any[] = [];
+      let countParamIndex = 1;
 
       if (contrato_numero) {
         countQuery += ` AND c.numero ILIKE $${countParamIndex}`;
@@ -211,67 +182,17 @@ class SaldoContratosModalidadesController {
       const countResult = await db.query(countQuery, countParams);
       const total = parseInt(countResult.rows[0].total);
 
-      // Estatísticas
-      const statsQuery = `
-        SELECT 
-          COUNT(*) as total_itens,
-          COUNT(CASE WHEN (CASE 
-            WHEN COALESCE(cpm.quantidade_disponivel, 0) <= 0 THEN 'ESGOTADO'
-            WHEN COALESCE(cpm.quantidade_disponivel, 0) <= (COALESCE(cpm.quantidade_inicial, 0) * 0.1) THEN 'BAIXO_ESTOQUE'
-            ELSE 'DISPONIVEL'
-          END) = 'DISPONIVEL' THEN 1 END) as itens_disponiveis,
-          COUNT(CASE WHEN (CASE 
-            WHEN COALESCE(cpm.quantidade_disponivel, 0) <= 0 THEN 'ESGOTADO'
-            WHEN COALESCE(cpm.quantidade_disponivel, 0) <= (COALESCE(cpm.quantidade_inicial, 0) * 0.1) THEN 'BAIXO_ESTOQUE'
-            ELSE 'DISPONIVEL'
-          END) = 'BAIXO_ESTOQUE' THEN 1 END) as itens_baixo_estoque,
-          COUNT(CASE WHEN (CASE 
-            WHEN COALESCE(cpm.quantidade_disponivel, 0) <= 0 THEN 'ESGOTADO'
-            WHEN COALESCE(cpm.quantidade_disponivel, 0) <= (COALESCE(cpm.quantidade_inicial, 0) * 0.1) THEN 'BAIXO_ESTOQUE'
-            ELSE 'DISPONIVEL'
-          END) = 'ESGOTADO' THEN 1 END) as itens_esgotados,
-          SUM(COALESCE(cpm.quantidade_inicial, 0)) as quantidade_inicial_total,
-          SUM(COALESCE(cpm.quantidade_consumida, 0)) as quantidade_consumida_total,
-          SUM(COALESCE(cpm.quantidade_disponivel, 0)) as quantidade_disponivel_total,
-          SUM(COALESCE(cpm.quantidade_disponivel, 0) * cp.preco_unitario) as valor_total_disponivel
-        FROM contrato_produtos cp
-        CROSS JOIN modalidades m
-        LEFT JOIN contrato_produtos_modalidades cpm 
-          ON cp.id = cpm.contrato_produto_id 
-          AND m.id = cpm.modalidade_id
-        JOIN contratos c ON cp.contrato_id = c.id
-        JOIN produtos p ON cp.produto_id = p.id
-        JOIN fornecedores f ON c.fornecedor_id = f.id
-        WHERE cp.ativo = true
-          AND c.ativo = true
-          AND m.ativo = true
-          AND c.tenant_id = $1
-      `;
-
-      // Construir a parte adicional do WHERE para estatísticas
-      let statsWhereAdditional = '';
-      const statsParams: any[] = [tenantId];
-      let statsParamIndex = 2;
-
-      if (contrato_numero) {
-        statsWhereAdditional += ` AND c.numero ILIKE $${statsParamIndex}`;
-        statsParams.push(`%${contrato_numero}%`);
-        statsParamIndex++;
-      }
-
-      if (produto_nome) {
-        statsWhereAdditional += ` AND p.nome ILIKE $${statsParamIndex}`;
-        statsParams.push(`%${produto_nome}%`);
-        statsParamIndex++;
-      }
-
-      if (fornecedor_id) {
-        statsWhereAdditional += ` AND f.id = $${statsParamIndex}`;
-        statsParams.push(parseInt(fornecedor_id as string));
-        statsParamIndex++;
-      }
-
-      const statsResult = await db.query(statsQuery + statsWhereAdditional, statsParams);
+      // Calcular estatísticas
+      const estatisticas = {
+        total_itens: result.rows.length,
+        itens_disponiveis: result.rows.filter((r: any) => r.quantidade_disponivel > 0).length,
+        itens_baixo_estoque: result.rows.filter((r: any) => r.quantidade_disponivel > 0 && r.quantidade_disponivel <= 10).length,
+        itens_esgotados: result.rows.filter((r: any) => r.quantidade_disponivel === 0).length,
+        quantidade_inicial_total: result.rows.reduce((sum: number, r: any) => sum + parseFloat(r.quantidade_inicial || 0), 0),
+        quantidade_consumida_total: result.rows.reduce((sum: number, r: any) => sum + parseFloat(r.quantidade_consumida || 0), 0),
+        quantidade_disponivel_total: result.rows.reduce((sum: number, r: any) => sum + parseFloat(r.quantidade_disponivel || 0), 0),
+        valor_total_disponivel: result.rows.reduce((sum: number, r: any) => sum + parseFloat(r.valor_disponivel || 0), 0)
+      };
 
       res.json({
         success: true,
@@ -282,416 +203,430 @@ class SaldoContratosModalidadesController {
           total,
           totalPages: Math.ceil(total / parseInt(limit as string))
         },
-        estatisticas: {
-          total_itens: parseInt(statsResult.rows[0].total_itens || 0),
-          itens_disponiveis: parseInt(statsResult.rows[0].itens_disponiveis || 0),
-          itens_baixo_estoque: parseInt(statsResult.rows[0].itens_baixo_estoque || 0),
-          itens_esgotados: parseInt(statsResult.rows[0].itens_esgotados || 0),
-          quantidade_inicial_total: parseFloat(statsResult.rows[0].quantidade_inicial_total || 0),
-          quantidade_consumida_total: parseFloat(statsResult.rows[0].quantidade_consumida_total || 0),
-          quantidade_disponivel_total: parseFloat(statsResult.rows[0].quantidade_disponivel_total || 0),
-          valor_total_disponivel: parseFloat(statsResult.rows[0].valor_total_disponivel || 0)
-        }
+        estatisticas
       });
 
-    } catch (error: any) {
-      console.error('Erro ao listar saldos por modalidade:', error);
+    } catch (error) {
+      console.error('❌ Erro ao listar saldos de modalidades:', error);
       res.status(500).json({
         success: false,
         message: 'Erro interno do servidor',
-        error: error.message
+        error: error instanceof Error ? error.message : 'Erro desconhecido'
+      });
+    }
+  }
+
+  /**
+   * Cadastra ou atualiza saldo por modalidade
+   * POST /api/saldo-contratos-modalidades
+   */
+  async cadastrarSaldoModalidade(req: Request, res: Response): Promise<void> {
+    try {
+      const { contrato_produto_id, modalidade_id, quantidade_inicial } = req.body;
+
+      // Verificar se já existe um registro
+      const existingResult = await db.query(`
+        SELECT id FROM contrato_produtos_modalidades 
+        WHERE contrato_produto_id = $1 AND modalidade_id = $2
+      `, [contrato_produto_id, modalidade_id]);
+
+      if (existingResult.rows.length > 0) {
+        // Atualizar registro existente
+        const updateResult = await db.query(`
+          UPDATE contrato_produtos_modalidades 
+          SET quantidade_inicial = $1,
+              quantidade_disponivel = $1 - quantidade_consumida,
+              ativo = true,
+              updated_at = CURRENT_TIMESTAMP
+          WHERE contrato_produto_id = $2 AND modalidade_id = $3
+          RETURNING *
+        `, [quantidade_inicial, contrato_produto_id, modalidade_id]);
+
+        res.json({
+          success: true,
+          message: 'Saldo atualizado com sucesso',
+          data: updateResult.rows[0]
+        });
+      } else {
+        // Criar novo registro
+        const insertResult = await db.query(`
+          INSERT INTO contrato_produtos_modalidades 
+          (contrato_produto_id, modalidade_id, quantidade_inicial, quantidade_consumida, ativo, created_at)
+          VALUES ($1, $2, $3, 0, true, CURRENT_TIMESTAMP)
+          RETURNING *
+        `, [contrato_produto_id, modalidade_id, quantidade_inicial]);
+
+        res.json({
+          success: true,
+          message: 'Saldo cadastrado com sucesso',
+          data: insertResult.rows[0]
+        });
+      }
+
+    } catch (error) {
+      console.error('❌ Erro ao cadastrar saldo por modalidade:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erro interno do servidor',
+        error: error instanceof Error ? error.message : 'Erro desconhecido'
       });
     }
   }
 
   /**
    * Lista modalidades disponíveis
+   * GET /api/saldo-contratos-modalidades/modalidades
    */
   async listarModalidades(req: Request, res: Response): Promise<void> {
     try {
-      // Obter tenant_id do header
-      const tenantId = req.get('X-Tenant-ID');
-      if (!tenantId) {
-        res.status(400).json({ success: false, message: 'Header X-Tenant-ID é obrigatório' });
-        return;
-      }
-
-      const query = `
-        SELECT id, nome, codigo_financeiro, valor_repasse
-        FROM modalidades
+      const result = await db.query(`
+        SELECT id, nome, codigo_financeiro, valor_repasse, ativo
+        FROM modalidades 
         WHERE ativo = true
-          AND tenant_id = $1
         ORDER BY nome
-      `;
+      `);
 
-      const result = await db.query(query, [tenantId]);
-      res.json({ success: true, data: result.rows });
+      res.json({
+        success: true,
+        data: result.rows
+      });
 
-    } catch (error: any) {
-      console.error('Erro ao listar modalidades:', error);
-      res.status(500).json({ success: false, message: 'Erro interno do servidor', error: error.message });
+    } catch (error) {
+      console.error('❌ Erro ao listar modalidades:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erro interno do servidor',
+        error: error instanceof Error ? error.message : 'Erro desconhecido'
+      });
     }
   }
 
   /**
    * Lista produtos de contratos disponíveis
+   * GET /api/saldo-contratos-modalidades/produtos-contratos
    */
   async listarProdutosContratos(req: Request, res: Response): Promise<void> {
     try {
-      // Obter tenant_id do header
-      const tenantId = req.get('X-Tenant-ID');
-      if (!tenantId) {
-        res.status(400).json({ success: false, message: 'Header X-Tenant-ID é obrigatório' });
-        return;
-      }
-
-      const query = `
+      const result = await db.query(`
         SELECT 
-          cp.id, cp.contrato_id, cp.produto_id, cp.preco_unitario, cp.unidade,
-          c.numero as contrato_numero, c.data_inicio, c.data_fim,
+          cp.id,
+          cp.contrato_id,
+          cp.produto_id,
+          cp.preco_unitario,
+          cp.quantidade_contratada,
+          c.numero as contrato_numero,
+          c.data_inicio,
+          c.data_fim,
           p.nome as produto_nome,
+          cp.unidade,
           f.nome as fornecedor_nome
         FROM contrato_produtos cp
         JOIN contratos c ON cp.contrato_id = c.id
         JOIN produtos p ON cp.produto_id = p.id
         JOIN fornecedores f ON c.fornecedor_id = f.id
-        WHERE cp.ativo = true AND c.ativo = true AND c.status = 'ativo'
-          AND c.tenant_id = $1
+        WHERE cp.ativo = true AND c.ativo = true
         ORDER BY c.numero, p.nome
-      `;
+      `);
 
-      const result = await db.query(query, [tenantId]);
-      res.json({ success: true, data: result.rows });
+      res.json({
+        success: true,
+        data: result.rows
+      });
 
-    } catch (error: any) {
-      console.error('Erro ao listar produtos de contratos:', error);
-      res.status(500).json({ success: false, message: 'Erro interno do servidor', error: error.message });
+    } catch (error) {
+      console.error('❌ Erro ao listar produtos de contratos:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erro interno do servidor',
+        error: error instanceof Error ? error.message : 'Erro desconhecido'
+      });
     }
   }
 
   /**
-   * Cadastra ou atualiza saldo inicial por modalidade
+   * Lista resumo de alunos por modalidade
+   * GET /api/saldo-contratos-modalidades/resumo-alunos
    */
-  async cadastrarSaldoModalidade(req: Request, res: Response): Promise<void> {
+  async listarResumoAlunos(req: Request, res: Response): Promise<void> {
     try {
-      console.log('🔄 [CADASTRAR SALDO] Iniciando...');
-      
-      // Obter tenant_id do header
-      const tenantId = req.get('X-Tenant-ID') || (req as any).tenant?.id;
-      
-      if (!tenantId) {
-        console.error('❌ [CADASTRAR SALDO] Tenant ID não encontrado');
-        res.status(400).json({ success: false, message: 'Tenant ID não encontrado' });
-        return;
-      }
+      const result = await db.query(`
+        SELECT 
+          m.id as modalidade_id,
+          m.nome as modalidade_nome,
+          m.codigo_financeiro,
+          COALESCE(SUM(em.quantidade_alunos), 0) as total_alunos,
+          COUNT(em.id) as total_escolas,
+          m.ativo
+        FROM modalidades m
+        LEFT JOIN escola_modalidades em ON m.id = em.modalidade_id
+        WHERE m.ativo = true
+        GROUP BY m.id, m.nome, m.codigo_financeiro, m.ativo
+        ORDER BY m.nome
+      `);
 
-      const { contrato_produto_id, modalidade_id, quantidade_inicial } = req.body;
-      
-      console.log('🔍 [CADASTRAR SALDO] Dados:', { contrato_produto_id, modalidade_id, quantidade_inicial });
+      res.json({
+        success: true,
+        data: result.rows
+      });
 
-      if (!contrato_produto_id || !modalidade_id || quantidade_inicial === undefined) {
-        res.status(400).json({ success: false, message: 'Contrato produto, modalidade e quantidade inicial são obrigatórios' });
-        return;
-      }
+    } catch (error) {
+      console.error('❌ Erro ao listar resumo de alunos:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erro interno do servidor',
+        error: error instanceof Error ? error.message : 'Erro desconhecido'
+      });
+    }
+  }
 
-      if (quantidade_inicial < 0) {
-        res.status(400).json({ success: false, message: 'Quantidade inicial não pode ser negativa' });
-        return;
-      }
+  /**
+   * Registra consumo de uma modalidade
+   * POST /api/saldo-contratos-modalidades/:id/consumir
+   */
+  async registrarConsumoModalidade(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { quantidade, observacao, data_consumo, usuario_id } = req.body;
 
-      // Buscar a quantidade contratada do produto
-      const contratoResult = await db.query(`
-        SELECT cp.quantidade_contratada, p.nome as produto_nome
-        FROM contrato_produtos cp
-        JOIN contratos c ON cp.contrato_id = c.id
-        JOIN produtos p ON cp.produto_id = p.id
-        WHERE cp.id = $1
-          AND c.tenant_id = $2
-      `, [contrato_produto_id]);
-
-      if (contratoResult.rows.length === 0) {
-        res.status(404).json({ success: false, message: 'Produto do contrato não encontrado' });
-        return;
-      }
-
-      const quantidadeContratada = parseFloat(contratoResult.rows[0].quantidade_contratada);
-      const produtoNome = contratoResult.rows[0].produto_nome;
-
-      // Calcular a soma das outras modalidades (excluindo a atual)
-      const somaOutrasResult = await db.query(`
-        SELECT COALESCE(SUM(quantidade_inicial), 0) as soma_outras
-        FROM contrato_produtos_modalidades
-        WHERE contrato_produto_id = $1 AND modalidade_id != $2
-      `, [contrato_produto_id, modalidade_id]);
-
-      const somaOutras = parseFloat(somaOutrasResult.rows[0].soma_outras);
-      const somaTotal = somaOutras + quantidade_inicial;
-
-      // Validar se a soma total não excede a quantidade contratada
-      if (somaTotal > quantidadeContratada) {
+      // Validar quantidade
+      if (!quantidade || quantidade <= 0) {
         res.status(400).json({
           success: false,
-          message: `A soma das modalidades (${somaTotal.toFixed(2)}) não pode exceder a quantidade contratada de ${produtoNome} (${quantidadeContratada.toFixed(2)})`,
-          detalhes: {
-            quantidade_contratada: quantidadeContratada,
-            soma_outras_modalidades: somaOutras,
-            quantidade_solicitada: quantidade_inicial,
-            soma_total: somaTotal,
-            disponivel_para_distribuir: quantidadeContratada - somaOutras
-          }
+          message: 'Quantidade inválida'
         });
         return;
       }
 
-      const existeResult = await db.query(`
-        SELECT id FROM contrato_produtos_modalidades 
-        WHERE contrato_produto_id = $1 AND modalidade_id = $2
-      `, [contrato_produto_id, modalidade_id]);
-
-      let result;
-
-      if (existeResult.rows.length > 0) {
-        result = await db.query(`
-          UPDATE contrato_produtos_modalidades 
-          SET quantidade_inicial = $1, updated_at = CURRENT_TIMESTAMP
-          WHERE contrato_produto_id = $2 AND modalidade_id = $3
-          RETURNING *
-        `, [quantidade_inicial, contrato_produto_id, modalidade_id]);
-      } else {
-        result = await db.query(`
-          INSERT INTO contrato_produtos_modalidades 
-          (contrato_produto_id, modalidade_id, quantidade_inicial)
-          VALUES ($1, $2, $3, $4)
-          RETURNING *
-        `, [contrato_produto_id, modalidade_id, quantidade_inicial]);
-      }
-
-      res.json({
-        success: true,
-        message: existeResult.rows.length > 0 ? 'Saldo atualizado com sucesso' : 'Saldo cadastrado com sucesso',
-        data: result.rows[0]
-      });
-
-    } catch (error: any) {
-      console.error('Erro ao cadastrar saldo por modalidade:', error);
-      res.status(500).json({ success: false, message: 'Erro interno do servidor', error: error.message });
-    }
-  }
-
-  /**
-   * Registra consumo por modalidade
-   */
-  async registrarConsumoModalidade(req: Request, res: Response): Promise<void> {
-    try {
-      console.log('🔄 [CONSUMO MODALIDADE] Iniciando registro...');
-      
-      // Obter tenant_id do header
-      const tenantId = req.get('X-Tenant-ID') || (req as any).tenant?.id;
-      
-      if (!tenantId) {
-        console.error('❌ [CONSUMO MODALIDADE] Tenant ID não encontrado');
-        res.status(400).json({ success: false, message: 'Tenant ID não encontrado' });
-        return;
-      }
-
-      const { id } = req.params;
-      const { quantidade, observacao, usuario_id, data_consumo } = req.body;
-
-      console.log('🔍 [CONSUMO MODALIDADE] Dados:', { id, quantidade, usuario_id });
-
-      if (!quantidade || quantidade <= 0) {
-        res.status(400).json({ success: false, message: 'Quantidade deve ser maior que zero' });
-        return;
-      }
-
-      if (!usuario_id) {
-        res.status(400).json({ success: false, message: 'ID do usuário é obrigatório' });
-        return;
-      }
-
+      // Buscar o saldo atual
       const saldoResult = await db.query(`
-        SELECT cpm.* 
-        FROM contrato_produtos_modalidades cpm
-        JOIN contrato_produtos cp ON cpm.contrato_produto_id = cp.id
-        JOIN contratos c ON cp.contrato_id = c.id
-        WHERE cpm.id = $1
-          AND c.tenant_id = $2
+        SELECT 
+          id,
+          contrato_produto_id,
+          modalidade_id,
+          quantidade_inicial,
+          quantidade_consumida,
+          quantidade_disponivel
+        FROM contrato_produtos_modalidades
+        WHERE id = $1
       `, [id]);
 
-      console.log('🔍 [CONSUMO MODALIDADE] Saldo encontrado:', saldoResult.rows.length);
-
       if (saldoResult.rows.length === 0) {
-        console.error('❌ [CONSUMO MODALIDADE] Saldo não encontrado para ID:', id);
-        res.status(404).json({ success: false, message: 'Saldo por modalidade não encontrado' });
+        res.status(404).json({
+          success: false,
+          message: 'Saldo de modalidade não encontrado'
+        });
         return;
       }
 
       const saldo = saldoResult.rows[0];
 
-      if (quantidade > saldo.quantidade_disponivel) {
-        res.status(400).json({ success: false, message: `Saldo insuficiente. Disponível: ${saldo.quantidade_disponivel}` });
+      // Verificar se há quantidade disponível
+      if (parseFloat(saldo.quantidade_disponivel) < quantidade) {
+        res.status(400).json({
+          success: false,
+          message: `Quantidade insuficiente. Disponível: ${saldo.quantidade_disponivel}`
+        });
         return;
       }
 
-      const client = await db.pool.connect();
+      // Atualizar o saldo (quantidade_disponivel é uma coluna gerada automaticamente)
+      const novaQuantidadeConsumida = parseFloat(saldo.quantidade_consumida) + quantidade;
 
+      await db.query(`
+        UPDATE contrato_produtos_modalidades
+        SET quantidade_consumida = $1,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = $2
+      `, [novaQuantidadeConsumida, id]);
+
+      // Buscar o registro atualizado para retornar os valores corretos
+      const saldoAtualizadoResult = await db.query(`
+        SELECT quantidade_consumida, quantidade_disponivel
+        FROM contrato_produtos_modalidades
+        WHERE id = $1
+      `, [id]);
+
+      const saldoAtualizado = saldoAtualizadoResult.rows[0];
+
+      // Registrar no histórico
       try {
-        await client.query('BEGIN');
+        // Criar tabela de histórico se não existir
+        await db.query(`
+          CREATE TABLE IF NOT EXISTS contrato_produtos_modalidades_historico (
+            id SERIAL PRIMARY KEY,
+            contrato_produto_modalidade_id INTEGER NOT NULL REFERENCES contrato_produtos_modalidades(id) ON DELETE CASCADE,
+            quantidade DECIMAL(10,2) NOT NULL,
+            data_consumo DATE NOT NULL,
+            observacao TEXT,
+            usuario_id INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
 
-        // Se data_consumo foi fornecida, usar ela, senão usar a data atual
-        if (data_consumo) {
-          await client.query(`
-            INSERT INTO movimentacoes_consumo_modalidade 
-            (contrato_produto_modalidade_id, quantidade, tipo_movimentacao, observacao, usuario_id, created_at)
-            VALUES ($1, $2, 'CONSUMO', $3, $4, $5)
-          `, [id, quantidade, observacao || 'Consumo registrado', usuario_id, data_consumo]);
-        } else {
-          await client.query(`
-            INSERT INTO movimentacoes_consumo_modalidade 
-            (contrato_produto_modalidade_id, quantidade, tipo_movimentacao, observacao, usuario_id)
-            VALUES ($1, $2, 'CONSUMO', $3, $4)
-          `, [id, quantidade, observacao || 'Consumo registrado', usuario_id]);
-        }
-
-        await client.query(`
-          UPDATE contrato_produtos_modalidades 
-          SET quantidade_consumida = quantidade_consumida + $1, updated_at = CURRENT_TIMESTAMP
-          WHERE id = $2
-        `, [quantidade, id]);
-
-        await client.query('COMMIT');
-
-        res.json({ success: true, message: 'Consumo registrado com sucesso' });
-
-      } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
-      } finally {
-        client.release();
+        // Inserir registro no histórico
+        await db.query(`
+          INSERT INTO contrato_produtos_modalidades_historico 
+          (contrato_produto_modalidade_id, quantidade, data_consumo, observacao, usuario_id)
+          VALUES ($1, $2, $3, $4, $5)
+        `, [id, quantidade, data_consumo || new Date().toISOString().split('T')[0], observacao, usuario_id]);
+      } catch (histError) {
+        console.error('⚠️ Erro ao registrar histórico (não crítico):', histError);
       }
 
-    } catch (error: any) {
-      console.error('Erro ao registrar consumo por modalidade:', error);
-      res.status(500).json({ success: false, message: 'Erro interno do servidor', error: error.message });
+      res.json({
+        success: true,
+        message: 'Consumo registrado com sucesso',
+        data: {
+          id: saldo.id,
+          quantidade_consumida: saldoAtualizado.quantidade_consumida,
+          quantidade_disponivel: saldoAtualizado.quantidade_disponivel
+        }
+      });
+
+    } catch (error) {
+      console.error('❌ Erro ao registrar consumo:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erro interno do servidor',
+        error: error instanceof Error ? error.message : 'Erro desconhecido'
+      });
     }
   }
 
   /**
-   * Exclui um registro de consumo por modalidade
+   * Busca histórico de consumos de uma modalidade
+   * GET /api/saldo-contratos-modalidades/:id/historico
    */
-  async excluirConsumoModalidade(req: Request, res: Response): Promise<void> {
+  async buscarHistoricoConsumoModalidade(req: Request, res: Response): Promise<void> {
     try {
-      console.log('🔄 [EXCLUIR CONSUMO] Iniciando...');
-      
-      // Obter tenant_id do header
-      const tenantId = req.get('X-Tenant-ID') || (req as any).tenant?.id;
-      
-      if (!tenantId) {
-        console.error('❌ [EXCLUIR CONSUMO] Tenant ID não encontrado');
-        res.status(400).json({ success: false, message: 'Tenant ID não encontrado' });
+      const { id } = req.params;
+
+      // Buscar informações da modalidade
+      const saldoResult = await db.query(`
+        SELECT 
+          cpm.id,
+          cpm.contrato_produto_id,
+          cpm.modalidade_id,
+          p.nome as produto_nome,
+          cp.unidade,
+          m.nome as modalidade_nome,
+          c.numero as contrato_numero
+        FROM contrato_produtos_modalidades cpm
+        JOIN contrato_produtos cp ON cpm.contrato_produto_id = cp.id
+        JOIN produtos p ON cp.produto_id = p.id
+        JOIN contratos c ON cp.contrato_id = c.id
+        JOIN modalidades m ON cpm.modalidade_id = m.id
+        WHERE cpm.id = $1
+      `, [id]);
+
+      if (saldoResult.rows.length === 0) {
+        res.status(404).json({
+          success: false,
+          message: 'Saldo de modalidade não encontrado'
+        });
         return;
       }
 
+      // Buscar histórico de consumos
+      const historicoResult = await db.query(`
+        SELECT 
+          id,
+          quantidade,
+          data_consumo,
+          observacao,
+          usuario_id,
+          created_at
+        FROM contrato_produtos_modalidades_historico
+        WHERE contrato_produto_modalidade_id = $1
+        ORDER BY data_consumo DESC, created_at DESC
+      `, [id]);
+
+      res.json({
+        success: true,
+        data: {
+          modalidade: saldoResult.rows[0],
+          historico: historicoResult.rows
+        }
+      });
+
+    } catch (error) {
+      console.error('❌ Erro ao buscar histórico:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erro interno do servidor',
+        error: error instanceof Error ? error.message : 'Erro desconhecido'
+      });
+    }
+  }
+
+  /**
+   * Exclui um registro de consumo do histórico
+   * DELETE /api/saldo-contratos-modalidades/:id/consumo/:consumoId
+   */
+  async excluirConsumoModalidade(req: Request, res: Response): Promise<void> {
+    try {
       const { id, consumoId } = req.params;
 
       // Buscar o consumo para obter a quantidade
       const consumoResult = await db.query(`
-        SELECT mcm.* 
-        FROM movimentacoes_consumo_modalidade mcm
-        JOIN contrato_produtos_modalidades cpm ON mcm.contrato_produto_modalidade_id = cpm.id
-        JOIN contrato_produtos cp ON cpm.contrato_produto_id = cp.id
-        JOIN contratos c ON cp.contrato_id = c.id
-        WHERE mcm.id = $1 AND mcm.contrato_produto_modalidade_id = $2
-          AND c.tenant_id = $3
+        SELECT 
+          id,
+          contrato_produto_modalidade_id,
+          quantidade
+        FROM contrato_produtos_modalidades_historico
+        WHERE id = $1 AND contrato_produto_modalidade_id = $2
       `, [consumoId, id]);
 
       if (consumoResult.rows.length === 0) {
-        res.status(404).json({ success: false, message: 'Registro de consumo não encontrado' });
+        res.status(404).json({
+          success: false,
+          message: 'Registro de consumo não encontrado'
+        });
         return;
       }
 
       const consumo = consumoResult.rows[0];
-      const client = await db.pool.connect();
 
-      try {
-        await client.query('BEGIN');
+      // Reverter a quantidade consumida no saldo
+      await db.query(`
+        UPDATE contrato_produtos_modalidades
+        SET quantidade_consumida = quantidade_consumida - $1,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = $2
+      `, [consumo.quantidade, id]);
 
-        // Excluir o registro de consumo
-        await client.query(`
-          DELETE FROM movimentacoes_consumo_modalidade WHERE id = $1
-        `, [consumoId]);
+      // Excluir o registro do histórico
+      await db.query(`
+        DELETE FROM contrato_produtos_modalidades_historico
+        WHERE id = $1
+      `, [consumoId]);
 
-        // Atualizar a quantidade consumida no saldo
-        await client.query(`
-          UPDATE contrato_produtos_modalidades 
-          SET quantidade_consumida = quantidade_consumida - $1, updated_at = CURRENT_TIMESTAMP
-          WHERE id = $2
-        `, [consumo.quantidade, id]);
+      res.json({
+        success: true,
+        message: 'Consumo excluído com sucesso'
+      });
 
-        await client.query('COMMIT');
-
-        res.json({ success: true, message: 'Consumo excluído com sucesso' });
-
-      } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
-      } finally {
-        client.release();
-      }
-
-    } catch (error: any) {
-      console.error('Erro ao excluir consumo por modalidade:', error);
-      res.status(500).json({ success: false, message: 'Erro interno do servidor', error: error.message });
-    }
-  }
-
-  /**
-   * Busca histórico de consumos por modalidade
-   */
-  async buscarHistoricoConsumoModalidade(req: Request, res: Response): Promise<void> {
-    try {
-      console.log('🔄 [HISTÓRICO CONSUMO] Iniciando...');
-      
-      // Obter tenant_id do header
-      const tenantId = req.get('X-Tenant-ID') || (req as any).tenant?.id;
-      
-      if (!tenantId) {
-        console.error('❌ [HISTÓRICO CONSUMO] Tenant ID não encontrado');
-        res.status(400).json({ success: false, message: 'Tenant ID não encontrado' });
-        return;
-      }
-
-      const { id } = req.params;
-
-      const query = `
-        SELECT 
-          mcm.id, mcm.quantidade, mcm.tipo_movimentacao, mcm.observacao,
-          mcm.created_at as data_consumo,
-          u.nome as responsavel_nome
-        FROM movimentacoes_consumo_modalidade mcm
-        JOIN contrato_produtos_modalidades cpm ON mcm.contrato_produto_modalidade_id = cpm.id
-        JOIN contrato_produtos cp ON cpm.contrato_produto_id = cp.id
-        JOIN contratos c ON cp.contrato_id = c.id
-        LEFT JOIN usuarios u ON mcm.usuario_id = u.id
-        WHERE mcm.contrato_produto_modalidade_id = $1
-          AND c.tenant_id = $2
-        ORDER BY mcm.created_at DESC
-      `;
-
-      const result = await db.query(query, [id]);
-      res.json({ success: true, data: result.rows });
-
-    } catch (error: any) {
-      console.error('Erro ao buscar histórico de consumo por modalidade:', error);
-      res.status(500).json({ success: false, message: 'Erro interno do servidor', error: error.message });
+    } catch (error) {
+      console.error('❌ Erro ao excluir consumo:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erro interno do servidor',
+        error: error instanceof Error ? error.message : 'Erro desconhecido'
+      });
     }
   }
 }
 
-export const listarSaldosModalidades = new SaldoContratosModalidadesController().listarSaldosModalidades;
-export const listarModalidades = new SaldoContratosModalidadesController().listarModalidades;
-export const listarProdutosContratos = new SaldoContratosModalidadesController().listarProdutosContratos;
-export const cadastrarSaldoModalidade = new SaldoContratosModalidadesController().cadastrarSaldoModalidade;
-export const registrarConsumoModalidade = new SaldoContratosModalidadesController().registrarConsumoModalidade;
-export const buscarHistoricoConsumoModalidade = new SaldoContratosModalidadesController().buscarHistoricoConsumoModalidade;
-export const excluirConsumoModalidade = new SaldoContratosModalidadesController().excluirConsumoModalidade;
+export const saldoContratosModalidadesController = new SaldoContratosModalidadesController();
+
+// Exportar métodos individuais para compatibilidade com rotas
+export const listarSaldosModalidades = saldoContratosModalidadesController.listarSaldosModalidades.bind(saldoContratosModalidadesController);
+export const cadastrarSaldoModalidade = saldoContratosModalidadesController.cadastrarSaldoModalidade.bind(saldoContratosModalidadesController);
+export const listarModalidades = saldoContratosModalidadesController.listarModalidades.bind(saldoContratosModalidadesController);
+export const listarProdutosContratos = saldoContratosModalidadesController.listarProdutosContratos.bind(saldoContratosModalidadesController);
+export const listarResumoAlunos = saldoContratosModalidadesController.listarResumoAlunos.bind(saldoContratosModalidadesController);
+export const registrarConsumoModalidade = saldoContratosModalidadesController.registrarConsumoModalidade.bind(saldoContratosModalidadesController);
+export const buscarHistoricoConsumoModalidade = saldoContratosModalidadesController.buscarHistoricoConsumoModalidade.bind(saldoContratosModalidadesController);
+export const excluirConsumoModalidade = saldoContratosModalidadesController.excluirConsumoModalidade.bind(saldoContratosModalidadesController);
+
+export default saldoContratosModalidadesController;

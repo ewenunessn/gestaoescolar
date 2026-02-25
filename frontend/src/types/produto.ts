@@ -10,6 +10,7 @@ export interface Produto {
   ativo: boolean;
   created_at: string;
   updated_at: string;
+  unidade_contrato?: string;
 }
 
 export interface CriarProdutoRequest {
@@ -38,9 +39,9 @@ export interface ComposicaoNutricional {
   gorduras?: number;
   fibras?: number;
   sodio?: number;
-  acucar?: number;
-  gorduras_saturadas?: number;
-  gorduras_trans?: number;
+  acucares?: number;
+  gorduras_saturadas_g?: number;
+  gorduras_trans_g?: number;
   colesterol?: number;
   calcio?: number;
   ferro?: number;

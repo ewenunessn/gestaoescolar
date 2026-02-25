@@ -1,8 +1,8 @@
 /**
- * Redis configuration for tenant inventory caching
+ * Redis configuration for inventory caching
  */
 
-import { createRedisTenantCache, getRedisTenantCache } from '../utils/redisTenantCache';
+import Redis from 'ioredis';
 
 interface RedisConfig {
   enabled: boolean;
@@ -14,6 +14,8 @@ interface RedisConfig {
   defaultTTL: number;
 }
 
+let redisClient: Redis | null = null;
+
 /**
  * Get Redis configuration from environment variables
  */
@@ -24,7 +26,7 @@ export const getRedisConfig = (): RedisConfig => {
     port: parseInt(process.env.REDIS_PORT || '6379'),
     password: process.env.REDIS_PASSWORD,
     db: parseInt(process.env.REDIS_DB || '0'),
-    keyPrefix: process.env.REDIS_KEY_PREFIX || 'tenant_inventory',
+    keyPrefix: process.env.REDIS_KEY_PREFIX || 'inventory',
     defaultTTL: parseInt(process.env.REDIS_DEFAULT_TTL || '300') // 5 minutes
   };
 };
@@ -54,7 +56,7 @@ export const getCacheConfiguration = () => {
 };
 
 /**
- * Initialize Redis tenant cache if enabled
+ * Initialize Redis cache if enabled
  */
 export const initializeRedisCache = async (): Promise<void> => {
   const config = getRedisConfig();
@@ -65,13 +67,16 @@ export const initializeRedisCache = async (): Promise<void> => {
   }
 
   try {
-    const redisCache = createRedisTenantCache({
+    redisClient = new Redis({
       host: config.host,
       port: config.port,
       password: config.password,
       db: config.db,
       keyPrefix: config.keyPrefix,
-      defaultTTL: config.defaultTTL
+      retryStrategy: (times) => {
+        const delay = Math.min(times * 50, 2000);
+        return delay;
+      }
     });
 
     // Test connection
@@ -80,22 +85,16 @@ export const initializeRedisCache = async (): Promise<void> => {
         reject(new Error('Redis connection timeout'));
       }, 5000);
 
-      if (redisCache.isConnected()) {
+      redisClient?.ping().then(() => {
         clearTimeout(timeout);
         resolve(true);
-      } else {
-        // Wait for connection
-        const checkConnection = setInterval(() => {
-          if (redisCache.isConnected()) {
-            clearTimeout(timeout);
-            clearInterval(checkConnection);
-            resolve(true);
-          }
-        }, 100);
-      }
+      }).catch((err) => {
+        clearTimeout(timeout);
+        reject(err);
+      });
     });
 
-    console.log('✅ Redis tenant cache initialized successfully');
+    console.log('✅ Redis cache initialized successfully');
     console.log(`📍 Redis server: ${config.host}:${config.port}`);
     console.log(`🔑 Key prefix: ${config.keyPrefix}`);
     console.log(`⏰ Default TTL: ${config.defaultTTL}s`);
@@ -103,17 +102,24 @@ export const initializeRedisCache = async (): Promise<void> => {
   } catch (error) {
     console.error('❌ Failed to initialize Redis cache:', error);
     console.log('📦 Falling back to in-memory cache');
+    redisClient = null;
   }
+};
+
+/**
+ * Get Redis client instance
+ */
+export const getRedisClient = (): Redis | null => {
+  return redisClient;
 };
 
 /**
  * Get cache statistics
  */
 export const getCacheStats = async () => {
-  const redisCache = getRedisTenantCache();
   const config = getRedisConfig();
   
-  if (!redisCache || !config.enabled) {
+  if (!redisClient || !config.enabled) {
     return {
       type: 'in-memory',
       enabled: false,
@@ -122,17 +128,19 @@ export const getCacheStats = async () => {
   }
 
   try {
+    const info = await redisClient.info();
     return {
       type: 'redis',
       enabled: true,
-      connected: redisCache.isConnected(),
+      connected: redisClient.status === 'ready',
       config: {
         host: config.host,
         port: config.port,
         db: config.db,
         keyPrefix: config.keyPrefix,
         defaultTTL: config.defaultTTL
-      }
+      },
+      info: info.substring(0, 200) + '...' // Return partial info
     };
   } catch (error) {
     return {
@@ -162,10 +170,8 @@ export const healthCheckCache = async (): Promise<{
       }
     };
   }
-
-  const redisCache = getRedisTenantCache();
   
-  if (!redisCache) {
+  if (!redisClient) {
     return {
       status: 'unhealthy',
       details: {
@@ -176,7 +182,7 @@ export const healthCheckCache = async (): Promise<{
   }
 
   try {
-    if (!redisCache.isConnected()) {
+    if (redisClient.status !== 'ready') {
       return {
         status: 'unhealthy',
         details: {
@@ -189,10 +195,10 @@ export const healthCheckCache = async (): Promise<{
     // Test cache operations
     const testData = { timestamp: Date.now() };
     
-    await redisCache.set('health_check', 'test', {}, testData, 10); // 10 seconds TTL
-    const retrieved = await redisCache.get('health_check', 'test', {});
+    await redisClient.set('health_check', JSON.stringify(testData), 'EX', 10); // 10 seconds TTL
+    const retrieved = await redisClient.get('health_check');
     
-    if (!retrieved || (retrieved as any).timestamp !== testData.timestamp) {
+    if (!retrieved || JSON.parse(retrieved).timestamp !== testData.timestamp) {
       return {
         status: 'degraded',
         details: {
@@ -228,5 +234,6 @@ export default {
   initializeRedisCache,
   getCacheStats,
   healthCheckCache,
-  getCacheConfiguration
+  getCacheConfiguration,
+  getRedisClient
 };

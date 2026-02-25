@@ -166,8 +166,6 @@ export interface MovimentacaoEstoque {
   quantidade_anterior: number;
   quantidade_movimentada: number;
   quantidade_posterior: number;
-  motivo?: string;
-  documento_referencia?: string;
   usuario_id?: ID;
   data_movimentacao: DateString;
   created_at: DateString;
@@ -183,8 +181,6 @@ export interface MovimentacaoCreate {
   produto_id: ID;
   tipo_movimentacao: TipoMovimentacao;
   quantidade: number;
-  motivo?: string;
-  documento_referencia?: string;
   usuario_id?: ID;
   data_validade?: DateString;
 }
@@ -459,12 +455,6 @@ export interface Evento {
   usuario_id: ID;
   created_at: DateString;
 }
-
-// ============================================================================
-// TIPOS DE MULTI-TENANT
-// ============================================================================
-
-export * from './tenant';
 
 // ============================================================================
 // EXPORTS ORGANIZADOS

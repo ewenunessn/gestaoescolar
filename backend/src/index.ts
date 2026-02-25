@@ -21,8 +21,6 @@ import produtoRoutes from "./modules/produtos/routes/produtoRoutes";
 import produtoModalidadeRoutes from "./modules/estoque/routes/produtoModalidadeRoutes";
 
 import estoqueCentralRoutes from "./modules/estoque/routes/estoqueCentralRoutes";
-import estoqueEscolaRoutes from "./modules/estoque/routes/estoqueEscolaRoutes";
-import gestorEscolaRoutes from "./modules/guias/routes/gestorEscolaRoutes";
 import estoqueEscolarRoutes from "./modules/estoque/routes/estoqueEscolarRoutes";
 // import demandaRoutes from "./modules/estoque/routes/demandaRoutes"; // REMOVIDO - usar demandasRoutes do módulo demandas
 
@@ -33,30 +31,8 @@ import rotaRoutes from "./modules/entregas/routes/rotaRoutes";
 import pedidoRoutes from "./modules/pedidos/routes/pedidoRoutes";
 import faturamentoRoutes from "./modules/pedidos/routes/faturamentoRoutes";
 import demandasRoutes from "./modules/demandas/routes/demandaRoutes";
-import tenantRoutes from "./routes/tenantRoutes";
-import tenantConfigurationRoutes from "./routes/tenantConfigurationRoutes";
-import tenantUserRoutes from "./routes/tenantUserRoutes";
 
-import tenantPerformanceRoutes from "./routes/tenantPerformanceRoutes";
-import tenantAuditRoutes from "./routes/tenantAuditRoutes";
-import tenantProvisioningRoutes from "./routes/tenantProvisioningRoutes";
-import tenantMonitoringRoutes from "./routes/tenantMonitoringRoutes";
-import { createTenantBackupRoutes } from "./routes/tenantBackupRoutes";
-import cacheRoutes from "./routes/cacheRoutes";
-
-// Institution hierarchy routes
-import institutionRoutes from "./routes/institutionRoutes";
-import provisioningRoutes from "./routes/provisioningRoutes";
-import systemAdminAuthRoutes from "./routes/systemAdminAuthRoutes";
-import planRoutes from "./routes/planRoutes";
-
-// Importar middleware de performance e auditoria
-import { tenantPerformanceMonitor } from "./middleware/tenantPerformanceMiddleware";
-import { tenantMiddleware } from "./middleware/tenantMiddleware";
-import AuditMiddleware from "./middleware/auditMiddleware";
-import { tenantRealtimeMonitoringService } from "./services/tenantRealtimeMonitoringService";
 import { createServer } from 'http';
-import { cacheMiddlewareStack } from "./middleware/cacheMiddleware";
 import { initializeRedisCache } from "./config/redis";
 
 // Módulo de gás removido
@@ -133,10 +109,7 @@ const corsOptions = {
     "Accept",
     "Origin",
     "Access-Control-Request-Method",
-    "Access-Control-Request-Headers",
-    "X-Tenant-ID",
-    "X-Tenant-Subdomain",
-    "X-Tenant-Domain"
+    "Access-Control-Request-Headers"
   ],
   exposedHeaders: ["Content-Length", "X-Foo", "X-Bar"],
   maxAge: 86400, // 24 horas
@@ -149,33 +122,7 @@ app.use(cors(corsOptions));
 // CORS já está configurado corretamente acima com as origens específicas
 // Removido middleware que forçava '*' e conflitava com credentials: true
 
-// Import admin data routes
-import adminDataRoutes from "./routes/adminDataRoutes";
-
-// System admin routes (BEFORE tenant middleware - no tenant required)
-app.use("/api/system-admin/auth", systemAdminAuthRoutes);
-app.use("/api/system-admin/data", adminDataRoutes);
-app.use("/api/institutions", institutionRoutes);
-app.use("/api/provisioning", provisioningRoutes);
-app.use("/api/plans", planRoutes);
-
-// Middleware de tenant (deve vir antes das outras rotas)
-app.use(tenantMiddleware({ 
-  required: false, 
-  fallbackToDefault: true,
-  skipPaths: ['/health', '/api/test-db', '/api/performance', '/']
-}));
-
-// Middleware de monitoramento de performance
-app.use(tenantPerformanceMonitor.monitor());
-
-// Middleware de auditoria (deve vir após o tenant middleware)
-app.use(AuditMiddleware.auditLogger());
-
-// Cache middleware stack
-app.use(cacheMiddlewareStack);
-
-
+// Admin routes removed
 
 // Servir arquivos estáticos
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
@@ -258,8 +205,6 @@ app.use("/api/cardapios", cardapioRoutes);
 app.use("/api/produtos", produtoRoutes);
 app.use("/api/produto-modalidades", produtoModalidadeRoutes);
 app.use("/api/estoque-central", estoqueCentralRoutes);
-app.use("/api/estoque-escola", estoqueEscolaRoutes);
-app.use("/api/gestor-escola", gestorEscolaRoutes);
 app.use("/api/estoque-escolar", estoqueEscolarRoutes);
 
 app.use("/api/saldo-contratos-modalidades", saldoContratosModalidadesRoutes);
@@ -269,18 +214,7 @@ app.use("/api/entregas", rotaRoutes);
 app.use("/api/pedidos", pedidoRoutes);
 app.use("/api/faturamentos", faturamentoRoutes);
 app.use("/api/demandas", demandasRoutes);
-app.use("/api/tenants", tenantRoutes);
-app.use("/api", tenantConfigurationRoutes);
-app.use("/api/tenant-users", tenantUserRoutes);
-app.use("/api/performance", tenantPerformanceRoutes);
-app.use("/api/audit", tenantAuditRoutes);
-app.use("/api/provisioning", tenantProvisioningRoutes);
-app.use("/api/monitoring", tenantMonitoringRoutes);
-app.use("/api/backup", createTenantBackupRoutes(db.pool));
-app.use("/api/cache", cacheRoutes);
-app.use("/api/configuracoes", require("./routes/configuracaoRoutes").default);
 
-// Institution hierarchy routes already registered before tenant middleware
 
 // Rotas de gás removidas
 
@@ -325,8 +259,7 @@ app.get("/", (req, res) => {
 
 
       "/api/estoque-moderno",
-      "/api/estoque-escolar",
-      "/api/tenants",
+      
       "/api/performance",
       "/api/backup",
       "/api/test-db",
@@ -363,7 +296,7 @@ app.use("*", (req, res) => {
 
 
       "/api/estoque-moderno",
-      "/api/estoque-escolar",
+      
       "/api/backup",
       "/api/test-db",
       "/health"
@@ -416,26 +349,42 @@ async function iniciarServidor() {
 
       console.log('✅ Módulos inicializados com sucesso!');
 
-      // Initialize real-time monitoring service
-      console.log('🔄 Inicializando serviço de monitoramento em tempo real...');
-      tenantRealtimeMonitoringService.initialize(httpServer);
+      // Real-time monitoring service removed
+      console.log('✅ Serviços simplificados inicializados');
 
-      // Iniciar servidor
-      httpServer.listen(config.backend.port, config.backend.host, () => {
-        console.log(`🚀 Servidor PostgreSQL rodando em ${config.backend.host}:${config.backend.port}`);
+      // Iniciar servidor com host/porta dinâmicos e fallback
+      const HOST = process.env.HOST || '0.0.0.0';
+      const BASE_PORT = Number(process.env.PORT) || (config as any).port || 3000;
+      let currentPort = BASE_PORT;
 
-        // Tratar CORS origins que pode ser array ou boolean
-        const corsOrigins = Array.isArray(config.backend.cors.origin)
-          ? config.backend.cors.origin.join(', ')
-          : config.backend.cors.origin === true
-            ? 'Qualquer origem (desenvolvimento)'
-            : String(config.backend.cors.origin);
+      const startListening = (retries = 5) => {
+        const server = httpServer.listen(currentPort, HOST, () => {
+          console.log(`🚀 Servidor PostgreSQL rodando em ${HOST}:${currentPort}`);
 
-        console.log(`📡 CORS Origins: ${corsOrigins}`);
-        console.log(`🐘 Banco: ${config.database.host}:${config.database.port}/${config.database.name}`);
-        console.log(`🌍 Ambiente: ${process.env.NODE_ENV || 'development'}`);
-        console.log(`🔗 Foreign Keys CASCADE: Ativas`);
-      });
+          // Tratar CORS origins que pode ser array ou boolean
+          const corsOrigins = Array.isArray(config.backend.cors.origin)
+            ? config.backend.cors.origin.join(', ')
+            : config.backend.cors.origin === true
+              ? 'Qualquer origem (desenvolvimento)'
+              : String(config.backend.cors.origin);
+
+          console.log(`📡 CORS Origins: ${corsOrigins}`);
+          console.log(`🐘 Banco: ${config.database.host}:${config.database.port}/${config.database.name}`);
+          console.log(`🌍 Ambiente: ${process.env.NODE_ENV || 'development'}`);
+          console.log(`🔗 Foreign Keys CASCADE: Ativas`);
+        });
+        server.on('error', (err: any) => {
+          if (err && err.code === 'EADDRINUSE' && retries > 0) {
+            console.warn(`⚠️ Porta ${currentPort} em uso. Tentando ${currentPort + 1}...`);
+            currentPort += 1;
+            setTimeout(() => startListening(retries - 1), 200);
+          } else {
+            console.error('❌ Erro ao iniciar o servidor:', err);
+            process.exit(1);
+          }
+        });
+      };
+      startListening();
 
     } else {
       console.error('❌ Falha na conexão PostgreSQL');

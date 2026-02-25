@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Check Token Status</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2563eb;
+        }
+        .info {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f0f9ff;
+            border-left: 4px solid #2563eb;
+            border-radius: 4px;
+        }
+        .error {
+            background: #fef2f2;
+            border-left-color: #dc2626;
+        }
+        .success {
+            background: #f0fdf4;
+            border-left-color: #059669;
+        }
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #1d4ed8;
+        }
+        .danger {
+            background: #dc2626;
+        }
+        .danger:hover {
+            background: #b91c1c;
+        }
+        pre {
+            background: #1f2937;
+            color: #f3f4f6;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Token Status Checker</h1>
+        
+        <div id="status"></div>
+        
+        <button onclick="checkToken()">Check Token</button>
+        <button onclick="clearToken()" class="danger">Clear Token & Logout</button>
+        <button onclick="goToLogin()">Go to Login</button>
+        
+        <div id="details" style="margin-top: 20px;"></div>
+    </div>
+
+    <script>
+        function checkToken() {
+            const token = localStorage.getItem('token');
+            const statusDiv = document.getElementById('status');
+            const detailsDiv = document.getElementById('details');
+            
+            if (!token || token === 'null' || token === 'undefined') {
+                statusDiv.innerHTML = '<div class="info error">❌ No token found. You need to login.</div>';
+                detailsDiv.innerHTML = '';
+                return;
+            }
+            
+            if (token.length < 10) {
+                statusDiv.innerHTML = '<div class="info error">❌ Invalid token (too short). You need to login again.</div>';
+                detailsDiv.innerHTML = '';
+                return;
+            }
+            
+            try {
+                // Decode JWT token
+                const parts = token.split('.');
+                if (parts.length !== 3) {
+                    statusDiv.innerHTML = '<div class="info error">❌ Invalid token format. You need to login again.</div>';
+                    return;
+                }
+                
+                const payload = JSON.parse(atob(parts[1]));
+                const now = Math.floor(Date.now() / 1000);
+                const expiresAt = payload.exp;
+                const issuedAt = payload.iat;
+                
+                const expiresDate = new Date(expiresAt * 1000);
+                const issuedDate = new Date(issuedAt * 1000);
+                const timeLeft = expiresAt - now;
+                const daysLeft = Math.floor(timeLeft / 86400);
+                const hoursLeft = Math.floor((timeLeft % 86400) / 3600);
+                const minutesLeft = Math.floor((timeLeft % 3600) / 60);
+                
+                if (timeLeft <= 0) {
+                    statusDiv.innerHTML = '<div class="info error">❌ Token has EXPIRED. You need to login again.</div>';
+                } else if (daysLeft >= 1) {
+                    statusDiv.innerHTML = `<div class="info success">✅ Token is VALID. Expires in ${daysLeft} days, ${hoursLeft} hours.</div>`;
+                } else {
+                    statusDiv.innerHTML = `<div class="info success">✅ Token is VALID. Expires in ${hoursLeft} hours, ${minutesLeft} minutes.</div>`;
+                }
+                
+                detailsDiv.innerHTML = `
+                    <h3>Token Details:</h3>
+                    <pre>${JSON.stringify(payload, null, 2)}</pre>
+                    <p><strong>Issued:</strong> ${issuedDate.toLocaleString('pt-BR')}</p>
+                    <p><strong>Expires:</strong> ${expiresDate.toLocaleString('pt-BR')}</p>
+                    <p><strong>User:</strong> ${payload.nome || 'N/A'} (${payload.email || 'N/A'})</p>
+                    <p><strong>Type:</strong> ${payload.tipo || 'N/A'}</p>
+                `;
+            } catch (error) {
+                statusDiv.innerHTML = '<div class="info error">❌ Error decoding token. You need to login again.</div>';
+                detailsDiv.innerHTML = `<p>Error: ${error.message}</p>`;
+            }
+        }
+        
+        function clearToken() {
+            if (confirm('This will clear your token and log you out. Continue?')) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                localStorage.removeItem('perfil');
+                localStorage.removeItem('nome');
+                document.getElementById('status').innerHTML = '<div class="info success">✅ Token cleared. You can now login again.</div>';
+                document.getElementById('details').innerHTML = '';
+            }
+        }
+        
+        function goToLogin() {
+            window.location.href = '/login';
+        }
+        
+        // Auto-check on load
+        window.onload = checkToken;
+    </script>
+</body>
+</html>

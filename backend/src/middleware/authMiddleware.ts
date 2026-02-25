@@ -2,21 +2,12 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { config } from '../config/config';
 
-import { TenantUserRole } from '../types/tenant';
-
 export interface AuthenticatedRequest extends Request {
   user?: {
     id: number;
     email: string;
     nome: string;
     tipo: string;
-    tenant?: {
-      id: string;
-      slug: string;
-      name: string;
-      role: TenantUserRole;
-    };
-    tenantRole?: string;
     isSystemAdmin?: boolean;
   };
 }
@@ -45,8 +36,6 @@ export function authenticateToken(req: Request, res: Response, next: NextFunctio
       email: decoded.email,
       nome: decoded.nome,
       tipo: decoded.tipo,
-      tenant: decoded.tenant,
-      tenantRole: decoded.tenantRole,
       isSystemAdmin: decoded.isSystemAdmin
     };
 
@@ -95,8 +84,6 @@ export function optionalAuth(req: Request, res: Response, next: NextFunction) {
       email: decoded.email,
       nome: decoded.nome,
       tipo: decoded.tipo,
-      tenant: decoded.tenant,
-      tenantRole: decoded.tenantRole,
       isSystemAdmin: decoded.isSystemAdmin
     };
   } catch (error) {

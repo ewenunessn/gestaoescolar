@@ -194,20 +194,6 @@ export class InstitutionController {
       const client = await db.pool.connect();
       
       try {
-        // Buscar tenants
-        const tenantsResult = await client.query(
-          'SELECT id FROM tenants WHERE institution_id = $1',
-          [id]
-        );
-        
-        const tenantIds = tenantsResult.rows.map((t: any) => t.id);
-        
-        // Deletar tenant_users e tenants
-        if (tenantIds.length > 0) {
-          await client.query('DELETE FROM tenant_users WHERE tenant_id = ANY($1)', [tenantIds]);
-          await client.query('DELETE FROM tenants WHERE id = ANY($1)', [tenantIds]);
-        }
-        
         // Deletar instituição
         await client.query('DELETE FROM institutions WHERE id = $1', [id]);
         
@@ -377,89 +363,6 @@ export class InstitutionController {
       res.status(500).json({
         success: false,
         message: 'Erro ao buscar usuários',
-        error: error.message
-      });
-    }
-  }
-
-  // Get institution tenants
-  async getTenants(req: Request, res: Response) {
-    try {
-      const { id } = req.params;
-
-      const institution = await institutionModel.findById(id);
-      if (!institution) {
-        return res.status(404).json({
-          success: false,
-          message: 'Instituição não encontrada'
-        });
-      }
-
-      const tenants = await institutionModel.getTenants(id);
-
-      res.json({
-        success: true,
-        data: tenants,
-        total: tenants.length
-      });
-    } catch (error: any) {
-      console.error('Erro ao buscar tenants:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Erro ao buscar tenants',
-        error: error.message
-      });
-    }
-  }
-
-  // Update default tenant for institution
-  async updateDefaultTenant(req: Request, res: Response) {
-    try {
-      const { id } = req.params;
-      const { default_tenant_id } = req.body;
-
-      // Validate institution exists
-      const institution = await institutionModel.findById(id);
-      if (!institution) {
-        return res.status(404).json({
-          success: false,
-          message: 'Instituição não encontrada'
-        });
-      }
-
-      // Validate tenant exists and belongs to institution
-      if (default_tenant_id) {
-        const tenantCheck = await db.pool.query(
-          'SELECT id FROM tenants WHERE id = $1 AND institution_id = $2',
-          [default_id]
-        );
-
-        if (tenantCheck.rows.length === 0) {
-          return res.status(400).json({
-            success: false,
-            message: 'Tenant não encontrado ou não pertence a esta instituição'
-          });
-        }
-      }
-
-      // Update default tenant
-      await db.pool.query(
-        'UPDATE institutions SET default_tenant_id = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
-        [default_tenant_id || null, id]
-      );
-
-      const updated = await institutionModel.findById(id);
-
-      res.json({
-        success: true,
-        message: 'Tenant padrão atualizado com sucesso',
-        data: updated
-      });
-    } catch (error: any) {
-      console.error('Erro ao atualizar tenant padrão:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Erro ao atualizar tenant padrão',
         error: error.message
       });
     }

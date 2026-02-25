@@ -24,10 +24,4 @@ router.post('/:id/users', institutionController.addUser.bind(institutionControll
 router.put('/:id/users/:userId', institutionController.updateUser.bind(institutionController));
 router.delete('/:id/users/:userId', institutionController.removeUser.bind(institutionController));
 
-// Institution tenants
-router.get('/:id/tenants', institutionController.getTenants.bind(institutionController));
-
-// Update default tenant
-router.patch('/:id/default-tenant', institutionController.updateDefaultTenant.bind(institutionController));
-
 export default router;

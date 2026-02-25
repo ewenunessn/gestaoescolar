@@ -6,6 +6,7 @@ export interface EscolaEntrega {
   total_itens: number;
   itens_entregues: number;
   percentual_entregue: number;
+  data_entrega?: string;
 }
 
 export interface ItemEntrega {

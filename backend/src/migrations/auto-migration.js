@@ -149,7 +149,6 @@ class AutoMigration {
       'produtos',
       'modalidades',
       'escolas',
-
     ];
 
     const missingTables = [];
@@ -164,10 +163,12 @@ class AutoMigration {
     if (missingTables.length > 0) {
       console.log(`⚠️  Tabelas não encontradas: ${missingTables.join(', ')}`);
       console.log('🔄 Executando migrações para criar tabelas...');
-      await this.runPendingMigrations();
     } else {
       console.log('✅ Todas as tabelas essenciais existem');
     }
+    
+    // Always run pending migrations regardless of missing tables
+    await this.runPendingMigrations();
   }
 
   /**

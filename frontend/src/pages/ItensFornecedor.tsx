@@ -1,14 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import {
   Box, Typography, Card, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, Paper, CircularProgress, Alert, IconButton, Chip, TextField, InputAdornment
+  TableHead, TableRow, Paper, CircularProgress, Alert, Chip, TextField, InputAdornment
 } from '@mui/material';
 import { Search as SearchIcon, Business as BusinessIcon, Inventory as InventoryIcon } from '@mui/icons-material';
 import { buscarFornecedor } from '../services/fornecedores';
-import { listarContratos } from '../services/contratos';
 import api from '../services/api';
-import BackButton from '../components/BackButton';
 import PageBreadcrumbs from '../components/PageBreadcrumbs';
 
 interface ItemContrato {
@@ -29,7 +27,6 @@ const formatarMoeda = (valor: number) =>
 
 export default function ItensFornecedor() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const [fornecedor, setFornecedor] = useState<any>(null);
   const [itens, setItens] = useState<ItemContrato[]>([]);
   const [loading, setLoading] = useState(true);

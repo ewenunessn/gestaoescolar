@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import StatusIndicator from '../components/StatusIndicator';
 import PageHeader from '../components/PageHeader';
-import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Button,
@@ -13,7 +11,6 @@ import {
   DialogActions,
   Grid,
   IconButton,
-  Paper,
   Table,
   TableBody,
   TableCell,
@@ -22,539 +19,1130 @@ import {
   TableRow,
   TextField,
   Typography,
-  Chip,
   MenuItem,
   Select,
   FormControl,
   InputLabel,
-  Alert,
-  CircularProgress,
-  Tooltip,
-  TablePagination,
+  Paper,
+  Chip,
   InputAdornment,
-  Collapse
+  CircularProgress
 } from '@mui/material';
 import {
   Add as AddIcon,
-  Delete as DeleteIcon,
-  Visibility as ViewIcon,
+  ArrowBack as ArrowBackIcon,
   Search as SearchIcon,
-  Clear as ClearIcon,
-  TuneRounded,
-  ExpandLess,
-  Assignment as AssignmentIcon
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  CheckCircle as CheckCircleIcon,
+  Cancel as CancelIcon,
+  LocalShipping as ShippingIcon,
+  Schedule as ScheduleIcon
 } from '@mui/icons-material';
 import { useNotification } from '../context/NotificationContext';
-import { guiaService, Guia, CreateGuiaData } from '../services/guiaService';
-import PageBreadcrumbs from '../components/PageBreadcrumbs';
+import { escolaService } from '../services/escolaService';
+import { guiaService, GuiaProdutoEscola } from '../services/guiaService';
+import { produtoService, Produto } from '../services/produtoService';
+import { listarEstoqueEscola, EstoqueEscolarItem } from '../services/estoqueEscolarService';
 
 const GuiasDemanda: React.FC = () => {
-  const navigate = useNavigate();
-  const [guias, setGuias] = useState<Guia[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [openDialog, setOpenDialog] = useState(false);
+  // Estados principais
+  const [view, setView] = useState<'list' | 'details'>('list');
+  const [loading, setLoading] = useState(false);
+  const [schools, setSchools] = useState<any[]>([]);
+  const [selectedSchool, setSelectedSchool] = useState<any>(null);
+  const [schoolProducts, setSchoolProducts] = useState<GuiaProdutoEscola[]>([]);
+  const [products, setProducts] = useState<Produto[]>([]);
+  
+  // Filtros e busca
   const [searchTerm, setSearchTerm] = useState('');
-  const [filtersExpanded, setFiltersExpanded] = useState(false);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [filters, setFilters] = useState({
-    mes: '',
-    ano: '',
-    status: ''
+  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+
+  // Modal e Formulário
+  const [openDialog, setOpenDialog] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
+  const [formData, setFormData] = useState({
+    produtoId: '',
+    quantidade: '',
+    unidade: '',
+    data_entrega: new Date().toISOString().split('T')[0],
+    observacao: '',
+    status: 'pendente'
   });
-  const [formData, setFormData] = useState<CreateGuiaData>({
-    mes: new Date().getMonth() + 1,
-    ano: new Date().getFullYear(),
-    observacao: ''
+  const [openBatchDialog, setOpenBatchDialog] = useState(false);
+  const [batchMode, setBatchMode] = useState<'add' | 'edit'>('add');
+  const [batchForm, setBatchForm] = useState({
+    produtoId: '',
+    unidade: '',
+    data_entrega: new Date().toISOString().split('T')[0]
   });
+  const [batchQuantidades, setBatchQuantidades] = useState<Record<number, string>>({});
+  const [batchUnidades, setBatchUnidades] = useState<Record<number, string>>({});
+  const [batchStatus, setBatchStatus] = useState<Record<number, string>>({});
+  const [batchItensExistentes, setBatchItensExistentes] = useState<Record<number, GuiaProdutoEscola | null>>({});
+  const [batchLoadingExisting, setBatchLoadingExisting] = useState(false);
+  const [batchSaving, setBatchSaving] = useState(false);
+  const [batchProgress, setBatchProgress] = useState({
+    currentIndex: 0,
+    total: 0,
+    escolaNome: '',
+    quantidade: '',
+    unidade: ''
+  });
+  const [estoqueIndividual, setEstoqueIndividual] = useState<EstoqueEscolarItem | null>(null);
+  const [batchEstoqueMap, setBatchEstoqueMap] = useState<Record<number, EstoqueEscolarItem | null>>({});
+  const [mesStatusMap, setMesStatusMap] = useState<Record<number, 'none' | 'pendente' | 'programada' | 'em_rota'>>({});
 
   const { success, error } = useNotification();
 
+  // Carregar dados iniciais
   useEffect(() => {
-    carregarGuias();
-  }, []);
+    loadSchools();
+    loadProducts();
+  }, [currentMonth, currentYear]); // Recarrega ao mudar mês/ano
 
-  // Filtrar guias
-  const filteredGuias = guias.filter(guia => {
-    const matchesSearch = !searchTerm ||
-      `${guia.mes}/${guia.ano}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (guia.nome && guia.nome.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (guia.observacao && guia.observacao.toLowerCase().includes(searchTerm.toLowerCase()));
+  // Carregar produtos quando uma escola é selecionada ou quando muda mês/ano
+  useEffect(() => {
+    if (selectedSchool) {
+      loadSchoolProducts(selectedSchool.id);
+    }
+  }, [selectedSchool, currentMonth, currentYear]);
 
-    const matchesMes = !filters.mes || guia.mes === parseInt(filters.mes);
-    const matchesAno = !filters.ano || guia.ano === parseInt(filters.ano);
-    const matchesStatus = !filters.status || guia.status === filters.status;
-
-    return matchesSearch && matchesMes && matchesAno && matchesStatus;
-  });
-
-  // Paginação
-  const paginatedGuias = filteredGuias.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
-
-  // Verificar se há filtros ativos
-  const hasActiveFilters = filters.mes || filters.ano || filters.status;
-
-  const handleChangePage = (event: unknown, newPage: number) => {
-    setPage(newPage);
-  };
-
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
-
-  const toggleFilters = () => {
-    setFiltersExpanded(!filtersExpanded);
-  };
-
-  const clearFilters = () => {
-    setFilters({ mes: '', ano: '', status: '' });
-    setSearchTerm('');
-    setPage(0);
-  };
-
-  const carregarGuias = async () => {
+  const loadSchools = async () => {
     try {
       setLoading(true);
-      const response = await guiaService.listarGuias();
-      const guiasData = Array.isArray(response.data) ? response.data : Array.isArray(response) ? response : [];
-
-      // Debug temporário
-      console.log('Dados das guias recebidos:', guiasData);
-      if (guiasData.length > 0) {
-        console.log('Primeira guia completa:', guiasData[0]);
-        console.log('Propriedades de data disponíveis:', {
-          createdAt: guiasData[0].createdAt,
-          created_at: guiasData[0].created_at,
-          updatedAt: guiasData[0].updatedAt,
-          updated_at: guiasData[0].updated_at
-        });
-      }
-
-      setGuias(guiasData);
-    } catch (err: any) {
-      console.error('Erro ao carregar guias:', err);
-      error('Erro ao carregar guias');
-      setGuias([]);
+      // Carrega escolas com status para o mês atual
+      const data = await guiaService.listarStatusEscolas(currentMonth, currentYear);
+      setSchools(data);
+    } catch (err) {
+      console.error('Erro ao carregar escolas:', err);
+      error('Erro ao carregar lista de escolas');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCreateGuia = async () => {
+  useEffect(() => {
+    const carregarStatusMeses = async () => {
+      const meses = Array.from({ length: 12 }, (_, i) => i + 1);
+      const results = await Promise.all(
+        meses.map(async (m) => {
+          try {
+            const data = await guiaService.listarStatusEscolas(m, currentYear);
+            let pend = 0;
+            let prog = 0;
+            let rota = 0;
+            if (Array.isArray(data)) {
+              data.forEach((s: any) => {
+                pend += Number(s.qtd_pendente || 0);
+                prog += Number(s.qtd_programada || 0);
+                rota += Number(s.qtd_em_rota || 0);
+              });
+            }
+            const status: 'none' | 'pendente' | 'programada' | 'em_rota' =
+              pend > 0 ? 'pendente' : prog > 0 ? 'programada' : rota > 0 ? 'em_rota' : 'none';
+            return { m, status };
+          } catch {
+            return { m, status: 'none' as const };
+          }
+        })
+      );
+      const map: Record<number, 'none' | 'pendente' | 'programada' | 'em_rota'> = {};
+      results.forEach(({ m, status }) => (map[m] = status));
+      setMesStatusMap(map);
+    };
+    carregarStatusMeses();
+  }, [currentYear]);
+
+  const getSchoolStatusColor = (school: any) => {
+    if (school.qtd_pendente > 0) return '#f44336'; // Vermelho
+    if (school.qtd_programada > 0) return '#2196f3'; // Azul
+    if (school.qtd_em_rota > 0) return '#ff9800'; // Laranja
+    return '#4caf50'; // Verde
+  };
+
+  const getStatusText = (school: any) => {
+    if (school.qtd_pendente > 0) return 'PENDENTE';
+    if (school.qtd_programada > 0) return 'PROGRAMADO';
+    if (school.qtd_em_rota > 0) return 'EM ROTA';
+    return 'CONCLUÍDO';
+  };
+
+  const loadProducts = async () => {
     try {
-      await guiaService.criarGuia(formData);
-      success('Guia criada com sucesso!');
-      setOpenDialog(false);
-      setFormData({
-        mes: new Date().getMonth() + 1,
-        ano: new Date().getFullYear(),
-        observacao: ''
-      });
-      carregarGuias();
-    } catch (errorCatch: any) {
-      error(errorCatch.response?.data?.error || 'Erro ao criar guia');
+      const data = await produtoService.listar();
+      setProducts(data);
+    } catch (err) {
+      console.error('Erro ao carregar produtos:', err);
     }
   };
 
-  const handleDeleteGuia = async (id: number) => {
-    if (window.confirm('Tem certeza que deseja excluir esta guia?')) {
+  const loadSchoolProducts = async (escolaId: number) => {
+    try {
+      setLoading(true);
+      const data = await guiaService.listarProdutosPorEscola(escolaId, currentMonth, currentYear);
+      setSchoolProducts(data);
+    } catch (err) {
+      console.error('Erro ao carregar produtos da escola:', err);
+      error('Erro ao carregar produtos da escola');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSchoolClick = (school: any) => {
+    setSelectedSchool(school);
+    setView('details');
+  };
+
+  const handleBack = () => {
+    setSelectedSchool(null);
+    setView('list');
+    setSchoolProducts([]);
+  };
+
+  const handleOpenDialog = (item?: GuiaProdutoEscola) => {
+    if (item) {
+      setEditMode(true);
+      setSelectedItemId(item.id);
+      setFormData({
+        produtoId: item.produto_id?.toString() || item.produto?.id.toString() || '',
+        quantidade: item.quantidade.toString(),
+        unidade: item.unidade,
+        data_entrega: item.data_entrega ? item.data_entrega.split('T')[0] : new Date().toISOString().split('T')[0],
+        observacao: item.observacao || '',
+        status: item.status || 'pendente'
+      });
+    } else {
+      setEditMode(false);
+      setSelectedItemId(null);
+      setFormData({
+        produtoId: '',
+        quantidade: '',
+        unidade: '',
+        data_entrega: new Date().toISOString().split('T')[0],
+        observacao: '',
+        status: 'pendente'
+      });
+    }
+    setOpenDialog(true);
+  };
+
+  const handleProductChange = (produtoId: number) => {
+    const product = products.find(p => p.id === produtoId);
+    setFormData(prev => ({
+      ...prev,
+      produtoId: produtoId.toString(),
+      unidade: product?.unidade_contrato || 'Kg'
+    }));
+  };
+
+  const handleBatchProductChange = (produtoId: number) => {
+    const product = products.find(p => p.id === produtoId);
+    setBatchForm(prev => ({
+      ...prev,
+      produtoId: produtoId.toString(),
+      unidade: product?.unidade_contrato || product?.unidade || 'Kg'
+    }));
+  };
+
+  // Carregar estoque para o diálogo individual
+  useEffect(() => {
+    const carregar = async () => {
+      if (!selectedSchool?.id || !formData.produtoId) {
+        setEstoqueIndividual(null);
+        return;
+      }
       try {
-        await guiaService.deletarGuia(id);
-        success('Guia excluída com sucesso!');
-        carregarGuias();
-      } catch (errorCatch: any) {
-        error('Erro ao excluir guia');
+        const estoque = await listarEstoqueEscola(Number(selectedSchool.id));
+        const item = estoque.find(i => i.produto_id === Number(formData.produtoId)) || null;
+        setEstoqueIndividual(item);
+      } catch (e) {
+        setEstoqueIndividual(null);
+      }
+    };
+    carregar();
+  }, [selectedSchool?.id, formData.produtoId]);
+
+  // Carregar estoque para todas as escolas no lote quando produto é selecionado
+  useEffect(() => {
+    const carregarBatchEstoque = async () => {
+      if (!batchForm.produtoId) {
+        setBatchEstoqueMap({});
+        return;
+      }
+      const produtoIdSel = Number(batchForm.produtoId);
+      try {
+        const results = await Promise.all(
+          schools.map(async (s) => {
+            try {
+              const estoque = await listarEstoqueEscola(s.id);
+              const item = estoque.find(i => i.produto_id === produtoIdSel) || null;
+              return { id: s.id, item };
+            } catch {
+              return { id: s.id, item: null };
+            }
+          })
+        );
+        const map: Record<number, EstoqueEscolarItem | null> = {};
+        results.forEach(({ id, item }) => { map[id] = item; });
+        setBatchEstoqueMap(map);
+      } catch {
+        setBatchEstoqueMap({});
+      }
+    };
+    if (openBatchDialog) {
+      void carregarBatchEstoque();
+    }
+  }, [batchForm.produtoId, openBatchDialog, schools]);
+
+  const handleBatchQuantidadeChange = (escolaId: number, value: string) => {
+    setBatchQuantidades(prev => ({
+      ...prev,
+      [escolaId]: value
+    }));
+  };
+
+  const handleBatchUnidadeChange = (escolaId: number, value: string) => {
+    setBatchUnidades(prev => ({
+      ...prev,
+      [escolaId]: value
+    }));
+  };
+
+  const handleBatchStatusChange = (escolaId: number, value: string) => {
+    setBatchStatus(prev => ({
+      ...prev,
+      [escolaId]: value
+    }));
+  };
+
+  const abrirBatchDialog = () => {
+    setBatchMode('add');
+    setBatchForm({
+      produtoId: '',
+      unidade: '',
+      data_entrega: new Date().toISOString().split('T')[0]
+    });
+    setBatchQuantidades({});
+    setBatchUnidades({});
+    setBatchStatus({});
+    setBatchItensExistentes({});
+    setBatchSaving(false);
+    setBatchProgress({
+      currentIndex: 0,
+      total: 0,
+      escolaNome: '',
+      quantidade: '',
+      unidade: ''
+    });
+    setOpenBatchDialog(true);
+  };
+
+  const normalizarData = (data?: string | null) => {
+    if (!data) return '';
+    return data.split('T')[0];
+  };
+
+  const carregarItensBatch = async () => {
+    if (!batchForm.produtoId || !batchForm.data_entrega) return;
+    if (schools.length === 0) return;
+    try {
+      setBatchLoadingExisting(true);
+      const produtoIdSelecionado = Number(batchForm.produtoId);
+      const itensPorEscola = await Promise.all(
+        schools.map(async (school) => {
+          const itens = await guiaService.listarProdutosPorEscola(school.id, currentMonth, currentYear);
+          const item = itens.find((it) => {
+            const produtoId = it.produto_id || it.produto?.id;
+            return produtoId === produtoIdSelecionado && normalizarData(it.data_entrega) === batchForm.data_entrega;
+          });
+          return { schoolId: school.id, item: item || null };
+        })
+      );
+
+      const quantidades: Record<number, string> = {};
+      const unidades: Record<number, string> = {};
+      const status: Record<number, string> = {};
+      const itensMap: Record<number, GuiaProdutoEscola | null> = {};
+
+      itensPorEscola.forEach(({ schoolId, item }) => {
+        itensMap[schoolId] = item;
+        if (item) {
+          quantidades[schoolId] = item.quantidade?.toString() || '';
+          unidades[schoolId] = item.unidade || batchForm.unidade || 'Kg';
+          status[schoolId] = item.status || 'pendente';
+        } else {
+          quantidades[schoolId] = '';
+          unidades[schoolId] = batchForm.unidade || 'Kg';
+          status[schoolId] = 'pendente';
+        }
+      });
+
+      setBatchItensExistentes(itensMap);
+      setBatchQuantidades(quantidades);
+      setBatchUnidades(unidades);
+      setBatchStatus(status);
+    } catch (err) {
+      console.error('Erro ao carregar itens em lote:', err);
+      error('Erro ao carregar itens para edição em lote');
+    } finally {
+      setBatchLoadingExisting(false);
+    }
+  };
+
+  useEffect(() => {
+    if (batchMode !== 'edit') return;
+    if (!openBatchDialog) return;
+    carregarItensBatch();
+  }, [batchMode, batchForm.produtoId, batchForm.data_entrega, openBatchDialog, schools]);
+
+  const handleBatchSubmit = async () => {
+    if (!batchForm.produtoId || !batchForm.data_entrega) {
+      error('Selecione produto e data de entrega');
+      return;
+    }
+    const payloads = schools
+      .map((school) => {
+        const quantidade = Number(batchQuantidades[school.id] || 0);
+        const unidade = batchUnidades[school.id] || batchForm.unidade || 'Kg';
+        const status = batchStatus[school.id] || 'pendente';
+        const itemExistente = batchItensExistentes[school.id];
+        return {
+          school,
+          quantidade,
+          unidade,
+          status,
+          itemExistente
+        };
+      })
+      .filter((item) => item.quantidade > 0);
+
+    if (payloads.length === 0) {
+      error('Informe quantidade maior que zero em pelo menos uma escola');
+      return;
+    }
+
+    try {
+      setBatchSaving(true);
+      setBatchProgress({
+        currentIndex: 0,
+        total: payloads.length,
+        escolaNome: '',
+        quantidade: '',
+        unidade: batchForm.unidade || 'Kg'
+      });
+      for (let index = 0; index < payloads.length; index++) {
+        const { school, quantidade, unidade, status, itemExistente } = payloads[index];
+        setBatchProgress({
+          currentIndex: index + 1,
+          total: payloads.length,
+          escolaNome: school.nome,
+          quantidade: quantidade.toString(),
+          unidade
+        });
+        const data = {
+          produtoId: parseInt(batchForm.produtoId),
+          quantidade,
+          unidade,
+          data_entrega: batchForm.data_entrega,
+          status
+        };
+        if (batchMode === 'edit' && itemExistente?.id) {
+          await guiaService.atualizarProdutoEscola(itemExistente.id, data);
+        } else {
+          await guiaService.adicionarProdutoEscola(school.id, data);
+        }
+      }
+      success(batchMode === 'edit' ? 'Quantidades atualizadas com sucesso' : 'Quantidades adicionadas com sucesso');
+      setOpenBatchDialog(false);
+      loadSchools();
+    } catch (err) {
+      console.error('Erro ao salvar em lote:', err);
+      error('Erro ao salvar quantidades em lote');
+    } finally {
+      setBatchSaving(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    try {
+      if (!selectedSchool) return;
+      if (!formData.produtoId || !formData.quantidade || !formData.data_entrega) {
+        error('Preencha todos os campos obrigatórios');
+        return;
+      }
+
+      if (parseFloat(formData.quantidade) <= 0) {
+        error('A quantidade deve ser maior que zero');
+        return;
+      }
+
+      const data = {
+        produtoId: parseInt(formData.produtoId),
+        quantidade: parseFloat(formData.quantidade),
+        unidade: formData.unidade || 'Kg',
+        data_entrega: formData.data_entrega,
+        observacao: formData.observacao,
+        status: formData.status
+      };
+
+      if (editMode && selectedItemId) {
+        await guiaService.atualizarProdutoEscola(selectedItemId, data);
+        success('Produto atualizado com sucesso!');
+      } else {
+        await guiaService.adicionarProdutoEscola(selectedSchool.id, data);
+        success('Produto adicionado com sucesso!');
+      }
+
+      setOpenDialog(false);
+      loadSchoolProducts(selectedSchool.id);
+    } catch (err) {
+      console.error('Erro ao salvar produto:', err);
+      error('Erro ao salvar produto');
+    }
+  };
+
+  const handleDeleteProduct = async (item: GuiaProdutoEscola) => {
+    if (window.confirm('Tem certeza que deseja remover este item?')) {
+      try {
+        if (item.id) {
+          await guiaService.removerItemGuia(item.id);
+        } else if (item.guia_id && item.produto_id && item.escola_id) {
+          await guiaService.removerProdutoGuia(item.guia_id, item.produto_id, item.escola_id);
+        } else {
+          console.error('Item sem ID ou dados insuficientes:', item);
+          error('Erro: Identificador do item não encontrado');
+          return;
+        }
+        
+        success('Item removido com sucesso');
+        if (selectedSchool) loadSchoolProducts(selectedSchool.id);
+      } catch (err) {
+        console.error('Erro ao remover item:', err);
+        error('Erro ao remover item');
       }
     }
-  };
-
-  const handleViewDetalhes = (guia: Guia) => {
-    navigate(`/guias-demanda/${guia.id}`);
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'aberta':
-        return 'success';
-      case 'fechada':
-        return 'default';
-      case 'cancelada':
-        return 'error';
-      default:
-        return 'default';
+      case 'entregue': return 'success';
+      case 'pendente': return 'warning';
+      case 'cancelado': return 'error';
+      case 'em_rota': return 'info';
+      case 'programada': return 'default';
+      default: return 'default';
     }
   };
 
-  const getStatusLabel = (status: string) => {
+  const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'aberta':
-        return 'Aberta';
-      case 'fechada':
-        return 'Fechada';
-      case 'cancelada':
-        return 'Cancelada';
-      default:
-        return status;
+      case 'entregue': return <CheckCircleIcon fontSize="small" />;
+      case 'pendente': return <ScheduleIcon fontSize="small" />;
+      case 'cancelado': return <CancelIcon fontSize="small" />;
+      case 'em_rota': return <ShippingIcon fontSize="small" />;
+      case 'programada': return <ScheduleIcon fontSize="small" color="disabled" />;
+      default: return null;
     }
   };
 
-  const formatDate = (dateString: string | undefined) => {
-    try {
-      if (!dateString) {
-        console.log('Data vazia recebida');
-        return '-';
-      }
+  // Renderização da Lista de Escolas
+  const renderSchoolList = () => {
+    const filteredSchools = schools.filter(school => 
+      school.nome.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
-      console.log('Tentando formatar data:', dateString, 'tipo:', typeof dateString);
-
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) {
-        console.log('Data inválida:', dateString);
-        return '-';
-      }
-
-      const formatted = date.toLocaleDateString('pt-BR');
-      console.log('Data formatada:', formatted);
-      return formatted;
-    } catch (error) {
-      console.log('Erro ao formatar data:', dateString, error);
-      return '-';
-    }
-  };
-
-  const FiltersContent = () => (
-    <Grid container spacing={2}>
-      <Grid item xs={12} md={3}>
-        <FormControl fullWidth size="small">
-          <InputLabel>Mês</InputLabel>
-          <Select
-            value={filters.mes}
-            onChange={(e) => setFilters({ ...filters, mes: e.target.value })}
-            label="Mês"
-          >
-            <MenuItem value="">Todos</MenuItem>
-            {[...Array(12)].map((_, i) => (
-              <MenuItem key={i + 1} value={i + 1}>
-                {new Date(0, i).toLocaleDateString('pt-BR', { month: 'long' })}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      </Grid>
-      <Grid item xs={12} md={3}>
-        <TextField
-          label="Ano"
-          type="number"
-          size="small"
-          value={filters.ano}
-          onChange={(e) => setFilters({ ...filters, ano: e.target.value })}
-          fullWidth
-          sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
-        />
-      </Grid>
-      <Grid item xs={12} md={3}>
-        <FormControl fullWidth size="small">
-          <InputLabel>Status</InputLabel>
-          <Select
-            value={filters.status}
-            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-            label="Status"
-          >
-            <MenuItem value="">Todos</MenuItem>
-            <MenuItem value="aberta">Aberta</MenuItem>
-            <MenuItem value="fechada">Fechada</MenuItem>
-            <MenuItem value="cancelada">Cancelada</MenuItem>
-          </Select>
-        </FormControl>
-      </Grid>
-      <Grid item xs={12} md={3}>
-        <Button
-          variant="outlined"
-          onClick={clearFilters}
-          disabled={!hasActiveFilters}
-          fullWidth
-          sx={{ height: '40px' }}
-        >
-          Limpar Filtros
-        </Button>
-      </Grid>
-    </Grid>
-  );
-
-  return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
-        <PageBreadcrumbs 
-          items={[
-            { label: 'Guias de Demanda', icon: <AssignmentIcon fontSize="small" /> }
-          ]}
-        />
+    return (
+      <Box>
         <PageHeader 
-          title="Guias de Demanda"
-          totalCount={filteredGuias.length}
-          statusLegend={[
-            { status: 'aberta', label: 'ABERTAS', count: filteredGuias.filter(g => g.status === 'aberta').length },
-            { status: 'fechada', label: 'FECHADAS', count: filteredGuias.filter(g => g.status === 'fechada').length },
-            { status: 'cancelada', label: 'CANCELADAS', count: filteredGuias.filter(g => g.status === 'cancelada').length }
-          ]}
+          title="Guia de Demanda por Escola" 
+          subtitle="Selecione uma escola para gerenciar as demandas"
         />
+        
+        <Box mb={3} display="flex" gap={2}>
+          <FormControl variant="outlined" size="small" sx={{ minWidth: 120 }}>
+            <InputLabel>Mês</InputLabel>
+            <Select
+              value={currentMonth}
+              onChange={(e) => setCurrentMonth(Number(e.target.value))}
+              label="Mês"
+            >
+              {Array.from({ length: 12 }, (_, i) => (
+                <MenuItem key={i + 1} value={i + 1}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box
+                      sx={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: '50%',
+                        bgcolor:
+                          mesStatusMap[i + 1] === 'pendente'
+                            ? '#f44336'
+                            : mesStatusMap[i + 1] === 'programada'
+                            ? '#2196f3'
+                            : mesStatusMap[i + 1] === 'em_rota'
+                            ? '#ff9800'
+                            : 'divider'
+                      }}
+                    />
+                    {new Date(0, i).toLocaleString('pt-BR', { month: 'long' })}
+                  </Box>
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl variant="outlined" size="small" sx={{ minWidth: 100 }}>
+            <InputLabel>Ano</InputLabel>
+            <Select
+              value={currentYear}
+              onChange={(e) => setCurrentYear(Number(e.target.value))}
+              label="Ano"
+            >
+              <MenuItem value={2024}>2024</MenuItem>
+              <MenuItem value={2025}>2025</MenuItem>
+              <MenuItem value={2026}>2026</MenuItem>
+            </Select>
+          </FormControl>
+          <TextField
+            fullWidth
+            size="small"
+            variant="outlined"
+            placeholder="Buscar escola..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+            }}
+          />
+          <Button
+            variant="contained"
+            size="small"
+            startIcon={<AddIcon />}
+            onClick={abrirBatchDialog}
+            sx={{ whiteSpace: 'nowrap', textTransform: 'none', px: 1.5 }}
+          >
+            Qtd. em lote
+          </Button>
+        </Box>
 
-        <Card sx={{ borderRadius: '12px', p: 2, mb: 3 }}>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 2 }}>
-            <TextField
-              placeholder="Buscar guias..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              size="small"
-              sx={{
-                flex: 1,
-                minWidth: '200px',
-                '& .MuiOutlinedInput-root': { borderRadius: '8px' }
-              }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon sx={{ color: 'text.secondary' }} />
-                  </InputAdornment>
-                ),
-                endAdornment: searchTerm && (
-                  <InputAdornment position="end">
-                    <IconButton size="small" onClick={() => setSearchTerm('')}>
-                      <ClearIcon fontSize="small" />
-                    </IconButton>
-                  </InputAdornment>
-                )
-              }}
-            />
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button
-                size="small"
-                variant={filtersExpanded || hasActiveFilters ? 'contained' : 'outlined'}
-                startIcon={filtersExpanded ? <ExpandLess /> : <TuneRounded />}
-                onClick={toggleFilters}
-                sx={{ position: 'relative' }}
-              >
-                Filtros
-                {hasActiveFilters && !filtersExpanded && (
-                  <Box sx={{
-                    position: 'absolute',
-                    top: -2,
-                    right: -2,
-                    width: 8,
-                    height: 8,
-                    borderRadius: '50%',
-                    bgcolor: 'error.main'
-                  }} />
-                )}
-              </Button>
-              <Button
-                startIcon={<AddIcon />}
-                onClick={() => setOpenDialog(true)}
-                variant="contained"
-                color="success"
-              >
-                Nova Guia
-              </Button>
-            </Box>
+        <Box mb={2} display="flex" gap={2}>
+          <Box display="flex" alignItems="center" gap={1}>
+            <Box width={16} height={16} bgcolor="#f44336" borderRadius="50%" />
+            <Typography variant="caption">Pendente (Para Entrega)</Typography>
           </Box>
-
-          <Collapse in={filtersExpanded} timeout={400}>
-            <Box sx={{ mb: 3 }}>
-              <FiltersContent />
-            </Box>
-          </Collapse>
-
-
-        </Card>
+          <Box display="flex" alignItems="center" gap={1}>
+            <Box width={16} height={16} bgcolor="#2196f3" borderRadius="50%" />
+            <Typography variant="caption">Programada (Aguardando)</Typography>
+          </Box>
+          <Box display="flex" alignItems="center" gap={1}>
+            <Box width={16} height={16} bgcolor="#4caf50" borderRadius="50%" />
+            <Typography variant="caption">Sem Pendências</Typography>
+          </Box>
+        </Box>
 
         {loading ? (
-          <Card>
-            <CardContent sx={{ textAlign: 'center', py: 6 }}>
-              <CircularProgress size={60} />
-            </CardContent>
-          </Card>
-        ) : filteredGuias.length === 0 ? (
-          <Card>
-            <CardContent sx={{ textAlign: 'center', py: 6 }}>
-              <AssignmentIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-              <Typography variant="h6" sx={{ color: 'text.secondary' }}>
-                {searchTerm || hasActiveFilters ? 'Nenhuma guia encontrada' : 'Nenhuma guia cadastrada'}
-              </Typography>
-              {(searchTerm || hasActiveFilters) && (
-                <Button variant="outlined" onClick={clearFilters} sx={{ mt: 2 }}>
-                  Limpar Filtros
-                </Button>
-              )}
-            </CardContent>
-          </Card>
+          <Box display="flex" justifyContent="center" p={4}>
+            <CircularProgress />
+          </Box>
         ) : (
-          <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px' }}>
-            <TableContainer>
-              <Table>
+          <Box display="flex" flexDirection="column" gap={4}>
+            {Object.entries(
+              filteredSchools.reduce((acc, school) => {
+                const rota = school.escola_rota || 'Sem Rota';
+                if (!acc[rota]) acc[rota] = [];
+                acc[rota].push(school);
+                return acc;
+              }, {} as Record<string, typeof schools>)
+            ).map(([rota, schoolsInRota]) => (
+              <Box key={rota}>
+                <Typography variant="h5" sx={{ mb: 2, borderBottom: '2px solid #e0e0e0', pb: 1, color: '#1976d2', fontWeight: 'bold' }}>
+                  {rota}
+                </Typography>
+                <Grid container spacing={2}>
+                  {schoolsInRota.map((school) => {
+                    const statusColor = getSchoolStatusColor(school);
+                    const statusText = getStatusText(school);
+
+                    return (
+                      <Grid item xs={12} sm={6} md={4} lg={2} key={school.id}>
+                        <Card 
+                          onClick={() => handleSchoolClick(school)}
+                          sx={{ 
+                            cursor: 'pointer', 
+                            height: '100%',
+                            transition: 'all 0.2s',
+                            '&:hover': { boxShadow: 4, transform: 'translateY(-2px)' },
+                            borderRadius: 2,
+                            overflow: 'hidden',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            border: '1px solid #e0e0e0'
+                          }}
+                        >
+                          {/* Header Colorido com Nome e Endereço */}
+                          <Box 
+                            sx={{ 
+                              bgcolor: statusColor, 
+                              p: 1.5,
+                              color: '#fff',
+                              textAlign: 'center',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              justifyContent: 'center',
+                              minHeight: 60
+                            }}
+                          >
+                            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', lineHeight: 1.2, textTransform: 'uppercase', fontSize: '0.85rem' }}>
+                              {school.nome}
+                            </Typography>
+                          </Box>
+
+                          {/* Corpo Branco com Ordem na Rota */}
+                          <CardContent sx={{ 
+                            flexGrow: 1, 
+                            bgcolor: '#fff', 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            alignItems: 'center', 
+                            justifyContent: 'center',
+                            p: 1.5,
+                            '&:last-child': { pb: 1.5 }
+                          }}>
+                            <Typography 
+                              variant="h3" 
+                              component="div" 
+                              sx={{ 
+                                fontWeight: 'bold', 
+                                color: statusColor,
+                                lineHeight: 1,
+                                mb: 0.5
+                              }}
+                            >
+                              {school.ordem_rota || '-'}
+                            </Typography>
+                          </CardContent>
+                        </Card>
+                      </Grid>
+                    );
+                  })}
+                </Grid>
+              </Box>
+            ))}
+            {filteredSchools.length === 0 && (
+              <Box textAlign="center" py={4}>
+                <Typography color="textSecondary">Nenhuma escola encontrada.</Typography>
+              </Box>
+            )}
+          </Box>
+        )}
+      </Box>
+    );
+  };
+
+  // Renderização dos Detalhes da Escola
+  const renderSchoolDetails = () => {
+    if (!selectedSchool) return null;
+
+    return (
+      <Box>
+        <Box display="flex" alignItems="center" mb={3}>
+          <IconButton onClick={handleBack} sx={{ mr: 2 }}>
+            <ArrowBackIcon />
+          </IconButton>
+          <Box>
+            <Typography variant="h4">{selectedSchool.nome}</Typography>
+            <Typography variant="subtitle1" color="textSecondary">
+              Gerenciamento de Demandas
+            </Typography>
+          </Box>
+        </Box>
+
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+          <Box display="flex" gap={2}>
+             <FormControl variant="outlined" size="small" sx={{ minWidth: 120 }}>
+              <InputLabel>Mês</InputLabel>
+              <Select
+                value={currentMonth}
+                onChange={(e) => setCurrentMonth(Number(e.target.value))}
+                label="Mês"
+              >
+                {Array.from({ length: 12 }, (_, i) => (
+                  <MenuItem key={i + 1} value={i + 1}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Box
+                        sx={{
+                          width: 10,
+                          height: 10,
+                          borderRadius: '50%',
+                          bgcolor:
+                            mesStatusMap[i + 1] === 'pendente'
+                              ? '#f44336'
+                              : mesStatusMap[i + 1] === 'programada'
+                              ? '#2196f3'
+                              : mesStatusMap[i + 1] === 'em_rota'
+                              ? '#ff9800'
+                              : 'divider'
+                        }}
+                      />
+                      {new Date(0, i).toLocaleString('pt-BR', { month: 'long' })}
+                    </Box>
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl variant="outlined" size="small" sx={{ minWidth: 100 }}>
+              <InputLabel>Ano</InputLabel>
+              <Select
+                value={currentYear}
+                onChange={(e) => setCurrentYear(Number(e.target.value))}
+                label="Ano"
+              >
+                <MenuItem value={2024}>2024</MenuItem>
+                <MenuItem value={2025}>2025</MenuItem>
+                <MenuItem value={2026}>2026</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<AddIcon />}
+            onClick={() => handleOpenDialog()}
+          >
+            Adicionar Produto
+          </Button>
+        </Box>
+
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Data Entrega</TableCell>
+                <TableCell>Produto</TableCell>
+                <TableCell>Quantidade</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Observação</TableCell>
+                <TableCell align="right">Ações</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {schoolProducts.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} align="center">
+                    Nenhum produto encontrado para este período.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                schoolProducts.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>
+                      {item.data_entrega ? new Date(item.data_entrega).toLocaleDateString() : '-'}
+                    </TableCell>
+                    <TableCell>{item.produto_nome || item.produto?.nome || 'Produto desconhecido'}</TableCell>
+                    <TableCell>
+                      {item.quantidade} {item.unidade}
+                    </TableCell>
+                    <TableCell>
+                      <Chip 
+                        icon={getStatusIcon(item.status || 'pendente')}
+                        label={item.status?.toUpperCase() || 'PENDENTE'} 
+                        color={getStatusColor(item.status || 'pendente') as any}
+                        size="small" 
+                      />
+                    </TableCell>
+                    <TableCell>{item.observacao || '-'}</TableCell>
+                    <TableCell align="right">
+                      <IconButton size="small" onClick={() => handleOpenDialog(item)} color="primary">
+                        <EditIcon />
+                      </IconButton>
+                      <IconButton size="small" onClick={() => handleDeleteProduct(item)} color="error">
+                        <DeleteIcon />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Box>
+    );
+  };
+
+  return (
+    <Box p={3}>
+      {view === 'list' ? renderSchoolList() : renderSchoolDetails()}
+
+      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>{editMode ? 'Editar Produto' : 'Adicionar Produto para Entrega'}</DialogTitle>
+        <DialogContent>
+          <Box display="flex" flexDirection="column" gap={2} mt={2}>
+            <FormControl fullWidth>
+              <InputLabel>Produto</InputLabel>
+              <Select
+                value={formData.produtoId}
+                onChange={(e) => handleProductChange(Number(e.target.value))}
+                label="Produto"
+              >
+                {products.map(p => (
+                  <MenuItem key={p.id} value={p.id}>{p.nome}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <Box
+              display="grid"
+              sx={{
+                gridTemplateColumns: estoqueIndividual ? 'max-content 1fr max-content' : '1fr max-content',
+                alignItems: 'center',
+                columnGap: 1
+              }}
+            >
+              {estoqueIndividual && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+                  <Chip
+                    size="small"
+                    label={`${(estoqueIndividual.quantidade_atual ?? 0).toLocaleString('pt-BR')} ${estoqueIndividual.unidade}`}
+                    sx={{ height: 22 }}
+                  />
+                  {estoqueIndividual.data_ultima_atualizacao && (
+                    <Typography variant="caption" color="text.secondary">
+                      {new Date(estoqueIndividual.data_ultima_atualizacao).toLocaleDateString('pt-BR')}
+                    </Typography>
+                  )}
+                </Box>
+              )}
+              <TextField
+                label="Quantidade"
+                type="number"
+                fullWidth
+                value={formData.quantidade}
+                onChange={(e) => setFormData({...formData, quantidade: e.target.value})}
+                sx={{ minWidth: 140 }}
+              />
+              <TextField
+                label="Unidade"
+                fullWidth
+                value={formData.unidade}
+                onChange={(e) => setFormData({...formData, unidade: e.target.value})}
+              />
+            </Box>
+
+            <TextField
+              label="Data de Entrega"
+              type="date"
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+              value={formData.data_entrega}
+              onChange={(e) => setFormData({...formData, data_entrega: e.target.value})}
+            />
+
+            <FormControl fullWidth>
+                <InputLabel>Status</InputLabel>
+                <Select
+                  value={formData.status}
+                  onChange={(e) => setFormData({...formData, status: e.target.value})}
+                  label="Status"
+                >
+                  <MenuItem value="pendente">Pendente (Pronto para entrega)</MenuItem>
+                  <MenuItem value="programada">Programada (Aguardando)</MenuItem>
+                  <MenuItem value="em_rota">Em Rota</MenuItem>
+                  <MenuItem value="entregue">Entregue</MenuItem>
+                  <MenuItem value="cancelado">Cancelado</MenuItem>
+                </Select>
+              </FormControl>
+
+            <TextField
+              label="Observação"
+              multiline
+              rows={3}
+              fullWidth
+              value={formData.observacao}
+              onChange={(e) => setFormData({...formData, observacao: e.target.value})}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
+          <Button onClick={handleSubmit} variant="contained" color="primary">
+            {editMode ? 'Atualizar' : 'Salvar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={openBatchDialog} onClose={() => !batchSaving && setOpenBatchDialog(false)} maxWidth="lg" fullWidth>
+        <DialogTitle>Adicionar quantidade em lote</DialogTitle>
+        <DialogContent>
+          <Box display="flex" flexDirection="column" gap={2} mt={2}>
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={3}>
+                <FormControl fullWidth>
+                  <InputLabel>Modo</InputLabel>
+                  <Select
+                    value={batchMode}
+                    label="Modo"
+                    onChange={(e) => setBatchMode(e.target.value as 'add' | 'edit')}
+                    disabled={batchSaving}
+                  >
+                    <MenuItem value="add">Adicionar</MenuItem>
+                    <MenuItem value="edit">Editar</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} md={5}>
+                <FormControl fullWidth>
+                  <InputLabel>Produto</InputLabel>
+                  <Select
+                    value={batchForm.produtoId}
+                    onChange={(e) => handleBatchProductChange(Number(e.target.value))}
+                    label="Produto"
+                    disabled={batchSaving}
+                  >
+                    {products.map(p => (
+                      <MenuItem key={p.id} value={p.id}>{p.nome}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} md={2}>
+                <TextField
+                  label="Unidade"
+                  fullWidth
+                  value={batchForm.unidade}
+                  onChange={(e) => setBatchForm(prev => ({ ...prev, unidade: e.target.value }))}
+                  disabled={batchSaving}
+                />
+              </Grid>
+              <Grid item xs={12} md={2}>
+                <TextField
+                  label="Data de Entrega"
+                  type="date"
+                  fullWidth
+                  InputLabelProps={{ shrink: true }}
+                  value={batchForm.data_entrega}
+                  onChange={(e) => setBatchForm(prev => ({ ...prev, data_entrega: e.target.value }))}
+                  disabled={batchSaving}
+                />
+              </Grid>
+            </Grid>
+            {batchMode === 'edit' && batchLoadingExisting && (
+              <Box display="flex" alignItems="center" gap={1}>
+                <CircularProgress size={18} />
+                <Typography variant="body2">Carregando itens para edição...</Typography>
+              </Box>
+            )}
+
+            <TableContainer component={Paper} sx={{ maxHeight: 420 }}>
+              <Table size="small" stickyHeader>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Mês/Ano</TableCell>
-                    <TableCell>Observação</TableCell>
-                    <TableCell align="center">Produtos</TableCell>
-                    <TableCell>Criado em</TableCell>
-                    <TableCell align="center">Ações</TableCell>
+                    <TableCell>Escola</TableCell>
+                    <TableCell width={180}>Estoque</TableCell>
+                    <TableCell width={160}>Quantidade</TableCell>
+                    <TableCell width={140}>Unidade</TableCell>
+                    <TableCell width={180}>Status</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {paginatedGuias.map((guia) => (
-                    <TableRow key={guia.id} hover>
+                  {schools.map((school) => (
+                    <TableRow key={school.id}>
+                      <TableCell>{school.nome}</TableCell>
                       <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <StatusIndicator status={guia.status} size="small" />
-                          <Box>
-                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                              {guia.nome || `${guia.mes}/${guia.ano}`}
-                            </Typography>
-                            {guia.nome && (
-                              <Typography variant="caption" color="text.secondary" display="block">
-                                {guia.mes}/{guia.ano}
+                        {batchEstoqueMap[school.id] && (
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <Chip
+                              size="small"
+                              label={`${(batchEstoqueMap[school.id]!.quantidade_atual ?? 0).toLocaleString('pt-BR')} ${batchEstoqueMap[school.id]!.unidade}`}
+                              sx={{ height: 22 }}
+                            />
+                            {batchEstoqueMap[school.id]!.data_ultima_atualizacao && (
+                              <Typography variant="caption" color="text.secondary">
+                                {new Date(batchEstoqueMap[school.id]!.data_ultima_atualizacao as string).toLocaleDateString('pt-BR')}
                               </Typography>
                             )}
                           </Box>
-                        </Box>
+                        )}
                       </TableCell>
                       <TableCell>
-                        <Typography variant="body2" color="text.secondary">
-                          {guia.observacao || '-'}
-                        </Typography>
-                      </TableCell>
-
-                      <TableCell align="center">
-                        {(() => {
-                          const count = parseInt(guia.total_produtos?.toString() || '0') || guia.produtosEscola?.length || 0;
-                          return (
-                            <Chip
-                              label={count}
-                              size="small"
-                              sx={{
-                                fontWeight: 'bold',
-                                minWidth: '40px',
-                                ...(count > 0 ? {
-                                  bgcolor: 'primary.main',
-                                  color: 'primary.contrastText'
-                                } : {
-                                  bgcolor: 'grey.300',
-                                  color: 'grey.700'
-                                })
-                              }}
-                            />
-                          );
-                        })()}
+                        <TextField
+                          type="number"
+                          size="small"
+                          fullWidth
+                          value={batchQuantidades[school.id] || ''}
+                          onChange={(e) => handleBatchQuantidadeChange(school.id, e.target.value)}
+                          inputProps={{ min: 0, step: 0.001 }}
+                          disabled={batchSaving || batchLoadingExisting}
+                          sx={{ width: 160 }}
+                        />
                       </TableCell>
                       <TableCell>
-                        <Typography variant="body2" color="text.secondary">
-                          {(() => {
-                            const dateValue = guia.createdAt || guia.created_at || guia.updatedAt || guia.updated_at;
-                            console.log('Guia ID:', guia.id, 'Data encontrada:', dateValue);
-                            return formatDate(dateValue);
-                          })()}
-                        </Typography>
+                        <TextField
+                          size="small"
+                          fullWidth
+                          value={batchUnidades[school.id] ?? batchForm.unidade}
+                          onChange={(e) => handleBatchUnidadeChange(school.id, e.target.value)}
+                          disabled={batchSaving || batchLoadingExisting}
+                        />
                       </TableCell>
-                      <TableCell align="center">
-                        <Tooltip title="Ver Detalhes">
-                          <IconButton
-                            size="small"
-                            onClick={() => handleViewDetalhes(guia)}
-                            color="primary"
+                      <TableCell>
+                        <FormControl fullWidth size="small">
+                          <Select
+                            value={batchStatus[school.id] || 'pendente'}
+                            onChange={(e) => handleBatchStatusChange(school.id, e.target.value)}
+                            disabled={batchSaving || batchLoadingExisting}
                           >
-                            <ViewIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
+                            <MenuItem value="pendente">Pendente (Para entrega)</MenuItem>
+                            <MenuItem value="programada">Programada</MenuItem>
+                            <MenuItem value="em_rota">Em rota</MenuItem>
+                            <MenuItem value="entregue">Entregue</MenuItem>
+                            <MenuItem value="cancelado">Cancelado</MenuItem>
+                          </Select>
+                        </FormControl>
                       </TableCell>
                     </TableRow>
                   ))}
+                  {schools.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={4} align="center">
+                        Nenhuma escola disponível
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </TableContainer>
-            <TablePagination
-              component="div"
-              count={filteredGuias.length}
-              page={page}
-              onPageChange={handleChangePage}
-              rowsPerPage={rowsPerPage}
-              onRowsPerPageChange={handleChangeRowsPerPage}
-              rowsPerPageOptions={[5, 10, 25, 50]}
-              labelRowsPerPage="Itens por página:"
-            />
-          </Paper>
-        )}
 
-      </Box>
-
-      {/* Dialog para criar nova guia */}
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ pb: 2 }}>
-          <Typography variant="h6" component="div">
-            Nova Guia de Demanda
-          </Typography>
-        </DialogTitle>
-        <DialogContent dividers>
-          <Grid container spacing={2} sx={{ pt: 1 }}>
-            <Grid item xs={6}>
-              <FormControl fullWidth>
-                <InputLabel>Mês</InputLabel>
-                <Select
-                  value={formData.mes}
-                  onChange={(e) => setFormData({ ...formData, mes: e.target.value as number })}
-                  label="Mês"
-                >
-                  {[...Array(12)].map((_, i) => (
-                    <MenuItem key={i + 1} value={i + 1}>
-                      {new Date(0, i).toLocaleDateString('pt-BR', { month: 'long' })}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={6}>
-              <TextField
-                label="Ano"
-                type="number"
-                value={formData.ano}
-                onChange={(e) => setFormData({ ...formData, ano: parseInt(e.target.value) || new Date().getFullYear() })}
-                fullWidth
-                inputProps={{ min: 2020, max: 2030 }}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                label="Nome da Guia (Opcional)"
-                value={(formData as any).nome || ''}
-                onChange={(e) => setFormData({ ...formData, nome: e.target.value } as any)}
-                fullWidth
-                placeholder="Ex: Guia Especial de Natal, Guia Emergencial..."
-                helperText="Se não informado, será usado o padrão: Mês Ano"
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                label="Observação (Opcional)"
-                multiline
-                rows={3}
-                value={formData.observacao}
-                onChange={(e) => setFormData({ ...formData, observacao: e.target.value })}
-                fullWidth
-                placeholder="Adicione uma observação sobre esta guia..."
-              />
-            </Grid>
-          </Grid>
+            {batchSaving && (
+              <Card variant="outlined">
+                <CardContent>
+                  <Box display="flex" alignItems="center" gap={2}>
+                    <CircularProgress size={20} />
+                    <Typography variant="body2">
+                      Salvando {batchProgress.currentIndex} de {batchProgress.total}
+                    </Typography>
+                  </Box>
+                  <Box mt={1}>
+                    <Typography variant="subtitle2">{batchProgress.escolaNome}</Typography>
+                    <Typography variant="caption" color="textSecondary">
+                      {batchProgress.quantidade} {batchProgress.unidade}
+                    </Typography>
+                  </Box>
+                </CardContent>
+              </Card>
+            )}
+          </Box>
         </DialogContent>
-        <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={() => setOpenDialog(false)} color="inherit">
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleCreateGuia}
-            variant="contained"
-            disabled={!formData.mes || !formData.ano}
-          >
-            Criar Guia
+        <DialogActions>
+          <Button onClick={() => setOpenBatchDialog(false)} disabled={batchSaving}>Cancelar</Button>
+          <Button onClick={handleBatchSubmit} variant="contained" disabled={batchSaving}>
+            {batchSaving ? <CircularProgress size={20} /> : 'Adicionar'}
           </Button>
         </DialogActions>
       </Dialog>

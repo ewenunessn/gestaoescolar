@@ -2,7 +2,6 @@ const db = require('../../../database');
 
 export interface Guia {
   id: number;
-  tenant_id: string;
   mes: number;
   ano: number;
   observacao?: string;
@@ -29,10 +28,10 @@ export interface GuiaProdutoEscola {
   data_entrega?: string;
   nome_quem_recebeu?: string;
   nome_quem_entregou?: string;
+  status?: 'pendente' | 'entregue' | 'cancelado' | 'em_rota' | 'programada';
 }
 
 export interface CreateGuiaData {
-  tenant_id: string;
   mes: number;
   ano: number;
   nome?: string;
@@ -53,22 +52,22 @@ export interface CreateGuiaProdutoEscolaData {
   data_entrega?: string;
   nome_quem_recebeu?: string;
   nome_quem_entregou?: string;
+  status?: 'pendente' | 'entregue' | 'cancelado' | 'em_rota' | 'programada';
 }
 
 class GuiaModel {
-  async listarGuias(tenantId: string): Promise<Guia[]> {
+  async listarGuias(): Promise<Guia[]> {
     try {
-      console.log('🔍 [GuiaModel] Listando guias para tenant:', tenantId);
+      console.log('🔍 [GuiaModel] Listando guias');
       const result = await db.all(`
         SELECT 
           g.*,
           COUNT(DISTINCT gpe.id) as total_produtos
         FROM guias g
         LEFT JOIN guia_produto_escola gpe ON g.id = gpe.guia_id
-        WHERE g.tenant_id = $1
-        GROUP BY g.id, g.mes, g.ano, g.observacao, g.status, g.created_at, g.updated_at, g.tenant_id
+        GROUP BY g.id, g.mes, g.ano, g.observacao, g.status, g.created_at, g.updated_at
         ORDER BY g.created_at DESC
-      `, [tenantId]);
+      `);
       console.log('✅ [GuiaModel] Encontradas', result.length, 'guias');
       return result;
     } catch (error) {
@@ -77,24 +76,135 @@ class GuiaModel {
     }
   }
 
-  async buscarGuia(id: number, tenantId: string): Promise<Guia | null> {
+  async buscarGuiaPorMesAno(mes: number, ano: number): Promise<Guia | undefined> {
     const result = await db.get(`
-      SELECT * FROM guias WHERE id = $1 AND tenant_id = $2
-    `, [id, tenantId]);
+      SELECT * FROM guias WHERE mes = $1 AND ano = $2
+    `, [mes, ano]);
+    return result;
+  }
+
+  async buscarGuia(id: number): Promise<Guia | null> {
+    const result = await db.get(`
+      SELECT * FROM guias WHERE id = $1
+    `, [id]);
     return result;
   }
 
   async criarGuia(data: CreateGuiaData): Promise<Guia> {
     const result = await db.run(`
-      INSERT INTO guias (tenant_id, mes, ano, nome, observacao, status, created_at, updated_at)
-      VALUES ($1, $2, $3, $4, $5, 'aberta', NOW(), NOW())
+      INSERT INTO guias (mes, ano, nome, observacao, status, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, 'aberta', NOW(), NOW())
       RETURNING *
-    `, [data.tenant_id, data.mes, data.ano, data.nome || null, data.observacao || null]);
+    `, [data.mes, data.ano, data.nome || null, data.observacao || null]);
 
-    return await this.buscarGuia(result.lastID, data.tenant_id);
+    return await this.buscarGuia(result.lastID);
   }
 
-  async atualizarGuia(id: number, tenantId: string, data: Partial<CreateGuiaData>): Promise<Guia> {
+  async listarStatusEscolas(mes: number, ano: number): Promise<any[]> {
+    try {
+      console.log(`🔍 [GuiaModel] Listando status das escolas para ${mes}/${ano}`);
+      const result = await db.all(`
+        SELECT 
+          e.id, 
+          e.nome, 
+          e.endereco,
+          STRING_AGG(DISTINCT re.nome, ', ') as escola_rota,
+          MIN(res.ordem) as ordem_rota,
+          COUNT(CASE WHEN gpe.status = 'pendente' THEN 1 END) as qtd_pendente,
+          COUNT(CASE WHEN gpe.status = 'programada' THEN 1 END) as qtd_programada,
+          COUNT(CASE WHEN gpe.status = 'em_rota' THEN 1 END) as qtd_em_rota,
+          COUNT(CASE WHEN gpe.status = 'entregue' THEN 1 END) as qtd_entregue
+        FROM escolas e
+        LEFT JOIN rota_escolas res ON e.id = res.escola_id
+        LEFT JOIN rotas_entrega re ON res.rota_id = re.id
+        LEFT JOIN guia_produto_escola gpe ON e.id = gpe.escola_id 
+          AND EXISTS (
+            SELECT 1 FROM guias g 
+            WHERE g.id = gpe.guia_id 
+            AND g.mes = $1 
+            AND g.ano = $2
+          )
+        GROUP BY e.id, e.nome, e.endereco
+        ORDER BY escola_rota NULLS LAST, ordem_rota NULLS LAST, e.nome
+      `, [mes, ano]);
+      return result;
+    } catch (error) {
+      console.error('❌ [GuiaModel] Erro ao listar status das escolas:', error);
+      throw error;
+    }
+  }
+
+  async listarRomaneio(filtros: { dataInicio?: string; dataFim?: string; escolaId?: number; rotaId?: number; status?: string }): Promise<any[]> {
+    try {
+      console.log('🔍 [GuiaModel] Listando romaneio com filtros:', filtros);
+      
+      let query = `
+        SELECT 
+          gpe.id,
+          gpe.data_entrega,
+          gpe.quantidade,
+          gpe.unidade,
+          gpe.observacao,
+          gpe.status,
+          p.nome as produto_nome,
+          e.nome as escola_nome,
+          STRING_AGG(re.nome, ', ') as escola_rota
+        FROM guia_produto_escola gpe
+        JOIN produtos p ON gpe.produto_id = p.id
+        JOIN escolas e ON gpe.escola_id = e.id
+        LEFT JOIN rota_escolas res ON e.id = res.escola_id
+        LEFT JOIN rotas_entrega re ON res.rota_id = re.id
+        WHERE 1=1
+      `;
+      
+      const params: any[] = [];
+      let paramCount = 1;
+
+      if (filtros.dataInicio) {
+        query += ` AND gpe.data_entrega >= $${paramCount}`;
+        params.push(filtros.dataInicio);
+        paramCount++;
+      }
+
+      if (filtros.dataFim) {
+        query += ` AND gpe.data_entrega <= $${paramCount}`;
+        params.push(filtros.dataFim);
+        paramCount++;
+      }
+
+      if (filtros.escolaId) {
+        query += ` AND gpe.escola_id = $${paramCount}`;
+        params.push(filtros.escolaId);
+        paramCount++;
+      }
+
+      if (filtros.rotaId) {
+        query += ` AND re.id = $${paramCount}`;
+        params.push(filtros.rotaId);
+        paramCount++;
+      }
+
+      if (filtros.status) {
+        query += ` AND gpe.status = $${paramCount}`;
+        params.push(filtros.status);
+        paramCount++;
+      } else {
+        // Por padrão, não mostrar cancelados
+        query += ` AND (gpe.status != 'cancelado' OR gpe.status IS NULL)`;
+      }
+
+      query += ` GROUP BY gpe.id, p.nome, e.nome`;
+      query += ` ORDER BY gpe.data_entrega, escola_rota, e.nome, p.nome`;
+
+      const result = await db.all(query, params);
+      return result;
+    } catch (error) {
+      console.error('❌ [GuiaModel] Erro ao listar romaneio:', error);
+      throw error;
+    }
+  }
+
+  async atualizarGuia(id: number, data: Partial<CreateGuiaData>): Promise<Guia> {
     const fields = [];
     const values = [];
     let paramCount = 1;
@@ -117,25 +227,24 @@ class GuiaModel {
 
     fields.push(`updated_at = NOW()`);
     values.push(id);
-    values.push(tenantId);
 
     await db.run(`
       UPDATE guias 
       SET ${fields.join(', ')}
-      WHERE id = $${paramCount} AND tenant_id = $${paramCount + 1}
+      WHERE id = $${paramCount}
     `, values);
 
-    return await this.buscarGuia(id, tenantId);
+    return await this.buscarGuia(id);
   }
 
-  async deletarGuia(id: number, tenantId: string): Promise<boolean> {
+  async deletarGuia(id: number): Promise<boolean> {
     const result = await db.run(`
-      DELETE FROM guias WHERE id = $1 AND tenant_id = $2
-    `, [id, tenantId]);
+      DELETE FROM guias WHERE id = $1
+    `, [id]);
     return result.changes > 0;
   }
 
-  async listarProdutosPorGuia(guiaId: number, tenantId: string): Promise<GuiaProdutoEscola[]> {
+  async listarProdutosPorGuia(guiaId: number): Promise<GuiaProdutoEscola[]> {
     const result = await db.all(`
       SELECT 
         gpe.*,
@@ -144,43 +253,53 @@ class GuiaModel {
         e.nome as escola_nome,
         DATE(gpe.created_at) as data_criacao
       FROM guia_produto_escola gpe
-      JOIN produtos p ON gpe.produto_id = p.id AND p.tenant_id = $2
-      JOIN escolas e ON gpe.escola_id = e.id AND e.tenant_id = $2
-      JOIN guias g ON gpe.guia_id = g.id AND g.tenant_id = $2
+      JOIN produtos p ON gpe.produto_id = p.id
+      JOIN escolas e ON gpe.escola_id = e.id
+      JOIN guias g ON gpe.guia_id = g.id
       WHERE gpe.guia_id = $1
       ORDER BY gpe.created_at DESC, gpe.lote, p.nome, e.nome
-    `, [guiaId, tenantId]);
+    `, [guiaId]);
+    return result;
+  }
+
+  async listarProdutosPorEscola(escolaId: number, mes: number, ano: number): Promise<GuiaProdutoEscola[]> {
+    const result = await db.all(`
+      SELECT 
+        gpe.*,
+        p.nome as produto_nome,
+        g.mes,
+        g.ano
+      FROM guia_produto_escola gpe
+      JOIN guias g ON gpe.guia_id = g.id
+      JOIN produtos p ON gpe.produto_id = p.id
+      WHERE gpe.escola_id = $1 AND g.mes = $2 AND g.ano = $3
+      ORDER BY gpe.created_at DESC
+    `, [escolaId, mes, ano]);
     return result;
   }
 
   async adicionarProdutoGuia(data: CreateGuiaProdutoEscolaData): Promise<GuiaProdutoEscola> {
-    // Verificar se já existe o produto para esta escola COM O MESMO LOTE
-    const existente = await db.get(`
-      SELECT * FROM guia_produto_escola 
-      WHERE guia_id = $1 AND produto_id = $2 AND escola_id = $3 
-      AND (lote = $4 OR (lote IS NULL AND $4 IS NULL))
-    `, [data.guia_id, data.produto_id, data.escola_id, data.lote]);
+    const result = await db.run(`
+      INSERT INTO guia_produto_escola (
+        guia_id, produto_id, escola_id, quantidade, unidade, 
+        lote, observacao, para_entrega, status, data_entrega
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      RETURNING *
+    `, [
+      data.guia_id,
+      data.produto_id,
+      data.escola_id,
+      data.quantidade,
+      data.unidade,
+      data.lote || null,
+      data.observacao || null,
+      data.para_entrega !== undefined ? data.para_entrega : true,
+      data.status || 'pendente',
+      data.data_entrega || null
+    ]);
 
-    if (existente) {
-      // Se existe, atualizar a quantidade (somar)
-      const novaQuantidade = parseFloat(existente.quantidade.toString()) + parseFloat(data.quantidade.toString());
-      await db.run(`
-        UPDATE guia_produto_escola 
-        SET quantidade = $1, unidade = $2, lote = $3, observacao = $4, updated_at = NOW()
-        WHERE id = $5
-      `, [novaQuantidade, data.unidade, data.lote, data.observacao, existente.id]);
-
-      return await this.buscarProdutoGuia(existente.id);
-    } else {
-      // Se não existe, inserir novo
-      const result = await db.run(`
-        INSERT INTO guia_produto_escola (guia_id, produto_id, escola_id, quantidade, unidade, lote, observacao, para_entrega, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
-        RETURNING *
-      `, [data.guia_id, data.produto_id, data.escola_id, data.quantidade, data.unidade, data.lote, data.observacao, data.para_entrega ?? true]);
-
-      return await this.buscarProdutoGuia(result.lastID);
-    }
+    return await this.buscarProdutoGuia(result.lastID);
   }
 
   async buscarProdutoGuia(id: number): Promise<GuiaProdutoEscola | null> {
@@ -205,24 +324,14 @@ class GuiaModel {
       values.push(data.unidade);
       paramCount++;
     }
-    if (data.lote !== undefined) {
-      fields.push(`lote = $${paramCount}`);
-      values.push(data.lote);
-      paramCount++;
-    }
     if (data.observacao !== undefined) {
       fields.push(`observacao = $${paramCount}`);
       values.push(data.observacao);
       paramCount++;
     }
-    if (data.entrega_confirmada !== undefined) {
-      fields.push(`entrega_confirmada = $${paramCount}`);
-      values.push(data.entrega_confirmada);
-      paramCount++;
-    }
-    if (data.quantidade_entregue !== undefined) {
-      fields.push(`quantidade_entregue = $${paramCount}`);
-      values.push(data.quantidade_entregue);
+    if (data.status !== undefined) {
+      fields.push(`status = $${paramCount}`);
+      values.push(data.status);
       paramCount++;
     }
     if (data.data_entrega !== undefined) {
@@ -230,21 +339,8 @@ class GuiaModel {
       values.push(data.data_entrega);
       paramCount++;
     }
-    if (data.nome_quem_recebeu !== undefined) {
-      fields.push(`nome_quem_recebeu = $${paramCount}`);
-      values.push(data.nome_quem_recebeu);
-      paramCount++;
-    }
-    if (data.nome_quem_entregou !== undefined) {
-      fields.push(`nome_quem_entregou = $${paramCount}`);
-      values.push(data.nome_quem_entregou);
-      paramCount++;
-    }
-    if (data.para_entrega !== undefined) {
-      fields.push(`para_entrega = $${paramCount}`);
-      values.push(data.para_entrega);
-      paramCount++;
-    }
+
+    if (fields.length === 0) return await this.buscarProdutoGuia(id);
 
     fields.push(`updated_at = NOW()`);
     values.push(id);
@@ -284,7 +380,7 @@ class GuiaModel {
   }
 
   // Métodos específicos para entregas
-  async listarEscolasComItensParaEntrega(tenantId: string): Promise<any[]> {
+  async listarEscolasComItensParaEntrega(): Promise<any[]> {
     const result = await db.all(`
       SELECT DISTINCT
         e.id,
@@ -298,15 +394,13 @@ class GuiaModel {
       INNER JOIN guias g ON gpe.guia_id = g.id
       WHERE gpe.para_entrega = true 
         AND g.status = 'aberta'
-        AND e.tenant_id = $1
-        AND g.tenant_id = $1
       GROUP BY e.id, e.nome, e.endereco, e.telefone
       ORDER BY e.nome
-    `, [tenantId]);
+    `);
     return result;
   }
 
-  async listarItensParaEntregaPorEscola(escolaId: number, tenantId: string): Promise<any[]> {
+  async listarItensParaEntregaPorEscola(escolaId: number): Promise<any[]> {
     const result = await db.all(`
       SELECT 
         gpe.*,
@@ -316,14 +410,14 @@ class GuiaModel {
         g.ano,
         g.observacao as guia_observacao
       FROM guia_produto_escola gpe
-      INNER JOIN produtos p ON gpe.produto_id = p.id AND p.tenant_id = $2
-      INNER JOIN guias g ON gpe.guia_id = g.id AND g.tenant_id = $2
-      INNER JOIN escolas e ON gpe.escola_id = e.id AND e.tenant_id = $2
+      INNER JOIN produtos p ON gpe.produto_id = p.id
+      INNER JOIN guias g ON gpe.guia_id = g.id
+      INNER JOIN escolas e ON gpe.escola_id = e.id
       WHERE gpe.escola_id = $1 
         AND gpe.para_entrega = true
         AND g.status = 'aberta'
       ORDER BY g.mes DESC, g.ano DESC, p.nome, gpe.lote
-    `, [escolaId, tenantId]);
+    `, [escolaId]);
     return result;
   }
 
@@ -336,6 +430,7 @@ class GuiaModel {
       UPDATE guia_produto_escola 
       SET 
         entrega_confirmada = true,
+        status = 'entregue',
         quantidade_entregue = $1,
         data_entrega = NOW(),
         nome_quem_entregou = $2,

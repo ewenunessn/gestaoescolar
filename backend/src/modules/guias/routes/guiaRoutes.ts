@@ -1,13 +1,11 @@
 import { Router } from 'express';
 import { guiaController } from '../controllers/guiaController';
 // import { devAuthMiddleware as authenticateToken } from '../../../middlewares';
-// import { tenantMiddleware } from '../../../middleware/tenantMiddleware';
 
 const router = Router();
 
 // TEMPORARIAMENTE SEM MIDDLEWARES PARA DEBUG
 // router.use(authenticateToken);
-// router.use(tenantMiddleware);
 
 // Rota de teste
 router.get('/test', (req, res) => {
@@ -16,6 +14,8 @@ router.get('/test', (req, res) => {
 });
 
 // Rotas de guias
+router.get('/status-escolas', guiaController.listarStatusEscolas);
+router.get('/romaneio', guiaController.listarRomaneio);
 router.get('/', guiaController.listarGuias);
 router.post('/', guiaController.criarGuia);
 router.get('/:id', guiaController.buscarGuia);
@@ -33,7 +33,15 @@ router.put('/:guiaId/produtos/:produtoId/escolas/:escolaId/entrega', guiaControl
 // Rota para atualizar campo para_entrega
 router.put('/itens/:itemId/para-entrega', guiaController.atualizarParaEntrega);
 
+// Rota para remover item pelo ID
+router.delete('/itens/:itemId', guiaController.removerItemGuia);
+
 // Rota para listar todos os itens de uma guia
 router.get('/:guiaId/itens', guiaController.listarItensGuia);
+
+// Novas rotas por escola
+router.get('/escola/:escolaId/produtos', guiaController.listarProdutosPorEscola);
+router.post('/escola/:escolaId/produtos', guiaController.adicionarProdutoEscola);
+router.put('/escola/produtos/:itemId', guiaController.atualizarProdutoEscola);
 
 export default router;

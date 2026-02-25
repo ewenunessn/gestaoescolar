@@ -1,5 +1,5 @@
 /**
- * Inventory-specific test runner for tenant inventory implementation
+ * Inventory-specific test runner for inventory implementation
  * Runs all inventory-related test suites
  */
 
@@ -16,40 +16,16 @@ interface InventoryTestSuite {
 
 const inventoryTestSuites: InventoryTestSuite[] = [
   {
-    name: 'Tenant Inventory Validator Unit Tests',
-    pattern: 'tests/unit/services/tenantInventoryValidator.test.ts',
-    description: 'Unit tests for tenant inventory validation logic',
+    name: 'Inventory Unit Tests',
+    pattern: 'tests/unit/modules/estoque/**/*.test.ts',
+    description: 'Unit tests for inventory logic',
     category: 'unit'
   },
   {
-    name: 'Tenant Inventory RLS Unit Tests',
-    pattern: 'tests/unit/database/tenantInventoryRLS.test.ts',
-    description: 'Unit tests for RLS policies and database triggers',
-    category: 'unit'
-  },
-  {
-    name: 'Tenant Inventory Error Handling Unit Tests',
-    pattern: 'tests/unit/middleware/tenantInventoryErrorHandling.test.ts',
-    description: 'Unit tests for inventory error handling middleware',
-    category: 'unit'
-  },
-  {
-    name: 'Tenant Inventory Isolation Integration Tests',
-    pattern: 'tests/integration/tenantInventoryIsolation.test.ts',
-    description: 'End-to-end tenant inventory isolation verification',
+    name: 'Inventory Integration Tests',
+    pattern: 'tests/integration/modules/estoque/**/*.test.ts',
+    description: 'Integration tests for inventory flows',
     category: 'integration'
-  },
-  {
-    name: 'Tenant Inventory Performance Tests',
-    pattern: 'tests/performance/tenantInventoryPerformance.test.ts',
-    description: 'Performance tests for tenant inventory queries',
-    category: 'performance'
-  },
-  {
-    name: 'Tenant Inventory Security Tests',
-    pattern: 'tests/security/tenantInventorySecurity.test.ts',
-    description: 'Security tests for cross-tenant access prevention',
-    category: 'security'
   }
 ];
 
@@ -68,7 +44,7 @@ class InventoryTestRunner {
   }
 
   async runAllInventoryTests(): Promise<void> {
-    console.log('🧪 Starting Tenant Inventory Test Suite');
+    console.log('🧪 Starting Inventory Test Suite');
     console.log('=' .repeat(60));
 
     const startTime = Date.now();
@@ -249,49 +225,11 @@ class InventoryTestRunner {
 
     if (successful === results.length) {
       console.log('\n🎉 All inventory test suites passed successfully!');
-      console.log('\n✅ Tenant inventory implementation is ready for production');
+      console.log('\n✅ Inventory implementation is ready for production');
     } else {
       console.log(`\n⚠️  ${failed} inventory test suite(s) failed. Please review the errors above.`);
       process.exit(1);
     }
-  }
-
-  printTestRequirementsCoverage(): void {
-    console.log('\n📋 Requirements Coverage Verification');
-    console.log('='.repeat(60));
-
-    const requirementsCoverage = {
-      '8.1 - Tenant Validation Testing': [
-        'Tenant Inventory Validator Unit Tests',
-        'Tenant Inventory RLS Unit Tests',
-        'Tenant Inventory Isolation Integration Tests'
-      ],
-      '8.2 - Cross-Tenant Access Prevention': [
-        'Tenant Inventory Isolation Integration Tests',
-        'Tenant Inventory Security Tests'
-      ],
-      '8.3 - Performance Testing': [
-        'Tenant Inventory Performance Tests'
-      ],
-      '8.4 - Error Handling Testing': [
-        'Tenant Inventory Error Handling Unit Tests',
-        'Tenant Inventory Validator Unit Tests'
-      ],
-      '8.5 - End-to-End Workflow Testing': [
-        'Tenant Inventory Isolation Integration Tests'
-      ]
-    };
-
-    Object.entries(requirementsCoverage).forEach(([requirement, tests]) => {
-      console.log(`\n${requirement}:`);
-      tests.forEach(test => {
-        const suite = inventoryTestSuites.find(s => s.name === test);
-        const status = suite ? '✅' : '❌';
-        console.log(`  ${status} ${test}`);
-      });
-    });
-
-    console.log('\n🎯 All requirements from the tenant inventory specification are covered by tests');
   }
 }
 
@@ -319,8 +257,6 @@ async function main() {
         process.exit(1);
       }
       await runner.runSpecificTest(testName);
-    } else if (args.includes('--requirements')) {
-      runner.printTestRequirementsCoverage();
     } else {
       await runner.runAllInventoryTests();
     }

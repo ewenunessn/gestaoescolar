@@ -27,9 +27,9 @@ import {
   Assignment,
   LocalShipping,
   Logout,
-  Assessment,
   ListAlt,
   RequestPage,
+  Print,
 
   Settings,
 } from "@mui/icons-material";
@@ -39,8 +39,6 @@ import { getLogo } from "../theme/theme";
 import { useConfigContext } from "../context/ConfigContext";
 import { useConfigChangeIndicator } from "../hooks/useConfigChangeIndicator";
 import { useCurrentUser } from "../hooks/useCurrentUser";
-import TenantSelector from "./TenantSelector";
-import TenantBranding from "./TenantBranding";
 
 
 const drawerWidth = 200;
@@ -73,6 +71,12 @@ const getMenuConfig = (configModuloSaldo: any) => {
       ],
     },
     {
+      category: "Estoque",
+      items: [
+        { text: "Estoque Escolar", icon: <Inventory />, path: "/estoque-escolar" },
+      ],
+    },
+    {
       category: "Planejamento",
       items: [
         { text: "Cardápios", icon: <MenuBook />, path: "/cardapios" },
@@ -88,26 +92,13 @@ const getMenuConfig = (configModuloSaldo: any) => {
       ],
     },
     {
-      category: "Estoque",
-      items: [
-        { text: "Estoque Escolar", icon: <Assessment />, path: "/estoque-escolar" },
-        { text: "Movimentação de Estoque", icon: <Inventory />, path: "/movimentacao-estoque" },
-      ],
-    },
-    {
       category: "Guias",
       items: [
         { text: "Guias de Demanda", icon: <ListAlt />, path: "/guias-demanda" },
+        { text: "Romaneio de Entrega", icon: <Print />, path: "/romaneio" },
         { text: "Gestão de Rotas", icon: <Business />, path: "/gestao-rotas" },
-        { text: "Configuração de Entrega", icon: <Settings />, path: "/configuracao-entrega" },
+
         { text: "Entregas", icon: <LocalShipping />, path: "/entregas" },
-      ],
-    },
-    {
-      category: "Sistema",
-      items: [
-        { text: "Configurações", icon: <Settings />, path: "/configuracoes-sistema" },
-        { text: "Gerenciar Tenants", icon: <Business />, path: "/tenant-management", adminOnly: true },
       ],
     },
   ];
@@ -503,11 +494,6 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           />
         </Box>
 
-        {/* Tenant Selector for System Admins */}
-        <Box sx={{ mr: 2 }}>
-          <TenantSelector variant="compact" />
-        </Box>
-
         {/* Informações do usuário */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {loadingUser ? (
@@ -578,9 +564,7 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           pt: '56px', // Espaço para o header fixo
         }}
       >
-        <TenantBranding showLogo={false} showName={false}>
-          <Box>{children}</Box>
-        </TenantBranding>
+        <Box>{children}</Box>
       </Box>
     </Box>
   );

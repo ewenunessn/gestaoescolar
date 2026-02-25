@@ -6,9 +6,7 @@ import {
   editarProduto, 
   removerProduto,
   buscarComposicaoNutricional,
-  salvarComposicaoNutricional,
-
-  importarProdutosLote
+  salvarComposicaoNutricional
 } from "../controllers/produtoController";
 const router = Router();
 
@@ -18,6 +16,12 @@ router.get("/", listarProdutos);
 // Buscar produto por ID
 router.get("/:id", buscarProduto);
 
+// Buscar composição nutricional do produto
+router.get("/:id/composicao-nutricional", buscarComposicaoNutricional);
+
+// Salvar composição nutricional do produto
+router.put("/:id/composicao-nutricional", salvarComposicaoNutricional);
+
 // Criar novo produto
 router.post("/", criarProduto);
 
@@ -26,14 +30,5 @@ router.put("/:id", editarProduto);
 
 // Remover produto
 router.delete("/:id", removerProduto);
-
-// Importar produtos em lote
-router.post("/importar-lote", importarProdutosLote);
-
-
-
-// Composição nutricional
-router.get("/:id/composicao-nutricional", buscarComposicaoNutricional);
-router.put("/:id/composicao-nutricional", salvarComposicaoNutricional);
 
 export default router;

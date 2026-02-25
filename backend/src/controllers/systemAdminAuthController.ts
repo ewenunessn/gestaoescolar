@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import db from '../database';
+import { config } from '../config/config';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -59,7 +60,7 @@ export class SystemAdminAuthController {
           type: 'system_admin'
         },
         JWT_SECRET,
-        { expiresIn: '24h' }
+        { expiresIn: config.jwtExpiresIn as any }
       );
 
       // Log de auditoria

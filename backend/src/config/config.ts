@@ -25,7 +25,7 @@ export const config = {
 
   // Configurações de segurança
   jwtSecret: process.env.JWT_SECRET || "sua_chave_jwt_super_secreta_minimo_32_caracteres",
-  jwtExpiresIn: process.env.JWT_EXPIRES_IN || "24h",
+  jwtExpiresIn: process.env.JWT_EXPIRES_IN || "7d", // Aumentado para 7 dias
 
   // Configurações do backend (para compatibilidade com index.ts)
   backend: {

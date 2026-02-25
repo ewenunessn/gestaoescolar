@@ -13,10 +13,10 @@ export const checkBackendHealth = async (): Promise<boolean> => {
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const makeRequestWithRetry = async (
-  requestFn: () => Promise<any>,
+const makeRequestWithRetry = async <T>(
+  requestFn: () => Promise<T>,
   retries = apiConfig.retries
-) => {
+): Promise<T> => {
   for (let i = 0; i < retries; i++) {
     try {
       return await requestFn();
@@ -39,6 +39,15 @@ const makeRequestWithRetry = async (
   }
 };
 
+// Utilitário para extrair mensagem de um payload desconhecido
+const getMessage = (data: unknown, fallback: string) => {
+  if (data && typeof data === 'object' && 'message' in data) {
+    const msg = (data as Record<string, unknown>).message;
+    if (typeof msg === 'string') return msg;
+  }
+  return fallback;
+};
+
 const api = axios.create({
   baseURL: apiConfig.baseURL,
   timeout: apiConfig.timeout,
@@ -58,31 +67,11 @@ api.interceptors.request.use((config) => {
     config.headers["Authorization"] = `Bearer ${token}`;
   }
 
-  // Add tenant identification headers
-  const tenantId = localStorage.getItem("currentTenantId");
-  if (tenantId && tenantId !== 'null' && tenantId !== 'undefined') {
-    config.headers = config.headers || {};
-    config.headers["X-Tenant-ID"] = tenantId;
-  }
-
-  // Try to resolve tenant from subdomain if no explicit tenant ID
-  if (!tenantId) {
-    const subdomain = window.location.hostname.split('.')[0];
-    if (subdomain && subdomain !== 'localhost' && subdomain !== 'www') {
-      config.headers = config.headers || {};
-      config.headers["X-Tenant-Subdomain"] = subdomain;
-    }
-  }
-
   // Log em desenvolvimento
   if (apiConfig.debug) {
     apiLog(`📡 ${config.method?.toUpperCase()} ${config.url}`, {
       data: config.data,
       params: config.params,
-      headers: {
-        'X-Tenant-ID': config.headers?.["X-Tenant-ID"],
-        'X-Tenant-Subdomain': config.headers?.["X-Tenant-Subdomain"]
-      }
     });
   }
 
@@ -146,27 +135,38 @@ api.interceptors.response.use(
           if (window.location.pathname.includes('/login')) {
             throw new Error("Credenciais inválidas. Verifique seu email e senha.");
           } else {
-            window.location.href = "/login";
+            // Não mostrar erro, apenas redirecionar silenciosamente
+            if (!window.location.pathname.includes('/login')) {
+              window.location.href = "/login";
+            }
             throw new Error("Sessão expirada. Faça login novamente.");
           }
         case 403:
-          const forbiddenMessage = (data as any)?.message || "Acesso negado. Você não tem permissão para esta ação.";
+          const forbiddenMessage = getMessage(data, "Acesso negado. Você não tem permissão para esta ação.");
           throw new Error(forbiddenMessage);
         case 404:
-          const notFoundMessage = (data as any)?.message || `Recurso não encontrado: ${originalRequest.url}`;
+          const notFoundMessage = getMessage(data, `Recurso não encontrado: ${originalRequest.url}`);
           throw new Error(notFoundMessage);
         case 409:
-          const conflictMessage = (data as any)?.message || "Conflito de dados";
+          const conflictMessage = getMessage(data, "Conflito de dados");
           throw new Error(conflictMessage);
-        case 422:
-          const validationMessage = (data as any)?.message || (data as any)?.errors || "Dados inválidos";
+        case 422: {
+          // Prioriza message; se ausente, tenta errors como string simples
+          let validationMessage = getMessage(data, "Dados inválidos");
+          if (typeof data === 'object' && data !== null && 'errors' in data) {
+            const errorsField = (data as Record<string, unknown>).errors;
+            if (typeof errorsField === 'string') {
+              validationMessage = errorsField;
+            }
+          }
           throw new Error(validationMessage);
+        }
         case 500:
-          const serverMessage = (data as any)?.message || "Erro interno do servidor. Tente novamente mais tarde.";
+          const serverMessage = getMessage(data, "Erro interno do servidor. Tente novamente mais tarde.");
           throw new Error(serverMessage);
         default:
           const message =
-            (data as any)?.message || `Erro ${status}: ${error.message}`;
+            getMessage(data, `Erro ${status}: ${error.message}`);
           throw new Error(message);
       }
     }
@@ -176,14 +176,14 @@ api.interceptors.response.use(
 );
 
 export const apiWithRetry = {
-  get: (url: string, config?: any) =>
-    makeRequestWithRetry(() => api.get(url, config)),
-  post: (url: string, data?: any, config?: any) =>
-    makeRequestWithRetry(() => api.post(url, data, config)),
-  put: (url: string, data?: any, config?: any) =>
-    makeRequestWithRetry(() => api.put(url, data, config)),
-  delete: (url: string, config?: any) =>
-    makeRequestWithRetry(() => api.delete(url, config)),
+  get: <T = unknown>(url: string, config?: import('axios').AxiosRequestConfig) =>
+    makeRequestWithRetry(() => api.get<T>(url, config)),
+  post: <T = unknown>(url: string, data?: unknown, config?: import('axios').AxiosRequestConfig) =>
+    makeRequestWithRetry(() => api.post<T>(url, data, config)),
+  put: <T = unknown>(url: string, data?: unknown, config?: import('axios').AxiosRequestConfig) =>
+    makeRequestWithRetry(() => api.put<T>(url, data, config)),
+  delete: <T = unknown>(url: string, config?: import('axios').AxiosRequestConfig) =>
+    makeRequestWithRetry(() => api.delete<T>(url, config)),
 };
 
 export default api;

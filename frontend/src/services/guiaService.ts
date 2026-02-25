@@ -34,6 +34,7 @@ export interface GuiaProdutoEscola {
   data_entrega?: string;
   nome_quem_recebeu?: string;
   nome_quem_entregou?: string;
+  status?: 'pendente' | 'entregue' | 'cancelado' | 'em_rota';
   // Campos do backend (snake_case)
   guia_id?: number;
   produto_id?: number;
@@ -78,6 +79,18 @@ export const guiaService = {
     return response.data;
   },
 
+  // Listar itens para romaneio
+  async listarRomaneio(params: { data_inicio?: string; data_fim?: string; escola_id?: number; rota_id?: number; status?: string }) {
+    const response = await api.get('/guias/romaneio', { params });
+    return response.data.data || response.data;
+  },
+
+  // Listar status das escolas para o mês/ano
+  async listarStatusEscolas(mes: number, ano: number) {
+    const response = await api.get('/guias/status-escolas', { params: { mes, ano } });
+    return response.data;
+  },
+
   // Criar nova guia
   async criarGuia(data: CreateGuiaData) {
     const response = await api.post('/guias', data);
@@ -111,6 +124,30 @@ export const guiaService = {
   // Remover produto da guia
   async removerProdutoGuia(guiaId: number, produtoId: number, escolaId: number) {
     const response = await api.delete(`/guias/${guiaId}/produtos/${produtoId}/escolas/${escolaId}`);
+    return response.data;
+  },
+
+  // Remover item da guia pelo ID
+  async removerItemGuia(itemId: number) {
+    const response = await api.delete(`/guias/itens/${itemId}`);
+    return response.data;
+  },
+
+  // Listar produtos por escola
+  async listarProdutosPorEscola(escolaId: number, mes: number, ano: number) {
+    const response = await api.get(`/guias/escola/${escolaId}/produtos`, { params: { mes, ano } });
+    return response.data.data || response.data;
+  },
+
+  // Adicionar produto para escola
+  async adicionarProdutoEscola(escolaId: number, data: Record<string, unknown>) {
+    const response = await api.post(`/guias/escola/${escolaId}/produtos`, data);
+    return response.data;
+  },
+
+  // Atualizar produto da escola
+  async atualizarProdutoEscola(itemId: number, data: Record<string, unknown>) {
+    const response = await api.put(`/guias/escola/produtos/${itemId}`, data);
     return response.data;
   },
 

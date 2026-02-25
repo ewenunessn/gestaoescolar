@@ -90,7 +90,13 @@ const ModalidadesPage = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [editingModalidade, setEditingModalidade] = useState<Modalidade | null>(null);
   const [modalidadeToDelete, setModalidadeToDelete] = useState<Modalidade | null>(null);
-  const [formData, setFormData] = useState({ nome: "", codigo_financeiro: "", valor_repasse: 0, ativo: true });
+  const [formData, setFormData] = useState({ 
+    nome: "", 
+    descricao: "",
+    codigo_financeiro: "", 
+    valor_repasse: 0, 
+    ativo: true 
+  });
 
   // Tratar erros do React Query
   useEffect(() => {
@@ -206,13 +212,14 @@ const ModalidadesPage = () => {
       setEditingModalidade(modalidade);
       setFormData({
         nome: modalidade.nome,
+        descricao: modalidade.descricao || "",
         codigo_financeiro: modalidade.codigo_financeiro || "",
         valor_repasse: Number(modalidade.valor_repasse),
         ativo: modalidade.ativo,
       });
     } else {
       setEditingModalidade(null);
-      setFormData({ nome: "", codigo_financeiro: "", valor_repasse: 0, ativo: true });
+      setFormData({ nome: "", descricao: "", codigo_financeiro: "", valor_repasse: 0, ativo: true });
     }
     setModalOpen(true);
   };
@@ -391,6 +398,15 @@ const ModalidadesPage = () => {
               value={formData.nome} 
               onChange={(e) => setFormData({ ...formData, nome: e.target.value })} 
               required 
+            />
+            <TextField 
+              label="Descrição" 
+              value={formData.descricao} 
+              onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} 
+              placeholder="Descrição da modalidade (opcional)"
+              helperText="Descrição detalhada da modalidade de ensino"
+              multiline
+              rows={2}
             />
             <TextField 
               label="Código Financeiro" 

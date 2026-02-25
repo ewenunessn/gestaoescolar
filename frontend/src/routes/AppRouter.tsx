@@ -4,7 +4,6 @@ import { isAuthenticated } from "../services/auth";
 import LayoutModerno from "../components/LayoutModerno";
 
 import { EscolasProvider } from "../contexts/EscolasContext";
-import ErrorBoundary from "../components/ErrorBoundary";
 
 // Componentes críticos carregados imediatamente
 import Login from "../pages/Login";
@@ -14,10 +13,6 @@ import Dashboard from "../pages/Dashboard";
 import LandingPage from "../pages/LandingPage";
 import InterestForm from "../pages/InterestForm";
 
-// Sistema de gestores de escola
-const LoginGestorEscola = lazy(() => import("../pages/LoginGestorEscola"));
-const EstoqueEscolaMobile = lazy(() => import("../pages/EstoqueEscolaMobile"));
-const EstoqueEscolaRouter = lazy(() => import("../components/EstoqueEscolaRouter"));
 
 // Componente de loading
 const PageLoader = () => (
@@ -48,7 +43,6 @@ const Modalidades = lazy(() => import("../pages/Modalidades"));
 const Produtos = lazy(() => import("../pages/Produtos"));
 const ProdutoDetalhe = lazy(() => import("../pages/ProdutoDetalhe"));
 const EscolaDetalhes = lazy(() => import("../pages/EscolaDetalhes"));
-const EstoqueEscolar = lazy(() => import("../pages/EstoqueEscolar"));
 const RefeicaoDetalhe = lazy(() => import("../pages/RefeicaoDetalhe"));
 const Refeicoes = lazy(() => import("../pages/Refeicoes"));
 const Cardapios = lazy(() => import("../pages/Cardapios"));
@@ -57,7 +51,6 @@ const CardapioRefeicoes = lazy(() => import("../pages/CardapioRefeicoes"));
 
 const Fornecedores = lazy(() => import("../pages/Fornecedores"));
 const FornecedorDetalhe = lazy(() => import("../pages/FornecedorDetalhe"));
-const VisualizacaoEntregas = lazy(() => import("../pages/VisualizacaoEntregas"));
 const ItensFornecedor = lazy(() => import("../pages/ItensFornecedor"));
 const Contratos = lazy(() => import("../pages/Contratos"));
 const DemandasLista = lazy(() => import("../pages/DemandasLista"));
@@ -68,15 +61,14 @@ const EstoqueCentral = lazy(() => import("../pages/EstoqueCentral"));
 const EstoqueLotes = lazy(() => import("../pages/EstoqueLotes"));
 const EstoqueMovimentacoes = lazy(() => import("../pages/EstoqueMovimentacoes"));
 const EstoqueAlertas = lazy(() => import("../pages/EstoqueAlertas"));
+const EstoqueEscolar = lazy(() => import("../pages/EstoqueEscolar"));
 const SaldoContratosModalidades = lazy(() => import("../pages/SaldoContratosModalidades"));
-const ConfiguracoesSistema = lazy(() => import("../pages/ConfiguracoesSistema"));
-const TenantManagement = lazy(() => import("../pages/TenantManagement"));
 const GerenciarAlunosModalidades = lazy(() => import("../pages/GerenciarAlunosModalidades"));
 const DashboardConsistencia = lazy(() => import("../components/DashboardConsistencia"));
 const GuiasDemanda = lazy(() => import("../pages/GuiasDemanda"));
+const Romaneio = lazy(() => import("../pages/Romaneio"));
 const GuiaDetalhe = lazy(() => import("../pages/GuiaDetalhe"));
 const Entregas = lazy(() => import("../pages/Entregas"));
-const ConfiguracaoEntrega = lazy(() => import("../pages/ConfiguracaoEntrega"));
 const GestaoRotas = lazy(() => import("../pages/GestaoRotas"));
 const GerenciarEscolasRota = lazy(() => import("../pages/GerenciarEscolasRota"));
 const Pedidos = lazy(() => import("../pages/Pedidos"));
@@ -84,7 +76,6 @@ const NovoPedido = lazy(() => import("../pages/NovoPedido"));
 const PedidoDetalhe = lazy(() => import("../pages/PedidoDetalhe"));
 const EditarPedido = lazy(() => import("../pages/EditarPedido"));
 const FaturamentoDetalhe = lazy(() => import("../pages/FaturamentoDetalhe"));
-const MovimentacaoEstoque = lazy(() => import("../pages/MovimentacaoEstoque"));
 
 
 interface AppRouterProps {
@@ -154,32 +145,6 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
               </PublicRoute>
             } />
             
-            {/* Sistema de Gestores de Escola */}
-            <Route path="/login-gestor" element={
-              <PublicRoute>
-                <Suspense fallback={<PageLoader />}>
-                  <LoginGestorEscola />
-                </Suspense>
-              </PublicRoute>
-            } />
-            {/* Rota única para estoque escola - versão mobile */}
-            <Route path="/estoque-escola/:escolaId" element={
-              <Suspense fallback={<PageLoader />}>
-                <EstoqueEscolaMobile />
-              </Suspense>
-            } />
-            {/* Rota mantida para compatibilidade com URLs antigas */}
-            <Route path="/estoque-escola-mobile/:escolaId" element={
-              <Suspense fallback={<PageLoader />}>
-                <EstoqueEscolaMobile />
-              </Suspense>
-            } />
-            {/* Rota antiga auto-detect removida */}
-            <Route path="/estoque-escola-auto/:escolaId" element={
-              <Suspense fallback={<PageLoader />}>
-                <EstoqueEscolaMobile />
-              </Suspense>
-            } />
             <Route
               path="/dashboard"
               element={
@@ -207,14 +172,6 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
             <Route
               path="/escolas/:id"
               element={<LazyRoute><EscolaDetalhes /></LazyRoute>}
-            />
-            <Route
-              path="/escolas/:escolaId/estoque"
-              element={<LazyRoute><EstoqueEscolaMobile /></LazyRoute>}
-            />
-            <Route
-              path="/estoque-escolar"
-              element={<LazyRoute><EstoqueEscolar /></LazyRoute>}
             />
 
             <Route
@@ -263,6 +220,10 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
               element={<LazyRoute><GuiasDemanda /></LazyRoute>}
             />
             <Route
+              path="/romaneio"
+              element={<LazyRoute><Romaneio /></LazyRoute>}
+            />
+            <Route
               path="/guias-demanda/:id"
               element={<LazyRoute><GuiaDetalhe /></LazyRoute>}
             />
@@ -270,14 +231,7 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
               path="/entregas"
               element={<LazyRoute><Entregas /></LazyRoute>}
             />
-            <Route
-              path="/configuracao-entrega"
-              element={<LazyRoute><ConfiguracaoEntrega /></LazyRoute>}
-            />
-            <Route
-              path="/visualizacao-entregas"
-              element={<LazyRoute><VisualizacaoEntregas /></LazyRoute>}
-            />
+
             <Route
               path="/gestao-rotas"
               element={<LazyRoute><GestaoRotas /></LazyRoute>}
@@ -314,14 +268,6 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
             <Route
               path="/saldos-contratos-modalidades"
               element={<LazyRoute><SaldoContratosModalidades /></LazyRoute>}
-            />
-            <Route
-              path="/configuracoes-sistema"
-              element={<LazyRoute><ConfiguracoesSistema /></LazyRoute>}
-            />
-            <Route
-              path="/tenant-management"
-              element={<LazyRoute><TenantManagement /></LazyRoute>}
             />
 
             {/* Rotas de Pedidos */}
@@ -362,6 +308,10 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
               element={<LazyRoute><EstoqueCentral /></LazyRoute>}
             />
             <Route
+              path="/estoque-escolar"
+              element={<LazyRoute><EstoqueEscolar /></LazyRoute>}
+            />
+            <Route
               path="/estoque-moderno/produtos/:produto_id/lotes"
               element={<LazyRoute><EstoqueLotes /></LazyRoute>}
             />
@@ -389,11 +339,6 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
               element={<LazyRoute><DashboardConsistencia /></LazyRoute>}
             />
 
-            {/* Movimentação de Estoque */}
-            <Route
-              path="/movimentacao-estoque"
-              element={<LazyRoute><MovimentacaoEstoque /></LazyRoute>}
-            />
             
 
 

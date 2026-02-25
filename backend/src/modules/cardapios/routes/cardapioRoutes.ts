@@ -3,14 +3,10 @@ import {
   listarCardapios, 
   buscarCardapio,
   criarCardapio,
-  atualizarCardapio,
-  deletarCardapio,
-  listarCardapioRefeicoes,
-  adicionarRefeicaoCardapio,
-  atualizarRefeicaoCardapio,
-  removerRefeicaoCardapio,
-  calcularNecessidades,
-  calcularCustoRefeicoes
+  editarCardapio,
+  removerCardapio,
+  calcularCustoRefeicoes,
+  listarCardapioRefeicoes
 } from "../controllers/cardapioController";
 const router = Router();
 
@@ -18,17 +14,11 @@ const router = Router();
 router.get("/", listarCardapios);
 router.post("/", criarCardapio);
 router.get("/:id", buscarCardapio);
-router.put("/:id", atualizarCardapio);
-router.delete("/:id", deletarCardapio);
+router.put("/:id", editarCardapio);
+router.delete("/:id", removerCardapio);
 
-// Gerenciar refeições do cardápio
-router.get("/:cardapioId/refeicoes", listarCardapioRefeicoes);
-router.post("/:cardapioId/refeicoes", adicionarRefeicaoCardapio);
-router.put("/refeicoes/:refeicaoId", atualizarRefeicaoCardapio);
-router.delete("/:cardapioId/refeicoes/:refeicaoId", removerRefeicaoCardapio);
-
-// Calcular necessidades do cardápio
-router.get("/:id/necessidades", calcularNecessidades);
+// Listar refeições do cardápio
+router.get("/:id/refeicoes", listarCardapioRefeicoes);
 
 // Calcular custo das refeições do cardápio
 router.get("/:id/custo-refeicoes", calcularCustoRefeicoes);

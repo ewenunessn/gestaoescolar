@@ -45,50 +45,34 @@ export const queryClient = new QueryClient({
   },
 });
 
-// Função para obter tenant ID atual do localStorage
-const getCurrentTenantId = () => {
-  return localStorage.getItem('currentTenantId') || 'no-tenant';
-};
-
-// Configurações específicas por tipo de dados com isolamento por tenant
+// Configurações específicas por tipo de dados
 export const queryKeys = {
-  // Estoque
-  estoque: {
-    all: (tenantId?: string) => ['estoque', tenantId || getCurrentTenantId()] as const,
-    escolar: (tenantId?: string) => [...queryKeys.estoque.all(tenantId), 'escolar'] as const,
-    escola: (escolaId: number, tenantId?: string) => [...queryKeys.estoque.escolar(tenantId), escolaId] as const,
-    produto: (produtoId: number, tenantId?: string) => [...queryKeys.estoque.all(tenantId), 'produto', produtoId] as const,
-    matriz: (produtoIds?: number[], tenantId?: string) => [...queryKeys.estoque.escolar(tenantId), 'matriz', produtoIds] as const,
-    historico: (filters?: any, tenantId?: string) => [...queryKeys.estoque.all(tenantId), 'historico', filters] as const,
-    validade: (filters?: any, tenantId?: string) => [...queryKeys.estoque.all(tenantId), 'validade', filters] as const,
-  },
-  
   // Produtos
   produtos: {
-    all: (tenantId?: string) => ['produtos', tenantId || getCurrentTenantId()] as const,
-    lists: (tenantId?: string) => [...queryKeys.produtos.all(tenantId), 'list'] as const,
-    list: (filters?: any, tenantId?: string) => [...queryKeys.produtos.lists(tenantId), filters] as const,
-    details: (tenantId?: string) => [...queryKeys.produtos.all(tenantId), 'detail'] as const,
-    detail: (id: number, tenantId?: string) => [...queryKeys.produtos.details(tenantId), id] as const,
-    categorias: (tenantId?: string) => [...queryKeys.produtos.all(tenantId), 'categorias'] as const,
+    all: ['produtos'] as const,
+    lists: () => [...queryKeys.produtos.all, 'list'] as const,
+    list: (filters?: any) => [...queryKeys.produtos.lists(), filters] as const,
+    details: () => [...queryKeys.produtos.all, 'detail'] as const,
+    detail: (id: number) => [...queryKeys.produtos.details(), id] as const,
+    categorias: () => [...queryKeys.produtos.all, 'categorias'] as const,
   },
   
   // Escolas
   escolas: {
-    all: (tenantId?: string) => ['escolas', tenantId || getCurrentTenantId()] as const,
-    lists: (tenantId?: string) => [...queryKeys.escolas.all(tenantId), 'list'] as const,
-    list: (filters?: any, tenantId?: string) => [...queryKeys.escolas.lists(tenantId), filters] as const,
-    details: (tenantId?: string) => [...queryKeys.escolas.all(tenantId), 'detail'] as const,
-    detail: (id: number, tenantId?: string) => [...queryKeys.escolas.details(tenantId), id] as const,
+    all: ['escolas'] as const,
+    lists: () => [...queryKeys.escolas.all, 'list'] as const,
+    list: (filters?: any) => [...queryKeys.escolas.lists(), filters] as const,
+    details: () => [...queryKeys.escolas.all, 'detail'] as const,
+    detail: (id: number) => [...queryKeys.escolas.details(), id] as const,
   },
   
   // Modalidades
   modalidades: {
-    all: (tenantId?: string) => ['modalidades', tenantId || getCurrentTenantId()] as const,
-    lists: (tenantId?: string) => [...queryKeys.modalidades.all(tenantId), 'list'] as const,
-    list: (filters?: any, tenantId?: string) => [...queryKeys.modalidades.lists(tenantId), filters] as const,
-    details: (tenantId?: string) => [...queryKeys.modalidades.all(tenantId), 'detail'] as const,
-    detail: (id: number, tenantId?: string) => [...queryKeys.modalidades.details(tenantId), id] as const,
+    all: ['modalidades'] as const,
+    lists: () => [...queryKeys.modalidades.all, 'list'] as const,
+    list: (filters?: any) => [...queryKeys.modalidades.lists(), filters] as const,
+    details: () => [...queryKeys.modalidades.all, 'detail'] as const,
+    detail: (id: number) => [...queryKeys.modalidades.details(), id] as const,
   },
   
   // Usuários
@@ -103,11 +87,11 @@ export const queryKeys = {
   
   // Fornecedores
   fornecedores: {
-    all: (tenantId?: string) => ['fornecedores', tenantId || getCurrentTenantId()] as const,
-    lists: (tenantId?: string) => [...queryKeys.fornecedores.all(tenantId), 'list'] as const,
-    list: (filters?: any, tenantId?: string) => [...queryKeys.fornecedores.lists(tenantId), filters] as const,
-    details: (tenantId?: string) => [...queryKeys.fornecedores.all(tenantId), 'detail'] as const,
-    detail: (id: number, tenantId?: string) => [...queryKeys.fornecedores.details(tenantId), id] as const,
+    all: ['fornecedores'] as const,
+    lists: () => [...queryKeys.fornecedores.all, 'list'] as const,
+    list: (filters?: any) => [...queryKeys.fornecedores.lists(), filters] as const,
+    details: () => [...queryKeys.fornecedores.all, 'detail'] as const,
+    detail: (id: number) => [...queryKeys.fornecedores.details(), id] as const,
   },
   
   // Demandas
@@ -176,48 +160,23 @@ export const cacheConfig = {
 
 // Utilitários para invalidação de cache
 export const invalidateQueries = {
-  // Invalidar todos os dados de estoque
-  estoque: (tenantId?: string) => queryClient.invalidateQueries({ queryKey: queryKeys.estoque.all(tenantId) }),
-  
-  // Invalidar estoque de uma escola específica
-  estoqueEscola: (escolaId: number, tenantId?: string) => 
-    queryClient.invalidateQueries({ queryKey: queryKeys.estoque.escola(escolaId, tenantId) }),
-  
-  // Invalidar produto específico
-  produto: (produtoId: number, tenantId?: string) => 
-    queryClient.invalidateQueries({ queryKey: queryKeys.estoque.produto(produtoId, tenantId) }),
-  
-  // Invalidar matriz de estoque
-  matriz: (tenantId?: string) => 
-    queryClient.invalidateQueries({ queryKey: queryKeys.estoque.matriz(undefined, tenantId) }),
-  
   // Invalidar todos os produtos
-  produtos: (tenantId?: string) => queryClient.invalidateQueries({ queryKey: queryKeys.produtos.all(tenantId) }),
+  produtos: () => queryClient.invalidateQueries({ queryKey: queryKeys.produtos.all }),
   
   // Invalidar todas as escolas
-  escolas: (tenantId?: string) => queryClient.invalidateQueries({ queryKey: queryKeys.escolas.all(tenantId) }),
+  escolas: () => queryClient.invalidateQueries({ queryKey: queryKeys.escolas.all }),
   
   // Invalidar todas as modalidades
-  modalidades: (tenantId?: string) => queryClient.invalidateQueries({ queryKey: queryKeys.modalidades.all(tenantId) }),
+  modalidades: () => queryClient.invalidateQueries({ queryKey: queryKeys.modalidades.all }),
   
   // Invalidar todos os fornecedores
-  fornecedores: (tenantId?: string) => queryClient.invalidateQueries({ queryKey: queryKeys.fornecedores.all(tenantId) }),
+  fornecedores: () => queryClient.invalidateQueries({ queryKey: queryKeys.fornecedores.all }),
   
   // Invalidar usuário atual
   currentUser: () => queryClient.invalidateQueries({ queryKey: queryKeys.usuarios.current() }),
   
   // Invalidar estatísticas
   estatisticas: () => queryClient.invalidateQueries({ queryKey: queryKeys.estatisticas.all }),
-  
-  // Invalidar todos os dados de um tenant específico
-  allTenantData: (tenantId?: string) => {
-    const currentTenant = tenantId || getCurrentTenantId();
-    queryClient.invalidateQueries({ queryKey: ['estoque', currentTenant] });
-    queryClient.invalidateQueries({ queryKey: ['produtos', currentTenant] });
-    queryClient.invalidateQueries({ queryKey: ['escolas', currentTenant] });
-    queryClient.invalidateQueries({ queryKey: ['modalidades', currentTenant] });
-    queryClient.invalidateQueries({ queryKey: ['fornecedores', currentTenant] });
-  },
 };
 
 // Prefetch de dados importantes
@@ -225,10 +184,6 @@ export const prefetchQueries = {
   // Prefetch dados essenciais do dashboard
   dashboard: async () => {
     await Promise.all([
-      queryClient.prefetchQuery({
-        queryKey: queryKeys.estoque.escolar(),
-        staleTime: cacheConfig.moderate.staleTime,
-      }),
       queryClient.prefetchQuery({
         queryKey: queryKeys.estatisticas.dashboard(),
         staleTime: cacheConfig.moderate.staleTime,
@@ -239,10 +194,6 @@ export const prefetchQueries = {
   // Prefetch dados de uma escola
   escola: async (escolaId: number) => {
     await Promise.all([
-      queryClient.prefetchQuery({
-        queryKey: queryKeys.estoque.escola(escolaId),
-        staleTime: cacheConfig.moderate.staleTime,
-      }),
       queryClient.prefetchQuery({
         queryKey: queryKeys.estatisticas.escola(escolaId),
         staleTime: cacheConfig.moderate.staleTime,

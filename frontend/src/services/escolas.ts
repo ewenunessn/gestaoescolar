@@ -23,18 +23,18 @@ export async function obterEscola(id: number) {
   return data.data || null; // Return the actual data from the response
 }
 
-export async function criarEscola(escola: any) {
+export async function criarEscola(escola: Record<string, unknown>) {
   const { data } = await apiWithRetry.post("/escolas", escola);
   return data.data || data; // Return the actual data from the response
 }
 
-export async function editarEscola(id: number, escola: any) {
+export async function editarEscola(id: number, escola: Record<string, unknown>) {
   const { data } = await apiWithRetry.put(`/escolas/${id}`, escola);
   return data.data || data; // Return the actual data from the response
 }
 
 // Alias para compatibilidade
-export async function atualizarEscola(id: number, escola: any) {
+export async function atualizarEscola(id: number, escola: Record<string, unknown>) {
   const { data } = await apiWithRetry.put(`/escolas/${id}`, escola);
   return data.data || data; // Return the actual data from the response
 }
@@ -58,7 +58,7 @@ export async function buscarEscolaModalidade(id: number) {
   return data.data || null; // Return the actual data from the response
 }
 
-export async function criarEscolaModalidade(escolaModalidade: any) {
+export async function criarEscolaModalidade(escolaModalidade: Record<string, unknown>) {
   const { data } = await apiWithRetry.post(
     "/escola-modalidades",
     escolaModalidade
@@ -82,7 +82,7 @@ export async function adicionarEscolaModalidade(
 
 export async function editarEscolaModalidade(
   id: number,
-  escolaModalidade: any
+  escolaModalidade: Record<string, unknown>
 ) {
   const { data } = await apiWithRetry.put(
     `/escola-modalidades/${id}`,
@@ -96,7 +96,7 @@ export async function removerEscolaModalidade(id: number) {
 }
 
 // Importar escolas em lote (sempre substitui existentes)
-export async function importarEscolasLote(escolas: any[]) {
+export async function importarEscolasLote(escolas: Array<Record<string, unknown>>) {
   // Usar timeout maior para importações grandes (5 minutos)
   const { data } = await apiWithRetry.post("/escolas/importar-lote", { escolas }, {
     timeout: 300000 // 5 minutos

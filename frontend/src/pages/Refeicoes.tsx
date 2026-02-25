@@ -12,9 +12,6 @@ import {
   FormControl,
   InputLabel,
   InputAdornment,
-  Chip,
-  useTheme,
-  useMediaQuery,
   Card,
   CardContent,
   Table,
@@ -35,23 +32,14 @@ import {
   Tooltip,
   Menu,
   Collapse,
-  Divider,
-  Grid,
   TablePagination,
-  OutlinedInput,
-  Checkbox,
 } from '@mui/material';
 import {
   Search as SearchIcon,
   Add as AddIcon,
-  Info,
   Restaurant,
-  CheckCircle,
-  Cancel,
-  Clear,
   MoreVert,
   TuneRounded,
-  ExpandMore,
   ExpandLess,
   Clear as ClearIcon,
   Edit,
@@ -64,8 +52,7 @@ import { Refeicao } from '../types/refeicao';
 
 const RefeicoesPage = () => {
   const navigate = useNavigate();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  
 
   // Estados principais
   const [refeicoes, setRefeicoes] = useState<Refeicao[]>([]);

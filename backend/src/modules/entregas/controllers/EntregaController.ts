@@ -1,15 +1,19 @@
 import { Request, Response } from 'express';
 import EntregaModel from '../models/Entrega';
-import ConfiguracaoEntregaModel from '../models/ConfiguracaoEntrega';
+
 
 class EntregaController {
   async listarEscolas(req: Request, res: Response) {
     try {
-      const { guiaId, rotaId } = req.query;
+      const { guiaId, rotaId, dataEntrega, dataInicio, dataFim, somentePendentes } = req.query;
       
       const escolas = await EntregaModel.listarEscolasComEntregas(
         guiaId ? Number(guiaId) : undefined,
-        rotaId ? Number(rotaId) : undefined
+        rotaId ? Number(rotaId) : undefined,
+        typeof dataEntrega === 'string' ? dataEntrega : undefined,
+        typeof dataInicio === 'string' ? dataInicio : undefined,
+        typeof dataFim === 'string' ? dataFim : undefined,
+        somentePendentes === 'true'
       );
       res.json(escolas);
     } catch (error) {
@@ -24,7 +28,7 @@ class EntregaController {
   async listarItensPorEscola(req: Request, res: Response) {
     try {
       const { escolaId } = req.params;
-      const { guiaId } = req.query;
+      const { guiaId, dataEntrega, dataInicio, dataFim, somentePendentes } = req.query;
       
       if (!escolaId || isNaN(Number(escolaId))) {
         return res.status(400).json({ error: 'ID da escola é obrigatório e deve ser um número' });
@@ -32,7 +36,11 @@ class EntregaController {
 
       const itens = await EntregaModel.listarItensEntregaPorEscola(
         Number(escolaId),
-        guiaId ? Number(guiaId) : undefined
+        guiaId ? Number(guiaId) : undefined,
+        typeof dataEntrega === 'string' ? dataEntrega : undefined,
+        typeof dataInicio === 'string' ? dataInicio : undefined,
+        typeof dataFim === 'string' ? dataFim : undefined,
+        somentePendentes === 'true'
       );
       res.json(itens);
     } catch (error) {
@@ -172,11 +180,15 @@ class EntregaController {
 
   async obterEstatisticas(req: Request, res: Response) {
     try {
-      const { guiaId, rotaId } = req.query;
+      const { guiaId, rotaId, dataEntrega, dataInicio, dataFim, somentePendentes } = req.query;
       
       const estatisticas = await EntregaModel.obterEstatisticasEntregas(
         guiaId ? Number(guiaId) : undefined,
-        rotaId ? Number(rotaId) : undefined
+        rotaId ? Number(rotaId) : undefined,
+        typeof dataEntrega === 'string' ? dataEntrega : undefined,
+        typeof dataInicio === 'string' ? dataInicio : undefined,
+        typeof dataFim === 'string' ? dataFim : undefined,
+        somentePendentes === 'true'
       );
       res.json(estatisticas);
     } catch (error) {
@@ -187,42 +199,7 @@ class EntregaController {
       });
     }
   }
-  async listarItensFiltrados(req: Request, res: Response) {
-    try {
-      const { escolaId } = req.params;
-      const { guiaId } = req.query;
 
-      // Buscar configuração ativa
-      const configuracao = await ConfiguracaoEntregaModel.buscarConfiguracaoAtiva();
-      
-      if (!configuracao) {
-        // Se não há configuração, usar método normal
-        return this.listarItensPorEscola(req, res);
-      }
-
-      // Usar a guia da configuração se não especificada
-      const guiaIdFinal = guiaId || configuracao.guia_id;
-
-      // Buscar todos os itens da escola
-      const todosItens = await EntregaModel.listarItensEntregaPorEscola(
-        Number(escolaId), 
-        Number(guiaIdFinal)
-      );
-
-      // Filtrar apenas os itens selecionados na configuração
-      const itensFiltrados = todosItens.filter(item => 
-        configuracao.itens_selecionados.includes(item.id)
-      );
-
-      res.json(itensFiltrados);
-    } catch (error) {
-      console.error('Erro ao listar itens filtrados:', error);
-      res.status(500).json({ 
-        error: 'Erro interno do servidor',
-        message: error instanceof Error ? error.message : 'Erro desconhecido'
-      });
-    }
-  }
 }
 
 export default new EntregaController();

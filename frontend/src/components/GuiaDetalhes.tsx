@@ -26,7 +26,7 @@ import { useNotification } from '../context/NotificationContext';
 import { guiaService, Guia, AddProdutoGuiaData } from '../services/guiaService';
 import { listarProdutos } from '../services/produtos';
 import { escolaService } from '../services/escolaService';
-import { buscarEstoqueEscolarProduto, EstoqueEscolaProduto } from '../services/estoqueEscolar';
+import { listarEstoqueEscola, EstoqueEscolarItem } from '../services/estoqueEscolarService';
 
 interface GuiaDetalhesProps {
   guia: Guia | null;
@@ -178,16 +178,18 @@ const ProdutosList = React.memo(({ produtos, filtro, onSelecionarProduto }: {
 });
 
 // Componente otimizado para item de escola
-const EscolaItem = React.memo(({ escola, quantidadesEscolas, unidadeGlobal, onAtualizarQuantidade, index, estoqueEscola }: {
+const EscolaItem = React.memo(({ escola, quantidadesEscolas, unidadeGlobal, produtoId, onAtualizarQuantidade, index }: {
   escola: any;
   quantidadesEscolas: any;
   unidadeGlobal: string;
+  produtoId?: number;
   onAtualizarQuantidade: (escolaId: number, campo: 'quantidade' | 'observacao' | 'para_entrega', valor: string) => void;
   index: number;
-  estoqueEscola?: EstoqueEscolaProduto;
 }) => {
   const quantidadeRef = useRef<HTMLInputElement>(null);
   const observacaoRef = useRef<HTMLInputElement>(null);
+  const [estoqueItem, setEstoqueItem] = useState<EstoqueEscolarItem | null>(null);
+  const [carregandoEstoque, setCarregandoEstoque] = useState(false);
 
   const handleQuantidadeKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Tab' && !e.shiftKey) {
@@ -205,12 +207,32 @@ const EscolaItem = React.memo(({ escola, quantidadesEscolas, unidadeGlobal, onAt
     }
   };
 
+  useEffect(() => {
+    const carregarEstoque = async () => {
+      if (!produtoId) {
+        setEstoqueItem(null);
+        return;
+      }
+      try {
+        setCarregandoEstoque(true);
+        const estoque = await listarEstoqueEscola(escola.id);
+        const item = estoque.find(i => i.produto_id === produtoId) || null;
+        setEstoqueItem(item);
+      } catch (e) {
+        setEstoqueItem(null);
+      } finally {
+        setCarregandoEstoque(false);
+      }
+    };
+    carregarEstoque();
+  }, [escola.id, produtoId]);
+
   return (
     <Grid item xs={12}>
       <Card variant="outlined">
         <CardContent sx={{ py: 2 }}>
           <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} md={5}>
+            <Grid item xs={12} md={4}>
               <Typography variant="subtitle2" fontWeight="bold">
                 {escola.nome}
               </Typography>
@@ -219,52 +241,51 @@ const EscolaItem = React.memo(({ escola, quantidadesEscolas, unidadeGlobal, onAt
                   {escola.modalidades}
                 </Typography>
               )}
-              {/* Informações de Estoque */}
-              {estoqueEscola ? (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-                  <Typography variant="caption" color="text.secondary">
-                    Estoque: {estoqueEscola.quantidade_atual} {estoqueEscola.unidade}
-                  </Typography>
-                  <Chip 
-                    label={
-                      estoqueEscola.status_estoque === 'sem_estoque' ? 'Sem Estoque' :
-                      estoqueEscola.status_estoque === 'baixo' ? 'Baixo' :
-                      estoqueEscola.status_estoque === 'normal' ? 'Normal' :
-                      'Alto'
-                    }
+            </Grid>
+            <Grid item xs={12} md={2}>
+              {estoqueItem && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <Chip
                     size="small"
-                    color={
-                      estoqueEscola.status_estoque === 'sem_estoque' ? 'error' :
-                      estoqueEscola.status_estoque === 'baixo' ? 'warning' :
-                      'success'
-                    }
-                    sx={{ fontSize: '0.65rem', height: '18px' }}
+                    label={`${(estoqueItem.quantidade_atual ?? 0).toLocaleString('pt-BR')} ${estoqueItem.unidade}`}
+                    sx={{ height: 22 }}
                   />
+                  {estoqueItem.data_ultima_atualizacao && (
+                    <Typography variant="caption" color="text.secondary">
+                      {new Date(estoqueItem.data_ultima_atualizacao).toLocaleDateString('pt-BR')}
+                    </Typography>
+                  )}
                 </Box>
-              ) : (
-                <Typography variant="caption" color="text.disabled" sx={{ mt: 0.5, display: 'block' }}>
-                  Sem info de estoque
-                </Typography>
               )}
             </Grid>
-            <Grid item xs={12} md={3}>
-              <TextField
-                inputRef={quantidadeRef}
-                fullWidth
-                label="Quantidade"
-                type="number"
-                size="small"
-                value={quantidadesEscolas[escola.id]?.quantidade || ''}
-                onChange={(e) => onAtualizarQuantidade(escola.id, 'quantidade', e.target.value)}
-                onKeyDown={handleQuantidadeKeyDown}
-                inputProps={{
-                  step: 0.001,
-                  min: 0,
-                  'data-escola-quantidade': escola.id,
-                  tabIndex: index * 2 + 1
+            <Grid item xs={12} md={2}>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr',
+                  alignItems: 'center',
+                  columnGap: 1
                 }}
-                placeholder="0.000"
-              />
+              >
+                <TextField
+                  inputRef={quantidadeRef}
+                  fullWidth
+                  label="Quantidade"
+                  type="number"
+                  size="small"
+                  value={quantidadesEscolas[escola.id]?.quantidade || ''}
+                  onChange={(e) => onAtualizarQuantidade(escola.id, 'quantidade', e.target.value)}
+                  onKeyDown={handleQuantidadeKeyDown}
+                  inputProps={{
+                    step: 0.001,
+                    min: 0,
+                    'data-escola-quantidade': escola.id,
+                    tabIndex: index * 2 + 1
+                  }}
+                  placeholder="0.000"
+                  sx={{ width: 160 }}
+                />
+              </Box>
             </Grid>
             <Grid item xs={12} md={2}>
               <Box sx={{ display: 'flex', alignItems: 'center', height: '40px', justifyContent: 'center' }}>
@@ -332,12 +353,12 @@ const EscolaItem = React.memo(({ escola, quantidadesEscolas, unidadeGlobal, onAt
 });
 
 // Componente otimizado para lista de escolas
-const EscolasList = React.memo(({ escolas, quantidadesEscolas, unidadeGlobal, onAtualizarQuantidade, estoqueEscolas }: {
+const EscolasList = React.memo(({ escolas, quantidadesEscolas, unidadeGlobal, produtoId, onAtualizarQuantidade }: {
   escolas: any[];
   quantidadesEscolas: any;
   unidadeGlobal: string;
+  produtoId?: number;
   onAtualizarQuantidade: (escolaId: number, campo: 'quantidade' | 'observacao' | 'para_entrega', valor: string) => void;
-  estoqueEscolas: { [key: number]: EstoqueEscolaProduto };
 }) => {
   const [itensCarregados, setItensCarregados] = useState(15);
   const [carregandoMais, setCarregandoMais] = useState(false);
@@ -408,8 +429,8 @@ const EscolasList = React.memo(({ escolas, quantidadesEscolas, unidadeGlobal, on
             escola={escola}
             quantidadesEscolas={quantidadesEscolas}
             unidadeGlobal={unidadeGlobal}
+            produtoId={produtoId}
             onAtualizarQuantidade={onAtualizarQuantidade}
-            estoqueEscola={estoqueEscolas[escola.id]}
             index={index}
           />
         ))}
@@ -452,10 +473,6 @@ const GuiaDetalhes: React.FC<GuiaDetalhesProps> = ({ guia, onUpdate, onClose }) 
   const [salvandoMassa, setSalvandoMassa] = useState(false);
   const [carregandoEscolas, setCarregandoEscolas] = useState(false);
   
-  // Estados para validação de estoque
-  const [estoqueEscolas, setEstoqueEscolas] = useState<{ [key: number]: EstoqueEscolaProduto }>({});
-  const [loadingEstoque, setLoadingEstoque] = useState(false);
-
   const { success, error } = useNotification();
 
   useEffect(() => {
@@ -560,9 +577,6 @@ const GuiaDetalhes: React.FC<GuiaDetalhesProps> = ({ guia, onUpdate, onClose }) 
     const loteAuto = `${produto.nome.substring(0, 3).toUpperCase()}-${dataFormatada}-${horaFormatada}`;
     setLoteGlobal(loteAuto);
 
-    // Carregar estoque de todas as escolas para este produto
-    await carregarEstoqueProduto(produto.id);
-
     requestAnimationFrame(() => {
       setTimeout(() => {
         setQuantidadesEscolas({});
@@ -570,26 +584,6 @@ const GuiaDetalhes: React.FC<GuiaDetalhesProps> = ({ guia, onUpdate, onClose }) 
       }, 100);
     });
   }, []);
-
-  const carregarEstoqueProduto = async (produtoId: number) => {
-    try {
-      setLoadingEstoque(true);
-      const estoqueData = await buscarEstoqueEscolarProduto(produtoId);
-      
-      // Criar um mapa de estoque por escola
-      const estoqueMap: { [key: number]: EstoqueEscolaProduto } = {};
-      estoqueData.escolas.forEach(escola => {
-        estoqueMap[escola.escola_id] = escola;
-      });
-      
-      setEstoqueEscolas(estoqueMap);
-    } catch (err) {
-      console.error('Erro ao carregar estoque:', err);
-      setEstoqueEscolas({});
-    } finally {
-      setLoadingEstoque(false);
-    }
-  };
 
   const atualizarQuantidadeEscola = useCallback((escolaId: number, campo: 'quantidade' | 'observacao' | 'para_entrega', valor: string) => {
     setQuantidadesEscolas(prev => {
@@ -626,7 +620,6 @@ const GuiaDetalhes: React.FC<GuiaDetalhesProps> = ({ guia, onUpdate, onClose }) 
       return;
     }
 
-    // Validação de estoque removida - o estoque da escola representa entregas planejadas, não disponibilidade
 
     try {
       setSalvandoMassa(true);
@@ -962,12 +955,12 @@ const GuiaDetalhes: React.FC<GuiaDetalhesProps> = ({ guia, onUpdate, onClose }) 
                 </Typography>
               </Box>
             ) : (
-              <EscolasList
+            <EscolasList
                 escolas={escolasFiltradas}
                 quantidadesEscolas={quantidadesEscolas}
                 unidadeGlobal={unidadeGlobal}
+              produtoId={selectedProdutoMassa?.id}
                 onAtualizarQuantidade={atualizarQuantidadeEscola}
-                estoqueEscolas={estoqueEscolas}
               />
             )}
           </Box>

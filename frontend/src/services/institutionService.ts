@@ -18,7 +18,6 @@ export interface Institution {
   address_zipcode?: string;
   settings?: any;
   limits?: {
-    max_tenants?: number;
     max_users?: number;
     max_schools?: number;
   };
@@ -42,11 +41,6 @@ export interface ProvisionData {
       state?: string;
       zipcode?: string;
     };
-  };
-  tenant: {
-    name: string;
-    slug: string;
-    subdomain?: string;
   };
   admin: {
     nome: string;
@@ -115,17 +109,6 @@ export const institutionService = {
 
   async removeUser(id: string, userId: number) {
     const response = await api.delete(`/institutions/${id}/users/${userId}`);
-    return response.data;
-  },
-
-  // Tenants da instituição
-  async getTenants(id: string) {
-    const response = await api.get(`/institutions/${id}/tenants`);
-    return response.data;
-  },
-
-  async createTenant(id: string, data: { name: string; slug: string; subdomain?: string }) {
-    const response = await api.post(`/provisioning/institutions/${id}/tenants`, data);
     return response.data;
   },
 

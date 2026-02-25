@@ -42,6 +42,7 @@ export interface CreateRotaData {
   nome: string;
   descricao?: string;
   cor?: string;
+  ativo?: boolean;
 }
 
 export interface CreatePlanejamentoData {
@@ -61,7 +62,6 @@ class RotaModel {
         COUNT(re.escola_id) as total_escolas
       FROM rotas_entrega r
       LEFT JOIN rota_escolas re ON r.id = re.rota_id
-      WHERE r.ativo = true
       GROUP BY r.id
       ORDER BY r.nome
     `);
@@ -77,10 +77,10 @@ class RotaModel {
 
   async criarRota(data: CreateRotaData): Promise<RotaEntrega> {
     const result = await db.run(`
-      INSERT INTO rotas_entrega (nome, descricao, cor, created_at, updated_at)
-      VALUES ($1, $2, $3, NOW(), NOW())
+      INSERT INTO rotas_entrega (nome, descricao, cor, ativo, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, NOW(), NOW())
       RETURNING *
-    `, [data.nome, data.descricao || null, data.cor || '#1976d2']);
+    `, [data.nome, data.descricao || null, data.cor || '#1976d2', data.ativo !== undefined ? data.ativo : true]);
 
     return await this.buscarRota(result.lastID);
   }
@@ -105,6 +105,11 @@ class RotaModel {
       values.push(data.cor);
       paramCount++;
     }
+    if (data.ativo !== undefined) {
+      fields.push(`ativo = $${paramCount}`);
+      values.push(data.ativo);
+      paramCount++;
+    }
 
     fields.push(`updated_at = NOW()`);
     values.push(id);
@@ -119,10 +124,30 @@ class RotaModel {
   }
 
   async deletarRota(id: number): Promise<boolean> {
-    const result = await db.run(`
-      UPDATE rotas_entrega SET ativo = false WHERE id = $1
-    `, [id]);
-    return result.changes > 0;
+    try {
+      await db.run('BEGIN');
+
+      // Primeiro remove as associações com escolas
+      await db.run(`
+        DELETE FROM rota_escolas WHERE rota_id = $1
+      `, [id]);
+
+      // Remove os planejamentos associados (se houver)
+      await db.run(`
+        DELETE FROM planejamento_entregas WHERE rota_id = $1
+      `, [id]);
+
+      // Remove a rota
+      const result = await db.run(`
+        DELETE FROM rotas_entrega WHERE id = $1
+      `, [id]);
+
+      await db.run('COMMIT');
+      return result.changes > 0;
+    } catch (error) {
+      await db.run('ROLLBACK');
+      throw error;
+    }
   }
 
   // Escolas da Rota
@@ -351,45 +376,6 @@ class RotaModel {
     }
 
     return { emRota: false };
-  }
-
-  // Métodos para o módulo de entregas
-  async listarRotasComEntregas(guiaId?: number): Promise<any[]> {
-    let whereClause = 'WHERE pe.status IN (\'planejado\', \'em_andamento\')';
-    const params = [];
-    let paramCount = 1;
-
-    if (guiaId) {
-      whereClause += ` AND pe.guia_id = $${paramCount}`;
-      params.push(guiaId);
-      paramCount++;
-    }
-
-    const result = await db.all(`
-      SELECT 
-        r.id,
-        r.nome,
-        r.descricao,
-        r.cor,
-        pe.guia_id,
-        pe.status,
-        pe.responsavel,
-        pe.data_planejada,
-        g.mes,
-        g.ano,
-        COUNT(DISTINCT re.escola_id) as total_escolas,
-        COUNT(DISTINCT gpe.id) as total_itens,
-        SUM(CASE WHEN gpe.entrega_confirmada = true THEN 1 ELSE 0 END) as itens_entregues
-      FROM rotas_entrega r
-      JOIN planejamento_entregas pe ON r.id = pe.rota_id
-      JOIN guias g ON pe.guia_id = g.id
-      JOIN rota_escolas re ON r.id = re.rota_id
-      LEFT JOIN guia_produto_escola gpe ON g.id = gpe.guia_id AND re.escola_id = gpe.escola_id AND gpe.para_entrega = true
-      ${whereClause}
-      GROUP BY r.id, r.nome, r.descricao, r.cor, pe.guia_id, pe.status, pe.responsavel, pe.data_planejada, g.mes, g.ano
-      ORDER BY pe.data_planejada DESC, g.ano DESC, g.mes DESC, r.nome
-    `, params);
-    return result;
   }
 }
 

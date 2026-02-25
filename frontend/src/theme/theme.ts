@@ -9,19 +9,11 @@ declare module '@mui/material/styles' {
   interface Palette {
     sidebarSelection: string;
     tableHover: string;
-    tenant?: {
-      primary: string;
-      secondary: string;
-    };
   }
 
   interface PaletteOptions {
     sidebarSelection?: string;
     tableHover?: string;
-    tenant?: {
-      primary?: string;
-      secondary?: string;
-    };
   }
 }
 
@@ -360,12 +352,8 @@ export const lightTheme: Theme = createTheme({
       dark: '#2563eb',
       contrastText: '#ffffff',
     },
-    sidebarSelection: '#ef4444',
+    sidebarSelection: '#38b6ff',
     tableHover: '#fff7f0ff',
-    tenant: {
-      primary: '#2563eb',
-      secondary: '#64748b',
-    },
   },
   shadows: [
     'none',
@@ -437,24 +425,6 @@ export const lightTheme: Theme = createTheme({
           backgroundColor: theme.palette.background.paper,
           borderRadius: '12px !important',
           padding: '16px !important',
-        },
-        // Tenant branding CSS variables
-        ':root': {
-          '--tenant-primary-color': theme.palette.tenant?.primary || theme.palette.primary.main,
-          '--tenant-secondary-color': theme.palette.tenant?.secondary || theme.palette.secondary.main,
-        },
-        // Tenant-specific styles
-        '.tenant-primary': {
-          color: 'var(--tenant-primary-color) !important',
-        },
-        '.tenant-primary-bg': {
-          backgroundColor: 'var(--tenant-primary-color) !important',
-        },
-        '.tenant-secondary': {
-          color: 'var(--tenant-secondary-color) !important',
-        },
-        '.tenant-secondary-bg': {
-          backgroundColor: 'var(--tenant-secondary-color) !important',
         },
       }),
     },

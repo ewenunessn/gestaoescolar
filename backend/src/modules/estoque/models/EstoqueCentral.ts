@@ -192,6 +192,7 @@ export async function registrarMovimentacao(dados: {
   usuario_id: number;
   observacoes?: string;
   unidade_medida?: string;
+  escola_id?: number;
 }): Promise<MovimentacaoEstoque> {
 
   // Since units are now defined in contracts, use provided unit or default
@@ -204,8 +205,8 @@ export async function registrarMovimentacao(dados: {
   const result = await db.query(`
     INSERT INTO estoque_movimentacoes (
       lote_id, produto_id, tipo, quantidade, quantidade_anterior,
-      quantidade_posterior, motivo, documento_referencia, usuario_id, observacoes, unidade_medida
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      quantidade_posterior, motivo, documento_referencia, usuario_id, observacoes, unidade_medida, escola_id
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
     RETURNING id
   `, [
     dados.lote_id,
@@ -218,7 +219,8 @@ export async function registrarMovimentacao(dados: {
     dados.documento_referencia || null,
     dados.usuario_id,
     dados.observacoes || null,
-    unidadeMedida
+    unidadeMedida,
+    dados.escola_id || null
   ]);
 
   return await getMovimentacaoById(result.rows[0].id);
@@ -335,6 +337,7 @@ export async function processarSaida(dados: {
   documento_referencia?: string;
   usuario_id: number;
   observacoes?: string;
+  escola_id?: number;
 }): Promise<{success: boolean, lotes_utilizados: any[], quantidade_processada: number}> {
   
   const quantidadeDesejada = dados.quantidade;
@@ -386,7 +389,8 @@ export async function processarSaida(dados: {
         motivo: dados.motivo,
         documento_referencia: dados.documento_referencia,
         usuario_id: dados.usuario_id,
-        observacoes: dados.observacoes
+        observacoes: dados.observacoes,
+        escola_id: dados.escola_id
       });
 
       lotesUtilizados.push({

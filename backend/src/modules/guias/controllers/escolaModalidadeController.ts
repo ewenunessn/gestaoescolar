@@ -10,6 +10,8 @@ export async function listarEscolaModalidades(req: Request, res: Response) {
         em.escola_id,
         em.modalidade_id,
         em.quantidade_alunos,
+        em.created_at,
+        em.updated_at,
         e.nome as escola_nome,
         m.nome as modalidade_nome
       FROM escola_modalidades em
@@ -82,6 +84,8 @@ export async function listarModalidadesPorEscola(req: Request, res: Response) {
         em.escola_id,
         em.modalidade_id,
         em.quantidade_alunos,
+        em.created_at,
+        em.updated_at,
         m.nome as modalidade_nome,
         m.descricao as modalidade_descricao
       FROM escola_modalidades em
@@ -104,10 +108,6 @@ export async function listarModalidadesPorEscola(req: Request, res: Response) {
     });
   }
 }
-
-// Controller de escola-modalidades para PostgreSQL
-import { Request, Response } from "express";
-const db = require("../../../database");
 
 export async function criarEscolaModalidade(req: Request, res: Response) {
   try {
@@ -181,7 +181,8 @@ export async function editarEscolaModalidade(req: Request, res: Response) {
 
     const result = await db.query(`
       UPDATE escola_modalidades SET
-        quantidade_alunos = $1
+        quantidade_alunos = $1,
+        updated_at = CURRENT_TIMESTAMP
       WHERE id = $2
       RETURNING *
     `, [quantidade_alunos, id]);

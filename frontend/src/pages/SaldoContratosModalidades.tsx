@@ -14,7 +14,6 @@ import {
   TableRow,
   Chip,
   TextField,
-  MenuItem,
   Grid,
   Button,
   TablePagination,
@@ -29,16 +28,7 @@ import {
   DialogActions,
   Paper
 } from '@mui/material';
-import {
-  Search as SearchIcon,
-  Download as DownloadIcon,
-  Refresh as RefreshIcon,
-  FilterList as FilterIcon,
-  Restaurant as RestaurantIcon,
-  History as HistoryIcon,
-  Add as AddIcon
-} from '@mui/icons-material';
-import BusinessIcon from '@mui/icons-material/Business';
+import { Search as SearchIcon, Download as DownloadIcon, Refresh as RefreshIcon, FilterList as FilterIcon, Restaurant as RestaurantIcon, History as HistoryIcon } from '@mui/icons-material';
 import { Edit as EditIcon, Save as SaveIcon, Cancel as CancelIcon } from '@mui/icons-material';
 import { useToast } from '../hooks/useToast';
 import saldoContratosModalidadesService, {
@@ -451,7 +441,8 @@ const SaldoContratosModalidades: React.FC = () => {
         const produtoAtualizado = {
           ...produto,
           produto_nome: modalidadesAtualizadas[0].produto_nome,
-          unidade: modalidadesAtualizadas[0].unidade
+          unidade: modalidadesAtualizadas[0].unidade,
+          quantidade_contrato: modalidadesAtualizadas[0].quantidade_contratada || produto.quantidade_contrato
         };
         console.log('Produto atualizado:', produtoAtualizado);
         setProdutoSelecionado(produtoAtualizado);
@@ -470,8 +461,8 @@ const SaldoContratosModalidades: React.FC = () => {
           quantidade_inicial: modalidadeExistente ? modalidadeExistente.quantidade_inicial : 0,
           quantidade_consumida: modalidadeExistente ? modalidadeExistente.quantidade_consumida : 0,
           quantidade_disponivel: modalidadeExistente ? modalidadeExistente.quantidade_disponivel : 0,
-          cadastrada: modalidadeExistente && modalidadeExistente.id > 0,
-          id_saldo: modalidadeExistente ? modalidadeExistente.id : null
+          cadastrada: modalidadeExistente && modalidadeExistente.saldo_id != null,
+          id_saldo: modalidadeExistente ? modalidadeExistente.saldo_id : null
         };
       });
 
@@ -842,7 +833,7 @@ const SaldoContratosModalidades: React.FC = () => {
 
     try {
       const result = await saldoContratosModalidadesService.buscarHistoricoConsumoModalidade(item.id);
-      setHistoricoConsumo(result.data || []);
+      setHistoricoConsumo(result.data?.historico || []);
     } catch (error) {
       console.error('Erro ao carregar histórico de consumo:', error);
       setHistoricoConsumo([]);

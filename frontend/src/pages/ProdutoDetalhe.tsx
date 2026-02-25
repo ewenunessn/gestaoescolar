@@ -7,7 +7,7 @@ import {
   Chip, FormControlLabel, Switch, Paper, Grid, Stack, FormControl, InputLabel, Select, MenuItem
 } from '@mui/material';
 import {
-  ArrowBack as ArrowBackIcon, Edit as EditIcon, Delete as DeleteIcon, Save as SaveIcon,
+  Edit as EditIcon, Delete as DeleteIcon, Save as SaveIcon,
   Cancel as CancelIcon, Inventory as InventoryIcon, Science as ScienceIcon, 
   Fingerprint as FingerprintIcon, Notes as NotesIcon,
 } from '@mui/icons-material';
@@ -19,9 +19,21 @@ import PageBreadcrumbs from '../components/PageBreadcrumbs';
 
 // --- Constantes ---
 const composicaoVazia = {
-  valor_energetico_kcal: "", carboidratos_g: "", acucares_totais_g: "", acucares_adicionados_g: "",
-  proteinas_g: "", gorduras_totais_g: "", gorduras_saturadas_g: "", gorduras_trans_g: "",
-  fibra_alimentar_g: "", sodio_mg: "",
+  produto_id: 0,
+  calorias: "",
+  proteinas: "",
+  carboidratos: "",
+  gorduras: "",
+  fibras: "",
+  sodio: "",
+  acucares: "",
+  gorduras_saturadas_g: "",
+  gorduras_trans_g: "",
+  colesterol: "",
+  calcio: "",
+  ferro: "",
+  vitamina_c: "",
+  vitamina_a: ""
 };
 
 // --- Subcomponentes de UI ---
@@ -74,11 +86,20 @@ const ComposicaoNutricionalCard = ({ composicaoData, onSave, isSaving }) => {
     const handleCancel = () => { setFormData(composicaoData); setEditMode(false); };
 
     const campos = [
-        { key: 'valor_energetico_kcal', label: 'Valor Energético', unit: 'kcal' }, { key: 'carboidratos_g', label: 'Carboidratos', unit: 'g' },
-        { key: 'acucares_totais_g', label: 'Açúcares Totais', unit: 'g' }, { key: 'acucares_adicionados_g', label: 'Açúcares Adicionados', unit: 'g' },
-        { key: 'proteinas_g', label: 'Proteínas', unit: 'g' }, { key: 'gorduras_totais_g', label: 'Gorduras Totais', unit: 'g' },
-        { key: 'gorduras_saturadas_g', label: 'Gorduras Saturadas', unit: 'g' }, { key: 'gorduras_trans_g', label: 'Gorduras Trans', unit: 'g' },
-        { key: 'fibra_alimentar_g', label: 'Fibra Alimentar', unit: 'g' }, { key: 'sodio_mg', label: 'Sódio', unit: 'mg' },
+        { key: 'calorias', label: 'Calorias', unit: 'kcal' }, 
+        { key: 'proteinas', label: 'Proteínas', unit: 'g' },
+        { key: 'carboidratos', label: 'Carboidratos', unit: 'g' },
+        { key: 'gorduras', label: 'Gorduras Totais', unit: 'g' },
+        { key: 'fibras', label: 'Fibras', unit: 'g' }, 
+        { key: 'sodio', label: 'Sódio', unit: 'mg' },
+        { key: 'acucares', label: 'Açúcares', unit: 'g' },
+        { key: 'gorduras_saturadas_g', label: 'Gorduras Saturadas', unit: 'g' }, 
+        { key: 'gorduras_trans_g', label: 'Gorduras Trans', unit: 'g' },
+        { key: 'colesterol', label: 'Colesterol', unit: 'mg' },
+        { key: 'calcio', label: 'Cálcio', unit: 'mg' },
+        { key: 'ferro', label: 'Ferro', unit: 'mg' },
+        { key: 'vitamina_c', label: 'Vitamina C', unit: 'mg' },
+        { key: 'vitamina_a', label: 'Vitamina A', unit: 'mg' }
     ];
 
     return (

@@ -4,13 +4,15 @@
 
 -- Add unidade column to contrato_produtos table
 ALTER TABLE contrato_produtos 
-ADD COLUMN unidade VARCHAR(50);
+ADD COLUMN IF NOT EXISTS unidade VARCHAR(50);
 
--- Update existing records with unit from produtos table
-UPDATE contrato_produtos 
-SET unidade = p.unidade 
-FROM produtos p 
-WHERE contrato_produtos.produto_id = p.id;
+-- Update existing records with unit from produtos table (if column exists)
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'produtos' AND column_name = 'unidade') THEN
+        EXECUTE 'UPDATE contrato_produtos SET unidade = p.unidade FROM produtos p WHERE contrato_produtos.produto_id = p.id';
+    END IF;
+END $$;
 
 -- Set default unit for any records that might not have been updated
 UPDATE contrato_produtos 

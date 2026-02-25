@@ -40,6 +40,7 @@ export interface CreateRotaData {
   nome: string;
   descricao?: string;
   cor?: string;
+  ativo?: boolean;
 }
 
 export interface CreatePlanejamentoData {
@@ -56,30 +57,4 @@ export interface CreatePlanejamentoAvancadoData {
   dataPlanejada?: string;
   observacao?: string;
   itensSelecionados: number[];
-}
-
-export interface ConfiguracaoEntrega {
-  id?: number;
-  guiaId: number;
-  rotasSelecionadas: number[];
-  itensSelecionados: number[];
-  ativa: boolean;
-  created_at?: string;
-  updated_at?: string;
-}
-
-export interface RotaComEntregas {
-  id: number;
-  nome: string;
-  descricao?: string;
-  cor: string;
-  guia_id: number;
-  status: string;
-  responsavel?: string;
-  data_planejada?: string;
-  mes: number;
-  ano: number;
-  total_escolas: number;
-  total_itens: number;
-  itens_entregues: number;
 }

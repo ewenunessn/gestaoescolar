@@ -2,55 +2,9 @@ import { Request, Response } from 'express';
 import { demandaModel } from '../models/demandaModel';
 
 export const demandaController = {
-  async criar(req: Request, res: Response) {
-    try {
-      console.log('🔄 [DEMANDAS] Iniciando criar...');
-
-      const usuarioId = (req as any).usuario?.id || (req as any).user?.id || 1;
-      
-      console.log('🔍 [DEMANDAS] Usuario ID:', usuarioId);
-      console.log('🔍 [DEMANDAS] Body:', req.body);
-
-      const demanda = await demandaModel.criar({
-        ...req.body,
-        data_semead: req.body.data_semead || null,
-        status: 'pendente',
-        usuario_criacao_id: usuarioId
-      });
-
-      console.log('✅ [DEMANDAS] Demanda criada:', demanda.id);
-
-      res.status(201).json({
-        success: true,
-        message: 'Demanda criada com sucesso',
-        data: demanda
-      });
-    } catch (error: any) {
-      console.error('❌ [DEMANDAS] Erro ao criar demanda:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Erro ao criar demanda',
-        error: error.message
-      });
-    }
-  },
-
   async listar(req: Request, res: Response) {
     try {
       console.log('🔄 [DEMANDAS] Iniciando listar...');
-      
-      // Obter tenant_id diretamente do header (mais rápido)
-      const tenantId = (req as any).tenant?.id || req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
-      
-      console.log('🔍 [DEMANDAS] Tenant ID:');
-      
-      if (!tenantId) {
-        console.error('❌ [DEMANDAS] Tenant ID não encontrado');
-        return res.status(400).json({
-          success: false,
-          message: 'Tenant ID não encontrado'
-        });
-      }
 
       const { escola_id, escola_nome, objeto, status, data_inicio, data_fim } = req.query;
 
@@ -86,25 +40,14 @@ export const demandaController = {
   async listarSolicitantes(req: Request, res: Response) {
     try {
       console.log('🔄 [DEMANDAS] Iniciando listarSolicitantes...');
-      
-      // Obter tenant_id diretamente do header
-      const tenantId = (req as any).tenant?.id || req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
-      
-      if (!tenantId) {
-        console.error('❌ [DEMANDAS] Tenant ID não encontrado');
-        return res.status(400).json({
-          success: false,
-          message: 'Tenant ID não encontrado'
-        });
-      }
 
       console.log('🔍 [DEMANDAS] Chamando listarSolicitantes...');
       const startTime = Date.now();
       
-      const solicitantes = await demandaModel.listarSolicitantes(tenantId);
+      const solicitantes = await demandaModel.listarSolicitantes();
       
       const duration = Date.now() - startTime;
-      console.log(`✅ [DEMANDAS] ${solicitantes.length} solicitantes encontrados em ${duration}ms`);
+      console.log(`✅ [DEMANDAS] Solicitantes listados em ${duration}ms, ${solicitantes.length} resultados`);
 
       res.json({
         success: true,
@@ -123,19 +66,6 @@ export const demandaController = {
   async buscarPorId(req: Request, res: Response) {
     try {
       console.log('🔄 [DEMANDAS] Iniciando buscarPorId...');
-      
-      // Obter tenant_id de múltiplas fontes
-      const tenantId = (req as any).tenant?.id || req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
-      
-      console.log('🔍 [DEMANDAS] Tenant ID:');
-      
-      if (!tenantId) {
-        console.error('❌ [DEMANDAS] Tenant ID não encontrado');
-        return res.status(400).json({
-          success: false,
-          message: 'Tenant ID não encontrado'
-        });
-      }
 
       const { id } = req.params;
       console.log('🔍 [DEMANDAS] Buscando demanda ID:', id);
@@ -143,7 +73,7 @@ export const demandaController = {
       const demanda = await demandaModel.buscarPorId(Number(id));
 
       if (!demanda) {
-        console.log('❌ [DEMANDAS] Demanda não encontrada');
+        console.log('❌ [DEMANDAS] Demanda não encontrada:', id);
         return res.status(404).json({
           success: false,
           message: 'Demanda não encontrada'
@@ -166,20 +96,32 @@ export const demandaController = {
     }
   },
 
+  async criar(req: Request, res: Response) {
+    try {
+      console.log('🔄 [DEMANDAS] Iniciando criar...');
+      
+      const demanda = await demandaModel.criar(req.body);
+
+      console.log('✅ [DEMANDAS] Demanda criada:', demanda.id);
+
+      res.status(201).json({
+        success: true,
+        message: 'Demanda criada com sucesso',
+        data: demanda
+      });
+    } catch (error: any) {
+      console.error('❌ [DEMANDAS] Erro ao criar demanda:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erro ao criar demanda',
+        error: error.message
+      });
+    }
+  },
+
   async atualizar(req: Request, res: Response) {
     try {
       console.log('🔄 [DEMANDAS] Iniciando atualizar...');
-      
-      // Obter tenant_id de múltiplas fontes
-      const tenantId = (req as any).tenant?.id || req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
-      
-      if (!tenantId) {
-        console.error('❌ [DEMANDAS] Tenant ID não encontrado');
-        return res.status(400).json({
-          success: false,
-          message: 'Tenant ID não encontrado'
-        });
-      }
 
       const { id } = req.params;
       console.log('🔍 [DEMANDAS] Atualizando demanda ID:', id);
@@ -206,17 +148,6 @@ export const demandaController = {
   async excluir(req: Request, res: Response) {
     try {
       console.log('🔄 [DEMANDAS] Iniciando excluir...');
-      
-      // Obter tenant_id de múltiplas fontes
-      const tenantId = (req as any).tenant?.id || req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
-      
-      if (!tenantId) {
-        console.error('❌ [DEMANDAS] Tenant ID não encontrado');
-        return res.status(400).json({
-          success: false,
-          message: 'Tenant ID não encontrado'
-        });
-      }
 
       const { id } = req.params;
       console.log('🔍 [DEMANDAS] Excluindo demanda ID:', id);
@@ -242,49 +173,30 @@ export const demandaController = {
   async atualizarStatus(req: Request, res: Response) {
     try {
       console.log('🔄 [DEMANDAS] Iniciando atualizarStatus...');
-      
-      // Obter tenant_id de múltiplas fontes
-      const tenantId = (req as any).tenant?.id || req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
-      
-      if (!tenantId) {
-        console.error('❌ [DEMANDAS] Tenant ID não encontrado');
-        return res.status(400).json({
-          success: false,
-          message: 'Tenant ID não encontrado'
-        });
-      }
 
       const { id } = req.params;
-      const { status, data_resposta_semead, observacoes } = req.body;
-
+      const { status } = req.body;
+      
       console.log('🔍 [DEMANDAS] Atualizando status da demanda ID:', id, 'para:', status);
-
-      const dados: any = { status };
       
-      if (data_resposta_semead) {
-        dados.data_resposta_semead = data_resposta_semead;
-      }
-      
-      if (observacoes !== undefined) {
-        dados.observacoes = observacoes;
-      }
-
-      const demanda = await demandaModel.atualizar(Number(id), dados);
+      const demanda = await demandaModel.atualizarStatus(Number(id), status);
 
       console.log('✅ [DEMANDAS] Status atualizado:', demanda.id);
 
       res.json({
         success: true,
-        message: 'Status atualizado com sucesso',
+        message: 'Status da demanda atualizado com sucesso',
         data: demanda
       });
     } catch (error: any) {
       console.error('❌ [DEMANDAS] Erro ao atualizar status:', error);
       res.status(500).json({
         success: false,
-        message: 'Erro ao atualizar status',
+        message: 'Erro ao atualizar status da demanda',
         error: error.message
       });
     }
   }
 };
+
+export default demandaController;

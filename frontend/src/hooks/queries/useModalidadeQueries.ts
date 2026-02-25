@@ -1,23 +1,19 @@
 /**
- * Hooks para queries de modalidades com isolamento por tenant
+ * Hooks para queries de modalidades
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys, cacheConfig } from '../../lib/queryClient';
 import { listarModalidades, buscarModalidade, criarModalidade, editarModalidade, removerModalidade } from '../../services/modalidades';
-import { useTenant } from '../../context/TenantContext';
 import type { Modalidade, ModalidadeInput } from '../../services/modalidades';
 
 /**
- * Hook para listar modalidades do tenant atual
+ * Hook para listar modalidades
  */
 export function useModalidades() {
-  const { currentTenant } = useTenant();
-  
   return useQuery({
-    queryKey: queryKeys.modalidades.list(undefined, currentTenant?.id),
+    queryKey: queryKeys.modalidades.list(),
     queryFn: listarModalidades,
-    enabled: !!currentTenant, // Só executa se há um tenant selecionado
     ...cacheConfig.moderate,
   });
 }
@@ -26,12 +22,10 @@ export function useModalidades() {
  * Hook para buscar uma modalidade específica
  */
 export function useModalidade(id: number) {
-  const { currentTenant } = useTenant();
-  
   return useQuery({
-    queryKey: queryKeys.modalidades.detail(id, currentTenant?.id),
+    queryKey: queryKeys.modalidades.detail(id),
     queryFn: () => buscarModalidade(id),
-    enabled: !!currentTenant && !!id,
+    enabled: !!id,
     ...cacheConfig.moderate,
   });
 }
@@ -41,14 +35,13 @@ export function useModalidade(id: number) {
  */
 export function useCreateModalidade() {
   const queryClient = useQueryClient();
-  const { currentTenant } = useTenant();
   
   return useMutation({
     mutationFn: criarModalidade,
     onSuccess: () => {
-      // Invalidar lista de modalidades do tenant atual
+      // Invalidar lista de modalidades
       queryClient.invalidateQueries({
-        queryKey: queryKeys.modalidades.all(currentTenant?.id)
+        queryKey: queryKeys.modalidades.all
       });
     },
   });
@@ -59,7 +52,6 @@ export function useCreateModalidade() {
  */
 export function useUpdateModalidade() {
   const queryClient = useQueryClient();
-  const { currentTenant } = useTenant();
   
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: ModalidadeInput }) => 
@@ -67,10 +59,10 @@ export function useUpdateModalidade() {
     onSuccess: (_, { id }) => {
       // Invalidar modalidade específica e lista
       queryClient.invalidateQueries({
-        queryKey: queryKeys.modalidades.detail(id, currentTenant?.id)
+        queryKey: queryKeys.modalidades.detail(id)
       });
       queryClient.invalidateQueries({
-        queryKey: queryKeys.modalidades.all(currentTenant?.id)
+        queryKey: queryKeys.modalidades.all
       });
     },
   });
@@ -81,17 +73,16 @@ export function useUpdateModalidade() {
  */
 export function useDeleteModalidade() {
   const queryClient = useQueryClient();
-  const { currentTenant } = useTenant();
   
   return useMutation({
     mutationFn: removerModalidade,
     onSuccess: (_, id) => {
       // Remover modalidade específica do cache e invalidar lista
       queryClient.removeQueries({
-        queryKey: queryKeys.modalidades.detail(id, currentTenant?.id)
+        queryKey: queryKeys.modalidades.detail(id)
       });
       queryClient.invalidateQueries({
-        queryKey: queryKeys.modalidades.all(currentTenant?.id)
+        queryKey: queryKeys.modalidades.all
       });
     },
   });

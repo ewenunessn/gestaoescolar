@@ -1,5 +1,5 @@
 /**
- * Comprehensive test runner for multi-tenant architecture
+ * Comprehensive test runner for system architecture
  * Runs all test suites and generates coverage reports
  */
 
@@ -17,22 +17,22 @@ const testSuites: TestSuite[] = [
   {
     name: 'Unit Tests',
     pattern: 'tests/unit/**/*.test.ts',
-    description: 'Unit tests for tenant middleware, resolver, and context management'
+    description: 'Unit tests for system components'
   },
   {
     name: 'Integration Tests',
     pattern: 'tests/integration/**/*.test.ts',
-    description: 'End-to-end tenant isolation verification tests'
+    description: 'Integration tests for API endpoints and database interactions'
   },
   {
     name: 'Performance Tests',
     pattern: 'tests/performance/**/*.test.ts',
-    description: 'Performance tests for multi-tenant query optimization'
+    description: 'Performance tests for query optimization'
   },
   {
     name: 'Security Tests',
     pattern: 'tests/security/**/*.test.ts',
-    description: 'Security tests for cross-tenant access prevention'
+    description: 'Security tests for access control'
   }
 ];
 

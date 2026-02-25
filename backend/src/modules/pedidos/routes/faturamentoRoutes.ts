@@ -14,7 +14,7 @@ import { authenticateToken } from "../../../middleware/authMiddleware";
 
 const router = Router();
 
-// Aplicar middleware de autenticação e tenant para todas as rotas
+// Aplicar middleware de autenticação para todas as rotas
 router.use(authenticateToken);
 // Rotas gerais de faturamento
 router.get("/", listarFaturamentos);

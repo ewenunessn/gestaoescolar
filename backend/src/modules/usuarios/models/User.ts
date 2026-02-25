@@ -8,7 +8,6 @@ export interface User {
   senha: string;
   tipo: string;
   ativo: boolean;
-  tenant_id: string;
   institution_id?: string; // UUID da instituição (opcional)
   created_at: string;
   updated_at: string;
@@ -50,7 +49,7 @@ export async function createUserTable(): Promise<void> {
 // Buscar usuário por email
 export async function findUserByEmail(email: string): Promise<User | undefined> {
   try {
-    const result = await db.get('SELECT id, nome, email, senha, tipo, ativo, tenant_id, institution_id, created_at, updated_at FROM usuarios WHERE email = $1', [email]);
+    const result = await db.get('SELECT id, nome, email, senha, tipo, ativo, institution_id, created_at, updated_at FROM usuarios WHERE email = $1', [email]);
     return result;
   } catch (error) {
     console.error('❌ Erro ao buscar usuário por email:', error);
@@ -62,10 +61,10 @@ export async function findUserByEmail(email: string): Promise<User | undefined> 
 export async function createUser(user: Omit<User, "id" | "created_at" | "updated_at">): Promise<User> {
   try {
     const result = await db.query(`
-      INSERT INTO usuarios (nome, email, senha, tipo, ativo, tenant_id) 
+      INSERT INTO usuarios (nome, email, senha, tipo, ativo, institution_id) 
       VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
-    `, [user.nome, user.email, user.senha, user.tipo, user.ativo ?? true, user.tenant_id]);
+    `, [user.nome, user.email, user.senha, user.tipo, user.ativo ?? true, user.institution_id || null]);
     
     return result.rows[0];
   } catch (error) {

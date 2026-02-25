@@ -3,35 +3,26 @@ import {
     Box,
     Typography,
     Container,
-    Card,
-    CardContent,
     Button,
-    Grid,
     TextField,
-    List,
-    ListItem,
-    ListItemText,
     IconButton,
     Chip,
     Alert,
     CircularProgress,
-    Avatar,
-    Tooltip,
     InputAdornment,
-    useTheme,
-    useMediaQuery,
-    Paper,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    Checkbox,
 } from '@mui/material';
 import {
-
-    School as SchoolIcon,
-    Route as RouteIcon,
     Add as AddIcon,
     Delete as DeleteIcon,
     DragIndicator as DragIcon,
-    ArrowBack as ArrowBackIcon,
     Search as SearchIcon,
-    Clear as ClearIcon
+    Clear as ClearIcon,
+    Close as CloseIcon
 } from '@mui/icons-material';
 import {
     DndContext,
@@ -79,99 +70,100 @@ const SortableEscolaItem: React.FC<SortableEscolaItemProps> = ({ escola, index, 
         transform: CSS.Transform.toString(transform),
         transition,
         opacity: isDragging ? 0.5 : 1,
+        position: 'relative' as const,
+        zIndex: isDragging ? 999 : 'auto',
     };
 
     return (
-        <Card
+        <Box
             ref={setNodeRef}
             style={style}
-            {...attributes}
             sx={{
                 mb: 1,
+                p: 2,
+                bgcolor: 'background.paper',
                 border: '1px solid',
-                borderRadius: 0,
-                borderColor: isDragging ? 'primary.main' : 'grey.300',
-                bgcolor: isDragging ? 'primary.50' : 'background.paper',
+                borderColor: isDragging ? 'primary.main' : 'divider',
+                borderRadius: 2,
+                display: 'flex',
+                alignItems: 'center',
+                transition: 'all 0.2s',
                 '&:hover': {
-                    borderColor: 'primary.main',
-                    bgcolor: 'primary.50',
+                    borderColor: 'text.secondary',
+                    '& .remove-btn': { opacity: 1, visibility: 'visible' },
+                    '& .drag-handle': { color: 'text.primary' }
                 }
             }}
         >
-            <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-                <Box display="flex" alignItems="center" gap={2}>
-                    <Box
-                        {...listeners}
-                        sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 2,
-                            flexGrow: 1,
-                            cursor: isDragging ? 'grabbing' : 'grab',
-                            '&:active': { cursor: 'grabbing' }
-                        }}
-                    >
-                        <DragIcon color="action" />
+            {/* Drag Handle Area */}
+            <Box
+                {...attributes}
+                {...listeners}
+                className="drag-handle"
+                sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    cursor: isDragging ? 'grabbing' : 'grab',
+                    color: 'action.disabled',
+                    mr: 2,
+                    transition: 'color 0.2s',
+                }}
+            >
+                <DragIcon fontSize="small" />
+            </Box>
 
-                        <Chip
-                            label={index + 1}
-                            size="small"
-                            color="primary"
-                            sx={{ minWidth: 32, fontWeight: 'bold' }}
-                        />
+            {/* Index Number */}
+            <Typography 
+                variant="body2" 
+                sx={{ 
+                    fontWeight: 600, 
+                    color: 'text.secondary',
+                    width: 24,
+                    mr: 1,
+                    userSelect: 'none'
+                }}
+            >
+                {index + 1}.
+            </Typography>
 
-                        <Box flexGrow={1}>
-                            <Typography variant="subtitle2" fontWeight="bold">
-                                {escola.escola_nome}
-                            </Typography>
-                            {escola.escola_endereco && (
-                                <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-                                    📍 {escola.escola_endereco}
-                                </Typography>
-                            )}
-                        </Box>
-                    </Box>
+            {/* Content */}
+            <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                <Typography variant="body2" fontWeight="500" noWrap>
+                    {escola.escola_nome}
+                </Typography>
+                {escola.escola_endereco && (
+                    <Typography variant="caption" color="text.secondary" noWrap display="block">
+                        {escola.escola_endereco}
+                    </Typography>
+                )}
+            </Box>
 
-                    <Box
-                        sx={{ 
-                            pointerEvents: 'auto',
-                            zIndex: 10,
-                            position: 'relative'
-                        }}
-                        onMouseDown={(e) => e.stopPropagation()}
-                        onTouchStart={(e) => e.stopPropagation()}
-                    >
-                        <Tooltip title="Remover da rota">
-                            <IconButton
-                                size="small"
-                                color="error"
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    console.log('=== BOTÃO REMOVER CLICADO ===');
-                                    console.log('Escola:', escola);
-                                    console.log('Enviando para onRemove:', { id: escola.escola_id });
-                                    onRemove({ id: escola.escola_id });
-                                }}
-                                sx={{ 
-                                    '&:hover': {
-                                        bgcolor: 'error.light'
-                                    }
-                                }}
-                            >
-                                <DeleteIcon />
-                            </IconButton>
-                        </Tooltip>
-                    </Box>
-                </Box>
-            </CardContent>
-        </Card>
+            {/* Actions */}
+            <IconButton
+                size="small"
+                className="remove-btn"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onRemove({ id: escola.escola_id });
+                }}
+                sx={{ 
+                    opacity: 0,
+                    visibility: 'hidden',
+                    transition: 'all 0.2s',
+                    color: 'text.secondary',
+                    '&:hover': {
+                        color: 'error.main',
+                        bgcolor: 'error.lighter'
+                    }
+                }}
+            >
+                <DeleteIcon fontSize="small" />
+            </IconButton>
+        </Box>
     );
 };
 
 const GerenciarEscolasRota: React.FC = () => {
-    const theme = useTheme();
-    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const navigate = useNavigate();
     const { rotaId } = useParams<{ rotaId: string }>();
 
@@ -185,6 +177,8 @@ const GerenciarEscolasRota: React.FC = () => {
     const [salvandoOperacao, setSalvandoOperacao] = useState<string | null>(null);
 
     const [filtroEscolas, setFiltroEscolas] = useState('');
+    const [openDialog, setOpenDialog] = useState(false);
+    const [selectedSchools, setSelectedSchools] = useState<number[]>([]);
 
     const inputPesquisaRef = React.useRef<HTMLInputElement>(null);
 
@@ -399,6 +393,44 @@ const GerenciarEscolasRota: React.FC = () => {
 
 
 
+    const handleToggleSchool = (schoolId: number) => {
+        setSelectedSchools(prev => {
+            if (prev.includes(schoolId)) {
+                return prev.filter(id => id !== schoolId);
+            } else {
+                return [...prev, schoolId];
+            }
+        });
+    };
+
+    const handleAddSelectedSchools = async () => {
+        if (!rota) return;
+        
+        setSalvandoOperacao('Adicionando escolas...');
+        try {
+            let currentOrder = escolasRota.length;
+            
+            // Filter schools that are selected
+            const schoolsToAdd = escolasDisponiveis.filter(s => selectedSchools.includes(s.id));
+            
+            for (const escola of schoolsToAdd) {
+                currentOrder++;
+                await rotaService.adicionarEscolaRota(rota.id, escola.id, currentOrder);
+            }
+
+            await loadDados();
+            setSuccessMessage(`${schoolsToAdd.length} escolas adicionadas com sucesso!`);
+            setOpenDialog(false);
+            setSelectedSchools([]);
+            setFiltroEscolas('');
+        } catch (err) {
+            console.error('Erro ao adicionar escolas:', err);
+            setError('Erro ao adicionar escolas selecionadas');
+        } finally {
+            setSalvandoOperacao(null);
+        }
+    };
+
     if (loading) {
         return (
             <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -435,298 +467,209 @@ const GerenciarEscolasRota: React.FC = () => {
                 </Box>
             )}
 
-            <Container maxWidth="xl" sx={{ py: 4 }}>
+            <Container maxWidth="lg" sx={{ py: 4 }}>
                 <PageBreadcrumbs 
                     items={[
-                        { label: 'Gestão de Rotas', path: '/gestao-rotas', icon: <RouteIcon fontSize="small" /> },
-                        { label: 'Gerenciar Escolas', icon: <SchoolIcon fontSize="small" /> }
+                        { label: 'Gestão de Rotas', path: '/gestao-rotas' },
+                        { label: 'Gerenciar Escolas' }
                     ]}
                 />
 
                 {/* Header */}
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4 }}>
-                    {rota && (
-                        <>
-                            <Avatar sx={{ bgcolor: rota.cor, width: 48, height: 48 }}>
-                                <RouteIcon />
-                            </Avatar>
+                <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <Box>
+                        {rota && (
                             <Box>
-                                <Typography variant="h4" sx={{ fontWeight: 700, color: 'text.primary' }}>
-                                    {rota.nome}
-                                </Typography>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                    <Typography variant="body1" color="text.secondary">
-                                        Adicione escolas à rota e organize a ordem de visita. Uma escola pode estar em múltiplas rotas.
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                                    <Typography variant="h4" sx={{ fontWeight: 600, color: 'text.primary', letterSpacing: '-0.02em' }}>
+                                        {rota.nome}
                                     </Typography>
                                     {salvandoOperacao && (
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                            <CircularProgress size={16} />
-                                            <Typography variant="body2" color="primary">
-                                                {salvandoOperacao}
-                                            </Typography>
-                                        </Box>
+                                        <Chip 
+                                            size="small" 
+                                            label={salvandoOperacao} 
+                                            sx={{ bgcolor: 'transparent', border: '1px solid', borderColor: 'divider', color: 'text.secondary' }}
+                                            icon={<CircularProgress size={10} color="inherit" />} 
+                                        />
                                     )}
                                 </Box>
+                                <Typography variant="body1" color="text.secondary">
+                                    {escolasRota.length} escolas na rota. Arraste para reordenar.
+                                </Typography>
                             </Box>
-                        </>
-                    )}
+                        )}
+                    </Box>
+                    <Button
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                        onClick={() => setOpenDialog(true)}
+                        sx={{ 
+                            textTransform: 'none', 
+                            borderRadius: 2,
+                            px: 3,
+                            py: 1,
+                            fontWeight: 600
+                        }}
+                    >
+                        Adicionar Escolas
+                    </Button>
                 </Box>
 
-
-
-                {/* Conteúdo Principal */}
-                <Grid container spacing={3}>
-                    {/* Card de Escolas Disponíveis */}
-                    <Grid item xs={12} lg={6}>
-                        <Paper sx={{ height: '70vh', display: 'flex', flexDirection: 'column', p: 3 }}>
-                            <Box display="flex" alignItems="center" gap={1} mb={2}>
-                                <SchoolIcon color="action" />
-                                <Typography variant="h6">
-                                    Escolas Disponíveis
-                                </Typography>
-                                <Chip
-                                    label={escolasDisponiveisFiltradas.length}
-                                    size="small"
-                                    color="default"
-                                />
-                                {filtroEscolas && (
-                                    <Chip
-                                        label={`de ${escolasDisponiveis.length}`}
-                                        size="small"
-                                        variant="outlined"
-                                        color="primary"
-                                    />
-                                )}
-                            </Box>
-
-                            <TextField
-                                fullWidth
-                                size="small"
-                                inputRef={inputPesquisaRef}
-                                placeholder="Pesquisar escolas... (Ctrl+F)"
-                                value={filtroEscolas}
-                                onChange={(e) => setFiltroEscolas(e.target.value)}
-                                sx={{ mb: 2 }}
-                                InputProps={{
-                                    startAdornment: (
-                                        <InputAdornment position="start">
-                                            <SearchIcon />
-                                        </InputAdornment>
-                                    ),
-                                    endAdornment: filtroEscolas && (
-                                        <InputAdornment position="end">
-                                            <IconButton
-                                                size="small"
-                                                onClick={() => setFiltroEscolas('')}
-                                            >
-                                                <ClearIcon />
-                                            </IconButton>
-                                        </InputAdornment>
-                                    )
-                                }}
-                            />
-
-                            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                                <Typography variant="body2" color="text.secondary">
-                                    {filtroEscolas
-                                        ? `${escolasDisponiveisFiltradas.length} escola(s) encontrada(s)`
-                                        : 'Clique nas escolas para adicionar à rota (escolas podem estar em múltiplas rotas)'
-                                    }
-                                </Typography>
-                                {filtroEscolas && escolasDisponiveisFiltradas.length > 0 && (
-                                    <Button
-                                        size="small"
-                                        variant="outlined"
-                                        onClick={async () => {
-                                            for (const escola of escolasDisponiveisFiltradas) {
-                                                await adicionarEscolaRota(escola);
-                                            }
-                                            setFiltroEscolas('');
-                                        }}
-                                        sx={{ fontSize: '0.75rem' }}
+                {/* Lista de Escolas na Rota */}
+                <Box sx={{ maxWidth: '800px', mx: 'auto' }}>
+                    <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
+                    >
+                        <SortableContext
+                            items={escolasRota.sort((a, b) => a.ordem - b.ordem).map(e => e.id)}
+                            strategy={verticalListSortingStrategy}
+                        >
+                            {escolasRota.length > 0 ? (
+                                escolasRota
+                                    .sort((a, b) => a.ordem - b.ordem)
+                                    .map((escolaRota, index) => (
+                                        <SortableEscolaItem
+                                            key={escolaRota.id}
+                                            escola={escolaRota}
+                                            index={index}
+                                            onRemove={removerEscolaRota}
+                                        />
+                                    ))
+                            ) : (
+                                <Box 
+                                    textAlign="center" 
+                                    py={8} 
+                                    sx={{ 
+                                        border: '1px dashed', 
+                                        borderColor: 'divider', 
+                                        borderRadius: 2,
+                                        bgcolor: 'background.paper'
+                                    }}
+                                >
+                                    <Typography variant="body1" color="text.secondary" gutterBottom>
+                                        Nenhuma escola nesta rota.
+                                    </Typography>
+                                    <Button 
+                                        variant="outlined" 
+                                        startIcon={<AddIcon />}
+                                        onClick={() => setOpenDialog(true)}
+                                        sx={{ mt: 2, textTransform: 'none' }}
                                     >
-                                        Adicionar Todas ({escolasDisponiveisFiltradas.length})
+                                        Adicionar Escolas
                                     </Button>
-                                )}
-                            </Box>
+                                </Box>
+                            )}
+                        </SortableContext>
+                    </DndContext>
+                </Box>
+            </Container>
 
-                            <Box sx={{ 
-                                flexGrow: 1, 
-                                overflow: 'auto',
-                                '&::-webkit-scrollbar': {
-                                    width: '8px',
-                                },
-                                '&::-webkit-scrollbar-track': {
-                                    background: '#f1f1f1',
-                                    borderRadius: '4px',
-                                },
-                                '&::-webkit-scrollbar-thumb': {
-                                    background: '#c1c1c1',
-                                    borderRadius: '4px',
-                                },
-                                '&::-webkit-scrollbar-thumb:hover': {
-                                    background: '#a8a8a8',
-                                }
-                            }}>
-                                {escolasDisponiveisFiltradas.map((escola) => (
-                                    <Card
-                                        key={escola.id}
-                                        sx={{
-                                            mb: 1,
-                                            cursor: 'pointer',
-                                            border: '1px solid transparent',
-                                            borderRadius: 0,
-                                            position: 'relative',
-                                            '&:hover': {
-                                                borderColor: 'primary.main',
-                                                bgcolor: 'primary.50',
-                                                transform: 'translateX(4px)',
-                                                transition: 'all 0.2s',
-                                                '& .add-icon': {
-                                                    opacity: 1
-                                                }
-                                            }
-                                        }}
-                                        onClick={() => adicionarEscolaRota(escola)}
-                                    >
-                                        <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-                                            <Box display="flex" alignItems="center" gap={2}>
-                                                <Box flexGrow={1}>
-                                                    <Typography variant="subtitle2" fontWeight="bold">
-                                                        {destacarTexto(escola.nome, filtroEscolas)}
-                                                    </Typography>
-                                                    {escola.endereco && (
-                                                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-                                                            📍 {destacarTexto(escola.endereco, filtroEscolas)}
-                                                        </Typography>
-                                                    )}
-                                                    {escola.modalidades && (
-                                                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-                                                            🎓 {destacarTexto(escola.modalidades, filtroEscolas)}
-                                                        </Typography>
-                                                    )}
-                                                </Box>
-                                                <AddIcon
-                                                    className="add-icon"
-                                                    sx={{
-                                                        opacity: 0.3,
-                                                        transition: 'opacity 0.2s',
-                                                        color: 'primary.main'
-                                                    }}
-                                                />
-                                            </Box>
-                                        </CardContent>
-                                    </Card>
-                                ))}
-
-                                {escolasDisponiveisFiltradas.length === 0 && (
-                                    <Box textAlign="center" py={4}>
-                                        {filtroEscolas ? (
-                                            <>
-                                                <Typography variant="body2" color="text.secondary">
-                                                    Nenhuma escola encontrada para "{filtroEscolas}"
-                                                </Typography>
-                                                <Button
-                                                    size="small"
-                                                    onClick={() => setFiltroEscolas('')}
-                                                    sx={{ mt: 1 }}
-                                                >
-                                                    Limpar filtro
-                                                </Button>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Typography variant="body2" color="text.secondary">
-                                                    Todas as escolas já estão nesta rota
-                                                </Typography>
-                                                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                                                    Uma escola pode estar em múltiplas rotas, mas não duplicada na mesma rota
-                                                </Typography>
-                                            </>
+            {/* Dialog para Adicionar Escolas */}
+            <Dialog 
+                open={openDialog} 
+                onClose={() => setOpenDialog(false)}
+                maxWidth="sm"
+                fullWidth
+                PaperProps={{
+                    sx: { borderRadius: 3, maxHeight: '80vh' }
+                }}
+            >
+                <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+                    <Typography variant="h6" fontWeight="600">Adicionar Escolas</Typography>
+                    <IconButton onClick={() => setOpenDialog(false)} size="small">
+                        <CloseIcon />
+                    </IconButton>
+                </DialogTitle>
+                <DialogContent dividers sx={{ p: 0, display: 'flex', flexDirection: 'column', height: '500px' }}>
+                    <Box p={2} pb={1}>
+                        <TextField
+                            fullWidth
+                            size="small"
+                            placeholder="Buscar escola..."
+                            value={filtroEscolas}
+                            onChange={(e) => setFiltroEscolas(e.target.value)}
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <SearchIcon fontSize="small" color="action" />
+                                    </InputAdornment>
+                                ),
+                                endAdornment: filtroEscolas && (
+                                    <InputAdornment position="end">
+                                        <IconButton size="small" onClick={() => setFiltroEscolas('')}>
+                                            <ClearIcon fontSize="small" />
+                                        </IconButton>
+                                    </InputAdornment>
+                                )
+                            }}
+                        />
+                    </Box>
+                    <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
+                        {escolasDisponiveisFiltradas.length > 0 ? (
+                            escolasDisponiveisFiltradas.map((escola) => (
+                                <Box 
+                                    key={escola.id}
+                                    onClick={() => handleToggleSchool(escola.id)}
+                                    sx={{ 
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        p: 2, 
+                                        cursor: 'pointer',
+                                        borderBottom: '1px solid',
+                                        borderColor: 'divider',
+                                        bgcolor: selectedSchools.includes(escola.id) ? 'action.selected' : 'transparent',
+                                        '&:hover': { bgcolor: 'action.hover' }
+                                    }}
+                                >
+                                    <Checkbox 
+                                        checked={selectedSchools.includes(escola.id)}
+                                        onChange={() => handleToggleSchool(escola.id)}
+                                        onClick={(e) => e.stopPropagation()}
+                                        sx={{ mr: 1 }}
+                                    />
+                                    <Box>
+                                        <Typography variant="body2" fontWeight="500">
+                                            {destacarTexto(escola.nome, filtroEscolas)}
+                                        </Typography>
+                                        {escola.endereco && (
+                                            <Typography variant="caption" color="text.secondary">
+                                                {destacarTexto(escola.endereco, filtroEscolas)}
+                                            </Typography>
                                         )}
                                     </Box>
-                                )}
-                            </Box>
-                        </Paper>
-                    </Grid>
-
-                    {/* Card de Escolas na Rota */}
-                    <Grid item xs={12} lg={6}>
-                        <Paper sx={{ height: '70vh', display: 'flex', flexDirection: 'column', bgcolor: 'primary.50', p: 3 }}>
-                            <Box display="flex" alignItems="center" gap={1} mb={2}>
-                                <RouteIcon color="primary" />
-                                <Typography variant="h6" color="primary">
-                                    Escolas na Rota
+                                </Box>
+                            ))
+                        ) : (
+                            <Box textAlign="center" py={4} color="text.secondary">
+                                <Typography variant="body2">
+                                    {filtroEscolas 
+                                        ? "Nenhuma escola encontrada"
+                                        : "Todas as escolas disponíveis já foram adicionadas"
+                                    }
                                 </Typography>
-                                <Chip
-                                    label={escolasRota.length}
-                                    size="small"
-                                    color="primary"
-                                />
                             </Box>
-                            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                                Ordem de visita - Arraste e solte para reordenar
-                            </Typography>
-                            <Alert severity="success" sx={{ mb: 2, fontSize: '0.75rem' }}>
-                                ✨ Todas as mudanças são salvas automaticamente! Clique e arraste para reordenar as escolas.
-                            </Alert>
-
-                            <Box sx={{ 
-                                flexGrow: 1, 
-                                overflow: 'auto',
-                                '&::-webkit-scrollbar': {
-                                    width: '8px',
-                                },
-                                '&::-webkit-scrollbar-track': {
-                                    background: '#f1f1f1',
-                                    borderRadius: '4px',
-                                },
-                                '&::-webkit-scrollbar-thumb': {
-                                    background: '#c1c1c1',
-                                    borderRadius: '4px',
-                                },
-                                '&::-webkit-scrollbar-thumb:hover': {
-                                    background: '#a8a8a8',
-                                }
-                            }}>
-                                <DndContext
-                                    sensors={sensors}
-                                    collisionDetection={closestCenter}
-                                    onDragEnd={handleDragEnd}
-                                >
-                                    <SortableContext
-                                        items={escolasRota.sort((a, b) => a.ordem - b.ordem).map(e => e.id)}
-                                        strategy={verticalListSortingStrategy}
-                                    >
-                                        {escolasRota
-                                            .sort((a, b) => a.ordem - b.ordem)
-                                            .map((escolaRota, index) => (
-                                                <SortableEscolaItem
-                                                    key={escolaRota.id}
-                                                    escola={escolaRota}
-                                                    index={index}
-                                                    onRemove={removerEscolaRota}
-                                                />
-                                            ))}
-                                    </SortableContext>
-                                </DndContext>
-
-                                {escolasRota.length === 0 && (
-                                    <Box textAlign="center" py={4}>
-                                        <RouteIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
-                                        <Typography variant="body2" color="text.secondary">
-                                            Nenhuma escola na rota ainda
-                                        </Typography>
-                                        <Typography variant="body2" color="text.secondary">
-                                            Clique nas escolas disponíveis para adicionar à rota
-                                        </Typography>
-                                    </Box>
-                                )}
-                            </Box>
-                        </Paper>
-                    </Grid>
-                </Grid>
-            </Container>
+                        )}
+                    </Box>
+                </DialogContent>
+                <DialogActions sx={{ p: 2 }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ flexGrow: 1, ml: 1 }}>
+                        {selectedSchools.length} selecionadas
+                    </Typography>
+                    <Button onClick={() => setOpenDialog(false)} color="inherit" sx={{ textTransform: 'none' }}>
+                        Cancelar
+                    </Button>
+                    <Button 
+                        variant="contained" 
+                        onClick={handleAddSelectedSchools}
+                        disabled={selectedSchools.length === 0}
+                        sx={{ textTransform: 'none', borderRadius: 2 }}
+                    >
+                        Adicionar Selecionadas
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 };

@@ -26,7 +26,7 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Expose-Headers', 'Content-Length, X-Foo, X-Bar');
   res.setHeader('Access-Control-Max-Age', '86400');
   
-  console.log('🚀 NOVO ENTRY POINT - CORS Configurado com headers de tenant!');
+  console.log('🚀 NOVO ENTRY POINT - CORS Configurado!');
   console.log('📋 Headers CORS aplicados:', {
     origin: 'https://nutriescola.vercel.app',
     methods: 'GET, POST, PUT, DELETE, OPTIONS, PATCH',
@@ -35,7 +35,7 @@ module.exports = async (req, res) => {
   
   // Responder a requisições OPTIONS (preflight)
   if (req.method === 'OPTIONS') {
-    console.log('✅ CORS: Respondendo preflight com headers de tenant');
+    console.log('✅ CORS: Respondendo preflight');
     res.status(200).end();
     return;
   }

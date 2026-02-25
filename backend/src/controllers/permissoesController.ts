@@ -51,15 +51,6 @@ export async function obterPermissoesUsuario(req: Request, res: Response) {
   try {
     const { usuario_id } = req.params;
     
-    const tenantId = req.tenant?.id || req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
-    
-    if (!tenantId) {
-      return res.status(400).json({
-        success: false,
-        message: 'Contexto de tenant não encontrado'
-      });
-    }
-
     const result = await db.query(`
       SELECT 
         up.id,
@@ -75,7 +66,7 @@ export async function obterPermissoesUsuario(req: Request, res: Response) {
       FROM usuario_permissoes up
       JOIN modulos m ON up.modulo_id = m.id
       JOIN niveis_permissao np ON up.nivel_permissao_id = np.id
-      WHERE up.usuario_id = $1 AND up.tenant_id = $2
+      WHERE up.usuario_id = $1
       ORDER BY m.ordem
     `, [usuario_id]);
 
@@ -103,16 +94,6 @@ export async function definirPermissoesUsuario(req: Request, res: Response) {
     const { usuario_id } = req.params;
     const { permissoes } = req.body; // Array de { modulo_id, nivel_permissao_id }
     
-    const tenantId = req.tenant?.id || req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
-    
-    if (!tenantId) {
-      await client.query('ROLLBACK');
-      return res.status(400).json({
-        success: false,
-        message: 'Contexto de tenant não encontrado'
-      });
-    }
-
     // Verificar se usuário existe
     const usuarioCheck = await client.query(
       'SELECT id FROM usuarios WHERE id = $1',
@@ -129,7 +110,7 @@ export async function definirPermissoesUsuario(req: Request, res: Response) {
 
     // Remover permissões antigas
     await client.query(
-      'DELETE FROM usuario_permissoes WHERE usuario_id = $1 AND tenant_id = $2',
+      'DELETE FROM usuario_permissoes WHERE usuario_id = $1',
       [usuario_id]
     );
 
@@ -139,7 +120,7 @@ export async function definirPermissoesUsuario(req: Request, res: Response) {
       if (perm.nivel_permissao_id !== 1) { // 1 é o ID de "nenhum"
         await client.query(`
           INSERT INTO usuario_permissoes (usuario_id, modulo_id, nivel_permissao_id)
-          VALUES ($1, $2, $3, $4)
+          VALUES ($1, $2, $3)
         `, [usuario_id, perm.modulo_id, perm.nivel_permissao_id]);
       }
     }
@@ -168,15 +149,6 @@ export async function verificarPermissao(req: Request, res: Response) {
   try {
     const { usuario_id, modulo_slug } = req.params;
     
-    const tenantId = req.tenant?.id || req.get('X-Tenant-ID') || req.headers['x-tenant-id'];
-    
-    if (!tenantId) {
-      return res.status(400).json({
-        success: false,
-        message: 'Contexto de tenant não encontrado'
-      });
-    }
-
     const result = await db.query(`
       SELECT 
         np.nivel,
@@ -186,7 +158,6 @@ export async function verificarPermissao(req: Request, res: Response) {
       JOIN niveis_permissao np ON up.nivel_permissao_id = np.id
       WHERE up.usuario_id = $1 
         AND m.slug = $2 
-        AND up.tenant_id = $3
     `, [usuario_id, modulo_slug]);
 
     if (result.rows.length === 0) {

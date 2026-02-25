@@ -292,7 +292,8 @@ export async function processarSaidaEstoque(req: Request, res: Response) {
       motivo,
       documento_referencia,
       observacoes,
-      usuario_id: req.user?.id || 1 // TODO: pegar do token JWT
+      usuario_id: req.user?.id || 1, // TODO: pegar do token JWT
+      escola_id: (req.user as any)?.escola_id || null
     });
 
     console.log('✅ Saída processada com sucesso:', Array.isArray(movimentacoes) ? movimentacoes.length : 1, 'movimentações');

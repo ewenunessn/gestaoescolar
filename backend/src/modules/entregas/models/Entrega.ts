@@ -8,6 +8,7 @@ export interface EscolaEntrega {
   total_itens: number;
   itens_entregues: number;
   percentual_entregue: number;
+  data_entrega?: string;
 }
 
 export interface ItemEntrega {
@@ -47,7 +48,7 @@ export interface ConfirmarEntregaData {
 }
 
 class EntregaModel {
-  async listarEscolasComEntregas(guiaId?: number, rotaId?: number): Promise<EscolaEntrega[]> {
+  async listarEscolasComEntregas(guiaId?: number, rotaId?: number, dataEntrega?: string, dataInicio?: string, dataFim?: string, somentePendentes?: boolean): Promise<EscolaEntrega[]> {
     let whereClause = 'WHERE gpe.para_entrega = true AND g.status = \'aberta\'';
     const params = [];
     let paramCount = 1;
@@ -67,6 +68,26 @@ class EntregaModel {
       paramCount++;
     }
 
+    if (dataEntrega) {
+      whereClause += ` AND DATE(gpe.data_entrega) = $${paramCount}`;
+      params.push(dataEntrega);
+      paramCount++;
+    }
+    if (!dataEntrega && dataInicio) {
+      whereClause += ` AND DATE(gpe.data_entrega) >= $${paramCount}`;
+      params.push(dataInicio);
+      paramCount++;
+    }
+    if (!dataEntrega && dataFim) {
+      whereClause += ` AND DATE(gpe.data_entrega) <= $${paramCount}`;
+      params.push(dataFim);
+      paramCount++;
+    }
+
+    if (somentePendentes) {
+      whereClause += ` AND gpe.entrega_confirmada = false AND gpe.status = 'pendente'`;
+    }
+
     const result = await db.query(`
       SELECT DISTINCT
         e.id,
@@ -79,6 +100,7 @@ class EntregaModel {
           (SUM(CASE WHEN gpe.entrega_confirmada = true THEN 1 ELSE 0 END) * 100.0) / COUNT(gpe.id), 
           2
         ) as percentual_entregue,
+        MIN(DATE(gpe.data_entrega)) as data_entrega,
         COALESCE(re.ordem, 999) as ordem_rota
       FROM escolas e
       INNER JOIN guia_produto_escola gpe ON e.id = gpe.escola_id
@@ -91,9 +113,9 @@ class EntregaModel {
     return result.rows;
   }
 
-  async listarItensEntregaPorEscola(escolaId: number, guiaId?: number): Promise<ItemEntrega[]> {
+  async listarItensEntregaPorEscola(escolaId: number, guiaId?: number, dataEntrega?: string, dataInicio?: string, dataFim?: string, somentePendentes?: boolean): Promise<ItemEntrega[]> {
     let whereClause = 'WHERE gpe.escola_id = $1 AND gpe.para_entrega = true AND g.status = \'aberta\'';
-    const params = [escolaId];
+    const params: Array<number | string> = [escolaId];
     let paramCount = 2;
 
     if (guiaId) {
@@ -102,11 +124,31 @@ class EntregaModel {
       paramCount++;
     }
 
+    if (dataEntrega) {
+      whereClause += ` AND DATE(gpe.data_entrega) = $${paramCount}`;
+      params.push(dataEntrega);
+      paramCount++;
+    }
+    if (!dataEntrega && dataInicio) {
+      whereClause += ` AND DATE(gpe.data_entrega) >= $${paramCount}`;
+      params.push(dataInicio);
+      paramCount++;
+    }
+    if (!dataEntrega && dataFim) {
+      whereClause += ` AND DATE(gpe.data_entrega) <= $${paramCount}`;
+      params.push(dataFim);
+      paramCount++;
+    }
+
+    if (somentePendentes) {
+      whereClause += ` AND gpe.entrega_confirmada = false AND gpe.status = 'pendente'`;
+    }
+
     const result = await db.query(`
       SELECT 
         gpe.*,
         p.nome as produto_nome,
-        p.unidade as produto_unidade,
+        gpe.unidade as produto_unidade,
         g.mes,
         g.ano,
         g.observacao as guia_observacao
@@ -129,7 +171,7 @@ class EntregaModel {
       SELECT 
         gpe.*,
         p.nome as produto_nome,
-        p.unidade as produto_unidade,
+        gpe.unidade as produto_unidade,
         g.mes,
         g.ano,
         g.observacao as guia_observacao,
@@ -163,6 +205,7 @@ class EntregaModel {
       UPDATE guia_produto_escola 
       SET 
         entrega_confirmada = true,
+        status = 'entregue',
         quantidade_entregue = $1,
         data_entrega = NOW(),
         nome_quem_entregou = $2,
@@ -207,6 +250,7 @@ class EntregaModel {
       UPDATE guia_produto_escola 
       SET 
         entrega_confirmada = false,
+        status = 'pendente',
         quantidade_entregue = NULL,
         data_entrega = NULL,
         nome_quem_entregou = NULL,
@@ -226,7 +270,7 @@ class EntregaModel {
     return updatedItem;
   }
 
-  async obterEstatisticasEntregas(guiaId?: number, rotaId?: number): Promise<any> {
+  async obterEstatisticasEntregas(guiaId?: number, rotaId?: number, dataEntrega?: string, dataInicio?: string, dataFim?: string, somentePendentes?: boolean): Promise<any> {
     let whereClause = 'WHERE gpe.para_entrega = true AND g.status = \'aberta\'';
     const params = [];
     let paramCount = 1;
@@ -244,6 +288,26 @@ class EntregaModel {
       )`;
       params.push(rotaId);
       paramCount++;
+    }
+
+    if (dataEntrega) {
+      whereClause += ` AND DATE(gpe.data_entrega) = $${paramCount}`;
+      params.push(dataEntrega);
+      paramCount++;
+    }
+    if (!dataEntrega && dataInicio) {
+      whereClause += ` AND DATE(gpe.data_entrega) >= $${paramCount}`;
+      params.push(dataInicio);
+      paramCount++;
+    }
+    if (!dataEntrega && dataFim) {
+      whereClause += ` AND DATE(gpe.data_entrega) <= $${paramCount}`;
+      params.push(dataFim);
+      paramCount++;
+    }
+
+    if (somentePendentes) {
+      whereClause += ` AND gpe.entrega_confirmada = false AND gpe.status = 'pendente'`;
     }
 
     const result = await db.query(`

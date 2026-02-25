@@ -20,11 +20,10 @@ import {
 // ============================================================================
 
 export function useEscolas(filters?: { search?: string; ativo?: boolean }) {
-  // Só executar query se houver token E tenant (usuário autenticado e tenant resolvido)
+  // Só executar query se houver token (usuário autenticado)
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  const tenantId = typeof window !== 'undefined' ? localStorage.getItem('currentTenantId') : null;
   
-  // Adicionar um pequeno delay para garantir que o tenant foi resolvido
+  // Adicionar um pequeno delay para garantir que o token foi carregado
   const [isReady, setIsReady] = React.useState(false);
   
   React.useEffect(() => {
@@ -37,7 +36,7 @@ export function useEscolas(filters?: { search?: string; ativo?: boolean }) {
   return useQuery({
     queryKey: queryKeys.escolas.list(filters),
     queryFn: listarEscolas,
-    enabled: isReady && !!token && !!tenantId, // Só executar se estiver pronto E houver token E tenant
+    enabled: isReady && !!token, // Só executar se estiver pronto E houver token
     ...cacheConfig.static,
     select: (data: Escola[]) => {
       let filteredData = [...data];
@@ -89,8 +88,6 @@ export function useCriarEscola() {
       // Adicionar escola ao cache
       queryClient.setQueryData(queryKeys.escolas.detail(newEscola.id), newEscola);
       
-      // Invalidar estoque relacionado
-      invalidateQueries.estoque();
     },
   });
 }
@@ -111,8 +108,6 @@ export function useAtualizarEscola() {
       // Invalidar modalidades (pois o total de alunos pode ter mudado)
       invalidateQueries.modalidades();
       
-      // Invalidar estoque relacionado
-      invalidateQueries.estoqueEscola(id);
     },
   });
 }
@@ -129,8 +124,6 @@ export function useExcluirEscola() {
       // Invalidar lista de escolas
       queryClient.invalidateQueries({ queryKey: queryKeys.escolas.lists() });
       
-      // Invalidar estoque relacionado
-      invalidateQueries.estoqueEscola(id);
     },
   });
 }

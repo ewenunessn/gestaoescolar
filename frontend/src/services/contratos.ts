@@ -1,7 +1,7 @@
 import { apiWithRetry } from "./api";
 
 export const contratosService = {
-  async listar(filtros?: any) {
+  async listar(filtros?: { status?: string }) {
     const params = new URLSearchParams();
     if (filtros?.status) params.append('status', filtros.status);
     const queryString = params.toString();
@@ -26,7 +26,7 @@ export async function criarContrato(contrato: any) {
   return data.data || data; // Return the actual data from the response
 }
 
-export async function editarContrato(id: number, contrato: any) {
+export async function editarContrato(id: number, contrato: Record<string, unknown>) {
   const { data } = await apiWithRetry.put(`/contratos/${id}`, contrato);
   return data.data || data; // Return the actual data from the response
 }
@@ -49,7 +49,7 @@ export async function adicionarContratoProduto(produto: any) {
   return data.data || data; // Return the actual data from the response
 }
 
-export async function editarContratoProduto(id: number, produto: any) {
+export async function editarContratoProduto(id: number, produto: Record<string, unknown>) {
   const { data } = await apiWithRetry.put(`/contrato-produtos/${id}`, produto);
   return data.data || data; // Return the actual data from the response
 }

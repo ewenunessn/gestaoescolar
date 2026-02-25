@@ -44,7 +44,7 @@ export async function listarProdutos(): Promise<Produto[]> {
 }
 
 class ProdutoService {
-  private baseUrl = '/api/produtos';
+  private baseUrl = '/produtos';
 
   async listar(): Promise<Produto[]> {
     try {

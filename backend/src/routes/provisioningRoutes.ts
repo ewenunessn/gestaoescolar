@@ -10,12 +10,6 @@ router.use(authenticateSystemAdmin);
 // Provisioning routes
 router.post('/complete', provisioningController.provisionComplete.bind(provisioningController));
 
-// Create additional tenant for institution
-router.post(
-  '/institutions/:institutionId/tenants',
-  provisioningController.createTenant.bind(provisioningController)
-);
-
 // Create user for institution
 router.post(
   '/institutions/:institutionId/users',

@@ -26,7 +26,8 @@ import { useNotification } from '../context/NotificationContext';
 import { guiaService, Guia, AddProdutoGuiaData } from '../services/guiaService';
 import { listarProdutos } from '../services/produtos';
 import { escolaService } from '../services/escolaService';
-import { buscarEstoqueEscolarProduto, EstoqueEscolaProduto } from '../services/estoqueEscolar';
+import { listarEstoqueEscola, EstoqueEscolarItem } from '../services/estoqueEscolarService';
+import { InputAdornment } from '@mui/material';
 
 interface AdicionarProdutoIndividualProps {
   open: boolean;
@@ -61,11 +62,11 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
   const [itemExistente, setItemExistente] = useState<any>(null);
   const [showConfirmacao, setShowConfirmacao] = useState(false);
   
-  // Estados para validação de estoque
-  const [estoqueEscola, setEstoqueEscola] = useState<EstoqueEscolaProduto | null>(null);
-  const [loadingEstoque, setLoadingEstoque] = useState(false);
 
   const { success, error } = useNotification();
+
+  const [estoqueItem, setEstoqueItem] = useState<EstoqueEscolarItem | null>(null);
+  const [estoqueLoading, setEstoqueLoading] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -79,6 +80,26 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
       limparFormulario();
     }
   }, [open, escolaPreSelecionada]);
+
+  useEffect(() => {
+    const carregarEstoque = async () => {
+      if (!selectedEscola || !selectedProduto) {
+        setEstoqueItem(null);
+        return;
+        }
+      try {
+        setEstoqueLoading(true);
+        const estoque = await listarEstoqueEscola(parseInt(selectedEscola));
+        const item = estoque.find(i => i.produto_id === parseInt(selectedProduto)) || null;
+        setEstoqueItem(item);
+      } catch (e) {
+        setEstoqueItem(null);
+      } finally {
+        setEstoqueLoading(false);
+      }
+    };
+    carregarEstoque();
+  }, [selectedEscola, selectedProduto]);
 
   const carregarDados = async () => {
     try {
@@ -100,41 +121,27 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
 
   const handleProdutoChange = async (produtoId: string) => {
     setSelectedProduto(produtoId);
-    // Units are now defined in contracts, not products
-    setUnidade('kg'); // Default unit
+    
+    // Buscar o produto na lista para pegar a unidade do contrato
+    const produtoSelecionado = produtosList.find(p => p.id === parseInt(produtoId));
+    
+    if (produtoSelecionado && produtoSelecionado.unidade_contrato) {
+      setUnidade(produtoSelecionado.unidade_contrato);
+    } else {
+      // Fallback para kg se não encontrar unidade no contrato
+      setUnidade('Kg');
+    }
 
     // Carregar lotes existentes para este produto
     if (produtoId && guia) {
       await carregarLotesExistentes(parseInt(produtoId));
     }
 
-    // Carregar estoque da escola se produto e escola estão selecionados
-    if (produtoId && selectedEscola) {
-      await carregarEstoqueEscola(parseInt(produtoId), parseInt(selectedEscola));
-    }
   };
 
   const handleEscolaChange = async (escolaId: string) => {
     setSelectedEscola(escolaId);
     
-    // Carregar estoque da escola se produto e escola estão selecionados
-    if (selectedProduto && escolaId) {
-      await carregarEstoqueEscola(parseInt(selectedProduto), parseInt(escolaId));
-    }
-  };
-
-  const carregarEstoqueEscola = async (produtoId: number, escolaId: number) => {
-    try {
-      setLoadingEstoque(true);
-      const estoqueData = await buscarEstoqueEscolarProduto(produtoId);
-      const estoqueEscolaEspecifica = estoqueData.escolas.find(e => e.escola_id === escolaId);
-      setEstoqueEscola(estoqueEscolaEspecifica || null);
-    } catch (err) {
-      console.error('Erro ao carregar estoque:', err);
-      setEstoqueEscola(null);
-    } finally {
-      setLoadingEstoque(false);
-    }
   };
 
   const carregarLotesExistentes = async (produtoId: number) => {
@@ -250,7 +257,6 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
       setLote(loteParaUsar); // Atualizar o campo para mostrar o lote gerado
     }
 
-    // Validação de estoque removida - o estoque da escola representa entregas planejadas, não disponibilidade
     const quantidadeSolicitada = parseFloat(quantidade);
 
     // Se há item existente e não foi confirmada a atualização, verificar primeiro
@@ -268,11 +274,15 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
 
       if (atualizarExistente && itemExistente) {
         // Remover item existente e adicionar novo com quantidade atualizada
-        await guiaService.removerProdutoGuia(
-          guia.id,
-          itemExistente.produto_id,
-          itemExistente.escola_id
-        );
+        if (itemExistente.id) {
+          await guiaService.removerItemGuia(itemExistente.id);
+        } else {
+          await guiaService.removerProdutoGuia(
+            guia.id,
+            itemExistente.produto_id,
+            itemExistente.escola_id
+          );
+        }
 
         // Adicionar novo item com quantidade atualizada
         const data: AddProdutoGuiaData = {
@@ -324,8 +334,6 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
     setItemExistente(null);
     setShowConfirmacao(false);
     setLotesExistentes([]);
-    setEstoqueEscola(null);
-    setLoadingEstoque(false);
   };
 
   const handleConfirmarAtualizacao = () => {
@@ -416,81 +424,48 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
               />
             </Grid>
 
-            {/* Informações de Estoque */}
-            {(selectedProduto && selectedEscola) && (
-              <Grid item xs={12}>
-                <Box sx={{ 
-                  p: 2, 
-                  bgcolor: 'background.paper', 
-                  borderRadius: 1, 
-                  border: 1, 
-                  borderColor: 'divider',
-                  mb: 1
-                }}>
-                  <Typography variant="subtitle2" sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <InventoryIcon fontSize="small" />
-                    Estoque Atual da Escola
-                  </Typography>
-                  
-                  {loadingEstoque ? (
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <CircularProgress size={16} />
-                      <Typography variant="body2" color="text.secondary">
-                        Carregando estoque...
-                      </Typography>
-                    </Box>
-                  ) : estoqueEscola ? (
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-                      <Typography variant="body2">
-                        <strong>Quantidade:</strong> {estoqueEscola.quantidade_atual} {estoqueEscola.unidade}
-                      </Typography>
-                      <Chip 
-                        label={
-                          estoqueEscola.status_estoque === 'sem_estoque' ? 'Sem Estoque' :
-                          estoqueEscola.status_estoque === 'baixo' ? 'Estoque Baixo' :
-                          estoqueEscola.status_estoque === 'normal' ? 'Estoque Normal' :
-                          'Estoque Alto'
-                        }
-                        size="small"
-                        color={
-                          estoqueEscola.status_estoque === 'sem_estoque' ? 'error' :
-                          estoqueEscola.status_estoque === 'baixo' ? 'warning' :
-                          'success'
-                        }
-                      />
-                      <Typography variant="caption" color="text.secondary">
-                        Atualizado em: {new Date(estoqueEscola.data_ultima_atualizacao).toLocaleDateString('pt-BR')}
-                      </Typography>
-                    </Box>
-                  ) : (
-                    <Alert severity="info" sx={{ py: 0.5 }}>
-                      <Typography variant="body2">
-                        Esta escola não possui estoque registrado para este produto.
-                      </Typography>
-                    </Alert>
-                  )}
-                </Box>
-              </Grid>
-            )}
 
-            <Grid item xs={6}>
-              <TextField
-                label="Quantidade"
-                type="number"
-                value={quantidade}
-                onChange={(e) => setQuantidade(e.target.value)}
-                fullWidth
-                inputProps={{ step: 0.001, min: 0 }}
-                required
-              />
+            <Grid item xs={12} md={6}>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: estoqueItem ? 'max-content 160px' : '160px',
+                  alignItems: 'center',
+                  columnGap: 1
+                }}
+              >
+                {estoqueItem && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+                    <Chip
+                      size="small"
+                      label={`${(estoqueItem.quantidade_atual ?? 0).toLocaleString('pt-BR')} ${estoqueItem.unidade}`}
+                      sx={{ height: 22 }}
+                    />
+                    {estoqueItem.data_ultima_atualizacao && (
+                      <Typography variant="caption" color="text.secondary">
+                        {new Date(estoqueItem.data_ultima_atualizacao).toLocaleDateString('pt-BR')}
+                      </Typography>
+                    )}
+                  </Box>
+                )}
+                <TextField
+                  label="Quantidade"
+                  type="number"
+                  value={quantidade}
+                  onChange={(e) => setQuantidade(e.target.value)}
+                  sx={{ width: 160 }}
+                  inputProps={{ step: 0.001, min: 0 }}
+                  required
+                />
+              </Box>
             </Grid>
 
-            <Grid item xs={6}>
+            <Grid item xs={12} md={6}>
               <TextField
                 label="Unidade"
                 value={unidade}
                 onChange={(e) => setUnidade(e.target.value)}
-                fullWidth
+                sx={{ width: 120 }}
                 required
               />
             </Grid>

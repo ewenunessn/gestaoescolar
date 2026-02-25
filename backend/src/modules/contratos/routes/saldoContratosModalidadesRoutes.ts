@@ -1,9 +1,10 @@
 import { Router } from 'express';
 import {
   listarSaldosModalidades,
+  cadastrarSaldoModalidade,
   listarModalidades,
   listarProdutosContratos,
-  cadastrarSaldoModalidade,
+  listarResumoAlunos,
   registrarConsumoModalidade,
   buscarHistoricoConsumoModalidade,
   excluirConsumoModalidade
@@ -13,22 +14,25 @@ const router = Router();
 // Listar saldos por modalidade
 router.get('/', listarSaldosModalidades);
 
+// Cadastrar/atualizar saldo por modalidade
+router.post('/', cadastrarSaldoModalidade);
+
+// Registrar consumo de modalidade
+router.post('/:id/consumir', registrarConsumoModalidade);
+
+// Buscar histórico de consumo de modalidade
+router.get('/:id/historico', buscarHistoricoConsumoModalidade);
+
+// Excluir consumo do histórico
+router.delete('/:id/consumo/:consumoId', excluirConsumoModalidade);
+
 // Listar modalidades disponíveis
 router.get('/modalidades', listarModalidades);
 
 // Listar produtos de contratos disponíveis
 router.get('/produtos-contratos', listarProdutosContratos);
 
-// Cadastrar/atualizar saldo por modalidade
-router.post('/', cadastrarSaldoModalidade);
-
-// Registrar consumo por modalidade
-router.post('/:id/consumir', registrarConsumoModalidade);
-
-// Buscar histórico de consumos por modalidade
-router.get('/:id/historico', buscarHistoricoConsumoModalidade);
-
-// Excluir registro de consumo por modalidade
-router.delete('/:id/consumo/:consumoId', excluirConsumoModalidade);
+// Listar resumo de alunos por modalidade
+router.get('/resumo-alunos', listarResumoAlunos);
 
 export default router;

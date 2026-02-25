@@ -268,7 +268,7 @@ export default function ContratoDetalhe() {
         produto_id: produto.produto_id, 
         quantidade: produto.quantidade, 
         preco_unitario: produto.preco_unitario,
-        unidade: produto.unidade_medida || "Kg",
+        unidade: produto.unidade || "Kg",
         marca: produto.marca || "",
         peso: produto.peso ? formatarNumero(produto.peso) : ""
       });
@@ -289,10 +289,12 @@ export default function ContratoDetalhe() {
         produto_id: Number(formProduto.produto_id), 
         quantidade_contratada: Number(formProduto.quantidade), 
         preco_unitario: Number(formProduto.preco_unitario),
-        ...(formProduto.unidade && { unidade: formProduto.unidade }),
-        ...(formProduto.marca && { marca: formProduto.marca }),
-        ...(formProduto.peso && { peso: Number(formProduto.peso) })
+        unidade: formProduto.unidade || "Kg",
+        marca: formProduto.marca || "",
+        peso: formProduto.peso ? Number(formProduto.peso.toString().replace(',', '.')) : 0,
+        ativo: true
       };
+      
       if (editandoProduto) { await editarContratoProduto(editandoProduto.id, payload); } 
       else { await adicionarContratoProduto(payload); }
       setDialogState(prev => ({ ...prev, produto: false }));
@@ -312,7 +314,10 @@ export default function ContratoDetalhe() {
       setDialogState(prev => ({ ...prev, removerProduto: false }));
       setRemoverId(null);
       await carregarDados();
-    } catch (error: any) { setErro(error.message || "Erro ao remover produto."); }
+    } catch (error: any) { 
+      setDialogState(prev => ({ ...prev, removerProduto: false }));
+      setErro(error.response?.data?.message || error.message || "Erro ao remover produto."); 
+    }
   };
   
   const abrirModalEditarContrato = () => {
@@ -343,8 +348,12 @@ export default function ContratoDetalhe() {
       setDialogState(prev => ({ ...prev, removerContrato: false }));
       navigate("/contratos");
     } catch (error: any) {
-      if (error.response?.data?.dependencias) { setDependenciasContrato(error.response.data); } 
-      else { setErro(error.response?.data?.message || "Erro ao remover contrato."); }
+      setDialogState(prev => ({ ...prev, removerContrato: false }));
+      if (error.response?.data?.dependencias) { 
+        setDependenciasContrato(error.response.data); 
+      } else { 
+        setErro(error.response?.data?.message || "Erro ao remover contrato."); 
+      }
     }
   };
 
@@ -400,12 +409,23 @@ export default function ContratoDetalhe() {
                         <TableBody>
                             {produtosContrato.map((produto) => {
                                 const produtoInfo = produtosDisponiveis.find(p => p.id === produto.produto_id);
+                                const isInativo = produto.ativo === false;
                                 return (
-                                <TableRow key={produto.id} hover>
-                                    <TableCell>{produtoInfo?.nome || `Produto #${produto.produto_id}`}</TableCell>
+                                <TableRow 
+                                    key={produto.id} 
+                                    hover 
+                                    sx={{ 
+                                        opacity: isInativo ? 0.5 : 1,
+                                        backgroundColor: isInativo ? 'action.hover' : 'inherit'
+                                    }}
+                                >
+                                    <TableCell>
+                                        {produtoInfo?.nome || `Produto #${produto.produto_id}`}
+                                        {isInativo && <Chip label="Inativo" size="small" color="default" sx={{ ml: 1 }} />}
+                                    </TableCell>
                                     <TableCell align="center">{produto.marca || "N/A"}</TableCell>
                                     <TableCell align="center">{produto.peso ? `${formatarNumero(produto.peso)}g` : "N/A"}</TableCell>
-                                    <TableCell align="center">{produto.unidade_medida || "Kg"}</TableCell>
+                                    <TableCell align="center">{produto.unidade || "Kg"}</TableCell>
                                     <TableCell align="center">{produto.quantidade}</TableCell>
                                     <TableCell align="center">{formatarMoeda(produto.preco_unitario)}</TableCell>
                                     <TableCell align="center">{formatarMoeda(produto.valor_total)}</TableCell>

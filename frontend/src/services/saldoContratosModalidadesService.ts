@@ -62,6 +62,15 @@ export interface ProdutoContratoOption {
   fornecedor_nome: string;
 }
 
+export interface ResumoAlunosModalidade {
+  modalidade_id: number;
+  modalidade_nome: string;
+  codigo_financeiro?: string;
+  total_alunos: number;
+  total_escolas: number;
+  ativo: boolean;
+}
+
 export interface SaldoContratosModalidadesResponse {
   success: boolean;
   data: SaldoContratoModalidadeItem[];
@@ -143,6 +152,19 @@ class SaldoContratosModalidadesService {
       return response.data.data;
     } catch (error) {
       console.error('Erro ao listar produtos de contratos:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Lista resumo de alunos por modalidade
+   */
+  async listarResumoAlunos(): Promise<ResumoAlunosModalidade[]> {
+    try {
+      const response = await api.get('/saldo-contratos-modalidades/resumo-alunos');
+      return response.data.data;
+    } catch (error) {
+      console.error('Erro ao listar resumo de alunos:', error);
       throw error;
     }
   }

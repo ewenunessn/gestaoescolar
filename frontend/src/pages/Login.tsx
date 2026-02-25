@@ -7,7 +7,6 @@ import {
   Typography,
   Paper,
   Alert,
-  Divider,
   InputAdornment,
   Container,
   CardContent,
@@ -16,8 +15,7 @@ import {
 } from "@mui/material";
 import { Email, Lock, School, Login as LoginIcon, ArrowBack, Visibility, VisibilityOff } from "@mui/icons-material";
 import { login } from "../services/auth";
-import { useNavigate, useLocation, Link } from "react-router-dom";
-import { tenantService } from "../services/tenantService";
+import { useNavigate, useLocation } from "react-router-dom";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -26,7 +24,6 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [tenantId, setTenantId] = useState<string>("");
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -42,20 +39,6 @@ export default function Login() {
         setEmail(location.state.email);
       }
     }
-
-    // Try to resolve tenant from URL
-    const resolveTenantFromUrl = async () => {
-      try {
-        const result = await tenantService.resolveTenant();
-        if (result.tenant) {
-          setTenantId(result.tenant.id);
-        }
-      } catch (error) {
-        console.log('No tenant context found, proceeding with normal login');
-      }
-    };
-
-    resolveTenantFromUrl();
   }, [location.state]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -63,28 +46,12 @@ export default function Login() {
     setErro("");
     setLoading(true);
     try {
-      const response = await login(email, senha, tenantId || undefined);
+      const response = await login(email, senha);
       
       // Salvar token
       localStorage.setItem("token", response.token);
       localStorage.setItem("perfil", response.tipo); // Backend retorna 'tipo', não 'perfil'
       localStorage.setItem("nome", response.nome);
-      
-      // Salvar tenant principal
-      if (response.tenant) {
-        localStorage.setItem("currentTenantId", response.tenant.id);
-        localStorage.setItem("currentTenant", response.tenant.name);
-        console.log('🏢 Tenant principal salvo:', response.tenant);
-      }
-      
-      // Salvar tenants disponíveis
-      if (response.availableTenants) {
-        localStorage.setItem("availableTenants", JSON.stringify(response.availableTenants));
-        console.log('🏢 Tenants disponíveis salvos:', response.availableTenants);
-      }
-      
-      // Disparar evento customizado para notificar TenantContext
-      window.dispatchEvent(new Event('tenantDataUpdated'));
       
       // Extrair ID do token JWT e criar objeto user completo
       try {

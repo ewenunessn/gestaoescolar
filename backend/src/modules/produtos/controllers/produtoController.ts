@@ -4,37 +4,35 @@ const db = require("../../../database");
 
 export async function listarProdutos(req: Request, res: Response) {
   try {
-    // Aplicar filtro de tenant
-    const tenantId = req.tenant?.id;
-    if (!tenantId) {
-      return res.status(400).json({
-        success: false,
-        message: "Contexto de tenant não encontrado"
-      });
-    }
-
     const result = await db.query(`
       SELECT 
-        id,
-        nome,
-        descricao,
-        categoria,
-        tipo_processamento,
-        perecivel,
-        ativo,
-        created_at
-      FROM produtos 
-      WHERE tenant_id = $1
-      ORDER BY nome
-    `, [tenantId]);
-
-    const produtos = result.rows;
+        p.id,
+        p.nome,
+        p.descricao,
+        p.categoria,
+        p.tipo_processamento,
+        p.perecivel,
+        p.ativo,
+        p.created_at,
+        (
+          SELECT cp.unidade
+          FROM contrato_produtos cp
+          JOIN contratos c ON cp.contrato_id = c.id
+          WHERE cp.produto_id = p.id
+            AND c.status = 'ativo'
+            AND c.data_inicio <= CURRENT_DATE
+            AND c.data_fim >= CURRENT_DATE
+          ORDER BY c.data_inicio DESC
+          LIMIT 1
+        ) as unidade_contrato
+      FROM produtos p
+      ORDER BY p.nome
+    `);
 
     res.json({
       success: true,
-      data: produtos,
-      total: produtos.length,
-      tenant: req.tenant?.name || 'N/A'
+      data: result.rows,
+      total: result.rows.length
     });
   } catch (error) {
     console.error("❌ Erro ao listar produtos:", error);
@@ -50,12 +48,19 @@ export async function buscarProduto(req: Request, res: Response) {
   try {
     const { id } = req.params;
 
-    );
-    }
-
-    // IMPORTANTE: Filtrar por tenant_id para segurança
     const result = await db.query(`
-      SELECT * FROM produtos WHERE id = $1 AND tenant_id = $2
+      SELECT 
+        p.id,
+        p.nome,
+        p.descricao,
+        p.categoria,
+        p.tipo_processamento,
+        p.perecivel,
+        p.ativo,
+        p.created_at,
+        p.updated_at
+      FROM produtos p 
+      WHERE p.id = $1
     `, [id]);
 
     if (result.rows.length === 0) {
@@ -81,29 +86,20 @@ export async function buscarProduto(req: Request, res: Response) {
 
 export async function criarProduto(req: Request, res: Response) {
   try {
-    const {
-      nome,
-      descricao,
+    const { 
+      nome, 
+      descricao, 
       categoria,
       tipo_processamento,
       perecivel = false,
-      ativo = true
+      ativo = true 
     } = req.body;
 
-    );
-    }
-
     const result = await db.query(`
-      INSERT INTO produtos (
-        nome, descricao, categoria, 
-        tipo_processamento, perecivel, ativo, created_at
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
+      INSERT INTO produtos (nome, descricao, categoria, tipo_processamento, perecivel, ativo, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
       RETURNING *
-    `, [
-      nome, descricao, categoria,
-      tipo_processamento, perecivel, ativo
-    ]);
+    `, [nome, descricao, categoria, tipo_processamento, perecivel, ativo]);
 
     res.json({
       success: true,
@@ -123,19 +119,15 @@ export async function criarProduto(req: Request, res: Response) {
 export async function editarProduto(req: Request, res: Response) {
   try {
     const { id } = req.params;
-    const {
-      nome,
-      descricao,
+    const { 
+      nome, 
+      descricao, 
       categoria,
       tipo_processamento,
       perecivel,
-      ativo
+      ativo 
     } = req.body;
 
-    );
-    }
-
-    // IMPORTANTE: Filtrar por tenant_id para segurança
     const result = await db.query(`
       UPDATE produtos SET
         nome = $1,
@@ -145,12 +137,9 @@ export async function editarProduto(req: Request, res: Response) {
         perecivel = $5,
         ativo = $6,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $7 AND tenant_id = $8
+      WHERE id = $7
       RETURNING *
-    `, [
-      nome, descricao, categoria,
-      tipo_processamento, perecivel, ativo, id
-    ]);
+    `, [nome, descricao, categoria, tipo_processamento, perecivel, ativo, id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -178,13 +167,8 @@ export async function removerProduto(req: Request, res: Response) {
   try {
     const { id } = req.params;
 
-    );
-    }
-
-    // IMPORTANTE: Filtrar por tenant_id para segurança
     const result = await db.query(`
-      DELETE FROM produtos WHERE id = $1 AND tenant_id = $2
-      RETURNING *
+      DELETE FROM produtos WHERE id = $1 RETURNING *
     `, [id]);
 
     if (result.rows.length === 0) {
@@ -196,7 +180,8 @@ export async function removerProduto(req: Request, res: Response) {
 
     res.json({
       success: true,
-      message: "Produto removido com sucesso"
+      message: "Produto removido com sucesso",
+      data: result.rows[0]
     });
   } catch (error) {
     console.error("❌ Erro ao remover produto:", error);
@@ -214,32 +199,54 @@ export async function buscarComposicaoNutricional(req: Request, res: Response) {
 
     const result = await db.query(`
       SELECT 
-        energia_kcal as "valor_energetico_kcal",
-        carboidratos_g,
-        acucares_g as acucares_totais_g,
-        acucares_adicionados_g,
-        proteina_g as proteinas_g,
-        lipideos_g as gorduras_totais_g,
+        produto_id,
+        energia_kcal as calorias,
+        proteina_g as proteinas,
+        carboidratos_g as carboidratos,
+        lipideos_g as gorduras,
+        fibra_alimentar_g as fibras,
+        sodio_mg as sodio,
+        acucares_g as acucares,
         gorduras_saturadas_g,
         gorduras_trans_g,
-        fibra_alimentar_g,
-        sodio_mg
-      FROM produto_composicao_nutricional
+        colesterol_mg as colesterol,
+        calcio_mg as calcio,
+        ferro_mg as ferro,
+        vitamina_e_mg as vitamina_c,
+        vitamina_b1_mg as vitamina_a
+      FROM produto_composicao_nutricional 
       WHERE produto_id = $1
     `, [id]);
 
-    const composicao = result.rows[0];
-
-    if (!composicao) {
+    if (result.rows.length === 0) {
+      // Retornar estrutura vazia se não houver dados
       return res.json({
         success: true,
-        data: null
+        data: {
+          produto_id: parseInt(id),
+          calorias: null,
+          proteinas: null,
+          carboidratos: null,
+          gorduras: null,
+          fibras: null,
+          sodio: null,
+          acucares: null,
+          gorduras_saturadas_g: null,
+          gorduras_trans_g: null,
+          colesterol: null,
+          calcio: null,
+          ferro: null,
+          vitamina_c: null,
+          vitamina_a: null
+        },
+        message: "Composição nutricional não cadastrada"
       });
     }
 
     res.json({
       success: true,
-      data: composicao
+      data: result.rows[0],
+      message: "Composição nutricional encontrada"
     });
   } catch (error) {
     console.error("❌ Erro ao buscar composição nutricional:", error);
@@ -251,183 +258,115 @@ export async function buscarComposicaoNutricional(req: Request, res: Response) {
   }
 }
 
-
-
 export async function salvarComposicaoNutricional(req: Request, res: Response) {
   try {
     const { id } = req.params;
     const {
-      valor_energetico_kcal,
-      carboidratos_g,
-      acucares_totais_g,
-      acucares_adicionados_g,
-      proteinas_g,
-      gorduras_totais_g,
+      calorias,
+      proteinas,
+      carboidratos,
+      gorduras,
+      fibras,
+      sodio,
+      acucares,
       gorduras_saturadas_g,
       gorduras_trans_g,
-      fibra_alimentar_g,
-      sodio_mg
+      colesterol,
+      calcio,
+      ferro,
+      vitamina_c,
+      vitamina_a
     } = req.body;
 
-    // Verificar se já existe composição para este produto
-    const existenteResult = await db.query(`
+    // Verificar se já existe um registro
+    const existingResult = await db.query(`
       SELECT id FROM produto_composicao_nutricional WHERE produto_id = $1
     `, [id]);
-    const existente = existenteResult.rows[0];
 
     let result;
-    if (existente) {
-      // Atualizar existente
+    if (existingResult.rows.length > 0) {
+      // Atualizar registro existente
       result = await db.query(`
-          UPDATE produto_composicao_nutricional SET
-            energia_kcal = $1,
-            carboidratos_g = $2,
-            proteina_g = $3,
-            lipideos_g = $4,
-            gorduras_saturadas_g = $5,
-            gorduras_trans_g = $6,
-            fibra_alimentar_g = $7,
-            sodio_mg = $8,
-            acucares_g = $9,
-            acucares_adicionados_g = $10
-          WHERE produto_id = $11
-          RETURNING *
-        `, [
-          valor_energetico_kcal, carboidratos_g, proteinas_g, gorduras_totais_g,
-          gorduras_saturadas_g, gorduras_trans_g, fibra_alimentar_g, sodio_mg,
-          acucares_totais_g, acucares_adicionados_g, id
-        ]);
+        UPDATE produto_composicao_nutricional SET
+          energia_kcal = $1,
+          proteina_g = $2,
+          carboidratos_g = $3,
+          lipideos_g = $4,
+          fibra_alimentar_g = $5,
+          sodio_mg = $6,
+          acucares_g = $7,
+          gorduras_saturadas_g = $8,
+          gorduras_trans_g = $9,
+          colesterol_mg = $10,
+          calcio_mg = $11,
+          ferro_mg = $12,
+          vitamina_e_mg = $13,
+          vitamina_b1_mg = $14,
+          atualizado_em = CURRENT_TIMESTAMP
+        WHERE produto_id = $15
+        RETURNING 
+          produto_id,
+          energia_kcal as calorias,
+          proteina_g as proteinas,
+          carboidratos_g as carboidratos,
+          lipideos_g as gorduras,
+          fibra_alimentar_g as fibras,
+          sodio_mg as sodio,
+          acucares_g as acucares,
+          gorduras_saturadas_g,
+          gorduras_trans_g,
+          colesterol_mg as colesterol,
+          calcio_mg as calcio,
+          ferro_mg as ferro,
+          vitamina_e_mg as vitamina_c,
+          vitamina_b1_mg as vitamina_a
+      `, [
+        calorias, proteinas, carboidratos, gorduras, fibras, sodio,
+        acucares, gorduras_saturadas_g, gorduras_trans_g, colesterol,
+        calcio, ferro, vitamina_c, vitamina_a, id
+      ]);
     } else {
-      // Criar novo
+      // Criar novo registro
       result = await db.query(`
         INSERT INTO produto_composicao_nutricional (
-          produto_id, energia_kcal, carboidratos_g,
-          proteina_g, lipideos_g, gorduras_saturadas_g,
-          gorduras_trans_g, fibra_alimentar_g, sodio_mg,
-          acucares_g, acucares_adicionados_g
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-        RETURNING *
+          produto_id, energia_kcal, proteina_g, carboidratos_g, lipideos_g, fibra_alimentar_g,
+          sodio_mg, acucares_g, gorduras_saturadas_g, gorduras_trans_g, colesterol_mg,
+          calcio_mg, ferro_mg, vitamina_e_mg, vitamina_b1_mg, criado_em
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, CURRENT_TIMESTAMP
+        ) RETURNING 
+          produto_id,
+          energia_kcal as calorias,
+          proteina_g as proteinas,
+          carboidratos_g as carboidratos,
+          lipideos_g as gorduras,
+          fibra_alimentar_g as fibras,
+          sodio_mg as sodio,
+          acucares_g as acucares,
+          gorduras_saturadas_g,
+          gorduras_trans_g,
+          colesterol_mg as colesterol,
+          calcio_mg as calcio,
+          ferro_mg as ferro,
+          vitamina_e_mg as vitamina_c,
+          vitamina_b1_mg as vitamina_a
       `, [
-        id, valor_energetico_kcal, carboidratos_g,
-        proteinas_g, gorduras_totais_g, gorduras_saturadas_g, gorduras_trans_g,
-        fibra_alimentar_g, sodio_mg, acucares_totais_g, acucares_adicionados_g
+        id, calorias, proteinas, carboidratos, gorduras, fibras, sodio,
+        acucares, gorduras_saturadas_g, gorduras_trans_g, colesterol,
+        calcio, ferro, vitamina_c, vitamina_a
       ]);
     }
 
     res.json({
       success: true,
-      message: "Composição nutricional salva com sucesso",
-      data: result.rows[0]
+      data: result.rows[0],
+      message: "Composição nutricional salva com sucesso"
     });
   } catch (error) {
     console.error("❌ Erro ao salvar composição nutricional:", error);
     res.status(500).json({
       success: false,
       message: "Erro ao salvar composição nutricional",
-      error: error instanceof Error ? error.message : 'Erro desconhecido'
-    });
-  }
-}
-
-export async function importarProdutosLote(req: Request, res: Response) {
-  try {
-    const { produtos } = req.body;
-
-    if (!Array.isArray(produtos) || produtos.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Lista de produtos inválida"
-      });
-    }
-
-    );
-    }
-
-    let sucessos = 0;
-    let erros = 0;
-    let atualizacoes = 0;
-    let insercoes = 0;
-    const resultados = [];
-
-    for (const produto of produtos) {
-      try {
-        const {
-          nome,
-          descricao,
-          categoria,
-          tipo_processamento,
-          perecivel = false,
-          ativo = true
-        } = produto;
-
-        // Verificar se produto já existe pelo nome e tenant
-        const produtoExistenteResult = await db.query(`
-          SELECT id FROM produtos WHERE nome = $1 AND tenant_id = $2
-        `, [nome]);
-        const produtoExistente = produtoExistenteResult.rows[0];
-
-        const result = await db.query(`
-          INSERT INTO produtos (
-            nome, descricao, categoria, 
-            tipo_processamento, perecivel, ativo, created_at
-          )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
-          ON CONFLICT (nome) DO UPDATE SET
-            descricao = EXCLUDED.descricao,
-            categoria = EXCLUDED.categoria,
-            tipo_processamento = EXCLUDED.tipo_processamento,
-            perecivel = EXCLUDED.perecivel,
-            ativo = EXCLUDED.ativo
-          RETURNING *
-        `, [
-          nome, descricao, categoria,
-          tipo_processamento, perecivel, ativo
-        ]);
-
-        const acao = produtoExistente ? 'atualizado' : 'inserido';
-        if (produtoExistente) {
-          atualizacoes++;
-        } else {
-          insercoes++;
-        }
-
-        resultados.push({
-          sucesso: true,
-          acao: acao,
-          produto: result.rows[0]
-        });
-
-        sucessos++;
-      } catch (error) {
-        console.error(`❌ Erro ao importar produto ${produto.nome}:`, error);
-        resultados.push({
-          sucesso: false,
-          produto: produto.nome,
-          erro: error instanceof Error ? error.message : 'Erro desconhecido'
-        });
-        erros++;
-      }
-    }
-
-    const mensagem = `Importação concluída: ${insercoes} inseridos, ${atualizacoes} atualizados, ${erros} erros`;
-
-    res.json({
-      success: true,
-      message: mensagem,
-      resultados: {
-        sucesso: sucessos,
-        erros: erros,
-        insercoes: insercoes,
-        atualizacoes: atualizacoes,
-        detalhes: resultados
-      }
-    });
-  } catch (error) {
-    console.error("❌ Erro na importação em lote:", error);
-    res.status(500).json({
-      success: false,
-      message: "Erro na importação em lote",
       error: error instanceof Error ? error.message : 'Erro desconhecido'
     });
   }

@@ -6,14 +6,10 @@ export const guiaController = {
   async listarGuias(req: Request, res: Response) {
     try {
       console.log('🔍 [GuiaController] Iniciando listarGuias');
-      console.log('🔍 [GuiaController] Headers:', req.headers['x-tenant-id']);
-      
-      // TEMPORÁRIO: pegar tenant_id do header diretamente
-      const tenantId = req.headers['x-tenant-id'] as string || '00000000-0000-0000-0000-000000000000';
-      console.log('🔍 [GuiaController] Tenant ID:');
+      console.log('🔍 [GuiaController] Listando guias...');
 
       console.log('🔍 [GuiaController] Chamando GuiaModel.listarGuias');
-      const guias = await GuiaModel.listarGuias(tenantId);
+      const guias = await GuiaModel.listarGuias();
       console.log('✅ [GuiaController] Guias retornadas:', guias.length);
       
       res.json({ success: true, data: guias });
@@ -56,7 +52,6 @@ export const guiaController = {
   // Buscar guia por ID
   async buscarGuia(req: Request, res: Response) {
     try {
-      const tenantId = req.headers['x-tenant-id'] as string || '00000000-0000-0000-0000-000000000000';
       const { id } = req.params;
       
       const guia = await GuiaModel.buscarGuia(parseInt(id));
@@ -86,8 +81,7 @@ export const guiaController = {
   // Atualizar guia
   async atualizarGuia(req: Request, res: Response) {
     try {
-      const tenantId = req.headers['x-tenant-id'] as string || (req as any).tenant?.id || '00000000-0000-0000-0000-000000000000';
-      console.log('🔍 [GuiaController] atualizarGuia - Tenant ID:');
+      console.log('🔍 [GuiaController] atualizarGuia');
 
       const { id } = req.params;
       const { observacao } = req.body;
@@ -108,7 +102,6 @@ export const guiaController = {
   // Deletar guia
   async deletarGuia(req: Request, res: Response) {
     try {
-      const tenantId = req.headers['x-tenant-id'] as string || (req as any).tenant?.id || '00000000-0000-0000-0000-000000000000';
       const { id } = req.params;
       
       const guia = await GuiaModel.buscarGuia(parseInt(id));
@@ -135,8 +128,7 @@ export const guiaController = {
   // Adicionar produto à guia
   async adicionarProdutoGuia(req: Request, res: Response) {
     try {
-      const tenantId = req.headers['x-tenant-id'] as string || (req as any).tenant?.id || '00000000-0000-0000-0000-000000000000';
-      console.log('🔍 [GuiaController] adicionarProdutoGuia - Tenant ID:');
+      console.log('🔍 [GuiaController] adicionarProdutoGuia');
 
       const { guiaId } = req.params;
       const guia = await GuiaModel.buscarGuia(parseInt(guiaId));
@@ -157,7 +149,7 @@ export const guiaController = {
         produto_id: parseInt(req.body.produtoId),
         escola_id: parseInt(req.body.escolaId),
         quantidade: req.body.quantidade,
-        unidade: req.body.unidade,
+        unidade: req.body.unidade || 'un',
         lote: req.body.lote,
         observacao: req.body.observacao,
         para_entrega: req.body.para_entrega !== undefined ? req.body.para_entrega : true
@@ -174,8 +166,7 @@ export const guiaController = {
   // Remover produto da guia
   async removerProdutoGuia(req: Request, res: Response) {
     try {
-      const tenantId = req.headers['x-tenant-id'] as string || (req as any).tenant?.id || '00000000-0000-0000-0000-000000000000';
-      console.log('🔍 [GuiaController] removerProdutoGuia - Tenant ID:');
+      console.log('🔍 [GuiaController] removerProdutoGuia');
 
       const { guiaId, produtoId, escolaId } = req.params;
       const guia = await GuiaModel.buscarGuia(parseInt(guiaId));
@@ -213,10 +204,32 @@ export const guiaController = {
     }
   },
 
+  // Remover item da guia pelo ID direto
+  async removerItemGuia(req: Request, res: Response) {
+    try {
+      console.log('🔍 [GuiaController] removerItemGuia');
+      const { itemId } = req.params;
+      
+      if (!itemId) {
+        return res.status(400).json({ success: false, error: 'ID do item é obrigatório' });
+      }
+
+      const deletado = await GuiaModel.removerProdutoGuia(parseInt(itemId));
+      
+      if (!deletado) {
+        return res.status(404).json({ success: false, error: 'Item não encontrado ou erro ao remover' });
+      }
+
+      res.json({ success: true, message: 'Item removido com sucesso' });
+    } catch (error) {
+      console.error('Erro ao remover item:', error);
+      res.status(500).json({ success: false, error: 'Erro ao remover item' });
+    }
+  },
+
   // Listar produtos de uma guia
   async listarProdutosGuia(req: Request, res: Response) {
     try {
-      const tenantId = req.headers['x-tenant-id'] as string || '00000000-0000-0000-0000-000000000000';
       const { guiaId } = req.params;
       const { escolaId } = req.query;
 
@@ -253,8 +266,7 @@ export const guiaController = {
   // Atualizar dados de entrega
   async atualizarEntrega(req: Request, res: Response) {
     try {
-      const tenantId = req.headers['x-tenant-id'] as string || (req as any).tenant?.id || '00000000-0000-0000-0000-000000000000';
-      console.log('🔍 [GuiaController] atualizarEntrega - Tenant ID:');
+      console.log('🔍 [GuiaController] atualizarEntrega');
 
       const { guiaId, produtoId, escolaId } = req.params;
       const { 
@@ -298,7 +310,8 @@ export const guiaController = {
         quantidade_entregue,
         data_entrega,
         nome_quem_recebeu,
-        nome_quem_entregou
+        nome_quem_entregou,
+        status: entrega_confirmada === true ? 'entregue' : entrega_confirmada === false ? 'pendente' : undefined
       });
 
       res.json({ success: true, data: produtoAtualizado });
@@ -311,8 +324,7 @@ export const guiaController = {
   // Atualizar campo para_entrega de um item
   async atualizarParaEntrega(req: Request, res: Response) {
     try {
-      const tenantId = req.headers['x-tenant-id'] as string || (req as any).tenant?.id || '00000000-0000-0000-0000-000000000000';
-      console.log('🔍 [GuiaController] atualizarParaEntrega - Tenant ID:');
+      console.log('🔍 [GuiaController] atualizarParaEntrega');
 
       const { itemId } = req.params;
       const { para_entrega } = req.body;
@@ -360,8 +372,7 @@ export const guiaController = {
   // Listar todos os itens de uma guia
   async listarItensGuia(req: Request, res: Response) {
     try {
-      const tenantId = req.headers['x-tenant-id'] as string || (req as any).tenant?.id || '00000000-0000-0000-0000-000000000000';
-      console.log('🔍 [GuiaController] listarItensGuia - Tenant ID:');
+      console.log('🔍 [GuiaController] listarItensGuia');
 
       const { guiaId } = req.params;
       const guia = await GuiaModel.buscarGuia(parseInt(guiaId));
@@ -388,6 +399,139 @@ export const guiaController = {
     } catch (error) {
       console.error('Erro ao listar itens da guia:', error);
       res.status(500).json({ success: false, error: 'Erro ao listar itens da guia' });
+    }
+  },
+
+  // Listar produtos de uma escola para um mês/ano específico
+  async listarProdutosPorEscola(req: Request, res: Response) {
+    try {
+      const { escolaId } = req.params;
+      const { mes, ano } = req.query;
+
+      if (!mes || !ano) {
+        return res.status(400).json({ success: false, error: 'Mês e ano são obrigatórios' });
+      }
+
+      const produtos = await GuiaModel.listarProdutosPorEscola(
+        parseInt(escolaId),
+        parseInt(mes as string),
+        parseInt(ano as string)
+      );
+
+      res.json({ success: true, data: produtos });
+    } catch (error) {
+      console.error('Erro ao listar produtos por escola:', error);
+      res.status(500).json({ success: false, error: 'Erro ao listar produtos por escola' });
+    }
+  },
+
+  // Adicionar produto para uma escola (cria guia se necessário)
+  async adicionarProdutoEscola(req: Request, res: Response) {
+    try {
+      const { escolaId } = req.params;
+      const { produtoId, quantidade, unidade, data_entrega, observacao, status } = req.body;
+
+      if (!data_entrega) {
+        return res.status(400).json({ success: false, error: 'Data de entrega é obrigatória' });
+      }
+
+      const data = new Date(data_entrega);
+      const mes = data.getMonth() + 1;
+      const ano = data.getFullYear();
+
+      // Buscar ou criar guia para o mês/ano
+      let guia = await GuiaModel.buscarGuiaPorMesAno(mes, ano);
+      
+      if (!guia) {
+        guia = await GuiaModel.criarGuia({
+          mes,
+          ano,
+          nome: `Guia ${mes}/${ano}`,
+          observacao: 'Gerada automaticamente ao adicionar produto'
+        });
+      }
+
+      // Adicionar produto à guia
+      const guiaProduto = await GuiaModel.adicionarProdutoGuia({
+        guia_id: guia.id,
+        produto_id: parseInt(produtoId),
+        escola_id: parseInt(escolaId),
+        quantidade,
+        unidade: unidade || 'un', // Default unit if missing
+        lote: null, // Lote opcional,
+        observacao,
+        para_entrega: true,
+        status: status || 'pendente',
+        data_entrega
+      });
+
+      res.json({ success: true, data: guiaProduto });
+    } catch (error) {
+      console.error('Erro ao adicionar produto para escola:', error);
+      res.status(500).json({ success: false, error: 'Erro ao adicionar produto para escola' });
+    }
+  },
+
+  // Atualizar produto da escola (NOVO)
+  async atualizarProdutoEscola(req: Request, res: Response) {
+    try {
+      const { itemId } = req.params;
+      const { quantidade, unidade, observacao, status, data_entrega } = req.body;
+
+      const produtoGuia = await GuiaModel.atualizarProdutoGuia(parseInt(itemId), {
+        quantidade,
+        unidade,
+        observacao,
+        status,
+        data_entrega
+      });
+
+      res.json({ success: true, data: produtoGuia });
+    } catch (error) {
+      console.error('Erro ao atualizar produto da escola:', error);
+      res.status(500).json({ success: false, error: 'Erro ao atualizar produto da escola' });
+    }
+  },
+
+  // Listar status das escolas para o mês/ano
+  async listarStatusEscolas(req: Request, res: Response) {
+    try {
+      const { mes, ano } = req.query;
+
+      if (!mes || !ano) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Mês e ano são obrigatórios' 
+        });
+      }
+
+      console.log(`🔍 [GuiaController] Listando status escolas: ${mes}/${ano}`);
+      const escolas = await GuiaModel.listarStatusEscolas(Number(mes), Number(ano));
+      
+      res.json(escolas);
+    } catch (error) {
+      console.error('❌ [GuiaController] Erro ao listar status escolas:', error);
+      res.status(500).json({ success: false, error: 'Erro ao listar status escolas' });
+    }
+  },
+
+  // Listar romaneio
+  async listarRomaneio(req: Request, res: Response) {
+    try {
+      const { data_inicio, data_fim, escola_id, rota_id, status } = req.query;
+
+      const items = await GuiaModel.listarRomaneio({
+        dataInicio: data_inicio as string,
+        dataFim: data_fim as string,
+        escolaId: escola_id ? parseInt(escola_id as string) : undefined,
+        rotaId: rota_id ? parseInt(rota_id as string) : undefined,
+        status: status as string
+      });
+
+      res.json({ success: true, data: items });
+    } catch (error) {
+      console.error('Erro ao listar romaneio:', error);
+      res.status(500).json({ success: false, error: 'Erro ao listar romaneio' });
     }
   }
 };

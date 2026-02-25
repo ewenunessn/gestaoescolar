@@ -57,6 +57,8 @@ interface EscolaModalidade {
     modalidade_id: number;
     modalidade_nome: string;
     quantidade_alunos: number;
+    created_at?: string;
+    updated_at?: string;
 }
 
 // --- Interfaces ---
@@ -64,7 +66,16 @@ interface EscolaModalidade {
 
 // --- Subcomponentes de UI ---
 
-const PageHeader = ({ escola, totalAlunos, isEditing, onEdit, onSave, onCancel, onDelete, salvando }) => (
+const PageHeader = ({ escola, totalAlunos, isEditing, onEdit, onSave, onCancel, onDelete, salvando }: {
+    escola: Escola | null;
+    totalAlunos: number;
+    isEditing: boolean;
+    onEdit: () => void;
+    onSave: () => void;
+    onCancel: () => void;
+    onDelete: () => void;
+    salvando: boolean;
+}) => (
     <Card sx={{ p: 3, mb: 3, borderRadius: '12px' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -94,7 +105,11 @@ const PageHeader = ({ escola, totalAlunos, isEditing, onEdit, onSave, onCancel, 
     </Card>
 );
 
-const InfoItem = ({ icon, label, value }) => (
+const InfoItem = ({ icon, label, value }: {
+    icon: React.ReactNode;
+    label: string;
+    value: string | undefined;
+}) => (
     <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 2 }}>
         {icon}
         <Box>
@@ -104,7 +119,16 @@ const InfoItem = ({ icon, label, value }) => (
     </Stack>
 );
 
-const EscolaInfoCard = ({ isEditing, formData, setFormData, associacoes, totalAlunos, openModalidadeModal, handleDeleteModalidade }) => (
+const EscolaInfoCard = ({ isEditing, formData, setFormData, associacoes, totalAlunos, openModalidadeModal, handleDeleteModalidade, formatDate }: {
+    isEditing: boolean;
+    formData: any;
+    setFormData: (data: any) => void;
+    associacoes: EscolaModalidade[];
+    totalAlunos: number;
+    openModalidadeModal: (assoc?: EscolaModalidade) => void;
+    handleDeleteModalidade: (id: number) => void;
+    formatDate: (dateString: string | null | undefined) => string;
+}) => (
     <Grid container spacing={3} sx={{ mb: 4 }}>
         {/* Card de Informações da Escola */}
         <Grid item xs={12} md={6}>
@@ -173,7 +197,12 @@ const EscolaInfoCard = ({ isEditing, formData, setFormData, associacoes, totalAl
                     <Box sx={{ maxHeight: 200, overflowY: 'auto' }}>
                         {associacoes.map((assoc) => (
                             <Box key={assoc.id} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
-                                <Typography variant="body2">{assoc.modalidade_nome}</Typography>
+                                <Box sx={{ flex: 1 }}>
+                                    <Typography variant="body2" sx={{ fontWeight: 500 }}>{assoc.modalidade_nome}</Typography>
+                                    <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.75rem' }}>
+                                        Atualizado: {formatDate(assoc.updated_at)}
+                                    </Typography>
+                                </Box>
                                 <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                                     <Chip label={`${assoc.quantidade_alunos} alunos`} size="small" variant="outlined" />
                                     <Tooltip title="Editar">
@@ -201,6 +230,24 @@ const EscolaDetalhesPage = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
+
+    // Função para formatar data
+    const formatDate = (dateString: string | null | undefined) => {
+        if (!dateString) return 'Nunca atualizado';
+        
+        try {
+            const date = new Date(dateString);
+            return new Intl.DateTimeFormat('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            }).format(date);
+        } catch {
+            return 'Data inválida';
+        }
+    };
 
     // (Estados principais e de edição mantidos)
     const [escola, setEscola] = useState<Escola | null>(null);
@@ -350,6 +397,7 @@ const EscolaDetalhesPage = () => {
                     totalAlunos={totalAlunos}
                     openModalidadeModal={openModalidadeModal}
                     handleDeleteModalidade={handleDeleteModalidade}
+                    formatDate={formatDate}
                 />
 
 

@@ -100,7 +100,6 @@ export class FaturamentoModel {
       JOIN pedidos p ON f.pedido_id = p.id
       JOIN usuarios u ON f.usuario_criacao_id = u.id
       WHERE f.id = $1
-        AND p.tenant_id = get_current_tenant_id()
     `;
     
     const result = await this.pool.query(query, [id]);
@@ -117,7 +116,6 @@ export class FaturamentoModel {
       JOIN pedidos p ON f.pedido_id = p.id
       JOIN usuarios u ON f.usuario_criacao_id = u.id
       WHERE f.pedido_id = $1
-        AND p.tenant_id = get_current_tenant_id()
       ORDER BY f.created_at DESC
     `;
     
@@ -145,10 +143,7 @@ export class FaturamentoModel {
       JOIN contratos c ON fi.contrato_id = c.id
       JOIN fornecedores f ON fi.fornecedor_id = f.id
       JOIN produtos pr ON fi.produto_id = pr.id
-      JOIN faturamentos fat ON fi.faturamento_id = fat.id
-      JOIN pedidos p ON fat.pedido_id = p.id
       WHERE fi.faturamento_id = $1
-        AND p.tenant_id = get_current_tenant_id()
       ORDER BY c.numero, m.nome, pr.nome
     `;
     
@@ -217,7 +212,7 @@ export class FaturamentoModel {
       JOIN pedidos p ON f.pedido_id = p.id
       JOIN usuarios u ON f.usuario_criacao_id = u.id
       LEFT JOIN faturamento_itens fi ON f.id = fi.faturamento_id
-      WHERE p.tenant_id = get_current_tenant_id()
+      WHERE 1=1
     `;
     
     const values: any[] = [];
@@ -260,7 +255,7 @@ export class FaturamentoModel {
       FROM faturamentos f
       JOIN pedidos p ON f.pedido_id = p.id
       WHERE EXTRACT(YEAR FROM f.created_at) = $1
-        AND p.tenant_id = get_current_tenant_id()
+        
     `;
     
     const result = await this.pool.query(query, [ano]);
@@ -276,7 +271,7 @@ export class FaturamentoModel {
       FROM pedidos p
       WHERE f.id = $2
         AND f.pedido_id = p.id
-        AND p.tenant_id = get_current_tenant_id()
+        
     `;
 
     const result = await this.pool.query(query, [status, id]);
@@ -297,7 +292,7 @@ export class FaturamentoModel {
         JOIN pedidos p ON f.pedido_id = p.id
         WHERE fi.faturamento_id = $1
           AND fi.consumo_registrado = true
-          AND p.tenant_id = get_current_tenant_id()
+          
       `, [id]);
       
       const temConsumoRegistrado = parseInt(itensComConsumoResult.rows[0].total) > 0;
@@ -316,7 +311,7 @@ export class FaturamentoModel {
         WHERE fi.faturamento_id = f.id
           AND f.pedido_id = p.id
           AND fi.faturamento_id = $1
-          AND p.tenant_id = get_current_tenant_id()
+          
       `, [id]);
       
       // Excluir faturamento
@@ -325,7 +320,7 @@ export class FaturamentoModel {
         USING pedidos p
         WHERE f.pedido_id = p.id
           AND f.id = $1
-          AND p.tenant_id = get_current_tenant_id()
+          
       `, [id]);
       
       await client.query('COMMIT');

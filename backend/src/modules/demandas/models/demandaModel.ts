@@ -5,7 +5,6 @@ const TABLE_NAME = process.env.NODE_ENV === 'production' ? 'demandas_escolas' : 
 
 export interface Demanda {
   id: number;
-  tenant_id: string;
   escola_id?: number;
   escola_nome: string;
   numero_oficio: string;
@@ -31,10 +30,10 @@ export const demandaModel = {
   async criar(demanda: Partial<Demanda>): Promise<Demanda> {
     const query = `
       INSERT INTO ${TABLE_NAME} (
-        tenant_id, escola_id, escola_nome, numero_oficio, data_solicitacao,
+        escola_id, escola_nome, numero_oficio, data_solicitacao,
         objeto, descricao_itens,
         status, observacoes, usuario_criacao_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *,
       CASE 
         WHEN data_semead IS NULL THEN NULL
@@ -46,7 +45,6 @@ export const demandaModel = {
     `;
 
     const values = [
-      demanda.tenant_id,
       demanda.escola_id || null,
       demanda.escola_nome,
       demanda.numero_oficio,
@@ -54,7 +52,7 @@ export const demandaModel = {
       demanda.objeto,
       demanda.descricao_itens,
       demanda.status || 'pendente',
-      demanda.observacoes,
+      demanda.observacoes || null,
       demanda.usuario_criacao_id || 1
     ];
 
@@ -62,41 +60,57 @@ export const demandaModel = {
     return result.rows[0];
   },
 
-  async buscarPorId(id: number, tenantId: string): Promise<DemandaDetalhada | null> {
-    const query = `
-      SELECT 
-        d.*,
-        COALESCE(d.escola_nome, e.nome) as escola_nome,
-        u.nome as usuario_criacao_nome,
-        CASE 
-          WHEN d.data_semead IS NULL THEN NULL
-          WHEN d.data_resposta_semead IS NOT NULL THEN 
-            (d.data_resposta_semead::date - d.data_semead::date)::integer
-          ELSE 
-            (CURRENT_DATE - d.data_semead::date)::integer
-        END as dias_solicitacao
-      FROM ${TABLE_NAME} d
-      LEFT JOIN escolas e ON d.escola_id = e.id AND e.tenant_id = d.tenant_id
-      LEFT JOIN usuarios u ON d.usuario_criacao_id = u.id
-      WHERE d.id = $1 AND d.tenant_id = $2
-    `;
-
-    const result = await db.query(query, [id, tenantId]);
-    return result.rows[0] || null;
-  },
-
-  async listar(tenantId: string, filtros?: {
+  async listar(filtros: {
     escola_id?: number;
     escola_nome?: string;
     objeto?: string;
     status?: string;
     data_inicio?: string;
     data_fim?: string;
-  }): Promise<DemandaDetalhada[]> {
-    let query = `
+  } = {}): Promise<DemandaDetalhada[]> {
+    let whereClause = 'WHERE 1=1';
+    const params: any[] = [];
+    let paramCount = 0;
+
+    if (filtros.escola_id) {
+      paramCount++;
+      whereClause += ` AND d.escola_id = $${paramCount}`;
+      params.push(filtros.escola_id);
+    }
+
+    if (filtros.escola_nome) {
+      paramCount++;
+      whereClause += ` AND d.escola_nome ILIKE $${paramCount}`;
+      params.push(`%${filtros.escola_nome}%`);
+    }
+
+    if (filtros.objeto) {
+      paramCount++;
+      whereClause += ` AND d.objeto ILIKE $${paramCount}`;
+      params.push(`%${filtros.objeto}%`);
+    }
+
+    if (filtros.status) {
+      paramCount++;
+      whereClause += ` AND d.status = $${paramCount}`;
+      params.push(filtros.status);
+    }
+
+    if (filtros.data_inicio) {
+      paramCount++;
+      whereClause += ` AND d.data_solicitacao >= $${paramCount}`;
+      params.push(filtros.data_inicio);
+    }
+
+    if (filtros.data_fim) {
+      paramCount++;
+      whereClause += ` AND d.data_solicitacao <= $${paramCount}`;
+      params.push(filtros.data_fim);
+    }
+
+    const query = `
       SELECT 
         d.*,
-        COALESCE(d.escola_nome, e.nome) as escola_nome,
         u.nome as usuario_criacao_nome,
         CASE 
           WHEN d.data_semead IS NULL THEN NULL
@@ -106,135 +120,113 @@ export const demandaModel = {
             (CURRENT_DATE - d.data_semead::date)::integer
         END as dias_solicitacao
       FROM ${TABLE_NAME} d
-      LEFT JOIN escolas e ON d.escola_id = e.id AND e.tenant_id = d.tenant_id
       LEFT JOIN usuarios u ON d.usuario_criacao_id = u.id
-      WHERE d.tenant_id = $1
+      ${whereClause}
+      ORDER BY d.created_at DESC
     `;
 
-    const values: any[] = [tenantId];
-    let paramCount = 2;
-
-    if (filtros?.escola_id) {
-      query += ` AND d.escola_id = $${paramCount}`;
-      values.push(filtros.escola_id);
-      paramCount++;
-    }
-
-    if (filtros?.escola_nome) {
-      query += ` AND (d.escola_nome ILIKE $${paramCount} OR e.nome ILIKE $${paramCount})`;
-      values.push(`%${filtros.escola_nome}%`);
-      paramCount++;
-    }
-
-    if (filtros?.objeto) {
-      query += ` AND d.objeto ILIKE $${paramCount}`;
-      values.push(`%${filtros.objeto}%`);
-      paramCount++;
-    }
-
-    if (filtros?.status) {
-      query += ` AND d.status = $${paramCount}`;
-      values.push(filtros.status);
-      paramCount++;
-    }
-
-    if (filtros?.data_inicio) {
-      query += ` AND d.data_solicitacao >= $${paramCount}`;
-      values.push(filtros.data_inicio);
-      paramCount++;
-    }
-
-    if (filtros?.data_fim) {
-      query += ` AND d.data_solicitacao <= $${paramCount}`;
-      values.push(filtros.data_fim);
-      paramCount++;
-    }
-
-    query += ' ORDER BY d.data_solicitacao DESC, d.created_at DESC';
-
-    const result = await db.query(query, values);
+    const result = await db.query(query, params);
     return result.rows;
   },
 
-  async atualizar(id: number, tenantId: string, dados: Partial<Demanda>): Promise<Demanda> {
-    const campos: string[] = [];
-    const values: any[] = [];
-    let paramCount = 1;
+  async buscarPorId(id: number): Promise<DemandaDetalhada | null> {
+    const query = `
+      SELECT 
+        d.*,
+        u.nome as usuario_criacao_nome,
+        CASE 
+          WHEN d.data_semead IS NULL THEN NULL
+          WHEN d.data_resposta_semead IS NOT NULL THEN 
+            (d.data_resposta_semead::date - d.data_semead::date)::integer
+          ELSE 
+            (CURRENT_DATE - d.data_semead::date)::integer
+        END as dias_solicitacao
+      FROM ${TABLE_NAME} d
+      LEFT JOIN usuarios u ON d.usuario_criacao_id = u.id
+      WHERE d.id = $1
+    `;
 
-    // tenant_id não pode ser alterado
-    if (dados.tenant_id) {
-      delete dados.tenant_id;
-    }
+    const result = await db.query(query, [id]);
+    return result.rows[0] || null;
+  },
 
-    if (dados.escola_id !== undefined) {
+  async atualizar(id: number, demanda: Partial<Demanda>): Promise<Demanda> {
+    const campos = [];
+    const valores = [];
+    let paramCount = 0;
+
+    if (demanda.escola_id !== undefined) {
+      paramCount++;
       campos.push(`escola_id = $${paramCount}`);
-      values.push(dados.escola_id);
-      paramCount++;
+      valores.push(demanda.escola_id);
     }
 
-    if (dados.escola_nome !== undefined) {
+    if (demanda.escola_nome !== undefined) {
+      paramCount++;
       campos.push(`escola_nome = $${paramCount}`);
-      values.push(dados.escola_nome);
-      paramCount++;
+      valores.push(demanda.escola_nome);
     }
 
-    if (dados.numero_oficio !== undefined) {
+    if (demanda.numero_oficio !== undefined) {
+      paramCount++;
       campos.push(`numero_oficio = $${paramCount}`);
-      values.push(dados.numero_oficio);
-      paramCount++;
+      valores.push(demanda.numero_oficio);
     }
 
-    if (dados.data_solicitacao !== undefined) {
+    if (demanda.data_solicitacao !== undefined) {
+      paramCount++;
       campos.push(`data_solicitacao = $${paramCount}`);
-      values.push(dados.data_solicitacao);
-      paramCount++;
+      valores.push(demanda.data_solicitacao);
     }
 
-    if (dados.data_semead !== undefined) {
+    if (demanda.data_semead !== undefined) {
+      paramCount++;
       campos.push(`data_semead = $${paramCount}`);
-      values.push(dados.data_semead);
-      paramCount++;
+      valores.push(demanda.data_semead);
     }
 
-    if (dados.objeto !== undefined) {
+    if (demanda.objeto !== undefined) {
+      paramCount++;
       campos.push(`objeto = $${paramCount}`);
-      values.push(dados.objeto);
-      paramCount++;
+      valores.push(demanda.objeto);
     }
 
-    if (dados.descricao_itens !== undefined) {
+    if (demanda.descricao_itens !== undefined) {
+      paramCount++;
       campos.push(`descricao_itens = $${paramCount}`);
-      values.push(dados.descricao_itens);
-      paramCount++;
+      valores.push(demanda.descricao_itens);
     }
 
-    if (dados.data_resposta_semead !== undefined) {
+    if (demanda.data_resposta_semead !== undefined) {
+      paramCount++;
       campos.push(`data_resposta_semead = $${paramCount}`);
-      values.push(dados.data_resposta_semead);
-      paramCount++;
+      valores.push(demanda.data_resposta_semead);
     }
 
-    if (dados.status !== undefined) {
+    if (demanda.status !== undefined) {
+      paramCount++;
       campos.push(`status = $${paramCount}`);
-      values.push(dados.status);
-      paramCount++;
+      valores.push(demanda.status);
     }
 
-    if (dados.observacoes !== undefined) {
+    if (demanda.observacoes !== undefined) {
+      paramCount++;
       campos.push(`observacoes = $${paramCount}`);
-      values.push(dados.observacoes);
-      paramCount++;
+      valores.push(demanda.observacoes);
     }
 
-    campos.push(`updated_at = CURRENT_TIMESTAMP`);
+    if (campos.length === 0) {
+      throw new Error('Nenhum campo para atualizar');
+    }
 
-    values.push(id);
-    values.push(tenantId);
-    
+    paramCount++;
+    campos.push(`updated_at = CURRENT_TIMESTAMP`);
+    valores.push(id);
+
     const query = `
       UPDATE ${TABLE_NAME} 
       SET ${campos.join(', ')}
-      WHERE id = $${paramCount} AND tenant_id = $${paramCount + 1}
+      WHERE id = $${paramCount}
       RETURNING *,
       CASE 
         WHEN data_semead IS NULL THEN NULL
@@ -245,24 +237,47 @@ export const demandaModel = {
       END as dias_solicitacao
     `;
 
-    const result = await db.query(query, values);
+    const result = await db.query(query, valores);
     return result.rows[0];
   },
 
-  async excluir(id: number, tenantId: string): Promise<void> {
-    await db.query(`DELETE FROM ${TABLE_NAME} WHERE id = $1 AND tenant_id = $2`, [id, tenantId]);
+  async excluir(id: number): Promise<void> {
+    const query = `DELETE FROM ${TABLE_NAME} WHERE id = $1`;
+    await db.query(query, [id]);
   },
 
-  async listarSolicitantes(tenantId: string): Promise<string[]> {
+  async atualizarStatus(id: number, status: string): Promise<Demanda> {
     const query = `
-      SELECT DISTINCT COALESCE(d.escola_nome, e.nome) as escola_nome
-      FROM ${TABLE_NAME} d
-      LEFT JOIN escolas e ON d.escola_id = e.id AND e.tenant_id = d.tenant_id
-      WHERE d.tenant_id = $1 AND COALESCE(d.escola_nome, e.nome) IS NOT NULL
-      ORDER BY escola_nome
+      UPDATE ${TABLE_NAME} 
+      SET status = $1, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $2
+      RETURNING *,
+      CASE 
+        WHEN data_semead IS NULL THEN NULL
+        WHEN data_resposta_semead IS NOT NULL THEN 
+          (data_resposta_semead::date - data_semead::date)::integer
+        ELSE 
+          (CURRENT_DATE - data_semead::date)::integer
+      END as dias_solicitacao
     `;
-    
-    const result = await db.query(query, [tenantId]);
-    return result.rows.map((row: any) => row.escola_nome);
+
+    const result = await db.query(query, [status, id]);
+    return result.rows[0];
+  },
+
+  async listarSolicitantes(): Promise<{ escola_nome: string; total_demandas: number }[]> {
+    const query = `
+      SELECT 
+        escola_nome,
+        COUNT(*) as total_demandas
+      FROM ${TABLE_NAME}
+      GROUP BY escola_nome
+      ORDER BY total_demandas DESC, escola_nome ASC
+    `;
+
+    const result = await db.query(query);
+    return result.rows;
   }
 };
+
+export default demandaModel;

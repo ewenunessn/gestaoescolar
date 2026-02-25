@@ -6,7 +6,7 @@ const provisioningService = new InstitutionProvisioningService(db.pool);
 
 export class ProvisioningController {
   /**
-   * Complete provisioning: Institution + Tenant + Admin User
+   * Complete provisioning: Institution + Admin User
    * POST /api/provisioning/complete
    */
   async provisionComplete(req: Request, res: Response) {
@@ -18,13 +18,6 @@ export class ProvisioningController {
         return res.status(400).json({
           success: false,
           message: 'Dados da instituição são obrigatórios (name, slug)'
-        });
-      }
-
-      if (!data.tenant?.name || !data.tenant?.slug) {
-        return res.status(400).json({
-          success: false,
-          message: 'Dados do tenant são obrigatórios (name, slug)'
         });
       }
 
@@ -57,55 +50,6 @@ export class ProvisioningController {
         message: 'Erro ao provisionar instituição',
         error: error.message,
         details: process.env.NODE_ENV === 'development' ? error.stack : undefined
-      });
-    }
-  }
-
-  /**
-   * Create additional tenant for institution
-   * POST /api/provisioning/institutions/:institutionId/tenants
-   */
-  async createTenant(req: Request, res: Response) {
-    try {
-      const { institutionId } = req.params;
-      const tenantData = req.body;
-      const userId = (req as any).user?.id;
-
-      if (!tenantData.name || !tenantData.slug) {
-        return res.status(400).json({
-          success: false,
-          message: 'Nome e slug do tenant são obrigatórios'
-        });
-      }
-
-      const result = await provisioningService.createTenant(
-        institutionId,
-        tenantData,
-        userId
-      );
-
-      res.status(201).json(result);
-    } catch (error) {
-      console.error('Erro ao criar tenant:', error);
-      
-      if (error.message?.includes('Limite')) {
-        return res.status(400).json({
-          success: false,
-          message: error.message
-        });
-      }
-
-      if (error.message?.includes('duplicate key')) {
-        return res.status(400).json({
-          success: false,
-          message: 'Slug ou subdomínio já está em uso'
-        });
-      }
-
-      res.status(500).json({
-        success: false,
-        message: 'Erro ao criar tenant',
-        error: error.message
       });
     }
   }

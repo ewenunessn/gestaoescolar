@@ -25,7 +25,13 @@ import { entregaService } from '../services/entregaService';
 
 interface EscolasEntregaListProps {
   onEscolaSelect: (escola: EscolaEntrega) => void;
-  filtros: { guiaId?: number; rotaId?: number };
+  filtros: {
+    guiaId?: number;
+    rotaId?: number;
+    dataInicio?: string;
+    dataFim?: string;
+    somentePendentes?: boolean;
+  };
 }
 
 export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({ onEscolaSelect, filtros }) => {
@@ -45,8 +51,22 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({ onEscola
       setError(null);
       
       const [escolasData, estatisticasData] = await Promise.all([
-        entregaService.listarEscolas(filtros.guiaId, filtros.rotaId),
-        entregaService.obterEstatisticas(filtros.guiaId, filtros.rotaId)
+        entregaService.listarEscolas(
+          filtros.guiaId,
+          filtros.rotaId,
+          undefined,
+          filtros.dataInicio,
+          filtros.dataFim,
+          filtros.somentePendentes
+        ),
+        entregaService.obterEstatisticas(
+          filtros.guiaId,
+          filtros.rotaId,
+          undefined,
+          filtros.dataInicio,
+          filtros.dataFim,
+          filtros.somentePendentes
+        )
       ]);
       
       setEscolas(escolasData);
@@ -64,9 +84,18 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({ onEscola
   );
 
   const getStatusColor = (percentual: number) => {
-    if (percentual === 100) return 'success';
-    if (percentual >= 50) return 'warning';
+    const valor = Number(percentual);
+    if (Number.isNaN(valor)) return 'error';
+    if (valor >= 100) return 'success';
+    if (valor >= 50) return 'warning';
     return 'error';
+  };
+
+  const formatarData = (data?: string) => {
+    if (!data) return '';
+    const [ano, mes, dia] = data.split('T')[0].split('-');
+    if (!ano || !mes || !dia) return data;
+    return `${dia}/${mes}/${ano}`;
   };
 
   if (loading) {
@@ -206,6 +235,12 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({ onEscola
                 {escola.telefone && (
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                     📞 {escola.telefone}
+                  </Typography>
+                )}
+
+                {escola.data_entrega && (
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    Entrega: {formatarData(escola.data_entrega)}
                   </Typography>
                 )}
 

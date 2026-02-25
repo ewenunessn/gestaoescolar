@@ -27,7 +27,6 @@ export interface Institution {
   // Settings
   settings?: any;
   limits?: {
-    max_tenants?: number;
     max_users?: number;
     max_schools?: number;
   };
@@ -104,7 +103,7 @@ export class InstitutionModel {
       data.address_zipcode,
       data.address_country || 'BR',
       JSON.stringify(data.settings || {}),
-      JSON.stringify(data.limits || { max_tenants: 5, max_users: 100, max_schools: 50 }),
+      JSON.stringify(data.limits || { max_users: 100, max_schools: 50 }),
       JSON.stringify(data.metadata || {})
     ];
     
@@ -120,8 +119,7 @@ export class InstitutionModel {
         p.name as plan_name,
         p.price as plan_price,
         p.max_users as plan_max_users,
-        p.max_schools as plan_max_schools,
-        p.max_tenants as plan_max_tenants
+        p.max_schools as plan_max_schools
       FROM institutions i
       LEFT JOIN institution_plans p ON p.id = i.plan_id
       WHERE i.id = $1
@@ -228,13 +226,11 @@ export class InstitutionModel {
         i.id,
         i.name,
         i.status,
-        COUNT(DISTINCT t.id) as total_tenants,
         COUNT(DISTINCT iu.user_id) as total_users,
         COUNT(DISTINCT e.id) as total_schools
       FROM institutions i
-      LEFT JOIN tenants t ON t.institution_id = i.id
       LEFT JOIN institution_users iu ON iu.institution_id = i.id AND iu.status = 'active'
-      LEFT JOIN escolas e ON e.tenant_id IN (SELECT id FROM tenants WHERE institution_id = i.id)
+      LEFT JOIN escolas e ON e.institution_id = i.id
       WHERE i.id = $1
       GROUP BY i.id, i.name, i.status
     `;
@@ -295,17 +291,5 @@ export class InstitutionModel {
     `;
     const result = await this.db.query(query, [institutionId, userId, role]);
     return result.rowCount > 0;
-  }
-
-  // Get institution tenants
-  async getTenants(institutionId: string): Promise<any[]> {
-    const query = `
-      SELECT * FROM tenants 
-      WHERE institution_id = $1 
-      ORDER BY name
-    `;
-    
-    const result = await this.db.query(query, [institutionId]);
-    return result.rows;
   }
 }

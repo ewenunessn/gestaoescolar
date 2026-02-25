@@ -11,7 +11,10 @@ import {
   Button,
   Chip,
   Grid,
-  Alert
+  Alert,
+  TextField,
+  FormControlLabel,
+  Switch
 } from '@mui/material';
 import {
   FilterList as FilterIcon,
@@ -21,84 +24,115 @@ import {
 } from '@mui/icons-material';
 import { guiaService } from '../../../services/guiaService';
 import { rotaService } from '../services/rotaService';
-import { RotaComEntregas } from '../types/rota';
+import { RotaEntrega } from '../types/rota';
 
 interface FiltrosEntregaProps {
-  onFiltroChange: (guiaId?: number, rotaId?: number) => void;
-  filtroAtivo: { guiaId?: number; rotaId?: number };
+  onFiltroChange: (filtros: {
+    guiaId?: number;
+    rotaId?: number;
+    dataInicio?: string;
+    dataFim?: string;
+    somentePendentes?: boolean;
+  }) => void;
+  filtroAtivo: {
+    guiaId?: number;
+    rotaId?: number;
+    dataInicio?: string;
+    dataFim?: string;
+    somentePendentes?: boolean;
+  };
 }
 
 export const FiltrosEntrega: React.FC<FiltrosEntregaProps> = ({ onFiltroChange, filtroAtivo }) => {
   const [guias, setGuias] = useState<any[]>([]);
-  const [rotasComEntregas, setRotasComEntregas] = useState<RotaComEntregas[]>([]);
+  const [rotas, setRotas] = useState<RotaEntrega[]>([]);
+  const [rotasFiltradas, setRotasFiltradas] = useState<RotaEntrega[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    carregarDados();
+    carregarDadosIniciais();
   }, []);
 
   useEffect(() => {
-    // Recarregar rotas quando a guia mudar
-    if (filtroAtivo.guiaId) {
-      carregarRotasComEntregas(filtroAtivo.guiaId);
-    } else {
-      carregarRotasComEntregas();
-    }
-  }, [filtroAtivo.guiaId]);
+    filtrarRotas();
+  }, [filtroAtivo.guiaId, rotas]);
 
-  const carregarDados = async () => {
+  const carregarDadosIniciais = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      // Carregar guias abertas
-      const guiasResponse = await guiaService.listarGuias();
+      // Carregar guias e rotas em paralelo
+      const [guiasResponse, rotasData] = await Promise.all([
+        guiaService.listarGuias(),
+        rotaService.listarRotas()
+      ]);
+
+      // Processar guias
       const guiasData = guiasResponse?.data || guiasResponse;
       const guiasAbertas = Array.isArray(guiasData) 
-        ? guiasData.filter(g => g.status === 'aberta')
+        ? guiasData.filter((g: any) => g.status === 'aberta')
         : [];
-      
       setGuias(guiasAbertas);
       
-      // Carregar rotas com entregas
-      await carregarRotasComEntregas();
+      // Processar rotas
+      setRotas(rotasData);
       
     } catch (err) {
-      console.error('Erro ao carregar dados dos filtros:', err);
-      setError('Erro ao carregar dados dos filtros');
+      console.error('Erro ao carregar dados iniciais:', err);
+      setError('Erro ao carregar dados iniciais');
     } finally {
       setLoading(false);
     }
   };
 
-  const carregarRotasComEntregas = async (guiaId?: number) => {
+  const filtrarRotas = async () => {
+    if (!filtroAtivo.guiaId) {
+      setRotasFiltradas(rotas);
+      return;
+    }
+
     try {
-      const rotasData = await rotaService.listarRotasComEntregas(guiaId);
-      setRotasComEntregas(rotasData);
+      // Buscar planejamentos para a guia selecionada
+      const planejamentos = await rotaService.listarPlanejamentos(filtroAtivo.guiaId);
+      const rotaIdsComPlanejamento = new Set(planejamentos.map(p => p.rota_id));
+      
+      // Filtrar rotas que possuem planejamento
+      const filtradas = rotas.filter(r => rotaIdsComPlanejamento.has(r.id));
+      setRotasFiltradas(filtradas);
     } catch (err) {
-      console.error('Erro ao carregar rotas com entregas:', err);
+      console.error('Erro ao filtrar rotas:', err);
+      // Em caso de erro, mostra todas ou nenhuma? Melhor mostrar todas para não bloquear
+      setRotasFiltradas(rotas);
     }
   };
 
   const handleGuiaChange = (guiaId: number | '') => {
     const novoGuiaId = guiaId === '' ? undefined : guiaId;
-    onFiltroChange(novoGuiaId, undefined); // Reset rota quando mudar guia
+    onFiltroChange({ ...filtroAtivo, guiaId: novoGuiaId, rotaId: undefined });
   };
 
   const handleRotaChange = (rotaId: number | '') => {
     const novoRotaId = rotaId === '' ? undefined : rotaId;
-    onFiltroChange(filtroAtivo.guiaId, novoRotaId);
+    onFiltroChange({ ...filtroAtivo, rotaId: novoRotaId });
   };
 
   const limparFiltros = () => {
-    onFiltroChange(undefined, undefined);
+    const hoje = new Date().toISOString().split('T')[0];
+    onFiltroChange({ somentePendentes: true, dataFim: hoje, dataInicio: undefined });
   };
 
-  const temFiltroAtivo = filtroAtivo.guiaId || filtroAtivo.rotaId;
+  const temFiltroAtivo = Boolean(
+    filtroAtivo.guiaId ||
+    filtroAtivo.rotaId ||
+    filtroAtivo.dataInicio ||
+    filtroAtivo.dataFim ||
+    filtroAtivo.somentePendentes
+  );
 
   const guiaSelecionada = guias.find(g => g.id === filtroAtivo.guiaId);
-  const rotaSelecionada = rotasComEntregas.find(r => r.id === filtroAtivo.rotaId);
+  const rotaSelecionada = rotasFiltradas.find(r => r.id === filtroAtivo.rotaId);
 
   return (
     <Card sx={{ mb: 3 }}>
@@ -160,12 +194,12 @@ export const FiltrosEntrega: React.FC<FiltrosEntregaProps> = ({ onFiltroChange, 
                 value={filtroAtivo.rotaId || ''}
                 onChange={(e) => handleRotaChange(e.target.value as number | '')}
                 label="Rota de Entrega"
-                disabled={loading || rotasComEntregas.length === 0}
+                disabled={loading || rotasFiltradas.length === 0}
               >
                 <MenuItem value="">
                   <em>Todas as rotas</em>
                 </MenuItem>
-                {rotasComEntregas.map((rota) => (
+                {rotasFiltradas.map((rota) => (
                   <MenuItem key={rota.id} value={rota.id}>
                     <Box display="flex" alignItems="center" gap={1}>
                       <Box
@@ -192,6 +226,39 @@ export const FiltrosEntrega: React.FC<FiltrosEntregaProps> = ({ onFiltroChange, 
           </Grid>
 
           <Grid item xs={12} md={4}>
+            <TextField
+              label="Data início"
+              type="date"
+              size="small"
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+              value={filtroAtivo.dataInicio || ''}
+              onChange={(e) => onFiltroChange({ ...filtroAtivo, dataInicio: e.target.value || undefined })}
+            />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <TextField
+              label="Data fim"
+              type="date"
+              size="small"
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+              value={filtroAtivo.dataFim || ''}
+              onChange={(e) => onFiltroChange({ ...filtroAtivo, dataFim: e.target.value || undefined })}
+            />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={Boolean(filtroAtivo.somentePendentes)}
+                  onChange={(e) => onFiltroChange({ ...filtroAtivo, somentePendentes: e.target.checked })}
+                />
+              }
+              label="Somente pendentes"
+            />
+          </Grid>
+          <Grid item xs={12} md={4}>
             <Box display="flex" flexWrap="wrap" gap={1}>
               {guiaSelecionada && (
                 <Chip
@@ -216,11 +283,33 @@ export const FiltrosEntrega: React.FC<FiltrosEntregaProps> = ({ onFiltroChange, 
                   }}
                 />
               )}
+              {filtroAtivo.dataInicio && (
+                <Chip
+                  label={`De: ${filtroAtivo.dataInicio.split('-').reverse().join('/')}`}
+                  size="small"
+                  onDelete={() => onFiltroChange({ ...filtroAtivo, dataInicio: undefined })}
+                />
+              )}
+              {filtroAtivo.dataFim && (
+                <Chip
+                  label={`Até: ${filtroAtivo.dataFim.split('-').reverse().join('/')}`}
+                  size="small"
+                  onDelete={() => onFiltroChange({ ...filtroAtivo, dataFim: undefined })}
+                />
+              )}
+              {filtroAtivo.somentePendentes && (
+                <Chip
+                  label="Pendentes"
+                  color="warning"
+                  size="small"
+                  onDelete={() => onFiltroChange({ ...filtroAtivo, somentePendentes: false })}
+                />
+              )}
             </Box>
           </Grid>
         </Grid>
 
-        {rotasComEntregas.length === 0 && filtroAtivo.guiaId && (
+        {rotasFiltradas.length === 0 && filtroAtivo.guiaId && (
           <Alert severity="info" sx={{ mt: 2 }}>
             Nenhuma rota de entrega foi planejada para esta guia ainda.
           </Alert>
@@ -233,7 +322,9 @@ export const FiltrosEntrega: React.FC<FiltrosEntregaProps> = ({ onFiltroChange, 
               {guiaSelecionada && `itens da guia ${guiaSelecionada.mes}/${guiaSelecionada.ano}`}
               {guiaSelecionada && rotaSelecionada && ' na '}
               {rotaSelecionada && `rota "${rotaSelecionada.nome}"`}
-              {!guiaSelecionada && !rotaSelecionada && 'todos os itens'}
+              {(filtroAtivo.dataInicio || filtroAtivo.dataFim) && ' no período selecionado'}
+              {filtroAtivo.somentePendentes && ' pendentes'}
+              {!guiaSelecionada && !rotaSelecionada && !filtroAtivo.dataInicio && !filtroAtivo.dataFim && !filtroAtivo.somentePendentes && ' todos os itens'}
             </Typography>
           </Box>
         )}
