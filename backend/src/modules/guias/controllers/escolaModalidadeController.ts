@@ -112,19 +112,36 @@ export async function listarModalidadesPorEscola(req: Request, res: Response) {
 export async function criarEscolaModalidade(req: Request, res: Response) {
   try {
     const { escola_id, modalidade_id, quantidade_alunos } = req.body;
+    const escolaId = Number(escola_id);
+    const modalidadeId = Number(modalidade_id);
+    const quantidadeAlunos = Number(quantidade_alunos);
+
+    if (!Number.isFinite(escolaId) || !Number.isFinite(modalidadeId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Escola e modalidade são obrigatórias"
+      });
+    }
+
+    if (!Number.isFinite(quantidadeAlunos) || quantidadeAlunos < 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Quantidade de alunos deve ser um número válido"
+      });
+    }
 
     // Se quantidade_alunos for 0 ou vazio, remove o registro se existir
-    if (!quantidade_alunos || quantidade_alunos === 0) {
+    if (!quantidadeAlunos || quantidadeAlunos === 0) {
       const existing = await db.get(`
         SELECT id FROM escola_modalidades 
         WHERE escola_id = $1 AND modalidade_id = $2
-      `, [escola_id, modalidade_id]);
+      `, [escolaId, modalidadeId]);
 
       if (existing) {
         await db.query(`
           DELETE FROM escola_modalidades 
           WHERE escola_id = $1 AND modalidade_id = $2
-        `, [escola_id, modalidade_id]);
+        `, [escolaId, modalidadeId]);
       }
 
       return res.json({
@@ -134,16 +151,27 @@ export async function criarEscolaModalidade(req: Request, res: Response) {
       });
     }
 
-    // UPSERT: Insere ou atualiza se já existir
-    const result = await db.query(`
-      INSERT INTO escola_modalidades (escola_id, modalidade_id, quantidade_alunos, updated_at)
-      VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
-      ON CONFLICT (escola_id, modalidade_id) 
-      DO UPDATE SET 
-        quantidade_alunos = EXCLUDED.quantidade_alunos,
-        updated_at = CURRENT_TIMESTAMP
-      RETURNING *
-    `, [escola_id, modalidade_id, quantidade_alunos]);
+    const existing = await db.get(`
+      SELECT id FROM escola_modalidades 
+      WHERE escola_id = $1 AND modalidade_id = $2
+    `, [escolaId, modalidadeId]);
+
+    let result;
+    if (existing) {
+      result = await db.query(`
+        UPDATE escola_modalidades SET
+          quantidade_alunos = $1,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = $2
+        RETURNING *
+      `, [quantidadeAlunos, existing.id]);
+    } else {
+      result = await db.query(`
+        INSERT INTO escola_modalidades (escola_id, modalidade_id, quantidade_alunos, updated_at)
+        VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+        RETURNING *
+      `, [escolaId, modalidadeId, quantidadeAlunos]);
+    }
 
     res.json({
       success: true,
