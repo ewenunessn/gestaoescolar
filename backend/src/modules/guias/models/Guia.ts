@@ -4,6 +4,7 @@ export interface Guia {
   id: number;
   mes: number;
   ano: number;
+  nome?: string;
   observacao?: string;
   status: 'aberta' | 'fechada' | 'cancelada';
   created_at: string;
@@ -164,7 +165,7 @@ class GuiaModel {
           COUNT(DISTINCT gpe.id) as total_produtos
         FROM guias g
         LEFT JOIN guia_produto_escola gpe ON g.id = gpe.guia_id
-        GROUP BY g.id, g.mes, g.ano, g.observacao, g.status, g.created_at, g.updated_at
+        GROUP BY g.id, g.mes, g.ano, g.nome, g.observacao, g.status, g.created_at, g.updated_at
         ORDER BY g.created_at DESC
       `);
       console.log('✅ [GuiaModel] Encontradas', result.length, 'guias');
