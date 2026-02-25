@@ -157,20 +157,64 @@ class GuiaModel {
   async listarStatusEscolas(mes: number, ano: number): Promise<any[]> {
     try {
       console.log(`🔍 [GuiaModel] Listando status das escolas para ${mes}/${ano}`);
+      
+      const tableExists = async (name: string): Promise<boolean> => {
+        try {
+          const r = await db.get(`
+            SELECT 1
+            FROM information_schema.tables 
+            WHERE table_schema = 'public' AND table_name = $1
+          `, [name]);
+          return !!r;
+        } catch {
+          return false;
+        }
+      };
+
+      const hasGuias = await tableExists('guias');
+      const hasGPE = await tableExists('guia_produto_escola');
+      const hasRotas = (await tableExists('rotas_entrega')) && (await tableExists('rota_escolas'));
+
+      if (!hasGuias || !hasGPE) {
+        const escolas = await db.all(`SELECT id, nome, endereco FROM escolas ORDER BY nome`);
+        return escolas.map((e: any) => ({
+          id: e.id,
+          nome: e.nome,
+          endereco: e.endereco,
+          escola_rota: null,
+          ordem_rota: null,
+          qtd_pendente: 0,
+          qtd_programada: 0,
+          qtd_em_rota: 0,
+          qtd_entregue: 0
+        }));
+      }
+
+      let joinRotasSelect = `NULL as escola_rota, NULL as ordem_rota`;
+      let joinRotas = ``;
+      if (hasRotas) {
+        joinRotasSelect = `
+          STRING_AGG(DISTINCT re.nome, ', ') as escola_rota,
+          MIN(res.ordem) as ordem_rota
+        `;
+        joinRotas = `
+          LEFT JOIN rota_escolas res ON e.id = res.escola_id
+          LEFT JOIN rotas_entrega re ON res.rota_id = re.id
+        `;
+      }
+
       const result = await db.all(`
         SELECT 
           e.id, 
           e.nome, 
           e.endereco,
-          STRING_AGG(DISTINCT re.nome, ', ') as escola_rota,
-          MIN(res.ordem) as ordem_rota,
+          ${joinRotasSelect},
           COUNT(CASE WHEN gpe.status = 'pendente' THEN 1 END) as qtd_pendente,
           COUNT(CASE WHEN gpe.status = 'programada' THEN 1 END) as qtd_programada,
           COUNT(CASE WHEN gpe.status = 'em_rota' THEN 1 END) as qtd_em_rota,
           COUNT(CASE WHEN gpe.status = 'entregue' THEN 1 END) as qtd_entregue
         FROM escolas e
-        LEFT JOIN rota_escolas res ON e.id = res.escola_id
-        LEFT JOIN rotas_entrega re ON res.rota_id = re.id
+        ${joinRotas}
         LEFT JOIN guia_produto_escola gpe ON e.id = gpe.escola_id 
           AND EXISTS (
             SELECT 1 FROM guias g 
@@ -179,7 +223,7 @@ class GuiaModel {
             AND g.ano = $2
           )
         GROUP BY e.id, e.nome, e.endereco
-        ORDER BY escola_rota NULLS LAST, ordem_rota NULLS LAST, e.nome
+        ORDER BY ${hasRotas ? "escola_rota NULLS LAST, ordem_rota NULLS LAST," : ""} e.nome
       `, [mes, ano]);
       return result;
     } catch (error) {

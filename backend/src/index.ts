@@ -345,8 +345,12 @@ async function iniciarServidor() {
       const { initEstoqueCentral } = await import('./modules/estoque/controllers/estoqueCentralController');
       await initEstoqueCentral();
 
-      const { createGuiaTables } = await import('./modules/guias/models/Guia');
-      await createGuiaTables();
+      try {
+        const { createGuiaTables } = await import('./modules/guias/models/Guia');
+        await createGuiaTables();
+      } catch (e) {
+        console.error('⚠️ Falha ao criar tabelas de guias (continuando):', e);
+      }
 
 
 
