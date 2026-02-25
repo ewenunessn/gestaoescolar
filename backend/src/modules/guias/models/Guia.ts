@@ -12,8 +12,20 @@ export interface Guia {
 }
 
 export async function createGuiaTables() {
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS guias (
+  const tableExists = async (name: string): Promise<boolean> => {
+    try {
+      const r = await db.get(
+        `SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name=$1`,
+        [name]
+      );
+      return !!r;
+    } catch {
+      return false;
+    }
+  };
+
+  await db.query(
+    `CREATE TABLE IF NOT EXISTS guias (
       id SERIAL PRIMARY KEY,
       mes INTEGER NOT NULL,
       ano INTEGER NOT NULL,
@@ -22,14 +34,22 @@ export async function createGuiaTables() {
       status VARCHAR(20) NOT NULL DEFAULT 'aberta' CHECK (status IN ('aberta','fechada','cancelada')),
       created_at TIMESTAMP DEFAULT NOW(),
       updated_at TIMESTAMP DEFAULT NOW()
-    )
-  `);
-  await db.query(`
+    )`
+  );
+
+  const hasProdutos = await tableExists('produtos');
+  const hasEscolas = await tableExists('escolas');
+
+  const fkGuia = `guia_id INTEGER NOT NULL${true ? '' : ''}`;
+  const fkProduto = `produto_id INTEGER${hasProdutos ? ' NOT NULL' : ''}`;
+  const fkEscola = `escola_id INTEGER${hasEscolas ? ' NOT NULL' : ''}`;
+
+  const guiaProdutoSql = `
     CREATE TABLE IF NOT EXISTS guia_produto_escola (
       id SERIAL PRIMARY KEY,
-      guia_id INTEGER NOT NULL REFERENCES guias(id) ON DELETE CASCADE,
-      produto_id INTEGER NOT NULL REFERENCES produtos(id),
-      escola_id INTEGER NOT NULL REFERENCES escolas(id),
+      ${fkGuia},
+      ${fkProduto},
+      ${fkEscola},
       quantidade DECIMAL(12,3) DEFAULT 0,
       unidade TEXT,
       lote TEXT,
@@ -44,25 +64,29 @@ export async function createGuiaTables() {
       created_at TIMESTAMP DEFAULT NOW(),
       updated_at TIMESTAMP DEFAULT NOW()
     )
-  `);
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS rotas_entrega (
+  `;
+  await db.query(guiaProdutoSql);
+
+  await db.query(
+    `CREATE TABLE IF NOT EXISTS rotas_entrega (
       id SERIAL PRIMARY KEY,
       nome TEXT NOT NULL,
       created_at TIMESTAMP DEFAULT NOW(),
       updated_at TIMESTAMP DEFAULT NOW()
-    )
-  `);
-  await db.query(`
+    )`
+  );
+
+  const rotaEscolasSql = `
     CREATE TABLE IF NOT EXISTS rota_escolas (
       id SERIAL PRIMARY KEY,
-      rota_id INTEGER NOT NULL REFERENCES rotas_entrega(id) ON DELETE CASCADE,
-      escola_id INTEGER NOT NULL REFERENCES escolas(id),
+      rota_id INTEGER NOT NULL,
+      escola_id INTEGER,
       ordem INTEGER,
       created_at TIMESTAMP DEFAULT NOW(),
       updated_at TIMESTAMP DEFAULT NOW()
     )
-  `);
+  `;
+  await db.query(rotaEscolasSql);
 }
 
 export interface GuiaProdutoEscola {
