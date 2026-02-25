@@ -136,10 +136,12 @@ export async function criarEscolaModalidade(req: Request, res: Response) {
 
     // UPSERT: Insere ou atualiza se já existir
     const result = await db.query(`
-      INSERT INTO escola_modalidades (escola_id, modalidade_id, quantidade_alunos)
-      VALUES ($1, $2, $3)
+      INSERT INTO escola_modalidades (escola_id, modalidade_id, quantidade_alunos, updated_at)
+      VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
       ON CONFLICT (escola_id, modalidade_id) 
-      DO UPDATE SET quantidade_alunos = EXCLUDED.quantidade_alunos
+      DO UPDATE SET 
+        quantidade_alunos = EXCLUDED.quantidade_alunos,
+        updated_at = CURRENT_TIMESTAMP
       RETURNING *
     `, [escola_id, modalidade_id, quantidade_alunos]);
 
