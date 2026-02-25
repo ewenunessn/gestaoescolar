@@ -345,6 +345,9 @@ async function iniciarServidor() {
       const { initEstoqueCentral } = await import('./modules/estoque/controllers/estoqueCentralController');
       await initEstoqueCentral();
 
+      const { createGuiaTables } = await import('./modules/guias/models/Guia');
+      await createGuiaTables();
+
 
 
       console.log('✅ Módulos inicializados com sucesso!');

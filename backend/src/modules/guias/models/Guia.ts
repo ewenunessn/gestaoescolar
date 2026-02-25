@@ -11,6 +11,60 @@ export interface Guia {
   total_produtos?: number;
 }
 
+export async function createGuiaTables() {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS guias (
+      id SERIAL PRIMARY KEY,
+      mes INTEGER NOT NULL,
+      ano INTEGER NOT NULL,
+      nome TEXT,
+      observacao TEXT,
+      status VARCHAR(20) NOT NULL DEFAULT 'aberta' CHECK (status IN ('aberta','fechada','cancelada')),
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS guia_produto_escola (
+      id SERIAL PRIMARY KEY,
+      guia_id INTEGER NOT NULL REFERENCES guias(id) ON DELETE CASCADE,
+      produto_id INTEGER NOT NULL REFERENCES produtos(id),
+      escola_id INTEGER NOT NULL REFERENCES escolas(id),
+      quantidade DECIMAL(12,3) DEFAULT 0,
+      unidade TEXT,
+      lote TEXT,
+      observacao TEXT,
+      para_entrega BOOLEAN DEFAULT TRUE,
+      entrega_confirmada BOOLEAN DEFAULT FALSE,
+      quantidade_entregue DECIMAL(12,3),
+      data_entrega TIMESTAMP,
+      nome_quem_recebeu TEXT,
+      nome_quem_entregou TEXT,
+      status VARCHAR(20),
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS rotas_entrega (
+      id SERIAL PRIMARY KEY,
+      nome TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS rota_escolas (
+      id SERIAL PRIMARY KEY,
+      rota_id INTEGER NOT NULL REFERENCES rotas_entrega(id) ON DELETE CASCADE,
+      escola_id INTEGER NOT NULL REFERENCES escolas(id),
+      ordem INTEGER,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+}
+
 export interface GuiaProdutoEscola {
   id: number;
   guia_id: number;
