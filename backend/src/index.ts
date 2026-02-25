@@ -34,6 +34,7 @@ import demandasRoutes from "./modules/demandas/routes/demandaRoutes";
 
 import { createServer } from 'http';
 import { initializeRedisCache } from "./config/redis";
+import { createGuiaTables, createEssentialTables } from "./modules/guias/models/Guia";
 
 // Módulo de gás removido
 
@@ -346,7 +347,6 @@ async function iniciarServidor() {
       await initEstoqueCentral();
 
       try {
-        const { createGuiaTables } = await import('./modules/guias/models/Guia');
         await createGuiaTables();
       } catch (e) {
         console.error('⚠️ Falha ao criar tabelas de guias (continuando):', e);
@@ -421,7 +421,6 @@ module.exports = app;
 (async function safeInitSchemaForVercel() {
   if (process.env.VERCEL === '1') {
     try {
-      const { createEssentialTables, createGuiaTables } = await import('./modules/guias/models/Guia');
       await createEssentialTables();
       await createGuiaTables();
       console.log('✅ Schema essencial de guias/escolas garantido (Vercel)');
