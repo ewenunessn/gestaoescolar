@@ -49,6 +49,19 @@ async function detectarSchemaComposicao(): Promise<'novo'|'antigo'|'nenhum'> {
   return 'antigo';
 }
 
+async function withEnsureRetry<T>(op: () => Promise<T>): Promise<T> {
+  try {
+    return await op();
+  } catch (err: any) {
+    const pgCode = err && (err.code || err.original?.code);
+    if (pgCode === '42P01') {
+      await ensureProdutoComposicaoTable();
+      return await op();
+    }
+    throw err;
+  }
+}
+
 export async function standardizarComposicaoNutricional(req: Request, res: Response) {
   try {
     const user = (req as any).user;
@@ -299,60 +312,62 @@ export async function removerProduto(req: Request, res: Response) {
 
 export async function buscarComposicaoNutricional(req: Request, res: Response) {
   try {
-    await ensureProdutoComposicaoTable();
-    const schema = await detectarSchemaComposicao();
-    const { id } = req.params;
+    const data = await withEnsureRetry(async () => {
+      await ensureProdutoComposicaoTable();
+      const schema = await detectarSchemaComposicao();
+      const { id } = req.params;
+      if (schema === 'novo') {
+        const r = await db.query(`
+          SELECT 
+            produto_id,
+            energia_kcal as calorias,
+            proteina_g as proteinas,
+            carboidratos_g as carboidratos,
+            lipideos_g as gorduras,
+            fibra_alimentar_g as fibras,
+            sodio_mg as sodio,
+            acucares_g as acucares,
+            gorduras_saturadas_g,
+            gorduras_trans_g,
+            colesterol_mg as colesterol,
+            calcio_mg as calcio,
+            ferro_mg as ferro,
+            vitamina_e_mg as vitamina_c,
+            vitamina_b1_mg as vitamina_a
+          FROM produto_composicao_nutricional 
+          WHERE produto_id = $1
+        `, [id]);
+        return r;
+      } else {
+        const r = await db.query(`
+          SELECT 
+            produto_id,
+            calorias,
+            proteinas,
+            carboidratos,
+            gorduras,
+            fibras,
+            sodio,
+            acucares,
+            gorduras_saturadas as gorduras_saturadas_g,
+            gorduras_trans as gorduras_trans_g,
+            colesterol,
+            calcio,
+            ferro,
+            vitamina_c,
+            vitamina_a
+          FROM produto_composicao_nutricional 
+          WHERE produto_id = $1
+        `, [id]);
+        return r;
+      }
+    });
 
-    let result;
-    if (schema === 'novo') {
-      result = await db.query(`
-        SELECT 
-          produto_id,
-          energia_kcal as calorias,
-          proteina_g as proteinas,
-          carboidratos_g as carboidratos,
-          lipideos_g as gorduras,
-          fibra_alimentar_g as fibras,
-          sodio_mg as sodio,
-          acucares_g as acucares,
-          gorduras_saturadas_g,
-          gorduras_trans_g,
-          colesterol_mg as colesterol,
-          calcio_mg as calcio,
-          ferro_mg as ferro,
-          vitamina_e_mg as vitamina_c,
-          vitamina_b1_mg as vitamina_a
-        FROM produto_composicao_nutricional 
-        WHERE produto_id = $1
-      `, [id]);
-    } else {
-      result = await db.query(`
-        SELECT 
-          produto_id,
-          calorias,
-          proteinas,
-          carboidratos,
-          gorduras,
-          fibras,
-          sodio,
-          acucares,
-          gorduras_saturadas as gorduras_saturadas_g,
-          gorduras_trans as gorduras_trans_g,
-          colesterol,
-          calcio,
-          ferro,
-          vitamina_c,
-          vitamina_a
-        FROM produto_composicao_nutricional 
-        WHERE produto_id = $1
-      `, [id]);
-    }
-
-    if (result.rows.length === 0) {
+    if (data.rows.length === 0) {
       return res.json({
         success: true,
         data: {
-          produto_id: parseInt(id),
+          produto_id: parseInt(req.params.id),
           calorias: null,
           proteinas: null,
           carboidratos: null,
@@ -374,7 +389,7 @@ export async function buscarComposicaoNutricional(req: Request, res: Response) {
 
     res.json({
       success: true,
-      data: result.rows[0],
+      data: data.rows[0],
       message: "Composição nutricional encontrada"
     });
   } catch (error) {
@@ -389,174 +404,173 @@ export async function buscarComposicaoNutricional(req: Request, res: Response) {
 
 export async function salvarComposicaoNutricional(req: Request, res: Response) {
   try {
-    await ensureProdutoComposicaoTable();
-    const schema = await detectarSchemaComposicao();
-    const { id } = req.params;
-    const {
-      calorias,
-      proteinas,
-      carboidratos,
-      gorduras,
-      fibras,
-      sodio,
-      acucares,
-      gorduras_saturadas_g,
-      gorduras_trans_g,
-      colesterol,
-      calcio,
-      ferro,
-      vitamina_c,
-      vitamina_a
-    } = req.body;
-
-    const existingResult = await db.query(`
-      SELECT id FROM produto_composicao_nutricional WHERE produto_id = $1
-    `, [id]);
-
-    let result;
-    if (existingResult.rows.length > 0) {
-      if (schema === 'novo') {
-        result = await db.query(`
-          UPDATE produto_composicao_nutricional SET
-            energia_kcal = $1,
-            proteina_g = $2,
-            carboidratos_g = $3,
-            lipideos_g = $4,
-            fibra_alimentar_g = $5,
-            sodio_mg = $6,
-            acucares_g = $7,
-            gorduras_saturadas_g = $8,
-            gorduras_trans_g = $9,
-            colesterol_mg = $10,
-            calcio_mg = $11,
-            ferro_mg = $12,
-            vitamina_e_mg = $13,
-            vitamina_b1_mg = $14,
-            atualizado_em = CURRENT_TIMESTAMP
-          WHERE produto_id = $15
-          RETURNING 
-            produto_id,
-            energia_kcal as calorias,
-            proteina_g as proteinas,
-            carboidratos_g as carboidratos,
-            lipideos_g as gorduras,
-            fibra_alimentar_g as fibras,
-            sodio_mg as sodio,
-            acucares_g as acucares,
-            gorduras_saturadas_g,
-            gorduras_trans_g,
-            colesterol_mg as colesterol,
-            calcio_mg as calcio,
-            ferro_mg as ferro,
-            vitamina_e_mg as vitamina_c,
-            vitamina_b1_mg as vitamina_a
-        `, [
-          calorias, proteinas, carboidratos, gorduras, fibras, sodio,
-          acucares, gorduras_saturadas_g, gorduras_trans_g, colesterol,
-          calcio, ferro, vitamina_c, vitamina_a, id
-        ]);
+    const result = await withEnsureRetry(async () => {
+      await ensureProdutoComposicaoTable();
+      const schema = await detectarSchemaComposicao();
+      const { id } = req.params;
+      const {
+        calorias,
+        proteinas,
+        carboidratos,
+        gorduras,
+        fibras,
+        sodio,
+        acucares,
+        gorduras_saturadas_g,
+        gorduras_trans_g,
+        colesterol,
+        calcio,
+        ferro,
+        vitamina_c,
+        vitamina_a
+      } = req.body;
+      const existingResult = await db.query(`
+        SELECT id FROM produto_composicao_nutricional WHERE produto_id = $1
+      `, [id]);
+      if (existingResult.rows.length > 0) {
+        if (schema === 'novo') {
+          return await db.query(`
+            UPDATE produto_composicao_nutricional SET
+              energia_kcal = $1,
+              proteina_g = $2,
+              carboidratos_g = $3,
+              lipideos_g = $4,
+              fibra_alimentar_g = $5,
+              sodio_mg = $6,
+              acucares_g = $7,
+              gorduras_saturadas_g = $8,
+              gorduras_trans_g = $9,
+              colesterol_mg = $10,
+              calcio_mg = $11,
+              ferro_mg = $12,
+              vitamina_e_mg = $13,
+              vitamina_b1_mg = $14,
+              atualizado_em = CURRENT_TIMESTAMP
+            WHERE produto_id = $15
+            RETURNING 
+              produto_id,
+              energia_kcal as calorias,
+              proteina_g as proteinas,
+              carboidratos_g as carboidratos,
+              lipideos_g as gorduras,
+              fibra_alimentar_g as fibras,
+              sodio_mg as sodio,
+              acucares_g as acucares,
+              gorduras_saturadas_g,
+              gorduras_trans_g,
+              colesterol_mg as colesterol,
+              calcio_mg as calcio,
+              ferro_mg as ferro,
+              vitamina_e_mg as vitamina_c,
+              vitamina_b1_mg as vitamina_a
+          `, [
+            calorias, proteinas, carboidratos, gorduras, fibras, sodio,
+            acucares, gorduras_saturadas_g, gorduras_trans_g, colesterol,
+            calcio, ferro, vitamina_c, vitamina_a, id
+          ]);
+        } else {
+          return await db.query(`
+            UPDATE produto_composicao_nutricional SET
+              calorias = $1,
+              proteinas = $2,
+              carboidratos = $3,
+              gorduras = $4,
+              fibras = $5,
+              sodio = $6,
+              acucares = $7,
+              gorduras_saturadas = $8,
+              gorduras_trans = $9,
+              colesterol = $10,
+              calcio = $11,
+              ferro = $12,
+              vitamina_c = $13,
+              vitamina_a = $14,
+              updated_at = CURRENT_TIMESTAMP
+            WHERE produto_id = $15
+            RETURNING 
+              produto_id,
+              calorias,
+              proteinas,
+              carboidratos,
+              gorduras,
+              fibras,
+              sodio,
+              acucares,
+              gorduras_saturadas as gorduras_saturadas_g,
+              gorduras_trans as gorduras_trans_g,
+              colesterol,
+              calcio,
+              ferro,
+              vitamina_c,
+              vitamina_a
+          `, [
+            calorias, proteinas, carboidratos, gorduras, fibras, sodio,
+            acucares, gorduras_saturadas_g, gorduras_trans_g, colesterol,
+            calcio, ferro, vitamina_c, vitamina_a, id
+          ]);
+        }
       } else {
-        result = await db.query(`
-          UPDATE produto_composicao_nutricional SET
-            calorias = $1,
-            proteinas = $2,
-            carboidratos = $3,
-            gorduras = $4,
-            fibras = $5,
-            sodio = $6,
-            acucares = $7,
-            gorduras_saturadas = $8,
-            gorduras_trans = $9,
-            colesterol = $10,
-            calcio = $11,
-            ferro = $12,
-            vitamina_c = $13,
-            vitamina_a = $14,
-            updated_at = CURRENT_TIMESTAMP
-          WHERE produto_id = $15
-          RETURNING 
-            produto_id,
-            calorias,
-            proteinas,
-            carboidratos,
-            gorduras,
-            fibras,
-            sodio,
-            acucares,
-            gorduras_saturadas as gorduras_saturadas_g,
-            gorduras_trans as gorduras_trans_g,
-            colesterol,
-            calcio,
-            ferro,
-            vitamina_c,
-            vitamina_a
-        `, [
-          calorias, proteinas, carboidratos, gorduras, fibras, sodio,
-          acucares, gorduras_saturadas_g, gorduras_trans_g, colesterol,
-          calcio, ferro, vitamina_c, vitamina_a, id
-        ]);
+        if (schema === 'novo') {
+          return await db.query(`
+            INSERT INTO produto_composicao_nutricional (
+              produto_id, energia_kcal, proteina_g, carboidratos_g, lipideos_g, fibra_alimentar_g,
+              sodio_mg, acucares_g, gorduras_saturadas_g, gorduras_trans_g, colesterol_mg,
+              calcio_mg, ferro_mg, vitamina_e_mg, vitamina_b1_mg, criado_em
+            ) VALUES (
+              $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, CURRENT_TIMESTAMP
+            ) RETURNING 
+              produto_id,
+              energia_kcal as calorias,
+              proteina_g as proteinas,
+              carboidratos_g as carboidratos,
+              lipideos_g as gorduras,
+              fibra_alimentar_g as fibras,
+              sodio_mg as sodio,
+              acucares_g as acucares,
+              gorduras_saturadas_g,
+              gorduras_trans_g,
+              colesterol_mg as colesterol,
+              calcio_mg as calcio,
+              ferro_mg as ferro,
+              vitamina_e_mg as vitamina_c,
+              vitamina_b1_mg as vitamina_a
+          `, [
+            id, calorias, proteinas, carboidratos, gorduras, fibras, sodio,
+            acucares, gorduras_saturadas_g, gorduras_trans_g, colesterol,
+            calcio, ferro, vitamina_c, vitamina_a
+          ]);
+        } else {
+          return await db.query(`
+            INSERT INTO produto_composicao_nutricional (
+              produto_id, calorias, proteinas, carboidratos, gorduras, fibras,
+              sodio, acucares, gorduras_saturadas, gorduras_trans, colesterol,
+              calcio, ferro, vitamina_c, vitamina_a, created_at
+            ) VALUES (
+              $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, CURRENT_TIMESTAMP
+            ) RETURNING 
+              produto_id,
+              calorias,
+              proteinas,
+              carboidratos,
+              gorduras,
+              fibras,
+              sodio,
+              acucares,
+              gorduras_saturadas as gorduras_saturadas_g,
+              gorduras_trans as gorduras_trans_g,
+              colesterol,
+              calcio,
+              ferro,
+              vitamina_c,
+              vitamina_a
+          `, [
+            id, calorias, proteinas, carboidratos, gorduras, fibras, sodio,
+            acucares, gorduras_saturadas_g, gorduras_trans_g, colesterol,
+            calcio, ferro, vitamina_c, vitamina_a
+          ]);
+        }
       }
-    } else {
-      if (schema === 'novo') {
-        result = await db.query(`
-          INSERT INTO produto_composicao_nutricional (
-            produto_id, energia_kcal, proteina_g, carboidratos_g, lipideos_g, fibra_alimentar_g,
-            sodio_mg, acucares_g, gorduras_saturadas_g, gorduras_trans_g, colesterol_mg,
-            calcio_mg, ferro_mg, vitamina_e_mg, vitamina_b1_mg, criado_em
-          ) VALUES (
-            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, CURRENT_TIMESTAMP
-          ) RETURNING 
-            produto_id,
-            energia_kcal as calorias,
-            proteina_g as proteinas,
-            carboidratos_g as carboidratos,
-            lipideos_g as gorduras,
-            fibra_alimentar_g as fibras,
-            sodio_mg as sodio,
-            acucares_g as acucares,
-            gorduras_saturadas_g,
-            gorduras_trans_g,
-            colesterol_mg as colesterol,
-            calcio_mg as calcio,
-            ferro_mg as ferro,
-            vitamina_e_mg as vitamina_c,
-            vitamina_b1_mg as vitamina_a
-        `, [
-          id, calorias, proteinas, carboidratos, gorduras, fibras, sodio,
-          acucares, gorduras_saturadas_g, gorduras_trans_g, colesterol,
-          calcio, ferro, vitamina_c, vitamina_a
-        ]);
-      } else {
-        result = await db.query(`
-          INSERT INTO produto_composicao_nutricional (
-            produto_id, calorias, proteinas, carboidratos, gorduras, fibras,
-            sodio, acucares, gorduras_saturadas, gorduras_trans, colesterol,
-            calcio, ferro, vitamina_c, vitamina_a, created_at
-          ) VALUES (
-            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, CURRENT_TIMESTAMP
-          ) RETURNING 
-            produto_id,
-            calorias,
-            proteinas,
-            carboidratos,
-            gorduras,
-            fibras,
-            sodio,
-            acucares,
-            gorduras_saturadas as gorduras_saturadas_g,
-            gorduras_trans as gorduras_trans_g,
-            colesterol,
-            calcio,
-            ferro,
-            vitamina_c,
-            vitamina_a
-        `, [
-          id, calorias, proteinas, carboidratos, gorduras, fibras, sodio,
-          acucares, gorduras_saturadas_g, gorduras_trans_g, colesterol,
-          calcio, ferro, vitamina_c, vitamina_a
-        ]);
-      }
-    }
+    });
 
     res.json({
       success: true,
