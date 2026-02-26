@@ -103,25 +103,29 @@ class RotaModel {
       DO $$
       BEGIN
         BEGIN
+          ALTER TABLE rotas_entrega
+            ADD CONSTRAINT uq_rotas_entrega_id UNIQUE (id);
+        EXCEPTION WHEN OTHERS THEN NULL; END;
+        BEGIN
           ALTER TABLE rota_escolas
             ADD CONSTRAINT fk_rota_escolas_rota
             FOREIGN KEY (rota_id) REFERENCES rotas_entrega(id) ON DELETE CASCADE NOT VALID;
-        EXCEPTION WHEN duplicate_object THEN NULL; END;
+        EXCEPTION WHEN OTHERS THEN NULL; END;
         BEGIN
           ALTER TABLE rota_escolas
             ADD CONSTRAINT fk_rota_escolas_escola
             FOREIGN KEY (escola_id) REFERENCES escolas(id) ON DELETE CASCADE NOT VALID;
-        EXCEPTION WHEN duplicate_object THEN NULL; END;
+        EXCEPTION WHEN OTHERS THEN NULL; END;
         BEGIN
           ALTER TABLE planejamento_entregas
             ADD CONSTRAINT fk_planejamento_entregas_guia
             FOREIGN KEY (guia_id) REFERENCES guias(id) ON DELETE CASCADE NOT VALID;
-        EXCEPTION WHEN duplicate_object THEN NULL; END;
+        EXCEPTION WHEN OTHERS THEN NULL; END;
         BEGIN
           ALTER TABLE planejamento_entregas
             ADD CONSTRAINT fk_planejamento_entregas_rota
             FOREIGN KEY (rota_id) REFERENCES rotas_entrega(id) ON DELETE CASCADE NOT VALID;
-        EXCEPTION WHEN duplicate_object THEN NULL; END;
+        EXCEPTION WHEN OTHERS THEN NULL; END;
       END
       $$;
     `);

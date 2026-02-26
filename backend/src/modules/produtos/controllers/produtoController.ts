@@ -2,6 +2,36 @@
 import { Request, Response } from "express";
 const db = require("../../../database");
 
+async function ensureProdutoComposicaoTable() {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS produto_composicao_nutricional (
+      id SERIAL PRIMARY KEY,
+      produto_id INTEGER NOT NULL REFERENCES produtos(id) ON DELETE CASCADE,
+      energia_kcal DECIMAL(8,2),
+      proteina_g DECIMAL(8,2),
+      carboidratos_g DECIMAL(8,2),
+      lipideos_g DECIMAL(8,2),
+      fibra_alimentar_g DECIMAL(8,2),
+      sodio_mg DECIMAL(8,2),
+      acucares_g DECIMAL(8,2),
+      gorduras_saturadas_g DECIMAL(8,2),
+      gorduras_trans_g DECIMAL(8,2),
+      colesterol_mg DECIMAL(8,2),
+      calcio_mg DECIMAL(8,2),
+      ferro_mg DECIMAL(8,2),
+      vitamina_e_mg DECIMAL(8,2),
+      vitamina_b1_mg DECIMAL(8,2),
+      criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(produto_id)
+    )
+  `);
+  await db.query(`
+    CREATE INDEX IF NOT EXISTS idx_produto_composicao_produto_id 
+    ON produto_composicao_nutricional(produto_id)
+  `);
+}
+
 export async function listarProdutos(req: Request, res: Response) {
   try {
     const result = await db.query(`
@@ -195,6 +225,7 @@ export async function removerProduto(req: Request, res: Response) {
 
 export async function buscarComposicaoNutricional(req: Request, res: Response) {
   try {
+    await ensureProdutoComposicaoTable();
     const { id } = req.params;
 
     const result = await db.query(`
@@ -260,6 +291,7 @@ export async function buscarComposicaoNutricional(req: Request, res: Response) {
 
 export async function salvarComposicaoNutricional(req: Request, res: Response) {
   try {
+    await ensureProdutoComposicaoTable();
     const { id } = req.params;
     const {
       calorias,
