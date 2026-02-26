@@ -54,8 +54,83 @@ export interface CreatePlanejamentoData {
 }
 
 class RotaModel {
+  private rotasSchemaEnsured = false;
+
+  private async ensureRotasSchema() {
+    if (this.rotasSchemaEnsured) return;
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS rotas_entrega (
+        id SERIAL PRIMARY KEY,
+        nome VARCHAR(255) NOT NULL,
+        descricao TEXT,
+        cor VARCHAR(7) DEFAULT '#1976d2',
+        ativo BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS rota_escolas (
+        id SERIAL PRIMARY KEY,
+        rota_id INTEGER NOT NULL,
+        escola_id INTEGER NOT NULL,
+        ordem INTEGER DEFAULT 1,
+        observacao TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(rota_id, escola_id)
+      )
+    `);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS planejamento_entregas (
+        id SERIAL PRIMARY KEY,
+        guia_id INTEGER NOT NULL,
+        rota_id INTEGER NOT NULL,
+        data_planejada DATE,
+        status VARCHAR(20) DEFAULT 'planejado' CHECK (status IN ('planejado', 'em_andamento', 'concluido', 'cancelado')),
+        responsavel VARCHAR(255),
+        observacao TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(guia_id, rota_id)
+      )
+    `);
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_rota_escolas_rota ON rota_escolas(rota_id)`);
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_rota_escolas_escola ON rota_escolas(escola_id)`);
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_planejamento_entregas_guia ON planejamento_entregas(guia_id)`);
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_planejamento_entregas_rota ON planejamento_entregas(rota_id)`);
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_planejamento_entregas_status ON planejamento_entregas(status)`);
+    await db.query(`
+      DO $$
+      BEGIN
+        BEGIN
+          ALTER TABLE rota_escolas
+            ADD CONSTRAINT fk_rota_escolas_rota
+            FOREIGN KEY (rota_id) REFERENCES rotas_entrega(id) ON DELETE CASCADE NOT VALID;
+        EXCEPTION WHEN duplicate_object THEN NULL; END;
+        BEGIN
+          ALTER TABLE rota_escolas
+            ADD CONSTRAINT fk_rota_escolas_escola
+            FOREIGN KEY (escola_id) REFERENCES escolas(id) ON DELETE CASCADE NOT VALID;
+        EXCEPTION WHEN duplicate_object THEN NULL; END;
+        BEGIN
+          ALTER TABLE planejamento_entregas
+            ADD CONSTRAINT fk_planejamento_entregas_guia
+            FOREIGN KEY (guia_id) REFERENCES guias(id) ON DELETE CASCADE NOT VALID;
+        EXCEPTION WHEN duplicate_object THEN NULL; END;
+        BEGIN
+          ALTER TABLE planejamento_entregas
+            ADD CONSTRAINT fk_planejamento_entregas_rota
+            FOREIGN KEY (rota_id) REFERENCES rotas_entrega(id) ON DELETE CASCADE NOT VALID;
+        EXCEPTION WHEN duplicate_object THEN NULL; END;
+      END
+      $$;
+    `);
+    this.rotasSchemaEnsured = true;
+  }
+
   // Rotas de Entrega
   async listarRotas(): Promise<RotaEntrega[]> {
+    await this.ensureRotasSchema();
     const result = await db.all(`
       SELECT 
         r.*,
@@ -69,6 +144,7 @@ class RotaModel {
   }
 
   async buscarRota(id: number): Promise<RotaEntrega | null> {
+    await this.ensureRotasSchema();
     const result = await db.get(`
       SELECT * FROM rotas_entrega WHERE id = $1
     `, [id]);
@@ -76,6 +152,7 @@ class RotaModel {
   }
 
   async criarRota(data: CreateRotaData): Promise<RotaEntrega> {
+    await this.ensureRotasSchema();
     const result = await db.run(`
       INSERT INTO rotas_entrega (nome, descricao, cor, ativo, created_at, updated_at)
       VALUES ($1, $2, $3, $4, NOW(), NOW())
@@ -86,6 +163,7 @@ class RotaModel {
   }
 
   async atualizarRota(id: number, data: Partial<CreateRotaData>): Promise<RotaEntrega> {
+    await this.ensureRotasSchema();
     const fields = [];
     const values = [];
     let paramCount = 1;
@@ -125,6 +203,7 @@ class RotaModel {
 
   async deletarRota(id: number): Promise<boolean> {
     try {
+      await this.ensureRotasSchema();
       await db.run('BEGIN');
 
       // Primeiro remove as associações com escolas
@@ -152,6 +231,7 @@ class RotaModel {
 
   // Escolas da Rota
   async listarEscolasRota(rotaId: number): Promise<RotaEscola[]> {
+    await this.ensureRotasSchema();
     const result = await db.all(`
       SELECT 
         re.*,
@@ -166,6 +246,7 @@ class RotaModel {
   }
 
   async adicionarEscolaRota(rotaId: number, escolaId: number, ordem?: number, observacao?: string): Promise<RotaEscola> {
+    await this.ensureRotasSchema();
     // Verificar se a escola já está em QUALQUER rota
     const escolaEmOutraRota = await db.get(`
       SELECT re.*, r.nome as rota_nome 
@@ -218,6 +299,7 @@ class RotaModel {
 
   async atualizarOrdemEscolas(rotaId: number, escolasOrdem: { escolaId: number, ordem: number }[]): Promise<boolean> {
     try {
+      await this.ensureRotasSchema();
       await db.run('BEGIN');
 
       for (const item of escolasOrdem) {
@@ -238,6 +320,7 @@ class RotaModel {
 
   // Planejamento de Entregas
   async listarPlanejamentos(guiaId?: number, rotaId?: number): Promise<PlanejamentoEntrega[]> {
+    await this.ensureRotasSchema();
     let whereClause = 'WHERE 1=1';
     const params = [];
     let paramCount = 1;
@@ -271,6 +354,7 @@ class RotaModel {
   }
 
   async criarPlanejamento(data: CreatePlanejamentoData): Promise<PlanejamentoEntrega> {
+    await this.ensureRotasSchema();
     const result = await db.run(`
       INSERT INTO planejamento_entregas (guia_id, rota_id, data_planejada, responsavel, observacao, created_at, updated_at)
       VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
@@ -297,6 +381,7 @@ class RotaModel {
   }
 
   async atualizarPlanejamento(id: number, data: Partial<CreatePlanejamentoData & { status: string }>): Promise<PlanejamentoEntrega> {
+    await this.ensureRotasSchema();
     const fields = [];
     const values = [];
     let paramCount = 1;
@@ -335,6 +420,7 @@ class RotaModel {
   }
 
   async deletarPlanejamento(id: number): Promise<boolean> {
+    await this.ensureRotasSchema();
     const result = await db.run(`
       DELETE FROM planejamento_entregas WHERE id = $1
     `, [id]);
@@ -343,6 +429,7 @@ class RotaModel {
 
   // Método para listar escolas disponíveis (não associadas a nenhuma rota)
   async listarEscolasDisponiveis(): Promise<any[]> {
+    await this.ensureRotasSchema();
     const result = await db.all(`
       SELECT e.*
       FROM escolas e
@@ -360,6 +447,7 @@ class RotaModel {
 
   // Método para verificar se uma escola está em alguma rota
   async verificarEscolaEmRota(escolaId: number): Promise<{ emRota: boolean; rotaNome?: string; rotaId?: number }> {
+    await this.ensureRotasSchema();
     const result = await db.get(`
       SELECT re.rota_id, r.nome as rota_nome
       FROM rota_escolas re

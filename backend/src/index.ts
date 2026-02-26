@@ -385,6 +385,12 @@ async function iniciarServidor() {
       await initEstoqueCentral();
 
       try {
+        await createEssentialTables();
+      } catch (e) {
+        console.error('⚠️ Falha ao criar tabelas essenciais (continuando):', e);
+      }
+
+      try {
         await createGuiaTables();
       } catch (e) {
         console.error('⚠️ Falha ao criar tabelas de guias (continuando):', e);
