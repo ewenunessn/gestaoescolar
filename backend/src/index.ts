@@ -54,40 +54,39 @@ const httpServer = createServer(app);
 app.use(express.json());
 
 async function ensureProdutoComposicaoNutricionalTable() {
-  const sqlPath = path.join(__dirname, "migrations", "create_produto_composicao_nutricional.sql");
-  if (fs.existsSync(sqlPath)) {
-    const sql = fs.readFileSync(sqlPath, "utf8");
-    await db.query(sql);
+  const exists = await db.get(
+    `SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name=$1`,
+    ['produto_composicao_nutricional']
+  );
+  if (!exists) {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS produto_composicao_nutricional (
+        id SERIAL PRIMARY KEY,
+        produto_id INTEGER NOT NULL REFERENCES produtos(id) ON DELETE CASCADE,
+        energia_kcal DECIMAL(8,2),
+        proteina_g DECIMAL(8,2),
+        carboidratos_g DECIMAL(8,2),
+        lipideos_g DECIMAL(8,2),
+        fibra_alimentar_g DECIMAL(8,2),
+        sodio_mg DECIMAL(8,2),
+        acucares_g DECIMAL(8,2),
+        gorduras_saturadas_g DECIMAL(8,2),
+        gorduras_trans_g DECIMAL(8,2),
+        colesterol_mg DECIMAL(8,2),
+        calcio_mg DECIMAL(8,2),
+        ferro_mg DECIMAL(8,2),
+        vitamina_e_mg DECIMAL(8,2),
+        vitamina_b1_mg DECIMAL(8,2),
+        criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(produto_id)
+      )
+    `);
+    await db.query(`
+      CREATE INDEX IF NOT EXISTS idx_produto_composicao_produto_id 
+      ON produto_composicao_nutricional(produto_id)
+    `);
   }
-
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS produto_composicao_nutricional (
-      id SERIAL PRIMARY KEY,
-      produto_id INTEGER NOT NULL REFERENCES produtos(id) ON DELETE CASCADE,
-      energia_kcal DECIMAL(8,2),
-      proteina_g DECIMAL(8,2),
-      carboidratos_g DECIMAL(8,2),
-      lipideos_g DECIMAL(8,2),
-      fibra_alimentar_g DECIMAL(8,2),
-      sodio_mg DECIMAL(8,2),
-      acucares_g DECIMAL(8,2),
-      gorduras_saturadas_g DECIMAL(8,2),
-      gorduras_trans_g DECIMAL(8,2),
-      colesterol_mg DECIMAL(8,2),
-      calcio_mg DECIMAL(8,2),
-      ferro_mg DECIMAL(8,2),
-      vitamina_e_mg DECIMAL(8,2),
-      vitamina_b1_mg DECIMAL(8,2),
-      criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(produto_id)
-    )
-  `);
-
-  await db.query(`
-    CREATE INDEX IF NOT EXISTS idx_produto_composicao_produto_id 
-    ON produto_composicao_nutricional(produto_id)
-  `);
 }
 
 // Configuração CORS usando config.json
