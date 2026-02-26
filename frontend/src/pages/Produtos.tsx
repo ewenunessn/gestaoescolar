@@ -56,7 +56,7 @@ import {
   ExpandLess,
   Clear as ClearIcon,
 } from "@mui/icons-material";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import * as XLSX from 'xlsx';
 
 interface ProdutoForm {
@@ -70,6 +70,7 @@ interface ProdutoForm {
 
 const ProdutosPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Estados de filtros (devem vir antes dos hooks que os usam)
   const [searchTerm, setSearchTerm] = useState('');
@@ -124,6 +125,15 @@ const ProdutosPage = () => {
     const hasFilters = !!(searchTerm || selectedCategoria || selectedStatus);
     setHasActiveFilters(hasFilters);
   }, [searchTerm, selectedCategoria, selectedStatus]);
+
+  useEffect(() => {
+    const state = location.state as { successMessage?: string } | undefined;
+    if (state?.successMessage) {
+      setSuccessMessage(state.successMessage);
+      refetch();
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location.pathname, location.state, navigate, refetch]);
 
   // Extrair dados únicos para filtros (categorias já vem do hook useCategoriasProdutos)
   // Marcas agora são definidas nos contratos, não mais nos produtos

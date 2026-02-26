@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import dotenv from "dotenv";
 import cors from "cors";
 import { config } from "./config";
@@ -51,6 +52,43 @@ dotenv.config();
 const app = express();
 const httpServer = createServer(app);
 app.use(express.json());
+
+async function ensureProdutoComposicaoNutricionalTable() {
+  const sqlPath = path.join(__dirname, "migrations", "create_produto_composicao_nutricional.sql");
+  if (fs.existsSync(sqlPath)) {
+    const sql = fs.readFileSync(sqlPath, "utf8");
+    await db.query(sql);
+  }
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS produto_composicao_nutricional (
+      id SERIAL PRIMARY KEY,
+      produto_id INTEGER NOT NULL REFERENCES produtos(id) ON DELETE CASCADE,
+      energia_kcal DECIMAL(8,2),
+      proteina_g DECIMAL(8,2),
+      carboidratos_g DECIMAL(8,2),
+      lipideos_g DECIMAL(8,2),
+      fibra_alimentar_g DECIMAL(8,2),
+      sodio_mg DECIMAL(8,2),
+      acucares_g DECIMAL(8,2),
+      gorduras_saturadas_g DECIMAL(8,2),
+      gorduras_trans_g DECIMAL(8,2),
+      colesterol_mg DECIMAL(8,2),
+      calcio_mg DECIMAL(8,2),
+      ferro_mg DECIMAL(8,2),
+      vitamina_e_mg DECIMAL(8,2),
+      vitamina_b1_mg DECIMAL(8,2),
+      criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(produto_id)
+    )
+  `);
+
+  await db.query(`
+    CREATE INDEX IF NOT EXISTS idx_produto_composicao_produto_id 
+    ON produto_composicao_nutricional(produto_id)
+  `);
+}
 
 // Configuração CORS usando config.json
 const corsOptions = {
@@ -352,6 +390,12 @@ async function iniciarServidor() {
         console.error('⚠️ Falha ao criar tabelas de guias (continuando):', e);
       }
 
+      try {
+        await ensureProdutoComposicaoNutricionalTable();
+      } catch (e) {
+        console.error('⚠️ Falha ao garantir tabela produto_composicao_nutricional (continuando):', e);
+      }
+
 
 
       console.log('✅ Módulos inicializados com sucesso!');
@@ -423,6 +467,7 @@ module.exports = app;
     try {
       await createEssentialTables();
       await createGuiaTables();
+      await ensureProdutoComposicaoNutricionalTable();
       console.log('✅ Schema essencial de guias/escolas garantido (Vercel)');
     } catch (e) {
       console.error('⚠️ Falha ao inicializar schema essencial (Vercel):', e);

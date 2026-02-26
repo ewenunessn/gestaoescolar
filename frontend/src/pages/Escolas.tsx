@@ -56,7 +56,7 @@ import {
   ExpandMore,
   ExpandLess,
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { listarEscolas, criarEscola, importarEscolasLote } from '../services/escolas';
 import { useEscolas, useCriarEscola } from '../hooks/queries';
 import ImportacaoEscolas from '../components/ImportacaoEscolas';
@@ -91,6 +91,7 @@ const EscolasPage = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
+  const location = useLocation();
 
   // React Query hooks
   const escolasQuery = useEscolas();
@@ -157,6 +158,15 @@ const EscolasPage = () => {
     const hasFilters = !!(selectedMunicipio || selectedAdministracao || selectedStatus || searchTerm || selectedModalidades.length > 0);
     setHasActiveFilters(hasFilters);
   }, [selectedMunicipio, selectedAdministracao, selectedStatus, searchTerm, selectedModalidades]);
+
+  useEffect(() => {
+    const state = location.state as { successMessage?: string } | undefined;
+    if (state?.successMessage) {
+      setSuccessMessage(state.successMessage);
+      loadEscolas();
+      navigate(location.pathname, { replace: true });
+    }
+  }, [loadEscolas, location.pathname, location.state, navigate]);
 
   const municipios = useMemo(() => [...new Set(escolas.map(e => e.municipio).filter(Boolean))].sort(), [escolas]);
   const modalidades = useMemo(() => [...new Set(escolas.flatMap(e => e.modalidades?.split(',').map(mod => mod.trim()) || []).filter(Boolean))].sort(), [escolas]);

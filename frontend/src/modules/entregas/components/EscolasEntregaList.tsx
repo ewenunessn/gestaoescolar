@@ -18,10 +18,13 @@ import {
   LocalShipping as DeliveryIcon,
   Search as SearchIcon,
   CheckCircle as CheckIcon,
-  Pending as PendingIcon
+  Pending as PendingIcon,
+  PictureAsPdf as PdfIcon
 } from '@mui/icons-material';
 import { EscolaEntrega, EstatisticasEntregas } from '../types';
 import { entregaService } from '../services/entregaService';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface EscolasEntregaListProps {
   onEscolaSelect: (escola: EscolaEntrega) => void;
@@ -40,6 +43,7 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({ onEscola
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filtro, setFiltro] = useState('');
+  const [gerandoPdfId, setGerandoPdfId] = useState<number | null>(null);
 
   useEffect(() => {
     carregarDados();
@@ -96,6 +100,90 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({ onEscola
     const [ano, mes, dia] = data.split('T')[0].split('-');
     if (!ano || !mes || !dia) return data;
     return `${dia}/${mes}/${ano}`;
+  };
+
+  const formatarDataPdf = (data?: string) => {
+    if (!data) return 'Sem data';
+    const [ano, mes, dia] = data.split('T')[0].split('-');
+    if (!ano || !mes || !dia) return data;
+    return `${dia}/${mes}/${ano}`;
+  };
+
+  const gerarPdfEscola = async (escola: EscolaEntrega) => {
+    try {
+      setGerandoPdfId(escola.id);
+      const itens = await entregaService.listarItensPorEscola(
+        escola.id,
+        filtros.guiaId,
+        undefined,
+        filtros.dataInicio,
+        filtros.dataFim,
+        filtros.somentePendentes
+      );
+
+      const grupos = new Map<string, { label: string; itens: typeof itens }>();
+      itens.forEach((item) => {
+        const chave = item.data_entrega ? item.data_entrega.split('T')[0] : 'sem-data';
+        const label = item.data_entrega ? formatarDataPdf(item.data_entrega) : 'Sem data';
+        if (!grupos.has(chave)) {
+          grupos.set(chave, { label, itens: [] });
+        }
+        grupos.get(chave)!.itens.push(item);
+      });
+
+      const chavesOrdenadas = Array.from(grupos.keys()).sort((a, b) => {
+        if (a === 'sem-data') return 1;
+        if (b === 'sem-data') return -1;
+        return a.localeCompare(b);
+      });
+
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+      doc.setFontSize(14);
+      doc.text('Itens para Entrega', 40, 40);
+      doc.setFontSize(11);
+      doc.text(`Escola: ${escola.nome}`, 40, 60);
+      if (filtros.guiaId) {
+        doc.text(`Guia: ${filtros.guiaId}`, 40, 78);
+      }
+
+      let startY = filtros.guiaId ? 92 : 78;
+      chavesOrdenadas.forEach((chave) => {
+        const grupo = grupos.get(chave);
+        if (!grupo) return;
+        doc.setFontSize(12);
+        doc.text(`Data: ${grupo.label}`, 40, startY + 16);
+        autoTable(doc, {
+          startY: startY + 24,
+          head: [[
+            'Número',
+            'Nome do item',
+            'Unidade',
+            'Quantidade',
+            'Data de recebimento',
+            'Assinatura'
+          ]],
+          body: grupo.itens.map((item) => ([
+            String(item.id),
+            item.produto_nome,
+            item.unidade,
+            String(item.quantidade),
+            item.data_entrega ? formatarDataPdf(item.data_entrega) : '',
+            ''
+          ])),
+          styles: { fontSize: 9 },
+          headStyles: { fillColor: [25, 118, 210] }
+        });
+        // @ts-ignore
+        startY = (doc as any).lastAutoTable.finalY + 12;
+      });
+
+      doc.save(`itens-entrega-${escola.nome}.pdf`);
+    } catch (err) {
+      console.error('Erro ao gerar PDF:', err);
+      setError('Erro ao gerar PDF');
+    } finally {
+      setGerandoPdfId(null);
+    }
   };
 
   if (loading) {
@@ -260,17 +348,31 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({ onEscola
                   />
                 </Box>
 
-                <Button
-                  variant="outlined"
-                  fullWidth
-                  startIcon={<DeliveryIcon />}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEscolaSelect(escola);
-                  }}
-                >
-                  Ver Itens para Entrega
-                </Button>
+                <Box display="flex" gap={1}>
+                  <Button
+                    variant="outlined"
+                    fullWidth
+                    startIcon={<DeliveryIcon />}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEscolaSelect(escola);
+                    }}
+                  >
+                    Ver Itens para Entrega
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    fullWidth
+                    startIcon={<PdfIcon />}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      gerarPdfEscola(escola);
+                    }}
+                    disabled={gerandoPdfId === escola.id}
+                  >
+                    {gerandoPdfId === escola.id ? 'Gerando...' : 'Gerar PDF'}
+                  </Button>
+                </Box>
               </CardContent>
             </Card>
           </Grid>
