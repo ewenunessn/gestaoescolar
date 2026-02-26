@@ -455,6 +455,28 @@ if (process.env.VERCEL !== '1') {
   iniciarServidor();
 }
 
+if (process.env.VERCEL === '1' || process.env.VERCEL === 'true') {
+  (async () => {
+    try {
+      await createEssentialTables();
+    } catch (e) {
+      console.error('⚠️ Falha ao criar tabelas essenciais (Vercel):', e);
+    }
+
+    try {
+      await createGuiaTables();
+    } catch (e) {
+      console.error('⚠️ Falha ao criar tabelas de guias (Vercel):', e);
+    }
+
+    try {
+      await ensureProdutoComposicaoNutricionalTable();
+    } catch (e) {
+      console.error('⚠️ Falha ao garantir tabela produto_composicao_nutricional (Vercel):', e);
+    }
+  })();
+}
+
 // Exportar app para Vercel (deve vir depois da configuração)
 export default app;
 
