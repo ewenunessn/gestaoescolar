@@ -49,6 +49,63 @@ async function detectarSchemaComposicao(): Promise<'novo'|'antigo'|'nenhum'> {
   return 'antigo';
 }
 
+export async function standardizarComposicaoNutricional(req: Request, res: Response) {
+  try {
+    const user = (req as any).user;
+    if (!user || !user.isSystemAdmin) {
+      return res.status(403).json({ success: false, message: 'Acesso negado' });
+    }
+    await ensureProdutoComposicaoTable();
+    const schema = await detectarSchemaComposicao();
+    if (schema === 'novo') {
+      return res.json({ success: true, message: 'Esquema já está padronizado (v2)' });
+    }
+    await db.transaction(async () => {
+      // Garantir colunas v2
+      await db.query(`ALTER TABLE produto_composicao_nutricional ADD COLUMN IF NOT EXISTS energia_kcal DECIMAL(8,2)`);
+      await db.query(`ALTER TABLE produto_composicao_nutricional ADD COLUMN IF NOT EXISTS proteina_g DECIMAL(8,2)`);
+      await db.query(`ALTER TABLE produto_composicao_nutricional ADD COLUMN IF NOT EXISTS carboidratos_g DECIMAL(8,2)`);
+      await db.query(`ALTER TABLE produto_composicao_nutricional ADD COLUMN IF NOT EXISTS lipideos_g DECIMAL(8,2)`);
+      await db.query(`ALTER TABLE produto_composicao_nutricional ADD COLUMN IF NOT EXISTS fibra_alimentar_g DECIMAL(8,2)`);
+      await db.query(`ALTER TABLE produto_composicao_nutricional ADD COLUMN IF NOT EXISTS sodio_mg DECIMAL(8,2)`);
+      await db.query(`ALTER TABLE produto_composicao_nutricional ADD COLUMN IF NOT EXISTS acucares_g DECIMAL(8,2)`);
+      await db.query(`ALTER TABLE produto_composicao_nutricional ADD COLUMN IF NOT EXISTS gorduras_saturadas_g DECIMAL(8,2)`);
+      await db.query(`ALTER TABLE produto_composicao_nutricional ADD COLUMN IF NOT EXISTS gorduras_trans_g DECIMAL(8,2)`);
+      await db.query(`ALTER TABLE produto_composicao_nutricional ADD COLUMN IF NOT EXISTS colesterol_mg DECIMAL(8,2)`);
+      await db.query(`ALTER TABLE produto_composicao_nutricional ADD COLUMN IF NOT EXISTS calcio_mg DECIMAL(8,2)`);
+      await db.query(`ALTER TABLE produto_composicao_nutricional ADD COLUMN IF NOT EXISTS ferro_mg DECIMAL(8,2)`);
+      await db.query(`ALTER TABLE produto_composicao_nutricional ADD COLUMN IF NOT EXISTS vitamina_e_mg DECIMAL(8,2)`);
+      await db.query(`ALTER TABLE produto_composicao_nutricional ADD COLUMN IF NOT EXISTS vitamina_b1_mg DECIMAL(8,2)`);
+      // Copiar dados v1 -> v2 quando v2 estiver nulo
+      await db.query(`
+        UPDATE produto_composicao_nutricional SET
+          energia_kcal = COALESCE(energia_kcal, calorias),
+          proteina_g = COALESCE(proteina_g, proteinas),
+          carboidratos_g = COALESCE(carboidratos_g, carboidratos),
+          lipideos_g = COALESCE(lipideos_g, gorduras),
+          fibra_alimentar_g = COALESCE(fibra_alimentar_g, fibras),
+          sodio_mg = COALESCE(sodio_mg, sodio),
+          acucares_g = COALESCE(acucares_g, acucares),
+          gorduras_saturadas_g = COALESCE(gorduras_saturadas_g, gorduras_saturadas),
+          gorduras_trans_g = COALESCE(gorduras_trans_g, gorduras_trans),
+          colesterol_mg = COALESCE(colesterol_mg, colesterol),
+          calcio_mg = COALESCE(calcio_mg, calcio),
+          ferro_mg = COALESCE(ferro_mg, ferro),
+          vitamina_e_mg = COALESCE(vitamina_e_mg, vitamina_c),
+          vitamina_b1_mg = COALESCE(vitamina_b1_mg, vitamina_a)
+      `);
+    });
+    return res.json({ success: true, message: 'Padronização concluída (v1 -> v2)' });
+  } catch (error) {
+    console.error('❌ Erro ao padronizar composição nutricional:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao padronizar composição nutricional',
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+}
+
 export async function listarProdutos(req: Request, res: Response) {
   try {
     const result = await db.query(`

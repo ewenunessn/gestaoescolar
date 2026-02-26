@@ -6,8 +6,10 @@ import {
   editarProduto, 
   removerProduto,
   buscarComposicaoNutricional,
-  salvarComposicaoNutricional
+  salvarComposicaoNutricional,
+  standardizarComposicaoNutricional
 } from "../controllers/produtoController";
+import { authenticateToken } from "../../../middleware/authMiddleware";
 const router = Router();
 
 // Listar produtos
@@ -21,6 +23,9 @@ router.get("/:id/composicao-nutricional", buscarComposicaoNutricional);
 
 // Salvar composição nutricional do produto
 router.put("/:id/composicao-nutricional", salvarComposicaoNutricional);
+
+// Padronizar esquema da composição nutricional (admin)
+router.post("/standardize-composicao", authenticateToken, standardizarComposicaoNutricional);
 
 // Criar novo produto
 router.post("/", criarProduto);
