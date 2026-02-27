@@ -62,6 +62,18 @@ async function withEnsureRetry<T>(op: () => Promise<T>): Promise<T> {
   }
 }
 
+function num(v: any): number | null {
+  if (v === null || v === undefined) return null;
+  if (typeof v === 'string') {
+    const t = v.trim();
+    if (t === '') return null;
+    const n = Number(t.replace(',', '.'));
+    return isFinite(n) ? n : null;
+  }
+  if (typeof v === 'number' && isFinite(v)) return v;
+  return null;
+}
+
 export async function standardizarComposicaoNutricional(req: Request, res: Response) {
   try {
     const user = (req as any).user;
@@ -364,27 +376,63 @@ export async function buscarComposicaoNutricional(req: Request, res: Response) {
     });
 
     if (data.rows.length === 0) {
-      return res.json({
-        success: true,
-        data: {
-          produto_id: parseInt(req.params.id),
-          calorias: null,
-          proteinas: null,
-          carboidratos: null,
-          gorduras: null,
-          fibras: null,
-          sodio: null,
-          acucares: null,
-          gorduras_saturadas_g: null,
-          gorduras_trans_g: null,
-          colesterol: null,
-          calcio: null,
-          ferro: null,
-          vitamina_c: null,
-          vitamina_a: null
-        },
-        message: "Composição nutricional não cadastrada"
-      });
+      const schema = await detectarSchemaComposicao();
+      const produtoId = Number(req.params.id);
+      if (schema === 'novo') {
+        await db.query(`
+          INSERT INTO produto_composicao_nutricional (produto_id, criado_em)
+          VALUES ($1, CURRENT_TIMESTAMP)
+          ON CONFLICT (produto_id) DO NOTHING
+        `, [produtoId]);
+        const created = await db.query(`
+          SELECT 
+            produto_id,
+            energia_kcal as calorias,
+            proteina_g as proteinas,
+            carboidratos_g as carboidratos,
+            lipideos_g as gorduras,
+            fibra_alimentar_g as fibras,
+            sodio_mg as sodio,
+            acucares_g as acucares,
+            gorduras_saturadas_g,
+            gorduras_trans_g,
+            colesterol_mg as colesterol,
+            calcio_mg as calcio,
+            ferro_mg as ferro,
+            vitamina_e_mg as vitamina_c,
+            vitamina_b1_mg as vitamina_a
+          FROM produto_composicao_nutricional 
+          WHERE produto_id = $1
+        `, [produtoId]);
+        return res.json({ success: true, data: created.rows[0], message: "Composição criada" });
+      } else {
+        await db.query(`
+          INSERT INTO produto_composicao_nutricional (produto_id, created_at)
+          VALUES ($1, CURRENT_TIMESTAMP)
+          ON CONFLICT (produto_id) DO NOTHING
+        `, [produtoId]);
+        const created = await db.query(`
+          SELECT 
+            produto_id,
+            calorias,
+            proteinas,
+            carboidratos,
+            gorduras,
+            fibras,
+            sodio,
+            acucares,
+            gorduras_saturadas as gorduras_saturadas_g,
+            gorduras_trans as gorduras_trans_g,
+            colesterol,
+            calcio,
+            ferro,
+            vitamina_c,
+            vitamina_a
+          FROM produto_composicao_nutricional 
+          WHERE produto_id = $1
+        `, [produtoId]);
+        return res.json({ success: true, data: created.rows[0], message: "Composição criada" });
+      }
     }
 
     res.json({
@@ -424,6 +472,22 @@ export async function salvarComposicaoNutricional(req: Request, res: Response) {
         vitamina_c,
         vitamina_a
       } = req.body;
+      const pv = {
+        calorias: num(calorias),
+        proteinas: num(proteinas),
+        carboidratos: num(carboidratos),
+        gorduras: num(gorduras),
+        fibras: num(fibras),
+        sodio: num(sodio),
+        acucares: num(acucares),
+        gord_sat: num(gorduras_saturadas_g),
+        gord_trans: num(gorduras_trans_g),
+        colesterol: num(colesterol),
+        calcio: num(calcio),
+        ferro: num(ferro),
+        vit_c: num(vitamina_c),
+        vit_a: num(vitamina_a),
+      };
       const existingResult = await db.query(`
         SELECT id FROM produto_composicao_nutricional WHERE produto_id = $1
       `, [id]);
@@ -464,9 +528,9 @@ export async function salvarComposicaoNutricional(req: Request, res: Response) {
               vitamina_e_mg as vitamina_c,
               vitamina_b1_mg as vitamina_a
           `, [
-            calorias, proteinas, carboidratos, gorduras, fibras, sodio,
-            acucares, gorduras_saturadas_g, gorduras_trans_g, colesterol,
-            calcio, ferro, vitamina_c, vitamina_a, id
+            pv.calorias, pv.proteinas, pv.carboidratos, pv.gorduras, pv.fibras, pv.sodio,
+            pv.acucares, pv.gord_sat, pv.gord_trans, pv.colesterol,
+            pv.calcio, pv.ferro, pv.vit_c, pv.vit_a, id
           ]);
         } else {
           return await db.query(`
@@ -504,9 +568,9 @@ export async function salvarComposicaoNutricional(req: Request, res: Response) {
               vitamina_c,
               vitamina_a
           `, [
-            calorias, proteinas, carboidratos, gorduras, fibras, sodio,
-            acucares, gorduras_saturadas_g, gorduras_trans_g, colesterol,
-            calcio, ferro, vitamina_c, vitamina_a, id
+            pv.calorias, pv.proteinas, pv.carboidratos, pv.gorduras, pv.fibras, pv.sodio,
+            pv.acucares, pv.gord_sat, pv.gord_trans, pv.colesterol,
+            pv.calcio, pv.ferro, pv.vit_c, pv.vit_a, id
           ]);
         }
       } else {
@@ -535,9 +599,9 @@ export async function salvarComposicaoNutricional(req: Request, res: Response) {
               vitamina_e_mg as vitamina_c,
               vitamina_b1_mg as vitamina_a
           `, [
-            id, calorias, proteinas, carboidratos, gorduras, fibras, sodio,
-            acucares, gorduras_saturadas_g, gorduras_trans_g, colesterol,
-            calcio, ferro, vitamina_c, vitamina_a
+            id, pv.calorias, pv.proteinas, pv.carboidratos, pv.gorduras, pv.fibras, pv.sodio,
+            pv.acucares, pv.gord_sat, pv.gord_trans, pv.colesterol,
+            pv.calcio, pv.ferro, pv.vit_c, pv.vit_a
           ]);
         } else {
           return await db.query(`
@@ -564,9 +628,9 @@ export async function salvarComposicaoNutricional(req: Request, res: Response) {
               vitamina_c,
               vitamina_a
           `, [
-            id, calorias, proteinas, carboidratos, gorduras, fibras, sodio,
-            acucares, gorduras_saturadas_g, gorduras_trans_g, colesterol,
-            calcio, ferro, vitamina_c, vitamina_a
+            id, pv.calorias, pv.proteinas, pv.carboidratos, pv.gorduras, pv.fibras, pv.sodio,
+            pv.acucares, pv.gord_sat, pv.gord_trans, pv.colesterol,
+            pv.calcio, pv.ferro, pv.vit_c, pv.vit_a
           ]);
         }
       }
