@@ -84,6 +84,7 @@ export default function EscolaDetalhe() {
 
   function atualizarQuantidade(itemId: number, valor: string) {
     const quantidade = parseFloat(valor) || 0
+    console.log('Atualizando quantidade:', { itemId, valor, quantidade })
     setItens(prev => prev.map(item =>
       item.id === itemId ? { ...item, quantidade_entregue: quantidade } : item
     ))
@@ -149,6 +150,12 @@ export default function EscolaDetalhe() {
       const itensSelecionados = itens.filter(i => i.selecionado)
       let algumOffline = false
       
+      console.log('Finalizando entrega com itens:', itensSelecionados.map(i => ({
+        id: i.id,
+        produto: i.produto_nome,
+        quantidade_entregue: i.quantidade_entregue
+      })))
+      
       for (const item of itensSelecionados) {
         const dadosEntrega: ConfirmarEntregaItemData = {
           quantidade_entregue: item.quantidade_entregue,
@@ -157,6 +164,8 @@ export default function EscolaDetalhe() {
           observacao: observacao.trim() || undefined,
           assinatura_base64: assinatura
         }
+        
+        console.log('Enviando entrega:', dadosEntrega)
         
         const resultado = await confirmarEntregaItem(item.id, dadosEntrega)
         if (resultado.queued) {
