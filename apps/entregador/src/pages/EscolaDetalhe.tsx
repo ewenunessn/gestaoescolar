@@ -176,6 +176,8 @@ export default function EscolaDetalhe() {
       
       // Aguardar 2 segundos e voltar
       setTimeout(() => {
+        // Limpar cache da escola
+        localStorage.removeItem(`itens_escola_${id}`)
         navigate(`/rotas/${state?.rotaId || ''}`)
       }, 2000)
     } catch (e) {
