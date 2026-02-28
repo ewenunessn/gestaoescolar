@@ -84,7 +84,14 @@ export default function EscolaDetalhe() {
 
   function atualizarQuantidade(itemId: number, valor: string) {
     const quantidade = parseFloat(valor) || 0
-    console.log('Atualizando quantidade:', { itemId, valor, quantidade })
+    const item = itens.find(i => i.id === itemId)
+    console.log('📝 DIGITAÇÃO:', {
+      itemId,
+      produto: item?.produto_nome,
+      valorDigitado: valor,
+      quantidadeConvertida: quantidade,
+      quantidadeProgramada: item?.quantidade
+    })
     setItens(prev => prev.map(item =>
       item.id === itemId ? { ...item, quantidade_entregue: quantidade } : item
     ))
@@ -100,6 +107,14 @@ export default function EscolaDetalhe() {
 
   function continuar() {
     const selecionados = itens.filter(i => i.selecionado)
+    console.log('🔍 REVISÃO - Itens selecionados:', selecionados.map(i => ({
+      id: i.id,
+      produto: i.produto_nome,
+      programado: i.quantidade,
+      quantidade_entregue: i.quantidade_entregue,
+      unidade: i.unidade
+    })))
+    
     if (selecionados.length === 0) {
       alert('Selecione pelo menos um item para entrega')
       return
@@ -153,7 +168,9 @@ export default function EscolaDetalhe() {
       console.log('Finalizando entrega com itens:', itensSelecionados.map(i => ({
         id: i.id,
         produto: i.produto_nome,
-        quantidade_entregue: i.quantidade_entregue
+        programado: i.quantidade,
+        quantidade_entregue: i.quantidade_entregue,
+        unidade: i.unidade
       })))
       
       for (const item of itensSelecionados) {
@@ -165,7 +182,11 @@ export default function EscolaDetalhe() {
           assinatura_base64: assinatura
         }
         
-        console.log('Enviando entrega:', dadosEntrega)
+        console.log('📤 ENVIANDO para API:', {
+          itemId: item.id,
+          produto: item.produto_nome,
+          ...dadosEntrega
+        })
         
         const resultado = await confirmarEntregaItem(item.id, dadosEntrega)
         if (resultado.queued) {
