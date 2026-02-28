@@ -22,6 +22,7 @@ import { RouteProp } from '@react-navigation/native';
 import { useNotification } from '../contexts/NotificationContext';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { appTheme } from '../theme/appTheme';
+import { formatarNumero } from '../utils/formatters';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 type EntregaMassaRouteProp = RouteProp<RootStackParamList, 'EntregaMassa'>;
@@ -137,7 +138,7 @@ const EntregaMassaScreen = () => {
                                     <View style={styles.itemInfo}>
                                         <Paragraph style={styles.itemName}>{item.produto_nome}</Paragraph>
                                         <Paragraph style={styles.itemDetails}>
-                                            Programado: {item.quantidade} {item.unidade}
+                                            Programado: {formatarNumero(item.quantidade)} {item.unidade}
                                         </Paragraph>
                                     </View>
 

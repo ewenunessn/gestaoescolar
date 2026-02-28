@@ -51,7 +51,7 @@ dotenv.config();
 
 const app = express();
 const httpServer = createServer(app);
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 
 async function ensureProdutoComposicaoNutricionalTable() {
   const exists = await db.get(

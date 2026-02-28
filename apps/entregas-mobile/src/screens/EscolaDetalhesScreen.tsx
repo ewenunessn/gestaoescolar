@@ -20,6 +20,7 @@ import {
     Surface,
     Title,
     Paragraph,
+    TextInput as TextField,
 } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -31,6 +32,7 @@ import { entregaServiceHybrid } from '../services/entregaServiceHybrid';
 import { offlineService } from '../services/offlineService';
 import { ItemEntrega } from '../services/entregaService';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { formatarNumero } from '../utils/formatters';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 type EscolaDetalhesRouteProp = RouteProp<RootStackParamList, 'EscolaDetalhes'>;
@@ -50,13 +52,15 @@ const EscolaDetalhesScreen = () => {
     const [refreshing, setRefreshing] = useState(false);
     const [itens, setItens] = useState<ItemEntrega[]>([]);
 
-    // Estados para seleção múltipla
+    // Estados para seleção múltipla e quantidades
     const [itensSelecionados, setItensSelecionados] = useState<Set<number>>(new Set());
+    const [quantidadesEntrega, setQuantidadesEntrega] = useState<Map<number, string>>(new Map());
 
     // Recarregar dados sempre que a tela ganhar foco
     useFocusEffect(
         useCallback(() => {
             setItensSelecionados(new Set());
+            setQuantidadesEntrega(new Map());
             carregarItens();
         }, [escolaId])
     );
@@ -169,21 +173,41 @@ const EscolaDetalhesScreen = () => {
     const itensNaoEntrega = itens.filter(item => !item.para_entrega);
 
     // Funções para seleção múltipla
-    const toggleSelecaoItem = (itemId: number) => {
+    const toggleSelecaoItem = (itemId: number, quantidadePadrao: number) => {
         const novaSelecao = new Set(itensSelecionados);
+        const novasQuantidades = new Map(quantidadesEntrega);
+        
         if (novaSelecao.has(itemId)) {
             novaSelecao.delete(itemId);
+            novasQuantidades.delete(itemId);
         } else {
             novaSelecao.add(itemId);
+            // Inicializar com a quantidade padrão do item
+            novasQuantidades.set(itemId, quantidadePadrao.toString());
         }
+        
         setItensSelecionados(novaSelecao);
+        setQuantidadesEntrega(novasQuantidades);
+    };
+    
+    const atualizarQuantidadeItem = (itemId: number, quantidade: string) => {
+        const novasQuantidades = new Map(quantidadesEntrega);
+        novasQuantidades.set(itemId, quantidade);
+        setQuantidadesEntrega(novasQuantidades);
     };
 
     const selecionarTodosPendentes = () => {
         if (itensSelecionados.size === itensPendentes.length) {
             setItensSelecionados(new Set());
+            setQuantidadesEntrega(new Map());
         } else {
-            setItensSelecionados(new Set(itensPendentes.map(item => item.id)));
+            const novosIds = new Set(itensPendentes.map(item => item.id));
+            const novasQuantidades = new Map<number, string>();
+            itensPendentes.forEach(item => {
+                novasQuantidades.set(item.id, item.quantidade.toString());
+            });
+            setItensSelecionados(novosIds);
+            setQuantidadesEntrega(novasQuantidades);
         }
     };
 
@@ -193,12 +217,39 @@ const EscolaDetalhesScreen = () => {
             return;
         }
 
-        const itensParaEntregar = itensPendentes.filter(item =>
-            itensSelecionados.has(item.id)
-        );
+        // Validar quantidades
+        let quantidadeInvalida = false;
+        itensSelecionados.forEach(itemId => {
+            const quantidade = parseFloat(quantidadesEntrega.get(itemId) || '0');
+            if (isNaN(quantidade) || quantidade <= 0) {
+                quantidadeInvalida = true;
+            }
+        });
 
-        navigation.navigate('EntregaMassa', {
-            itensSelecionados: itensParaEntregar,
+        if (quantidadeInvalida) {
+            showError('Todas as quantidades devem ser maiores que zero');
+            return;
+        }
+
+        // Preparar itens com as quantidades informadas
+        const itensParaEntregar = itensPendentes
+            .filter(item => itensSelecionados.has(item.id))
+            .map(item => ({
+                ...item,
+                quantidade_entregue: parseFloat(quantidadesEntrega.get(item.id) || item.quantidade.toString())
+            }));
+
+        navigation.navigate('RevisaoEntrega', {
+            itensRevisados: itensParaEntregar.map(item => ({
+                id: item.id,
+                produto_nome: item.produto_nome,
+                quantidade: item.quantidade,
+                unidade: item.unidade,
+                lote: item.lote,
+                quantidade_entregue: item.quantidade_entregue,
+                observacao: '',
+                mostrarObservacao: false,
+            })),
             escolaNome: escolaNome,
             escolaId: escolaId
         });
@@ -303,19 +354,36 @@ const EscolaDetalhesScreen = () => {
                             <View key={item.id}>
                                 <List.Item
                                     title={item.produto_nome}
-                                    description={`${item.quantidade} ${item.unidade}`}
+                                    description={`Programado: ${formatarNumero(item.quantidade)} ${item.unidade}`}
                                     left={() => (
                                         <View style={styles.itemLeftContainer}>
                                             <Checkbox
                                                 status={itensSelecionados.has(item.id) ? 'checked' : 'unchecked'}
-                                                onPress={() => toggleSelecaoItem(item.id)}
+                                                onPress={() => toggleSelecaoItem(item.id, item.quantidade)}
                                             />
                                             <List.Icon icon="package-variant" color="#ff9800" />
                                         </View>
                                     )}
                                     right={() => null}
-                                    onPress={() => toggleSelecaoItem(item.id)}
+                                    onPress={() => toggleSelecaoItem(item.id, item.quantidade)}
                                 />
+                                
+                                {/* Campo de quantidade aparece quando o item está selecionado */}
+                                {itensSelecionados.has(item.id) && (
+                                    <View style={styles.quantidadeContainer}>
+                                        <TextField
+                                            label="Quantidade a entregar"
+                                            value={quantidadesEntrega.get(item.id) || item.quantidade.toString()}
+                                            onChangeText={(value) => atualizarQuantidadeItem(item.id, value)}
+                                            mode="outlined"
+                                            keyboardType="numeric"
+                                            style={styles.quantidadeInput}
+                                            dense
+                                            right={<TextField.Affix text={item.unidade} />}
+                                        />
+                                    </View>
+                                )}
+                                
                                 {item.observacao && (
                                     <Paragraph style={styles.observacao}>
                                         💬 {item.observacao}
@@ -325,15 +393,15 @@ const EscolaDetalhesScreen = () => {
                             </View>
                         ))}
 
-                        {/* Botão Entregar - Aparece no final quando há itens selecionados */}
+                        {/* Botão Continuar - Aparece no final quando há itens selecionados */}
                         {itensSelecionados.size > 0 && (
                             <Button
                                 mode="contained"
                                 onPress={iniciarEntregaMassa}
                                 style={styles.entregaMassaButton}
-                                icon="truck-delivery"
+                                icon="arrow-right"
                             >
-                                Entregar {itensSelecionados.size} {itensSelecionados.size === 1 ? 'item' : 'itens'}
+                                Continuar ({itensSelecionados.size} {itensSelecionados.size === 1 ? 'item' : 'itens'})
                             </Button>
                         )}
                     </Card.Content>
@@ -355,7 +423,7 @@ const EscolaDetalhesScreen = () => {
                             <View key={item.id}>
                                 <List.Item
                                     title={item.produto_nome}
-                                    description={`${item.quantidade_entregue ?? item.quantidade}/${item.quantidade} ${item.unidade}`}
+                                    description={`${formatarNumero(item.quantidade_entregue ?? item.quantidade)}/${formatarNumero(item.quantidade)} ${item.unidade}`}
                                     left={(props) => (
                                         <List.Icon {...props} icon="check-circle" color="#4caf50" />
                                     )}
@@ -399,7 +467,7 @@ const EscolaDetalhesScreen = () => {
                             <View key={item.id}>
                                 <List.Item
                                     title={item.produto_nome}
-                                    description={`${item.quantidade} ${item.unidade}`}
+                                    description={`${formatarNumero(item.quantidade)} ${item.unidade}`}
                                     left={(props) => (
                                         <List.Icon {...props} icon="minus-circle-outline" color="#9e9e9e" />
                                     )}
@@ -630,6 +698,17 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#2196f3',
         marginLeft: 4,
+    },
+    quantidadeContainer: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        backgroundColor: '#f8f9fa',
+        marginHorizontal: 16,
+        marginBottom: 8,
+        borderRadius: 8,
+    },
+    quantidadeInput: {
+        backgroundColor: '#ffffff',
     },
 
 });

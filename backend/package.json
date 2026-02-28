@@ -17,6 +17,7 @@
     "create-institution": "node create-example-institution.js"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.587.0",
     "@types/xlsx": "^0.0.35",
     "@vercel/node": "^3.0.0",
     "axios": "^1.13.5",

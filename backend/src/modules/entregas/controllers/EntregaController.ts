@@ -84,6 +84,7 @@ class EntregaController {
         nome_quem_entregou, 
         nome_quem_recebeu,
         observacao,
+        assinatura_base64,
         latitude,
         longitude,
         precisao_gps
@@ -106,6 +107,11 @@ class EntregaController {
         return res.status(400).json({ error: 'Nome de quem recebeu é obrigatório' });
       }
 
+      // Validação de assinatura (opcional, mas recomendada)
+      if (assinatura_base64 && !assinatura_base64.startsWith('data:image/')) {
+        return res.status(400).json({ error: 'Formato de assinatura inválido. Deve ser uma imagem em base64' });
+      }
+
       // Validação de localização (opcional, mas se enviada deve ser válida)
       if (latitude !== undefined && (isNaN(Number(latitude)) || Math.abs(Number(latitude)) > 90)) {
         return res.status(400).json({ error: 'Latitude deve ser um número válido entre -90 e 90' });
@@ -120,6 +126,7 @@ class EntregaController {
         nome_quem_entregou: nome_quem_entregou.trim(),
         nome_quem_recebeu: nome_quem_recebeu.trim(),
         observacao: observacao?.trim() || null,
+        assinatura_base64: assinatura_base64 || null,
         latitude: latitude ? Number(latitude) : null,
         longitude: longitude ? Number(longitude) : null,
         precisao_gps: precisao_gps ? Number(precisao_gps) : null

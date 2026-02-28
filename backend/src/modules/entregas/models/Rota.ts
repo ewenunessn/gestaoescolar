@@ -1,3 +1,4 @@
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 const db = require('../../../database');
 
 export interface RotaEntrega {
@@ -100,6 +101,25 @@ class RotaModel {
     await db.query(`CREATE INDEX IF NOT EXISTS idx_planejamento_entregas_rota ON planejamento_entregas(rota_id)`);
     await db.query(`CREATE INDEX IF NOT EXISTS idx_planejamento_entregas_status ON planejamento_entregas(status)`);
     await db.query(`
+      CREATE TABLE IF NOT EXISTS entrega_escola_status (
+        id SERIAL PRIMARY KEY,
+        planejamento_id INTEGER NOT NULL,
+        rota_id INTEGER NOT NULL,
+        escola_id INTEGER NOT NULL,
+        status VARCHAR(20) DEFAULT 'pendente' CHECK (status IN ('pendente','entregue','nao_entregue')),
+        observacao TEXT,
+        foto_url TEXT,
+        assinado_por VARCHAR(255),
+        assinado_em TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(planejamento_id, escola_id)
+      )
+    `);
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_entrega_status_plano ON entrega_escola_status(planejamento_id)`);
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_entrega_status_rota ON entrega_escola_status(rota_id)`);
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_entrega_status_escola ON entrega_escola_status(escola_id)`);
+    await db.query(`
       DO $$
       BEGIN
         BEGIN
@@ -125,6 +145,21 @@ class RotaModel {
           ALTER TABLE planejamento_entregas
             ADD CONSTRAINT fk_planejamento_entregas_rota
             FOREIGN KEY (rota_id) REFERENCES rotas_entrega(id) ON DELETE CASCADE NOT VALID;
+        EXCEPTION WHEN OTHERS THEN NULL; END;
+        BEGIN
+          ALTER TABLE entrega_escola_status
+            ADD CONSTRAINT fk_entrega_status_planejamento
+            FOREIGN KEY (planejamento_id) REFERENCES planejamento_entregas(id) ON DELETE CASCADE NOT VALID;
+        EXCEPTION WHEN OTHERS THEN NULL; END;
+        BEGIN
+          ALTER TABLE entrega_escola_status
+            ADD CONSTRAINT fk_entrega_status_rota
+            FOREIGN KEY (rota_id) REFERENCES rotas_entrega(id) ON DELETE CASCADE NOT VALID;
+        EXCEPTION WHEN OTHERS THEN NULL; END;
+        BEGIN
+          ALTER TABLE entrega_escola_status
+            ADD CONSTRAINT fk_entrega_status_escola
+            FOREIGN KEY (escola_id) REFERENCES escolas(id) ON DELETE CASCADE NOT VALID;
         EXCEPTION WHEN OTHERS THEN NULL; END;
       END
       $$;
@@ -231,6 +266,37 @@ class RotaModel {
       await db.run('ROLLBACK');
       throw error;
     }
+  }
+
+  private getS3(): S3Client | null {
+    const bucket = process.env.AWS_S3_BUCKET;
+    const region = process.env.AWS_S3_REGION;
+    const key = process.env.AWS_ACCESS_KEY_ID;
+    const secret = process.env.AWS_SECRET_ACCESS_KEY;
+    if (!bucket || !region || !key || !secret) return null;
+    return new S3Client({ region, credentials: { accessKeyId: key, secretAccessKey: secret } });
+  }
+
+  private async maybeUploadToS3(dataUrl?: string, keyPrefix?: string): Promise<string | null> {
+    if (!dataUrl) return null;
+    const s3 = this.getS3();
+    if (!s3) return null;
+    const match = dataUrl.match(/^data:(.*?);base64,(.*)$/);
+    if (!match) return null;
+    const contentType = match[1] || 'image/png';
+    const buf = Buffer.from(match[2], 'base64');
+    const bucket = process.env.AWS_S3_BUCKET as string;
+    const ext = contentType.includes('jpeg') ? 'jpg' : contentType.includes('png') ? 'png' : 'bin';
+    const key = `${keyPrefix || 'evidencias'}/${Date.now()}.${ext}`;
+    await s3.send(new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      Body: buf,
+      ContentType: contentType,
+      ACL: 'public-read'
+    } as any));
+    const baseUrl = process.env.AWS_S3_PUBLIC_BASE || `https://${bucket}.s3.${process.env.AWS_S3_REGION}.amazonaws.com`;
+    return `${baseUrl}/${key}`;
   }
 
   // Escolas da Rota
@@ -431,6 +497,92 @@ class RotaModel {
     return result.changes > 0;
   }
 
+  // Check-in por escola
+  async listarStatusEscolasPlanejamento(planejamentoId: number): Promise<Array<RotaEscola & { status: string }>> {
+    await this.ensureRotasSchema();
+    const plano = await this.buscarPlanejamento(planejamentoId);
+    if (!plano) return [];
+    const result = await db.all(`
+      SELECT 
+        re.*,
+        e.nome as escola_nome,
+        e.endereco as escola_endereco,
+        COALESCE(es.status, 'pendente') as status,
+        es.foto_url,
+        es.assinado_por,
+        es.assinado_em
+      FROM rota_escolas re
+      JOIN escolas e ON re.escola_id = e.id
+      LEFT JOIN entrega_escola_status es
+        ON es.planejamento_id = $1 AND es.escola_id = re.escola_id
+      WHERE re.rota_id = $2
+      ORDER BY re.ordem, e.nome
+    `, [planejamentoId, plano.rota_id]);
+    return result;
+  }
+
+  async atualizarStatusEscola(
+    planejamentoId: number,
+    escolaId: number,
+    status: 'pendente'|'entregue'|'nao_entregue',
+    observacao?: string,
+    fotoBase64?: string,
+    assinadoPor?: string
+  ): Promise<{ planejamento_id: number, escola_id: number, status: string }> {
+    await this.ensureRotasSchema();
+    const plano = await this.buscarPlanejamento(planejamentoId);
+    if (!plano) throw new Error('Planejamento não encontrado');
+    const uploadedUrl = await this.maybeUploadToS3(fotoBase64, `evidencias/${plano.rota_id}/${escolaId}/${planejamentoId}`);
+    const fotoToSave = uploadedUrl || fotoBase64 || null;
+    await db.run(`
+      INSERT INTO entrega_escola_status (
+        planejamento_id, rota_id, escola_id, status, observacao, foto_url, assinado_por, assinado_em, created_at, updated_at
+      )
+      VALUES (
+        $1, $2, $3, $4, $5, $6, $7, CASE WHEN $7 IS NOT NULL THEN NOW() ELSE NULL END, NOW(), NOW()
+      )
+      ON CONFLICT (planejamento_id, escola_id) DO UPDATE SET
+        status = EXCLUDED.status,
+        observacao = EXCLUDED.observacao,
+        foto_url = COALESCE(EXCLUDED.foto_url, entrega_escola_status.foto_url),
+        assinado_por = COALESCE(EXCLUDED.assinado_por, entrega_escola_status.assinado_por),
+        assinado_em = CASE WHEN EXCLUDED.assinado_por IS NOT NULL THEN NOW() ELSE entrega_escola_status.assinado_em END,
+        updated_at = NOW()
+    `, [planejamentoId, plano.rota_id, escolaId, status, observacao || null, fotoToSave, assinadoPor || null]);
+    const result = await db.get(`
+      SELECT planejamento_id, escola_id, status FROM entrega_escola_status
+      WHERE planejamento_id = $1 AND escola_id = $2
+    `, [planejamentoId, escolaId]);
+    return result;
+  }
+
+  async listarEvidencias(params: { planejamentoId?: number, rotaId?: number, status?: string, from?: string, to?: string }): Promise<any[]> {
+    await this.ensureRotasSchema();
+    const where: string[] = [];
+    const values: any[] = [];
+    let i = 1;
+    if (params.planejamentoId) { where.push(`es.planejamento_id = $${i++}`); values.push(params.planejamentoId); }
+    if (params.rotaId) { where.push(`es.rota_id = $${i++}`); values.push(params.rotaId); }
+    if (params.status) { where.push(`es.status = $${i++}`); values.push(params.status); }
+    if (params.from) { where.push(`es.updated_at >= $${i++}`); values.push(params.from); }
+    if (params.to) { where.push(`es.updated_at <= $${i++}`); values.push(params.to); }
+    const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+    const result = await db.all(`
+      SELECT 
+        es.*,
+        r.nome as rota_nome,
+        e.nome as escola_nome,
+        e.endereco as escola_endereco,
+        pe.data_planejada
+      FROM entrega_escola_status es
+      JOIN planejamento_entregas pe ON pe.id = es.planejamento_id
+      JOIN rotas_entrega r ON r.id = es.rota_id
+      JOIN escolas e ON e.id = es.escola_id
+      ${whereSql}
+      ORDER BY es.updated_at DESC
+    `, values);
+    return result;
+  }
   // Método para listar escolas disponíveis (não associadas a nenhuma rota)
   async listarEscolasDisponiveis(): Promise<any[]> {
     await this.ensureRotasSchema();

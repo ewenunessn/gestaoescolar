@@ -35,6 +35,7 @@ export interface ConfirmarEntregaData {
   quantidade_entregue: number;
   nome_quem_entregou: string;
   nome_quem_recebeu: string;
+  assinatura_base64?: string;
 }
 
 export interface EstatisticasEntregas {

@@ -22,11 +22,13 @@ export interface ItemEntrega {
   observacao?: string;
   para_entrega: boolean;
   entrega_confirmada: boolean;
-  quantidade_entregue?: number;
+  quantidade_entregue?: number; // Mantido para compatibilidade
+  quantidade_total_entregue?: number; // Nova: soma de todas as entregas
   data_entrega?: string;
   nome_quem_recebeu?: string;
   nome_quem_entregou?: string;
   observacao_entrega?: string;
+  assinatura_base64?: string;
   latitude?: number;
   longitude?: number;
   precisao_gps?: number;
@@ -42,6 +44,7 @@ export interface ConfirmarEntregaData {
   nome_quem_entregou: string;
   nome_quem_recebeu: string;
   observacao?: string | null;
+  assinatura_base64?: string | null;
   latitude?: number | null;
   longitude?: number | null;
   precisao_gps?: number | null;
@@ -196,37 +199,39 @@ class EntregaModel {
       throw new Error('Este item não está marcado para entrega');
     }
 
-    if (item.entrega_confirmada) {
-      throw new Error('Este item já foi entregue');
+    // Verificar saldo disponível
+    const saldoResult = await db.query(`
+      SELECT 
+        quantidade,
+        COALESCE(quantidade_total_entregue, 0) as quantidade_entregue,
+        (quantidade - COALESCE(quantidade_total_entregue, 0)) as saldo_pendente
+      FROM guia_produto_escola
+      WHERE id = $1
+    `, [itemId]);
+
+    const saldo = saldoResult.rows[0];
+    
+    if (dados.quantidade_entregue > saldo.saldo_pendente) {
+      throw new Error(
+        `Quantidade a entregar (${dados.quantidade_entregue}) é maior que o saldo pendente (${saldo.saldo_pendente})`
+      );
     }
 
-    // Confirmar a entrega
-    await db.query(`
-      UPDATE guia_produto_escola 
-      SET 
-        entrega_confirmada = true,
-        status = 'entregue',
-        quantidade_entregue = $1,
-        data_entrega = NOW(),
-        nome_quem_entregou = $2,
-        nome_quem_recebeu = $3,
-        observacao_entrega = $4,
-        latitude = $5,
-        longitude = $6,
-        precisao_gps = $7,
-        updated_at = NOW()
-      WHERE id = $8
-    `, [
-      dados.quantidade_entregue,
-      dados.nome_quem_entregou,
-      dados.nome_quem_recebeu,
-      dados.observacao,
-      dados.latitude,
-      dados.longitude,
-      dados.precisao_gps,
-      itemId
-    ]);
+    // Criar registro no histórico de entregas
+    const HistoricoEntregaModel = (await import('./HistoricoEntrega')).default;
+    await HistoricoEntregaModel.criar({
+      guia_produto_escola_id: itemId,
+      quantidade_entregue: dados.quantidade_entregue,
+      nome_quem_entregou: dados.nome_quem_entregou,
+      nome_quem_recebeu: dados.nome_quem_recebeu,
+      observacao: dados.observacao,
+      assinatura_base64: dados.assinatura_base64,
+      latitude: dados.latitude,
+      longitude: dados.longitude,
+      precisao_gps: dados.precisao_gps
+    });
 
+    // Buscar item atualizado
     const updatedItem = await this.buscarItemEntrega(itemId);
     if (!updatedItem) {
       throw new Error('Erro ao buscar item atualizado');

@@ -37,6 +37,7 @@ import {
 } from '@mui/icons-material';
 import { EscolaEntrega, ItemEntrega, ConfirmarEntregaData } from '../types';
 import { entregaService } from '../services/entregaService';
+import { SignaturePad } from '../../../components/SignaturePad';
 
 interface ItensEntregaListProps {
   escola: EscolaEntrega;
@@ -57,6 +58,7 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
   const [selecionados, setSelecionados] = useState<number[]>([]);
   const [quantidadesSelecionadas, setQuantidadesSelecionadas] = useState<Record<number, number>>({});
   const [nomeRecebedor, setNomeRecebedor] = useState('');
+  const [assinatura, setAssinatura] = useState<string | null>(null);
   const [dialogRevisaoAberto, setDialogRevisaoAberto] = useState(false);
   const [dialogSucessoAberto, setDialogSucessoAberto] = useState(false);
   const [processando, setProcessando] = useState(false);
@@ -142,7 +144,14 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
 
   const confirmarEntregaSelecionados = async () => {
     const nome = nomeRecebedor.trim();
-    if (!nome) return;
+    if (!nome) {
+      setError('Informe o nome de quem recebeu');
+      return;
+    }
+    if (!assinatura) {
+      setError('É necessário coletar a assinatura do recebedor');
+      return;
+    }
     try {
       setProcessando(true);
       const itensSelecionados = itens.filter((item) => selecionados.includes(item.id));
@@ -151,13 +160,16 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
           entregaService.confirmarEntrega(item.id, {
             quantidade_entregue: Number(quantidadesSelecionadas[item.id] ?? item.quantidade),
             nome_quem_entregou: nome,
-            nome_quem_recebeu: nome
+            nome_quem_recebeu: nome,
+            assinatura_base64: assinatura
           } as ConfirmarEntregaData)
         )
       );
+      
       await carregarItens();
       setDialogRevisaoAberto(false);
       setDialogSucessoAberto(true);
+      setAssinatura(null);
     } catch (err) {
       console.error('Erro ao confirmar entrega:', err);
       setError('Erro ao confirmar entrega');
@@ -410,7 +422,51 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
               value={nomeRecebedor}
               onChange={(e) => setNomeRecebedor(e.target.value)}
               required
+              sx={{ mb: 3 }}
             />
+          </Box>
+
+          <Box mt={2}>
+            <Typography variant="subtitle2" gutterBottom fontWeight={600}>
+              Assinatura do Recebedor *
+            </Typography>
+            {assinatura ? (
+              <Box>
+                <Paper
+                  variant="outlined"
+                  sx={{
+                    p: 2,
+                    mb: 2,
+                    border: '2px solid',
+                    borderColor: 'success.main',
+                    bgcolor: 'success.50'
+                  }}
+                >
+                  <img
+                    src={assinatura}
+                    alt="Assinatura"
+                    style={{
+                      width: '100%',
+                      height: 'auto',
+                      display: 'block'
+                    }}
+                  />
+                </Paper>
+                <Button
+                  variant="outlined"
+                  color="warning"
+                  fullWidth
+                  onClick={() => setAssinatura(null)}
+                >
+                  ✏️ Refazer Assinatura
+                </Button>
+              </Box>
+            ) : (
+              <SignaturePad
+                onSave={(dataUrl) => setAssinatura(dataUrl)}
+                onClear={() => setAssinatura(null)}
+              />
+            )}
           </Box>
         </DialogContent>
         <DialogActions>
@@ -420,7 +476,7 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
           <Button
             onClick={confirmarEntregaSelecionados}
             variant="contained"
-            disabled={processando || !nomeRecebedor.trim() || selecionados.length === 0 || possuiQuantidadeInvalida}
+            disabled={processando || !nomeRecebedor.trim() || !assinatura || selecionados.length === 0 || possuiQuantidadeInvalida}
           >
             {processando ? <CircularProgress size={20} /> : 'Realizar entrega'}
           </Button>

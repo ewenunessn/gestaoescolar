@@ -30,6 +30,7 @@ import { entregaServiceHybrid } from '../services/entregaServiceHybrid';
 import { ConfirmarEntregaData } from '../services/entregaService';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { appTheme } from '../theme/appTheme';
+import { formatarNumero } from '../utils/formatters';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 type ConfirmarEntregaRouteProp = RouteProp<RootStackParamList, 'ConfirmarEntrega'>;
@@ -225,7 +226,7 @@ const ConfirmarEntregaScreen = () => {
               <View style={styles.itemInfo}>
                 <Title style={styles.itemNome}>{itemData.produto_nome}</Title>
                 <Paragraph style={styles.itemDetalhes}>
-                  Quantidade: {itemData.quantidade} {itemData.unidade}
+                  Quantidade: {formatarNumero(itemData.quantidade)} {itemData.unidade}
                 </Paragraph>
               </View>
             </View>

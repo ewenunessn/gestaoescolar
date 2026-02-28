@@ -344,6 +344,53 @@ class RotaController {
     }
   }
 
+  async listarStatusEscolasPlanejamento(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      if (!id || isNaN(Number(id))) {
+        return res.status(400).json({ error: 'ID do planejamento é obrigatório e deve ser um número' });
+      }
+      const escolas = await RotaModel.listarStatusEscolasPlanejamento(Number(id));
+      res.json(escolas);
+    } catch (error) {
+      console.error('Erro ao listar status das escolas:', error);
+      res.status(500).json({
+        error: 'Erro interno do servidor',
+        message: error instanceof Error ? error.message : 'Erro desconhecido'
+      });
+    }
+  }
+
+  async atualizarStatusEscola(req: Request, res: Response) {
+    try {
+      const { id, escolaId } = req.params;
+      const { status, observacao, fotoBase64, assinadoPor } = req.body;
+      if (!id || isNaN(Number(id))) {
+        return res.status(400).json({ error: 'ID do planejamento é obrigatório e deve ser um número' });
+      }
+      if (!escolaId || isNaN(Number(escolaId))) {
+        return res.status(400).json({ error: 'ID da escola é obrigatório e deve ser um número' });
+      }
+      if (!['pendente','entregue','nao_entregue'].includes(status)) {
+        return res.status(400).json({ error: 'Status inválido' });
+      }
+      const payload = await RotaModel.atualizarStatusEscola(
+        Number(id), 
+        Number(escolaId), 
+        status, 
+        observacao,
+        fotoBase64,
+        assinadoPor
+      );
+      res.json({ message: 'Status atualizado', data: payload });
+    } catch (error) {
+      console.error('Erro ao atualizar status da escola:', error);
+      res.status(500).json({
+        error: 'Erro interno do servidor',
+        message: error instanceof Error ? error.message : 'Erro desconhecido'
+      });
+    }
+  }
   // Escolas disponíveis
   async listarEscolasDisponiveis(req: Request, res: Response) {
     try {
@@ -411,6 +458,26 @@ class RotaController {
     } catch (error) {
       console.error('Erro ao criar planejamento avançado:', error);
       res.status(500).json({ 
+        error: 'Erro interno do servidor',
+        message: error instanceof Error ? error.message : 'Erro desconhecido'
+      });
+    }
+  }
+
+  async listarEvidencias(req: Request, res: Response) {
+    try {
+      const { planejamentoId, rotaId, status, from, to } = req.query as any;
+      const data = await RotaModel.listarEvidencias({
+        planejamentoId: planejamentoId ? Number(planejamentoId) : undefined,
+        rotaId: rotaId ? Number(rotaId) : undefined,
+        status: status || undefined,
+        from: from || undefined,
+        to: to || undefined
+      });
+      res.json(data);
+    } catch (error) {
+      console.error('Erro ao listar evidências:', error);
+      res.status(500).json({
         error: 'Erro interno do servidor',
         message: error instanceof Error ? error.message : 'Erro desconhecido'
       });
