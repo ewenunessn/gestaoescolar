@@ -155,7 +155,9 @@ class EntregaModel {
         gpe.unidade as produto_unidade,
         g.mes,
         g.ano,
-        g.observacao as guia_observacao
+        g.observacao as guia_observacao,
+        COALESCE(gpe.quantidade_total_entregue, 0) as quantidade_ja_entregue,
+        (gpe.quantidade - COALESCE(gpe.quantidade_total_entregue, 0)) as saldo_pendente
       FROM guia_produto_escola gpe
       INNER JOIN produtos p ON gpe.produto_id = p.id
       INNER JOIN guias g ON gpe.guia_id = g.id

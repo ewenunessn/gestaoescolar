@@ -72,6 +72,11 @@ export interface ItemEntrega {
   unidade: string
   lote?: string
   observacao?: string
+  quantidade_ja_entregue?: number
+  saldo_pendente?: number
+  entrega_confirmada?: boolean
+  nome_quem_recebeu?: string
+  data_entrega?: string
 }
 
 export async function listarItensEscola(escolaId: number, guiaId?: number): Promise<ItemEntrega[]> {

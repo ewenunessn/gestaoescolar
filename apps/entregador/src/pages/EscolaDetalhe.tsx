@@ -56,7 +56,8 @@ export default function EscolaDetalhe() {
         setItens(data.map(item => ({
           ...item,
           selecionado: false,
-          quantidade_entregue: item.quantidade
+          // Se já houver entregas parciais, usar o saldo pendente como quantidade padrão
+          quantidade_entregue: item.saldo_pendente !== undefined && item.quantidade_ja_entregue ? item.saldo_pendente : item.quantidade
         })))
       } catch (e) {
         setError(handleAxiosError(e))
@@ -570,6 +571,21 @@ export default function EscolaDetalhe() {
                 </div>
                 <div style={{ fontSize: 14, color: '#4b5563', marginBottom: 4 }}>
                   Quantidade programada: <strong style={{ color: '#1f2937' }}>{formatarNumero(item.quantidade)} {item.unidade}</strong>
+                  {item.quantidade_ja_entregue && item.quantidade_ja_entregue > 0 && !item.entrega_confirmada && (
+                    <div style={{ 
+                      marginTop: 6,
+                      padding: '6px 10px',
+                      background: '#fef3c7',
+                      borderRadius: 6,
+                      fontSize: 13,
+                      color: '#92400e',
+                      border: '1px solid #fbbf24'
+                    }}>
+                      ⚠️ Já entregue anteriormente: <strong>{formatarNumero(item.quantidade_ja_entregue)} {item.unidade}</strong>
+                      <br />
+                      <strong style={{ color: '#1976d2' }}>Saldo pendente: {formatarNumero(item.saldo_pendente || 0)} {item.unidade}</strong>
+                    </div>
+                  )}
                 </div>
                 {item.entrega_confirmada && (
                   <div style={{ 
