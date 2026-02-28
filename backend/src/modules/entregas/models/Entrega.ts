@@ -1,4 +1,5 @@
 import db from '../../../database';
+import HistoricoEntregaModel from './HistoricoEntrega';
 
 export interface EscolaEntrega {
   id: number;
@@ -218,7 +219,6 @@ class EntregaModel {
     }
 
     // Criar registro no histórico de entregas
-    const HistoricoEntregaModel = (await import('./HistoricoEntrega')).default;
     await HistoricoEntregaModel.criar({
       guia_produto_escola_id: itemId,
       quantidade_entregue: dados.quantidade_entregue,
