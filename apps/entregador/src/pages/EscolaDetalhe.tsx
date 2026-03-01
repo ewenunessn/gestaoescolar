@@ -34,7 +34,19 @@ export default function EscolaDetalhe() {
   
   // Dados da revisão
   const [nomeRecebedor, setNomeRecebedor] = useState('')
-  const [nomeEntregador, setNomeEntregador] = useState('')
+  const [nomeEntregador, setNomeEntregador] = useState(() => {
+    // Pegar o nome do usuário logado
+    try {
+      const stored = localStorage.getItem('token')
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        return parsed.nome || ''
+      }
+    } catch (e) {
+      console.warn('Erro ao obter nome do usuário:', e)
+    }
+    return ''
+  })
   const [observacao, setObservacao] = useState('')
   const [assinatura, setAssinatura] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
@@ -397,10 +409,18 @@ export default function EscolaDetalhe() {
                 className="input"
                 type="text"
                 value={nomeEntregador}
-                onChange={e => setNomeEntregador(e.target.value)}
+                readOnly
+                style={{ 
+                  background: '#f3f4f6', 
+                  cursor: 'not-allowed',
+                  color: '#6b7280'
+                }}
                 placeholder="Nome do entregador"
                 required
               />
+              <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>
+                ℹ️ Preenchido automaticamente com seu nome de usuário
+              </div>
             </label>
 
             <label>
