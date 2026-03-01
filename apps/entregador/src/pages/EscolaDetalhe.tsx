@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { listarItensEscola, ItemEntrega, confirmarEntregaItem, ConfirmarEntregaItemData } from '../api/rotas'
 import { handleAxiosError } from '../api/client'
@@ -83,25 +83,27 @@ export default function EscolaDetalhe() {
     })()
   }, [id, state?.guiaId])
 
-  // Filtrar itens baseado na aba ativa
-  const itensFiltrados = itens.filter(item => {
-    if (abaAtiva === 'pendentes') {
-      // Pendentes: itens que ainda têm saldo para entregar
-      const isPendente = !item.entrega_confirmada || (item.saldo_pendente && item.saldo_pendente > 0)
-      if (isPendente) {
-        console.log('✅ Item pendente:', item.produto_nome, { entrega_confirmada: item.entrega_confirmada, saldo_pendente: item.saldo_pendente })
+  // Filtrar itens baseado na aba ativa (usar useMemo para evitar recalcular)
+  const itensFiltrados = useMemo(() => {
+    return itens.filter(item => {
+      if (abaAtiva === 'pendentes') {
+        // Pendentes: itens que ainda têm saldo para entregar
+        const isPendente = !item.entrega_confirmada || (item.saldo_pendente && item.saldo_pendente > 0)
+        if (isPendente) {
+          console.log('✅ Item pendente:', item.produto_nome, { entrega_confirmada: item.entrega_confirmada, saldo_pendente: item.saldo_pendente })
+        }
+        return isPendente
+      } else {
+        // Entregues: itens que têm histórico de entregas (mesmo que parciais)
+        const temHistorico = item.historico_entregas && item.historico_entregas.length > 0
+        console.log(`${temHistorico ? '✅' : '❌'} Item ${item.produto_nome}:`, { 
+          historico_entregas: item.historico_entregas,
+          length: item.historico_entregas?.length 
+        })
+        return temHistorico
       }
-      return isPendente
-    } else {
-      // Entregues: itens que têm histórico de entregas (mesmo que parciais)
-      const temHistorico = item.historico_entregas && item.historico_entregas.length > 0
-      console.log(`${temHistorico ? '✅' : '❌'} Item ${item.produto_nome}:`, { 
-        historico_entregas: item.historico_entregas,
-        length: item.historico_entregas?.length 
-      })
-      return temHistorico
-    }
-  })
+    })
+  }, [itens, abaAtiva])
 
   function toggleItem(itemId: number) {
     const item = itens.find(i => i.id === itemId)
@@ -141,7 +143,11 @@ export default function EscolaDetalhe() {
   }
 
   function continuar() {
+    console.log('🚨 CONTINUAR CLICADO - Estado ANTES de filtrar:', itens)
+    
     const selecionados = itens.filter(i => i.selecionado)
+    
+    console.log('🚨 CONTINUAR - Itens selecionados IMEDIATAMENTE após filtro:', selecionados)
     
     console.log('🔍 REVISÃO - Estado completo dos itens:', itens.map(i => ({
       id: i.id,
@@ -183,6 +189,7 @@ export default function EscolaDetalhe() {
       if (!confirmar) return
     }
 
+    console.log('🚨 MUDANDO PARA ETAPA REVISAO')
     setEtapa('revisao')
   }
 
@@ -331,6 +338,16 @@ export default function EscolaDetalhe() {
   }
 
   if (etapa === 'revisao') {
+    console.log('🎯 RENDERIZANDO TELA DE REVISÃO')
+    console.log('🎯 itensSelecionados:', itensSelecionados)
+    console.log('🎯 itensSelecionados detalhado:', itensSelecionados.map(i => ({
+      id: i.id,
+      produto: i.produto_nome,
+      quantidade_a_entregar: i.quantidade_a_entregar,
+      tipo: typeof i.quantidade_a_entregar,
+      quantidade: i.quantidade
+    })))
+    
     return (
       <div>
         <div className="header">
