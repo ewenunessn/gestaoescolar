@@ -31,6 +31,7 @@ export default function EscolaDetalhe() {
   const [etapa, setEtapa] = useState<'selecao' | 'revisao'>('selecao')
   const [abaAtiva, setAbaAtiva] = useState<'pendentes' | 'entregues'>('pendentes')
   const [mostrandoSucesso, setMostrandoSucesso] = useState(false)
+  const [itemHistoricoModal, setItemHistoricoModal] = useState<ItemSelecionado | null>(null)
   
   // Dados da revisão
   const [nomeRecebedor, setNomeRecebedor] = useState('')
@@ -597,7 +598,7 @@ export default function EscolaDetalhe() {
       {abaAtiva === 'entregues' && (
         <div className="card" style={{ marginBottom: 12, background: '#f0fdf4', border: '2px solid #86efac' }}>
           <div>
-            <div style={{ fontWeight: 600, color: '#059669' }}>✓ Itens Entregues</div>
+            <div style={{ fontWeight: 600, color: '#059669' }}>✓ Histórico de Entregas</div>
             <div style={{ fontSize: 14, color: '#047857' }}>
               {itens.filter(i => i.historico_entregas && i.historico_entregas.length > 0).length} item(s) com entregas registradas
             </div>
@@ -606,7 +607,7 @@ export default function EscolaDetalhe() {
       )}
 
       <div style={{ display: 'grid', gap: 12 }}>
-        {itensFiltrados.map(item => (
+        {abaAtiva === 'pendentes' && itensFiltrados.map(item => (
           <div 
             key={item.id} 
             className="card" 
@@ -618,8 +619,9 @@ export default function EscolaDetalhe() {
               boxShadow: item.entrega_confirmada ? '0 1px 3px rgba(5, 150, 105, 0.1)' : '0 1px 2px rgba(0, 0, 0, 0.05)'
             }}
           >
+            {/* ABA PENDENTES - Layout simplificado */}
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-              {abaAtiva === 'pendentes' && !item.entrega_confirmada && (
+              {!item.entrega_confirmada && (
                 <input
                   type="checkbox"
                   checked={item.selecionado}
@@ -633,133 +635,33 @@ export default function EscolaDetalhe() {
                 />
               )}
               <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                  <div style={{ fontWeight: 600, color: '#1f2937' }}>{item.produto_nome}</div>
-                  {item.entrega_confirmada && (
-                    <span style={{ 
-                      fontSize: 11, 
-                      padding: '3px 10px', 
-                      background: '#059669', 
-                      color: 'white', 
-                      borderRadius: 6,
-                      fontWeight: 700,
-                      letterSpacing: '0.5px'
-                    }}>
-                      ✓ ENTREGUE
-                    </span>
-                  )}
-                  {!item.entrega_confirmada && item.historico_entregas && item.historico_entregas.length > 0 && (
-                    <span style={{ 
-                      fontSize: 11, 
-                      padding: '3px 10px', 
-                      background: '#fbbf24', 
-                      color: 'white', 
-                      borderRadius: 6,
-                      fontWeight: 700,
-                      letterSpacing: '0.5px'
-                    }}>
-                      ⚠️ PARCIAL
-                    </span>
-                  )}
+                <div style={{ fontWeight: 600, color: '#1f2937', fontSize: 16, marginBottom: 8 }}>
+                  {item.produto_nome}
                 </div>
-                <div style={{ fontSize: 14, color: '#4b5563', marginBottom: 4 }}>
-                  Quantidade programada: <strong style={{ color: '#1f2937' }}>{formatarNumero(item.quantidade)} {item.unidade}</strong>
-                  {item.quantidade_ja_entregue && item.quantidade_ja_entregue > 0 && !item.entrega_confirmada && (
-                    <div style={{ 
-                      marginTop: 6,
-                      padding: '6px 10px',
-                      background: '#fef3c7',
-                      borderRadius: 6,
-                      fontSize: 13,
-                      color: '#92400e',
-                      border: '1px solid #fbbf24'
-                    }}>
-                      ⚠️ Já entregue anteriormente: <strong>{formatarNumero(item.quantidade_ja_entregue)} {item.unidade}</strong>
-                      <br />
-                      <strong style={{ color: '#1976d2' }}>Saldo pendente: {formatarNumero(item.saldo_pendente || 0)} {item.unidade}</strong>
+                
+                {/* Mostrar saldo pendente se houver entregas parciais */}
+                {item.quantidade_ja_entregue && item.quantidade_ja_entregue > 0 ? (
+                  <div>
+                    <div style={{ fontSize: 14, color: '#dc2626', fontWeight: 600, marginBottom: 4 }}>
+                      📦 Faltam: {formatarNumero(item.saldo_pendente || 0)} {item.unidade}
                     </div>
-                  )}
-                </div>
-                {item.historico_entregas && item.historico_entregas.length > 0 && (
-                  <div style={{ marginTop: 8 }}>
-                    <div style={{ 
-                      fontSize: 13, 
-                      fontWeight: 600, 
-                      color: '#047857',
-                      marginBottom: 8,
-                      paddingBottom: 6,
-                      borderBottom: '2px solid #86efac'
-                    }}>
-                      📋 Histórico de Entregas ({item.historico_entregas.length})
-                    </div>
-                    {item.historico_entregas.map((entrega, index) => (
-                      <div 
-                        key={entrega.id}
-                        style={{ 
-                          fontSize: 13, 
-                          color: '#047857', 
-                          marginBottom: index < item.historico_entregas!.length - 1 ? 8 : 0,
-                          padding: '8px 12px',
-                          background: 'rgba(5, 150, 105, 0.08)',
-                          borderRadius: 6,
-                          borderLeft: '3px solid #059669'
-                        }}
-                      >
-                        <div style={{ fontWeight: 600, marginBottom: 4 }}>
-                          Entrega #{item.historico_entregas!.length - index}: {formatarNumero(entrega.quantidade_entregue)} {item.unidade}
-                          {entrega.quantidade_entregue !== item.quantidade && (
-                            <span style={{ 
-                              marginLeft: 8,
-                              padding: '2px 6px',
-                              background: '#fef3c7',
-                              color: '#92400e',
-                              borderRadius: 4,
-                              fontSize: 11,
-                              fontWeight: 700
-                            }}>
-                              PARCIAL
-                            </span>
-                          )}
-                        </div>
-                        <div style={{ fontSize: 12, color: '#065f46' }}>
-                          👤 Entregador: {entrega.nome_quem_entregou}
-                        </div>
-                        <div style={{ fontSize: 12, color: '#065f46' }}>
-                          👤 Recebedor: {entrega.nome_quem_recebeu}
-                        </div>
-                        <div style={{ fontSize: 12, color: '#065f46' }}>
-                          📅 {new Date(entrega.data_entrega).toLocaleDateString('pt-BR')} às {new Date(entrega.data_entrega).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                        </div>
-                        {entrega.observacao && (
-                          <div style={{ fontSize: 12, color: '#065f46', marginTop: 4, fontStyle: 'italic' }}>
-                            💬 {entrega.observacao}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                    <div style={{ 
-                      marginTop: 8,
-                      padding: '8px 12px',
-                      background: item.entrega_confirmada ? '#dbeafe' : '#fef3c7',
-                      borderRadius: 6,
-                      fontSize: 13,
-                      fontWeight: 600,
-                      color: item.entrega_confirmada ? '#1e40af' : '#92400e'
-                    }}>
-                      Total entregue: {formatarNumero(parseFloat(String(item.quantidade_ja_entregue || 0)))} {item.unidade} de {formatarNumero(item.quantidade)} {item.unidade}
-                      {item.saldo_pendente && item.saldo_pendente > 0 && (
-                        <span style={{ color: '#dc2626', marginLeft: 8 }}>
-                          (Faltam {formatarNumero(item.saldo_pendente)} {item.unidade})
-                        </span>
-                      )}
+                    <div style={{ fontSize: 13, color: '#6b7280' }}>
+                      Programado: {formatarNumero(item.quantidade)} {item.unidade} • 
+                      Já entregue: {formatarNumero(item.quantidade_ja_entregue)} {item.unidade}
                     </div>
                   </div>
+                ) : (
+                  <div style={{ fontSize: 14, color: '#4b5563' }}>
+                    📦 Quantidade: <strong style={{ color: '#1f2937' }}>{formatarNumero(item.quantidade)} {item.unidade}</strong>
+                  </div>
                 )}
+
                 {item.lote && (
-                  <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>
+                  <div style={{ fontSize: 12, color: '#6b7280', marginTop: 6 }}>
                     🏷️ Lote: <strong>{item.lote}</strong>
                   </div>
                 )}
+
                 {item.observacao && (
                   <div style={{ fontSize: 12, color: '#6b7280', marginTop: 6, fontStyle: 'italic', padding: '6px 10px', background: '#f9fafb', borderRadius: 4 }}>
                     💬 {item.observacao}
@@ -794,7 +696,414 @@ export default function EscolaDetalhe() {
             </div>
           </div>
         ))}
+
+        {/* ABA ENTREGUES - Timeline agrupada por data */}
+        {abaAtiva === 'entregues' && (() => {
+          // Agrupar entregas por data
+          const entregasPorData: Record<string, Array<{ item: ItemSelecionado; entrega: any }>> = {}
+          
+          itensFiltrados.forEach(item => {
+            if (item.historico_entregas && item.historico_entregas.length > 0) {
+              item.historico_entregas.forEach(entrega => {
+                const dataKey = new Date(entrega.data_entrega).toLocaleDateString('pt-BR')
+                if (!entregasPorData[dataKey]) {
+                  entregasPorData[dataKey] = []
+                }
+                entregasPorData[dataKey].push({ item, entrega })
+              })
+            }
+          })
+
+          // Ordenar datas (mais recente primeiro)
+          const datasOrdenadas = Object.keys(entregasPorData).sort((a, b) => {
+            const dateA = new Date(a.split('/').reverse().join('-'))
+            const dateB = new Date(b.split('/').reverse().join('-'))
+            return dateB.getTime() - dateA.getTime()
+          })
+
+          return (
+            <div style={{ position: 'relative', paddingLeft: 24 }}>
+              {/* Linha vertical da timeline */}
+              <div style={{
+                position: 'absolute',
+                left: 8,
+                top: 0,
+                bottom: 0,
+                width: 3,
+                background: 'linear-gradient(to bottom, #059669, #86efac)',
+                borderRadius: 2
+              }} />
+
+              {datasOrdenadas.map((data, dataIndex) => {
+                const entregas = entregasPorData[data]
+                const totalItens = entregas.length
+                
+                return (
+                  <div key={data} style={{ marginBottom: 32, position: 'relative' }}>
+                    {/* Marcador da data na timeline */}
+                    <div style={{
+                      position: 'absolute',
+                      left: -20,
+                      top: 8,
+                      width: 16,
+                      height: 16,
+                      borderRadius: '50%',
+                      background: '#059669',
+                      border: '3px solid white',
+                      boxShadow: '0 0 0 2px #059669',
+                      zIndex: 1
+                    }} />
+
+                    {/* Cabeçalho da data */}
+                    <div style={{
+                      background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                      color: 'white',
+                      padding: '12px 16px',
+                      borderRadius: 8,
+                      marginBottom: 12,
+                      boxShadow: '0 2px 4px rgba(5, 150, 105, 0.2)'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ fontSize: 18, fontWeight: 700 }}>📅 {data}</div>
+                          <div style={{ fontSize: 13, opacity: 0.9, marginTop: 2 }}>
+                            {totalItens} {totalItens === 1 ? 'entrega realizada' : 'entregas realizadas'}
+                          </div>
+                        </div>
+                        <div style={{
+                          background: 'rgba(255, 255, 255, 0.2)',
+                          padding: '6px 12px',
+                          borderRadius: 6,
+                          fontSize: 12,
+                          fontWeight: 600
+                        }}>
+                          {dataIndex === 0 ? '🆕 Mais recente' : `${dataIndex + 1}º dia`}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Entregas do dia */}
+                    <div style={{ display: 'grid', gap: 12 }}>
+                      {entregas.map(({ item, entrega }, index) => (
+                        <div
+                          key={`${item.id}-${entrega.id}`}
+                          style={{
+                            background: 'white',
+                            border: '2px solid #d1fae5',
+                            borderRadius: 8,
+                            padding: 16,
+                            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+                            transition: 'all 0.2s',
+                            cursor: 'pointer'
+                          }}
+                          onClick={() => setItemHistoricoModal(item)}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                                <div style={{ fontWeight: 700, fontSize: 16, color: '#1f2937' }}>
+                                  {item.produto_nome}
+                                </div>
+                                {item.entrega_confirmada && (
+                                  <span style={{
+                                    fontSize: 10,
+                                    padding: '3px 8px',
+                                    background: '#059669',
+                                    color: 'white',
+                                    borderRadius: 4,
+                                    fontWeight: 700
+                                  }}>
+                                    ✓ COMPLETO
+                                  </span>
+                                )}
+                                {!item.entrega_confirmada && (
+                                  <span style={{
+                                    fontSize: 10,
+                                    padding: '3px 8px',
+                                    background: '#fbbf24',
+                                    color: 'white',
+                                    borderRadius: 4,
+                                    fontWeight: 700
+                                  }}>
+                                    ⚠️ PARCIAL
+                                  </span>
+                                )}
+                              </div>
+                              
+                              <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 8 }}>
+                                Programado: {formatarNumero(item.quantidade)} {item.unidade}
+                                {item.saldo_pendente && item.saldo_pendente > 0 && (
+                                  <span style={{ color: '#dc2626', fontWeight: 600 }}>
+                                    {' • '}Faltam: {formatarNumero(item.saldo_pendente)} {item.unidade}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div style={{
+                              background: '#f0fdf4',
+                              padding: '8px 12px',
+                              borderRadius: 6,
+                              border: '1px solid #86efac',
+                              textAlign: 'center'
+                            }}>
+                              <div style={{ fontSize: 20, fontWeight: 700, color: '#059669' }}>
+                                {formatarNumero(entrega.quantidade_entregue)}
+                              </div>
+                              <div style={{ fontSize: 11, color: '#047857', fontWeight: 600 }}>
+                                {item.unidade}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: '1fr 1fr',
+                            gap: 12,
+                            padding: 12,
+                            background: '#f9fafb',
+                            borderRadius: 6
+                          }}>
+                            <div>
+                              <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 2 }}>👤 Entregador</div>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: '#1f2937' }}>
+                                {entrega.nome_quem_entregou}
+                              </div>
+                            </div>
+                            <div>
+                              <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 2 }}>👤 Recebedor</div>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: '#1f2937' }}>
+                                {entrega.nome_quem_recebeu}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div style={{
+                            marginTop: 8,
+                            fontSize: 12,
+                            color: '#6b7280',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6
+                          }}>
+                            <span>🕐</span>
+                            {new Date(entrega.data_entrega).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                            {entrega.observacao && (
+                              <>
+                                <span style={{ margin: '0 4px' }}>•</span>
+                                <span style={{ fontStyle: 'italic' }}>💬 {entrega.observacao}</span>
+                              </>
+                            )}
+                          </div>
+
+                          <div style={{
+                            marginTop: 8,
+                            fontSize: 11,
+                            color: '#059669',
+                            fontWeight: 600,
+                            textAlign: 'right'
+                          }}>
+                            Clique para ver histórico completo →
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+
+              {datasOrdenadas.length === 0 && (
+                <div style={{ textAlign: 'center', padding: 40, color: '#6b7280' }}>
+                  <div style={{ fontSize: 48, marginBottom: 12 }}>📦</div>
+                  <div style={{ fontWeight: 600, marginBottom: 8 }}>Nenhuma entrega registrada</div>
+                  <div style={{ fontSize: 14 }}>As entregas aparecerão aqui organizadas por data</div>
+                </div>
+              )}
+            </div>
+          )
+        })()}
       </div>
+
+      {/* Modal de Histórico */}
+      {itemHistoricoModal && (
+        <div 
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: 16
+          }}
+          onClick={() => setItemHistoricoModal(null)}
+        >
+          <div 
+            style={{
+              background: 'white',
+              borderRadius: 12,
+              maxWidth: 600,
+              width: '100%',
+              maxHeight: '80vh',
+              overflow: 'auto',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ 
+              padding: '20px 24px', 
+              borderBottom: '2px solid #e5e7eb',
+              position: 'sticky',
+              top: 0,
+              background: 'white',
+              zIndex: 1
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#1f2937' }}>
+                    📋 Histórico de Entregas
+                  </h3>
+                  <div style={{ fontSize: 16, color: '#6b7280', marginTop: 4 }}>
+                    {itemHistoricoModal.produto_nome}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setItemHistoricoModal(null)}
+                  style={{
+                    background: '#f3f4f6',
+                    border: 'none',
+                    borderRadius: 8,
+                    width: 36,
+                    height: 36,
+                    cursor: 'pointer',
+                    fontSize: 20,
+                    color: '#6b7280',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <div style={{ 
+                marginTop: 12,
+                padding: '12px',
+                background: '#f0fdf4',
+                borderRadius: 8,
+                border: '1px solid #86efac'
+              }}>
+                <div style={{ fontSize: 14, color: '#065f46' }}>
+                  Programado: <strong>{formatarNumero(itemHistoricoModal.quantidade)} {itemHistoricoModal.unidade}</strong>
+                  {' • '}
+                  Entregue: <strong>{formatarNumero(
+                    itemHistoricoModal.historico_entregas?.reduce((sum, h) => sum + parseFloat(String(h.quantidade_entregue)), 0) || 0
+                  )} {itemHistoricoModal.unidade}</strong>
+                  {itemHistoricoModal.saldo_pendente && itemHistoricoModal.saldo_pendente > 0 && (
+                    <>
+                      {' • '}
+                      <strong style={{ color: '#dc2626' }}>Faltam: {formatarNumero(itemHistoricoModal.saldo_pendente)} {itemHistoricoModal.unidade}</strong>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ padding: 24 }}>
+              {itemHistoricoModal.historico_entregas && itemHistoricoModal.historico_entregas.length > 0 ? (
+                <div style={{ display: 'grid', gap: 12 }}>
+                  {itemHistoricoModal.historico_entregas.map((entrega, index) => (
+                    <div 
+                      key={entrega.id}
+                      style={{ 
+                        padding: '16px',
+                        background: 'rgba(5, 150, 105, 0.08)',
+                        borderRadius: 8,
+                        borderLeft: '4px solid #059669'
+                      }}
+                    >
+                      <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center',
+                        marginBottom: 12
+                      }}>
+                        <div style={{ fontWeight: 700, fontSize: 16, color: '#047857' }}>
+                          Entrega #{itemHistoricoModal.historico_entregas!.length - index}
+                        </div>
+                        <div style={{ fontWeight: 700, fontSize: 18, color: '#059669' }}>
+                          {formatarNumero(entrega.quantidade_entregue)} {itemHistoricoModal.unidade}
+                          {entrega.quantidade_entregue !== itemHistoricoModal.quantidade && (
+                            <span style={{ 
+                              marginLeft: 8,
+                              padding: '3px 8px',
+                              background: '#fef3c7',
+                              color: '#92400e',
+                              borderRadius: 4,
+                              fontSize: 11,
+                              fontWeight: 700
+                            }}>
+                              PARCIAL
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div style={{ display: 'grid', gap: 8 }}>
+                        <div style={{ fontSize: 14, color: '#065f46', display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: 16 }}>👤</span>
+                          <div>
+                            <div style={{ fontSize: 12, color: '#6b7280' }}>Entregador</div>
+                            <div style={{ fontWeight: 600 }}>{entrega.nome_quem_entregou}</div>
+                          </div>
+                        </div>
+                        
+                        <div style={{ fontSize: 14, color: '#065f46', display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: 16 }}>👤</span>
+                          <div>
+                            <div style={{ fontSize: 12, color: '#6b7280' }}>Recebedor</div>
+                            <div style={{ fontWeight: 600 }}>{entrega.nome_quem_recebeu}</div>
+                          </div>
+                        </div>
+                        
+                        <div style={{ fontSize: 14, color: '#065f46', display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: 16 }}>📅</span>
+                          <div>
+                            <div style={{ fontSize: 12, color: '#6b7280' }}>Data e Hora</div>
+                            <div style={{ fontWeight: 600 }}>
+                              {new Date(entrega.data_entrega).toLocaleDateString('pt-BR')} às {new Date(entrega.data_entrega).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {entrega.observacao && (
+                          <div style={{ 
+                            marginTop: 4,
+                            padding: '8px 12px',
+                            background: '#f9fafb',
+                            borderRadius: 6,
+                            fontSize: 13,
+                            color: '#6b7280',
+                            fontStyle: 'italic'
+                          }}>
+                            💬 {entrega.observacao}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: 40, color: '#6b7280' }}>
+                  Nenhuma entrega registrada
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {itensFiltrados.length === 0 && (
         <div className="card" style={{ padding: 32, textAlign: 'center' }}>
