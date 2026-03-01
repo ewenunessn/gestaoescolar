@@ -150,7 +150,20 @@ class EntregaModel {
 
     const result = await db.query(`
       SELECT 
-        gpe.*,
+        gpe.id,
+        gpe.guia_id,
+        gpe.produto_id,
+        gpe.escola_id,
+        gpe.quantidade,
+        gpe.unidade,
+        gpe.lote,
+        gpe.observacao,
+        gpe.entrega_confirmada,
+        gpe.para_entrega,
+        gpe.status,
+        gpe.data_entrega,
+        gpe.nome_quem_recebeu,
+        gpe.nome_quem_entregou,
         p.nome as produto_nome,
         gpe.unidade as produto_unidade,
         g.mes,

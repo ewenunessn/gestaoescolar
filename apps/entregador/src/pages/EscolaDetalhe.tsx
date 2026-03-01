@@ -47,7 +47,13 @@ export default function EscolaDetalhe() {
         const data = await listarItensEscola(id, state?.guiaId)
         
         console.log('📥 Dados recebidos da API:', data)
-        console.log('📊 Itens com histórico:', data.filter(i => i.historico_entregas && i.historico_entregas.length > 0))
+        console.log('📊 Itens com histórico:', data.filter(i => i.historico_entregas && i.historico_entregas.length > 0).map(i => ({
+          produto: i.produto_nome,
+          quantidade_ja_entregue: i.quantidade_ja_entregue,
+          tipo: typeof i.quantidade_ja_entregue,
+          saldo_pendente: i.saldo_pendente,
+          historico: i.historico_entregas
+        })))
         
         // Salvar no cache para uso offline
         try {
@@ -684,7 +690,7 @@ export default function EscolaDetalhe() {
                       fontWeight: 600,
                       color: item.entrega_confirmada ? '#1e40af' : '#92400e'
                     }}>
-                      Total entregue: {formatarNumero(item.quantidade_ja_entregue || 0)} {item.unidade} de {formatarNumero(item.quantidade)} {item.unidade}
+                      Total entregue: {formatarNumero(parseFloat(String(item.quantidade_ja_entregue || 0)))} {item.unidade} de {formatarNumero(item.quantidade)} {item.unidade}
                       {item.saldo_pendente && item.saldo_pendente > 0 && (
                         <span style={{ color: '#dc2626', marginLeft: 8 }}>
                           (Faltam {formatarNumero(item.saldo_pendente)} {item.unidade})
