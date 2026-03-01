@@ -64,6 +64,15 @@ export type EscolaStatus = EscolaRota & {
   assinado_em?: string | null
 }
 
+export interface HistoricoEntregaItem {
+  id: number
+  quantidade_entregue: number
+  data_entrega: string
+  nome_quem_entregou: string
+  nome_quem_recebeu: string
+  observacao?: string
+}
+
 export interface ItemEntrega {
   id: number
   produto_id: number
@@ -77,6 +86,7 @@ export interface ItemEntrega {
   entrega_confirmada?: boolean
   nome_quem_recebeu?: string
   data_entrega?: string
+  historico_entregas?: HistoricoEntregaItem[]
 }
 
 export async function listarItensEscola(escolaId: number, guiaId?: number): Promise<ItemEntrega[]> {

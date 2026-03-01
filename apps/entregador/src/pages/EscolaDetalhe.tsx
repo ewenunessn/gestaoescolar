@@ -68,9 +68,15 @@ export default function EscolaDetalhe() {
   }, [id, state?.guiaId])
 
   // Filtrar itens baseado na aba ativa
-  const itensFiltrados = itens.filter(item => 
-    abaAtiva === 'pendentes' ? !item.entrega_confirmada : item.entrega_confirmada
-  )
+  const itensFiltrados = itens.filter(item => {
+    if (abaAtiva === 'pendentes') {
+      // Pendentes: itens que ainda têm saldo para entregar
+      return !item.entrega_confirmada || (item.saldo_pendente && item.saldo_pendente > 0)
+    } else {
+      // Entregues: itens que têm histórico de entregas (mesmo que parciais)
+      return item.historico_entregas && item.historico_entregas.length > 0
+    }
+  })
 
   function toggleItem(itemId: number) {
     const item = itens.find(i => i.id === itemId)
@@ -475,7 +481,7 @@ export default function EscolaDetalhe() {
             transition: 'all 0.2s'
           }}
         >
-          📦 Pendentes ({itens.filter(i => !i.entrega_confirmada).length})
+          📦 Pendentes ({itens.filter(i => !i.entrega_confirmada || (i.saldo_pendente && i.saldo_pendente > 0)).length})
         </button>
         <button
           onClick={() => setAbaAtiva('entregues')}
@@ -492,7 +498,7 @@ export default function EscolaDetalhe() {
             transition: 'all 0.2s'
           }}
         >
-          ✓ Entregues ({itens.filter(i => i.entrega_confirmada).length})
+          ✓ Entregues ({itens.filter(i => i.historico_entregas && i.historico_entregas.length > 0).length})
         </button>
       </div>
 
@@ -502,7 +508,7 @@ export default function EscolaDetalhe() {
             <div>
               <div style={{ fontWeight: 600 }}>Itens para Entrega</div>
               <div className="muted">
-                {itens.filter(i => !i.entrega_confirmada).length} item(s) pendente(s) para hoje
+                {itens.filter(i => !i.entrega_confirmada || (i.saldo_pendente && i.saldo_pendente > 0)).length} item(s) pendente(s) para hoje
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -519,7 +525,7 @@ export default function EscolaDetalhe() {
           <div>
             <div style={{ fontWeight: 600, color: '#059669' }}>✓ Itens Entregues</div>
             <div style={{ fontSize: 14, color: '#047857' }}>
-              {itens.filter(i => i.entrega_confirmada).length} item(s) já entregue(s) hoje
+              {itens.filter(i => i.historico_entregas && i.historico_entregas.length > 0).length} item(s) com entregas registradas
             </div>
           </div>
         </div>
@@ -539,7 +545,7 @@ export default function EscolaDetalhe() {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-              {!item.entrega_confirmada && (
+              {abaAtiva === 'pendentes' && !item.entrega_confirmada && (
                 <input
                   type="checkbox"
                   checked={item.selecionado}
@@ -568,6 +574,19 @@ export default function EscolaDetalhe() {
                       ✓ ENTREGUE
                     </span>
                   )}
+                  {!item.entrega_confirmada && item.historico_entregas && item.historico_entregas.length > 0 && (
+                    <span style={{ 
+                      fontSize: 11, 
+                      padding: '3px 10px', 
+                      background: '#fbbf24', 
+                      color: 'white', 
+                      borderRadius: 6,
+                      fontWeight: 700,
+                      letterSpacing: '0.5px'
+                    }}>
+                      ⚠️ PARCIAL
+                    </span>
+                  )}
                 </div>
                 <div style={{ fontSize: 14, color: '#4b5563', marginBottom: 4 }}>
                   Quantidade programada: <strong style={{ color: '#1f2937' }}>{formatarNumero(item.quantidade)} {item.unidade}</strong>
@@ -587,47 +606,79 @@ export default function EscolaDetalhe() {
                     </div>
                   )}
                 </div>
-                {item.entrega_confirmada && (
-                  <div style={{ 
-                    fontSize: 13, 
-                    color: '#047857', 
-                    marginTop: 8,
-                    padding: '8px 12px',
-                    background: 'rgba(5, 150, 105, 0.08)',
-                    borderRadius: 6,
-                    borderLeft: '3px solid #059669'
-                  }}>
-                    <div style={{ fontWeight: 600, marginBottom: 4 }}>
-                      Entregue: {formatarNumero(item.quantidade_entregue || item.quantidade)} {item.unidade}
-                      {item.quantidade_entregue && item.quantidade_entregue !== item.quantidade && (
-                        <span style={{ 
-                          marginLeft: 8,
-                          padding: '2px 6px',
-                          background: '#fef3c7',
-                          color: '#92400e',
-                          borderRadius: 4,
-                          fontSize: 11,
-                          fontWeight: 700
-                        }}>
-                          PARCIAL
+                {item.historico_entregas && item.historico_entregas.length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    <div style={{ 
+                      fontSize: 13, 
+                      fontWeight: 600, 
+                      color: '#047857',
+                      marginBottom: 8,
+                      paddingBottom: 6,
+                      borderBottom: '2px solid #86efac'
+                    }}>
+                      📋 Histórico de Entregas ({item.historico_entregas.length})
+                    </div>
+                    {item.historico_entregas.map((entrega, index) => (
+                      <div 
+                        key={entrega.id}
+                        style={{ 
+                          fontSize: 13, 
+                          color: '#047857', 
+                          marginBottom: index < item.historico_entregas!.length - 1 ? 8 : 0,
+                          padding: '8px 12px',
+                          background: 'rgba(5, 150, 105, 0.08)',
+                          borderRadius: 6,
+                          borderLeft: '3px solid #059669'
+                        }}
+                      >
+                        <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                          Entrega #{item.historico_entregas!.length - index}: {formatarNumero(entrega.quantidade_entregue)} {item.unidade}
+                          {entrega.quantidade_entregue !== item.quantidade && (
+                            <span style={{ 
+                              marginLeft: 8,
+                              padding: '2px 6px',
+                              background: '#fef3c7',
+                              color: '#92400e',
+                              borderRadius: 4,
+                              fontSize: 11,
+                              fontWeight: 700
+                            }}>
+                              PARCIAL
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#065f46' }}>
+                          👤 Entregador: {entrega.nome_quem_entregou}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#065f46' }}>
+                          👤 Recebedor: {entrega.nome_quem_recebeu}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#065f46' }}>
+                          📅 {new Date(entrega.data_entrega).toLocaleDateString('pt-BR')} às {new Date(entrega.data_entrega).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                        {entrega.observacao && (
+                          <div style={{ fontSize: 12, color: '#065f46', marginTop: 4, fontStyle: 'italic' }}>
+                            💬 {entrega.observacao}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    <div style={{ 
+                      marginTop: 8,
+                      padding: '8px 12px',
+                      background: item.entrega_confirmada ? '#dbeafe' : '#fef3c7',
+                      borderRadius: 6,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: item.entrega_confirmada ? '#1e40af' : '#92400e'
+                    }}>
+                      Total entregue: {formatarNumero(item.quantidade_ja_entregue || 0)} {item.unidade} de {formatarNumero(item.quantidade)} {item.unidade}
+                      {item.saldo_pendente && item.saldo_pendente > 0 && (
+                        <span style={{ color: '#dc2626', marginLeft: 8 }}>
+                          (Faltam {formatarNumero(item.saldo_pendente)} {item.unidade})
                         </span>
                       )}
                     </div>
-                    {item.quantidade_entregue && item.quantidade_entregue !== item.quantidade && (
-                      <div style={{ fontSize: 12, color: '#92400e', marginBottom: 4 }}>
-                        ⚠️ Programado: {formatarNumero(item.quantidade)} {item.unidade}
-                      </div>
-                    )}
-                    {item.nome_quem_recebeu && (
-                      <div style={{ fontSize: 12, color: '#065f46' }}>
-                        👤 Recebido por: {item.nome_quem_recebeu}
-                      </div>
-                    )}
-                    {item.data_entrega && (
-                      <div style={{ fontSize: 12, color: '#065f46' }}>
-                        📅 {new Date(item.data_entrega).toLocaleDateString('pt-BR')} às {new Date(item.data_entrega).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                      </div>
-                    )}
                   </div>
                 )}
                 {item.lote && (

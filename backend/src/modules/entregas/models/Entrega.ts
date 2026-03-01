@@ -157,7 +157,22 @@ class EntregaModel {
         g.ano,
         g.observacao as guia_observacao,
         COALESCE(gpe.quantidade_total_entregue, 0) as quantidade_ja_entregue,
-        (gpe.quantidade - COALESCE(gpe.quantidade_total_entregue, 0)) as saldo_pendente
+        (gpe.quantidade - COALESCE(gpe.quantidade_total_entregue, 0)) as saldo_pendente,
+        -- Buscar a última entrega do histórico
+        (
+          SELECT json_agg(
+            json_build_object(
+              'id', he.id,
+              'quantidade_entregue', he.quantidade_entregue,
+              'data_entrega', he.data_entrega,
+              'nome_quem_entregou', he.nome_quem_entregou,
+              'nome_quem_recebeu', he.nome_quem_recebeu,
+              'observacao', he.observacao
+            ) ORDER BY he.data_entrega DESC
+          )
+          FROM historico_entregas he
+          WHERE he.guia_produto_escola_id = gpe.id
+        ) as historico_entregas
       FROM guia_produto_escola gpe
       INNER JOIN produtos p ON gpe.produto_id = p.id
       INNER JOIN guias g ON gpe.guia_id = g.id
