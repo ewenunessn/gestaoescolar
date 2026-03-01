@@ -6,7 +6,7 @@ import SignaturePad from '../components/SignaturePad'
 
 interface ItemSelecionado extends ItemEntrega {
   selecionado: boolean
-  quantidade_entregue: number
+  quantidade_a_entregar: number  // Quantidade que será entregue nesta entrega
   entrega_confirmada?: boolean
   nome_quem_recebeu?: string
   data_entrega?: string
@@ -46,6 +46,9 @@ export default function EscolaDetalhe() {
         setLoading(true)
         const data = await listarItensEscola(id, state?.guiaId)
         
+        console.log('📥 Dados recebidos da API:', data)
+        console.log('📊 Itens com histórico:', data.filter(i => i.historico_entregas && i.historico_entregas.length > 0))
+        
         // Salvar no cache para uso offline
         try {
           localStorage.setItem(`itens_escola_${id}`, JSON.stringify(data))
@@ -56,8 +59,8 @@ export default function EscolaDetalhe() {
         setItens(data.map(item => ({
           ...item,
           selecionado: false,
-          // Se já houver entregas parciais, usar o saldo pendente como quantidade padrão
-          quantidade_entregue: item.saldo_pendente !== undefined && item.quantidade_ja_entregue ? item.saldo_pendente : item.quantidade
+          // Se já houver entregas parciais, usar o saldo pendente como quantidade padrão para a próxima entrega
+          quantidade_a_entregar: item.saldo_pendente !== undefined && item.saldo_pendente > 0 ? item.saldo_pendente : item.quantidade
         })))
       } catch (e) {
         setError(handleAxiosError(e))
@@ -71,10 +74,19 @@ export default function EscolaDetalhe() {
   const itensFiltrados = itens.filter(item => {
     if (abaAtiva === 'pendentes') {
       // Pendentes: itens que ainda têm saldo para entregar
-      return !item.entrega_confirmada || (item.saldo_pendente && item.saldo_pendente > 0)
+      const isPendente = !item.entrega_confirmada || (item.saldo_pendente && item.saldo_pendente > 0)
+      if (isPendente) {
+        console.log('✅ Item pendente:', item.produto_nome, { entrega_confirmada: item.entrega_confirmada, saldo_pendente: item.saldo_pendente })
+      }
+      return isPendente
     } else {
       // Entregues: itens que têm histórico de entregas (mesmo que parciais)
-      return item.historico_entregas && item.historico_entregas.length > 0
+      const temHistorico = item.historico_entregas && item.historico_entregas.length > 0
+      console.log(`${temHistorico ? '✅' : '❌'} Item ${item.produto_nome}:`, { 
+        historico_entregas: item.historico_entregas,
+        length: item.historico_entregas?.length 
+      })
+      return temHistorico
     }
   })
 
@@ -100,7 +112,7 @@ export default function EscolaDetalhe() {
       quantidadeProgramada: item?.quantidade
     })
     setItens(prev => prev.map(item =>
-      item.id === itemId ? { ...item, quantidade_entregue: quantidade } : item
+      item.id === itemId ? { ...item, quantidade_a_entregar: quantidade } : item
     ))
   }
 
@@ -118,7 +130,7 @@ export default function EscolaDetalhe() {
       id: i.id,
       produto: i.produto_nome,
       programado: i.quantidade,
-      quantidade_entregue: i.quantidade_entregue,
+      quantidade_a_entregar: i.quantidade_a_entregar,
       unidade: i.unidade
     })))
     
@@ -128,16 +140,16 @@ export default function EscolaDetalhe() {
     }
 
     // Validar quantidades
-    const invalidos = selecionados.filter(i => i.quantidade_entregue <= 0)
+    const invalidos = selecionados.filter(i => i.quantidade_a_entregar <= 0)
     if (invalidos.length > 0) {
       alert('Todas as quantidades devem ser maiores que zero')
       return
     }
 
     // Avisar sobre quantidades diferentes
-    const diferentes = selecionados.filter(i => i.quantidade_entregue !== i.quantidade)
+    const diferentes = selecionados.filter(i => i.quantidade_a_entregar !== i.quantidade)
     if (diferentes.length > 0) {
-      const nomes = diferentes.map(i => `${i.produto_nome}: ${formatarNumero(i.quantidade_entregue)} ${i.unidade} (programado: ${formatarNumero(i.quantidade)} ${i.unidade})`).join('\n')
+      const nomes = diferentes.map(i => `${i.produto_nome}: ${formatarNumero(i.quantidade_a_entregar)} ${i.unidade} (programado: ${formatarNumero(i.quantidade)} ${i.unidade})`).join('\n')
       const confirmar = window.confirm(
         `⚠️ ATENÇÃO: Entrega Parcial/Diferente\n\n` +
         `Os seguintes itens têm quantidade diferente da programada:\n\n${nomes}\n\n` +
@@ -176,13 +188,13 @@ export default function EscolaDetalhe() {
         id: i.id,
         produto: i.produto_nome,
         programado: i.quantidade,
-        quantidade_entregue: i.quantidade_entregue,
+        quantidade_a_entregar: i.quantidade_a_entregar,
         unidade: i.unidade
       })))
       
       for (const item of itensSelecionados) {
         const dadosEntrega: ConfirmarEntregaItemData = {
-          quantidade_entregue: item.quantidade_entregue,
+          quantidade_entregue: item.quantidade_a_entregar,
           nome_quem_entregou: nomeEntregador.trim(),
           nome_quem_recebeu: nomeRecebedor.trim(),
           observacao: observacao.trim() || undefined,
@@ -308,13 +320,13 @@ export default function EscolaDetalhe() {
             <div style={{ fontWeight: 600, marginBottom: 8 }}>Itens Selecionados ({itensSelecionados.length})</div>
             <div style={{ background: '#f9fafb', padding: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}>
               {itensSelecionados.map(item => {
-                const quantidadeDiferente = item.quantidade_entregue !== item.quantidade
+                const quantidadeDiferente = item.quantidade_a_entregar !== item.quantidade
                 return (
                   <div key={item.id} style={{ padding: '8px 0', borderBottom: '1px solid #e5e7eb' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontWeight: 600 }}>{item.produto_nome}</span>
                       <span style={{ fontWeight: 700, color: quantidadeDiferente ? '#d97706' : '#059669' }}>
-                        {formatarNumero(item.quantidade_entregue)} {item.unidade}
+                        {formatarNumero(item.quantidade_a_entregar)} {item.unidade}
                       </span>
                     </div>
                     {quantidadeDiferente && (
@@ -707,7 +719,7 @@ export default function EscolaDetalhe() {
                           type="number"
                           step="0.01"
                           min="0"
-                          value={item.quantidade_entregue}
+                          value={item.quantidade_a_entregar}
                           onChange={e => atualizarQuantidade(item.id, e.target.value)}
                           style={{ maxWidth: 150, fontSize: 16, fontWeight: 600 }}
                         />
