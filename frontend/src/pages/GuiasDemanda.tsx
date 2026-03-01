@@ -68,6 +68,8 @@ const GuiasDemanda: React.FC = () => {
     quantidade: '',
     unidade: '',
     data_entrega: new Date().toISOString().split('T')[0],
+    mes_competencia: new Date().getMonth() + 1,
+    ano_competencia: new Date().getFullYear(),
     observacao: '',
     status: 'pendente'
   });
@@ -76,7 +78,9 @@ const GuiasDemanda: React.FC = () => {
   const [batchForm, setBatchForm] = useState({
     produtoId: '',
     unidade: '',
-    data_entrega: new Date().toISOString().split('T')[0]
+    data_entrega: new Date().toISOString().split('T')[0],
+    mes_competencia: new Date().getMonth() + 1,
+    ano_competencia: new Date().getFullYear()
   });
   const [batchQuantidades, setBatchQuantidades] = useState<Record<number, string>>({});
   const [batchUnidades, setBatchUnidades] = useState<Record<number, string>>({});
@@ -207,11 +211,17 @@ const GuiasDemanda: React.FC = () => {
     if (item) {
       setEditMode(true);
       setSelectedItemId(item.id);
+      
+      // Se o item tem data_entrega, usar o mês/ano dela como padrão
+      const dataEntrega = item.data_entrega ? new Date(item.data_entrega) : new Date();
+      
       setFormData({
         produtoId: item.produto_id?.toString() || item.produto?.id.toString() || '',
         quantidade: item.quantidade.toString(),
         unidade: item.unidade,
         data_entrega: item.data_entrega ? item.data_entrega.split('T')[0] : new Date().toISOString().split('T')[0],
+        mes_competencia: dataEntrega.getMonth() + 1,
+        ano_competencia: dataEntrega.getFullYear(),
         observacao: item.observacao || '',
         status: item.status || 'pendente'
       });
@@ -223,6 +233,8 @@ const GuiasDemanda: React.FC = () => {
         quantidade: '',
         unidade: '',
         data_entrega: new Date().toISOString().split('T')[0],
+        mes_competencia: new Date().getMonth() + 1,
+        ano_competencia: new Date().getFullYear(),
         observacao: '',
         status: 'pendente'
       });
@@ -324,7 +336,9 @@ const GuiasDemanda: React.FC = () => {
     setBatchForm({
       produtoId: '',
       unidade: '',
-      data_entrega: new Date().toISOString().split('T')[0]
+      data_entrega: new Date().toISOString().split('T')[0],
+      mes_competencia: new Date().getMonth() + 1,
+      ano_competencia: new Date().getFullYear()
     });
     setBatchQuantidades({});
     setBatchUnidades({});
@@ -448,6 +462,8 @@ const GuiasDemanda: React.FC = () => {
           quantidade,
           unidade,
           data_entrega: batchForm.data_entrega,
+          mes_competencia: batchForm.mes_competencia,
+          ano_competencia: batchForm.ano_competencia,
           status
         };
         if (batchMode === 'edit' && itemExistente?.id) {
@@ -485,6 +501,8 @@ const GuiasDemanda: React.FC = () => {
         quantidade: parseFloat(formData.quantidade),
         unidade: formData.unidade || 'Kg',
         data_entrega: formData.data_entrega,
+        mes_competencia: formData.mes_competencia,
+        ano_competencia: formData.ano_competencia,
         observacao: formData.observacao,
         status: formData.status
       };
@@ -944,6 +962,70 @@ const GuiasDemanda: React.FC = () => {
               onChange={(e) => setFormData({...formData, data_entrega: e.target.value})}
             />
 
+            <Box sx={{ 
+              p: 2, 
+              bgcolor: '#f0f7ff', 
+              borderRadius: 1, 
+              border: '1px solid #bbdefb' 
+            }}>
+              <Typography variant="subtitle2" sx={{ mb: 1, color: '#1976d2', fontWeight: 600 }}>
+                📊 Mês de Competência (Consumo)
+              </Typography>
+              <Typography variant="caption" sx={{ display: 'block', mb: 2, color: '#666' }}>
+                Define para qual mês o consumo será contabilizado. Por padrão, usa o mês da data de entrega.
+              </Typography>
+              <Box display="grid" gridTemplateColumns="1fr 1fr" gap={2}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Mês</InputLabel>
+                  <Select
+                    value={formData.mes_competencia}
+                    onChange={(e) => setFormData({...formData, mes_competencia: Number(e.target.value)})}
+                    label="Mês"
+                  >
+                    {Array.from({ length: 12 }, (_, i) => (
+                      <MenuItem key={i + 1} value={i + 1}>
+                        {new Date(0, i).toLocaleString('pt-BR', { month: 'long' })}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Ano</InputLabel>
+                  <Select
+                    value={formData.ano_competencia}
+                    onChange={(e) => setFormData({...formData, ano_competencia: Number(e.target.value)})}
+                    label="Ano"
+                  >
+                    <MenuItem value={2024}>2024</MenuItem>
+                    <MenuItem value={2025}>2025</MenuItem>
+                    <MenuItem value={2026}>2026</MenuItem>
+                    <MenuItem value={2027}>2027</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
+              {formData.data_entrega && (() => {
+                const dataEntrega = new Date(formData.data_entrega + 'T00:00:00');
+                const mesEntrega = dataEntrega.getMonth() + 1;
+                const anoEntrega = dataEntrega.getFullYear();
+                
+                // Entrega antecipada = entregar ANTES do mês de competência
+                const isAntecipada = anoEntrega < formData.ano_competencia || 
+                  (anoEntrega === formData.ano_competencia && mesEntrega < formData.mes_competencia);
+                
+                if (isAntecipada) {
+                  return (
+                    <Box sx={{ mt: 1, p: 1, bgcolor: '#fff3e0', borderRadius: 1, border: '1px solid #ffb74d' }}>
+                      <Typography variant="caption" sx={{ color: '#e65100', fontWeight: 600 }}>
+                        ⚠️ Entrega Antecipada: Será entregue em {dataEntrega.toLocaleDateString('pt-BR')} 
+                        para consumo em {new Date(0, formData.mes_competencia - 1).toLocaleString('pt-BR', { month: 'long' })}/{formData.ano_competencia}
+                      </Typography>
+                    </Box>
+                  );
+                }
+                return null;
+              })()}
+            </Box>
+
             <FormControl fullWidth>
                 <InputLabel>Status</InputLabel>
                 <Select
@@ -1032,6 +1114,80 @@ const GuiasDemanda: React.FC = () => {
                 />
               </Grid>
             </Grid>
+
+            <Box sx={{ 
+              p: 2, 
+              bgcolor: '#f0f7ff', 
+              borderRadius: 1, 
+              border: '1px solid #bbdefb',
+              mb: 2
+            }}>
+              <Typography variant="subtitle2" sx={{ mb: 1, color: '#1976d2', fontWeight: 600 }}>
+                📊 Mês de Competência (Consumo)
+              </Typography>
+              <Typography variant="caption" sx={{ display: 'block', mb: 2, color: '#666' }}>
+                Define para qual mês o consumo será contabilizado em todas as escolas.
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={6}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Mês</InputLabel>
+                    <Select
+                      value={batchForm.mes_competencia}
+                      onChange={(e) => setBatchForm(prev => ({ ...prev, mes_competencia: Number(e.target.value) }))}
+                      label="Mês"
+                      disabled={batchSaving}
+                    >
+                      {Array.from({ length: 12 }, (_, i) => (
+                        <MenuItem key={i + 1} value={i + 1}>
+                          {new Date(0, i).toLocaleString('pt-BR', { month: 'long' })}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={6}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Ano</InputLabel>
+                    <Select
+                      value={batchForm.ano_competencia}
+                      onChange={(e) => setBatchForm(prev => ({ ...prev, ano_competencia: Number(e.target.value) }))}
+                      label="Ano"
+                      disabled={batchSaving}
+                    >
+                      <MenuItem value={2024}>2024</MenuItem>
+                      <MenuItem value={2025}>2025</MenuItem>
+                      <MenuItem value={2026}>2026</MenuItem>
+                      <MenuItem value={2027}>2027</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+              </Grid>
+              {batchForm.data_entrega && (() => {
+                const dataEntrega = new Date(batchForm.data_entrega + 'T00:00:00');
+                const mesEntrega = dataEntrega.getMonth() + 1;
+                const anoEntrega = dataEntrega.getFullYear();
+                
+                // Entrega antecipada = entregar ANTES do mês de competência
+                const isAntecipada = anoEntrega < batchForm.ano_competencia || 
+                  (anoEntrega === batchForm.ano_competencia && mesEntrega < batchForm.mes_competencia);
+                
+                if (isAntecipada) {
+                  return (
+                    <Box sx={{ mt: 2, p: 1.5, bgcolor: '#fff3e0', borderRadius: 1, border: '1px solid #ffb74d' }}>
+                      <Typography variant="body2" sx={{ color: '#e65100', fontWeight: 600 }}>
+                        ⚠️ Entrega Antecipada em Lote
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: '#e65100', display: 'block', mt: 0.5 }}>
+                        Todas as escolas receberão em {dataEntrega.toLocaleDateString('pt-BR')} 
+                        para consumo em {new Date(0, batchForm.mes_competencia - 1).toLocaleString('pt-BR', { month: 'long' })}/{batchForm.ano_competencia}
+                      </Typography>
+                    </Box>
+                  );
+                }
+                return null;
+              })()}
+            </Box>
             {batchMode === 'edit' && batchLoadingExisting && (
               <Box display="flex" alignItems="center" gap={1}>
                 <CircularProgress size={18} />
