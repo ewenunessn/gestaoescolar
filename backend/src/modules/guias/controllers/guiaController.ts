@@ -429,17 +429,38 @@ export const guiaController = {
   async adicionarProdutoEscola(req: Request, res: Response) {
     try {
       const { escolaId } = req.params;
-      const { produtoId, quantidade, unidade, data_entrega, observacao, status } = req.body;
+      const { produtoId, quantidade, unidade, data_entrega, observacao, status, mes_competencia, ano_competencia } = req.body;
 
       if (!data_entrega) {
         return res.status(400).json({ success: false, error: 'Data de entrega é obrigatória' });
       }
 
-      const data = new Date(data_entrega);
-      const mes = data.getMonth() + 1;
-      const ano = data.getFullYear();
+      // Determinar mês/ano de competência
+      // Se fornecido explicitamente, usar. Caso contrário, usar o mês/ano da data de entrega
+      let mes: number;
+      let ano: number;
 
-      // Buscar ou criar guia para o mês/ano
+      if (mes_competencia && ano_competencia) {
+        // Usuário especificou explicitamente o mês de competência
+        mes = parseInt(mes_competencia);
+        ano = parseInt(ano_competencia);
+      } else {
+        // Usar o mês/ano da data de entrega como competência
+        const data = new Date(data_entrega);
+        mes = data.getMonth() + 1;
+        ano = data.getFullYear();
+      }
+
+      // Validar mês e ano
+      if (mes < 1 || mes > 12) {
+        return res.status(400).json({ success: false, error: 'Mês de competência inválido (deve ser entre 1 e 12)' });
+      }
+
+      if (ano < 2020 || ano > 2100) {
+        return res.status(400).json({ success: false, error: 'Ano de competência inválido' });
+      }
+
+      // Buscar ou criar guia para o mês/ano de competência
       let guia = await GuiaModel.buscarGuiaPorMesAno(mes, ano);
       
       if (!guia) {
@@ -457,15 +478,24 @@ export const guiaController = {
         produto_id: parseInt(produtoId),
         escola_id: parseInt(escolaId),
         quantidade,
-        unidade: unidade || 'un', // Default unit if missing
-        lote: null, // Lote opcional,
+        unidade: unidade || 'un',
+        lote: null,
         observacao,
         para_entrega: true,
         status: status || 'pendente',
         data_entrega
       });
 
-      res.json({ success: true, data: guiaProduto });
+      res.json({ 
+        success: true, 
+        data: guiaProduto,
+        info: {
+          mes_competencia: mes,
+          ano_competencia: ano,
+          data_entrega: data_entrega,
+          entrega_antecipada: new Date(data_entrega) < new Date(ano, mes - 1, 1)
+        }
+      });
     } catch (error) {
       console.error('Erro ao adicionar produto para escola:', error);
       res.status(500).json({ success: false, error: 'Erro ao adicionar produto para escola' });
