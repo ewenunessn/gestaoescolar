@@ -44,6 +44,10 @@ export default function EscolaDetalhe() {
     ;(async () => {
       try {
         setLoading(true)
+        
+        // Limpar cache antigo para forçar reload
+        localStorage.removeItem(`itens_escola_${id}`)
+        
         const data = await listarItensEscola(id, state?.guiaId)
         
         console.log('📥 Dados recebidos da API:', data)
@@ -66,7 +70,10 @@ export default function EscolaDetalhe() {
           ...item,
           selecionado: false,
           // Se já houver entregas parciais, usar o saldo pendente como quantidade padrão para a próxima entrega
-          quantidade_a_entregar: item.saldo_pendente !== undefined && item.saldo_pendente > 0 ? item.saldo_pendente : item.quantidade
+          // Converter para número para evitar problemas
+          quantidade_a_entregar: item.saldo_pendente !== undefined && item.saldo_pendente > 0 
+            ? parseFloat(String(item.saldo_pendente)) 
+            : parseFloat(String(item.quantidade))
         })))
       } catch (e) {
         setError(handleAxiosError(e))
@@ -108,7 +115,10 @@ export default function EscolaDetalhe() {
   }
 
   function atualizarQuantidade(itemId: number, valor: string) {
+    console.log('🔢 ANTES parseFloat:', { itemId, valor, tipo: typeof valor })
     const quantidade = parseFloat(valor) || 0
+    console.log('🔢 DEPOIS parseFloat:', { quantidade, tipo: typeof quantidade })
+    
     const item = itens.find(i => i.id === itemId)
     console.log('📝 DIGITAÇÃO:', {
       itemId,
@@ -132,6 +142,15 @@ export default function EscolaDetalhe() {
 
   function continuar() {
     const selecionados = itens.filter(i => i.selecionado)
+    
+    console.log('🔍 REVISÃO - Estado completo dos itens:', itens.map(i => ({
+      id: i.id,
+      produto: i.produto_nome,
+      selecionado: i.selecionado,
+      quantidade_a_entregar: i.quantidade_a_entregar,
+      tipo: typeof i.quantidade_a_entregar
+    })))
+    
     console.log('🔍 REVISÃO - Itens selecionados:', selecionados.map(i => ({
       id: i.id,
       produto: i.produto_nome,
@@ -723,7 +742,7 @@ export default function EscolaDetalhe() {
                         <input
                           className="input"
                           type="number"
-                          step="0.01"
+                          step="any"
                           min="0"
                           value={item.quantidade_a_entregar}
                           onChange={e => atualizarQuantidade(item.id, e.target.value)}
