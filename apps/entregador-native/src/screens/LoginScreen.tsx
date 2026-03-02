@@ -39,9 +39,11 @@ export default function LoginScreen({ navigation }: any) {
     >
       <View style={styles.content}>
         <View style={styles.header}>
-          <Text variant="headlineLarge" style={styles.title}>
-            📦 App Entregador
-          </Text>
+          <Image 
+            source={require('../../assets/logo.png')} 
+            style={styles.logo}
+            resizeMode="contain"
+          />
           <Text variant="bodyMedium" style={styles.subtitle}>
             Sistema de Gestão Escolar
           </Text>
@@ -56,6 +58,10 @@ export default function LoginScreen({ navigation }: any) {
             keyboardType="email-address"
             autoCapitalize="none"
             style={styles.input}
+            textColor="#000"
+            outlineColor="#ccc"
+            activeOutlineColor="#1976d2"
+            theme={{ colors: { onSurfaceVariant: '#666' } }}
           />
 
           <TextInput
@@ -65,6 +71,10 @@ export default function LoginScreen({ navigation }: any) {
             mode="outlined"
             secureTextEntry
             style={styles.input}
+            textColor="#000"
+            outlineColor="#ccc"
+            activeOutlineColor="#1976d2"
+            theme={{ colors: { onSurfaceVariant: '#666' } }}
           />
 
           <Button
@@ -104,14 +114,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 40,
   },
-  title: {
-    color: '#fff',
-    fontWeight: 'bold',
-    marginBottom: 8,
+  logo: {
+    width: 150,
+    height: 150,
+    marginBottom: 16,
   },
   subtitle: {
     color: '#fff',
     opacity: 0.9,
+    fontSize: 16,
   },
   form: {
     backgroundColor: '#fff',
@@ -120,6 +131,7 @@ const styles = StyleSheet.create({
   },
   input: {
     marginBottom: 16,
+    backgroundColor: '#fff',
   },
   button: {
     marginTop: 8,

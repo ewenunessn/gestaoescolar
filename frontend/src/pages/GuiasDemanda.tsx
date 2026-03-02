@@ -1411,7 +1411,7 @@ const GuiasDemanda: React.FC = () => {
                       </TableCell>
                       <TableCell>
                         <Chip 
-                          label={`${entrega.quantidade_entregue} ${historicoItem?.unidade || ''}`}
+                          label={`${formatarQuantidade(parseFloat(entrega.quantidade_entregue) || 0)} ${historicoItem?.unidade || ''}`}
                           size="small"
                           color="success"
                         />
@@ -1434,7 +1434,7 @@ const GuiasDemanda: React.FC = () => {
                     Quantidade Programada
                   </Typography>
                   <Typography variant="h6">
-                    {formatarQuantidade(historicoItem.quantidade)} {historicoItem.unidade}
+                    {formatarQuantidade(historicoItem?.quantidade || 0)} {historicoItem?.unidade || ''}
                   </Typography>
                 </Grid>
                 <Grid item xs={4}>
@@ -1442,7 +1442,7 @@ const GuiasDemanda: React.FC = () => {
                     Total Entregue
                   </Typography>
                   <Typography variant="h6" color="success.main">
-                    {formatarQuantidade(historicoEntregas.reduce((sum, e) => sum + parseFloat(e.quantidade_entregue), 0))} {historicoItem.unidade}
+                    {formatarQuantidade(historicoEntregas.reduce((sum, e) => sum + (parseFloat(e.quantidade_entregue) || 0), 0))} {historicoItem?.unidade || ''}
                   </Typography>
                 </Grid>
                 <Grid item xs={4}>
@@ -1450,11 +1450,11 @@ const GuiasDemanda: React.FC = () => {
                     Saldo Pendente
                   </Typography>
                   <Typography variant="h6" color={
-                    (historicoItem.quantidade - historicoEntregas.reduce((sum, e) => sum + parseFloat(e.quantidade_entregue), 0)) > 0.01 
+                    ((historicoItem?.quantidade || 0) - historicoEntregas.reduce((sum, e) => sum + (parseFloat(e.quantidade_entregue) || 0), 0)) > 0.01 
                       ? "warning.main" 
                       : "success.main"
                   }>
-                    {formatarQuantidade(historicoItem.quantidade - historicoEntregas.reduce((sum, e) => sum + parseFloat(e.quantidade_entregue), 0))} {historicoItem.unidade}
+                    {formatarQuantidade((historicoItem?.quantidade || 0) - historicoEntregas.reduce((sum, e) => sum + (parseFloat(e.quantidade_entregue) || 0), 0))} {historicoItem?.unidade || ''}
                   </Typography>
                 </Grid>
               </Grid>
