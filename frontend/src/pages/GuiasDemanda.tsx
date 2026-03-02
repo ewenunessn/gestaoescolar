@@ -577,6 +577,16 @@ const GuiasDemanda: React.FC = () => {
     }
   };
 
+  // Função para formatar números removendo zeros desnecessários
+  const formatarQuantidade = (valor: number): string => {
+    // Se for número inteiro, retorna sem casas decimais
+    if (Number.isInteger(valor)) {
+      return valor.toString();
+    }
+    // Se tiver decimais, retorna com até 3 casas decimais, removendo zeros à direita
+    return valor.toFixed(3).replace(/\.?0+$/, '');
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'entregue': return 'success';
@@ -1420,7 +1430,7 @@ const GuiasDemanda: React.FC = () => {
                     Quantidade Programada
                   </Typography>
                   <Typography variant="h6">
-                    {historicoItem.quantidade} {historicoItem.unidade}
+                    {formatarQuantidade(historicoItem.quantidade)} {historicoItem.unidade}
                   </Typography>
                 </Grid>
                 <Grid item xs={4}>
@@ -1428,7 +1438,7 @@ const GuiasDemanda: React.FC = () => {
                     Total Entregue
                   </Typography>
                   <Typography variant="h6" color="success.main">
-                    {historicoEntregas.reduce((sum, e) => sum + parseFloat(e.quantidade_entregue), 0).toFixed(3)} {historicoItem.unidade}
+                    {formatarQuantidade(historicoEntregas.reduce((sum, e) => sum + parseFloat(e.quantidade_entregue), 0))} {historicoItem.unidade}
                   </Typography>
                 </Grid>
                 <Grid item xs={4}>
@@ -1440,7 +1450,7 @@ const GuiasDemanda: React.FC = () => {
                       ? "warning.main" 
                       : "success.main"
                   }>
-                    {(historicoItem.quantidade - historicoEntregas.reduce((sum, e) => sum + parseFloat(e.quantidade_entregue), 0)).toFixed(3)} {historicoItem.unidade}
+                    {formatarQuantidade(historicoItem.quantidade - historicoEntregas.reduce((sum, e) => sum + parseFloat(e.quantidade_entregue), 0))} {historicoItem.unidade}
                   </Typography>
                 </Grid>
               </Grid>

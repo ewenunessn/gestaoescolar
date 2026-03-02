@@ -21,7 +21,12 @@ const Stack = createStackNavigator();
 
 export default function App() {
   return (
-    <PaperProvider theme={theme}>
+    <PaperProvider 
+      theme={theme}
+      settings={{
+        rippleEffectEnabled: false, // Desabilita o ripple effect globalmente
+      }}
+    >
       <OfflineProvider>
         <NavigationContainer>
           <StatusBar style="light" />
