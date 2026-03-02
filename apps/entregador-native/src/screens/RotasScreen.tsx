@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, FlatList, Pressable } from 'react-native';
 import { Text, Card, Button, ActivityIndicator } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { listarRotas, listarEscolasDaRota, listarItensEscola, Rota } from '../api/rotas';
@@ -170,8 +170,12 @@ export default function RotasScreen({ navigation }: any) {
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.list}
         renderItem={({ item }) => (
-          <TouchableOpacity
+          <Pressable
             onPress={() => navigation.navigate('RotaDetalhe', { rotaId: item.id, rotaNome: item.nome })}
+            android_ripple={{ color: 'transparent' }}
+            style={({ pressed }) => [
+              { opacity: pressed ? 0.7 : 1 }
+            ]}
           >
             <Card style={[styles.card, { borderLeftColor: item.cor || '#1976d2', borderLeftWidth: 4 }]}>
               <Card.Content>
@@ -193,7 +197,7 @@ export default function RotasScreen({ navigation }: any) {
                 </View>
               </Card.Content>
             </Card>
-          </TouchableOpacity>
+          </Pressable>
         )}
         ListEmptyComponent={
           <View style={styles.empty}>
