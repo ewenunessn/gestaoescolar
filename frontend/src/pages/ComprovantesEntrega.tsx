@@ -86,9 +86,12 @@ export default function ComprovantesEntrega() {
   const carregarEscolas = async () => {
     try {
       const response = await api.get('/escolas');
-      setEscolas(response.data);
+      // A API pode retornar um objeto com a propriedade 'escolas' ou diretamente um array
+      const escolasData = Array.isArray(response.data) ? response.data : (response.data.escolas || []);
+      setEscolas(escolasData);
     } catch (err) {
       console.error('Erro ao carregar escolas:', err);
+      setEscolas([]); // Garantir que sempre seja um array
     }
   };
 

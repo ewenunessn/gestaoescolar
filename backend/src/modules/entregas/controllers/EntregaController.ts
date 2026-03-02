@@ -158,7 +158,8 @@ class EntregaController {
 
       res.json({
         message: 'Entrega confirmada com sucesso',
-        item
+        item,
+        historico_id: item.historico_id
       });
     } catch (error) {
       console.error('❌ Erro ao confirmar entrega:', error);

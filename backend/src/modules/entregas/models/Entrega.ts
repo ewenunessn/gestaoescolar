@@ -223,7 +223,7 @@ class EntregaModel {
     return result.rows[0] || null;
   }
 
-  async confirmarEntrega(itemId: number, dados: ConfirmarEntregaData): Promise<ItemEntrega> {
+  async confirmarEntrega(itemId: number, dados: ConfirmarEntregaData): Promise<ItemEntrega & { historico_id?: number }> {
     // Verificar se o item existe e pode ser entregue
     const item = await this.buscarItemEntrega(itemId);
     if (!item) {
@@ -253,7 +253,7 @@ class EntregaModel {
     }
 
     // Criar registro no histórico de entregas
-    await HistoricoEntregaModel.criar({
+    const historico = await HistoricoEntregaModel.criar({
       guia_produto_escola_id: itemId,
       quantidade_entregue: dados.quantidade_entregue,
       nome_quem_entregou: dados.nome_quem_entregou,
@@ -270,7 +270,12 @@ class EntregaModel {
     if (!updatedItem) {
       throw new Error('Erro ao buscar item atualizado');
     }
-    return updatedItem;
+    
+    // Adicionar o ID do histórico ao retorno
+    return {
+      ...updatedItem,
+      historico_id: historico.id
+    };
   }
 
   async cancelarEntrega(itemId: number): Promise<ItemEntrega> {

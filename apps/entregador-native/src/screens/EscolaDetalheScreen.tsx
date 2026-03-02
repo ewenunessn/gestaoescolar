@@ -239,6 +239,7 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
       setSalvando(true);
       
       const selecionados = itens.filter(i => i.selecionado);
+      const historicoIds: number[] = [];
       
       for (const item of selecionados) {
         const entregaData = {
@@ -252,8 +253,12 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
         if (isOnline) {
           // Online: tentar enviar diretamente
           try {
-            await confirmarEntregaItem(item.id, entregaData);
+            const response = await confirmarEntregaItem(item.id, entregaData);
             console.log(`Entrega do item ${item.id} enviada com sucesso (online)`);
+            // Guardar o ID do histórico para criar o comprovante
+            if (response?.historico_id) {
+              historicoIds.push(response.historico_id);
+            }
           } catch (err) {
             // Se falhar online, adicionar à fila para tentar depois
             console.log('Falha ao enviar online, adicionando à fila');
@@ -263,6 +268,16 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
           // Offline: apenas adicionar à fila (não tentar enviar)
           console.log(`Entrega do item ${item.id} adicionada à fila (offline)`);
           await addOperation(item.id, entregaData);
+        }
+      }
+
+      // Criar comprovante se estiver online e tiver históricos
+      if (isOnline && historicoIds.length > 0) {
+        try {
+          await criarComprovante(selecionados, historicoIds);
+        } catch (err) {
+          console.error('Erro ao criar comprovante:', err);
+          // Não bloqueia o fluxo se falhar
         }
       }
 
@@ -282,6 +297,44 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
     } catch (err) {
       Alert.alert('Erro', `Erro ao finalizar entrega: ${handleAxiosError(err)}`);
       setSalvando(false);
+    }
+  };
+
+  const criarComprovante = async (itensEntregues: ItemSelecionado[], historicoIds: number[]) => {
+    try {
+      const itensComprovante = itensEntregues.map((item, index) => ({
+        historico_entrega_id: historicoIds[index],
+        produto_nome: item.produto_nome,
+        quantidade_entregue: item.quantidade_a_entregar,
+        unidade: item.unidade,
+        lote: item.lote || undefined
+      }));
+
+      const comprovanteData = {
+        escola_id: escolaId,
+        nome_quem_entregou: nomeEntregador.trim(),
+        nome_quem_recebeu: nomeRecebedor.trim(),
+        observacao: observacao.trim() || undefined,
+        assinatura_base64: assinatura,
+        itens: itensComprovante
+      };
+
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://gestaoescolar-backend.vercel.app/api'}/entregas/comprovantes`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await AsyncStorage.getItem('token')}`
+        },
+        body: JSON.stringify(comprovanteData)
+      });
+
+      if (response.ok) {
+        const comprovante = await response.json();
+        console.log(`Comprovante ${comprovante.numero_comprovante} criado com sucesso`);
+      }
+    } catch (error) {
+      console.error('Erro ao criar comprovante:', error);
+      throw error;
     }
   };
 
