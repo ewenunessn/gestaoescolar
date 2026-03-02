@@ -214,11 +214,24 @@ export default function ComprovantesEntrega() {
           .header h1 {
             margin: 0;
             color: #1976d2;
+            font-size: 28px;
+          }
+          .header .subtitle {
+            margin: 5px 0 10px 0;
+            color: #666;
+            font-size: 14px;
+            font-style: italic;
           }
           .header h2 {
+            margin: 15px 0 5px 0;
+            color: #333;
+            font-size: 20px;
+          }
+          .header h3 {
             margin: 5px 0;
             color: #666;
-            font-size: 18px;
+            font-size: 16px;
+            font-weight: normal;
           }
           .info-section {
             margin-bottom: 20px;
@@ -255,6 +268,7 @@ export default function ComprovantesEntrega() {
             margin-top: 60px;
             display: flex;
             justify-content: space-between;
+            align-items: flex-end;
           }
           .signature-box {
             width: 45%;
@@ -265,13 +279,23 @@ export default function ComprovantesEntrega() {
             margin-top: 60px;
             padding-top: 10px;
           }
+          .signature-digital {
+            text-align: center;
+            margin-bottom: 20px;
+          }
           .signature-image {
             max-width: 300px;
-            max-height: 150px;
+            max-height: 120px;
             border: 1px solid #ddd;
-            padding: 10px;
-            margin: 20px auto;
+            padding: 5px;
+            margin: 10px auto;
             display: block;
+            background-color: #fff;
+          }
+          .signature-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
           }
           .footer {
             margin-top: 40px;
@@ -291,8 +315,10 @@ export default function ComprovantesEntrega() {
       </head>
       <body>
         <div class="header">
-          <h1>COMPROVANTE DE ENTREGA</h1>
-          <h2>${comprovante.numero_comprovante}</h2>
+          <h1>NUTRILOG</h1>
+          <div class="subtitle">Sistema de Gestão e Logística de Alimentação Escolar</div>
+          <h2>COMPROVANTE DE ENTREGA</h2>
+          <h3>${comprovante.numero_comprovante}</h3>
         </div>
         
         <div class="info-section">
@@ -348,13 +374,6 @@ export default function ComprovantesEntrega() {
           </tbody>
         </table>
         
-        ${comprovante.assinatura_base64 ? `
-        <div style="margin-top: 40px;">
-          <h3>Assinatura Digital do Recebedor</h3>
-          <img src="${comprovante.assinatura_base64}" class="signature-image" alt="Assinatura" />
-        </div>
-        ` : ''}
-        
         <div class="signature-section">
           <div class="signature-box">
             <div class="signature-line">
@@ -363,7 +382,17 @@ export default function ComprovantesEntrega() {
             </div>
           </div>
           <div class="signature-box">
+            ${comprovante.assinatura_base64 ? `
+            <div class="signature-digital">
+              <img src="${comprovante.assinatura_base64}" class="signature-image" alt="Assinatura Digital" />
+              <div class="signature-label">Assinatura Digital</div>
+            </div>
+            ` : `
             <div class="signature-line">
+              <br>
+            </div>
+            `}
+            <div style="margin-top: 10px;">
               ${comprovante.nome_quem_recebeu}<br>
               <small>Recebedor${comprovante.cargo_recebedor ? ` - ${comprovante.cargo_recebedor}` : ''}</small>
             </div>
@@ -372,7 +401,7 @@ export default function ComprovantesEntrega() {
         
         <div class="footer">
           Documento gerado em ${new Date().toLocaleString('pt-BR')}<br>
-          Sistema de Gestão Escolar
+          NUTRILOG - Sistema de Gestão e Logística de Alimentação Escolar
         </div>
       </body>
       </html>
@@ -396,10 +425,15 @@ export default function ComprovantesEntrega() {
   return (
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h1">
-          <DescriptionIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-          Comprovantes de Entrega
-        </Typography>
+        <Box>
+          <Typography variant="h4" component="h1">
+            <DescriptionIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+            Comprovantes de Entrega
+          </Typography>
+          <Typography variant="caption" color="textSecondary" sx={{ ml: 5 }}>
+            NUTRILOG - Sistema de Gestão e Logística de Alimentação Escolar
+          </Typography>
+        </Box>
       </Box>
 
       {/* Filtros */}
@@ -689,27 +723,6 @@ export default function ComprovantesEntrega() {
                   </Grid>
                 )}
                 
-                {comprovanteDetalhes.assinatura_base64 && (
-                  <Grid item xs={12}>
-                    <Typography variant="subtitle2" color="textSecondary" gutterBottom>
-                      Assinatura Digital do Recebedor
-                    </Typography>
-                    <Box
-                      component="img"
-                      src={comprovanteDetalhes.assinatura_base64}
-                      alt="Assinatura"
-                      sx={{
-                        maxWidth: '300px',
-                        maxHeight: '150px',
-                        border: '1px solid #ddd',
-                        borderRadius: 1,
-                        p: 1,
-                        display: 'block'
-                      }}
-                    />
-                  </Grid>
-                )}
-                
                 <Grid item xs={12}>
                   <Divider sx={{ my: 2 }} />
                   <Typography variant="h6" gutterBottom>
@@ -744,6 +757,37 @@ export default function ComprovantesEntrega() {
                     </Table>
                   </TableContainer>
                 </Grid>
+                
+                {comprovanteDetalhes.assinatura_base64 && (
+                  <Grid item xs={12}>
+                    <Divider sx={{ my: 2 }} />
+                    <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+                      Assinatura Digital do Recebedor
+                    </Typography>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        mt: 2
+                      }}
+                    >
+                      <Box
+                        component="img"
+                        src={comprovanteDetalhes.assinatura_base64}
+                        alt="Assinatura Digital"
+                        sx={{
+                          maxWidth: '300px',
+                          maxHeight: '120px',
+                          border: '1px solid #ddd',
+                          borderRadius: 1,
+                          p: 1,
+                          backgroundColor: '#fff'
+                        }}
+                      />
+                    </Box>
+                  </Grid>
+                )}
               </Grid>
             </DialogContent>
             <DialogActions>
