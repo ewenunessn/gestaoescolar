@@ -146,6 +146,10 @@ class EntregaModel {
 
     if (somentePendentes) {
       whereClause += ` AND gpe.entrega_confirmada = false AND gpe.status = 'pendente'`;
+    } else {
+      // Por padrão, mostrar apenas itens prontos para entrega (pendente ou parcial)
+      // Excluir: programada (aguardando), cancelado, entregue (completo)
+      whereClause += ` AND gpe.status IN ('pendente', 'parcial')`;
     }
 
     const result = await db.query(`
