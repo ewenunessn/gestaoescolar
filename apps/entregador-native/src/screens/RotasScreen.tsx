@@ -126,7 +126,14 @@ export default function RotasScreen({ navigation }: any) {
   };
 
   const rotasFiltradas = filtroAtivo 
-    ? rotas.filter(r => r.id === filtroAtivo.rotaId)
+    ? rotas.filter(r => {
+        // Suportar tanto rotaId (antigo) quanto rotaIds (novo)
+        if (filtroAtivo.rotaIds && Array.isArray(filtroAtivo.rotaIds)) {
+          return filtroAtivo.rotaIds.includes(r.id);
+        }
+        // Fallback para formato antigo
+        return r.id === filtroAtivo.rotaId;
+      })
     : rotas;
 
   if (loading) {
@@ -156,7 +163,12 @@ export default function RotasScreen({ navigation }: any) {
       {filtroAtivo && (
         <Card style={styles.filtroCard}>
           <Card.Content>
-            <Text variant="titleMedium">Rota: {filtroAtivo.rotaNome}</Text>
+            <Text variant="titleMedium">
+              {filtroAtivo.rotaNomes && filtroAtivo.rotaNomes.length > 1 
+                ? `Rotas: ${filtroAtivo.rotaNomes.join(', ')}`
+                : `Rota: ${filtroAtivo.rotaNome || filtroAtivo.rotaNomes?.[0] || 'N/A'}`
+              }
+            </Text>
             <Text variant="bodySmall" style={styles.periodo}>
               Período: {new Date(filtroAtivo.dataInicio).toLocaleDateString('pt-BR')} a{' '}
               {new Date(filtroAtivo.dataFim).toLocaleDateString('pt-BR')}

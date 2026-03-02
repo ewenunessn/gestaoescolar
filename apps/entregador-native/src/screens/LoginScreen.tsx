@@ -38,18 +38,18 @@ export default function LoginScreen({ navigation }: any) {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={styles.content}>
-        <View style={styles.header}>
-          <Image 
-            source={require('../../assets/logo.png')} 
-            style={styles.logo}
-            resizeMode="contain"
-          />
-          <Text variant="bodyMedium" style={styles.subtitle}>
-            Sistema de Gestão Escolar
-          </Text>
-        </View>
-
         <View style={styles.form}>
+          <View style={styles.logoContainer}>
+            <Image 
+              source={require('../../assets/logo.png')} 
+              style={styles.logo}
+              resizeMode="contain"
+            />
+            <Text variant="bodyMedium" style={styles.subtitle}>
+              App do Entregador
+            </Text>
+          </View>
+
           <TextInput
             label="Email"
             value={email}
@@ -110,24 +110,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 20,
   },
-  header: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  logo: {
-    width: 150,
-    height: 150,
-    marginBottom: 16,
-  },
-  subtitle: {
-    color: '#fff',
-    opacity: 0.9,
-    fontSize: 16,
-  },
   form: {
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 20,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  logo: {
+    width: 120,
+    height: 120,
+    marginBottom: 8,
+  },
+  subtitle: {
+    color: '#666',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   input: {
     marginBottom: 16,

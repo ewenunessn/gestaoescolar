@@ -92,7 +92,10 @@ export default function HomeScreen({ navigation }: any) {
                 ✓ Filtro Ativo
               </Text>
               <Text variant="bodyMedium" style={styles.filtroRota}>
-                Rota: {filtroAtivo.rotaNome}
+                {filtroAtivo.rotaNomes && filtroAtivo.rotaNomes.length > 1 
+                  ? `Rotas: ${filtroAtivo.rotaNomes.join(', ')}`
+                  : `Rota: ${filtroAtivo.rotaNome || filtroAtivo.rotaNomes?.[0] || 'N/A'}`
+                }
               </Text>
               <Text variant="bodySmall" style={styles.filtroPeriodo}>
                 Período: {new Date(filtroAtivo.dataInicio).toLocaleDateString('pt-BR')} até{' '}
