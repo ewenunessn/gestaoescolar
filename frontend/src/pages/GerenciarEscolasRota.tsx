@@ -290,9 +290,20 @@ const GerenciarEscolasRota: React.FC = () => {
             // Não removemos a escola das disponíveis, pois ela pode estar em múltiplas rotas
             
             setSuccessMessage('Escola adicionada à rota com sucesso!');
-        } catch (err) {
+        } catch (err: any) {
             console.error('Erro ao adicionar escola à rota:', err);
-            setError('Erro ao adicionar escola à rota');
+            
+            // Extrair mensagem de erro específica
+            let errorMessage = 'Erro ao adicionar escola à rota';
+            if (err.response?.data?.error) {
+                errorMessage = err.response.data.error;
+            } else if (err.response?.data?.message) {
+                errorMessage = err.response.data.message;
+            } else if (err.message) {
+                errorMessage = err.message;
+            }
+            
+            setError(errorMessage);
         } finally {
             setSalvandoOperacao(null);
         }
@@ -423,9 +434,20 @@ const GerenciarEscolasRota: React.FC = () => {
             setOpenDialog(false);
             setSelectedSchools([]);
             setFiltroEscolas('');
-        } catch (err) {
+        } catch (err: any) {
             console.error('Erro ao adicionar escolas:', err);
-            setError('Erro ao adicionar escolas selecionadas');
+            
+            // Extrair mensagem de erro específica
+            let errorMessage = 'Erro ao adicionar escolas selecionadas';
+            if (err.response?.data?.error) {
+                errorMessage = err.response.data.error;
+            } else if (err.response?.data?.message) {
+                errorMessage = err.response.data.message;
+            } else if (err.message) {
+                errorMessage = err.message;
+            }
+            
+            setError(errorMessage);
         } finally {
             setSalvandoOperacao(null);
         }
