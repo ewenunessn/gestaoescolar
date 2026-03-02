@@ -45,6 +45,7 @@ import { escolaService } from '../services/escolaService';
 import { guiaService, GuiaProdutoEscola } from '../services/guiaService';
 import { produtoService, Produto } from '../services/produtoService';
 import { listarEstoqueEscola, EstoqueEscolarItem } from '../services/estoqueEscolarService';
+import api from '../services/api';
 
 const GuiasDemanda: React.FC = () => {
   // Estados principais
@@ -255,17 +256,9 @@ const GuiasDemanda: React.FC = () => {
     setHistoricoLoading(true);
     
     try {
-      // Buscar histórico de entregas do item
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/entregas/itens/${item.id}/historico`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      if (!response.ok) throw new Error('Erro ao buscar histórico');
-      
-      const data = await response.json();
-      setHistoricoEntregas(data);
+      // Buscar histórico de entregas do item usando o serviço api
+      const response = await api.get(`/entregas/itens/${item.id}/historico`);
+      setHistoricoEntregas(response.data);
     } catch (err) {
       console.error('Erro ao carregar histórico:', err);
       error('Erro ao carregar histórico de entregas');
