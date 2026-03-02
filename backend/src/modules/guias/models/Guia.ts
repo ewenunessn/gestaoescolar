@@ -395,7 +395,17 @@ class GuiaModel {
         p.nome as produto_nome,
         p.unidade as produto_unidade,
         e.nome as escola_nome,
-        DATE(gpe.created_at) as data_criacao
+        DATE(gpe.created_at) as data_criacao,
+        COALESCE(gpe.quantidade_total_entregue, 0) as quantidade_total_entregue,
+        (gpe.quantidade - COALESCE(gpe.quantidade_total_entregue, 0)) as saldo_pendente,
+        CASE 
+          WHEN COALESCE(gpe.quantidade_total_entregue, 0) >= gpe.quantidade THEN 'entregue'
+          WHEN COALESCE(gpe.quantidade_total_entregue, 0) > 0 THEN 'parcial'
+          WHEN gpe.status = 'em_rota' THEN 'em_rota'
+          WHEN gpe.status = 'programada' THEN 'programada'
+          WHEN gpe.status = 'cancelado' THEN 'cancelado'
+          ELSE 'pendente'
+        END as status_calculado
       FROM guia_produto_escola gpe
       JOIN produtos p ON gpe.produto_id = p.id
       JOIN escolas e ON gpe.escola_id = e.id
@@ -403,7 +413,12 @@ class GuiaModel {
       WHERE gpe.guia_id = $1
       ORDER BY gpe.created_at DESC, gpe.lote, p.nome, e.nome
     `, [guiaId]);
-    return result;
+    
+    // Atualizar o status com base no status calculado
+    return result.map(item => ({
+      ...item,
+      status: item.status_calculado
+    }));
   }
 
   async listarProdutosPorEscola(escolaId: number, mes: number, ano: number): Promise<GuiaProdutoEscola[]> {
@@ -412,14 +427,29 @@ class GuiaModel {
         gpe.*,
         p.nome as produto_nome,
         g.mes,
-        g.ano
+        g.ano,
+        COALESCE(gpe.quantidade_total_entregue, 0) as quantidade_total_entregue,
+        (gpe.quantidade - COALESCE(gpe.quantidade_total_entregue, 0)) as saldo_pendente,
+        CASE 
+          WHEN COALESCE(gpe.quantidade_total_entregue, 0) >= gpe.quantidade THEN 'entregue'
+          WHEN COALESCE(gpe.quantidade_total_entregue, 0) > 0 THEN 'parcial'
+          WHEN gpe.status = 'em_rota' THEN 'em_rota'
+          WHEN gpe.status = 'programada' THEN 'programada'
+          WHEN gpe.status = 'cancelado' THEN 'cancelado'
+          ELSE 'pendente'
+        END as status_calculado
       FROM guia_produto_escola gpe
       JOIN guias g ON gpe.guia_id = g.id
       JOIN produtos p ON gpe.produto_id = p.id
       WHERE gpe.escola_id = $1 AND g.mes = $2 AND g.ano = $3
       ORDER BY gpe.created_at DESC
     `, [escolaId, mes, ano]);
-    return result;
+    
+    // Atualizar o status com base no status calculado
+    return result.map(item => ({
+      ...item,
+      status: item.status_calculado
+    }));
   }
 
   async adicionarProdutoGuia(data: CreateGuiaProdutoEscolaData): Promise<GuiaProdutoEscola> {

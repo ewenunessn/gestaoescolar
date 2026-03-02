@@ -23,8 +23,8 @@ export default function LoginScreen({ navigation }: any) {
       // Salvar token
       await AsyncStorage.setItem('token', JSON.stringify(response));
       
-      // Navegar para rotas
-      navigation.replace('Rotas');
+      // Navegar para home
+      navigation.replace('Home');
     } catch (err: any) {
       setError(err.message || 'Erro ao fazer login');
     } finally {

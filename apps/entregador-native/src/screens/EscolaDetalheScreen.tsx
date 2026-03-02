@@ -5,6 +5,20 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { listarItensEscola, ItemEntrega, confirmarEntregaItem } from '../api/rotas';
 import { handleAxiosError } from '../api/client';
 import SignaturePad from '../components/SignaturePad';
+import OfflineIndicator from '../components/OfflineIndicator';
+import { useOffline } from '../contexts/OfflineContext';
+import { cacheService } from '../services/cacheService';
+
+// Função para formatar números removendo zeros desnecessários
+const formatarQuantidade = (valor: number | string): string => {
+  const num = typeof valor === 'string' ? parseFloat(valor) : valor;
+  // Se for número inteiro, retorna sem casas decimais
+  if (Number.isInteger(num)) {
+    return num.toString();
+  }
+  // Se tiver decimais, retorna com até 3 casas decimais, removendo zeros à direita
+  return num.toFixed(3).replace(/\.?0+$/, '');
+};
 
 interface ItemSelecionado extends ItemEntrega {
   selecionado: boolean;
@@ -28,6 +42,9 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
   const [observacao, setObservacao] = useState('');
   const [assinatura, setAssinatura] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
+  const [showSignaturePad, setShowSignaturePad] = useState(false);
+
+  const { isOnline, addOperation } = useOffline();
 
   useEffect(() => {
     carregarFiltro();
@@ -61,7 +78,27 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
   const carregarItens = async () => {
     try {
       setLoading(true);
-      const data = await listarItensEscola(escolaId);
+      
+      // Tentar carregar do cache primeiro
+      const cacheKey = `itens_escola_${escolaId}`;
+      const cachedData = await cacheService.get<ItemEntrega[]>(cacheKey);
+      
+      let data: ItemEntrega[];
+      
+      try {
+        // Tentar buscar dados atualizados
+        data = await listarItensEscola(escolaId);
+        // Salvar no cache
+        await cacheService.set(cacheKey, data);
+      } catch (err) {
+        // Se falhar e tiver cache, usar cache
+        if (cachedData) {
+          console.log('Usando dados do cache (offline)');
+          data = cachedData;
+        } else {
+          throw err;
+        }
+      }
       
       // Aplicar filtro de data se houver
       const filtroSalvo = await AsyncStorage.getItem('filtro_qrcode');
@@ -74,21 +111,13 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
         const dataFim = new Date(filtro.dataFim);
         dataFim.setHours(23, 59, 59, 999);
         
-        console.log('🔍 Aplicando filtro de data:', { dataInicio, dataFim });
-        
         dadosFiltrados = data.filter(item => {
-          // Filtrar pela data_entrega se disponível
           if (item.data_entrega) {
             const dataEntrega = new Date(item.data_entrega);
-            const dentroDoIntervalo = dataEntrega >= dataInicio && dataEntrega <= dataFim;
-            console.log(`Item ${item.produto_nome}: data_entrega=${item.data_entrega}, dentro=${dentroDoIntervalo}`);
-            return dentroDoIntervalo;
+            return dataEntrega >= dataInicio && dataEntrega <= dataFim;
           }
-          // Se não tiver data_entrega, incluir por padrão
           return true;
         });
-        
-        console.log(`📊 Filtro aplicado: ${data.length} itens → ${dadosFiltrados.length} itens`);
       }
       
       setItens(dadosFiltrados.map(item => ({
@@ -118,9 +147,21 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
 
   const atualizarQuantidade = (itemId: number, valor: string) => {
     const quantidade = parseFloat(valor) || 0;
-    setItens(prev => prev.map(item =>
-      item.id === itemId ? { ...item, quantidade_a_entregar: quantidade } : item
-    ));
+    
+    setItens(prev => prev.map(item => {
+      if (item.id === itemId) {
+        // Calcular quantidade máxima permitida
+        const quantidadeMaxima = item.saldo_pendente !== undefined && item.saldo_pendente > 0 
+          ? item.saldo_pendente 
+          : item.quantidade;
+        
+        // Limitar a quantidade ao máximo permitido
+        const quantidadeLimitada = Math.min(quantidade, quantidadeMaxima);
+        
+        return { ...item, quantidade_a_entregar: quantidadeLimitada };
+      }
+      return item;
+    }));
   };
 
   const itensFiltrados = itens.filter((item) => {
@@ -155,13 +196,19 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
     });
     
     if (diferentes.length > 0) {
-      const nomes = diferentes.map(i => 
-        `${i.produto_nome}: ${i.quantidade_a_entregar} ${i.unidade} (programado: ${i.quantidade} ${i.unidade})`
-      ).join('\n');
+      const nomes = diferentes.map(i => {
+        const quantidadeEsperada = (i.saldo_pendente !== undefined && i.saldo_pendente > 0) 
+          ? i.saldo_pendente 
+          : i.quantidade;
+        const label = (i.saldo_pendente !== undefined && i.saldo_pendente > 0) 
+          ? 'faltam' 
+          : 'programado';
+        return `${i.produto_nome}: ${formatarQuantidade(i.quantidade_a_entregar)} ${i.unidade} (${label}: ${formatarQuantidade(quantidadeEsperada)} ${i.unidade})`;
+      }).join('\n');
       
       Alert.alert(
         '⚠️ Entrega Parcial/Diferente',
-        `Os seguintes itens têm quantidade diferente da programada:\n\n${nomes}\n\nDeseja continuar?`,
+        `Os seguintes itens têm quantidade diferente da esperada:\n\n${nomes}\n\nDeseja continuar?`,
         [
           { text: 'Cancelar', style: 'cancel' },
           { text: 'Continuar', onPress: () => setEtapa('revisao') }
@@ -194,15 +241,39 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
       const selecionados = itens.filter(i => i.selecionado);
       
       for (const item of selecionados) {
-        await confirmarEntregaItem(item.id, {
+        const entregaData = {
           quantidade_entregue: item.quantidade_a_entregar,
           nome_quem_entregou: nomeEntregador.trim(),
           nome_quem_recebeu: nomeRecebedor.trim(),
           observacao: observacao.trim() || undefined,
           assinatura_base64: assinatura
-        });
+        };
+
+        if (isOnline) {
+          // Online: tentar enviar diretamente
+          try {
+            await confirmarEntregaItem(item.id, entregaData);
+            console.log(`Entrega do item ${item.id} enviada com sucesso (online)`);
+          } catch (err) {
+            // Se falhar online, adicionar à fila para tentar depois
+            console.log('Falha ao enviar online, adicionando à fila');
+            await addOperation(item.id, entregaData);
+          }
+        } else {
+          // Offline: apenas adicionar à fila (não tentar enviar)
+          console.log(`Entrega do item ${item.id} adicionada à fila (offline)`);
+          await addOperation(item.id, entregaData);
+        }
       }
 
+      // Atualizar cache local com as entregas realizadas
+      await atualizarCacheLocal(selecionados);
+
+      const mensagem = isOnline 
+        ? 'Entrega confirmada com sucesso!' 
+        : 'Entrega salva! Será sincronizada quando voltar online.';
+      
+      Alert.alert('Sucesso', mensagem);
       setEtapa('sucesso');
       
       setTimeout(() => {
@@ -211,6 +282,65 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
     } catch (err) {
       Alert.alert('Erro', `Erro ao finalizar entrega: ${handleAxiosError(err)}`);
       setSalvando(false);
+    }
+  };
+
+  const atualizarCacheLocal = async (itensEntregues: ItemSelecionado[]) => {
+    try {
+      const cacheKey = `itens_escola_${escolaId}`;
+      const cachedData = await cacheService.get<ItemEntrega[]>(cacheKey);
+      
+      if (!cachedData) {
+        console.log('Nenhum cache encontrado para atualizar');
+        return;
+      }
+
+      console.log('Atualizando cache local...');
+
+      // Atualizar os itens no cache
+      const itensAtualizados = cachedData.map(item => {
+        const itemEntregue = itensEntregues.find(ie => ie.id === item.id);
+        
+        if (itemEntregue) {
+          // Garantir que todos os valores sejam números
+          const quantidadeJaEntregueAtual = parseFloat(String(item.quantidade_ja_entregue || 0));
+          const quantidadeOriginal = parseFloat(String(item.quantidade));
+          const quantidadeEntregueAgora = parseFloat(String(itemEntregue.quantidade_a_entregar));
+          
+          // Usar saldo_pendente se existir, senão calcular baseado na quantidade original
+          const saldoAtual = item.saldo_pendente !== undefined && item.saldo_pendente !== null
+            ? parseFloat(String(item.saldo_pendente))
+            : quantidadeOriginal - quantidadeJaEntregueAtual;
+          
+          const novoSaldo = saldoAtual - quantidadeEntregueAgora;
+          const novaQuantidadeEntregue = quantidadeJaEntregueAtual + quantidadeEntregueAgora;
+          const entregaCompleta = Math.abs(novoSaldo) < 0.01; // Tolerância
+
+          console.log(`Item ${item.produto_nome}:`, {
+            quantidadeJaEntregueAtual,
+            quantidadeEntregueAgora,
+            novaQuantidadeEntregue,
+            saldoAtual,
+            novoSaldo,
+            entregaCompleta
+          });
+
+          return {
+            ...item,
+            quantidade_ja_entregue: novaQuantidadeEntregue,
+            saldo_pendente: entregaCompleta ? 0 : Math.max(0, novoSaldo), // Nunca negativo
+            entrega_confirmada: entregaCompleta,
+          };
+        }
+        
+        return item;
+      });
+
+      // Salvar cache atualizado
+      await cacheService.set(cacheKey, itensAtualizados);
+      console.log('Cache local atualizado com sucesso');
+    } catch (error) {
+      console.error('Erro ao atualizar cache local:', error);
     }
   };
 
@@ -268,7 +398,11 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
                 Itens Selecionados ({itensSelecionados.length})
               </Text>
               {itensSelecionados.map(item => {
-                const diff = Math.abs(item.quantidade_a_entregar - item.quantidade);
+                // Comparar com saldo pendente se houver, senão com quantidade original
+                const quantidadeEsperada = (item.saldo_pendente !== undefined && item.saldo_pendente > 0) 
+                  ? item.saldo_pendente 
+                  : item.quantidade;
+                const diff = Math.abs(item.quantidade_a_entregar - quantidadeEsperada);
                 const quantidadeDiferente = diff > 0.01; // Tolerância para evitar problemas de precisão
                 return (
                   <View key={item.id} style={styles.itemRevisao}>
@@ -278,12 +412,14 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
                         styles.itemRevisaoQuantidade,
                         quantidadeDiferente && styles.itemRevisaoQuantidadeDiferente
                       ]}>
-                        {item.quantidade_a_entregar} {item.unidade}
+                        {formatarQuantidade(item.quantidade_a_entregar)} {item.unidade}
                       </Text>
                     </View>
                     {quantidadeDiferente && (
                       <Text style={styles.itemRevisaoAviso}>
-                        ⚠️ Programado: {item.quantidade} {item.unidade}
+                        ⚠️ {item.saldo_pendente !== undefined && item.saldo_pendente > 0 
+                          ? `Faltam: ${formatarQuantidade(item.saldo_pendente)}` 
+                          : `Programado: ${formatarQuantidade(item.quantidade)}`} {item.unidade}
                       </Text>
                     )}
                   </View>
@@ -324,23 +460,35 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
               {assinatura ? (
                 <View>
                   <View style={styles.assinaturaPreview}>
-                    <Text>Assinatura capturada ✓</Text>
+                    <Text style={styles.assinaturaTexto}>✓ Assinatura capturada</Text>
                   </View>
                   <Button
                     mode="outlined"
-                    onPress={() => setAssinatura(null)}
+                    onPress={() => setShowSignaturePad(true)}
                     style={styles.refazerButton}
+                    icon="pencil"
                   >
-                    ✏️ Refazer Assinatura
+                    Refazer Assinatura
                   </Button>
                 </View>
               ) : (
-                <SignaturePad
-                  onSave={(sig) => setAssinatura(sig)}
-                  onClear={() => setAssinatura(null)}
-                />
+                <Button
+                  mode="contained"
+                  onPress={() => setShowSignaturePad(true)}
+                  style={styles.assinarButton}
+                  icon="draw"
+                  buttonColor="#1976d2"
+                >
+                  Coletar Assinatura
+                </Button>
               )}
             </View>
+
+            <SignaturePad
+              visible={showSignaturePad}
+              onClose={() => setShowSignaturePad(false)}
+              onSave={(sig) => setAssinatura(sig)}
+            />
 
             <View style={styles.botoesRevisao}>
               <Button
@@ -369,6 +517,8 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
 
   return (
     <View style={styles.container}>
+      <OfflineIndicator />
+      
       {/* Indicador de filtro ativo */}
       {filtroAtivo && (
         <Card style={styles.filtroCard}>
@@ -390,15 +540,18 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
         <Button
           mode={abaAtiva === 'pendentes' ? 'contained' : 'outlined'}
           onPress={() => setAbaAtiva('pendentes')}
-          style={styles.tab}
+          style={[styles.tab, abaAtiva !== 'pendentes' && styles.tabInativo]}
+          buttonColor={abaAtiva === 'pendentes' ? '#1976d2' : undefined}
+          textColor={abaAtiva === 'pendentes' ? '#fff' : '#1976d2'}
         >
           📦 Pendentes ({itens.filter((i) => !i.entrega_confirmada).length})
         </Button>
         <Button
           mode={abaAtiva === 'entregues' ? 'contained' : 'outlined'}
           onPress={() => setAbaAtiva('entregues')}
-          style={styles.tab}
-          buttonColor="#4caf50"
+          style={[styles.tab, abaAtiva !== 'entregues' && styles.tabInativo]}
+          buttonColor={abaAtiva === 'entregues' ? '#1976d2' : undefined}
+          textColor={abaAtiva === 'entregues' ? '#fff' : '#1976d2'}
         >
           ✓ Entregues ({itens.filter((i) => i.historico_entregas?.length).length})
         </Button>
@@ -428,16 +581,16 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
                   {item.quantidade_ja_entregue && item.quantidade_ja_entregue > 0 ? (
                     <View>
                       <Text style={styles.faltam}>
-                        📦 Faltam: {item.saldo_pendente} {item.unidade}
+                        📦 Faltam: {formatarQuantidade(item.saldo_pendente || 0)} {item.unidade}
                       </Text>
                       <Text style={styles.info}>
-                        Programado: {item.quantidade} {item.unidade} • Já entregue:{' '}
-                        {item.quantidade_ja_entregue} {item.unidade}
+                        Programado: {formatarQuantidade(item.quantidade)} {item.unidade} • Já entregue:{' '}
+                        {formatarQuantidade(item.quantidade_ja_entregue)} {item.unidade}
                       </Text>
                     </View>
                   ) : (
                     <Text style={styles.quantidade}>
-                      📦 Quantidade: {item.quantidade} {item.unidade}
+                      📦 Quantidade: {formatarQuantidade(item.quantidade)} {item.unidade}
                     </Text>
                   )}
 
@@ -481,7 +634,7 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
                       {item.historico_entregas.map((h, index) => (
                         <View key={h.id} style={styles.historicoItem}>
                           <Text style={styles.historicoQuantidade}>
-                            {h.quantidade_entregue} {item.unidade}
+                            {formatarQuantidade(h.quantidade_entregue)} {item.unidade}
                           </Text>
                           <Text style={styles.historicoData}>
                             {new Date(h.data_entrega).toLocaleDateString('pt-BR')}
@@ -562,6 +715,9 @@ const styles = StyleSheet.create({
   },
   tab: {
     flex: 1,
+  },
+  tabInativo: {
+    backgroundColor: '#fff',
   },
   list: {
     padding: 12,
@@ -754,16 +910,24 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   assinaturaPreview: {
-    padding: 12,
+    padding: 16,
     backgroundColor: '#f0fdf4',
     borderRadius: 8,
     borderWidth: 2,
     borderColor: '#059669',
-    marginBottom: 8,
+    marginBottom: 12,
     alignItems: 'center',
   },
+  assinaturaTexto: {
+    color: '#059669',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  assinarButton: {
+    paddingVertical: 8,
+  },
   refazerButton: {
-    borderColor: '#d97706',
+    borderColor: '#1976d2',
   },
   botoesRevisao: {
     flexDirection: 'row',

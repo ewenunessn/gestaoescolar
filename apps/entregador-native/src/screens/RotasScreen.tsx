@@ -1,17 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
-import { Text, Card, Button, ActivityIndicator, FAB, Portal, Modal } from 'react-native-paper';
+import { Text, Card, Button, ActivityIndicator } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { listarRotas, Rota } from '../api/rotas';
+import { listarRotas, listarEscolasDaRota, listarItensEscola, Rota } from '../api/rotas';
 import { handleAxiosError } from '../api/client';
-import QRScanner from '../components/QRScanner';
+import { cacheService } from '../services/cacheService';
+import OfflineIndicator from '../components/OfflineIndicator';
+
+interface RotaComEscolas extends Rota {
+  escolas_com_pendentes?: number;
+}
 
 export default function RotasScreen({ navigation }: any) {
-  const [rotas, setRotas] = useState<Rota[]>([]);
+  const [rotas, setRotas] = useState<RotaComEscolas[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filtroAtivo, setFiltroAtivo] = useState<any>(null);
-  const [showScanner, setShowScanner] = useState(false);
 
   useEffect(() => {
     carregarRotas();
@@ -21,8 +25,88 @@ export default function RotasScreen({ navigation }: any) {
   const carregarRotas = async () => {
     try {
       setLoading(true);
-      const data = await listarRotas();
-      setRotas(data);
+      setError(''); // Limpar erro anterior
+      
+      let data: Rota[];
+      
+      try {
+        data = await listarRotas();
+        await cacheService.set('rotas', data);
+      } catch (err) {
+        const cachedData = await cacheService.get<Rota[]>('rotas');
+        if (cachedData) {
+          console.log('Usando rotas do cache (offline)');
+          data = cachedData;
+        } else {
+          throw err;
+        }
+      }
+      
+      // Carregar filtro
+      const filtroSalvo = await AsyncStorage.getItem('filtro_qrcode');
+      let filtro = null;
+      if (filtroSalvo) {
+        filtro = JSON.parse(filtroSalvo);
+      }
+      
+      // Para cada rota, contar escolas com pendentes
+      const rotasComContagem = await Promise.all(
+        data.map(async (rota) => {
+          try {
+            const escolas = await listarEscolasDaRota(rota.id);
+            
+            // Contar escolas com itens pendentes
+            let escolasComPendentes = 0;
+            
+            for (const escola of escolas) {
+              try {
+                const itens = await listarItensEscola(escola.escola_id);
+                
+                // Aplicar filtro de data se houver
+                let itensFiltrados = itens;
+                if (filtro) {
+                  const dataInicio = new Date(filtro.dataInicio);
+                  dataInicio.setHours(0, 0, 0, 0);
+                  const dataFim = new Date(filtro.dataFim);
+                  dataFim.setHours(23, 59, 59, 999);
+                  
+                  itensFiltrados = itens.filter(item => {
+                    if (item.data_entrega) {
+                      const dataEntrega = new Date(item.data_entrega);
+                      return dataEntrega >= dataInicio && dataEntrega <= dataFim;
+                    }
+                    return true;
+                  });
+                }
+                
+                // Verificar se tem itens pendentes
+                const temPendentes = itensFiltrados.some(
+                  item => !item.entrega_confirmada || (item.saldo_pendente && item.saldo_pendente > 0)
+                );
+                
+                if (temPendentes) {
+                  escolasComPendentes++;
+                }
+              } catch (err) {
+                console.error(`Erro ao carregar itens da escola ${escola.escola_id}:`, err);
+              }
+            }
+            
+            return {
+              ...rota,
+              escolas_com_pendentes: escolasComPendentes
+            };
+          } catch (err) {
+            console.error(`Erro ao carregar escolas da rota ${rota.id}:`, err);
+            return {
+              ...rota,
+              escolas_com_pendentes: 0
+            };
+          }
+        })
+      );
+      
+      setRotas(rotasComContagem);
     } catch (err) {
       setError(handleAxiosError(err));
     } finally {
@@ -39,22 +123,6 @@ export default function RotasScreen({ navigation }: any) {
     } catch (err) {
       console.error('Erro ao carregar filtro:', err);
     }
-  };
-
-  const limparFiltro = async () => {
-    await AsyncStorage.removeItem('filtro_qrcode');
-    setFiltroAtivo(null);
-  };
-
-  const handleQRScan = async (data: any) => {
-    setFiltroAtivo(data);
-    setShowScanner(false);
-    carregarRotas();
-  };
-
-  const logout = async () => {
-    await AsyncStorage.removeItem('token');
-    navigation.replace('Login');
   };
 
   const rotasFiltradas = filtroAtivo 
@@ -83,20 +151,16 @@ export default function RotasScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
+      <OfflineIndicator />
+      
       {filtroAtivo && (
         <Card style={styles.filtroCard}>
           <Card.Content>
-            <Text variant="titleMedium" style={styles.filtroTitle}>
-              🔍 Filtro Ativo
-            </Text>
-            <Text variant="bodyMedium">Rota: {filtroAtivo.rotaNome}</Text>
-            <Text variant="bodySmall">
-              Período: {new Date(filtroAtivo.dataInicio).toLocaleDateString('pt-BR')} até{' '}
+            <Text variant="titleMedium">Rota: {filtroAtivo.rotaNome}</Text>
+            <Text variant="bodySmall" style={styles.periodo}>
+              Período: {new Date(filtroAtivo.dataInicio).toLocaleDateString('pt-BR')} a{' '}
               {new Date(filtroAtivo.dataFim).toLocaleDateString('pt-BR')}
             </Text>
-            <Button mode="outlined" onPress={limparFiltro} style={styles.limparButton}>
-              Limpar Filtro
-            </Button>
           </Card.Content>
         </Card>
       )}
@@ -123,7 +187,9 @@ export default function RotasScreen({ navigation }: any) {
                   <Text style={[styles.badge, item.ativo ? styles.badgeAtivo : styles.badgeInativo]}>
                     {item.ativo ? '✓ Ativa' : '✕ Inativa'}
                   </Text>
-                  <Text style={styles.escolas}>🏫 {item.total_escolas || 0} escola(s)</Text>
+                  <Text style={styles.escolas}>
+                    🏫 {item.escolas_com_pendentes || 0}/{item.total_escolas || 0} Escola(s)
+                  </Text>
                 </View>
               </Card.Content>
             </Card>
@@ -135,26 +201,6 @@ export default function RotasScreen({ navigation }: any) {
             <Text variant="titleMedium">Nenhuma rota encontrada</Text>
           </View>
         }
-      />
-
-      <FAB
-        icon="qrcode-scan"
-        label="Escanear QR"
-        style={styles.fab}
-        onPress={() => setShowScanner(true)}
-      />
-
-      <FAB
-        icon="logout"
-        style={styles.logoutFab}
-        onPress={logout}
-        small
-      />
-
-      <QRScanner
-        visible={showScanner}
-        onClose={() => setShowScanner(false)}
-        onScan={handleQRScan}
       />
     </View>
   );
@@ -184,15 +230,11 @@ const styles = StyleSheet.create({
   },
   filtroCard: {
     margin: 12,
-    backgroundColor: '#e3f2fd',
+    backgroundColor: '#fff',
   },
-  filtroTitle: {
-    color: '#1565c0',
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  limparButton: {
-    marginTop: 12,
+  periodo: {
+    color: '#666',
+    marginTop: 4,
   },
   list: {
     padding: 12,
@@ -236,16 +278,5 @@ const styles = StyleSheet.create({
   empty: {
     alignItems: 'center',
     padding: 40,
-  },
-  fab: {
-    position: 'absolute',
-    right: 16,
-    bottom: 16,
-  },
-  logoutFab: {
-    position: 'absolute',
-    right: 16,
-    bottom: 88,
-    backgroundColor: '#f44336',
   },
 });

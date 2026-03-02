@@ -99,6 +99,11 @@ class HistoricoEntregaModel {
           FROM historico_entregas
           WHERE guia_produto_escola_id = $1
         ),
+        status = CASE 
+          WHEN (SELECT COALESCE(SUM(quantidade_entregue), 0) FROM historico_entregas WHERE guia_produto_escola_id = $1) >= quantidade THEN 'entregue'
+          WHEN (SELECT COALESCE(SUM(quantidade_entregue), 0) FROM historico_entregas WHERE guia_produto_escola_id = $1) > 0 THEN 'parcial'
+          ELSE status
+        END,
         updated_at = NOW()
       WHERE id = $1
     `, [dados.guia_produto_escola_id]);
@@ -222,6 +227,11 @@ class HistoricoEntregaModel {
             FROM historico_entregas
             WHERE guia_produto_escola_id = $1
           ),
+          status = CASE 
+            WHEN (SELECT COALESCE(SUM(quantidade_entregue), 0) FROM historico_entregas WHERE guia_produto_escola_id = $1) >= quantidade THEN 'entregue'
+            WHEN (SELECT COALESCE(SUM(quantidade_entregue), 0) FROM historico_entregas WHERE guia_produto_escola_id = $1) > 0 THEN 'parcial'
+            ELSE 'pendente'
+          END,
           updated_at = NOW()
         WHERE id = $1
       `, [itemId]);

@@ -548,6 +548,7 @@ const GuiasDemanda: React.FC = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'entregue': return 'success';
+      case 'parcial': return 'warning';
       case 'pendente': return 'warning';
       case 'cancelado': return 'error';
       case 'em_rota': return 'info';
@@ -559,6 +560,7 @@ const GuiasDemanda: React.FC = () => {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'entregue': return <CheckCircleIcon fontSize="small" />;
+      case 'parcial': return <CheckCircleIcon fontSize="small" />;
       case 'pendente': return <ScheduleIcon fontSize="small" />;
       case 'cancelado': return <CancelIcon fontSize="small" />;
       case 'em_rota': return <ShippingIcon fontSize="small" />;
@@ -1036,6 +1038,7 @@ const GuiasDemanda: React.FC = () => {
                   <MenuItem value="pendente">Pendente (Pronto para entrega)</MenuItem>
                   <MenuItem value="programada">Programada (Aguardando)</MenuItem>
                   <MenuItem value="em_rota">Em Rota</MenuItem>
+                  <MenuItem value="parcial">Parcial (Entrega parcial realizada)</MenuItem>
                   <MenuItem value="entregue">Entregue</MenuItem>
                   <MenuItem value="cancelado">Cancelado</MenuItem>
                 </Select>
@@ -1257,6 +1260,7 @@ const GuiasDemanda: React.FC = () => {
                             <MenuItem value="pendente">Pendente (Para entrega)</MenuItem>
                             <MenuItem value="programada">Programada</MenuItem>
                             <MenuItem value="em_rota">Em rota</MenuItem>
+                            <MenuItem value="parcial">Parcial</MenuItem>
                             <MenuItem value="entregue">Entregue</MenuItem>
                             <MenuItem value="cancelado">Cancelado</MenuItem>
                           </Select>

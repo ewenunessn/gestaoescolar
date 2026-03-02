@@ -4,6 +4,8 @@ import { Text, Card, ActivityIndicator, Button } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { listarEscolasDaRota, listarItensEscola, EscolaRota } from '../api/rotas';
 import { handleAxiosError } from '../api/client';
+import { cacheService } from '../services/cacheService';
+import OfflineIndicator from '../components/OfflineIndicator';
 
 interface EscolaComItens extends EscolaRota {
   total_itens_pendentes?: number;
@@ -19,7 +21,15 @@ export default function RotaDetalheScreen({ route, navigation }: any) {
   useEffect(() => {
     carregarFiltro();
     carregarEscolas();
-  }, []);
+    
+    // Recarregar quando a tela ganhar foco (volta de outra tela)
+    const unsubscribe = navigation.addListener('focus', () => {
+      console.log('RotaDetalheScreen ganhou foco, recarregando...');
+      carregarEscolas();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
 
   const carregarFiltro = async () => {
     try {
@@ -35,7 +45,27 @@ export default function RotaDetalheScreen({ route, navigation }: any) {
   const carregarEscolas = async () => {
     try {
       setLoading(true);
-      const data = await listarEscolasDaRota(rotaId);
+      setError(''); // Limpar erro anterior
+      
+      const cacheKey = `escolas_rota_${rotaId}`;
+      
+      let data: EscolaRota[];
+      
+      try {
+        // Tentar buscar dados atualizados
+        data = await listarEscolasDaRota(rotaId);
+        // Salvar no cache
+        await cacheService.set(cacheKey, data);
+      } catch (err) {
+        // Se falhar, tentar usar cache
+        const cachedData = await cacheService.get<EscolaRota[]>(cacheKey);
+        if (cachedData) {
+          console.log('Usando dados do cache (offline)');
+          data = cachedData;
+        } else {
+          throw err;
+        }
+      }
       
       // Carregar filtro
       const filtroSalvo = await AsyncStorage.getItem('filtro_qrcode');
@@ -48,7 +78,20 @@ export default function RotaDetalheScreen({ route, navigation }: any) {
       const escolasComItens = await Promise.all(
         data.map(async (escola) => {
           try {
-            const itens = await listarItensEscola(escola.escola_id);
+            const cacheKeyItens = `itens_escola_${escola.escola_id}`;
+            let itens;
+            
+            try {
+              itens = await listarItensEscola(escola.escola_id);
+              await cacheService.set(cacheKeyItens, itens);
+            } catch (err) {
+              const cachedItens = await cacheService.get(cacheKeyItens);
+              if (cachedItens) {
+                itens = cachedItens;
+              } else {
+                throw err;
+              }
+            }
             
             // Aplicar filtro de data se houver
             let itensFiltrados = itens;
@@ -119,24 +162,18 @@ export default function RotaDetalheScreen({ route, navigation }: any) {
 
   return (
     <View style={styles.container}>
-      {/* Indicador de filtro ativo */}
-      {filtroAtivo && (
-        <Card style={styles.filtroCard}>
-          <Card.Content>
-            <Text variant="titleSmall" style={styles.filtroTitle}>
-              🔍 Filtro Ativo
-            </Text>
-            <Text variant="bodySmall" style={styles.filtroText}>
-              {new Date(filtroAtivo.dataInicio).toLocaleDateString('pt-BR')} até{' '}
-              {new Date(filtroAtivo.dataFim).toLocaleDateString('pt-BR')}
-            </Text>
-          </Card.Content>
-        </Card>
-      )}
-
+      <OfflineIndicator />
+      
+      {/* Card único com rota e período */}
       <Card style={styles.header}>
         <Card.Content>
           <Text variant="titleMedium">Rota: {rotaNome}</Text>
+          {filtroAtivo && (
+            <Text variant="bodySmall" style={styles.periodo}>
+              Período: {new Date(filtroAtivo.dataInicio).toLocaleDateString('pt-BR')} a{' '}
+              {new Date(filtroAtivo.dataFim).toLocaleDateString('pt-BR')}
+            </Text>
+          )}
           <Text variant="bodySmall">
             {escolas.length} escola(s) com itens pendentes
           </Text>
@@ -215,24 +252,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 16,
   },
-  filtroCard: {
-    margin: 12,
-    marginBottom: 0,
-    backgroundColor: '#e3f2fd',
-    borderWidth: 2,
-    borderColor: '#1976d2',
-  },
-  filtroTitle: {
-    color: '#1565c0',
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  filtroText: {
-    color: '#1976d2',
-  },
   header: {
     margin: 12,
     marginBottom: 0,
+  },
+  periodo: {
+    color: '#1565c0',
+    fontWeight: '600',
+    marginTop: 4,
+    marginBottom: 4,
   },
   list: {
     padding: 12,
