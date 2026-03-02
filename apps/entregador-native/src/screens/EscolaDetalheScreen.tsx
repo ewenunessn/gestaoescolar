@@ -3,7 +3,7 @@ import { View, StyleSheet, FlatList, ScrollView, Alert } from 'react-native';
 import { Text, Card, ActivityIndicator, Button, Checkbox, TextInput } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { listarItensEscola, ItemEntrega, confirmarEntregaItem } from '../api/rotas';
-import { handleAxiosError } from '../api/client';
+import { handleAxiosError, API_URL } from '../api/client';
 import SignaturePad from '../components/SignaturePad';
 import OfflineIndicator from '../components/OfflineIndicator';
 import { useOffline } from '../contexts/OfflineContext';
@@ -255,9 +255,14 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
           try {
             const response = await confirmarEntregaItem(item.id, entregaData);
             console.log(`Entrega do item ${item.id} enviada com sucesso (online)`);
+            console.log('Response completa:', JSON.stringify(response));
             // Guardar o ID do histórico para criar o comprovante
+            // A API retorna { message, item, historico_id }
             if (response?.historico_id) {
               historicoIds.push(response.historico_id);
+              console.log(`✓ Histórico ID ${response.historico_id} adicionado`);
+            } else {
+              console.warn('⚠️ historico_id não encontrado na resposta:', response);
             }
           } catch (err) {
             // Se falhar online, adicionar à fila para tentar depois
@@ -273,12 +278,19 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
 
       // Criar comprovante se estiver online e tiver históricos
       if (isOnline && historicoIds.length > 0) {
+        console.log(`📋 Criando comprovante com ${historicoIds.length} itens...`);
         try {
           await criarComprovante(selecionados, historicoIds);
         } catch (err) {
           console.error('Erro ao criar comprovante:', err);
           // Não bloqueia o fluxo se falhar
         }
+      } else {
+        console.log('⚠️ Comprovante não criado:', {
+          isOnline,
+          historicoIdsLength: historicoIds.length,
+          selecionadosLength: selecionados.length
+        });
       }
 
       // Atualizar cache local com as entregas realizadas
@@ -302,6 +314,10 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
 
   const criarComprovante = async (itensEntregues: ItemSelecionado[], historicoIds: number[]) => {
     try {
+      console.log('🔧 Iniciando criação de comprovante...');
+      console.log('📦 Itens:', itensEntregues.length);
+      console.log('📋 Histórico IDs:', historicoIds);
+
       const itensComprovante = itensEntregues.map((item, index) => ({
         historico_entrega_id: historicoIds[index],
         produto_nome: item.produto_nome,
@@ -319,21 +335,35 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
         itens: itensComprovante
       };
 
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://gestaoescolar-backend.vercel.app/api'}/entregas/comprovantes`, {
+      console.log('📤 Enviando comprovante para API...');
+      console.log('URL:', `${API_URL}/entregas/comprovantes`);
+
+      const tokenData = await AsyncStorage.getItem('token');
+      const token = tokenData ? JSON.parse(tokenData).token : null;
+
+      const response = await fetch(`${API_URL}/entregas/comprovantes`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${await AsyncStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(comprovanteData)
       });
 
+      console.log('📥 Status da resposta:', response.status);
+
       if (response.ok) {
         const comprovante = await response.json();
-        console.log(`Comprovante ${comprovante.numero_comprovante} criado com sucesso`);
+        console.log(`✅ Comprovante ${comprovante.numero_comprovante} criado com sucesso`);
+        Alert.alert('Sucesso', `Comprovante ${comprovante.numero_comprovante} gerado!`);
+      } else {
+        const errorText = await response.text();
+        console.error('❌ Erro na API:', response.status, errorText);
+        Alert.alert('Aviso', 'Entrega confirmada, mas houve erro ao gerar comprovante');
       }
     } catch (error) {
-      console.error('Erro ao criar comprovante:', error);
+      console.error('❌ Erro ao criar comprovante:', error);
+      Alert.alert('Aviso', 'Entrega confirmada, mas houve erro ao gerar comprovante');
       throw error;
     }
   };
