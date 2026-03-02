@@ -519,21 +519,18 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
     <View style={styles.container}>
       <OfflineIndicator />
       
-      {/* Indicador de filtro ativo */}
-      {filtroAtivo && (
-        <Card style={styles.filtroCard}>
-          <Card.Content>
-            <Text variant="titleMedium" style={styles.filtroTitle}>
-              🔍 Filtro de Período Ativo
-            </Text>
-            <Text variant="bodyMedium">
-              Mostrando apenas itens programados para:{'\n'}
-              {new Date(filtroAtivo.dataInicio).toLocaleDateString('pt-BR')} até{' '}
+      {/* Card com informações da escola e período */}
+      <Card style={styles.header}>
+        <Card.Content>
+          <Text variant="titleMedium">Escola: {escolaNome}</Text>
+          {filtroAtivo && (
+            <Text variant="bodySmall" style={styles.periodo}>
+              Período: {new Date(filtroAtivo.dataInicio).toLocaleDateString('pt-BR')} a{' '}
               {new Date(filtroAtivo.dataFim).toLocaleDateString('pt-BR')}
             </Text>
-          </Card.Content>
-        </Card>
-      )}
+          )}
+        </Card.Content>
+      </Card>
 
       {/* Abas */}
       <View style={styles.tabs}>
@@ -565,15 +562,19 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
           <Card style={styles.card}>
             <Card.Content>
               {/* Checkbox e Produto */}
-              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+              <View style={styles.cardRow}>
                 {abaAtiva === 'pendentes' && !item.entrega_confirmada && (
-                  <Checkbox
-                    status={item.selecionado ? 'checked' : 'unchecked'}
-                    onPress={() => toggleItem(item.id)}
-                  />
+                  <View style={styles.checkboxContainer}>
+                    <Checkbox
+                      status={item.selecionado ? 'checked' : 'unchecked'}
+                      onPress={() => toggleItem(item.id)}
+                      color="#1976d2"
+                      uncheckedColor="#999"
+                    />
+                  </View>
                 )}
                 
-                <View style={{ flex: 1 }}>
+                <View style={styles.cardContent}>
                   <Text variant="titleMedium" style={styles.produto}>
                     {item.produto_nome}
                   </Text>
@@ -697,16 +698,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 16,
   },
-  filtroCard: {
+  header: {
     margin: 12,
-    backgroundColor: '#e3f2fd',
-    borderWidth: 2,
-    borderColor: '#1976d2',
+    marginBottom: 0,
   },
-  filtroTitle: {
+  periodo: {
     color: '#1565c0',
-    fontWeight: 'bold',
-    marginBottom: 8,
+    fontWeight: '600',
+    marginTop: 4,
+    marginBottom: 4,
   },
   tabs: {
     flexDirection: 'row',
@@ -725,6 +725,19 @@ const styles = StyleSheet.create({
   card: {
     marginBottom: 12,
     elevation: 2,
+  },
+  cardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  checkboxContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  cardContent: {
+    flex: 1,
   },
   produto: {
     fontWeight: 'bold',

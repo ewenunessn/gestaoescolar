@@ -58,10 +58,6 @@ export default function LoginScreen({ navigation }: any) {
             keyboardType="email-address"
             autoCapitalize="none"
             style={styles.input}
-            textColor="#000"
-            outlineColor="#ccc"
-            activeOutlineColor="#1976d2"
-            theme={{ colors: { onSurfaceVariant: '#666' } }}
           />
 
           <TextInput
@@ -71,10 +67,6 @@ export default function LoginScreen({ navigation }: any) {
             mode="outlined"
             secureTextEntry
             style={styles.input}
-            textColor="#000"
-            outlineColor="#ccc"
-            activeOutlineColor="#1976d2"
-            theme={{ colors: { onSurfaceVariant: '#666' } }}
           />
 
           <Button

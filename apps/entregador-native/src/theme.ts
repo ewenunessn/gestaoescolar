@@ -9,9 +9,9 @@ export const theme = {
     error: '#f44336',
     background: '#f5f5f5',
     surface: '#ffffff',
-    // Desabilitar completamente o ripple effect
-    onSurfaceVariant: 'transparent',
-    rippleColor: 'transparent',
+    onSurface: '#000000',
+    onSurfaceVariant: '#666666',
+    outline: '#cccccc',
   },
   // Configurações de animação
   animation: {

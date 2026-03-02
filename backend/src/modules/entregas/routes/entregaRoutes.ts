@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import EntregaController from '../controllers/EntregaController';
 import HistoricoEntregaController from '../controllers/HistoricoEntregaController';
+import ComprovanteEntregaController from '../controllers/ComprovanteEntregaController';
 
 const router = Router();
 
@@ -29,5 +30,13 @@ router.get('/itens/:itemId/completo', HistoricoEntregaController.buscarItemComHi
 router.get('/escolas/:escolaId/itens-completo', HistoricoEntregaController.listarItensComHistorico);
 router.get('/itens/:itemId/saldo', HistoricoEntregaController.calcularSaldo);
 router.delete('/historico/:id', HistoricoEntregaController.deletar);
+
+// Rotas de comprovantes de entrega
+router.post('/comprovantes', ComprovanteEntregaController.criar);
+router.get('/comprovantes', ComprovanteEntregaController.listar);
+router.get('/comprovantes/:id', ComprovanteEntregaController.buscarPorId);
+router.get('/comprovantes/numero/:numero', ComprovanteEntregaController.buscarPorNumero);
+router.get('/comprovantes/escola/:escolaId', ComprovanteEntregaController.listarPorEscola);
+router.delete('/comprovantes/:id', ComprovanteEntregaController.cancelar);
 
 export default router;

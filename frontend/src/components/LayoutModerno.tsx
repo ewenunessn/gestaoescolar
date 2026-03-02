@@ -32,6 +32,7 @@ import {
   Print,
   QrCode2,
   Settings,
+  Description,
 } from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
 import { logout } from "../services/auth";
@@ -99,6 +100,7 @@ const getMenuConfig = (configModuloSaldo: any) => {
         { text: "Gestão de Rotas", icon: <Business />, path: "/gestao-rotas" },
         { text: "Entregas", icon: <LocalShipping />, path: "/entregas" },
         { text: "Gerar QR Code", icon: <QrCode2 />, path: "/entregas/gerar-qrcode" },
+        { text: "Comprovantes", icon: <Description />, path: "/comprovantes-entrega" },
       ],
     },
   ];
