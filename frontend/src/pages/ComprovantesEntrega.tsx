@@ -244,6 +244,14 @@ export default function ComprovantesEntrega() {
             margin-top: 60px;
             padding-top: 10px;
           }
+          .signature-image {
+            max-width: 300px;
+            max-height: 150px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin: 20px auto;
+            display: block;
+          }
           .footer {
             margin-top: 40px;
             text-align: center;
@@ -318,6 +326,13 @@ export default function ComprovantesEntrega() {
             `).join('')}
           </tbody>
         </table>
+        
+        ${comprovanteDetalhes?.assinatura_base64 ? `
+        <div style="margin-top: 40px;">
+          <h3>Assinatura Digital do Recebedor</h3>
+          <img src="${comprovanteDetalhes.assinatura_base64}" class="signature-image" alt="Assinatura" />
+        </div>
+        ` : ''}
         
         <div class="signature-section">
           <div class="signature-box">
@@ -642,6 +657,27 @@ export default function ComprovantesEntrega() {
                     <Typography variant="body1">
                       {comprovanteDetalhes.observacao}
                     </Typography>
+                  </Grid>
+                )}
+                
+                {comprovanteDetalhes.assinatura_base64 && (
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+                      Assinatura Digital do Recebedor
+                    </Typography>
+                    <Box
+                      component="img"
+                      src={comprovanteDetalhes.assinatura_base64}
+                      alt="Assinatura"
+                      sx={{
+                        maxWidth: '300px',
+                        maxHeight: '150px',
+                        border: '1px solid #ddd',
+                        borderRadius: 1,
+                        p: 1,
+                        display: 'block'
+                      }}
+                    />
                   </Grid>
                 )}
                 
