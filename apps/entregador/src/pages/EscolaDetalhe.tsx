@@ -240,8 +240,11 @@ export default function EscolaDetalhe() {
       return
     }
 
-    // Avisar sobre quantidades diferentes
-    const diferentes = selecionados.filter(i => i.quantidade_a_entregar !== i.quantidade)
+    // Avisar sobre quantidades diferentes (com tolerância de 0.01)
+    const diferentes = selecionados.filter(i => {
+      const diff = Math.abs(i.quantidade_a_entregar - i.quantidade);
+      return diff > 0.01; // Tolerância para evitar problemas de precisão de ponto flutuante
+    });
     if (diferentes.length > 0) {
       const nomes = diferentes.map(i => `${i.produto_nome}: ${formatarNumero(i.quantidade_a_entregar)} ${i.unidade} (programado: ${formatarNumero(i.quantidade)} ${i.unidade})`).join('\n')
       const confirmar = window.confirm(
@@ -425,7 +428,8 @@ export default function EscolaDetalhe() {
             <div style={{ fontWeight: 600, marginBottom: 8 }}>Itens Selecionados ({itensSelecionados.length})</div>
             <div style={{ background: '#f9fafb', padding: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}>
               {itensSelecionados.map(item => {
-                const quantidadeDiferente = item.quantidade_a_entregar !== item.quantidade
+                const diff = Math.abs(item.quantidade_a_entregar - item.quantidade);
+                const quantidadeDiferente = diff > 0.01; // Tolerância para evitar problemas de precisão
                 return (
                   <div key={item.id} style={{ padding: '8px 0', borderBottom: '1px solid #e5e7eb' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

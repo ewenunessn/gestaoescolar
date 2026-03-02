@@ -90,36 +90,58 @@ class EntregaController {
         precisao_gps
       } = req.body;
 
+      console.log('📥 Confirmar entrega - itemId:', itemId);
+      console.log('📥 Dados recebidos:', {
+        quantidade_entregue,
+        nome_quem_entregou,
+        nome_quem_recebeu,
+        observacao,
+        tem_assinatura: !!assinatura_base64,
+        tamanho_assinatura: assinatura_base64?.length,
+        latitude,
+        longitude,
+        precisao_gps
+      });
+
       if (!itemId || isNaN(Number(itemId))) {
+        console.error('❌ ID do item inválido:', itemId);
         return res.status(400).json({ error: 'ID do item é obrigatório e deve ser um número' });
       }
 
       // Validações obrigatórias
       if (!quantidade_entregue || quantidade_entregue <= 0) {
+        console.error('❌ Quantidade inválida:', quantidade_entregue);
         return res.status(400).json({ error: 'Quantidade entregue é obrigatória e deve ser maior que zero' });
       }
 
       if (!nome_quem_entregou || nome_quem_entregou.trim().length === 0) {
+        console.error('❌ Nome do entregador vazio');
         return res.status(400).json({ error: 'Nome de quem entregou é obrigatório' });
       }
 
       if (!nome_quem_recebeu || nome_quem_recebeu.trim().length === 0) {
+        console.error('❌ Nome do recebedor vazio');
         return res.status(400).json({ error: 'Nome de quem recebeu é obrigatório' });
       }
 
       // Validação de assinatura (opcional, mas recomendada)
-      if (assinatura_base64 && !assinatura_base64.startsWith('data:image/')) {
-        return res.status(400).json({ error: 'Formato de assinatura inválido. Deve ser uma imagem em base64' });
+      if (assinatura_base64 && !assinatura_base64.startsWith('data:image/') && !assinatura_base64.startsWith('file://')) {
+        console.error('❌ Formato de assinatura inválido');
+        return res.status(400).json({ error: 'Formato de assinatura inválido. Deve ser uma imagem em base64 ou URI' });
       }
 
       // Validação de localização (opcional, mas se enviada deve ser válida)
       if (latitude !== undefined && (isNaN(Number(latitude)) || Math.abs(Number(latitude)) > 90)) {
+        console.error('❌ Latitude inválida:', latitude);
         return res.status(400).json({ error: 'Latitude deve ser um número válido entre -90 e 90' });
       }
 
       if (longitude !== undefined && (isNaN(Number(longitude)) || Math.abs(Number(longitude)) > 180)) {
+        console.error('❌ Longitude inválida:', longitude);
         return res.status(400).json({ error: 'Longitude deve ser um número válido entre -180 e 180' });
       }
+
+      console.log('✅ Validações OK, confirmando entrega...');
 
       const item = await EntregaModel.confirmarEntrega(Number(itemId), {
         quantidade_entregue: Number(quantidade_entregue),
@@ -132,12 +154,14 @@ class EntregaController {
         precisao_gps: precisao_gps ? Number(precisao_gps) : null
       });
 
+      console.log('✅ Entrega confirmada com sucesso');
+
       res.json({
         message: 'Entrega confirmada com sucesso',
         item
       });
     } catch (error) {
-      console.error('Erro ao confirmar entrega:', error);
+      console.error('❌ Erro ao confirmar entrega:', error);
       
       if (error instanceof Error) {
         if (error.message.includes('não encontrado') || 
