@@ -37,7 +37,8 @@ import {
   CheckCircle as CheckCircleIcon,
   Cancel as CancelIcon,
   LocalShipping as ShippingIcon,
-  Schedule as ScheduleIcon
+  Schedule as ScheduleIcon,
+  History as HistoryIcon
 } from '@mui/icons-material';
 import { useNotification } from '../context/NotificationContext';
 import { escolaService } from '../services/escolaService';
@@ -98,6 +99,12 @@ const GuiasDemanda: React.FC = () => {
   const [estoqueIndividual, setEstoqueIndividual] = useState<EstoqueEscolarItem | null>(null);
   const [batchEstoqueMap, setBatchEstoqueMap] = useState<Record<number, EstoqueEscolarItem | null>>({});
   const [mesStatusMap, setMesStatusMap] = useState<Record<number, 'none' | 'pendente' | 'programada' | 'em_rota'>>({});
+  
+  // Modal de histórico
+  const [openHistoricoDialog, setOpenHistoricoDialog] = useState(false);
+  const [historicoItem, setHistoricoItem] = useState<GuiaProdutoEscola | null>(null);
+  const [historicoLoading, setHistoricoLoading] = useState(false);
+  const [historicoEntregas, setHistoricoEntregas] = useState<any[]>([]);
 
   const { success, error } = useNotification();
 
@@ -240,6 +247,38 @@ const GuiasDemanda: React.FC = () => {
       });
     }
     setOpenDialog(true);
+  };
+
+  const handleOpenHistorico = async (item: GuiaProdutoEscola) => {
+    setHistoricoItem(item);
+    setOpenHistoricoDialog(true);
+    setHistoricoLoading(true);
+    
+    try {
+      // Buscar histórico de entregas do item
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/entregas/itens/${item.id}/historico`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (!response.ok) throw new Error('Erro ao buscar histórico');
+      
+      const data = await response.json();
+      setHistoricoEntregas(data);
+    } catch (err) {
+      console.error('Erro ao carregar histórico:', err);
+      error('Erro ao carregar histórico de entregas');
+      setHistoricoEntregas([]);
+    } finally {
+      setHistoricoLoading(false);
+    }
+  };
+
+  const handleCloseHistorico = () => {
+    setOpenHistoricoDialog(false);
+    setHistoricoItem(null);
+    setHistoricoEntregas([]);
   };
 
   const handleProductChange = (produtoId: number) => {
@@ -879,6 +918,9 @@ const GuiasDemanda: React.FC = () => {
                     </TableCell>
                     <TableCell>{item.observacao || '-'}</TableCell>
                     <TableCell align="right">
+                      <IconButton size="small" onClick={() => handleOpenHistorico(item)} color="info" title="Ver Histórico">
+                        <HistoryIcon />
+                      </IconButton>
                       <IconButton size="small" onClick={() => handleOpenDialog(item)} color="primary">
                         <EditIcon />
                       </IconButton>
@@ -1304,6 +1346,116 @@ const GuiasDemanda: React.FC = () => {
           <Button onClick={handleBatchSubmit} variant="contained" disabled={batchSaving}>
             {batchSaving ? <CircularProgress size={20} /> : 'Adicionar'}
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Modal de Histórico de Entregas */}
+      <Dialog 
+        open={openHistoricoDialog} 
+        onClose={handleCloseHistorico}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box display="flex" alignItems="center" gap={1}>
+            <HistoryIcon />
+            <Typography variant="h6">Histórico de Entregas</Typography>
+          </Box>
+          {historicoItem && (
+            <Typography variant="subtitle2" color="textSecondary">
+              {historicoItem.produto_nome || historicoItem.produto?.nome} - {historicoItem.quantidade} {historicoItem.unidade}
+            </Typography>
+          )}
+        </DialogTitle>
+        <DialogContent dividers>
+          {historicoLoading ? (
+            <Box display="flex" justifyContent="center" alignItems="center" py={4}>
+              <CircularProgress />
+            </Box>
+          ) : historicoEntregas.length === 0 ? (
+            <Box textAlign="center" py={4}>
+              <Typography color="textSecondary">
+                Nenhuma entrega registrada para este item
+              </Typography>
+            </Box>
+          ) : (
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Data</TableCell>
+                    <TableCell>Quantidade</TableCell>
+                    <TableCell>Entregador</TableCell>
+                    <TableCell>Recebedor</TableCell>
+                    <TableCell>Observação</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {historicoEntregas.map((entrega) => (
+                    <TableRow key={entrega.id}>
+                      <TableCell>
+                        {new Date(entrega.data_entrega).toLocaleString('pt-BR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </TableCell>
+                      <TableCell>
+                        <Chip 
+                          label={`${entrega.quantidade_entregue} ${historicoItem?.unidade || ''}`}
+                          size="small"
+                          color="success"
+                        />
+                      </TableCell>
+                      <TableCell>{entrega.nome_quem_entregou}</TableCell>
+                      <TableCell>{entrega.nome_quem_recebeu}</TableCell>
+                      <TableCell>{entrega.observacao || '-'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+          
+          {historicoItem && historicoEntregas.length > 0 && (
+            <Box mt={2} p={2} bgcolor="background.default" borderRadius={1}>
+              <Grid container spacing={2}>
+                <Grid item xs={4}>
+                  <Typography variant="caption" color="textSecondary">
+                    Quantidade Programada
+                  </Typography>
+                  <Typography variant="h6">
+                    {historicoItem.quantidade} {historicoItem.unidade}
+                  </Typography>
+                </Grid>
+                <Grid item xs={4}>
+                  <Typography variant="caption" color="textSecondary">
+                    Total Entregue
+                  </Typography>
+                  <Typography variant="h6" color="success.main">
+                    {historicoEntregas.reduce((sum, e) => sum + parseFloat(e.quantidade_entregue), 0).toFixed(3)} {historicoItem.unidade}
+                  </Typography>
+                </Grid>
+                <Grid item xs={4}>
+                  <Typography variant="caption" color="textSecondary">
+                    Saldo Pendente
+                  </Typography>
+                  <Typography variant="h6" color={
+                    (historicoItem.quantidade - historicoEntregas.reduce((sum, e) => sum + parseFloat(e.quantidade_entregue), 0)) > 0.01 
+                      ? "warning.main" 
+                      : "success.main"
+                  }>
+                    {(historicoItem.quantidade - historicoEntregas.reduce((sum, e) => sum + parseFloat(e.quantidade_entregue), 0)).toFixed(3)} {historicoItem.unidade}
+                  </Typography>
+                </Grid>
+              </Grid>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseHistorico}>Fechar</Button>
         </DialogActions>
       </Dialog>
     </Box>
