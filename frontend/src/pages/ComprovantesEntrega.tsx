@@ -153,7 +153,27 @@ export default function ComprovantesEntrega() {
     setComprovanteDetalhes(null);
   };
 
-  const imprimirComprovante = () => {
+  const imprimirDireto = async (id: number) => {
+    try {
+      const response = await api.get(`/entregas/comprovantes/${id}`);
+      const comprovante = response.data;
+      
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) return;
+      
+      const html = gerarHTMLImpressao(comprovante);
+      printWindow.document.write(html);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+      }, 250);
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Erro ao imprimir comprovante');
+    }
+  };
+
+  const imprimirComprovante = async () => {
     if (!comprovanteDetalhes) return;
     
     const printWindow = window.open('', '_blank');
@@ -327,10 +347,10 @@ export default function ComprovantesEntrega() {
           </tbody>
         </table>
         
-        ${comprovanteDetalhes?.assinatura_base64 ? `
+        ${comprovante.assinatura_base64 ? `
         <div style="margin-top: 40px;">
           <h3>Assinatura Digital do Recebedor</h3>
-          <img src="${comprovanteDetalhes.assinatura_base64}" class="signature-image" alt="Assinatura" />
+          <img src="${comprovante.assinatura_base64}" class="signature-image" alt="Assinatura" />
         </div>
         ` : ''}
         
@@ -563,6 +583,14 @@ export default function ComprovantesEntrega() {
                       title="Ver detalhes"
                     >
                       <VisibilityIcon />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      color="secondary"
+                      onClick={() => imprimirDireto(comprovante.id)}
+                      title="Imprimir"
+                    >
+                      <PrintIcon />
                     </IconButton>
                   </TableCell>
                 </TableRow>
