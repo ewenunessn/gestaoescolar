@@ -30,7 +30,7 @@ import {
   ListAlt,
   RequestPage,
   Print,
-
+  QrCode2,
   Settings,
 } from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -97,8 +97,8 @@ const getMenuConfig = (configModuloSaldo: any) => {
         { text: "Guias de Demanda", icon: <ListAlt />, path: "/guias-demanda" },
         { text: "Romaneio de Entrega", icon: <Print />, path: "/romaneio" },
         { text: "Gestão de Rotas", icon: <Business />, path: "/gestao-rotas" },
-
         { text: "Entregas", icon: <LocalShipping />, path: "/entregas" },
+        { text: "Gerar QR Code", icon: <QrCode2 />, path: "/entregas/gerar-qrcode" },
       ],
     },
   ];

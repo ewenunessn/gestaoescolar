@@ -2,6 +2,34 @@
 
 Aplicativo móvel para gerenciamento de entregas escolares.
 
+## 🚀 Início Rápido com Expo Go
+
+### Opção 1: Script Automático (Recomendado)
+
+**Windows:**
+```bash
+start.bat
+```
+
+**Mac/Linux:**
+```bash
+chmod +x start.sh
+./start.sh
+```
+
+### Opção 2: Manual
+
+```bash
+npm install
+npm start
+```
+
+Depois escaneie o QR Code com o **Expo Go** no seu celular.
+
+📖 **Guia Completo:** Veja [EXPO-GO.md](./EXPO-GO.md) para instruções detalhadas.
+
+---
+
 ## 🚀 Funcionalidades
 
 ### 📱 **Telas Principais**

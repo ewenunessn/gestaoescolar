@@ -6,6 +6,12 @@ export default defineConfig(({ mode }) => {
   const proxyTarget = env.VITE_PROXY_TARGET || 'https://gestaoescolar-backend.vercel.app'
   return {
     plugins: [react()],
+    resolve: {
+      dedupe: ['react', 'react-dom']
+    },
+    optimizeDeps: {
+      include: ['react', 'react-dom']
+    },
     server: {
       host: '0.0.0.0', // Permite acesso de qualquer IP na rede
       port: 5174,

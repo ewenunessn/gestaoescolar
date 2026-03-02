@@ -47,7 +47,10 @@ export default function CheckinModal({
           </div>
           <div>
             <div className="muted" style={{ marginBottom:6 }}>Assinatura (opcional)</div>
-            <SignaturePad onChange={setAssinaturaBase64} />
+            <SignaturePad 
+              onSave={(dataUrl) => setAssinaturaBase64(dataUrl)}
+              onClear={() => setAssinaturaBase64(null)}
+            />
           </div>
           <label>
             Assinado por (opcional)

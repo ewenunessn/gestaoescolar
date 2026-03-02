@@ -4,6 +4,15 @@ import { listarEscolasDaRota, EscolaRota, listarPlanejamentos, atualizarPlanejam
 import { handleAxiosError } from '../api/client'
 import CheckinModal from '../components/CheckinModal'
 
+interface FiltroQRCode {
+  rotaId: number
+  rotaNome: string
+  dataInicio: string
+  dataFim: string
+  geradoEm: string
+  geradoPor?: string
+}
+
 export default function RotaDetalhe() {
   const { rotaId } = useParams()
   const id = Number(rotaId)
@@ -14,8 +23,25 @@ export default function RotaDetalhe() {
   const [updating, setUpdating] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [escolaAlvo, setEscolaAlvo] = useState<number | null>(null)
+  const [filtroAtivo, setFiltroAtivo] = useState<FiltroQRCode | null>(null)
 
   useEffect(() => {
+    // Carregar filtro salvo
+    const filtroSalvo = localStorage.getItem('filtro_qrcode')
+    if (filtroSalvo) {
+      try {
+        const filtro: FiltroQRCode = JSON.parse(filtroSalvo)
+        setFiltroAtivo(filtro)
+        
+        // Verificar se a rota atual corresponde ao filtro
+        if (filtro.rotaId !== id) {
+          console.warn('Rota atual não corresponde ao filtro ativo')
+        }
+      } catch (e) {
+        console.warn('Erro ao carregar filtro:', e)
+      }
+    }
+
     if (!id) return
     ;(async () => {
       try {
@@ -122,6 +148,28 @@ export default function RotaDetalhe() {
         </div>
         <Link to="/rotas" className="btn">← Voltar</Link>
       </div>
+
+      {/* Indicador de filtro ativo */}
+      {filtroAtivo && (
+        <div style={{
+          padding: 12,
+          background: '#e3f2fd',
+          border: '2px solid #1976d2',
+          borderRadius: 8,
+          marginBottom: 12
+        }}>
+          <div style={{ fontWeight: 600, color: '#1565c0', marginBottom: 4, fontSize: 14 }}>
+            🔍 Filtro de Período Ativo
+          </div>
+          <div style={{ fontSize: 13, color: '#1976d2' }}>
+            {new Date(filtroAtivo.dataInicio).toLocaleDateString('pt-BR')} até {new Date(filtroAtivo.dataFim).toLocaleDateString('pt-BR')}
+          </div>
+          <div style={{ fontSize: 12, color: '#1976d2', marginTop: 4, opacity: 0.8 }}>
+            Os itens das escolas serão filtrados por este período
+          </div>
+        </div>
+      )}
+
       {planej && (
         <div className="card" style={{ marginBottom: 12 }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
@@ -163,7 +211,12 @@ export default function RotaDetalhe() {
             <div style={{ marginLeft: 'auto', display:'flex', alignItems:'center', gap:8, flexWrap: 'wrap' }}>
               <Link 
                 to={`/escolas/${item.escola_id}`}
-                state={{ escolaNome: item.escola_nome, guiaId: undefined, rotaId: id }}
+                state={{ 
+                  escolaNome: item.escola_nome, 
+                  guiaId: undefined, 
+                  rotaId: id,
+                  filtroQRCode: filtroAtivo 
+                }}
                 className="btn"
                 style={{ textDecoration: 'none' }}
               >

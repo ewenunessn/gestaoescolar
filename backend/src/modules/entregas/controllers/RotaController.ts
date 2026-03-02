@@ -148,11 +148,15 @@ class RotaController {
       const { rotaId } = req.params;
       const { escolaId, ordem, observacao } = req.body;
 
+      console.log('📥 Adicionar escola à rota:', { rotaId, escolaId, ordem, observacao });
+
       if (!rotaId || isNaN(Number(rotaId))) {
+        console.error('❌ ID da rota inválido:', rotaId);
         return res.status(400).json({ error: 'ID da rota é obrigatório e deve ser um número' });
       }
 
       if (!escolaId || isNaN(Number(escolaId))) {
+        console.error('❌ ID da escola inválido:', escolaId);
         return res.status(400).json({ error: 'ID da escola é obrigatório e deve ser um número' });
       }
 
@@ -163,15 +167,20 @@ class RotaController {
         observacao
       );
 
+      console.log('✅ Escola adicionada à rota com sucesso:', escolaRota);
+
       res.status(201).json({
         message: 'Escola adicionada à rota com sucesso',
         escolaRota
       });
     } catch (error) {
-      console.error('Erro ao adicionar escola à rota:', error);
+      console.error('❌ Erro ao adicionar escola à rota:', error);
       
       if (error instanceof Error && error.message.includes('já está associada')) {
-        return res.status(400).json({ error: error.message });
+        return res.status(400).json({ 
+          error: error.message,
+          details: 'A escola já está em outra rota. Remova-a da rota atual antes de adicionar a uma nova.'
+        });
       }
 
       res.status(500).json({ 

@@ -1,98 +1,270 @@
-# App de Entregas
+# 📦 App de Entregas - PWA
 
-Aplicativo web profissional para gestão de rotas de entrega e escolas, construído com Vite + React + TypeScript. PWA-ready e pronto para integrar com o backend existente.
+Aplicativo Progressive Web App (PWA) para gerenciamento de entregas escolares.
 
-## Requisitos
-- Node 18+
-- Backend acessível (ex.: https://gestaoescolar-backend.vercel.app)
+## 🚀 Características
 
-## Instalação
+- ✅ **PWA Instalável** - Pode ser instalado como app nativo
+- ✅ **Funciona Offline** - Cache inteligente com Service Worker
+- ✅ **Scanner QR Code** - Leitura de QR Code para filtrar entregas
+- ✅ **Entrada Manual** - Alternativa quando câmera não está disponível
+- ✅ **Assinatura Digital** - Captura de assinatura do recebedor
+- ✅ **Histórico de Entregas** - Timeline organizada por data
+- ✅ **Entregas Parciais** - Suporte para entregas em múltiplas etapas
+- ✅ **Sincronização Offline** - Fila de entregas quando sem internet
+
+## 📱 Instalação
+
+### Desenvolvimento
 
 ```bash
-cd apps/entregador
+# Instalar dependências
 npm install
-```
 
-## Execução
+# Gerar ícones do PWA
+node generate-icons-simple.js
 
-```bash
-# Configure a URL do backend (opcional)
-echo VITE_API_URL=https://gestaoescolar-backend.vercel.app > .env
-
+# Iniciar servidor de desenvolvimento
 npm run dev
 ```
 
-Acesse http://localhost:5174
+O app estará disponível em `http://localhost:5174`
 
-## Build
+### Produção
 
 ```bash
+# Build
 npm run build
+
+# Preview
 npm run preview
 ```
 
-## Funcionalidades
-- Listagem de rotas com status e total de escolas
-- Detalhe da rota com escolas em ordem de visita
-- Seleção de itens para entrega com quantidades personalizadas
-- Entregas parciais: você pode entregar quantidade diferente da programada
-- Confirmação de entregas com dados do recebedor
-- Visualização de itens já entregues com histórico e indicador de entrega parcial
-- Abas separadas para itens pendentes e entregues
-- Suporte offline completo com sincronização automática
-- Indicador de status de conexão e fila de sincronização
-- Cache local de dados para acesso offline
+### Instalar como PWA
 
-## Entregas Parciais
+Veja o guia completo em [INSTALAR-PWA.md](./INSTALAR-PWA.md)
 
-O sistema permite entregas com quantidades diferentes da programada:
+## 🎨 Gerar Ícones
 
-- **Exemplo**: Item programado com 50 unidades
-  - Você pode entregar 40 unidades
-  - O sistema registra exatamente o que foi entregue (40)
-  - Na aba "Entregues", aparece um badge "PARCIAL" indicando a diferença
-  - Mostra claramente: "Entregue: 40 kg" e "Programado: 50 kg"
+Veja instruções detalhadas em [GERAR-ICONES.md](./GERAR-ICONES.md)
 
-### Como Fazer Entrega Parcial
+**Opção rápida:**
+```bash
+node generate-icons-simple.js
+```
 
-1. Selecione o item na aba "Pendentes"
-2. Altere a quantidade no campo que aparece
-3. O sistema avisa antes de confirmar se a quantidade é diferente
-4. Após confirmar, o item vai para "Entregues" com indicador de parcial
+Depois abra `public/convert-icons.html` no navegador para converter SVG para PNG.
 
-## Modo Offline
+## 🔧 Configuração
 
-O aplicativo funciona completamente offline:
+### Variáveis de Ambiente
 
-1. **Cache Automático**: Dados das escolas e itens são salvos automaticamente no navegador
-2. **Fila de Sincronização**: Entregas realizadas offline são armazenadas em fila local
-3. **Sincronização Automática**: Quando a conexão é restaurada, as entregas são sincronizadas automaticamente
-4. **Indicador Visual**: Mostra status da conexão e quantidade de entregas pendentes
-5. **Sincronização Manual**: Botão para forçar sincronização quando necessário
+Crie um arquivo `.env.development` na raiz:
 
-### Como Usar Offline
+```env
+VITE_PROXY_TARGET=http://localhost:3000
+```
 
-1. Acesse o app enquanto estiver online para carregar os dados
-2. Os dados ficam salvos no navegador
-3. Mesmo sem internet, você pode:
-   - Ver as rotas e escolas
-   - Selecionar itens para entrega
-   - Confirmar entregas (ficam na fila)
-4. Quando voltar a ter internet:
-   - O app detecta automaticamente
-   - Sincroniza as entregas pendentes
-   - Mostra confirmação de sucesso
+Para produção, crie `.env.production`:
 
-### Testando o Modo Offline
+```env
+VITE_PROXY_TARGET=https://gestaoescolar-backend.vercel.app
+```
 
-1. Abra o app no navegador
-2. Abra as Ferramentas do Desenvolvedor (F12)
-3. Vá em "Network" (Rede)
-4. Marque "Offline"
-5. Teste fazer entregas - elas ficarão na fila
-6. Desmarque "Offline" para sincronizar
+### Proxy API
 
-## Próximos Passos (sugestão)
-- Autenticação JWT integrada ao backend
-- Mapa e otimização de rota (OSRM/Mapbox)
-- Notificações push para novas rotas
+O app usa proxy para evitar problemas de CORS:
+
+```typescript
+// vite.config.ts
+server: {
+  proxy: {
+    '/api': {
+      target: 'https://gestaoescolar-backend.vercel.app',
+      changeOrigin: true
+    }
+  }
+}
+```
+
+## 📂 Estrutura
+
+```
+apps/entregador/
+├── public/
+│   ├── manifest.json       # Configuração do PWA
+│   ├── sw.js              # Service Worker
+│   ├── icon-*.png         # Ícones do app
+│   └── convert-icons.html # Conversor SVG→PNG
+├── src/
+│   ├── api/               # Chamadas à API
+│   │   ├── client.ts      # Cliente HTTP
+│   │   └── rotas.ts       # Endpoints de rotas
+│   ├── components/        # Componentes React
+│   │   ├── CheckinModal.tsx
+│   │   ├── FiltroData.tsx
+│   │   ├── OfflineIndicator.tsx
+│   │   ├── QRCodeScanner.tsx
+│   │   ├── SignaturePad.tsx
+│   │   └── Topbar.tsx
+│   ├── offline/           # Funcionalidades offline
+│   │   └── queue.ts       # Fila de sincronização
+│   ├── pages/             # Páginas do app
+│   │   ├── EscolaDetalhe.tsx
+│   │   ├── Historico.tsx
+│   │   ├── Login.tsx
+│   │   ├── RotaDetalhe.tsx
+│   │   └── Rotas.tsx
+│   ├── App.tsx            # Componente principal
+│   ├── main.tsx           # Entry point
+│   └── styles.css         # Estilos globais
+├── generate-icons-simple.js  # Script para gerar ícones
+├── GERAR-ICONES.md          # Guia de ícones
+├── INSTALAR-PWA.md          # Guia de instalação
+└── README.md                # Este arquivo
+```
+
+## 🎯 Funcionalidades
+
+### 1. Login
+
+- Autenticação com token JWT
+- Armazenamento seguro no localStorage
+- Redirecionamento automático
+
+### 2. Rotas
+
+- Listagem de rotas de entrega
+- Filtro por QR Code
+- Indicador visual de filtro ativo
+- Botão para limpar filtro
+
+### 3. Scanner QR Code
+
+- Leitura automática via câmera
+- Seleção de câmera (frontal/traseira)
+- Entrada manual como fallback
+- Validação de dados
+
+### 4. Detalhes da Escola
+
+- Abas: Pendentes e Entregues
+- Seleção múltipla de itens
+- Ajuste de quantidade
+- Timeline de entregas
+- Modal de histórico completo
+
+### 5. Confirmação de Entrega
+
+- Nome do entregador (automático)
+- Nome do recebedor
+- Observações opcionais
+- Assinatura digital obrigatória
+- Animação de sucesso
+
+### 6. Histórico
+
+- Timeline organizada por data
+- Filtro por período
+- Detalhes de cada entrega
+- Informações de recebedor
+
+### 7. Offline
+
+- Indicador de status de conexão
+- Fila de entregas pendentes
+- Sincronização automática
+- Cache de dados
+
+## 🔐 Segurança
+
+- HTTPS obrigatório para câmera
+- Tokens JWT para autenticação
+- Validação de dados no cliente
+- Service Worker com cache seguro
+
+## 📊 Performance
+
+- Lazy loading de componentes
+- Cache estratégico
+- Otimização de imagens
+- Minificação de código
+- Code splitting
+
+## 🐛 Troubleshooting
+
+### Câmera não funciona
+
+**Problema:** "Camera access is only supported in secure context"
+
+**Solução:**
+- Use HTTPS ou localhost
+- Ou use a opção de entrada manual
+
+### Service Worker não registra
+
+**Problema:** SW não aparece no DevTools
+
+**Solução:**
+```bash
+# Limpar cache
+rm -rf node_modules/.vite
+npm run dev
+```
+
+### Build falha
+
+**Problema:** Erros de TypeScript
+
+**Solução:**
+```bash
+# Verificar tipos
+npm run typecheck
+
+# Limpar e reinstalar
+rm -rf node_modules package-lock.json
+npm install
+```
+
+## 🚀 Deploy
+
+### Vercel
+
+```bash
+vercel
+```
+
+### Netlify
+
+```bash
+netlify deploy --prod
+```
+
+### Docker
+
+```dockerfile
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+EXPOSE 4173
+CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0"]
+```
+
+## 📝 Licença
+
+Este projeto faz parte do Sistema de Gestão Escolar.
+
+## 🤝 Contribuindo
+
+1. Fork o projeto
+2. Crie uma branch (`git checkout -b feature/nova-funcionalidade`)
+3. Commit suas mudanças (`git commit -m 'Adiciona nova funcionalidade'`)
+4. Push para a branch (`git push origin feature/nova-funcionalidade`)
+5. Abra um Pull Request
+
+## 📞 Suporte
+
+Para dúvidas ou problemas, consulte a documentação ou abra uma issue.

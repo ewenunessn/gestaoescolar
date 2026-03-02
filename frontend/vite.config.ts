@@ -34,7 +34,8 @@ export default defineConfig(({ mode }) => {
         'stream': false,
         'util': false,
         'events': false
-      }
+      },
+      dedupe: ['react', 'react-dom']
     },
     esbuild: {
       // Skip type checking during build for faster builds

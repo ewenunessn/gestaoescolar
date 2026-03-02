@@ -1,6 +1,15 @@
 import { api } from './client'
 import { enqueue, readQueue, clearQueue } from '../offline/queue'
 
+type CheckinItem = {
+  planejamentoId: number
+  escolaId: number
+  status: 'pendente'|'entregue'|'nao_entregue'
+  observacao?: string
+  fotoBase64?: string
+  assinadoPor?: string
+}
+
 export interface Rota {
   id: number
   nome: string
@@ -226,7 +235,7 @@ export async function atualizarStatusEscola(
 }
 
 export async function flushQueuedCheckins() {
-  const items = readQueue()
+  const items = readQueue() as unknown as CheckinItem[]
   if (!items.length) return
   for (const it of items) {
     try {

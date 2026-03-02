@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "App Entregador",
+    "slug": "entregador",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#1976d2"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.gestaoescolar.entregador"
+    },
+    "android": {
+      "package": "com.gestaoescolar.entregador",
+      "adaptiveIcon": {
+        "backgroundColor": "#1976d2"
+      },
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE"
+      ]
+    },
+    "web": {
+    },
+    "plugins": [
+      "expo-camera"
+    ]
+  }
+}

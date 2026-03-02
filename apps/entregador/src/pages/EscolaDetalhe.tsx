@@ -12,6 +12,15 @@ interface ItemSelecionado extends ItemEntrega {
   data_entrega?: string
 }
 
+interface FiltroQRCode {
+  rotaId: number
+  rotaNome: string
+  dataInicio: string
+  dataFim: string
+  geradoEm: string
+  geradoPor?: string
+}
+
 // Função para formatar números removendo zeros desnecessários
 function formatarNumero(valor: number): string {
   // Remove zeros à direita após o ponto decimal
@@ -22,7 +31,7 @@ export default function EscolaDetalhe() {
   const { escolaId } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
-  const state = location.state as { escolaNome?: string; guiaId?: number; rotaId?: number } | null
+  const state = location.state as { escolaNome?: string; guiaId?: number; rotaId?: number; filtroQRCode?: FiltroQRCode } | null
   
   const id = Number(escolaId)
   const [itens, setItens] = useState<ItemSelecionado[]>([])
@@ -32,6 +41,7 @@ export default function EscolaDetalhe() {
   const [abaAtiva, setAbaAtiva] = useState<'pendentes' | 'entregues'>('pendentes')
   const [mostrandoSucesso, setMostrandoSucesso] = useState(false)
   const [itemHistoricoModal, setItemHistoricoModal] = useState<ItemSelecionado | null>(null)
+  const [filtroAtivo, setFiltroAtivo] = useState<FiltroQRCode | null>(null)
   
   // Dados da revisão
   const [nomeRecebedor, setNomeRecebedor] = useState('')
@@ -53,6 +63,21 @@ export default function EscolaDetalhe() {
   const [salvando, setSalvando] = useState(false)
 
   useEffect(() => {
+    // Carregar filtro do state ou localStorage
+    const filtro = state?.filtroQRCode || (() => {
+      const filtroSalvo = localStorage.getItem('filtro_qrcode')
+      if (filtroSalvo) {
+        try {
+          return JSON.parse(filtroSalvo) as FiltroQRCode
+        } catch (e) {
+          console.warn('Erro ao carregar filtro:', e)
+        }
+      }
+      return null
+    })()
+    
+    setFiltroAtivo(filtro)
+
     if (!id) return
     ;(async () => {
       try {
@@ -72,14 +97,39 @@ export default function EscolaDetalhe() {
           historico: i.historico_entregas
         })))
         
+        // Aplicar filtro de data se houver
+        let dadosFiltrados = data
+        if (filtro) {
+          const dataInicio = new Date(filtro.dataInicio)
+          dataInicio.setHours(0, 0, 0, 0)
+          const dataFim = new Date(filtro.dataFim)
+          dataFim.setHours(23, 59, 59, 999)
+          
+          console.log('🔍 Aplicando filtro de data:', { dataInicio, dataFim })
+          
+          dadosFiltrados = data.filter(item => {
+            // Filtrar pela data_entrega se disponível
+            if (item.data_entrega) {
+              const dataEntrega = new Date(item.data_entrega)
+              const dentroDoIntervalo = dataEntrega >= dataInicio && dataEntrega <= dataFim
+              console.log(`Item ${item.produto_nome}: data_entrega=${item.data_entrega}, dentro=${dentroDoIntervalo}`)
+              return dentroDoIntervalo
+            }
+            // Se não tiver data_entrega, incluir por padrão
+            return true
+          })
+          
+          console.log(`📊 Filtro aplicado: ${data.length} itens → ${dadosFiltrados.length} itens`)
+        }
+        
         // Salvar no cache para uso offline
         try {
-          localStorage.setItem(`itens_escola_${id}`, JSON.stringify(data))
+          localStorage.setItem(`itens_escola_${id}`, JSON.stringify(dadosFiltrados))
         } catch (e) {
           console.warn('Erro ao salvar cache:', e)
         }
         
-        setItens(data.map(item => ({
+        setItens(dadosFiltrados.map(item => ({
           ...item,
           selecionado: false,
           // Se já houver entregas parciais, usar o saldo pendente como quantidade padrão para a próxima entrega
@@ -533,6 +583,24 @@ export default function EscolaDetalhe() {
         <h2>{state?.escolaNome || `Escola ${id}`}</h2>
         <button className="btn" onClick={() => navigate(-1)}>Voltar</button>
       </div>
+
+      {/* Indicador de filtro ativo */}
+      {filtroAtivo && (
+        <div style={{
+          padding: 12,
+          background: '#e3f2fd',
+          border: '2px solid #1976d2',
+          borderRadius: 8,
+          marginBottom: 12
+        }}>
+          <div style={{ fontWeight: 600, color: '#1565c0', marginBottom: 4, fontSize: 14 }}>
+            🔍 Filtro de Período Ativo
+          </div>
+          <div style={{ fontSize: 13, color: '#1976d2' }}>
+            Mostrando apenas itens programados para: {new Date(filtroAtivo.dataInicio).toLocaleDateString('pt-BR')} até {new Date(filtroAtivo.dataFim).toLocaleDateString('pt-BR')}
+          </div>
+        </div>
+      )}
 
       {/* Abas */}
       <div style={{ 
