@@ -4,6 +4,7 @@ import { Button, Surface, Text, IconButton } from 'react-native-paper';
 import { captureRef } from 'react-native-view-shot';
 import Svg, { Path } from 'react-native-svg';
 import * as ScreenOrientation from 'expo-screen-orientation';
+import * as FileSystem from 'expo-file-system';
 
 interface SignaturePadProps {
   visible: boolean;
@@ -79,7 +80,16 @@ export default function SignaturePad({ visible, onClose, onSave }: SignaturePadP
           format: 'png',
           quality: 1,
         });
-        onSave(uri);
+        
+        // Converter URI para base64
+        const base64 = await FileSystem.readAsStringAsync(uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        
+        // Adicionar o prefixo data:image/png;base64,
+        const base64WithPrefix = `data:image/png;base64,${base64}`;
+        
+        onSave(base64WithPrefix);
         // Limpar após salvar
         setPaths([]);
         setCurrentPath('');
