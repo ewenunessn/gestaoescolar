@@ -13,7 +13,9 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  Chip,
+  SelectChangeEvent
 } from '@mui/material';
 import { QrCode2 as QrCodeIcon, Download as DownloadIcon } from '@mui/icons-material';
 import PageHeader from '../components/PageHeader';
@@ -21,8 +23,8 @@ import QRCode from 'qrcode';
 import api from '../services/api';
 
 interface QRCodeData {
-  rotaId: number;
-  rotaNome: string;
+  rotaIds: number[];
+  rotaNomes: string[];
   dataInicio: string;
   dataFim: string;
   geradoEm: string;
@@ -38,7 +40,7 @@ interface Rota {
 }
 
 const GerarQRCodeEntrega: React.FC = () => {
-  const [rotaId, setRotaId] = useState<string>('');
+  const [rotaIds, setRotaIds] = useState<number[]>([]);
   const [dataInicio, setDataInicio] = useState<string>(new Date().toISOString().split('T')[0]);
   const [dataFim, setDataFim] = useState<string>(new Date().toISOString().split('T')[0]);
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
@@ -62,13 +64,13 @@ const GerarQRCodeEntrega: React.FC = () => {
   };
 
   const gerarQRCode = async () => {
-    if (!rotaId || !dataInicio || !dataFim) {
+    if (rotaIds.length === 0 || !dataInicio || !dataFim) {
       alert('Preencha todos os campos obrigatórios');
       return;
     }
 
-    const rota = rotas.find(r => r.id === Number(rotaId));
-    if (!rota) return;
+    const rotasSelecionadas = rotas.filter(r => rotaIds.includes(r.id));
+    if (rotasSelecionadas.length === 0) return;
 
     setLoading(true);
 
@@ -86,8 +88,8 @@ const GerarQRCodeEntrega: React.FC = () => {
       }
 
       const data: QRCodeData = {
-        rotaId: Number(rotaId),
-        rotaNome: rota.nome,
+        rotaIds: rotaIds,
+        rotaNomes: rotasSelecionadas.map(r => r.nome),
         dataInicio,
         dataFim,
         geradoEm: new Date().toISOString(),
@@ -123,7 +125,7 @@ const GerarQRCodeEntrega: React.FC = () => {
     
     const link = document.createElement('a');
     link.href = qrCodeUrl;
-    link.download = `qrcode-rota-${rotaId}-${dataInicio}.png`;
+    link.download = `qrcode-rotas-${rotaIds.join('-')}-${dataInicio}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -132,7 +134,7 @@ const GerarQRCodeEntrega: React.FC = () => {
   const copiarDados = () => {
     if (!qrData) return;
     
-    const texto = `Rota: ${qrData.rotaNome}\nData Início: ${new Date(qrData.dataInicio).toLocaleDateString('pt-BR')}\nData Fim: ${new Date(qrData.dataFim).toLocaleDateString('pt-BR')}`;
+    const texto = `Rotas: ${qrData.rotaNomes.join(', ')}\nData Início: ${new Date(qrData.dataInicio).toLocaleDateString('pt-BR')}\nData Fim: ${new Date(qrData.dataFim).toLocaleDateString('pt-BR')}`;
     navigator.clipboard.writeText(texto);
     alert('Dados copiados para a área de transferência!');
   };
@@ -147,7 +149,7 @@ const GerarQRCodeEntrega: React.FC = () => {
       <!DOCTYPE html>
       <html>
         <head>
-          <title>QR Code - ${qrData.rotaNome}</title>
+          <title>QR Code - ${qrData.rotaNomes.join(', ')}</title>
           <style>
             body {
               font-family: Arial, sans-serif;
@@ -189,7 +191,7 @@ const GerarQRCodeEntrega: React.FC = () => {
         <body>
           <h1>QR Code para Entrega</h1>
           <div class="info">
-            <p><strong>Rota:</strong> ${qrData.rotaNome}</p>
+            <p><strong>Rotas:</strong> ${qrData.rotaNomes.join(', ')}</p>
             <p><strong>Período:</strong> ${new Date(qrData.dataInicio).toLocaleDateString('pt-BR')} até ${new Date(qrData.dataFim).toLocaleDateString('pt-BR')}</p>
             <p><strong>Gerado em:</strong> ${new Date(qrData.geradoEm).toLocaleString('pt-BR')}</p>
             ${qrData.geradoPor ? `<p><strong>Gerado por:</strong> ${qrData.geradoPor}</p>` : ''}
@@ -219,6 +221,7 @@ const GerarQRCodeEntrega: React.FC = () => {
       <PageHeader 
         title="Gerar QR Code para Entrega" 
         subtitle="Configure a rota e período para o entregador"
+        totalCount={0}
       />
 
       <Card sx={{ maxWidth: 600, mx: 'auto', mt: 3 }}>
@@ -231,11 +234,25 @@ const GerarQRCodeEntrega: React.FC = () => {
             </Typography>
 
             <FormControl fullWidth>
-              <InputLabel>Rota *</InputLabel>
+              <InputLabel>Rotas *</InputLabel>
               <Select
-                value={rotaId}
-                onChange={(e) => setRotaId(e.target.value)}
-                label="Rota *"
+                multiple
+                value={rotaIds}
+                onChange={(e: SelectChangeEvent<number[]>) => {
+                  const value = e.target.value;
+                  setRotaIds(typeof value === 'string' ? [] : value as number[]);
+                }}
+                label="Rotas *"
+                renderValue={(selected) => (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {(selected as number[]).map((id) => {
+                      const rota = rotas.find(r => r.id === id);
+                      return rota ? (
+                        <Chip key={id} label={rota.nome} size="small" />
+                      ) : null;
+                    })}
+                  </Box>
+                )}
               >
                 {rotas.map(rota => (
                   <MenuItem key={rota.id} value={rota.id}>
@@ -347,7 +364,7 @@ const GerarQRCodeEntrega: React.FC = () => {
                   Informações do QR Code:
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  <strong>Rota:</strong> {qrData.rotaNome}<br/>
+                  <strong>Rotas:</strong> {qrData.rotaNomes.join(', ')}<br/>
                   <strong>Período:</strong> {new Date(qrData.dataInicio).toLocaleDateString('pt-BR')} até {new Date(qrData.dataFim).toLocaleDateString('pt-BR')}<br/>
                   <strong>Gerado em:</strong> {new Date(qrData.geradoEm).toLocaleString('pt-BR')}<br/>
                   {qrData.geradoPor && <><strong>Gerado por:</strong> {qrData.geradoPor}</>}

@@ -31,12 +31,23 @@ export default function QRScanner({ visible, onClose, onScan }: QRScannerProps) 
     try {
       const qrData = JSON.parse(data);
       
-      // Aceitar QR Code com rotaId (formato do frontend)
-      if (qrData.rotaId && qrData.dataInicio && qrData.dataFim) {
-        await AsyncStorage.setItem('filtro_qrcode', data);
+      // Aceitar QR Code com rotaIds (novo formato - múltiplas rotas) ou rotaId (formato antigo - compatibilidade)
+      const hasRotas = (qrData.rotaIds && Array.isArray(qrData.rotaIds) && qrData.rotaIds.length > 0) || qrData.rotaId;
+      
+      if (hasRotas && qrData.dataInicio && qrData.dataFim) {
+        // Converter formato antigo para novo se necessário
+        if (qrData.rotaId && !qrData.rotaIds) {
+          qrData.rotaIds = [qrData.rotaId];
+          qrData.rotaNomes = [qrData.rotaNome];
+        }
+        
+        await AsyncStorage.setItem('filtro_qrcode', JSON.stringify(qrData));
+        
+        const rotasTexto = qrData.rotaNomes ? qrData.rotaNomes.join(', ') : qrData.rotaNome;
+        
         Alert.alert(
           'Filtro Aplicado',
-          `Rota: ${qrData.rotaNome}\nPeríodo: ${new Date(qrData.dataInicio).toLocaleDateString('pt-BR')} até ${new Date(qrData.dataFim).toLocaleDateString('pt-BR')}`,
+          `Rotas: ${rotasTexto}\nPeríodo: ${new Date(qrData.dataInicio).toLocaleDateString('pt-BR')} até ${new Date(qrData.dataFim).toLocaleDateString('pt-BR')}`,
           [{ text: 'OK', onPress: () => {
             onScan(qrData);
             onClose();
