@@ -60,17 +60,13 @@ class ComprovanteEntregaModel {
    * Criar um novo comprovante de entrega com seus itens
    */
   async criar(dados: CriarComprovanteData): Promise<ComprovanteEntregaRecord> {
-    const client = await db.connect();
-    
     try {
-      await client.query('BEGIN');
-
       // Gerar número do comprovante
-      const numeroResult = await client.query('SELECT gerar_numero_comprovante() as numero');
+      const numeroResult = await db.query('SELECT gerar_numero_comprovante() as numero');
       const numeroComprovante = numeroResult.rows[0].numero;
 
       // Criar comprovante
-      const comprovanteResult = await client.query(`
+      const comprovanteResult = await db.query(`
         INSERT INTO comprovantes_entrega (
           numero_comprovante,
           escola_id,
@@ -103,7 +99,7 @@ class ComprovanteEntregaModel {
 
       // Inserir itens do comprovante
       for (const item of dados.itens) {
-        await client.query(`
+        await db.query(`
           INSERT INTO comprovante_itens (
             comprovante_id,
             historico_entrega_id,
@@ -122,13 +118,9 @@ class ComprovanteEntregaModel {
         ]);
       }
 
-      await client.query('COMMIT');
       return comprovante;
     } catch (error) {
-      await client.query('ROLLBACK');
       throw error;
-    } finally {
-      client.release();
     }
   }
 
