@@ -579,16 +579,11 @@ const GuiasDemanda: React.FC = () => {
 
   // Função para formatar números removendo zeros desnecessários
   const formatarQuantidade = (valor: number | null | undefined): string => {
-    // Se for null ou undefined, retorna 0
-    if (valor === null || valor === undefined || isNaN(valor)) {
-      return '0';
-    }
-    // Se for número inteiro, retorna sem casas decimais
-    if (Number.isInteger(valor)) {
-      return valor.toString();
-    }
-    // Se tiver decimais, retorna com até 3 casas decimais, removendo zeros à direita
-    return valor.toFixed(3).replace(/\.?0+$/, '');
+    const num = Number(valor) || 0;
+    return num.toLocaleString('pt-BR', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 3
+    });
   };
 
   const getStatusColor = (status: string) => {
