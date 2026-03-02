@@ -102,6 +102,7 @@ SELECT
   c.nome_quem_recebeu,
   c.cargo_recebedor,
   c.observacao,
+  c.assinatura_base64,
   c.total_itens,
   c.status,
   c.created_at,

@@ -52,6 +52,7 @@ interface Comprovante {
   nome_quem_recebeu: string;
   cargo_recebedor?: string;
   observacao?: string;
+  assinatura_base64?: string;
   total_itens: number;
   status: string;
   itens: ComprovanteItem[];
