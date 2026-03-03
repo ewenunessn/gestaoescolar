@@ -508,7 +508,7 @@ const Romaneio: React.FC = () => {
                   </Typography>
                 </Box>
               </Box>
-              {qrCodeUrl && rotaId && (
+              {qrCodeUrl && rotaIds.length > 0 && (
                 <Box sx={{ ml: 3, textAlign: 'center' }}>
                   <img 
                     src={qrCodeUrl} 
@@ -827,7 +827,9 @@ const Romaneio: React.FC = () => {
                 Informações do QR Code:
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                <strong>Rota:</strong> {rotaId ? rotas.find(r => r.id === Number(rotaId))?.nome : ''}<br/>
+                <strong>Rota:</strong> {rotaIds.length === 0 ? 'Todas' : 
+                  rotaIds.length === rotas.length ? 'Todas' :
+                  rotas.filter(r => rotaIds.includes(r.id)).map(r => r.nome).join(', ')}<br/>
                 <strong>Período:</strong> {format(new Date(dataInicio), 'dd/MM/yyyy')} até {format(new Date(dataFim), 'dd/MM/yyyy')}
               </Typography>
             </Box>
