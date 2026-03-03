@@ -76,17 +76,19 @@ CREATE TRIGGER trigger_estoque_central_lotes_updated_at
   EXECUTE FUNCTION update_estoque_central_updated_at();
 
 -- View para consulta completa do estoque central
-CREATE OR REPLACE VIEW vw_estoque_central_completo AS
+DROP VIEW IF EXISTS vw_estoque_central_completo CASCADE;
+
+CREATE VIEW vw_estoque_central_completo AS
 SELECT 
   ec.id,
   ec.produto_id,
   p.nome as produto_nome,
   p.unidade,
   p.categoria,
-  ec.quantidade,
-  ec.quantidade_reservada,
-  ec.quantidade_disponivel,
-  COUNT(DISTINCT ecl.id) as total_lotes,
+  CAST(ec.quantidade AS NUMERIC) as quantidade,
+  CAST(ec.quantidade_reservada AS NUMERIC) as quantidade_reservada,
+  CAST(ec.quantidade_disponivel AS NUMERIC) as quantidade_disponivel,
+  CAST(COUNT(DISTINCT ecl.id) AS INTEGER) as total_lotes,
   MIN(ecl.data_validade) as proxima_validade,
   ec.created_at,
   ec.updated_at

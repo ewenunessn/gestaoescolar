@@ -25,6 +25,10 @@ export default function EstoqueCentralScreen({ navigation }: any) {
     try {
       setLoading(true);
       const data = await listarEstoqueCentral();
+      console.log('Estoque carregado:', data.length, 'itens');
+      if (data.length > 0) {
+        console.log('Primeiro item:', JSON.stringify(data[0], null, 2));
+      }
       setEstoque(data);
     } catch (err) {
       console.error('Erro ao carregar estoque:', err);
@@ -41,13 +45,13 @@ export default function EstoqueCentralScreen({ navigation }: any) {
     // Filtro por busca
     if (busca) {
       resultado = resultado.filter(item =>
-        item.produto_nome.toLowerCase().includes(busca.toLowerCase())
+        item.produto_nome?.toLowerCase().includes(busca.toLowerCase())
       );
     }
 
     // Filtro por tipo
     if (filtro === 'baixo') {
-      resultado = resultado.filter(item => item.quantidade_disponivel < 10);
+      resultado = resultado.filter(item => formatarNumero(item.quantidade_disponivel) < 10);
     } else if (filtro === 'vencendo') {
       resultado = resultado.filter(item => {
         if (!item.proxima_validade) return false;
@@ -74,6 +78,12 @@ export default function EstoqueCentralScreen({ navigation }: any) {
     if (disponivel === 0) return '#dc2626';
     if (disponivel < 10) return '#f59e0b';
     return '#10b981';
+  };
+
+  const formatarNumero = (valor: any): number => {
+    if (valor === null || valor === undefined) return 0;
+    const num = typeof valor === 'number' ? valor : parseFloat(String(valor));
+    return isNaN(num) ? 0 : num;
   };
 
   const formatarValidade = (data?: string): string => {
@@ -172,10 +182,10 @@ export default function EstoqueCentralScreen({ navigation }: any) {
                   <Badge
                     style={[
                       styles.badge,
-                      { backgroundColor: getCorQuantidade(item.quantidade_disponivel) }
+                      { backgroundColor: getCorQuantidade(formatarNumero(item.quantidade_disponivel)) }
                     ]}
                   >
-                    {item.quantidade_disponivel.toFixed(0)}
+                    {formatarNumero(item.quantidade_disponivel).toFixed(0)}
                   </Badge>
                 </View>
 
@@ -185,17 +195,17 @@ export default function EstoqueCentralScreen({ navigation }: any) {
                       Total
                     </Text>
                     <Text variant="bodyMedium" style={styles.infoValue}>
-                      {item.quantidade.toFixed(2)} {item.unidade}
+                      {formatarNumero(item.quantidade).toFixed(2)} {item.unidade || 'UN'}
                     </Text>
                   </View>
 
-                  {item.quantidade_reservada > 0 && (
+                  {formatarNumero(item.quantidade_reservada) > 0 && (
                     <View style={styles.infoItem}>
                       <Text variant="bodySmall" style={styles.infoLabel}>
                         Reservado
                       </Text>
                       <Text variant="bodyMedium" style={styles.infoValue}>
-                        {item.quantidade_reservada.toFixed(2)} {item.unidade}
+                        {formatarNumero(item.quantidade_reservada).toFixed(2)} {item.unidade || 'UN'}
                       </Text>
                     </View>
                   )}
@@ -205,7 +215,7 @@ export default function EstoqueCentralScreen({ navigation }: any) {
                       Lotes
                     </Text>
                     <Text variant="bodyMedium" style={styles.infoValue}>
-                      {item.total_lotes}
+                      {formatarNumero(item.total_lotes)}
                     </Text>
                   </View>
                 </View>

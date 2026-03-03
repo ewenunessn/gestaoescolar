@@ -13,8 +13,17 @@ class EstoqueCentralController {
 
       const estoque = await EstoqueCentralModel.listar(limit, offset);
 
+      // Converter strings numéricas para números
+      const estoqueFormatado = estoque.map(item => ({
+        ...item,
+        quantidade: parseFloat(item.quantidade as any) || 0,
+        quantidade_reservada: parseFloat(item.quantidade_reservada as any) || 0,
+        quantidade_disponivel: parseFloat(item.quantidade_disponivel as any) || 0,
+        total_lotes: parseInt(item.total_lotes as any) || 0
+      }));
+
       res.json({
-        estoque,
+        estoque: estoqueFormatado,
         limit,
         offset
       });
@@ -37,7 +46,16 @@ class EstoqueCentralController {
         return res.status(404).json({ error: 'Produto não encontrado no estoque' });
       }
 
-      res.json(estoque);
+      // Converter strings numéricas para números
+      const estoqueFormatado = {
+        ...estoque,
+        quantidade: parseFloat(estoque.quantidade as any) || 0,
+        quantidade_reservada: parseFloat(estoque.quantidade_reservada as any) || 0,
+        quantidade_disponivel: parseFloat(estoque.quantidade_disponivel as any) || 0,
+        total_lotes: parseInt(estoque.total_lotes as any) || 0
+      };
+
+      res.json(estoqueFormatado);
     } catch (error: any) {
       console.error('Erro ao buscar estoque:', error);
       res.status(500).json({ error: error.message });
@@ -204,7 +222,15 @@ class EstoqueCentralController {
       const { estoqueId } = req.params;
       const lotes = await EstoqueCentralModel.listarLotes(parseInt(estoqueId));
 
-      res.json({ lotes });
+      // Converter strings numéricas para números
+      const lotesFormatados = lotes.map(lote => ({
+        ...lote,
+        quantidade: parseFloat(lote.quantidade as any) || 0,
+        quantidade_reservada: parseFloat(lote.quantidade_reservada as any) || 0,
+        quantidade_disponivel: parseFloat(lote.quantidade_disponivel as any) || 0
+      }));
+
+      res.json({ lotes: lotesFormatados });
     } catch (error: any) {
       console.error('Erro ao listar lotes:', error);
       res.status(500).json({ error: error.message });

@@ -63,6 +63,12 @@ export default function EstoqueCentralSaidaScreen({ route, navigation }: any) {
     }
   };
 
+  const formatarNumero = (valor: any): number => {
+    if (valor === null || valor === undefined) return 0;
+    const num = typeof valor === 'number' ? valor : parseFloat(String(valor));
+    return isNaN(num) ? 0 : num;
+  };
+
   const validarFormulario = (): boolean => {
     if (!produtoId) {
       Alert.alert('Atenção', 'Selecione um produto');
@@ -152,7 +158,7 @@ export default function EstoqueCentralSaidaScreen({ route, navigation }: any) {
                 <View style={styles.produtoFixo}>
                   <Text variant="titleMedium">{produtoInicial.produto_nome}</Text>
                   <Text variant="bodySmall" style={styles.disponivel}>
-                    Disponível: {produtoInicial.quantidade_disponivel.toFixed(2)} {produtoInicial.unidade}
+                    Disponível: {formatarNumero(produtoInicial.quantidade_disponivel).toFixed(2)} {produtoInicial.unidade}
                   </Text>
                 </View>
               ) : (
@@ -193,7 +199,7 @@ export default function EstoqueCentralSaidaScreen({ route, navigation }: any) {
                     {lotes.map(lote => (
                       <Picker.Item
                         key={lote.id}
-                        label={`${lote.lote} - ${lote.quantidade.toFixed(2)} disponível`}
+                        label={`${lote.lote} - ${formatarNumero(lote.quantidade).toFixed(2)} disponível`}
                         value={lote.id.toString()}
                       />
                     ))}

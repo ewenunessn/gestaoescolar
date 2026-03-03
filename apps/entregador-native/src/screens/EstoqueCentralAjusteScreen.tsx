@@ -42,6 +42,12 @@ export default function EstoqueCentralAjusteScreen({ route, navigation }: any) {
     }
   };
 
+  const formatarNumero = (valor: any): number => {
+    if (valor === null || valor === undefined) return 0;
+    const num = typeof valor === 'number' ? valor : parseFloat(String(valor));
+    return isNaN(num) ? 0 : num;
+  };
+
   const validarFormulario = (): boolean => {
     if (!produtoId) {
       Alert.alert('Atenção', 'Selecione um produto');
@@ -64,7 +70,7 @@ export default function EstoqueCentralAjusteScreen({ route, navigation }: any) {
   const handleSubmit = async () => {
     if (!validarFormulario()) return;
 
-    const quantidadeAtual = produtoInicial?.quantidade || 0;
+    const quantidadeAtual = formatarNumero(produtoInicial?.quantidade) || 0;
     const novaQuantidade = parseFloat(quantidadeNova);
     const diferenca = novaQuantidade - quantidadeAtual;
 
@@ -117,7 +123,7 @@ export default function EstoqueCentralAjusteScreen({ route, navigation }: any) {
   };
 
   const produtoSelecionado = produtos.find(p => p.id === parseInt(produtoId));
-  const quantidadeAtual = produtoInicial?.quantidade || 0;
+  const quantidadeAtual = formatarNumero(produtoInicial?.quantidade) || 0;
   const diferenca = quantidadeNova ? parseFloat(quantidadeNova) - quantidadeAtual : 0;
 
   return (

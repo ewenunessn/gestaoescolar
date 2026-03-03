@@ -48,6 +48,12 @@ export default function EstoqueCentralDetalhesScreen({ route, navigation }: any)
     }
   };
 
+  const formatarNumero = (valor: any): number => {
+    if (valor === null || valor === undefined) return 0;
+    const num = typeof valor === 'number' ? valor : parseFloat(String(valor));
+    return isNaN(num) ? 0 : num;
+  };
+
   const getDiasParaVencer = (dataValidade: string): number => {
     const validade = new Date(dataValidade);
     const hoje = new Date();
@@ -106,7 +112,7 @@ export default function EstoqueCentralDetalhesScreen({ route, navigation }: any)
                   Quantidade Total
                 </Text>
                 <Text variant="headlineSmall" style={styles.infoValue}>
-                  {estoque.quantidade.toFixed(2)}
+                  {formatarNumero(estoque.quantidade).toFixed(2)}
                 </Text>
                 <Text variant="bodySmall" style={styles.infoUnidade}>
                   {estoque.unidade}
@@ -118,7 +124,7 @@ export default function EstoqueCentralDetalhesScreen({ route, navigation }: any)
                   Disponível
                 </Text>
                 <Text variant="headlineSmall" style={[styles.infoValue, { color: '#10b981' }]}>
-                  {estoque.quantidade_disponivel.toFixed(2)}
+                  {formatarNumero(estoque.quantidade_disponivel).toFixed(2)}
                 </Text>
                 <Text variant="bodySmall" style={styles.infoUnidade}>
                   {estoque.unidade}
@@ -131,7 +137,7 @@ export default function EstoqueCentralDetalhesScreen({ route, navigation }: any)
                     Reservado
                   </Text>
                   <Text variant="headlineSmall" style={[styles.infoValue, { color: '#f59e0b' }]}>
-                    {estoque.quantidade_reservada.toFixed(2)}
+                    {formatarNumero(estoque.quantidade_reservada).toFixed(2)}
                   </Text>
                   <Text variant="bodySmall" style={styles.infoUnidade}>
                     {estoque.unidade}
@@ -191,7 +197,7 @@ export default function EstoqueCentralDetalhesScreen({ route, navigation }: any)
                               ]}
                               textStyle={{ color: '#fff' }}
                             >
-                              {lote.quantidade.toFixed(2)} {estoque.unidade}
+                              {formatarNumero(lote.quantidade).toFixed(2)} {estoque.unidade}
                             </Chip>
                           </View>
 
@@ -257,7 +263,7 @@ export default function EstoqueCentralDetalhesScreen({ route, navigation }: any)
                                 { color: getTipoColor(mov.tipo) }
                               ]}
                             >
-                              {mov.quantidade > 0 ? '+' : ''}{mov.quantidade.toFixed(2)}
+                              {formatarNumero(mov.quantidade) > 0 ? '+' : ''}{formatarNumero(mov.quantidade).toFixed(2)}
                             </Text>
                             <Text variant="bodySmall" style={styles.movUnidade}>
                               {estoque.unidade}
