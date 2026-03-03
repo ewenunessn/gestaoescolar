@@ -128,8 +128,9 @@ class EstoqueCentralModel {
         estoque = estoqueResult.rows[0];
       }
 
-      const quantidadeAnterior = estoque.quantidade;
-      const quantidadePosterior = quantidadeAnterior + dados.quantidade;
+      const quantidadeAnterior = parseFloat(estoque.quantidade as any) || 0;
+      const quantidadeNum = parseFloat(dados.quantidade as any);
+      const quantidadePosterior = quantidadeAnterior + quantidadeNum;
 
       // Atualizar quantidade no estoque
       await client.query(
@@ -190,12 +191,15 @@ class EstoqueCentralModel {
 
       const estoque: EstoqueCentralRecord = estoqueResult.rows[0];
 
-      if (estoque.quantidade_disponivel < dados.quantidade) {
-        throw new Error(`Quantidade insuficiente. Disponível: ${estoque.quantidade_disponivel}`);
+      const quantidadeDisponivel = parseFloat(estoque.quantidade_disponivel as any) || 0;
+      const quantidadeNum = parseFloat(dados.quantidade as any);
+
+      if (quantidadeDisponivel < quantidadeNum) {
+        throw new Error(`Quantidade insuficiente. Disponível: ${quantidadeDisponivel}`);
       }
 
-      const quantidadeAnterior = estoque.quantidade;
-      const quantidadePosterior = quantidadeAnterior - dados.quantidade;
+      const quantidadeAnterior = parseFloat(estoque.quantidade as any) || 0;
+      const quantidadePosterior = quantidadeAnterior - quantidadeNum;
 
       // Atualizar quantidade no estoque
       await client.query(
@@ -258,8 +262,8 @@ class EstoqueCentralModel {
       }
 
       const estoque: EstoqueCentralRecord = estoqueResult.rows[0];
-      const quantidadeAnterior = estoque.quantidade;
-      const quantidadePosterior = dados.quantidade_nova;
+      const quantidadeAnterior = parseFloat(estoque.quantidade as any) || 0;
+      const quantidadePosterior = parseFloat(dados.quantidade_nova as any);
       const diferencaQuantidade = quantidadePosterior - quantidadeAnterior;
 
       // Atualizar quantidade no estoque
