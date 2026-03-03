@@ -87,6 +87,7 @@ const GuiasDemanda: React.FC = () => {
   const [batchQuantidades, setBatchQuantidades] = useState<Record<number, string>>({});
   const [batchUnidades, setBatchUnidades] = useState<Record<number, string>>({});
   const [batchStatus, setBatchStatus] = useState<Record<number, string>>({});
+  const [batchDatasEntrega, setBatchDatasEntrega] = useState<Record<number, string>>({});
   const [batchItensExistentes, setBatchItensExistentes] = useState<Record<number, GuiaProdutoEscola | null>>({});
   const [batchLoadingExisting, setBatchLoadingExisting] = useState(false);
   const [batchSaving, setBatchSaving] = useState(false);
@@ -363,6 +364,13 @@ const GuiasDemanda: React.FC = () => {
     }));
   };
 
+  const handleBatchDataEntregaChange = (escolaId: number, value: string) => {
+    setBatchDatasEntrega(prev => ({
+      ...prev,
+      [escolaId]: value
+    }));
+  };
+
   const abrirBatchDialog = () => {
     setBatchMode('add');
     setBatchForm({
@@ -412,6 +420,7 @@ const GuiasDemanda: React.FC = () => {
       const quantidades: Record<number, string> = {};
       const unidades: Record<number, string> = {};
       const status: Record<number, string> = {};
+      const datasEntrega: Record<number, string> = {};
       const itensMap: Record<number, GuiaProdutoEscola | null> = {};
 
       itensPorEscola.forEach(({ schoolId, item }) => {
@@ -420,10 +429,12 @@ const GuiasDemanda: React.FC = () => {
           quantidades[schoolId] = item.quantidade?.toString() || '';
           unidades[schoolId] = item.unidade || batchForm.unidade || 'Kg';
           status[schoolId] = item.status || 'pendente';
+          datasEntrega[schoolId] = normalizarData(item.data_entrega) || batchForm.data_entrega;
         } else {
           quantidades[schoolId] = '';
           unidades[schoolId] = batchForm.unidade || 'Kg';
           status[schoolId] = 'pendente';
+          datasEntrega[schoolId] = batchForm.data_entrega;
         }
       });
 
@@ -431,6 +442,7 @@ const GuiasDemanda: React.FC = () => {
       setBatchQuantidades(quantidades);
       setBatchUnidades(unidades);
       setBatchStatus(status);
+      setBatchDatasEntrega(datasEntrega);
     } catch (err) {
       console.error('Erro ao carregar itens em lote:', err);
       error('Erro ao carregar itens para edição em lote');
@@ -456,12 +468,14 @@ const GuiasDemanda: React.FC = () => {
         const quantidade = Number(batchQuantidades[school.id] || 0);
         const unidade = batchUnidades[school.id] || batchForm.unidade || 'Kg';
         const status = batchStatus[school.id] || 'pendente';
+        const dataEntrega = batchDatasEntrega[school.id] || batchForm.data_entrega;
         const itemExistente = batchItensExistentes[school.id];
         return {
           school,
           quantidade,
           unidade,
           status,
+          dataEntrega,
           itemExistente
         };
       })
@@ -482,7 +496,7 @@ const GuiasDemanda: React.FC = () => {
         unidade: batchForm.unidade || 'Kg'
       });
       for (let index = 0; index < payloads.length; index++) {
-        const { school, quantidade, unidade, status, itemExistente } = payloads[index];
+        const { school, quantidade, unidade, status, dataEntrega, itemExistente } = payloads[index];
         setBatchProgress({
           currentIndex: index + 1,
           total: payloads.length,
@@ -494,7 +508,7 @@ const GuiasDemanda: React.FC = () => {
           produtoId: parseInt(batchForm.produtoId),
           quantidade,
           unidade,
-          data_entrega: batchForm.data_entrega,
+          data_entrega: dataEntrega,
           mes_competencia: batchForm.mes_competencia,
           ano_competencia: batchForm.ano_competencia,
           status
@@ -1251,6 +1265,7 @@ const GuiasDemanda: React.FC = () => {
                     <TableCell width={180}>Estoque</TableCell>
                     <TableCell width={160}>Quantidade</TableCell>
                     <TableCell width={140}>Unidade</TableCell>
+                    <TableCell width={160}>Data de Entrega</TableCell>
                     <TableCell width={180}>Status</TableCell>
                   </TableRow>
                 </TableHead>
@@ -1293,6 +1308,17 @@ const GuiasDemanda: React.FC = () => {
                           value={batchUnidades[school.id] ?? batchForm.unidade}
                           onChange={(e) => handleBatchUnidadeChange(school.id, e.target.value)}
                           disabled={batchSaving || batchLoadingExisting}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <TextField
+                          type="date"
+                          size="small"
+                          fullWidth
+                          value={batchDatasEntrega[school.id] ?? batchForm.data_entrega}
+                          onChange={(e) => handleBatchDataEntregaChange(school.id, e.target.value)}
+                          disabled={batchSaving || batchLoadingExisting}
+                          InputLabelProps={{ shrink: true }}
                         />
                       </TableCell>
                       <TableCell>

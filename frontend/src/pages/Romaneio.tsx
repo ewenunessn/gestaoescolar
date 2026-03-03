@@ -30,7 +30,9 @@ import {
   IconButton,
   ListItemText,
   Menu,
-  ListItemIcon
+  ListItemIcon,
+  Checkbox,
+  OutlinedInput
 } from '@mui/material';
 import {
   Print as PrintIcon,
@@ -80,7 +82,7 @@ const Romaneio: React.FC = () => {
   const [dataInicio, setDataInicio] = useState(new Date().toISOString().split('T')[0]);
   const [dataFim, setDataFim] = useState(new Date().toISOString().split('T')[0]);
   const [status, setStatus] = useState<string>('pendente');
-  const [rotaId, setRotaId] = useState<number | ''>('');
+  const [rotaIds, setRotaIds] = useState<number[]>([]);
   const [rotas, setRotas] = useState<RotaEntrega[]>([]);
   const [agrupamento, setAgrupamento] = useState<'escola' | 'produto'>('produto');
 
@@ -117,9 +119,16 @@ const Romaneio: React.FC = () => {
         data_inicio: dataInicio,
         data_fim: dataFim,
         status: status === 'todos' ? undefined : status,
-        rota_id: rotaId !== '' ? Number(rotaId) : undefined
+        rota_id: rotaIds.length === 1 ? rotaIds[0] : undefined
       });
       setItens(Array.isArray(data) ? data : []);
+      
+      // Gerar QR Code automaticamente se houver rotas selecionadas
+      if (rotaIds.length > 0) {
+        await gerarQRCodeAutomatico();
+      } else {
+        setQrCodeUrl('');
+      }
     } catch (err) {
       console.error('Erro ao carregar romaneio:', err);
       setError('Erro ao carregar dados do romaneio');
@@ -133,37 +142,42 @@ const Romaneio: React.FC = () => {
     carregarRomaneio();
   }, []);
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = async () => {
+    // Gerar QR Code antes de imprimir se houver rotas selecionadas
+    if (rotaIds.length > 0 && !qrCodeUrl) {
+      await gerarQRCodeAutomatico();
+      // Aguardar um pouco para o QR Code ser renderizado
+      setTimeout(() => {
+        window.print();
+      }, 300);
+    } else {
+      window.print();
+    }
   };
 
-  const gerarQRCode = async () => {
-    if (!rotaId || !dataInicio || !dataFim) {
-      showError('Selecione uma rota e o período para gerar o QR Code');
+  const gerarQRCodeAutomatico = async () => {
+    if (rotaIds.length === 0 || !dataInicio || !dataFim) {
       return;
     }
 
     try {
-      const rotaSelecionada = rotas.find(r => r.id === Number(rotaId));
-      if (!rotaSelecionada) return;
-
+      const rotasSelecionadas = rotas.filter(r => rotaIds.includes(r.id));
+      
       // Obter nome do usuário logado
       const token = localStorage.getItem('token');
       let geradoPor = 'Sistema';
       if (token) {
         try {
-          // Tentar parsear como JSON primeiro
           const parsed = JSON.parse(token);
           geradoPor = parsed.nome || parsed.usuario?.nome || 'Sistema';
         } catch (e) {
-          // Se não for JSON, é apenas o token JWT - não tem nome
           geradoPor = 'Sistema';
         }
       }
 
       const qrData = {
-        rotaIds: [Number(rotaId)],
-        rotaNomes: [rotaSelecionada.nome],
+        rotaIds: rotaIds,
+        rotaNomes: rotasSelecionadas.map(r => r.nome),
         dataInicio,
         dataFim,
         geradoEm: new Date().toISOString(),
@@ -182,11 +196,8 @@ const Romaneio: React.FC = () => {
       });
       
       setQrCodeUrl(qrUrl);
-      setShowQRDialog(true);
-      success('QR Code gerado com sucesso!');
     } catch (error) {
       console.error('Erro ao gerar QR Code:', error);
-      showError('Erro ao gerar QR Code');
     }
   };
 
@@ -368,16 +379,25 @@ const Romaneio: React.FC = () => {
             <Grid container spacing={2} alignItems="center">
               <Grid item xs={12} sm={3}>
                 <FormControl fullWidth>
-                  <InputLabel>Rota</InputLabel>
+                  <InputLabel>Rotas</InputLabel>
                   <Select
-                    value={rotaId}
-                    label="Rota"
-                    onChange={(e) => setRotaId(e.target.value as number | '')}
+                    multiple
+                    value={rotaIds}
+                    onChange={(e) => setRotaIds(e.target.value as number[])}
+                    input={<OutlinedInput label="Rotas" />}
+                    renderValue={(selected) => {
+                      if (selected.length === 0) return 'Todas';
+                      if (selected.length === rotas.length) return 'Todas';
+                      return rotas
+                        .filter(r => selected.includes(r.id))
+                        .map(r => r.nome)
+                        .join(', ');
+                    }}
                   >
-                    <MenuItem value="">Todas</MenuItem>
                     {rotas.map((rota) => (
                       <MenuItem key={rota.id} value={rota.id}>
-                        {rota.nome}
+                        <Checkbox checked={rotaIds.includes(rota.id)} />
+                        <ListItemText primary={rota.nome} />
                       </MenuItem>
                     ))}
                   </Select>
@@ -428,25 +448,14 @@ const Romaneio: React.FC = () => {
                 >
                   Buscar
                 </Button>
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  <Button
-                    variant="outlined"
-                    startIcon={<QrCodeIcon />}
-                    onClick={gerarQRCode}
-                    fullWidth
-                    disabled={!rotaId}
-                  >
-                    QR Code
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    startIcon={<PrintIcon />}
-                    onClick={handlePrint}
-                    fullWidth
-                  >
-                    Imprimir
-                  </Button>
-                </Box>
+                <Button
+                  variant="outlined"
+                  startIcon={<PrintIcon />}
+                  onClick={handlePrint}
+                  fullWidth
+                >
+                  Imprimir
+                </Button>
               </Grid>
               <Grid item xs={12}>
                 <Divider sx={{ my: 1 }} />
@@ -493,7 +502,9 @@ const Romaneio: React.FC = () => {
                     <strong>Período:</strong> {format(new Date(dataInicio), 'dd/MM/yyyy')} a {format(new Date(dataFim), 'dd/MM/yyyy')}
                   </Typography>
                   <Typography variant="subtitle1">
-                    <strong>Rota:</strong> {rotaId ? rotas.find(r => r.id === Number(rotaId))?.nome : 'Todas as Rotas'}
+                    <strong>Rota:</strong> {rotaIds.length === 0 ? 'Todas as Rotas' : 
+                      rotaIds.length === rotas.length ? 'Todas as Rotas' :
+                      rotas.filter(r => rotaIds.includes(r.id)).map(r => r.nome).join(', ')}
                   </Typography>
                 </Box>
               </Box>
