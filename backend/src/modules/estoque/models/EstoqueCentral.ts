@@ -129,8 +129,17 @@ class EstoqueCentralModel {
       }
 
       const quantidadeAnterior = parseFloat(estoque.quantidade as any) || 0;
-      const quantidadeNum = parseFloat(dados.quantidade as any);
+      const quantidadeNum = parseFloat(dados.quantidade as any) || 0;
+      
+      console.log('DEBUG ENTRADA:');
+      console.log('  quantidade do banco:', estoque.quantidade, 'tipo:', typeof estoque.quantidade);
+      console.log('  quantidade recebida:', dados.quantidade, 'tipo:', typeof dados.quantidade);
+      console.log('  quantidadeAnterior:', quantidadeAnterior);
+      console.log('  quantidadeNum:', quantidadeNum);
+      
       const quantidadePosterior = quantidadeAnterior + quantidadeNum;
+      
+      console.log('  quantidadePosterior:', quantidadePosterior);
 
       // Atualizar quantidade no estoque
       await client.query(
