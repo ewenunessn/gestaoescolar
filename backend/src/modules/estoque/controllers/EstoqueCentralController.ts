@@ -140,6 +140,8 @@ class EstoqueCentralController {
         documento
       } = req.body;
 
+      console.log('Dados recebidos no backend:', JSON.stringify(req.body, null, 2));
+
       // Validações
       if (!produto_id || !quantidade) {
         return res.status(400).json({
@@ -148,6 +150,8 @@ class EstoqueCentralController {
       }
 
       const quantidadeNum = parseFloat(quantidade);
+      
+      console.log('Quantidade convertida:', quantidadeNum, 'tipo:', typeof quantidadeNum);
       
       if (isNaN(quantidadeNum) || quantidadeNum <= 0) {
         return res.status(400).json({
@@ -169,6 +173,7 @@ class EstoqueCentralController {
       res.status(201).json(movimentacao);
     } catch (error: any) {
       console.error('Erro ao registrar saída:', error);
+      console.error('Stack:', error.stack);
       res.status(500).json({ error: error.message });
     }
   }

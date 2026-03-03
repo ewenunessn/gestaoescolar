@@ -42,11 +42,19 @@ api.interceptors.response.use(
 );
 
 export function handleAxiosError(error: any): string {
+  console.log('Erro completo:', JSON.stringify(error, null, 2));
+  
   if (error.response) {
-    return error.response.data?.message || 'Erro no servidor';
+    const errorMsg = error.response.data?.error || error.response.data?.message || 'Erro no servidor';
+    console.log('Erro da resposta:', errorMsg);
+    console.log('Status:', error.response.status);
+    console.log('Data completa:', error.response.data);
+    return errorMsg;
   } else if (error.request) {
+    console.log('Erro de requisição:', error.request);
     return 'Sem conexão com o servidor';
   } else {
+    console.log('Erro genérico:', error.message);
     return error.message || 'Erro desconhecido';
   }
 }

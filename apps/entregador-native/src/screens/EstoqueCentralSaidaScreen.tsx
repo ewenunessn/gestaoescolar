@@ -106,6 +106,8 @@ export default function EstoqueCentralSaidaScreen({ route, navigation }: any) {
         dados.lote_id = parseInt(loteId);
       }
 
+      console.log('Dados sendo enviados:', JSON.stringify(dados, null, 2));
+
       await registrarSaida(dados);
 
       Alert.alert(
@@ -120,6 +122,8 @@ export default function EstoqueCentralSaidaScreen({ route, navigation }: any) {
       );
     } catch (err) {
       console.error('Erro ao registrar saída:', err);
+      console.error('Tipo do erro:', typeof err);
+      console.error('Erro stringificado:', JSON.stringify(err, null, 2));
       Alert.alert('Erro', handleAxiosError(err));
     } finally {
       setSaving(false);
