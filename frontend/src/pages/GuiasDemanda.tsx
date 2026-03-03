@@ -442,8 +442,9 @@ const GuiasDemanda: React.FC = () => {
   useEffect(() => {
     if (batchMode !== 'edit') return;
     if (!openBatchDialog) return;
+    if (!batchForm.produtoId || !batchForm.data_entrega) return;
     carregarItensBatch();
-  }, [batchMode, batchForm.produtoId, batchForm.data_entrega, openBatchDialog, schools]);
+  }, [batchMode, batchForm.produtoId, batchForm.data_entrega, openBatchDialog, currentMonth, currentYear]);
 
   const handleBatchSubmit = async () => {
     if (!batchForm.produtoId || !batchForm.data_entrega) {
