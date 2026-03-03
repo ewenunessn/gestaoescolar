@@ -1,6 +1,7 @@
 export interface Produto {
   id: number;
   nome: string;
+  unidade?: string;
   categoria?: string;
   descricao?: string;
   tipo_processamento?: string;
@@ -10,11 +11,12 @@ export interface Produto {
   ativo: boolean;
   created_at: string;
   updated_at: string;
-  unidade_contrato?: string;
+  unidade_contrato?: string; // Deprecated: usar 'unidade'
 }
 
 export interface CriarProdutoRequest {
   nome: string;
+  unidade?: string;
   categoria?: string;
   descricao?: string;
   tipo_processamento?: string;
@@ -24,6 +26,7 @@ export interface CriarProdutoRequest {
 
 export interface AtualizarProdutoRequest {
   nome?: string;
+  unidade?: string;
   categoria?: string;
   descricao?: string;
   tipo_processamento?: string;

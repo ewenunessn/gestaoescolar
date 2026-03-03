@@ -45,12 +45,11 @@ export async function listarProdutosPorContrato(req: Request, res: Response) {
         cp.produto_id,
         cp.preco_unitario,
         cp.quantidade_contratada,
-        cp.unidade,
-        cp.marca,
-        cp.peso,
         cp.ativo,
         p.nome as produto_nome,
-        p.descricao as produto_descricao
+        p.descricao as produto_descricao,
+        p.unidade,
+        p.categoria
       FROM contrato_produtos cp
       INNER JOIN produtos p ON cp.produto_id = p.id
       WHERE cp.contrato_id = $1
@@ -155,9 +154,6 @@ export async function criarContratoProduto(req: Request, res: Response) {
       produto_id, 
       preco_unitario, 
       quantidade_contratada, 
-      unidade,
-      marca,
-      peso,
       ativo = true 
     } = req.body;
 
@@ -180,6 +176,18 @@ export async function criarContratoProduto(req: Request, res: Response) {
       });
     }
 
+    // Verificar se o produto existe
+    const produtoCheck = await db.query(`
+      SELECT id, nome, unidade FROM produtos WHERE id = $1
+    `, [produto_id]);
+
+    if (produtoCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Produto não encontrado"
+      });
+    }
+
     // Check if product already exists in this contract
     const existingCheck = await db.query(`
       SELECT cp.id 
@@ -195,10 +203,10 @@ export async function criarContratoProduto(req: Request, res: Response) {
     }
 
     const result = await db.query(`
-      INSERT INTO contrato_produtos (contrato_id, produto_id, preco_unitario, quantidade_contratada, unidade, marca, peso, ativo)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      INSERT INTO contrato_produtos (contrato_id, produto_id, preco_unitario, quantidade_contratada, ativo)
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING *
-    `, [contrato_id, produto_id, preco_unitario, quantidade_contratada, unidade || '', marca || '', peso || '', ativo]);
+    `, [contrato_id, produto_id, preco_unitario, quantidade_contratada, ativo]);
 
     res.json({
       success: true,
@@ -218,20 +226,17 @@ export async function criarContratoProduto(req: Request, res: Response) {
 export async function editarContratoProduto(req: Request, res: Response) {
   try {
     const { id } = req.params;
-    const { preco_unitario, quantidade_contratada, unidade, marca, peso, ativo = true } = req.body;
+    const { preco_unitario, quantidade_contratada, ativo = true } = req.body;
 
     const result = await db.query(`
       UPDATE contrato_produtos SET
         preco_unitario = $1,
         quantidade_contratada = $2,
-        unidade = $3,
-        marca = $4,
-        peso = $5,
-        ativo = $6,
+        ativo = $3,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $7
+      WHERE id = $4
       RETURNING *
-    `, [preco_unitario, quantidade_contratada, unidade || '', marca || '', peso || '', ativo, id]);
+    `, [preco_unitario, quantidade_contratada, ativo, id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({

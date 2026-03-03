@@ -124,72 +124,34 @@ export async function buscarPedido(req: Request, res: Response) {
       });
     }
 
-    // Check if unidade column exists in contrato_produtos table
-    const columnCheck = await db.query(`
-      SELECT column_name 
-      FROM information_schema.columns 
-      WHERE table_name = 'contrato_produtos' AND column_name = 'unidade'
-    `);
-    const unidadeColumnExists = columnCheck.rows.length > 0;
-
-    let itensQuery;
-    if (unidadeColumnExists) {
-      itensQuery = `
-        SELECT 
-          pi.*,
-          p.nome as produto_nome,
-          COALESCE(cp.unidade, 'Kg') as unidade,
-          cp.quantidade_contratada,
-          cp.preco_unitario as preco_contrato,
-          c.numero as contrato_numero,
-          c.id as contrato_id,
-          f.nome as fornecedor_nome,
-          f.cnpj as fornecedor_cnpj,
-          f.id as fornecedor_id,
-          (pi.quantidade * pi.preco_unitario) as valor_total,
-          COALESCE(
-            (SELECT SUM(cpm2.quantidade_disponivel) 
-             FROM contrato_produtos_modalidades cpm2 
-             WHERE cpm2.contrato_produto_id = cp.id AND cpm2.ativo = true),
-            0
-          ) as saldo_disponivel
-        FROM pedido_itens pi
-        LEFT JOIN contrato_produtos cp ON pi.contrato_produto_id = cp.id
-        LEFT JOIN produtos p ON cp.produto_id = p.id
-        LEFT JOIN contratos c ON cp.contrato_id = c.id
-        LEFT JOIN fornecedores f ON c.fornecedor_id = f.id
-        WHERE pi.pedido_id = $1
-        ORDER BY p.nome
-      `;
-    } else {
-      itensQuery = `
-        SELECT 
-          pi.*,
-          p.nome as produto_nome,
-          'Kg' as unidade,
-          cp.quantidade_contratada,
-          cp.preco_unitario as preco_contrato,
-          c.numero as contrato_numero,
-          c.id as contrato_id,
-          f.nome as fornecedor_nome,
-          f.cnpj as fornecedor_cnpj,
-          f.id as fornecedor_id,
-          (pi.quantidade * pi.preco_unitario) as valor_total,
-          COALESCE(
-            (SELECT SUM(cpm2.quantidade_disponivel) 
-             FROM contrato_produtos_modalidades cpm2 
-             WHERE cpm2.contrato_produto_id = cp.id AND cpm2.ativo = true),
-            0
-          ) as saldo_disponivel
-        FROM pedido_itens pi
-        LEFT JOIN contrato_produtos cp ON pi.contrato_produto_id = cp.id
-        LEFT JOIN produtos p ON cp.produto_id = p.id
-        LEFT JOIN contratos c ON cp.contrato_id = c.id
-        LEFT JOIN fornecedores f ON c.fornecedor_id = f.id
-        WHERE pi.pedido_id = $1
-        ORDER BY p.nome
-      `;
-    }
+    // Query sempre busca unidade do produto
+    const itensQuery = `
+      SELECT 
+        pi.*,
+        p.nome as produto_nome,
+        COALESCE(p.unidade, 'UN') as unidade,
+        cp.quantidade_contratada,
+        cp.preco_unitario as preco_contrato,
+        c.numero as contrato_numero,
+        c.id as contrato_id,
+        f.nome as fornecedor_nome,
+        f.cnpj as fornecedor_cnpj,
+        f.id as fornecedor_id,
+        (pi.quantidade * pi.preco_unitario) as valor_total,
+        COALESCE(
+          (SELECT SUM(cpm2.quantidade_disponivel) 
+           FROM contrato_produtos_modalidades cpm2 
+           WHERE cpm2.contrato_produto_id = cp.id AND cpm2.ativo = true),
+          0
+        ) as saldo_disponivel
+      FROM pedido_itens pi
+      LEFT JOIN contrato_produtos cp ON pi.contrato_produto_id = cp.id
+      LEFT JOIN produtos p ON cp.produto_id = p.id
+      LEFT JOIN contratos c ON cp.contrato_id = c.id
+      LEFT JOIN fornecedores f ON c.fornecedor_id = f.id
+      WHERE pi.pedido_id = $1
+      ORDER BY p.nome
+    `;
 
     const itensResult = await db.query(itensQuery, [id]);
 
@@ -768,60 +730,28 @@ export async function listarProdutosContrato(req: Request, res: Response) {
   try {
     const { contrato_id } = req.params;
 
-    // Check if unidade column exists in contrato_produtos table
-    const columnCheck = await db.query(`
-      SELECT column_name 
-      FROM information_schema.columns 
-      WHERE table_name = 'contrato_produtos' AND column_name = 'unidade'
-    `);
-    const unidadeColumnExists = columnCheck.rows.length > 0;
-
-    let query;
-    if (unidadeColumnExists) {
-      query = `
-        SELECT 
-          cp.*,
-          p.nome as produto_nome,
-          COALESCE(cp.unidade, 'Kg') as unidade,
-          p.descricao as produto_descricao,
-          c.numero as contrato_numero,
-          f.nome as fornecedor_nome,
-          COALESCE(
-            (SELECT SUM(cpm2.quantidade_disponivel) 
-             FROM contrato_produtos_modalidades cpm2 
-             WHERE cpm2.contrato_produto_id = cp.id AND cpm2.ativo = true),
-            0
-          ) as saldo_disponivel
-        FROM contrato_produtos cp
-        JOIN produtos p ON cp.produto_id = p.id
-        JOIN contratos c ON cp.contrato_id = c.id
-        JOIN fornecedores f ON c.fornecedor_id = f.id
-        WHERE cp.contrato_id = $1 AND cp.ativo = true AND c.status = 'ativo'
-        ORDER BY p.nome
-      `;
-    } else {
-      query = `
-        SELECT 
-          cp.*,
-          p.nome as produto_nome,
-          'Kg' as unidade,
-          p.descricao as produto_descricao,
-          c.numero as contrato_numero,
-          f.nome as fornecedor_nome,
-          COALESCE(
-            (SELECT SUM(cpm2.quantidade_disponivel) 
-             FROM contrato_produtos_modalidades cpm2 
-             WHERE cpm2.contrato_produto_id = cp.id AND cpm2.ativo = true),
-            0
-          ) as saldo_disponivel
-        FROM contrato_produtos cp
-        JOIN produtos p ON cp.produto_id = p.id
-        JOIN contratos c ON cp.contrato_id = c.id
-        JOIN fornecedores f ON c.fornecedor_id = f.id
-        WHERE cp.contrato_id = $1 AND cp.ativo = true AND c.status = 'ativo'
-        ORDER BY p.nome
-      `;
-    }
+    // Query sempre busca unidade do produto
+    const query = `
+      SELECT 
+        cp.*,
+        p.nome as produto_nome,
+        COALESCE(p.unidade, 'UN') as unidade,
+        p.descricao as produto_descricao,
+        c.numero as contrato_numero,
+        f.nome as fornecedor_nome,
+        COALESCE(
+          (SELECT SUM(cpm2.quantidade_disponivel) 
+           FROM contrato_produtos_modalidades cpm2 
+           WHERE cpm2.contrato_produto_id = cp.id AND cpm2.ativo = true),
+          0
+        ) as saldo_disponivel
+      FROM contrato_produtos cp
+      JOIN produtos p ON cp.produto_id = p.id
+      JOIN contratos c ON cp.contrato_id = c.id
+      JOIN fornecedores f ON c.fornecedor_id = f.id
+      WHERE cp.contrato_id = $1 AND cp.ativo = true AND c.status = 'ativo'
+      ORDER BY p.nome
+    `;
 
     const produtosResult = await db.query(query, [contrato_id]);
 
@@ -843,74 +773,35 @@ export async function listarTodosProdutosDisponiveis(req: Request, res: Response
   try {
     console.log(`✅ Listando produtos disponíveis`);
     
-    // Check if unidade column exists in contrato_produtos table
-    const columnCheck = await db.query(`
-      SELECT column_name 
-      FROM information_schema.columns 
-      WHERE table_name = 'contrato_produtos' AND column_name = 'unidade'
-    `);
-    const unidadeColumnExists = columnCheck.rows.length > 0;
-
-    let query;
-    if (unidadeColumnExists) {
-      query = `
-        SELECT 
-          cp.id as contrato_produto_id,
-          cp.preco_unitario,
-          cp.quantidade_contratada,
-          COALESCE(
-            (SELECT SUM(cpm2.quantidade_disponivel) 
-             FROM contrato_produtos_modalidades cpm2 
-             WHERE cpm2.contrato_produto_id = cp.id AND cpm2.ativo = true),
-            0
-          ) as saldo_disponivel,
-          p.id as produto_id,
-          p.nome as produto_nome,
-          COALESCE(cp.unidade, 'Kg') as unidade,
-          p.descricao as produto_descricao,
-          c.id as contrato_id,
-          c.numero as contrato_numero,
-          f.id as fornecedor_id,
-          f.nome as fornecedor_nome,
-          f.cnpj as fornecedor_cnpj
-        FROM contrato_produtos cp
-        JOIN produtos p ON cp.produto_id = p.id
-        JOIN contratos c ON cp.contrato_id = c.id
-        JOIN fornecedores f ON c.fornecedor_id = f.id
-        WHERE cp.ativo = true 
-          AND c.status = 'ativo'
-        ORDER BY f.nome, p.nome
-      `;
-    } else {
-      query = `
-        SELECT 
-          cp.id as contrato_produto_id,
-          cp.preco_unitario,
-          cp.quantidade_contratada,
-          COALESCE(
-            (SELECT SUM(cpm2.quantidade_disponivel) 
-             FROM contrato_produtos_modalidades cpm2 
-             WHERE cpm2.contrato_produto_id = cp.id AND cpm2.ativo = true),
-            0
-          ) as saldo_disponivel,
-          p.id as produto_id,
-          p.nome as produto_nome,
-          'Kg' as unidade,
-          p.descricao as produto_descricao,
-          c.id as contrato_id,
-          c.numero as contrato_numero,
-          f.id as fornecedor_id,
-          f.nome as fornecedor_nome,
-          f.cnpj as fornecedor_cnpj
-        FROM contrato_produtos cp
-        JOIN produtos p ON cp.produto_id = p.id
-        JOIN contratos c ON cp.contrato_id = c.id
-        JOIN fornecedores f ON c.fornecedor_id = f.id
-        WHERE cp.ativo = true 
-          AND c.status = 'ativo'
-        ORDER BY f.nome, p.nome
-      `;
-    }
+    // Query sempre busca unidade do produto
+    const query = `
+      SELECT 
+        cp.id as contrato_produto_id,
+        cp.preco_unitario,
+        cp.quantidade_contratada,
+        COALESCE(
+          (SELECT SUM(cpm2.quantidade_disponivel) 
+           FROM contrato_produtos_modalidades cpm2 
+           WHERE cpm2.contrato_produto_id = cp.id AND cpm2.ativo = true),
+          0
+        ) as saldo_disponivel,
+        p.id as produto_id,
+        p.nome as produto_nome,
+        COALESCE(p.unidade, 'UN') as unidade,
+        p.descricao as produto_descricao,
+        c.id as contrato_id,
+        c.numero as contrato_numero,
+        f.id as fornecedor_id,
+        f.nome as fornecedor_nome,
+        f.cnpj as fornecedor_cnpj
+      FROM contrato_produtos cp
+      JOIN produtos p ON cp.produto_id = p.id
+      JOIN contratos c ON cp.contrato_id = c.id
+      JOIN fornecedores f ON c.fornecedor_id = f.id
+      WHERE cp.ativo = true 
+        AND c.status = 'ativo'
+      ORDER BY f.nome, p.nome
+    `;
 
     const produtosResult = await db.query(query);
 

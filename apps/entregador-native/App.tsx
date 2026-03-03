@@ -15,6 +15,11 @@ import RotaDetalheScreen from './src/screens/RotaDetalheScreen';
 import EscolaDetalheScreen from './src/screens/EscolaDetalheScreen';
 import HistoricoScreen from './src/screens/HistoricoScreen';
 import ComprovantesScreen from './src/screens/ComprovantesScreen';
+import EstoqueCentralScreen from './src/screens/EstoqueCentralScreen';
+import EstoqueCentralDetalhesScreen from './src/screens/EstoqueCentralDetalhesScreen';
+import EstoqueCentralEntradaScreen from './src/screens/EstoqueCentralEntradaScreen';
+import EstoqueCentralSaidaScreen from './src/screens/EstoqueCentralSaidaScreen';
+import EstoqueCentralAjusteScreen from './src/screens/EstoqueCentralAjusteScreen';
 
 // Theme
 import { theme } from './src/theme';
@@ -99,6 +104,31 @@ export default function App() {
             name="Comprovantes" 
             component={ComprovantesScreen}
             options={{ title: 'Comprovantes de Entrega' }}
+          />
+          <Stack.Screen 
+            name="EstoqueCentral" 
+            component={EstoqueCentralScreen}
+            options={{ title: 'Estoque Central' }}
+          />
+          <Stack.Screen 
+            name="EstoqueCentralDetalhes" 
+            component={EstoqueCentralDetalhesScreen}
+            options={{ title: 'Detalhes do Estoque' }}
+          />
+          <Stack.Screen 
+            name="EstoqueCentralEntrada" 
+            component={EstoqueCentralEntradaScreen}
+            options={{ title: 'Registrar Entrada' }}
+          />
+          <Stack.Screen 
+            name="EstoqueCentralSaida" 
+            component={EstoqueCentralSaidaScreen}
+            options={{ title: 'Registrar Saída' }}
+          />
+          <Stack.Screen 
+            name="EstoqueCentralAjuste" 
+            component={EstoqueCentralAjusteScreen}
+            options={{ title: 'Ajustar Estoque' }}
           />
         </Stack.Navigator>
       </NavigationContainer>

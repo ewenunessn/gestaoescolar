@@ -380,8 +380,6 @@ async function iniciarServidor() {
 
       // Inicializar módulos
       console.log('🔧 Inicializando módulos...');
-      const { initEstoqueCentral } = await import('./modules/estoque/controllers/estoqueCentralController');
-      await initEstoqueCentral();
 
       try {
         await createEssentialTables();

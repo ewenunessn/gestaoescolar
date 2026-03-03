@@ -162,9 +162,9 @@ export default function ProdutoDetalhe() {
   const handleSave = useCallback(async () => {
     setIsSaving(true);
     try {
-      // Only send the fields that still exist in the database
       const dataToSend: any = {
         nome: form.nome,
+        unidade: form.unidade || 'UN',
         descricao: form.descricao,
         categoria: form.categoria,
         tipo_processamento: form.tipo_processamento,
@@ -225,19 +225,36 @@ export default function ProdutoDetalhe() {
             {/* Seção de Identificação */}
             <SectionPaper title="Identificação do Produto" icon={<FingerprintIcon color="primary"/>}>
                 <Grid container spacing={2}>
-                    <Grid item xs={12}>
-                        {isEditing ? <TextField label="Nome do Produto" value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} fullWidth required /> : null}
+                    <Grid item xs={12} sm={8}>
+                        {isEditing ? <TextField label="Nome do Produto" value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} fullWidth required /> : <InfoItem label="Nome" value={produto.nome}/>}
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                        {isEditing ? (
+                            <FormControl fullWidth required>
+                                <InputLabel>Unidade</InputLabel>
+                                <Select 
+                                    value={form.unidade || 'UN'} 
+                                    onChange={e => setForm({ ...form, unidade: e.target.value })}
+                                    label="Unidade"
+                                >
+                                    <MenuItem value="UN">Unidade (UN)</MenuItem>
+                                    <MenuItem value="KG">Quilograma (KG)</MenuItem>
+                                    <MenuItem value="G">Grama (G)</MenuItem>
+                                    <MenuItem value="L">Litro (L)</MenuItem>
+                                    <MenuItem value="ML">Mililitro (ML)</MenuItem>
+                                    <MenuItem value="DZ">Dúzia (DZ)</MenuItem>
+                                    <MenuItem value="PCT">Pacote (PCT)</MenuItem>
+                                    <MenuItem value="CX">Caixa (CX)</MenuItem>
+                                    <MenuItem value="FD">Fardo (FD)</MenuItem>
+                                    <MenuItem value="SC">Saco (SC)</MenuItem>
+                                </Select>
+                            </FormControl>
+                        ) : <InfoItem label="Unidade" value={produto.unidade || 'UN'}/>}
                     </Grid>
                     <Grid item xs={12} sm={6}>
                         {isEditing ? <TextField label="Categoria" value={form.categoria || ""} onChange={e => setForm({ ...form, categoria: e.target.value })} fullWidth /> : <InfoItem label="Categoria" value={produto.categoria}/>}
                     </Grid>
                     <Grid item xs={12} sm={6}>
-                        {!isEditing && <InfoItem label="Tipo de Processamento" value={produto.tipo_processamento}/>}
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                        {!isEditing && <InfoItem label="Perecível" value={produto.perecivel ? 'Sim' : 'Não'}/>}
-                    </Grid>
-                    <Grid item xs={12}>
                         {isEditing ? (
                             <FormControl fullWidth>
                                 <InputLabel>Tipo de Processamento</InputLabel>
@@ -253,7 +270,10 @@ export default function ProdutoDetalhe() {
                                     <MenuItem value="ultraprocessado">Ultraprocessado</MenuItem>
                                 </Select>
                             </FormControl>
-                        ) : null}
+                        ) : <InfoItem label="Tipo de Processamento" value={produto.tipo_processamento}/>}
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                        {!isEditing && <InfoItem label="Perecível" value={produto.perecivel ? 'Sim' : 'Não'}/>}
                     </Grid>
                     <Grid item xs={12}>
                         {isEditing && (

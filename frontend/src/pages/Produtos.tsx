@@ -43,6 +43,7 @@ import {
   TablePagination,
   Collapse,
   Autocomplete,
+  Chip,
 } from "@mui/material";
 import {
   Search as SearchIcon,
@@ -61,6 +62,7 @@ import * as XLSX from 'xlsx';
 
 interface ProdutoForm {
   nome: string;
+  unidade: string;
   descricao: string;
   categoria: string;
   tipo_processamento?: string;
@@ -211,7 +213,7 @@ const ProdutosPage = () => {
 
   // Funções do modal
   const openModal = () => {
-    setFormData({ nome: "", descricao: "", categoria: "", ativo: true });
+    setFormData({ nome: "", unidade: "UN", descricao: "", categoria: "", ativo: true });
     setModalOpen(true);
   };
   const closeModal = () => {
@@ -499,7 +501,7 @@ const ProdutosPage = () => {
           <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px' }}>
             <TableContainer>
               <Table stickyHeader size="small">
-                <TableHead><TableRow><TableCell sx={{ py: 1 }}>Nome do Produto</TableCell><TableCell align="center" sx={{ py: 1 }}>Categoria</TableCell><TableCell align="center" sx={{ py: 1 }}>Ações</TableCell></TableRow></TableHead>
+                <TableHead><TableRow><TableCell sx={{ py: 1 }}>Nome do Produto</TableCell><TableCell align="center" sx={{ py: 1 }}>Unidade</TableCell><TableCell align="center" sx={{ py: 1 }}>Categoria</TableCell><TableCell align="center" sx={{ py: 1 }}>Ações</TableCell></TableRow></TableHead>
                 <TableBody>
                   {paginatedProdutos.map((produto) => {
                     const isInativo = !produto.ativo;
@@ -525,6 +527,14 @@ const ProdutosPage = () => {
                           </Box>
                         </Box>
                       </TableCell>
+                      <TableCell align="center">
+                        <Chip 
+                          label={produto.unidade || 'UN'} 
+                          size="small" 
+                          variant="outlined"
+                          sx={{ fontSize: '0.75rem', fontWeight: 600 }}
+                        />
+                      </TableCell>
                       <TableCell align="center"><Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>{produto.categoria || 'N/A'}</Typography></TableCell>
 
                       <TableCell align="center"><Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => navigate(`/produtos/${produto.id}`)} color="primary"><Visibility fontSize="small" /></IconButton></Tooltip></TableCell>
@@ -545,7 +555,24 @@ const ProdutosPage = () => {
         <DialogContent sx={{ pt: 2 }}>
           <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             <TextField label="Nome do Produto" value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} required fullWidth />
-            <TextField label="Descrição" value={formData.descricao} onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} multiline rows={2} fullWidth />
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <TextField label="Descrição" value={formData.descricao} onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} multiline rows={2} sx={{ flex: 2 }} />
+              <FormControl sx={{ flex: 1 }} required>
+                <InputLabel>Unidade</InputLabel>
+                <Select value={formData.unidade} onChange={(e) => setFormData({ ...formData, unidade: e.target.value })} label="Unidade">
+                  <MenuItem value="UN">Unidade (UN)</MenuItem>
+                  <MenuItem value="KG">Quilograma (KG)</MenuItem>
+                  <MenuItem value="G">Grama (G)</MenuItem>
+                  <MenuItem value="L">Litro (L)</MenuItem>
+                  <MenuItem value="ML">Mililitro (ML)</MenuItem>
+                  <MenuItem value="DZ">Dúzia (DZ)</MenuItem>
+                  <MenuItem value="PCT">Pacote (PCT)</MenuItem>
+                  <MenuItem value="CX">Caixa (CX)</MenuItem>
+                  <MenuItem value="FD">Fardo (FD)</MenuItem>
+                  <MenuItem value="SC">Saco (SC)</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
             <Box sx={{ display: 'flex', gap: 2 }}>
               <Autocomplete
                 freeSolo

@@ -2,13 +2,13 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Configure com seu IP local ou URL de produção
-// Forçando produção para usar com túnel Expo
-export const API_URL = 'https://gestaoescolar-backend.vercel.app/api';
+// Para desenvolvimento, use seu IP local
+export const API_URL = __DEV__ 
+  ? 'http://192.168.18.12:3000/api' // ALTERE PARA SEU IP LOCAL
+  : 'https://gestaoescolar-backend.vercel.app/api';
 
-// Para desenvolvimento local, descomente a linha abaixo e ajuste o IP:
-// export const API_URL = __DEV__ 
-//   ? 'http://192.168.1.100:3000/api' // ALTERE PARA SEU IP LOCAL
-//   : 'https://gestaoescolar-backend.vercel.app/api';
+// Para forçar produção, descomente a linha abaixo:
+// export const API_URL = 'https://gestaoescolar-backend.vercel.app/api';
 
 export const api = axios.create({
   baseURL: API_URL,

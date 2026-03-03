@@ -133,7 +133,7 @@ export class FaturamentoModel {
         f.nome as fornecedor_nome,
         f.cnpj as fornecedor_cnpj,
         pr.nome as produto_nome,
-        pr.unidade as unidade ,
+        COALESCE(pr.unidade, 'UN') as unidade,
         fi.preco_unitario,
         fi.quantidade_modalidade,
         fi.consumo_registrado,

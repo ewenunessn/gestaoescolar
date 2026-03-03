@@ -137,6 +137,7 @@ export async function listarProdutos(req: Request, res: Response) {
       SELECT 
         p.id,
         p.nome,
+        p.unidade,
         p.descricao,
         p.categoria,
         p.tipo_processamento,
@@ -181,6 +182,7 @@ export async function buscarProduto(req: Request, res: Response) {
       SELECT 
         p.id,
         p.nome,
+        p.unidade,
         p.descricao,
         p.categoria,
         p.tipo_processamento,
@@ -217,6 +219,7 @@ export async function criarProduto(req: Request, res: Response) {
   try {
     const { 
       nome, 
+      unidade = 'UN',
       descricao, 
       categoria,
       tipo_processamento,
@@ -224,11 +227,20 @@ export async function criarProduto(req: Request, res: Response) {
       ativo = true 
     } = req.body;
 
+    // Validar unidade
+    const unidadesPermitidas = ['UN', 'KG', 'G', 'L', 'ML', 'DZ', 'PCT', 'CX', 'FD', 'SC'];
+    if (unidade && !unidadesPermitidas.includes(unidade.toUpperCase())) {
+      return res.status(400).json({
+        success: false,
+        message: `Unidade inválida. Permitidas: ${unidadesPermitidas.join(', ')}`
+      });
+    }
+
     const result = await db.query(`
-      INSERT INTO produtos (nome, descricao, categoria, tipo_processamento, perecivel, ativo, created_at)
-      VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
+      INSERT INTO produtos (nome, unidade, descricao, categoria, tipo_processamento, perecivel, ativo, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
       RETURNING *
-    `, [nome, descricao, categoria, tipo_processamento, perecivel, ativo]);
+    `, [nome, unidade.toUpperCase(), descricao, categoria, tipo_processamento, perecivel, ativo]);
 
     res.json({
       success: true,
@@ -250,6 +262,7 @@ export async function editarProduto(req: Request, res: Response) {
     const { id } = req.params;
     const { 
       nome, 
+      unidade,
       descricao, 
       categoria,
       tipo_processamento,
@@ -257,18 +270,30 @@ export async function editarProduto(req: Request, res: Response) {
       ativo 
     } = req.body;
 
+    // Validar unidade se fornecida
+    if (unidade) {
+      const unidadesPermitidas = ['UN', 'KG', 'G', 'L', 'ML', 'DZ', 'PCT', 'CX', 'FD', 'SC'];
+      if (!unidadesPermitidas.includes(unidade.toUpperCase())) {
+        return res.status(400).json({
+          success: false,
+          message: `Unidade inválida. Permitidas: ${unidadesPermitidas.join(', ')}`
+        });
+      }
+    }
+
     const result = await db.query(`
       UPDATE produtos SET
         nome = $1,
-        descricao = $2,
-        categoria = $3,
-        tipo_processamento = $4,
-        perecivel = $5,
-        ativo = $6,
+        unidade = COALESCE($2, unidade),
+        descricao = $3,
+        categoria = $4,
+        tipo_processamento = $5,
+        perecivel = $6,
+        ativo = $7,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $7
+      WHERE id = $8
       RETURNING *
-    `, [nome, descricao, categoria, tipo_processamento, perecivel, ativo, id]);
+    `, [nome, unidade ? unidade.toUpperCase() : null, descricao, categoria, tipo_processamento, perecivel, ativo, id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({

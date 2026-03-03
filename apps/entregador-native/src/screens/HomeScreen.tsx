@@ -132,6 +132,27 @@ export default function HomeScreen({ navigation }: any) {
             </Card.Content>
           </Card>
         )}
+
+        {/* Card de Estoque Central */}
+        <Card style={styles.estoqueCard}>
+          <Card.Content>
+            <Text variant="titleMedium" style={styles.estoqueTitle}>
+              📦 Estoque Central
+            </Text>
+            <Text variant="bodyMedium" style={styles.estoqueText}>
+              Gerencie entradas, saídas e ajustes do estoque
+            </Text>
+            <View style={styles.estoqueActions}>
+              <FAB
+                icon="warehouse"
+                label="Acessar Estoque"
+                onPress={() => navigation.navigate('EstoqueCentral')}
+                style={styles.estoqueFab}
+                color="#fff"
+              />
+            </View>
+          </Card.Content>
+        </Card>
       </View>
 
       {/* Scanner QR */}
@@ -225,5 +246,27 @@ const styles = StyleSheet.create({
   },
   scanButtonLarge: {
     backgroundColor: '#1976d2',
+  },
+  estoqueCard: {
+    marginBottom: 16,
+    backgroundColor: '#f3e8ff',
+    borderWidth: 2,
+    borderColor: '#9333ea',
+  },
+  estoqueTitle: {
+    fontWeight: 'bold',
+    color: '#7e22ce',
+    marginBottom: 8,
+  },
+  estoqueText: {
+    color: '#6b21a8',
+    marginBottom: 12,
+  },
+  estoqueActions: {
+    marginTop: 12,
+    alignItems: 'center',
+  },
+  estoqueFab: {
+    backgroundColor: '#9333ea',
   },
 });
