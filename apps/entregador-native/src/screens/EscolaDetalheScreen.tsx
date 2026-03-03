@@ -296,11 +296,7 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
       // Atualizar cache local com as entregas realizadas
       await atualizarCacheLocal(selecionados);
 
-      const mensagem = isOnline 
-        ? 'Entrega confirmada com sucesso!' 
-        : 'Entrega salva! Será sincronizada quando voltar online.';
-      
-      Alert.alert('Sucesso', mensagem);
+      // Não mostrar Alert, apenas a animação de sucesso
       setEtapa('sucesso');
       
       setTimeout(() => {
@@ -355,15 +351,12 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
       if (response.ok) {
         const comprovante = await response.json();
         console.log(`✅ Comprovante ${comprovante.numero_comprovante} criado com sucesso`);
-        Alert.alert('Sucesso', `Comprovante ${comprovante.numero_comprovante} gerado!`);
       } else {
         const errorText = await response.text();
         console.error('❌ Erro na API:', response.status, errorText);
-        Alert.alert('Aviso', 'Entrega confirmada, mas houve erro ao gerar comprovante');
       }
     } catch (error) {
       console.error('❌ Erro ao criar comprovante:', error);
-      Alert.alert('Aviso', 'Entrega confirmada, mas houve erro ao gerar comprovante');
       throw error;
     }
   };
@@ -461,6 +454,11 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
           <Text variant="bodyMedium" style={styles.sucessoText}>
             {itensSelecionados.length} {itensSelecionados.length === 1 ? 'item confirmado' : 'itens confirmados'} com sucesso
           </Text>
+          {!isOnline && (
+            <Text variant="bodySmall" style={styles.sucessoOffline}>
+              📱 Entrega salva offline. Será sincronizada quando voltar online.
+            </Text>
+          )}
         </View>
       </View>
     );
@@ -949,6 +947,12 @@ const styles = StyleSheet.create({
   sucessoText: {
     color: '#666',
     textAlign: 'center',
+  },
+  sucessoOffline: {
+    color: '#f59e0b',
+    textAlign: 'center',
+    marginTop: 12,
+    fontStyle: 'italic',
   },
   revisaoCard: {
     margin: 12,
