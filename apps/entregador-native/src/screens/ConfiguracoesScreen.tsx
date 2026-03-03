@@ -103,7 +103,7 @@ export default function ConfiguracoesScreen({ navigation }: any) {
                     Rota:
                   </Text>
                   <Text variant="bodyMedium" style={styles.filtroValue}>
-                    {filtroAtivo.rotaNome}
+                    {filtroAtivo.rotaNome || filtroAtivo.rotaNomes?.join(', ')}
                   </Text>
                 </View>
                 <View style={styles.filtroInfo}>
@@ -115,19 +115,52 @@ export default function ConfiguracoesScreen({ navigation }: any) {
                     {new Date(filtroAtivo.dataFim).toLocaleDateString('pt-BR')}
                   </Text>
                 </View>
+                <View style={styles.filtroInfo}>
+                  <Text variant="bodyMedium" style={styles.filtroLabel}>
+                    Origem:
+                  </Text>
+                  <Text variant="bodyMedium" style={styles.filtroValue}>
+                    {filtroAtivo.geradoPor === 'Manual' ? '✋ Manual' : '📷 QR Code'}
+                  </Text>
+                </View>
+                <Button
+                  mode="outlined"
+                  onPress={() => navigation.navigate('FiltroManual')}
+                  style={styles.editarButton}
+                  icon="pencil"
+                >
+                  Editar Filtro
+                </Button>
                 <Button
                   mode="outlined"
                   onPress={limparFiltro}
                   style={styles.limparButton}
                   textColor="#dc2626"
+                  icon="close"
                 >
                   Limpar Filtro
                 </Button>
               </View>
             ) : (
-              <Text variant="bodyMedium" style={styles.noFiltro}>
-                Nenhum filtro ativo. Escaneie um QR Code na tela inicial para aplicar um filtro.
-              </Text>
+              <View>
+                <Text variant="bodyMedium" style={styles.noFiltro}>
+                  Nenhum filtro ativo.
+                </Text>
+                <Button
+                  mode="contained"
+                  onPress={() => navigation.navigate('FiltroManual')}
+                  style={styles.configurarButton}
+                  icon="tune"
+                >
+                  Configurar Manualmente
+                </Button>
+                <Text variant="bodySmall" style={styles.ouText}>
+                  ou
+                </Text>
+                <Text variant="bodySmall" style={styles.hint}>
+                  Escaneie um QR Code na tela inicial
+                </Text>
+              </View>
             )}
           </Card.Content>
         </Card>
@@ -209,13 +242,31 @@ const styles = StyleSheet.create({
     flex: 1,
     color: '#333',
   },
-  limparButton: {
+  editarButton: {
     marginTop: 12,
+    marginBottom: 8,
+    borderColor: '#1976d2',
+  },
+  limparButton: {
+    marginTop: 0,
     borderColor: '#dc2626',
   },
   noFiltro: {
     color: '#666',
+    marginBottom: 12,
+  },
+  configurarButton: {
+    marginBottom: 8,
+  },
+  ouText: {
+    textAlign: 'center',
+    color: '#999',
+    marginVertical: 8,
+  },
+  hint: {
+    color: '#666',
     fontStyle: 'italic',
+    textAlign: 'center',
   },
   actionButton: {
     marginBottom: 12,

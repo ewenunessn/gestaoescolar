@@ -9,6 +9,7 @@ import { OfflineProvider } from './src/contexts/OfflineContext';
 import LoginScreen from './src/screens/LoginScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import ConfiguracoesScreen from './src/screens/ConfiguracoesScreen';
+import FiltroManualScreen from './src/screens/FiltroManualScreen';
 import RotasScreen from './src/screens/RotasScreen';
 import RotaDetalheScreen from './src/screens/RotaDetalheScreen';
 import EscolaDetalheScreen from './src/screens/EscolaDetalheScreen';
@@ -67,6 +68,11 @@ export default function App() {
             name="Configuracoes" 
             component={ConfiguracoesScreen}
             options={{ title: 'Configurações' }}
+          />
+          <Stack.Screen 
+            name="FiltroManual" 
+            component={FiltroManualScreen}
+            options={{ title: 'Filtro Manual' }}
           />
           <Stack.Screen 
             name="Rotas" 
