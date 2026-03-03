@@ -201,48 +201,50 @@ export default function ComprovantesEntrega() {
         <style>
           body {
             font-family: Arial, sans-serif;
-            padding: 20px;
+            padding: 15px;
             max-width: 800px;
             margin: 0 auto;
+            font-size: 12px;
           }
           .header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             border-bottom: 2px solid #333;
-            padding-bottom: 20px;
+            padding-bottom: 15px;
           }
           .header h1 {
             margin: 0;
             color: #1976d2;
-            font-size: 28px;
+            font-size: 22px;
           }
           .header .subtitle {
-            margin: 5px 0 10px 0;
+            margin: 3px 0 8px 0;
             color: #666;
-            font-size: 14px;
+            font-size: 11px;
             font-style: italic;
           }
           .header h2 {
-            margin: 15px 0 5px 0;
+            margin: 10px 0 3px 0;
             color: #333;
-            font-size: 20px;
+            font-size: 16px;
           }
           .header h3 {
-            margin: 5px 0;
+            margin: 3px 0;
             color: #666;
-            font-size: 16px;
+            font-size: 13px;
             font-weight: normal;
           }
           .info-section {
-            margin-bottom: 20px;
+            margin-bottom: 15px;
           }
           .info-row {
             display: flex;
-            margin-bottom: 10px;
+            margin-bottom: 6px;
+            font-size: 11px;
           }
           .info-label {
             font-weight: bold;
-            width: 200px;
+            width: 150px;
           }
           .info-value {
             flex: 1;
@@ -250,22 +252,24 @@ export default function ComprovantesEntrega() {
           table {
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
+            margin: 15px 0;
+            font-size: 11px;
           }
           th, td {
             border: 1px solid #ddd;
-            padding: 12px;
+            padding: 6px 8px;
             text-align: left;
           }
           th {
             background-color: #1976d2;
             color: white;
+            font-size: 11px;
           }
           tr:nth-child(even) {
             background-color: #f9f9f9;
           }
           .signature-section {
-            margin-top: 60px;
+            margin-top: 40px;
             display: flex;
             justify-content: space-between;
             align-items: flex-end;
@@ -276,36 +280,37 @@ export default function ComprovantesEntrega() {
           }
           .signature-line {
             border-top: 1px solid #333;
-            margin-top: 60px;
-            padding-top: 10px;
+            margin-top: 50px;
+            padding-top: 8px;
+            font-size: 11px;
           }
           .signature-digital {
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
           }
           .signature-image {
-            max-width: 300px;
-            max-height: 120px;
+            max-width: 250px;
+            max-height: 100px;
             border: 1px solid #ddd;
-            padding: 5px;
-            margin: 10px auto;
+            padding: 4px;
+            margin: 8px auto;
             display: block;
             background-color: #fff;
           }
           .signature-label {
-            font-size: 12px;
+            font-size: 10px;
             color: #666;
-            margin-top: 5px;
+            margin-top: 3px;
           }
           .footer {
-            margin-top: 40px;
+            margin-top: 30px;
             text-align: center;
-            font-size: 12px;
+            font-size: 10px;
             color: #666;
           }
           @media print {
             body {
-              padding: 0;
+              padding: 10px;
             }
             .no-print {
               display: none;
