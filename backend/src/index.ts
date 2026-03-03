@@ -21,8 +21,7 @@ import cardapioRoutes from "./modules/cardapios/routes/cardapioRoutes";
 import produtoRoutes from "./modules/produtos/routes/produtoRoutes";
 import produtoModalidadeRoutes from "./modules/estoque/routes/produtoModalidadeRoutes";
 
-// TEMPORARIAMENTE DESABILITADO - arquivos não existem no Vercel ainda
-// import estoqueCentralRoutes from "./modules/estoque/routes/estoqueCentralRoutes";
+import estoqueCentralRoutes from "./modules/estoque/routes/estoqueCentralRoutes";
 import estoqueEscolarRoutes from "./modules/estoque/routes/estoqueEscolarRoutes";
 // import demandaRoutes from "./modules/estoque/routes/demandaRoutes"; // REMOVIDO - usar demandasRoutes do módulo demandas
 
@@ -243,8 +242,7 @@ app.use("/api/cardapios", cardapioRoutes);
 // app.use("/api/demandas", demandaRoutes); // REMOVIDO - rota duplicada, usar demandasRoutes
 app.use("/api/produtos", produtoRoutes);
 app.use("/api/produto-modalidades", produtoModalidadeRoutes);
-// TEMPORARIAMENTE DESABILITADO - arquivos não existem no Vercel ainda
-// app.use("/api/estoque-central", estoqueCentralRoutes);
+app.use("/api/estoque-central", estoqueCentralRoutes);
 app.use("/api/estoque-escolar", estoqueEscolarRoutes);
 
 app.use("/api/saldo-contratos-modalidades", saldoContratosModalidadesRoutes);
