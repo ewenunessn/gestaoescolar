@@ -160,7 +160,7 @@ class EstoqueCentralModel {
              data_validade = EXCLUDED.data_validade,
              observacao = EXCLUDED.observacao
            RETURNING id`,
-          [estoque.id, dados.lote, dados.data_fabricacao, dados.data_validade, dados.quantidade, dados.observacao]
+          [estoque.id, dados.lote, dados.data_fabricacao, dados.data_validade, quantidadeNum, dados.observacao]
         );
         loteId = loteResult.rows[0].id;
       }
@@ -173,7 +173,7 @@ class EstoqueCentralModel {
          VALUES ($1, $2, 'entrada', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
          RETURNING *`,
         [
-          estoque.id, loteId, dados.quantidade, quantidadeAnterior, quantidadePosterior,
+          estoque.id, loteId, quantidadeNum, quantidadeAnterior, quantidadePosterior,
           dados.motivo, dados.observacao, dados.documento, dados.fornecedor, dados.nota_fiscal,
           dados.usuario_id, dados.usuario_nome
         ]
@@ -228,14 +228,23 @@ class EstoqueCentralModel {
         }
 
         const lote = loteResult.rows[0];
-        if (lote.quantidade_disponivel < dados.quantidade) {
-          throw new Error(`Quantidade insuficiente no lote. Disponível: ${lote.quantidade_disponivel}`);
+        const loteQuantidadeDisponivel = parseFloat(lote.quantidade_disponivel as any) || 0;
+        
+        console.log('DEBUG SAÍDA LOTE:');
+        console.log('  lote.quantidade_disponivel:', lote.quantidade_disponivel, 'tipo:', typeof lote.quantidade_disponivel);
+        console.log('  loteQuantidadeDisponivel:', loteQuantidadeDisponivel);
+        console.log('  quantidadeNum:', quantidadeNum);
+        
+        if (loteQuantidadeDisponivel < quantidadeNum) {
+          throw new Error(`Quantidade insuficiente no lote. Disponível: ${loteQuantidadeDisponivel}`);
         }
 
         await client.query(
           'UPDATE estoque_central_lotes SET quantidade = quantidade - $1 WHERE id = $2',
-          [dados.quantidade, dados.lote_id]
+          [quantidadeNum, dados.lote_id]
         );
+        
+        console.log('  Lote atualizado com sucesso');
       }
 
       // Registrar movimentação
@@ -246,7 +255,7 @@ class EstoqueCentralModel {
          VALUES ($1, $2, 'saida', $3, $4, $5, $6, $7, $8, $9, $10)
          RETURNING *`,
         [
-          estoque.id, dados.lote_id, -dados.quantidade, quantidadeAnterior, quantidadePosterior,
+          estoque.id, dados.lote_id, -quantidadeNum, quantidadeAnterior, quantidadePosterior,
           dados.motivo, dados.observacao, dados.documento, dados.usuario_id, dados.usuario_nome
         ]
       );
@@ -293,7 +302,14 @@ class EstoqueCentralModel {
         }
 
         const lote = loteResult.rows[0];
-        const novaQuantidadeLote = lote.quantidade + diferencaQuantidade;
+        const loteQuantidadeAtual = parseFloat(lote.quantidade as any) || 0;
+        const novaQuantidadeLote = loteQuantidadeAtual + diferencaQuantidade;
+
+        console.log('DEBUG AJUSTE LOTE:');
+        console.log('  lote.quantidade:', lote.quantidade, 'tipo:', typeof lote.quantidade);
+        console.log('  loteQuantidadeAtual:', loteQuantidadeAtual);
+        console.log('  diferencaQuantidade:', diferencaQuantidade);
+        console.log('  novaQuantidadeLote:', novaQuantidadeLote);
 
         if (novaQuantidadeLote < 0) {
           throw new Error('Ajuste resultaria em quantidade negativa no lote');
