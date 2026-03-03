@@ -88,7 +88,9 @@ class EstoqueCentralController {
         });
       }
 
-      if (quantidade <= 0) {
+      const quantidadeNum = parseFloat(quantidade);
+      
+      if (isNaN(quantidadeNum) || quantidadeNum <= 0) {
         return res.status(400).json({
           error: 'Quantidade deve ser maior que zero'
         });
@@ -102,8 +104,8 @@ class EstoqueCentralController {
       }
 
       const movimentacao = await EstoqueCentralModel.registrarEntrada({
-        produto_id,
-        quantidade,
+        produto_id: parseInt(produto_id),
+        quantidade: quantidadeNum,
         lote,
         data_fabricacao,
         data_validade,
@@ -145,16 +147,18 @@ class EstoqueCentralController {
         });
       }
 
-      if (quantidade <= 0) {
+      const quantidadeNum = parseFloat(quantidade);
+      
+      if (isNaN(quantidadeNum) || quantidadeNum <= 0) {
         return res.status(400).json({
           error: 'Quantidade deve ser maior que zero'
         });
       }
 
       const movimentacao = await EstoqueCentralModel.registrarSaida({
-        produto_id,
-        quantidade,
-        lote_id,
+        produto_id: parseInt(produto_id),
+        quantidade: quantidadeNum,
+        lote_id: lote_id ? parseInt(lote_id) : undefined,
         motivo,
         observacao,
         documento,
@@ -190,16 +194,18 @@ class EstoqueCentralController {
         });
       }
 
-      if (quantidade_nova < 0) {
+      const quantidadeNovaNum = parseFloat(quantidade_nova);
+      
+      if (isNaN(quantidadeNovaNum) || quantidadeNovaNum < 0) {
         return res.status(400).json({
           error: 'Quantidade não pode ser negativa'
         });
       }
 
       const movimentacao = await EstoqueCentralModel.registrarAjuste({
-        produto_id,
-        quantidade_nova,
-        lote_id,
+        produto_id: parseInt(produto_id),
+        quantidade_nova: quantidadeNovaNum,
+        lote_id: lote_id ? parseInt(lote_id) : undefined,
         motivo,
         observacao,
         usuario_id: (req as any).user?.id,
