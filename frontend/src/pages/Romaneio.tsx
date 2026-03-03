@@ -43,13 +43,15 @@ import {
   Block as BlockIcon,
   Cancel as CancelIcon,
   PendingActions as PendingIcon,
-  Edit as EditIcon
+  Edit as EditIcon,
+  QrCode2 as QrCodeIcon
 } from '@mui/icons-material';
 import { useNotification } from '../context/NotificationContext';
 import { guiaService } from '../services/guiaService';
 import { rotaService } from '../modules/entregas/services/rotaService';
 import { RotaEntrega } from '../modules/entregas/types/rota';
 import { format } from 'date-fns';
+import QRCode from 'qrcode';
 
 interface ItemRomaneio {
   id: number;
@@ -93,6 +95,10 @@ const Romaneio: React.FC = () => {
   const [statusMenuAnchor, setStatusMenuAnchor] = useState<null | HTMLElement>(null);
   const [itemStatusEditing, setItemStatusEditing] = useState<any>(null);
   const { success, error: showError } = useNotification();
+  
+  // Estado para QR Code
+  const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
+  const [showQRDialog, setShowQRDialog] = useState(false);
 
   const carregarRotas = async () => {
     try {
@@ -129,6 +135,59 @@ const Romaneio: React.FC = () => {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const gerarQRCode = async () => {
+    if (!rotaId || !dataInicio || !dataFim) {
+      showError('Selecione uma rota e o período para gerar o QR Code');
+      return;
+    }
+
+    try {
+      const rotaSelecionada = rotas.find(r => r.id === Number(rotaId));
+      if (!rotaSelecionada) return;
+
+      // Obter nome do usuário logado
+      const token = localStorage.getItem('token');
+      let geradoPor = 'Sistema';
+      if (token) {
+        try {
+          // Tentar parsear como JSON primeiro
+          const parsed = JSON.parse(token);
+          geradoPor = parsed.nome || parsed.usuario?.nome || 'Sistema';
+        } catch (e) {
+          // Se não for JSON, é apenas o token JWT - não tem nome
+          geradoPor = 'Sistema';
+        }
+      }
+
+      const qrData = {
+        rotaIds: [Number(rotaId)],
+        rotaNomes: [rotaSelecionada.nome],
+        dataInicio,
+        dataFim,
+        geradoEm: new Date().toISOString(),
+        geradoPor
+      };
+
+      const jsonData = JSON.stringify(qrData);
+      
+      const qrUrl = await QRCode.toDataURL(jsonData, {
+        width: 300,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        }
+      });
+      
+      setQrCodeUrl(qrUrl);
+      setShowQRDialog(true);
+      success('QR Code gerado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao gerar QR Code:', error);
+      showError('Erro ao gerar QR Code');
+    }
   };
 
   // Agrupar itens por escola
@@ -360,7 +419,7 @@ const Romaneio: React.FC = () => {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={12} sm={3} sx={{ display: 'flex', gap: 1 }}>
+              <Grid item xs={12} sm={3} sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
                 <Button
                   variant="contained"
                   startIcon={<SearchIcon />}
@@ -369,14 +428,25 @@ const Romaneio: React.FC = () => {
                 >
                   Buscar
                 </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<PrintIcon />}
-                  onClick={handlePrint}
-                  fullWidth
-                >
-                  Imprimir
-                </Button>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Button
+                    variant="outlined"
+                    startIcon={<QrCodeIcon />}
+                    onClick={gerarQRCode}
+                    fullWidth
+                    disabled={!rotaId}
+                  >
+                    QR Code
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    startIcon={<PrintIcon />}
+                    onClick={handlePrint}
+                    fullWidth
+                  >
+                    Imprimir
+                  </Button>
+                </Box>
               </Grid>
               <Grid item xs={12}>
                 <Divider sx={{ my: 1 }} />
@@ -415,14 +485,36 @@ const Romaneio: React.FC = () => {
         <Box id="printable-area">
           {/* Cabeçalho de Impressão */}
           <Box sx={{ display: 'none', '@media print': { display: 'block' }, mb: 2 }}>
-            <Typography variant="h4" align="center" sx={{ fontWeight: 'bold', mb: 1 }}>Romaneio de Entrega</Typography>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, borderBottom: '2px solid #000', pb: 1 }}>
-              <Typography variant="subtitle1">
-                <strong>Período:</strong> {format(new Date(dataInicio), 'dd/MM/yyyy')} a {format(new Date(dataFim), 'dd/MM/yyyy')}
-              </Typography>
-              <Typography variant="subtitle1">
-                <strong>Rota:</strong> {rotaId ? rotas.find(r => r.id === Number(rotaId))?.nome : 'Todas as Rotas'}
-              </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1 }}>Romaneio de Entrega</Typography>
+                <Box sx={{ borderBottom: '2px solid #000', pb: 1, mb: 2 }}>
+                  <Typography variant="subtitle1">
+                    <strong>Período:</strong> {format(new Date(dataInicio), 'dd/MM/yyyy')} a {format(new Date(dataFim), 'dd/MM/yyyy')}
+                  </Typography>
+                  <Typography variant="subtitle1">
+                    <strong>Rota:</strong> {rotaId ? rotas.find(r => r.id === Number(rotaId))?.nome : 'Todas as Rotas'}
+                  </Typography>
+                </Box>
+              </Box>
+              {qrCodeUrl && rotaId && (
+                <Box sx={{ ml: 3, textAlign: 'center' }}>
+                  <img 
+                    src={qrCodeUrl} 
+                    alt="QR Code" 
+                    style={{ 
+                      width: '120px', 
+                      height: '120px',
+                      border: '2px solid #000',
+                      padding: '4px',
+                      backgroundColor: '#fff'
+                    }} 
+                  />
+                  <Typography variant="caption" sx={{ display: 'block', mt: 0.5, fontSize: '9px' }}>
+                    Escaneie para filtrar entregas
+                  </Typography>
+                </Box>
+              )}
             </Box>
           </Box>
 
@@ -674,6 +766,99 @@ const Romaneio: React.FC = () => {
             </Menu>
           </>
         )}
+      </Dialog>
+
+      {/* Dialog do QR Code */}
+      <Dialog
+        open={showQRDialog}
+        onClose={() => setShowQRDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box display="flex" alignItems="center" gap={1}>
+            <QrCodeIcon color="primary" />
+            <span>QR Code para Entrega</span>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Box display="flex" flexDirection="column" alignItems="center" gap={3}>
+            {qrCodeUrl && (
+              <Box
+                sx={{
+                  p: 2,
+                  bgcolor: 'white',
+                  borderRadius: 2,
+                  boxShadow: 3
+                }}
+              >
+                <img 
+                  src={qrCodeUrl} 
+                  alt="QR Code" 
+                  style={{ 
+                    width: '100%', 
+                    maxWidth: 300,
+                    display: 'block'
+                  }} 
+                />
+              </Box>
+            )}
+
+            <Box 
+              sx={{ 
+                width: '100%',
+                p: 2, 
+                bgcolor: '#f5f5f5', 
+                borderRadius: 1 
+              }}
+            >
+              <Typography variant="subtitle2" gutterBottom>
+                Informações do QR Code:
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                <strong>Rota:</strong> {rotaId ? rotas.find(r => r.id === Number(rotaId))?.nome : ''}<br/>
+                <strong>Período:</strong> {format(new Date(dataInicio), 'dd/MM/yyyy')} até {format(new Date(dataFim), 'dd/MM/yyyy')}
+              </Typography>
+            </Box>
+
+            <Box 
+              sx={{ 
+                width: '100%',
+                p: 2, 
+                bgcolor: '#e3f2fd', 
+                borderRadius: 1,
+                border: '1px solid #90caf9'
+              }}
+            >
+              <Typography variant="caption" sx={{ color: '#1565c0', fontWeight: 600 }}>
+                📱 Instruções para o entregador:
+              </Typography>
+              <Typography variant="caption" sx={{ display: 'block', color: '#1976d2', mt: 1 }}>
+                1. Abra o app Entregador<br/>
+                2. Faça login<br/>
+                3. Clique no botão "Escanear QR Code" 📷<br/>
+                4. Aponte a câmera para este código<br/>
+                5. As entregas serão filtradas automaticamente
+              </Typography>
+            </Box>
+
+            <Alert severity="info" sx={{ width: '100%' }}>
+              O QR Code será incluído automaticamente no romaneio impresso
+            </Alert>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowQRDialog(false)}>
+            Fechar
+          </Button>
+          <Button 
+            onClick={handlePrint}
+            variant="contained"
+            startIcon={<PrintIcon />}
+          >
+            Imprimir Romaneio
+          </Button>
+        </DialogActions>
       </Dialog>
       
       <style>{`

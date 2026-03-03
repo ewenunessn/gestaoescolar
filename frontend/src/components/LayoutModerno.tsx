@@ -99,7 +99,6 @@ const getMenuConfig = (configModuloSaldo: any) => {
         { text: "Romaneio de Entrega", icon: <Print />, path: "/romaneio" },
         { text: "Gestão de Rotas", icon: <Business />, path: "/gestao-rotas" },
         { text: "Entregas", icon: <LocalShipping />, path: "/entregas" },
-        { text: "Gerar QR Code", icon: <QrCode2 />, path: "/entregas/gerar-qrcode" },
         { text: "Comprovantes", icon: <Description />, path: "/comprovantes-entrega" },
       ],
     },

@@ -76,7 +76,6 @@ const NovoPedido = lazy(() => import("../pages/NovoPedido"));
 const PedidoDetalhe = lazy(() => import("../pages/PedidoDetalhe"));
 const EditarPedido = lazy(() => import("../pages/EditarPedido"));
 const FaturamentoDetalhe = lazy(() => import("../pages/FaturamentoDetalhe"));
-const GerarQRCodeEntrega = lazy(() => import("../pages/GerarQRCodeEntrega"));
 const ComprovantesEntrega = lazy(() => import("../pages/ComprovantesEntrega"));
 
 
@@ -232,10 +231,6 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
             <Route
               path="/entregas"
               element={<LazyRoute><Entregas /></LazyRoute>}
-            />
-            <Route
-              path="/entregas/gerar-qrcode"
-              element={<LazyRoute><GerarQRCodeEntrega /></LazyRoute>}
             />
             <Route
               path="/comprovantes-entrega"
