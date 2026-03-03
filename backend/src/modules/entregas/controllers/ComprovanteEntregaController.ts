@@ -138,14 +138,16 @@ class ComprovanteEntregaController {
 
   /**
    * Listar todos os comprovantes
-   * GET /api/comprovantes
+   * GET /api/comprovantes?data_inicio=YYYY-MM-DD&data_fim=YYYY-MM-DD
    */
   async listar(req: Request, res: Response) {
     try {
       const limit = parseInt(req.query.limit as string) || 50;
       const offset = parseInt(req.query.offset as string) || 0;
+      const dataInicio = req.query.data_inicio as string;
+      const dataFim = req.query.data_fim as string;
 
-      const comprovantes = await ComprovanteEntregaModel.listar(limit, offset);
+      const comprovantes = await ComprovanteEntregaModel.listar(limit, offset, dataInicio, dataFim);
 
       res.json({
         comprovantes,
@@ -177,6 +179,29 @@ class ComprovanteEntregaController {
       res.json({ message: 'Comprovante cancelado com sucesso' });
     } catch (error: any) {
       console.error('Erro ao cancelar comprovante:', error);
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  /**
+   * Excluir permanentemente um comprovante
+   * DELETE /api/comprovantes/:id/excluir
+   */
+  async excluir(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+
+      // Verificar se existe
+      const comprovante = await ComprovanteEntregaModel.buscarPorId(parseInt(id));
+      if (!comprovante) {
+        return res.status(404).json({ error: 'Comprovante não encontrado' });
+      }
+
+      await ComprovanteEntregaModel.excluir(parseInt(id));
+
+      res.json({ message: 'Comprovante excluído permanentemente com sucesso' });
+    } catch (error: any) {
+      console.error('Erro ao excluir comprovante:', error);
       res.status(500).json({ error: error.message });
     }
   }

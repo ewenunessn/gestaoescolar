@@ -38,5 +38,6 @@ router.get('/comprovantes/:id', ComprovanteEntregaController.buscarPorId);
 router.get('/comprovantes/numero/:numero', ComprovanteEntregaController.buscarPorNumero);
 router.get('/comprovantes/escola/:escolaId', ComprovanteEntregaController.listarPorEscola);
 router.delete('/comprovantes/:id', ComprovanteEntregaController.cancelar);
+router.delete('/comprovantes/:id/excluir', ComprovanteEntregaController.excluir);
 
 export default router;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, FlatList, Pressable } from 'react-native';
-import { Text, Card, ActivityIndicator, Button } from 'react-native-paper';
+import { View, StyleSheet, FlatList, Pressable, ScrollView } from 'react-native';
+import { Text, Card, ActivityIndicator, Button, Searchbar, IconButton, Menu, Dialog, Portal, Divider } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { listarEscolasDaRota, listarItensEscola, EscolaRota } from '../api/rotas';
 import { handleAxiosError } from '../api/client';
@@ -17,10 +17,52 @@ export default function RotaDetalheScreen({ route, navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filtroAtivo, setFiltroAtivo] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Menu e dialog de escolas entregues
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [dialogEntreguesVisible, setDialogEntreguesVisible] = useState(false);
+  const [escolasEntregues, setEscolasEntregues] = useState<EscolaComItens[]>([]);
+  const [loadingEntregues, setLoadingEntregues] = useState(false);
 
   useEffect(() => {
     carregarFiltro();
     carregarEscolas();
+    
+    // Adicionar botão de menu no header
+    navigation.setOptions({
+      headerRight: () => (
+        <Menu
+          visible={menuVisible}
+          onDismiss={() => setMenuVisible(false)}
+          anchor={
+            <IconButton
+              icon="dots-vertical"
+              iconColor="#fff"
+              size={24}
+              onPress={() => setMenuVisible(true)}
+            />
+          }
+        >
+          <Menu.Item
+            onPress={() => {
+              setMenuVisible(false);
+              navigation.navigate('Comprovantes', { rotaId });
+            }}
+            title="Ver Comprovantes"
+            leadingIcon="file-document"
+          />
+          <Menu.Item
+            onPress={() => {
+              setMenuVisible(false);
+              carregarEscolasEntregues();
+            }}
+            title="Escolas Entregues"
+            leadingIcon="check-circle"
+          />
+        </Menu>
+      ),
+    });
     
     // Recarregar quando a tela ganhar foco (volta de outra tela)
     const unsubscribe = navigation.addListener('focus', () => {
@@ -29,7 +71,7 @@ export default function RotaDetalheScreen({ route, navigation }: any) {
     });
 
     return unsubscribe;
-  }, [navigation]);
+  }, [navigation, menuVisible]);
 
   const carregarFiltro = async () => {
     try {
@@ -140,6 +182,82 @@ export default function RotaDetalheScreen({ route, navigation }: any) {
     }
   };
 
+  const carregarEscolasEntregues = async () => {
+    try {
+      setLoadingEntregues(true);
+      setDialogEntreguesVisible(true);
+
+      // Pegar a data do filtro (data de hoje se não houver filtro)
+      const filtroSalvo = await AsyncStorage.getItem('filtro_qrcode');
+      let dataReferencia = new Date();
+      if (filtroSalvo) {
+        const filtro = JSON.parse(filtroSalvo);
+        dataReferencia = new Date(filtro.dataInicio);
+      }
+      dataReferencia.setHours(0, 0, 0, 0);
+
+      // Usar as escolas já carregadas
+      const escolasComEntregasCompletas: EscolaComItens[] = [];
+      
+      for (const escola of escolas) {
+        try {
+          const itensEscola = await listarItensEscola(escola.escola_id);
+          
+          // Verificar se TODOS os itens foram entregues HOJE (pela data do histórico)
+          let todosEntreguesHoje = false;
+          
+          if (itensEscola.length > 0) {
+            todosEntreguesHoje = itensEscola.every(item => {
+              // Item deve estar confirmado
+              if (!item.entrega_confirmada) return false;
+              
+              // Item não deve ter saldo pendente
+              if (item.saldo_pendente && item.saldo_pendente > 0) return false;
+              
+              // Verificar se foi entregue hoje pelo histórico
+              if (item.historico_entregas && item.historico_entregas.length > 0) {
+                // Pegar a última entrega
+                const ultimaEntrega = item.historico_entregas[item.historico_entregas.length - 1];
+                const dataEntregaReal = new Date(ultimaEntrega.data_entrega);
+                dataEntregaReal.setHours(0, 0, 0, 0);
+                
+                return dataEntregaReal.getTime() === dataReferencia.getTime();
+              }
+              
+              return false;
+            });
+          }
+
+          if (todosEntreguesHoje) {
+            escolasComEntregasCompletas.push({
+              ...escola,
+              total_itens_pendentes: itensEscola.length
+            });
+          }
+        } catch (err) {
+          console.error(`Erro ao carregar itens da escola ${escola.escola_id}:`, err);
+        }
+      }
+
+      setEscolasEntregues(escolasComEntregasCompletas);
+    } catch (err) {
+      console.error('Erro ao carregar escolas entregues:', err);
+    } finally {
+      setLoadingEntregues(false);
+    }
+  };
+
+  // Filtrar escolas pela busca
+  const escolasFiltradas = escolas.filter(escola => {
+    if (!searchQuery) return true;
+    
+    const query = searchQuery.toLowerCase();
+    const nome = (escola.escola_nome || '').toLowerCase();
+    const endereco = (escola.escola_endereco || '').toLowerCase();
+    
+    return nome.includes(query) || endereco.includes(query);
+  });
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -175,13 +293,24 @@ export default function RotaDetalheScreen({ route, navigation }: any) {
             </Text>
           )}
           <Text variant="bodySmall">
-            {escolas.length} escola(s) com itens pendentes
+            {escolasFiltradas.length} de {escolas.length} escola(s) {searchQuery ? 'encontrada(s)' : 'com itens pendentes'}
           </Text>
         </Card.Content>
       </Card>
 
+      {/* Campo de busca */}
+      <View style={styles.searchContainer}>
+        <Searchbar
+          placeholder="Buscar escola por nome ou endereço"
+          onChangeText={setSearchQuery}
+          value={searchQuery}
+          style={styles.searchbar}
+          iconColor="#1976d2"
+        />
+      </View>
+
       <FlatList
-        data={escolas}
+        data={escolasFiltradas}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.list}
         renderItem={({ item }) => (
@@ -224,15 +353,83 @@ export default function RotaDetalheScreen({ route, navigation }: any) {
         )}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text variant="headlineMedium">✓</Text>
-            <Text variant="titleMedium">
-              {filtroAtivo 
-                ? 'Nenhuma escola com itens pendentes no período filtrado'
-                : 'Nenhuma escola com itens pendentes'}
+            <Text variant="headlineMedium">{searchQuery ? '🔍' : '✓'}</Text>
+            <Text variant="titleMedium" style={styles.emptyText}>
+              {searchQuery 
+                ? 'Nenhuma escola encontrada com esse nome'
+                : filtroAtivo 
+                  ? 'Nenhuma escola com itens pendentes no período filtrado'
+                  : 'Nenhuma escola com itens pendentes'}
             </Text>
+            {searchQuery && (
+              <Button 
+                mode="outlined" 
+                onPress={() => setSearchQuery('')}
+                style={styles.clearButton}
+              >
+                Limpar Busca
+              </Button>
+            )}
           </View>
         }
       />
+
+      {/* Dialog de Escolas Entregues */}
+      <Portal>
+        <Dialog visible={dialogEntreguesVisible} onDismiss={() => setDialogEntreguesVisible(false)}>
+          <Dialog.Title>✓ Escolas Entregues</Dialog.Title>
+          <Dialog.ScrollArea>
+            <ScrollView style={{ maxHeight: 400 }}>
+              {loadingEntregues ? (
+                <View style={{ padding: 20, alignItems: 'center' }}>
+                  <ActivityIndicator size="large" />
+                  <Text style={{ marginTop: 12 }}>Carregando...</Text>
+                </View>
+              ) : escolasEntregues.length === 0 ? (
+                <View style={{ padding: 20, alignItems: 'center' }}>
+                  <Text variant="bodyMedium" style={{ color: '#666', textAlign: 'center' }}>
+                    Nenhuma escola com entregas concluídas
+                  </Text>
+                </View>
+              ) : (
+                escolasEntregues.map((escola, index) => (
+                  <View key={escola.id}>
+                    <Pressable
+                      onPress={() => {
+                        setDialogEntreguesVisible(false);
+                        navigation.navigate('EscolaDetalhe', {
+                          escolaId: escola.escola_id,
+                          escolaNome: escola.escola_nome,
+                          rotaId,
+                        });
+                      }}
+                      android_ripple={{ color: 'rgba(0, 0, 0, 0.1)' }}
+                    >
+                      <View style={{ padding: 12 }}>
+                        <Text variant="titleSmall" style={{ fontWeight: 'bold', marginBottom: 4 }}>
+                          {escola.escola_nome || `Escola ${escola.escola_id}`}
+                        </Text>
+                        {escola.escola_endereco && (
+                          <Text variant="bodySmall" style={{ color: '#666', marginBottom: 4 }}>
+                            📍 {escola.escola_endereco}
+                          </Text>
+                        )}
+                        <Text variant="bodySmall" style={{ color: '#059669', fontWeight: '600' }}>
+                          ✓ {escola.total_itens_pendentes} {escola.total_itens_pendentes === 1 ? 'item entregue' : 'itens entregues'}
+                        </Text>
+                      </View>
+                    </Pressable>
+                    {index < escolasEntregues.length - 1 && <Divider />}
+                  </View>
+                ))
+              )}
+            </ScrollView>
+          </Dialog.ScrollArea>
+          <Dialog.Actions>
+            <Button onPress={() => setDialogEntreguesVisible(false)}>Fechar</Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
     </View>
   );
 }
@@ -265,6 +462,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 4,
     marginBottom: 4,
+  },
+  searchContainer: {
+    paddingHorizontal: 12,
+    paddingTop: 12,
+  },
+  searchbar: {
+    elevation: 2,
   },
   list: {
     padding: 12,
@@ -301,5 +505,12 @@ const styles = StyleSheet.create({
   empty: {
     alignItems: 'center',
     padding: 40,
+  },
+  emptyText: {
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  clearButton: {
+    marginTop: 16,
   },
 });

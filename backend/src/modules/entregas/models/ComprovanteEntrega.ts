@@ -163,14 +163,39 @@ class ComprovanteEntregaModel {
   }
 
   /**
-   * Listar todos os comprovantes (com paginação)
+   * Listar todos os comprovantes (com paginação e filtro de data)
    */
-  async listar(limit = 50, offset = 0): Promise<ComprovanteCompleto[]> {
-    const result = await db.query(`
+  async listar(limit = 50, offset = 0, dataInicio?: string, dataFim?: string): Promise<ComprovanteCompleto[]> {
+    let query = `
       SELECT * FROM vw_comprovantes_completos
-      ORDER BY data_entrega DESC
-      LIMIT $1 OFFSET $2
-    `, [limit, offset]);
+      WHERE 1=1
+    `;
+    const params: any[] = [];
+    let paramIndex = 1;
+
+    if (dataInicio) {
+      // Usar DATE() para comparar apenas a parte da data, ignorando timezone
+      query += ` AND DATE(data_entrega) >= $${paramIndex}`;
+      params.push(dataInicio);
+      paramIndex++;
+    }
+
+    if (dataFim) {
+      // Usar DATE() para comparar apenas a parte da data, ignorando timezone
+      query += ` AND DATE(data_entrega) <= $${paramIndex}`;
+      params.push(dataFim);
+      paramIndex++;
+    }
+
+    query += ` ORDER BY data_entrega DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    params.push(limit, offset);
+
+    console.log('🔍 Query comprovantes:', query);
+    console.log('📊 Params:', params);
+
+    const result = await db.query(query, params);
+
+    console.log('✅ Comprovantes encontrados:', result.rows.length);
 
     return result.rows;
   }
@@ -182,6 +207,23 @@ class ComprovanteEntregaModel {
     await db.query(`
       UPDATE comprovantes_entrega
       SET status = 'cancelado', updated_at = NOW()
+      WHERE id = $1
+    `, [id]);
+  }
+
+  /**
+   * Excluir permanentemente um comprovante e seus itens
+   */
+  async excluir(id: number): Promise<void> {
+    // Primeiro excluir os itens
+    await db.query(`
+      DELETE FROM comprovante_itens
+      WHERE comprovante_id = $1
+    `, [id]);
+
+    // Depois excluir o comprovante
+    await db.query(`
+      DELETE FROM comprovantes_entrega
       WHERE id = $1
     `, [id]);
   }

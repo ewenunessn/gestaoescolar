@@ -29,7 +29,8 @@ import {
   Print as PrintIcon,
   Search as SearchIcon,
   Close as CloseIcon,
-  Description as DescriptionIcon
+  Description as DescriptionIcon,
+  Delete as DeleteIcon
 } from '@mui/icons-material';
 import api from '../services/api';
 
@@ -427,6 +428,20 @@ export default function ComprovantesEntrega() {
     setDataFim('');
   };
 
+  const excluirComprovante = async (id: number, numero: string) => {
+    if (!window.confirm(`Tem certeza que deseja EXCLUIR PERMANENTEMENTE o comprovante ${numero}?\n\nEsta ação não pode ser desfeita!`)) {
+      return;
+    }
+
+    try {
+      await api.delete(`/entregas/comprovantes/${id}/excluir`);
+      alert('Comprovante excluído com sucesso!');
+      carregarComprovantes();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Erro ao excluir comprovante');
+    }
+  };
+
   return (
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -631,6 +646,14 @@ export default function ComprovantesEntrega() {
                       title="Imprimir"
                     >
                       <PrintIcon />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      color="error"
+                      onClick={() => excluirComprovante(comprovante.id, comprovante.numero_comprovante)}
+                      title="Excluir permanentemente"
+                    >
+                      <DeleteIcon />
                     </IconButton>
                   </TableCell>
                 </TableRow>

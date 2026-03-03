@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, FlatList, ScrollView, Alert } from 'react-native';
+import { View, StyleSheet, FlatList, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text, Card, ActivityIndicator, Button, Checkbox, TextInput } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { listarItensEscola, ItemEntrega, confirmarEntregaItem } from '../api/rotas';
@@ -597,166 +597,176 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
   }
 
   return (
-    <View style={styles.container}>
-      <OfflineIndicator />
-      
-      {/* Card com informações da escola e período */}
-      <Card style={styles.header}>
-        <Card.Content>
-          <Text variant="titleMedium">Escola: {escolaNome}</Text>
-          {filtroAtivo && (
-            <Text variant="bodySmall" style={styles.periodo}>
-              Período: {new Date(filtroAtivo.dataInicio).toLocaleDateString('pt-BR')} a{' '}
-              {new Date(filtroAtivo.dataFim).toLocaleDateString('pt-BR')}
-            </Text>
-          )}
-        </Card.Content>
-      </Card>
+    <KeyboardAvoidingView 
+      style={{ flex: 1 }} 
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+    >
+      <View style={styles.container}>
+        <OfflineIndicator />
+        
+        {/* Card com informações da escola e período */}
+        <Card style={styles.header}>
+          <Card.Content>
+            <Text variant="titleMedium">Escola: {escolaNome}</Text>
+            {filtroAtivo && (
+              <Text variant="bodySmall" style={styles.periodo}>
+                Período: {new Date(filtroAtivo.dataInicio).toLocaleDateString('pt-BR')} a{' '}
+                {new Date(filtroAtivo.dataFim).toLocaleDateString('pt-BR')}
+              </Text>
+            )}
+          </Card.Content>
+        </Card>
 
-      {/* Abas */}
-      <View style={styles.tabs}>
-        <Button
-          mode={abaAtiva === 'pendentes' ? 'contained' : 'outlined'}
-          onPress={() => setAbaAtiva('pendentes')}
-          style={[styles.tab, abaAtiva !== 'pendentes' && styles.tabInativo]}
-          buttonColor={abaAtiva === 'pendentes' ? '#1976d2' : undefined}
-          textColor={abaAtiva === 'pendentes' ? '#fff' : '#1976d2'}
-        >
-          📦 Pendentes ({itens.filter((i) => !i.entrega_confirmada).length})
-        </Button>
-        <Button
-          mode={abaAtiva === 'entregues' ? 'contained' : 'outlined'}
-          onPress={() => setAbaAtiva('entregues')}
-          style={[styles.tab, abaAtiva !== 'entregues' && styles.tabInativo]}
-          buttonColor={abaAtiva === 'entregues' ? '#1976d2' : undefined}
-          textColor={abaAtiva === 'entregues' ? '#fff' : '#1976d2'}
-        >
-          ✓ Entregues ({itens.filter((i) => i.historico_entregas?.length).length})
-        </Button>
-      </View>
+        {/* Abas */}
+        <View style={styles.tabs}>
+          <Button
+            mode={abaAtiva === 'pendentes' ? 'contained' : 'outlined'}
+            onPress={() => setAbaAtiva('pendentes')}
+            style={[styles.tab, abaAtiva !== 'pendentes' && styles.tabInativo]}
+            buttonColor={abaAtiva === 'pendentes' ? '#1976d2' : undefined}
+            textColor={abaAtiva === 'pendentes' ? '#fff' : '#1976d2'}
+          >
+            📦 Pendentes ({itens.filter((i) => !i.entrega_confirmada).length})
+          </Button>
+          <Button
+            mode={abaAtiva === 'entregues' ? 'contained' : 'outlined'}
+            onPress={() => setAbaAtiva('entregues')}
+            style={[styles.tab, abaAtiva !== 'entregues' && styles.tabInativo]}
+            buttonColor={abaAtiva === 'entregues' ? '#1976d2' : undefined}
+            textColor={abaAtiva === 'entregues' ? '#fff' : '#1976d2'}
+          >
+            ✓ Entregues ({itens.filter((i) => i.historico_entregas?.length).length})
+          </Button>
+        </View>
 
-      <FlatList
-        data={itensFiltrados}
-        keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.list}
-        renderItem={({ item }) => (
-          <Card style={styles.card}>
-            <Card.Content>
-              {/* Checkbox e Produto */}
-              <View style={styles.cardRow}>
-                {abaAtiva === 'pendentes' && !item.entrega_confirmada && (
-                  <View style={styles.checkboxContainer}>
-                    <Checkbox
-                      status={item.selecionado ? 'checked' : 'unchecked'}
-                      onPress={() => toggleItem(item.id)}
-                      color="#1976d2"
-                      uncheckedColor="#999"
-                    />
-                  </View>
-                )}
-                
-                <View style={styles.cardContent}>
-                  <Text variant="titleMedium" style={styles.produto}>
-                    {item.produto_nome}
-                  </Text>
-
-                  {item.quantidade_ja_entregue && item.quantidade_ja_entregue > 0 ? (
-                    <View>
-                      <Text style={styles.faltam}>
-                        📦 Faltam: {formatarQuantidade(item.saldo_pendente || 0)} {item.unidade}
-                      </Text>
-                      <Text style={styles.info}>
-                        Programado: {formatarQuantidade(item.quantidade)} {item.unidade} • Já entregue:{' '}
-                        {formatarQuantidade(item.quantidade_ja_entregue)} {item.unidade}
-                      </Text>
+        <FlatList
+          data={itensFiltrados}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.list}
+          keyboardShouldPersistTaps="handled"
+          removeClippedSubviews={false}
+          renderItem={({ item }) => (
+            <Card style={styles.card}>
+              <Card.Content>
+                {/* Checkbox e Produto */}
+                <View style={styles.cardRow}>
+                  {abaAtiva === 'pendentes' && !item.entrega_confirmada && (
+                    <View style={styles.checkboxContainer}>
+                      <Checkbox
+                        status={item.selecionado ? 'checked' : 'unchecked'}
+                        onPress={() => toggleItem(item.id)}
+                        color="#1976d2"
+                        uncheckedColor="#999"
+                      />
                     </View>
-                  ) : (
-                    <Text style={styles.quantidade}>
-                      📦 Quantidade: {formatarQuantidade(item.quantidade)} {item.unidade}
+                  )}
+                  
+                  <View style={styles.cardContent}>
+                    <Text variant="titleMedium" style={styles.produto}>
+                      {item.produto_nome}
                     </Text>
-                  )}
 
-                  {item.lote && (
-                    <Text style={styles.lote}>🏷️ Lote: {item.lote}</Text>
-                  )}
-
-                  {item.observacao && (
-                    <Text style={styles.observacao}>💬 {item.observacao}</Text>
-                  )}
-
-                  {/* Campo de quantidade quando selecionado */}
-                  {abaAtiva === 'pendentes' && item.selecionado && (
-                    <View style={styles.quantidadeInput}>
-                      <Text variant="labelMedium" style={styles.quantidadeLabel}>
-                        Quantidade a entregar *
-                      </Text>
-                      <Text style={styles.quantidadeHint}>
-                        Você pode entregar uma quantidade diferente da programada
-                      </Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }}>
-                        <TextInput
-                          mode="outlined"
-                          keyboardType="numeric"
-                          value={String(item.quantidade_a_entregar)}
-                          onChangeText={(text) => atualizarQuantidade(item.id, text)}
-                          style={{ flex: 1 }}
-                        />
-                        <Text variant="titleMedium" style={{ fontWeight: 'bold' }}>
-                          {item.unidade}
+                    {item.quantidade_ja_entregue && item.quantidade_ja_entregue > 0 ? (
+                      <View>
+                        <Text style={styles.faltam}>
+                          📦 Faltam: {formatarQuantidade(item.saldo_pendente || 0)} {item.unidade}
+                        </Text>
+                        <Text style={styles.info}>
+                          Programado: {formatarQuantidade(item.quantidade)} {item.unidade} • Já entregue:{' '}
+                          {formatarQuantidade(item.quantidade_ja_entregue)} {item.unidade}
                         </Text>
                       </View>
-                    </View>
-                  )}
-
-                  {abaAtiva === 'entregues' && item.historico_entregas && (
-                    <View style={styles.historico}>
-                      <Text variant="labelMedium" style={styles.historicoTitle}>
-                        Histórico:
+                    ) : (
+                      <Text style={styles.quantidade}>
+                        📦 Quantidade: {formatarQuantidade(item.quantidade)} {item.unidade}
                       </Text>
-                      {item.historico_entregas.map((h, index) => (
-                        <View key={h.id} style={styles.historicoItem}>
-                          <Text style={styles.historicoQuantidade}>
-                            {formatarQuantidade(h.quantidade_entregue)} {item.unidade}
-                          </Text>
-                          <Text style={styles.historicoData}>
-                            {new Date(h.data_entrega).toLocaleDateString('pt-BR')}
-                          </Text>
-                          <Text style={styles.historicoRecebedor}>
-                            Recebido por: {h.nome_quem_recebeu}
+                    )}
+
+                    {item.lote && (
+                      <Text style={styles.lote}>🏷️ Lote: {item.lote}</Text>
+                    )}
+
+                    {item.observacao && (
+                      <Text style={styles.observacao}>💬 {item.observacao}</Text>
+                    )}
+
+                    {/* Campo de quantidade quando selecionado */}
+                    {abaAtiva === 'pendentes' && item.selecionado && (
+                      <View style={styles.quantidadeInput} pointerEvents="box-none">
+                        <Text variant="labelSmall" style={styles.quantidadeLabel}>
+                          Quantidade a entregar *
+                        </Text>
+                        <Text style={styles.quantidadeHint}>
+                          Você pode entregar uma quantidade diferente
+                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <TextInput
+                            mode="outlined"
+                            keyboardType="numeric"
+                            value={String(item.quantidade_a_entregar)}
+                            onChangeText={(text) => atualizarQuantidade(item.id, text)}
+                            style={{ flex: 1, height: 40 }}
+                            dense
+                            selectTextOnFocus
+                          />
+                          <Text variant="bodyMedium" style={{ fontWeight: 'bold', minWidth: 40 }}>
+                            {item.unidade}
                           </Text>
                         </View>
-                      ))}
-                    </View>
-                  )}
-                </View>
-              </View>
-            </Card.Content>
-          </Card>
-        )}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <Text variant="headlineMedium">
-              {abaAtiva === 'pendentes' ? '📦' : '✓'}
-            </Text>
-            <Text variant="titleMedium">
-              {abaAtiva === 'pendentes'
-                ? 'Nenhum item pendente'
-                : 'Nenhum item entregue ainda'}
-            </Text>
-          </View>
-        }
-      />
+                      </View>
+                    )}
 
-      {abaAtiva === 'pendentes' && itensSelecionados.length > 0 && (
-        <Button
-          mode="contained"
-          onPress={continuar}
-          style={styles.confirmarButton}
-        >
-          Continuar ({itensSelecionados.length} {itensSelecionados.length === 1 ? 'item' : 'itens'})
-        </Button>
-      )}
-    </View>
+                    {abaAtiva === 'entregues' && item.historico_entregas && (
+                      <View style={styles.historico}>
+                        <Text variant="labelMedium" style={styles.historicoTitle}>
+                          Histórico:
+                        </Text>
+                        {item.historico_entregas.map((h, index) => (
+                          <View key={h.id} style={styles.historicoItem}>
+                            <Text style={styles.historicoQuantidade}>
+                              {formatarQuantidade(h.quantidade_entregue)} {item.unidade}
+                            </Text>
+                            <Text style={styles.historicoData}>
+                              {new Date(h.data_entrega).toLocaleDateString('pt-BR')}
+                            </Text>
+                            <Text style={styles.historicoRecebedor}>
+                              Recebido por: {h.nome_quem_recebeu}
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                </View>
+              </Card.Content>
+            </Card>
+          )}
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <Text variant="headlineMedium">
+                {abaAtiva === 'pendentes' ? '📦' : '✓'}
+              </Text>
+              <Text variant="titleMedium">
+                {abaAtiva === 'pendentes'
+                  ? 'Nenhum item pendente'
+                  : 'Nenhum item entregue ainda'}
+              </Text>
+            </View>
+          }
+        />
+
+        {abaAtiva === 'pendentes' && itensSelecionados.length > 0 && (
+          <Button
+            mode="contained"
+            onPress={continuar}
+            style={styles.confirmarButton}
+          >
+            Continuar ({itensSelecionados.length} {itensSelecionados.length === 1 ? 'item' : 'itens'})
+          </Button>
+        )}
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -893,22 +903,23 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   quantidadeInput: {
-    marginTop: 12,
-    padding: 12,
+    marginTop: 8,
+    padding: 8,
     backgroundColor: '#eff6ff',
-    borderRadius: 8,
+    borderRadius: 6,
     borderWidth: 1,
     borderColor: '#bfdbfe',
   },
   quantidadeLabel: {
     fontWeight: 'bold',
-    marginBottom: 4,
+    fontSize: 12,
+    marginBottom: 2,
     color: '#1e40af',
   },
   quantidadeHint: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#6b7280',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   sucessoContainer: {
     flex: 1,

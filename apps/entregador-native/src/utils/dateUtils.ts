@@ -1,0 +1,71 @@
+/**
+ * Utilitários para manipulação de datas
+ * Usa date-fns para garantir manipulação correta de datas sem problemas de timezone
+ */
+
+import { format, parse, isWithinInterval, addDays, isValid } from 'date-fns';
+
+/**
+ * Obtém a data atual no formato YYYY-MM-DD
+ * Usa date-fns para garantir formatação correta
+ */
+export function obterDataAtual(): string {
+  return format(new Date(), 'yyyy-MM-dd');
+}
+
+/**
+ * Converte uma data para o formato YYYY-MM-DD
+ * @param date - Data a ser convertida
+ */
+export function formatarDataParaInput(date: Date): string {
+  return format(date, 'yyyy-MM-dd');
+}
+
+/**
+ * Converte uma string de data (YYYY-MM-DD) para objeto Date
+ * Usa parse do date-fns para garantir parsing correto sem problemas de timezone
+ * @param dateString - String no formato YYYY-MM-DD
+ */
+export function stringParaData(dateString: string): Date {
+  return parse(dateString, 'yyyy-MM-dd', new Date());
+}
+
+/**
+ * Formata uma data para exibição no formato brasileiro (DD/MM/YYYY)
+ * @param dateString - String no formato YYYY-MM-DD ou objeto Date
+ */
+export function formatarDataBR(dateString: string | Date): string {
+  if (typeof dateString === 'string') {
+    const date = stringParaData(dateString);
+    if (!isValid(date)) {
+      return dateString; // Retorna a string original se não for válida
+    }
+    return format(date, 'dd/MM/yyyy');
+  }
+  return format(dateString, 'dd/MM/yyyy');
+}
+
+/**
+ * Verifica se uma data está dentro de um intervalo
+ * @param data - Data a verificar (YYYY-MM-DD)
+ * @param inicio - Data de início (YYYY-MM-DD)
+ * @param fim - Data de fim (YYYY-MM-DD)
+ */
+export function dataEstaNoIntervalo(data: string, inicio: string, fim: string): boolean {
+  const dataObj = stringParaData(data);
+  const inicioObj = stringParaData(inicio);
+  const fimObj = stringParaData(fim);
+  
+  return isWithinInterval(dataObj, { start: inicioObj, end: fimObj });
+}
+
+/**
+ * Adiciona dias a uma data
+ * @param dateString - Data base (YYYY-MM-DD)
+ * @param dias - Número de dias a adicionar (pode ser negativo)
+ */
+export function adicionarDias(dateString: string, dias: number): string {
+  const date = stringParaData(dateString);
+  const novaData = addDays(date, dias);
+  return formatarDataParaInput(novaData);
+}

@@ -1,17 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { Text, Card, Button, TextInput, ActivityIndicator } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, Alert, Platform } from 'react-native';
+import { Text, Card, Button, ActivityIndicator } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { listarRotas, Rota } from '../api/rotas';
 import { handleAxiosError } from '../api/client';
+import { obterDataAtual, formatarDataBR, stringParaData, formatarDataParaInput } from '../utils/dateUtils';
 
 export default function FiltroManualScreen({ navigation }: any) {
   const [rotas, setRotas] = useState<Rota[]>([]);
   const [rotasSelecionadas, setRotasSelecionadas] = useState<number[]>([]);
-  const [dataInicio, setDataInicio] = useState(new Date().toISOString().split('T')[0]);
-  const [dataFim, setDataFim] = useState(new Date().toISOString().split('T')[0]);
+  const [dataInicio, setDataInicio] = useState(obterDataAtual());
+  const [dataFim, setDataFim] = useState(obterDataAtual());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showDatePickerInicio, setShowDatePickerInicio] = useState(false);
+  const [showDatePickerFim, setShowDatePickerFim] = useState(false);
 
   useEffect(() => {
     carregarRotas();
@@ -137,6 +141,20 @@ export default function FiltroManualScreen({ navigation }: any) {
     );
   };
 
+  const onChangeDataInicio = (event: any, selectedDate?: Date) => {
+    setShowDatePickerInicio(Platform.OS === 'ios');
+    if (selectedDate) {
+      setDataInicio(formatarDataParaInput(selectedDate));
+    }
+  };
+
+  const onChangeDataFim = (event: any, selectedDate?: Date) => {
+    setShowDatePickerFim(Platform.OS === 'ios');
+    if (selectedDate) {
+      setDataFim(formatarDataParaInput(selectedDate));
+    }
+  };
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.content}>
@@ -192,27 +210,54 @@ export default function FiltroManualScreen({ navigation }: any) {
                 <Text variant="titleMedium" style={styles.sectionTitle}>
                   Período
                 </Text>
-                <TextInput
-                  label="Data Início"
-                  value={dataInicio}
-                  onChangeText={setDataInicio}
-                  mode="outlined"
-                  style={styles.input}
-                  placeholder="AAAA-MM-DD"
-                  keyboardType="numeric"
-                />
-                <TextInput
-                  label="Data Fim"
-                  value={dataFim}
-                  onChangeText={setDataFim}
-                  mode="outlined"
-                  style={styles.input}
-                  placeholder="AAAA-MM-DD"
-                  keyboardType="numeric"
-                />
-                <Text variant="bodySmall" style={styles.hint}>
-                  Formato: AAAA-MM-DD (ex: 2026-03-03)
-                </Text>
+                
+                {/* Data Início */}
+                <View style={styles.dateContainer}>
+                  <Text variant="bodyMedium" style={styles.dateLabel}>
+                    Data Início:
+                  </Text>
+                  <Button
+                    mode="outlined"
+                    onPress={() => setShowDatePickerInicio(true)}
+                    icon="calendar"
+                    style={styles.dateButton}
+                  >
+                    {formatarDataBR(dataInicio)}
+                  </Button>
+                </View>
+
+                {showDatePickerInicio && (
+                  <DateTimePicker
+                    value={stringParaData(dataInicio)}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    onChange={onChangeDataInicio}
+                  />
+                )}
+
+                {/* Data Fim */}
+                <View style={styles.dateContainer}>
+                  <Text variant="bodyMedium" style={styles.dateLabel}>
+                    Data Fim:
+                  </Text>
+                  <Button
+                    mode="outlined"
+                    onPress={() => setShowDatePickerFim(true)}
+                    icon="calendar"
+                    style={styles.dateButton}
+                  >
+                    {formatarDataBR(dataFim)}
+                  </Button>
+                </View>
+
+                {showDatePickerFim && (
+                  <DateTimePicker
+                    value={stringParaData(dataFim)}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    onChange={onChangeDataFim}
+                  />
+                )}
               </Card.Content>
             </Card>
 
@@ -236,8 +281,7 @@ export default function FiltroManualScreen({ navigation }: any) {
                       Período:
                     </Text>
                     <Text variant="bodyMedium" style={styles.resumoValue}>
-                      {new Date(dataInicio).toLocaleDateString('pt-BR')} até{' '}
-                      {new Date(dataFim).toLocaleDateString('pt-BR')}
+                      {formatarDataBR(dataInicio)} até {formatarDataBR(dataFim)}
                     </Text>
                   </View>
                 </Card.Content>
@@ -329,6 +373,17 @@ const styles = StyleSheet.create({
   },
   input: {
     marginBottom: 12,
+  },
+  dateContainer: {
+    marginBottom: 16,
+  },
+  dateLabel: {
+    marginBottom: 8,
+    fontWeight: '600',
+    color: '#666',
+  },
+  dateButton: {
+    justifyContent: 'flex-start',
   },
   resumoItem: {
     flexDirection: 'row',

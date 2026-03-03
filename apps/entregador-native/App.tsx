@@ -14,6 +14,7 @@ import RotasScreen from './src/screens/RotasScreen';
 import RotaDetalheScreen from './src/screens/RotaDetalheScreen';
 import EscolaDetalheScreen from './src/screens/EscolaDetalheScreen';
 import HistoricoScreen from './src/screens/HistoricoScreen';
+import ComprovantesScreen from './src/screens/ComprovantesScreen';
 
 // Theme
 import { theme } from './src/theme';
@@ -93,6 +94,11 @@ export default function App() {
             name="Historico" 
             component={HistoricoScreen}
             options={{ title: 'Histórico' }}
+          />
+          <Stack.Screen 
+            name="Comprovantes" 
+            component={ComprovantesScreen}
+            options={{ title: 'Comprovantes de Entrega' }}
           />
         </Stack.Navigator>
       </NavigationContainer>
