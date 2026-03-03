@@ -143,18 +143,7 @@ export async function listarProdutos(req: Request, res: Response) {
         p.tipo_processamento,
         p.perecivel,
         p.ativo,
-        p.created_at,
-        (
-          SELECT cp.unidade
-          FROM contrato_produtos cp
-          JOIN contratos c ON cp.contrato_id = c.id
-          WHERE cp.produto_id = p.id
-            AND c.status = 'ativo'
-            AND c.data_inicio <= CURRENT_DATE
-            AND c.data_fim >= CURRENT_DATE
-          ORDER BY c.data_inicio DESC
-          LIMIT 1
-        ) as unidade_contrato
+        p.created_at
       FROM produtos p
       ORDER BY p.nome
     `);

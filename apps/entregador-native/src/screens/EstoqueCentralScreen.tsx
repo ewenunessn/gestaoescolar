@@ -11,6 +11,7 @@ export default function EstoqueCentralScreen({ navigation }: any) {
   const [refreshing, setRefreshing] = useState(false);
   const [busca, setBusca] = useState('');
   const [filtro, setFiltro] = useState<'todos' | 'baixo' | 'vencendo'>('todos');
+  const [fabOpen, setFabOpen] = useState(false);
 
   useEffect(() => {
     carregarEstoque();
@@ -227,9 +228,9 @@ export default function EstoqueCentralScreen({ navigation }: any) {
 
       {/* FAB Menu */}
       <FAB.Group
-        open={false}
+        open={fabOpen}
         visible
-        icon="plus"
+        icon={fabOpen ? 'close' : 'plus'}
         actions={[
           {
             icon: 'package-down',
@@ -247,7 +248,7 @@ export default function EstoqueCentralScreen({ navigation }: any) {
             onPress: () => navigation.navigate('EstoqueCentralAjuste'),
           },
         ]}
-        onStateChange={() => {}}
+        onStateChange={({ open }) => setFabOpen(open)}
       />
     </View>
   );

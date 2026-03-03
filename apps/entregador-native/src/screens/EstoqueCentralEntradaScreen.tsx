@@ -4,9 +4,8 @@ import { Text, Card, Button, TextInput, Switch, ActivityIndicator } from 'react-
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import { registrarEntrada, EntradaData } from '../api/estoqueCentral';
-import { handleAxiosError } from '../api/client';
+import { api, handleAxiosError } from '../api/client';
 import { obterDataAtual, formatarDataBR, stringParaData, formatarDataParaInput } from '../utils/dateUtils';
-import client from '../api/client';
 
 interface Produto {
   id: number;
@@ -42,8 +41,8 @@ export default function EstoqueCentralEntradaScreen({ route, navigation }: any) 
 
   const carregarProdutos = async () => {
     try {
-      const response = await client.get('/produtos');
-      setProdutos(response.data.produtos || response.data);
+      const response = await api.get('/produtos');
+      setProdutos(response.data.data || response.data);
     } catch (err) {
       console.error('Erro ao carregar produtos:', err);
       Alert.alert('Erro', 'Não foi possível carregar os produtos');

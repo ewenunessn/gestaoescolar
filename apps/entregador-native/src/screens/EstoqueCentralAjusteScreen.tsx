@@ -3,8 +3,7 @@ import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Text, Card, Button, TextInput, ActivityIndicator } from 'react-native-paper';
 import { Picker } from '@react-native-picker/picker';
 import { registrarAjuste, AjusteData } from '../api/estoqueCentral';
-import { handleAxiosError } from '../api/client';
-import client from '../api/client';
+import { api, handleAxiosError } from '../api/client';
 
 interface Produto {
   id: number;
@@ -33,8 +32,8 @@ export default function EstoqueCentralAjusteScreen({ route, navigation }: any) {
 
   const carregarProdutos = async () => {
     try {
-      const response = await client.get('/produtos');
-      setProdutos(response.data.produtos || response.data);
+      const response = await api.get('/produtos');
+      setProdutos(response.data.data || response.data);
     } catch (err) {
       console.error('Erro ao carregar produtos:', err);
       Alert.alert('Erro', 'Não foi possível carregar os produtos');
