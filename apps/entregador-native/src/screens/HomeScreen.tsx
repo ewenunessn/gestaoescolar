@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, ScrollView } from 'react-native';
 import { Text, Card, FAB, IconButton } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import QRScanner from '../components/QRScanner';
@@ -58,7 +58,11 @@ export default function HomeScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.content}>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Saudação */}
         <View style={styles.welcomeSection}>
           <Text variant="headlineMedium" style={styles.welcomeTitle}>
@@ -174,7 +178,7 @@ export default function HomeScreen({ navigation }: any) {
             </View>
           </Card.Content>
         </Card>
-      </View>
+      </ScrollView>
 
       {/* Scanner QR */}
       <QRScanner
@@ -191,9 +195,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
-  content: {
+  scrollView: {
     flex: 1,
+  },
+  content: {
     padding: 16,
+    paddingBottom: 32,
   },
   welcomeSection: {
     marginBottom: 24,

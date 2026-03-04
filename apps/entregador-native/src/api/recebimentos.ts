@@ -1,4 +1,4 @@
-import client from './client';
+import { api } from './client';
 
 export interface PedidoPendente {
   id: number;
@@ -52,19 +52,19 @@ export interface Recebimento {
 export const recebimentosAPI = {
   // Listar pedidos pendentes
   async listarPedidosPendentes(): Promise<PedidoPendente[]> {
-    const response = await client.get('/recebimentos/pedidos-pendentes');
+    const response = await api.get('/recebimentos/pedidos-pendentes');
     return response.data.data;
   },
 
   // Listar fornecedores de um pedido
   async listarFornecedores(pedidoId: number): Promise<FornecedorPedido[]> {
-    const response = await client.get(`/recebimentos/pedidos/${pedidoId}/fornecedores`);
+    const response = await api.get(`/recebimentos/pedidos/${pedidoId}/fornecedores`);
     return response.data.data;
   },
 
   // Listar itens de um fornecedor
   async listarItens(pedidoId: number, fornecedorId: number): Promise<ItemPedido[]> {
-    const response = await client.get(`/recebimentos/pedidos/${pedidoId}/fornecedores/${fornecedorId}/itens`);
+    const response = await api.get(`/recebimentos/pedidos/${pedidoId}/fornecedores/${fornecedorId}/itens`);
     return response.data.data;
   },
 
@@ -75,19 +75,19 @@ export const recebimentosAPI = {
     quantidadeRecebida: number;
     observacoes?: string;
   }): Promise<any> {
-    const response = await client.post('/recebimentos/registrar', data);
+    const response = await api.post('/recebimentos/registrar', data);
     return response.data;
   },
 
   // Listar recebimentos de um item
   async listarRecebimentosItem(pedidoItemId: number): Promise<Recebimento[]> {
-    const response = await client.get(`/recebimentos/itens/${pedidoItemId}/recebimentos`);
+    const response = await api.get(`/recebimentos/itens/${pedidoItemId}/recebimentos`);
     return response.data.data;
   },
 
   // Histórico de recebimentos de um pedido
   async historicoRecebimentos(pedidoId: number): Promise<any[]> {
-    const response = await client.get(`/recebimentos/pedidos/${pedidoId}/historico`);
+    const response = await api.get(`/recebimentos/pedidos/${pedidoId}/historico`);
     return response.data.data;
   }
 };
