@@ -184,18 +184,20 @@ export async function registrarRecebimento(req: Request, res: Response) {
     // Verificar se todos os itens do pedido foram recebidos completamente
     const statusCheck = await client.query(`
       SELECT 
-        COUNT(*) as total_itens,
-        COUNT(CASE 
-          WHEN pi.quantidade <= COALESCE(SUM(r.quantidade_recebida), 0) 
-          THEN 1 
+        COUNT(DISTINCT pi.id) as total_itens,
+        COUNT(DISTINCT CASE 
+          WHEN pi.quantidade <= COALESCE((
+            SELECT SUM(quantidade_recebida) 
+            FROM recebimentos 
+            WHERE pedido_item_id = pi.id
+          ), 0)
+          THEN pi.id 
         END) as itens_completos
       FROM pedido_itens pi
-      LEFT JOIN recebimentos r ON pi.id = r.pedido_item_id
       WHERE pi.pedido_id = $1
-      GROUP BY pi.pedido_id
     `, [pedidoId]);
 
-    const { total_itens, itens_completos } = statusCheck.rows[0];
+    const { total_itens, itens_completos } = statusCheck.rows[0] || { total_itens: 0, itens_completos: 0 };
     let novoStatus = 'recebido_parcial';
 
     if (parseInt(itens_completos) === parseInt(total_itens)) {
