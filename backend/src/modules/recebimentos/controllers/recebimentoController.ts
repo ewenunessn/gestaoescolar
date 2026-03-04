@@ -40,6 +40,47 @@ export async function listarPedidosPendentes(req: Request, res: Response) {
   }
 }
 
+// Listar pedidos concluídos
+export async function listarPedidosConcluidos(req: Request, res: Response) {
+  try {
+    const pedidos = await db.query(`
+      SELECT 
+        p.id,
+        p.numero,
+        p.data_pedido,
+        p.status,
+        p.valor_total,
+        p.competencia_mes_ano,
+        COUNT(DISTINCT pi.id) as total_itens,
+        COUNT(DISTINCT f.id) as total_fornecedores,
+        COALESCE(SUM(r.quantidade_recebida * pi.preco_unitario), 0) as valor_recebido,
+        MAX(r.data_recebimento) as data_conclusao
+      FROM pedidos p
+      JOIN pedido_itens pi ON p.id = pi.pedido_id
+      JOIN contrato_produtos cp ON pi.contrato_produto_id = cp.id
+      JOIN contratos c ON cp.contrato_id = c.id
+      JOIN fornecedores f ON c.fornecedor_id = f.id
+      LEFT JOIN recebimentos r ON pi.id = r.pedido_item_id
+      WHERE p.status = 'concluido'
+      GROUP BY p.id, p.numero, p.data_pedido, p.status, p.valor_total, p.competencia_mes_ano
+      ORDER BY p.data_pedido DESC
+      LIMIT 50
+    `);
+
+    res.json({
+      success: true,
+      data: pedidos.rows
+    });
+  } catch (error) {
+    console.error('❌ Erro ao listar pedidos concluídos:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao listar pedidos concluídos',
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+}
+
 // Buscar fornecedores de um pedido
 export async function listarFornecedoresPedido(req: Request, res: Response) {
   try {

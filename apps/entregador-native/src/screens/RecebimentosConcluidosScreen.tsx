@@ -1,16 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { View, FlatList, RefreshControl, StyleSheet } from 'react-native';
-import { Card, Text, Chip, Searchbar, Menu, IconButton, Appbar } from 'react-native-paper';
+import { Card, Text, Chip, Searchbar } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { recebimentosAPI, PedidoPendente } from '../api/recebimentos';
 import { formatarDataBR } from '../utils/dateUtils';
 
-export default function RecebimentosScreen() {
+export default function RecebimentosConcluidosScreen() {
   const navigation = useNavigation<any>();
   const [pedidos, setPedidos] = useState<PedidoPendente[]>([]);
   const [loading, setLoading] = useState(false);
   const [busca, setBusca] = useState('');
-  const [menuVisible, setMenuVisible] = useState(false);
 
   useEffect(() => {
     carregarPedidos();
@@ -19,10 +18,10 @@ export default function RecebimentosScreen() {
   const carregarPedidos = async () => {
     try {
       setLoading(true);
-      const dados = await recebimentosAPI.listarPedidosPendentes();
+      const dados = await recebimentosAPI.listarPedidosConcluidos();
       setPedidos(dados);
     } catch (error) {
-      console.error('Erro ao carregar pedidos:', error);
+      console.error('Erro ao carregar pedidos concluídos:', error);
     } finally {
       setLoading(false);
     }
@@ -32,26 +31,9 @@ export default function RecebimentosScreen() {
     p.numero.toLowerCase().includes(busca.toLowerCase())
   );
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pendente': return '#FF9800';
-      case 'recebido_parcial': return '#2196F3';
-      default: return '#9E9E9E';
-    }
-  };
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'pendente': return 'Pendente';
-      case 'recebido_parcial': return 'Parcial';
-      default: return status;
-    }
-  };
-
   const renderPedido = ({ item }: { item: PedidoPendente }) => {
     const valorTotal = parseFloat(item.valor_total as any) || 0;
     const valorRecebido = parseFloat(item.valor_recebido as any) || 0;
-    const percentualRecebido = valorTotal > 0 ? (valorRecebido / valorTotal) * 100 : 0;
 
     return (
       <Card
@@ -63,15 +45,15 @@ export default function RecebimentosScreen() {
             <Text variant="titleMedium" style={styles.numero}>{item.numero}</Text>
             <Chip
               mode="flat"
-              style={{ backgroundColor: getStatusColor(item.status) }}
+              style={{ backgroundColor: '#4CAF50' }}
               textStyle={{ color: '#FFF' }}
             >
-              {getStatusLabel(item.status)}
+              Concluído
             </Chip>
           </View>
 
           <Text variant="bodySmall" style={styles.data}>
-            {formatarDataBR(item.data_pedido)}
+            Pedido: {formatarDataBR(item.data_pedido)}
           </Text>
 
           <View style={styles.info}>
@@ -94,9 +76,9 @@ export default function RecebimentosScreen() {
               </Text>
             </View>
             <View>
-              <Text variant="bodySmall" style={styles.label}>Progresso</Text>
-              <Text variant="titleSmall">
-                {percentualRecebido.toFixed(0)}%
+              <Text variant="bodySmall" style={styles.label}>Status</Text>
+              <Text variant="titleSmall" style={{ color: '#4CAF50' }}>
+                100%
               </Text>
             </View>
           </View>
@@ -107,30 +89,6 @@ export default function RecebimentosScreen() {
 
   return (
     <View style={styles.container}>
-      <Appbar.Header style={{ backgroundColor: '#1976d2' }}>
-        <Appbar.Content title="Recebimentos" titleStyle={{ color: '#FFF' }} />
-        <Menu
-          visible={menuVisible}
-          onDismiss={() => setMenuVisible(false)}
-          anchor={
-            <Appbar.Action 
-              icon="dots-vertical" 
-              color="#FFF"
-              onPress={() => setMenuVisible(true)} 
-            />
-          }
-        >
-          <Menu.Item 
-            onPress={() => {
-              setMenuVisible(false);
-              navigation.navigate('RecebimentosConcluidos');
-            }} 
-            title="Pedidos Concluídos" 
-            leadingIcon="check-circle"
-          />
-        </Menu>
-      </Appbar.Header>
-
       <Searchbar
         placeholder="Buscar pedido..."
         value={busca}
@@ -147,7 +105,7 @@ export default function RecebimentosScreen() {
         }
         contentContainerStyle={styles.list}
         ListEmptyComponent={
-          <Text style={styles.empty}>Nenhum pedido pendente</Text>
+          <Text style={styles.empty}>Nenhum pedido concluído</Text>
         }
       />
     </View>

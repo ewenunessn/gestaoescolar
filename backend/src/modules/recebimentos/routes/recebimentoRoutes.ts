@@ -10,6 +10,9 @@ router.use(authenticateToken);
 // Listar pedidos pendentes e parciais
 router.get('/pedidos-pendentes', recebimentoController.listarPedidosPendentes);
 
+// Listar pedidos concluídos
+router.get('/pedidos-concluidos', recebimentoController.listarPedidosConcluidos);
+
 // Listar fornecedores de um pedido
 router.get('/pedidos/:pedidoId/fornecedores', recebimentoController.listarFornecedoresPedido);
 

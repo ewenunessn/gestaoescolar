@@ -24,6 +24,7 @@ import EstoqueCentralRelatoriosScreen from './src/screens/EstoqueCentralRelatori
 import RecebimentosScreen from './src/screens/RecebimentosScreen';
 import RecebimentoFornecedoresScreen from './src/screens/RecebimentoFornecedoresScreen';
 import RecebimentoItensScreen from './src/screens/RecebimentoItensScreen';
+import RecebimentosConcluidosScreen from './src/screens/RecebimentosConcluidosScreen';
 
 // Theme
 import { theme } from './src/theme';
@@ -142,7 +143,12 @@ export default function App() {
           <Stack.Screen 
             name="Recebimentos" 
             component={RecebimentosScreen}
-            options={{ title: 'Recebimentos' }}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen 
+            name="RecebimentosConcluidos" 
+            component={RecebimentosConcluidosScreen}
+            options={{ title: 'Pedidos Concluídos' }}
           />
           <Stack.Screen 
             name="RecebimentoFornecedores" 

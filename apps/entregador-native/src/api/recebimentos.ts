@@ -56,6 +56,12 @@ export const recebimentosAPI = {
     return response.data.data;
   },
 
+  // Listar pedidos concluídos
+  async listarPedidosConcluidos(): Promise<PedidoPendente[]> {
+    const response = await api.get('/recebimentos/pedidos-concluidos');
+    return response.data.data;
+  },
+
   // Listar fornecedores de um pedido
   async listarFornecedores(pedidoId: number): Promise<FornecedorPedido[]> {
     const response = await api.get(`/recebimentos/pedidos/${pedidoId}/fornecedores`);
