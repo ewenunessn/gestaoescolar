@@ -2,12 +2,10 @@ import { Request, Response } from "express";
 const db = require("../../../database");
 
 const STATUS_PEDIDO = {
-  rascunho: { label: 'Rascunho', color: 'default' },
   pendente: { label: 'Pendente', color: 'warning' },
-  aprovado: { label: 'Aprovado', color: 'info' },
-  em_separacao: { label: 'Em Separação', color: 'primary' },
-  enviado: { label: 'Enviado', color: 'secondary' },
-  entregue: { label: 'Entregue', color: 'success' },
+  recebido_parcial: { label: 'Recebido Parcial', color: 'info' },
+  concluido: { label: 'Concluído', color: 'success' },
+  suspenso: { label: 'Suspenso', color: 'secondary' },
   cancelado: { label: 'Cancelado', color: 'error' }
 } as const;
 
@@ -183,7 +181,8 @@ export async function criarPedido(req: Request, res: Response) {
     const {
       observacoes,
       itens,
-      salvar_como_rascunho
+      salvar_como_rascunho,
+      competencia_mes_ano
     } = req.body;
 
     const usuario_criacao_id = (req as any).user?.id || 1;
@@ -196,17 +195,23 @@ export async function criarPedido(req: Request, res: Response) {
       });
     }
 
-    const ano = new Date().getFullYear();
+    // Usar competência fornecida ou data atual
+    const competencia = competencia_mes_ano || new Date().toISOString().substring(0, 7); // YYYY-MM
+    const [ano, mes] = competencia.split('-');
     
-    // Buscar o próximo número sequencial disponível
+    // Mapa de meses em português (3 letras maiúsculas)
+    const meses = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
+    const mesAbrev = meses[parseInt(mes) - 1];
+    
+    // Buscar o próximo número sequencial disponível para a competência
     const maxNumeroResult = await client.query(`
-      SELECT COALESCE(MAX(CAST(SUBSTRING(numero FROM 8) AS INTEGER)), 0) as max_sequencial
+      SELECT COALESCE(MAX(CAST(SUBSTRING(numero FROM LENGTH(numero) - 5) AS INTEGER)), 0) as max_sequencial
       FROM pedidos 
-      WHERE EXTRACT(YEAR FROM created_at) = $1 AND numero LIKE $2
-    `, [ano, `PED${ano}%`]);
+      WHERE competencia_mes_ano = $1
+    `, [competencia]);
 
     const proximoSequencial = (parseInt(maxNumeroResult.rows[0].max_sequencial) + 1).toString().padStart(6, '0');
-    const numero = `PED${ano}${proximoSequencial}`;
+    const numero = `PED-${mesAbrev}${ano}${proximoSequencial}`;
 
     let valor_total = 0;
     for (const item of itens) {
@@ -247,15 +252,15 @@ export async function criarPedido(req: Request, res: Response) {
       valor_total += item.quantidade * contratoProduto.preco_unitario;
     }
 
-    const status_inicial = salvar_como_rascunho ? 'rascunho' : 'pendente';
+    const status_inicial = salvar_como_rascunho ? 'pendente' : 'pendente';
 
     const pedidoResult = await client.query(`
       INSERT INTO pedidos (
-        numero, data_pedido, status, valor_total, observacoes, usuario_criacao_id
+        numero, data_pedido, status, valor_total, observacoes, usuario_criacao_id, competencia_mes_ano
       )
-      VALUES ($1, CURRENT_DATE, $2, $3, $4, $5)
+      VALUES ($1, CURRENT_DATE, $2, $3, $4, $5, $6)
       RETURNING *
-    `, [numero, status_inicial, valor_total, observacoes, usuario_criacao_id]);
+    `, [numero, status_inicial, valor_total, observacoes, usuario_criacao_id, competencia]);
 
     const pedido_id = pedidoResult.rows[0].id;
 
@@ -319,12 +324,165 @@ export async function criarPedido(req: Request, res: Response) {
 }
 
 export async function atualizarPedido(req: Request, res: Response) {
+  const client = await db.pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const { id } = req.params;
+    const { observacoes, itens, competencia_mes_ano } = req.body;
+
+    const pedidoResult = await client.query(`
+      SELECT status FROM pedidos WHERE id = $1
+    `, [id]);
+
+    if (pedidoResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({
+        success: false,
+        message: "Pedido não encontrado"
+      });
+    }
+
+    // Permitir edição em qualquer status
+    // Remover restrição de apenas rascunho
+
+    // Atualizar observações e competência se fornecidos
+    let updateFields = ['updated_at = CURRENT_TIMESTAMP'];
+    const updateValues: any[] = [];
+    let paramCount = 0;
+
+    if (observacoes !== undefined) {
+      paramCount++;
+      updateFields.push(`observacoes = $${paramCount}`);
+      updateValues.push(observacoes);
+    }
+
+    if (competencia_mes_ano !== undefined) {
+      paramCount++;
+      updateFields.push(`competencia_mes_ano = $${paramCount}`);
+      updateValues.push(competencia_mes_ano);
+    }
+
+    // Se houver itens, atualizar
+    if (itens && Array.isArray(itens)) {
+      // Remover itens existentes
+      await client.query(`DELETE FROM pedido_itens WHERE pedido_id = $1`, [id]);
+
+      // Adicionar novos itens e calcular valor total
+      let valor_total = 0;
+      for (const item of itens) {
+        const cpResult = await client.query(`
+          SELECT cp.*, p.nome as produto_nome, c.status as contrato_status
+          FROM contrato_produtos cp
+          JOIN produtos p ON cp.produto_id = p.id
+          JOIN contratos c ON cp.contrato_id = c.id
+          WHERE cp.id = $1 AND cp.ativo = true
+        `, [item.contrato_produto_id]);
+
+        if (cpResult.rows.length === 0) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({
+            success: false,
+            message: `Produto não encontrado ou inativo`
+          });
+        }
+
+        const contratoProduto = cpResult.rows[0];
+
+        if (contratoProduto.contrato_status !== 'ativo') {
+          await client.query('ROLLBACK');
+          return res.status(400).json({
+            success: false,
+            message: `O contrato do produto ${contratoProduto.produto_nome} não está ativo`
+          });
+        }
+
+        if (item.quantidade <= 0) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({
+            success: false,
+            message: `Quantidade inválida para o produto ${contratoProduto.produto_nome}`
+          });
+        }
+
+        const preco_unitario = contratoProduto.preco_unitario;
+        const produto_id = contratoProduto.produto_id;
+        const valor_item = item.quantidade * preco_unitario;
+        valor_total += valor_item;
+
+        await client.query(`
+          INSERT INTO pedido_itens (
+            pedido_id, contrato_produto_id, produto_id, quantidade,
+            preco_unitario, valor_total, data_entrega_prevista, observacoes
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        `, [id, item.contrato_produto_id, produto_id, item.quantidade, preco_unitario, valor_item, item.data_entrega_prevista, item.observacoes]);
+      }
+
+      // Adicionar valor_total ao update
+      paramCount++;
+      updateFields.push(`valor_total = $${paramCount}`);
+      updateValues.push(valor_total);
+    }
+
+    // Executar update se houver campos para atualizar
+    if (updateFields.length > 1) { // Mais que apenas updated_at
+      paramCount++;
+      const query = `
+        UPDATE pedidos 
+        SET ${updateFields.join(', ')}
+        WHERE id = $${paramCount}
+        RETURNING *
+      `;
+      updateValues.push(id);
+
+      const result = await client.query(query, updateValues);
+      await client.query('COMMIT');
+
+      res.json({
+        success: true,
+        message: "Pedido atualizado com sucesso",
+        data: result.rows[0]
+      });
+    } else {
+      await client.query('COMMIT');
+      res.json({
+        success: true,
+        message: "Nenhuma alteração realizada"
+      });
+    }
+
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error("❌ Erro ao atualizar pedido:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao atualizar pedido",
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  } finally {
+    client.release();
+  }
+}
+
+export async function atualizarStatusPedido(req: Request, res: Response) {
   try {
     const { id } = req.params;
-    const { observacoes } = req.body;
+    const { status, motivo } = req.body;
+    const usuario_id = (req as any).user?.id || 1;
+
+    const statusValidos = ['pendente', 'recebido_parcial', 'concluido', 'suspenso', 'cancelado'];
+
+    if (!statusValidos.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Status inválido. Use: pendente, recebido_parcial, concluido, suspenso ou cancelado"
+      });
+    }
 
     const pedidoResult = await db.query(`
-      SELECT status FROM pedidos WHERE id = $1
+      SELECT status, numero FROM pedidos WHERE id = $1
     `, [id]);
 
     if (pedidoResult.rows.length === 0) {
@@ -334,79 +492,29 @@ export async function atualizarPedido(req: Request, res: Response) {
       });
     }
 
-    if (pedidoResult.rows[0].status !== 'rascunho') {
-      return res.status(400).json({
-        success: false,
-        message: "Apenas pedidos em rascunho podem ser editados"
-      });
-    }
-
-    const result = await db.query(`
-      UPDATE pedidos 
-      SET observacoes = $1, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $2
-      RETURNING *
-    `, [observacoes, id]);
-
-    res.json({
-      success: true,
-      message: "Pedido atualizado com sucesso",
-      data: result.rows[0]
-    });
-  } catch (error) {
-    console.error("❌ Erro ao atualizar pedido:", error);
-    res.status(500).json({
-      success: false,
-      message: "Erro ao atualizar pedido",
-      error: error instanceof Error ? error.message : 'Erro desconhecido'
-    });
-  }
-}
-
-export async function atualizarStatusPedido(req: Request, res: Response) {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
-    const usuario_id = (req as any).user?.id || 1;
-
-    const statusValidos = ['rascunho', 'pendente', 'aprovado', 'em_separacao', 'enviado', 'entregue', 'cancelado'];
-
-    if (!statusValidos.includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: "Status inválido"
-      });
-    }
-
+    // Adicionar motivo às observações se fornecido
     let query = `
-      UPDATE pedidos 
+      UPDATE pedidos
       SET status = $1, updated_at = CURRENT_TIMESTAMP
     `;
-
     const values: any[] = [status];
-    let paramCount = 2;
+    let paramCount = 1;
 
-    if (status === 'aprovado') {
-      query += `, usuario_aprovacao_id = $${paramCount}, data_aprovacao = CURRENT_TIMESTAMP`;
-      values.push(usuario_id);
+    if (motivo) {
       paramCount++;
+      query += `, observacoes = COALESCE(observacoes, '') || '\n[${STATUS_PEDIDO[status as keyof typeof STATUS_PEDIDO]?.label}]: ' || $${paramCount}`;
+      values.push(motivo);
     }
 
+    paramCount++;
     query += ` WHERE id = $${paramCount} RETURNING *`;
     values.push(id);
 
     const result = await db.query(query, values);
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Pedido não encontrado"
-      });
-    }
-
     res.json({
       success: true,
-      message: `Pedido ${status === 'aprovado' ? 'aprovado' : 'atualizado'} com sucesso`,
+      message: `Status alterado para ${STATUS_PEDIDO[status as keyof typeof STATUS_PEDIDO]?.label}`,
       data: result.rows[0]
     });
   } catch (error) {
@@ -418,6 +526,7 @@ export async function atualizarStatusPedido(req: Request, res: Response) {
     });
   }
 }
+
 
 export async function excluirPedido(req: Request, res: Response) {
   const client = await db.pool.connect();
@@ -462,11 +571,8 @@ export async function excluirPedido(req: Request, res: Response) {
       });
     }
 
-    // Permitir excluir pedidos em qualquer fase
-    // Adicionar log de auditoria para exclusões de pedidos em andamento
-    if (!['rascunho', 'cancelado'].includes(status)) {
-      console.log(`⚠️ EXCLUSÃO DE PEDIDO EM ANDAMENTO: Pedido ${numero} (Status: ${status}) sendo excluído pelo usuário`);
-    }
+    // Permitir excluir pedidos em qualquer status
+    console.log(`⚠️ EXCLUSÃO DE PEDIDO: Pedido ${numero} (Status: ${status}) sendo excluído`);
 
     // Excluir faturamentos sem consumo (se houver)
     await client.query(`DELETE FROM faturamento_itens WHERE faturamento_id IN (SELECT id FROM faturamentos WHERE pedido_id = $1)`, [id]);
@@ -480,13 +586,9 @@ export async function excluirPedido(req: Request, res: Response) {
 
     await client.query('COMMIT');
 
-    const tipoExclusao = status === 'rascunho' ? 'Rascunho' :
-      status === 'cancelado' ? 'Pedido cancelado' :
-        `Pedido ${STATUS_PEDIDO[status as keyof typeof STATUS_PEDIDO]?.label || status}`;
-
     res.json({
       success: true,
-      message: `${tipoExclusao} ${numero} excluído com sucesso`
+      message: `Pedido ${numero} excluído com sucesso`
     });
   } catch (error) {
     await client.query('ROLLBACK');
@@ -501,60 +603,6 @@ export async function excluirPedido(req: Request, res: Response) {
   }
 }
 
-export async function cancelarPedido(req: Request, res: Response) {
-  try {
-    const { id } = req.params;
-    const { motivo } = req.body;
-
-    const pedidoResult = await db.query(`
-      SELECT status FROM pedidos WHERE id = $1
-    `, [id]);
-
-    if (pedidoResult.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Pedido não encontrado"
-      });
-    }
-
-    if (['entregue', 'cancelado'].includes(pedidoResult.rows[0].status)) {
-      return res.status(400).json({
-        success: false,
-        message: "Pedido não pode ser cancelado"
-      });
-    }
-
-    // Se for rascunho, redirecionar para exclusão
-    if (pedidoResult.rows[0].status === 'rascunho') {
-      return res.status(400).json({
-        success: false,
-        message: "Use o endpoint de exclusão para rascunhos"
-      });
-    }
-
-    const result = await db.query(`
-      UPDATE pedidos 
-      SET status = 'cancelado', 
-          observacoes = COALESCE(observacoes, '') || ' | CANCELADO: ' || $1,
-          updated_at = CURRENT_TIMESTAMP
-      WHERE id = $2
-      RETURNING *
-    `, [motivo || 'Sem motivo informado', id]);
-
-    res.json({
-      success: true,
-      message: "Pedido cancelado com sucesso",
-      data: result.rows[0]
-    });
-  } catch (error) {
-    console.error("❌ Erro ao cancelar pedido:", error);
-    res.status(500).json({
-      success: false,
-      message: "Erro ao cancelar pedido",
-      error: error instanceof Error ? error.message : 'Erro desconhecido'
-    });
-  }
-}
 
 export async function obterEstatisticasPedidos(req: Request, res: Response) {
   try {
@@ -615,116 +663,6 @@ export async function obterEstatisticasPedidos(req: Request, res: Response) {
   }
 }
 
-export async function atualizarItensPedido(req: Request, res: Response) {
-  const client = await db.pool.connect();
-
-  try {
-    await client.query('BEGIN');
-
-    const { id } = req.params;
-    const { itens } = req.body;
-
-    // Verificar se o pedido existe e está em rascunho
-    const pedidoResult = await client.query(`
-      SELECT status FROM pedidos WHERE id = $1
-    `, [id]);
-
-    if (pedidoResult.rows.length === 0) {
-      await client.query('ROLLBACK');
-      return res.status(404).json({
-        success: false,
-        message: "Pedido não encontrado"
-      });
-    }
-
-    if (pedidoResult.rows[0].status !== 'rascunho') {
-      await client.query('ROLLBACK');
-      return res.status(400).json({
-        success: false,
-        message: "Apenas pedidos em rascunho podem ter itens editados"
-      });
-    }
-
-    // Remover todos os itens existentes
-    await client.query(`DELETE FROM pedido_itens WHERE pedido_id = $1`, [id]);
-
-    // Adicionar novos itens
-    let valor_total = 0;
-    for (const item of itens) {
-      const cpResult = await client.query(`
-        SELECT cp.*, p.nome as produto_nome, c.status as contrato_status
-        FROM contrato_produtos cp
-        JOIN produtos p ON cp.produto_id = p.id
-        JOIN contratos c ON cp.contrato_id = c.id
-        WHERE cp.id = $1 AND cp.ativo = true
-      `, [item.contrato_produto_id]);
-
-      if (cpResult.rows.length === 0) {
-        await client.query('ROLLBACK');
-        return res.status(400).json({
-          success: false,
-          message: `Produto não encontrado ou inativo`
-        });
-      }
-
-      const contratoProduto = cpResult.rows[0];
-
-      if (contratoProduto.contrato_status !== 'ativo') {
-        await client.query('ROLLBACK');
-        return res.status(400).json({
-          success: false,
-          message: `O contrato do produto ${contratoProduto.produto_nome} não está ativo`
-        });
-      }
-
-      if (item.quantidade <= 0) {
-        await client.query('ROLLBACK');
-        return res.status(400).json({
-          success: false,
-          message: `Quantidade inválida para o produto ${contratoProduto.produto_nome}`
-        });
-      }
-
-      const preco_unitario = contratoProduto.preco_unitario;
-      const produto_id = contratoProduto.produto_id;
-      const valor_item = item.quantidade * preco_unitario;
-      valor_total += valor_item;
-
-      await client.query(`
-        INSERT INTO pedido_itens (
-          pedido_id, contrato_produto_id, produto_id, quantidade,
-          preco_unitario, valor_total, data_entrega_prevista, observacoes
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      `, [id, item.contrato_produto_id, produto_id, item.quantidade, preco_unitario, valor_item, item.data_entrega_prevista, item.observacoes]);
-    }
-
-    // Atualizar valor total do pedido
-    await client.query(`
-      UPDATE pedidos 
-      SET valor_total = $1, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $2
-    `, [valor_total, id]);
-
-    await client.query('COMMIT');
-
-    res.json({
-      success: true,
-      message: "Itens do pedido atualizados com sucesso"
-    });
-
-  } catch (error) {
-    await client.query('ROLLBACK');
-    console.error("❌ Erro ao atualizar itens:", error);
-    res.status(500).json({
-      success: false,
-      message: "Erro ao atualizar itens do pedido",
-      error: error instanceof Error ? error.message : 'Erro desconhecido'
-    });
-  } finally {
-    client.release();
-  }
-}
 
 export async function listarProdutosContrato(req: Request, res: Response) {
   try {

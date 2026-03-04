@@ -64,6 +64,11 @@ export default function NovoPedido() {
   const [produtoSelecionado, setProdutoSelecionado] = useState<ContratoProduto | null>(null);
   
   const [observacoes, setObservacoes] = useState('');
+  const [competenciaMesAno, setCompetenciaMesAno] = useState(() => {
+    // Competência padrão: mês/ano atual
+    const hoje = new Date();
+    return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+  });
   const [itens, setItens] = useState<ItemPedido[]>([]);
   const [erro, setErro] = useState('');
 
@@ -211,6 +216,7 @@ export default function NovoPedido() {
 
       const dados = {
         observacoes: observacoes || undefined,
+        competencia_mes_ano: competenciaMesAno,
         salvar_como_rascunho: salvarComoRascunho,
         itens: itens.map(item => ({
           contrato_produto_id: item.contrato_produto_id,
@@ -307,15 +313,30 @@ export default function NovoPedido() {
               </Grid>
 
               <Box sx={{ mt: 3 }}>
-                <TextField
-                  fullWidth
-                  label="Observações Gerais do Pedido"
-                  multiline
-                  rows={2}
-                  value={observacoes}
-                  onChange={(e) => setObservacoes(e.target.value)}
-                  placeholder="Observações que se aplicam a todo o pedido..."
-                />
+                <Grid container spacing={2}>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Competência (Mês/Ano)"
+                      type="month"
+                      value={competenciaMesAno}
+                      onChange={(e) => setCompetenciaMesAno(e.target.value)}
+                      InputLabelProps={{ shrink: true }}
+                      helperText="Define o mês/ano de competência do pedido"
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Observações Gerais do Pedido"
+                      multiline
+                      rows={2}
+                      value={observacoes}
+                      onChange={(e) => setObservacoes(e.target.value)}
+                      placeholder="Observações que se aplicam a todo o pedido..."
+                    />
+                  </Grid>
+                </Grid>
               </Box>
             </CardContent>
           </Card>
