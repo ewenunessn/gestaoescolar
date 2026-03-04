@@ -109,48 +109,41 @@ export default function RecebimentoItensScreen() {
         <Card.Content>
           <View style={styles.header}>
             <View style={{ flex: 1 }}>
-              <Text variant="titleMedium" style={styles.produto}>
+              <Text variant="titleSmall" style={styles.produto}>
                 {item.produto_nome}
               </Text>
               <Text variant="bodySmall" style={styles.contrato}>
-                Contrato: {item.contrato_numero}
+                {item.contrato_numero}
               </Text>
             </View>
             {completo && (
-              <Chip mode="flat" style={{ backgroundColor: '#4CAF50' }} textStyle={{ color: '#FFF' }}>
-                Completo
+              <Chip mode="flat" compact style={{ backgroundColor: '#4CAF50' }} textStyle={{ color: '#FFF', fontSize: 11 }}>
+                OK
               </Chip>
             )}
           </View>
 
           <View style={styles.quantidades}>
             <View style={styles.quantidadeItem}>
-              <Text variant="bodySmall" style={styles.label}>Pedido</Text>
-              <Text variant="titleSmall">
+              <Text variant="bodySmall" style={styles.labelCompact}>Pedido</Text>
+              <Text variant="bodyMedium" style={{ fontWeight: 'bold' }}>
                 {quantidade} {item.unidade}
               </Text>
             </View>
             <View style={styles.quantidadeItem}>
-              <Text variant="bodySmall" style={styles.label}>Recebido</Text>
-              <Text variant="titleSmall" style={{ color: '#4CAF50' }}>
-                {quantidadeRecebida} {item.unidade}
+              <Text variant="bodySmall" style={styles.labelCompact}>Recebido</Text>
+              <Text variant="bodyMedium" style={{ color: '#4CAF50', fontWeight: 'bold' }}>
+                {quantidadeRecebida}
               </Text>
             </View>
             <View style={styles.quantidadeItem}>
-              <Text variant="bodySmall" style={styles.label}>Saldo</Text>
-              <Text variant="titleSmall" style={{ color: completo ? '#4CAF50' : '#FF9800' }}>
-                {saldoPendente} {item.unidade}
+              <Text variant="bodySmall" style={styles.labelCompact}>Saldo</Text>
+              <Text variant="bodyMedium" style={{ color: completo ? '#4CAF50' : '#FF9800', fontWeight: 'bold' }}>
+                {saldoPendente}
               </Text>
             </View>
-          </View>
-
-          <View style={styles.valores}>
-            <View>
-              <Text variant="bodySmall" style={styles.label}>Preço Unit.</Text>
-              <Text variant="bodyMedium">R$ {precoUnitario.toFixed(2)}</Text>
-            </View>
-            <View>
-              <Text variant="bodySmall" style={styles.label}>Valor Total</Text>
+            <View style={styles.quantidadeItem}>
+              <Text variant="bodySmall" style={styles.labelCompact}>Valor</Text>
               <Text variant="bodyMedium" style={{ fontWeight: 'bold' }}>
                 R$ {valorTotal.toFixed(2)}
               </Text>
@@ -158,20 +151,20 @@ export default function RecebimentoItensScreen() {
           </View>
 
           {item.observacoes && (
-            <View style={styles.observacoes}>
-              <Text variant="bodySmall" style={styles.label}>Observações:</Text>
-              <Text variant="bodySmall">{item.observacoes}</Text>
-            </View>
+            <Text variant="bodySmall" style={styles.observacoesCompact} numberOfLines={1}>
+              Obs: {item.observacoes}
+            </Text>
           )}
 
-          <View style={styles.acoes}>
+          <View style={styles.acoesCompact}>
             {!completo && (
               <Button
                 mode="contained"
                 onPress={() => abrirDialogRecebimento(item)}
                 style={{ flex: 1 }}
+                compact
               >
-                Registrar Recebimento
+                Registrar
               </Button>
             )}
             {item.total_recebimentos > 0 && (
@@ -179,6 +172,7 @@ export default function RecebimentoItensScreen() {
                 mode="outlined"
                 onPress={() => verHistorico(item)}
                 style={completo ? { flex: 1 } : { marginLeft: 8 }}
+                compact
               >
                 Histórico ({item.total_recebimentos})
               </Button>
@@ -312,16 +306,30 @@ const styles = StyleSheet.create({
   fornecedorNome: { color: '#FFF', fontWeight: 'bold' },
   fornecedorInfo: { color: '#FFF', marginTop: 4 },
   list: { padding: 16, paddingTop: 8 },
-  card: { marginBottom: 12 },
-  header: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 },
-  produto: { fontWeight: 'bold' },
-  contrato: { color: '#666', marginTop: 4 },
-  quantidades: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 12, paddingVertical: 12, backgroundColor: '#F5F5F5', borderRadius: 8 },
+  card: { marginBottom: 8 },
+  header: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 6 },
+  produto: { fontWeight: 'bold', fontSize: 14 },
+  contrato: { color: '#666', marginTop: 2, fontSize: 11 },
+  quantidades: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-around', 
+    marginVertical: 8, 
+    paddingVertical: 8, 
+    backgroundColor: '#F5F5F5', 
+    borderRadius: 6 
+  },
   quantidadeItem: { alignItems: 'center' },
-  valores: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: 12, borderTopWidth: 1, borderTopColor: '#E0E0E0', marginBottom: 12 },
-  label: { color: '#666', marginBottom: 4 },
-  observacoes: { marginBottom: 12, padding: 12, backgroundColor: '#FFF3E0', borderRadius: 8 },
-  acoes: { flexDirection: 'row', marginTop: 8 },
+  labelCompact: { color: '#666', marginBottom: 2, fontSize: 10 },
+  observacoesCompact: { 
+    marginTop: 4, 
+    marginBottom: 8, 
+    padding: 6, 
+    backgroundColor: '#FFF3E0', 
+    borderRadius: 4,
+    fontSize: 11,
+    color: '#666'
+  },
+  acoesCompact: { flexDirection: 'row', marginTop: 6 },
   empty: { textAlign: 'center', marginTop: 32, color: '#999' },
   historicoItem: { paddingVertical: 8 },
   historicoHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }
