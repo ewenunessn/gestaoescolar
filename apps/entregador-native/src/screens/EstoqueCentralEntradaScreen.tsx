@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert, Platform } from 'react-native';
-import { Text, Card, Button, TextInput, Switch, ActivityIndicator } from 'react-native-paper';
+import { Text, Card, Button, TextInput, ActivityIndicator } from 'react-native-paper';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import { registrarEntrada, EntradaData } from '../api/estoqueCentral';
 import { api, handleAxiosError } from '../api/client';
-import { obterDataAtual, formatarDataBR, stringParaData, formatarDataParaInput } from '../utils/dateUtils';
+import { formatarDataBR, stringParaData, formatarDataParaInput } from '../utils/dateUtils';
 
 interface Produto {
   id: number;
@@ -22,7 +22,6 @@ export default function EstoqueCentralEntradaScreen({ route, navigation }: any) 
 
   const [produtoId, setProdutoId] = useState(produtoInicial?.produto_id || '');
   const [quantidade, setQuantidade] = useState('');
-  const [usarLote, setUsarLote] = useState(false);
   const [lote, setLote] = useState('');
   const [dataFabricacao, setDataFabricacao] = useState('');
   const [dataValidade, setDataValidade] = useState('');
@@ -62,15 +61,15 @@ export default function EstoqueCentralEntradaScreen({ route, navigation }: any) 
       return false;
     }
 
-    if (usarLote) {
-      if (!lote) {
-        Alert.alert('Atenção', 'Informe o código do lote');
-        return false;
-      }
-      if (!dataValidade) {
-        Alert.alert('Atenção', 'Informe a data de validade do lote');
-        return false;
-      }
+    // Lote e validade são obrigatórios
+    if (!lote) {
+      Alert.alert('Atenção', 'Informe o código do lote');
+      return false;
+    }
+    
+    if (!dataValidade) {
+      Alert.alert('Atenção', 'Informe a data de validade do lote');
+      return false;
     }
 
     return true;
@@ -85,20 +84,15 @@ export default function EstoqueCentralEntradaScreen({ route, navigation }: any) 
       const dados: EntradaData = {
         produto_id: parseInt(produtoId),
         quantidade: parseFloat(quantidade),
+        lote: lote, // Obrigatório
+        data_validade: dataValidade, // Obrigatório
+        data_fabricacao: dataFabricacao || undefined,
         motivo,
         observacao,
         fornecedor,
         nota_fiscal: notaFiscal,
         documento,
       };
-
-      if (usarLote) {
-        dados.lote = lote;
-        dados.data_validade = dataValidade;
-        if (dataFabricacao) {
-          dados.data_fabricacao = dataFabricacao;
-        }
-      }
 
       await registrarEntrada(dados);
 
@@ -120,14 +114,14 @@ export default function EstoqueCentralEntradaScreen({ route, navigation }: any) 
     }
   };
 
-  const onChangeDateFabricacao = (event: any, selectedDate?: Date) => {
+  const onChangeDateFabricacao = (_event: any, selectedDate?: Date) => {
     setShowDatePickerFabricacao(Platform.OS === 'ios');
     if (selectedDate) {
       setDataFabricacao(formatarDataParaInput(selectedDate));
     }
   };
 
-  const onChangeDateValidade = (event: any, selectedDate?: Date) => {
+  const onChangeDateValidade = (_event: any, selectedDate?: Date) => {
     setShowDatePickerValidade(Platform.OS === 'ios');
     if (selectedDate) {
       setDataValidade(formatarDataParaInput(selectedDate));
@@ -198,16 +192,12 @@ export default function EstoqueCentralEntradaScreen({ route, navigation }: any) 
             </Card.Content>
           </Card>
 
-          {/* Lote */}
+          {/* Lote (Obrigatório) */}
           <Card style={styles.card}>
             <Card.Content>
-              <View style={styles.switchRow}>
-                <Text variant="titleMedium">Controlar por Lote</Text>
-                <Switch value={usarLote} onValueChange={setUsarLote} />
-              </View>
-
-              {usarLote && (
-                <>
+              <Text variant="titleMedium" style={styles.sectionTitle}>
+                Informações do Lote (Obrigatório)
+              </Text>
                   <TextInput
                     label="Código do Lote"
                     value={lote}
@@ -263,8 +253,6 @@ export default function EstoqueCentralEntradaScreen({ route, navigation }: any) 
                       minimumDate={new Date()}
                     />
                   )}
-                </>
-              )}
             </Card.Content>
           </Card>
 

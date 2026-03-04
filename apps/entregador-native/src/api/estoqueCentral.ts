@@ -44,9 +44,9 @@ export interface Movimentacao {
 export interface EntradaData {
   produto_id: number;
   quantidade: number;
-  lote?: string;
+  lote: string; // OBRIGATÓRIO
   data_fabricacao?: string;
-  data_validade?: string;
+  data_validade: string; // OBRIGATÓRIO
   motivo?: string;
   observacao?: string;
   documento?: string;
@@ -57,10 +57,10 @@ export interface EntradaData {
 export interface SaidaData {
   produto_id: number;
   quantidade: number;
-  lote_id?: number;
   motivo?: string;
   observacao?: string;
   documento?: string;
+  // lote_id removido - FEFO automático
 }
 
 export interface AjusteData {

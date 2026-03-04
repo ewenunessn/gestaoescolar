@@ -24,7 +24,17 @@ export interface CriarSaidaData {
   documento?: string;
   usuario_id?: number;
   usuario_nome?: string;
-  // lote_id removido - será calculado automaticamente via FEFO
+  // lote_id removido - FEFO automático
+}
+
+export interface CriarAjusteData {
+  produto_id: number;
+  quantidade_nova: number;
+  lote_id?: number;
+  motivo: string;
+  observacao?: string;
+  usuario_id?: number;
+  usuario_nome?: string;
 }
 
 class EstoqueCentralModel {
@@ -159,6 +169,65 @@ class EstoqueCentralModel {
       }
 
       return { movimentacoes, total_retirado: parseFloat(dados.quantidade as any) };
+    });
+  }
+
+  /**
+   * Registrar ajuste de estoque
+   */
+  async registrarAjuste(dados: CriarAjusteData): Promise<any> {
+    return await db.transaction(async (client) => {
+      // Buscar estoque
+      const estoqueResult = await client.query(
+        'SELECT * FROM estoque_central WHERE produto_id = $1',
+        [dados.produto_id]
+      );
+
+      if (estoqueResult.rows.length === 0) {
+        throw new Error('Produto não encontrado no estoque central');
+      }
+
+      const estoqueId = estoqueResult.rows[0].id;
+      const quantidadeNovaNum = parseFloat(dados.quantidade_nova as any) || 0;
+
+      // Se especificou lote, ajustar apenas esse lote
+      if (dados.lote_id) {
+        const loteResult = await client.query(
+          'SELECT * FROM estoque_central_lotes WHERE id = $1 AND estoque_central_id = $2',
+          [dados.lote_id, estoqueId]
+        );
+
+        if (loteResult.rows.length === 0) {
+          throw new Error('Lote não encontrado');
+        }
+
+        const lote = loteResult.rows[0];
+        const quantidadeAnterior = parseFloat(lote.quantidade);
+        const diferenca = quantidadeNovaNum - quantidadeAnterior;
+
+        // Atualizar quantidade do lote
+        await client.query(
+          'UPDATE estoque_central_lotes SET quantidade = $1 WHERE id = $2',
+          [quantidadeNovaNum, dados.lote_id]
+        );
+
+        // Registrar movimentação
+        const movResult = await client.query(
+          `INSERT INTO estoque_central_movimentacoes 
+           (estoque_central_id, lote_id, tipo, quantidade, quantidade_anterior, quantidade_posterior, 
+            motivo, observacao, usuario_id, usuario_nome)
+           VALUES ($1, $2, 'ajuste', $3, $4, $5, $6, $7, $8, $9)
+           RETURNING *`,
+          [
+            estoqueId, dados.lote_id, diferenca, quantidadeAnterior, quantidadeNovaNum,
+            dados.motivo, dados.observacao, dados.usuario_id, dados.usuario_nome
+          ]
+        );
+
+        return movResult.rows[0];
+      } else {
+        throw new Error('Ajuste sem lote específico não é suportado. Especifique um lote_id.');
+      }
     });
   }
 

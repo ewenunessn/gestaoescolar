@@ -82,9 +82,9 @@ class EstoqueCentralController {
       } = req.body;
 
       // Validações
-      if (!produto_id || !quantidade) {
+      if (!produto_id || !quantidade || !lote || !data_validade) {
         return res.status(400).json({
-          error: 'Campos obrigatórios: produto_id, quantidade'
+          error: 'Campos obrigatórios: produto_id, quantidade, lote, data_validade'
         });
       }
 
@@ -93,13 +93,6 @@ class EstoqueCentralController {
       if (isNaN(quantidadeNum) || quantidadeNum <= 0) {
         return res.status(400).json({
           error: 'Quantidade deve ser maior que zero'
-        });
-      }
-
-      // Se informou lote, deve informar validade
-      if (lote && !data_validade) {
-        return res.status(400).json({
-          error: 'Ao informar lote, é obrigatório informar a data de validade'
         });
       }
 
@@ -134,13 +127,10 @@ class EstoqueCentralController {
       const {
         produto_id,
         quantidade,
-        lote_id,
         motivo,
         observacao,
         documento
       } = req.body;
-
-      console.log('Dados recebidos no backend:', JSON.stringify(req.body, null, 2));
 
       // Validações
       if (!produto_id || !quantidade) {
@@ -151,8 +141,6 @@ class EstoqueCentralController {
 
       const quantidadeNum = parseFloat(quantidade);
       
-      console.log('Quantidade convertida:', quantidadeNum, 'tipo:', typeof quantidadeNum);
-      
       if (isNaN(quantidadeNum) || quantidadeNum <= 0) {
         return res.status(400).json({
           error: 'Quantidade deve ser maior que zero'
@@ -162,7 +150,6 @@ class EstoqueCentralController {
       const movimentacao = await EstoqueCentralModel.registrarSaida({
         produto_id: parseInt(produto_id),
         quantidade: quantidadeNum,
-        lote_id: lote_id ? parseInt(lote_id) : undefined,
         motivo,
         observacao,
         documento,

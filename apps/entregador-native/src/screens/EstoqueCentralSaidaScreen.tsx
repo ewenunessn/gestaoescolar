@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Text, Card, Button, TextInput, ActivityIndicator } from 'react-native-paper';
 import { Picker } from '@react-native-picker/picker';
-import { registrarSaida, SaidaData, listarLotes, Lote } from '../api/estoqueCentral';
+import { registrarSaida, SaidaData } from '../api/estoqueCentral';
 import { api, handleAxiosError } from '../api/client';
 
 interface Produto {
@@ -15,14 +15,11 @@ export default function EstoqueCentralSaidaScreen({ route, navigation }: any) {
   const produtoInicial = route.params?.produto;
 
   const [produtos, setProdutos] = useState<Produto[]>([]);
-  const [lotes, setLotes] = useState<Lote[]>([]);
   const [loadingProdutos, setLoadingProdutos] = useState(true);
-  const [loadingLotes, setLoadingLotes] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const [produtoId, setProdutoId] = useState(produtoInicial?.produto_id || '');
   const [quantidade, setQuantidade] = useState('');
-  const [loteId, setLoteId] = useState('');
   const [motivo, setMotivo] = useState('');
   const [observacao, setObservacao] = useState('');
   const [documento, setDocumento] = useState('');
@@ -30,12 +27,6 @@ export default function EstoqueCentralSaidaScreen({ route, navigation }: any) {
   useEffect(() => {
     carregarProdutos();
   }, []);
-
-  useEffect(() => {
-    if (produtoId && produtoInicial) {
-      carregarLotes();
-    }
-  }, [produtoId]);
 
   const carregarProdutos = async () => {
     try {
@@ -46,20 +37,6 @@ export default function EstoqueCentralSaidaScreen({ route, navigation }: any) {
       Alert.alert('Erro', 'Não foi possível carregar os produtos');
     } finally {
       setLoadingProdutos(false);
-    }
-  };
-
-  const carregarLotes = async () => {
-    if (!produtoInicial?.id) return;
-
-    try {
-      setLoadingLotes(true);
-      const lotesData = await listarLotes(produtoInicial.id);
-      setLotes(lotesData);
-    } catch (err) {
-      console.error('Erro ao carregar lotes:', err);
-    } finally {
-      setLoadingLotes(false);
     }
   };
 
@@ -101,12 +78,6 @@ export default function EstoqueCentralSaidaScreen({ route, navigation }: any) {
         observacao,
         documento,
       };
-
-      if (loteId) {
-        dados.lote_id = parseInt(loteId);
-      }
-
-      console.log('Dados sendo enviados:', JSON.stringify(dados, null, 2));
 
       await registrarSaida(dados);
 
@@ -186,32 +157,17 @@ export default function EstoqueCentralSaidaScreen({ route, navigation }: any) {
             </Card.Content>
           </Card>
 
-          {/* Lote */}
-          {lotes.length > 0 && (
-            <Card style={styles.card}>
-              <Card.Content>
-                <Text variant="titleMedium" style={styles.sectionTitle}>
-                  Lote (opcional)
-                </Text>
-                <View style={styles.pickerContainer}>
-                  <Picker
-                    selectedValue={loteId}
-                    onValueChange={setLoteId}
-                    style={styles.picker}
-                  >
-                    <Picker.Item label="Qualquer lote" value="" />
-                    {lotes.map(lote => (
-                      <Picker.Item
-                        key={lote.id}
-                        label={`${lote.lote} - ${formatarNumero(lote.quantidade).toFixed(2)} disponível`}
-                        value={lote.id.toString()}
-                      />
-                    ))}
-                  </Picker>
-                </View>
-              </Card.Content>
-            </Card>
-          )}
+          {/* FEFO Automático */}
+          <Card style={styles.card}>
+            <Card.Content>
+              <Text variant="titleMedium" style={styles.sectionTitle}>
+                🔄 FEFO Automático
+              </Text>
+              <Text variant="bodyMedium" style={styles.fefoInfo}>
+                O sistema utilizará automaticamente os lotes mais próximos do vencimento (FEFO - First Expired, First Out).
+              </Text>
+            </Card.Content>
+          </Card>
 
           {/* Quantidade */}
           <Card style={styles.card}>
@@ -332,6 +288,11 @@ const styles = StyleSheet.create({
     color: '#10b981',
     marginTop: 4,
     fontWeight: '600',
+  },
+  fefoInfo: {
+    color: '#666',
+    fontStyle: 'italic',
+    lineHeight: 20,
   },
   pickerContainer: {
     borderWidth: 1,
