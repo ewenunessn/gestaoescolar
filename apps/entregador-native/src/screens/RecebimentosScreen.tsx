@@ -3,10 +3,10 @@ import { View, FlatList, RefreshControl, StyleSheet } from 'react-native';
 import { Card, Text, Chip, FAB, Searchbar } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { recebimentosAPI, PedidoPendente } from '../api/recebimentos';
-import { formatarData } from '../utils/dateUtils';
+import { formatarDataBR } from '../utils/dateUtils';
 
 export default function RecebimentosScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const [pedidos, setPedidos] = useState<PedidoPendente[]>([]);
   const [loading, setLoading] = useState(false);
   const [busca, setBusca] = useState('');
@@ -48,7 +48,9 @@ export default function RecebimentosScreen() {
   };
 
   const renderPedido = ({ item }: { item: PedidoPendente }) => {
-    const percentualRecebido = (item.valor_recebido / item.valor_total) * 100;
+    const valorTotal = parseFloat(item.valor_total as any) || 0;
+    const valorRecebido = parseFloat(item.valor_recebido as any) || 0;
+    const percentualRecebido = valorTotal > 0 ? (valorRecebido / valorTotal) * 100 : 0;
 
     return (
       <Card
@@ -68,7 +70,7 @@ export default function RecebimentosScreen() {
           </View>
 
           <Text variant="bodySmall" style={styles.data}>
-            {formatarData(item.data_pedido)}
+            {formatarDataBR(item.data_pedido)}
           </Text>
 
           <View style={styles.info}>
@@ -81,13 +83,13 @@ export default function RecebimentosScreen() {
             <View>
               <Text variant="bodySmall" style={styles.label}>Valor Total</Text>
               <Text variant="titleSmall">
-                R$ {item.valor_total.toFixed(2)}
+                R$ {valorTotal.toFixed(2)}
               </Text>
             </View>
             <View>
               <Text variant="bodySmall" style={styles.label}>Recebido</Text>
               <Text variant="titleSmall" style={{ color: '#4CAF50' }}>
-                R$ {item.valor_recebido.toFixed(2)}
+                R$ {valorRecebido.toFixed(2)}
               </Text>
             </View>
             <View>

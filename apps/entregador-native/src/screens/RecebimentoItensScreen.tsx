@@ -5,7 +5,7 @@ import { useRoute } from '@react-navigation/native';
 import { recebimentosAPI, ItemPedido, PedidoPendente, FornecedorPedido, Recebimento } from '../api/recebimentos';
 
 export default function RecebimentoItensScreen() {
-  const route = useRoute();
+  const route = useRoute<any>();
   const { pedido, fornecedor } = route.params as { 
     pedido: PedidoPendente; 
     fornecedor: FornecedorPedido;
@@ -48,13 +48,15 @@ export default function RecebimentoItensScreen() {
     if (!itemSelecionado) return;
 
     const qtd = parseFloat(quantidade);
+    const saldo = parseFloat(itemSelecionado.saldo_pendente as any) || 0;
+    
     if (isNaN(qtd) || qtd <= 0) {
       Alert.alert('Erro', 'Informe uma quantidade válida');
       return;
     }
 
-    if (qtd > itemSelecionado.saldo_pendente) {
-      Alert.alert('Erro', `Quantidade não pode exceder o saldo pendente (${itemSelecionado.saldo_pendente})`);
+    if (qtd > saldo) {
+      Alert.alert('Erro', `Quantidade (${qtd}) não pode exceder o saldo pendente (${saldo})`);
       return;
     }
 
@@ -71,6 +73,7 @@ export default function RecebimentoItensScreen() {
       setDialogVisible(false);
       carregarItens();
     } catch (error: any) {
+      console.error('Erro ao registrar:', error);
       Alert.alert('Erro', error.response?.data?.message || 'Erro ao registrar recebimento');
     } finally {
       setProcessando(false);
@@ -93,10 +96,13 @@ export default function RecebimentoItensScreen() {
   };
 
   const renderItem = ({ item }: { item: ItemPedido }) => {
-    const percentualRecebido = item.quantidade > 0 
-      ? (item.quantidade_recebida / item.quantidade) * 100 
-      : 0;
-    const completo = item.saldo_pendente <= 0;
+    const quantidade = parseFloat(item.quantidade as any) || 0;
+    const quantidadeRecebida = parseFloat(item.quantidade_recebida as any) || 0;
+    const saldoPendente = parseFloat(item.saldo_pendente as any) || 0;
+    const precoUnitario = parseFloat(item.preco_unitario as any) || 0;
+    const valorTotal = parseFloat(item.valor_total as any) || 0;
+    const percentualRecebido = quantidade > 0 ? (quantidadeRecebida / quantidade) * 100 : 0;
+    const completo = saldoPendente <= 0;
 
     return (
       <Card style={styles.card}>
@@ -121,19 +127,19 @@ export default function RecebimentoItensScreen() {
             <View style={styles.quantidadeItem}>
               <Text variant="bodySmall" style={styles.label}>Pedido</Text>
               <Text variant="titleSmall">
-                {item.quantidade} {item.unidade}
+                {quantidade} {item.unidade}
               </Text>
             </View>
             <View style={styles.quantidadeItem}>
               <Text variant="bodySmall" style={styles.label}>Recebido</Text>
               <Text variant="titleSmall" style={{ color: '#4CAF50' }}>
-                {item.quantidade_recebida} {item.unidade}
+                {quantidadeRecebida} {item.unidade}
               </Text>
             </View>
             <View style={styles.quantidadeItem}>
               <Text variant="bodySmall" style={styles.label}>Saldo</Text>
               <Text variant="titleSmall" style={{ color: completo ? '#4CAF50' : '#FF9800' }}>
-                {item.saldo_pendente} {item.unidade}
+                {saldoPendente} {item.unidade}
               </Text>
             </View>
           </View>
@@ -141,12 +147,12 @@ export default function RecebimentoItensScreen() {
           <View style={styles.valores}>
             <View>
               <Text variant="bodySmall" style={styles.label}>Preço Unit.</Text>
-              <Text variant="bodyMedium">R$ {item.preco_unitario.toFixed(2)}</Text>
+              <Text variant="bodyMedium">R$ {precoUnitario.toFixed(2)}</Text>
             </View>
             <View>
               <Text variant="bodySmall" style={styles.label}>Valor Total</Text>
               <Text variant="bodyMedium" style={{ fontWeight: 'bold' }}>
-                R$ {item.valor_total.toFixed(2)}
+                R$ {valorTotal.toFixed(2)}
               </Text>
             </View>
           </View>
@@ -220,7 +226,7 @@ export default function RecebimentoItensScreen() {
                   {itemSelecionado.produto_nome}
                 </Text>
                 <Text variant="bodySmall" style={{ marginBottom: 8 }}>
-                  Saldo pendente: {itemSelecionado.saldo_pendente} {itemSelecionado.unidade}
+                  Saldo pendente: {parseFloat(itemSelecionado.saldo_pendente as any) || 0} {itemSelecionado.unidade}
                 </Text>
                 <TextInput
                   label="Quantidade Recebida"
@@ -272,7 +278,7 @@ export default function RecebimentoItensScreen() {
                   <View style={styles.historicoItem}>
                     <View style={styles.historicoHeader}>
                       <Text variant="titleSmall" style={{ color: '#4CAF50' }}>
-                        {rec.quantidade_recebida} {itemSelecionado?.unidade}
+                        {parseFloat(rec.quantidade_recebida as any) || 0} {itemSelecionado?.unidade}
                       </Text>
                       <Text variant="bodySmall" style={{ color: '#666' }}>
                         {formatarData(rec.data_recebimento)}

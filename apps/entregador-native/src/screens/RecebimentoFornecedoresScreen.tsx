@@ -5,8 +5,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { recebimentosAPI, FornecedorPedido, PedidoPendente } from '../api/recebimentos';
 
 export default function RecebimentoFornecedoresScreen() {
-  const navigation = useNavigation();
-  const route = useRoute();
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const { pedido } = route.params as { pedido: PedidoPendente };
 
   const [fornecedores, setFornecedores] = useState<FornecedorPedido[]>([]);
@@ -29,9 +29,9 @@ export default function RecebimentoFornecedoresScreen() {
   };
 
   const renderFornecedor = ({ item }: { item: FornecedorPedido }) => {
-    const percentualRecebido = item.valor_total > 0 
-      ? (item.valor_recebido / item.valor_total) * 100 
-      : 0;
+    const valorTotal = parseFloat(item.valor_total as any) || 0;
+    const valorRecebido = parseFloat(item.valor_recebido as any) || 0;
+    const percentualRecebido = valorTotal > 0 ? (valorRecebido / valorTotal) * 100 : 0;
 
     return (
       <Card
@@ -69,13 +69,13 @@ export default function RecebimentoFornecedoresScreen() {
             <View>
               <Text variant="bodySmall" style={styles.label}>Valor Total</Text>
               <Text variant="titleSmall">
-                R$ {item.valor_total.toFixed(2)}
+                R$ {valorTotal.toFixed(2)}
               </Text>
             </View>
             <View>
               <Text variant="bodySmall" style={styles.label}>Recebido</Text>
               <Text variant="titleSmall" style={{ color: '#4CAF50' }}>
-                R$ {item.valor_recebido.toFixed(2)}
+                R$ {valorRecebido.toFixed(2)}
               </Text>
             </View>
           </View>
