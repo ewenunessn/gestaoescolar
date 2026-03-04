@@ -5,17 +5,11 @@ const DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000000";
 
 async function buscarUnidadeProduto(produtoId: number) {
   const result = await db.query(`
-    SELECT cp.unidade
-    FROM contrato_produtos cp
-    JOIN contratos c ON cp.contrato_id = c.id
-    WHERE cp.produto_id = $1
-      AND c.status = 'ativo'
-      AND c.data_inicio <= CURRENT_DATE
-      AND c.data_fim >= CURRENT_DATE
-    ORDER BY c.data_inicio DESC
-    LIMIT 1
+    SELECT p.unidade
+    FROM produtos p
+    WHERE p.id = $1
   `, [produtoId]);
-  return result.rows[0]?.unidade || "Kg";
+  return result.rows[0]?.unidade || "UN";
 }
 
 async function colunaExiste(client: any, tabela: string, coluna: string) {
@@ -53,17 +47,7 @@ export async function listarEstoqueEscola(req: Request, res: Response) {
         COALESCE(ee.quantidade_maxima, 0) as quantidade_maxima,
         ee.data_ultima_atualizacao,
         ee.observacoes,
-        COALESCE((
-          SELECT cp.unidade
-          FROM contrato_produtos cp
-          JOIN contratos c ON cp.contrato_id = c.id
-          WHERE cp.produto_id = p.id
-            AND c.status = 'ativo'
-            AND c.data_inicio <= CURRENT_DATE
-            AND c.data_fim >= CURRENT_DATE
-          ORDER BY c.data_inicio DESC
-          LIMIT 1
-        ), 'Kg') as unidade
+        COALESCE(p.unidade, 'UN') as unidade
       FROM produtos p
       LEFT JOIN estoque_escolas ee 
         ON ee.produto_id = p.id AND ee.escola_id = $1

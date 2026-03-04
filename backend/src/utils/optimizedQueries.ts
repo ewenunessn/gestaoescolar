@@ -16,14 +16,7 @@ export const getEstoqueEscolarResumoOptimized = async (
       p.nome as produto_nome,
       p.descricao as produto_descricao,
       p.categoria,
-      COALESCE(
-        (SELECT cp.unidade 
-         FROM contrato_produtos cp 
-         WHERE cp.produto_id = p.id 
-         ORDER BY cp.ativo DESC, cp.created_at DESC
-         LIMIT 1), 
-        'un'
-      ) as unidade,
+      COALESCE(p.unidade, 'UN') as unidade,
       COUNT(DISTINCT e.id) as total_escolas,
       COUNT(DISTINCT ee.escola_id) FILTER (WHERE ee.quantidade_atual > 0) as total_escolas_com_estoque,
       COALESCE(SUM(ee.quantidade_atual), 0) as total_quantidade
@@ -57,14 +50,7 @@ export const getMatrizEstoqueOptimized = async (produtoIds?: number[], limitePro
         p.id, 
         p.nome, 
         p.categoria,
-        COALESCE(
-          (SELECT cp.unidade 
-           FROM contrato_produtos cp 
-           WHERE cp.produto_id = p.id 
-           ORDER BY cp.ativo DESC, cp.created_at DESC
-           LIMIT 1), 
-          'un'
-        ) as unidade
+        COALESCE(p.unidade, 'UN') as unidade
       FROM produtos p
       WHERE p.ativo = true 
       ORDER BY p.categoria NULLS LAST, p.nome
@@ -93,14 +79,7 @@ export const getEstoqueMultiplosProdutosOptimized = async (
       p.nome as produto_nome,
       p.descricao as produto_descricao,
       p.categoria,
-      COALESCE(
-        (SELECT cp.unidade 
-         FROM contrato_produtos cp 
-         WHERE cp.produto_id = p.id 
-         ORDER BY cp.ativo DESC, cp.created_at DESC
-         LIMIT 1), 
-        'un'
-      ) as unidade,
+      COALESCE(p.unidade, 'UN') as unidade,
       e.id as escola_id,
       e.nome as escola_nome,
       COALESCE(ee.quantidade_atual, 0) as quantidade_atual,
@@ -153,14 +132,7 @@ export const getRelatorioValidadePorEscolaOptimized = async (escolaId: number, d
       p.id as produto_id,
       p.nome as produto_nome,
       p.categoria,
-      COALESCE(
-        (SELECT cp.unidade 
-         FROM contrato_produtos cp 
-         WHERE cp.produto_id = p.id 
-         ORDER BY cp.ativo DESC, cp.created_at DESC
-         LIMIT 1), 
-        'un'
-      ) as unidade,
+      COALESCE(p.unidade, 'UN') as unidade,
       COALESCE(ee.quantidade_atual, 0) as quantidade_atual
     FROM produtos p
     LEFT JOIN estoque_escolas ee ON (ee.produto_id = p.id AND ee.escola_id = $1)
