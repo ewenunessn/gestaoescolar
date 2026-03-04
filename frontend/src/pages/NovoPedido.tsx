@@ -207,7 +207,7 @@ export default function NovoPedido() {
     return true;
   };
 
-  const handleSubmit = async (salvarComoRascunho: boolean = false) => {
+  const handleSubmit = async () => {
     if (!validarFormulario()) return;
 
     try {
@@ -217,7 +217,6 @@ export default function NovoPedido() {
       const dados = {
         observacoes: observacoes || undefined,
         competencia_mes_ano: competenciaMesAno,
-        salvar_como_rascunho: salvarComoRascunho,
         itens: itens.map(item => ({
           contrato_produto_id: item.contrato_produto_id,
           quantidade: item.quantidade,
@@ -549,24 +548,14 @@ export default function NovoPedido() {
             >
               Cancelar
             </Button>
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <Button
-                variant="outlined"
-                startIcon={<SaveIcon />}
-                onClick={() => handleSubmit(true)}
-                disabled={loading || itens.length === 0}
-              >
-                {loading ? 'Salvando...' : 'Salvar como Rascunho'}
-              </Button>
-              <Button
-                variant="contained"
-                startIcon={<SendIcon />}
-                onClick={() => handleSubmit(false)}
-                disabled={loading || itens.length === 0}
-              >
-                {loading ? 'Enviando...' : 'Criar e Enviar Pedido'}
-              </Button>
-            </Box>
+            <Button
+              variant="contained"
+              startIcon={<SaveIcon />}
+              onClick={handleSubmit}
+              disabled={loading || itens.length === 0}
+            >
+              {loading ? 'Criando...' : 'Criar Pedido'}
+            </Button>
           </Box>
         </Grid>
       </Grid>

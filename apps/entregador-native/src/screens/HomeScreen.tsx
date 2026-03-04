@@ -153,6 +153,27 @@ export default function HomeScreen({ navigation }: any) {
             </View>
           </Card.Content>
         </Card>
+
+        {/* Card de Recebimentos */}
+        <Card style={styles.recebimentosCard}>
+          <Card.Content>
+            <Text variant="titleMedium" style={styles.recebimentosTitle}>
+              📥 Recebimentos
+            </Text>
+            <Text variant="bodyMedium" style={styles.recebimentosText}>
+              Registre o recebimento de mercadorias dos pedidos
+            </Text>
+            <View style={styles.recebimentosActions}>
+              <FAB
+                icon="package-variant"
+                label="Acessar Recebimentos"
+                onPress={() => navigation.navigate('Recebimentos')}
+                style={styles.recebimentosFab}
+                color="#fff"
+              />
+            </View>
+          </Card.Content>
+        </Card>
       </View>
 
       {/* Scanner QR */}
@@ -268,5 +289,27 @@ const styles = StyleSheet.create({
   },
   estoqueFab: {
     backgroundColor: '#6d28d9',
+  },
+  recebimentosCard: {
+    marginBottom: 16,
+    backgroundColor: '#059669',
+    borderWidth: 0,
+    elevation: 4,
+  },
+  recebimentosTitle: {
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 8,
+  },
+  recebimentosText: {
+    color: '#fff',
+    marginBottom: 12,
+  },
+  recebimentosActions: {
+    marginTop: 12,
+    alignItems: 'center',
+  },
+  recebimentosFab: {
+    backgroundColor: '#047857',
   },
 });

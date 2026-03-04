@@ -67,6 +67,7 @@ export default function EditarPedido() {
     const [produtoSelecionado, setProdutoSelecionado] = useState<ContratoProduto | null>(null);
 
     const [observacoes, setObservacoes] = useState('');
+    const [competenciaMesAno, setCompetenciaMesAno] = useState('');
     const [itens, setItens] = useState<ItemPedido[]>([]);
     const [erro, setErro] = useState('');
 
@@ -97,6 +98,7 @@ export default function EditarPedido() {
             setPedido(pedidoRes);
             setProdutosDisponiveis(produtosRes);
             setObservacoes(pedidoRes.observacoes || '');
+            setCompetenciaMesAno(pedidoRes.competencia_mes_ano || '');
 
             // Converter itens do pedido para formato de edição
             const itensConvertidos: ItemPedido[] = pedidoRes.itens.map(item => ({
@@ -233,14 +235,14 @@ export default function EditarPedido() {
         return true;
     };
 
-    const handleSalvar = async (enviarPedido: boolean = false) => {
+    const handleSalvar = async () => {
         if (!validarFormulario()) return;
 
         try {
             setLoading(true);
             setErro('');
 
-            // Atualizar itens do pedido
+            // Atualizar pedido completo (itens, observações e competência)
             const itensParaEnviar = itens.map(item => ({
                 contrato_produto_id: item.contrato_produto_id,
                 quantidade: item.quantidade,
@@ -248,17 +250,11 @@ export default function EditarPedido() {
                 observacoes: item.observacoes
             }));
 
-            await pedidosService.atualizarItens(Number(id), itensParaEnviar);
-
-            // Atualizar observações gerais
             await pedidosService.atualizar(Number(id), {
-                observacoes: observacoes || undefined
+                observacoes: observacoes || undefined,
+                competencia_mes_ano: competenciaMesAno || undefined,
+                itens: itensParaEnviar
             });
-
-            // Se for para enviar o pedido (sair do rascunho)
-            if (enviarPedido) {
-                await pedidosService.atualizarStatus(Number(id), 'pendente');
-            }
 
             // Redirecionar para detalhes
             navigate(`/pedidos/${id}`);
@@ -289,22 +285,23 @@ export default function EditarPedido() {
         );
     }
 
-    if (pedido.status !== 'rascunho') {
-        return (
-            <Box sx={{ p: 3 }}>
-                <Alert severity="warning">
-                    Apenas pedidos em rascunho podem ser editados.
-                </Alert>
-                <Button
-                    variant="outlined"
-                    onClick={() => navigate(`/pedidos/${id}`)}
-                    sx={{ mt: 2 }}
-                >
-                    Voltar para Detalhes
-                </Button>
-            </Box>
-        );
-    }
+    // Remover restrição de status - permitir editar em qualquer status
+
+    const STATUS_COLORS: Record<string, any> = {
+        pendente: 'warning',
+        recebido_parcial: 'info',
+        concluido: 'success',
+        suspenso: 'secondary',
+        cancelado: 'error'
+    };
+
+    const STATUS_LABELS: Record<string, string> = {
+        pendente: 'Pendente',
+        recebido_parcial: 'Recebido Parcial',
+        concluido: 'Concluído',
+        suspenso: 'Suspenso',
+        cancelado: 'Cancelado'
+    };
 
     return (
         <Box sx={{ p: 3 }}>
@@ -315,7 +312,11 @@ export default function EditarPedido() {
                 <Typography variant="h4" component="h1">
                     Editar Pedido {pedido.numero}
                 </Typography>
-                <Chip label="Rascunho" color="warning" sx={{ ml: 2 }} />
+                <Chip 
+                    label={STATUS_LABELS[pedido.status] || pedido.status} 
+                    color={STATUS_COLORS[pedido.status] || 'default'} 
+                    sx={{ ml: 2 }} 
+                />
             </Box>
 
             {erro && (
@@ -597,26 +598,16 @@ export default function EditarPedido() {
                             onClick={() => navigate(`/pedidos/${id}`)}
                             disabled={loading}
                         >
-                            Cancelar Edição
+                            Cancelar
                         </Button>
-                        <Box sx={{ display: 'flex', gap: 2 }}>
-                            <Button
-                                variant="outlined"
-                                startIcon={<SaveIcon />}
-                                onClick={() => handleSalvar(false)}
-                                disabled={loading || itens.length === 0}
-                            >
-                                {loading ? 'Salvando...' : 'Salvar Rascunho'}
-                            </Button>
-                            <Button
-                                variant="contained"
-                                startIcon={<SendIcon />}
-                                onClick={() => handleSalvar(true)}
-                                disabled={loading || itens.length === 0}
-                            >
-                                {loading ? 'Enviando...' : 'Salvar e Enviar Pedido'}
-                            </Button>
-                        </Box>
+                        <Button
+                            variant="contained"
+                            startIcon={<SaveIcon />}
+                            onClick={handleSalvar}
+                            disabled={loading || itens.length === 0}
+                        >
+                            {loading ? 'Salvando...' : 'Salvar Alterações'}
+                        </Button>
                     </Box>
                 </Grid>
             </Grid>

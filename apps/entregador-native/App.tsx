@@ -21,6 +21,9 @@ import EstoqueCentralEntradaScreen from './src/screens/EstoqueCentralEntradaScre
 import EstoqueCentralSaidaScreen from './src/screens/EstoqueCentralSaidaScreen';
 import EstoqueCentralAjusteScreen from './src/screens/EstoqueCentralAjusteScreen';
 import EstoqueCentralRelatoriosScreen from './src/screens/EstoqueCentralRelatoriosScreen';
+import RecebimentosScreen from './src/screens/RecebimentosScreen';
+import RecebimentoFornecedoresScreen from './src/screens/RecebimentoFornecedoresScreen';
+import RecebimentoItensScreen from './src/screens/RecebimentoItensScreen';
 
 // Theme
 import { theme } from './src/theme';
@@ -135,6 +138,21 @@ export default function App() {
             name="EstoqueCentralRelatorios" 
             component={EstoqueCentralRelatoriosScreen}
             options={{ title: 'Relatórios do Estoque' }}
+          />
+          <Stack.Screen 
+            name="Recebimentos" 
+            component={RecebimentosScreen}
+            options={{ title: 'Recebimentos' }}
+          />
+          <Stack.Screen 
+            name="RecebimentoFornecedores" 
+            component={RecebimentoFornecedoresScreen}
+            options={{ title: 'Fornecedores' }}
+          />
+          <Stack.Screen 
+            name="RecebimentoItens" 
+            component={RecebimentoItensScreen}
+            options={{ title: 'Itens para Receber' }}
           />
         </Stack.Navigator>
       </NavigationContainer>

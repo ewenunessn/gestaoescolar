@@ -502,12 +502,15 @@ export async function atualizarStatusPedido(req: Request, res: Response) {
 
     if (motivo) {
       paramCount++;
-      query += `, observacoes = COALESCE(observacoes, '') || '\n[${STATUS_PEDIDO[status as keyof typeof STATUS_PEDIDO]?.label}]: ' || $${paramCount}`;
+      const statusLabel = STATUS_PEDIDO[status as keyof typeof STATUS_PEDIDO]?.label || status;
+      query += `, observacoes = COALESCE(observacoes, '') || '\\n[' || $` + paramCount + ` || ']: ' || $` + (paramCount + 1);
+      values.push(statusLabel);
+      paramCount++;
       values.push(motivo);
     }
 
     paramCount++;
-    query += ` WHERE id = $${paramCount} RETURNING *`;
+    query += ` WHERE id = $` + paramCount + ` RETURNING *`;
     values.push(id);
 
     const result = await db.query(query, values);
@@ -526,6 +529,7 @@ export async function atualizarStatusPedido(req: Request, res: Response) {
     });
   }
 }
+
 
 
 export async function excluirPedido(req: Request, res: Response) {

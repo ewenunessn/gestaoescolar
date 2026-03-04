@@ -4,14 +4,12 @@ export interface Pedido {
   fornecedores_nomes?: string;
   total_fornecedores?: number;
   data_pedido: string;
-  status: 'rascunho' | 'pendente' | 'aprovado' | 'em_separacao' | 'enviado' | 'entregue' | 'cancelado';
+  status: 'pendente' | 'recebido_parcial' | 'concluido' | 'suspenso' | 'cancelado';
+  competencia_mes_ano?: string;
   valor_total: number;
   observacoes?: string;
   usuario_criacao_id: number;
   usuario_criacao_nome?: string;
-  usuario_aprovacao_id?: number;
-  usuario_aprovacao_nome?: string;
-  data_aprovacao?: string;
   total_itens?: number;
   quantidade_total?: number;
   created_at: string;
@@ -46,6 +44,7 @@ export interface PedidoDetalhado extends Pedido {
 
 export interface CriarPedidoDTO {
   observacoes?: string;
+  competencia_mes_ano?: string;
   salvar_como_rascunho?: boolean;
   itens: {
     contrato_produto_id: number;
@@ -57,6 +56,13 @@ export interface CriarPedidoDTO {
 
 export interface AtualizarPedidoDTO {
   observacoes?: string;
+  competencia_mes_ano?: string;
+  itens?: {
+    contrato_produto_id: number;
+    quantidade: number;
+    data_entrega_prevista?: string;
+    observacoes?: string;
+  }[];
 }
 
 export interface PedidoFiltros {
@@ -111,21 +117,17 @@ export interface ContratoProduto {
 }
 
 export const STATUS_PEDIDO = {
-  rascunho: { label: 'Rascunho', color: 'default' },
   pendente: { label: 'Pendente', color: 'warning' },
-  aprovado: { label: 'Aprovado', color: 'info' },
-  em_separacao: { label: 'Em Separação', color: 'primary' },
-  enviado: { label: 'Enviado', color: 'secondary' },
-  entregue: { label: 'Entregue', color: 'success' },
+  recebido_parcial: { label: 'Recebido Parcial', color: 'info' },
+  concluido: { label: 'Concluído', color: 'success' },
+  suspenso: { label: 'Suspenso', color: 'secondary' },
   cancelado: { label: 'Cancelado', color: 'error' }
 } as const;
 
 export const STATUS_CORES = {
-  rascunho: '#9e9e9e',
   pendente: '#ff9800',
-  aprovado: '#2196f3',
-  em_separacao: '#3f51b5',
-  enviado: '#9c27b0',
-  entregue: '#4caf50',
+  recebido_parcial: '#2196f3',
+  concluido: '#4caf50',
+  suspenso: '#9c27b0',
   cancelado: '#f44336'
 } as const;

@@ -48,14 +48,8 @@ export const pedidosService = {
   },
 
   // Atualizar status do pedido
-  async atualizarStatus(id: number, status: string): Promise<Pedido> {
-    const response = await api.patch(`/pedidos/${id}/status`, { status });
-    return response.data.data;
-  },
-
-  // Cancelar pedido
-  async cancelar(id: number, motivo: string): Promise<Pedido> {
-    const response = await api.post(`/pedidos/${id}/cancelar`, { motivo });
+  async atualizarStatus(id: number, status: string, motivo?: string): Promise<Pedido> {
+    const response = await api.patch(`/pedidos/${id}/status`, { status, motivo });
     return response.data.data;
   },
 
@@ -77,12 +71,7 @@ export const pedidosService = {
     return response.data.data;
   },
 
-  // Atualizar itens do pedido
-  async atualizarItens(id: number, itens: any[]): Promise<void> {
-    await api.put(`/pedidos/${id}/itens`, { itens });
-  },
-
-  // Excluir pedido (rascunho ou cancelado)
+  // Excluir pedido
   async excluirPedido(id: number): Promise<void> {
     await api.delete(`/pedidos/${id}`);
   }

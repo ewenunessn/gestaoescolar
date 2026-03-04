@@ -28,7 +28,11 @@ import {
   Step,
   StepLabel,
   Popover,
-  Badge
+  Badge,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel
 } from '@mui/material';
 import {
   CheckCircle as CheckCircleIcon,
@@ -64,6 +68,9 @@ export default function PedidoDetalhe() {
 
   const [dialogExcluir, setDialogExcluir] = useState(false);
   const [dialogCancelar, setDialogCancelar] = useState(false);
+  const [dialogAlterarStatus, setDialogAlterarStatus] = useState(false);
+  const [novoStatus, setNovoStatus] = useState('');
+  const [motivoStatus, setMotivoStatus] = useState('');
   const [motivoCancelamento, setMotivoCancelamento] = useState('');
   const [processando, setProcessando] = useState(false);
   const [temFaturamento, setTemFaturamento] = useState(false);
@@ -176,9 +183,12 @@ export default function PedidoDetalhe() {
   const atualizarStatus = async (novoStatus: string) => {
     try {
       setProcessando(true);
-      await pedidosService.atualizarStatus(Number(id), novoStatus);
+      await pedidosService.atualizarStatus(Number(id), novoStatus, motivoStatus || undefined);
       queryClient.invalidateQueries({ queryKey: ['pedidos'] });
       await carregarPedido();
+      setDialogAlterarStatus(false);
+      setNovoStatus('');
+      setMotivoStatus('');
       setErro('');
     } catch (error: any) {
       console.error('Erro ao atualizar status:', error);
@@ -186,6 +196,11 @@ export default function PedidoDetalhe() {
     } finally {
       setProcessando(false);
     }
+  };
+
+  const handleAbrirAlterarStatus = (status: string) => {
+    setNovoStatus(status);
+    setDialogAlterarStatus(true);
   };
 
   const handleExcluir = async () => {
@@ -214,13 +229,10 @@ export default function PedidoDetalhe() {
 
     try {
       setProcessando(true);
-
-      // Para pedidos normais, usar cancelamento
-      await pedidosService.cancelar(Number(id), motivoCancelamento);
+      await pedidosService.atualizarStatus(Number(id), 'cancelado', motivoCancelamento);
       setDialogCancelar(false);
       setMotivoCancelamento('');
       await carregarPedido();
-
       setErro('');
     } catch (error: any) {
       console.error('Erro ao cancelar pedido:', error);
@@ -246,18 +258,11 @@ export default function PedidoDetalhe() {
     return steps.indexOf(status);
   };
 
-  const ehRascunho = pedido?.status === 'rascunho';
   const ehCancelado = pedido?.status === 'cancelado';
-  const ehEntregue = pedido?.status === 'entregue';
-  const podeExcluir = pedido !== null; // Agora pode excluir em qualquer fase
-  const podeEditar = pedido?.status === 'rascunho';
-  const podeEnviar = pedido?.status === 'rascunho';
-  const podeAprovar = pedido?.status === 'pendente';
-  const podeIniciarSeparacao = pedido?.status === 'aprovado';
-  const podeEnviarSeparacao = pedido?.status === 'em_separacao';
-  const podeEntregar = pedido?.status === 'enviado';
-  const podeCancelar = pedido && !['entregue', 'cancelado', 'rascunho'].includes(pedido.status);
-  const podeGerarFaturamento = pedido && !['rascunho', 'cancelado'].includes(pedido.status);
+  const ehConcluido = pedido?.status === 'concluido';
+  const podeExcluir = pedido !== null;
+  const podeEditar = pedido !== null; // Pode editar sempre
+  const podeAlterarStatus = pedido !== null; // Pode alterar status sempre
 
   if (loading) {
     return (
@@ -294,48 +299,6 @@ export default function PedidoDetalhe() {
         <Alert severity="error" sx={{ mb: 3 }} onClose={() => setErro('')}>
           {erro}
         </Alert>
-      )}
-
-      {pedido.status !== 'cancelado' && pedido.status !== 'entregue' && pedido.status !== 'rascunho' && (
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
-              Progresso do Pedido
-            </Typography>
-            <Stepper activeStep={getStepAtivo(pedido.status)} sx={{ mt: 2 }}>
-              <Step>
-                <StepLabel>Pendente</StepLabel>
-              </Step>
-              <Step>
-                <StepLabel>Aprovado</StepLabel>
-              </Step>
-              <Step>
-                <StepLabel>Em Separação</StepLabel>
-              </Step>
-              <Step>
-                <StepLabel>Enviado</StepLabel>
-              </Step>
-              <Step>
-                <StepLabel>Entregue</StepLabel>
-              </Step>
-            </Stepper>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Card especial para rascunhos */}
-      {ehRascunho && (
-        <Card sx={{ mb: 3, bgcolor: 'warning.lighter', borderLeft: 4, borderColor: 'warning.main' }}>
-          <CardContent>
-            <Typography variant="h6" gutterBottom color="warning.dark">
-              📝 Pedido em Rascunho
-            </Typography>
-            <Typography variant="body2" color="text.primary">
-              Este pedido foi salvo como rascunho e ainda não foi enviado.
-              Você pode editá-lo ou enviá-lo quando estiver pronto.
-            </Typography>
-          </CardContent>
-        </Card>
       )}
 
       <Grid container spacing={3}>
@@ -464,16 +427,7 @@ export default function PedidoDetalhe() {
                               </Badge>
                             </IconButton>
                           ) : (
-                            ehRascunho ? (
-                              <IconButton
-                                size="small"
-                                onClick={(e) => abrirObservacoes(e, item)}
-                              >
-                                <CommentIcon fontSize="small" />
-                              </IconButton>
-                            ) : (
-                              <Typography variant="body2" color="text.secondary">-</Typography>
-                            )
+                            <Typography variant="caption" color="text.secondary">-</Typography>
                           )}
                         </TableCell>
                       </TableRow>
@@ -534,128 +488,87 @@ export default function PedidoDetalhe() {
         </Grid>
 
         <Grid item xs={12}>
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-            {/* Botão de Exclusão - Disponível em todas as fases */}
-            {podeExcluir && (
-              <Button
-                variant="outlined"
-                color="error"
-                startIcon={<CancelIcon />}
-                onClick={() => setDialogExcluir(true)}
-                disabled={processando}
-              >
-                {ehRascunho ? 'Excluir Rascunho' : 'Excluir Pedido'}
-              </Button>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
+            {/* Select de Status - Sempre disponível */}
+            {podeAlterarStatus && (
+              <FormControl sx={{ minWidth: 200 }}>
+                <InputLabel>Alterar Status</InputLabel>
+                <Select
+                  value={pedido.status}
+                  label="Alterar Status"
+                  onChange={(e) => handleAbrirAlterarStatus(e.target.value)}
+                  disabled={processando}
+                >
+                  <MenuItem value="pendente">Pendente</MenuItem>
+                  <MenuItem value="recebido_parcial">Recebido Parcial</MenuItem>
+                  <MenuItem value="concluido">Concluído</MenuItem>
+                  <MenuItem value="suspenso">Suspenso</MenuItem>
+                  <MenuItem value="cancelado">Cancelado</MenuItem>
+                </Select>
+              </FormControl>
             )}
 
-            {/* Botões específicos para RASCUNHO */}
-            {ehRascunho && (
-              <>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              {/* Botão Editar - Sempre disponível */}
+              {podeEditar && (
                 <Button
                   variant="outlined"
                   startIcon={<EditIcon />}
                   onClick={() => navigate(`/pedidos/${pedido.id}/editar`)}
                   disabled={processando}
                 >
-                  Editar Rascunho
+                  Editar Pedido
                 </Button>
+              )}
+
+              {/* Botão de Exclusão */}
+              {podeExcluir && (
                 <Button
-                  variant="contained"
-                  color="primary"
-                  startIcon={<SendIcon />}
-                  onClick={() => atualizarStatus('pendente')}
+                  variant="outlined"
+                  color="error"
+                  startIcon={<CancelIcon />}
+                  onClick={() => setDialogExcluir(true)}
                   disabled={processando}
                 >
-                  Enviar Pedido
+                  Excluir Pedido
                 </Button>
-              </>
-            )}
-
-            {/* Botões para outros status */}
-            {podeCancelar && (
-              <Button
-                variant="outlined"
-                color="warning"
-                startIcon={<CancelIcon />}
-                onClick={() => setDialogCancelar(true)}
-                disabled={processando}
-              >
-                Cancelar Pedido
-              </Button>
-            )}
-
-            {podeAprovar && (
-              <Button
-                variant="contained"
-                color="success"
-                startIcon={<CheckCircleIcon />}
-                onClick={() => atualizarStatus('aprovado')}
-                disabled={processando}
-              >
-                Aprovar Pedido
-              </Button>
-            )}
-
-            {podeIniciarSeparacao && (
-              <Button
-                variant="contained"
-                startIcon={<InventoryIcon />}
-                onClick={() => atualizarStatus('em_separacao')}
-                disabled={processando}
-              >
-                Iniciar Separação
-              </Button>
-            )}
-
-            {podeEnviarSeparacao && (
-              <Button
-                variant="contained"
-                startIcon={<LocalShippingIcon />}
-                onClick={() => atualizarStatus('enviado')}
-                disabled={processando}
-              >
-                Marcar como Enviado
-              </Button>
-            )}
-
-            {podeEntregar && (
-              <Button
-                variant="contained"
-                color="success"
-                startIcon={<DoneIcon />}
-                onClick={() => atualizarStatus('entregue')}
-                disabled={processando}
-              >
-                Confirmar Entrega
-              </Button>
-            )}
-
-            {podeGerarFaturamento && !temFaturamento && (
-              <Button
-                variant="contained"
-                color="secondary"
-                startIcon={<ReceiptIcon />}
-                onClick={handleGerarFaturamento}
-                disabled={processando}
-              >
-                Gerar Faturamento
-              </Button>
-            )}
-
-            {temFaturamento && (
-              <Button
-                variant="contained"
-                color="success"
-                startIcon={<ReceiptIcon />}
-                onClick={() => navigate(`/pedidos/${id}/faturamento/visualizar`)}
-                disabled={processando}
-              >
-                Ver Faturamento
-              </Button>
-            )}
+              )}
+            </Box>
           </Box>
         </Grid>
       </Grid>
+
+      {/* Diálogo de Alteração de Status */}
+      <Dialog open={dialogAlterarStatus} onClose={() => setDialogAlterarStatus(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          Alterar Status do Pedido
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            Você está alterando o status para: <strong>{STATUS_PEDIDO[novoStatus as keyof typeof STATUS_PEDIDO]?.label}</strong>
+          </Typography>
+          <TextField
+            fullWidth
+            label="Motivo (opcional)"
+            multiline
+            rows={3}
+            value={motivoStatus}
+            onChange={(e) => setMotivoStatus(e.target.value)}
+            placeholder="Descreva o motivo da alteração..."
+            sx={{ mt: 2 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDialogAlterarStatus(false)}>Cancelar</Button>
+          <Button 
+            onClick={() => atualizarStatus(novoStatus)} 
+            variant="contained"
+            disabled={processando}
+          >
+            {processando ? 'Alterando...' : 'Confirmar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Diálogo de Exclusão */}
       <Dialog open={dialogExcluir} onClose={() => setDialogExcluir(false)} maxWidth="sm" fullWidth>
@@ -675,16 +588,14 @@ export default function PedidoDetalhe() {
           )}
           
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            {ehRascunho
-              ? 'Tem certeza que deseja excluir este rascunho? Esta ação não pode ser desfeita.'
-              : ehCancelado
-                ? 'Tem certeza que deseja excluir este pedido cancelado? Esta ação não pode ser desfeita.'
-                : ehEntregue
-                  ? 'Tem certeza que deseja excluir este pedido entregue? Esta ação não pode ser desfeita e removerá o histórico de entrega.'
-                  : 'Tem certeza que deseja excluir este pedido em andamento? Esta ação não pode ser desfeita e pode afetar o processo de compra.'
+            {ehCancelado
+              ? 'Tem certeza que deseja excluir este pedido cancelado? Esta ação não pode ser desfeita.'
+              : ehConcluido
+                ? 'Tem certeza que deseja excluir este pedido concluído? Esta ação não pode ser desfeita e removerá o histórico.'
+                : 'Tem certeza que deseja excluir este pedido? Esta ação não pode ser desfeita.'
             }
           </Typography>
-          {!ehRascunho && !ehCancelado && !ehEntregue && !temConsumoRegistrado && (
+          {!ehCancelado && !ehConcluido && !temConsumoRegistrado && (
             <Typography variant="body2" color="warning.main" sx={{ mb: 2, fontWeight: 'bold' }}>
               ⚠️ Atenção: Este pedido está em andamento. A exclusão pode impactar fornecedores e processos em curso.
             </Typography>
