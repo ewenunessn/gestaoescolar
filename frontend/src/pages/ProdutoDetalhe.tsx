@@ -4,7 +4,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import {
   Box, Typography, Button, Card, CardContent, CircularProgress,
   Alert, Dialog, DialogTitle, DialogContent, DialogActions, TextField,
-  Chip, FormControlLabel, Switch, Paper, Grid, Stack, FormControl, InputLabel, Select, MenuItem
+  Chip, FormControlLabel, Switch, Paper, Grid, Stack, Autocomplete,
+  FormControl, InputLabel, Select, MenuItem
 } from '@mui/material';
 import {
   Edit as EditIcon, Delete as DeleteIcon, Save as SaveIcon,
@@ -35,6 +36,20 @@ const composicaoVazia = {
   vitamina_c: "",
   vitamina_a: ""
 };
+
+// Unidades de medida disponíveis
+const UNIDADES_MEDIDA = [
+  { value: 'UN', label: 'Unidade (UN)' },
+  { value: 'KG', label: 'Quilograma (KG)' },
+  { value: 'G', label: 'Grama (G)' },
+  { value: 'L', label: 'Litro (L)' },
+  { value: 'ML', label: 'Mililitro (ML)' },
+  { value: 'DZ', label: 'Dúzia (DZ)' },
+  { value: 'PCT', label: 'Pacote (PCT)' },
+  { value: 'CX', label: 'Caixa (CX)' },
+  { value: 'FD', label: 'Fardo (FD)' },
+  { value: 'SC', label: 'Saco (SC)' },
+];
 
 // --- Subcomponentes de UI ---
 
@@ -230,25 +245,30 @@ export default function ProdutoDetalhe() {
                     </Grid>
                     <Grid item xs={12} sm={4}>
                         {isEditing ? (
-                            <FormControl fullWidth required>
-                                <InputLabel>Unidade</InputLabel>
-                                <Select 
-                                    value={form.unidade || 'UN'} 
-                                    onChange={e => setForm({ ...form, unidade: e.target.value })}
-                                    label="Unidade"
-                                >
-                                    <MenuItem value="UN">Unidade (UN)</MenuItem>
-                                    <MenuItem value="KG">Quilograma (KG)</MenuItem>
-                                    <MenuItem value="G">Grama (G)</MenuItem>
-                                    <MenuItem value="L">Litro (L)</MenuItem>
-                                    <MenuItem value="ML">Mililitro (ML)</MenuItem>
-                                    <MenuItem value="DZ">Dúzia (DZ)</MenuItem>
-                                    <MenuItem value="PCT">Pacote (PCT)</MenuItem>
-                                    <MenuItem value="CX">Caixa (CX)</MenuItem>
-                                    <MenuItem value="FD">Fardo (FD)</MenuItem>
-                                    <MenuItem value="SC">Saco (SC)</MenuItem>
-                                </Select>
-                            </FormControl>
+                            <Autocomplete
+                                value={form.unidade || 'UN'}
+                                onChange={(event, newValue) => {
+                                    setForm({ ...form, unidade: newValue || 'UN' });
+                                }}
+                                inputValue={form.unidade || 'UN'}
+                                onInputChange={(event, newInputValue) => {
+                                    setForm({ ...form, unidade: newInputValue || 'UN' });
+                                }}
+                                options={UNIDADES_MEDIDA.map(u => u.value)}
+                                getOptionLabel={(option) => {
+                                    const unidade = UNIDADES_MEDIDA.find(u => u.value === option);
+                                    return unidade ? unidade.label : option;
+                                }}
+                                freeSolo
+                                renderInput={(params) => (
+                                    <TextField
+                                        {...params}
+                                        label="Unidade"
+                                        required
+                                        helperText="Selecione ou digite uma unidade personalizada"
+                                    />
+                                )}
+                            />
                         ) : <InfoItem label="Unidade" value={produto.unidade || 'UN'}/>}
                     </Grid>
                     <Grid item xs={12} sm={6}>

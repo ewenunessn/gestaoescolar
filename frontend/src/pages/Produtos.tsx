@@ -60,6 +60,20 @@ import {
 import { useNavigate, useLocation } from "react-router-dom";
 import * as XLSX from 'xlsx';
 
+// Unidades de medida disponíveis
+const UNIDADES_MEDIDA = [
+  { value: 'UN', label: 'Unidade (UN)' },
+  { value: 'KG', label: 'Quilograma (KG)' },
+  { value: 'G', label: 'Grama (G)' },
+  { value: 'L', label: 'Litro (L)' },
+  { value: 'ML', label: 'Mililitro (ML)' },
+  { value: 'DZ', label: 'Dúzia (DZ)' },
+  { value: 'PCT', label: 'Pacote (PCT)' },
+  { value: 'CX', label: 'Caixa (CX)' },
+  { value: 'FD', label: 'Fardo (FD)' },
+  { value: 'SC', label: 'Saco (SC)' },
+];
+
 interface ProdutoForm {
   nome: string;
   unidade: string;
@@ -557,21 +571,31 @@ const ProdutosPage = () => {
             <TextField label="Nome do Produto" value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} required fullWidth />
             <Box sx={{ display: 'flex', gap: 2 }}>
               <TextField label="Descrição" value={formData.descricao} onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} multiline rows={2} sx={{ flex: 2 }} />
-              <FormControl sx={{ flex: 1 }} required>
-                <InputLabel>Unidade</InputLabel>
-                <Select value={formData.unidade} onChange={(e) => setFormData({ ...formData, unidade: e.target.value })} label="Unidade">
-                  <MenuItem value="UN">Unidade (UN)</MenuItem>
-                  <MenuItem value="KG">Quilograma (KG)</MenuItem>
-                  <MenuItem value="G">Grama (G)</MenuItem>
-                  <MenuItem value="L">Litro (L)</MenuItem>
-                  <MenuItem value="ML">Mililitro (ML)</MenuItem>
-                  <MenuItem value="DZ">Dúzia (DZ)</MenuItem>
-                  <MenuItem value="PCT">Pacote (PCT)</MenuItem>
-                  <MenuItem value="CX">Caixa (CX)</MenuItem>
-                  <MenuItem value="FD">Fardo (FD)</MenuItem>
-                  <MenuItem value="SC">Saco (SC)</MenuItem>
-                </Select>
-              </FormControl>
+              <Autocomplete
+                value={formData.unidade}
+                onChange={(event, newValue) => {
+                  setFormData({ ...formData, unidade: newValue || 'UN' });
+                }}
+                inputValue={formData.unidade}
+                onInputChange={(event, newInputValue) => {
+                  setFormData({ ...formData, unidade: newInputValue || 'UN' });
+                }}
+                options={UNIDADES_MEDIDA.map(u => u.value)}
+                getOptionLabel={(option) => {
+                  const unidade = UNIDADES_MEDIDA.find(u => u.value === option);
+                  return unidade ? unidade.label : option;
+                }}
+                freeSolo
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Unidade"
+                    required
+                    helperText="Selecione ou digite"
+                  />
+                )}
+                sx={{ flex: 1 }}
+              />
             </Box>
             <Box sx={{ display: 'flex', gap: 2 }}>
               <Autocomplete
