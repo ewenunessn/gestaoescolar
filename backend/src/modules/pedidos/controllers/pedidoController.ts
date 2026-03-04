@@ -765,3 +765,29 @@ export async function listarTodosProdutosDisponiveis(req: Request, res: Response
     });
   }
 }
+
+
+// Relatório: Resumo de compras por tipo de fornecedor em um pedido
+export async function resumoTipoFornecedorPedido(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+
+    const resultado = await db.query(`
+      SELECT * FROM vw_pedido_resumo_tipo_fornecedor
+      WHERE pedido_id = $1
+      ORDER BY tipo_fornecedor
+    `, [id]);
+
+    res.json({
+      success: true,
+      data: resultado.rows
+    });
+  } catch (error) {
+    console.error('❌ Erro ao buscar resumo por tipo de fornecedor:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao buscar resumo por tipo de fornecedor',
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+}

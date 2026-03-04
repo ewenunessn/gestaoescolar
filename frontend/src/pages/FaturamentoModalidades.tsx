@@ -39,7 +39,8 @@ import {
   AutoFixHigh as AutoFixHighIcon,
   Edit as EditIcon,
   Cancel as CancelIcon,
-  TableChart as ExcelIcon
+  TableChart as ExcelIcon,
+  Assessment as AssessmentIcon
 } from '@mui/icons-material';
 import PageBreadcrumbs from '../components/PageBreadcrumbs';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
@@ -765,6 +766,14 @@ export default function FaturamentoModalidades() {
           Faturamento por Modalidades
         </Typography>
         <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            variant="outlined"
+            color="info"
+            startIcon={<AssessmentIcon />}
+            onClick={() => navigate(`/pedidos/${id}/faturamento/${faturamentoId}/relatorio-tipo`)}
+          >
+            Relatório por Tipo
+          </Button>
           <Button
             variant="contained"
             color="success"

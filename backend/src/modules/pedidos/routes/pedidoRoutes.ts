@@ -8,7 +8,8 @@ import {
   excluirPedido,
   obterEstatisticasPedidos,
   listarProdutosContrato,
-  listarTodosProdutosDisponiveis
+  listarTodosProdutosDisponiveis,
+  resumoTipoFornecedorPedido
 } from "../controllers/pedidoController";
 
 import {
@@ -27,6 +28,7 @@ router.use(authenticateToken);
 router.get("/estatisticas", obterEstatisticasPedidos);
 router.get("/produtos-disponiveis", listarTodosProdutosDisponiveis);
 router.get("/", listarPedidos);
+router.get("/:id/resumo-tipo-fornecedor", resumoTipoFornecedorPedido);
 router.get("/:id", buscarPedido);
 router.post("/", criarPedido);
 router.put("/:id", atualizarPedido); // Agora permite editar itens também

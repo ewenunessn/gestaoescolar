@@ -11,6 +11,7 @@ export async function listarFornecedores(req: Request, res: Response) {
         f.cnpj,
         f.email,
         f.ativo,
+        f.tipo_fornecedor,
         f.created_at
       FROM fornecedores f
       ORDER BY f.nome
@@ -43,6 +44,7 @@ export async function buscarFornecedor(req: Request, res: Response) {
         f.email,
         f.endereco,
         f.ativo,
+        f.tipo_fornecedor,
         f.created_at,
         f.updated_at
       FROM fornecedores f
@@ -76,16 +78,17 @@ export async function criarFornecedor(req: Request, res: Response) {
       nome,
       cnpj,
       email,
-      ativo = true
+      ativo = true,
+      tipo_fornecedor = 'empresa'
     } = req.body;
 
     const result = await db.query(`
       INSERT INTO fornecedores (
-        nome, cnpj, email, ativo, created_at
+        nome, cnpj, email, ativo, tipo_fornecedor, created_at
       )
-      VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+      VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
       RETURNING *
-    `, [nome, cnpj, email || null, ativo]);
+    `, [nome, cnpj, email || null, ativo, tipo_fornecedor]);
 
     res.json({
       success: true,
@@ -109,7 +112,8 @@ export async function editarFornecedor(req: Request, res: Response) {
       nome,
       cnpj,
       email,
-      ativo
+      ativo,
+      tipo_fornecedor
     } = req.body;
 
     const result = await db.query(`
@@ -118,10 +122,11 @@ export async function editarFornecedor(req: Request, res: Response) {
         cnpj = $2,
         email = $3,
         ativo = $4,
+        tipo_fornecedor = $5,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $5
+      WHERE id = $6
       RETURNING *
-    `, [nome, cnpj, email || null, ativo, id]);
+    `, [nome, cnpj, email || null, ativo, tipo_fornecedor, id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({

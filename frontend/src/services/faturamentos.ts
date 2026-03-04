@@ -86,3 +86,10 @@ export async function deletarFaturamento(id: number) {
   const { data } = await apiWithRetry.delete(`/faturamentos/${id}`);
   return data;
 }
+
+
+// Relatório: Tipo de fornecedor por modalidade
+export async function relatorioTipoFornecedorModalidade(faturamentoId: number) {
+  const { data } = await apiWithRetry.get(`/faturamentos/${faturamentoId}/relatorio-tipo-fornecedor`);
+  return data.success ? data.data : [];
+}

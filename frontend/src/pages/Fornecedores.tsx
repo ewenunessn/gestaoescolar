@@ -77,6 +77,7 @@ interface Fornecedor {
   cnpj: string;
   email?: string;
   ativo: boolean;
+  tipo_fornecedor?: 'empresa' | 'cooperativa' | 'individual';
 }
 
 const FornecedoresPage: React.FC = () => {
@@ -119,7 +120,7 @@ const FornecedoresPage: React.FC = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [editingFornecedor, setEditingFornecedor] = useState<Fornecedor | null>(null);
   const [fornecedorToDelete, setFornecedorToDelete] = useState<Fornecedor | null>(null);
-  const [formData, setFormData] = useState({ nome: "", cnpj: "", email: "", ativo: true });
+  const [formData, setFormData] = useState({ nome: "", cnpj: "", email: "", ativo: true, tipo_fornecedor: "empresa" as 'empresa' | 'cooperativa' | 'individual' });
 
   // Função para refresh manual (React Query já gerencia o carregamento automaticamente)
   const handleRefresh = useCallback(() => {
@@ -185,10 +186,16 @@ const FornecedoresPage: React.FC = () => {
   const openModal = (fornecedor: Fornecedor | null = null) => {
     if (fornecedor) {
       setEditingFornecedor(fornecedor);
-      setFormData({ nome: fornecedor.nome, cnpj: fornecedor.cnpj, email: fornecedor.email || '', ativo: fornecedor.ativo });
+      setFormData({ 
+        nome: fornecedor.nome, 
+        cnpj: fornecedor.cnpj, 
+        email: fornecedor.email || '', 
+        ativo: fornecedor.ativo,
+        tipo_fornecedor: fornecedor.tipo_fornecedor || 'empresa'
+      });
     } else {
       setEditingFornecedor(null);
-      setFormData({ nome: "", cnpj: "", email: "", ativo: true });
+      setFormData({ nome: "", cnpj: "", email: "", ativo: true, tipo_fornecedor: "empresa" });
     }
     setModalOpen(true);
   };
@@ -273,7 +280,7 @@ const FornecedoresPage: React.FC = () => {
           <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px' }}>
             <TableContainer>
               <Table>
-                <TableHead><TableRow><TableCell>Nome</TableCell><TableCell align="center">CNPJ</TableCell><TableCell align="center">Email</TableCell><TableCell align="center">Ações</TableCell></TableRow></TableHead>
+                <TableHead><TableRow><TableCell>Nome</TableCell><TableCell align="center">CNPJ</TableCell><TableCell align="center">Tipo</TableCell><TableCell align="center">Email</TableCell><TableCell align="center">Ações</TableCell></TableRow></TableHead>
                 <TableBody>
                   {paginatedFornecedores.map((f) => (
                     <TableRow key={f.id} hover>
@@ -284,6 +291,13 @@ const FornecedoresPage: React.FC = () => {
                         </Box>
                       </TableCell>
                       <TableCell align="center"><Typography variant="body2" color="text.secondary" fontFamily="monospace">{formatarDocumento(f.cnpj)}</Typography></TableCell>
+                      <TableCell align="center">
+                        <Chip 
+                          label={f.tipo_fornecedor === 'empresa' ? 'Empresa' : f.tipo_fornecedor === 'cooperativa' ? 'Cooperativa' : 'Individual'} 
+                          size="small"
+                          color={f.tipo_fornecedor === 'empresa' ? 'primary' : f.tipo_fornecedor === 'cooperativa' ? 'secondary' : 'success'}
+                        />
+                      </TableCell>
                       <TableCell align="center"><Typography variant="body2" color="text.secondary">{f.email || 'Não informado'}</Typography></TableCell>
 
                       <TableCell align="center">
@@ -309,6 +323,18 @@ const FornecedoresPage: React.FC = () => {
             <TextField label="Nome" value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} required />
             <TextField label="CNPJ" value={formData.cnpj} onChange={(e) => setFormData({ ...formData, cnpj: e.target.value })} required />
             <TextField label="Email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+            <FormControl fullWidth>
+              <InputLabel>Tipo de Fornecedor</InputLabel>
+              <Select
+                value={formData.tipo_fornecedor}
+                label="Tipo de Fornecedor"
+                onChange={(e) => setFormData({ ...formData, tipo_fornecedor: e.target.value as 'empresa' | 'cooperativa' | 'individual' })}
+              >
+                <MenuItem value="empresa">Empresa</MenuItem>
+                <MenuItem value="cooperativa">Cooperativa</MenuItem>
+                <MenuItem value="individual">Individual</MenuItem>
+              </Select>
+            </FormControl>
             <FormControlLabel control={<Switch checked={formData.ativo} onChange={(e) => setFormData({ ...formData, ativo: e.target.checked })} />} label="Ativo" />
           </Box>
         </DialogContent>

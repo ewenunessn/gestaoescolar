@@ -388,3 +388,28 @@ export async function deletarFaturamento(req: Request, res: Response) {
     client.release();
   }
 }
+
+// Relatório: Resumo de faturamento por tipo de fornecedor e modalidade
+export async function relatorioTipoFornecedorModalidade(req: Request, res: Response) {
+  try {
+    const { faturamentoId } = req.params;
+
+    const resultado = await db.query(`
+      SELECT * FROM vw_faturamento_tipo_fornecedor_modalidade
+      WHERE faturamento_id = $1
+      ORDER BY tipo_fornecedor, modalidade_nome
+    `, [faturamentoId]);
+
+    res.json({
+      success: true,
+      data: resultado.rows
+    });
+  } catch (error) {
+    console.error('❌ Erro ao buscar relatório:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao buscar relatório',
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+}
