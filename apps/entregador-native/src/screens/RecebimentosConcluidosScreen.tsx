@@ -3,7 +3,7 @@ import { View, FlatList, RefreshControl, StyleSheet } from 'react-native';
 import { Card, Text, Chip, Searchbar } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { recebimentosAPI, PedidoPendente } from '../api/recebimentos';
-import { formatarDataBR } from '../utils/dateUtils';
+import { formatarDataBR, formatarCompetencia } from '../utils/dateUtils';
 
 export default function RecebimentosConcluidosScreen() {
   const navigation = useNavigation<any>();
@@ -42,7 +42,14 @@ export default function RecebimentosConcluidosScreen() {
       >
         <Card.Content>
           <View style={styles.header}>
-            <Text variant="titleMedium" style={styles.numero}>{item.numero}</Text>
+            <View style={{ flex: 1 }}>
+              <Text variant="titleMedium" style={styles.numero}>{item.numero}</Text>
+              {item.competencia_mes_ano && (
+                <Text variant="bodySmall" style={styles.competencia}>
+                  {formatarCompetencia(item.competencia_mes_ano)}
+                </Text>
+              )}
+            </View>
             <Chip
               mode="flat"
               style={{ backgroundColor: '#4CAF50' }}
@@ -117,8 +124,9 @@ const styles = StyleSheet.create({
   searchbar: { margin: 16 },
   list: { padding: 16, paddingTop: 0 },
   card: { marginBottom: 12 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
   numero: { fontWeight: 'bold' },
+  competencia: { color: '#2196F3', marginTop: 2, fontSize: 12, fontWeight: '500' },
   data: { color: '#666', marginBottom: 12 },
   info: { marginBottom: 12 },
   valores: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#E0E0E0' },

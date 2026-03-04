@@ -75,6 +75,8 @@ const Pedidos = lazy(() => import("../pages/Pedidos"));
 const NovoPedido = lazy(() => import("../pages/NovoPedido"));
 const PedidoDetalhe = lazy(() => import("../pages/PedidoDetalhe"));
 const EditarPedido = lazy(() => import("../pages/EditarPedido"));
+const FaturamentosPedido = lazy(() => import("../pages/FaturamentosPedido"));
+const FaturamentoModalidades = lazy(() => import("../pages/FaturamentoModalidades"));
 const FaturamentoDetalhe = lazy(() => import("../pages/FaturamentoDetalhe"));
 const ComprovantesEntrega = lazy(() => import("../pages/ComprovantesEntrega"));
 
@@ -287,6 +289,14 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
             <Route
               path="/pedidos/:id/editar"
               element={<LazyRoute><EditarPedido /></LazyRoute>}
+            />
+            <Route
+              path="/pedidos/:id/faturamentos"
+              element={<LazyRoute><FaturamentosPedido /></LazyRoute>}
+            />
+            <Route
+              path="/pedidos/:id/faturamento/:faturamentoId"
+              element={<LazyRoute><FaturamentoModalidades /></LazyRoute>}
             />
             <Route
               path="/pedidos/:pedidoId/faturamento"

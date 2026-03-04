@@ -22,11 +22,16 @@ export function formatarDataParaInput(date: Date): string {
 }
 
 /**
- * Converte uma string de data (YYYY-MM-DD) para objeto Date
+ * Converte uma string de data (YYYY-MM-DD ou ISO) para objeto Date
  * Usa parse do date-fns para garantir parsing correto sem problemas de timezone
- * @param dateString - String no formato YYYY-MM-DD
+ * @param dateString - String no formato YYYY-MM-DD ou ISO
  */
 export function stringParaData(dateString: string): Date {
+  // Se for uma string ISO completa (com T), usa o construtor Date
+  if (dateString.includes('T')) {
+    return new Date(dateString);
+  }
+  // Caso contrário, usa parse para formato YYYY-MM-DD
   return parse(dateString, 'yyyy-MM-dd', new Date());
 }
 
@@ -82,4 +87,21 @@ export function formatarNumeroInteligente(valor: number, maxDecimais: number = 2
   // Remove zeros desnecessários
   const numeroFormatado = valor.toFixed(maxDecimais);
   return parseFloat(numeroFormatado).toString();
+}
+
+/**
+ * Formata competência de YYYY-MM para formato legível (ex: "Março/2026")
+ * @param competencia - String no formato YYYY-MM
+ */
+export function formatarCompetencia(competencia: string): string {
+  if (!competencia) return '';
+  
+  const [ano, mes] = competencia.split('-');
+  const meses = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ];
+  
+  const mesIndex = parseInt(mes) - 1;
+  return `${meses[mesIndex]}/${ano}`;
 }

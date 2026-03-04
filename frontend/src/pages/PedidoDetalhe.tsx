@@ -509,6 +509,17 @@ export default function PedidoDetalhe() {
             )}
 
             <Box sx={{ display: 'flex', gap: 2 }}>
+              {/* Botão Faturamento */}
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<ReceiptIcon />}
+                onClick={() => navigate(`/pedidos/${pedido.id}/faturamentos`)}
+                disabled={processando}
+              >
+                Faturamento
+              </Button>
+
               {/* Botão Editar - Sempre disponível */}
               {podeEditar && (
                 <Button

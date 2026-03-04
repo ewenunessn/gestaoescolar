@@ -30,7 +30,7 @@ import guiaRoutes from "./modules/guias/routes/guiaRoutes";
 import entregaRoutes from "./modules/entregas/routes/entregaRoutes";
 import rotaRoutes from "./modules/entregas/routes/rotaRoutes";
 import pedidoRoutes from "./modules/pedidos/routes/pedidoRoutes";
-import faturamentoRoutes from "./modules/pedidos/routes/faturamentoRoutes";
+import faturamentoRoutes from "./modules/faturamentos/routes/faturamentoRoutes";
 import demandasRoutes from "./modules/demandas/routes/demandaRoutes";
 import recebimentoRoutes from "./modules/recebimentos/routes/recebimentoRoutes";
 
