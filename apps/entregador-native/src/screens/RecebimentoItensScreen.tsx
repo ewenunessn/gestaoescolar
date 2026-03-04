@@ -99,10 +99,14 @@ export default function RecebimentoItensScreen() {
     const quantidade = parseFloat(item.quantidade as any) || 0;
     const quantidadeRecebida = parseFloat(item.quantidade_recebida as any) || 0;
     const saldoPendente = parseFloat(item.saldo_pendente as any) || 0;
-    const precoUnitario = parseFloat(item.preco_unitario as any) || 0;
-    const valorTotal = parseFloat(item.valor_total as any) || 0;
     const percentualRecebido = quantidade > 0 ? (quantidadeRecebida / quantidade) * 100 : 0;
     const completo = saldoPendente <= 0;
+
+    const formatarDataEntrega = (data: string) => {
+      if (!data) return null;
+      const d = new Date(data);
+      return d.toLocaleDateString('pt-BR');
+    };
 
     return (
       <Card style={styles.card}>
@@ -115,6 +119,11 @@ export default function RecebimentoItensScreen() {
               <Text variant="bodySmall" style={styles.contrato}>
                 {item.contrato_numero}
               </Text>
+              {item.data_entrega_prevista && (
+                <Text variant="bodySmall" style={styles.dataEntrega}>
+                  Entrega: {formatarDataEntrega(item.data_entrega_prevista)}
+                </Text>
+              )}
             </View>
             {completo && (
               <Chip mode="flat" compact style={{ backgroundColor: '#4CAF50' }} textStyle={{ color: '#FFF', fontSize: 11 }}>
@@ -140,12 +149,6 @@ export default function RecebimentoItensScreen() {
               <Text variant="bodySmall" style={styles.labelCompact}>Saldo</Text>
               <Text variant="bodyMedium" style={{ color: completo ? '#4CAF50' : '#FF9800', fontWeight: 'bold' }}>
                 {saldoPendente}
-              </Text>
-            </View>
-            <View style={styles.quantidadeItem}>
-              <Text variant="bodySmall" style={styles.labelCompact}>Valor</Text>
-              <Text variant="bodyMedium" style={{ fontWeight: 'bold' }}>
-                R$ {valorTotal.toFixed(2)}
               </Text>
             </View>
           </View>
@@ -310,6 +313,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 6 },
   produto: { fontWeight: 'bold', fontSize: 14 },
   contrato: { color: '#666', marginTop: 2, fontSize: 11 },
+  dataEntrega: { color: '#2196F3', marginTop: 2, fontSize: 11, fontWeight: '500' },
   quantidades: { 
     flexDirection: 'row', 
     justifyContent: 'space-around', 

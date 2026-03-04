@@ -20,6 +20,8 @@ export interface FornecedorPedido {
   valor_total: number;
   valor_recebido: number;
   total_recebimentos: number;
+  itens_completos: number;
+  itens_atrasados: number;
 }
 
 export interface ItemPedido {

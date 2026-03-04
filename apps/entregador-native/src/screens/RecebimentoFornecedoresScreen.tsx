@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, FlatList, RefreshControl, StyleSheet } from 'react-native';
-import { Card, Text, Chip, IconButton, ProgressBar } from 'react-native-paper';
+import { Card, Text, IconButton } from 'react-native-paper';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { recebimentosAPI, FornecedorPedido, PedidoPendente } from '../api/recebimentos';
 
@@ -29,13 +29,31 @@ export default function RecebimentoFornecedoresScreen() {
   };
 
   const renderFornecedor = ({ item }: { item: FornecedorPedido }) => {
-    const valorTotal = parseFloat(item.valor_total as any) || 0;
-    const valorRecebido = parseFloat(item.valor_recebido as any) || 0;
-    const percentualRecebido = valorTotal > 0 ? (valorRecebido / valorTotal) * 100 : 0;
+    const totalItens = parseInt(item.total_itens as any) || 0;
+    const itensCompletos = parseInt(item.itens_completos as any) || 0;
+    const itensAtrasados = parseInt(item.itens_atrasados as any) || 0;
+
+    // Determinar cor do card
+    let cardColor = '#FFF'; // Branco padrão
+    let statusIcon = null;
+    
+    if (itensCompletos === totalItens && totalItens > 0) {
+      // Todos os itens foram recebidos - VERDE
+      cardColor = '#E8F5E9';
+      statusIcon = 'check-circle';
+    } else if (itensAtrasados > 0) {
+      // Tem itens em atraso - VERMELHO
+      cardColor = '#FFEBEE';
+      statusIcon = 'alert-circle';
+    } else if (itensCompletos < totalItens) {
+      // Tem pendências mas sem atraso - AMARELO
+      cardColor = '#FFF9C4';
+      statusIcon = 'clock-outline';
+    }
 
     return (
       <Card
-        style={styles.card}
+        style={[styles.card, { backgroundColor: cardColor }]}
         onPress={() => navigation.navigate('RecebimentoItens', { 
           pedido, 
           fornecedor: item 
@@ -44,9 +62,22 @@ export default function RecebimentoFornecedoresScreen() {
         <Card.Content>
           <View style={styles.header}>
             <View style={{ flex: 1 }}>
-              <Text variant="titleMedium" style={styles.nome}>
-                {item.nome}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                {statusIcon && (
+                  <IconButton 
+                    icon={statusIcon} 
+                    size={20} 
+                    iconColor={
+                      itensCompletos === totalItens ? '#4CAF50' : 
+                      itensAtrasados > 0 ? '#F44336' : '#FFC107'
+                    }
+                    style={{ margin: 0 }}
+                  />
+                )}
+                <Text variant="titleMedium" style={styles.nome}>
+                  {item.nome}
+                </Text>
+              </View>
               <Text variant="bodySmall" style={styles.cnpj}>
                 CNPJ: {item.cnpj}
               </Text>
@@ -57,38 +88,22 @@ export default function RecebimentoFornecedoresScreen() {
           <View style={styles.info}>
             <View style={styles.infoItem}>
               <Text variant="bodySmall" style={styles.label}>Itens</Text>
-              <Text variant="titleSmall">{item.total_itens}</Text>
+              <Text variant="titleSmall">{totalItens}</Text>
             </View>
+            <View style={styles.infoItem}>
+              <Text variant="bodySmall" style={styles.label}>Completos</Text>
+              <Text variant="titleSmall" style={{ color: '#4CAF50' }}>{itensCompletos}</Text>
+            </View>
+            {itensAtrasados > 0 && (
+              <View style={styles.infoItem}>
+                <Text variant="bodySmall" style={styles.label}>Atrasados</Text>
+                <Text variant="titleSmall" style={{ color: '#F44336' }}>{itensAtrasados}</Text>
+              </View>
+            )}
             <View style={styles.infoItem}>
               <Text variant="bodySmall" style={styles.label}>Recebimentos</Text>
               <Text variant="titleSmall">{item.total_recebimentos}</Text>
             </View>
-          </View>
-
-          <View style={styles.valores}>
-            <View>
-              <Text variant="bodySmall" style={styles.label}>Valor Total</Text>
-              <Text variant="titleSmall">
-                R$ {valorTotal.toFixed(2)}
-              </Text>
-            </View>
-            <View>
-              <Text variant="bodySmall" style={styles.label}>Recebido</Text>
-              <Text variant="titleSmall" style={{ color: '#4CAF50' }}>
-                R$ {valorRecebido.toFixed(2)}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.progressContainer}>
-            <Text variant="bodySmall" style={styles.progressLabel}>
-              Progresso: {percentualRecebido.toFixed(0)}%
-            </Text>
-            <ProgressBar 
-              progress={percentualRecebido / 100} 
-              color="#4CAF50"
-              style={styles.progressBar}
-            />
           </View>
         </Card.Content>
       </Card>
@@ -134,19 +149,8 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   nome: { fontWeight: 'bold' },
   cnpj: { color: '#666', marginTop: 4 },
-  info: { flexDirection: 'row', gap: 24, marginBottom: 12 },
+  info: { flexDirection: 'row', gap: 24 },
   infoItem: { alignItems: 'center' },
-  valores: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    paddingTop: 12, 
-    borderTopWidth: 1, 
-    borderTopColor: '#E0E0E0',
-    marginBottom: 12
-  },
   label: { color: '#666', marginBottom: 4 },
-  progressContainer: { marginTop: 8 },
-  progressLabel: { color: '#666', marginBottom: 4 },
-  progressBar: { height: 8, borderRadius: 4 },
   empty: { textAlign: 'center', marginTop: 32, color: '#999' }
 });

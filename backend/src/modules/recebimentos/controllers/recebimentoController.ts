@@ -94,7 +94,24 @@ export async function listarFornecedoresPedido(req: Request, res: Response) {
         COUNT(DISTINCT pi.id) as total_itens,
         SUM(pi.valor_total) as valor_total,
         COALESCE(SUM(r.quantidade_recebida * pi.preco_unitario), 0) as valor_recebido,
-        COUNT(DISTINCT r.id) as total_recebimentos
+        COUNT(DISTINCT r.id) as total_recebimentos,
+        COUNT(DISTINCT CASE 
+          WHEN pi.quantidade <= COALESCE((
+            SELECT SUM(quantidade_recebida) 
+            FROM recebimentos 
+            WHERE pedido_item_id = pi.id
+          ), 0)
+          THEN pi.id 
+        END) as itens_completos,
+        COUNT(DISTINCT CASE 
+          WHEN pi.data_entrega_prevista < CURRENT_DATE 
+          AND pi.quantidade > COALESCE((
+            SELECT SUM(quantidade_recebida) 
+            FROM recebimentos 
+            WHERE pedido_item_id = pi.id
+          ), 0)
+          THEN pi.id 
+        END) as itens_atrasados
       FROM fornecedores f
       JOIN contratos c ON f.id = c.fornecedor_id
       JOIN contrato_produtos cp ON c.id = cp.contrato_id
@@ -148,7 +165,7 @@ export async function listarItensFornecedor(req: Request, res: Response) {
       GROUP BY pi.id, pi.quantidade, pi.preco_unitario, pi.valor_total, 
                pi.data_entrega_prevista, pi.observacoes, prod.id, prod.nome, 
                prod.unidade, c.numero
-      ORDER BY prod.nome
+      ORDER BY pi.data_entrega_prevista ASC NULLS LAST, prod.nome
     `, [pedidoId, fornecedorId]);
 
     res.json({
