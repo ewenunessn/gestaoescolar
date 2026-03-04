@@ -279,6 +279,7 @@ const ProdutosPage = () => {
       // Preparar dados para exportação compatível com importação
       const dadosExportacao = filteredProdutos.map(produto => ({
         nome: produto.nome,
+        unidade: produto.unidade || 'UN',
         descricao: produto.descricao || '',
         categoria: produto.categoria || '',
         tipo_processamento: produto.tipo_processamento || '',
@@ -295,27 +296,27 @@ const ProdutosPage = () => {
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.json_to_sheet(dadosExportacao);
 
-      // Ajustar largura das colunas para compatibilidade
+      // Ajustar largura das colunas
       const colWidths = [
         { wch: 30 }, // nome
+        { wch: 10 }, // unidade
         { wch: 35 }, // descricao
         { wch: 15 }, // categoria
-        { wch: 25 }, // tipo_processamento (aumentado para caber o texto)
+        { wch: 25 }, // tipo_processamento
         { wch: 10 }, // perecivel
         { wch: 8 }   // ativo
       ];
       ws['!cols'] = colWidths;
 
-      // Adicionar validação de dados para tipo_processamento (coluna H)
-      // Adicionar validação para perecivel (coluna I) e ativo (coluna J)
+      // Adicionar validação de dados
       if (!ws['!dataValidation']) ws['!dataValidation'] = [];
       
-      // Validação para tipo_processamento (coluna D, linhas 2 em diante)
+      // Validação para tipo_processamento (coluna E, linhas 2 em diante)
       for (let i = 2; i <= dadosExportacao.length + 1; i++) {
         ws['!dataValidation'].push({
           type: 'list',
           allowBlank: true,
-          sqref: `D${i}`,
+          sqref: `E${i}`,
           formulas: ['"in natura,minimamente processado,processado,ultraprocessado"'],
           promptTitle: 'Tipo de Processamento',
           prompt: 'Selecione uma das opções',
@@ -324,12 +325,12 @@ const ProdutosPage = () => {
         });
       }
 
-      // Validação para perecivel (coluna E)
+      // Validação para perecivel (coluna F)
       for (let i = 2; i <= dadosExportacao.length + 1; i++) {
         ws['!dataValidation'].push({
           type: 'list',
           allowBlank: false,
-          sqref: `E${i}`,
+          sqref: `F${i}`,
           formulas: ['"true,false"'],
           promptTitle: 'Perecível',
           prompt: 'Selecione true ou false',
@@ -338,12 +339,12 @@ const ProdutosPage = () => {
         });
       }
 
-      // Validação para ativo (coluna F)
+      // Validação para ativo (coluna G)
       for (let i = 2; i <= dadosExportacao.length + 1; i++) {
         ws['!dataValidation'].push({
           type: 'list',
           allowBlank: false,
-          sqref: `F${i}`,
+          sqref: `G${i}`,
           formulas: ['"true,false"'],
           promptTitle: 'Ativo',
           prompt: 'Selecione true ou false',
@@ -374,12 +375,13 @@ const ProdutosPage = () => {
     try {
       // Criar modelo com headers e exemplo
       const headers = [
-        'nome', 'descricao', 'categoria', 
+        'nome', 'unidade', 'descricao', 'categoria', 
         'tipo_processamento', 'perecivel', 'ativo'
       ];
 
       const exemplo = [
         'Arroz Branco Tipo 1',
+        'KG',
         'Arroz branco polido, tipo 1, classe longo fino',
         'Cereais',
         'processado',
@@ -393,9 +395,10 @@ const ProdutosPage = () => {
       // Ajustar largura das colunas
       const colWidths = [
         { wch: 30 }, // nome
+        { wch: 10 }, // unidade
         { wch: 35 }, // descricao
         { wch: 15 }, // categoria
-        { wch: 25 }, // tipo_processamento (aumentado)
+        { wch: 25 }, // tipo_processamento
         { wch: 10 }, // perecivel
         { wch: 8 }   // ativo
       ];
@@ -404,11 +407,11 @@ const ProdutosPage = () => {
       // Adicionar validação de dados para facilitar o preenchimento
       if (!ws['!dataValidation']) ws['!dataValidation'] = [];
       
-      // Validação para tipo_processamento (coluna D, linhas 2 a 100)
+      // Validação para tipo_processamento (coluna E, linhas 2 a 100)
       ws['!dataValidation'].push({
         type: 'list',
         allowBlank: true,
-        sqref: 'D2:D100',
+        sqref: 'E2:E100',
         formulas: ['"in natura,minimamente processado,processado,ultraprocessado"'],
         promptTitle: 'Tipo de Processamento',
         prompt: 'Selecione uma das opções',
@@ -416,11 +419,11 @@ const ProdutosPage = () => {
         error: 'Escolha: in natura, minimamente processado, processado ou ultraprocessado'
       });
 
-      // Validação para perecivel (coluna E, linhas 2 a 100)
+      // Validação para perecivel (coluna F, linhas 2 a 100)
       ws['!dataValidation'].push({
         type: 'list',
         allowBlank: false,
-        sqref: 'E2:E100',
+        sqref: 'F2:F100',
         formulas: ['"true,false"'],
         promptTitle: 'Perecível',
         prompt: 'Selecione true ou false',
@@ -428,11 +431,11 @@ const ProdutosPage = () => {
         error: 'Escolha: true ou false'
       });
 
-      // Validação para ativo (coluna F, linhas 2 a 100)
+      // Validação para ativo (coluna G, linhas 2 a 100)
       ws['!dataValidation'].push({
         type: 'list',
         allowBlank: false,
-        sqref: 'F2:F100',
+        sqref: 'G2:G100',
         formulas: ['"true,false"'],
         promptTitle: 'Ativo',
         prompt: 'Selecione true ou false',
@@ -450,6 +453,7 @@ const ProdutosPage = () => {
         [''],
         ['Campo', 'Descrição', 'Obrigatório', 'Exemplo'],
         ['nome', 'Nome do produto', 'SIM', 'Arroz Branco'],
+        ['unidade', 'Unidade de medida (UN, KG, L, etc)', 'SIM', 'KG'],
         ['descricao', 'Descrição detalhada do produto', 'NÃO', 'Arroz branco tipo 1'],
         ['categoria', 'Categoria do produto', 'NÃO', 'Cereais'],
         ['tipo_processamento', 'Tipo: in natura, minimamente processado, processado, ultraprocessado', 'NÃO', 'processado'],
@@ -460,7 +464,7 @@ const ProdutosPage = () => {
         ['- Preencha apenas os campos necessários'],
         ['- Use true ou false para os campos perecivel e ativo'],
         ['- O sistema identificará produtos existentes pelo nome e fará atualização'],
-        ['- Marca e peso agora são definidos nos contratos, não mais nos produtos']
+        ['- Unidades comuns: UN, KG, G, L, ML, DZ, PCT, CX, FD, SC']
       ];
 
       const wsInstrucoes = XLSX.utils.aoa_to_sheet(instrucoes);

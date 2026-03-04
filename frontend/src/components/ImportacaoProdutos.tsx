@@ -45,6 +45,7 @@ interface ImportacaoProdutosProps {
 
 interface ProdutoImportacao {
   nome: string;
+  unidade: string;
   descricao?: string;
   categoria?: string;
   tipo_processamento?: string;
@@ -84,6 +85,7 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
   const gerarModeloCSV = () => {
     const headers = [
       'nome',
+      'unidade',
       'descricao',
       'categoria',
       'tipo_processamento',
@@ -94,6 +96,7 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
     const exemplos = [
       [
         'Arroz Branco Tipo 1',
+        'KG',
         'Arroz branco polido, tipo 1, classe longo fino',
         'Cereais',
         'processado',
@@ -102,6 +105,7 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
       ],
       [
         'Feijão Carioca',
+        'KG',
         'Feijão carioca tipo 1, classe cores',
         'Leguminosas',
         'in natura',
@@ -110,6 +114,7 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
       ],
       [
         'Banana Prata',
+        'KG',
         'Banana prata fresca, primeira qualidade',
         'Frutas',
         'in natura',
@@ -118,6 +123,7 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
       ],
       [
         'Carne Bovina Moída',
+        'KG',
         'Carne bovina moída, primeira qualidade',
         'Carnes',
         'in natura',
@@ -126,6 +132,7 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
       ],
       [
         'Óleo de Soja',
+        'L',
         'Óleo de soja refinado',
         'Óleos',
         'processado',
@@ -149,6 +156,7 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
   const gerarModeloExcel = () => {
     const headers = [
       'nome',
+      'unidade',
       'descricao',
       'categoria',
       'tipo_processamento',
@@ -159,6 +167,7 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
     const exemplos = [
       [
         'Arroz Branco Tipo 1',
+        'KG',
         'Arroz branco polido, tipo 1, classe longo fino',
         'Cereais',
         'processado',
@@ -167,6 +176,7 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
       ],
       [
         'Feijão Carioca',
+        'KG',
         'Feijão carioca tipo 1, classe cores',
         'Leguminosas',
         'in natura',
@@ -175,6 +185,7 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
       ],
       [
         'Banana Prata',
+        'KG',
         'Banana prata fresca, primeira qualidade',
         'Frutas',
         'in natura',
@@ -183,6 +194,7 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
       ],
       [
         'Carne Bovina Moída',
+        'KG',
         'Carne bovina moída, primeira qualidade',
         'Carnes',
         'in natura',
@@ -191,6 +203,7 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
       ],
       [
         'Óleo de Soja',
+        'L',
         'Óleo de soja refinado',
         'Óleos',
         'processado',
@@ -204,9 +217,10 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
     // Definir largura das colunas
     ws['!cols'] = [
       { wch: 25 }, // nome
+      { wch: 10 }, // unidade
       { wch: 35 }, // descricao
       { wch: 15 }, // categoria
-      { wch: 25 }, // tipo_processamento (aumentado)
+      { wch: 25 }, // tipo_processamento
       { wch: 10 }, // perecivel
       { wch: 8 }   // ativo
     ];
@@ -214,11 +228,11 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
     // Adicionar validação de dados
     if (!ws['!dataValidation']) ws['!dataValidation'] = [];
     
-    // Validação para tipo_processamento (coluna D, linhas 2 a 100)
+    // Validação para tipo_processamento (coluna E, linhas 2 a 100)
     ws['!dataValidation'].push({
       type: 'list',
       allowBlank: true,
-      sqref: 'D2:D100',
+      sqref: 'E2:E100',
       formulas: ['"in natura,minimamente processado,processado,ultraprocessado"'],
       promptTitle: 'Tipo de Processamento',
       prompt: 'Selecione uma das opções',
@@ -226,11 +240,11 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
       error: 'Escolha: in natura, minimamente processado, processado ou ultraprocessado'
     });
 
-    // Validação para perecivel (coluna E, linhas 2 a 100)
+    // Validação para perecivel (coluna F, linhas 2 a 100)
     ws['!dataValidation'].push({
       type: 'list',
       allowBlank: false,
-      sqref: 'E2:E100',
+      sqref: 'F2:F100',
       formulas: ['"true,false"'],
       promptTitle: 'Perecível',
       prompt: 'Selecione true ou false',
@@ -238,11 +252,11 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
       error: 'Escolha: true ou false'
     });
 
-    // Validação para ativo (coluna F, linhas 2 a 100)
+    // Validação para ativo (coluna G, linhas 2 a 100)
     ws['!dataValidation'].push({
       type: 'list',
       allowBlank: false,
-      sqref: 'F2:F100',
+      sqref: 'G2:G100',
       formulas: ['"true,false"'],
       promptTitle: 'Ativo',
       prompt: 'Selecione true ou false',
@@ -339,6 +353,7 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
     return dadosRaw.map((linha, index) => {
       const produto: ProdutoImportacao = {
         nome: linha.nome || '',
+        unidade: linha.unidade || 'UN',
         descricao: linha.descricao || '',
         categoria: linha.categoria || '',
         tipo_processamento: linha.tipo_processamento || '',
@@ -356,13 +371,15 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
         erros.push('Nome do produto é obrigatório (mínimo 2 caracteres)');
       }
 
+      // Validar unidade (obrigatório)
+      if (!produto.unidade || produto.unidade.trim().length === 0) {
+        erros.push('Unidade é obrigatória');
+      }
+
       // Validar tipo de processamento
       if (produto.tipo_processamento && !['in natura', 'minimamente processado', 'processado', 'ultraprocessado'].includes(produto.tipo_processamento)) {
         erros.push('Tipo de processamento deve ser: in natura, minimamente processado, processado ou ultraprocessado');
       }
-
-      // Avisos apenas para campos realmente importantes (removidos avisos desnecessários)
-      // Campos como unidade, categoria e tipo_processamento são opcionais e não precisam gerar avisos
 
       // Definir status
       if (erros.length > 0) {
@@ -544,14 +561,15 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
                 O arquivo deve conter as seguintes colunas:
                 <ul>
                   <li><strong>nome</strong>: Nome do produto (obrigatório)</li>
+                  <li><strong>unidade</strong>: Unidade de medida - UN, KG, L, etc (obrigatório)</li>
                   <li><strong>descricao</strong>: Descrição detalhada do produto (opcional)</li>
                   <li><strong>categoria</strong>: Categoria do produto (opcional)</li>
                   <li><strong>tipo_processamento</strong>: in natura, minimamente processado, processado, ultraprocessado (opcional)</li>
                   <li><strong>perecivel</strong>: true ou false (padrão: false)</li>
                   <li><strong>ativo</strong>: true ou false (padrão: true)</li>
                 </ul>
-                <Typography variant="body2" sx={{ mt: 2, color: '#f59e0b', fontWeight: 600 }}>
-                  ⚠️ Importante: Marca, peso e unidades de medida agora são definidos nos contratos, não mais nos produtos.
+                <Typography variant="body2" sx={{ mt: 2, color: '#3b82f6', fontWeight: 600 }}>
+                  💡 Dica: Unidades comuns são UN, KG, G, L, ML, DZ, PCT, CX, FD, SC
                 </Typography>
               </Typography>
             </Box>
@@ -617,6 +635,7 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
                 <TableHead>
                   <TableRow>
                     <TableCell>Nome</TableCell>
+                    <TableCell>Unidade</TableCell>
                     <TableCell>Descrição</TableCell>
                     <TableCell>Categoria</TableCell>
                     <TableCell>Tipo Processamento</TableCell>
@@ -652,6 +671,18 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
                               {produto.mensagem}
                             </Typography>
                           )}
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label={produto.unidade}
+                            size="small"
+                            sx={{
+                              bgcolor: '#e0e7ff',
+                              color: '#4f46e5',
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                            }}
+                          />
                         </TableCell>
                         <TableCell>
                           <Typography sx={{ fontSize: '0.875rem', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>
