@@ -20,7 +20,9 @@ export default function EstoqueCentralEntradaScreen({ route, navigation }: any) 
   const [loadingProdutos, setLoadingProdutos] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const [produtoId, setProdutoId] = useState(produtoInicial?.produto_id || '');
+  const [produtoId, setProdutoId] = useState(
+    produtoInicial?.produto_id?.toString() || produtoInicial?.id?.toString() || ''
+  );
   const [quantidade, setQuantidade] = useState('');
   const [lote, setLote] = useState('');
   const [dataFabricacao, setDataFabricacao] = useState('');
@@ -36,7 +38,22 @@ export default function EstoqueCentralEntradaScreen({ route, navigation }: any) 
 
   useEffect(() => {
     carregarProdutos();
+    gerarCodigoLote();
   }, []);
+
+  const gerarCodigoLote = () => {
+    const hoje = new Date();
+    const ano = hoje.getFullYear();
+    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+    const dia = String(hoje.getDate()).padStart(2, '0');
+    const hora = String(hoje.getHours()).padStart(2, '0');
+    const minuto = String(hoje.getMinutes()).padStart(2, '0');
+    const segundo = String(hoje.getSeconds()).padStart(2, '0');
+    
+    // Formato: LOTE-YYYYMMDD-HHMMSS
+    const codigoLote = `LOTE-${ano}${mes}${dia}-${hora}${minuto}${segundo}`;
+    setLote(codigoLote);
+  };
 
   const carregarProdutos = async () => {
     try {
@@ -63,7 +80,7 @@ export default function EstoqueCentralEntradaScreen({ route, navigation }: any) 
 
     // Lote e validade são obrigatórios
     if (!lote) {
-      Alert.alert('Atenção', 'Informe o código do lote');
+      Alert.alert('Atenção', 'O código do lote é obrigatório. Clique em "Gerar Novo" se necessário.');
       return false;
     }
     
@@ -156,22 +173,33 @@ export default function EstoqueCentralEntradaScreen({ route, navigation }: any) 
               <Text variant="titleMedium" style={styles.sectionTitle}>
                 Produto
               </Text>
-              <View style={styles.pickerContainer}>
-                <Picker
-                  selectedValue={produtoId}
-                  onValueChange={setProdutoId}
-                  style={styles.picker}
-                >
-                  <Picker.Item label="Selecione um produto..." value="" />
-                  {produtos.map(produto => (
-                    <Picker.Item
-                      key={produto.id}
-                      label={`${produto.nome} (${produto.unidade})`}
-                      value={produto.id.toString()}
-                    />
-                  ))}
-                </Picker>
-              </View>
+              {produtoInicial ? (
+                <View style={styles.produtoSelecionado}>
+                  <Text variant="bodyLarge" style={styles.produtoNome}>
+                    {produtoInicial.produto_nome || produtoInicial.nome}
+                  </Text>
+                  <Text variant="bodyMedium" style={styles.produtoUnidade}>
+                    Unidade: {produtoInicial.unidade}
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.pickerContainer}>
+                  <Picker
+                    selectedValue={produtoId}
+                    onValueChange={setProdutoId}
+                    style={styles.picker}
+                  >
+                    <Picker.Item label="Selecione um produto..." value="" />
+                    {produtos.map(produto => (
+                      <Picker.Item
+                        key={produto.id}
+                        label={`${produto.nome} (${produto.unidade})`}
+                        value={produto.id.toString()}
+                      />
+                    ))}
+                  </Picker>
+                </View>
+              )}
             </Card.Content>
           </Card>
 
@@ -198,14 +226,30 @@ export default function EstoqueCentralEntradaScreen({ route, navigation }: any) 
               <Text variant="titleMedium" style={styles.sectionTitle}>
                 Informações do Lote (Obrigatório)
               </Text>
-                  <TextInput
-                    label="Código do Lote"
-                    value={lote}
-                    onChangeText={setLote}
-                    mode="outlined"
-                    style={styles.input}
-                    placeholder="LOTE-2026-001"
-                  />
+              
+              <Text variant="bodySmall" style={styles.loteHint}>
+                💡 O código do lote é gerado automaticamente. Você pode editá-lo ou gerar um novo.
+              </Text>
+              
+              <View style={styles.loteContainer}>
+                <TextInput
+                  label="Código do Lote"
+                  value={lote}
+                  onChangeText={setLote}
+                  mode="outlined"
+                  style={styles.loteInput}
+                  placeholder="LOTE-20260303-120000"
+                />
+                <Button
+                  mode="outlined"
+                  onPress={gerarCodigoLote}
+                  icon="refresh"
+                  style={styles.gerarLoteButton}
+                  compact
+                >
+                  Gerar Novo
+                </Button>
+              </View>
 
                   <View style={styles.dateContainer}>
                     <Text variant="bodyMedium" style={styles.dateLabel}>
@@ -373,8 +417,41 @@ const styles = StyleSheet.create({
   picker: {
     height: 50,
   },
+  produtoSelecionado: {
+    padding: 16,
+    backgroundColor: '#e8f5e9',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#4caf50',
+  },
+  produtoNome: {
+    fontWeight: 'bold',
+    color: '#2e7d32',
+    marginBottom: 4,
+  },
+  produtoUnidade: {
+    color: '#558b2f',
+  },
   input: {
     marginBottom: 12,
+  },
+  loteHint: {
+    color: '#666',
+    fontStyle: 'italic',
+    marginBottom: 12,
+    lineHeight: 18,
+  },
+  loteContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+    alignItems: 'flex-start',
+  },
+  loteInput: {
+    flex: 1,
+  },
+  gerarLoteButton: {
+    marginTop: 8,
   },
   switchRow: {
     flexDirection: 'row',

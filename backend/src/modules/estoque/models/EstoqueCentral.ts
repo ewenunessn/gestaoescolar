@@ -43,6 +43,18 @@ class EstoqueCentralModel {
    */
   async registrarEntrada(dados: CriarEntradaData): Promise<any> {
     return await db.transaction(async (client) => {
+      // Buscar unidade do produto
+      const produtoResult = await client.query(
+        'SELECT unidade FROM produtos WHERE id = $1',
+        [dados.produto_id]
+      );
+
+      if (produtoResult.rows.length === 0) {
+        throw new Error('Produto não encontrado');
+      }
+
+      const unidadeProduto = produtoResult.rows[0].unidade;
+
       // Buscar ou criar estoque
       const estoqueResult = await client.query(
         'SELECT * FROM estoque_central WHERE produto_id = $1',
@@ -78,17 +90,17 @@ class EstoqueCentralModel {
 
       const loteId = loteResult.rows[0].id;
 
-      // Registrar movimentação
+      // Registrar movimentação COM UNIDADE
       const movimentacaoResult = await client.query(
         `INSERT INTO estoque_central_movimentacoes 
          (estoque_central_id, lote_id, tipo, quantidade, quantidade_anterior, quantidade_posterior, 
-          motivo, observacao, documento, fornecedor, nota_fiscal, usuario_id, usuario_nome)
-         VALUES ($1, $2, 'entrada', $3, 0, $3, $4, $5, $6, $7, $8, $9, $10)
+          motivo, observacao, documento, fornecedor, nota_fiscal, usuario_id, usuario_nome, unidade)
+         VALUES ($1, $2, 'entrada', $3, 0, $3, $4, $5, $6, $7, $8, $9, $10, $11)
          RETURNING *`,
         [
           estoqueId, loteId, quantidadeNum,
           dados.motivo, dados.observacao, dados.documento, dados.fornecedor, dados.nota_fiscal,
-          dados.usuario_id, dados.usuario_nome
+          dados.usuario_id, dados.usuario_nome, unidadeProduto
         ]
       );
 
@@ -101,6 +113,18 @@ class EstoqueCentralModel {
    */
   async registrarSaida(dados: CriarSaidaData): Promise<any> {
     return await db.transaction(async (client) => {
+      // Buscar unidade do produto
+      const produtoResult = await client.query(
+        'SELECT unidade FROM produtos WHERE id = $1',
+        [dados.produto_id]
+      );
+
+      if (produtoResult.rows.length === 0) {
+        throw new Error('Produto não encontrado');
+      }
+
+      const unidadeProduto = produtoResult.rows[0].unidade;
+
       // Buscar estoque
       const estoqueResult = await client.query(
         'SELECT * FROM estoque_central WHERE produto_id = $1',
@@ -151,16 +175,16 @@ class EstoqueCentralModel {
           [quantidadeRetirar, lote.id]
         );
 
-        // Registrar movimentação
+        // Registrar movimentação COM UNIDADE
         const movResult = await client.query(
           `INSERT INTO estoque_central_movimentacoes 
            (estoque_central_id, lote_id, tipo, quantidade, quantidade_anterior, quantidade_posterior, 
-            motivo, observacao, documento, usuario_id, usuario_nome)
-           VALUES ($1, $2, 'saida', $3, $4, $5, $6, $7, $8, $9, $10)
+            motivo, observacao, documento, usuario_id, usuario_nome, unidade)
+           VALUES ($1, $2, 'saida', $3, $4, $5, $6, $7, $8, $9, $10, $11)
            RETURNING *`,
           [
             estoqueId, lote.id, -quantidadeRetirar, quantidadeLote, quantidadeLote - quantidadeRetirar,
-            dados.motivo, dados.observacao, dados.documento, dados.usuario_id, dados.usuario_nome
+            dados.motivo, dados.observacao, dados.documento, dados.usuario_id, dados.usuario_nome, unidadeProduto
           ]
         );
 
@@ -177,6 +201,18 @@ class EstoqueCentralModel {
    */
   async registrarAjuste(dados: CriarAjusteData): Promise<any> {
     return await db.transaction(async (client) => {
+      // Buscar unidade do produto
+      const produtoResult = await client.query(
+        'SELECT unidade FROM produtos WHERE id = $1',
+        [dados.produto_id]
+      );
+
+      if (produtoResult.rows.length === 0) {
+        throw new Error('Produto não encontrado');
+      }
+
+      const unidadeProduto = produtoResult.rows[0].unidade;
+
       // Buscar estoque
       const estoqueResult = await client.query(
         'SELECT * FROM estoque_central WHERE produto_id = $1',
@@ -211,16 +247,16 @@ class EstoqueCentralModel {
           [quantidadeNovaNum, dados.lote_id]
         );
 
-        // Registrar movimentação
+        // Registrar movimentação COM UNIDADE
         const movResult = await client.query(
           `INSERT INTO estoque_central_movimentacoes 
            (estoque_central_id, lote_id, tipo, quantidade, quantidade_anterior, quantidade_posterior, 
-            motivo, observacao, usuario_id, usuario_nome)
-           VALUES ($1, $2, 'ajuste', $3, $4, $5, $6, $7, $8, $9)
+            motivo, observacao, usuario_id, usuario_nome, unidade)
+           VALUES ($1, $2, 'ajuste', $3, $4, $5, $6, $7, $8, $9, $10)
            RETURNING *`,
           [
             estoqueId, dados.lote_id, diferenca, quantidadeAnterior, quantidadeNovaNum,
-            dados.motivo, dados.observacao, dados.usuario_id, dados.usuario_nome
+            dados.motivo, dados.observacao, dados.usuario_id, dados.usuario_nome, unidadeProduto
           ]
         );
 
@@ -284,7 +320,7 @@ class EstoqueCentralModel {
     offset = 0
   ) {
     let query = `
-      SELECT m.*, p.nome as produto_nome, p.unidade
+      SELECT m.*, p.nome as produto_nome, p.unidade as unidade_atual_produto
       FROM estoque_central_movimentacoes m
       INNER JOIN estoque_central ec ON ec.id = m.estoque_central_id
       INNER JOIN produtos p ON p.id = ec.produto_id

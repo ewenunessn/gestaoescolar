@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, Alert } from 'react-native';
-import { Text, Card, FAB, Searchbar, Chip, List, ActivityIndicator, Badge } from 'react-native-paper';
+import { Text, Card, FAB, Searchbar, Chip, ActivityIndicator, IconButton } from 'react-native-paper';
 import { listarEstoqueCentral, EstoqueCentral } from '../api/estoqueCentral';
 import { handleAxiosError } from '../api/client';
+import { formatarNumeroInteligente } from '../utils/dateUtils';
 
 export default function EstoqueCentralScreen({ navigation }: any) {
   const [estoque, setEstoque] = useState<EstoqueCentral[]>([]);
@@ -102,51 +103,65 @@ export default function EstoqueCentralScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      {/* Busca */}
-      <View style={styles.searchContainer}>
-        <Searchbar
-          placeholder="Buscar produto..."
-          value={busca}
-          onChangeText={setBusca}
-          style={styles.searchbar}
-        />
+      {/* Header com Busca */}
+      <View style={styles.header}>
+        <View style={styles.headerContent}>
+          <Searchbar
+            placeholder="Buscar produto..."
+            value={busca}
+            onChangeText={setBusca}
+            style={styles.searchbar}
+            elevation={0}
+          />
+          <IconButton
+            icon="chart-box"
+            size={24}
+            onPress={() => navigation.navigate('EstoqueCentralRelatorios')}
+            style={styles.menuButton}
+          />
+        </View>
       </View>
 
       {/* Filtros */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.filtrosContainer}
-        contentContainerStyle={styles.filtrosContent}
-      >
-        <Chip
-          selected={filtro === 'todos'}
-          onPress={() => setFiltro('todos')}
-          style={styles.chip}
+      <View style={styles.filtrosWrapper}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filtrosContent}
         >
-          Todos ({estoque.length})
-        </Chip>
-        <Chip
-          selected={filtro === 'baixo'}
-          onPress={() => setFiltro('baixo')}
-          style={styles.chip}
-          icon="alert"
-        >
-          Estoque Baixo
-        </Chip>
-        <Chip
-          selected={filtro === 'vencendo'}
-          onPress={() => setFiltro('vencendo')}
-          style={styles.chip}
-          icon="clock-alert"
-        >
-          Vencendo
-        </Chip>
-      </ScrollView>
+          <Chip
+            selected={filtro === 'todos'}
+            onPress={() => setFiltro('todos')}
+            style={styles.chip}
+            mode={filtro === 'todos' ? 'flat' : 'outlined'}
+          >
+            Todos ({estoque.length})
+          </Chip>
+          <Chip
+            selected={filtro === 'baixo'}
+            onPress={() => setFiltro('baixo')}
+            style={styles.chip}
+            icon="alert-circle"
+            mode={filtro === 'baixo' ? 'flat' : 'outlined'}
+          >
+            Estoque Baixo
+          </Chip>
+          <Chip
+            selected={filtro === 'vencendo'}
+            onPress={() => setFiltro('vencendo')}
+            style={styles.chip}
+            icon="clock-alert-outline"
+            mode={filtro === 'vencendo' ? 'flat' : 'outlined'}
+          >
+            Vencendo
+          </Chip>
+        </ScrollView>
+      </View>
 
       {/* Lista */}
       <ScrollView
         style={styles.lista}
+        contentContainerStyle={styles.listaContent}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -159,80 +174,96 @@ export default function EstoqueCentralScreen({ navigation }: any) {
         ) : estoqueFiltrado.length === 0 ? (
           <Card style={styles.emptyCard}>
             <Card.Content>
+              <Text style={styles.emptyIcon}>📭</Text>
               <Text style={styles.emptyText}>
                 {busca ? 'Nenhum produto encontrado' : 'Estoque vazio'}
               </Text>
+              {!busca && (
+                <Text style={styles.emptySubtext}>
+                  Clique no botão + para registrar uma entrada
+                </Text>
+              )}
             </Card.Content>
           </Card>
         ) : (
-          estoqueFiltrado.map((item) => (
-            <Card key={item.id} style={styles.card} onPress={() => abrirDetalhes(item)}>
-              <Card.Content>
-                <View style={styles.cardHeader}>
-                  <View style={styles.cardTitleContainer}>
-                    <Text variant="titleMedium" style={styles.produtoNome}>
-                      {item.produto_nome}
-                    </Text>
-                    {item.categoria && (
-                      <Text variant="bodySmall" style={styles.categoria}>
-                        {item.categoria}
+          estoqueFiltrado.map((item) => {
+            const disponivel = formatarNumero(item.quantidade_disponivel);
+            const corQuantidade = getCorQuantidade(disponivel);
+            
+            return (
+              <Card key={item.id} style={styles.card} onPress={() => abrirDetalhes(item)}>
+                <Card.Content>
+                  <View style={styles.cardHeader}>
+                    <View style={styles.cardTitleContainer}>
+                      <Text variant="titleMedium" style={styles.produtoNome}>
+                        {item.produto_nome}
                       </Text>
-                    )}
-                  </View>
-                  <Badge
-                    style={[
-                      styles.badge,
-                      { backgroundColor: getCorQuantidade(formatarNumero(item.quantidade_disponivel)) }
-                    ]}
-                  >
-                    {formatarNumero(item.quantidade_disponivel).toFixed(0)}
-                  </Badge>
-                </View>
-
-                <View style={styles.infoRow}>
-                  <View style={styles.infoItem}>
-                    <Text variant="bodySmall" style={styles.infoLabel}>
-                      Total
-                    </Text>
-                    <Text variant="bodyMedium" style={styles.infoValue}>
-                      {formatarNumero(item.quantidade).toFixed(2)} {item.unidade || 'UN'}
-                    </Text>
+                    </View>
                   </View>
 
-                  {formatarNumero(item.quantidade_reservada) > 0 && (
-                    <View style={styles.infoItem}>
-                      <Text variant="bodySmall" style={styles.infoLabel}>
-                        Reservado
+                  <View style={styles.quantidadeContainer}>
+                    <View style={styles.quantidadeBox}>
+                      <Text variant="bodySmall" style={styles.quantidadeLabel}>
+                        Disponível
                       </Text>
-                      <Text variant="bodyMedium" style={styles.infoValue}>
-                        {formatarNumero(item.quantidade_reservada).toFixed(2)} {item.unidade || 'UN'}
+                      <View style={styles.quantidadeValorContainer}>
+                        <Text 
+                          variant="headlineMedium" 
+                          style={[styles.quantidadeValor, { color: corQuantidade }]}
+                        >
+                          {formatarNumeroInteligente(disponivel, 0)}
+                        </Text>
+                        <Text variant="bodyMedium" style={styles.unidade}>
+                          {item.unidade || 'UN'}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.dividerVertical} />
+
+                    <View style={styles.infoGrid}>
+                      <View style={styles.infoGridItem}>
+                        <Text variant="bodySmall" style={styles.infoLabel}>
+                          Total
+                        </Text>
+                        <Text variant="titleSmall" style={styles.infoValue}>
+                          {formatarNumeroInteligente(formatarNumero(item.quantidade))}
+                        </Text>
+                      </View>
+
+                      <View style={styles.infoGridItem}>
+                        <Text variant="bodySmall" style={styles.infoLabel}>
+                          Lotes
+                        </Text>
+                        <Text variant="titleSmall" style={styles.infoValue}>
+                          {formatarNumero(item.total_lotes)}
+                        </Text>
+                      </View>
+
+                      {formatarNumero(item.quantidade_reservada) > 0 && (
+                        <View style={styles.infoGridItem}>
+                          <Text variant="bodySmall" style={styles.infoLabel}>
+                            Reservado
+                          </Text>
+                          <Text variant="titleSmall" style={[styles.infoValue, { color: '#f59e0b' }]}>
+                            {formatarNumeroInteligente(formatarNumero(item.quantidade_reservada))}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+
+                  {item.proxima_validade && (
+                    <View style={styles.validadeContainer}>
+                      <Text variant="bodySmall" style={styles.validadeLabel}>
+                        🗓️ Próxima validade: {formatarValidade(item.proxima_validade)}
                       </Text>
                     </View>
                   )}
-
-                  <View style={styles.infoItem}>
-                    <Text variant="bodySmall" style={styles.infoLabel}>
-                      Lotes
-                    </Text>
-                    <Text variant="bodyMedium" style={styles.infoValue}>
-                      {formatarNumero(item.total_lotes)}
-                    </Text>
-                  </View>
-                </View>
-
-                {item.proxima_validade && (
-                  <View style={styles.validadeContainer}>
-                    <Text variant="bodySmall" style={styles.validadeLabel}>
-                      Próxima validade:
-                    </Text>
-                    <Text variant="bodySmall" style={styles.validadeValue}>
-                      {formatarValidade(item.proxima_validade)}
-                    </Text>
-                  </View>
-                )}
-              </Card.Content>
-            </Card>
-          ))
+                </Card.Content>
+              </Card>
+            );
+          })
         )}
       </ScrollView>
 
@@ -246,19 +277,23 @@ export default function EstoqueCentralScreen({ navigation }: any) {
             icon: 'package-down',
             label: 'Registrar Entrada',
             onPress: () => navigation.navigate('EstoqueCentralEntrada'),
+            color: '#10b981',
           },
           {
             icon: 'package-up',
             label: 'Registrar Saída',
             onPress: () => navigation.navigate('EstoqueCentralSaida'),
+            color: '#dc2626',
           },
           {
             icon: 'pencil',
             label: 'Ajustar Estoque',
             onPress: () => navigation.navigate('EstoqueCentralAjuste'),
+            color: '#f59e0b',
           },
         ]}
         onStateChange={({ open }) => setFabOpen(open)}
+        fabStyle={styles.fab}
       />
     </View>
   );
@@ -269,18 +304,33 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
-  searchContainer: {
-    padding: 16,
-    paddingBottom: 8,
+  header: {
     backgroundColor: '#fff',
+    padding: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   searchbar: {
+    flex: 1,
     elevation: 0,
     backgroundColor: '#f5f5f5',
   },
-  filtrosContainer: {
+  menuButton: {
+    margin: 0,
+  },
+  filtrosWrapper: {
     backgroundColor: '#fff',
-    paddingBottom: 8,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
   },
   filtrosContent: {
     paddingHorizontal: 16,
@@ -291,6 +341,8 @@ const styles = StyleSheet.create({
   },
   lista: {
     flex: 1,
+  },
+  listaContent: {
     padding: 16,
   },
   loadingContainer: {
@@ -304,70 +356,120 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   emptyCard: {
-    marginTop: 20,
+    marginTop: 40,
+    alignItems: 'center',
+  },
+  emptyIcon: {
+    fontSize: 64,
+    textAlign: 'center',
+    marginBottom: 16,
   },
   emptyText: {
     textAlign: 'center',
     color: '#666',
-    fontSize: 16,
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    textAlign: 'center',
+    color: '#999',
+    fontSize: 14,
   },
   card: {
     marginBottom: 12,
+    elevation: 4,
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   cardTitleContainer: {
     flex: 1,
-    marginRight: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   produtoNome: {
     fontWeight: 'bold',
-    marginBottom: 4,
+    color: '#1a1a1a',
+    fontSize: 15,
   },
-  categoria: {
+  quantidadeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    backgroundColor: '#fafafa',
+    borderRadius: 6,
+    paddingHorizontal: 12,
+  },
+  quantidadeBox: {
+    flex: 1,
+  },
+  quantidadeLabel: {
     color: '#666',
-    fontStyle: 'italic',
+    marginBottom: 2,
+    textTransform: 'uppercase',
+    fontSize: 10,
+    fontWeight: '600',
   },
-  badge: {
-    fontSize: 16,
+  quantidadeValorContainer: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 4,
+  },
+  quantidadeValor: {
     fontWeight: 'bold',
-    minWidth: 50,
-    height: 28,
-    lineHeight: 28,
+    fontSize: 24,
   },
-  infoRow: {
+  unidade: {
+    color: '#666',
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  dividerVertical: {
+    width: 1,
+    height: 40,
+    backgroundColor: '#e0e0e0',
+    marginHorizontal: 12,
+  },
+  infoGrid: {
+    flex: 1,
+    gap: 6,
+  },
+  infoGridItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  infoItem: {
-    flex: 1,
+    alignItems: 'center',
   },
   infoLabel: {
     color: '#666',
-    marginBottom: 2,
+    fontSize: 11,
   },
   infoValue: {
     fontWeight: '600',
+    color: '#1a1a1a',
+    fontSize: 14,
   },
   validadeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
     marginTop: 8,
     paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
   },
   validadeLabel: {
-    color: '#666',
-    marginRight: 8,
-  },
-  validadeValue: {
-    fontWeight: '600',
     color: '#f59e0b',
+    fontWeight: '600',
+    fontSize: 12,
+  },
+  fab: {
+    backgroundColor: '#1976d2',
   },
 });

@@ -200,22 +200,22 @@ const styles = StyleSheet.create({
   },
   filtroCard: {
     marginBottom: 16,
-    backgroundColor: '#f0fdf4',
-    borderWidth: 2,
-    borderColor: '#059669',
+    backgroundColor: '#10b981',
+    borderWidth: 0,
+    elevation: 4,
   },
   filtroTitle: {
     fontWeight: 'bold',
-    color: '#047857',
+    color: '#fff',
     marginBottom: 8,
   },
   filtroRota: {
-    color: '#065f46',
+    color: '#fff',
     fontWeight: '600',
     marginBottom: 4,
   },
   filtroPeriodo: {
-    color: '#059669',
+    color: '#f0fdf4',
     marginBottom: 12,
   },
   filtroActions: {
@@ -223,21 +223,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   deliveryFab: {
-    backgroundColor: '#059669',
+    backgroundColor: '#047857',
   },
   noFiltroCard: {
     marginBottom: 16,
-    backgroundColor: '#fff3cd',
-    borderWidth: 2,
-    borderColor: '#ffc107',
+    backgroundColor: '#f59e0b',
+    borderWidth: 0,
+    elevation: 4,
   },
   noFiltroTitle: {
     fontWeight: 'bold',
-    color: '#856404',
+    color: '#fff',
     marginBottom: 8,
   },
   noFiltroText: {
-    color: '#856404',
+    color: '#fff',
     marginBottom: 12,
   },
   noFiltroActions: {
@@ -245,21 +245,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   scanButtonLarge: {
-    backgroundColor: '#1976d2',
+    backgroundColor: '#d97706',
   },
   estoqueCard: {
     marginBottom: 16,
-    backgroundColor: '#f3e8ff',
-    borderWidth: 2,
-    borderColor: '#9333ea',
+    backgroundColor: '#8b5cf6',
+    borderWidth: 0,
+    elevation: 4,
   },
   estoqueTitle: {
     fontWeight: 'bold',
-    color: '#7e22ce',
+    color: '#fff',
     marginBottom: 8,
   },
   estoqueText: {
-    color: '#6b21a8',
+    color: '#fff',
     marginBottom: 12,
   },
   estoqueActions: {
@@ -267,6 +267,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   estoqueFab: {
-    backgroundColor: '#9333ea',
+    backgroundColor: '#6d28d9',
   },
 });

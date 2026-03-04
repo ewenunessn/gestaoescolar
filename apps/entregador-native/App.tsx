@@ -20,6 +20,7 @@ import EstoqueCentralDetalhesScreen from './src/screens/EstoqueCentralDetalhesSc
 import EstoqueCentralEntradaScreen from './src/screens/EstoqueCentralEntradaScreen';
 import EstoqueCentralSaidaScreen from './src/screens/EstoqueCentralSaidaScreen';
 import EstoqueCentralAjusteScreen from './src/screens/EstoqueCentralAjusteScreen';
+import EstoqueCentralRelatoriosScreen from './src/screens/EstoqueCentralRelatoriosScreen';
 
 // Theme
 import { theme } from './src/theme';
@@ -129,6 +130,11 @@ export default function App() {
             name="EstoqueCentralAjuste" 
             component={EstoqueCentralAjusteScreen}
             options={{ title: 'Ajustar Estoque' }}
+          />
+          <Stack.Screen 
+            name="EstoqueCentralRelatorios" 
+            component={EstoqueCentralRelatoriosScreen}
+            options={{ title: 'Relatórios do Estoque' }}
           />
         </Stack.Navigator>
       </NavigationContainer>

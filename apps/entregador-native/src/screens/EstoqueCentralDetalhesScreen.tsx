@@ -1,29 +1,42 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, Alert } from 'react-native';
 import { Text, Card, Button, List, ActivityIndicator, Chip, Divider } from 'react-native-paper';
-import { listarLotes, listarMovimentacoes, Lote, Movimentacao } from '../api/estoqueCentral';
+import { useFocusEffect } from '@react-navigation/native';
+import { listarLotes, listarMovimentacoes, Lote, Movimentacao, listarEstoqueCentral } from '../api/estoqueCentral';
 import { handleAxiosError } from '../api/client';
-import { formatarDataBR } from '../utils/dateUtils';
+import { formatarDataBR, formatarNumeroInteligente } from '../utils/dateUtils';
 
 export default function EstoqueCentralDetalhesScreen({ route, navigation }: any) {
-  const { estoque } = route.params;
+  const { estoque: estoqueInicial } = route.params;
+  const [estoque, setEstoque] = useState(estoqueInicial);
   const [lotes, setLotes] = useState<Lote[]>([]);
   const [movimentacoes, setMovimentacoes] = useState<Movimentacao[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [abaAtiva, setAbaAtiva] = useState<'lotes' | 'historico'>('lotes');
 
-  useEffect(() => {
-    carregarDados();
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      carregarDados();
+    }, [])
+  );
 
   const carregarDados = async () => {
     try {
       setLoading(true);
-      const [lotesData, movimentacoesData] = await Promise.all([
+      // Recarrega os dados do estoque para pegar quantidade atualizada
+      const [estoqueAtualizado, lotesData, movimentacoesData] = await Promise.all([
+        listarEstoqueCentral(),
         listarLotes(estoque.id),
         listarMovimentacoes(estoque.id, undefined, 20)
       ]);
+      
+      // Encontra o estoque atualizado na lista
+      const estoqueNovo = estoqueAtualizado.find((e: any) => e.id === estoque.id);
+      if (estoqueNovo) {
+        setEstoque(estoqueNovo);
+      }
+      
       setLotes(lotesData);
       setMovimentacoes(movimentacoesData);
     } catch (err) {
@@ -112,7 +125,7 @@ export default function EstoqueCentralDetalhesScreen({ route, navigation }: any)
                   Quantidade Total
                 </Text>
                 <Text variant="headlineSmall" style={styles.infoValue}>
-                  {formatarNumero(estoque.quantidade).toFixed(2)}
+                  {formatarNumeroInteligente(formatarNumero(estoque.quantidade))}
                 </Text>
                 <Text variant="bodySmall" style={styles.infoUnidade}>
                   {estoque.unidade}
@@ -124,7 +137,7 @@ export default function EstoqueCentralDetalhesScreen({ route, navigation }: any)
                   Disponível
                 </Text>
                 <Text variant="headlineSmall" style={[styles.infoValue, { color: '#10b981' }]}>
-                  {formatarNumero(estoque.quantidade_disponivel).toFixed(2)}
+                  {formatarNumeroInteligente(formatarNumero(estoque.quantidade_disponivel))}
                 </Text>
                 <Text variant="bodySmall" style={styles.infoUnidade}>
                   {estoque.unidade}
@@ -137,7 +150,7 @@ export default function EstoqueCentralDetalhesScreen({ route, navigation }: any)
                     Reservado
                   </Text>
                   <Text variant="headlineSmall" style={[styles.infoValue, { color: '#f59e0b' }]}>
-                    {formatarNumero(estoque.quantidade_reservada).toFixed(2)}
+                    {formatarNumeroInteligente(formatarNumero(estoque.quantidade_reservada))}
                   </Text>
                   <Text variant="bodySmall" style={styles.infoUnidade}>
                     {estoque.unidade}
@@ -197,7 +210,7 @@ export default function EstoqueCentralDetalhesScreen({ route, navigation }: any)
                               ]}
                               textStyle={{ color: '#fff' }}
                             >
-                              {formatarNumero(lote.quantidade).toFixed(2)} {estoque.unidade}
+                              {formatarNumeroInteligente(formatarNumero(lote.quantidade))} {estoque.unidade}
                             </Chip>
                           </View>
 
@@ -242,37 +255,44 @@ export default function EstoqueCentralDetalhesScreen({ route, navigation }: any)
                   {movimentacoes.length === 0 ? (
                     <Text style={styles.emptyText}>Nenhuma movimentação registrada</Text>
                   ) : (
-                    movimentacoes.map((mov) => (
-                      <List.Item
-                        key={mov.id}
-                        title={mov.tipo.toUpperCase()}
-                        description={`${mov.motivo || 'Sem motivo'}\n${new Date(mov.created_at).toLocaleString('pt-BR')}`}
-                        left={(props) => (
-                          <List.Icon
-                            {...props}
-                            icon={getTipoIcon(mov.tipo)}
-                            color={getTipoColor(mov.tipo)}
-                          />
-                        )}
-                        right={() => (
-                          <View style={styles.movQuantidade}>
-                            <Text
-                              variant="titleMedium"
-                              style={[
-                                styles.movQuantidadeText,
-                                { color: getTipoColor(mov.tipo) }
-                              ]}
-                            >
-                              {formatarNumero(mov.quantidade) > 0 ? '+' : ''}{formatarNumero(mov.quantidade).toFixed(2)}
-                            </Text>
-                            <Text variant="bodySmall" style={styles.movUnidade}>
-                              {estoque.unidade}
-                            </Text>
-                          </View>
-                        )}
-                        style={styles.movItem}
-                      />
-                    ))
+                    <>
+                      {movimentacoes.map((mov) => (
+                        <List.Item
+                          key={mov.id}
+                          title={mov.tipo.toUpperCase()}
+                          description={`${mov.motivo || 'Sem motivo'}\n${new Date(mov.created_at).toLocaleString('pt-BR')}`}
+                          left={(props) => (
+                            <List.Icon
+                              {...props}
+                              icon={getTipoIcon(mov.tipo)}
+                              color={getTipoColor(mov.tipo)}
+                            />
+                          )}
+                          right={() => (
+                            <View style={styles.movQuantidade}>
+                              <Text
+                                variant="titleMedium"
+                                style={[
+                                  styles.movQuantidadeText,
+                                  { color: getTipoColor(mov.tipo) }
+                                ]}
+                              >
+                                {formatarNumero(mov.quantidade) > 0 ? '+' : ''}{formatarNumeroInteligente(formatarNumero(mov.quantidade))}
+                              </Text>
+                              <Text variant="bodySmall" style={styles.movUnidade}>
+                                {mov.unidade || estoque.unidade}
+                              </Text>
+                            </View>
+                          )}
+                          style={styles.movItem}
+                        />
+                      ))}
+                      {movimentacoes.length >= 20 && (
+                        <Text variant="bodySmall" style={styles.limitText}>
+                          Exibindo as últimas 20 movimentações
+                        </Text>
+                      )}
+                    </>
                   )}
                 </Card.Content>
               </Card>
@@ -372,6 +392,15 @@ const styles = StyleSheet.create({
     color: '#666',
     padding: 20,
   },
+  limitText: {
+    textAlign: 'center',
+    color: '#999',
+    fontStyle: 'italic',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+  },
   loteItem: {
     marginBottom: 16,
     padding: 12,
@@ -383,12 +412,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
+    gap: 8,
   },
   loteNome: {
     fontWeight: 'bold',
+    flex: 1,
+    flexShrink: 1,
   },
   loteChip: {
-    height: 28,
+    minHeight: 28,
+    paddingHorizontal: 8,
+    flexShrink: 0,
   },
   loteInfo: {
     gap: 4,

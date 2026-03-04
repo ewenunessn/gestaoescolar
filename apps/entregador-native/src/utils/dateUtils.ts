@@ -69,3 +69,17 @@ export function adicionarDias(dateString: string, dias: number): string {
   const novaData = addDays(date, dias);
   return formatarDataParaInput(novaData);
 }
+
+/**
+ * Formata um número removendo casas decimais desnecessárias
+ * Exemplos: 50.00 -> 50, 50.50 -> 50.5, 50.25 -> 50.25
+ * @param valor - Número a ser formatado
+ * @param maxDecimais - Número máximo de casas decimais (padrão: 2)
+ */
+export function formatarNumeroInteligente(valor: number, maxDecimais: number = 2): string {
+  if (valor === null || valor === undefined || isNaN(valor)) return '0';
+  
+  // Remove zeros desnecessários
+  const numeroFormatado = valor.toFixed(maxDecimais);
+  return parseFloat(numeroFormatado).toString();
+}

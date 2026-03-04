@@ -4,6 +4,7 @@ import { Text, Card, Button, TextInput, ActivityIndicator } from 'react-native-p
 import { Picker } from '@react-native-picker/picker';
 import { registrarSaida, SaidaData } from '../api/estoqueCentral';
 import { api, handleAxiosError } from '../api/client';
+import { formatarNumeroInteligente } from '../utils/dateUtils';
 
 interface Produto {
   id: number;
@@ -18,7 +19,9 @@ export default function EstoqueCentralSaidaScreen({ route, navigation }: any) {
   const [loadingProdutos, setLoadingProdutos] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const [produtoId, setProdutoId] = useState(produtoInicial?.produto_id || '');
+  const [produtoId, setProdutoId] = useState(
+    produtoInicial?.produto_id?.toString() || produtoInicial?.id?.toString() || ''
+  );
   const [quantidade, setQuantidade] = useState('');
   const [motivo, setMotivo] = useState('');
   const [observacao, setObservacao] = useState('');
@@ -130,10 +133,15 @@ export default function EstoqueCentralSaidaScreen({ route, navigation }: any) {
                 Produto
               </Text>
               {produtoInicial ? (
-                <View style={styles.produtoFixo}>
-                  <Text variant="titleMedium">{produtoInicial.produto_nome}</Text>
-                  <Text variant="bodySmall" style={styles.disponivel}>
-                    Disponível: {formatarNumero(produtoInicial.quantidade_disponivel).toFixed(2)} {produtoInicial.unidade}
+                <View style={styles.produtoSelecionado}>
+                  <Text variant="bodyLarge" style={styles.produtoNome}>
+                    {produtoInicial.produto_nome || produtoInicial.nome}
+                  </Text>
+                  <Text variant="bodyMedium" style={styles.produtoUnidade}>
+                    Unidade: {produtoInicial.unidade}
+                  </Text>
+                  <Text variant="bodyMedium" style={styles.disponivel}>
+                    Disponível: {formatarNumeroInteligente(formatarNumero(produtoInicial.quantidade_disponivel))} {produtoInicial.unidade}
                   </Text>
                 </View>
               ) : (
@@ -279,14 +287,24 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 12,
   },
-  produtoFixo: {
-    padding: 12,
-    backgroundColor: '#f9f9f9',
+  produtoSelecionado: {
+    padding: 16,
+    backgroundColor: '#e8f5e9',
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#4caf50',
+  },
+  produtoNome: {
+    fontWeight: 'bold',
+    color: '#2e7d32',
+    marginBottom: 4,
+  },
+  produtoUnidade: {
+    color: '#558b2f',
+    marginBottom: 4,
   },
   disponivel: {
-    color: '#10b981',
-    marginTop: 4,
+    color: '#558b2f',
     fontWeight: '600',
   },
   fefoInfo: {
