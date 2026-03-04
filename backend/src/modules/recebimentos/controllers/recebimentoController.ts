@@ -14,7 +14,15 @@ export async function listarPedidosPendentes(req: Request, res: Response) {
         p.competencia_mes_ano,
         COUNT(DISTINCT pi.id) as total_itens,
         COUNT(DISTINCT f.id) as total_fornecedores,
-        COALESCE(SUM(r.quantidade_recebida * pi.preco_unitario), 0) as valor_recebido
+        COALESCE(SUM(r.quantidade_recebida * pi.preco_unitario), 0) as valor_recebido,
+        COUNT(DISTINCT CASE 
+          WHEN pi.quantidade <= COALESCE((
+            SELECT SUM(quantidade_recebida) 
+            FROM recebimentos 
+            WHERE pedido_item_id = pi.id
+          ), 0)
+          THEN pi.id 
+        END) as itens_completos
       FROM pedidos p
       JOIN pedido_itens pi ON p.id = pi.pedido_id
       JOIN contrato_produtos cp ON pi.contrato_produto_id = cp.id
@@ -54,7 +62,15 @@ export async function listarPedidosConcluidos(req: Request, res: Response) {
         COUNT(DISTINCT pi.id) as total_itens,
         COUNT(DISTINCT f.id) as total_fornecedores,
         COALESCE(SUM(r.quantidade_recebida * pi.preco_unitario), 0) as valor_recebido,
-        MAX(r.data_recebimento) as data_conclusao
+        MAX(r.data_recebimento) as data_conclusao,
+        COUNT(DISTINCT CASE 
+          WHEN pi.quantidade <= COALESCE((
+            SELECT SUM(quantidade_recebida) 
+            FROM recebimentos 
+            WHERE pedido_item_id = pi.id
+          ), 0)
+          THEN pi.id 
+        END) as itens_completos
       FROM pedidos p
       JOIN pedido_itens pi ON p.id = pi.pedido_id
       JOIN contrato_produtos cp ON pi.contrato_produto_id = cp.id

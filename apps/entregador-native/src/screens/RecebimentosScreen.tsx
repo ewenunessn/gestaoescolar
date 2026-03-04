@@ -49,9 +49,9 @@ export default function RecebimentosScreen() {
   };
 
   const renderPedido = ({ item }: { item: PedidoPendente }) => {
-    const valorTotal = parseFloat(item.valor_total as any) || 0;
-    const valorRecebido = parseFloat(item.valor_recebido as any) || 0;
-    const percentualRecebido = valorTotal > 0 ? (valorRecebido / valorTotal) * 100 : 0;
+    const totalItens = parseInt(item.total_itens as any) || 0;
+    const itensCompletos = parseInt(item.itens_completos as any) || 0;
+    const percentualCompleto = totalItens > 0 ? (itensCompletos / totalItens) * 100 : 0;
 
     return (
       <Card
@@ -76,27 +76,27 @@ export default function RecebimentosScreen() {
 
           <View style={styles.info}>
             <Text variant="bodyMedium">
-              {item.total_fornecedores} fornecedor(es) • {item.total_itens} item(ns)
+              {item.total_fornecedores} fornecedor(es) • {totalItens} item(ns)
             </Text>
           </View>
 
           <View style={styles.valores}>
             <View>
-              <Text variant="bodySmall" style={styles.label}>Valor Total</Text>
+              <Text variant="bodySmall" style={styles.label}>Total Itens</Text>
               <Text variant="titleSmall">
-                R$ {valorTotal.toFixed(2)}
+                {totalItens}
               </Text>
             </View>
             <View>
-              <Text variant="bodySmall" style={styles.label}>Recebido</Text>
+              <Text variant="bodySmall" style={styles.label}>Completos</Text>
               <Text variant="titleSmall" style={{ color: '#4CAF50' }}>
-                R$ {valorRecebido.toFixed(2)}
+                {itensCompletos}
               </Text>
             </View>
             <View>
               <Text variant="bodySmall" style={styles.label}>Progresso</Text>
               <Text variant="titleSmall">
-                {percentualRecebido.toFixed(0)}%
+                {percentualCompleto.toFixed(0)}%
               </Text>
             </View>
           </View>

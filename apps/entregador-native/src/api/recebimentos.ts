@@ -10,6 +10,7 @@ export interface PedidoPendente {
   total_itens: number;
   total_fornecedores: number;
   valor_recebido: number;
+  itens_completos: number;
 }
 
 export interface FornecedorPedido {
