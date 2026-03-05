@@ -523,13 +523,32 @@ export default function FaturamentoModalidades() {
   const validarQuantidades = (): boolean => {
     if (!pedido) return false;
 
-    for (const item of pedido.itens) {
-      const totalAlocado = calcularTotalAlocadoPorPedidoItem(item.id);
-      if (totalAlocado > Number(item.quantidade)) {
-        setErro(`O item "${item.produto_nome}" tem ${totalAlocado} alocado, mas o pedido tem apenas ${item.quantidade}`);
+    // Agrupar itens por contrato_produto_id e validar o total
+    const itensPorContrato = new Map<number, { nome: string; quantidadeTotal: number; alocadoTotal: number }>();
+    
+    pedido.itens.forEach(item => {
+      if (!itensPorContrato.has(item.contrato_produto_id)) {
+        itensPorContrato.set(item.contrato_produto_id, {
+          nome: item.produto_nome,
+          quantidadeTotal: 0,
+          alocadoTotal: 0
+        });
+      }
+      
+      const grupo = itensPorContrato.get(item.contrato_produto_id)!;
+      grupo.quantidadeTotal += Number(item.quantidade);
+    });
+    
+    // Calcular total alocado por contrato_produto_id
+    for (const [contratoId, grupo] of itensPorContrato.entries()) {
+      const totalAlocado = calcularTotalAlocado(contratoId);
+      
+      if (totalAlocado > grupo.quantidadeTotal) {
+        setErro(`O item "${grupo.nome}" tem ${totalAlocado} alocado, mas o pedido tem apenas ${grupo.quantidadeTotal}`);
         return false;
       }
     }
+    
     return true;
   };
 
