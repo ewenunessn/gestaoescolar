@@ -160,7 +160,13 @@ class EstoqueCentralController {
       res.status(201).json(movimentacao);
     } catch (error: any) {
       console.error('Erro ao registrar saída:', error);
-      console.error('Stack:', error.stack);
+      
+      // Tratar erro de quantidade insuficiente como 400 (Bad Request)
+      if (error.message && error.message.includes('Quantidade insuficiente')) {
+        return res.status(400).json({ error: error.message });
+      }
+      
+      // Outros erros como 500 (Internal Server Error)
       res.status(500).json({ error: error.message });
     }
   }
@@ -207,6 +213,17 @@ class EstoqueCentralController {
       res.status(201).json(movimentacao);
     } catch (error: any) {
       console.error('Erro ao registrar ajuste:', error);
+      
+      // Tratar erros de validação como 400 (Bad Request)
+      if (error.message && (
+        error.message.includes('Quantidade insuficiente') ||
+        error.message.includes('não encontrado') ||
+        error.message.includes('inválid')
+      )) {
+        return res.status(400).json({ error: error.message });
+      }
+      
+      // Outros erros como 500 (Internal Server Error)
       res.status(500).json({ error: error.message });
     }
   }

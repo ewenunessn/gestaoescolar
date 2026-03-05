@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, FlatList, RefreshControl, StyleSheet, Alert } from 'react-native';
-import { Card, Text, Button, Dialog, Portal, TextInput, Chip, IconButton, Divider } from 'react-native-paper';
+import { View, FlatList, RefreshControl, StyleSheet, Alert, Platform, Modal, ScrollView, KeyboardAvoidingView } from 'react-native';
+import { Card, Text, Button, Dialog, Portal, TextInput, Chip, Divider, IconButton } from 'react-native-paper';
 import { useRoute } from '@react-navigation/native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { recebimentosAPI, ItemPedido, PedidoPendente, FornecedorPedido, Recebimento } from '../api/recebimentos';
+import { registrarEntrada, EntradaData } from '../api/estoqueCentral';
+import { formatarDataBR, stringParaData, formatarDataParaInput } from '../utils/dateUtils';
 
 export default function RecebimentoItensScreen() {
   const route = useRoute<any>();
@@ -20,6 +23,17 @@ export default function RecebimentoItensScreen() {
   const [observacoes, setObservacoes] = useState('');
   const [processando, setProcessando] = useState(false);
   const [historico, setHistorico] = useState<Recebimento[]>([]);
+  
+  // Estados para o diálogo de entrada no estoque
+  const [dialogEstoqueVisible, setDialogEstoqueVisible] = useState(false);
+  const [quantidadeRecebida, setQuantidadeRecebida] = useState(0);
+  const [lote, setLote] = useState('');
+  const [dataFabricacao, setDataFabricacao] = useState('');
+  const [dataValidade, setDataValidade] = useState('');
+  const [notaFiscal, setNotaFiscal] = useState('');
+  const [observacoesEstoque, setObservacoesEstoque] = useState('');
+  const [showDatePickerFabricacao, setShowDatePickerFabricacao] = useState(false);
+  const [showDatePickerValidade, setShowDatePickerValidade] = useState(false);
 
   useEffect(() => {
     carregarItens();
@@ -35,6 +49,20 @@ export default function RecebimentoItensScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Gerar código de lote automaticamente
+  const gerarCodigoLote = () => {
+    const hoje = new Date();
+    const ano = hoje.getFullYear();
+    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+    const dia = String(hoje.getDate()).padStart(2, '0');
+    const hora = String(hoje.getHours()).padStart(2, '0');
+    const minuto = String(hoje.getMinutes()).padStart(2, '0');
+    const segundo = String(hoje.getSeconds()).padStart(2, '0');
+    
+    // Formato: LOTE-YYYYMMDD-HHMMSS
+    return `LOTE-${ano}${mes}${dia}-${hora}${minuto}${segundo}`;
   };
 
   // Calcular itens atrasados
@@ -86,12 +114,92 @@ export default function RecebimentoItensScreen() {
 
       Alert.alert('Sucesso', 'Recebimento registrado com sucesso!');
       setDialogVisible(false);
+      
+      // Abrir diálogo de entrada no estoque com lote gerado automaticamente
+      setQuantidadeRecebida(qtd);
+      setLote(gerarCodigoLote()); // Gerar lote automaticamente
+      setDataFabricacao('');
+      setDataValidade('');
+      setNotaFiscal('');
+      setObservacoesEstoque(observacoes || '');
+      setDialogEstoqueVisible(true);
+      
       carregarItens();
     } catch (error: any) {
       console.error('Erro ao registrar:', error);
       Alert.alert('Erro', error.response?.data?.message || 'Erro ao registrar recebimento');
     } finally {
       setProcessando(false);
+    }
+  };
+
+  const registrarEntradaEstoque = async () => {
+    if (!itemSelecionado) return;
+
+    // Validações
+    if (!lote.trim()) {
+      Alert.alert('Erro', 'Informe o número do lote');
+      return;
+    }
+
+    if (!dataValidade.trim()) {
+      Alert.alert('Erro', 'Informe a data de validade');
+      return;
+    }
+
+    try {
+      setProcessando(true);
+      
+      const dadosEntrada: EntradaData = {
+        produto_id: itemSelecionado.produto_id,
+        quantidade: quantidadeRecebida,
+        lote: lote.trim(),
+        data_validade: dataValidade.trim(),
+        data_fabricacao: dataFabricacao.trim() || undefined,
+        nota_fiscal: notaFiscal.trim() || undefined,
+        fornecedor: fornecedor.nome,
+        observacao: observacoesEstoque.trim() || undefined,
+        motivo: `Recebimento do pedido ${pedido.numero}`
+      };
+
+      await registrarEntrada(dadosEntrada);
+      
+      Alert.alert('Sucesso', 'Entrada no estoque registrada com sucesso!');
+      setDialogEstoqueVisible(false);
+    } catch (error: any) {
+      console.error('Erro ao registrar entrada:', error);
+      Alert.alert('Erro', error.response?.data?.message || 'Erro ao registrar entrada no estoque');
+    } finally {
+      setProcessando(false);
+    }
+  };
+
+  const pularEntradaEstoque = () => {
+    Alert.alert(
+      'Pular entrada no estoque',
+      'Você poderá registrar a entrada no estoque posteriormente através do módulo de Estoque Central.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { 
+          text: 'Pular', 
+          onPress: () => setDialogEstoqueVisible(false),
+          style: 'destructive'
+        }
+      ]
+    );
+  };
+
+  const onChangeDateFabricacao = (_event: any, selectedDate?: Date) => {
+    setShowDatePickerFabricacao(Platform.OS === 'ios');
+    if (selectedDate) {
+      setDataFabricacao(formatarDataParaInput(selectedDate));
+    }
+  };
+
+  const onChangeDateValidade = (_event: any, selectedDate?: Date) => {
+    setShowDatePickerValidade(Platform.OS === 'ios');
+    if (selectedDate) {
+      setDataValidade(formatarDataParaInput(selectedDate));
     }
   };
 
@@ -329,6 +437,149 @@ export default function RecebimentoItensScreen() {
             <Button onPress={() => setHistoricoVisible(false)}>Fechar</Button>
           </Dialog.Actions>
         </Dialog>
+
+        {/* Dialog de Entrada no Estoque - Usando Modal para melhor controle do teclado */}
+        <Modal
+          visible={dialogEstoqueVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={pularEntradaEstoque}
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalContainer}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text variant="titleLarge" style={styles.modalTitle}>
+                  Entrada no Estoque Central
+                </Text>
+                <IconButton
+                  icon="close"
+                  size={24}
+                  onPress={pularEntradaEstoque}
+                />
+              </View>
+
+              <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={true}>
+                {itemSelecionado && (
+                  <>
+                    <Text variant="bodyMedium" style={{ marginBottom: 8, fontWeight: 'bold' }}>
+                      {itemSelecionado.produto_nome}
+                    </Text>
+                    <Text variant="bodySmall" style={{ marginBottom: 16, color: '#666' }}>
+                      Quantidade recebida: {quantidadeRecebida} {itemSelecionado.unidade}
+                    </Text>
+                  </>
+                )}
+                
+                <TextInput
+                  label="Lote *"
+                  value={lote}
+                  onChangeText={setLote}
+                  mode="outlined"
+                  style={{ marginBottom: 8 }}
+                  placeholder="Ex: LOTE-20260303-120000"
+                />
+                <Button
+                  mode="outlined"
+                  onPress={() => setLote(gerarCodigoLote())}
+                  icon="refresh"
+                  compact
+                  style={{ marginBottom: 12 }}
+                >
+                  Gerar Novo Lote
+                </Button>
+                
+                <Text variant="bodyMedium" style={{ marginBottom: 8, fontWeight: '600', color: '#666' }}>
+                  Data de Fabricação:
+                </Text>
+                <Button
+                  mode="outlined"
+                  onPress={() => setShowDatePickerFabricacao(true)}
+                  icon="calendar"
+                  style={{ marginBottom: 12, justifyContent: 'flex-start' }}
+                >
+                  {dataFabricacao ? formatarDataBR(dataFabricacao) : 'Selecionar (opcional)'}
+                </Button>
+
+                {showDatePickerFabricacao && (
+                  <DateTimePicker
+                    value={dataFabricacao ? stringParaData(dataFabricacao) : new Date()}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    onChange={onChangeDateFabricacao}
+                  />
+                )}
+                
+                <Text variant="bodyMedium" style={{ marginBottom: 8, fontWeight: '600', color: '#666' }}>
+                  Data de Validade *:
+                </Text>
+                <Button
+                  mode="outlined"
+                  onPress={() => setShowDatePickerValidade(true)}
+                  icon="calendar"
+                  style={{ marginBottom: 12, justifyContent: 'flex-start' }}
+                >
+                  {dataValidade ? formatarDataBR(dataValidade) : 'Selecionar'}
+                </Button>
+
+                {showDatePickerValidade && (
+                  <DateTimePicker
+                    value={dataValidade ? stringParaData(dataValidade) : new Date()}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    onChange={onChangeDateValidade}
+                    minimumDate={new Date()}
+                  />
+                )}
+                
+                <TextInput
+                  label="Nota Fiscal"
+                  value={notaFiscal}
+                  onChangeText={setNotaFiscal}
+                  mode="outlined"
+                  style={{ marginBottom: 12 }}
+                  placeholder="Número da NF"
+                />
+                
+                <TextInput
+                  label="Observações"
+                  value={observacoesEstoque}
+                  onChangeText={setObservacoesEstoque}
+                  mode="outlined"
+                  multiline
+                  numberOfLines={3}
+                  style={{ marginBottom: 8 }}
+                />
+                
+                <Text variant="bodySmall" style={{ color: '#666', fontStyle: 'italic', marginBottom: 16 }}>
+                  * Campos obrigatórios
+                </Text>
+              </ScrollView>
+
+              <View style={styles.modalActions}>
+                <Button 
+                  onPress={pularEntradaEstoque} 
+                  disabled={processando}
+                  mode="outlined"
+                  style={{ flex: 1, marginRight: 8 }}
+                >
+                  Pular
+                </Button>
+                <Button 
+                  onPress={registrarEntradaEstoque} 
+                  loading={processando} 
+                  disabled={processando}
+                  mode="contained"
+                  style={{ flex: 1 }}
+                >
+                  Registrar
+                </Button>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
       </Portal>
     </View>
   );
@@ -368,5 +619,42 @@ const styles = StyleSheet.create({
   acoesCompact: { flexDirection: 'row', marginTop: 6 },
   empty: { textAlign: 'center', marginTop: 32, color: '#999' },
   historicoItem: { paddingVertical: 8 },
-  historicoHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }
+  historicoHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  // Estilos para o Modal de Entrada no Estoque
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '90%',
+    paddingBottom: Platform.OS === 'ios' ? 20 : 0,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  modalTitle: {
+    fontWeight: 'bold',
+    flex: 1,
+  },
+  modalScroll: {
+    paddingHorizontal: 24,
+    paddingTop: 16,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+  },
 });
