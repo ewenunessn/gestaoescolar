@@ -15,6 +15,8 @@ interface FaturamentoInput {
 }
 
 // Criar faturamento
+// IMPORTANTE: Esta função NÃO altera o status do pedido
+// O status só deve ser alterado pelo módulo de recebimentos quando os itens forem recebidos
 export async function criarFaturamento(req: Request, res: Response) {
   const client = await db.pool.connect();
   
@@ -40,9 +42,9 @@ export async function criarFaturamento(req: Request, res: Response) {
       });
     }
 
-    // Verificar se pedido existe
+    // Verificar se pedido existe e capturar status inicial
     const pedidoCheck = await client.query(
-      'SELECT id FROM pedidos WHERE id = $1',
+      'SELECT id, status FROM pedidos WHERE id = $1',
       [pedido_id]
     );
 
@@ -53,6 +55,8 @@ export async function criarFaturamento(req: Request, res: Response) {
         message: 'Pedido não encontrado'
       });
     }
+
+    const statusInicial = pedidoCheck.rows[0].status;
 
     // Validar quantidades alocadas não excedem quantidade do pedido
     for (const item of itens) {
@@ -122,6 +126,19 @@ export async function criarFaturamento(req: Request, res: Response) {
     }
 
     await client.query('COMMIT');
+
+    // Verificação de segurança: garantir que o status do pedido não foi alterado
+    // O status só deve mudar quando houver recebimento, não ao criar faturamento
+    const pedidoFinalCheck = await client.query(
+      'SELECT status FROM pedidos WHERE id = $1',
+      [pedido_id]
+    );
+    
+    if (pedidoFinalCheck.rows[0].status !== statusInicial) {
+      console.warn(`⚠️  AVISO: Status do pedido ${pedido_id} foi alterado durante criação de faturamento!`);
+      console.warn(`   Status anterior: ${statusInicial}`);
+      console.warn(`   Status atual: ${pedidoFinalCheck.rows[0].status}`);
+    }
 
     res.status(201).json({
       success: true,
