@@ -2,6 +2,7 @@ import { Router } from "express";
 import { devAuthMiddleware as authMiddleware } from "../../../middlewares";
 import {
   listarEstoqueEscola,
+  debugEstoqueEscola,
   buscarItemEstoque,
   listarHistoricoEscola,
   registrarMovimentacao
@@ -9,6 +10,7 @@ import {
 
 const router = Router();
 
+router.get("/escolas/:escolaId/debug", authMiddleware, debugEstoqueEscola);
 router.get("/escolas/:escolaId", authMiddleware, listarEstoqueEscola);
 router.get("/escolas/:escolaId/produtos/:produtoId", authMiddleware, buscarItemEstoque);
 router.get("/escolas/:escolaId/historico", authMiddleware, listarHistoricoEscola);

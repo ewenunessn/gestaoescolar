@@ -76,6 +76,76 @@ export async function listarEstoqueEscola(req: Request, res: Response) {
   }
 }
 
+export async function debugEstoqueEscola(req: Request, res: Response) {
+  try {
+    const escolaId = Number(req.params.escolaId);
+    if (!escolaId) {
+      return res.status(400).json({ success: false, message: "Escola inválida" });
+    }
+
+    // 1. Verificar se a escola existe
+    const escolaResult = await db.query('SELECT id, nome FROM escolas WHERE id = $1', [escolaId]);
+    
+    // 2. Contar registros na tabela estoque_escolas para esta escola
+    const countResult = await db.query(
+      'SELECT COUNT(*) as total FROM estoque_escolas WHERE escola_id = $1',
+      [escolaId]
+    );
+
+    // 3. Buscar todos os registros de estoque desta escola
+    const estoqueResult = await db.query(
+      `SELECT ee.*, p.nome as produto_nome 
+       FROM estoque_escolas ee 
+       JOIN produtos p ON p.id = ee.produto_id 
+       WHERE ee.escola_id = $1 
+       ORDER BY ee.quantidade_atual DESC`,
+      [escolaId]
+    );
+
+    // 4. Buscar especificamente banana
+    const bananaResult = await db.query(
+      `SELECT ee.*, p.nome as produto_nome 
+       FROM estoque_escolas ee 
+       JOIN produtos p ON p.id = ee.produto_id 
+       WHERE ee.escola_id = $1 AND p.nome ILIKE '%banana%'`,
+      [escolaId]
+    );
+
+    // 5. Testar a query do controller
+    const controllerResult = await db.query(`
+      SELECT 
+        p.id as produto_id,
+        p.nome as produto_nome,
+        p.categoria,
+        COALESCE(ee.quantidade_atual, 0) as quantidade_atual,
+        COALESCE(ee.quantidade_minima, 0) as quantidade_minima,
+        COALESCE(ee.quantidade_maxima, 0) as quantidade_maxima,
+        ee.data_ultima_atualizacao,
+        ee.observacoes,
+        COALESCE(p.unidade, 'UN') as unidade
+      FROM produtos p
+      LEFT JOIN estoque_escolas ee 
+        ON ee.produto_id = p.id AND ee.escola_id = $1
+      WHERE p.nome ILIKE '%banana%' AND p.ativo = true
+      ORDER BY p.nome
+    `, [escolaId]);
+
+    res.json({
+      success: true,
+      debug: {
+        escola: escolaResult.rows[0] || null,
+        total_registros_estoque: parseInt(countResult.rows[0].total),
+        registros_estoque: estoqueResult.rows,
+        banana_direto: bananaResult.rows,
+        banana_controller_query: controllerResult.rows
+      }
+    });
+  } catch (error: any) {
+    console.error('[ERROR] Erro no debug:', error);
+    res.status(500).json({ success: false, message: "Erro no debug", error: error.message });
+  }
+}
+
 export async function buscarItemEstoque(req: Request, res: Response) {
   try {
     const escolaId = Number(req.params.escolaId);
