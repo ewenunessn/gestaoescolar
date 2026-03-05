@@ -366,10 +366,27 @@ export async function atualizarPedido(req: Request, res: Response) {
 
     // Se houver itens, atualizar
     if (itens && Array.isArray(itens)) {
-      // Remover itens existentes
-      await client.query(`DELETE FROM pedido_itens WHERE pedido_id = $1`, [id]);
+      // Buscar itens existentes
+      const itensExistentesResult = await client.query(`
+        SELECT id, contrato_produto_id FROM pedido_itens WHERE pedido_id = $1
+      `, [id]);
 
-      // Adicionar novos itens e calcular valor total
+      const itensExistentes = new Map(
+        itensExistentesResult.rows.map((item: any) => [item.contrato_produto_id, item.id])
+      );
+
+      // Identificar itens a remover (que não estão mais na lista)
+      const novosContratosProdutosIds = new Set(itens.map((i: any) => i.contrato_produto_id));
+      const itensParaRemover = itensExistentesResult.rows.filter(
+        (item: any) => !novosContratosProdutosIds.has(item.contrato_produto_id)
+      );
+
+      // Remover apenas itens que não estão mais na lista
+      for (const itemRemover of itensParaRemover) {
+        await client.query(`DELETE FROM pedido_itens WHERE id = $1`, [itemRemover.id]);
+      }
+
+      // Adicionar ou atualizar itens e calcular valor total
       let valor_total = 0;
       for (const item of itens) {
         const cpResult = await client.query(`
@@ -411,13 +428,30 @@ export async function atualizarPedido(req: Request, res: Response) {
         const valor_item = item.quantidade * preco_unitario;
         valor_total += valor_item;
 
-        await client.query(`
-          INSERT INTO pedido_itens (
-            pedido_id, contrato_produto_id, produto_id, quantidade,
-            preco_unitario, valor_total, data_entrega_prevista, observacoes
-          )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-        `, [id, item.contrato_produto_id, produto_id, item.quantidade, preco_unitario, valor_item, item.data_entrega_prevista, item.observacoes]);
+        // Verificar se o item já existe
+        const itemExistenteId = itensExistentes.get(item.contrato_produto_id);
+
+        if (itemExistenteId) {
+          // Atualizar item existente (mantém o ID)
+          await client.query(`
+            UPDATE pedido_itens SET
+              quantidade = $1,
+              preco_unitario = $2,
+              valor_total = $3,
+              data_entrega_prevista = $4,
+              observacoes = $5
+            WHERE id = $6
+          `, [item.quantidade, preco_unitario, valor_item, item.data_entrega_prevista, item.observacoes, itemExistenteId]);
+        } else {
+          // Inserir novo item
+          await client.query(`
+            INSERT INTO pedido_itens (
+              pedido_id, contrato_produto_id, produto_id, quantidade,
+              preco_unitario, valor_total, data_entrega_prevista, observacoes
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          `, [id, item.contrato_produto_id, produto_id, item.quantidade, preco_unitario, valor_item, item.data_entrega_prevista, item.observacoes]);
+        }
       }
 
       // Adicionar valor_total ao update
@@ -430,7 +464,7 @@ export async function atualizarPedido(req: Request, res: Response) {
     if (updateFields.length > 1) { // Mais que apenas updated_at
       paramCount++;
       const query = `
-        UPDATE pedidos 
+        UPDATE pedidos
         SET ${updateFields.join(', ')}
         WHERE id = $${paramCount}
         RETURNING *
@@ -465,6 +499,7 @@ export async function atualizarPedido(req: Request, res: Response) {
     client.release();
   }
 }
+
 
 export async function atualizarStatusPedido(req: Request, res: Response) {
   try {
