@@ -304,6 +304,14 @@ const GuiasDemanda: React.FC = () => {
         const estoque = await listarEstoqueEscola(Number(selectedSchool.id));
         const item = estoque.find(i => i.produto_id === Number(formData.produtoId)) || null;
         setEstoqueIndividual(item);
+        
+        // Preencher automaticamente a quantidade com o estoque atual se não estiver em modo de edição
+        if (item && !editMode && (!formData.quantidade || formData.quantidade === '0')) {
+          setFormData(prev => ({
+            ...prev,
+            quantidade: (item.quantidade_atual ?? 0).toString()
+          }));
+        }
       } catch (e) {
         setEstoqueIndividual(null);
       }
