@@ -239,6 +239,7 @@ export default function EditarPedido() {
 
             // Atualizar pedido completo (itens, observações e competência)
             const itensParaEnviar = itens.map(item => ({
+                id: item.id, // IMPORTANTE: Enviar o ID para preservar o item
                 contrato_produto_id: item.contrato_produto_id,
                 quantidade: item.quantidade,
                 data_entrega_prevista: item.data_entrega_prevista,
