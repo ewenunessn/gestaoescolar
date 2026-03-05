@@ -567,14 +567,40 @@ export default function FaturamentoModalidades() {
       
       faturamentos.forEach(fat => {
         fat.itens.forEach(item => {
-          // Calcular quantidade proporcional para cada pedido_item_id
-          const quantidadePorItem = item.quantidade_alocada / item.pedido_item_ids.length;
+          // Distribuir quantidade_alocada proporcionalmente baseado na quantidade de cada pedido_item
+          if (!pedido) return;
           
-          item.pedido_item_ids.forEach(pedidoItemId => {
+          // Buscar as quantidades de cada pedido_item_id
+          const quantidadesPorItem = item.pedido_item_ids.map(id => {
+            const pedidoItem = pedido.itens.find(pi => pi.id === id);
+            return {
+              id,
+              quantidade: pedidoItem ? Number(pedidoItem.quantidade) : 0
+            };
+          });
+          
+          const quantidadeTotal = quantidadesPorItem.reduce((sum, item) => sum + item.quantidade, 0);
+          
+          // Distribuir proporcionalmente
+          let quantidadeRestante = item.quantidade_alocada;
+          
+          quantidadesPorItem.forEach((qItem, index) => {
+            let quantidadeParaEsteItem;
+            
+            if (index === quantidadesPorItem.length - 1) {
+              // Último item recebe o restante para evitar erros de arredondamento
+              quantidadeParaEsteItem = quantidadeRestante;
+            } else {
+              // Calcular proporcionalmente
+              const proporcao = qItem.quantidade / quantidadeTotal;
+              quantidadeParaEsteItem = item.quantidade_alocada * proporcao;
+              quantidadeRestante -= quantidadeParaEsteItem;
+            }
+            
             itensParaEnviar.push({
-              pedido_item_id: pedidoItemId,
+              pedido_item_id: qItem.id,
               modalidade_id: fat.modalidade_id,
-              quantidade_alocada: quantidadePorItem,
+              quantidade_alocada: quantidadeParaEsteItem,
               preco_unitario: item.preco_unitario
             });
           });
