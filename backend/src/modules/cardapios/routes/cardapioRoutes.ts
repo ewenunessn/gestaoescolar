@@ -1,26 +1,46 @@
 import { Router } from "express";
 import { 
-  listarCardapios, 
-  buscarCardapio,
-  criarCardapio,
-  editarCardapio,
-  removerCardapio,
-  calcularCustoRefeicoes,
-  listarCardapioRefeicoes
+  // Cardápios por modalidade
+  listarCardapiosModalidade,
+  buscarCardapioModalidade,
+  criarCardapioModalidade,
+  editarCardapioModalidade,
+  removerCardapioModalidade,
+  
+  // Refeições do dia
+  listarRefeicoesCardapio,
+  buscarRefeicaoDia,
+  criarRefeicaoDia,
+  editarRefeicaoDia,
+  removerRefeicaoDia,
+  
+  // Produtos da refeição
+  listarProdutosRefeicao,
+  adicionarProdutoRefeicao,
+  editarProdutoRefeicao,
+  removerProdutoRefeicao
 } from "../controllers/cardapioController";
+
 const router = Router();
 
-// CRUD Cardápios
-router.get("/", listarCardapios);
-router.post("/", criarCardapio);
-router.get("/:id", buscarCardapio);
-router.put("/:id", editarCardapio);
-router.delete("/:id", removerCardapio);
+// ============= CARDÁPIOS POR MODALIDADE =============
+router.get("/", listarCardapiosModalidade);
+router.post("/", criarCardapioModalidade);
+router.get("/:id", buscarCardapioModalidade);
+router.put("/:id", editarCardapioModalidade);
+router.delete("/:id", removerCardapioModalidade);
 
-// Listar refeições do cardápio
-router.get("/:id/refeicoes", listarCardapioRefeicoes);
+// ============= REFEIÇÕES DO DIA =============
+router.get("/:cardapio_id/refeicoes", listarRefeicoesCardapio);
+router.post("/:cardapio_id/refeicoes", criarRefeicaoDia);
+router.get("/refeicoes/:id", buscarRefeicaoDia);
+router.put("/refeicoes/:id", editarRefeicaoDia);
+router.delete("/refeicoes/:id", removerRefeicaoDia);
 
-// Calcular custo das refeições do cardápio
-router.get("/:id/custo-refeicoes", calcularCustoRefeicoes);
+// ============= PRODUTOS DA REFEIÇÃO =============
+router.get("/refeicoes/:refeicao_id/produtos", listarProdutosRefeicao);
+router.post("/refeicoes/:refeicao_id/produtos", adicionarProdutoRefeicao);
+router.put("/refeicoes/produtos/:id", editarProdutoRefeicao);
+router.delete("/refeicoes/produtos/:id", removerProdutoRefeicao);
 
 export default router;

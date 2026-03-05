@@ -236,7 +236,7 @@ export default function EstoqueCentralScreen({ navigation }: any) {
                           Lotes
                         </Text>
                         <Text variant="titleSmall" style={styles.infoValue}>
-                          {formatarNumero(item.total_lotes)}
+                          {item.total_lotes || 0}
                         </Text>
                       </View>
 
