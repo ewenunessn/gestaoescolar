@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { Text, Card, Button, TextInput, ActivityIndicator } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, Alert, Modal } from 'react-native';
+import { Text, Card, Button, TextInput, ActivityIndicator, Divider, IconButton } from 'react-native-paper';
 import { Picker } from '@react-native-picker/picker';
-import { registrarSaida, SaidaData } from '../api/estoqueCentral';
+import { registrarSaida, simularSaida, SaidaData } from '../api/estoqueCentral';
 import { api, handleAxiosError } from '../api/client';
 import { formatarNumeroInteligente } from '../utils/dateUtils';
 
@@ -26,6 +26,11 @@ export default function EstoqueCentralSaidaScreen({ route, navigation }: any) {
   const [motivo, setMotivo] = useState('');
   const [observacao, setObservacao] = useState('');
   const [documento, setDocumento] = useState('');
+  
+  // Estados para a prévia FEFO
+  const [previaVisible, setPreviaVisible] = useState(false);
+  const [simulacaoFefo, setSimulacaoFefo] = useState<any>(null);
+  const [loadingSimulacao, setLoadingSimulacao] = useState(false);
 
   useEffect(() => {
     carregarProdutos();
@@ -71,8 +76,43 @@ export default function EstoqueCentralSaidaScreen({ route, navigation }: any) {
   const handleSubmit = async () => {
     if (!validarFormulario()) return;
 
+    // Primeiro, simular a saída para mostrar prévia
+    try {
+      setLoadingSimulacao(true);
+
+      const dados: SaidaData = {
+        produto_id: parseInt(produtoId),
+        quantidade: parseFloat(quantidade),
+        motivo,
+        observacao,
+        documento,
+      };
+
+      const simulacao = await simularSaida(dados);
+      setSimulacaoFefo(simulacao);
+      setLoadingSimulacao(false);
+      setPreviaVisible(true);
+    } catch (err: any) {
+      setLoadingSimulacao(false);
+      
+      // Tratamento específico para erro de quantidade insuficiente
+      if (err.response?.data?.error && err.response.data.error.includes('Quantidade insuficiente')) {
+        const mensagemErro = err.response.data.error;
+        Alert.alert(
+          'Quantidade Insuficiente',
+          mensagemErro,
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert('Erro', handleAxiosError(err));
+      }
+    }
+  };
+
+  const confirmarSaida = async () => {
     try {
       setSaving(true);
+      setPreviaVisible(false);
 
       const dados: SaidaData = {
         produto_id: parseInt(produtoId),
@@ -94,14 +134,28 @@ export default function EstoqueCentralSaidaScreen({ route, navigation }: any) {
           }
         ]
       );
-    } catch (err) {
-      console.error('Erro ao registrar saída:', err);
-      console.error('Tipo do erro:', typeof err);
-      console.error('Erro stringificado:', JSON.stringify(err, null, 2));
-      Alert.alert('Erro', handleAxiosError(err));
+    } catch (err: any) {
+      // Tratamento específico para erro de quantidade insuficiente
+      if (err.response?.data?.error && err.response.data.error.includes('Quantidade insuficiente')) {
+        const mensagemErro = err.response.data.error;
+        Alert.alert(
+          'Quantidade Insuficiente',
+          mensagemErro,
+          [{ text: 'OK' }]
+        );
+      } else {
+        console.error('Erro ao registrar saída:', err);
+        Alert.alert('Erro', handleAxiosError(err));
+      }
     } finally {
       setSaving(false);
     }
+  };
+
+  const formatarData = (data: string) => {
+    if (!data) return 'N/A';
+    const d = new Date(data);
+    return d.toLocaleDateString('pt-BR');
   };
 
   const produtoSelecionado = produtos.find(p => p.id === parseInt(produtoId));
@@ -236,18 +290,18 @@ export default function EstoqueCentralSaidaScreen({ route, navigation }: any) {
             <Button
               mode="contained"
               onPress={handleSubmit}
-              loading={saving}
-              disabled={saving}
+              loading={loadingSimulacao}
+              disabled={saving || loadingSimulacao}
               style={styles.button}
               icon="check"
               buttonColor="#dc2626"
             >
-              Registrar Saída
+              {loadingSimulacao ? 'Verificando...' : 'Registrar Saída'}
             </Button>
             <Button
               mode="outlined"
               onPress={() => navigation.goBack()}
-              disabled={saving}
+              disabled={saving || loadingSimulacao}
               style={styles.button}
             >
               Cancelar
@@ -255,6 +309,102 @@ export default function EstoqueCentralSaidaScreen({ route, navigation }: any) {
           </View>
         </>
       )}
+
+      {/* Modal de Prévia FEFO */}
+      <Modal
+        visible={previaVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setPreviaVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text variant="titleLarge" style={styles.modalTitle}>
+                Prévia da Saída (FEFO)
+              </Text>
+              <IconButton
+                icon="close"
+                size={24}
+                onPress={() => setPreviaVisible(false)}
+              />
+            </View>
+
+            <ScrollView style={styles.modalScroll}>
+              {simulacaoFefo && (
+                <>
+                  <Card style={styles.previaCard}>
+                    <Card.Content>
+                      <Text variant="titleMedium" style={{ marginBottom: 8 }}>
+                        {simulacaoFefo.produto_nome}
+                      </Text>
+                      <Text variant="bodyMedium" style={{ color: '#666', marginBottom: 16 }}>
+                        Quantidade solicitada: {formatarNumeroInteligente(simulacaoFefo.quantidade_solicitada)} {simulacaoFefo.unidade}
+                      </Text>
+
+                      <Text variant="titleSmall" style={{ marginBottom: 12, fontWeight: 'bold' }}>
+                        Lotes que serão utilizados:
+                      </Text>
+
+                      {simulacaoFefo.lotes_utilizados.map((lote: any, index: number) => (
+                        <View key={lote.lote_id}>
+                          {index > 0 && <Divider style={{ marginVertical: 12 }} />}
+                          <View style={styles.loteItem}>
+                            <View style={styles.loteHeader}>
+                              <Text variant="titleSmall" style={{ flex: 1 }}>
+                                {lote.lote}
+                              </Text>
+                              <Text variant="titleMedium" style={{ color: '#dc2626', fontWeight: 'bold' }}>
+                                -{formatarNumeroInteligente(lote.quantidade_retirar)} {simulacaoFefo.unidade}
+                              </Text>
+                            </View>
+                            <Text variant="bodySmall" style={{ color: '#666', marginTop: 4 }}>
+                              Disponível: {formatarNumeroInteligente(lote.quantidade_disponivel)} {simulacaoFefo.unidade}
+                            </Text>
+                            <Text variant="bodySmall" style={{ color: '#666' }}>
+                              Validade: {formatarData(lote.data_validade)}
+                            </Text>
+                            {lote.data_fabricacao && (
+                              <Text variant="bodySmall" style={{ color: '#666' }}>
+                                Fabricação: {formatarData(lote.data_fabricacao)}
+                              </Text>
+                            )}
+                          </View>
+                        </View>
+                      ))}
+                    </Card.Content>
+                  </Card>
+
+                  <Text variant="bodySmall" style={styles.fefoNote}>
+                    💡 Os lotes são selecionados automaticamente seguindo o método FEFO (First Expired, First Out) - primeiro a vencer, primeiro a sair.
+                  </Text>
+                </>
+              )}
+            </ScrollView>
+
+            <View style={styles.modalActions}>
+              <Button 
+                onPress={() => setPreviaVisible(false)} 
+                disabled={saving}
+                mode="outlined"
+                style={{ flex: 1, marginRight: 8 }}
+              >
+                Cancelar
+              </Button>
+              <Button 
+                onPress={confirmarSaida} 
+                loading={saving} 
+                disabled={saving}
+                mode="contained"
+                buttonColor="#dc2626"
+                style={{ flex: 1 }}
+              >
+                Confirmar Saída
+              </Button>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -330,5 +480,59 @@ const styles = StyleSheet.create({
   },
   button: {
     marginBottom: 0,
+  },
+  // Estilos para o Modal de Prévia FEFO
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '85%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  modalTitle: {
+    fontWeight: 'bold',
+    flex: 1,
+  },
+  modalScroll: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+  },
+  previaCard: {
+    marginBottom: 16,
+  },
+  loteItem: {
+    paddingVertical: 8,
+  },
+  loteHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  fefoNote: {
+    color: '#666',
+    fontStyle: 'italic',
+    marginBottom: 16,
+    lineHeight: 18,
   },
 });

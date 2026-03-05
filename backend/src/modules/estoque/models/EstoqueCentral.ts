@@ -109,6 +109,79 @@ class EstoqueCentralModel {
   }
 
   /**
+   * Simular saída de estoque (FEFO) - retorna quais lotes serão usados sem fazer a saída
+   */
+  async simularSaida(produtoId: number, quantidade: number) {
+    return db.transaction(async (client) => {
+      // Buscar estoque do produto
+      const estoqueResult = await client.query(
+        'SELECT id, produto_nome, unidade FROM view_estoque_central WHERE produto_id = $1',
+        [produtoId]
+      );
+
+      if (estoqueResult.rows.length === 0) {
+        throw new Error('Produto não encontrado no estoque');
+      }
+
+      const estoque = estoqueResult.rows[0];
+      const estoqueId = estoque.id;
+      let quantidadeRestante = quantidade;
+
+      // Buscar lotes disponíveis ordenados por FEFO
+      const lotesResult = await client.query(
+        `SELECT id, lote, data_validade, quantidade_disponivel, data_fabricacao
+         FROM estoque_central_lotes
+         WHERE estoque_central_id = $1 AND quantidade_disponivel > 0
+         ORDER BY data_validade ASC, created_at ASC`,
+        [estoqueId]
+      );
+
+      if (lotesResult.rows.length === 0) {
+        throw new Error('Não há lotes disponíveis para este produto');
+      }
+
+      // Calcular quantidade total disponível
+      const totalDisponivel = lotesResult.rows.reduce((sum, lote) => 
+        sum + parseFloat(lote.quantidade_disponivel), 0
+      );
+
+      if (totalDisponivel < quantidadeRestante) {
+        throw new Error(`Quantidade insuficiente. Disponível: ${totalDisponivel}`);
+      }
+
+      const lotesUtilizados = [];
+
+      // Simular saída usando FEFO
+      for (const lote of lotesResult.rows) {
+        if (quantidadeRestante <= 0) break;
+
+        const quantidadeLote = parseFloat(lote.quantidade_disponivel);
+        const quantidadeRetirar = Math.min(quantidadeRestante, quantidadeLote);
+
+        lotesUtilizados.push({
+          lote_id: lote.id,
+          lote: lote.lote,
+          data_validade: lote.data_validade,
+          data_fabricacao: lote.data_fabricacao,
+          quantidade_disponivel: quantidadeLote,
+          quantidade_retirar: quantidadeRetirar
+        });
+
+        quantidadeRestante -= quantidadeRetirar;
+      }
+
+      return {
+        produto_id: produtoId,
+        produto_nome: estoque.produto_nome,
+        unidade: estoque.unidade,
+        quantidade_solicitada: quantidade,
+        quantidade_total_disponivel: totalDisponivel,
+        lotes_utilizados: lotesUtilizados
+      };
+    });
+  }
+
+  /**
    * Registrar saída de estoque usando FEFO (First Expired, First Out)
    */
   async registrarSaida(dados: CriarSaidaData): Promise<any> {

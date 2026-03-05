@@ -91,6 +91,11 @@ export async function registrarEntrada(dados: EntradaData): Promise<Movimentacao
   return response.data;
 }
 
+export async function simularSaida(dados: SaidaData): Promise<any> {
+  const response = await api.post('/estoque-central/simular-saida', dados);
+  return response.data;
+}
+
 export async function registrarSaida(dados: SaidaData): Promise<Movimentacao> {
   const response = await api.post('/estoque-central/saida', dados);
   return response.data;

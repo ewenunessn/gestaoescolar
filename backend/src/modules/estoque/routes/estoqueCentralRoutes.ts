@@ -10,6 +10,7 @@ router.get('/', EstoqueCentralController.listar);
 router.get('/produto/:produtoId', EstoqueCentralController.buscarPorProduto);
 
 // Movimentações
+router.post('/simular-saida', EstoqueCentralController.simularSaida);
 router.post('/entrada', EstoqueCentralController.registrarEntrada);
 router.post('/saida', EstoqueCentralController.registrarSaida);
 router.post('/ajuste', EstoqueCentralController.registrarAjuste);

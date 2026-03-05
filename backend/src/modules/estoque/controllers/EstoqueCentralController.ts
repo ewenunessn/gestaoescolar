@@ -119,6 +119,48 @@ class EstoqueCentralController {
   }
 
   /**
+   * Simular saída de estoque (FEFO)
+   * POST /api/estoque-central/simular-saida
+   */
+  async simularSaida(req: Request, res: Response) {
+    try {
+      const { produto_id, quantidade } = req.body;
+
+      // Validações
+      if (!produto_id || !quantidade) {
+        return res.status(400).json({
+          error: 'Campos obrigatórios: produto_id, quantidade'
+        });
+      }
+
+      const quantidadeNum = parseFloat(quantidade);
+      
+      if (isNaN(quantidadeNum) || quantidadeNum <= 0) {
+        return res.status(400).json({
+          error: 'Quantidade deve ser maior que zero'
+        });
+      }
+
+      const simulacao = await EstoqueCentralModel.simularSaida(
+        parseInt(produto_id),
+        quantidadeNum
+      );
+
+      res.json(simulacao);
+    } catch (error: any) {
+      console.error('Erro ao simular saída:', error);
+      
+      // Tratar erro de quantidade insuficiente como 400 (Bad Request)
+      if (error.message && error.message.includes('Quantidade insuficiente')) {
+        return res.status(400).json({ error: error.message });
+      }
+      
+      // Outros erros como 500 (Internal Server Error)
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  /**
    * Registrar saída de estoque
    * POST /api/estoque-central/saida
    */

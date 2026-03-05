@@ -171,7 +171,19 @@ export default function EstoqueCentralAjusteScreen({ route, navigation }: any) {
                   }
                 ]
               );
-            } catch (err) {
+            } catch (err: any) {
+              // Tratamento específico para erros de validação
+              if (err.response?.data?.error) {
+                const mensagemErro = err.response.data.error;
+                if (mensagemErro.includes('Quantidade insuficiente') || 
+                    mensagemErro.includes('não encontrado') ||
+                    mensagemErro.includes('inválid')) {
+                  Alert.alert('Atenção', mensagemErro, [{ text: 'OK' }]);
+                  return;
+                }
+              }
+              
+              // Outros erros - log apenas para erros não esperados
               console.error('Erro ao registrar ajuste:', err);
               Alert.alert('Erro', handleAxiosError(err));
             } finally {
