@@ -368,17 +368,15 @@ export async function atualizarPedido(req: Request, res: Response) {
     if (itens && Array.isArray(itens)) {
       // Buscar itens existentes
       const itensExistentesResult = await client.query(`
-        SELECT id, contrato_produto_id FROM pedido_itens WHERE pedido_id = $1
+        SELECT id FROM pedido_itens WHERE pedido_id = $1
       `, [id]);
 
-      const itensExistentes = new Map(
-        itensExistentesResult.rows.map((item: any) => [item.contrato_produto_id, item.id])
-      );
+      const idsExistentes = new Set(itensExistentesResult.rows.map((item: any) => item.id));
+      const idsRecebidos = new Set(itens.filter((i: any) => i.id).map((i: any) => i.id));
 
-      // Identificar itens a remover (que não estão mais na lista)
-      const novosContratosProdutosIds = new Set(itens.map((i: any) => i.contrato_produto_id));
+      // Identificar itens a remover (que existem no banco mas não foram enviados)
       const itensParaRemover = itensExistentesResult.rows.filter(
-        (item: any) => !novosContratosProdutosIds.has(item.contrato_produto_id)
+        (item: any) => !idsRecebidos.has(item.id)
       );
 
       // Remover apenas itens que não estão mais na lista
@@ -428,10 +426,8 @@ export async function atualizarPedido(req: Request, res: Response) {
         const valor_item = item.quantidade * preco_unitario;
         valor_total += valor_item;
 
-        // Verificar se o item já existe
-        const itemExistenteId = itensExistentes.get(item.contrato_produto_id);
-
-        if (itemExistenteId) {
+        // Verificar se o item já existe (tem ID e está no banco)
+        if (item.id && idsExistentes.has(item.id)) {
           // Atualizar item existente (mantém o ID)
           await client.query(`
             UPDATE pedido_itens SET
@@ -441,7 +437,7 @@ export async function atualizarPedido(req: Request, res: Response) {
               data_entrega_prevista = $4,
               observacoes = $5
             WHERE id = $6
-          `, [item.quantidade, preco_unitario, valor_item, item.data_entrega_prevista, item.observacoes, itemExistenteId]);
+          `, [item.quantidade, preco_unitario, valor_item, item.data_entrega_prevista, item.observacoes, item.id]);
         } else {
           // Inserir novo item
           await client.query(`

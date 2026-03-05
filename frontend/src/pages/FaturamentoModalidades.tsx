@@ -58,10 +58,11 @@ interface Modalidade {
 }
 
 interface ItemFaturamento {
-  pedido_item_id: number;
+  pedido_item_ids: number[]; // Array de IDs dos pedido_itens agrupados
+  contrato_produto_id: number; // Chave de agrupamento
   produto_nome: string;
   unidade: string;
-  quantidade_pedido: number;
+  quantidade_pedido: number; // Soma de todas as quantidades dos itens agrupados
   quantidade_alocada: number;
   preco_unitario: number;
 }
@@ -146,7 +147,7 @@ export default function FaturamentoModalidades() {
       if (faturamentosDoId.length > 0) {
         console.log('📦 Faturamento encontrado:', faturamentosDoId);
         
-        // Agrupar por modalidade
+        // Agrupar por modalidade e depois por contrato_produto_id
         const faturamentosPorModalidade = new Map<number, ItemFaturamento[]>();
         
         faturamentosDoId.forEach(fat => {
@@ -156,8 +157,17 @@ export default function FaturamentoModalidades() {
           
           const itens = faturamentosPorModalidade.get(fat.modalidade_id)!;
           
-          // Verificar se o item já existe
-          const itemExistente = itens.find(i => i.pedido_item_id === fat.pedido_item_id);
+          // Buscar o contrato_produto_id do pedido_item
+          const pedidoItem = pedido?.itens.find(i => i.id === fat.pedido_item_id);
+          const contratoId = pedidoItem?.contrato_produto_id;
+          
+          if (!contratoId) {
+            console.warn('⚠️ Contrato não encontrado para pedido_item_id:', fat.pedido_item_id);
+            return;
+          }
+          
+          // Verificar se já existe um item agrupado para este contrato_produto_id
+          const itemExistente = itens.find(i => i.contrato_produto_id === contratoId);
           
           // Garantir que todos os valores sejam números válidos
           const quantidadeAlocada = Number(fat.quantidade_alocada) || 0;
@@ -165,10 +175,17 @@ export default function FaturamentoModalidades() {
           const precoUnitario = Number(fat.preco_unitario) || 0;
           
           if (itemExistente) {
+            // Somar quantidades e adicionar o pedido_item_id ao array
             itemExistente.quantidade_alocada = Number(itemExistente.quantidade_alocada) + quantidadeAlocada;
+            itemExistente.quantidade_pedido = Number(itemExistente.quantidade_pedido) + quantidadePedido;
+            if (!itemExistente.pedido_item_ids.includes(fat.pedido_item_id)) {
+              itemExistente.pedido_item_ids.push(fat.pedido_item_id);
+            }
           } else {
+            // Criar novo item agrupado
             itens.push({
-              pedido_item_id: fat.pedido_item_id,
+              pedido_item_ids: [fat.pedido_item_id],
+              contrato_produto_id: contratoId,
               produto_nome: fat.produto_nome,
               unidade: fat.unidade || 'UN',
               quantidade_pedido: quantidadePedido,
@@ -214,27 +231,31 @@ export default function FaturamentoModalidades() {
       if (fat.modalidade_id === modalidadeSelecionada) {
         const novosItens = [...fat.itens];
         
-        // Adicionar itens selecionados
+        // Adicionar itens selecionados, agrupando por contrato_produto_id
         Object.entries(itensSelecionados).forEach(([itemId, quantidade]) => {
           if (quantidade > 0) {
             const pedidoItem = pedido.itens.find(i => i.id === Number(itemId));
             if (pedidoItem) {
-              // Verificar se o item já existe
+              // Verificar se já existe um item agrupado para este contrato_produto_id
               const itemExistenteIndex = novosItens.findIndex(
-                i => i.pedido_item_id === Number(itemId)
+                i => i.contrato_produto_id === pedidoItem.contrato_produto_id
               );
 
               if (itemExistenteIndex !== -1) {
-                // Atualizar item existente (imutável)
+                // Atualizar item existente (somar quantidades e adicionar pedido_item_id)
+                const itemExistente = novosItens[itemExistenteIndex];
                 novosItens[itemExistenteIndex] = {
-                  ...novosItens[itemExistenteIndex],
-                  quantidade_alocada: Number(novosItens[itemExistenteIndex].quantidade_alocada) + Number(quantidade)
+                  ...itemExistente,
+                  quantidade_alocada: Number(itemExistente.quantidade_alocada) + Number(quantidade),
+                  quantidade_pedido: Number(itemExistente.quantidade_pedido) + Number(pedidoItem.quantidade),
+                  pedido_item_ids: [...itemExistente.pedido_item_ids, Number(itemId)]
                 };
-                console.log('✏️ Item atualizado:', novosItens[itemExistenteIndex]);
+                console.log('✏️ Item agrupado atualizado:', novosItens[itemExistenteIndex]);
               } else {
-                // Adicionar novo item
+                // Adicionar novo item agrupado
                 const novoItem = {
-                  pedido_item_id: Number(itemId),
+                  pedido_item_ids: [Number(itemId)],
+                  contrato_produto_id: pedidoItem.contrato_produto_id,
                   produto_nome: pedidoItem.produto_nome,
                   unidade: pedidoItem.unidade || 'UN',
                   quantidade_pedido: Number(pedidoItem.quantidade),
@@ -242,7 +263,7 @@ export default function FaturamentoModalidades() {
                   preco_unitario: Number(pedidoItem.preco_unitario)
                 };
                 novosItens.push(novoItem);
-                console.log('➕ Novo item adicionado:', novoItem);
+                console.log('➕ Novo item agrupado adicionado:', novoItem);
               }
             }
           }
@@ -263,12 +284,12 @@ export default function FaturamentoModalidades() {
     setItensSelecionados({});
   };
 
-  const removerItem = (modalidadeId: number, pedidoItemId: number) => {
+  const removerItem = (modalidadeId: number, contratoProdutoId: number) => {
     const novosFaturamentos = faturamentos.map(fat => {
       if (fat.modalidade_id === modalidadeId) {
         return {
           ...fat,
-          itens: fat.itens.filter(item => item.pedido_item_id !== pedidoItemId)
+          itens: fat.itens.filter(item => item.contrato_produto_id !== contratoProdutoId)
         };
       }
       return fat;
@@ -276,7 +297,7 @@ export default function FaturamentoModalidades() {
     setFaturamentos(novosFaturamentos);
   };
 
-  const atualizarQuantidade = (modalidadeId: number, pedidoItemId: number, valor: string) => {
+  const atualizarQuantidade = (modalidadeId: number, contratoProdutoId: number, valor: string) => {
     // Permitir campo vazio temporariamente durante digitação
     const novaQuantidade = valor === '' ? 0 : Number(valor);
     
@@ -287,7 +308,7 @@ export default function FaturamentoModalidades() {
     
     console.log('🔄 Atualizando quantidade:', {
       modalidadeId,
-      pedidoItemId,
+      contratoProdutoId,
       valor,
       novaQuantidade
     });
@@ -297,7 +318,7 @@ export default function FaturamentoModalidades() {
         return {
           ...fat,
           itens: fat.itens.map(item => {
-            if (item.pedido_item_id === pedidoItemId) {
+            if (item.contrato_produto_id === contratoProdutoId) {
               console.log('✅ Item atualizado:', {
                 antes: item.quantidade_alocada,
                 depois: novaQuantidade
@@ -315,9 +336,9 @@ export default function FaturamentoModalidades() {
     setFaturamentos(novosFaturamentos);
   };
 
-  const calcularTotalAlocado = (pedidoItemId: number): number => {
+  const calcularTotalAlocado = (contratoProdutoId: number): number => {
     return faturamentos.reduce((total, fat) => {
-      const item = fat.itens.find(i => i.pedido_item_id === pedidoItemId);
+      const item = fat.itens.find(i => i.contrato_produto_id === contratoProdutoId);
       return total + (item?.quantidade_alocada || 0);
     }, 0);
   };
@@ -425,21 +446,25 @@ export default function FaturamentoModalidades() {
         console.log(`✅ ${modalidade.nome}: alocando ${quantidadeModalidade}`);
 
         if (quantidadeModalidade > 0) {
-          // Verificar se o item já existe
+          // Verificar se o item já existe (agrupar por contrato_produto_id)
           const itemExistenteIndex = novosFaturamentos[faturamentoIndex].itens.findIndex(
-            i => i.pedido_item_id === itemId
+            i => i.contrato_produto_id === pedidoItem.contrato_produto_id
           );
 
           if (itemExistenteIndex !== -1) {
             console.log(`📝 Atualizando item existente: ${novosFaturamentos[faturamentoIndex].itens[itemExistenteIndex].quantidade_alocada} + ${quantidadeModalidade}`);
+            const itemExistente = novosFaturamentos[faturamentoIndex].itens[itemExistenteIndex];
             novosFaturamentos[faturamentoIndex].itens[itemExistenteIndex] = {
-              ...novosFaturamentos[faturamentoIndex].itens[itemExistenteIndex],
-              quantidade_alocada: Number(novosFaturamentos[faturamentoIndex].itens[itemExistenteIndex].quantidade_alocada) + Number(quantidadeModalidade)
+              ...itemExistente,
+              quantidade_alocada: Number(itemExistente.quantidade_alocada) + Number(quantidadeModalidade),
+              quantidade_pedido: Number(itemExistente.quantidade_pedido) + Number(pedidoItem.quantidade),
+              pedido_item_ids: [...itemExistente.pedido_item_ids, itemId]
             };
           } else {
             console.log(`➕ Adicionando novo item`);
             novosFaturamentos[faturamentoIndex].itens.push({
-              pedido_item_id: itemId,
+              pedido_item_ids: [itemId],
+              contrato_produto_id: pedidoItem.contrato_produto_id,
               produto_nome: pedidoItem.produto_nome,
               unidade: pedidoItem.unidade || 'UN',
               quantidade_pedido: Number(pedidoItem.quantidade),
@@ -496,20 +521,28 @@ export default function FaturamentoModalidades() {
       setLoading(true);
 
       // Preparar itens para envio
+      // Cada item agrupado pode ter múltiplos pedido_item_ids
+      // Precisamos distribuir a quantidade_alocada proporcionalmente
       const itensParaEnviar: ItemFaturamentoAPI[] = [];
       
       faturamentos.forEach(fat => {
         fat.itens.forEach(item => {
-          itensParaEnviar.push({
-            pedido_item_id: item.pedido_item_id,
-            modalidade_id: fat.modalidade_id,
-            quantidade_alocada: item.quantidade_alocada,
-            preco_unitario: item.preco_unitario
+          // Calcular quantidade proporcional para cada pedido_item_id
+          const quantidadePorItem = item.quantidade_alocada / item.pedido_item_ids.length;
+          
+          item.pedido_item_ids.forEach(pedidoItemId => {
+            itensParaEnviar.push({
+              pedido_item_id: pedidoItemId,
+              modalidade_id: fat.modalidade_id,
+              quantidade_alocada: quantidadePorItem,
+              preco_unitario: item.preco_unitario
+            });
           });
         });
       });
 
       console.log('🔄 Atualizando faturamento:', faturamentoId);
+      console.log('📦 Itens para enviar:', itensParaEnviar);
       await atualizarFaturamento(Number(faturamentoId), {
         itens: itensParaEnviar
       });
@@ -544,7 +577,8 @@ export default function FaturamentoModalidades() {
       if (faturamento.itens.length === 0) return;
 
       faturamento.itens.forEach(item => {
-        const pedidoItem = pedido.itens.find(pi => pi.id === item.pedido_item_id);
+        // Pegar o primeiro pedido_item_id para buscar informações do fornecedor/contrato
+        const pedidoItem = pedido.itens.find(pi => pi.contrato_produto_id === item.contrato_produto_id);
         if (!pedidoItem) return;
 
         const fornecedorNome = pedidoItem.fornecedor_nome;
@@ -857,16 +891,16 @@ export default function FaturamentoModalidades() {
                       </TableHead>
                       <TableBody>
                         {faturamento.itens.map((item) => {
-                          const totalAlocado = calcularTotalAlocado(item.pedido_item_id);
+                          const totalAlocado = calcularTotalAlocado(item.contrato_produto_id);
                           const excedeu = totalAlocado > Number(item.quantidade_pedido);
                           const quantidadeAlocada = Number(item.quantidade_alocada) || 0;
                           const precoUnitario = Number(item.preco_unitario) || 0;
                           const valorTotal = quantidadeAlocada * precoUnitario;
                           const estaEditando = itemEditando?.modalidadeId === faturamento.modalidade_id && 
-                                               itemEditando?.itemId === item.pedido_item_id;
+                                               itemEditando?.itemId === item.contrato_produto_id;
                           
                           return (
-                            <TableRow key={item.pedido_item_id} hover>
+                            <TableRow key={item.contrato_produto_id} hover>
                               <TableCell sx={{ py: 1.5 }}>{item.produto_nome}</TableCell>
                               <TableCell align="center" sx={{ py: 1.5 }}>{item.unidade}</TableCell>
                               <TableCell align="center" sx={{ py: 1.5 }}>{Number(item.quantidade_pedido).toFixed(0)}</TableCell>
@@ -879,7 +913,7 @@ export default function FaturamentoModalidades() {
                                       value={quantidadeAlocada}
                                       onChange={(e) => atualizarQuantidade(
                                         faturamento.modalidade_id,
-                                        item.pedido_item_id,
+                                        item.contrato_produto_id,
                                         e.target.value
                                       )}
                                       error={excedeu}
@@ -936,7 +970,7 @@ export default function FaturamentoModalidades() {
                                       color="primary"
                                       onClick={() => setItemEditando({
                                         modalidadeId: faturamento.modalidade_id,
-                                        itemId: item.pedido_item_id
+                                        itemId: item.contrato_produto_id
                                       })}
                                       title="Editar"
                                     >
@@ -945,7 +979,7 @@ export default function FaturamentoModalidades() {
                                     <IconButton
                                       size="small"
                                       color="error"
-                                      onClick={() => removerItem(faturamento.modalidade_id, item.pedido_item_id)}
+                                      onClick={() => removerItem(faturamento.modalidade_id, item.contrato_produto_id)}
                                       title="Excluir"
                                     >
                                       <DeleteIcon fontSize="small" />

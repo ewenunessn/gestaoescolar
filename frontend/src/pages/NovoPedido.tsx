@@ -104,12 +104,7 @@ export default function NovoPedido() {
       return;
     }
 
-    // Verificar se o produto já foi adicionado
-    const produtoJaAdicionado = itens.find(item => item.contrato_produto_id === produtoSelecionado.contrato_produto_id);
-    if (produtoJaAdicionado) {
-      setErro('Este produto já foi adicionado ao pedido');
-      return;
-    }
+    // Permitir adicionar o mesmo produto múltiplas vezes (para diferentes datas de entrega)
 
     const saldoDisponivel = Number(produtoSelecionado.saldo_disponivel) || Number(produtoSelecionado.quantidade_contratada) || 0;
 
