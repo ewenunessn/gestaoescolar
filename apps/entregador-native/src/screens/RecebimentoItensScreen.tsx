@@ -37,9 +37,24 @@ export default function RecebimentoItensScreen() {
     }
   };
 
+  // Calcular itens atrasados
+  const itensAtrasados = itens.filter(item => {
+    if (!item.data_entrega_prevista) return false;
+    const saldoPendente = parseFloat(item.saldo_pendente as any) || 0;
+    if (saldoPendente <= 0) return false;
+    
+    const dataEntrega = new Date(item.data_entrega_prevista);
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    dataEntrega.setHours(0, 0, 0, 0);
+    return dataEntrega < hoje;
+  }).length;
+
   const abrirDialogRecebimento = (item: ItemPedido) => {
     setItemSelecionado(item);
-    setQuantidade(item.saldo_pendente.toString());
+    // Formatar número removendo zeros desnecessários
+    const saldo = parseFloat(item.saldo_pendente as any) || 0;
+    setQuantidade(saldo % 1 === 0 ? saldo.toString() : saldo.toFixed(2).replace(/\.?0+$/, ''));
     setObservacoes('');
     setDialogVisible(true);
   };
@@ -108,6 +123,18 @@ export default function RecebimentoItensScreen() {
       return d.toLocaleDateString('pt-BR');
     };
 
+    // Verificar se está atrasado
+    const estaAtrasado = () => {
+      if (!item.data_entrega_prevista || completo) return false;
+      const dataEntrega = new Date(item.data_entrega_prevista);
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+      dataEntrega.setHours(0, 0, 0, 0);
+      return dataEntrega < hoje;
+    };
+
+    const atrasado = estaAtrasado();
+
     return (
       <Card style={styles.card}>
         <Card.Content>
@@ -120,8 +147,12 @@ export default function RecebimentoItensScreen() {
                 {item.contrato_numero}
               </Text>
               {item.data_entrega_prevista && (
-                <Text variant="bodySmall" style={styles.dataEntrega}>
+                <Text variant="bodySmall" style={[
+                  styles.dataEntrega,
+                  atrasado && styles.dataAtrasada
+                ]}>
                   Entrega: {formatarDataEntrega(item.data_entrega_prevista)}
+                  {atrasado && ' (EM ATRASO)'}
                 </Text>
               )}
             </View>
@@ -314,6 +345,7 @@ const styles = StyleSheet.create({
   produto: { fontWeight: 'bold', fontSize: 14 },
   contrato: { color: '#666', marginTop: 2, fontSize: 11 },
   dataEntrega: { color: '#2196F3', marginTop: 2, fontSize: 11, fontWeight: '500' },
+  dataAtrasada: { color: '#D32F2F', fontWeight: 'bold' },
   quantidades: { 
     flexDirection: 'row', 
     justifyContent: 'space-around', 
