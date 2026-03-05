@@ -37,6 +37,8 @@ export async function listarEstoqueEscola(req: Request, res: Response) {
       return res.status(400).json({ success: false, message: "Escola inválida" });
     }
 
+    console.log(`[DEBUG] Buscando estoque para escola ID: ${escolaId}`);
+
     const result = await db.query(`
       SELECT 
         p.id as produto_id,
@@ -55,8 +57,21 @@ export async function listarEstoqueEscola(req: Request, res: Response) {
       ORDER BY p.nome
     `, [escolaId]);
 
+    console.log(`[DEBUG] Total de produtos retornados: ${result.rows.length}`);
+    
+    // Log produtos com estoque > 0
+    const comEstoque = result.rows.filter(r => r.quantidade_atual > 0);
+    console.log(`[DEBUG] Produtos com estoque > 0: ${comEstoque.length}`);
+    if (comEstoque.length > 0) {
+      console.log('[DEBUG] Primeiros 5 produtos com estoque:');
+      comEstoque.slice(0, 5).forEach(p => {
+        console.log(`  - ${p.produto_nome}: ${p.quantidade_atual} ${p.unidade}`);
+      });
+    }
+
     res.json({ success: true, data: result.rows, total: result.rows.length });
   } catch (error: any) {
+    console.error('[ERROR] Erro ao listar estoque:', error);
     res.status(500).json({ success: false, message: "Erro ao listar estoque", error: error.message });
   }
 }
