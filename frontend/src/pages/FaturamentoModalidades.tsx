@@ -425,24 +425,54 @@ export default function FaturamentoModalidades() {
 
     const novosFaturamentos = [...faturamentos];
 
-    // Para cada item selecionado
+    // Agrupar itens selecionados por contrato_produto_id
+    const itensAgrupados = new Map<number, {
+      contrato_produto_id: number;
+      produto_nome: string;
+      unidade: string;
+      preco_unitario: number;
+      pedido_item_ids: number[];
+      quantidade_total: number;
+      quantidade_disponivel: number;
+    }>();
+
     itensAutomaticoSelecionados.forEach(itemId => {
       const pedidoItem = pedido.itens.find(i => i.id === itemId);
-      if (!pedidoItem) {
-        console.log('❌ Item não encontrado:', itemId);
-        return;
+      if (!pedidoItem) return;
+
+      const contratoId = pedidoItem.contrato_produto_id;
+      
+      if (!itensAgrupados.has(contratoId)) {
+        itensAgrupados.set(contratoId, {
+          contrato_produto_id: contratoId,
+          produto_nome: pedidoItem.produto_nome,
+          unidade: pedidoItem.unidade || 'UN',
+          preco_unitario: Number(pedidoItem.preco_unitario),
+          pedido_item_ids: [],
+          quantidade_total: 0,
+          quantidade_disponivel: 0
+        });
       }
 
-      const quantidadeDisponivel = Number(pedidoItem.quantidade) - calcularTotalAlocadoPorPedidoItem(itemId);
-      console.log(`📦 Item ${pedidoItem.produto_nome}: disponível ${quantidadeDisponivel}`);
+      const grupo = itensAgrupados.get(contratoId)!;
+      grupo.pedido_item_ids.push(itemId);
+      grupo.quantidade_total += Number(pedidoItem.quantidade);
       
-      if (quantidadeDisponivel <= 0) {
+      const quantidadeDisponivel = Number(pedidoItem.quantidade) - calcularTotalAlocadoPorPedidoItem(itemId);
+      grupo.quantidade_disponivel += quantidadeDisponivel;
+    });
+
+    // Para cada grupo de itens (por contrato_produto_id)
+    itensAgrupados.forEach((grupo) => {
+      console.log(`📦 ${grupo.produto_nome}: disponível ${grupo.quantidade_disponivel} (total: ${grupo.quantidade_total})`);
+      
+      if (grupo.quantidade_disponivel <= 0) {
         console.log('⚠️ Quantidade disponível é zero ou negativa');
         return;
       }
 
       // Distribuir proporcionalmente entre as modalidades
-      let quantidadeRestante = quantidadeDisponivel;
+      let quantidadeRestante = grupo.quantidade_disponivel;
       
       modalidadesSelecionadasData.forEach((modalidade, index) => {
         const faturamentoIndex = novosFaturamentos.findIndex(f => f.modalidade_id === modalidade.id);
@@ -460,7 +490,7 @@ export default function FaturamentoModalidades() {
           // Para as outras, calcular proporção e arredondar para baixo
           const proporcao = Number(modalidade.valor_repasse) / somaRepasses;
           console.log(`📊 ${modalidade.nome}: proporção ${proporcao} (${(proporcao * 100).toFixed(2)}%)`);
-          quantidadeModalidade = Math.floor(quantidadeDisponivel * proporcao);
+          quantidadeModalidade = Math.floor(grupo.quantidade_disponivel * proporcao);
           quantidadeRestante -= quantidadeModalidade;
         }
 
@@ -469,7 +499,7 @@ export default function FaturamentoModalidades() {
         if (quantidadeModalidade > 0) {
           // Verificar se o item já existe (agrupar por contrato_produto_id)
           const itemExistenteIndex = novosFaturamentos[faturamentoIndex].itens.findIndex(
-            i => i.contrato_produto_id === pedidoItem.contrato_produto_id
+            i => i.contrato_produto_id === grupo.contrato_produto_id
           );
 
           if (itemExistenteIndex !== -1) {
@@ -478,19 +508,19 @@ export default function FaturamentoModalidades() {
             novosFaturamentos[faturamentoIndex].itens[itemExistenteIndex] = {
               ...itemExistente,
               quantidade_alocada: Number(itemExistente.quantidade_alocada) + Number(quantidadeModalidade),
-              quantidade_pedido: Number(itemExistente.quantidade_pedido) + Number(pedidoItem.quantidade),
-              pedido_item_ids: [...itemExistente.pedido_item_ids, itemId]
+              quantidade_pedido: Number(itemExistente.quantidade_pedido) + grupo.quantidade_total,
+              pedido_item_ids: [...new Set([...itemExistente.pedido_item_ids, ...grupo.pedido_item_ids])]
             };
           } else {
             console.log(`➕ Adicionando novo item`);
             novosFaturamentos[faturamentoIndex].itens.push({
-              pedido_item_ids: [itemId],
-              contrato_produto_id: pedidoItem.contrato_produto_id,
-              produto_nome: pedidoItem.produto_nome,
-              unidade: pedidoItem.unidade || 'UN',
-              quantidade_pedido: Number(pedidoItem.quantidade),
+              pedido_item_ids: grupo.pedido_item_ids,
+              contrato_produto_id: grupo.contrato_produto_id,
+              produto_nome: grupo.produto_nome,
+              unidade: grupo.unidade,
+              quantidade_pedido: grupo.quantidade_total,
               quantidade_alocada: Number(quantidadeModalidade),
-              preco_unitario: Number(pedidoItem.preco_unitario)
+              preco_unitario: grupo.preco_unitario
             });
           }
         }
