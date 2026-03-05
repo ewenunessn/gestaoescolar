@@ -113,9 +113,12 @@ class EstoqueCentralModel {
    */
   async simularSaida(produtoId: number, quantidade: number) {
     return db.transaction(async (client) => {
-      // Buscar estoque do produto
+      // Buscar estoque do produto diretamente da tabela
       const estoqueResult = await client.query(
-        'SELECT id, produto_nome, unidade FROM view_estoque_central WHERE produto_id = $1',
+        `SELECT ec.id, p.nome as produto_nome, p.unidade 
+         FROM estoque_central ec
+         JOIN produtos p ON p.id = ec.produto_id
+         WHERE ec.produto_id = $1`,
         [produtoId]
       );
 
