@@ -343,6 +343,27 @@ export default function FaturamentoModalidades() {
     }, 0);
   };
 
+  // Calcular total alocado para todos os itens do pedido que têm o mesmo contrato_produto_id
+  const calcularTotalAlocadoPorPedidoItem = (pedidoItemId: number): number => {
+    if (!pedido) return 0;
+    
+    // Encontrar o contrato_produto_id deste pedido_item
+    const pedidoItem = pedido.itens.find(i => i.id === pedidoItemId);
+    if (!pedidoItem) return 0;
+    
+    // Calcular total alocado para este contrato_produto_id
+    return calcularTotalAlocado(pedidoItem.contrato_produto_id);
+  };
+
+  // Calcular quantidade total do pedido para um contrato_produto_id (soma de todos os itens)
+  const calcularQuantidadeTotalPedido = (contratoProdutoId: number): number => {
+    if (!pedido) return 0;
+    
+    return pedido.itens
+      .filter(i => i.contrato_produto_id === contratoProdutoId)
+      .reduce((total, item) => total + Number(item.quantidade), 0);
+  };
+
   const calcularValorTotalModalidade = (modalidadeId: number): number => {
     const faturamento = faturamentos.find(f => f.modalidade_id === modalidadeId);
     if (!faturamento) return 0;
@@ -412,7 +433,7 @@ export default function FaturamentoModalidades() {
         return;
       }
 
-      const quantidadeDisponivel = Number(pedidoItem.quantidade) - calcularTotalAlocado(itemId);
+      const quantidadeDisponivel = Number(pedidoItem.quantidade) - calcularTotalAlocadoPorPedidoItem(itemId);
       console.log(`📦 Item ${pedidoItem.produto_nome}: disponível ${quantidadeDisponivel}`);
       
       if (quantidadeDisponivel <= 0) {
@@ -503,7 +524,7 @@ export default function FaturamentoModalidades() {
     if (!pedido) return false;
 
     for (const item of pedido.itens) {
-      const totalAlocado = calcularTotalAlocado(item.id);
+      const totalAlocado = calcularTotalAlocadoPorPedidoItem(item.id);
       if (totalAlocado > Number(item.quantidade)) {
         setErro(`O item "${item.produto_nome}" tem ${totalAlocado} alocado, mas o pedido tem apenas ${item.quantidade}`);
         return false;
@@ -1035,17 +1056,36 @@ export default function FaturamentoModalidades() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {pedido?.itens.map((item) => {
-                  const totalAlocado = calcularTotalAlocado(item.id);
-                  const disponivel = Number(item.quantidade) - totalAlocado;
-                  const quantidadeSelecionada = itensSelecionados[item.id] || 0;
-                  const valorTotal = quantidadeSelecionada * Number(item.preco_unitario);
+                {pedido?.itens
+                  // Agrupar itens por contrato_produto_id
+                  .reduce((acc: any[], item) => {
+                    const existente = acc.find(i => i.contrato_produto_id === item.contrato_produto_id);
+                    if (existente) {
+                      existente.quantidade = Number(existente.quantidade) + Number(item.quantidade);
+                      existente.ids.push(item.id);
+                    } else {
+                      acc.push({
+                        ...item,
+                        ids: [item.id],
+                        quantidade: Number(item.quantidade)
+                      });
+                    }
+                    return acc;
+                  }, [])
+                  .map((itemAgrupado: any) => {
+                  const totalAlocado = calcularTotalAlocado(itemAgrupado.contrato_produto_id);
+                  const disponivel = Number(itemAgrupado.quantidade) - totalAlocado;
+                  // Somar quantidades selecionadas de todos os IDs do grupo
+                  const quantidadeSelecionada = itemAgrupado.ids.reduce((sum: number, id: number) => 
+                    sum + (itensSelecionados[id] || 0), 0
+                  );
+                  const valorTotal = quantidadeSelecionada * Number(itemAgrupado.preco_unitario);
                   
                   return (
-                    <TableRow key={item.id}>
-                      <TableCell>{item.produto_nome}</TableCell>
-                      <TableCell align="center">{item.unidade || 'UN'}</TableCell>
-                      <TableCell align="center">{item.quantidade}</TableCell>
+                    <TableRow key={itemAgrupado.contrato_produto_id}>
+                      <TableCell>{itemAgrupado.produto_nome}</TableCell>
+                      <TableCell align="center">{itemAgrupado.unidade || 'UN'}</TableCell>
+                      <TableCell align="center">{itemAgrupado.quantidade}</TableCell>
                       <TableCell align="center">{totalAlocado}</TableCell>
                       <TableCell align="center">
                         <Chip 
@@ -1054,16 +1094,20 @@ export default function FaturamentoModalidades() {
                           size="small"
                         />
                       </TableCell>
-                      <TableCell align="center">{formatarMoeda(item.preco_unitario)}</TableCell>
+                      <TableCell align="center">{formatarMoeda(itemAgrupado.preco_unitario)}</TableCell>
                       <TableCell align="center">
                         <TextField
                           type="number"
                           size="small"
                           value={quantidadeSelecionada}
-                          onChange={(e) => setItensSelecionados({
-                            ...itensSelecionados,
-                            [item.id]: Number(e.target.value)
-                          })}
+                          onChange={(e) => {
+                            // Atualizar apenas o primeiro ID do grupo (será agrupado depois)
+                            const primeiroId = itemAgrupado.ids[0];
+                            setItensSelecionados({
+                              ...itensSelecionados,
+                              [primeiroId]: Number(e.target.value)
+                            });
+                          }}
                           sx={{ width: 100 }}
                           inputProps={{ min: 0, max: disponivel, step: 0.01 }}
                           disabled={disponivel <= 0}
@@ -1130,22 +1174,50 @@ export default function FaturamentoModalidades() {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {pedido?.itens.map((item) => {
-                      const totalAlocado = calcularTotalAlocado(item.id);
-                      const disponivel = Number(item.quantidade) - totalAlocado;
+                    {pedido?.itens
+                      // Agrupar itens por contrato_produto_id
+                      .reduce((acc: any[], item) => {
+                        const existente = acc.find(i => i.contrato_produto_id === item.contrato_produto_id);
+                        if (existente) {
+                          existente.quantidade = Number(existente.quantidade) + Number(item.quantidade);
+                          existente.ids.push(item.id);
+                        } else {
+                          acc.push({
+                            ...item,
+                            ids: [item.id],
+                            quantidade: Number(item.quantidade)
+                          });
+                        }
+                        return acc;
+                      }, [])
+                      .map((itemAgrupado: any) => {
+                      const totalAlocado = calcularTotalAlocado(itemAgrupado.contrato_produto_id);
+                      const disponivel = Number(itemAgrupado.quantidade) - totalAlocado;
                       const isDisabled = disponivel <= 0;
                       
                       return (
-                        <TableRow key={item.id}>
+                        <TableRow key={itemAgrupado.contrato_produto_id}>
                           <TableCell padding="checkbox">
                             <Checkbox
-                              checked={itensAutomaticoSelecionados.includes(item.id)}
-                              onChange={() => toggleItemAutomatico(item.id)}
+                              checked={itemAgrupado.ids.some((id: number) => itensAutomaticoSelecionados.includes(id))}
+                              onChange={() => {
+                                // Adicionar/remover todos os IDs do grupo
+                                const primeiroId = itemAgrupado.ids[0];
+                                if (itensAutomaticoSelecionados.includes(primeiroId)) {
+                                  // Remover todos os IDs do grupo
+                                  setItensAutomaticoSelecionados(prev => 
+                                    prev.filter(id => !itemAgrupado.ids.includes(id))
+                                  );
+                                } else {
+                                  // Adicionar todos os IDs do grupo
+                                  setItensAutomaticoSelecionados(prev => [...prev, ...itemAgrupado.ids]);
+                                }
+                              }}
                               disabled={isDisabled}
                             />
                           </TableCell>
-                          <TableCell>{item.produto_nome}</TableCell>
-                          <TableCell align="center">{item.quantidade}</TableCell>
+                          <TableCell>{itemAgrupado.produto_nome}</TableCell>
+                          <TableCell align="center">{itemAgrupado.quantidade}</TableCell>
                           <TableCell align="center">{totalAlocado}</TableCell>
                           <TableCell align="center">
                             <Chip 
@@ -1154,7 +1226,7 @@ export default function FaturamentoModalidades() {
                               size="small"
                             />
                           </TableCell>
-                          <TableCell align="center">{formatarMoeda(item.preco_unitario)}</TableCell>
+                          <TableCell align="center">{formatarMoeda(itemAgrupado.preco_unitario)}</TableCell>
                         </TableRow>
                       );
                     })}
