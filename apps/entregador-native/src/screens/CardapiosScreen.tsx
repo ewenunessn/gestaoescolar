@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, FlatList, Alert } from 'react-native';
 import { FAB, Card, Text, IconButton, Searchbar, Chip, Portal, Modal, Button, TextInput, Menu, ActivityIndicator } from 'react-native-paper';
-import axios from 'axios';
+import { api } from '../api/client';
 
 const MESES: Record<number, string> = {
   1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril', 5: 'Maio', 6: 'Junho',
@@ -42,11 +42,10 @@ export default function CardapiosScreen({ navigation }: any) {
   const loadData = async () => {
     try {
       setLoading(true);
-      const baseURL = 'https://gestaoescolar-backend.vercel.app/api';
       
       const [cardapiosResponse, modalidadesResponse] = await Promise.all([
-        axios.get(`${baseURL}/cardapios`),
-        axios.get(`${baseURL}/modalidades`),
+        api.get('/cardapios'),
+        api.get('/modalidades'),
       ]);
       
       const cardapiosData = cardapiosResponse.data.data || cardapiosResponse.data || [];
@@ -57,7 +56,7 @@ export default function CardapiosScreen({ navigation }: any) {
       setFilteredCardapios(Array.isArray(cardapiosData) ? cardapiosData : []);
     } catch (error: any) {
       console.error('Erro ao carregar cardápios:', error);
-      Alert.alert('Erro', error.message);
+      Alert.alert('Erro', error.response?.data?.message || error.message);
     } finally {
       setLoading(false);
     }
@@ -107,7 +106,6 @@ export default function CardapiosScreen({ navigation }: any) {
     }
 
     try {
-      const baseURL = 'https://gestaoescolar-backend.vercel.app/api';
       const cardapioData = {
         nome,
         mes,
@@ -118,10 +116,10 @@ export default function CardapiosScreen({ navigation }: any) {
       };
 
       if (editMode && selectedId) {
-        await axios.put(`${baseURL}/cardapios/${selectedId}`, cardapioData);
+        await api.put(`/cardapios/${selectedId}`, cardapioData);
         Alert.alert('Sucesso', 'Cardápio atualizado com sucesso');
       } else {
-        await axios.post(`${baseURL}/cardapios`, cardapioData);
+        await api.post('/cardapios', cardapioData);
         Alert.alert('Sucesso', 'Cardápio criado com sucesso');
       }
       
@@ -143,8 +141,7 @@ export default function CardapiosScreen({ navigation }: any) {
           style: 'destructive',
           onPress: async () => {
             try {
-              const baseURL = 'https://gestaoescolar-backend.vercel.app/api';
-              await axios.delete(`${baseURL}/cardapios/${id}`);
+              await api.delete(`/cardapios/${id}`);
               loadData();
             } catch (error: any) {
               Alert.alert('Erro', error.message);

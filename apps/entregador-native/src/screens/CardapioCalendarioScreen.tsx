@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
-import { Text, Card, IconButton, Chip, Portal, Modal, Button, TextInput, Menu, ActivityIndicator } from 'react-native-paper';
+import { Text, Card, IconButton, Chip, Portal, Modal, Button, TextInput, Menu, ActivityIndicator, FAB } from 'react-native-paper';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
-import axios from 'axios';
+import { api } from '../api/client';
 
 // Configurar calendário em português
 LocaleConfig.locales['pt-br'] = {
@@ -22,6 +22,14 @@ const TIPOS_REFEICAO: Record<string, string> = {
   jantar: 'Jantar'
 };
 
+const CORES_TIPO: Record<string, string> = {
+  cafe_manha: '#FFA726',
+  lanche_manha: '#66BB6A',
+  almoco: '#EF5350',
+  lanche_tarde: '#42A5F5',
+  jantar: '#AB47BC'
+};
+
 const MESES: Record<number, string> = {
   1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril', 5: 'Maio', 6: 'Junho',
   7: 'Julho', 8: 'Agosto', 9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro'
@@ -29,24 +37,22 @@ const MESES: Record<number, string> = {
 
 export default function CardapioCalendarioScreen({ route, navigation }: any) {
   const { cardapioId } = route.params;
-  const baseURL = 'https://gestaoescolar-backend.vercel.app/api';
 
   const [cardapio, setCardapio] = useState<any>(null);
   const [refeicoesDias, setRefeicoesDias] = useState<any[]>([]);
   const [refeicoes, setRefeicoes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState('');
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [markedDates, setMarkedDates] = useState<any>({});
   const [modalVisible, setModalVisible] = useState(false);
-  const [detailsVisible, setDetailsVisible] = useState(false);
-  const [selectedRefeicoes, setSelectedRefeicoes] = useState<any[]>([]);
   
   // Form state
   const [refeicaoId, setRefeicaoId] = useState<number | null>(null);
+  const [refeicaoSearch, setRefeicaoSearch] = useState('');
+  const [showRefeicoesSuggestions, setShowRefeicoesSuggestions] = useState(false);
   const [tipoRefeicao, setTipoRefeicao] = useState<string>('');
   const [observacao, setObservacao] = useState('');
-  const [refeicaoMenuVisible, setRefeicaoMenuVisible] = useState(false);
-  const [tipoMenuVisible, setTipoMenuVisible] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -63,9 +69,9 @@ export default function CardapioCalendarioScreen({ route, navigation }: any) {
     try {
       setLoading(true);
       const [cardapioResponse, refeicoesResponse, refeicoesDisponiveisResponse] = await Promise.all([
-        axios.get(`${baseURL}/cardapios/${cardapioId}`),
-        axios.get(`${baseURL}/cardapios/${cardapioId}/refeicoes`),
-        axios.get(`${baseURL}/refeicoes`),
+        api.get(`/cardapios/${cardapioId}`),
+        api.get(`/cardapios/${cardapioId}/refeicoes`),
+        api.get('/refeicoes'),
       ]);
       
       const cardapioData = cardapioResponse.data.data || cardapioResponse.data;
@@ -84,14 +90,13 @@ export default function CardapioCalendarioScreen({ route, navigation }: any) {
           marked[dateKey] = {
             marked: true,
             dotColor: '#4caf50',
-            selected: false,
           };
         });
       }
       setMarkedDates(marked);
     } catch (error: any) {
       console.error('Erro ao carregar dados:', error);
-      Alert.alert('Erro', error.message);
+      Alert.alert('Erro', error.response?.data?.message || error.message);
     } finally {
       setLoading(false);
     }
@@ -103,32 +108,60 @@ export default function CardapioCalendarioScreen({ route, navigation }: any) {
     const dia = parseInt(dayNum);
     
     setSelectedDate(date);
+    setSelectedDay(dia);
     
-    // Buscar refeições deste dia
-    const refeicoesNoDia = refeicoesDias.filter((r: any) => r.dia === dia);
-    setSelectedRefeicoes(refeicoesNoDia);
-    
-    if (refeicoesNoDia.length > 0) {
-      setDetailsVisible(true);
-    } else {
-      // Abrir modal para criar novo
-      setRefeicaoId(null);
-      setTipoRefeicao('');
-      setObservacao('');
-      setModalVisible(true);
-    }
-    
-    // Atualizar marcação
+    // Atualizar marcação de seleção
     const newMarked = { ...markedDates };
     Object.keys(newMarked).forEach(key => {
-      newMarked[key] = { ...newMarked[key], selected: key === date };
+      if (newMarked[key].selected) {
+        delete newMarked[key].selected;
+        delete newMarked[key].selectedColor;
+      }
     });
+    
     if (!newMarked[date]) {
-      newMarked[date] = { selected: true };
-    } else {
-      newMarked[date].selected = true;
+      newMarked[date] = {};
     }
+    newMarked[date].selected = true;
+    newMarked[date].selectedColor = '#4caf50';
+    
     setMarkedDates(newMarked);
+  };
+
+  const handleOpenModal = () => {
+    if (!selectedDay) {
+      Alert.alert('Atenção', 'Selecione um dia no calendário');
+      return;
+    }
+    setRefeicaoId(null);
+    setRefeicaoSearch('');
+    setShowRefeicoesSuggestions(false);
+    setTipoRefeicao('');
+    setObservacao('');
+    setModalVisible(true);
+  };
+
+  const handleRefeicaoSearchChange = (text: string) => {
+    setRefeicaoSearch(text);
+    setShowRefeicoesSuggestions(text.length > 0);
+    if (text.length === 0) {
+      setRefeicaoId(null);
+    }
+  };
+
+  const handleSelectRefeicao = (refeicao: any) => {
+    setRefeicaoId(refeicao.id);
+    setRefeicaoSearch(refeicao.nome);
+    setShowRefeicoesSuggestions(false);
+  };
+
+  const getFilteredRefeicoes = () => {
+    if (!refeicaoSearch) return refeicoes;
+    const searchLower = refeicaoSearch.toLowerCase();
+    return refeicoes.filter((r: any) => 
+      r.nome.toLowerCase().includes(searchLower) ||
+      r.descricao?.toLowerCase().includes(searchLower)
+    );
   };
 
   const handleSave = async () => {
@@ -137,13 +170,15 @@ export default function CardapioCalendarioScreen({ route, navigation }: any) {
       return;
     }
 
-    try {
-      const [year, month, dayNum] = selectedDate.split('-');
-      const dia = parseInt(dayNum);
+    if (!selectedDay) {
+      Alert.alert('Erro', 'Selecione um dia no calendário');
+      return;
+    }
 
-      await axios.post(`${baseURL}/cardapios/${cardapioId}/refeicoes`, {
+    try {
+      await api.post(`/cardapios/${cardapioId}/refeicoes`, {
         refeicao_id: refeicaoId,
-        dia,
+        dia: selectedDay,
         tipo_refeicao: tipoRefeicao,
         observacao: observacao.trim() || undefined,
       });
@@ -167,8 +202,7 @@ export default function CardapioCalendarioScreen({ route, navigation }: any) {
           style: 'destructive',
           onPress: async () => {
             try {
-              await axios.delete(`${baseURL}/cardapios/refeicoes/${id}`);
-              setDetailsVisible(false);
+              await api.delete(`/cardapios/refeicoes/${id}`);
               loadData();
             } catch (error: any) {
               Alert.alert('Erro', error.message);
@@ -177,11 +211,6 @@ export default function CardapioCalendarioScreen({ route, navigation }: any) {
         },
       ]
     );
-  };
-
-  const getRefeicaoNome = () => {
-    const refeicao = refeicoes.find((r: any) => r.id === refeicaoId);
-    return refeicao ? refeicao.nome : 'Selecione uma refeição';
   };
 
   const getTipoRefeicaoNome = () => {
@@ -198,6 +227,11 @@ export default function CardapioCalendarioScreen({ route, navigation }: any) {
     return `${cardapio.ano}-${String(cardapio.mes).padStart(2, '0')}-01`;
   };
 
+  const getRefeicoesDodia = () => {
+    if (!selectedDay) return [];
+    return refeicoesDias.filter((r: any) => r.dia === selectedDay);
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -206,16 +240,18 @@ export default function CardapioCalendarioScreen({ route, navigation }: any) {
     );
   }
 
+  const refeicoesNoDia = getRefeicoesDodia();
+
   return (
     <View style={styles.container}>
-      <ScrollView>
+      <ScrollView style={styles.scrollView}>
         <View style={styles.header}>
           <Text variant="titleLarge" style={styles.title}>{cardapio?.nome}</Text>
           <Text variant="bodyMedium" style={styles.subtitle}>
             {cardapio && `${MESES[cardapio.mes]} / ${cardapio.ano} - ${cardapio.modalidade_nome}`}
           </Text>
           <Text variant="bodySmall" style={styles.hint}>
-            Toque em um dia para adicionar refeições
+            Toque em um dia para ver/adicionar refeições
           </Text>
         </View>
 
@@ -235,84 +271,100 @@ export default function CardapioCalendarioScreen({ route, navigation }: any) {
           maxDate={`${cardapio?.ano}-${String(cardapio?.mes).padStart(2, '0')}-${new Date(cardapio?.ano, cardapio?.mes, 0).getDate()}`}
         />
 
-        <View style={styles.legend}>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: '#4caf50' }]} />
-            <Text variant="bodySmall">Dia com refeição</Text>
-          </View>
-        </View>
+        {/* Seção de Refeições do Dia Selecionado */}
+        {selectedDay && (
+          <View style={styles.refeicoesSection}>
+            <View style={styles.refeicoesHeader}>
+              <Text variant="titleMedium" style={styles.refeicoesTitle}>
+                Dia {selectedDay} - {selectedDate && formatDate(selectedDate)}
+              </Text>
+              {refeicoesNoDia.length > 0 && (
+                <Chip icon="food" compact style={styles.countChip}>
+                  {refeicoesNoDia.length}
+                </Chip>
+              )}
+            </View>
 
-        <View style={styles.stats}>
-          <Chip icon="food" style={styles.statChip}>
-            {refeicoesDias.length} {refeicoesDias.length === 1 ? 'refeição' : 'refeições'}
-          </Chip>
-        </View>
-      </ScrollView>
-
-      {/* Modal de Detalhes */}
-      <Portal>
-        <Modal
-          visible={detailsVisible}
-          onDismiss={() => setDetailsVisible(false)}
-          contentContainerStyle={styles.modal}
-        >
-          <Text variant="titleLarge" style={styles.modalTitle}>
-            {selectedDate && formatDate(selectedDate)}
-          </Text>
-          
-          <ScrollView style={styles.modalContent}>
-            {selectedRefeicoes.map((refeicao: any) => (
-              <Card key={refeicao.id} style={styles.refeicaoCard}>
-                <Card.Content>
-                  <View style={styles.refeicaoRow}>
-                    <View style={styles.refeicaoInfo}>
-                      <Text variant="titleMedium">{refeicao.refeicao_nome}</Text>
-                      <Chip mode="outlined" compact style={styles.tipoChip}>
-                        {TIPOS_REFEICAO[refeicao.tipo_refeicao]}
-                      </Chip>
-                      {refeicao.observacao && (
-                        <Text variant="bodySmall" style={styles.observacao}>
-                          {refeicao.observacao}
-                        </Text>
-                      )}
-                    </View>
-                    <IconButton
-                      icon="delete"
-                      iconColor="#f44336"
-                      size={20}
-                      onPress={() => handleDelete(refeicao.id)}
-                    />
-                  </View>
+            {refeicoesNoDia.length === 0 ? (
+              <Card style={styles.emptyCard}>
+                <Card.Content style={styles.emptyContent}>
+                  <Text variant="bodyMedium" style={styles.emptyText}>
+                    Nenhuma refeição cadastrada para este dia
+                  </Text>
+                  <Text variant="bodySmall" style={styles.emptyHint}>
+                    Toque no botão + para adicionar
+                  </Text>
                 </Card.Content>
               </Card>
-            ))}
-          </ScrollView>
-
-          <View style={styles.modalActions}>
-            <Button
-              mode="contained"
-              onPress={() => {
-                setDetailsVisible(false);
-                setRefeicaoId(null);
-                setTipoRefeicao('');
-                setObservacao('');
-                setModalVisible(true);
-              }}
-              style={styles.modalButton}
-              buttonColor="#4caf50"
-            >
-              Adicionar Outra
-            </Button>
-            <Button
-              mode="outlined"
-              onPress={() => setDetailsVisible(false)}
-              style={styles.modalButton}
-            >
-              Fechar
-            </Button>
+            ) : (
+              <View style={styles.refeicoesList}>
+                {refeicoesNoDia.map((refeicao: any) => (
+                  <Card 
+                    key={refeicao.id} 
+                    style={[
+                      styles.refeicaoCard,
+                      { borderLeftColor: CORES_TIPO[refeicao.tipo_refeicao] || '#ccc' }
+                    ]}
+                  >
+                    <Card.Content>
+                      <View style={styles.refeicaoRow}>
+                        <View style={styles.refeicaoInfo}>
+                          <View style={styles.refeicaoHeader}>
+                            <Text variant="titleMedium" style={styles.refeicaoNome}>
+                              {refeicao.refeicao_nome}
+                            </Text>
+                            <IconButton
+                              icon="delete"
+                              iconColor="#f44336"
+                              size={20}
+                              onPress={() => handleDelete(refeicao.id)}
+                              style={styles.deleteButton}
+                            />
+                          </View>
+                          <Chip 
+                            mode="flat" 
+                            compact 
+                            style={[
+                              styles.tipoChip,
+                              { backgroundColor: CORES_TIPO[refeicao.tipo_refeicao] + '20' }
+                            ]}
+                            textStyle={{ color: CORES_TIPO[refeicao.tipo_refeicao] }}
+                          >
+                            {TIPOS_REFEICAO[refeicao.tipo_refeicao]}
+                          </Chip>
+                          {refeicao.observacao && (
+                            <Text variant="bodySmall" style={styles.observacao}>
+                              {refeicao.observacao}
+                            </Text>
+                          )}
+                        </View>
+                      </View>
+                    </Card.Content>
+                  </Card>
+                ))}
+              </View>
+            )}
           </View>
-        </Modal>
-      </Portal>
+        )}
+
+        {!selectedDay && (
+          <View style={styles.noSelectionContainer}>
+            <Text variant="bodyLarge" style={styles.noSelectionText}>
+              👆 Selecione um dia no calendário
+            </Text>
+          </View>
+        )}
+      </ScrollView>
+
+      {selectedDay && (
+        <FAB
+          icon="plus"
+          style={styles.fab}
+          onPress={handleOpenModal}
+          color="#fff"
+          label="Adicionar Refeição"
+        />
+      )}
 
       {/* Modal de Criação */}
       <Portal>
@@ -325,60 +377,83 @@ export default function CardapioCalendarioScreen({ route, navigation }: any) {
             Adicionar Refeição
           </Text>
           <Text variant="bodyMedium" style={styles.modalSubtitle}>
-            {selectedDate && formatDate(selectedDate)}
+            Dia {selectedDay} - {selectedDate && formatDate(selectedDate)}
           </Text>
 
-          <Menu
-            visible={refeicaoMenuVisible}
-            onDismiss={() => setRefeicaoMenuVisible(false)}
-            anchor={
-              <Button
-                mode="outlined"
-                onPress={() => setRefeicaoMenuVisible(true)}
-                style={styles.menuButton}
-                icon="food"
-              >
-                {getRefeicaoNome()}
-              </Button>
-            }
-          >
-            {refeicoes.map((refeicao: any) => (
-              <Menu.Item
-                key={refeicao.id}
-                onPress={() => {
-                  setRefeicaoId(refeicao.id);
-                  setRefeicaoMenuVisible(false);
-                }}
-                title={refeicao.nome}
-              />
-            ))}
-          </Menu>
+          <View style={styles.autocompleteContainer}>
+            <TextInput
+              label="Buscar Refeição"
+              value={refeicaoSearch}
+              onChangeText={handleRefeicaoSearchChange}
+              onFocus={() => setShowRefeicoesSuggestions(refeicaoSearch.length > 0)}
+              mode="outlined"
+              style={styles.input}
+              left={<TextInput.Icon icon="food" />}
+              right={refeicaoSearch ? <TextInput.Icon icon="close" onPress={() => handleRefeicaoSearchChange('')} /> : null}
+            />
+            
+            {showRefeicoesSuggestions && (
+              <Card style={styles.suggestionsCard}>
+                <ScrollView style={styles.suggestionsList} nestedScrollEnabled>
+                  {getFilteredRefeicoes().length === 0 ? (
+                    <View style={styles.noSuggestions}>
+                      <Text variant="bodyMedium" style={styles.noSuggestionsText}>
+                        Nenhuma refeição encontrada
+                      </Text>
+                    </View>
+                  ) : (
+                    getFilteredRefeicoes().map((refeicao: any) => (
+                      <Card.Content
+                        key={refeicao.id}
+                        style={[
+                          styles.suggestionItem,
+                          refeicaoId === refeicao.id && styles.suggestionItemSelected
+                        ]}
+                      >
+                        <TouchableOpacity onPress={() => handleSelectRefeicao(refeicao)}>
+                          <Text variant="titleSmall" style={styles.suggestionTitle}>
+                            {refeicao.nome}
+                          </Text>
+                          {refeicao.descricao && (
+                            <Text variant="bodySmall" style={styles.suggestionDescription}>
+                              {refeicao.descricao}
+                            </Text>
+                          )}
+                        </TouchableOpacity>
+                      </Card.Content>
+                    ))
+                  )}
+                </ScrollView>
+              </Card>
+            )}
+          </View>
 
-          <Menu
-            visible={tipoMenuVisible}
-            onDismiss={() => setTipoMenuVisible(false)}
-            anchor={
-              <Button
-                mode="outlined"
-                onPress={() => setTipoMenuVisible(true)}
-                style={styles.menuButton}
-                icon="clock-outline"
-              >
-                {getTipoRefeicaoNome()}
-              </Button>
-            }
-          >
-            {Object.entries(TIPOS_REFEICAO).map(([key, label]) => (
-              <Menu.Item
-                key={key}
-                onPress={() => {
-                  setTipoRefeicao(key);
-                  setTipoMenuVisible(false);
-                }}
-                title={label}
-              />
-            ))}
-          </Menu>
+          <View style={styles.tipoRefeicaoSection}>
+            <Text variant="labelLarge" style={styles.sectionLabel}>
+              Tipo de Refeição
+            </Text>
+            <View style={styles.tipoChipsContainer}>
+              {Object.entries(TIPOS_REFEICAO).map(([key, label]) => (
+                <Chip
+                  key={key}
+                  mode={tipoRefeicao === key ? 'flat' : 'outlined'}
+                  selected={tipoRefeicao === key}
+                  onPress={() => setTipoRefeicao(key)}
+                  style={[
+                    styles.tipoChipButton,
+                    tipoRefeicao === key && { backgroundColor: CORES_TIPO[key] + '30' }
+                  ]}
+                  textStyle={[
+                    styles.tipoChipText,
+                    tipoRefeicao === key && { color: CORES_TIPO[key], fontWeight: 'bold' }
+                  ]}
+                  icon={tipoRefeicao === key ? 'check' : undefined}
+                >
+                  {label}
+                </Chip>
+              ))}
+            </View>
+          </View>
 
           <TextInput
             label="Observação"
@@ -418,6 +493,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
+  scrollView: {
+    flex: 1,
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -446,37 +524,96 @@ const styles = StyleSheet.create({
     marginTop: 8,
     elevation: 2,
   },
-  legend: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+  refeicoesSection: {
     padding: 16,
-    backgroundColor: '#fff',
-    marginTop: 8,
+    paddingBottom: 80,
   },
-  legendItem: {
+  refeicoesHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 8,
+    marginBottom: 12,
   },
-  legendDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+  refeicoesTitle: {
+    fontWeight: 'bold',
+    color: '#212121',
   },
-  stats: {
-    padding: 16,
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  statChip: {
+  countChip: {
     backgroundColor: '#e8f5e9',
+  },
+  emptyCard: {
+    backgroundColor: '#fff',
+    elevation: 1,
+  },
+  emptyContent: {
+    alignItems: 'center',
+    padding: 24,
+  },
+  emptyText: {
+    color: '#666',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyHint: {
+    color: '#999',
+    textAlign: 'center',
+  },
+  refeicoesList: {
+    gap: 12,
+  },
+  refeicaoCard: {
+    backgroundColor: '#fff',
+    elevation: 2,
+    borderLeftWidth: 4,
+  },
+  refeicaoRow: {
+    flexDirection: 'row',
+  },
+  refeicaoInfo: {
+    flex: 1,
+  },
+  refeicaoHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  refeicaoNome: {
+    fontWeight: '600',
+    color: '#212121',
+    flex: 1,
+  },
+  deleteButton: {
+    margin: 0,
+  },
+  tipoChip: {
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+  },
+  observacao: {
+    color: '#666',
+    fontStyle: 'italic',
+  },
+  noSelectionContainer: {
+    padding: 48,
+    alignItems: 'center',
+  },
+  noSelectionText: {
+    color: '#999',
+    textAlign: 'center',
+  },
+  fab: {
+    position: 'absolute',
+    margin: 16,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#4caf50',
   },
   modal: {
     backgroundColor: '#fff',
     margin: 20,
     borderRadius: 8,
     padding: 20,
-    maxHeight: '80%',
   },
   modalTitle: {
     fontWeight: 'bold',
@@ -486,36 +623,69 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 16,
   },
-  modalContent: {
-    maxHeight: 300,
-    marginBottom: 16,
+  autocompleteContainer: {
+    position: 'relative',
+    zIndex: 1000,
+    marginBottom: 12,
   },
-  refeicaoCard: {
-    marginBottom: 8,
-    elevation: 1,
+  suggestionsCard: {
+    position: 'absolute',
+    top: 60,
+    left: 0,
+    right: 0,
+    maxHeight: 200,
+    elevation: 4,
+    zIndex: 1001,
   },
-  refeicaoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  suggestionsList: {
+    maxHeight: 200,
+  },
+  suggestionItem: {
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  suggestionItemSelected: {
+    backgroundColor: '#e8f5e9',
+  },
+  suggestionTitle: {
+    fontWeight: '600',
+    color: '#212121',
+    marginBottom: 4,
+  },
+  suggestionDescription: {
+    color: '#666',
+  },
+  noSuggestions: {
+    padding: 16,
     alignItems: 'center',
   },
-  refeicaoInfo: {
-    flex: 1,
+  noSuggestionsText: {
+    color: '#999',
   },
-  tipoChip: {
-    alignSelf: 'flex-start',
-    marginTop: 8,
+  tipoRefeicaoSection: {
+    marginBottom: 16,
   },
-  observacao: {
+  sectionLabel: {
+    marginBottom: 12,
     color: '#666',
-    fontStyle: 'italic',
-    marginTop: 8,
+  },
+  tipoChipsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  tipoChipButton: {
+    marginBottom: 4,
+  },
+  tipoChipText: {
+    fontSize: 13,
   },
   menuButton: {
     marginBottom: 12,
   },
   input: {
-    marginBottom: 16,
+    marginBottom: 0,
   },
   modalActions: {
     flexDirection: 'row',
