@@ -27,6 +27,12 @@ import RecebimentoItensScreen from './src/screens/RecebimentoItensScreen';
 import RecebimentosConcluidosScreen from './src/screens/RecebimentosConcluidosScreen';
 import RomaneioScreen from './src/screens/RomaneioScreen';
 import OpcoesFiltroScreen from './src/screens/OpcoesFiltroScreen';
+import NutricaoScreen from './src/screens/NutricaoScreen';
+import RefeicoesScreen from './src/screens/RefeicoesScreen';
+import RefeicaoFormScreen from './src/screens/RefeicaoFormScreen';
+import CardapiosScreen from './src/screens/CardapiosScreen';
+import CardapioFormScreen from './src/screens/CardapioFormScreen';
+import RefeicaoDetalheScreen from './src/screens/RefeicaoDetalheScreen';
 
 // Theme
 import { theme } from './src/theme';
@@ -171,6 +177,42 @@ export default function App() {
             name="Romaneio" 
             component={RomaneioScreen}
             options={{ title: 'Romaneio de Entregas' }}
+          />
+          <Stack.Screen 
+            name="Nutricao" 
+            component={NutricaoScreen}
+            options={{ title: 'Nutrição' }}
+          />
+          <Stack.Screen 
+            name="Refeicoes" 
+            component={RefeicoesScreen}
+            options={{ title: 'Refeições' }}
+          />
+          <Stack.Screen 
+            name="RefeicaoForm" 
+            component={RefeicaoFormScreen}
+            options={({ route }) => ({ 
+              title: (route.params as any)?.refeicao ? 'Editar Refeição' : 'Nova Refeição'
+            })}
+          />
+          <Stack.Screen 
+            name="RefeicaoDetalhe" 
+            component={RefeicaoDetalheScreen}
+            options={({ route }) => ({ 
+              title: (route.params as any)?.refeicao?.nome || 'Detalhes da Refeição'
+            })}
+          />
+          <Stack.Screen 
+            name="Cardapios" 
+            component={CardapiosScreen}
+            options={{ title: 'Cardápios' }}
+          />
+          <Stack.Screen 
+            name="CardapioForm" 
+            component={CardapioFormScreen}
+            options={({ route }) => ({ 
+              title: (route.params as any)?.cardapio ? 'Editar Cardápio' : 'Novo Cardápio'
+            })}
           />
         </Stack.Navigator>
       </NavigationContainer>

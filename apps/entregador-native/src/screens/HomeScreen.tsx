@@ -178,6 +178,27 @@ export default function HomeScreen({ navigation }: any) {
             </View>
           </Card.Content>
         </Card>
+
+        {/* Card de Nutrição */}
+        <Card style={styles.nutricaoCard}>
+          <Card.Content>
+            <Text variant="titleMedium" style={styles.nutricaoTitle}>
+              🥗 Nutrição
+            </Text>
+            <Text variant="bodyMedium" style={styles.nutricaoText}>
+              Gerencie refeições e cardápios escolares
+            </Text>
+            <View style={styles.nutricaoActions}>
+              <FAB
+                icon="food-apple"
+                label="Acessar Nutrição"
+                onPress={() => navigation.navigate('Nutricao')}
+                style={styles.nutricaoFab}
+                color="#fff"
+              />
+            </View>
+          </Card.Content>
+        </Card>
       </ScrollView>
 
       {/* Scanner QR */}
@@ -318,5 +339,27 @@ const styles = StyleSheet.create({
   },
   recebimentosFab: {
     backgroundColor: '#047857',
+  },
+  nutricaoCard: {
+    marginBottom: 16,
+    backgroundColor: '#4caf50',
+    borderWidth: 0,
+    elevation: 4,
+  },
+  nutricaoTitle: {
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 8,
+  },
+  nutricaoText: {
+    color: '#fff',
+    marginBottom: 12,
+  },
+  nutricaoActions: {
+    marginTop: 12,
+    alignItems: 'center',
+  },
+  nutricaoFab: {
+    backgroundColor: '#388e3c',
   },
 });

@@ -1,5 +1,10 @@
 import { api } from './client';
 
+export async function listarProdutos() {
+  const response = await api.get('/produtos');
+  return response.data.data || response.data || [];
+}
+
 export interface EstoqueCentral {
   id: number;
   produto_id: number;
