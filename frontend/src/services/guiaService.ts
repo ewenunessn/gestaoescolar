@@ -34,7 +34,7 @@ export interface GuiaProdutoEscola {
   data_entrega?: string;
   nome_quem_recebeu?: string;
   nome_quem_entregou?: string;
-  status?: 'pendente' | 'entregue' | 'cancelado' | 'em_rota';
+  status?: 'pendente' | 'entregue' | 'cancelado' | 'programada' | 'parcial';
   // Campos do backend (snake_case)
   guia_id?: number;
   produto_id?: number;

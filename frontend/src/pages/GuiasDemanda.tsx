@@ -100,7 +100,7 @@ const GuiasDemanda: React.FC = () => {
   });
   const [estoqueIndividual, setEstoqueIndividual] = useState<EstoqueEscolarItem | null>(null);
   const [batchEstoqueMap, setBatchEstoqueMap] = useState<Record<number, EstoqueEscolarItem | null>>({});
-  const [mesStatusMap, setMesStatusMap] = useState<Record<number, 'none' | 'pendente' | 'programada' | 'em_rota'>>({});
+  const [mesStatusMap, setMesStatusMap] = useState<Record<number, 'none' | 'pendente' | 'programada' | 'parcial' | 'concluido'>>({});
   
   // Modal de histórico
   const [openHistoricoDialog, setOpenHistoricoDialog] = useState(false);
@@ -146,23 +146,44 @@ const GuiasDemanda: React.FC = () => {
             const data = await guiaService.listarStatusEscolas(m, currentYear);
             let pend = 0;
             let prog = 0;
-            let rota = 0;
+            let parc = 0;
+            let entr = 0;
+            let canc = 0;
+            
             if (Array.isArray(data)) {
               data.forEach((s: any) => {
-                pend += Number(s.qtd_pendente || 0);
-                prog += Number(s.qtd_programada || 0);
-                rota += Number(s.qtd_em_rota || 0);
+                pend += Number(s.qtd_pendente) || 0;
+                prog += Number(s.qtd_programada) || 0;
+                parc += Number(s.qtd_parcial) || 0;
+                entr += Number(s.qtd_entregue) || 0;
+                canc += Number(s.qtd_cancelado) || 0;
               });
             }
-            const status: 'none' | 'pendente' | 'programada' | 'em_rota' =
-              pend > 0 ? 'pendente' : prog > 0 ? 'programada' : rota > 0 ? 'em_rota' : 'none';
-            return { m, status };
+            
+            const total = pend + prog + parc + entr + canc;
+            
+            // Determinar status com base na prioridade
+            let status: 'none' | 'pendente' | 'programada' | 'parcial' | 'concluido' = 'none';
+            if (total === 0) {
+              status = 'none';
+            } else if (pend > 0) {
+              status = 'pendente';
+            } else if (prog > 0) {
+              status = 'programada';
+            } else if (parc > 0) {
+              status = 'parcial';
+            } else {
+              status = 'concluido';
+            }
+            
+            return { m, status, pend, prog, parc, entr, canc, total };
           } catch {
-            return { m, status: 'none' as const };
+            return { m, status: 'none' as const, pend: 0, prog: 0, parc: 0, entr: 0, canc: 0, total: 0 };
           }
         })
       );
-      const map: Record<number, 'none' | 'pendente' | 'programada' | 'em_rota'> = {};
+      
+      const map: Record<number, 'none' | 'pendente' | 'programada' | 'parcial' | 'concluido'> = {};
       results.forEach(({ m, status }) => (map[m] = status));
       setMesStatusMap(map);
     };
@@ -170,16 +191,46 @@ const GuiasDemanda: React.FC = () => {
   }, [currentYear]);
 
   const getSchoolStatusColor = (school: any) => {
-    if (school.qtd_pendente > 0) return '#f44336'; // Vermelho
-    if (school.qtd_programada > 0) return '#2196f3'; // Azul
-    if (school.qtd_em_rota > 0) return '#ff9800'; // Laranja
+    // Converter para números, tratando undefined/null como 0
+    const qtdPendente = Number(school.qtd_pendente) || 0;
+    const qtdProgramada = Number(school.qtd_programada) || 0;
+    const qtdParcial = Number(school.qtd_parcial) || 0;
+    const qtdEntregue = Number(school.qtd_entregue) || 0;
+    const qtdCancelado = Number(school.qtd_cancelado) || 0;
+    
+    const totalItens = qtdPendente + qtdProgramada + qtdParcial + qtdEntregue + qtdCancelado;
+    
+    // Se não tem nenhum item, é vazio (cinza)
+    if (totalItens === 0) return '#9e9e9e'; // Cinza - Vazio
+    
+    // Se tem itens, verificar prioridade de status
+    if (qtdPendente > 0) return '#f44336'; // Vermelho
+    if (qtdProgramada > 0) return '#2196f3'; // Azul
+    if (qtdParcial > 0) return '#ff9800'; // Laranja
+    
+    // Se chegou aqui, só tem entregues ou cancelados
     return '#4caf50'; // Verde
   };
 
   const getStatusText = (school: any) => {
-    if (school.qtd_pendente > 0) return 'PENDENTE';
-    if (school.qtd_programada > 0) return 'PROGRAMADO';
-    if (school.qtd_em_rota > 0) return 'EM ROTA';
+    // Converter para números, tratando undefined/null como 0
+    const qtdPendente = Number(school.qtd_pendente) || 0;
+    const qtdProgramada = Number(school.qtd_programada) || 0;
+    const qtdParcial = Number(school.qtd_parcial) || 0;
+    const qtdEntregue = Number(school.qtd_entregue) || 0;
+    const qtdCancelado = Number(school.qtd_cancelado) || 0;
+    
+    const totalItens = qtdPendente + qtdProgramada + qtdParcial + qtdEntregue + qtdCancelado;
+    
+    // Se não tem nenhum item, é vazio
+    if (totalItens === 0) return 'VAZIO';
+    
+    // Se tem itens, verificar prioridade de status
+    if (qtdPendente > 0) return 'PENDENTE';
+    if (qtdProgramada > 0) return 'PROGRAMADO';
+    if (qtdParcial > 0) return 'PARCIAL';
+    
+    // Se chegou aqui, só tem entregues ou cancelados
     return 'CONCLUÍDO';
   };
 
@@ -613,10 +664,9 @@ const GuiasDemanda: React.FC = () => {
     switch (status) {
       case 'entregue': return 'success';
       case 'parcial': return 'warning';
-      case 'pendente': return 'warning';
-      case 'cancelado': return 'error';
-      case 'em_rota': return 'info';
-      case 'programada': return 'default';
+      case 'pendente': return 'error';
+      case 'cancelado': return 'default';
+      case 'programada': return 'info';
       default: return 'default';
     }
   };
@@ -627,7 +677,6 @@ const GuiasDemanda: React.FC = () => {
       case 'parcial': return <CheckCircleIcon fontSize="small" />;
       case 'pendente': return <ScheduleIcon fontSize="small" />;
       case 'cancelado': return <CancelIcon fontSize="small" />;
-      case 'em_rota': return <ShippingIcon fontSize="small" />;
       case 'programada': return <ScheduleIcon fontSize="small" color="disabled" />;
       default: return null;
     }
@@ -716,7 +765,7 @@ const GuiasDemanda: React.FC = () => {
           </Button>
         </Box>
 
-        <Box mb={2} display="flex" gap={2}>
+        <Box mb={2} display="flex" gap={2} flexWrap="wrap">
           <Box display="flex" alignItems="center" gap={1}>
             <Box width={16} height={16} bgcolor="#f44336" borderRadius="50%" />
             <Typography variant="caption">Pendente (Para Entrega)</Typography>
@@ -726,8 +775,16 @@ const GuiasDemanda: React.FC = () => {
             <Typography variant="caption">Programada (Aguardando)</Typography>
           </Box>
           <Box display="flex" alignItems="center" gap={1}>
+            <Box width={16} height={16} bgcolor="#ff9800" borderRadius="50%" />
+            <Typography variant="caption">Parcial (Entrega Incompleta)</Typography>
+          </Box>
+          <Box display="flex" alignItems="center" gap={1}>
             <Box width={16} height={16} bgcolor="#4caf50" borderRadius="50%" />
-            <Typography variant="caption">Sem Pendências</Typography>
+            <Typography variant="caption">Concluído (Tudo Entregue)</Typography>
+          </Box>
+          <Box display="flex" alignItems="center" gap={1}>
+            <Box width={16} height={16} bgcolor="#9e9e9e" borderRadius="50%" />
+            <Typography variant="caption">Vazio (Sem Itens)</Typography>
           </Box>
         </Box>
 
@@ -788,7 +845,7 @@ const GuiasDemanda: React.FC = () => {
                             </Typography>
                           </Box>
 
-                          {/* Corpo Branco com Ordem na Rota */}
+                          {/* Corpo Branco com Ordem na Rota e Status */}
                           <CardContent sx={{ 
                             flexGrow: 1, 
                             bgcolor: '#fff', 
@@ -811,6 +868,58 @@ const GuiasDemanda: React.FC = () => {
                             >
                               {school.ordem_rota || '-'}
                             </Typography>
+                            
+                            {/* Descrição de Status dos Itens */}
+                            <Box sx={{ mt: 1, width: '100%', textAlign: 'center' }}>
+                              {(() => {
+                                // Converter para números, tratando undefined/null como 0
+                                const qtdPendente = Number(school.qtd_pendente) || 0;
+                                const qtdProgramada = Number(school.qtd_programada) || 0;
+                                const qtdParcial = Number(school.qtd_parcial) || 0;
+                                const qtdEntregue = Number(school.qtd_entregue) || 0;
+                                const qtdCancelado = Number(school.qtd_cancelado) || 0;
+                                
+                                const totalItens = qtdPendente + qtdProgramada + qtdParcial + qtdEntregue + qtdCancelado;
+                                
+                                if (totalItens === 0) {
+                                  return (
+                                    <Typography variant="caption" sx={{ display: 'block', color: '#9e9e9e', fontWeight: 600, fontStyle: 'italic' }}>
+                                      Sem itens cadastrados
+                                    </Typography>
+                                  );
+                                }
+                                
+                                return (
+                                  <>
+                                    {qtdPendente > 0 && (
+                                      <Typography variant="caption" sx={{ display: 'block', color: '#f44336', fontWeight: 600 }}>
+                                        {qtdPendente} Pendente{qtdPendente > 1 ? 's' : ''}
+                                      </Typography>
+                                    )}
+                                    {qtdProgramada > 0 && (
+                                      <Typography variant="caption" sx={{ display: 'block', color: '#2196f3', fontWeight: 600 }}>
+                                        {qtdProgramada} Programada{qtdProgramada > 1 ? 's' : ''}
+                                      </Typography>
+                                    )}
+                                    {qtdParcial > 0 && (
+                                      <Typography variant="caption" sx={{ display: 'block', color: '#ff9800', fontWeight: 600 }}>
+                                        {qtdParcial} Parcial{qtdParcial > 1 ? 'is' : ''}
+                                      </Typography>
+                                    )}
+                                    {qtdEntregue > 0 && (
+                                      <Typography variant="caption" sx={{ display: 'block', color: '#4caf50', fontWeight: 600 }}>
+                                        {qtdEntregue} Entregue{qtdEntregue > 1 ? 's' : ''}
+                                      </Typography>
+                                    )}
+                                    {qtdCancelado > 0 && (
+                                      <Typography variant="caption" sx={{ display: 'block', color: '#9e9e9e', fontWeight: 600 }}>
+                                        {qtdCancelado} Cancelado{qtdCancelado > 1 ? 's' : ''}
+                                      </Typography>
+                                    )}
+                                  </>
+                                );
+                              })()}
+                            </Box>
                           </CardContent>
                         </Card>
                       </Grid>
@@ -870,9 +979,11 @@ const GuiasDemanda: React.FC = () => {
                               ? '#f44336'
                               : mesStatusMap[i + 1] === 'programada'
                               ? '#2196f3'
-                              : mesStatusMap[i + 1] === 'em_rota'
+                              : mesStatusMap[i + 1] === 'parcial'
                               ? '#ff9800'
-                              : 'divider'
+                              : mesStatusMap[i + 1] === 'concluido'
+                              ? '#4caf50'
+                              : '#e0e0e0'
                         }}
                       />
                       {new Date(0, i).toLocaleString('pt-BR', { month: 'long' })}

@@ -12,7 +12,7 @@ export const API_URL = 'https://gestaoescolar-backend.vercel.app/api';
 
 export const api = axios.create({
   baseURL: API_URL,
-  timeout: 10000,
+  timeout: 30000, // 30 segundos
 });
 
 // Interceptor para adicionar token

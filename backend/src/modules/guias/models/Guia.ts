@@ -107,7 +107,7 @@ export interface GuiaProdutoEscola {
   data_entrega?: string;
   nome_quem_recebeu?: string;
   nome_quem_entregou?: string;
-  status?: 'pendente' | 'entregue' | 'cancelado' | 'em_rota' | 'programada';
+  status?: 'pendente' | 'entregue' | 'cancelado' | 'programada' | 'parcial';
 }
 
 export interface CreateGuiaData {
@@ -131,7 +131,7 @@ export interface CreateGuiaProdutoEscolaData {
   data_entrega?: string;
   nome_quem_recebeu?: string;
   nome_quem_entregou?: string;
-  status?: 'pendente' | 'entregue' | 'cancelado' | 'em_rota' | 'programada';
+  status?: 'pendente' | 'entregue' | 'cancelado' | 'programada' | 'parcial';
 }
 
 export async function createEssentialTables() {
@@ -231,7 +231,8 @@ class GuiaModel {
           ordem_rota: null,
           qtd_pendente: 0,
           qtd_programada: 0,
-          qtd_em_rota: 0,
+          qtd_parcial: 0,
+          qtd_cancelado: 0,
           qtd_entregue: 0
         }));
       }
@@ -257,7 +258,8 @@ class GuiaModel {
           ${joinRotasSelect},
           COUNT(CASE WHEN gpe.status = 'pendente' THEN 1 END) as qtd_pendente,
           COUNT(CASE WHEN gpe.status = 'programada' THEN 1 END) as qtd_programada,
-          COUNT(CASE WHEN gpe.status = 'em_rota' THEN 1 END) as qtd_em_rota,
+          COUNT(CASE WHEN gpe.status = 'parcial' THEN 1 END) as qtd_parcial,
+          COUNT(CASE WHEN gpe.status = 'cancelado' THEN 1 END) as qtd_cancelado,
           COUNT(CASE WHEN gpe.status = 'entregue' THEN 1 END) as qtd_entregue
         FROM escolas e
         ${joinRotas}
@@ -401,7 +403,6 @@ class GuiaModel {
         CASE 
           WHEN COALESCE(gpe.quantidade_total_entregue, 0) >= gpe.quantidade THEN 'entregue'
           WHEN COALESCE(gpe.quantidade_total_entregue, 0) > 0 THEN 'parcial'
-          WHEN gpe.status = 'em_rota' THEN 'em_rota'
           WHEN gpe.status = 'programada' THEN 'programada'
           WHEN gpe.status = 'cancelado' THEN 'cancelado'
           ELSE 'pendente'
@@ -433,7 +434,6 @@ class GuiaModel {
         CASE 
           WHEN COALESCE(gpe.quantidade_total_entregue, 0) >= gpe.quantidade THEN 'entregue'
           WHEN COALESCE(gpe.quantidade_total_entregue, 0) > 0 THEN 'parcial'
-          WHEN gpe.status = 'em_rota' THEN 'em_rota'
           WHEN gpe.status = 'programada' THEN 'programada'
           WHEN gpe.status = 'cancelado' THEN 'cancelado'
           ELSE 'pendente'

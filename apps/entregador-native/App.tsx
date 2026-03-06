@@ -25,6 +25,8 @@ import RecebimentosScreen from './src/screens/RecebimentosScreen';
 import RecebimentoFornecedoresScreen from './src/screens/RecebimentoFornecedoresScreen';
 import RecebimentoItensScreen from './src/screens/RecebimentoItensScreen';
 import RecebimentosConcluidosScreen from './src/screens/RecebimentosConcluidosScreen';
+import RomaneioScreen from './src/screens/RomaneioScreen';
+import OpcoesFiltroScreen from './src/screens/OpcoesFiltroScreen';
 
 // Theme
 import { theme } from './src/theme';
@@ -84,6 +86,11 @@ export default function App() {
             name="FiltroManual" 
             component={FiltroManualScreen}
             options={{ title: 'Filtro Manual' }}
+          />
+          <Stack.Screen 
+            name="OpcoesFiltro" 
+            component={OpcoesFiltroScreen}
+            options={{ title: 'Opções' }}
           />
           <Stack.Screen 
             name="Rotas" 
@@ -159,6 +166,11 @@ export default function App() {
             name="RecebimentoItens" 
             component={RecebimentoItensScreen}
             options={{ title: 'Itens para Receber' }}
+          />
+          <Stack.Screen 
+            name="Romaneio" 
+            component={RomaneioScreen}
+            options={{ title: 'Romaneio de Entregas' }}
           />
         </Stack.Navigator>
       </NavigationContainer>

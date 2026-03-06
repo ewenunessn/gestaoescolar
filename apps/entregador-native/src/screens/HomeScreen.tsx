@@ -52,8 +52,8 @@ export default function HomeScreen({ navigation }: any) {
     setFiltroAtivo(data);
     setShowScanner(false);
     
-    // Navegar para a tela de rotas com o filtro aplicado
-    navigation.navigate('Rotas');
+    // Navegar para a tela de opções com o filtro aplicado
+    navigation.navigate('OpcoesFiltro', { filtro: data });
   };
 
   return (
@@ -107,9 +107,9 @@ export default function HomeScreen({ navigation }: any) {
               </Text>
               <View style={styles.filtroActions}>
                 <FAB
-                  icon="truck-delivery"
-                  label="Ver Entregas"
-                  onPress={() => navigation.navigate('Rotas')}
+                  icon="eye"
+                  label="Ver Opções"
+                  onPress={() => navigation.navigate('OpcoesFiltro', { filtro: filtroAtivo })}
                   style={styles.deliveryFab}
                 />
               </View>
