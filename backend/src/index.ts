@@ -254,7 +254,7 @@ app.use("/api/fornecedores", mediumCache, fornecedorRoutes);
 app.use("/api/contratos", contratoRoutes);
 app.use("/api/contrato-produtos", contratoProdutoRoutes);
 
-app.use("/api/refeicoes", mediumCache, refeicaoRoutes);
+app.use("/api/refeicoes", refeicaoRoutes);
 app.use("/api/refeicao-produtos", refeicaoProdutoRoutes);
 app.use("/api/cardapios", cardapioRoutes);
 // app.use("/api/demandas", demandaRoutes); // REMOVIDO - rota duplicada, usar demandasRoutes
