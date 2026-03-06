@@ -3,13 +3,15 @@ const path = require('path');
 const { Pool } = require('pg');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
+// FORÇAR uso do banco LOCAL
 const pool = new Pool({
-  connectionString: process.env.NEON_DATABASE_URL
+  connectionString: 'postgresql://postgres:admin123@localhost:5432/alimentacao_escolar'
 });
 
 async function applyMigration() {
   try {
     console.log('🚀 Iniciando refatoração do módulo de cardápios...\n');
+    console.log('📍 Banco: LOCAL (localhost:5432/alimentacao_escolar)\n');
     
     // Ler o arquivo SQL
     const sqlPath = path.join(__dirname, '../src/migrations/20260305_refactor_cardapios.sql');
@@ -37,9 +39,9 @@ async function applyMigration() {
     
     console.log('\n✅ Refatoração concluída com sucesso!');
     console.log('\n📋 Próximos passos:');
-    console.log('   1. Testar os endpoints da API');
-    console.log('   2. Atualizar o frontend para usar a nova estrutura');
-    console.log('   3. Migrar dados antigos se necessário');
+    console.log('   1. Reiniciar o servidor backend');
+    console.log('   2. Testar os endpoints da API');
+    console.log('   3. Atualizar o frontend para usar a nova estrutura');
     
   } catch (error) {
     console.error('❌ Erro ao aplicar migration:', error);

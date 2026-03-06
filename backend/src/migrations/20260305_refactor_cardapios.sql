@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS cardapio_refeicao_produtos (
   observacao TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT uk_refeicao_produto UNIQUE (cardapio_refeicao_dia_id, produto_id)
+  CONSTRAINT uk_cardapio_refeicao_produto UNIQUE (cardapio_refeicao_dia_id, produto_id)
 );
 
 -- 4. Criar índices para performance

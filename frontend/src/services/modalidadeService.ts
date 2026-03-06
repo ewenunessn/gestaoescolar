@@ -18,7 +18,7 @@ export interface CriarModalidadeData {
 }
 
 class ModalidadeService {
-  private baseUrl = '/api/modalidades';
+  private baseUrl = '/modalidades';
 
   async listar(): Promise<Modalidade[]> {
     try {
