@@ -14,6 +14,7 @@ router.get('/test', (req, res) => {
 });
 
 // Rotas de guias
+router.get('/competencias', guiaController.listarCompetencias);
 router.get('/status-escolas', guiaController.listarStatusEscolas);
 router.get('/romaneio', guiaController.listarRomaneio);
 router.get('/', guiaController.listarGuias);

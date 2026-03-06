@@ -64,7 +64,8 @@ const EstoqueEscolar = lazy(() => import("../pages/EstoqueEscolar"));
 const SaldoContratosModalidades = lazy(() => import("../pages/SaldoContratosModalidades"));
 const GerenciarAlunosModalidades = lazy(() => import("../pages/GerenciarAlunosModalidades"));
 const DashboardConsistencia = lazy(() => import("../components/DashboardConsistencia"));
-const GuiasDemanda = lazy(() => import("../pages/GuiasDemanda"));
+const GuiasDemandaAntigo = lazy(() => import("../pages/GuiasDemanda"));
+const GuiasDemanda = lazy(() => import("../pages/GuiasDemandaRefatorado"));
 const Romaneio = lazy(() => import("../pages/Romaneio"));
 const GuiaDetalhe = lazy(() => import("../pages/GuiaDetalhe"));
 const Entregas = lazy(() => import("../pages/Entregas"));
@@ -213,6 +214,10 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
             <Route
               path="/guias-demanda"
               element={<LazyRoute><GuiasDemanda /></LazyRoute>}
+            />
+            <Route
+              path="/guias-demanda-antigo"
+              element={<LazyRoute><GuiasDemandaAntigo /></LazyRoute>}
             />
             <Route
               path="/romaneio"

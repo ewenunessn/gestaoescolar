@@ -5,6 +5,14 @@ import dotenv from "dotenv";
 import cors from "cors";
 import { config } from "./config";
 
+// Importar middlewares
+import { errorHandler, notFoundHandler } from './middleware/errorHandler';
+import { generalLimiter, loginLimiter } from './middleware/rateLimiter';
+import { mediumCache, longCache } from './middleware/cache';
+import { paginationMiddleware, validatePaginationParams } from './middleware/pagination';
+import { balancedCompression } from './middleware/compression';
+import monitoringRoutes from './routes/monitoringRoutes';
+
 // Importar rotas organizadas por módulos
 import userRoutes from "./modules/usuarios/routes/userRoutes";
 
@@ -36,6 +44,7 @@ import recebimentoRoutes from "./modules/recebimentos/routes/recebimentoRoutes";
 
 import { createServer } from 'http';
 import { initializeRedisCache } from "./config/redis";
+import { initRedis } from "./config/redis";
 import { createGuiaTables, createEssentialTables } from "./modules/guias/models/Guia";
 
 // Módulo de gás removido
@@ -158,6 +167,14 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
+// Middlewares de otimização
+app.use(balancedCompression);  // Compressão de respostas
+app.use(paginationMiddleware);  // Helpers de paginação
+app.use(validatePaginationParams);  // Validação de parâmetros
+
+// Rate limiting geral (exceto rotas específicas)
+app.use('/api', generalLimiter);
+
 // CORS já está configurado corretamente acima com as origens específicas
 // Removido middleware que forçava '*' e conflitava com credentials: true
 
@@ -230,18 +247,18 @@ app.use("/api/auth", userRoutes); // compatibilidade para login
 app.use("/api/permissoes", require("./routes/permissoesRoutes").default);
 
 // Registrar rotas essenciais
-app.use("/api/escolas", escolaRoutes);
-app.use("/api/modalidades", modalidadeRoutes);
+app.use("/api/escolas", mediumCache, escolaRoutes);
+app.use("/api/modalidades", longCache, modalidadeRoutes);
 app.use("/api/escola-modalidades", escolaModalidadeRoutes);
-app.use("/api/fornecedores", fornecedorRoutes);
+app.use("/api/fornecedores", mediumCache, fornecedorRoutes);
 app.use("/api/contratos", contratoRoutes);
 app.use("/api/contrato-produtos", contratoProdutoRoutes);
 
-app.use("/api/refeicoes", refeicaoRoutes);
+app.use("/api/refeicoes", mediumCache, refeicaoRoutes);
 app.use("/api/refeicao-produtos", refeicaoProdutoRoutes);
 app.use("/api/cardapios", cardapioRoutes);
 // app.use("/api/demandas", demandaRoutes); // REMOVIDO - rota duplicada, usar demandasRoutes
-app.use("/api/produtos", produtoRoutes);
+app.use("/api/produtos", longCache, produtoRoutes);
 app.use("/api/produto-modalidades", produtoModalidadeRoutes);
 app.use("/api/estoque-central", estoqueCentralRoutes);
 app.use("/api/estoque-escolar", estoqueEscolarRoutes);
@@ -309,50 +326,19 @@ app.get("/", (req, res) => {
   });
 });
 
-// Middleware para rotas não encontradas
-app.use("*", (req, res) => {
-  res.status(404).json({
-    error: "Rota não encontrada",
-    path: req.originalUrl,
-    message: "Sistema migrado para PostgreSQL - apenas rotas essenciais ativas",
-    suggestion: "Acesse '/' para ver todas as rotas disponíveis",
-    availableRoutes: [
-      "/api/usuarios",
-      "/api/auth",
-      "/api/escolas",
-      "/api/modalidades",
-      "/api/escola-modalidades",
+// Importar middlewares
+import { errorHandler, notFoundHandler } from './middleware/errorHandler';
+import { generalLimiter, loginLimiter } from './middleware/rateLimiter';
+import { mediumCache } from './middleware/cache';
+import { paginationMiddleware, validatePaginationParams } from './middleware/pagination';
+import { balancedCompression } from './middleware/compression';
+import monitoringRoutes from './routes/monitoringRoutes';
 
-      "/api/fornecedores",
-      "/api/contratos",
-      "/api/contrato-produtos",
-      "/api/pedidos",
-      "/api/refeicoes",
-      "/api/cardapios",
-      "/api/demanda",
-      "/api/produtos",
-      "/api/produtos-orm",
-      "/api/produto-modalidades",
+// Middleware para rotas não encontradas (404)
+app.use(notFoundHandler);
 
-
-      "/api/estoque-moderno",
-      
-      "/api/backup",
-      "/api/test-db",
-      "/health"
-    ],
-  });
-});
-
-// Middleware global de erro
-app.use((err: any, req: any, res: any, next: any) => {
-  console.error("Erro global:", err);
-  res.status(500).json({
-    error: "Erro interno do servidor",
-    details: err.message,
-    database: "PostgreSQL"
-  });
-});
+// Middleware global de tratamento de erros (deve ser o último)
+app.use(errorHandler);
 
 // Inicializar servidor
 async function iniciarServidor() {
@@ -378,7 +364,7 @@ async function iniciarServidor() {
 
       // Initialize cache system
       console.log('🔧 Inicializando sistema de cache...');
-      await initializeRedisCache();
+      await initRedis();  // Tenta conectar ao Redis (fallback para memória se falhar)
 
       // Inicializar módulos
       console.log('🔧 Inicializando módulos...');

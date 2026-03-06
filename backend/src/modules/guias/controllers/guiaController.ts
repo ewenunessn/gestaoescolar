@@ -563,5 +563,19 @@ export const guiaController = {
       console.error('Erro ao listar romaneio:', error);
       res.status(500).json({ success: false, error: 'Erro ao listar romaneio' });
     }
+  },
+
+  // Listar competências com resumo de status
+  async listarCompetencias(req: Request, res: Response) {
+    try {
+      console.log('🔍 [GuiaController] Listando competências');
+      
+      const competencias = await GuiaModel.listarCompetencias();
+      
+      res.json({ success: true, data: competencias });
+    } catch (error) {
+      console.error('❌ [GuiaController] Erro ao listar competências:', error);
+      res.status(500).json({ success: false, error: 'Erro ao listar competências' });
+    }
   }
 };

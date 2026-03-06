@@ -26,7 +26,9 @@ import {
   Paper,
   Chip,
   InputAdornment,
-  CircularProgress
+  CircularProgress,
+  Badge,
+  Tooltip
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -101,6 +103,7 @@ const GuiasDemanda: React.FC = () => {
   const [estoqueIndividual, setEstoqueIndividual] = useState<EstoqueEscolarItem | null>(null);
   const [batchEstoqueMap, setBatchEstoqueMap] = useState<Record<number, EstoqueEscolarItem | null>>({});
   const [mesStatusMap, setMesStatusMap] = useState<Record<number, 'none' | 'pendente' | 'programada' | 'parcial' | 'concluido'>>({});
+  const [datasComProgramacao, setDatasComProgramacao] = useState<Set<string>>(new Set());
   
   // Modal de histórico
   const [openHistoricoDialog, setOpenHistoricoDialog] = useState(false);
@@ -510,12 +513,48 @@ const GuiasDemanda: React.FC = () => {
     }
   };
 
+  const carregarDatasComProgramacao = async () => {
+    if (!batchForm.produtoId) {
+      setDatasComProgramacao(new Set());
+      return;
+    }
+    
+    try {
+      const produtoIdSelecionado = Number(batchForm.produtoId);
+      const datasSet = new Set<string>();
+      
+      // Buscar todas as datas de entrega para este produto em todas as escolas
+      await Promise.all(
+        schools.map(async (school) => {
+          const itens = await guiaService.listarProdutosPorEscola(school.id, currentMonth, currentYear);
+          itens.forEach((item) => {
+            const produtoId = item.produto_id || item.produto?.id;
+            if (produtoId === produtoIdSelecionado && item.data_entrega) {
+              datasSet.add(normalizarData(item.data_entrega));
+            }
+          });
+        })
+      );
+      
+      setDatasComProgramacao(datasSet);
+    } catch (err) {
+      console.error('Erro ao carregar datas com programação:', err);
+    }
+  };
+
   useEffect(() => {
     if (batchMode !== 'edit') return;
     if (!openBatchDialog) return;
     if (!batchForm.produtoId || !batchForm.data_entrega) return;
     carregarItensBatch();
-  }, [batchMode, batchForm.produtoId, batchForm.data_entrega, openBatchDialog, currentMonth, currentYear]);
+  }, [batchMode, batchForm.produtoId, batchForm.data_entrega, openBatchDialog, currentMonth, currentYear, schools]);
+
+  // Carregar datas com programação quando produto mudar
+  useEffect(() => {
+    if (!openBatchDialog) return;
+    if (!batchForm.produtoId) return;
+    carregarDatasComProgramacao();
+  }, [batchForm.produtoId, openBatchDialog, currentMonth, currentYear, schools]);
 
   const handleBatchSubmit = async () => {
     if (!batchForm.produtoId || !batchForm.data_entrega) {
@@ -1292,9 +1331,60 @@ const GuiasDemanda: React.FC = () => {
                   value={batchForm.data_entrega}
                   onChange={(e) => setBatchForm(prev => ({ ...prev, data_entrega: e.target.value }))}
                   disabled={batchSaving}
+                  helperText={
+                    datasComProgramacao.has(batchForm.data_entrega) 
+                      ? "✓ Já existe programação nesta data" 
+                      : datasComProgramacao.size > 0 
+                      ? `${datasComProgramacao.size} data(s) com programação`
+                      : null
+                  }
+                  FormHelperTextProps={{
+                    sx: {
+                      color: datasComProgramacao.has(batchForm.data_entrega) ? '#4caf50' : '#666',
+                      fontWeight: datasComProgramacao.has(batchForm.data_entrega) ? 600 : 400
+                    }
+                  }}
                 />
+                {datasComProgramacao.size > 0 && (
+                  <Tooltip 
+                    title={
+                      <Box>
+                        <Typography variant="caption" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>
+                          Datas com programação:
+                        </Typography>
+                        {Array.from(datasComProgramacao).sort().map(data => (
+                          <Typography key={data} variant="caption" sx={{ display: 'block' }}>
+                            • {new Date(data + 'T00:00:00').toLocaleDateString('pt-BR')}
+                          </Typography>
+                        ))}
+                      </Box>
+                    }
+                    arrow
+                  >
+                    <Chip
+                      size="small"
+                      label={`${datasComProgramacao.size} data(s)`}
+                      icon={<ScheduleIcon />}
+                      sx={{ mt: 0.5, cursor: 'pointer' }}
+                      color={datasComProgramacao.has(batchForm.data_entrega) ? "success" : "default"}
+                    />
+                  </Tooltip>
+                )}
               </Grid>
             </Grid>
+
+            {batchMode === 'edit' && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', my: 1 }}>
+                <Button
+                  variant="outlined"
+                  onClick={carregarItensBatch}
+                  disabled={!batchForm.produtoId || !batchForm.data_entrega || batchLoadingExisting}
+                  startIcon={batchLoadingExisting ? <CircularProgress size={20} /> : null}
+                >
+                  {batchLoadingExisting ? 'Carregando...' : 'Carregar Quantidades Existentes'}
+                </Button>
+              </Box>
+            )}
 
             <Box sx={{ 
               p: 2, 
@@ -1389,9 +1479,32 @@ const GuiasDemanda: React.FC = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {schools.map((school) => (
-                    <TableRow key={school.id}>
-                      <TableCell>{school.nome}</TableCell>
+                  {schools.map((school) => {
+                    const itemExistente = batchItensExistentes[school.id];
+                    const temDados = itemExistente !== null && itemExistente !== undefined;
+                    
+                    return (
+                    <TableRow 
+                      key={school.id}
+                      sx={{
+                        bgcolor: temDados && batchMode === 'edit' ? '#e8f5e9' : 'inherit'
+                      }}
+                    >
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          {temDados && batchMode === 'edit' && (
+                            <Box
+                              sx={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: '50%',
+                                bgcolor: '#4caf50'
+                              }}
+                            />
+                          )}
+                          {school.nome}
+                        </Box>
+                      </TableCell>
                       <TableCell>
                         {batchEstoqueMap[school.id] && (
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -1449,7 +1562,6 @@ const GuiasDemanda: React.FC = () => {
                           >
                             <MenuItem value="pendente">Pendente (Para entrega)</MenuItem>
                             <MenuItem value="programada">Programada</MenuItem>
-                            <MenuItem value="em_rota">Em rota</MenuItem>
                             <MenuItem value="parcial">Parcial</MenuItem>
                             <MenuItem value="entregue">Entregue</MenuItem>
                             <MenuItem value="cancelado">Cancelado</MenuItem>
@@ -1457,7 +1569,8 @@ const GuiasDemanda: React.FC = () => {
                         </FormControl>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                   {schools.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={4} align="center">

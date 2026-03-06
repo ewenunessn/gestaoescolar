@@ -620,6 +620,46 @@ class GuiaModel {
 
     return await this.buscarProdutoGuia(itemId);
   }
+
+  // Listar competências com resumo de status
+  async listarCompetencias(): Promise<any[]> {
+    const query = `
+      SELECT 
+        g.mes,
+        g.ano,
+        g.id as guia_id,
+        g.nome as guia_nome,
+        g.status as guia_status,
+        COUNT(DISTINCT gpe.id) as total_itens,
+        COUNT(DISTINCT gpe.escola_id) as total_escolas,
+        COUNT(DISTINCT CASE WHEN gpe.status = 'pendente' THEN gpe.id END) as qtd_pendente,
+        COUNT(DISTINCT CASE WHEN gpe.status = 'programada' THEN gpe.id END) as qtd_programada,
+        COUNT(DISTINCT CASE WHEN gpe.status = 'parcial' THEN gpe.id END) as qtd_parcial,
+        COUNT(DISTINCT CASE WHEN gpe.status = 'entregue' THEN gpe.id END) as qtd_entregue,
+        COUNT(DISTINCT CASE WHEN gpe.status = 'cancelado' THEN gpe.id END) as qtd_cancelado
+      FROM guias g
+      LEFT JOIN guia_produto_escola gpe ON g.id = gpe.guia_id
+      GROUP BY g.mes, g.ano, g.id, g.nome, g.status
+      ORDER BY g.ano DESC, g.mes DESC
+    `;
+
+    const rows = await db.all(query);
+    
+    return rows.map((row: any) => ({
+      mes: row.mes,
+      ano: row.ano,
+      guia_id: row.guia_id,
+      guia_nome: row.guia_nome,
+      guia_status: row.guia_status,
+      total_itens: Number(row.total_itens) || 0,
+      total_escolas: Number(row.total_escolas) || 0,
+      qtd_pendente: Number(row.qtd_pendente) || 0,
+      qtd_programada: Number(row.qtd_programada) || 0,
+      qtd_parcial: Number(row.qtd_parcial) || 0,
+      qtd_entregue: Number(row.qtd_entregue) || 0,
+      qtd_cancelado: Number(row.qtd_cancelado) || 0
+    }));
+  }
 }
 
 export default new GuiaModel();

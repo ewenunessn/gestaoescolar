@@ -1,239 +1,247 @@
-/**
- * Redis configuration for inventory caching
- */
-
 import Redis from 'ioredis';
 
-interface RedisConfig {
-  enabled: boolean;
-  host: string;
-  port: number;
-  password?: string;
-  db: number;
-  keyPrefix: string;
-  defaultTTL: number;
-}
+/**
+ * Configuração do Redis com fallback para memória
+ * Se Redis não estiver disponível, usa cache em memória
+ */
 
 let redisClient: Redis | null = null;
+let isRedisAvailable = false;
 
-/**
- * Get Redis configuration from environment variables
- */
-export const getRedisConfig = (): RedisConfig => {
-  return {
-    enabled: process.env.REDIS_ENABLED === 'true' || process.env.NODE_ENV === 'production',
-    host: process.env.REDIS_HOST || 'localhost',
-    port: parseInt(process.env.REDIS_PORT || '6379'),
-    password: process.env.REDIS_PASSWORD,
-    db: parseInt(process.env.REDIS_DB || '0'),
-    keyPrefix: process.env.REDIS_KEY_PREFIX || 'inventory',
-    defaultTTL: parseInt(process.env.REDIS_DEFAULT_TTL || '300') // 5 minutes
-  };
-};
-
-/**
- * Cache configuration for different inventory operations
- */
-export const getCacheConfiguration = () => {
-  return {
-    inventory: {
-      resumo: { ttl: 120, priority: 'high' }, // 2 minutes
-      escola: { ttl: 180, priority: 'high' }, // 3 minutes  
-      produto: { ttl: 180, priority: 'medium' }, // 3 minutes
-      lotes: { ttl: 240, priority: 'medium' }, // 4 minutes
-      matriz: { ttl: 300, priority: 'low' }, // 5 minutes
-      movimentacoes: { ttl: 120, priority: 'medium' }, // 2 minutes
-      produtos: { ttl: 900, priority: 'low' }, // 15 minutes
-      estatisticas: { ttl: 600, priority: 'low' } // 10 minutes
-    },
-    redis: {
-      maxMemoryPolicy: 'allkeys-lru',
-      maxConnections: 10,
-      retryDelayOnFailover: 100,
-      enableOfflineQueue: false
-    }
-  };
-};
-
-/**
- * Initialize Redis cache if enabled
- */
-export const initializeRedisCache = async (): Promise<void> => {
-  const config = getRedisConfig();
-  
-  if (!config.enabled) {
-    console.log('📦 Redis caching disabled, using in-memory cache');
+// Tentar conectar ao Redis
+export const initRedis = async (): Promise<void> => {
+  // Se não tiver configuração de Redis, usar memória
+  if (!process.env.REDIS_HOST && !process.env.REDIS_URL) {
+    console.log('📦 Redis não configurado, usando cache em memória');
     return;
   }
 
   try {
     redisClient = new Redis({
-      host: config.host,
-      port: config.port,
-      password: config.password,
-      db: config.db,
-      keyPrefix: config.keyPrefix,
+      host: process.env.REDIS_HOST || 'localhost',
+      port: parseInt(process.env.REDIS_PORT || '6379'),
+      password: process.env.REDIS_PASSWORD,
+      db: parseInt(process.env.REDIS_DB || '0'),
       retryStrategy: (times) => {
-        const delay = Math.min(times * 50, 2000);
-        return delay;
-      }
+        if (times > 3) {
+          console.log('⚠️  Redis não disponível, usando cache em memória');
+          return null; // Para de tentar
+        }
+        return Math.min(times * 50, 2000);
+      },
+      maxRetriesPerRequest: 3,
+      enableReadyCheck: true,
+      lazyConnect: true,
+      showFriendlyErrorStack: false // Desabilitar stack trace detalhado
     });
 
-    // Test connection
-    await new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Redis connection timeout'));
-      }, 5000);
-
-      redisClient?.ping().then(() => {
-        clearTimeout(timeout);
-        resolve(true);
-      }).catch((err) => {
-        clearTimeout(timeout);
-        reject(err);
-      });
+    // Silenciar erros de conexão (já tratamos com fallback)
+    redisClient.on('error', () => {
+      // Silencioso - já temos fallback
     });
 
-    console.log('✅ Redis cache initialized successfully');
-    console.log(`📍 Redis server: ${config.host}:${config.port}`);
-    console.log(`🔑 Key prefix: ${config.keyPrefix}`);
-    console.log(`⏰ Default TTL: ${config.defaultTTL}s`);
+    // Tentar conectar
+    await redisClient.connect();
     
+    redisClient.on('connect', () => {
+      console.log('✅ Redis conectado');
+      isRedisAvailable = true;
+    });
+
+    redisClient.on('close', () => {
+      isRedisAvailable = false;
+    });
+
+    isRedisAvailable = true;
+    console.log('✅ Redis inicializado com sucesso');
   } catch (error) {
-    console.error('❌ Failed to initialize Redis cache:', error);
-    console.log('📦 Falling back to in-memory cache');
+    console.log('⚠️  Redis não disponível, usando cache em memória');
     redisClient = null;
+    isRedisAvailable = false;
   }
 };
 
 /**
- * Get Redis client instance
+ * Verifica se Redis está disponível
+ */
+export const isRedisConnected = (): boolean => {
+  return isRedisAvailable && redisClient !== null && redisClient.status === 'ready';
+};
+
+/**
+ * Obtém o cliente Redis (ou null se não disponível)
  */
 export const getRedisClient = (): Redis | null => {
-  return redisClient;
+  return isRedisConnected() ? redisClient : null;
 };
 
 /**
- * Get cache statistics
+ * Operações Redis com fallback para memória
  */
-export const getCacheStats = async () => {
-  const config = getRedisConfig();
-  
-  if (!redisClient || !config.enabled) {
-    return {
-      type: 'in-memory',
-      enabled: false,
-      connected: false
-    };
-  }
 
-  try {
-    const info = await redisClient.info();
-    return {
-      type: 'redis',
-      enabled: true,
-      connected: redisClient.status === 'ready',
-      config: {
-        host: config.host,
-        port: config.port,
-        db: config.db,
-        keyPrefix: config.keyPrefix,
-        defaultTTL: config.defaultTTL
-      },
-      info: info.substring(0, 200) + '...' // Return partial info
-    };
-  } catch (error) {
-    return {
-      type: 'redis',
-      enabled: true,
-      connected: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    };
+// Cache em memória como fallback
+const memoryCache = new Map<string, { value: string; expiresAt: number }>();
+
+// Limpar cache expirado a cada minuto
+setInterval(() => {
+  const now = Date.now();
+  memoryCache.forEach((entry, key) => {
+    if (entry.expiresAt < now) {
+      memoryCache.delete(key);
+    }
+  });
+}, 60000);
+
+/**
+ * GET - Buscar valor
+ */
+export const redisGet = async (key: string): Promise<string | null> => {
+  const client = getRedisClient();
+  
+  if (client) {
+    try {
+      return await client.get(key);
+    } catch (error) {
+      console.error('Erro ao buscar do Redis:', error);
+    }
+  }
+  
+  // Fallback para memória
+  const cached = memoryCache.get(key);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.value;
+  }
+  return null;
+};
+
+/**
+ * SET - Definir valor
+ */
+export const redisSet = async (key: string, value: string, ttlSeconds?: number): Promise<void> => {
+  const client = getRedisClient();
+  
+  if (client) {
+    try {
+      if (ttlSeconds) {
+        await client.setex(key, ttlSeconds, value);
+      } else {
+        await client.set(key, value);
+      }
+      return;
+    } catch (error) {
+      console.error('Erro ao salvar no Redis:', error);
+    }
+  }
+  
+  // Fallback para memória
+  const expiresAt = ttlSeconds ? Date.now() + (ttlSeconds * 1000) : Date.now() + (3600 * 1000);
+  memoryCache.set(key, { value, expiresAt });
+};
+
+/**
+ * DEL - Deletar chave
+ */
+export const redisDel = async (key: string): Promise<void> => {
+  const client = getRedisClient();
+  
+  if (client) {
+    try {
+      await client.del(key);
+      return;
+    } catch (error) {
+      console.error('Erro ao deletar do Redis:', error);
+    }
+  }
+  
+  // Fallback para memória
+  memoryCache.delete(key);
+};
+
+/**
+ * INCR - Incrementar contador
+ */
+export const redisIncr = async (key: string): Promise<number> => {
+  const client = getRedisClient();
+  
+  if (client) {
+    try {
+      return await client.incr(key);
+    } catch (error) {
+      console.error('Erro ao incrementar no Redis:', error);
+    }
+  }
+  
+  // Fallback para memória
+  const cached = memoryCache.get(key);
+  const currentValue = cached ? parseInt(cached.value) : 0;
+  const newValue = currentValue + 1;
+  memoryCache.set(key, {
+    value: newValue.toString(),
+    expiresAt: cached?.expiresAt || Date.now() + (3600 * 1000)
+  });
+  return newValue;
+};
+
+/**
+ * EXPIRE - Definir expiração
+ */
+export const redisExpire = async (key: string, seconds: number): Promise<void> => {
+  const client = getRedisClient();
+  
+  if (client) {
+    try {
+      await client.expire(key, seconds);
+      return;
+    } catch (error) {
+      console.error('Erro ao definir expiração no Redis:', error);
+    }
+  }
+  
+  // Fallback para memória
+  const cached = memoryCache.get(key);
+  if (cached) {
+    cached.expiresAt = Date.now() + (seconds * 1000);
   }
 };
 
 /**
- * Health check for cache system
+ * KEYS - Buscar chaves por padrão
  */
-export const healthCheckCache = async (): Promise<{
-  status: 'healthy' | 'degraded' | 'unhealthy';
-  details: any;
-}> => {
-  const config = getRedisConfig();
+export const redisKeys = async (pattern: string): Promise<string[]> => {
+  const client = getRedisClient();
   
-  if (!config.enabled) {
-    return {
-      status: 'healthy',
-      details: {
-        type: 'in-memory',
-        message: 'In-memory cache is working'
-      }
-    };
+  if (client) {
+    try {
+      return await client.keys(pattern);
+    } catch (error) {
+      console.error('Erro ao buscar chaves no Redis:', error);
+    }
   }
   
-  if (!redisClient) {
-    return {
-      status: 'unhealthy',
-      details: {
-        type: 'redis',
-        message: 'Redis cache not initialized'
-      }
-    };
-  }
-
-  try {
-    if (redisClient.status !== 'ready') {
-      return {
-        status: 'unhealthy',
-        details: {
-          type: 'redis',
-          message: 'Redis connection lost'
-        }
-      };
-    }
-
-    // Test cache operations
-    const testData = { timestamp: Date.now() };
-    
-    await redisClient.set('health_check', JSON.stringify(testData), 'EX', 10); // 10 seconds TTL
-    const retrieved = await redisClient.get('health_check');
-    
-    if (!retrieved || JSON.parse(retrieved).timestamp !== testData.timestamp) {
-      return {
-        status: 'degraded',
-        details: {
-          type: 'redis',
-          message: 'Cache operations not working correctly'
-        }
-      };
-    }
-
-    return {
-      status: 'healthy',
-      details: {
-        type: 'redis',
-        message: 'Redis cache is working correctly',
-        connected: true
-      }
-    };
-    
-  } catch (error) {
-    return {
-      status: 'degraded',
-      details: {
-        type: 'redis',
-        message: 'Cache operations failed',
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }
-    };
-  }
+  // Fallback para memória
+  const regex = new RegExp(pattern.replace(/\*/g, '.*'));
+  return Array.from(memoryCache.keys()).filter(key => regex.test(key));
 };
 
-export default {
-  getRedisConfig,
-  initializeRedisCache,
-  getCacheStats,
-  healthCheckCache,
-  getCacheConfiguration,
-  getRedisClient
+/**
+ * Estatísticas
+ */
+export const getRedisStats = () => {
+  return {
+    type: isRedisConnected() ? 'redis' : 'memory',
+    connected: isRedisConnected(),
+    memoryKeys: memoryCache.size,
+    memorySizeMB: (JSON.stringify(Array.from(memoryCache.entries())).length / 1024 / 1024).toFixed(2)
+  };
+};
+
+/**
+ * Fechar conexão Redis
+ */
+export const closeRedis = async (): Promise<void> => {
+  if (redisClient) {
+    await redisClient.quit();
+    redisClient = null;
+    isRedisAvailable = false;
+  }
 };

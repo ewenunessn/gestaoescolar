@@ -73,6 +73,12 @@ export interface AddProdutoGuiaData {
 }
 
 export const guiaService = {
+  // Listar competências com resumo
+  async listarCompetencias() {
+    const response = await api.get('/guias/competencias');
+    return response.data.data || response.data;
+  },
+
   // Listar todas as guias
   async listarGuias(params?: { mes?: number; ano?: number; status?: string }) {
     const response = await api.get('/guias', { params });
