@@ -301,26 +301,22 @@ export default function CardapioCalendarioScreen({ route, navigation }: any) {
                 {refeicoesNoDia.map((refeicao: any) => (
                   <Card 
                     key={refeicao.id} 
-                    style={[
-                      styles.refeicaoCard,
-                      { borderLeftColor: CORES_TIPO[refeicao.tipo_refeicao] || '#ccc' }
-                    ]}
+                    style={styles.refeicaoCard}
                   >
                     <Card.Content>
                       <View style={styles.refeicaoRow}>
-                        <View style={styles.refeicaoInfo}>
-                          <View style={styles.refeicaoHeader}>
-                            <Text variant="titleMedium" style={styles.refeicaoNome}>
-                              {refeicao.refeicao_nome}
-                            </Text>
-                            <IconButton
-                              icon="delete"
-                              iconColor="#f44336"
-                              size={20}
-                              onPress={() => handleDelete(refeicao.id)}
-                              style={styles.deleteButton}
-                            />
-                          </View>
+                        <View 
+                          style={[
+                            styles.refeicaoIconContainer,
+                            { backgroundColor: CORES_TIPO[refeicao.tipo_refeicao] + '20' }
+                          ]}
+                        >
+                          <Text style={styles.refeicaoIcon}>🍽️</Text>
+                        </View>
+                        <View style={styles.refeicaoContent}>
+                          <Text variant="titleMedium" style={styles.refeicaoNome}>
+                            {refeicao.refeicao_nome}
+                          </Text>
                           <Chip 
                             mode="flat" 
                             compact 
@@ -328,16 +324,27 @@ export default function CardapioCalendarioScreen({ route, navigation }: any) {
                               styles.tipoChip,
                               { backgroundColor: CORES_TIPO[refeicao.tipo_refeicao] + '20' }
                             ]}
-                            textStyle={{ color: CORES_TIPO[refeicao.tipo_refeicao] }}
+                            textStyle={{ 
+                              color: CORES_TIPO[refeicao.tipo_refeicao],
+                              fontSize: 12,
+                              fontWeight: '600'
+                            }}
                           >
                             {TIPOS_REFEICAO[refeicao.tipo_refeicao]}
                           </Chip>
                           {refeicao.observacao && (
-                            <Text variant="bodySmall" style={styles.observacao}>
+                            <Text variant="bodySmall" style={styles.observacao} numberOfLines={2}>
                               {refeicao.observacao}
                             </Text>
                           )}
                         </View>
+                        <IconButton
+                          icon="delete"
+                          iconColor="#f44336"
+                          size={20}
+                          onPress={() => handleDelete(refeicao.id)}
+                          style={styles.deleteButton}
+                        />
                       </View>
                     </Card.Content>
                   </Card>
@@ -564,35 +571,42 @@ const styles = StyleSheet.create({
   refeicaoCard: {
     backgroundColor: '#fff',
     elevation: 2,
-    borderLeftWidth: 4,
   },
   refeicaoRow: {
     flexDirection: 'row',
+    alignItems: 'center',
   },
-  refeicaoInfo: {
+  refeicaoIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  refeicaoIcon: {
+    fontSize: 24,
+  },
+  refeicaoContent: {
     flex: 1,
-  },
-  refeicaoHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
   },
   refeicaoNome: {
     fontWeight: '600',
     color: '#212121',
-    flex: 1,
-  },
-  deleteButton: {
-    margin: 0,
+    marginBottom: 6,
   },
   tipoChip: {
     alignSelf: 'flex-start',
-    marginBottom: 8,
+    marginBottom: 6,
+    height: 24,
   },
   observacao: {
     color: '#666',
     fontStyle: 'italic',
+    lineHeight: 18,
+  },
+  deleteButton: {
+    margin: 0,
   },
   noSelectionContainer: {
     padding: 48,
