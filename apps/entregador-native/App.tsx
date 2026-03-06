@@ -32,6 +32,7 @@ import RefeicoesScreen from './src/screens/RefeicoesScreen';
 import RefeicaoFormScreen from './src/screens/RefeicaoFormScreen';
 import CardapiosScreen from './src/screens/CardapiosScreen';
 import CardapioFormScreen from './src/screens/CardapioFormScreen';
+import CardapioCalendarioScreen from './src/screens/CardapioCalendarioScreen';
 import RefeicaoDetalheScreen from './src/screens/RefeicaoDetalheScreen';
 
 // Theme
@@ -206,6 +207,11 @@ export default function App() {
             name="Cardapios" 
             component={CardapiosScreen}
             options={{ title: 'Cardápios' }}
+          />
+          <Stack.Screen 
+            name="CardapioCalendario" 
+            component={CardapioCalendarioScreen}
+            options={{ title: 'Calendário de Cardápios' }}
           />
           <Stack.Screen 
             name="CardapioForm" 

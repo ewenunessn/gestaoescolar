@@ -22,9 +22,18 @@ export default function NutricaoScreen({ navigation }: any) {
 
         <Card style={styles.card} onPress={() => navigation.navigate('Cardapios')}>
           <Card.Content>
-            <Text variant="titleLarge" style={styles.cardTitle}>📅 Cardápios</Text>
+            <Text variant="titleLarge" style={styles.cardTitle}>📅 Cardápios (Lista)</Text>
             <Text variant="bodyMedium" style={styles.cardDescription}>
-              Planejar cardápios diários por modalidade
+              Ver cardápios em formato de lista
+            </Text>
+          </Card.Content>
+        </Card>
+
+        <Card style={styles.card} onPress={() => navigation.navigate('CardapioCalendario')}>
+          <Card.Content>
+            <Text variant="titleLarge" style={styles.cardTitle}>📆 Calendário de Cardápios</Text>
+            <Text variant="bodyMedium" style={styles.cardDescription}>
+              Visualizar e gerenciar cardápios em calendário mensal
             </Text>
           </Card.Content>
         </Card>
