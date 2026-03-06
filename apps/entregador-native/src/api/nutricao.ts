@@ -87,9 +87,14 @@ export async function deletarCardapio(id: number) {
 // Produtos da Refeição
 export async function listarProdutosDaRefeicao(refeicaoId: number) {
   try {
+    console.log('📡 API: Listando produtos da refeição', refeicaoId);
     const response = await api.get(`/refeicoes/${refeicaoId}/produtos`);
-    return response.data.data || response.data || [];
+    console.log('📡 API: Resposta recebida:', response.data);
+    const resultado = response.data.data || response.data || [];
+    console.log('📡 API: Resultado processado:', resultado);
+    return resultado;
   } catch (error) {
+    console.error('📡 API: Erro ao listar produtos:', error);
     throw new Error(handleAxiosError(error));
   }
 }
@@ -101,13 +106,16 @@ export async function adicionarProdutoNaRefeicao(
   tipoMedida: 'gramas' | 'unidades' = 'gramas'
 ) {
   try {
+    console.log('📡 API: Adicionando produto', { refeicaoId, produtoId, perCapita, tipoMedida });
     const response = await api.post(`/refeicoes/${refeicaoId}/produtos`, {
       produto_id: produtoId,
       per_capita: perCapita,
       tipo_medida: tipoMedida,
     });
+    console.log('📡 API: Produto adicionado, resposta:', response.data);
     return response.data.data || response.data;
   } catch (error) {
+    console.error('📡 API: Erro ao adicionar produto:', error);
     throw new Error(handleAxiosError(error));
   }
 }

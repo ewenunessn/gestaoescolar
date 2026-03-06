@@ -26,9 +26,13 @@ export default function RefeicaoDetalheScreen({ navigation, route }: any) {
         listarProdutos(),
         listarProdutosDaRefeicao(refeicao.id),
       ]);
+      console.log('📦 Produtos carregados:', produtosData.length);
+      console.log('🔗 Associações carregadas:', associacoesData.length);
+      console.log('🔗 Associações:', JSON.stringify(associacoesData, null, 2));
       setProdutos(produtosData);
       setAssociacoes(associacoesData);
     } catch (error: any) {
+      console.error('❌ Erro ao carregar dados:', error);
       Alert.alert('Erro', error.message);
     } finally {
       setLoading(false);
@@ -50,10 +54,13 @@ export default function RefeicaoDetalheScreen({ navigation, route }: any) {
 
   const handleAddProduto = async (produtoId: number) => {
     try {
-      await adicionarProdutoNaRefeicao(refeicao.id, produtoId, 100, 'gramas');
+      console.log('➕ Adicionando produto:', produtoId, 'à refeição:', refeicao.id);
+      const resultado = await adicionarProdutoNaRefeicao(refeicao.id, produtoId, 100, 'gramas');
+      console.log('✅ Produto adicionado, resultado:', resultado);
       await loadData();
       Alert.alert('Sucesso', 'Produto adicionado à refeição');
     } catch (error: any) {
+      console.error('❌ Erro ao adicionar produto:', error);
       Alert.alert('Erro', error.message);
     }
   };
