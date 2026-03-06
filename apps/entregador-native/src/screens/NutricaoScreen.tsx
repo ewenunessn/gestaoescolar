@@ -15,25 +15,16 @@ export default function NutricaoScreen({ navigation }: any) {
           <Card.Content>
             <Text variant="titleLarge" style={styles.cardTitle}>🍽️ Refeições</Text>
             <Text variant="bodyMedium" style={styles.cardDescription}>
-              Gerenciar tipos de refeições (café, almoço, lanche, jantar)
+              Gerenciar tipos de refeições e seus ingredientes
             </Text>
           </Card.Content>
         </Card>
 
         <Card style={styles.card} onPress={() => navigation.navigate('Cardapios')}>
           <Card.Content>
-            <Text variant="titleLarge" style={styles.cardTitle}>📅 Cardápios (Lista)</Text>
+            <Text variant="titleLarge" style={styles.cardTitle}>📅 Cardápios Mensais</Text>
             <Text variant="bodyMedium" style={styles.cardDescription}>
-              Ver cardápios em formato de lista
-            </Text>
-          </Card.Content>
-        </Card>
-
-        <Card style={styles.card} onPress={() => navigation.navigate('CardapioCalendario')}>
-          <Card.Content>
-            <Text variant="titleLarge" style={styles.cardTitle}>📆 Calendário de Cardápios</Text>
-            <Text variant="bodyMedium" style={styles.cardDescription}>
-              Visualizar e gerenciar cardápios em calendário mensal
+              Gerenciar cardápios por modalidade e mês. Clique em um cardápio para ver o calendário.
             </Text>
           </Card.Content>
         </Card>

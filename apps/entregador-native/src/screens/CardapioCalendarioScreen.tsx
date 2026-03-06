@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
-import { Text, Card, FAB, Chip, IconButton, Portal, Modal, Button, TextInput, Menu, ActivityIndicator } from 'react-native-paper';
+import { Text, Card, IconButton, Chip, Portal, Modal, Button, TextInput, Menu, ActivityIndicator } from 'react-native-paper';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
-import { listarCardapios, deletarCardapio, criarCardapio, listarRefeicoes } from '../api/nutricao';
 import axios from 'axios';
 
 // Configurar calendário em português
@@ -15,23 +14,39 @@ LocaleConfig.locales['pt-br'] = {
 };
 LocaleConfig.defaultLocale = 'pt-br';
 
-export default function CardapioCalendarioScreen({ navigation }: any) {
-  const [cardapios, setCardapios] = useState<any[]>([]);
+const TIPOS_REFEICAO: Record<string, string> = {
+  cafe_manha: 'Café da Manhã',
+  lanche_manha: 'Lanche da Manhã',
+  almoco: 'Almoço',
+  lanche_tarde: 'Lanche da Tarde',
+  jantar: 'Jantar'
+};
+
+const MESES: Record<number, string> = {
+  1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril', 5: 'Maio', 6: 'Junho',
+  7: 'Julho', 8: 'Agosto', 9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro'
+};
+
+export default function CardapioCalendarioScreen({ route, navigation }: any) {
+  const { cardapioId } = route.params;
+  const baseURL = 'https://gestaoescolar-backend.vercel.app/api';
+
+  const [cardapio, setCardapio] = useState<any>(null);
+  const [refeicoesDias, setRefeicoesDias] = useState<any[]>([]);
   const [refeicoes, setRefeicoes] = useState<any[]>([]);
-  const [modalidades, setModalidades] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState('');
   const [markedDates, setMarkedDates] = useState<any>({});
   const [modalVisible, setModalVisible] = useState(false);
   const [detailsVisible, setDetailsVisible] = useState(false);
-  const [selectedCardapios, setSelectedCardapios] = useState<any[]>([]);
+  const [selectedRefeicoes, setSelectedRefeicoes] = useState<any[]>([]);
   
   // Form state
   const [refeicaoId, setRefeicaoId] = useState<number | null>(null);
-  const [modalidadeId, setModalidadeId] = useState<number | null>(null);
-  const [observacoes, setObservacoes] = useState('');
+  const [tipoRefeicao, setTipoRefeicao] = useState<string>('');
+  const [observacao, setObservacao] = useState('');
   const [refeicaoMenuVisible, setRefeicaoMenuVisible] = useState(false);
-  const [modalidadeMenuVisible, setModalidadeMenuVisible] = useState(false);
+  const [tipoMenuVisible, setTipoMenuVisible] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -47,21 +62,26 @@ export default function CardapioCalendarioScreen({ navigation }: any) {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [cardapiosData, refeicoesData, modalidadesData] = await Promise.all([
-        listarCardapios(),
-        listarRefeicoes(),
-        loadModalidades(),
+      const [cardapioResponse, refeicoesResponse, refeicoesDisponiveisResponse] = await Promise.all([
+        axios.get(`${baseURL}/cardapios-modalidade/${cardapioId}`),
+        axios.get(`${baseURL}/cardapios-modalidade/${cardapioId}/refeicoes`),
+        axios.get(`${baseURL}/refeicoes`),
       ]);
       
-      setCardapios(Array.isArray(cardapiosData) ? cardapiosData : []);
-      setRefeicoes(Array.isArray(refeicoesData) ? refeicoesData : []);
-      setModalidades(Array.isArray(modalidadesData) ? modalidadesData : []);
+      const cardapioData = cardapioResponse.data.data || cardapioResponse.data;
+      const refeicoesData = refeicoesResponse.data.data || refeicoesResponse.data || [];
+      const refeicoesDisponiveisData = refeicoesDisponiveisResponse.data.data || refeicoesDisponiveisResponse.data || [];
       
-      // Marcar datas com cardápios
+      setCardapio(cardapioData);
+      setRefeicoesDias(Array.isArray(refeicoesData) ? refeicoesData : []);
+      setRefeicoes(Array.isArray(refeicoesDisponiveisData) ? refeicoesDisponiveisData : []);
+      
+      // Marcar datas com refeições
       const marked: any = {};
-      if (Array.isArray(cardapiosData)) {
-        cardapiosData.forEach((cardapio: any) => {
-          marked[cardapio.data] = {
+      if (Array.isArray(refeicoesData)) {
+        refeicoesData.forEach((refeicao: any) => {
+          const dateKey = `${cardapioData.ano}-${String(cardapioData.mes).padStart(2, '0')}-${String(refeicao.dia).padStart(2, '0')}`;
+          marked[dateKey] = {
             marked: true,
             dotColor: '#4caf50',
             selected: false,
@@ -77,32 +97,24 @@ export default function CardapioCalendarioScreen({ navigation }: any) {
     }
   };
 
-  const loadModalidades = async () => {
-    try {
-      const baseURL = 'https://gestaoescolar-backend.vercel.app/api';
-      const response = await axios.get(`${baseURL}/modalidades`);
-      return response.data.data || response.data || [];
-    } catch (error) {
-      console.error('Erro ao carregar modalidades:', error);
-      return [];
-    }
-  };
-
   const handleDayPress = (day: any) => {
     const date = day.dateString;
+    const [year, month, dayNum] = date.split('-');
+    const dia = parseInt(dayNum);
+    
     setSelectedDate(date);
     
-    // Buscar cardápios deste dia
-    const cardapiosDoDia = cardapios.filter((c: any) => c.data === date);
-    setSelectedCardapios(cardapiosDoDia);
+    // Buscar refeições deste dia
+    const refeicoesNoDia = refeicoesDias.filter((r: any) => r.dia === dia);
+    setSelectedRefeicoes(refeicoesNoDia);
     
-    if (cardapiosDoDia.length > 0) {
+    if (refeicoesNoDia.length > 0) {
       setDetailsVisible(true);
     } else {
       // Abrir modal para criar novo
       setRefeicaoId(null);
-      setModalidadeId(null);
-      setObservacoes('');
+      setTipoRefeicao('');
+      setObservacao('');
       setModalVisible(true);
     }
     
@@ -120,31 +132,34 @@ export default function CardapioCalendarioScreen({ navigation }: any) {
   };
 
   const handleSave = async () => {
-    if (!refeicaoId || !modalidadeId) {
-      Alert.alert('Erro', 'Selecione refeição e modalidade');
+    if (!refeicaoId || !tipoRefeicao) {
+      Alert.alert('Erro', 'Selecione refeição e tipo');
       return;
     }
 
     try {
-      await criarCardapio({
-        data: selectedDate,
+      const [year, month, dayNum] = selectedDate.split('-');
+      const dia = parseInt(dayNum);
+
+      await axios.post(`${baseURL}/cardapios-modalidade/${cardapioId}/refeicoes`, {
         refeicao_id: refeicaoId,
-        modalidade_id: modalidadeId,
-        observacoes: observacoes.trim() || undefined,
+        dia,
+        tipo_refeicao: tipoRefeicao,
+        observacao: observacao.trim() || undefined,
       });
       
       setModalVisible(false);
       loadData();
-      Alert.alert('Sucesso', 'Cardápio criado com sucesso');
+      Alert.alert('Sucesso', 'Refeição adicionada com sucesso');
     } catch (error: any) {
-      Alert.alert('Erro', error.message);
+      Alert.alert('Erro', error.response?.data?.message || error.message);
     }
   };
 
   const handleDelete = async (id: number) => {
     Alert.alert(
       'Confirmar Exclusão',
-      'Deseja excluir este cardápio?',
+      'Deseja excluir esta refeição?',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -152,7 +167,7 @@ export default function CardapioCalendarioScreen({ navigation }: any) {
           style: 'destructive',
           onPress: async () => {
             try {
-              await deletarCardapio(id);
+              await axios.delete(`${baseURL}/cardapios-modalidade/refeicoes/${id}`);
               setDetailsVisible(false);
               loadData();
             } catch (error: any) {
@@ -169,14 +184,18 @@ export default function CardapioCalendarioScreen({ navigation }: any) {
     return refeicao ? refeicao.nome : 'Selecione uma refeição';
   };
 
-  const getModalidadeNome = () => {
-    const modalidade = modalidades.find((m: any) => m.id === modalidadeId);
-    return modalidade ? modalidade.nome : 'Selecione uma modalidade';
+  const getTipoRefeicaoNome = () => {
+    return tipoRefeicao ? TIPOS_REFEICAO[tipoRefeicao] : 'Selecione o tipo';
   };
 
   const formatDate = (dateStr: string) => {
     const [year, month, day] = dateStr.split('-');
     return `${day}/${month}/${year}`;
+  };
+
+  const getCalendarDate = () => {
+    if (!cardapio) return new Date().toISOString().split('T')[0];
+    return `${cardapio.ano}-${String(cardapio.mes).padStart(2, '0')}-01`;
   };
 
   if (loading) {
@@ -191,14 +210,17 @@ export default function CardapioCalendarioScreen({ navigation }: any) {
     <View style={styles.container}>
       <ScrollView>
         <View style={styles.header}>
-          <Text variant="titleLarge" style={styles.title}>Calendário de Cardápios</Text>
+          <Text variant="titleLarge" style={styles.title}>{cardapio?.nome}</Text>
           <Text variant="bodyMedium" style={styles.subtitle}>
-            Toque em um dia para ver ou adicionar cardápios
+            {cardapio && `${MESES[cardapio.mes]} / ${cardapio.ano} - ${cardapio.modalidade_nome}`}
+          </Text>
+          <Text variant="bodySmall" style={styles.hint}>
+            Toque em um dia para adicionar refeições
           </Text>
         </View>
 
         <Calendar
-          current={new Date().toISOString().split('T')[0]}
+          current={getCalendarDate()}
           markedDates={markedDates}
           onDayPress={handleDayPress}
           theme={{
@@ -209,18 +231,20 @@ export default function CardapioCalendarioScreen({ navigation }: any) {
             arrowColor: '#4caf50',
           }}
           style={styles.calendar}
+          minDate={`${cardapio?.ano}-${String(cardapio?.mes).padStart(2, '0')}-01`}
+          maxDate={`${cardapio?.ano}-${String(cardapio?.mes).padStart(2, '0')}-${new Date(cardapio?.ano, cardapio?.mes, 0).getDate()}`}
         />
 
         <View style={styles.legend}>
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: '#4caf50' }]} />
-            <Text variant="bodySmall">Dia com cardápio</Text>
+            <Text variant="bodySmall">Dia com refeição</Text>
           </View>
         </View>
 
         <View style={styles.stats}>
-          <Chip icon="calendar" style={styles.statChip}>
-            {cardapios.length} {cardapios.length === 1 ? 'cardápio' : 'cardápios'}
+          <Chip icon="food" style={styles.statChip}>
+            {refeicoesDias.length} {refeicoesDias.length === 1 ? 'refeição' : 'refeições'}
           </Chip>
         </View>
       </ScrollView>
@@ -237,18 +261,18 @@ export default function CardapioCalendarioScreen({ navigation }: any) {
           </Text>
           
           <ScrollView style={styles.modalContent}>
-            {selectedCardapios.map((cardapio: any) => (
-              <Card key={cardapio.id} style={styles.cardapioCard}>
+            {selectedRefeicoes.map((refeicao: any) => (
+              <Card key={refeicao.id} style={styles.refeicaoCard}>
                 <Card.Content>
-                  <View style={styles.cardapioRow}>
-                    <View style={styles.cardapioInfo}>
-                      <Text variant="titleMedium">{cardapio.refeicao_nome}</Text>
-                      <Chip mode="outlined" compact style={styles.modalidadeChip}>
-                        {cardapio.modalidade_nome}
+                  <View style={styles.refeicaoRow}>
+                    <View style={styles.refeicaoInfo}>
+                      <Text variant="titleMedium">{refeicao.refeicao_nome}</Text>
+                      <Chip mode="outlined" compact style={styles.tipoChip}>
+                        {TIPOS_REFEICAO[refeicao.tipo_refeicao]}
                       </Chip>
-                      {cardapio.observacoes && (
-                        <Text variant="bodySmall" style={styles.observacoes}>
-                          {cardapio.observacoes}
+                      {refeicao.observacao && (
+                        <Text variant="bodySmall" style={styles.observacao}>
+                          {refeicao.observacao}
                         </Text>
                       )}
                     </View>
@@ -256,7 +280,7 @@ export default function CardapioCalendarioScreen({ navigation }: any) {
                       icon="delete"
                       iconColor="#f44336"
                       size={20}
-                      onPress={() => handleDelete(cardapio.id)}
+                      onPress={() => handleDelete(refeicao.id)}
                     />
                   </View>
                 </Card.Content>
@@ -270,14 +294,14 @@ export default function CardapioCalendarioScreen({ navigation }: any) {
               onPress={() => {
                 setDetailsVisible(false);
                 setRefeicaoId(null);
-                setModalidadeId(null);
-                setObservacoes('');
+                setTipoRefeicao('');
+                setObservacao('');
                 setModalVisible(true);
               }}
               style={styles.modalButton}
               buttonColor="#4caf50"
             >
-              Adicionar Outro
+              Adicionar Outra
             </Button>
             <Button
               mode="outlined"
@@ -298,7 +322,7 @@ export default function CardapioCalendarioScreen({ navigation }: any) {
           contentContainerStyle={styles.modal}
         >
           <Text variant="titleLarge" style={styles.modalTitle}>
-            Novo Cardápio
+            Adicionar Refeição
           </Text>
           <Text variant="bodyMedium" style={styles.modalSubtitle}>
             {selectedDate && formatDate(selectedDate)}
@@ -331,35 +355,35 @@ export default function CardapioCalendarioScreen({ navigation }: any) {
           </Menu>
 
           <Menu
-            visible={modalidadeMenuVisible}
-            onDismiss={() => setModalidadeMenuVisible(false)}
+            visible={tipoMenuVisible}
+            onDismiss={() => setTipoMenuVisible(false)}
             anchor={
               <Button
                 mode="outlined"
-                onPress={() => setModalidadeMenuVisible(true)}
+                onPress={() => setTipoMenuVisible(true)}
                 style={styles.menuButton}
-                icon="school"
+                icon="clock-outline"
               >
-                {getModalidadeNome()}
+                {getTipoRefeicaoNome()}
               </Button>
             }
           >
-            {modalidades.map((modalidade: any) => (
+            {Object.entries(TIPOS_REFEICAO).map(([key, label]) => (
               <Menu.Item
-                key={modalidade.id}
+                key={key}
                 onPress={() => {
-                  setModalidadeId(modalidade.id);
-                  setModalidadeMenuVisible(false);
+                  setTipoRefeicao(key);
+                  setTipoMenuVisible(false);
                 }}
-                title={modalidade.nome}
+                title={label}
               />
             ))}
           </Menu>
 
           <TextInput
-            label="Observações"
-            value={observacoes}
-            onChangeText={setObservacoes}
+            label="Observação"
+            value={observacao}
+            onChangeText={setObservacao}
             mode="outlined"
             multiline
             numberOfLines={3}
@@ -412,6 +436,11 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     color: '#666',
+    marginBottom: 4,
+  },
+  hint: {
+    color: '#999',
+    fontStyle: 'italic',
   },
   calendar: {
     marginTop: 8,
@@ -461,23 +490,23 @@ const styles = StyleSheet.create({
     maxHeight: 300,
     marginBottom: 16,
   },
-  cardapioCard: {
+  refeicaoCard: {
     marginBottom: 8,
     elevation: 1,
   },
-  cardapioRow: {
+  refeicaoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  cardapioInfo: {
+  refeicaoInfo: {
     flex: 1,
   },
-  modalidadeChip: {
+  tipoChip: {
     alignSelf: 'flex-start',
     marginTop: 8,
   },
-  observacoes: {
+  observacao: {
     color: '#666',
     fontStyle: 'italic',
     marginTop: 8,
