@@ -89,15 +89,15 @@ Home
 ## API Endpoints Utilizados
 
 ```
-GET    /api/cardapios-modalidade              # Listar cardápios mensais
-POST   /api/cardapios-modalidade              # Criar cardápio mensal
-GET    /api/cardapios-modalidade/:id          # Buscar cardápio específico
-PUT    /api/cardapios-modalidade/:id          # Editar cardápio
-DELETE /api/cardapios-modalidade/:id          # Excluir cardápio
+GET    /api/cardapios                         # Listar cardápios mensais
+POST   /api/cardapios                         # Criar cardápio mensal
+GET    /api/cardapios/:id                     # Buscar cardápio específico
+PUT    /api/cardapios/:id                     # Editar cardápio
+DELETE /api/cardapios/:id                     # Excluir cardápio
 
-GET    /api/cardapios-modalidade/:id/refeicoes           # Listar refeições do cardápio
-POST   /api/cardapios-modalidade/:id/refeicoes           # Adicionar refeição ao dia
-DELETE /api/cardapios-modalidade/refeicoes/:id           # Remover refeição do dia
+GET    /api/cardapios/:id/refeicoes           # Listar refeições do cardápio
+POST   /api/cardapios/:id/refeicoes           # Adicionar refeição ao dia
+DELETE /api/cardapios/refeicoes/:id           # Remover refeição do dia
 
 GET    /api/refeicoes                         # Listar refeições disponíveis
 GET    /api/modalidades                       # Listar modalidades

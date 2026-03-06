@@ -63,8 +63,8 @@ export default function CardapioCalendarioScreen({ route, navigation }: any) {
     try {
       setLoading(true);
       const [cardapioResponse, refeicoesResponse, refeicoesDisponiveisResponse] = await Promise.all([
-        axios.get(`${baseURL}/cardapios-modalidade/${cardapioId}`),
-        axios.get(`${baseURL}/cardapios-modalidade/${cardapioId}/refeicoes`),
+        axios.get(`${baseURL}/cardapios/${cardapioId}`),
+        axios.get(`${baseURL}/cardapios/${cardapioId}/refeicoes`),
         axios.get(`${baseURL}/refeicoes`),
       ]);
       
@@ -141,7 +141,7 @@ export default function CardapioCalendarioScreen({ route, navigation }: any) {
       const [year, month, dayNum] = selectedDate.split('-');
       const dia = parseInt(dayNum);
 
-      await axios.post(`${baseURL}/cardapios-modalidade/${cardapioId}/refeicoes`, {
+      await axios.post(`${baseURL}/cardapios/${cardapioId}/refeicoes`, {
         refeicao_id: refeicaoId,
         dia,
         tipo_refeicao: tipoRefeicao,
@@ -167,7 +167,7 @@ export default function CardapioCalendarioScreen({ route, navigation }: any) {
           style: 'destructive',
           onPress: async () => {
             try {
-              await axios.delete(`${baseURL}/cardapios-modalidade/refeicoes/${id}`);
+              await axios.delete(`${baseURL}/cardapios/refeicoes/${id}`);
               setDetailsVisible(false);
               loadData();
             } catch (error: any) {

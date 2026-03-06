@@ -45,7 +45,7 @@ export default function CardapiosScreen({ navigation }: any) {
       const baseURL = 'https://gestaoescolar-backend.vercel.app/api';
       
       const [cardapiosResponse, modalidadesResponse] = await Promise.all([
-        axios.get(`${baseURL}/cardapios-modalidade`),
+        axios.get(`${baseURL}/cardapios`),
         axios.get(`${baseURL}/modalidades`),
       ]);
       
@@ -118,10 +118,10 @@ export default function CardapiosScreen({ navigation }: any) {
       };
 
       if (editMode && selectedId) {
-        await axios.put(`${baseURL}/cardapios-modalidade/${selectedId}`, cardapioData);
+        await axios.put(`${baseURL}/cardapios/${selectedId}`, cardapioData);
         Alert.alert('Sucesso', 'Cardápio atualizado com sucesso');
       } else {
-        await axios.post(`${baseURL}/cardapios-modalidade`, cardapioData);
+        await axios.post(`${baseURL}/cardapios`, cardapioData);
         Alert.alert('Sucesso', 'Cardápio criado com sucesso');
       }
       
@@ -144,7 +144,7 @@ export default function CardapiosScreen({ navigation }: any) {
           onPress: async () => {
             try {
               const baseURL = 'https://gestaoescolar-backend.vercel.app/api';
-              await axios.delete(`${baseURL}/cardapios-modalidade/${id}`);
+              await axios.delete(`${baseURL}/cardapios/${id}`);
               loadData();
             } catch (error: any) {
               Alert.alert('Erro', error.message);
