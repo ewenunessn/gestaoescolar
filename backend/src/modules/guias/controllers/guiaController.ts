@@ -1,5 +1,14 @@
 import { Request, Response } from 'express';
 import GuiaModel from '../models/Guia';
+import {
+  asyncHandler,
+  ValidationError,
+  NotFoundError,
+  BusinessError,
+  ConflictError,
+  validateRequired,
+  handleDatabaseError
+} from '../../../utils/errorHandler';
 
 export const guiaController = {
   // Listar todas as guias

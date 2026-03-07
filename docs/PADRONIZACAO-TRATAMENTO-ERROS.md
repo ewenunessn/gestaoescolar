@@ -378,20 +378,20 @@ Para cada controller:
 ### Alta Prioridade (APIs críticas)
 1. ✅ usuarios (autenticação) - MIGRADO
 2. ✅ produtos - MIGRADO
-3. ⏳ pedidos
-4. ⏳ contratos
+3. ✅ pedidos - MIGRADO
+4. ✅ contratos - MIGRADO
 
 ### Média Prioridade
-5. ⏳ cardapios
-6. ⏳ entregas
-7. ⏳ estoque
-8. ⏳ faturamentos
+5. ✅ cardapios - MIGRADO
+6. ✅ entregas - MIGRADO
+7. ⏳ estoque (arquivo não encontrado)
+8. ✅ faturamentos - MIGRADO
 
 ### Baixa Prioridade
-9. ⏳ guias
-10. ⏳ demandas
-11. ⏳ recebimentos
-12. ⏳ escolas
+9. ✅ guias - MIGRADO
+10. ✅ demandas - MIGRADO
+11. ✅ recebimentos - MIGRADO
+12. ✅ escolas - MIGRADO
 
 ---
 

@@ -1,4 +1,14 @@
+import { Request, Response } from "express";
 import db from "../../../database";
+import {
+  asyncHandler,
+  ValidationError,
+  NotFoundError,
+  BusinessError,
+  ConflictError,
+  validateRequired,
+  handleDatabaseError
+} from "../../../utils/errorHandler";
 
 export async function listarEscolas(req, res) {
   try {
