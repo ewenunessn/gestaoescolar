@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, FlatList, Alert } from 'react-native';
-import { FAB, Card, Text, IconButton, Searchbar, Chip, Divider } from 'react-native-paper';
+import { FAB, Card, Text, IconButton, Searchbar, Chip } from 'react-native-paper';
 import { listarRefeicoes, deletarRefeicao } from '../api/nutricao';
 
 export default function RefeicoesScreen({ navigation }: any) {
@@ -97,24 +97,12 @@ export default function RefeicoesScreen({ navigation }: any) {
         renderItem={({ item }) => (
           <Card style={styles.card} onPress={() => navigation.navigate('RefeicaoDetalhe', { refeicao: item })}>
             <Card.Content>
-              <View style={styles.cardRow}>
-                <View style={styles.iconContainer}>
-                  <Text style={styles.icon}>{getRefeicaoIcon(item.nome)}</Text>
-                </View>
-                <View style={styles.cardContent}>
+              <View style={styles.cardHeader}>
+                <View style={styles.cardTitleContainer}>
+                  <Text style={styles.refeicaoIcon}>{getRefeicaoIcon(item.nome)}</Text>
                   <Text variant="titleMedium" style={styles.cardTitle}>
                     {item.nome}
                   </Text>
-                  {item.descricao && (
-                    <Text variant="bodySmall" style={styles.cardDescription}>
-                      {item.descricao}
-                    </Text>
-                  )}
-                  {item.tipo && (
-                    <Chip mode="outlined" compact style={styles.typeChip}>
-                      {item.tipo}
-                    </Chip>
-                  )}
                 </View>
                 <View style={styles.cardActions}>
                   <IconButton
@@ -137,6 +125,20 @@ export default function RefeicoesScreen({ navigation }: any) {
                   />
                 </View>
               </View>
+
+              {item.descricao && (
+                <Text variant="bodyMedium" style={styles.cardDescription} numberOfLines={2}>
+                  {item.descricao}
+                </Text>
+              )}
+
+              {item.tipo && (
+                <View style={styles.infoRow}>
+                  <Chip mode="outlined" compact style={styles.typeChip} icon="tag">
+                    {item.tipo}
+                  </Chip>
+                </View>
+              )}
             </Card.Content>
           </Card>
         )}
@@ -198,41 +200,42 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     elevation: 2,
   },
-  cardRow: {
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  cardTitleContainer: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
   },
-  iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#e8f5e9',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  icon: {
-    fontSize: 24,
-  },
-  cardContent: {
-    flex: 1,
+  refeicaoIcon: {
+    fontSize: 28,
   },
   cardTitle: {
     fontWeight: '600',
     color: '#212121',
-    marginBottom: 4,
-  },
-  cardDescription: {
-    color: '#666',
-    marginBottom: 8,
-  },
-  typeChip: {
-    alignSelf: 'flex-start',
-    height: 24,
+    flex: 1,
   },
   cardActions: {
     flexDirection: 'row',
     marginLeft: 8,
+  },
+  cardDescription: {
+    color: '#666',
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  typeChip: {
+    height: 28,
   },
   fab: {
     position: 'absolute',

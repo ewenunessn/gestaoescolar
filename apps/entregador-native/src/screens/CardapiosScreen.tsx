@@ -193,42 +193,19 @@ export default function CardapiosScreen({ navigation }: any) {
         renderItem={({ item }) => (
           <Card style={styles.card} onPress={() => navigation.navigate('CardapioCalendario', { cardapioId: item.id })}>
             <Card.Content>
-              <View style={styles.cardRow}>
-                <View style={styles.iconContainer}>
-                  <Text style={styles.icon}>📅</Text>
-                </View>
-                <View style={styles.cardContent}>
+              <View style={styles.cardHeader}>
+                <View style={styles.cardTitleContainer}>
                   <Text variant="titleMedium" style={styles.cardTitle}>
                     {item.nome}
                   </Text>
-                  <View style={styles.chipsRow}>
-                    <Chip mode="outlined" compact style={styles.chip} icon="calendar">
-                      {MESES[item.mes]} / {item.ano}
-                    </Chip>
-                    <Chip mode="outlined" compact style={styles.chip} icon="school">
-                      {item.modalidade_nome}
-                    </Chip>
-                  </View>
-                  <View style={styles.statsRow}>
-                    <Chip mode="flat" compact style={styles.statChipSmall}>
-                      {item.total_refeicoes || 0} refeições
-                    </Chip>
-                    <Chip mode="flat" compact style={styles.statChipSmall}>
-                      {item.total_dias || 0} dias
-                    </Chip>
-                    <Chip 
-                      mode="flat" 
-                      compact 
-                      style={[styles.statusChip, item.ativo ? styles.statusChipActive : styles.statusChipInactive]}
-                    >
-                      {item.ativo ? 'Ativo' : 'Inativo'}
-                    </Chip>
-                  </View>
-                  {item.observacao && (
-                    <Text variant="bodySmall" style={styles.observacao} numberOfLines={2}>
-                      {item.observacao}
-                    </Text>
-                  )}
+                  <Chip 
+                    mode="flat" 
+                    compact 
+                    style={[styles.statusChip, item.ativo ? styles.statusChipActive : styles.statusChipInactive]}
+                    textStyle={{ fontSize: 11 }}
+                  >
+                    {item.ativo ? 'Ativo' : 'Inativo'}
+                  </Chip>
                 </View>
                 <View style={styles.cardActions}>
                   <IconButton
@@ -245,6 +222,33 @@ export default function CardapiosScreen({ navigation }: any) {
                   />
                 </View>
               </View>
+
+              <View style={styles.infoRow}>
+                <Chip mode="outlined" compact style={styles.infoChip} icon="calendar">
+                  {MESES[item.mes]} / {item.ano}
+                </Chip>
+                <Chip mode="outlined" compact style={styles.infoChip} icon="school">
+                  {item.modalidade_nome}
+                </Chip>
+              </View>
+
+              <View style={styles.statsRow}>
+                <View style={styles.statItem}>
+                  <Text variant="bodySmall" style={styles.statLabel}>Refeições</Text>
+                  <Text variant="titleMedium" style={styles.statValue}>{item.total_refeicoes || 0}</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <Text variant="bodySmall" style={styles.statLabel}>Dias</Text>
+                  <Text variant="titleMedium" style={styles.statValue}>{item.total_dias || 0}</Text>
+                </View>
+              </View>
+
+              {item.observacao && (
+                <Text variant="bodySmall" style={styles.observacao} numberOfLines={2}>
+                  {item.observacao}
+                </Text>
+              )}
             </Card.Content>
           </Card>
         )}
@@ -422,48 +426,62 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     elevation: 2,
   },
-  cardRow: {
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  cardTitleContainer: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#e8f5e9',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  icon: {
-    fontSize: 24,
-  },
-  cardContent: {
-    flex: 1,
+    gap: 8,
   },
   cardTitle: {
     fontWeight: '600',
     color: '#212121',
-    marginBottom: 8,
+    flex: 1,
   },
-  chipsRow: {
+  cardActions: {
+    flexDirection: 'row',
+    marginLeft: 8,
+  },
+  infoRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
-    marginBottom: 8,
+    marginBottom: 12,
   },
-  chip: {
+  infoChip: {
     height: 28,
   },
   statsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
     marginBottom: 8,
   },
-  statChipSmall: {
-    height: 24,
-    backgroundColor: '#e3f2fd',
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statLabel: {
+    color: '#666',
+    marginBottom: 4,
+  },
+  statValue: {
+    fontWeight: 'bold',
+    color: '#4caf50',
+  },
+  statDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: '#e0e0e0',
+    marginHorizontal: 8,
   },
   statusChip: {
     height: 24,
@@ -477,10 +495,7 @@ const styles = StyleSheet.create({
   observacao: {
     color: '#666',
     fontStyle: 'italic',
-  },
-  cardActions: {
-    flexDirection: 'row',
-    marginLeft: 8,
+    lineHeight: 18,
   },
   fab: {
     position: 'absolute',
