@@ -602,11 +602,6 @@ export const salvarComposicaoNutricional = asyncHandler(async (req: Request, res
       message: "Composição nutricional salva com sucesso"
     });
   } catch (error) {
-    console.error("❌ Erro ao salvar composição nutricional:", error);
-    res.status(500).json({
-      success: false,
-      message: "Erro ao salvar composição nutricional",
-      error: error instanceof Error ? error.message : 'Erro desconhecido'
-    });
+    handleDatabaseError(error);
   }
-}
+});
