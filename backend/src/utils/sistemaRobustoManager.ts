@@ -1,4 +1,4 @@
-const db = require('../../database');
+import db from "../../database";
 
 interface AuditoriaEntry {
   modulo: string;

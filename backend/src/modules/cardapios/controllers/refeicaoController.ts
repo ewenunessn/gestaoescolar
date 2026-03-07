@@ -1,6 +1,6 @@
 // Controller de refeições para PostgreSQL
 import { Request, Response } from "express";
-const db = require("../../../database");
+import db from "../../../database";
 
 export async function listarRefeicoes(req: Request, res: Response) {
   try {

@@ -1,6 +1,6 @@
 // Controller de escola-modalidades para PostgreSQL
 import { Request, Response } from "express";
-const db = require("../../../database");
+import db from "../../../database";
 
 export async function listarEscolaModalidades(req: Request, res: Response) {
   try {

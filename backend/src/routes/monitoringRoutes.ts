@@ -10,7 +10,7 @@ const router = Router();
  * Health check detalhado
  */
 router.get('/health', async (req, res) => {
-  const db = require('../database');
+  import db from "../database";
   
   try {
     const dbConnected = await db.testConnection();
@@ -128,7 +128,7 @@ router.post('/rate-limit/clear', (req, res) => {
  * Métricas de performance
  */
 router.get('/performance', async (req, res) => {
-  const db = require('../database');
+  import db from "../database";
   
   try {
     const start = Date.now();

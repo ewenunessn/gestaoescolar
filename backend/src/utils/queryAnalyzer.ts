@@ -3,7 +3,7 @@
  * Fornece ferramentas para monitorar performance e identificar gargalos
  */
 
-const db = require("../database");
+import db from "../database";
 
 interface QueryAnalysisResult {
   query: string;

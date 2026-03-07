@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { FaturamentoService } from "../services/FaturamentoService";
 import { FaturamentoModel } from "../models/Faturamento";
 import { getErrorStatus, isBusinessError } from "../errors/FaturamentoErrors";
-const db = require("../../../database");
+import db from "../../../database";
 
 const faturamentoModel = new FaturamentoModel(db.pool);
 

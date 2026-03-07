@@ -1,5 +1,5 @@
 // Model de RefeicaoProduto para PostgreSQL
-const db = require("../../../database");
+import db from "../../../database";
 
 export interface RefeicaoProduto {
   id: number;

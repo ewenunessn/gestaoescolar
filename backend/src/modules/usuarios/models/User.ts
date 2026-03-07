@@ -1,5 +1,5 @@
 // User model para PostgreSQL
-const db = require("../../../database");
+import db from "../../../database";
 
 export interface User {
   id: number;

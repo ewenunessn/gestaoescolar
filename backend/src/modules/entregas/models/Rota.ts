@@ -1,5 +1,5 @@
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-const db = require('../../../database');
+import db from "../../../database";
 
 export interface RotaEntrega {
   id: number;

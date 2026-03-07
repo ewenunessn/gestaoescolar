@@ -1,6 +1,6 @@
 // Controller de fornecedores para PostgreSQL - SIMPLIFICADO
 import { Request, Response } from "express";
-const db = require("../../../database");
+import db from "../../../database";
 
 export async function listarFornecedores(req: Request, res: Response) {
   try {

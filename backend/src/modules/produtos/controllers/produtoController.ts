@@ -1,6 +1,6 @@
 // Controller de produtos para PostgreSQL
 import { Request, Response } from "express";
-const db = require("../../../database");
+import db from "../../../database";
 
 async function ensureProdutoComposicaoTable() {
   const exists = await db.get(

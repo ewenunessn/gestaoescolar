@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-const db = require("../../../database");
+import db from "../../../database";
 
 const STATUS_PEDIDO = {
   pendente: { label: 'Pendente', color: 'warning' },

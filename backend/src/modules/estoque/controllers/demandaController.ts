@@ -1,7 +1,7 @@
 // Controller para gerar demanda mensal de produtos
 import { Request, Response } from "express";
 import * as ExcelJS from 'exceljs';
-const db = require("../../../database");
+import db from "../../../database";
 
 interface DemandaItem {
   produto_id: number;

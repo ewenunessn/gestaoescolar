@@ -1,4 +1,4 @@
-const db = require("../database");
+import db from "../database";
 
 export interface Fornecedor {
   id: number;

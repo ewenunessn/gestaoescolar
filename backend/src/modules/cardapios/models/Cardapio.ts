@@ -1,5 +1,5 @@
 // Modelo de Cardápio para PostgreSQL
-const db = require("../database");
+import db from "../database";
 
 export interface Cardapio {
   id: number;

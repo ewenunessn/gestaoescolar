@@ -1,6 +1,6 @@
 // Controller de contratos para PostgreSQL
 import { Request, Response } from "express";
-const db = require("../../../database");
+import db from "../../../database";
 
 export async function listarContratos(req: Request, res: Response) {
   try {

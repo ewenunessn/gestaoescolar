@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { findUserByEmail, createUser, User, resetUserSequence } from "../models/User";
 import { config } from "../../../config/config";
-const db = require("../../../database");
+import db from "../../../database";
 
 // Registro de novo usuário
 export async function register(req: Request, res: Response) {

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-const db = require('../database');
+import db from "../database";
 
 // Listar todos os módulos disponíveis
 export async function listarModulos(req: Request, res: Response) {

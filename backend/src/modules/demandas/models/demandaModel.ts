@@ -1,4 +1,4 @@
-const db = require('../../../database');
+import db from "../../../database";
 
 // Nome da tabela - usar demandas_escolas no Neon, demandas localmente
 const TABLE_NAME = process.env.NODE_ENV === 'production' ? 'demandas_escolas' : 'demandas';

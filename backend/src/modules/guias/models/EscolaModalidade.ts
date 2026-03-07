@@ -1,5 +1,5 @@
 // Modelo de EscolaModalidade para PostgreSQL
-const db = require("../database");
+import db from "../database";
 
 export interface EscolaModalidade {
   id: number;

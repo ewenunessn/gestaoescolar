@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-const db = require('../database');
+import db from "../database";
 
 /**
  * Deletar uma instituição

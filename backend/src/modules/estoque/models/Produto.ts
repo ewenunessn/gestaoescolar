@@ -9,7 +9,7 @@ export interface Produto {
 
 // Função para buscar produto por ID
 export async function getProdutoById(id: number): Promise<Produto | null> {
-  const db = require("../../../database");
+  import db from "../../../database";
   
   try {
     const result = await db.query(

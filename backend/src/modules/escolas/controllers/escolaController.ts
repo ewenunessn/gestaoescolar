@@ -1,4 +1,4 @@
-const db = require("../../../database");
+import db from "../../../database";
 
 export async function listarEscolas(req, res) {
   try {

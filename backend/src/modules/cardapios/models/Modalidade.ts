@@ -1,5 +1,5 @@
 // Modelo de Modalidade para PostgreSQL
-const db = require("../../../database");
+import db from "../../../database";
 
 export interface Modalidade {
   id: number;

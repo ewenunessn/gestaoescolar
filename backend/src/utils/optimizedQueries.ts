@@ -3,7 +3,7 @@
  * Versão simplificada
  */
 
-const db = require("../database");
+import db from "../database";
 
 export const getEstoqueEscolarResumoOptimized = async (
   options: { limit?: number; offset?: number; categoria?: string } = {}
