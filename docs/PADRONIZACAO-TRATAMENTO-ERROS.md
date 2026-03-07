@@ -377,7 +377,7 @@ Para cada controller:
 
 ### Alta Prioridade (APIs críticas)
 1. ✅ usuarios (autenticação) - MIGRADO
-2. ⏳ produtos
+2. ✅ produtos - MIGRADO
 3. ⏳ pedidos
 4. ⏳ contratos
 

@@ -1,6 +1,13 @@
 // Controller de produtos para PostgreSQL
 import { Request, Response } from "express";
 import db from "../../../database";
+import {
+  asyncHandler,
+  ValidationError,
+  AuthorizationError,
+  NotFoundError,
+  handleDatabaseError
+} from "../../../utils/errorHandler";
 
 async function ensureProdutoComposicaoTable() {
   const exists = await db.get(
@@ -74,12 +81,13 @@ function num(v: any): number | null {
   return null;
 }
 
-export async function standardizarComposicaoNutricional(req: Request, res: Response) {
+export const standardizarComposicaoNutricional = asyncHandler(async (req: Request, res: Response) => {
+  const user = (req as any).user;
+  if (!user || !user.isSystemAdmin) {
+    throw new AuthorizationError('Apenas administradores do sistema podem executar esta operação');
+  }
+  
   try {
-    const user = (req as any).user;
-    if (!user || !user.isSystemAdmin) {
-      return res.status(403).json({ success: false, message: 'Acesso negado' });
-    }
     await ensureProdutoComposicaoTable();
     const schema = await detectarSchemaComposicao();
     if (schema === 'novo') {
@@ -122,203 +130,151 @@ export async function standardizarComposicaoNutricional(req: Request, res: Respo
     });
     return res.json({ success: true, message: 'Padronização concluída (v1 -> v2)' });
   } catch (error) {
-    console.error('❌ Erro ao padronizar composição nutricional:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erro ao padronizar composição nutricional',
-      error: error instanceof Error ? error.message : 'Erro desconhecido'
-    });
+    handleDatabaseError(error);
   }
-}
+});
 
-export async function listarProdutos(req: Request, res: Response) {
-  try {
-    const result = await db.query(`
-      SELECT 
-        p.id,
-        p.nome,
-        p.unidade,
-        p.descricao,
-        p.categoria,
-        p.tipo_processamento,
-        p.perecivel,
-        p.ativo,
-        p.created_at
-      FROM produtos p
-      ORDER BY p.nome
-    `);
+export const listarProdutos = asyncHandler(async (req: Request, res: Response) => {
+  const result = await db.query(`
+    SELECT 
+      p.id,
+      p.nome,
+      p.unidade,
+      p.descricao,
+      p.categoria,
+      p.tipo_processamento,
+      p.perecivel,
+      p.ativo,
+      p.created_at
+    FROM produtos p
+    ORDER BY p.nome
+  `);
 
-    res.json({
-      success: true,
-      data: result.rows,
-      total: result.rows.length
-    });
-  } catch (error) {
-    console.error("❌ Erro ao listar produtos:", error);
-    res.status(500).json({
-      success: false,
-      message: "Erro ao listar produtos",
-      error: error instanceof Error ? error.message : 'Erro desconhecido'
-    });
+  res.json({
+    success: true,
+    data: result.rows,
+    total: result.rows.length
+  });
+});
+
+export const buscarProduto = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  const result = await db.query(`
+    SELECT 
+      p.id,
+      p.nome,
+      p.unidade,
+      p.descricao,
+      p.categoria,
+      p.tipo_processamento,
+      p.perecivel,
+      p.ativo,
+      p.created_at,
+      p.updated_at
+    FROM produtos p 
+    WHERE p.id = $1
+  `, [id]);
+
+  if (result.rows.length === 0) {
+    throw new NotFoundError('Produto', id);
   }
-}
 
-export async function buscarProduto(req: Request, res: Response) {
-  try {
-    const { id } = req.params;
+  res.json({
+    success: true,
+    data: result.rows[0]
+  });
+});
 
-    const result = await db.query(`
-      SELECT 
-        p.id,
-        p.nome,
-        p.unidade,
-        p.descricao,
-        p.categoria,
-        p.tipo_processamento,
-        p.perecivel,
-        p.ativo,
-        p.created_at,
-        p.updated_at
-      FROM produtos p 
-      WHERE p.id = $1
-    `, [id]);
+export const criarProduto = asyncHandler(async (req: Request, res: Response) => {
+  const { 
+    nome, 
+    unidade = 'UN',
+    descricao, 
+    categoria,
+    tipo_processamento,
+    perecivel = false,
+    ativo = true 
+  } = req.body;
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Produto não encontrado"
-      });
-    }
-
-    res.json({
-      success: true,
-      data: result.rows[0]
-    });
-  } catch (error) {
-    console.error("❌ Erro ao buscar produto:", error);
-    res.status(500).json({
-      success: false,
-      message: "Erro ao buscar produto",
-      error: error instanceof Error ? error.message : 'Erro desconhecido'
-    });
+  // Validar unidade
+  const unidadesPermitidas = ['UN', 'KG', 'G', 'L', 'ML', 'DZ', 'PCT', 'CX', 'FD', 'SC'];
+  if (unidade && !unidadesPermitidas.includes(unidade.toUpperCase())) {
+    throw new ValidationError(`Unidade inválida. Permitidas: ${unidadesPermitidas.join(', ')}`);
   }
-}
 
-export async function criarProduto(req: Request, res: Response) {
   try {
-    const { 
-      nome, 
-      unidade = 'UN',
-      descricao, 
-      categoria,
-      tipo_processamento,
-      perecivel = false,
-      ativo = true 
-    } = req.body;
-
-    // Validar unidade
-    const unidadesPermitidas = ['UN', 'KG', 'G', 'L', 'ML', 'DZ', 'PCT', 'CX', 'FD', 'SC'];
-    if (unidade && !unidadesPermitidas.includes(unidade.toUpperCase())) {
-      return res.status(400).json({
-        success: false,
-        message: `Unidade inválida. Permitidas: ${unidadesPermitidas.join(', ')}`
-      });
-    }
-
     const result = await db.query(`
       INSERT INTO produtos (nome, unidade, descricao, categoria, tipo_processamento, perecivel, ativo, created_at)
       VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
       RETURNING *
     `, [nome, unidade.toUpperCase(), descricao, categoria, tipo_processamento, perecivel, ativo]);
 
-    res.json({
+    res.status(201).json({
       success: true,
       message: "Produto criado com sucesso",
       data: result.rows[0]
     });
   } catch (error) {
-    console.error("❌ Erro ao criar produto:", error);
-    res.status(500).json({
-      success: false,
-      message: "Erro ao criar produto",
-      error: error instanceof Error ? error.message : 'Erro desconhecido'
-    });
+    handleDatabaseError(error);
   }
-}
+});
 
-export async function editarProduto(req: Request, res: Response) {
-  try {
-    const { id } = req.params;
-    const { 
-      nome, 
-      unidade,
-      descricao, 
-      categoria,
-      tipo_processamento,
-      perecivel,
-      ativo 
-    } = req.body;
+export const editarProduto = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { 
+    nome, 
+    unidade,
+    descricao, 
+    categoria,
+    tipo_processamento,
+    perecivel,
+    ativo 
+  } = req.body;
 
-    // Validar unidade se fornecida
-    if (unidade) {
-      const unidadesPermitidas = ['UN', 'KG', 'G', 'L', 'ML', 'DZ', 'PCT', 'CX', 'FD', 'SC'];
-      if (!unidadesPermitidas.includes(unidade.toUpperCase())) {
-        return res.status(400).json({
-          success: false,
-          message: `Unidade inválida. Permitidas: ${unidadesPermitidas.join(', ')}`
-        });
-      }
+  // Validar unidade se fornecida
+  if (unidade) {
+    const unidadesPermitidas = ['UN', 'KG', 'G', 'L', 'ML', 'DZ', 'PCT', 'CX', 'FD', 'SC'];
+    if (!unidadesPermitidas.includes(unidade.toUpperCase())) {
+      throw new ValidationError(`Unidade inválida. Permitidas: ${unidadesPermitidas.join(', ')}`);
     }
-
-    const result = await db.query(`
-      UPDATE produtos SET
-        nome = $1,
-        unidade = COALESCE($2, unidade),
-        descricao = $3,
-        categoria = $4,
-        tipo_processamento = $5,
-        perecivel = $6,
-        ativo = $7,
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = $8
-      RETURNING *
-    `, [nome, unidade ? unidade.toUpperCase() : null, descricao, categoria, tipo_processamento, perecivel, ativo, id]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Produto não encontrado"
-      });
-    }
-
-    res.json({
-      success: true,
-      message: "Produto atualizado com sucesso",
-      data: result.rows[0]
-    });
-  } catch (error) {
-    console.error("❌ Erro ao editar produto:", error);
-    res.status(500).json({
-      success: false,
-      message: "Erro ao editar produto",
-      error: error instanceof Error ? error.message : 'Erro desconhecido'
-    });
   }
-}
 
-export async function removerProduto(req: Request, res: Response) {
+  const result = await db.query(`
+    UPDATE produtos SET
+      nome = $1,
+      unidade = COALESCE($2, unidade),
+      descricao = $3,
+      categoria = $4,
+      tipo_processamento = $5,
+      perecivel = $6,
+      ativo = $7,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = $8
+    RETURNING *
+  `, [nome, unidade ? unidade.toUpperCase() : null, descricao, categoria, tipo_processamento, perecivel, ativo, id]);
+
+  if (result.rows.length === 0) {
+    throw new NotFoundError('Produto', id);
+  }
+
+  res.json({
+    success: true,
+    message: "Produto atualizado com sucesso",
+    data: result.rows[0]
+  });
+});
+
+export const removerProduto = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+
   try {
-    const { id } = req.params;
-
     const result = await db.query(`
       DELETE FROM produtos WHERE id = $1 RETURNING *
     `, [id]);
 
     if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Produto não encontrado"
-      });
+      throw new NotFoundError('Produto', id);
     }
 
     res.json({
@@ -327,16 +283,11 @@ export async function removerProduto(req: Request, res: Response) {
       data: result.rows[0]
     });
   } catch (error) {
-    console.error("❌ Erro ao remover produto:", error);
-    res.status(500).json({
-      success: false,
-      message: "Erro ao remover produto",
-      error: error instanceof Error ? error.message : 'Erro desconhecido'
-    });
+    handleDatabaseError(error);
   }
-}
+});
 
-export async function buscarComposicaoNutricional(req: Request, res: Response) {
+export const buscarComposicaoNutricional = asyncHandler(async (req: Request, res: Response) => {
   try {
     const data = await withEnsureRetry(async () => {
       await ensureProdutoComposicaoTable();
@@ -455,16 +406,11 @@ export async function buscarComposicaoNutricional(req: Request, res: Response) {
       message: "Composição nutricional encontrada"
     });
   } catch (error) {
-    console.error("❌ Erro ao buscar composição nutricional:", error);
-    res.status(500).json({
-      success: false,
-      message: "Erro ao buscar composição nutricional",
-      error: error instanceof Error ? error.message : 'Erro desconhecido'
-    });
+    handleDatabaseError(error);
   }
-}
+});
 
-export async function salvarComposicaoNutricional(req: Request, res: Response) {
+export const salvarComposicaoNutricional = asyncHandler(async (req: Request, res: Response) => {
   try {
     const result = await withEnsureRetry(async () => {
       await ensureProdutoComposicaoTable();
