@@ -379,9 +379,11 @@ const FornecedoresPage: React.FC = () => {
                       <TableCell align="center"><Typography variant="body2" color="text.secondary">{f.email || 'Não informado'}</Typography></TableCell>
 
                       <TableCell align="center">
-                        <Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => navigate(`/fornecedores/${f.id}`)} color="primary"><InfoIcon fontSize="small" /></IconButton></Tooltip>
-                        <Tooltip title="Editar"><IconButton size="small" onClick={() => openModal(f)} color="secondary"><EditIcon fontSize="small" /></IconButton></Tooltip>
-                        <Tooltip title="Excluir"><IconButton size="small" onClick={() => openDeleteModal(f)} color="error"><DeleteIcon fontSize="small" /></IconButton></Tooltip>
+                        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
+                          <Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => navigate(`/fornecedores/${f.id}`)} color="primary"><InfoIcon fontSize="small" /></IconButton></Tooltip>
+                          <Tooltip title="Editar"><IconButton size="small" onClick={() => openModal(f)} color="secondary"><EditIcon fontSize="small" /></IconButton></Tooltip>
+                          <Tooltip title="Excluir"><IconButton size="small" onClick={() => openDeleteModal(f)} color="error"><DeleteIcon fontSize="small" /></IconButton></Tooltip>
+                        </Box>
                       </TableCell>
                     </TableRow>
                   ))}

@@ -343,7 +343,7 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({ onEscola
                   </Box>
                   <LinearProgress
                     variant="determinate"
-                    value={escola.percentual_entregue}
+                    value={Number(escola.percentual_entregue) || 0}
                     color={getStatusColor(escola.percentual_entregue)}
                   />
                 </Box>

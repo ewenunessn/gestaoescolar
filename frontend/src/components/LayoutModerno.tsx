@@ -305,11 +305,85 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
   const drawer = (
     <Box sx={{ height: "100%", display: "flex", flexDirection: "column", bgcolor: 'background.sidebar' }}>
+      {/* LOGO NUTRILOG - FIXO NO TOPO */}
+      <Box sx={{
+        p: collapsed ? 1 : 2,
+        borderBottom: 1,
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+        flexShrink: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        bgcolor: 'rgba(0, 0, 0, 0.2)',
+      }}>
+        {collapsed ? (
+          <Box sx={{
+            width: 40,
+            height: 40,
+            bgcolor: '#2196f3',
+            borderRadius: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'white',
+            fontWeight: 'bold',
+            fontSize: '1.2rem',
+          }}>
+            N
+          </Box>
+        ) : (
+          <Box sx={{ textAlign: 'center' }}>
+            <Box sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 1,
+              mb: 0.5,
+            }}>
+              <Box sx={{
+                width: 32,
+                height: 32,
+                bgcolor: '#2196f3',
+                borderRadius: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'white',
+                fontWeight: 'bold',
+              }}>
+                🍽️
+              </Box>
+              <Typography
+                variant="h6"
+                sx={{
+                  color: 'white',
+                  fontWeight: 700,
+                  fontSize: '1.1rem',
+                  letterSpacing: '0.5px',
+                }}
+              >
+                Nutri<span style={{ color: '#2196f3' }}>Log</span>
+              </Typography>
+            </Box>
+            <Typography
+              variant="caption"
+              sx={{
+                color: 'rgba(255, 255, 255, 0.5)',
+                fontSize: '0.65rem',
+                display: 'block',
+              }}
+            >
+              Gestão Escolar
+            </Typography>
+          </Box>
+        )}
+      </Box>
+
       {/* Indicador de mudanças recentes */}
       {hasRecentChange && !loadingConfig && (
         <Box sx={{
           mx: 1,
-          mb: 1,
+          mt: 1,
           p: 1,
           bgcolor: 'success.main',
           color: 'success.contrastText',
@@ -328,11 +402,12 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         </Box>
       )}
 
+      {/* MENU COM SCROLL - MEIO */}
       <Box sx={{
         flexGrow: 1,
         overflow: "auto",
         py: 1,
-        minHeight: 0, // Importante para o flex funcionar corretamente
+        minHeight: 0,
         '&::-webkit-scrollbar': {
           width: '6px',
         },
@@ -413,20 +488,20 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         )}
       </Box>
 
+      {/* BOTÃO SAIR - FIXO NO FUNDO */}
       <Box sx={{
         p: collapsed ? 1 : 1.5,
         borderTop: 1,
         borderColor: 'rgba(255, 255, 255, 0.1)',
-        position: 'relative',
-        flexShrink: 0, // Impede que o rodapé encolha
+        flexShrink: 0,
       }}>
-        <Box sx={{ display: 'flex', gap: 1, flexDirection: collapsed ? 'column' : 'row', alignItems: 'center' }}>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', justifyContent: 'space-between' }}>
           <Button
             onClick={handleLogout}
             size="small"
             startIcon={collapsed ? undefined : <Logout fontSize="small" />}
             sx={{
-              flex: collapsed ? 'none' : 1,
+              flex: 1,
               textTransform: 'none',
               fontSize: '0.8rem',
               color: 'rgba(255, 255, 255, 0.7)',
@@ -487,36 +562,6 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             }
           }}
         >
-          {/* Logo no topo do menu mobile */}
-          <Box sx={{ 
-            p: 2, 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-            minHeight: 64
-          }}>
-            <img
-              src={getLogo()}
-              alt="Logo"
-              style={{
-                height: '40px',
-                width: 'auto',
-                objectFit: 'contain'
-              }}
-            />
-          </Box>
-          <IconButton
-            onClick={handleDrawerToggle}
-            sx={{
-              position: 'absolute',
-              right: 8,
-              top: 8,
-              color: 'rgba(255, 255, 255, 0.7)',
-            }}
-          >
-            <MenuIcon />
-          </IconButton>
           {drawer}
         </Drawer>
         
@@ -536,25 +581,6 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           }}
           open
         >
-          {/* Logo no topo do menu desktop */}
-          <Box sx={{ 
-            p: 2, 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: collapsed ? 'center' : 'flex-start',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-            minHeight: 64
-          }}>
-            <img
-              src={getLogo()}
-              alt="Logo"
-              style={{
-                height: collapsed ? '32px' : '40px',
-                width: 'auto',
-                objectFit: 'contain'
-              }}
-            />
-          </Box>
           {drawer}
         </Drawer>
       </Box>
