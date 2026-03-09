@@ -41,6 +41,10 @@ export default function ComprovantesScreen({ route, navigation }: any) {
       const tokenData = await AsyncStorage.getItem('token');
       const token = tokenData ? JSON.parse(tokenData).token : null;
 
+      if (!token) {
+        throw new Error('Token não encontrado. Faça login novamente.');
+      }
+
       // Usar apenas a data de hoje (sem problemas de timezone)
       const hoje = obterDataAtual();
 
@@ -49,7 +53,8 @@ export default function ComprovantesScreen({ route, navigation }: any) {
 
       const response = await fetch(url, {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       });
 
@@ -58,7 +63,14 @@ export default function ComprovantesScreen({ route, navigation }: any) {
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ Erro na resposta:', errorText);
-        throw new Error('Erro ao carregar comprovantes');
+        
+        // Tentar fazer parse do erro
+        try {
+          const errorJson = JSON.parse(errorText);
+          throw new Error(errorJson.error || errorJson.message || 'Erro ao carregar comprovantes');
+        } catch (parseError) {
+          throw new Error(`Erro ${response.status}: ${errorText || 'Erro ao carregar comprovantes'}`);
+        }
       }
 
       const data = await response.json();
@@ -68,10 +80,12 @@ export default function ComprovantesScreen({ route, navigation }: any) {
       const comprovantesArray = data.comprovantes || data;
       console.log('📋 Total de comprovantes de hoje:', comprovantesArray.length);
       
-      setComprovantes(comprovantesArray);
-    } catch (err) {
+      setComprovantes(Array.isArray(comprovantesArray) ? comprovantesArray : []);
+    } catch (err: any) {
       console.error('❌ Erro ao carregar comprovantes:', err);
-      Alert.alert('Erro', `Não foi possível carregar os comprovantes: ${err}`);
+      const errorMessage = err.message || 'Não foi possível carregar os comprovantes';
+      Alert.alert('Erro', errorMessage);
+      setComprovantes([]);
     } finally {
       setLoading(false);
     }

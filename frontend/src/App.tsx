@@ -1,6 +1,7 @@
 import AppRouter from "./routes/AppRouter";
 import { NotificationProvider } from "./context/NotificationContext";
 import { ConfigProvider } from "./context/ConfigContext";
+import { PageTitleProvider } from "./contexts/PageTitleContext";
 import { QueryProvider } from "./providers/QueryProvider";
 import ToastContainer from "./components/Toast";
 import { ThemeProvider } from '@mui/material/styles';
@@ -21,12 +22,14 @@ export default function App({ routerConfig }: AppProps) {
     <QueryProvider>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <NotificationProvider>
-          <ConfigProvider>
-            <AppRouter routerConfig={routerConfig} />
-            <ToastContainer />
-          </ConfigProvider>
-        </NotificationProvider>
+        <PageTitleProvider>
+          <NotificationProvider>
+            <ConfigProvider>
+              <AppRouter routerConfig={routerConfig} />
+              <ToastContainer />
+            </ConfigProvider>
+          </NotificationProvider>
+        </PageTitleProvider>
       </ThemeProvider>
     </QueryProvider>
   );

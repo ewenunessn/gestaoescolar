@@ -48,6 +48,7 @@ import { formatarData } from '../utils/dateUtils';
 import { DemandaDetalhesModal, LoadingScreen } from '../components';
 import StatusIndicator from '../components/StatusIndicator';
 import PageHeader from '../components/PageHeader';
+import PageContainer from '../components/PageContainer';
 
 
 export default function DemandasLista() {
@@ -492,7 +493,7 @@ export default function DemandasLista() {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
       {erro && (
         <Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}>
           <Alert severity="error" onClose={() => setErro('')}>
@@ -501,10 +502,10 @@ export default function DemandasLista() {
         </Box>
       )}
 
-      <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+      <PageContainer fullHeight>
         <PageHeader 
           title="Gerenciamento de Demandas"
-          totalCount={demandas.length}
+        />
           statusLegend={[
             { status: 'pendente', label: 'PENDENTES', count: demandas.filter(d => d.status === 'pendente').length },
             { status: 'enviado_semead', label: 'ENVIADAS', count: demandas.filter(d => d.status === 'enviado_semead').length },
@@ -654,7 +655,7 @@ export default function DemandasLista() {
           <TableHead>
             <TableRow>
               <TableCell 
-                sx={{ fontWeight: 600, width: '22%', cursor: 'pointer', userSelect: 'none' }}
+                sx={{ width: '22%', cursor: 'pointer', userSelect: 'none' }}
                 onClick={() => handleRequestSort('escola_nome')}
               >
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -664,7 +665,7 @@ export default function DemandasLista() {
               </TableCell>
               <TableCell 
                 align="center" 
-                sx={{ fontWeight: 600, width: '12%', cursor: 'pointer', userSelect: 'none' }}
+                sx={{ width: '12%', cursor: 'pointer', userSelect: 'none' }}
                 onClick={() => handleRequestSort('numero_oficio')}
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -674,7 +675,7 @@ export default function DemandasLista() {
               </TableCell>
               <TableCell 
                 align="center" 
-                sx={{ fontWeight: 600, width: '12%', cursor: 'pointer', userSelect: 'none' }}
+                sx={{ width: '12%', cursor: 'pointer', userSelect: 'none' }}
                 onClick={() => handleRequestSort('data_solicitacao')}
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -682,12 +683,12 @@ export default function DemandasLista() {
                   {getSortIcon('data_solicitacao')}
                 </Box>
               </TableCell>
-              <TableCell sx={{ fontWeight: 600, width: '30%' }}>
+              <TableCell sx={{ width: '30%' }}>
                 Objeto da Demanda
               </TableCell>
               <TableCell 
                 align="center" 
-                sx={{ fontWeight: 600, width: '12%', cursor: 'pointer', userSelect: 'none' }}
+                sx={{ width: '12%', cursor: 'pointer', userSelect: 'none' }}
                 onClick={() => handleRequestSort('data_semead')}
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -697,7 +698,7 @@ export default function DemandasLista() {
               </TableCell>
               <TableCell 
                 align="center" 
-                sx={{ fontWeight: 600, width: '12%', cursor: 'pointer', userSelect: 'none' }}
+                sx={{ width: '12%', cursor: 'pointer', userSelect: 'none' }}
                 onClick={() => handleRequestSort('data_resposta_semead')}
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -705,7 +706,7 @@ export default function DemandasLista() {
                   {getSortIcon('data_resposta_semead')}
                 </Box>
               </TableCell>
-              <TableCell align="center" sx={{ fontWeight: 600, width: '8%' }}>
+              <TableCell align="center" sx={{ width: '8%' }}>
                 Ações
               </TableCell>
             </TableRow>
@@ -911,8 +912,9 @@ export default function DemandasLista() {
             />
         </Paper>
         )}
-      </Box>
+      </PageContainer>
 
+      {/* Modais fora do PageContainer */}
       {/* Modal de Detalhes */}
       <DemandaDetalhesModal
         open={modalDetalhes}

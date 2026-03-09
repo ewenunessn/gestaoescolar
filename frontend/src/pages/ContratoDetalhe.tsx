@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import PageContainer from '../components/PageContainer';
 import {
   buscarContrato,
   editarContrato,
@@ -360,17 +361,17 @@ export default function ContratoDetalhe() {
   if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}><CircularProgress size={60} /></Box>;
   
   if (erro && !contrato) return (
-    <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+    <PageContainer>
         <Card><CardContent sx={{ textAlign: 'center', py: 6 }}>
             <Alert severity="error" sx={{ mb: 2 }}>{erro}</Alert>
             <Button variant="contained" onClick={carregarDados}>Tentar Novamente</Button>
         </CardContent></Card>
-    </Box>
+    </PageContainer>
   );
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-        <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+        <PageContainer>
         <PageBreadcrumbs 
           items={[
             { label: 'Contratos', path: '/contratos', icon: <DescriptionIcon fontSize="small" /> },
@@ -403,8 +404,8 @@ export default function ContratoDetalhe() {
                 <TableContainer>
                     <Table>
                         <TableHead><TableRow>
-                            <TableCell sx={{ fontWeight: 600 }}>Produto</TableCell><TableCell align="center" sx={{ fontWeight: 600 }}>Marca</TableCell><TableCell align="center" sx={{ fontWeight: 600 }}>Peso</TableCell><TableCell align="center" sx={{ fontWeight: 600 }}>Unidade</TableCell><TableCell align="center" sx={{ fontWeight: 600 }}>Quantidade</TableCell><TableCell align="center" sx={{ fontWeight: 600 }}>Preço Unitário</TableCell>
-                            <TableCell align="center" sx={{ fontWeight: 600 }}>Valor Total</TableCell><TableCell align="center" sx={{ fontWeight: 600 }}>Saldo</TableCell><TableCell align="center" sx={{ fontWeight: 600 }}>Ações</TableCell>
+                            <TableCell>Produto</TableCell><TableCell align="center">Marca</TableCell><TableCell align="center">Peso</TableCell><TableCell align="center">Unidade</TableCell><TableCell align="center">Quantidade</TableCell><TableCell align="center">Preço Unitário</TableCell>
+                            <TableCell align="center">Valor Total</TableCell><TableCell align="center">Saldo</TableCell><TableCell align="center">Ações</TableCell>
                         </TableRow></TableHead>
                         <TableBody>
                             {produtosContrato.map((produto) => {
@@ -442,9 +443,11 @@ export default function ContratoDetalhe() {
                 </TableContainer>
             )}
         </Paper>
+      </PageContainer>
 
-        {/* --- MODAIS / DIALOGS --- */}
-        <Dialog open={dialogState.produto} onClose={() => setDialogState(p => ({...p, produto: false}))} fullWidth maxWidth="sm">
+      {/* Modais fora do PageContainer */}
+      {/* --- MODAIS / DIALOGS --- */}
+      <Dialog open={dialogState.produto} onClose={() => setDialogState(p => ({...p, produto: false}))} fullWidth maxWidth="sm">
             <DialogTitle>{editandoProduto ? "Editar Item" : "Adicionar Item ao Contrato"}</DialogTitle>
             <DialogContent dividers>
                 <Autocomplete
@@ -556,7 +559,6 @@ export default function ContratoDetalhe() {
             </DialogContent>
             <DialogActions><Button onClick={() => setDialogState(p => ({...p, removerContrato: false}))}>Cancelar</Button><Button onClick={removerContratoConfirmado} color="error" variant="contained" disabled={dependenciasContrato && !forceDelete}>Remover</Button></DialogActions>
         </Dialog>
-      </Box>
     </Box>
   );
 }

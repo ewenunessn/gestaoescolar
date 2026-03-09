@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import StatusIndicator from '../components/StatusIndicator';
-import PageHeader from '../components/PageHeader';
+import PageContainer from '../components/PageContainer';
+import TableFilter, { FilterField } from '../components/TableFilter';
 import {
   Box,
   Card,
@@ -28,7 +29,16 @@ import {
   DialogActions,
   Paper
 } from '@mui/material';
-import { Search as SearchIcon, Download as DownloadIcon, Refresh as RefreshIcon, FilterList as FilterIcon, Restaurant as RestaurantIcon, History as HistoryIcon } from '@mui/icons-material';
+import { 
+  Search as SearchIcon, 
+  Download as DownloadIcon, 
+  Refresh as RefreshIcon, 
+  FilterList as FilterIcon, 
+  Restaurant as RestaurantIcon, 
+  History as HistoryIcon,
+  Clear as ClearIcon,
+  MoreVert
+} from '@mui/icons-material';
 import { Edit as EditIcon, Save as SaveIcon, Cancel as CancelIcon } from '@mui/icons-material';
 import { useToast } from '../hooks/useToast';
 import saldoContratosModalidadesService, {
@@ -161,25 +171,42 @@ const SaldoContratosModalidades: React.FC = () => {
   const [quantidadeConsumo, setQuantidadeConsumo] = useState('');
   const [dataConsumo, setDataConsumo] = useState('');
   const [observacaoConsumo, setObservacaoConsumo] = useState('');
+  const [registrandoConsumo, setRegistrandoConsumo] = useState(false);
 
   // Estados para histórico
   const [historicoConsumo, setHistoricoConsumo] = useState<any[]>([]);
   const [carregandoHistorico, setCarregandoHistorico] = useState(false);
 
-  const [registrandoConsumo, setRegistrandoConsumo] = useState(false);
-  const [cadastrandoSaldo, setCadastrandoSaldo] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [total, setTotal] = useState(0);
   const [estatisticas, setEstatisticas] = useState<any>(null);
 
-  // Filtros
+  // Estados de filtros - NOVO SISTEMA
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filterAnchorEl, setFilterAnchorEl] = useState<HTMLElement | null>(null);
+  const [filters, setFilters] = useState<Record<string, any>>({});
+
+  // Filtros para API
   const [filtros, setFiltros] = useState<SaldoContratosModalidadesFilters>({
     page: 1,
     limit: 25
   });
-  const [filtrosTemp, setFiltrosTemp] = useState<SaldoContratosModalidadesFilters>({});
+
+  // Definir campos de filtro
+  const filterFields: FilterField[] = useMemo(() => [
+    {
+      type: 'select',
+      label: 'Status do Produto',
+      key: 'status',
+      options: [
+        { value: 'DISPONIVEL', label: 'Disponível' },
+        { value: 'BAIXO_ESTOQUE', label: 'Baixo Estoque' },
+        { value: 'ESGOTADO', label: 'Esgotado' },
+      ],
+    },
+  ], []);
 
   // Estados para navegação por teclado
   const [linhaSelecionada, setLinhaSelecionada] = useState<number>(-1);
@@ -244,7 +271,7 @@ const SaldoContratosModalidades: React.FC = () => {
       // Ctrl+K - Limpar filtros
       if (e.ctrlKey && e.key === 'k') {
         e.preventDefault();
-        setFiltrosTemp({});
+        setFilters({});
         setFiltros({ page: 1, limit: rowsPerPage });
         setPage(0);
         setLinhaSelecionada(-1);
@@ -362,7 +389,7 @@ const SaldoContratosModalidades: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [filtrosTemp, dados, linhaSelecionada, dialogGerenciarModalidades, dialogQuantidadeInicial, dialogConsumoAberto, dialogHistoricoOpen, modalidadesProduto, modalidadeEditandoIndex]);
+  }, [filters, dados, linhaSelecionada, dialogGerenciarModalidades, dialogQuantidadeInicial, dialogConsumoAberto, dialogHistoricoOpen, modalidadesProduto, modalidadeEditandoIndex]);
 
   const carregarDados = async () => {
     try {
@@ -442,7 +469,7 @@ const SaldoContratosModalidades: React.FC = () => {
           ...produto,
           produto_nome: modalidadesAtualizadas[0].produto_nome,
           unidade: modalidadesAtualizadas[0].unidade,
-          quantidade_contrato: modalidadesAtualizadas[0].quantidade_contratada || produto.quantidade_contrato
+          quantidade_contrato: modalidadesAtualizadas[0].quantidade_contrato || produto.quantidade_contrato
         };
         console.log('Produto atualizado:', produtoAtualizado);
         setProdutoSelecionado(produtoAtualizado);
@@ -461,8 +488,8 @@ const SaldoContratosModalidades: React.FC = () => {
           quantidade_inicial: modalidadeExistente ? modalidadeExistente.quantidade_inicial : 0,
           quantidade_consumida: modalidadeExistente ? modalidadeExistente.quantidade_consumida : 0,
           quantidade_disponivel: modalidadeExistente ? modalidadeExistente.quantidade_disponivel : 0,
-          cadastrada: modalidadeExistente && modalidadeExistente.saldo_id != null,
-          id_saldo: modalidadeExistente ? modalidadeExistente.saldo_id : null
+          cadastrada: modalidadeExistente && modalidadeExistente.id != null,
+          id_saldo: modalidadeExistente ? modalidadeExistente.id : null
         };
       });
 
@@ -903,16 +930,25 @@ const SaldoContratosModalidades: React.FC = () => {
     }));
   };
 
-  const aplicarFiltros = () => {
-    setFiltros({ ...filtrosTemp, page: 1, limit: rowsPerPage });
-    setPage(0);
-  };
-
-  const limparFiltros = () => {
-    setFiltrosTemp({});
-    setFiltros({ page: 1, limit: rowsPerPage });
-    setPage(0);
-  };
+  // Aplicar filtros do TableFilter aos dados
+  const filteredData = useMemo(() => {
+    return agruparPorProduto(dados).filter(produto => {
+      // Busca por palavra-chave
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        if (!produto.produto_nome.toLowerCase().includes(searchLower)) {
+          return false;
+        }
+      }
+      
+      // Filtro por status
+      if (filters.status && produto.status !== filters.status) {
+        return false;
+      }
+      
+      return true;
+    });
+  }, [dados, filters]);
 
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);
@@ -982,72 +1018,89 @@ const SaldoContratosModalidades: React.FC = () => {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
-        <PageHeader 
-          title="Saldo de Contratos por Modalidade"
-          totalCount={agruparPorProduto(dados).length}
-          statusLegend={(() => {
-            const produtosAgrupados = agruparPorProduto(dados);
-            return [
-              { status: 'success', label: 'DISPONÍVEL', count: produtosAgrupados.filter(p => p.status === 'DISPONIVEL').length },
-              { status: 'warning', label: 'BAIXO ESTOQUE', count: produtosAgrupados.filter(p => p.status === 'BAIXO_ESTOQUE').length },
-              { status: 'error', label: 'ESGOTADO', count: produtosAgrupados.filter(p => p.status === 'ESGOTADO').length }
-            ];
-          })()}
-        />
-
-        <Card sx={{ borderRadius: '12px', p: 2, mb: 3 }}>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 2 }}>
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
+      <PageContainer fullHeight>
+        <Card sx={{ borderRadius: '12px', p: 2, mb: 2 }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2 }}>
             <TextField
               placeholder="Pesquisar produto..."
-              value={filtrosTemp.produto_nome || ''}
-              onChange={(e) => {
-                const valor = e.target.value;
-                setFiltrosTemp({ ...filtrosTemp, produto_nome: valor });
-                // Aplicar filtro automaticamente após 500ms
-                if (timeoutRef.current) {
-                  clearTimeout(timeoutRef.current);
-                }
-                timeoutRef.current = setTimeout(() => {
-                  setFiltros({ ...filtrosTemp, produto_nome: valor, page: 1, limit: rowsPerPage });
-                  setPage(0);
-                }, 500);
-              }}
+              value={filters.search || ''}
+              onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
               size="small"
               sx={{ flex: 1, minWidth: '200px', '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
               InputProps={{
-                startAdornment: (<InputAdornment position="start"><SearchIcon sx={{ color: 'text.secondary' }} /></InputAdornment>),
-                endAdornment: filtrosTemp.produto_nome && (<InputAdornment position="end"><IconButton size="small" onClick={() => { setFiltrosTemp({}); setFiltros({ page: 1, limit: rowsPerPage }); setPage(0); }}><CancelIcon fontSize="small" /></IconButton></InputAdornment>)
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ color: 'text.secondary' }} />
+                  </InputAdornment>
+                ),
+                endAdornment: filters.search && (
+                  <InputAdornment position="end">
+                    <IconButton size="small" onClick={() => setFilters(prev => ({ ...prev, search: '' }))}>
+                      <ClearIcon fontSize="small" />
+                    </IconButton>
+                  </InputAdornment>
+                )
               }}
             />
             <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button size="small" variant="outlined" startIcon={<FilterIcon />}>
+              <Button
+                variant="outlined"
+                startIcon={<FilterIcon />}
+                onClick={(e) => { setFilterAnchorEl(e.currentTarget); setFilterOpen(true); }}
+                size="small"
+              >
                 Filtros
+              </Button>
+              <Tooltip title="Atualizar">
+                <IconButton size="small" onClick={carregarDados} disabled={loading}>
+                  <RefreshIcon />
+                </IconButton>
+              </Tooltip>
+              <Button size="small" variant="outlined" startIcon={<DownloadIcon />} onClick={exportarCSV} disabled={loading}>
+                Exportar
               </Button>
             </Box>
           </Box>
-
-
         </Card>
 
-        {/* Ações */}
-        <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+        <TableFilter
+          open={filterOpen}
+          onClose={() => setFilterOpen(false)}
+          onApply={setFilters}
+          fields={filterFields}
+          initialValues={filters}
+          showSearch={false}
+          anchorEl={filterAnchorEl}
+        />
 
-          <Box sx={{ flexGrow: 1 }} />
-
-          <Box display="flex" gap={1}>
-            <Tooltip title="Atualizar">
-              <IconButton size="small" onClick={carregarDados} disabled={loading}>
-                <RefreshIcon />
-              </IconButton>
-            </Tooltip>
-
-            <Button size="small" variant="outlined" startIcon={<DownloadIcon />} onClick={exportarCSV} disabled={loading}>
-              Exportar CSV
-            </Button>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 2, px: 1 }}>
+          <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 500 }}>
+            Exibindo {filteredData.length} {filteredData.length === 1 ? 'produto' : 'produtos'}
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            {(() => {
+              const statusLegend = [
+                { status: 'success', label: 'DISPONÍVEL', count: filteredData.filter(p => p.status === 'DISPONIVEL').length },
+                { status: 'warning', label: 'BAIXO ESTOQUE', count: filteredData.filter(p => p.status === 'BAIXO_ESTOQUE').length },
+                { status: 'error', label: 'ESGOTADO', count: filteredData.filter(p => p.status === 'ESGOTADO').length }
+              ];
+              return statusLegend.map((item) => (
+                <Box key={item.status} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <StatusIndicator status={item.status} size="small" />
+                  <Typography variant="body2" sx={{ color: '#495057', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    {item.label}
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 600 }}>
+                    {item.count}
+                  </Typography>
+                </Box>
+              ));
+            })()}
           </Box>
         </Box>
+
+        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
 
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
@@ -1071,17 +1124,17 @@ const SaldoContratosModalidades: React.FC = () => {
             </CardContent>
           </Card>
         ) : (
-          <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px' }}>
-            <TableContainer>
-              <Table>
+          <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', width: '100%', overflow: 'hidden' }}>
+            <TableContainer sx={{ flex: 1, minHeight: 0 }}>
+              <Table stickyHeader>
                 <TableHead>
                   <TableRow>
-                    <TableCell sx={{ fontWeight: 600, width: '30%' }}>Produto</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 600, width: '10%' }}>Unidade</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 600, width: '15%' }}>Total Inicial</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 600, width: '15%' }}>Total Consumido</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 600, width: '15%' }}>Total Disponível</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 600, width: '15%' }}>Ações</TableCell>
+                    <TableCell sx={{ width: '30%' }}>Produto</TableCell>
+                    <TableCell align="center" sx={{ width: '10%' }}>Unidade</TableCell>
+                    <TableCell align="center" sx={{ width: '15%' }}>Total Inicial</TableCell>
+                    <TableCell align="center" sx={{ width: '15%' }}>Total Consumido</TableCell>
+                    <TableCell align="center" sx={{ width: '15%' }}>Total Disponível</TableCell>
+                    <TableCell align="center" sx={{ width: '15%' }}>Ações</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -1098,7 +1151,7 @@ const SaldoContratosModalidades: React.FC = () => {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    agruparPorProduto(dados).map((produto, index) => (
+                    filteredData.map((produto, index) => (
                       <TableRow
                         key={produto.produto_nome}
                         data-row-index={index}
@@ -1151,33 +1204,37 @@ const SaldoContratosModalidades: React.FC = () => {
               </Table>
             </TableContainer>
 
-            <TablePagination
-              component="div"
-              count={total}
-              page={page}
-              onPageChange={(_, newPage) => {
-                setPage(newPage);
-                setFiltros({ ...filtros, page: newPage + 1 });
-              }}
-              rowsPerPage={rowsPerPage}
-              onRowsPerPageChange={(event) => {
-                const newRowsPerPage = parseInt(event.target.value, 10);
-                setRowsPerPage(newRowsPerPage);
-                setPage(0);
-                setFiltros({ ...filtros, page: 1, limit: newRowsPerPage });
-              }}
-              rowsPerPageOptions={[5, 10, 25, 50]}
-              labelRowsPerPage="Itens por página:"
-              labelDisplayedRows={({ from, to, count }) =>
-                `${from}-${to} de ${count !== -1 ? count : `mais de ${to}`}`
-              }
-            />
-          </Paper>
+            <Box sx={{ borderTop: '1px solid #e9ecef', bgcolor: '#ffffff' }}>
+              <TablePagination
+                component="div"
+                count={total}
+                page={page}
+                onPageChange={(_, newPage) => {
+                  setPage(newPage);
+                  setFiltros({ ...filtros, page: newPage + 1 });
+                }}
+                rowsPerPage={rowsPerPage}
+                onRowsPerPageChange={(event) => {
+                  const newRowsPerPage = parseInt(event.target.value, 10);
+                  setRowsPerPage(newRowsPerPage);
+                  setPage(0);
+                  setFiltros({ ...filtros, page: 1, limit: newRowsPerPage });
+                }}
+                rowsPerPageOptions={[10, 25, 50, 100]}
+                labelRowsPerPage="Itens por página:"
+                labelDisplayedRows={({ from, to, count }) =>
+                  `${from}-${to} de ${count !== -1 ? count : `mais de ${to}`}`
+                }
+              />
+            </Box>
+          </Box>
         )}
+        </Box>
+      </PageContainer>
 
-
-
-        {/* Modal de Seleção de Contrato */}
+      {/* Modais fora do PageContainer */}
+      
+      {/* Modal de Seleção de Contrato */}
         <Dialog
           open={dialogSelecionarContrato}
           onClose={() => setDialogSelecionarContrato(false)}
@@ -1308,7 +1365,7 @@ const SaldoContratosModalidades: React.FC = () => {
                   <TableContainer component={Paper} variant="outlined">
                     <Table>
                       <TableHead>
-                        <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+                        <TableRow>
                           <TableCell>Modalidade</TableCell>
                           <TableCell align="right">Quantidade Inicial</TableCell>
                           <TableCell align="right">Consumido</TableCell>
@@ -1604,9 +1661,6 @@ const SaldoContratosModalidades: React.FC = () => {
             </Button>
           </DialogActions>
         </Dialog>
-
-
-      </Box>
     </Box>
   );
 };

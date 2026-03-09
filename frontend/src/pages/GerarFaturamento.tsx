@@ -128,8 +128,8 @@ function GerarFaturamento() {
 
             setDialogConfirmacao(false);
 
-            // Redirecionar de volta para o pedido
-            navigate(`/pedidos/${pedidoId}`, { 
+            // Redirecionar de volta para a compra
+            navigate(`/compras/${pedidoId}`, { 
                 state: { 
                     message: `Faturamento #${resultado.faturamento.id} gerado com sucesso!` 
                 } 
@@ -177,7 +177,7 @@ function GerarFaturamento() {
     return (
         <Box sx={{ p: 3 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-                <IconButton onClick={() => navigate(`/pedidos/${pedidoId}`)} sx={{ mr: 2 }}>
+                <IconButton onClick={() => navigate(`/compras/${pedidoId}`)} sx={{ mr: 2 }}>
                     <ArrowBackIcon />
                 </IconButton>
                 <Typography variant="h4" component="h1" sx={{ flexGrow: 1 }}>
@@ -486,10 +486,10 @@ function GerarFaturamento() {
                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
                                         <Button
                                             variant="outlined"
-                                            onClick={() => navigate(`/pedidos/${pedidoId}`)}
+                                            onClick={() => navigate(`/compras/${pedidoId}`)}
                                             disabled={loading}
                                         >
-                                            Voltar ao Pedido
+                                            Voltar à Compra
                                         </Button>
 
                                         <Box sx={{ display: 'flex', gap: 2 }}>

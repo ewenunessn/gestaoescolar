@@ -9,7 +9,7 @@ import {
   handleDatabaseError
 } from "../../../utils/errorHandler";
 
-const STATUS_PEDIDO = {
+const STATUS_COMPRA = {
   pendente: { label: 'Pendente', color: 'warning' },
   recebido_parcial: { label: 'Recebido Parcial', color: 'info' },
   concluido: { label: 'Concluído', color: 'success' },
@@ -17,7 +17,7 @@ const STATUS_PEDIDO = {
   cancelado: { label: 'Cancelado', color: 'error' }
 } as const;
 
-export async function listarPedidos(req: Request, res: Response) {
+export async function listarCompras(req: Request, res: Response) {
   try {
     const { status, contrato_id, escola_id, data_inicio, data_fim, page = 1, limit = 50 } = req.query;
 
@@ -108,11 +108,11 @@ export async function listarPedidos(req: Request, res: Response) {
   }
 }
 
-export async function buscarPedido(req: Request, res: Response) {
+export async function buscarCompra(req: Request, res: Response) {
   try {
     const { id } = req.params;
 
-    const pedidoResult = await db.query(`
+    const compraResult = await db.query(`
       SELECT 
         p.*,
         u.nome as usuario_criacao_nome,
@@ -123,10 +123,10 @@ export async function buscarPedido(req: Request, res: Response) {
       WHERE p.id = $1
     `, [id]);
 
-    if (pedidoResult.rows.length === 0) {
+    if (compraResult.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "Pedido não encontrado"
+        message: "Compra não encontrada"
       });
     }
 
@@ -161,26 +161,26 @@ export async function buscarPedido(req: Request, res: Response) {
 
     const itensResult = await db.query(itensQuery, [id]);
 
-    const pedido = {
-      ...pedidoResult.rows[0],
+    const compra = {
+      ...compraResult.rows[0],
       itens: itensResult.rows
     };
 
     res.json({
       success: true,
-      data: pedido
+      data: compra
     });
   } catch (error) {
-    console.error("❌ Erro ao buscar pedido:", error);
+    console.error("❌ Erro ao buscar compra:", error);
     res.status(500).json({
       success: false,
-      message: "Erro ao buscar pedido",
+      message: "Erro ao buscar compra",
       error: error instanceof Error ? error.message : 'Erro desconhecido'
     });
   }
 }
 
-export async function criarPedido(req: Request, res: Response) {
+export async function criarCompra(req: Request, res: Response) {
   const client = await db.pool.connect();
 
   try {
@@ -195,13 +195,8 @@ export async function criarPedido(req: Request, res: Response) {
 
     const usuario_criacao_id = (req as any).user?.id || 1;
 
-    if (!itens || !Array.isArray(itens) || itens.length === 0) {
-      await client.query('ROLLBACK');
-      return res.status(400).json({
-        success: false,
-        message: "É necessário incluir pelo menos um item no pedido"
-      });
-    }
+    // Permitir criar compra vazia (será preenchida depois)
+    const temItens = itens && Array.isArray(itens) && itens.length > 0;
 
     // Usar competência fornecida ou data atual
     const competencia = competencia_mes_ano || new Date().toISOString().substring(0, 7); // YYYY-MM
@@ -221,48 +216,51 @@ export async function criarPedido(req: Request, res: Response) {
     const proximoSequencial = (parseInt(maxNumeroResult.rows[0].max_sequencial) + 1).toString().padStart(6, '0');
     const numero = `PED-${mesAbrev}${ano}${proximoSequencial}`;
 
-    let valor_total = 0;
-    for (const item of itens) {
-      const cpResult = await client.query(`
-        SELECT cp.*, p.nome as produto_nome, c.status as contrato_status
-        FROM contrato_produtos cp
-        JOIN produtos p ON cp.produto_id = p.id
-        JOIN contratos c ON cp.contrato_id = c.id
-        WHERE cp.id = $1 AND cp.ativo = true
-      `, [item.contrato_produto_id]);
-
-      if (cpResult.rows.length === 0) {
-        await client.query('ROLLBACK');
-        return res.status(400).json({
-          success: false,
-          message: `Produto não encontrado ou inativo`
-        });
-      }
-
-      const contratoProduto = cpResult.rows[0];
-
-      if (contratoProduto.contrato_status !== 'ativo') {
-        await client.query('ROLLBACK');
-        return res.status(400).json({
-          success: false,
-          message: `O contrato do produto ${contratoProduto.produto_nome} não está ativo`
-        });
-      }
-
-      if (item.quantidade <= 0) {
-        await client.query('ROLLBACK');
-        return res.status(400).json({
-          success: false,
-          message: `Quantidade inválida para o produto ${contratoProduto.produto_nome}`
-        });
-      }
-
-      valor_total += item.quantidade * contratoProduto.preco_unitario;
-    }
-
     const status_inicial = salvar_como_rascunho ? 'pendente' : 'pendente';
 
-    const pedidoResult = await client.query(`
+    // Calcular valor total apenas se houver itens
+    let valor_total = 0;
+    if (temItens) {
+      for (const item of itens) {
+        const cpResult = await client.query(`
+          SELECT cp.*, p.nome as produto_nome, c.status as contrato_status
+          FROM contrato_produtos cp
+          JOIN produtos p ON cp.produto_id = p.id
+          JOIN contratos c ON cp.contrato_id = c.id
+          WHERE cp.id = $1 AND cp.ativo = true
+        `, [item.contrato_produto_id]);
+
+        if (cpResult.rows.length === 0) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({
+            success: false,
+            message: `Produto não encontrado ou inativo`
+          });
+        }
+
+        const contratoProduto = cpResult.rows[0];
+
+        if (contratoProduto.contrato_status !== 'ativo') {
+          await client.query('ROLLBACK');
+          return res.status(400).json({
+            success: false,
+            message: `O contrato do produto ${contratoProduto.produto_nome} não está ativo`
+          });
+        }
+
+        if (item.quantidade <= 0) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({
+            success: false,
+            message: `Quantidade inválida para o produto ${contratoProduto.produto_nome}`
+          });
+        }
+
+        valor_total += item.quantidade * contratoProduto.preco_unitario;
+      }
+    }
+
+    const compraResult = await client.query(`
       INSERT INTO pedidos (
         numero, data_pedido, status, valor_total, observacoes, usuario_criacao_id, competencia_mes_ano
       )
@@ -270,31 +268,34 @@ export async function criarPedido(req: Request, res: Response) {
       RETURNING *
     `, [numero, status_inicial, valor_total, observacoes, usuario_criacao_id, competencia]);
 
-    const pedido_id = pedidoResult.rows[0].id;
+    const compra_id = compraResult.rows[0].id;
 
-    for (const item of itens) {
-      const cpResult = await client.query(`
-        SELECT preco_unitario, produto_id
-        FROM contrato_produtos
-        WHERE id = $1
-      `, [item.contrato_produto_id]);
+    // Inserir itens apenas se houver
+    if (temItens) {
+      for (const item of itens) {
+        const cpResult = await client.query(`
+          SELECT preco_unitario, produto_id
+          FROM contrato_produtos
+          WHERE id = $1
+        `, [item.contrato_produto_id]);
 
-      const preco_unitario = cpResult.rows[0].preco_unitario;
-      const produto_id = cpResult.rows[0].produto_id;
-      const valor_item = item.quantidade * preco_unitario;
+        const preco_unitario = cpResult.rows[0].preco_unitario;
+        const produto_id = cpResult.rows[0].produto_id;
+        const valor_item = item.quantidade * preco_unitario;
 
-      await client.query(`
-        INSERT INTO pedido_itens (
-          pedido_id, contrato_produto_id, produto_id, quantidade,
-          preco_unitario, valor_total, data_entrega_prevista, observacoes
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      `, [pedido_id, item.contrato_produto_id, produto_id, item.quantidade, preco_unitario, valor_item, item.data_entrega_prevista, item.observacoes]);
+        await client.query(`
+          INSERT INTO pedido_itens (
+            pedido_id, contrato_produto_id, produto_id, quantidade,
+            preco_unitario, valor_total, data_entrega_prevista, observacoes
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        `, [compra_id, item.contrato_produto_id, produto_id, item.quantidade, preco_unitario, valor_item, item.data_entrega_prevista, item.observacoes]);
+      }
     }
 
     await client.query('COMMIT');
 
-    const pedidoCompletoResult = await db.query(`
+    const compraCompletaResult = await db.query(`
       SELECT 
         p.*,
         u.nome as usuario_criacao_nome,
@@ -306,24 +307,24 @@ export async function criarPedido(req: Request, res: Response) {
       LEFT JOIN contratos c ON cp.contrato_id = c.id
       WHERE p.id = $1
       GROUP BY p.id, u.nome
-    `, [pedido_id]);
+    `, [compra_id]);
 
     const mensagem = salvar_como_rascunho
-      ? "Pedido salvo como rascunho com sucesso"
-      : "Pedido criado com sucesso";
+      ? "Compra salva como rascunho com sucesso"
+      : "Compra criada com sucesso";
 
     res.status(201).json({
       success: true,
       message: mensagem,
-      data: pedidoCompletoResult.rows[0]
+      data: compraCompletaResult.rows[0]
     });
 
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error("❌ Erro ao criar pedido:", error);
+    console.error("❌ Erro ao criar compra:", error);
     res.status(500).json({
       success: false,
-      message: "Erro ao criar pedido",
+      message: "Erro ao criar compra",
       error: error instanceof Error ? error.message : 'Erro desconhecido'
     });
   } finally {
@@ -331,7 +332,7 @@ export async function criarPedido(req: Request, res: Response) {
   }
 }
 
-export async function atualizarPedido(req: Request, res: Response) {
+export async function atualizarCompra(req: Request, res: Response) {
   const client = await db.pool.connect();
 
   try {
@@ -505,7 +506,7 @@ export async function atualizarPedido(req: Request, res: Response) {
 }
 
 
-export async function atualizarStatusPedido(req: Request, res: Response) {
+export async function atualizarStatusCompra(req: Request, res: Response) {
   try {
     const { id } = req.params;
     const { status, motivo } = req.body;
@@ -541,7 +542,7 @@ export async function atualizarStatusPedido(req: Request, res: Response) {
 
     if (motivo) {
       paramCount++;
-      const statusLabel = STATUS_PEDIDO[status as keyof typeof STATUS_PEDIDO]?.label || status;
+      const statusLabel = STATUS_COMPRA[status as keyof typeof STATUS_COMPRA]?.label || status;
       query += `, observacoes = COALESCE(observacoes, '') || '\\n[' || $` + paramCount + ` || ']: ' || $` + (paramCount + 1);
       values.push(statusLabel);
       paramCount++;
@@ -556,7 +557,7 @@ export async function atualizarStatusPedido(req: Request, res: Response) {
 
     res.json({
       success: true,
-      message: `Status alterado para ${STATUS_PEDIDO[status as keyof typeof STATUS_PEDIDO]?.label}`,
+      message: `Status alterado para ${STATUS_COMPRA[status as keyof typeof STATUS_COMPRA]?.label}`,
       data: result.rows[0]
     });
   } catch (error) {
@@ -571,7 +572,7 @@ export async function atualizarStatusPedido(req: Request, res: Response) {
 
 
 
-export async function excluirPedido(req: Request, res: Response) {
+export async function excluirCompra(req: Request, res: Response) {
   const client = await db.pool.connect();
 
   try {
@@ -647,7 +648,7 @@ export async function excluirPedido(req: Request, res: Response) {
 }
 
 
-export async function obterEstatisticasPedidos(req: Request, res: Response) {
+export async function obterEstatisticasCompras(req: Request, res: Response) {
   try {
     const statsResult = await db.query(`
       SELECT 
@@ -807,7 +808,7 @@ export async function listarTodosProdutosDisponiveis(req: Request, res: Response
 
 
 // Relatório: Resumo de compras por tipo de fornecedor em um pedido
-export async function resumoTipoFornecedorPedido(req: Request, res: Response) {
+export async function resumoTipoFornecedorCompra(req: Request, res: Response) {
   try {
     const { id } = req.params;
 

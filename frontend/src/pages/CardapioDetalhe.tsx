@@ -83,6 +83,7 @@ import { listarModalidades } from "../services/modalidades";
 import { useSafeData } from "../hooks/useSafeData";
 import DownloadIcon from "@mui/icons-material/Download";
 import PageBreadcrumbs from '../components/PageBreadcrumbs';
+import PageContainer from '../components/PageContainer';
 import {
   DndContext,
   DragEndEvent,
@@ -726,40 +727,45 @@ export default function CardapioDetalhe() {
 
   if (loading) {
     return (
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: 400 }}>
-          <CircularProgress />
-        </Box>
-      </Container>
+      <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+        <PageContainer>
+          <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: 400 }}>
+            <CircularProgress />
+          </Box>
+        </PageContainer>
+      </Box>
     );
   }
 
   if (erro && !isNovo) {
     return (
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Alert severity="error">{erro}</Alert>
-      </Container>
+      <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+        <PageContainer>
+          <Alert severity="error">{erro}</Alert>
+        </PageContainer>
+      </Box>
     );
   }
 
   const modalidadeAtual = modalidades.find(m => m.id === (cardapio?.modalidade_id || form.modalidade_id));
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <PageBreadcrumbs 
-          items={[
-            { label: 'Cardápios', path: '/cardapios', icon: <RestaurantIcon fontSize="small" /> },
-            { label: isNovo ? 'Novo Cardápio' : (cardapio?.nome || 'Detalhes do Cardápio') }
-          ]}
-        />
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <PageContainer>
+          <PageBreadcrumbs 
+            items={[
+              { label: 'Cardápios', path: '/cardapios', icon: <RestaurantIcon fontSize="small" /> },
+              { label: isNovo ? 'Novo Cardápio' : (cardapio?.nome || 'Detalhes do Cardápio') }
+            ]}
+          />
 
-        {/* Card de Informações do Cardápio */}
+          {/* Card de Informações do Cardápio */}
         <Card sx={{ mb: 4, borderRadius: 3, boxShadow: 3 }}>
           <CardContent sx={{ p: 4 }}>
             {editando ? (
@@ -1099,6 +1105,7 @@ export default function CardapioDetalhe() {
             </Grid>
           </Grid>
         )}
+        </PageContainer>
 
         {/* Modal de confirmação de exclusão */}
         <Dialog open={openExcluir} onClose={() => setOpenExcluir(false)}>
@@ -1235,7 +1242,7 @@ export default function CardapioDetalhe() {
             </Paper>
           ) : null}
         </DragOverlay>
-      </Container>
-    </DndContext>
+      </DndContext>
+    </Box>
   );
 }

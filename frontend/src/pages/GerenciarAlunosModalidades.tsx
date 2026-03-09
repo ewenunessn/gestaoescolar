@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
+import PageContainer from '../components/PageContainer';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, TextField, CircularProgress, Alert, IconButton,
@@ -230,8 +231,8 @@ const GerenciarAlunosModalidades: React.FC = () => {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <Box sx={{ maxWidth: '1400px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
+      <PageContainer fullHeight>
         <PageBreadcrumbs 
           items={[
             { label: 'Modalidades', path: '/modalidades', icon: <CategoryIcon fontSize="small" /> },
@@ -275,15 +276,15 @@ const GerenciarAlunosModalidades: React.FC = () => {
 
         {/* Tabela */}
         <Card sx={{ borderRadius: '12px', overflow: 'hidden' }}>
-          <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 250px)' }}>
-            <Table stickyHeader>
+          <TableContainer sx={{ maxHeight: 'calc(100vh - 250px)' }}>
+            <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ fontWeight: 600, bgcolor: 'grey.100', minWidth: 200, position: 'sticky', left: 0, zIndex: 3 }}>
+                  <TableCell sx={{ minWidth: 200, position: 'sticky', left: 0, zIndex: 3, bgcolor: 'grey.100' }}>
                     Escola
                   </TableCell>
                   {modalidades.map((modalidade) => (
-                    <TableCell key={modalidade.id} align="center" sx={{ fontWeight: 600, bgcolor: 'grey.100', minWidth: 150 }}>
+                    <TableCell key={modalidade.id} align="center" sx={{ minWidth: 150 }}>
                       {modalidade.nome}
                     </TableCell>
                   ))}
@@ -326,7 +327,7 @@ const GerenciarAlunosModalidades: React.FC = () => {
         <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
           * Valores 0 ou vazios não são salvos no banco de dados
         </Typography>
-      </Box>
+      </PageContainer>
     </Box>
   );
 };

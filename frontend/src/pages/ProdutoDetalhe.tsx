@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
+import PageContainer from '../components/PageContainer';
 import {
   Box, Typography, Button, Card, CardContent, CircularProgress,
   Alert, Dialog, DialogTitle, DialogContent, DialogActions, TextField,
@@ -219,12 +220,12 @@ export default function ProdutoDetalhe() {
   const handleCancel = useCallback(() => { setIsEditing(false); setForm(produto); }, [produto]);
 
   if (loading) return <Box sx={{ display: "flex", justifyContent: "center", alignItems: 'center', minHeight: '80vh' }}><CircularProgress size={60} /></Box>;
-  if (error && !produto) return <Box sx={{ maxWidth: '1280px', mx: 'auto', p: 4 }}><Card><CardContent sx={{ textAlign: 'center', p: 4 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={loadData}>Tentar Novamente</Button></CardContent></Card></Box>;
+  if (error && !produto) return <PageContainer><Card><CardContent sx={{ textAlign: 'center', p: 4 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={loadData}>Tentar Novamente</Button></CardContent></Card></PageContainer>;
   if (!produto) return null;
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+      <PageContainer>
         <PageBreadcrumbs 
           items={[
             { label: 'Produtos', path: '/produtos', icon: <InventoryIcon fontSize="small" /> },
@@ -324,13 +325,14 @@ export default function ProdutoDetalhe() {
 
             <ComposicaoNutricionalCard composicaoData={composicao} onSave={handleSaveComposition} isSaving={isSavingComp} />
         </Stack>
+      </PageContainer>
 
-        <Dialog open={openExcluir} onClose={() => setOpenExcluir(false)}>
+      {/* Modal fora do PageContainer */}
+      <Dialog open={openExcluir} onClose={() => setOpenExcluir(false)}>
             <DialogTitle>Confirmar Exclusão</DialogTitle>
             <DialogContent><Typography>Tem certeza que deseja excluir o produto "{produto.nome}"? Esta ação é irreversível.</Typography></DialogContent>
             <DialogActions><Button onClick={() => setOpenExcluir(false)}>Cancelar</Button><Button onClick={handleDelete} variant="contained" color="error">Excluir</Button></DialogActions>
         </Dialog>
-      </Box>
     </Box>
   );
 }

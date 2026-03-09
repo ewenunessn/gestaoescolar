@@ -1,4 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import PageContainer from '../components/PageContainer';
+import TableFilter, { FilterField } from '../components/TableFilter';
+import StatusIndicator from '../components/StatusIndicator';
+import ViewTabs, { ViewTab } from '../components/ViewTabs';
+// Atualizado em 2026-03-08 13:46 - Todas as referências a dataInicio/dataFim agora usam filters.dataInicio/filters.dataFim
 import {
   Box,
   Typography,
@@ -32,7 +37,8 @@ import {
   Menu,
   ListItemIcon,
   Checkbox,
-  OutlinedInput
+  OutlinedInput,
+  InputAdornment
 } from '@mui/material';
 import {
   Print as PrintIcon,
@@ -46,7 +52,10 @@ import {
   Cancel as CancelIcon,
   PendingActions as PendingIcon,
   Edit as EditIcon,
-  QrCode2 as QrCodeIcon
+  QrCode2 as QrCodeIcon,
+  FilterList as FilterIcon,
+  Clear as ClearIcon,
+  Refresh as RefreshIcon
 } from '@mui/icons-material';
 import { useNotification } from '../context/NotificationContext';
 import { guiaService } from '../services/guiaService';
@@ -78,13 +87,18 @@ const Romaneio: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [itens, setItens] = useState<ItemRomaneio[]>([]);
   
-  // Filtros
-  const [dataInicio, setDataInicio] = useState(new Date().toISOString().split('T')[0]);
-  const [dataFim, setDataFim] = useState(new Date().toISOString().split('T')[0]);
-  const [status, setStatus] = useState<string>('pendente');
+  // Filtros - NOVO SISTEMA
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filterAnchorEl, setFilterAnchorEl] = useState<HTMLElement | null>(null);
+  const [filters, setFilters] = useState<Record<string, any>>({
+    dataInicio: new Date().toISOString().split('T')[0],
+    dataFim: new Date().toISOString().split('T')[0],
+    status: 'pendente'
+  });
+  
   const [rotaIds, setRotaIds] = useState<number[]>([]);
   const [rotas, setRotas] = useState<RotaEntrega[]>([]);
-  const [agrupamento, setAgrupamento] = useState<'escola' | 'produto'>('produto');
+  const [agrupamento, setAgrupamento] = useState<'produto' | 'escola'>('produto');
 
   // Estado para o modal de detalhes
   const [modalOpen, setModalOpen] = useState(false);
@@ -116,9 +130,9 @@ const Romaneio: React.FC = () => {
     setError(null);
     try {
       const data = await guiaService.listarRomaneio({
-        data_inicio: dataInicio,
-        data_fim: dataFim,
-        status: status === 'todos' ? undefined : status,
+        data_inicio: filters.dataInicio || new Date().toISOString().split('T')[0],
+        data_fim: filters.dataFim || new Date().toISOString().split('T')[0],
+        status: filters.status === 'todos' ? undefined : filters.status,
         rota_id: rotaIds.length === 1 ? rotaIds[0] : undefined
       });
       setItens(Array.isArray(data) ? data : []);
@@ -139,8 +153,11 @@ const Romaneio: React.FC = () => {
 
   useEffect(() => {
     carregarRotas();
-    carregarRomaneio();
   }, []);
+
+  useEffect(() => {
+    carregarRomaneio();
+  }, [filters, rotaIds]);
 
   const handlePrint = async () => {
     // Gerar QR Code antes de imprimir se houver rotas selecionadas
@@ -156,7 +173,7 @@ const Romaneio: React.FC = () => {
   };
 
   const gerarQRCodeAutomatico = async () => {
-    if (rotaIds.length === 0 || !dataInicio || !dataFim) {
+    if (rotaIds.length === 0 || !filters.dataInicio || !filters.dataFim) {
       return;
     }
 
@@ -178,8 +195,8 @@ const Romaneio: React.FC = () => {
       const qrData = {
         rotaIds: rotaIds,
         rotaNomes: rotasSelecionadas.map(r => r.nome),
-        dataInicio,
-        dataFim,
+        dataInicio: filters.dataInicio,
+        dataFim: filters.dataFim,
         geradoEm: new Date().toISOString(),
         geradoPor
       };
@@ -201,11 +218,42 @@ const Romaneio: React.FC = () => {
     }
   };
 
+  // Definir campos de filtro (sem período)
+  const filterFields: FilterField[] = useMemo(() => [
+    {
+      type: 'select',
+      label: 'Status',
+      key: 'status',
+      options: [
+        { value: 'todos', label: 'Todos (Ativos)' },
+        { value: 'pendente', label: 'Pendente' },
+        { value: 'programada', label: 'Programada' },
+        { value: 'em_rota', label: 'Em Rota' },
+        { value: 'entregue', label: 'Entregue' },
+      ],
+    },
+  ], []);
+
+  // Aplicar filtros locais (busca por palavra-chave)
+  const filteredItens = useMemo(() => {
+    return itens.filter(item => {
+      // Busca por palavra-chave
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        if (!(item.produto_nome?.toLowerCase().includes(searchLower) || 
+              item.escola_nome?.toLowerCase().includes(searchLower))) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [itens, filters]);
+
   // Agrupar itens por escola
-  const dadosAgrupadosEscola = React.useMemo(() => {
+  const dadosAgrupadosEscola = useMemo(() => {
     const grupos: Record<string, RomaneioPorEscola> = {};
     
-    itens.forEach(item => {
+    filteredItens.forEach(item => {
       if (!grupos[item.escola_nome]) {
         grupos[item.escola_nome] = {
           escola: item.escola_nome,
@@ -217,10 +265,10 @@ const Romaneio: React.FC = () => {
     });
 
     return Object.values(grupos).sort((a, b) => a.escola.localeCompare(b.escola));
-  }, [itens]);
+  }, [filteredItens]);
 
   // Agrupar itens por data e produto
-  const dadosAgrupadosProduto = React.useMemo(() => {
+  const dadosAgrupadosProduto = useMemo(() => {
     const grupos: Record<string, {
       data: string;
       produtos: Record<string, {
@@ -231,7 +279,7 @@ const Romaneio: React.FC = () => {
       }>
     }> = {};
 
-    itens.forEach(item => {
+    filteredItens.forEach(item => {
       const data = item.data_entrega.split('T')[0];
       
       if (!grupos[data]) {
@@ -274,7 +322,30 @@ const Romaneio: React.FC = () => {
           return a.unidade.localeCompare(b.unidade);
         })
       }));
-  }, [itens]);
+  }, [filteredItens]);
+
+  // Legenda de status
+  const statusLegend = useMemo(() => {
+    const statusCounts = filteredItens.reduce((acc, item) => {
+      const status = item.status || 'pendente';
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return [
+      { status: 'default', label: 'PENDENTE', count: statusCounts.pendente || 0 },
+      { status: 'primary', label: 'PROGRAMADA', count: statusCounts.programada || 0 },
+      { status: 'info', label: 'EM ROTA', count: statusCounts.em_rota || 0 },
+      { status: 'success', label: 'ENTREGUE', count: statusCounts.entregue || 0 }
+    ];
+  }, [filteredItens]);
+
+  const handleApplyFilters = (newFilters: Record<string, any>) => {
+    setFilters(prev => ({
+      ...prev,
+      ...newFilters,
+    }));
+  };
 
   const handleOpenDetails = (produto: string, data: string, escolas: { id: number; nome: string; quantidade: number; status: string; rota?: string }[]) => {
     setSelectedProduct({
@@ -367,121 +438,143 @@ const Romaneio: React.FC = () => {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      {/* Filtros - Não imprimir */}
-      <Box sx={{ mb: 4, '@media print': { display: 'none' } }}>
-        <Typography variant="h4" gutterBottom>
-          Romaneio de Entrega
-        </Typography>
-        
-        <Card>
-          <CardContent>
-            <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} sm={3}>
-                <FormControl fullWidth>
-                  <InputLabel>Rotas</InputLabel>
-                  <Select
-                    multiple
-                    value={rotaIds}
-                    onChange={(e) => setRotaIds(e.target.value as number[])}
-                    input={<OutlinedInput label="Rotas" />}
-                    renderValue={(selected) => {
-                      if (selected.length === 0) return 'Todas';
-                      if (selected.length === rotas.length) return 'Todas';
-                      return rotas
-                        .filter(r => selected.includes(r.id))
-                        .map(r => r.nome)
-                        .join(', ');
-                    }}
-                  >
-                    {rotas.map((rota) => (
-                      <MenuItem key={rota.id} value={rota.id}>
-                        <Checkbox checked={rotaIds.includes(rota.id)} />
-                        <ListItemText primary={rota.nome} />
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} sm={3}>
-                <TextField
-                  fullWidth
-                  label="Data Início"
-                  type="date"
-                  value={dataInicio}
-                  onChange={(e) => setDataInicio(e.target.value)}
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={3}>
-                <TextField
-                  fullWidth
-                  label="Data Fim"
-                  type="date"
-                  value={dataFim}
-                  onChange={(e) => setDataFim(e.target.value)}
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={3}>
-                <FormControl fullWidth>
-                  <InputLabel>Status</InputLabel>
-                  <Select
-                    value={status}
-                    label="Status"
-                    onChange={(e) => setStatus(e.target.value)}
-                  >
-                    <MenuItem value="todos">Todos (Ativos)</MenuItem>
-                    <MenuItem value="pendente">Pendente</MenuItem>
-                    <MenuItem value="programada">Programada</MenuItem>
-                    <MenuItem value="em_rota">Em Rota</MenuItem>
-                    <MenuItem value="entregue">Entregue</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} sm={3} sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
-                <Button
-                  variant="contained"
-                  startIcon={<SearchIcon />}
-                  onClick={carregarRomaneio}
-                  fullWidth
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+      <PageContainer>
+        {/* Filtros - Não imprimir */}
+        <Box sx={{ mb: 3, '@media print': { display: 'none' } }}>
+        <Card sx={{ borderRadius: '12px', p: 2, mb: 2 }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2 }}>
+            <TextField
+              placeholder="Buscar produto ou escola..."
+              value={filters.search || ''}
+              onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+              size="small"
+              sx={{ flex: 1, minWidth: '200px', '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ color: 'text.secondary' }} />
+                  </InputAdornment>
+                ),
+                endAdornment: filters.search && (
+                  <InputAdornment position="end">
+                    <IconButton size="small" onClick={() => setFilters(prev => ({ ...prev, search: '' }))}>
+                      <ClearIcon fontSize="small" />
+                    </IconButton>
+                  </InputAdornment>
+                )
+              }}
+            />
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <TextField
+                label="Data Início"
+                type="date"
+                value={filters.dataInicio}
+                onChange={(e) => setFilters(prev => ({ ...prev, dataInicio: e.target.value }))}
+                size="small"
+                InputLabelProps={{ shrink: true }}
+                sx={{ width: 160, '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+                required
+              />
+              <TextField
+                label="Data Fim"
+                type="date"
+                value={filters.dataFim}
+                onChange={(e) => setFilters(prev => ({ ...prev, dataFim: e.target.value }))}
+                size="small"
+                InputLabelProps={{ shrink: true }}
+                sx={{ width: 160, '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+                required
+              />
+              <FormControl size="small" sx={{ minWidth: 200 }}>
+                <InputLabel>Rotas</InputLabel>
+                <Select
+                  multiple
+                  value={rotaIds}
+                  onChange={(e) => setRotaIds(e.target.value as number[])}
+                  input={<OutlinedInput label="Rotas" />}
+                  renderValue={(selected) => {
+                    if (selected.length === 0) return 'Todas';
+                    if (selected.length === rotas.length) return 'Todas';
+                    return rotas
+                      .filter(r => selected.includes(r.id))
+                      .map(r => r.nome)
+                      .join(', ');
+                  }}
+                  sx={{ borderRadius: '8px' }}
                 >
-                  Buscar
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<PrintIcon />}
-                  onClick={handlePrint}
-                  fullWidth
-                >
-                  Imprimir
-                </Button>
-              </Grid>
-              <Grid item xs={12}>
-                <Divider sx={{ my: 1 }} />
-                <Typography variant="subtitle2" gutterBottom>
-                  Tipo de Visualização:
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 2 }}>
-                  <Button
-                    variant={agrupamento === 'escola' ? 'contained' : 'outlined'}
-                    onClick={() => setAgrupamento('escola')}
-                    size="small"
-                  >
-                    Por Escola
-                  </Button>
-                  <Button
-                    variant={agrupamento === 'produto' ? 'contained' : 'outlined'}
-                    onClick={() => setAgrupamento('produto')}
-                    size="small"
-                  >
-                    Por Produto (Consolidado)
-                  </Button>
-                </Box>
-              </Grid>
-            </Grid>
-          </CardContent>
+                  {rotas.map((rota) => (
+                    <MenuItem key={rota.id} value={rota.id}>
+                      <Checkbox checked={rotaIds.includes(rota.id)} />
+                      <ListItemText primary={rota.nome} />
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <Button
+                variant="outlined"
+                startIcon={<FilterIcon />}
+                onClick={(e) => { setFilterAnchorEl(e.currentTarget); setFilterOpen(true); }}
+                size="small"
+              >
+                Filtros
+              </Button>
+              <IconButton size="small" onClick={carregarRomaneio} disabled={loading} title="Atualizar">
+                <RefreshIcon />
+              </IconButton>
+              <Button
+                variant="outlined"
+                startIcon={<PrintIcon />}
+                onClick={handlePrint}
+                size="small"
+              >
+                Imprimir
+              </Button>
+            </Box>
+          </Box>
         </Card>
+
+        <TableFilter
+          open={filterOpen}
+          onClose={() => setFilterOpen(false)}
+          onApply={handleApplyFilters}
+          fields={filterFields}
+          initialValues={{
+            status: filters.status,
+          }}
+          showSearch={false}
+          anchorEl={filterAnchorEl}
+        />
+
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 2, px: 1 }}>
+          <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 500 }}>
+            Exibindo {filteredItens.length} {filteredItens.length === 1 ? 'item' : 'itens'}
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            {statusLegend.map((item) => (
+              <Box key={item.status} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <StatusIndicator status={item.status} size="small" />
+                <Typography variant="body2" sx={{ color: '#495057', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  {item.label}
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 600 }}>
+                  {item.count}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+        </Box>
+
+        <Box sx={{ mb: 2 }}>
+          <ViewTabs
+            value={agrupamento}
+            onChange={setAgrupamento}
+            tabs={[
+              { value: 'produto', label: 'Consolidado' },
+              { value: 'escola', label: 'Por Escola' },
+            ]}
+          />
+        </Box>
       </Box>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -499,12 +592,15 @@ const Romaneio: React.FC = () => {
                 <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1 }}>Romaneio de Entrega</Typography>
                 <Box sx={{ borderBottom: '2px solid #000', pb: 1, mb: 2 }}>
                   <Typography variant="subtitle1">
-                    <strong>Período:</strong> {format(new Date(dataInicio), 'dd/MM/yyyy')} a {format(new Date(dataFim), 'dd/MM/yyyy')}
+                    <strong>Período:</strong> {format(new Date(filters.dataInicio), 'dd/MM/yyyy')} a {format(new Date(filters.dataFim), 'dd/MM/yyyy')}
                   </Typography>
                   <Typography variant="subtitle1">
                     <strong>Rota:</strong> {rotaIds.length === 0 ? 'Todas as Rotas' : 
                       rotaIds.length === rotas.length ? 'Todas as Rotas' :
                       rotas.filter(r => rotaIds.includes(r.id)).map(r => r.nome).join(', ')}
+                  </Typography>
+                  <Typography variant="subtitle1">
+                    <strong>Status:</strong> {filters.status === 'todos' ? 'Todos (Ativos)' : getStatusItemLabel(filters.status)}
                   </Typography>
                 </Box>
               </Box>
@@ -830,7 +926,7 @@ const Romaneio: React.FC = () => {
                 <strong>Rota:</strong> {rotaIds.length === 0 ? 'Todas' : 
                   rotaIds.length === rotas.length ? 'Todas' :
                   rotas.filter(r => rotaIds.includes(r.id)).map(r => r.nome).join(', ')}<br/>
-                <strong>Período:</strong> {format(new Date(dataInicio), 'dd/MM/yyyy')} até {format(new Date(dataFim), 'dd/MM/yyyy')}
+                <strong>Período:</strong> {format(new Date(filters.dataInicio), 'dd/MM/yyyy')} até {format(new Date(filters.dataFim), 'dd/MM/yyyy')}
               </Typography>
             </Box>
 
@@ -884,7 +980,10 @@ const Romaneio: React.FC = () => {
           }
         }
       `}</style>
-    </Container>
+      </PageContainer>
+
+      {/* Modais fora do PageContainer */}
+    </Box>
   );
 };
 

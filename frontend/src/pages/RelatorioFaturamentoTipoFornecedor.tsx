@@ -109,10 +109,10 @@ export default function RelatorioFaturamentoTipoFornecedor() {
     <Box sx={{ p: 3 }}>
       <PageBreadcrumbs 
         items={[
-          { label: 'Pedidos', path: '/pedidos', icon: <ShoppingCartIcon fontSize="small" /> },
-          { label: `Pedido ${dados[0]?.pedido_numero || ''}`, path: `/pedidos/${id}` },
-          { label: 'Faturamentos', path: `/pedidos/${id}/faturamentos` },
-          { label: `Faturamento #${faturamentoId}`, path: `/pedidos/${id}/faturamento/${faturamentoId}` },
+          { label: 'Compras', path: '/compras', icon: <ShoppingCartIcon fontSize="small" /> },
+          { label: `Compra ${dados[0]?.pedido_numero || ''}`, path: `/compras/${id}` },
+          { label: 'Faturamentos', path: `/compras/${id}/faturamentos` },
+          { label: `Faturamento #${faturamentoId}`, path: `/compras/${id}/faturamento/${faturamentoId}` },
           { label: 'Relatório por Tipo' }
         ]}
       />
@@ -132,7 +132,7 @@ export default function RelatorioFaturamentoTipoFornecedor() {
         <Button
           variant="outlined"
           startIcon={<ArrowBackIcon />}
-          onClick={() => navigate(`/pedidos/${id}/faturamento/${faturamentoId}`)}
+          onClick={() => navigate(`/compras/${id}/faturamento/${faturamentoId}`)}
         >
           Voltar
         </Button>
@@ -202,12 +202,12 @@ export default function RelatorioFaturamentoTipoFornecedor() {
                   <TableContainer component={Paper} variant="outlined">
                     <Table size="small">
                       <TableHead>
-                        <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                          <TableCell sx={{ fontWeight: 'bold' }}>Modalidade</TableCell>
-                          <TableCell align="center" sx={{ fontWeight: 'bold' }}>Itens</TableCell>
-                          <TableCell align="center" sx={{ fontWeight: 'bold' }}>Quantidade</TableCell>
-                          <TableCell align="right" sx={{ fontWeight: 'bold' }}>Valor Total</TableCell>
-                          <TableCell align="center" sx={{ fontWeight: 'bold' }}>% do Tipo</TableCell>
+                        <TableRow>
+                          <TableCell>Modalidade</TableCell>
+                          <TableCell align="center">Itens</TableCell>
+                          <TableCell align="center">Quantidade</TableCell>
+                          <TableCell align="right">Valor Total</TableCell>
+                          <TableCell align="center">% do Tipo</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>

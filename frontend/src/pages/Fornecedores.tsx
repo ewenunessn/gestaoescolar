@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import StatusIndicator from "../components/StatusIndicator";
-import PageHeader from "../components/PageHeader";
+import PageContainer from "../components/PageContainer";
+import TableFilter, { FilterField } from "../components/TableFilter";
 import {
   Box,
   Typography,
@@ -45,11 +46,9 @@ import {
   Download,
   Upload,
   Search as SearchIcon,
-  TuneRounded,
-  ExpandMore as ExpandMoreIcon,
-  ExpandLess as ExpandLessIcon,
   Clear as ClearIcon,
   MoreVert,
+  FilterList as FilterIcon,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import {
@@ -83,12 +82,10 @@ interface Fornecedor {
 const FornecedoresPage: React.FC = () => {
   const navigate = useNavigate();
 
-  // Estados de filtros (moved up before React Query hooks)
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState("");
-  const [sortBy, setSortBy] = useState("nome");
-  const [filtersExpanded, setFiltersExpanded] = useState(false);
-  const [hasActiveFilters, setHasActiveFilters] = useState(false);
+  // Estados de filtros - NOVO SISTEMA
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filterAnchorEl, setFilterAnchorEl] = useState<HTMLElement | null>(null);
+  const [filters, setFilters] = useState<Record<string, any>>({});
 
   // React Query hooks
   const { 
@@ -96,7 +93,7 @@ const FornecedoresPage: React.FC = () => {
     isLoading: loading, 
     error: queryError,
     refetch 
-  } = useFornecedores({ search: searchTerm, ativo: selectedStatus ? selectedStatus === 'ativo' : undefined });
+  } = useFornecedores({ search: filters.search, ativo: filters.status ? filters.status === 'ativo' : undefined });
   
   const criarFornecedorMutation = useCriarFornecedor();
   const atualizarFornecedorMutation = useAtualizarFornecedor();
@@ -127,19 +124,54 @@ const FornecedoresPage: React.FC = () => {
     refetch();
   }, [refetch]);
   
-  // Detectar filtros ativos
-  useEffect(() => {
-    setHasActiveFilters(!!(searchTerm || selectedStatus));
-  }, [searchTerm, selectedStatus]);
+  // Definir campos de filtro
+  const filterFields: FilterField[] = useMemo(() => [
+    {
+      type: 'select',
+      label: 'Status',
+      key: 'status',
+      options: [
+        { value: 'ativo', label: 'Ativos' },
+        { value: 'inativo', label: 'Inativos' },
+      ],
+    },
+    {
+      type: 'select',
+      label: 'Tipo de Fornecedor',
+      key: 'tipo',
+      options: [
+        { value: 'empresa', label: 'Empresa' },
+        { value: 'cooperativa', label: 'Cooperativa' },
+        { value: 'individual', label: 'Individual' },
+      ],
+    },
+  ], []);
   
   // Filtrar e ordenar fornecedores
   const filteredFornecedores = useMemo(() => {
     return fornecedores.filter(f => {
-      const matchesSearch = f.nome.toLowerCase().includes(searchTerm.toLowerCase()) || f.cnpj.includes(searchTerm);
-      const matchesStatus = !selectedStatus || (selectedStatus === 'ativo' && f.ativo) || (selectedStatus === 'inativo' && !f.ativo);
-      return matchesSearch && matchesStatus;
+      // Busca por palavra-chave
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        if (!f.nome.toLowerCase().includes(searchLower) && !f.cnpj.includes(filters.search)) {
+          return false;
+        }
+      }
+
+      // Filtro de status
+      if (filters.status) {
+        if (filters.status === 'ativo' && !f.ativo) return false;
+        if (filters.status === 'inativo' && f.ativo) return false;
+      }
+
+      // Filtro de tipo
+      if (filters.tipo && f.tipo_fornecedor !== filters.tipo) {
+        return false;
+      }
+
+      return true;
     }).sort((a, b) => a.nome.localeCompare(b.nome));
-  }, [fornecedores, searchTerm, selectedStatus, sortBy]);
+  }, [fornecedores, filters]);
 
   // Fornecedores paginados
   const paginatedFornecedores = useMemo(() => {
@@ -157,30 +189,7 @@ const FornecedoresPage: React.FC = () => {
   // Reset da página quando filtros mudam
   useEffect(() => {
     setPage(0);
-  }, [searchTerm, selectedStatus, sortBy]);
-  
-  const clearFilters = useCallback(() => {
-    setSearchTerm("");
-    setSelectedStatus("");
-    setSortBy("nome");
-  }, []);
-  
-  const toggleFilters = useCallback(() => setFiltersExpanded(!filtersExpanded), [filtersExpanded]);
-  
-  // Componente de conteúdo dos filtros
-  const FiltersContent = () => (
-    <Box sx={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)', borderRadius: '16px', p: 3, border: '1px solid rgba(148, 163, 184, 0.1)' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}><TuneRounded sx={{ color: 'primary.main' }} /><Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>Filtros Avançados</Typography></Box>
-        {hasActiveFilters && <Button size="small" onClick={clearFilters} sx={{ color: 'text.secondary', textTransform: 'none' }}>Limpar Tudo</Button>}
-      </Box>
-      <Divider sx={{ mb: 3 }} />
-      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-        <FormControl sx={{ minWidth: 150 }}><InputLabel>Status</InputLabel><Select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)} label="Status"><MenuItem value="">Todos</MenuItem><MenuItem value="ativo">Ativos</MenuItem><MenuItem value="inativo">Inativos</MenuItem></Select></FormControl>
-        <FormControl sx={{ minWidth: 150 }}><InputLabel>Ordenar por</InputLabel><Select value={sortBy} onChange={(e) => setSortBy(e.target.value)} label="Ordenar por"><MenuItem value="nome">Nome</MenuItem></Select></FormControl>
-      </Box>
-    </Box>
-  );
+  }, [filters]);
 
   // Funções de modais
   const openModal = (fornecedor: Fornecedor | null = null) => {
@@ -245,30 +254,79 @@ const FornecedoresPage: React.FC = () => {
   const handleExportarFornecedores = () => { /* ... */ };
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
       {successMessage && (<Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}><Alert severity="success" onClose={() => setSuccessMessage(null)}>{successMessage}</Alert></Box>)}
-      <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
-          <PageHeader 
-            title="Fornecedores"
-            totalCount={filteredFornecedores.length}
-            statusLegend={[
-              { status: 'ativo', label: 'ATIVOS', count: filteredFornecedores.filter(f => f.ativo).length },
-              { status: 'inativo', label: 'INATIVOS', count: filteredFornecedores.filter(f => !f.ativo).length }
-            ]}
-          />
-
-        <Card sx={{ borderRadius: '12px', p: 2, mb: 3 }}>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 2 }}>
-            <TextField placeholder="Buscar por nome ou CNPJ..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} size="small" sx={{ flex: 1, minWidth: '200px', '& .MuiOutlinedInput-root': { borderRadius: '8px' } }} InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon sx={{ color: 'text.secondary' }} /></InputAdornment>), endAdornment: searchTerm && (<InputAdornment position="end"><IconButton size="small" onClick={() => setSearchTerm('')}><ClearIcon fontSize="small" /></IconButton></InputAdornment>)}}/>
+      <PageContainer fullHeight>
+        <Card sx={{ borderRadius: '12px', p: 2, mb: 2 }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2 }}>
+            <TextField
+              placeholder="Buscar por nome ou CNPJ..."
+              value={filters.search || ''}
+              onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+              size="small"
+              sx={{ flex: 1, minWidth: '200px', '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ color: 'text.secondary' }} />
+                  </InputAdornment>
+                ),
+                endAdornment: filters.search && (
+                  <InputAdornment position="end">
+                    <IconButton size="small" onClick={() => setFilters(prev => ({ ...prev, search: '' }))}>
+                      <ClearIcon fontSize="small" />
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
             <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button variant={filtersExpanded || hasActiveFilters ? 'contained' : 'outlined'} startIcon={filtersExpanded ? <ExpandLessIcon /> : <TuneRounded />} onClick={toggleFilters} size="small">Filtros{hasActiveFilters && !filtersExpanded && (<Box sx={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', bgcolor: 'error.main' }}/>)}</Button>
+              <Button variant="outlined" startIcon={<FilterIcon />} onClick={(e) => { setFilterAnchorEl(e.currentTarget); setFilterOpen(true); }} size="small">
+                Filtros
+              </Button>
               <Button startIcon={<AddIcon />} onClick={() => openModal()} variant="contained" color="success" size="small">Novo Fornecedor</Button>
               <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)} size="small"><MoreVert /></IconButton>
             </Box>
           </Box>
-          <Collapse in={filtersExpanded} timeout={400}><Box sx={{ mb: 3 }}><FiltersContent /></Box></Collapse>
-
         </Card>
+
+        <TableFilter
+          open={filterOpen}
+          onClose={() => setFilterOpen(false)}
+          onApply={setFilters}
+          fields={filterFields}
+          initialValues={filters}
+          showSearch={false}
+          anchorEl={filterAnchorEl}
+        />
+
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 2, px: 1 }}>
+          <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 500 }}>
+            Exibindo {filteredFornecedores.length} {filteredFornecedores.length === 1 ? 'resultado' : 'resultados'}
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <StatusIndicator status="ativo" size="small" />
+              <Typography variant="body2" sx={{ color: '#495057', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                ATIVOS
+              </Typography>
+              <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 600 }}>
+                {filteredFornecedores.filter(f => f.ativo).length}
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <StatusIndicator status="inativo" size="small" />
+              <Typography variant="body2" sx={{ color: '#495057', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                INATIVOS
+              </Typography>
+              <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 600 }}>
+                {filteredFornecedores.filter(f => !f.ativo).length}
+              </Typography>
+            </Box>
+          </Box>
+        </Box>
+
+        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
 
         {loading ? (
           <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><CircularProgress size={60} /></CardContent></Card>
@@ -277,10 +335,18 @@ const FornecedoresPage: React.FC = () => {
         ) : filteredFornecedores.length === 0 ? (
           <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Business sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} /><Typography variant="h6" sx={{ color: 'text.secondary' }}>Nenhum fornecedor encontrado</Typography></CardContent></Card>
         ) : (
-          <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px' }}>
-            <TableContainer>
-              <Table>
-                <TableHead><TableRow><TableCell>Nome</TableCell><TableCell align="center">CNPJ</TableCell><TableCell align="center">Tipo</TableCell><TableCell align="center">Email</TableCell><TableCell align="center">Ações</TableCell></TableRow></TableHead>
+          <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', width: '100%', overflow: 'hidden' }}>
+            <TableContainer sx={{ flex: 1, minHeight: 0 }}>
+              <Table stickyHeader>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Nome</TableCell>
+                    <TableCell align="center">CNPJ</TableCell>
+                    <TableCell align="center">Tipo</TableCell>
+                    <TableCell align="center">Email</TableCell>
+                    <TableCell align="center" width="80">Ações</TableCell>
+                  </TableRow>
+                </TableHead>
                 <TableBody>
                   {paginatedFornecedores.map((f) => (
                     <TableRow key={f.id} hover>
@@ -310,10 +376,13 @@ const FornecedoresPage: React.FC = () => {
                 </TableBody>
               </Table>
             </TableContainer>
-            <TablePagination component="div" count={filteredFornecedores.length} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage} onRowsPerPageChange={handleChangeRowsPerPage} rowsPerPageOptions={[5, 10, 25, 50]} labelRowsPerPage="Itens por página:" />
-          </Paper>
+            <Box sx={{ borderTop: '1px solid #e9ecef', bgcolor: '#ffffff' }}>
+              <TablePagination component="div" count={filteredFornecedores.length} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage} onRowsPerPageChange={handleChangeRowsPerPage} rowsPerPageOptions={[10, 25, 50, 100]} labelRowsPerPage="Itens por página:" />
+            </Box>
+          </Box>
         )}
-      </Box>
+        </Box>
+      </PageContainer>
 
       {/* Modal de Criação/Edição */}
       <Dialog open={modalOpen} onClose={closeModal} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: '12px' } }}>

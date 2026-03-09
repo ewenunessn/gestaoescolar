@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import StatusIndicator from "../components/StatusIndicator";
 import PageHeader from "../components/PageHeader";
+import PageContainer from "../components/PageContainer";
+import TableFilter, { FilterField } from "../components/TableFilter";
 import {
   importarProdutosLote,
 } from "../services/produtos";
@@ -53,8 +55,7 @@ import {
   Download,
   MoreVert,
   Upload,
-  TuneRounded,
-  ExpandLess,
+  FilterList as FilterIcon,
   Clear as ClearIcon,
 } from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -88,13 +89,10 @@ const ProdutosPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Estados de filtros (devem vir antes dos hooks que os usam)
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategoria, setSelectedCategoria] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState('');
-  const [sortBy, setSortBy] = useState('name');
-  const [filtersExpanded, setFiltersExpanded] = useState(false);
-  const [hasActiveFilters, setHasActiveFilters] = useState(false);
+  // Estados de filtros - NOVO SISTEMA
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filterAnchorEl, setFilterAnchorEl] = useState<HTMLElement | null>(null);
+  const [filters, setFilters] = useState<Record<string, any>>({});
 
   // React Query hooks
   const { 
@@ -102,7 +100,7 @@ const ProdutosPage = () => {
     isLoading: loading, 
     error: queryError,
     refetch 
-  } = useProdutos({ search: searchTerm, categoria: selectedCategoria });
+  } = useProdutos({ search: filters.search, categoria: filters.categoria });
   
   const { data: categorias = [] } = useCategoriasProdutos();
   const criarProdutoMutation = useCriarProduto();
@@ -136,11 +134,24 @@ const ProdutosPage = () => {
     refetch();
   }, [refetch]);
 
-  // Detectar filtros ativos
-  useEffect(() => {
-    const hasFilters = !!(searchTerm || selectedCategoria || selectedStatus);
-    setHasActiveFilters(hasFilters);
-  }, [searchTerm, selectedCategoria, selectedStatus]);
+  // Definir campos de filtro
+  const filterFields: FilterField[] = useMemo(() => [
+    {
+      type: 'select',
+      label: 'Categoria',
+      key: 'categoria',
+      options: categorias.map(c => ({ value: c, label: c })),
+    },
+    {
+      type: 'select',
+      label: 'Status',
+      key: 'status',
+      options: [
+        { value: 'ativo', label: 'Ativo' },
+        { value: 'inativo', label: 'Inativo' },
+      ],
+    },
+  ], [categorias]);
 
   useEffect(() => {
     const state = location.state as { successMessage?: string } | undefined;
@@ -157,17 +168,29 @@ const ProdutosPage = () => {
   // Filtrar e ordenar produtos
   const filteredProdutos = useMemo(() => {
     return produtos.filter(produto => {
-      const matchesSearch = produto.nome.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCategoria = !selectedCategoria || produto.categoria === selectedCategoria;
-      const matchesStatus = !selectedStatus ||
-        (selectedStatus === 'ativo' && produto.ativo) ||
-        (selectedStatus === 'inativo' && !produto.ativo);
-      return matchesSearch && matchesCategoria && matchesStatus;
-    }).sort((a, b) => {
-      // Lógica de ordenação
-      return a.nome.localeCompare(b.nome);
-    });
-  }, [produtos, searchTerm, selectedCategoria, selectedStatus, sortBy]);
+      // Busca por palavra-chave
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        if (!produto.nome.toLowerCase().includes(searchLower) &&
+            !(produto.descricao || '').toLowerCase().includes(searchLower)) {
+          return false;
+        }
+      }
+
+      // Filtro de categoria
+      if (filters.categoria && produto.categoria !== filters.categoria) {
+        return false;
+      }
+
+      // Filtro de status
+      if (filters.status) {
+        if (filters.status === 'ativo' && !produto.ativo) return false;
+        if (filters.status === 'inativo' && produto.ativo) return false;
+      }
+
+      return true;
+    }).sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [produtos, filters]);
 
   // Legenda de status
   const statusLegend = useMemo(() => {
@@ -199,31 +222,7 @@ const ProdutosPage = () => {
   // Reset da página quando filtros mudam
   useEffect(() => {
     setPage(0);
-  }, [searchTerm, selectedCategoria, selectedStatus, sortBy]);
-
-  const clearFilters = useCallback(() => {
-    setSearchTerm('');
-    setSelectedCategoria('');
-    setSelectedStatus('');
-    setSortBy('name');
-  }, []);
-
-  const toggleFilters = useCallback(() => setFiltersExpanded(!filtersExpanded), [filtersExpanded]);
-
-  // Componente de conteúdo dos filtros
-  const FiltersContent = () => (
-    <Box sx={{ bgcolor: 'background.paper', borderRadius: '12px', p: 2 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-        <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'text.primary', fontSize: '0.9rem' }}>Filtros Avançados</Typography>
-        {hasActiveFilters && <Button size="small" onClick={clearFilters} sx={{ color: 'text.secondary', textTransform: 'none', fontSize: '0.8rem' }}>Limpar</Button>}
-      </Box>
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2 }}>
-        <FormControl fullWidth size="small"><InputLabel>Categoria</InputLabel><Select value={selectedCategoria} onChange={(e) => setSelectedCategoria(e.target.value)} label="Categoria"><MenuItem value="">Todas</MenuItem>{categorias.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)}</Select></FormControl>
-        <FormControl fullWidth size="small"><InputLabel>Status</InputLabel><Select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)} label="Status"><MenuItem value="">Todos</MenuItem><MenuItem value="ativo">Ativos</MenuItem><MenuItem value="inativo">Inativos</MenuItem></Select></FormControl>
-        <FormControl fullWidth size="small"><InputLabel>Ordenar por</InputLabel><Select value={sortBy} onChange={(e) => setSortBy(e.target.value)} label="Ordenar por"><MenuItem value="name">Nome</MenuItem><MenuItem value="categoria">Categoria</MenuItem></Select></FormControl>
-      </Box>
-    </Box>
-  );
+  }, [filters]);
 
   // Funções do modal
   const openModal = () => {
@@ -487,39 +486,99 @@ const ProdutosPage = () => {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
       {successMessage && (<Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}><Alert severity="success" onClose={() => setSuccessMessage(null)}>{successMessage}</Alert></Box>)}
-      <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+      <PageContainer fullHeight>
         <PageHeader 
-          title="Produtos" 
-          totalCount={filteredProdutos.length}
-          statusLegend={statusLegend}
+          title="Produtos"
         />
-
-        <Card sx={{ borderRadius: '12px', p: 2, mb: 3 }}>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 2 }}>
-            <TextField placeholder="Buscar produtos..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} size="small" sx={{ flex: 1, minWidth: '200px', '& .MuiOutlinedInput-root': { borderRadius: '8px' } }} InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon sx={{ color: 'text.secondary' }} /></InputAdornment>), endAdornment: searchTerm && (<InputAdornment position="end"><IconButton size="small" onClick={() => setSearchTerm('')}><ClearIcon fontSize="small" /></IconButton></InputAdornment>)}}/>
+        
+        <Card sx={{ borderRadius: '12px', p: 2, mb: 2 }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2 }}>
+            <TextField
+              placeholder="Buscar produtos..."
+              value={filters.search || ''}
+              onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+              size="small"
+              sx={{ flex: 1, minWidth: '200px', '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ color: 'text.secondary' }} />
+                  </InputAdornment>
+                ),
+                endAdornment: filters.search && (
+                  <InputAdornment position="end">
+                    <IconButton size="small" onClick={() => setFilters(prev => ({ ...prev, search: '' }))}>
+                      <ClearIcon fontSize="small" />
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
             <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button variant={filtersExpanded || hasActiveFilters ? 'contained' : 'outlined'} startIcon={filtersExpanded ? <ExpandLess /> : <TuneRounded />} onClick={toggleFilters} size="small">Filtros{hasActiveFilters && !filtersExpanded && (<Box sx={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', bgcolor: 'error.main' }}/>)}</Button>
+              <Button 
+                variant="outlined" 
+                startIcon={<FilterIcon />} 
+                onClick={(e) => { setFilterAnchorEl(e.currentTarget); setFilterOpen(true); }} 
+                size="small"
+              >
+                Filtros
+              </Button>
               <Button startIcon={<AddIcon />} onClick={openModal} variant="contained" color="success" size="small">Novo Produto</Button>
               <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)} size="small"><MoreVert /></IconButton>
             </Box>
           </Box>
-          <Collapse in={filtersExpanded} timeout={300}><Box sx={{ mb: 2 }}><FiltersContent /></Box></Collapse>
-
         </Card>
 
-        {loading ? (
-          <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><CircularProgress size={60} /></CardContent></Card>
-        ) : error ? (
+        <TableFilter
+          open={filterOpen}
+          onClose={() => setFilterOpen(false)}
+          onApply={setFilters}
+          fields={filterFields}
+          initialValues={filters}
+          showSearch={false}
+          anchorEl={filterAnchorEl}
+        />
+
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 2, px: 1 }}>
+          <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 500 }}>
+            Exibindo {filteredProdutos.length} {filteredProdutos.length === 1 ? 'resultado' : 'resultados'}
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            {statusLegend.map((item) => (
+              <Box key={item.status} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <StatusIndicator status={item.status} size="small" />
+                <Typography variant="body2" sx={{ color: '#495057', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  {item.label}
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 600 }}>
+                  {item.count}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+        </Box>
+
+        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          {loading ? (
+            <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><CircularProgress size={60} /></CardContent></Card>
+          ) : error ? (
           <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={handleRefresh}>Tentar Novamente</Button></CardContent></Card>
-        ) : filteredProdutos.length === 0 ? (
-          <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Inventory sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} /><Typography variant="h6" sx={{ color: 'text.secondary' }}>Nenhum produto encontrado</Typography></CardContent></Card>
-        ) : (
-          <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px' }}>
-            <TableContainer>
-              <Table stickyHeader size="small">
-                <TableHead><TableRow><TableCell sx={{ py: 1 }}>Nome do Produto</TableCell><TableCell align="center" sx={{ py: 1 }}>Unidade</TableCell><TableCell align="center" sx={{ py: 1 }}>Categoria</TableCell><TableCell align="center" sx={{ py: 1 }}>Ações</TableCell></TableRow></TableHead>
+          ) : filteredProdutos.length === 0 ? (
+            <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Inventory sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} /><Typography variant="h6" sx={{ color: 'text.secondary' }}>Nenhum produto encontrado</Typography></CardContent></Card>
+          ) : (
+            <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', width: '100%', overflow: 'hidden' }}>
+            <TableContainer sx={{ flex: 1, minHeight: 0 }}>
+              <Table stickyHeader>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Nome do Produto</TableCell>
+                    <TableCell align="center">Unidade</TableCell>
+                    <TableCell align="center">Categoria</TableCell>
+                    <TableCell align="center" width="80">Ações</TableCell>
+                  </TableRow>
+                </TableHead>
                 <TableBody>
                   {paginatedProdutos.map((produto) => {
                     const isInativo = !produto.ativo;
@@ -528,7 +587,6 @@ const ProdutosPage = () => {
                       key={produto.id} 
                       hover 
                       sx={{ 
-                        '& td': { py: 0.75 },
                         opacity: isInativo ? 0.5 : 1,
                         backgroundColor: isInativo ? 'action.hover' : 'inherit'
                       }}
@@ -537,11 +595,11 @@ const ProdutosPage = () => {
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                           <StatusIndicator status={produto.ativo ? 'ativo' : 'inativo'} size="small" />
                           <Box>
-                            <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
                               {produto.nome}
                               {isInativo && <Chip label="Inativo" size="small" color="default" sx={{ ml: 1 }} />}
                             </Typography>
-                            {produto.descricao && <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>{produto.descricao}</Typography>}
+                            {produto.descricao && <Typography variant="caption" color="text.secondary">{produto.descricao}</Typography>}
                           </Box>
                         </Box>
                       </TableCell>
@@ -550,22 +608,43 @@ const ProdutosPage = () => {
                           label={produto.unidade || 'UN'} 
                           size="small" 
                           variant="outlined"
-                          sx={{ fontSize: '0.75rem', fontWeight: 600 }}
                         />
                       </TableCell>
-                      <TableCell align="center"><Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>{produto.categoria || 'N/A'}</Typography></TableCell>
-
-                      <TableCell align="center"><Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => navigate(`/produtos/${produto.id}`)} color="primary"><Visibility fontSize="small" /></IconButton></Tooltip></TableCell>
+                      <TableCell align="center">
+                        <Typography variant="body2" color="text.secondary">{produto.categoria || 'N/A'}</Typography>
+                      </TableCell>
+                      <TableCell align="center">
+                        <Tooltip title="Ver Detalhes">
+                          <IconButton size="small" onClick={() => navigate(`/produtos/${produto.id}`)} color="primary">
+                            <Visibility fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </TableCell>
                     </TableRow>
                     );
                   })}
                 </TableBody>
               </Table>
             </TableContainer>
-            <TablePagination component="div" count={filteredProdutos.length} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage} onRowsPerPageChange={handleChangeRowsPerPage} rowsPerPageOptions={[10, 25, 50, 100]} labelRowsPerPage="Itens por página:" />
-          </Paper>
-        )}
-      </Box>
+            <Box sx={{ 
+              borderTop: '1px solid #e9ecef',
+              bgcolor: '#ffffff'
+            }}>
+              <TablePagination 
+                component="div" 
+                count={filteredProdutos.length} 
+                page={page} 
+                onPageChange={handleChangePage} 
+                rowsPerPage={rowsPerPage} 
+                onRowsPerPageChange={handleChangeRowsPerPage} 
+                rowsPerPageOptions={[10, 25, 50, 100]} 
+                labelRowsPerPage="Itens por página:" 
+              />
+            </Box>
+            </Box>
+          )}
+        </Box>
+      </PageContainer>
 
       {/* Modal de Criação */}
       <Dialog open={modalOpen} onClose={closeModal} maxWidth="md" fullWidth PaperProps={{ sx: { borderRadius: '12px' } }}>

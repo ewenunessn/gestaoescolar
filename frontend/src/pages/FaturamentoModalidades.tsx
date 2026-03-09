@@ -884,9 +884,9 @@ export default function FaturamentoModalidades() {
     <Box sx={{ p: 3 }}>
       <PageBreadcrumbs 
         items={[
-          { label: 'Pedidos', path: '/pedidos', icon: <ShoppingCartIcon fontSize="small" /> },
-          { label: `Pedido ${pedido.numero}`, path: `/pedidos/${id}` },
-          { label: 'Faturamentos', path: `/pedidos/${id}/faturamentos` },
+          { label: 'Compras', path: '/compras', icon: <ShoppingCartIcon fontSize="small" /> },
+          { label: `Compra ${pedido.numero}`, path: `/compras/${id}` },
+          { label: 'Faturamentos', path: `/compras/${id}/faturamentos` },
           { label: `Faturamento #${faturamentoId}` }
         ]}
       />
@@ -900,7 +900,7 @@ export default function FaturamentoModalidades() {
             variant="outlined"
             color="info"
             startIcon={<AssessmentIcon />}
-            onClick={() => navigate(`/pedidos/${id}/faturamento/${faturamentoId}/relatorio-tipo`)}
+            onClick={() => navigate(`/compras/${id}/faturamento/${faturamentoId}/relatorio-tipo`)}
           >
             Relatório por Tipo
           </Button>
@@ -924,7 +924,7 @@ export default function FaturamentoModalidades() {
           <Button
             variant="outlined"
             startIcon={<ArrowBackIcon />}
-            onClick={() => navigate(`/pedidos/${id}/faturamentos`)}
+            onClick={() => navigate(`/compras/${id}/faturamentos`)}
           >
             Voltar
           </Button>
@@ -975,14 +975,14 @@ export default function FaturamentoModalidades() {
                   <TableContainer component={Paper} variant="outlined">
                     <Table size="small" sx={{ minWidth: 650 }}>
                       <TableHead>
-                        <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                          <TableCell sx={{ fontWeight: 'bold', width: '35%' }}>Produto</TableCell>
-                          <TableCell align="center" sx={{ fontWeight: 'bold', width: '8%' }}>Unidade</TableCell>
-                          <TableCell align="center" sx={{ fontWeight: 'bold', width: '10%' }}>Qtd. Pedido</TableCell>
-                          <TableCell align="center" sx={{ fontWeight: 'bold', width: '12%' }}>Qtd. Alocada</TableCell>
-                          <TableCell align="center" sx={{ fontWeight: 'bold', width: '12%' }}>Preço Unit.</TableCell>
-                          <TableCell align="center" sx={{ fontWeight: 'bold', width: '13%' }}>Valor Total</TableCell>
-                          <TableCell align="center" sx={{ fontWeight: 'bold', width: '10%' }}>Ações</TableCell>
+                        <TableRow>
+                          <TableCell sx={{ width: '35%' }}>Produto</TableCell>
+                          <TableCell align="center" sx={{ width: '8%' }}>Unidade</TableCell>
+                          <TableCell align="center" sx={{ width: '10%' }}>Qtd. Pedido</TableCell>
+                          <TableCell align="center" sx={{ width: '12%' }}>Qtd. Alocada</TableCell>
+                          <TableCell align="center" sx={{ width: '12%' }}>Preço Unit.</TableCell>
+                          <TableCell align="center" sx={{ width: '13%' }}>Valor Total</TableCell>
+                          <TableCell align="center" sx={{ width: '10%' }}>Ações</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>

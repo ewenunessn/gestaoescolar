@@ -1,16 +1,16 @@
 import { Router } from "express";
 import {
-  listarPedidos,
-  buscarPedido,
-  criarPedido,
-  atualizarPedido,
-  atualizarStatusPedido,
-  excluirPedido,
-  obterEstatisticasPedidos,
+  listarCompras,
+  buscarCompra,
+  criarCompra,
+  atualizarCompra,
+  atualizarStatusCompra,
+  excluirCompra,
+  obterEstatisticasCompras,
   listarProdutosContrato,
   listarTodosProdutosDisponiveis,
-  resumoTipoFornecedorPedido
-} from "../controllers/pedidoController";
+  resumoTipoFornecedorCompra
+} from "../controllers/compraController";
 
 import {
   calcularPreviaFaturamento,
@@ -24,19 +24,19 @@ const router = Router();
 // Aplicar middleware de autenticação para todas as rotas
 router.use(authenticateToken);
 
-// Rotas de pedidos
-router.get("/estatisticas", obterEstatisticasPedidos);
+// Rotas de compras
+router.get("/estatisticas", obterEstatisticasCompras);
 router.get("/produtos-disponiveis", listarTodosProdutosDisponiveis);
-router.get("/", listarPedidos);
-router.get("/:id/resumo-tipo-fornecedor", resumoTipoFornecedorPedido);
-router.get("/:id", buscarPedido);
-router.post("/", criarPedido);
-router.put("/:id", atualizarPedido); // Agora permite editar itens também
-router.patch("/:id/status", atualizarStatusPedido);
-router.delete("/:id", excluirPedido);
+router.get("/", listarCompras);
+router.get("/:id/resumo-tipo-fornecedor", resumoTipoFornecedorCompra);
+router.get("/:id", buscarCompra);
+router.post("/", criarCompra);
+router.put("/:id", atualizarCompra); // Agora permite editar itens também
+router.patch("/:id/status", atualizarStatusCompra);
+router.delete("/:id", excluirCompra);
 router.get("/contrato/:contrato_id/produtos", listarProdutosContrato);
 
-// Rotas de faturamento específicas do pedido
+// Rotas de faturamento específicas da compra
 router.get("/:pedido_id/faturamento/previa", calcularPreviaFaturamento);
 router.post("/:pedido_id/faturamento", gerarFaturamento);
 router.get("/:pedido_id/faturamentos", buscarFaturamentosPorPedido);

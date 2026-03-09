@@ -127,7 +127,7 @@ export default function FaturamentosPedido() {
       
       // Redirecionar para a tela de edição
       setTimeout(() => {
-        navigate(`/pedidos/${id}/faturamento/${resultado.data.faturamento.id}`);
+        navigate(`/compras/${id}/faturamento/${resultado.data.faturamento.id}`);
       }, 1000);
     } catch (error) {
       console.error('Erro ao criar faturamento:', error);
@@ -137,7 +137,7 @@ export default function FaturamentosPedido() {
   };
 
   const editarFaturamento = (faturamentoId: number) => {
-    navigate(`/pedidos/${id}/faturamento/${faturamentoId}`);
+    navigate(`/compras/${id}/faturamento/${faturamentoId}`);
   };
 
   const excluirFaturamento = async (faturamentoId: number) => {
@@ -167,8 +167,8 @@ export default function FaturamentosPedido() {
     <Box sx={{ p: 3 }}>
       <PageBreadcrumbs 
         items={[
-          { label: 'Pedidos', path: '/pedidos', icon: <ShoppingCartIcon fontSize="small" /> },
-          { label: `Pedido ${pedido.numero}`, path: `/pedidos/${id}` },
+          { label: 'Compras', path: '/compras', icon: <ShoppingCartIcon fontSize="small" /> },
+          { label: `Compra ${pedido.numero}`, path: `/compras/${id}` },
           { label: 'Faturamentos' }
         ]}
       />
@@ -189,7 +189,7 @@ export default function FaturamentosPedido() {
           <Button
             variant="outlined"
             startIcon={<ArrowBackIcon />}
-            onClick={() => navigate(`/pedidos/${id}`)}
+            onClick={() => navigate(`/compras/${id}`)}
           >
             Voltar
           </Button>

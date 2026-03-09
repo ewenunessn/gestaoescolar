@@ -40,6 +40,7 @@ import { getLogo } from "../theme/theme";
 import { useConfigContext } from "../context/ConfigContext";
 import { useConfigChangeIndicator } from "../hooks/useConfigChangeIndicator";
 import { useCurrentUser } from "../hooks/useCurrentUser";
+import { usePageTitle } from "../contexts/PageTitleContext";
 
 
 const drawerWidth = 200;
@@ -88,7 +89,7 @@ const getMenuConfig = (configModuloSaldo: any) => {
       items: [
         { text: "Fornecedores", icon: <Business />, path: "/fornecedores" },
         { text: "Contratos", icon: <Assignment />, path: "/contratos" },
-        { text: "Pedidos", icon: <LocalShipping />, path: "/pedidos" },
+        { text: "Compras", icon: <LocalShipping />, path: "/compras" },
         ...saldoItems,
       ],
     },
@@ -139,10 +140,10 @@ const NavItem: React.FC<NavItemProps> = ({ item, isActive, onClick, collapsed })
           sx={{
             mx: 0.5,
             bgcolor: 'transparent',
-            color: isActive ? theme.palette.sidebarSelection : 'text.secondary',
+            color: isActive ? theme.palette.sidebarSelection : 'rgba(255, 255, 255, 0.7)',
             '&:hover': {
-              bgcolor: 'rgba(0, 0, 0, 0.04)',
-              color: isActive ? theme.palette.sidebarSelection : 'text.primary',
+              bgcolor: 'rgba(255, 255, 255, 0.1)',
+              color: isActive ? theme.palette.sidebarSelection : 'rgba(255, 255, 255, 1)',
             },
             transition: "all 0.2s ease-in-out",
             justifyContent: 'center',
@@ -197,10 +198,10 @@ const NavItem: React.FC<NavItemProps> = ({ item, isActive, onClick, collapsed })
         sx={{
           mx: 1,
           bgcolor: 'transparent',
-          color: isActive ? theme.palette.sidebarSelection : 'text.secondary',
+          color: isActive ? theme.palette.sidebarSelection : 'rgba(255, 255, 255, 0.7)',
           '&:hover': {
-            bgcolor: 'rgba(0, 0, 0, 0.04)',
-            color: isActive ? theme.palette.sidebarSelection : 'text.primary',
+            bgcolor: 'rgba(255, 255, 255, 0.1)',
+            color: isActive ? theme.palette.sidebarSelection : 'rgba(255, 255, 255, 1)',
           },
           transition: "all 0.2s ease-in-out",
           justifyContent: 'flex-start',
@@ -267,6 +268,7 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
   // Dados do usuário atual
   const { user, loading: loadingUser } = useCurrentUser();
+  const { pageTitle } = usePageTitle();
 
   // Configurar callback para mostrar indicador quando config mudar
   useEffect(() => {
@@ -303,9 +305,6 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
   const drawer = (
     <Box sx={{ height: "100%", display: "flex", flexDirection: "column", bgcolor: 'background.sidebar' }}>
-      {/* Espaço para o header fixo */}
-      <Box sx={{ height: 56 }} />
-
       {/* Indicador de mudanças recentes */}
       {hasRecentChange && !loadingConfig && (
         <Box sx={{
@@ -340,11 +339,11 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           background: 'transparent',
         },
         '&::-webkit-scrollbar-thumb': {
-          background: 'action.disabled',
+          background: 'rgba(255, 255, 255, 0.2)',
           borderRadius: '3px',
         },
         '&::-webkit-scrollbar-thumb:hover': {
-          background: 'action.hover',
+          background: 'rgba(255, 255, 255, 0.3)',
         },
       }}>
         {loadingConfig ? (
@@ -355,9 +354,9 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             py: 4,
             transition: 'all 0.3s ease-in-out'
           }}>
-            <CircularProgress size={24} />
+            <CircularProgress size={24} sx={{ color: 'rgba(255, 255, 255, 0.7)' }} />
             {!collapsed && (
-              <Typography variant="caption" sx={{ ml: 1, color: 'text.secondary' }}>
+              <Typography variant="caption" sx={{ ml: 1, color: 'rgba(255, 255, 255, 0.7)' }}>
                 Carregando configurações...
               </Typography>
             )}
@@ -374,14 +373,14 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                     px: 2,
                     py: 0.75,
                     borderBottom: 1,
-                    borderColor: 'divider',
+                    borderColor: 'rgba(255, 255, 255, 0.1)',
                     mb: 0.5
                   }}>
                     <Typography
                       variant="caption"
                       sx={{
                         fontWeight: "500",
-                        color: 'text.disabled',
+                        color: 'rgba(255, 255, 255, 0.5)',
                         fontSize: "0.7rem",
                         textTransform: 'uppercase',
                         letterSpacing: '0.3px'
@@ -416,7 +415,7 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       <Box sx={{
         p: collapsed ? 1 : 1.5,
         borderTop: 1,
-        borderColor: 'divider',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
         position: 'relative'
       }}>
         <Box sx={{ display: 'flex', gap: 1, flexDirection: collapsed ? 'column' : 'row', alignItems: 'center' }}>
@@ -428,37 +427,143 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               flex: collapsed ? 'none' : 1,
               textTransform: 'none',
               fontSize: '0.8rem',
-              color: 'text.secondary',
+              color: 'rgba(255, 255, 255, 0.7)',
               justifyContent: collapsed ? 'center' : 'flex-start',
               minHeight: '32px',
               minWidth: collapsed ? '40px' : 'auto',
               px: collapsed ? 1 : 1.5,
               '&:hover': {
-                bgcolor: 'action.hover',
-                color: 'text.primary',
+                bgcolor: 'rgba(255, 255, 255, 0.1)',
+                color: 'rgba(255, 255, 255, 1)',
               },
             }}
           >
             {collapsed ? <Logout fontSize="small" /> : 'Sair'}
           </Button>
-
-
+          
+          {/* Botão de colapsar/expandir - apenas desktop */}
+          <IconButton
+            onClick={handleCollapseToggle}
+            size="small"
+            sx={{
+              display: { xs: 'none', md: 'flex' },
+              color: 'rgba(255, 255, 255, 0.7)',
+              minWidth: collapsed ? '40px' : '32px',
+              minHeight: '32px',
+              '&:hover': {
+                bgcolor: 'rgba(255, 255, 255, 0.1)',
+                color: 'rgba(255, 255, 255, 1)',
+              },
+            }}
+          >
+            <MenuIcon fontSize="small" />
+          </IconButton>
         </Box>
-
-
       </Box>
     </Box>
   );
 
   return (
     <Box sx={{ display: "flex", minHeight: "100vh" }}>
-      {/* Header fixo no topo */}
+      {/* Menu Lateral */}
+      <Box component="nav" sx={{
+        width: { md: collapsed ? collapsedDrawerWidth : drawerWidth },
+        flexShrink: { md: 0 },
+        transition: 'width 0.3s ease-in-out'
+      }}>
+        {/* Drawer Mobile */}
+        <Drawer
+          variant="temporary"
+          open={mobileOpen}
+          onClose={handleDrawerToggle}
+          ModalProps={{ keepMounted: true }}
+          sx={{
+            display: { xs: "block", md: "none" },
+            "& .MuiDrawer-paper": {
+              width: drawerWidth,
+              bgcolor: 'background.sidebar',
+            }
+          }}
+        >
+          {/* Logo no topo do menu mobile */}
+          <Box sx={{ 
+            p: 2, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+            minHeight: 64
+          }}>
+            <img
+              src={getLogo()}
+              alt="Logo"
+              style={{
+                height: '40px',
+                width: 'auto',
+                objectFit: 'contain'
+              }}
+            />
+          </Box>
+          <IconButton
+            onClick={handleDrawerToggle}
+            sx={{
+              position: 'absolute',
+              right: 8,
+              top: 8,
+              color: 'rgba(255, 255, 255, 0.7)',
+            }}
+          >
+            <MenuIcon />
+          </IconButton>
+          {drawer}
+        </Drawer>
+        
+        {/* Drawer Desktop */}
+        <Drawer
+          variant="permanent"
+          sx={{
+            display: { xs: "none", md: "block" },
+            "& .MuiDrawer-paper": {
+              width: collapsed ? collapsedDrawerWidth : drawerWidth,
+              borderRight: 1,
+              borderColor: 'divider',
+              bgcolor: 'background.sidebar',
+              transition: 'width 0.3s ease-in-out',
+              overflowX: 'hidden'
+            }
+          }}
+          open
+        >
+          {/* Logo no topo do menu desktop */}
+          <Box sx={{ 
+            p: 2, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: collapsed ? 'center' : 'flex-start',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+            minHeight: 64
+          }}>
+            <img
+              src={getLogo()}
+              alt="Logo"
+              style={{
+                height: collapsed ? '32px' : '40px',
+                width: 'auto',
+                objectFit: 'contain'
+              }}
+            />
+          </Box>
+          {drawer}
+        </Drawer>
+      </Box>
+
+      {/* Header fixo - começa após o menu lateral */}
       <Box
         component="header"
         sx={{
           position: "fixed",
           top: 0,
-          left: 0,
+          left: { xs: 0, md: collapsed ? collapsedDrawerWidth : drawerWidth },
           right: 0,
           height: 56,
           bgcolor: 'background.paper',
@@ -467,12 +572,15 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           display: 'flex',
           alignItems: 'center',
           px: 2,
-          zIndex: 1300,
+          zIndex: 1200,
+          transition: 'left 0.3s ease-in-out',
         }}
       >
+        {/* Botão de menu apenas no mobile */}
         <IconButton
-          onClick={isMobile ? handleDrawerToggle : handleCollapseToggle}
+          onClick={handleDrawerToggle}
           sx={{
+            display: { xs: 'block', md: 'none' },
             color: 'text.secondary',
             mr: 1.5,
             '&:hover': {
@@ -484,15 +592,11 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         </IconButton>
 
         <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-          <img
-            src={getLogo()}
-            alt="Logo"
-            style={{
-              height: '40px',
-              width: 'auto',
-              objectFit: 'contain'
-            }}
-          />
+          {pageTitle && (
+            <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
+              {pageTitle}
+            </Typography>
+          )}
         </Box>
 
         {/* Informações do usuário */}
@@ -512,47 +616,7 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         </Box>
       </Box>
 
-      <Box component="nav" sx={{
-        width: { md: collapsed ? collapsedDrawerWidth : drawerWidth },
-        flexShrink: { md: 0 },
-        transition: 'width 0.3s ease-in-out'
-      }}>
-        <Drawer
-          variant="temporary"
-          open={mobileOpen}
-          onClose={handleDrawerToggle}
-          ModalProps={{ keepMounted: true }}
-          sx={{
-            display: { xs: "block", md: "none" },
-            "& .MuiDrawer-paper": {
-              width: drawerWidth,
-              bgcolor: 'background.sidebar',
-              pt: '56px', // Espaço para o header fixo
-            }
-          }}
-        >
-          {drawer}
-        </Drawer>
-        <Drawer
-          variant="permanent"
-          sx={{
-            display: { xs: "none", md: "block" },
-            "& .MuiDrawer-paper": {
-              width: collapsed ? collapsedDrawerWidth : drawerWidth,
-              borderRight: 1,
-              borderColor: 'divider',
-              bgcolor: 'background.sidebar',
-              transition: 'width 0.3s ease-in-out',
-              overflow: 'visible',
-              pt: '56px', // Espaço para o header fixo
-            },
-          }}
-          open
-        >
-          {drawer}
-        </Drawer>
-      </Box>
-
+      {/* Conteúdo principal */}
       <Box
         component="main"
         sx={{

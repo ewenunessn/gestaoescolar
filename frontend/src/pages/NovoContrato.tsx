@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import PageContainer from '../components/PageContainer';
 import {
   Box,
   Typography,
@@ -160,7 +161,8 @@ export default function NovoContrato() {
   }
 
   return (
-    <Box>
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+      <PageContainer>
       <PageBreadcrumbs 
         items={[
           { label: fornecedorIdParam ? 'Fornecedores' : 'Contratos', 
@@ -297,6 +299,7 @@ export default function NovoContrato() {
           </Box>
         </CardContent>
       </Card>
+      </PageContainer>
     </Box>
   );
 }

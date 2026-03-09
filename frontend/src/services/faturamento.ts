@@ -10,13 +10,13 @@ import {
 export const faturamentoService = {
   // Calcular prévia do faturamento
   async calcularPrevia(pedidoId: number): Promise<FaturamentoPrevia> {
-    const response = await api.get(`/pedidos/${pedidoId}/faturamento/previa`);
+    const response = await api.get(`/compras/${pedidoId}/faturamento/previa`);
     return response.data.data;
   },
 
   // Gerar faturamento definitivo
   async gerar(dados: GerarFaturamentoRequest): Promise<{ faturamento: Faturamento; previa: FaturamentoPrevia }> {
-    const response = await api.post(`/pedidos/${dados.pedido_id}/faturamento`, {
+    const response = await api.post(`/compras/${dados.pedido_id}/faturamento`, {
       observacoes: dados.observacoes
     });
     return response.data.data;
@@ -61,7 +61,7 @@ export const faturamentoService = {
 
   // Buscar faturamentos por pedido
   async buscarPorPedido(pedidoId: number): Promise<Faturamento[]> {
-    const response = await api.get(`/pedidos/${pedidoId}/faturamentos`);
+    const response = await api.get(`/compras/${pedidoId}/faturamentos`);
     return response.data.data;
   },
 

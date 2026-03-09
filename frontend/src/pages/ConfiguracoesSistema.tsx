@@ -1,4 +1,5 @@
 import React from 'react';
+import PageContainer from '../components/PageContainer';
 import {
   Box,
   Card,
@@ -17,7 +18,7 @@ import PageBreadcrumbs from '../components/PageBreadcrumbs';
 const ConfiguracoesSistema: React.FC = () => {
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+      <PageContainer>
         <PageBreadcrumbs 
           items={[
             { label: 'Configurações do Sistema', icon: <SettingsIcon fontSize="small" /> }
@@ -66,7 +67,7 @@ const ConfiguracoesSistema: React.FC = () => {
             ℹ️ Esta página está disponível para futuras configurações do sistema. Atualmente, o módulo de Saldo por Modalidades é o único disponível e está sempre ativo.
           </Typography>
         </Paper>
-      </Box>
+      </PageContainer>
     </Box>
   );
 };

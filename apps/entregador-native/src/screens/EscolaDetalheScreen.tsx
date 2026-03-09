@@ -55,12 +55,21 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
   const carregarNomeEntregador = async () => {
     try {
       const stored = await AsyncStorage.getItem('token');
+      console.log('📦 Token armazenado:', stored ? 'Existe' : 'Não existe');
       if (stored) {
         const parsed = JSON.parse(stored);
-        setNomeEntregador(parsed.nome || '');
+        console.log('👤 Dados do token:', { nome: parsed.nome, email: parsed.email });
+        if (parsed.nome) {
+          setNomeEntregador(parsed.nome);
+          console.log('✅ Nome do entregador definido:', parsed.nome);
+        } else {
+          console.warn('⚠️ Campo "nome" não encontrado no token');
+        }
+      } else {
+        console.warn('⚠️ Token não encontrado no AsyncStorage');
       }
     } catch (e) {
-      console.warn('Erro ao obter nome do usuário:', e);
+      console.error('❌ Erro ao obter nome do usuário:', e);
     }
   };
 
@@ -250,6 +259,17 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
           assinatura_base64: assinatura
         };
 
+        // Dados do comprovante para salvar offline
+        const comprovanteData = {
+          escola_id: escolaId,
+          nome_quem_entregou: nomeEntregador.trim(),
+          nome_quem_recebeu: nomeRecebedor.trim(),
+          observacao: observacao.trim() || undefined,
+          assinatura_base64: assinatura,
+          produto_nome: item.produto_nome,
+          quantidade_entregue: item.quantidade_a_entregar,
+        };
+
         if (isOnline) {
           // Online: tentar enviar diretamente
           try {
@@ -265,14 +285,14 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
               console.warn('⚠️ historico_id não encontrado na resposta:', response);
             }
           } catch (err) {
-            // Se falhar online, adicionar à fila para tentar depois
+            // Se falhar online, adicionar à fila para tentar depois (com dados do comprovante)
             console.log('Falha ao enviar online, adicionando à fila');
-            await addOperation(item.id, entregaData);
+            await addOperation(item.id, entregaData, comprovanteData);
           }
         } else {
-          // Offline: apenas adicionar à fila (não tentar enviar)
-          console.log(`Entrega do item ${item.id} adicionada à fila (offline)`);
-          await addOperation(item.id, entregaData);
+          // Offline: adicionar à fila com dados do comprovante
+          console.log(`Entrega do item ${item.id} adicionada à fila (offline) com dados do comprovante`);
+          await addOperation(item.id, entregaData, comprovanteData);
         }
       }
 

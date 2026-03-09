@@ -1,4 +1,5 @@
 import React from "react";
+import PageContainer from "../components/PageContainer";
 import {
   Box,
   Typography,
@@ -62,7 +63,7 @@ const Dashboard = () => {
   const perfilUsuario = localStorage.getItem("perfil") || "N/A";
 
   return (
-    <Box sx={{ p: 3 }}>
+    <PageContainer>
       {/* Cartão de Boas-Vindas */}
       <Card
         sx={{
@@ -132,7 +133,7 @@ const Dashboard = () => {
           ))}
         </Grid>
       </Box>
-    </Box>
+    </PageContainer>
   );
 };
 

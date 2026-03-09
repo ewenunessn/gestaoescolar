@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
+import PageContainer from '../components/PageContainer';
 import {
     Box, Typography, TextField, Button, IconButton, Select, MenuItem,
     FormControl, InputLabel, Card, CircularProgress, Alert, FormControlLabel,
@@ -368,11 +369,11 @@ const EscolaDetalhesPage = () => {
     const totalAlunos = useMemo(() => associacoes.reduce((total, assoc) => total + assoc.quantidade_alunos, 0), [associacoes]);
 
     if (loading) return <Box sx={{ display: "flex", justifyContent: "center", alignItems: 'center', minHeight: '80vh' }}><CircularProgress size={60} /></Box>;
-    if (error && !escola) return <Box sx={{ maxWidth: '1280px', mx: 'auto', p: 4 }}><Card><CardContent sx={{ textAlign: 'center', p: 4 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={loadData}>Tentar Novamente</Button></CardContent></Card></Box>;
+    if (error && !escola) return <PageContainer><Card><CardContent sx={{ textAlign: 'center', p: 4 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={loadData}>Tentar Novamente</Button></CardContent></Card></PageContainer>;
 
     return (
         <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-            <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+            <PageContainer>
                 <PageBreadcrumbs
                     items={[
                         { label: 'Escolas', path: '/escolas', icon: <SchoolIcon fontSize="small" /> },
@@ -399,10 +400,10 @@ const EscolaDetalhesPage = () => {
                     handleDeleteModalidade={handleDeleteModalidade}
                     formatDate={formatDate}
                 />
+            </PageContainer>
 
-
-
-                <Dialog open={modalOpen} onClose={() => setModalOpen(false)} maxWidth="sm" fullWidth>
+            {/* Modais fora do PageContainer */}
+            <Dialog open={modalOpen} onClose={() => setModalOpen(false)} maxWidth="sm" fullWidth>
                     <DialogTitle>{editingModalidade ? 'Editar Modalidade' : 'Adicionar Modalidade'}</DialogTitle>
                     <DialogContent dividers>
                         {editingModalidade ? (
@@ -437,7 +438,6 @@ const EscolaDetalhesPage = () => {
                     <DialogContent><Typography>Tem certeza que deseja excluir a escola "{escola?.nome}"? Esta ação não pode ser desfeita.</Typography></DialogContent>
                     <DialogActions><Button onClick={() => setDeleteDialogOpen(false)}>Cancelar</Button><Button onClick={handleDeleteEscola} variant="contained" color="error">Excluir</Button></DialogActions>
                 </Dialog>
-            </Box>
         </Box>
     );
 };

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import StatusIndicator from '../components/StatusIndicator';
 import PageHeader from '../components/PageHeader';
+import PageContainer from '../components/PageContainer';
+import TableFilter, { FilterField } from '../components/TableFilter';
 import { useNavigate } from 'react-router-dom';
 import {
     Box,
@@ -24,12 +26,12 @@ import {
     TablePagination,
     useTheme,
     useMediaQuery,
-    Collapse,
     SelectChangeEvent,
     Avatar,
     Tooltip,
     Switch,
-    FormControlLabel
+    FormControlLabel,
+    InputAdornment
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -38,7 +40,7 @@ import {
     Route as RouteIcon,
     Search as SearchIcon,
     Clear as ClearIcon,
-    TuneRounded,
+    FilterList as FilterIcon,
     Save as SaveIcon
 } from '@mui/icons-material';
 
@@ -62,12 +64,10 @@ const GestaoRotas: React.FC = () => {
     const [modalRotaAberto, setModalRotaAberto] = useState(false);
     const [rotaEditando, setRotaEditando] = useState<RotaEntrega | null>(null);
 
-    // Estados de filtros e busca
-    const [searchTerm, setSearchTerm] = useState('');
-    const [selectedStatus, setSelectedStatus] = useState('');
-    const [sortBy, setSortBy] = useState('name');
-    const [filtersExpanded, setFiltersExpanded] = useState(false);
-    const [hasActiveFilters, setHasActiveFilters] = useState(false);
+    // Estados de filtros - NOVO SISTEMA
+    const [filterOpen, setFilterOpen] = useState(false);
+    const [filterAnchorEl, setFilterAnchorEl] = useState<HTMLElement | null>(null);
+    const [filters, setFilters] = useState<Record<string, any>>({});
 
     // Estados de paginação
     const [page, setPage] = useState(0);
@@ -105,27 +105,56 @@ const GestaoRotas: React.FC = () => {
         loadRotas();
     }, [loadRotas]);
 
-    useEffect(() => {
-        const hasFilters = !!(selectedStatus || searchTerm);
-        setHasActiveFilters(hasFilters);
-    }, [selectedStatus, searchTerm]);
+    // Definir campos de filtro
+    const filterFields: FilterField[] = useMemo(() => [
+        {
+            type: 'select',
+            label: 'Status',
+            key: 'status',
+            options: [
+                { value: 'ativo', label: 'Ativas' },
+                { value: 'inativo', label: 'Inativas' },
+            ],
+        },
+        {
+            type: 'select',
+            label: 'Ordenar por',
+            key: 'sortBy',
+            options: [
+                { value: 'name', label: 'Nome (A-Z)' },
+                { value: 'escolas', label: 'Mais Escolas' },
+                { value: 'status', label: 'Status' },
+            ],
+        },
+    ], []);
 
 
 
     const filteredRotas = useMemo(() => {
         return rotas.filter(rota => {
-            const searchLower = searchTerm.toLowerCase();
-            const matchesSearch = rota.nome.toLowerCase().includes(searchLower) ||
-                rota.descricao?.toLowerCase().includes(searchLower);
-            const matchesStatus = !selectedStatus ||
-                (selectedStatus === 'ativo' ? rota.ativo : !rota.ativo);
-            return matchesSearch && matchesStatus;
+            // Busca por palavra-chave
+            if (filters.search) {
+                const searchLower = filters.search.toLowerCase();
+                if (!(rota.nome.toLowerCase().includes(searchLower) ||
+                      rota.descricao?.toLowerCase().includes(searchLower))) {
+                    return false;
+                }
+            }
+            
+            // Filtro por status
+            if (filters.status) {
+                const matchesStatus = filters.status === 'ativo' ? rota.ativo : !rota.ativo;
+                if (!matchesStatus) return false;
+            }
+            
+            return true;
         }).sort((a, b) => {
+            const sortBy = filters.sortBy || 'name';
             if (sortBy === 'escolas') return (b.total_escolas || 0) - (a.total_escolas || 0);
             if (sortBy === 'status') return Number(b.ativo) - Number(a.ativo);
             return a.nome.localeCompare(b.nome);
         });
-    }, [rotas, searchTerm, selectedStatus, sortBy]);
+    }, [rotas, filters]);
 
     const paginatedRotas = useMemo(() => {
         const startIndex = page * rowsPerPage;
@@ -138,15 +167,7 @@ const GestaoRotas: React.FC = () => {
         setPage(0);
     }, []);
 
-    useEffect(() => { setPage(0); }, [searchTerm, selectedStatus, sortBy]);
-
-    const clearFilters = useCallback(() => {
-        setSearchTerm('');
-        setSelectedStatus('');
-        setSortBy('name');
-    }, []);
-
-    const toggleFilters = useCallback(() => setFiltersExpanded(!filtersExpanded), [filtersExpanded]);
+    useEffect(() => { setPage(0); }, [filters]);
 
     const abrirModalRota = (rota?: RotaEntrega) => {
         if (rota) {
@@ -216,7 +237,7 @@ const GestaoRotas: React.FC = () => {
     };
 
     return (
-        <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+        <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
             {successMessage && (
                 <Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}>
                     <Alert severity="success" onClose={() => setSuccessMessage(null)}>
@@ -232,7 +253,7 @@ const GestaoRotas: React.FC = () => {
                 </Box>
             )}
 
-            <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+            <PageContainer fullHeight>
                 <PageBreadcrumbs
                     items={[
                         { label: 'Gestão de Rotas', icon: <RouteIcon fontSize="small" /> }
@@ -240,99 +261,84 @@ const GestaoRotas: React.FC = () => {
                 />
                 <PageHeader 
                     title="Gestão de Rotas de Entrega"
-                    totalCount={filteredRotas.length}
-                    statusLegend={[
-                      { status: 'ativo', label: 'ATIVAS', count: filteredRotas.filter(r => r.ativo).length },
-                      { status: 'inativo', label: 'INATIVAS', count: filteredRotas.filter(r => !r.ativo).length }
-                    ]}
                 />
 
-                <Box sx={{ mb: 4, display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'center', gap: 2 }}>
-                    <Box sx={{ display: 'flex', flex: 1, maxWidth: isMobile ? '100%' : 500, bgcolor: 'background.paper', borderRadius: 2, p: 0.5, border: '1px solid', borderColor: 'divider' }}>
-                        <IconButton size="small" sx={{ p: 1 }}>
-                            <SearchIcon fontSize="small" color="action" />
-                        </IconButton>
+                <Card sx={{ borderRadius: '12px', p: 2, mb: 2 }}>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2 }}>
                         <TextField
                             placeholder="Buscar rotas..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            fullWidth
-                            variant="standard"
-                            InputProps={{ disableUnderline: true }}
-                            sx={{ px: 1 }}
-                        />
-                        {searchTerm && (
-                            <IconButton size="small" onClick={() => setSearchTerm('')}>
-                                <ClearIcon fontSize="small" />
-                            </IconButton>
-                        )}
-                    </Box>
-
-                    <Box sx={{ display: 'flex', gap: 2 }}>
-                        <Button
-                            variant="outlined"
-                            onClick={toggleFilters}
-                            startIcon={<TuneRounded />}
-                            color={hasActiveFilters ? "primary" : "inherit"}
-                            sx={{ 
-                                textTransform: 'none', 
-                                borderColor: hasActiveFilters ? 'primary.main' : 'divider',
-                                color: hasActiveFilters ? 'primary.main' : 'text.secondary'
+                            value={filters.search || ''}
+                            onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                            size="small"
+                            sx={{ flex: 1, minWidth: '200px', '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <SearchIcon sx={{ color: 'text.secondary' }} />
+                                    </InputAdornment>
+                                ),
+                                endAdornment: filters.search && (
+                                    <InputAdornment position="end">
+                                        <IconButton size="small" onClick={() => setFilters(prev => ({ ...prev, search: '' }))}>
+                                            <ClearIcon fontSize="small" />
+                                        </IconButton>
+                                    </InputAdornment>
+                                )
                             }}
-                        >
-                            Filtros
-                        </Button>
-                        <Button
-                            variant="contained"
-                            onClick={() => abrirModalRota()}
-                            startIcon={<AddIcon />}
-                            disableElevation
-                            sx={{ textTransform: 'none', borderRadius: 2 }}
-                        >
-                            Nova Rota
-                        </Button>
+                        />
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Button
+                                variant="outlined"
+                                startIcon={<FilterIcon />}
+                                onClick={(e) => { setFilterAnchorEl(e.currentTarget); setFilterOpen(true); }}
+                                size="small"
+                            >
+                                Filtros
+                            </Button>
+                            <Button
+                                variant="contained"
+                                onClick={() => abrirModalRota()}
+                                startIcon={<AddIcon />}
+                                size="small"
+                                sx={{ bgcolor: '#059669', '&:hover': { bgcolor: '#047857' } }}
+                            >
+                                Nova Rota
+                            </Button>
+                        </Box>
+                    </Box>
+                </Card>
+
+                <TableFilter
+                    open={filterOpen}
+                    onClose={() => setFilterOpen(false)}
+                    onApply={setFilters}
+                    fields={filterFields}
+                    initialValues={filters}
+                    showSearch={false}
+                    anchorEl={filterAnchorEl}
+                />
+
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 2, px: 1 }}>
+                    <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 500 }}>
+                        Exibindo {filteredRotas.length} {filteredRotas.length === 1 ? 'rota' : 'rotas'}
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        {[
+                            { status: 'success', label: 'ATIVAS', count: filteredRotas.filter(r => r.ativo).length },
+                            { status: 'default', label: 'INATIVAS', count: filteredRotas.filter(r => !r.ativo).length }
+                        ].map((item) => (
+                            <Box key={item.status} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <StatusIndicator status={item.status} size="small" />
+                                <Typography variant="body2" sx={{ color: '#495057', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                    {item.label}
+                                </Typography>
+                                <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 600 }}>
+                                    {item.count}
+                                </Typography>
+                            </Box>
+                        ))}
                     </Box>
                 </Box>
-
-                <Collapse in={filtersExpanded}>
-                    <Box sx={{ mb: 4, p: 3, bgcolor: 'background.paper', borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
-                        <Grid container spacing={3}>
-                            <Grid item xs={12} sm={6} md={4}>
-                                <FormControl fullWidth size="small" variant="outlined">
-                                    <InputLabel>Status</InputLabel>
-                                    <Select
-                                        value={selectedStatus}
-                                        onChange={(e: SelectChangeEvent<string>) => setSelectedStatus(e.target.value)}
-                                        label="Status"
-                                    >
-                                        <MenuItem value="">Todos</MenuItem>
-                                        <MenuItem value="ativo">Ativos</MenuItem>
-                                        <MenuItem value="inativo">Inativos</MenuItem>
-                                    </Select>
-                                </FormControl>
-                            </Grid>
-                            <Grid item xs={12} sm={6} md={4}>
-                                <FormControl fullWidth size="small" variant="outlined">
-                                    <InputLabel>Ordenar por</InputLabel>
-                                    <Select
-                                        value={sortBy}
-                                        onChange={(e: SelectChangeEvent<string>) => setSortBy(e.target.value)}
-                                        label="Ordenar por"
-                                    >
-                                        <MenuItem value="name">Nome (A-Z)</MenuItem>
-                                        <MenuItem value="escolas">Mais Escolas</MenuItem>
-                                        <MenuItem value="status">Status</MenuItem>
-                                    </Select>
-                                </FormControl>
-                            </Grid>
-                            <Grid item xs={12} display="flex" justifyContent="flex-end">
-                                <Button size="small" onClick={clearFilters} disabled={!hasActiveFilters}>
-                                    Limpar Filtros
-                                </Button>
-                            </Grid>
-                        </Grid>
-                    </Box>
-                </Collapse>
 
                 {loading ? (
                     <Box display="flex" justifyContent="center" py={8}>
@@ -468,7 +474,7 @@ const GestaoRotas: React.FC = () => {
                     </Grid>
                 )}
                 
-                <Box mt={4} display="flex" justifyContent="center">
+                <Box mt={4} display="flex" justifyContent="center" sx={{ borderTop: '1px solid #e9ecef', pt: 2 }}>
                     <TablePagination
                         component="div"
                         count={filteredRotas.length}
@@ -476,8 +482,8 @@ const GestaoRotas: React.FC = () => {
                         onPageChange={handleChangePage}
                         rowsPerPage={rowsPerPage}
                         onRowsPerPageChange={handleChangeRowsPerPage}
-                        labelRowsPerPage="Itens por página"
-                        sx={{ border: 'none' }}
+                        rowsPerPageOptions={[10, 25, 50, 100]}
+                        labelRowsPerPage="Itens por página:"
                     />
                 </Box>
 
@@ -599,8 +605,7 @@ const GestaoRotas: React.FC = () => {
                         </Button>
                     </DialogActions>
                 </Dialog>
-
-            </Box>
+            </PageContainer>
         </Box>
     );
 };

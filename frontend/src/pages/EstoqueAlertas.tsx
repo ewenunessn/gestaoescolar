@@ -313,7 +313,7 @@ const EstoqueAlertas: React.FC = () => {
       </Box>
 
       {/* Tabela de alertas */}
-      <TableContainer component={Paper}>
+      <TableContainer>
         <Table>
           <TableHead>
             <TableRow>

@@ -248,7 +248,7 @@ const EstoqueLotes: React.FC = () => {
       )}
 
       {/* Tabela de lotes */}
-      <TableContainer component={Paper}>
+      <TableContainer>
         <Table>
           <TableHead>
             <TableRow>

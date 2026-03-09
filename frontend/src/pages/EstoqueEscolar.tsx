@@ -34,6 +34,7 @@ import {
   History
 } from "@mui/icons-material";
 import PageHeader from "../components/PageHeader";
+import PageContainer from "../components/PageContainer";
 import { listarEscolas } from "../services/escolas";
 import { listarEstoqueEscola, listarHistoricoEscola, registrarMovimentacao, type EstoqueEscolarItem, type EstoqueEscolarMovimentacao } from "../services/estoqueEscolarService";
 import { useToast } from "../hooks/useToast";
@@ -222,8 +223,8 @@ const EstoqueEscolar: React.FC = () => {
   };
 
   return (
-    <Box sx={{ maxWidth: "1280px", mx: "auto", px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
-      <PageHeader title="Estoque Escolar" totalCount={itensFiltrados.length} />
+    <PageContainer>
+      <PageHeader title="Estoque Escolar" />
 
       <Card sx={{ p: 3, mb: 3 }}>
         <Grid container spacing={2} alignItems="center">
@@ -559,7 +560,7 @@ const EstoqueEscolar: React.FC = () => {
           <Button onClick={() => setHistoricoOpen(false)}>Fechar</Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </PageContainer>
   );
 };
 

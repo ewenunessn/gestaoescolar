@@ -1054,7 +1054,7 @@ const GuiasDemanda: React.FC = () => {
           </Button>
         </Box>
 
-        <TableContainer component={Paper}>
+        <TableContainer>
           <Table>
             <TableHead>
               <TableRow>

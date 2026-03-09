@@ -2,7 +2,6 @@ import { Suspense, lazy, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { isAuthenticated } from "../services/auth";
 import LayoutModerno from "../components/LayoutModerno";
-
 import { EscolasProvider } from "../contexts/EscolasContext";
 
 // Componentes críticos carregados imediatamente
@@ -12,7 +11,6 @@ import Registro from "../pages/Registro";
 import Dashboard from "../pages/Dashboard";
 import LandingPage from "../pages/LandingPage";
 import InterestForm from "../pages/InterestForm";
-
 
 // Componente de loading
 const PageLoader = () => (
@@ -30,10 +28,7 @@ const PageLoader = () => (
 
 // Componente que verifica autenticação e redireciona de forma síncrona
 function RootRedirect() {
-  // Verifica autenticação de forma síncrona e redireciona imediatamente
   const isAuth = isAuthenticated();
-  
-  // Retorna o Navigate diretamente, sem useEffect
   return <Navigate to={isAuth ? "/dashboard" : "/login"} replace />;
 }
 
@@ -47,7 +42,6 @@ const RefeicaoDetalhe = lazy(() => import("../pages/RefeicaoDetalhe"));
 const Refeicoes = lazy(() => import("../pages/Refeicoes"));
 const Cardapios = lazy(() => import("../pages/CardapiosModalidade"));
 const CardapioCalendario = lazy(() => import("../pages/CardapioCalendario"));
-
 const Fornecedores = lazy(() => import("../pages/Fornecedores"));
 const FornecedorDetalhe = lazy(() => import("../pages/FornecedorDetalhe"));
 const ItensFornecedor = lazy(() => import("../pages/ItensFornecedor"));
@@ -71,16 +65,14 @@ const GuiaDetalhe = lazy(() => import("../pages/GuiaDetalhe"));
 const Entregas = lazy(() => import("../pages/Entregas"));
 const GestaoRotas = lazy(() => import("../pages/GestaoRotas"));
 const GerenciarEscolasRota = lazy(() => import("../pages/GerenciarEscolasRota"));
-const Pedidos = lazy(() => import("../pages/Pedidos"));
-const NovoPedido = lazy(() => import("../pages/NovoPedido"));
-const PedidoDetalhe = lazy(() => import("../pages/PedidoDetalhe"));
-const EditarPedido = lazy(() => import("../pages/EditarPedido"));
-const FaturamentosPedido = lazy(() => import("../pages/FaturamentosPedido"));
+const Compras = lazy(() => import("../pages/Compras"));
+const CompraForm = lazy(() => import("../pages/CompraForm"));
+const CompraDetalhe = lazy(() => import("../pages/CompraDetalhe"));
+const FaturamentosCompra = lazy(() => import("../pages/FaturamentosCompra"));
 const FaturamentoModalidades = lazy(() => import("../pages/FaturamentoModalidades"));
 const RelatorioFaturamentoTipoFornecedor = lazy(() => import("../pages/RelatorioFaturamentoTipoFornecedor"));
 const FaturamentoDetalhe = lazy(() => import("../pages/FaturamentoDetalhe"));
 const ComprovantesEntrega = lazy(() => import("../pages/ComprovantesEntrega"));
-
 
 interface AppRouterProps {
   routerConfig?: {
@@ -91,17 +83,14 @@ interface AppRouterProps {
   };
 }
 
-// Protege rotas privadas - redireciona para login se não autenticado
 function PrivateRoute({ children }: { children: JSX.Element }) {
   return isAuthenticated() ? children : <Navigate to="/login" replace />;
 }
 
-// Protege rotas públicas (login/registro) - redireciona para dashboard se já autenticado
 function PublicRoute({ children }: { children: JSX.Element }) {
   return !isAuthenticated() ? children : <Navigate to="/dashboard" replace />;
 }
 
-// Wrapper para rotas com lazy loading
 function LazyRoute({ children }: { children: JSX.Element }) {
   return (
     <PrivateRoute>
@@ -115,7 +104,6 @@ function LazyRoute({ children }: { children: JSX.Element }) {
 }
 
 export default function AppRouter({ routerConfig }: AppRouterProps) {
-  // Remove o loader inicial assim que o React montar
   useEffect(() => {
     const loader = document.getElementById('initial-loader');
     if (loader) {
@@ -197,7 +185,7 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
             <Route
               path="/refeicoes"
               element={<LazyRoute><Refeicoes /></LazyRoute>}
-            />
+            /> 
             <Route
               path="/refeicoes/:id"
               element={<LazyRoute><RefeicaoDetalhe /></LazyRoute>}
@@ -274,43 +262,17 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
               element={<LazyRoute><SaldoContratosModalidades /></LazyRoute>}
             />
 
-            {/* Rotas de Pedidos */}
-            <Route
-              path="/pedidos"
-              element={<LazyRoute><Pedidos /></LazyRoute>}
-            />
-            <Route
-              path="/pedidos/novo"
-              element={<LazyRoute><NovoPedido /></LazyRoute>}
-            />
-            <Route
-              path="/pedidos/:id/editar"
-              element={<LazyRoute><EditarPedido /></LazyRoute>}
-            />
-            <Route
-              path="/pedidos/:id/faturamentos"
-              element={<LazyRoute><FaturamentosPedido /></LazyRoute>}
-            />
-            <Route
-              path="/pedidos/:id/faturamento/:faturamentoId/relatorio-tipo"
-              element={<LazyRoute><RelatorioFaturamentoTipoFornecedor /></LazyRoute>}
-            />
-            <Route
-              path="/pedidos/:id/faturamento/:faturamentoId"
-              element={<LazyRoute><FaturamentoModalidades /></LazyRoute>}
-            />
-            <Route
-              path="/pedidos/:pedidoId/faturamento"
-              element={<LazyRoute><GerarFaturamento /></LazyRoute>}
-            />
-            <Route
-              path="/pedidos/:pedidoId/faturamento/visualizar"
-              element={<LazyRoute><FaturamentoDetalhe /></LazyRoute>}
-            />
-            <Route
-              path="/pedidos/:id"
-              element={<LazyRoute><PedidoDetalhe /></LazyRoute>}
-            />
+            {/* Rotas de Compras */}
+            <Route path="/compras" element={<LazyRoute><Compras /></LazyRoute>} />
+            <Route path="/compras/novo" element={<LazyRoute><CompraForm /></LazyRoute>} />
+            <Route path="/compras/:id/editar" element={<LazyRoute><CompraForm /></LazyRoute>} />
+            <Route path="/compras/:id" element={<LazyRoute><CompraDetalhe /></LazyRoute>} />
+            <Route path="/compras/:id/faturamentos" element={<LazyRoute><FaturamentosCompra /></LazyRoute>} />
+            <Route path="/compras/:id/faturamento/:faturamentoId/relatorio-tipo" element={<LazyRoute><RelatorioFaturamentoTipoFornecedor /></LazyRoute>} />
+            <Route path="/compras/:id/faturamento/:faturamentoId" element={<LazyRoute><FaturamentoModalidades /></LazyRoute>} />
+            <Route path="/compras/:pedidoId/faturamento" element={<LazyRoute><GerarFaturamento /></LazyRoute>} />
+            <Route path="/compras/:pedidoId/faturamento/visualizar" element={<LazyRoute><FaturamentoDetalhe /></LazyRoute>} />
+
 
             {/* Rotas de Demandas */}
             <Route

@@ -263,7 +263,7 @@ const EstoqueMovimentacoes: React.FC = () => {
       </Box>
 
       {/* Tabela de movimentações */}
-      <TableContainer component={Paper}>
+      <TableContainer>
         <Table>
           <TableHead>
             <TableRow>

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import StatusIndicator from "../components/StatusIndicator";
 import PageHeader from "../components/PageHeader";
+import PageContainer from "../components/PageContainer";
 import { listarCardapios } from "../services/cardapios";
 import {
   Box,
@@ -167,12 +168,12 @@ const CardapiosPage = () => {
   );
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
       {successMessage && (<Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}><Alert severity="success" onClose={() => setSuccessMessage(null)}>{successMessage}</Alert></Box>)}
-      <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+      <PageContainer fullHeight>
         <PageHeader 
           title="Cardápios"
-          totalCount={filteredCardapios.length}
+        />
           statusLegend={[
             { status: 'ativo', label: 'ATIVOS', count: filteredCardapios.filter(c => c.ativo).length },
             { status: 'inativo', label: 'INATIVOS', count: filteredCardapios.filter(c => !c.ativo).length }
@@ -199,35 +200,62 @@ const CardapiosPage = () => {
         ) : filteredCardapios.length === 0 ? (
           <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><MenuBook sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} /><Typography variant="h6" sx={{ color: 'text.secondary' }}>Nenhum cardápio encontrado</Typography></CardContent></Card>
         ) : (
-          <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px' }}>
+          <Box>
             <TableContainer>
-              <Table size="small">
-                <TableHead><TableRow><TableCell sx={{ py: 1 }}>Cardápio</TableCell><TableCell align="center" sx={{ py: 1 }}>Modalidade</TableCell><TableCell align="center" sx={{ py: 1 }}>Vigência</TableCell><TableCell align="center" sx={{ py: 1 }}>Ações</TableCell></TableRow></TableHead>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Cardápio</TableCell>
+                    <TableCell align="center">Modalidade</TableCell>
+                    <TableCell align="center">Vigência</TableCell>
+                    <TableCell align="center" width="80">Ações</TableCell>
+                  </TableRow>
+                </TableHead>
                 <TableBody>
                   {paginatedCardapios.map((cardapio) => (
-                    <TableRow key={cardapio.id} hover sx={{ '& td': { py: 0.75 } }}>
+                    <TableRow key={cardapio.id} hover>
                       <TableCell>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                           <StatusIndicator status={cardapio.ativo ? 'ativo' : 'inativo'} size="small" />
                           <Box>
-                            <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>{cardapio.nome}</Typography>
-                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>{cardapio.periodo_dias} dias</Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 600 }}>{cardapio.nome}</Typography>
+                            <Typography variant="caption" color="text.secondary">{cardapio.periodo_dias} dias</Typography>
                           </Box>
                         </Box>
                       </TableCell>
-                      <TableCell align="center"><Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>{cardapio.modalidades || 'Sem modalidades'}</Typography></TableCell>
-                      <TableCell align="center"><Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>{`${formatarData(cardapio.data_inicio)} a ${formatarData(cardapio.data_fim)}`}</Typography></TableCell>
-
-                      <TableCell align="center"><Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => navigate(`/cardapios/${cardapio.id}`)} color="primary"><Visibility fontSize="small" /></IconButton></Tooltip></TableCell>
+                      <TableCell align="center">
+                        <Typography variant="body2" color="text.secondary">{cardapio.modalidades || 'Sem modalidades'}</Typography>
+                      </TableCell>
+                      <TableCell align="center">
+                        <Typography variant="body2" color="text.secondary">
+                          {`${formatarData(cardapio.data_inicio)} a ${formatarData(cardapio.data_fim)}`}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="center">
+                        <Tooltip title="Ver Detalhes">
+                          <IconButton size="small" onClick={() => navigate(`/cardapios/${cardapio.id}`)} color="primary">
+                            <Visibility fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </TableContainer>
-            <TablePagination component="div" count={filteredCardapios.length} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage} onRowsPerPageChange={handleChangeRowsPerPage} rowsPerPageOptions={[10, 25, 50, 100]} labelRowsPerPage="Itens por página:" />
-          </Paper>
+            <TablePagination 
+              component="div" 
+              count={filteredCardapios.length} 
+              page={page} 
+              onPageChange={handleChangePage} 
+              rowsPerPage={rowsPerPage} 
+              onRowsPerPageChange={handleChangeRowsPerPage} 
+              rowsPerPageOptions={[10, 25, 50, 100]} 
+              labelRowsPerPage="Itens por página:" 
+            />
+          </Box>
         )}
-      </Box>
+      </PageContainer>
       
       {/* Menu de Ações */}
       <Menu anchorEl={actionsMenuAnchor} open={Boolean(actionsMenuAnchor)} onClose={() => setActionsMenuAnchor(null)}>

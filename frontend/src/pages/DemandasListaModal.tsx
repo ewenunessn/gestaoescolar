@@ -415,20 +415,20 @@ export default function DemandasListaModal() {
       </Card>
 
       {/* Tabela */}
-      <TableContainer component={Paper}>
+      <TableContainer>
         <Table>
           <TableHead>
-            <TableRow sx={{ bgcolor: 'primary.main' }}>
-              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Solicitante</TableCell>
-              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Nº Ofício</TableCell>
-              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Data Solicitação à SEMED</TableCell>
-              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Data Envio à SEMEAD</TableCell>
-              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Objeto</TableCell>
-              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Descrição</TableCell>
-              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Data Resposta</TableCell>
-              <TableCell align="center" sx={{ color: 'white', fontWeight: 'bold' }}>Dias</TableCell>
-              <TableCell align="center" sx={{ color: 'white', fontWeight: 'bold' }}>Status</TableCell>
-              <TableCell align="center" sx={{ color: 'white', fontWeight: 'bold' }}>Ações</TableCell>
+            <TableRow>
+              <TableCell>Solicitante</TableCell>
+              <TableCell>Nº Ofício</TableCell>
+              <TableCell>Data Solicitação à SEMED</TableCell>
+              <TableCell>Data Envio à SEMEAD</TableCell>
+              <TableCell>Objeto</TableCell>
+              <TableCell>Descrição</TableCell>
+              <TableCell>Data Resposta</TableCell>
+              <TableCell align="center">Dias</TableCell>
+              <TableCell align="center">Status</TableCell>
+              <TableCell align="center">Ações</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>

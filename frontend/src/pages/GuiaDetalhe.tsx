@@ -484,7 +484,7 @@ const GuiaDetalhe: React.FC = () => {
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+      <PageContainer>
         <PageBreadcrumbs 
           items={[
             { label: 'Guias de Demanda', path: '/guias-demanda', icon: <AssignmentIcon fontSize="small" /> },
@@ -758,8 +758,9 @@ const GuiaDetalhe: React.FC = () => {
             </>
           )}
         </Card>
-      </Box>
+      </PageContainer>
 
+      {/* Modais fora do PageContainer */}
       {/* Modal para adicionar produto individual */}
       <AdicionarProdutoIndividual
         open={openAddProdutoIndividual}

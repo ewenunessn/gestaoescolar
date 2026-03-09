@@ -564,77 +564,17 @@ export default function GerarDemanda() {
           <TableContainer>
             <Table>
               <TableHead>
-                <TableRow sx={{ backgroundColor: "#f8fafc" }}>
-                  <TableCell
-                    sx={{
-                      fontFamily: "Inter, sans-serif",
-                      fontWeight: 600,
-                      color: "#374151",
-                      fontSize: "0.875rem",
-                      borderBottom: "1px solid #e5e7eb",
-                    }}
-                  >
-                    Produto
-                  </TableCell>
-                  <TableCell
-                    sx={{
-                      fontFamily: "Inter, sans-serif",
-                      fontWeight: 600,
-                      color: "#374151",
-                      fontSize: "0.875rem",
-                      borderBottom: "1px solid #e5e7eb",
-                    }}
-                  >
-                    Unidade
-                  </TableCell>
-                  <TableCell
-                    align="right"
-                    sx={{
-                      fontFamily: "Inter, sans-serif",
-                      fontWeight: 600,
-                      color: "#374151",
-                      fontSize: "0.875rem",
-                      borderBottom: "1px solid #e5e7eb",
-                    }}
-                  >
-                    Quantidade
-                  </TableCell>
-                  <TableCell
-                    align="right"
-                    sx={{
-                      fontFamily: "Inter, sans-serif",
-                      fontWeight: 600,
-                      color: "#374151",
-                      fontSize: "0.875rem",
-                      borderBottom: "1px solid #e5e7eb",
-                    }}
-                  >
-                    Valor Total
-                  </TableCell>
-                  <TableCell
-                    align="center"
-                    sx={{
-                      fontFamily: "Inter, sans-serif",
-                      fontWeight: 600,
-                      color: "#374151",
-                      fontSize: "0.875rem",
-                      borderBottom: "1px solid #e5e7eb",
-                    }}
-                  >
-                    Detalhes
-                  </TableCell>
+                <TableRow>
+                  <TableCell>Produto</TableCell>
+                  <TableCell>Unidade</TableCell>
+                  <TableCell align="right">Quantidade</TableCell>
+                  <TableCell align="right">Valor Total</TableCell>
+                  <TableCell align="center">Detalhes</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {demanda.map((item) => (
-                  <TableRow
-                    key={item.produto_id}
-                    sx={{
-                      "&:hover": {
-                        backgroundColor: "#f8fafc",
-                      },
-                    }}
-                  >
+                  <TableRow key={item.produto_id}>
                     <TableCell
                       sx={{
                         borderBottom: "1px solid #f1f5f9",

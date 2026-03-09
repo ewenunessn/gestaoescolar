@@ -11,49 +11,49 @@ export async function listar(filtros?: PedidoFiltros) {
   if (filtros?.page) params.append('page', filtros.page.toString());
   if (filtros?.limit) params.append('limit', filtros.limit.toString());
 
-  const { data } = await apiWithRetry.get(`/pedidos?${params.toString()}`);
+  const { data } = await apiWithRetry.get(`/compras?${params.toString()}`);
   return data;
 }
 
-// Buscar pedido por ID
+// Buscar compra por ID
 export async function buscarPorId(id: number): Promise<PedidoDetalhado> {
-  const { data } = await apiWithRetry.get(`/pedidos/${id}`);
+  const { data } = await apiWithRetry.get(`/compras/${id}`);
   return data.data;
 }
 
-// Criar novo pedido
-export async function criar(pedido: any) {
-  const { data } = await apiWithRetry.post('/pedidos', pedido);
+// Criar nova compra
+export async function criar(compra: any) {
+  const { data } = await apiWithRetry.post('/compras', compra);
   return data.data;
 }
 
-// Atualizar pedido
-export async function atualizar(id: number, pedido: any) {
-  const { data } = await apiWithRetry.put(`/pedidos/${id}`, pedido);
+// Atualizar compra
+export async function atualizar(id: number, compra: any) {
+  const { data } = await apiWithRetry.put(`/compras/${id}`, compra);
   return data.data;
 }
 
-// Atualizar status do pedido
+// Atualizar status da compra
 export async function atualizarStatus(id: number, status: string, motivo?: string) {
-  const { data } = await apiWithRetry.patch(`/pedidos/${id}/status`, { status, motivo });
+  const { data } = await apiWithRetry.patch(`/compras/${id}/status`, { status, motivo });
   return data.data;
 }
 
-// Excluir pedido
+// Excluir compra
 export async function excluirPedido(id: number) {
-  const { data } = await apiWithRetry.delete(`/pedidos/${id}`);
+  const { data } = await apiWithRetry.delete(`/compras/${id}`);
   return data;
 }
 
 // Listar todos os produtos disponíveis
 export async function listarTodosProdutosDisponiveis() {
-  const { data } = await apiWithRetry.get('/pedidos/produtos-disponiveis');
+  const { data } = await apiWithRetry.get('/compras/produtos-disponiveis');
   return data.data;
 }
 
-// Resumo de compras por tipo de fornecedor em um pedido
+// Resumo de compras por tipo de fornecedor em uma compra
 export async function resumoTipoFornecedorPedido(pedidoId: number) {
-  const { data } = await apiWithRetry.get(`/pedidos/${pedidoId}/resumo-tipo-fornecedor`);
+  const { data } = await apiWithRetry.get(`/compras/${pedidoId}/resumo-tipo-fornecedor`);
   return data.success ? data.data : [];
 }
 

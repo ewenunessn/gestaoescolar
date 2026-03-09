@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import StatusIndicator from "../components/StatusIndicator";
 import PageHeader from "../components/PageHeader";
+import PageContainer from "../components/PageContainer";
 import {
   Box,
   Typography,
@@ -203,12 +204,12 @@ const EstoqueCentralPage: React.FC = () => {
   }), [posicoes, alertas]);
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
       {successMessage && (<Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}><Alert severity="success" onClose={() => setSuccessMessage(null)}>{successMessage}</Alert></Box>)}
-      <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+      <PageContainer fullHeight>
           <PageHeader 
             title="Estoque Central"
-            totalCount={filteredPosicoes.length}
+          />
             statusLegend={[
               { status: 'success', label: 'NORMAL', count: filteredPosicoes.filter(p => Number(p.quantidade_disponivel) > 0 && Number(p.quantidade_vencida) === 0).length },
               { status: 'warning', label: 'VENCE EM BREVE', count: filteredPosicoes.filter(p => p.proximo_vencimento && isVencimentoProximo(p.proximo_vencimento)).length },
@@ -249,10 +250,18 @@ const EstoqueCentralPage: React.FC = () => {
         ) : filteredPosicoes.length === 0 ? (
           <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Inventory sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} /><Typography variant="h6" sx={{ color: 'text.secondary' }}>Nenhuma posição de estoque encontrada</Typography></CardContent></Card>
         ) : (
-          <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px' }}>
+          <Box>
             <TableContainer>
               <Table>
-                <TableHead><TableRow><TableCell>Produto</TableCell><TableCell align="right">Qtd. Disponível</TableCell><TableCell align="right">Qtd. Vencida</TableCell><TableCell>Próximo Vencimento</TableCell><TableCell align="center">Ações</TableCell></TableRow></TableHead>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Produto</TableCell>
+                    <TableCell align="right">Qtd. Disponível</TableCell>
+                    <TableCell align="right">Qtd. Vencida</TableCell>
+                    <TableCell>Próximo Vencimento</TableCell>
+                    <TableCell align="center" width="80">Ações</TableCell>
+                  </TableRow>
+                </TableHead>
                 <TableBody>
                   {paginatedPosicoes.map((posicao) => {
                     const status = getStatusProduto(posicao);
@@ -282,7 +291,7 @@ const EstoqueCentralPage: React.FC = () => {
               </Table>
             </TableContainer>
             <TablePagination component="div" count={filteredPosicoes.length} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage} onRowsPerPageChange={handleChangeRowsPerPage} rowsPerPageOptions={[5, 10, 25, 50]} labelRowsPerPage="Itens por página:" />
-          </Paper>
+          </Box>
         )}
       </Box>
 
@@ -302,6 +311,7 @@ const EstoqueCentralPage: React.FC = () => {
           <Button onClick={handleSave} variant="contained" disabled={!formData.produto_id || !formData.lote || !formData.quantidade}>Registrar Entrada</Button>
         </DialogActions>
       </Dialog>
+      </PageContainer>
       
       {/* Menu de Ações */}
       <Menu anchorEl={actionsMenuAnchor} open={Boolean(actionsMenuAnchor)} onClose={() => setActionsMenuAnchor(null)}>

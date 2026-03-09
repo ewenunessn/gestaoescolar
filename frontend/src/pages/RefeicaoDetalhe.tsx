@@ -48,6 +48,7 @@ import RemoveIcon from "@mui/icons-material/Remove";
 import SearchIcon from "@mui/icons-material/Search";
 import RestaurantIcon from "@mui/icons-material/Restaurant";
 import PageBreadcrumbs from '../components/PageBreadcrumbs';
+import PageContainer from '../components/PageContainer';
 import {
   DndContext,
   DragEndEvent,
@@ -453,21 +454,22 @@ export default function RefeicaoDetalhe() {
     : null;
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
-      <Box maxWidth={1200} mx="auto" mt={4} px={2}>
-        <PageBreadcrumbs 
-          items={[
-            { label: 'Refeições', path: '/refeicoes', icon: <RestaurantIcon fontSize="small" /> },
-            { label: refeicao?.nome || 'Detalhes da Refeição' }
-          ]}
-        />
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <PageContainer>
+          <PageBreadcrumbs 
+            items={[
+              { label: 'Refeições', path: '/refeicoes', icon: <RestaurantIcon fontSize="small" /> },
+              { label: refeicao?.nome || 'Detalhes da Refeição' }
+            ]}
+          />
 
-        {/* Card Superior - Informações Básicas */}
+          {/* Card Superior - Informações Básicas */}
         <Card sx={{ mb: 3 }}>
           <CardContent>
             <Typography variant="h4" gutterBottom>
@@ -676,6 +678,7 @@ export default function RefeicaoDetalhe() {
             </Card>
           </Grid>
         </Grid>
+        </PageContainer>
 
         {/* Modal de confirmação de exclusão */}
         <Dialog open={openExcluir} onClose={() => setOpenExcluir(false)}>
@@ -715,7 +718,7 @@ export default function RefeicaoDetalhe() {
             </Paper>
           ) : null}
         </DragOverlay>
-      </Box>
-    </DndContext>
+      </DndContext>
+    </Box>
   );
 }

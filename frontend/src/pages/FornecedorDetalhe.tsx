@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import PageContainer from '../components/PageContainer';
 import {
   Box, Typography, Card, CardContent, Grid, Button, Chip, Alert,
   CircularProgress, Table, TableBody, TableCell, TableContainer,
@@ -134,12 +135,12 @@ export default function FornecedorDetalhe() {
   const handleVerItens = useCallback(() => navigate(`/fornecedores/${id}/itens`), [navigate, id]);
 
   if (loading) return <Box sx={{ display: "flex", justifyContent: "center", alignItems: 'center', minHeight: '80vh' }}><CircularProgress size={60} /></Box>;
-  if (error) return <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}><Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={carregarDados}>Tentar Novamente</Button></CardContent></Card></Box>;
+  if (error) return <PageContainer><Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={carregarDados}>Tentar Novamente</Button></CardContent></Card></PageContainer>;
   if (!fornecedor) return <Alert severity="error">Fornecedor não encontrado</Alert>;
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+      <PageContainer>
         <PageBreadcrumbs 
           items={[
             { label: 'Fornecedores', path: '/fornecedores', icon: <BusinessIcon fontSize="small" /> },
@@ -190,12 +191,12 @@ export default function FornecedorDetalhe() {
                 <Typography variant="h6" sx={{ color: 'text.secondary' }}>Nenhum contrato encontrado</Typography>
                 <Typography variant="body2" color="text.secondary">Cadastre o primeiro contrato para este fornecedor.</Typography>
             </Box>
-          ) : (
-            <TableContainer>
-              <Table>
-                <TableHead><TableRow>
-                  <TableCell sx={{ fontWeight: 600 }}>Número</TableCell><TableCell sx={{ fontWeight: 600 }}>Vigência</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Valor Total</TableCell><TableCell sx={{ fontWeight: 600 }}>Status</TableCell><TableCell align="center" sx={{ fontWeight: 600 }}>Ações</TableCell>
+            ) : (
+              <TableContainer>
+                <Table>
+                  <TableHead><TableRow>
+                  <TableCell>Número</TableCell><TableCell>Vigência</TableCell>
+                  <TableCell>Valor Total</TableCell><TableCell>Status</TableCell><TableCell align="center">Ações</TableCell>
                 </TableRow></TableHead>
                 <TableBody>
                   {contratos.map((contrato) => {
@@ -217,7 +218,7 @@ export default function FornecedorDetalhe() {
             </TableContainer>
           )}
         </Paper>
-      </Box>
+      </PageContainer>
     </Box>
   );
 }

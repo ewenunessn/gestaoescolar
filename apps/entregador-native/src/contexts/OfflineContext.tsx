@@ -10,12 +10,22 @@ interface OfflineOperation {
   data: ConfirmarEntregaData;
   timestamp: number;
   status?: 'pending' | 'syncing' | 'synced' | 'failed';
+  // Dados para criar comprovante após sincronização
+  comprovanteData?: {
+    escola_id: number;
+    nome_quem_entregou: string;
+    nome_quem_recebeu: string;
+    observacao?: string;
+    assinatura_base64: string;
+    produto_nome: string;
+    quantidade_entregue: number;
+  };
 }
 
 interface OfflineContextData {
   isOnline: boolean;
   pendingOperations: number;
-  addOperation: (itemId: number, data: ConfirmarEntregaData) => Promise<void>;
+  addOperation: (itemId: number, data: ConfirmarEntregaData, comprovanteData?: any) => Promise<void>;
   syncPendingOperations: () => Promise<void>;
 }
 
@@ -87,7 +97,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const addOperation = async (itemId: number, data: ConfirmarEntregaData) => {
+  const addOperation = async (itemId: number, data: ConfirmarEntregaData, comprovanteData?: any) => {
     try {
       const queue = await AsyncStorage.getItem('offline_queue');
       const operations: OfflineOperation[] = queue ? JSON.parse(queue) : [];
@@ -117,6 +127,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
         data,
         timestamp: Date.now(),
         status: 'pending',
+        comprovanteData, // Salvar dados do comprovante
       };
 
       operations.push(newOperation);
@@ -125,6 +136,9 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
 
       console.log(`✅ Operação adicionada à fila offline: ${newOperation.id}`);
       console.log(`   Item: ${itemId}, Quantidade: ${data.quantidade_entregue}`);
+      if (comprovanteData) {
+        console.log(`   📋 Dados do comprovante salvos para sincronização posterior`);
+      }
     } catch (error) {
       console.error('❌ Erro ao adicionar operação à fila:', error);
       throw error;
@@ -172,15 +186,22 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
 
       const failedOperations: OfflineOperation[] = [];
       const syncedIds: string[] = [];
+      const syncedWithComprovante: Array<{ operation: OfflineOperation; historicoId: number }> = [];
 
       for (const operation of pendingOps) {
         try {
           console.log(`🔄 Sincronizando operação ${operation.id} (item ${operation.itemId})...`);
           
           if (operation.type === 'confirmar_entrega') {
-            await confirmarEntregaItem(operation.itemId, operation.data);
+            const response = await confirmarEntregaItem(operation.itemId, operation.data);
             console.log(`✅ Operação ${operation.id} sincronizada com sucesso`);
             syncedIds.push(operation.id);
+            
+            // Se tiver dados de comprovante e historico_id, guardar para criar comprovante depois
+            if (operation.comprovanteData && response?.historico_id) {
+              syncedWithComprovante.push({ operation, historicoId: response.historico_id });
+              console.log(`📋 Operação marcada para criação de comprovante (historico_id: ${response.historico_id})`);
+            }
           }
         } catch (error: any) {
           console.error(`❌ Erro ao sincronizar operação ${operation.id}:`, error?.message || error);
@@ -191,6 +212,12 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
             failedOperations.push(failedOp);
           }
         }
+      }
+
+      // Criar comprovantes para entregas sincronizadas que têm dados de comprovante
+      if (syncedWithComprovante.length > 0) {
+        console.log(`📋 Criando comprovantes para ${syncedWithComprovante.length} entregas sincronizadas...`);
+        await criarComprovantesOffline(syncedWithComprovante);
       }
 
       // Manter apenas operações que falharam (não remover as sincronizadas com sucesso)
@@ -208,6 +235,63 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsSyncing(false);
       console.log('✓ Sincronização finalizada');
+    }
+  };
+
+  const criarComprovantesOffline = async (syncedOps: Array<{ operation: OfflineOperation; historicoId: number }>) => {
+    // Agrupar por escola_id para criar um comprovante por escola
+    const porEscola = syncedOps.reduce((acc, { operation, historicoId }) => {
+      const escolaId = operation.comprovanteData!.escola_id;
+      if (!acc[escolaId]) {
+        acc[escolaId] = [];
+      }
+      acc[escolaId].push({ operation, historicoId });
+      return acc;
+    }, {} as Record<number, Array<{ operation: OfflineOperation; historicoId: number }>>);
+
+    for (const [escolaId, ops] of Object.entries(porEscola)) {
+      try {
+        const primeiraOp = ops[0].operation;
+        const itensComprovante = ops.map(({ operation, historicoId }) => ({
+          historico_entrega_id: historicoId,
+          produto_nome: operation.comprovanteData!.produto_nome,
+          quantidade_entregue: operation.comprovanteData!.quantidade_entregue,
+        }));
+
+        const comprovanteData = {
+          escola_id: parseInt(escolaId),
+          nome_quem_entregou: primeiraOp.comprovanteData!.nome_quem_entregou,
+          nome_quem_recebeu: primeiraOp.comprovanteData!.nome_quem_recebeu,
+          observacao: primeiraOp.comprovanteData!.observacao,
+          assinatura_base64: primeiraOp.comprovanteData!.assinatura_base64,
+          itens: itensComprovante,
+        };
+
+        console.log(`📤 Criando comprovante para escola ${escolaId} com ${itensComprovante.length} itens...`);
+
+        const tokenData = await AsyncStorage.getItem('token');
+        const token = tokenData ? JSON.parse(tokenData).token : null;
+        const API_URL = 'https://gestaoescolar.ewertoncampos.com.br/api';
+
+        const response = await fetch(`${API_URL}/entregas/comprovantes`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify(comprovanteData),
+        });
+
+        if (response.ok) {
+          const comprovante = await response.json();
+          console.log(`✅ Comprovante ${comprovante.numero_comprovante} criado com sucesso para escola ${escolaId}`);
+        } else {
+          const errorText = await response.text();
+          console.error(`❌ Erro ao criar comprovante para escola ${escolaId}:`, errorText);
+        }
+      } catch (error) {
+        console.error(`❌ Erro ao criar comprovante para escola ${escolaId}:`, error);
+      }
     }
   };
 

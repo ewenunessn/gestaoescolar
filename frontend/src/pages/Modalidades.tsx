@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import StatusIndicator from "../components/StatusIndicator";
 import PageHeader from "../components/PageHeader";
+import PageContainer from "../components/PageContainer";
+import TableFilter, { FilterField } from "../components/TableFilter";
 import {
   Table,
   TableBody,
@@ -41,9 +43,7 @@ import {
   Delete as DeleteIcon,
   Add as AddIcon,
   Search as SearchIcon,
-  TuneRounded,
-  ExpandMore as ExpandMoreIcon,
-  ExpandLess as ExpandLessIcon,
+  FilterList as FilterIcon,
   Clear as ClearIcon,
   MoreVert,
   Category,
@@ -74,12 +74,10 @@ const ModalidadesPage = () => {
   // Estados do menu de ações
   const [actionsMenuAnchor, setActionsMenuAnchor] = useState<null | HTMLElement>(null);
 
-  // Estados de filtros
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState("");
-  const [sortBy, setSortBy] = useState("nome");
-  const [filtersExpanded, setFiltersExpanded] = useState(false);
-  const [hasActiveFilters, setHasActiveFilters] = useState(false);
+  // Estados de filtros - NOVO SISTEMA
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filterAnchorEl, setFilterAnchorEl] = useState<HTMLElement | null>(null);
+  const [filters, setFilters] = useState<Record<string, any>>({});
 
   // Estados de paginação
   const [page, setPage] = useState(0);
@@ -107,22 +105,50 @@ const ModalidadesPage = () => {
     }
   }, [queryError]);
 
-  // Removido useEffect para loadModalidades - React Query gerencia automaticamente
-
-  // Detectar filtros ativos
-  useEffect(() => {
-    setHasActiveFilters(!!(searchTerm || selectedStatus));
-  }, [searchTerm, selectedStatus]);
+  // Definir campos de filtro
+  const filterFields: FilterField[] = useMemo(() => [
+    {
+      type: 'select',
+      label: 'Status',
+      key: 'status',
+      options: [
+        { value: 'ativo', label: 'Ativas' },
+        { value: 'inativo', label: 'Inativas' },
+      ],
+    },
+    {
+      type: 'select',
+      label: 'Ordenar por',
+      key: 'sortBy',
+      options: [
+        { value: 'nome', label: 'Nome' },
+        { value: 'valor', label: 'Valor Repasse' },
+        { value: 'status', label: 'Status' },
+      ],
+    },
+  ], []);
 
   // Filtrar e ordenar modalidades
   const filteredModalidades = useMemo(() => {
+    const sortBy = filters.sortBy || 'nome';
+    
     return modalidades
       .filter((modalidade) => {
-        const matchesSearch = modalidade.nome.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesStatus = !selectedStatus ||
-          (selectedStatus === "ativo" && modalidade.ativo) ||
-          (selectedStatus === "inativo" && !modalidade.ativo);
-        return matchesSearch && matchesStatus;
+        // Busca por palavra-chave
+        if (filters.search) {
+          const searchLower = filters.search.toLowerCase();
+          if (!modalidade.nome.toLowerCase().includes(searchLower)) {
+            return false;
+          }
+        }
+
+        // Filtro de status
+        if (filters.status) {
+          if (filters.status === 'ativo' && !modalidade.ativo) return false;
+          if (filters.status === 'inativo' && modalidade.ativo) return false;
+        }
+
+        return true;
       })
       .sort((a, b) => {
         switch (sortBy) {
@@ -136,7 +162,7 @@ const ModalidadesPage = () => {
             return 0;
         }
       });
-  }, [modalidades, searchTerm, selectedStatus, sortBy]);
+  }, [modalidades, filters]);
 
   // Modalidades paginadas
   const paginatedModalidades = useMemo(() => {
@@ -157,18 +183,7 @@ const ModalidadesPage = () => {
   // Reset da página quando filtros mudam
   useEffect(() => {
     setPage(0);
-  }, [searchTerm, selectedStatus, sortBy]);
-
-  const clearFilters = useCallback(() => {
-    setSearchTerm("");
-    setSelectedStatus("");
-    setSortBy("nome");
-    setPage(0);
-  }, []);
-
-  const toggleFilters = useCallback(() => {
-    setFiltersExpanded(!filtersExpanded);
-  }, [filtersExpanded]);
+  }, [filters]);
 
   // Formatar valor para moeda
   const formatCurrency = (value: number | string) => {
@@ -177,34 +192,6 @@ const ModalidadesPage = () => {
       currency: 'BRL',
     }).format(Number(value) || 0);
   };
-
-  // Componente de conteúdo dos filtros
-  const FiltersContent = () => (
-    <Box sx={{ bgcolor: 'background.paper', borderRadius: '12px', p: 2 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-        <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'text.primary', fontSize: '0.9rem' }}>Filtros Avançados</Typography>
-        {hasActiveFilters && <Button size="small" onClick={clearFilters} sx={{ color: 'text.secondary', textTransform: 'none', fontSize: '0.8rem' }}>Limpar</Button>}
-      </Box>
-      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-        <FormControl sx={{ minWidth: 150 }} size="small">
-          <InputLabel>Status</InputLabel>
-          <Select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)} label="Status">
-            <MenuItem value="">Todos</MenuItem>
-            <MenuItem value="ativo">Ativas</MenuItem>
-            <MenuItem value="inativo">Inativas</MenuItem>
-          </Select>
-        </FormControl>
-        <FormControl sx={{ minWidth: 150 }} size="small">
-          <InputLabel>Ordenar por</InputLabel>
-          <Select value={sortBy} onChange={(e) => setSortBy(e.target.value)} label="Ordenar por">
-            <MenuItem value="nome">Nome</MenuItem>
-            <MenuItem value="valor">Valor Repasse</MenuItem>
-            <MenuItem value="status">Status</MenuItem>
-          </Select>
-        </FormControl>
-      </Box>
-    </Box>
-  );
 
   // Funções de modais
   const openModal = (modalidade: Modalidade | null = null) => {
@@ -268,7 +255,7 @@ const ModalidadesPage = () => {
   };
   
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
       {successMessage && (
         <Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}>
           <Alert severity="success" onClose={() => setSuccessMessage(null)} sx={{ minWidth: 300 }}>
@@ -277,33 +264,37 @@ const ModalidadesPage = () => {
         </Box>
       )}
 
-      <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+      <PageContainer fullHeight>
         <PageHeader 
           title="Modalidades"
-          totalCount={filteredModalidades.length}
-          statusLegend={[
-            { status: 'ativo', label: 'ATIVAS', count: filteredModalidades.filter(m => m.ativo).length },
-            { status: 'inativo', label: 'INATIVAS', count: filteredModalidades.filter(m => !m.ativo).length }
-          ]}
         />
-
-        <Card sx={{ borderRadius: '12px', p: 2, mb: 3 }}>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 2 }}>
+        
+        <Card sx={{ borderRadius: '12px', p: 2, mb: 2 }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2 }}>
             <TextField
               placeholder="Buscar modalidades..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={filters.search || ''}
+              onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
               size="small"
               sx={{ flex: 1, minWidth: '200px', '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
               InputProps={{
-                startAdornment: (<InputAdornment position="start"><SearchIcon sx={{ color: 'text.secondary' }} /></InputAdornment>),
-                endAdornment: searchTerm && (<InputAdornment position="end"><IconButton size="small" onClick={() => setSearchTerm('')}><ClearIcon fontSize="small" /></IconButton></InputAdornment>),
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ color: 'text.secondary' }} />
+                  </InputAdornment>
+                ),
+                endAdornment: filters.search && (
+                  <InputAdornment position="end">
+                    <IconButton size="small" onClick={() => setFilters(prev => ({ ...prev, search: '' }))}>
+                      <ClearIcon fontSize="small" />
+                    </IconButton>
+                  </InputAdornment>
+                ),
               }}
             />
             <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button variant={filtersExpanded || hasActiveFilters ? 'contained' : 'outlined'} startIcon={filtersExpanded ? <ExpandLessIcon /> : <TuneRounded />} onClick={toggleFilters} size="small">
+              <Button variant="outlined" startIcon={<FilterIcon />} onClick={(e) => { setFilterAnchorEl(e.currentTarget); setFilterOpen(true); }} size="small">
                 Filtros
-                {hasActiveFilters && !filtersExpanded && (<Box sx={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', bgcolor: 'error.main' }}/>)}
               </Button>
               <Button startIcon={<AddIcon />} onClick={() => openModal()} variant="contained" color="success" size="small">
                 Nova Modalidade
@@ -313,22 +304,56 @@ const ModalidadesPage = () => {
               </IconButton>
             </Box>
           </Box>
-
-          <Collapse in={filtersExpanded} timeout={300}><Box sx={{ mb: 2 }}><FiltersContent /></Box></Collapse>
-
-
         </Card>
 
-        {loading ? (
-          <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><CircularProgress size={60} /></CardContent></Card>
-        ) : error ? (
-          <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={() => refetch()}>Tentar Novamente</Button></CardContent></Card>
-        ) : filteredModalidades.length === 0 ? (
-          <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Category sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} /><Typography variant="h6" sx={{ color: 'text.secondary' }}>Nenhuma modalidade encontrada</Typography></CardContent></Card>
-        ) : (
-          <TableContainer component={Paper} sx={{ mt: 2, borderRadius: '12px' }}>
-            <Table size="small">
-              <TableHead>
+        <TableFilter
+          open={filterOpen}
+          onClose={() => setFilterOpen(false)}
+          onApply={setFilters}
+          fields={filterFields}
+          initialValues={filters}
+          showSearch={false}
+          anchorEl={filterAnchorEl}
+        />
+
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 2, px: 1 }}>
+          <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 500 }}>
+            Exibindo {filteredModalidades.length} {filteredModalidades.length === 1 ? 'resultado' : 'resultados'}
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <StatusIndicator status="ativo" size="small" />
+              <Typography variant="body2" sx={{ color: '#495057', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                ATIVAS
+              </Typography>
+              <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 600 }}>
+                {filteredModalidades.filter(m => m.ativo).length}
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <StatusIndicator status="inativo" size="small" />
+              <Typography variant="body2" sx={{ color: '#495057', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                INATIVAS
+              </Typography>
+              <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 600 }}>
+                {filteredModalidades.filter(m => !m.ativo).length}
+              </Typography>
+            </Box>
+          </Box>
+        </Box>
+
+        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          {loading ? (
+            <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><CircularProgress size={60} /></CardContent></Card>
+          ) : error ? (
+            <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={() => refetch()}>Tentar Novamente</Button></CardContent></Card>
+          ) : filteredModalidades.length === 0 ? (
+            <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Category sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} /><Typography variant="h6" sx={{ color: 'text.secondary' }}>Nenhuma modalidade encontrada</Typography></CardContent></Card>
+          ) : (
+            <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', width: '100%', overflow: 'hidden' }}>
+              <TableContainer sx={{ flex: 1, minHeight: 0 }}>
+                <Table stickyHeader>
+                <TableHead>
                 <TableRow>
                   <TableCell sx={{ py: 1 }}>Nome da Modalidade</TableCell>
                   <TableCell align="center" sx={{ py: 1 }}>Código Financeiro</TableCell>
@@ -383,10 +408,17 @@ const ModalidadesPage = () => {
                 ))}
               </TableBody>
             </Table>
-            <TablePagination component="div" count={filteredModalidades.length} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage} onRowsPerPageChange={handleChangeRowsPerPage} rowsPerPageOptions={[10, 20, 50, 100]} labelRowsPerPage="Linhas por página:" />
-          </TableContainer>
-        )}
-      </Box>
+              </TableContainer>
+              <Box sx={{ 
+                borderTop: '1px solid #e9ecef',
+                bgcolor: '#ffffff'
+              }}>
+                <TablePagination component="div" count={filteredModalidades.length} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage} onRowsPerPageChange={handleChangeRowsPerPage} rowsPerPageOptions={[10, 20, 50, 100]} labelRowsPerPage="Linhas por página:" />
+              </Box>
+            </Box>
+          )}
+        </Box>
+      </PageContainer>
 
       {/* Modal de Criação/Edição */}
       <Dialog open={modalOpen} onClose={closeModal} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: '12px' } }}>

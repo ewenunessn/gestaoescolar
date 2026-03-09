@@ -37,7 +37,7 @@ import saldoContratosModalidadesRoutes from "./modules/contratos/routes/saldoCon
 import guiaRoutes from "./modules/guias/routes/guiaRoutes";
 import entregaRoutes from "./modules/entregas/routes/entregaRoutes";
 import rotaRoutes from "./modules/entregas/routes/rotaRoutes";
-import pedidoRoutes from "./modules/pedidos/routes/pedidoRoutes";
+import compraRoutes from "./modules/compras/routes/compraRoutes";
 import faturamentoRoutes from "./modules/faturamentos/routes/faturamentoRoutes";
 import demandasRoutes from "./modules/demandas/routes/demandaRoutes";
 import recebimentoRoutes from "./modules/recebimentos/routes/recebimentoRoutes";
@@ -267,7 +267,7 @@ app.use("/api/saldo-contratos-modalidades", saldoContratosModalidadesRoutes);
 app.use("/api/guias", guiaRoutes);
 app.use("/api/entregas", entregaRoutes);
 app.use("/api/entregas", rotaRoutes);
-app.use("/api/pedidos", pedidoRoutes);
+app.use("/api/compras", compraRoutes);
 app.use("/api/faturamentos", faturamentoRoutes);
 app.use("/api/demandas", demandasRoutes);
 app.use("/api/recebimentos", recebimentoRoutes);
@@ -306,7 +306,7 @@ app.get("/", (req, res) => {
       "/api/fornecedores",
       "/api/contratos",
       "/api/contrato-produtos",
-      "/api/pedidos",
+      "/api/compras",
       "/api/refeicoes",
       "/api/cardapios",
       "/api/demanda",

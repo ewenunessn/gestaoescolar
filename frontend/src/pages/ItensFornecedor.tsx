@@ -27,7 +27,109 @@ const formatarMoeda = (valor: number) =>
 
 export default function ItensFornecedor() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [fornecedor, setFornecedor] = useState<any>(null);
+  const [itens, setItens] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [sortBy, setSortBy] = useState<'produto' | 'contrato' | 'quantidade' | 'preco'>('produto');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  useEffect(() => {
+    carregarDados();
+  }, [id]);
+
+  const carregarDados = async () => {
+    try {
+      setLoading(true);
+      const [fornecedorData, itensData] = await Promise.all([
+        buscarFornecedor(Number(id)),
+        listarItensFornecedor(Number(id))
+      ]);
+      setFornecedor(fornecedorData);
+      setItens(itensData);
+    } catch (err: any) {
+      setError(err.message || 'Erro ao carregar dados');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const itensFiltrados = useMemo(() => {
+    return itens.filter(item =>
+      item.produto_nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.contrato_numero.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [itens, searchTerm]);
+
+  const itensOrdenados = useMemo(() => {
+    return [...itensFiltrados].sort((a, b) => {
+      let aValue, bValue;
+      switch (sortBy) {
+        case 'produto':
+          aValue = a.produto_nome;
+          bValue = b.produto_nome;
+          break;
+        case 'contrato':
+          aValue = a.contrato_numero;
+          bValue = b.contrato_numero;
+          break;
+        case 'quantidade':
+          aValue = a.quantidade;
+          bValue = b.quantidade;
+          break;
+        case 'preco':
+          aValue = a.preco_unitario;
+          bValue = b.preco_unitario;
+          break;
+        default:
+          return 0;
+      }
+      if (sortOrder === 'asc') {
+        return aValue > bValue ? 1 : -1;
+      } else {
+        return aValue < bValue ? 1 : -1;
+      }
+    });
+  }, [itensFiltrados, sortBy, sortOrder]);
+
+  const itensPaginados = useMemo(() => {
+    const startIndex = page * rowsPerPage;
+    return itensOrdenados.slice(startIndex, startIndex + rowsPerPage);
+  }, [itensOrdenados, page, rowsPerPage]);
+
+  const handleSort = (column: typeof sortBy) => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(column);
+      setSortOrder('asc');
+    }
+  };
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
+        <CircularProgress size={60} />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <PageContainer>
+        <Alert severity="error">{error}</Alert>
+      </PageContainer>
+    );
+  }
+
+  return (
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+      <PageContainer>
+        <PageBreadcrumbs
   const [itens, setItens] = useState<ItemContrato[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -95,15 +197,15 @@ export default function ItensFornecedor() {
 
   if (error) {
     return (
-      <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+      <PageContainer>
         <Alert severity="error">{error}</Alert>
-      </Box>
+      </PageContainer>
     );
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <Box sx={{ maxWidth: '1400px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
+      <PageContainer fullHeight>
         <PageBreadcrumbs 
           items={[
             { label: 'Fornecedores', path: '/fornecedores', icon: <BusinessIcon fontSize="small" /> },
@@ -160,17 +262,17 @@ export default function ItensFornecedor() {
 
         {/* Tabela */}
         <Card sx={{ borderRadius: '12px', overflow: 'hidden' }}>
-          <TableContainer component={Paper}>
+          <TableContainer>
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ fontWeight: 600, bgcolor: 'grey.100' }}>Contrato</TableCell>
-                  <TableCell sx={{ fontWeight: 600, bgcolor: 'grey.100' }}>Produto</TableCell>
-                  <TableCell align="center" sx={{ fontWeight: 600, bgcolor: 'grey.100' }}>Marca</TableCell>
-                  <TableCell align="center" sx={{ fontWeight: 600, bgcolor: 'grey.100' }}>Unidade</TableCell>
-                  <TableCell align="center" sx={{ fontWeight: 600, bgcolor: 'grey.100' }}>Preço Unitário</TableCell>
-                  <TableCell align="center" sx={{ fontWeight: 600, bgcolor: 'grey.100' }}>Quantidade</TableCell>
-                  <TableCell align="center" sx={{ fontWeight: 600, bgcolor: 'grey.100' }}>Valor Total</TableCell>
+                  <TableCell>Contrato</TableCell>
+                  <TableCell>Produto</TableCell>
+                  <TableCell align="center">Marca</TableCell>
+                  <TableCell align="center">Unidade</TableCell>
+                  <TableCell align="center">Preço Unitário</TableCell>
+                  <TableCell align="center">Quantidade</TableCell>
+                  <TableCell align="center">Valor Total</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -208,7 +310,7 @@ export default function ItensFornecedor() {
             </Table>
           </TableContainer>
         </Card>
-      </Box>
+      </PageContainer>
     </Box>
   );
 }

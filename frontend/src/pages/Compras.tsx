@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import StatusIndicator from '../components/StatusIndicator';
-import PageHeader from '../components/PageHeader';
+import PageContainer from '../components/PageContainer';
+import TableFilter, { FilterField } from '../components/TableFilter';
 import {
   Box,
   Typography,
@@ -47,9 +48,7 @@ import {
   Clear as ClearIcon,
   Download,
   MoreVert,
-  TuneRounded,
-  ExpandMore,
-  ExpandLess,
+  FilterList as FilterIcon,
   ShoppingCart,
 } from '@mui/icons-material';
 import pedidosService from '../services/pedidos';
@@ -71,18 +70,14 @@ const PedidosPage = () => {
   const [actionsMenuAnchor, setActionsMenuAnchor] = useState<null | HTMLElement>(null);
   const [loadingExport, setLoadingExport] = useState(false);
 
-  // Estados de filtros
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState('');
-  const [selectedDataInicio, setSelectedDataInicio] = useState('');
-  const [selectedDataFim, setSelectedDataFim] = useState('');
-  const [sortBy, setSortBy] = useState('data');
-  const [filtersExpanded, setFiltersExpanded] = useState(false);
-  const [hasActiveFilters, setHasActiveFilters] = useState(false);
+  // Estados de filtros - NOVO SISTEMA
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filterAnchorEl, setFilterAnchorEl] = useState<HTMLElement | null>(null);
+  const [filters, setFilters] = useState<Record<string, any>>({});
 
   // Estados de paginação
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [rowsPerPage, setRowsPerPage] = useState(25);
   const [total, setTotal] = useState(0);
 
   // Estados do modal
@@ -95,9 +90,9 @@ const PedidosPage = () => {
       setLoading(true);
       setError(null);
       const response = await pedidosService.listar({
-        status: selectedStatus,
-        data_inicio: selectedDataInicio,
-        data_fim: selectedDataFim,
+        status: filters.status,
+        data_inicio: filters.data_from,
+        data_fim: filters.data_to,
         page: page + 1,
         limit: rowsPerPage
       });
@@ -110,31 +105,48 @@ const PedidosPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedStatus, selectedDataInicio, selectedDataFim, page, rowsPerPage]);
+  }, [filters.status, filters.data_from, filters.data_to, page, rowsPerPage]);
 
   useEffect(() => {
     loadPedidos();
   }, [loadPedidos]);
 
-  useEffect(() => {
-    const hasFilters = !!(selectedStatus || selectedDataInicio || selectedDataFim || searchTerm);
-    setHasActiveFilters(hasFilters);
-  }, [selectedStatus, selectedDataInicio, selectedDataFim, searchTerm]);
+  // Definir campos de filtro
+  const filterFields: FilterField[] = useMemo(() => [
+    {
+      type: 'select',
+      label: 'Status',
+      key: 'status',
+      options: [
+        { value: 'rascunho', label: 'Rascunho' },
+        { value: 'enviado', label: 'Enviado' },
+        { value: 'confirmado', label: 'Confirmado' },
+        { value: 'cancelado', label: 'Cancelado' },
+      ],
+    },
+    {
+      type: 'dateRange',
+      label: 'Período',
+      key: 'data',
+    },
+  ], []);
 
   const filteredPedidos = useMemo(() => {
     return pedidos.filter(pedido => {
-      const searchLower = searchTerm.toLowerCase();
-      const matchesSearch = pedido.numero?.toLowerCase().includes(searchLower) || 
-                          pedido.fornecedores_nomes?.toLowerCase().includes(searchLower);
-      return matchesSearch;
+      // Busca por palavra-chave
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        if (!(pedido.numero?.toLowerCase().includes(searchLower) || 
+              pedido.fornecedores_nomes?.toLowerCase().includes(searchLower))) {
+          return false;
+        }
+      }
+      return true;
     }).sort((a, b) => {
-      if (sortBy === 'numero') return (a.numero || '').localeCompare(b.numero || '');
-      if (sortBy === 'status') return (a.status || '').localeCompare(b.status || '');
-      if (sortBy === 'valor') return (b.valor_total || 0) - (a.valor_total || 0);
-      // Default: ordenar por data (mais recente primeiro)
+      // Ordenar por data (mais recente primeiro)
       return new Date(b.data_pedido).getTime() - new Date(a.data_pedido).getTime();
     });
-  }, [pedidos, searchTerm, sortBy]);
+  }, [pedidos, filters]);
 
   // Legenda de status
   const statusLegend = useMemo(() => {
@@ -163,17 +175,7 @@ const PedidosPage = () => {
     setPage(0);
   }, []);
   
-  useEffect(() => { setPage(0); }, [searchTerm, selectedStatus, selectedDataInicio, selectedDataFim, sortBy]);
-  
-  const clearFilters = useCallback(() => {
-    setSearchTerm('');
-    setSelectedStatus('');
-    setSelectedDataInicio('');
-    setSelectedDataFim('');
-    setSortBy('data');
-  }, []);
-  
-  const toggleFilters = useCallback(() => setFiltersExpanded(!filtersExpanded), [filtersExpanded]);
+  useEffect(() => { setPage(0); }, [filters]);
 
   const getStatusChip = (status: string) => {
     const statusInfo = STATUS_PEDIDO[status as keyof typeof STATUS_PEDIDO];
@@ -209,7 +211,7 @@ const PedidosPage = () => {
     }
   };
 
-  const handleViewDetails = (pedido: Pedido) => navigate(`/pedidos/${pedido.id}`);
+  const handleViewDetails = (pedido: Pedido) => navigate(`/compras/${pedido.id}`);
 
   const FiltersContent = () => (
     <Box sx={{ bgcolor: 'background.paper', borderRadius: '12px', p: 2 }}>
@@ -288,7 +290,7 @@ const PedidosPage = () => {
   );
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
       {successMessage && (
         <Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}>
           <Alert severity="success" onClose={() => setSuccessMessage(null)}>
@@ -304,19 +306,13 @@ const PedidosPage = () => {
         </Box>
       )}
 
-      <Box sx={{ maxWidth: '1280px', mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: 4 }}>
-        <PageHeader 
-          title="Pedidos de Compra" 
-          totalCount={filteredPedidos.length}
-          statusLegend={statusLegend}
-        />
-        
-        <Card sx={{ borderRadius: '12px', p: 2, mb: 3 }}>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 2 }}>
+      <PageContainer fullHeight>
+        <Card sx={{ borderRadius: '12px', p: 2, mb: 2 }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2 }}>
             <TextField
               placeholder="Buscar pedidos..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={filters.search || ''}
+              onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
               size="small"
               sx={{ flex: 1, minWidth: '200px', '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
               InputProps={{
@@ -325,9 +321,9 @@ const PedidosPage = () => {
                     <SearchIcon sx={{ color: 'text.secondary' }} />
                   </InputAdornment>
                 ),
-                endAdornment: searchTerm && (
+                endAdornment: filters.search && (
                   <InputAdornment position="end">
-                    <IconButton size="small" onClick={() => setSearchTerm('')}>
+                    <IconButton size="small" onClick={() => setFilters(prev => ({ ...prev, search: '' }))}>
                       <ClearIcon fontSize="small" />
                     </IconButton>
                   </InputAdornment>
@@ -336,39 +332,59 @@ const PedidosPage = () => {
             />
             <Box sx={{ display: 'flex', gap: 1 }}>
               <Button
+                variant="outlined"
+                startIcon={<FilterIcon />}
+                onClick={(e) => { setFilterAnchorEl(e.currentTarget); setFilterOpen(true); }}
                 size="small"
-                variant={filtersExpanded || hasActiveFilters ? 'contained' : 'outlined'}
-                startIcon={filtersExpanded ? <ExpandLess /> : <TuneRounded />}
-                onClick={toggleFilters}
               >
                 Filtros
-                {hasActiveFilters && !filtersExpanded && (
-                  <Box sx={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', bgcolor: 'error.main' }} />
-                )}
               </Button>
               <Button
-                size="small"
                 startIcon={<AddIcon />}
-                onClick={() => navigate('/pedidos/novo')}
+                onClick={() => navigate('/compras/novo')}
                 variant="contained"
                 color="success"
+                size="small"
               >
                 Novo Pedido
               </Button>
-              <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)}>
+              <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)} size="small">
                 <MoreVert />
               </IconButton>
             </Box>
           </Box>
-          
-          <Collapse in={filtersExpanded} timeout={400}>
-            <Box sx={{ mb: 3 }}>
-              <FiltersContent />
-            </Box>
-          </Collapse>
-          
-
         </Card>
+
+        <TableFilter
+          open={filterOpen}
+          onClose={() => setFilterOpen(false)}
+          onApply={setFilters}
+          fields={filterFields}
+          initialValues={filters}
+          showSearch={false}
+          anchorEl={filterAnchorEl}
+        />
+
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 2, px: 1 }}>
+          <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 500 }}>
+            Exibindo {filteredPedidos.length} {filteredPedidos.length === 1 ? 'resultado' : 'resultados'}
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            {statusLegend.map((item) => (
+              <Box key={item.status} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <StatusIndicator status={item.status} size="small" />
+                <Typography variant="body2" sx={{ color: '#495057', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  {item.label}
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 600 }}>
+                  {item.count}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+        </Box>
+
+        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
 
         {loading ? (
           <Card>
@@ -393,9 +409,9 @@ const PedidosPage = () => {
             </CardContent>
           </Card>
         ) : (
-          <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px' }}>
-            <TableContainer>
-              <Table>
+          <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', width: '100%', overflow: 'hidden' }}>
+            <TableContainer sx={{ flex: 1, minHeight: 0 }}>
+              <Table stickyHeader>
                 <TableHead>
                   <TableRow>
                     <TableCell>Número</TableCell>
@@ -404,7 +420,7 @@ const PedidosPage = () => {
                     <TableCell align="center">Status</TableCell>
                     <TableCell align="center">Valor Total</TableCell>
                     <TableCell align="center">Itens</TableCell>
-                    <TableCell align="center">Ações</TableCell>
+                    <TableCell align="center" width="100">Ações</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -477,19 +493,22 @@ const PedidosPage = () => {
                 </TableBody>
               </Table>
             </TableContainer>
-            <TablePagination
-              component="div"
-              count={filteredPedidos.length}
-              page={page}
-              onPageChange={handleChangePage}
-              rowsPerPage={rowsPerPage}
-              onRowsPerPageChange={handleChangeRowsPerPage}
-              rowsPerPageOptions={[5, 10, 25, 50]}
-              labelRowsPerPage="Itens por página:"
-            />
-          </Paper>
+            <Box sx={{ borderTop: '1px solid #e9ecef', bgcolor: '#ffffff' }}>
+              <TablePagination
+                component="div"
+                count={filteredPedidos.length}
+                page={page}
+                onPageChange={handleChangePage}
+                rowsPerPage={rowsPerPage}
+                onRowsPerPageChange={handleChangeRowsPerPage}
+                rowsPerPageOptions={[10, 25, 50, 100]}
+                labelRowsPerPage="Itens por página:"
+              />
+            </Box>
+          </Box>
         )}
-      </Box>
+        </Box>
+      </PageContainer>
 
       {/* Dialog de Exclusão */}
       <Dialog open={dialogExcluir} onClose={() => setDialogExcluir(false)} maxWidth="sm" fullWidth>

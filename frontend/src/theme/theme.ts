@@ -171,11 +171,31 @@ const baseTheme = {
         },
       },
     },
+    MuiTableContainer: {
+      styleOverrides: {
+        root: () => ({
+          borderRadius: 0,
+          border: 'none',
+          boxShadow: 'none',
+          backgroundColor: '#ffffff',
+          overflow: 'auto',
+          '@media print': {
+            maxHeight: 'none',
+            overflow: 'visible',
+            boxShadow: 'none',
+          },
+        }),
+      },
+    },
     MuiTable: {
       styleOverrides: {
         root: () => ({
+          borderCollapse: 'separate',
+          borderSpacing: 0,
           '& .MuiTableCell-root': {
-            borderBottom: '1px solid #e2e8f0',
+            borderLeft: 'none',
+            borderRight: 'none',
+            borderTop: 'none',
           },
         }),
       },
@@ -183,23 +203,63 @@ const baseTheme = {
     MuiTableHead: {
       styleOverrides: {
         root: () => ({
+          position: 'sticky',
+          top: 0,
+          zIndex: 10,
           '& .MuiTableCell-root': {
-            borderBottom: '1px solid #cbd5e1',
+            backgroundColor: '#f8f9fa',
+            color: '#495057',
             fontWeight: 600,
-            textAlign: 'center',
-            backgroundColor: '#f8fafc',
+            fontSize: '0.75rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            paddingTop: '14px',
+            paddingBottom: '14px',
+            paddingLeft: '16px',
+            paddingRight: '16px',
+            borderBottom: '1px solid #f1f3f5',
+            borderLeft: 'none',
+            borderRight: 'none',
+            borderTop: 'none',
+            position: 'sticky',
+            top: 0,
+            zIndex: 10,
+          },
+        }),
+      },
+    },
+    MuiTableBody: {
+      styleOverrides: {
+        root: () => ({
+          '& .MuiTableRow-root': {
+            backgroundColor: '#ffffff',
+            '&:hover': {
+              backgroundColor: '#f8f9fa',
+            },
+            '&:last-child .MuiTableCell-root': {
+              borderBottom: 0,
+            },
+          },
+          '& .MuiTableCell-root': {
+            paddingTop: '14px',
+            paddingBottom: '14px',
+            paddingLeft: '16px',
+            paddingRight: '16px',
+            fontSize: '0.875rem',
+            color: '#212529',
+            borderBottom: '1px solid #f1f3f5',
+            borderLeft: 'none',
+            borderRight: 'none',
+            borderTop: 'none',
           },
         }),
       },
     },
     MuiTableRow: {
       styleOverrides: {
-        root: ({ theme }) => ({
+        root: () => ({
           '&:hover': {
-            backgroundColor: `${theme.palette.tableHover} !important`,
-          },
-          '&.MuiTableRow-hover:hover': {
-            backgroundColor: `${theme.palette.tableHover} !important`,
+            backgroundColor: '#f8f9fa !important',
           },
         }),
       },
@@ -207,10 +267,9 @@ const baseTheme = {
     MuiTableCell: {
       styleOverrides: {
         root: () => ({
-          borderRight: '1px solid #f1f5f9',
-          '&:last-child': {
-            borderRight: 'none',
-          },
+          borderLeft: 'none !important',
+          borderRight: 'none !important',
+          borderTop: 'none !important',
         }),
       },
     },
@@ -317,7 +376,7 @@ export const lightTheme: Theme = createTheme({
     background: {
       default: '#EFEFEF',
       paper: '#ffffff',
-      sidebar: '#ffffff',
+      sidebar: '#1a1d29',
     },
     text: {
       primary: '#1e293b',

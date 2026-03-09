@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import { ArrowBack as ArrowBackIcon, Delete as DeleteIcon, PictureAsPdf as PdfIcon, MoreVert as MoreIcon } from '@mui/icons-material';
 import { useNotification } from '../context/NotificationContext';
+import PageContainer from '../components/PageContainer';
 import {
   buscarCardapioModalidade, listarRefeicoesCardapio, adicionarRefeicaoDia,
   removerRefeicaoDia, CardapioModalidade, RefeicaoDia, TIPOS_REFEICAO, MESES
@@ -286,37 +287,37 @@ const CardapioCalendarioPage: React.FC = () => {
   };
 
   return (
-    <Box sx={{ position: 'fixed', top: 64, left: 240, right: 0, bottom: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', bgcolor: '#fafafa' }}>
-      <Box display="flex" alignItems="center" px={3} py={2} bgcolor="white" borderBottom="1px solid #e0e0e0">
-        <IconButton onClick={() => navigate('/cardapios')} sx={{ mr: 2 }}>
-          <ArrowBackIcon />
-        </IconButton>
-        <Box flex={1}>
-          <Typography variant="h5">{cardapio?.nome}</Typography>
-          <Typography variant="body2" color="textSecondary">
-            {cardapio && `${MESES[cardapio.mes]} / ${cardapio.ano} - ${cardapio.modalidade_nome}`}
-          </Typography>
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+      <PageContainer>
+        <Box display="flex" alignItems="center" mb={2}>
+          <IconButton onClick={() => navigate('/cardapios')} sx={{ mr: 2 }}>
+            <ArrowBackIcon />
+          </IconButton>
+          <Box flex={1}>
+            <Typography variant="h5">{cardapio?.nome}</Typography>
+            <Typography variant="body2" color="textSecondary">
+              {cardapio && `${MESES[cardapio.mes]} / ${cardapio.ano} - ${cardapio.modalidade_nome}`}
+            </Typography>
+          </Box>
+          <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} color="primary">
+            <PdfIcon />
+          </IconButton>
+          <Menu
+            anchorEl={anchorEl}
+            open={Boolean(anchorEl)}
+            onClose={() => setAnchorEl(null)}
+          >
+            <MenuItem onClick={exportarCalendarioPDF}>
+              <PdfIcon sx={{ mr: 1 }} fontSize="small" />
+              Exportar Calendário
+            </MenuItem>
+            <MenuItem onClick={exportarFrequenciaPDF}>
+              <PdfIcon sx={{ mr: 1 }} fontSize="small" />
+              Exportar Frequência
+            </MenuItem>
+          </Menu>
         </Box>
-        <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} color="primary">
-          <PdfIcon />
-        </IconButton>
-        <Menu
-          anchorEl={anchorEl}
-          open={Boolean(anchorEl)}
-          onClose={() => setAnchorEl(null)}
-        >
-          <MenuItem onClick={exportarCalendarioPDF}>
-            <PdfIcon sx={{ mr: 1 }} fontSize="small" />
-            Exportar Calendário
-          </MenuItem>
-          <MenuItem onClick={exportarFrequenciaPDF}>
-            <PdfIcon sx={{ mr: 1 }} fontSize="small" />
-            Exportar Frequência
-          </MenuItem>
-        </Menu>
-      </Box>
 
-      <Box sx={{ flex: 1, overflow: 'hidden', p: 2, display: 'flex', flexDirection: 'column' }}>
         {/* Cabeçalho dos dias da semana */}
         <Box sx={{ mb: 1 }}>
           <Grid container spacing={0.5}>
@@ -338,16 +339,16 @@ const CardapioCalendarioPage: React.FC = () => {
           </Grid>
         </Box>
 
-        {/* Calendário - flex para distribuir altura */}
-        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0.5, minHeight: 0 }}>
+        {/* Calendário */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
           {getCalendarioSemanas().map((semana, semanaIndex) => (
-            <Box key={semanaIndex} sx={{ flex: 1, minHeight: 0 }}>
-              <Grid container spacing={0.5} sx={{ height: '100%' }}>
+            <Box key={semanaIndex}>
+              <Grid container spacing={0.5}>
                 {semana.map((dia, diaIndex) => {
                   if (dia === null) {
                     return (
-                      <Grid item xs={12 / 7} key={`empty-${diaIndex}`} sx={{ height: '100%' }}>
-                        <Box sx={{ height: '100%', bgcolor: '#e0e0e0', borderRadius: 1, border: '1px solid #bdbdbd' }} />
+                      <Grid item xs={12 / 7} key={`empty-${diaIndex}`}>
+                        <Box sx={{ height: 120, bgcolor: '#e0e0e0', borderRadius: 1, border: '1px solid #bdbdbd' }} />
                       </Grid>
                     );
                   }
@@ -356,11 +357,11 @@ const CardapioCalendarioPage: React.FC = () => {
                   const ehFimDeSemana = diaIndex === 0 || diaIndex === 6;
 
                   return (
-                    <Grid item xs={12 / 7} key={dia} sx={{ height: '100%' }}>
+                    <Grid item xs={12 / 7} key={dia}>
                       <Card 
                         sx={{ 
                           cursor: 'pointer',
-                          height: '100%',
+                          height: 120,
                           bgcolor: ehFimDeSemana ? '#fff3e0' : 'white',
                           border: '1px solid #e0e0e0',
                           '&:hover': { boxShadow: 2, borderColor: '#1976d2' },
@@ -448,7 +449,7 @@ const CardapioCalendarioPage: React.FC = () => {
             </Box>
           ))}
         </Box>
-      </Box>
+      </PageContainer>
 
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Adicionar Refeição - Dia {diaSelecionado}</DialogTitle>

@@ -181,8 +181,8 @@ export default function FaturamentoDetalhe() {
       queryClient.invalidateQueries({ queryKey: ['faturamentos'] });
       queryClient.invalidateQueries({ queryKey: ['pedidos'] });
       
-      // Redirecionar de volta para o pedido
-      navigate(`/pedidos/${pedidoId}`, {
+      // Redirecionar de volta para a compra
+      navigate(`/compras/${pedidoId}`, {
         state: { message: 'Faturamento excluído com sucesso!' }
       });
     } catch (error: any) {
@@ -471,8 +471,8 @@ export default function FaturamentoDetalhe() {
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="error">{erro}</Alert>
-        <Button onClick={() => navigate(`/pedidos/${pedidoId}`)} sx={{ mt: 2 }}>
-          Voltar ao Pedido
+        <Button onClick={() => navigate(`/compras/${pedidoId}`)} sx={{ mt: 2 }}>
+          Voltar à Compra
         </Button>
       </Box>
     );
@@ -481,9 +481,9 @@ export default function FaturamentoDetalhe() {
   if (faturamentos.length === 0) {
     return (
       <Box sx={{ p: 3 }}>
-        <Alert severity="info">Nenhum faturamento encontrado para este pedido</Alert>
-        <Button onClick={() => navigate(`/pedidos/${pedidoId}`)} sx={{ mt: 2 }}>
-          Voltar ao Pedido
+        <Alert severity="info">Nenhum faturamento encontrado para esta compra</Alert>
+        <Button onClick={() => navigate(`/compras/${pedidoId}`)} sx={{ mt: 2 }}>
+          Voltar à Compra
         </Button>
       </Box>
     );
@@ -492,7 +492,7 @@ export default function FaturamentoDetalhe() {
   return (
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-        <IconButton onClick={() => navigate(`/pedidos/${pedidoId}`)} sx={{ mr: 2 }}>
+        <IconButton onClick={() => navigate(`/compras/${pedidoId}`)} sx={{ mr: 2 }}>
           <ArrowBackIcon />
         </IconButton>
         <Typography variant="h4" component="h1" sx={{ flexGrow: 1 }}>
@@ -594,15 +594,15 @@ export default function FaturamentoDetalhe() {
                 <TableContainer component={Paper} variant="outlined">
                   <Table size="small">
                     <TableHead>
-                      <TableRow sx={{ bgcolor: 'primary.main' }}>
-                        <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Produto</TableCell>
-                        <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Modalidade</TableCell>
-                        <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Unidade</TableCell>
-                        <TableCell align="right" sx={{ color: 'white', fontWeight: 'bold' }}>Quantidade</TableCell>
-                        <TableCell align="right" sx={{ color: 'white', fontWeight: 'bold' }}>Preço Unit.</TableCell>
-                        <TableCell align="right" sx={{ color: 'white', fontWeight: 'bold' }}>Valor Total</TableCell>
-                        <TableCell align="center" sx={{ color: 'white', fontWeight: 'bold' }}>Status</TableCell>
-                        <TableCell align="center" sx={{ color: 'white', fontWeight: 'bold' }}>Ações</TableCell>
+                      <TableRow>
+                        <TableCell>Produto</TableCell>
+                        <TableCell>Modalidade</TableCell>
+                        <TableCell>Unidade</TableCell>
+                        <TableCell align="right">Quantidade</TableCell>
+                        <TableCell align="right">Preço Unit.</TableCell>
+                        <TableCell align="right">Valor Total</TableCell>
+                        <TableCell align="center">Status</TableCell>
+                        <TableCell align="center">Ações</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
