@@ -17,6 +17,12 @@ export async function listarFornecedores(req: Request, res: Response) {
       ORDER BY f.nome
     `);
 
+    // Desabilitar cache no Vercel
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
+
     res.json({
       success: true,
       data: result.rows,
