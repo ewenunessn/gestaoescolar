@@ -51,7 +51,6 @@ import {
   MoreVert,
   FilterList as FilterIcon,
 } from "@mui/icons-material";
-import { useNavigate } from "react-router-dom";
 import {
   listarFornecedores,
   criarFornecedor,

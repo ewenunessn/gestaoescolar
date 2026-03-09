@@ -1,7 +1,9 @@
 import { apiWithRetry } from "./api";
 
 export async function listarFornecedores() {
-  const { data } = await apiWithRetry.get("/fornecedores");
+  // Adicionar timestamp para evitar cache do navegador
+  const timestamp = Date.now();
+  const { data } = await apiWithRetry.get(`/fornecedores?_t=${timestamp}`);
   return data.data || []; // Return the actual array from the response
 }
 

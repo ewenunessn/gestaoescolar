@@ -8,7 +8,9 @@ export const escolasService = {
 };
 
 export async function listarEscolas() {
-  const { data } = await apiWithRetry.get("/escolas");
+  // Adicionar timestamp para evitar cache do navegador
+  const timestamp = Date.now();
+  const { data } = await apiWithRetry.get(`/escolas?_t=${timestamp}`);
   return data.data || []; // Return the actual array from the response
 }
 

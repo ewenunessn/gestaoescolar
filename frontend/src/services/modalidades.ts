@@ -22,7 +22,9 @@ export interface ModalidadeInput {
 }
 
 export async function listarModalidades(): Promise<Modalidade[]> {
-  const { data } = await apiWithRetry.get("/modalidades");
+  // Adicionar timestamp para evitar cache do navegador
+  const timestamp = Date.now();
+  const { data } = await apiWithRetry.get(`/modalidades?_t=${timestamp}`);
   // Verificar se a resposta tem o novo formato { success: true, data: [...] }
   if (data.success && Array.isArray(data.data)) {
     return data.data;

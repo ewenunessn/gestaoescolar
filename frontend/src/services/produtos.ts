@@ -9,7 +9,9 @@ import {
 } from '../types/produto';
 
 export async function listarProdutos(): Promise<Produto[]> {
-  const { data } = await apiWithRetry.get("/produtos");
+  // Adicionar timestamp para evitar cache do navegador
+  const timestamp = Date.now();
+  const { data } = await apiWithRetry.get(`/produtos?_t=${timestamp}`);
   return data.data || []; // Return the actual array from the response
 }
 
