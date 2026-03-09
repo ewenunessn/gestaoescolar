@@ -506,13 +506,6 @@ export default function DemandasLista() {
         <PageHeader 
           title="Gerenciamento de Demandas"
         />
-          statusLegend={[
-            { status: 'pendente', label: 'PENDENTES', count: demandas.filter(d => d.status === 'pendente').length },
-            { status: 'enviado_semead', label: 'ENVIADAS', count: demandas.filter(d => d.status === 'enviado_semead').length },
-            { status: 'atendido', label: 'ATENDIDAS', count: demandas.filter(d => d.status === 'atendido').length },
-            { status: 'nao_atendido', label: 'NÃO ATENDIDAS', count: demandas.filter(d => d.status === 'nao_atendido').length }
-          ]}
-        />
         
         <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', p: 3, mb: 3 }}>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 3 }}>
