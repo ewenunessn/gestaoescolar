@@ -114,11 +114,21 @@ export default function FornecedorDetalhe() {
       );
       setContratos(contratosDoFornecedor);
     } catch (err: any) {
-      setError(err.message || "Erro ao carregar dados do fornecedor");
+      const errorMessage = err.message || "Erro ao carregar dados do fornecedor";
+      setError(errorMessage);
+      
+      // Se for erro 404 (fornecedor não encontrado), redirecionar após 2 segundos
+      if (err.response?.status === 404 || errorMessage.includes('não encontrado')) {
+        setTimeout(() => {
+          navigate('/fornecedores', { 
+            state: { message: 'Fornecedor não encontrado. Pode ter sido excluído.' } 
+          });
+        }, 2000);
+      }
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, navigate]);
 
   useEffect(() => {
     carregarDados();

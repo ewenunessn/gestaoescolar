@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import StatusIndicator from "../components/StatusIndicator";
 import PageContainer from "../components/PageContainer";
 import TableFilter, { FilterField } from "../components/TableFilter";
@@ -81,6 +82,7 @@ interface Fornecedor {
 
 const FornecedoresPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Estados de filtros - NOVO SISTEMA
   const [filterOpen, setFilterOpen] = useState(false);
@@ -190,6 +192,15 @@ const FornecedoresPage: React.FC = () => {
   useEffect(() => {
     setPage(0);
   }, [filters]);
+
+  // Mostrar mensagem se vier de redirecionamento
+  useEffect(() => {
+    if (location.state?.message) {
+      setSuccessMessage(location.state.message);
+      // Limpar o state para não mostrar novamente
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
 
   // Funções de modais
   const openModal = (fornecedor: Fornecedor | null = null) => {
@@ -421,6 +432,8 @@ const FornecedoresPage: React.FC = () => {
 
       {/* Menu de Ações */}
       <Menu anchorEl={actionsMenuAnchor} open={Boolean(actionsMenuAnchor)} onClose={() => setActionsMenuAnchor(null)}>
+        <MenuItem onClick={() => { setActionsMenuAnchor(null); refetch(); setSuccessMessage('Lista atualizada com sucesso!'); }}><SearchIcon sx={{ mr: 1 }} /> Atualizar Lista</MenuItem>
+        <Divider />
         <MenuItem onClick={() => { setActionsMenuAnchor(null); setImportModalOpen(true); }}><Upload sx={{ mr: 1 }} /> Importar em Lote</MenuItem>
         <MenuItem onClick={() => { setActionsMenuAnchor(null); handleExportarFornecedores(); }}><Download sx={{ mr: 1 }} /> Exportar Excel</MenuItem>
       </Menu>

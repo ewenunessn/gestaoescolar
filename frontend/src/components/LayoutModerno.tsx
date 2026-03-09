@@ -332,6 +332,7 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         flexGrow: 1,
         overflow: "auto",
         py: 1,
+        minHeight: 0, // Importante para o flex funcionar corretamente
         '&::-webkit-scrollbar': {
           width: '6px',
         },
@@ -416,7 +417,8 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         p: collapsed ? 1 : 1.5,
         borderTop: 1,
         borderColor: 'rgba(255, 255, 255, 0.1)',
-        position: 'relative'
+        position: 'relative',
+        flexShrink: 0, // Impede que o rodapé encolha
       }}>
         <Box sx={{ display: 'flex', gap: 1, flexDirection: collapsed ? 'column' : 'row', alignItems: 'center' }}>
           <Button
