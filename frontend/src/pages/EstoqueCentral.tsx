@@ -210,13 +210,6 @@ const EstoqueCentralPage: React.FC = () => {
           <PageHeader 
             title="Estoque Central"
           />
-            statusLegend={[
-              { status: 'success', label: 'NORMAL', count: filteredPosicoes.filter(p => Number(p.quantidade_disponivel) > 0 && Number(p.quantidade_vencida) === 0).length },
-              { status: 'warning', label: 'VENCE EM BREVE', count: filteredPosicoes.filter(p => p.proximo_vencimento && isVencimentoProximo(p.proximo_vencimento)).length },
-              { status: 'error', label: 'COM VENCIDOS', count: filteredPosicoes.filter(p => Number(p.quantidade_vencida) > 0).length },
-              { status: 'default', label: 'SEM ESTOQUE', count: filteredPosicoes.filter(p => Number(p.quantidade_disponivel) === 0).length }
-            ]}
-          />
 
         <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', p: 3, mb: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
@@ -293,7 +286,7 @@ const EstoqueCentralPage: React.FC = () => {
             <TablePagination component="div" count={filteredPosicoes.length} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage} onRowsPerPageChange={handleChangeRowsPerPage} rowsPerPageOptions={[5, 10, 25, 50]} labelRowsPerPage="Itens por página:" />
           </Box>
         )}
-      </Box>
+      </PageContainer>
 
       {/* Modal de Nova Entrada */}
       <Dialog open={modalOpen} onClose={closeModal} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: '12px' } }}>
@@ -311,7 +304,6 @@ const EstoqueCentralPage: React.FC = () => {
           <Button onClick={handleSave} variant="contained" disabled={!formData.produto_id || !formData.lote || !formData.quantidade}>Registrar Entrada</Button>
         </DialogActions>
       </Dialog>
-      </PageContainer>
       
       {/* Menu de Ações */}
       <Menu anchorEl={actionsMenuAnchor} open={Boolean(actionsMenuAnchor)} onClose={() => setActionsMenuAnchor(null)}>
