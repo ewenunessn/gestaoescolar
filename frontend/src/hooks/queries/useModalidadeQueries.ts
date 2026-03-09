@@ -14,7 +14,10 @@ export function useModalidades() {
   return useQuery({
     queryKey: queryKeys.modalidades.list(),
     queryFn: listarModalidades,
-    ...cacheConfig.moderate,
+    staleTime: 0, // Sempre considerar dados como desatualizados
+    gcTime: 5 * 60 * 1000, // Manter em cache por 5 minutos
+    refetchOnMount: true, // Sempre refetch ao montar
+    refetchOnWindowFocus: true, // Refetch ao focar na janela
   });
 }
 
@@ -39,10 +42,11 @@ export function useCreateModalidade() {
   return useMutation({
     mutationFn: criarModalidade,
     onSuccess: () => {
-      // Invalidar lista de modalidades
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.modalidades.all
-      });
+      // Remover TODOS os caches de modalidades
+      queryClient.removeQueries({ queryKey: queryKeys.modalidades.lists() });
+      
+      // Invalidar para forçar refetch
+      queryClient.invalidateQueries({ queryKey: queryKeys.modalidades.all });
     },
   });
 }
@@ -57,13 +61,14 @@ export function useUpdateModalidade() {
     mutationFn: ({ id, data }: { id: number; data: ModalidadeInput }) => 
       editarModalidade(id, data),
     onSuccess: (_, { id }) => {
-      // Invalidar modalidade específica e lista
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.modalidades.detail(id)
-      });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.modalidades.all
-      });
+      // Atualizar modalidade no cache de detalhes
+      queryClient.invalidateQueries({ queryKey: queryKeys.modalidades.detail(id) });
+      
+      // Remover TODOS os caches de listas
+      queryClient.removeQueries({ queryKey: queryKeys.modalidades.lists() });
+      
+      // Invalidar para forçar refetch
+      queryClient.invalidateQueries({ queryKey: queryKeys.modalidades.all });
     },
   });
 }
@@ -77,13 +82,14 @@ export function useDeleteModalidade() {
   return useMutation({
     mutationFn: removerModalidade,
     onSuccess: (_, id) => {
-      // Remover modalidade específica do cache e invalidar lista
-      queryClient.removeQueries({
-        queryKey: queryKeys.modalidades.detail(id)
-      });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.modalidades.all
-      });
+      // Remover modalidade do cache de detalhes
+      queryClient.removeQueries({ queryKey: queryKeys.modalidades.detail(id) });
+      
+      // Remover TODOS os caches de listas
+      queryClient.removeQueries({ queryKey: queryKeys.modalidades.lists() });
+      
+      // Invalidar para forçar refetch
+      queryClient.invalidateQueries({ queryKey: queryKeys.modalidades.all });
     },
   });
 }

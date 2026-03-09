@@ -22,7 +22,10 @@ export function useDemandas(filters?: {
   return useQuery({
     queryKey: queryKeys.demandas.list(filters),
     queryFn: () => demandasService.listar(filters),
-    ...cacheConfig.moderate,
+    staleTime: 0, // Sempre considerar dados como desatualizados
+    gcTime: 5 * 60 * 1000, // Manter em cache por 5 minutos
+    refetchOnMount: true, // Sempre refetch ao montar
+    refetchOnWindowFocus: true, // Refetch ao focar na janela
     select: (data: Demanda[]) => {
       // Ordenar por data de solicitação (mais recentes primeiro)
       return data.sort((a, b) => 
@@ -59,11 +62,16 @@ export function useCriarDemanda() {
   return useMutation({
     mutationFn: demandasService.criar,
     onSuccess: (newDemanda) => {
-      // Invalidar lista de demandas
-      queryClient.invalidateQueries({ queryKey: queryKeys.demandas.lists() });
+      // Remover TODOS os caches de demandas
+      queryClient.removeQueries({ queryKey: queryKeys.demandas.lists() });
       
-      // Adicionar demanda ao cache
-      queryClient.setQueryData(queryKeys.demandas.detail(newDemanda.id), newDemanda);
+      // Invalidar para forçar refetch
+      queryClient.invalidateQueries({ queryKey: queryKeys.demandas.all });
+      
+      // Adicionar demanda ao cache de detalhes
+      if (newDemanda?.id) {
+        queryClient.setQueryData(queryKeys.demandas.detail(newDemanda.id), newDemanda);
+      }
     },
   });
 }
@@ -75,11 +83,14 @@ export function useAtualizarDemanda() {
     mutationFn: ({ id, data }: { id: number; data: Partial<Demanda> }) => 
       demandasService.atualizar(id, data),
     onSuccess: (updatedDemanda, { id }) => {
-      // Atualizar demanda no cache
+      // Atualizar demanda no cache de detalhes
       queryClient.setQueryData(queryKeys.demandas.detail(id), updatedDemanda);
       
-      // Invalidar lista de demandas
-      queryClient.invalidateQueries({ queryKey: queryKeys.demandas.lists() });
+      // Remover TODOS os caches de listas
+      queryClient.removeQueries({ queryKey: queryKeys.demandas.lists() });
+      
+      // Invalidar para forçar refetch
+      queryClient.invalidateQueries({ queryKey: queryKeys.demandas.all });
     },
   });
 }
@@ -101,11 +112,14 @@ export function useAtualizarStatusDemanda() {
     }) => 
       demandasService.atualizarStatus(id, status, data_resposta_semead, observacoes),
     onSuccess: (updatedDemanda, { id }) => {
-      // Atualizar demanda no cache
+      // Atualizar demanda no cache de detalhes
       queryClient.setQueryData(queryKeys.demandas.detail(id), updatedDemanda);
       
-      // Invalidar lista de demandas
-      queryClient.invalidateQueries({ queryKey: queryKeys.demandas.lists() });
+      // Remover TODOS os caches de listas
+      queryClient.removeQueries({ queryKey: queryKeys.demandas.lists() });
+      
+      // Invalidar para forçar refetch
+      queryClient.invalidateQueries({ queryKey: queryKeys.demandas.all });
     },
   });
 }
@@ -116,11 +130,14 @@ export function useExcluirDemanda() {
   return useMutation({
     mutationFn: demandasService.excluir,
     onSuccess: (_, id) => {
-      // Remover demanda do cache
+      // Remover demanda do cache de detalhes
       queryClient.removeQueries({ queryKey: queryKeys.demandas.detail(id) });
       
-      // Invalidar lista de demandas
-      queryClient.invalidateQueries({ queryKey: queryKeys.demandas.lists() });
+      // Remover TODOS os caches de listas
+      queryClient.removeQueries({ queryKey: queryKeys.demandas.lists() });
+      
+      // Invalidar para forçar refetch
+      queryClient.invalidateQueries({ queryKey: queryKeys.demandas.all });
     },
   });
 }

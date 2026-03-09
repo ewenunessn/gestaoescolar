@@ -22,7 +22,10 @@ export function useProdutos(filters?: { search?: string; categoria?: string; ati
   return useQuery({
     queryKey: queryKeys.produtos.list(filters),
     queryFn: listarProdutos,
-    ...cacheConfig.static,
+    staleTime: 0, // Sempre considerar dados como desatualizados
+    gcTime: 5 * 60 * 1000, // Manter em cache por 5 minutos
+    refetchOnMount: true, // Sempre refetch ao montar
+    refetchOnWindowFocus: true, // Refetch ao focar na janela
     select: (data: Produto[]) => {
       let filteredData = [...data];
       
@@ -77,11 +80,16 @@ export function useCriarProduto() {
   return useMutation({
     mutationFn: criarProduto,
     onSuccess: (newProduto) => {
-      // Invalidar lista de produtos
-      queryClient.invalidateQueries({ queryKey: queryKeys.produtos.lists() });
+      // Remover TODOS os caches de produtos
+      queryClient.removeQueries({ queryKey: queryKeys.produtos.lists() });
       
-      // Adicionar produto ao cache
-      queryClient.setQueryData(queryKeys.produtos.detail(newProduto.id), newProduto);
+      // Invalidar para forçar refetch
+      queryClient.invalidateQueries({ queryKey: queryKeys.produtos.all });
+      
+      // Adicionar produto ao cache de detalhes
+      if (newProduto?.id) {
+        queryClient.setQueryData(queryKeys.produtos.detail(newProduto.id), newProduto);
+      }
       
       // Invalidar estoque relacionado
       invalidateQueries.estoque();
@@ -96,11 +104,14 @@ export function useAtualizarProduto() {
     mutationFn: ({ id, data }: { id: number; data: any }) => 
       editarProduto(id, data),
     onSuccess: (updatedProduto, { id }) => {
-      // Atualizar produto no cache
+      // Atualizar produto no cache de detalhes
       queryClient.setQueryData(queryKeys.produtos.detail(id), updatedProduto);
       
-      // Invalidar lista de produtos
-      queryClient.invalidateQueries({ queryKey: queryKeys.produtos.lists() });
+      // Remover TODOS os caches de listas
+      queryClient.removeQueries({ queryKey: queryKeys.produtos.lists() });
+      
+      // Invalidar para forçar refetch
+      queryClient.invalidateQueries({ queryKey: queryKeys.produtos.all });
       
       // Invalidar estoque relacionado
       invalidateQueries.produto(id);
@@ -114,11 +125,14 @@ export function useExcluirProduto() {
   return useMutation({
     mutationFn: removerProduto,
     onSuccess: (_, id) => {
-      // Remover produto do cache
+      // Remover produto do cache de detalhes
       queryClient.removeQueries({ queryKey: queryKeys.produtos.detail(id) });
       
-      // Invalidar lista de produtos
-      queryClient.invalidateQueries({ queryKey: queryKeys.produtos.lists() });
+      // Remover TODOS os caches de listas
+      queryClient.removeQueries({ queryKey: queryKeys.produtos.lists() });
+      
+      // Invalidar para forçar refetch
+      queryClient.invalidateQueries({ queryKey: queryKeys.produtos.all });
       
       // Invalidar estoque relacionado
       invalidateQueries.produto(id);

@@ -37,7 +37,10 @@ export function useEscolas(filters?: { search?: string; ativo?: boolean }) {
     queryKey: queryKeys.escolas.list(filters),
     queryFn: listarEscolas,
     enabled: isReady && !!token, // Só executar se estiver pronto E houver token
-    ...cacheConfig.static,
+    staleTime: 0, // Sempre considerar dados como desatualizados
+    gcTime: 5 * 60 * 1000, // Manter em cache por 5 minutos
+    refetchOnMount: true, // Sempre refetch ao montar
+    refetchOnWindowFocus: true, // Refetch ao focar na janela
     select: (data: Escola[]) => {
       let filteredData = [...data];
       
@@ -82,12 +85,16 @@ export function useCriarEscola() {
   return useMutation({
     mutationFn: criarEscola,
     onSuccess: (newEscola) => {
-      // Invalidar lista de escolas
-      queryClient.invalidateQueries({ queryKey: queryKeys.escolas.lists() });
+      // Remover TODOS os caches de escolas
+      queryClient.removeQueries({ queryKey: queryKeys.escolas.lists() });
       
-      // Adicionar escola ao cache
-      queryClient.setQueryData(queryKeys.escolas.detail(newEscola.id), newEscola);
+      // Invalidar para forçar refetch
+      queryClient.invalidateQueries({ queryKey: queryKeys.escolas.all });
       
+      // Adicionar escola ao cache de detalhes
+      if (newEscola?.id) {
+        queryClient.setQueryData(queryKeys.escolas.detail(newEscola.id), newEscola);
+      }
     },
   });
 }
@@ -99,15 +106,17 @@ export function useAtualizarEscola() {
     mutationFn: ({ id, data }: { id: number; data: any }) => 
       editarEscola(id, data),
     onSuccess: (updatedEscola, { id }) => {
-      // Atualizar escola no cache
+      // Atualizar escola no cache de detalhes
       queryClient.setQueryData(queryKeys.escolas.detail(id), updatedEscola);
       
-      // Invalidar lista de escolas
-      queryClient.invalidateQueries({ queryKey: queryKeys.escolas.lists() });
+      // Remover TODOS os caches de listas
+      queryClient.removeQueries({ queryKey: queryKeys.escolas.lists() });
+      
+      // Invalidar para forçar refetch
+      queryClient.invalidateQueries({ queryKey: queryKeys.escolas.all });
       
       // Invalidar modalidades (pois o total de alunos pode ter mudado)
       invalidateQueries.modalidades();
-      
     },
   });
 }
@@ -118,12 +127,14 @@ export function useExcluirEscola() {
   return useMutation({
     mutationFn: removerEscola,
     onSuccess: (_, id) => {
-      // Remover escola do cache
+      // Remover escola do cache de detalhes
       queryClient.removeQueries({ queryKey: queryKeys.escolas.detail(id) });
       
-      // Invalidar lista de escolas
-      queryClient.invalidateQueries({ queryKey: queryKeys.escolas.lists() });
+      // Remover TODOS os caches de listas
+      queryClient.removeQueries({ queryKey: queryKeys.escolas.lists() });
       
+      // Invalidar para forçar refetch
+      queryClient.invalidateQueries({ queryKey: queryKeys.escolas.all });
     },
   });
 }

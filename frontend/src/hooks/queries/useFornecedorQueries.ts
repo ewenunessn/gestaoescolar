@@ -24,7 +24,10 @@ export function useFornecedores(filters?: {
   return useQuery({
     queryKey: queryKeys.fornecedores.list(filters),
     queryFn: listarFornecedores,
-    ...cacheConfig.static,
+    staleTime: 0, // Sempre considerar dados como desatualizados
+    gcTime: 5 * 60 * 1000, // Manter em cache por 5 minutos
+    refetchOnMount: true, // Sempre refetch ao montar
+    refetchOnWindowFocus: true, // Refetch ao focar na janela
     select: (data: any[]) => {
       let filteredData = [...data];
       
@@ -86,11 +89,16 @@ export function useCriarFornecedor() {
   return useMutation({
     mutationFn: criarFornecedor,
     onSuccess: (newFornecedor) => {
-      // Invalidar lista de fornecedores
-      queryClient.invalidateQueries({ queryKey: queryKeys.fornecedores.lists() });
+      // Remover TODOS os caches de fornecedores
+      queryClient.removeQueries({ queryKey: queryKeys.fornecedores.lists() });
       
-      // Adicionar fornecedor ao cache
-      queryClient.setQueryData(queryKeys.fornecedores.detail(newFornecedor.id), newFornecedor);
+      // Invalidar para forçar refetch
+      queryClient.invalidateQueries({ queryKey: queryKeys.fornecedores.all });
+      
+      // Adicionar fornecedor ao cache de detalhes
+      if (newFornecedor?.id) {
+        queryClient.setQueryData(queryKeys.fornecedores.detail(newFornecedor.id), newFornecedor);
+      }
     },
   });
 }
@@ -102,11 +110,14 @@ export function useAtualizarFornecedor() {
     mutationFn: ({ id, data }: { id: number; data: any }) => 
       editarFornecedor(id, data),
     onSuccess: (updatedFornecedor, { id }) => {
-      // Atualizar fornecedor no cache
+      // Atualizar fornecedor no cache de detalhes
       queryClient.setQueryData(queryKeys.fornecedores.detail(id), updatedFornecedor);
       
-      // Invalidar lista de fornecedores
-      queryClient.invalidateQueries({ queryKey: queryKeys.fornecedores.lists() });
+      // Remover TODOS os caches de listas
+      queryClient.removeQueries({ queryKey: queryKeys.fornecedores.lists() });
+      
+      // Invalidar para forçar refetch
+      queryClient.invalidateQueries({ queryKey: queryKeys.fornecedores.all });
     },
   });
 }
@@ -117,11 +128,14 @@ export function useExcluirFornecedor() {
   return useMutation({
     mutationFn: removerFornecedor,
     onSuccess: (_, id) => {
-      // Remover fornecedor do cache
+      // Remover fornecedor do cache de detalhes
       queryClient.removeQueries({ queryKey: queryKeys.fornecedores.detail(id) });
       
-      // Invalidar lista de fornecedores
-      queryClient.invalidateQueries({ queryKey: queryKeys.fornecedores.lists() });
+      // Remover TODOS os caches de listas
+      queryClient.removeQueries({ queryKey: queryKeys.fornecedores.lists() });
+      
+      // Invalidar para forçar refetch
+      queryClient.invalidateQueries({ queryKey: queryKeys.fornecedores.all });
     },
   });
 }
