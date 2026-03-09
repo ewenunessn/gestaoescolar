@@ -232,6 +232,8 @@ const FornecedoresPage: React.FC = () => {
         setSuccessMessage('Fornecedor criado com sucesso!');
       }
       closeModal();
+      // Forçar atualização da lista
+      await refetch();
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       console.error('Erro ao salvar fornecedor:', err);
