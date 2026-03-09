@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Card, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Paper, CircularProgress, Alert, Chip, TextField, InputAdornment
@@ -8,6 +8,7 @@ import { Search as SearchIcon, Business as BusinessIcon, Inventory as InventoryI
 import { buscarFornecedor } from '../services/fornecedores';
 import api from '../services/api';
 import PageBreadcrumbs from '../components/PageBreadcrumbs';
+import PageContainer from '../components/PageContainer';
 
 interface ItemContrato {
   id: number;
@@ -129,83 +130,6 @@ export default function ItensFornecedor() {
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       <PageContainer>
-        <PageBreadcrumbs
-  const [itens, setItens] = useState<ItemContrato[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-
-  useEffect(() => {
-    const carregarDados = async () => {
-      if (!id) return;
-      
-      try {
-        setLoading(true);
-        const fornecedorData = await buscarFornecedor(Number(id));
-        setFornecedor(fornecedorData);
-        
-        // Buscar todos os produtos de contratos deste fornecedor diretamente
-        const { data } = await api.get(`/contrato-produtos/fornecedor/${id}`);
-        const produtos = data.data || [];
-        
-        const todosItens: ItemContrato[] = produtos.map((item: any) => ({
-          id: item.id,
-          contrato_id: item.contrato_id,
-          contrato_numero: item.contrato_numero,
-          produto_id: item.produto_id,
-          produto_nome: item.produto_nome,
-          marca: item.marca || '-',
-          unidade: item.unidade,
-          preco_unitario: Number(item.preco_unitario),
-          quantidade: Number(item.quantidade_contratada || item.quantidade),
-          valor_total: Number(item.preco_unitario) * Number(item.quantidade_contratada || item.quantidade)
-        }));
-        
-        setItens(todosItens);
-      } catch (err: any) {
-        console.error('Erro ao carregar dados:', err);
-        setError(err.message || 'Erro ao carregar dados');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    carregarDados();
-  }, [id]);
-
-  const itensFiltrados = useMemo(() => {
-    if (!searchTerm) return itens;
-    
-    const termo = searchTerm.toLowerCase();
-    return itens.filter(item => 
-      item.produto_nome.toLowerCase().includes(termo) ||
-      item.marca.toLowerCase().includes(termo) ||
-      item.contrato_numero.toLowerCase().includes(termo) ||
-      item.unidade.toLowerCase().includes(termo)
-    );
-  }, [itens, searchTerm]);
-
-  const valorTotalGeral = itensFiltrados.reduce((total, item) => total + item.valor_total, 0);
-
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
-        <CircularProgress size={60} />
-      </Box>
-    );
-  }
-
-  if (error) {
-    return (
-      <PageContainer>
-        <Alert severity="error">{error}</Alert>
-      </PageContainer>
-    );
-  }
-
-  return (
-    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
-      <PageContainer fullHeight>
         <PageBreadcrumbs 
           items={[
             { label: 'Fornecedores', path: '/fornecedores', icon: <BusinessIcon fontSize="small" /> },
