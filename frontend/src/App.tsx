@@ -3,7 +3,7 @@ import { NotificationProvider } from "./context/NotificationContext";
 import { ConfigProvider } from "./context/ConfigContext";
 import { PageTitleProvider } from "./contexts/PageTitleContext";
 import { QueryProvider } from "./providers/QueryProvider";
-import ToastContainer from "./components/Toast";
+import ToastContainer from "./components/ToastContainer";
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import theme from './theme/theme';

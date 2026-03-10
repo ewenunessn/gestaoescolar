@@ -3,6 +3,7 @@ import StatusIndicator from '../components/StatusIndicator';
 import PageHeader from '../components/PageHeader';
 import PageContainer from '../components/PageContainer';
 import TableFilter, { FilterField } from '../components/TableFilter';
+import { useToast } from '../hooks/useToast';
 import {
   Box,
   Typography,
@@ -52,13 +53,12 @@ import { Refeicao } from '../types/refeicao';
 
 const RefeicoesPage = () => {
   const navigate = useNavigate();
-  
+  const toast = useToast();
 
   // Estados principais
   const [refeicoes, setRefeicoes] = useState<Refeicao[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Estados do menu de ações
   const [actionsMenuAnchor, setActionsMenuAnchor] = useState<null | HTMLElement>(null);
@@ -239,14 +239,13 @@ const RefeicoesPage = () => {
     try {
       if (editingRefeicao) {
         await editarRefeicao(editingRefeicao.id, formData);
-        setSuccessMessage('Refeição atualizada com sucesso!');
+        toast.success('Sucesso!', 'Refeição atualizada com sucesso!');
       } else {
         await criarRefeicao(formData);
-        setSuccessMessage('Refeição criada com sucesso!');
+        toast.success('Sucesso!', 'Refeição criada com sucesso!');
       }
       closeModal();
       await loadRefeicoes();
-      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       setError('Erro ao salvar refeição. Verifique os dados e tente novamente.');
     }
@@ -266,10 +265,9 @@ const RefeicoesPage = () => {
     if (!refeicaoToDelete) return;
     try {
       await deletarRefeicao(refeicaoToDelete.id);
-      setSuccessMessage('Refeição excluída com sucesso!');
+      toast.success('Sucesso!', 'Refeição excluída com sucesso!');
       closeDeleteModal();
       await loadRefeicoes();
-      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       const message = err.response?.data?.message.includes('cardapios')
         ? 'Não é possível excluir. A refeição está em uso em um ou mais cardápios.'
@@ -284,14 +282,6 @@ const RefeicoesPage = () => {
 
   return (
     <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
-      {successMessage && (
-        <Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}>
-          <Alert severity="success" onClose={() => setSuccessMessage(null)} sx={{ minWidth: 300 }}>
-            {successMessage}
-          </Alert>
-        </Box>
-      )}
-
       <PageContainer fullHeight>
         <PageHeader 
           title="Refeições"

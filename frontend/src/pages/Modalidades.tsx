@@ -3,7 +3,7 @@ import StatusIndicator from "../components/StatusIndicator";
 import PageHeader from "../components/PageHeader";
 import PageContainer from "../components/PageContainer";
 import TableFilter, { FilterField } from "../components/TableFilter";
-import Toast from "../components/Toast";
+import { useToast } from "../hooks/useToast";
 import {
   Table,
   TableBody,
@@ -61,6 +61,7 @@ import { useModalidades, useCreateModalidade, useUpdateModalidade, useDeleteModa
 
 const ModalidadesPage = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   
   // React Query hooks para modalidades
   const { data: modalidades = [], isLoading: loading, error: queryError, refetch } = useModalidades();
@@ -70,7 +71,6 @@ const ModalidadesPage = () => {
   
   // Estados de UI
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   
   // Estados do menu de ações
   const [actionsMenuAnchor, setActionsMenuAnchor] = useState<null | HTMLElement>(null);
@@ -221,13 +221,12 @@ const ModalidadesPage = () => {
       const dataToSend = { ...formData, valor_repasse: Number(formData.valor_repasse) };
       if (editingModalidade) {
         await updateModalidadeMutation.mutateAsync({ id: editingModalidade.id, data: dataToSend });
-        setSuccessMessage('Modalidade atualizada com sucesso!');
+        toast.success('Sucesso!', 'Modalidade atualizada com sucesso!');
       } else {
         await createModalidadeMutation.mutateAsync(dataToSend);
-        setSuccessMessage('Modalidade criada com sucesso!');
+        toast.success('Sucesso!', 'Modalidade criada com sucesso!');
       }
       closeModal();
-      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
       setError("Erro ao salvar modalidade. Verifique os dados e tente novamente.");
     }
@@ -247,9 +246,8 @@ const ModalidadesPage = () => {
     if (!modalidadeToDelete) return;
     try {
       await deleteModalidadeMutation.mutateAsync(modalidadeToDelete.id);
-      setSuccessMessage('Modalidade excluída com sucesso!');
+      toast.success('Sucesso!', 'Modalidade excluída com sucesso!');
       closeDeleteModal();
-      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
       setError("Erro ao excluir. A modalidade pode estar em uso.");
     }
@@ -257,10 +255,6 @@ const ModalidadesPage = () => {
   
   return (
     <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
-      {successMessage && (
-        <Toast message={successMessage} severity="success" onClose={() => setSuccessMessage(null)} />
-      )}
-
       <PageContainer fullHeight>
         <PageHeader 
           title="Modalidades"

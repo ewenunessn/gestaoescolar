@@ -25,8 +25,7 @@ import {
   FormControl,
   InputLabel,
   Select,
-  MenuItem,
-  Grid
+  MenuItem
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -36,19 +35,19 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   CalendarMonth as CalendarIcon,
-  School as SchoolIcon,
   Inventory as InventoryIcon
 } from '@mui/icons-material';
 import PageContainer from '../components/PageContainer';
 import PageBreadcrumbs from '../components/PageBreadcrumbs';
-import Toast from '../components/Toast';
 import { guiaService, GuiaProdutoEscola } from '../services/guiaService';
 import { produtoService, Produto } from '../services/produtoService';
+import { useToast } from '../hooks/useToast';
 import api from '../services/api';
 
 const GuiaDemandaEscolaItens: React.FC = () => {
   const navigate = useNavigate();
   const { guiaId, escolaId } = useParams<{ guiaId: string; escolaId: string }>();
+  const toast = useToast();
   
   const [guia, setGuia] = useState<any>(null);
   const [escola, setEscola] = useState<any>(null);
@@ -56,7 +55,6 @@ const GuiaDemandaEscolaItens: React.FC = () => {
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   
   // Paginação
   const [page, setPage] = useState(0);
@@ -89,8 +87,6 @@ const GuiaDemandaEscolaItens: React.FC = () => {
         guiaService.listarProdutosPorEscola(Number(escolaId), guiaData.mes, guiaData.ano),
         produtoService.listar()
       ]);
-      
-      console.log('Itens carregados:', itensData);
       
       // Buscar dados da escola - usar a API correta
       try {
@@ -149,7 +145,7 @@ const GuiaDemandaEscolaItens: React.FC = () => {
     try {
       if (editingItem) {
         await guiaService.atualizarProdutoEscola(editingItem.id, formData);
-        setSuccessMessage('Item atualizado com sucesso!');
+        toast.success('Sucesso!', 'Item atualizado com sucesso!');
       } else {
         await guiaService.adicionarProdutoEscola({
           produtoId: formData.produto_id,
@@ -161,12 +157,13 @@ const GuiaDemandaEscolaItens: React.FC = () => {
           mes_competencia: guia.mes,
           ano_competencia: guia.ano
         });
-        setSuccessMessage('Item adicionado com sucesso!');
+        toast.success('Sucesso!', 'Item adicionado com sucesso!');
       }
       setOpenModal(false);
       loadData();
     } catch (error) {
       console.error('Erro ao salvar item:', error);
+      toast.error('Erro ao salvar', 'Não foi possível salvar o item.');
     }
   };
 
@@ -175,10 +172,11 @@ const GuiaDemandaEscolaItens: React.FC = () => {
     
     try {
       await guiaService.removerItemGuia(id);
-      setSuccessMessage('Item removido com sucesso!');
+      toast.success('Sucesso!', 'Item removido com sucesso!');
       loadData();
     } catch (error) {
       console.error('Erro ao remover item:', error);
+      toast.error('Erro ao excluir', 'Não foi possível excluir o item.');
     }
   };
 
@@ -214,10 +212,6 @@ const GuiaDemandaEscolaItens: React.FC = () => {
 
   return (
     <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
-      {successMessage && (
-        <Toast message={successMessage} severity="success" onClose={() => setSuccessMessage(null)} />
-      )}
-
       <PageContainer fullHeight>
         <PageBreadcrumbs
           items={[

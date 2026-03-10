@@ -29,7 +29,6 @@ import {
   LinearProgress
 } from '@mui/material';
 import {
-  ArrowBack as ArrowBackIcon,
   Search as SearchIcon,
   Clear as ClearIcon,
   Edit as EditIcon,
@@ -39,13 +38,12 @@ import {
   Add as AddIcon
 } from '@mui/icons-material';
 import PageContainer from '../components/PageContainer';
-import PageHeader from '../components/PageHeader';
 import PageBreadcrumbs from '../components/PageBreadcrumbs';
-import Toast from '../components/Toast';
 import StatusIndicator from '../components/StatusIndicator';
 import TableFilter, { FilterField } from '../components/TableFilter';
 import { guiaService } from '../services/guiaService';
 import { produtoService } from '../services/produtoService';
+import { useToast } from '../hooks/useToast';
 import api from '../services/api';
 
 interface EscolaGuia {
@@ -64,12 +62,12 @@ interface EscolaGuia {
 const GuiaDemandaDetalhe: React.FC = () => {
   const navigate = useNavigate();
   const { guiaId } = useParams<{ guiaId: string }>();
+  const toast = useToast();
   
   const [guia, setGuia] = useState<any>(null);
   const [escolas, setEscolas] = useState<EscolaGuia[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   
   // Filtros
   const [filters, setFilters] = useState<Record<string, any>>({});
@@ -102,7 +100,6 @@ const GuiaDemandaDetalhe: React.FC = () => {
     try {
       const data = await produtoService.listar();
       setProdutos(data);
-      console.log('Produtos carregados:', data);
     } catch (error) {
       console.error('Erro ao carregar produtos:', error);
     }
@@ -112,19 +109,13 @@ const GuiaDemandaDetalhe: React.FC = () => {
     try {
       setLoading(true);
       const guiaData = await guiaService.buscarGuia(Number(guiaId));
-      console.log('Guia carregada:', guiaData);
       
       setGuia(guiaData);
       
       // Carregar escolas usando mes e ano da guia
       if (guiaData?.mes && guiaData?.ano) {
-        console.log(`Carregando escolas para ${guiaData.mes}/${guiaData.ano}`);
         const escolasData = await guiaService.listarStatusEscolas(guiaData.mes, guiaData.ano);
-        console.log('Escolas carregadas:', escolasData);
-        console.log('Primeira escola:', escolasData[0]);
         setEscolas(escolasData);
-      } else {
-        console.warn('Guia sem mês/ano:', guiaData);
       }
     } catch (error) {
       console.error('Erro ao carregar detalhes da guia:', error);
@@ -255,7 +246,7 @@ const GuiaDemandaDetalhe: React.FC = () => {
         await api.post(`/guias/escola/${escola.id}/produtos`, data);
       }
 
-      setSuccessMessage('Quantidades adicionadas com sucesso!');
+      toast.success('Sucesso!', 'Quantidades adicionadas com sucesso!');
       setOpenBatchDialog(false);
       setBatchQuantidades({});
       setBatchStatus({});
@@ -277,10 +268,6 @@ const GuiaDemandaDetalhe: React.FC = () => {
 
   return (
     <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
-      {successMessage && (
-        <Toast message={successMessage} severity="success" onClose={() => setSuccessMessage(null)} />
-      )}
-
       <PageContainer fullHeight>
         <PageBreadcrumbs
           items={[

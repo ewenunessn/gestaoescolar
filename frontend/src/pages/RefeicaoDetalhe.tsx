@@ -11,9 +11,9 @@ import {
   removerProdutoDaRefeicao,
 } from "../services/refeicoes";
 import { listarProdutos } from "../services/produtos";
+import { useToast } from "../hooks/useToast";
 import {
   Typography,
-  Paper,
   Button,
   Dialog,
   DialogTitle,
@@ -21,46 +21,53 @@ import {
   DialogActions,
   TextField,
   CircularProgress,
-  Alert,
   Box,
   Card,
-  CardContent,
-  CardActions,
-  Grid,
   Chip,
   IconButton,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemSecondaryAction,
-  Divider,
   Switch,
   FormControlLabel,
   Select,
   MenuItem,
   FormControl,
+  InputLabel,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Tooltip,
+  Autocomplete,
+  TablePagination,
 } from "@mui/material";
-import DeleteIcon from "@mui/icons-material/Delete";
-import EditIcon from "@mui/icons-material/Edit";
-import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
-import AddIcon from "@mui/icons-material/Add";
-import RemoveIcon from "@mui/icons-material/Remove";
-import SearchIcon from "@mui/icons-material/Search";
-import RestaurantIcon from "@mui/icons-material/Restaurant";
+import {
+  Delete as DeleteIcon,
+  Edit as EditIcon,
+  Add as AddIcon,
+  Restaurant as RestaurantIcon,
+  DragIndicator as DragIndicatorIcon,
+  Save as SaveIcon,
+  Cancel as CancelIcon,
+} from "@mui/icons-material";
 import PageBreadcrumbs from '../components/PageBreadcrumbs';
 import PageContainer from '../components/PageContainer';
+import StatusIndicator from '../components/StatusIndicator';
 import {
   DndContext,
   DragEndEvent,
-  DragOverlay,
-  DragStartEvent,
   closestCenter,
   useSensor,
   useSensors,
   PointerSensor,
-  useDroppable,
-  useDraggable,
+  DragOverlay,
 } from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
 interface Produto {
@@ -75,207 +82,99 @@ interface RefeicaoProduto {
   produto_id: number;
   per_capita: number;
   tipo_medida: 'gramas' | 'unidades';
+  ordem?: number;
   produto?: Produto;
 }
 
-interface DraggableProductProps {
-  produto: Produto;
-  onAdd?: () => void;
-  onRemove?: () => void;
-  perCapita?: number;
-  tipoMedida?: 'gramas' | 'unidades';
-  onPerCapitaChange?: (value: number) => void;
-  onTipoMedidaChange?: (value: 'gramas' | 'unidades') => void;
-  isDragging?: boolean;
+interface SortableRowProps {
+  assoc: RefeicaoProduto;
+  onRemove: () => void;
+  onPerCapitaChange: (value: number) => void;
+  onTipoMedidaChange: (value: 'gramas' | 'unidades') => void;
 }
 
-interface DroppableZoneProps {
-  id: string;
-  children: React.ReactNode;
-}
-
-function DroppableZone({ id, children }: DroppableZoneProps) {
-  const { isOver, setNodeRef } = useDroppable({ id });
-
-  return (
-    <Box
-      ref={setNodeRef}
-      sx={{
-        flex: 1,
-        overflow: "auto",
-        px: 2,
-        pb: 2,
-        minHeight: 200,
-        border: "2px dashed",
-        borderRadius: 2,
-        mx: 2,
-        mb: 2,
-        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-        backgroundColor: isOver ? "rgba(25, 118, 210, 0.08)" : "transparent",
-        borderColor: isOver ? "primary.main" : "divider",
-        transform: isOver ? "scale(1.02)" : "scale(1)",
-        boxShadow: isOver ? "0 4px 20px rgba(25, 118, 210, 0.15)" : "none",
-        '&::before': isOver ? {
-          content: '""',
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'linear-gradient(45deg, rgba(25, 118, 210, 0.05) 25%, transparent 25%, transparent 75%, rgba(25, 118, 210, 0.05) 75%)',
-          backgroundSize: '20px 20px',
-          borderRadius: 2,
-          pointerEvents: 'none',
-        } : {},
-      }}
-    >
-      {children}
-    </Box>
-  );
-}
-
-function DraggableProduct({
-  produto,
-  onAdd,
-  onRemove,
-  perCapita,
-  tipoMedida = 'gramas',
-  onPerCapitaChange,
-  onTipoMedidaChange,
-  isDragging,
-}: DraggableProductProps) {
+function SortableRow({ assoc, onRemove, onPerCapitaChange, onTipoMedidaChange }: SortableRowProps) {
   const {
     attributes,
     listeners,
     setNodeRef,
     transform,
-  } = useDraggable({ id: produto.id });
+    transition,
+    isDragging,
+  } = useSortable({ id: assoc.id });
 
-  const [localPerCapita, setLocalPerCapita] = useState(perCapita ? String(perCapita) : "");
-  const [localTipoMedida, setLocalTipoMedida] = useState(tipoMedida);
-
-  useEffect(() => {
-    // Debug: verificar o valor recebido
-    console.log('perCapita recebido:', perCapita, typeof perCapita);
-    // Formatar o número removendo zeros desnecessários
-    if (perCapita !== undefined && perCapita !== null) {
-      // Remove zeros desnecessários após a vírgula
-      const formatted = parseFloat(perCapita.toString()).toString();
-      setLocalPerCapita(formatted);
-    } else {
-      setLocalPerCapita("");
-    }
-  }, [perCapita]);
-
-  useEffect(() => {
-    setLocalTipoMedida(tipoMedida);
-  }, [tipoMedida]);
-
-  const handlePerCapitaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    console.log('handlePerCapitaChange - valor digitado:', value, typeof value);
-    setLocalPerCapita(value);
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
   };
 
-  const handlePerCapitaBlur = () => {
-    console.log('handlePerCapitaBlur - localPerCapita antes:', localPerCapita, typeof localPerCapita);
-    let numericValue = parseFloat(localPerCapita);
-    console.log('handlePerCapitaBlur - numericValue:', numericValue, typeof numericValue);
+  const [localPerCapita, setLocalPerCapita] = useState(String(assoc.per_capita || ''));
 
+  useEffect(() => {
+    // Formatar para remover zeros desnecessários
+    const formatted = assoc.per_capita ? parseFloat(String(assoc.per_capita)).toString() : '';
+    setLocalPerCapita(formatted);
+  }, [assoc.per_capita]);
+
+  const handlePerCapitaBlur = () => {
+    let numericValue = parseFloat(localPerCapita);
     if (isNaN(numericValue)) {
       numericValue = 0;
     }
-    
-    // Limites diferentes para gramas e unidades
-    const limite = localTipoMedida === 'unidades' ? 100 : 1000;
+    const limite = assoc.tipo_medida === 'unidades' ? 100 : 1000;
     numericValue = Math.max(0, Math.min(limite, numericValue));
-    console.log('handlePerCapitaBlur - valor final enviado:', numericValue);
-
-    // Formatar o valor removendo zeros desnecessários
+    
+    // Formatar para remover zeros desnecessários (ex: 100.0 vira 100, mas 100.5 fica 100.5)
     const formatted = parseFloat(numericValue.toString()).toString();
     setLocalPerCapita(formatted);
-
-    onPerCapitaChange?.(numericValue);
-  };
-
-  const handleTipoMedidaChange = (event: any) => {
-    const novoTipo = event.target.value as 'gramas' | 'unidades';
-    setLocalTipoMedida(novoTipo);
-    onTipoMedidaChange?.(novoTipo);
-  };
-
-  const style = {
-    transform: CSS.Translate.toString(transform),
-    opacity: isDragging ? 0.3 : 1,
-    scale: isDragging ? 1.05 : 1,
-    transition: isDragging ? 'none' : 'all 0.2s ease',
-    zIndex: isDragging ? 1000 : 1,
-    boxShadow: isDragging ? '0 8px 25px rgba(0,0,0,0.15)' : 'none',
+    onPerCapitaChange(numericValue);
   };
 
   return (
-    <ListItem
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      sx={{
-        border: "1px solid #e0e0e0",
-        borderRadius: 1,
-        mb: 1,
-        backgroundColor: "white",
-        cursor: "grab",
-        "&:active": { cursor: "grabbing" },
-      }}
-    >
-      <Box sx={{ mr: 1, display: "flex", alignItems: "center" }}>
+    <TableRow ref={setNodeRef} style={style} hover>
+      <TableCell sx={{ width: 50, cursor: 'grab' }} {...attributes} {...listeners}>
         <DragIndicatorIcon color="action" />
-      </Box>
-      <ListItemText
-        primary={produto.nome}
-        secondary={produto.descricao}
-      />
-      {perCapita !== undefined && (
-        <Box sx={{ mx: 2, display: "flex", alignItems: "center", gap: 1 }}>
-          <TextField
-            size="small"
-            type="number"
-            value={localPerCapita}
-            onChange={handlePerCapitaChange}
-            onBlur={handlePerCapitaBlur}
-            sx={{ width: 80 }}
-            placeholder="0"
-            inputProps={{ 
-              min: 0,
-              max: localTipoMedida === 'unidades' ? 100 : 1000,
-              step: localTipoMedida === 'unidades' ? 1 : 0.1
-            }}
-          />
-          <FormControl size="small" sx={{ minWidth: 80 }}>
-            <Select
-              value={localTipoMedida}
-              onChange={handleTipoMedidaChange}
-              displayEmpty
-            >
-              <MenuItem value="gramas">g</MenuItem>
-              <MenuItem value="unidades">un</MenuItem>
-            </Select>
-          </FormControl>
-        </Box>
-      )}
-      <ListItemSecondaryAction>
-        {onAdd && (
-          <IconButton color="primary" onClick={onAdd}>
-            <AddIcon />
+      </TableCell>
+      <TableCell>
+        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+          {assoc.produto?.nome}
+        </Typography>
+      </TableCell>
+      <TableCell align="center" sx={{ width: 150 }}>
+        <TextField
+          size="small"
+          type="number"
+          value={localPerCapita}
+          onChange={(e) => setLocalPerCapita(e.target.value)}
+          onBlur={handlePerCapitaBlur}
+          sx={{ width: 100 }}
+          inputProps={{
+            min: 0,
+            max: assoc.tipo_medida === 'unidades' ? 100 : 1000,
+            step: assoc.tipo_medida === 'unidades' ? 1 : 0.1
+          }}
+        />
+      </TableCell>
+      <TableCell align="center" sx={{ width: 120 }}>
+        <FormControl size="small" fullWidth>
+          <Select
+            value={assoc.tipo_medida}
+            onChange={(e) => onTipoMedidaChange(e.target.value as 'gramas' | 'unidades')}
+          >
+            <MenuItem value="gramas">Gramas</MenuItem>
+            <MenuItem value="unidades">Unidades</MenuItem>
+          </Select>
+        </FormControl>
+      </TableCell>
+      <TableCell align="center" sx={{ width: 100 }}>
+        <Tooltip title="Remover">
+          <IconButton size="small" color="error" onClick={onRemove}>
+            <DeleteIcon fontSize="small" />
           </IconButton>
-        )}
-        {onRemove && (
-          <IconButton color="error" onClick={onRemove}>
-            <RemoveIcon />
-          </IconButton>
-        )}
-      </ListItemSecondaryAction>
-    </ListItem>
+        </Tooltip>
+      </TableCell>
+    </TableRow>
   );
 }
 
@@ -283,18 +182,23 @@ export default function RefeicaoDetalhe() {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const toast = useToast();
+  
   const [refeicao, setRefeicao] = useState<any>(null);
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [associacoes, setAssociacoes] = useState<RefeicaoProduto[]>([]);
   const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState("");
   const [editando, setEditando] = useState(false);
   const [form, setForm] = useState<any>({});
   const [salvando, setSalvando] = useState(false);
   const [openExcluir, setOpenExcluir] = useState(false);
-  const [activeId, setActiveId] = useState<number | null>(null);
-  const [filtroDisponiveis, setFiltroDisponiveis] = useState("");
-  const [filtroAdicionados, setFiltroAdicionados] = useState("");
+  
+  // Autocomplete
+  const [selectedProduto, setSelectedProduto] = useState<Produto | null>(null);
+  
+  // Paginação
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -310,7 +214,8 @@ export default function RefeicaoDetalhe() {
       try {
         const ref = await buscarRefeicao(Number(id));
         if (!ref) {
-          setErro("Refeição não encontrada");
+          toast.error('Erro', 'Refeição não encontrada');
+          navigate('/refeicoes');
           return;
         }
         setRefeicao(ref);
@@ -323,7 +228,7 @@ export default function RefeicaoDetalhe() {
         setAssociacoes(associacoesData);
       } catch (error) {
         console.error("Erro ao buscar refeição:", error);
-        setErro("Erro ao carregar refeição. Tente novamente.");
+        toast.error('Erro ao carregar', 'Não foi possível carregar a refeição. Tente novamente.');
       } finally {
         setLoading(false);
       }
@@ -331,21 +236,9 @@ export default function RefeicaoDetalhe() {
     fetchData();
   }, [id]);
 
-  const produtosDisponiveis = produtos
-    .filter((produto) => !associacoes.some((assoc) => assoc.produto_id === produto.id))
-    .filter((produto) => 
-      produto.nome.toLowerCase().includes(filtroDisponiveis.toLowerCase())
-    );
-
-  const produtosAdicionados = associacoes
-    .map((assoc) => ({
-      ...assoc,
-      produto: produtos.find((p) => p.id === assoc.produto_id),
-    }))
-    .filter((assoc) => assoc.produto)
-    .filter((assoc) => 
-      assoc.produto!.nome.toLowerCase().includes(filtroAdicionados.toLowerCase())
-    );
+  const produtosDisponiveis = produtos.filter(
+    (produto) => !associacoes.some((assoc) => assoc.produto_id === produto.id)
+  );
 
   async function salvarEdicao() {
     setSalvando(true);
@@ -353,9 +246,10 @@ export default function RefeicaoDetalhe() {
       const atualizado = await editarRefeicao(Number(id), form);
       setRefeicao(atualizado);
       setEditando(false);
+      toast.success('Sucesso!', 'Refeição atualizada com sucesso!');
       queryClient.invalidateQueries({ queryKey: ['refeicoes'] });
     } catch {
-      setErro("Erro ao salvar alterações");
+      toast.error('Erro ao salvar', 'Não foi possível salvar as alterações.');
     } finally {
       setSalvando(false);
     }
@@ -364,19 +258,24 @@ export default function RefeicaoDetalhe() {
   async function excluirRefeicao() {
     try {
       await deletarRefeicao(Number(id));
+      toast.success('Sucesso!', 'Refeição excluída com sucesso!');
       navigate("/refeicoes");
     } catch {
-      setErro("Erro ao excluir refeição");
+      toast.error('Erro ao excluir', 'Não foi possível excluir a refeição.');
     }
   }
 
-  async function adicionarProduto(produtoId: number) {
+  async function adicionarProduto() {
+    if (!selectedProduto) return;
+    
     try {
-      await adicionarProdutoNaRefeicao(Number(id), produtoId, 100); // 100g padrão
+      await adicionarProdutoNaRefeicao(Number(id), selectedProduto.id, 100);
       const novasAssociacoes = await listarProdutosDaRefeicao(Number(id));
       setAssociacoes(novasAssociacoes);
+      setSelectedProduto(null);
+      toast.success('Sucesso!', 'Produto adicionado à refeição!');
     } catch {
-      setErro("Erro ao adicionar produto na refeição");
+      toast.error('Erro ao adicionar', 'Não foi possível adicionar o produto.');
     }
   }
 
@@ -385,18 +284,22 @@ export default function RefeicaoDetalhe() {
       await removerProdutoDaRefeicao(assocId);
       const novasAssociacoes = await listarProdutosDaRefeicao(Number(id));
       setAssociacoes(novasAssociacoes);
+      toast.success('Sucesso!', 'Produto removido da refeição!');
     } catch {
-      setErro("Erro ao remover produto da refeição");
+      toast.error('Erro ao remover', 'Não foi possível remover o produto.');
     }
   }
 
-  async function atualizarPerCapita(assocId: number, perCapita: number, tipoMedida?: 'gramas' | 'unidades') {
+  async function atualizarPerCapita(assocId: number, perCapita: number) {
     try {
-      await editarProdutoNaRefeicao(assocId, perCapita, tipoMedida);
-      const novasAssociacoes = await listarProdutosDaRefeicao(Number(id));
-      setAssociacoes(novasAssociacoes);
+      const assoc = associacoes.find(a => a.id === assocId);
+      if (assoc) {
+        await editarProdutoNaRefeicao(assocId, perCapita, assoc.tipo_medida);
+        const novasAssociacoes = await listarProdutosDaRefeicao(Number(id));
+        setAssociacoes(novasAssociacoes);
+      }
     } catch {
-      setErro("Erro ao atualizar per capita");
+      toast.error('Erro ao atualizar', 'Não foi possível atualizar o per capita.');
     }
   }
 
@@ -409,145 +312,121 @@ export default function RefeicaoDetalhe() {
         setAssociacoes(novasAssociacoes);
       }
     } catch {
-      setErro("Erro ao atualizar tipo de medida");
+      toast.error('Erro ao atualizar', 'Não foi possível atualizar o tipo de medida.');
     }
   }
 
-  function handleDragStart(event: DragStartEvent) {
-    setActiveId(event.active.id as number);
-    document.body.style.overflow = 'hidden';
-  }
-
-  async function handleDragEnd(event: DragEndEvent) {
-    document.body.style.overflow = 'auto';
+  function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
-    setActiveId(null);
 
-    if (!over) return;
+    if (!over || active.id === over.id) return;
 
-    const activeProductId = active.id as number;
-    const overContainer = over.id as string;
-
-    // Se arrastar de disponíveis para adicionados
-    if (overContainer === "adicionados") {
-      const produto = produtos.find((p) => p.id === activeProductId);
-      if (produto && !associacoes.some((a) => a.produto_id === produto.id)) {
-        await adicionarProduto(activeProductId);
-      }
-    }
-
-    // Se arrastar de adicionados para disponíveis
-    if (overContainer === "disponiveis") {
-      const assoc = associacoes.find((a) => a.produto_id === activeProductId);
-      if (assoc) {
-        await removerProduto(assoc.id);
-      }
-    }
+    setAssociacoes((items) => {
+      const oldIndex = items.findIndex((item) => item.id === active.id);
+      const newIndex = items.findIndex((item) => item.id === over.id);
+      return arrayMove(items, oldIndex, newIndex);
+    });
   }
 
-  if (loading) return <CircularProgress sx={{ mt: 4 }} />;
-  if (erro) return <Alert severity="error">{erro}</Alert>;
+  const paginatedAssociacoes = associacoes.slice(
+    page * rowsPerPage,
+    page * rowsPerPage + rowsPerPage
+  );
+
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+        <CircularProgress />
+      </Box>
+    );
+  }
+
   if (!refeicao) return null;
 
-  const activeProduto = activeId
-    ? produtos.find((p) => p.id === activeId)
-    : null;
-
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
-        <PageContainer>
-          <PageBreadcrumbs 
-            items={[
-              { label: 'Refeições', path: '/refeicoes', icon: <RestaurantIcon fontSize="small" /> },
-              { label: refeicao?.nome || 'Detalhes da Refeição' }
-            ]}
-          />
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
+      <PageContainer fullHeight>
+        <PageBreadcrumbs 
+          items={[
+            { label: 'Refeições', path: '/refeicoes', icon: <RestaurantIcon fontSize="small" /> },
+            { label: refeicao?.nome || 'Detalhes da Refeição' }
+          ]}
+        />
 
-          {/* Card Superior - Informações Básicas */}
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Typography variant="h4" gutterBottom>
-              {refeicao.nome}
-            </Typography>
+        {/* Informações da Refeição */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+          <Box sx={{ flex: 1 }}>
             {editando ? (
-              <Box>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <TextField
                   label="Nome"
                   value={form.nome}
                   onChange={(e) => setForm({ ...form, nome: e.target.value })}
-                  fullWidth
-                  margin="normal"
+                  size="small"
                   required
                 />
                 <TextField
                   label="Descrição"
                   value={form.descricao}
-                  onChange={(e) =>
-                    setForm({ ...form, descricao: e.target.value })
-                  }
-                  fullWidth
-                  margin="normal"
+                  onChange={(e) => setForm({ ...form, descricao: e.target.value })}
+                  size="small"
                   multiline
-                  rows={3}
+                  rows={2}
                 />
                 <FormControlLabel
                   control={
                     <Switch
                       checked={!!form.ativo}
-                      onChange={(e) =>
-                        setForm({ ...form, ativo: e.target.checked })
-                      }
+                      onChange={(e) => setForm({ ...form, ativo: e.target.checked })}
                     />
                   }
                   label="Ativa"
-                  sx={{ mt: 2 }}
                 />
               </Box>
             ) : (
-              <Box>
-                <Typography variant="body1" paragraph>
+              <>
+                <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                  {refeicao.nome}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
                   {refeicao.descricao}
                 </Typography>
-                <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
-                  <Chip
-                    label={refeicao.ativo ? "Ativa" : "Inativa"}
-                    color={refeicao.ativo ? "success" : "default"}
-                    variant="outlined"
-                  />
+                <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                  <StatusIndicator status={refeicao.ativo ? 'ativo' : 'inativo'} size="small" />
                   <Typography variant="body2" color="text.secondary">
-                    Criada em: {new Date(refeicao.created_at).toLocaleDateString()}
+                    {refeicao.ativo ? 'Ativa' : 'Inativa'}
                   </Typography>
                 </Box>
-              </Box>
+              </>
             )}
-          </CardContent>
-          <CardActions>
+          </Box>
+          <Box sx={{ display: 'flex', gap: 1 }}>
             {editando ? (
-              <Box>
-                <Button onClick={() => setEditando(false)} sx={{ mr: 1 }}>
+              <>
+                <Button
+                  onClick={() => setEditando(false)}
+                  startIcon={<CancelIcon />}
+                  size="small"
+                >
                   Cancelar
                 </Button>
                 <Button
                   onClick={salvarEdicao}
                   variant="contained"
+                  startIcon={<SaveIcon />}
                   disabled={salvando}
+                  size="small"
                 >
                   Salvar
                 </Button>
-              </Box>
+              </>
             ) : (
-              <Box>
+              <>
                 <Button
                   onClick={() => setEditando(true)}
                   variant="outlined"
                   startIcon={<EditIcon />}
-                  sx={{ mr: 1 }}
+                  size="small"
                 >
                   Editar
                 </Button>
@@ -556,169 +435,137 @@ export default function RefeicaoDetalhe() {
                   color="error"
                   variant="outlined"
                   startIcon={<DeleteIcon />}
+                  size="small"
                 >
                   Excluir
                 </Button>
-              </Box>
+              </>
             )}
-          </CardActions>
+          </Box>
+        </Box>
+
+        {/* Adicionar Produto */}
+        <Card sx={{ borderRadius: '12px', p: 2, mb: 2 }}>
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+            <Autocomplete
+              options={produtosDisponiveis}
+              getOptionLabel={(option) => option.nome}
+              value={selectedProduto}
+              onChange={(_, newValue) => setSelectedProduto(newValue)}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Selecione um produto"
+                  placeholder="Digite para buscar..."
+                  size="small"
+                />
+              )}
+              sx={{ flex: 1 }}
+              noOptionsText="Nenhum produto disponível"
+            />
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={adicionarProduto}
+              disabled={!selectedProduto}
+              size="small"
+              sx={{ bgcolor: '#059669', '&:hover': { bgcolor: '#047857' }, whiteSpace: 'nowrap' }}
+            >
+              Adicionar
+            </Button>
+          </Box>
         </Card>
 
-        {/* Cards de Produtos */}
-        <Grid container spacing={3}>
-          {/* Card Produtos Disponíveis */}
-          <Grid item xs={12} md={6}>
-            <Card sx={{ height: "600px", display: "flex", flexDirection: "column" }}>
-              <CardContent sx={{ pb: 1 }}>
-                <Typography variant="h6" gutterBottom>
-                  Produtos Disponíveis
-                </Typography>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Arraste os produtos para adicionar à refeição
-                </Typography>
-                <TextField
-                  size="small"
-                  placeholder="Buscar produtos disponíveis..."
-                  value={filtroDisponiveis}
-                  onChange={(e) => setFiltroDisponiveis(e.target.value)}
-                  sx={{ mb: 2, width: '100%' }}
-                  InputProps={{
-                    startAdornment: (
-                      <Box sx={{ mr: 1, display: 'flex', alignItems: 'center' }}>
-                        <SearchIcon color="action" />
-                      </Box>
-                    ),
+        {/* Tabela de Produtos */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 2, px: 1 }}>
+          <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 500 }}>
+            Exibindo {associacoes.length} {associacoes.length === 1 ? 'produto' : 'produtos'}
+          </Typography>
+        </Box>
+
+        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          {associacoes.length === 0 ? (
+            <Box textAlign="center" py={8}>
+              <RestaurantIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
+              <Typography variant="h6" color="text.secondary">
+                Nenhum produto adicionado
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                Use o campo acima para adicionar produtos à refeição
+              </Typography>
+            </Box>
+          ) : (
+            <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', width: '100%', overflow: 'hidden' }}>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <TableContainer sx={{ flex: 1, minHeight: 0 }}>
+                  <Table stickyHeader>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell sx={{ width: 50 }}></TableCell>
+                        <TableCell>Produto</TableCell>
+                        <TableCell align="center" sx={{ width: 150 }}>Per Capita</TableCell>
+                        <TableCell align="center" sx={{ width: 120 }}>Unidade</TableCell>
+                        <TableCell align="center" sx={{ width: 100 }}>Ações</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      <SortableContext
+                        items={paginatedAssociacoes.map(a => a.id)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        {paginatedAssociacoes.map((assoc) => (
+                          <SortableRow
+                            key={assoc.id}
+                            assoc={assoc}
+                            onRemove={() => removerProduto(assoc.id)}
+                            onPerCapitaChange={(value) => atualizarPerCapita(assoc.id, value)}
+                            onTipoMedidaChange={(value) => atualizarTipoMedida(assoc.id, value)}
+                          />
+                        ))}
+                      </SortableContext>
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </DndContext>
+              <Box sx={{ borderTop: '1px solid #e9ecef', bgcolor: '#ffffff' }}>
+                <TablePagination
+                  component="div"
+                  count={associacoes.length}
+                  page={page}
+                  onPageChange={(e, newPage) => setPage(newPage)}
+                  rowsPerPage={rowsPerPage}
+                  onRowsPerPageChange={(e) => {
+                    setRowsPerPage(parseInt(e.target.value, 10));
+                    setPage(0);
                   }}
+                  rowsPerPageOptions={[10, 25, 50]}
+                  labelRowsPerPage="Itens por página:"
                 />
-                <Divider />
-              </CardContent>
-              <DroppableZone id="disponiveis">
-                <List>
-                  {produtosDisponiveis.map((produto) => (
-                    <DraggableProduct
-                      key={produto.id}
-                      produto={produto}
-                      onAdd={() => adicionarProduto(produto.id)}
-                      isDragging={activeId === produto.id}
-                    />
-                  ))}
-                </List>
-                {produtosDisponiveis.length === 0 && (
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      height: "100%",
-                      color: "text.secondary",
-                    }}
-                  >
-                    <Typography>Todos os produtos foram adicionados</Typography>
-                  </Box>
-                )}
-              </DroppableZone>
-            </Card>
-          </Grid>
+              </Box>
+            </Box>
+          )}
+        </Box>
+      </PageContainer>
 
-          {/* Card Produtos Adicionados */}
-          <Grid item xs={12} md={6}>
-            <Card sx={{ height: "600px", display: "flex", flexDirection: "column" }}>
-              <CardContent sx={{ pb: 1 }}>
-                <Typography variant="h6" gutterBottom>
-                  Produtos da Refeição
-                </Typography>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Arraste para remover ou ajuste a quantidade per capita
-                </Typography>
-                <TextField
-                  size="small"
-                  placeholder="Buscar produtos da refeição..."
-                  value={filtroAdicionados}
-                  onChange={(e) => setFiltroAdicionados(e.target.value)}
-                  sx={{ mb: 2, width: '100%' }}
-                  InputProps={{
-                    startAdornment: (
-                      <Box sx={{ mr: 1, display: 'flex', alignItems: 'center' }}>
-                        <SearchIcon color="action" />
-                      </Box>
-                    ),
-                  }}
-                />
-                <Divider />
-              </CardContent>
-              <DroppableZone id="adicionados">
-                <List>
-                  {produtosAdicionados.map((assoc) => (
-                    <DraggableProduct
-                      key={assoc.produto_id}
-                      produto={assoc.produto!}
-                      perCapita={assoc.per_capita}
-                      tipoMedida={assoc.tipo_medida}
-                      onPerCapitaChange={(value) => atualizarPerCapita(assoc.id, value)}
-                      onTipoMedidaChange={(value) => atualizarTipoMedida(assoc.id, value)}
-                      onRemove={() => removerProduto(assoc.id)}
-                      isDragging={activeId === assoc.produto_id}
-                    />
-                  ))}
-                </List>
-                {produtosAdicionados.length === 0 && (
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      height: "100%",
-                      color: "text.secondary",
-                    }}
-                  >
-                    <Typography>Nenhum produto adicionado</Typography>
-                  </Box>
-                )}
-              </DroppableZone>
-            </Card>
-          </Grid>
-        </Grid>
-        </PageContainer>
-
-        {/* Modal de confirmação de exclusão */}
-        <Dialog open={openExcluir} onClose={() => setOpenExcluir(false)}>
-          <DialogTitle>Excluir Refeição</DialogTitle>
-          <DialogContent>
-            Tem certeza que deseja excluir esta refeição?
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setOpenExcluir(false)}>Cancelar</Button>
-            <Button onClick={excluirRefeicao} color="error" variant="contained">
-              Excluir
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        <DragOverlay dropAnimation={null}>
-          {activeProduto ? (
-            <Paper
-              sx={{
-                p: 2,
-                backgroundColor: "primary.main",
-                color: "primary.contrastText",
-                borderRadius: 2,
-                boxShadow: '0 12px 30px rgba(0,0,0,0.2)',
-                transform: 'rotate(3deg)',
-                cursor: 'grabbing',
-                minWidth: 200,
-                border: '2px solid rgba(255,255,255,0.2)',
-              }}
-            >
-              <Typography fontWeight="bold">{activeProduto.nome}</Typography>
-              {activeProduto.descricao && (
-                <Typography variant="caption" sx={{ opacity: 0.8 }}>
-                  {activeProduto.descricao}
-                </Typography>
-              )}
-            </Paper>
-          ) : null}
-        </DragOverlay>
-      </DndContext>
+      {/* Modal de confirmação de exclusão */}
+      <Dialog open={openExcluir} onClose={() => setOpenExcluir(false)}>
+        <DialogTitle>Excluir Refeição</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Tem certeza que deseja excluir esta refeição? Esta ação não pode ser desfeita.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenExcluir(false)}>Cancelar</Button>
+          <Button onClick={excluirRefeicao} color="error" variant="contained">
+            Excluir
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

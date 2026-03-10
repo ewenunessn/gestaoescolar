@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box, Button, Card, CardContent, Dialog, DialogTitle, DialogContent, DialogActions,
-  FormControl, Grid, IconButton, InputLabel, MenuItem, Select, TextField, Typography, Chip, Menu
+  FormControl, Grid, IconButton, InputLabel, MenuItem, Select, TextField, Typography, Chip, Menu,
+  CircularProgress
 } from '@mui/material';
 import { ArrowBack as ArrowBackIcon, Delete as DeleteIcon, PictureAsPdf as PdfIcon, MoreVert as MoreIcon } from '@mui/icons-material';
 import { useNotification } from '../context/NotificationContext';
@@ -12,8 +13,15 @@ import {
   removerRefeicaoDia, CardapioModalidade, RefeicaoDia, TIPOS_REFEICAO, MESES
 } from '../services/cardapiosModalidade';
 import { listarRefeicoes } from '../services/refeicoes';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+// Importação dinâmica para pdfmake (funciona melhor com Vite)
+const initPdfMake = async () => {
+  const pdfMake = (await import('pdfmake/build/pdfmake')).default;
+  const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default as any;
+  
+  // Configurar fontes
+  (pdfMake as any).vfs = pdfFonts.pdfMake?.vfs || pdfFonts;
+  return pdfMake;
+};
 
 const CardapioCalendarioPage: React.FC = () => {
   const { cardapioId } = useParams<{ cardapioId: string }>();
@@ -26,9 +34,16 @@ const CardapioCalendarioPage: React.FC = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [openListDialog, setOpenListDialog] = useState(false);
   const [openDetalhesDialog, setOpenDetalhesDialog] = useState(false);
+  const [openPeriodoDialog, setOpenPeriodoDialog] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [diaSelecionado, setDiaSelecionado] = useState<number | null>(null);
   const [refeicaoDetalhes, setRefeicaoDetalhes] = useState<any>(null);
+  const [produtosRefeicao, setProdutosRefeicao] = useState<any[]>([]);
+  const [loadingDetalhes, setLoadingDetalhes] = useState(false);
+  const [periodoForm, setPeriodoForm] = useState({
+    diaInicio: 1,
+    diaFim: 31
+  });
   const [formData, setFormData] = useState({
     refeicao_id: '',
     tipo_refeicao: '',
@@ -108,135 +123,454 @@ const CardapioCalendarioPage: React.FC = () => {
 
   const handleOpenDetalhes = async (refeicaoId: number) => {
     try {
+      setLoadingDetalhes(true);
       const refeicao = refeicoesDisponiveis.find(r => r.id === refeicaoId);
       if (refeicao) {
         setRefeicaoDetalhes(refeicao);
+        
+        // Buscar produtos da refeição
+        const response = await fetch(`http://localhost:3000/api/refeicoes/${refeicaoId}/produtos`);
+        if (response.ok) {
+          const produtos = await response.json();
+          setProdutosRefeicao(produtos);
+        } else {
+          setProdutosRefeicao([]);
+        }
+        
         setOpenDetalhesDialog(true);
       }
     } catch (err) {
       error('Erro ao carregar detalhes');
+      setProdutosRefeicao([]);
+    } finally {
+      setLoadingDetalhes(false);
     }
   };
 
-  const exportarCalendarioPDF = () => {
+  const exportarCalendarioPDF = async () => {
     if (!cardapio) return;
     
-    const doc = new jsPDF('l', 'mm', 'a4');
-    const pageWidth = doc.internal.pageSize.getWidth();
-    
-    // Título
-    doc.setFontSize(16);
-    doc.text(`Cardápio - ${cardapio.nome}`, pageWidth / 2, 15, { align: 'center' });
-    doc.setFontSize(12);
-    doc.text(`${MESES[cardapio.mes]} / ${cardapio.ano} - ${cardapio.modalidade_nome}`, pageWidth / 2, 22, { align: 'center' });
-    
-    // Calendário
-    const semanas = getCalendarioSemanas();
-    const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-    const cellWidth = 40;
-    const cellHeight = 35;
-    let startY = 30;
-    
-    // Cabeçalho dos dias
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    diasSemana.forEach((dia, i) => {
-      doc.text(dia, 10 + (i * cellWidth) + cellWidth / 2, startY, { align: 'center' });
-    });
-    
-    startY += 5;
-    
-    // Desenhar semanas
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    semanas.forEach((semana, semanaIdx) => {
-      semana.forEach((dia, diaIdx) => {
-        const x = 10 + (diaIdx * cellWidth);
-        const y = startY + (semanaIdx * cellHeight);
-        
-        // Borda
-        doc.rect(x, y, cellWidth, cellHeight);
-        
-        if (dia !== null) {
-          // Número do dia
-          doc.setFont('helvetica', 'bold');
-          doc.text(dia.toString(), x + 2, y + 5);
+    try {
+      const pdfMake = await initPdfMake();
+      const semanas = getCalendarioSemanas();
+      const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
+      
+      // Criar corpo da tabela do calendário
+      const tableBody: any[] = [];
+      
+      // Cabeçalho dos dias
+      tableBody.push(
+        diasSemana.map(dia => ({
+          text: dia,
+          style: 'tableHeader',
+          alignment: 'center'
+        }))
+      );
+      
+      // Semanas
+      semanas.forEach(semana => {
+        const row = semana.map(dia => {
+          if (dia === null) {
+            return { text: '', fillColor: '#e0e0e0' };
+          }
           
-          // Refeições
-          doc.setFont('helvetica', 'normal');
           const refeicoesNoDia = getRefeicoesNoDia(dia);
-          refeicoesNoDia.slice(0, 3).forEach((ref, idx) => {
-            const text = `${TIPOS_REFEICAO[ref.tipo_refeicao]}: ${ref.refeicao_nome}`;
-            const lines = doc.splitTextToSize(text, cellWidth - 4);
-            doc.text(lines[0], x + 2, y + 10 + (idx * 5));
+          const content: any[] = [
+            { text: dia.toString(), bold: true, fontSize: 11, margin: [0, 0, 0, 3] }
+          ];
+          
+          refeicoesNoDia.slice(0, 3).forEach(ref => {
+            content.push({
+              text: `${TIPOS_REFEICAO[ref.tipo_refeicao]}: ${ref.refeicao_nome}`,
+              fontSize: 7,
+              margin: [0, 1, 0, 1]
+            });
           });
           
           if (refeicoesNoDia.length > 3) {
-            doc.text(`+${refeicoesNoDia.length - 3} mais`, x + 2, y + 25);
+            content.push({
+              text: `+${refeicoesNoDia.length - 3} mais`,
+              fontSize: 7,
+              italics: true,
+              color: '#666'
+            });
           }
+          
+          return {
+            stack: content,
+            margin: 3
+          };
+        });
+        
+        tableBody.push(row);
+      });
+      
+      const docDefinition: any = {
+        pageSize: 'A4',
+        pageOrientation: 'landscape',
+        pageMargins: [20, 60, 20, 40],
+        header: {
+          stack: [
+            { text: `Cardapio - ${cardapio.nome}`, style: 'header', alignment: 'center' },
+            { text: `${MESES[cardapio.mes]} / ${cardapio.ano} - ${cardapio.modalidade_nome}`, style: 'subheader', alignment: 'center' }
+          ],
+          margin: [0, 15, 0, 0]
+        },
+        content: [
+          {
+            table: {
+              widths: Array(7).fill('*'),
+              heights: (row: number) => row === 0 ? 20 : 80,
+              body: tableBody
+            },
+            layout: {
+              hLineWidth: () => 1,
+              vLineWidth: () => 1,
+              hLineColor: () => '#cccccc',
+              vLineColor: () => '#cccccc'
+            }
+          }
+        ],
+        styles: {
+          header: { fontSize: 16, bold: true },
+          subheader: { fontSize: 11, margin: [0, 3, 0, 0] },
+          tableHeader: { bold: true, fontSize: 9, fillColor: '#e3f2fd' }
+        }
+      };
+      
+      pdfMake.createPdf(docDefinition).download(`cardapio-${cardapio.mes}-${cardapio.ano}.pdf`);
+      success('PDF do calendário gerado!');
+      setAnchorEl(null);
+    } catch (err) {
+      error('Erro ao gerar PDF do calendário');
+      console.error(err);
+    }
+  };
+
+  const exportarFrequenciaPDF = async () => {
+    if (!cardapio) return;
+    
+    try {
+      const pdfMake = await initPdfMake();
+      
+      // Agrupar por tipo e refeição
+      const frequencia: Record<string, Record<string, number>> = {};
+      
+      refeicoes.forEach(ref => {
+        if (!frequencia[ref.tipo_refeicao]) {
+          frequencia[ref.tipo_refeicao] = {};
+        }
+        if (!frequencia[ref.tipo_refeicao][ref.refeicao_nome]) {
+          frequencia[ref.tipo_refeicao][ref.refeicao_nome] = 0;
+        }
+        frequencia[ref.tipo_refeicao][ref.refeicao_nome]++;
+      });
+      
+      const content: any[] = [];
+      
+      // Para cada tipo de refeição
+      Object.entries(TIPOS_REFEICAO).forEach(([tipo, tipoNome]) => {
+        if (frequencia[tipo]) {
+          content.push({
+            text: tipoNome,
+            style: 'sectionHeader',
+            margin: [0, content.length > 0 ? 15 : 0, 0, 5]
+          });
+          
+          const tableBody: any[] = [
+            [
+              { text: 'Refeicao', style: 'tableHeader' },
+              { text: 'Frequencia', style: 'tableHeader', alignment: 'center' }
+            ]
+          ];
+          
+          Object.entries(frequencia[tipo]).forEach(([nome, freq]) => {
+            tableBody.push([
+              { text: nome },
+              { text: freq.toString(), alignment: 'center' }
+            ]);
+          });
+          
+          content.push({
+            table: {
+              widths: ['*', 80],
+              body: tableBody
+            },
+            layout: {
+              hLineWidth: () => 0.5,
+              vLineWidth: () => 0.5,
+              hLineColor: () => '#cccccc',
+              vLineColor: () => '#cccccc'
+            }
+          });
         }
       });
-    });
-    
-    doc.save(`cardapio-${cardapio.mes}-${cardapio.ano}.pdf`);
-    success('PDF do calendário gerado!');
+      
+      const docDefinition: any = {
+        pageSize: 'A4',
+        pageMargins: [40, 80, 40, 40],
+        header: {
+          stack: [
+            { text: `Relatorio de Frequencia - ${cardapio.nome}`, style: 'header', alignment: 'center' },
+            { text: `${MESES[cardapio.mes]} / ${cardapio.ano} - ${cardapio.modalidade_nome}`, style: 'subheader', alignment: 'center' }
+          ],
+          margin: [0, 20, 0, 0]
+        },
+        content: content,
+        styles: {
+          header: { fontSize: 16, bold: true },
+          subheader: { fontSize: 11, margin: [0, 3, 0, 0] },
+          sectionHeader: { fontSize: 12, bold: true },
+          tableHeader: { bold: true, fillColor: '#428bca', color: 'white', fontSize: 10 }
+        }
+      };
+      
+      pdfMake.createPdf(docDefinition).download(`frequencia-cardapio-${cardapio.mes}-${cardapio.ano}.pdf`);
+      success('PDF de frequência gerado!');
+      setAnchorEl(null);
+    } catch (err) {
+      error('Erro ao gerar PDF de frequência');
+      console.error(err);
+    }
+  };
+
+  const handleOpenPeriodoDialog = () => {
+    if (!cardapio) return;
+    const ultimoDia = new Date(cardapio.ano, cardapio.mes, 0).getDate();
+    setPeriodoForm({ diaInicio: 1, diaFim: ultimoDia });
+    setOpenPeriodoDialog(true);
     setAnchorEl(null);
   };
 
-  const exportarFrequenciaPDF = () => {
+  const exportarRelatorioDetalhado = async () => {
     if (!cardapio) return;
     
-    const doc = new jsPDF();
-    
-    // Título
-    doc.setFontSize(16);
-    doc.text(`Relatório de Frequência - ${cardapio.nome}`, 105, 15, { align: 'center' });
-    doc.setFontSize(12);
-    doc.text(`${MESES[cardapio.mes]} / ${cardapio.ano} - ${cardapio.modalidade_nome}`, 105, 22, { align: 'center' });
-    
-    // Agrupar por tipo e refeição
-    const frequencia: Record<string, Record<string, number>> = {};
-    
-    refeicoes.forEach(ref => {
-      if (!frequencia[ref.tipo_refeicao]) {
-        frequencia[ref.tipo_refeicao] = {};
+    try {
+      const pdfMake = await initPdfMake();
+      
+      // Filtrar refeições do período
+      const refeicoesNoPeriodo = refeicoes.filter(
+        ref => ref.dia >= periodoForm.diaInicio && ref.dia <= periodoForm.diaFim
+      ).sort((a, b) => {
+        if (a.dia !== b.dia) return a.dia - b.dia;
+        const ordem: Record<string, number> = {
+          'cafe_manha': 1,
+          'lanche_manha': 2,
+          'almoco': 3,
+          'lanche_tarde': 4,
+          'jantar': 5
+        };
+        return (ordem[a.tipo_refeicao] || 99) - (ordem[b.tipo_refeicao] || 99);
+      });
+      
+      if (refeicoesNoPeriodo.length === 0) {
+        const docDefinition: any = {
+          content: [
+            { text: 'Nenhuma refeicao cadastrada neste periodo', alignment: 'center', margin: [0, 50, 0, 0] }
+          ]
+        };
+        pdfMake.createPdf(docDefinition).download(`cardapio-detalhado-${cardapio.mes}-${cardapio.ano}.pdf`);
+        success('PDF gerado!');
+        setOpenPeriodoDialog(false);
+        return;
       }
-      if (!frequencia[ref.tipo_refeicao][ref.refeicao_nome]) {
-        frequencia[ref.tipo_refeicao][ref.refeicao_nome] = 0;
-      }
-      frequencia[ref.tipo_refeicao][ref.refeicao_nome]++;
-    });
-    
-    let startY = 30;
-    
-    // Para cada tipo de refeição
-    Object.entries(TIPOS_REFEICAO).forEach(([tipo, tipoNome]) => {
-      if (frequencia[tipo]) {
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text(tipoNome, 14, startY);
-        startY += 7;
+      
+      // Buscar produtos de todas as refeições
+      const refeicoesComProdutos = await Promise.all(
+        refeicoesNoPeriodo.map(async (ref) => {
+          try {
+            const response = await fetch(`http://localhost:3000/api/refeicoes/${ref.refeicao_id}/produtos`);
+            const produtos = response.ok ? await response.json() : [];
+            return { ...ref, produtos };
+          } catch {
+            return { ...ref, produtos: [] };
+          }
+        })
+      );
+      
+      // Agrupar por dia
+      const refeicoesAgrupadas: Record<number, typeof refeicoesComProdutos> = {};
+      refeicoesComProdutos.forEach(ref => {
+        if (!refeicoesAgrupadas[ref.dia]) {
+          refeicoesAgrupadas[ref.dia] = [];
+        }
+        refeicoesAgrupadas[ref.dia].push(ref);
+      });
+      
+      // Cores suaves alternadas para cada dia
+      const coresDias = [
+        '#f5faff', // Azul muito claro
+        '#fffaf5', // Laranja muito claro
+        '#f5fff0', // Verde muito claro
+        '#fff5fa', // Rosa muito claro
+        '#faf5ff', // Roxo muito claro
+        '#fffff5', // Amarelo muito claro
+        '#f5ffff', // Ciano muito claro
+      ];
+      
+      const tableBody: any[] = [
+        [
+          { text: 'Data', style: 'tableHeader', alignment: 'center' },
+          { text: 'Refeicao', style: 'tableHeader' },
+          { text: 'Produtos e Per Capita', style: 'tableHeader' }
+        ]
+      ];
+      
+      Object.entries(refeicoesAgrupadas).sort(([a], [b]) => Number(a) - Number(b)).forEach(([dia, refs], diaIndex) => {
+        const diaSemana = new Date(cardapio.ano, cardapio.mes - 1, Number(dia)).toLocaleDateString('pt-BR', { weekday: 'short' });
+        const dataFormatada = `${String(dia).padStart(2, '0')}/${String(cardapio.mes).padStart(2, '0')}\n${diaSemana}`;
+        const corDia = coresDias[diaIndex % coresDias.length];
         
-        // Tabela de refeições
-        const tableData = Object.entries(frequencia[tipo]).map(([nome, freq]) => [nome, freq.toString()]);
+        // Adicionar espaçamento entre dias (exceto no primeiro)
+        if (diaIndex > 0) {
+          tableBody.push([
+            { text: '', colSpan: 3, border: [false, false, false, false], margin: [0, 1, 0, 1] },
+            {},
+            {}
+          ]);
+        }
         
-        autoTable(doc, {
-          startY: startY,
-          head: [['Refeição', 'Frequência']],
-          body: tableData,
-          theme: 'grid',
-          headStyles: { fillColor: [66, 139, 202] },
-          margin: { left: 14 },
-          styles: { fontSize: 10 }
+        refs.forEach((ref, refIdx) => {
+          const refeicaoInfo = `${ref.refeicao_nome}\n(${TIPOS_REFEICAO[ref.tipo_refeicao]})`;
+          
+          // Criar colunas de produtos (4 itens por coluna)
+          let produtosContent: any;
+          
+          if (ref.produtos && ref.produtos.length > 0) {
+            const colunas: any[] = [];
+            
+            for (let i = 0; i < ref.produtos.length; i += 4) {
+              const grupo = ref.produtos.slice(i, i + 4);
+              const itens = grupo.map((produto: any) => {
+                const produtoNome = produto.produto?.nome || produto.produto_nome || 'Produto';
+                const perCapita = parseFloat(String(produto.per_capita)).toString();
+                const unidade = produto.tipo_medida === 'gramas' ? 'g' : 'un';
+                return { text: `- ${produtoNome}: ${perCapita} ${unidade}`, fontSize: 8 };
+              });
+              
+              colunas.push({
+                stack: itens,
+                width: '*'
+              });
+            }
+            
+            produtosContent = {
+              columns: colunas,
+              columnGap: 10
+            };
+          } else {
+            produtosContent = {
+              text: 'Sem produtos cadastrados',
+              fontSize: 8,
+              italics: true,
+              color: '#999999'
+            };
+          }
+          
+          if (refIdx === 0) {
+            // Primeira refeição do dia
+            tableBody.push([
+              { 
+                text: dataFormatada, 
+                rowSpan: refs.length,
+                alignment: 'center',
+                bold: true,
+                fontSize: 9,
+                fillColor: corDia,
+                valign: 'middle'
+              },
+              { 
+                text: refeicaoInfo,
+                bold: true,
+                fontSize: 9,
+                fillColor: corDia,
+                valign: 'middle'
+              },
+              {
+                ...produtosContent,
+                fillColor: corDia,
+                valign: 'top'
+              }
+            ]);
+          } else {
+            // Refeições seguintes do mesmo dia
+            tableBody.push([
+              {},
+              { 
+                text: refeicaoInfo,
+                bold: true,
+                fontSize: 9,
+                fillColor: corDia,
+                valign: 'middle'
+              },
+              {
+                ...produtosContent,
+                fillColor: corDia,
+                valign: 'top'
+              }
+            ]);
+          }
         });
-        
-        startY = (doc as any).lastAutoTable.finalY + 10;
-      }
-    });
-    
-    doc.save(`frequencia-cardapio-${cardapio.mes}-${cardapio.ano}.pdf`);
-    success('PDF de frequência gerado!');
-    setAnchorEl(null);
+      });
+      
+      const docDefinition: any = {
+        pageSize: 'A4',
+        pageMargins: [30, 70, 30, 40],
+        header: {
+          stack: [
+            { text: `Cardapio Detalhado - ${cardapio.nome}`, style: 'header', alignment: 'center' },
+            { 
+              text: `${MESES[cardapio.mes]}/${cardapio.ano} - ${cardapio.modalidade_nome} | Periodo: ${periodoForm.diaInicio} a ${periodoForm.diaFim}`, 
+              style: 'subheader', 
+              alignment: 'center' 
+            }
+          ],
+          margin: [0, 15, 0, 0]
+        },
+        footer: (currentPage: number, pageCount: number) => ({
+          text: `Pagina ${currentPage} de ${pageCount} - Gerado em ${new Date().toLocaleDateString('pt-BR')}`,
+          alignment: 'center',
+          fontSize: 7,
+          color: '#999999',
+          margin: [0, 10, 0, 0]
+        }),
+        content: [
+          {
+            table: {
+              widths: [60, 100, '*'],
+              body: tableBody,
+              heights: (rowIndex: number) => {
+                // Ajusta altura das linhas com base no conteúdo
+                if (rowIndex === 0) return 20; // Cabeçalho
+                return 'auto'; // Altura automática para as outras linhas
+              }
+            },
+            layout: {
+              hLineWidth: (i: number, node: any) => 0.5,
+              vLineWidth: (i: number, node: any) => 0.5,
+              hLineColor: () => '#cccccc',
+              vLineColor: () => '#cccccc',
+              paddingLeft: () => 5,
+              paddingRight: () => 5,
+              paddingTop: () => 5,
+              paddingBottom: () => 5
+            }
+          }
+        ],
+        styles: {
+          header: { fontSize: 14, bold: true },
+          subheader: { fontSize: 9, margin: [0, 3, 0, 0] },
+          tableHeader: { bold: true, fillColor: '#428bca', color: 'white', fontSize: 9 }
+        }
+      };
+      
+      pdfMake.createPdf(docDefinition).download(`cardapio-detalhado-${cardapio.mes}-${cardapio.ano}.pdf`);
+      success('PDF gerado com sucesso!');
+      setOpenPeriodoDialog(false);
+    } catch (err) {
+      error('Erro ao gerar PDF');
+      console.error(err);
+    }
   };
 
   const handleSubmit = async () => {
@@ -314,6 +648,10 @@ const CardapioCalendarioPage: React.FC = () => {
             <MenuItem onClick={exportarFrequenciaPDF}>
               <PdfIcon sx={{ mr: 1 }} fontSize="small" />
               Exportar Frequência
+            </MenuItem>
+            <MenuItem onClick={handleOpenPeriodoDialog}>
+              <PdfIcon sx={{ mr: 1 }} fontSize="small" />
+              Relatório Detalhado
             </MenuItem>
           </Menu>
         </Box>
@@ -499,6 +837,64 @@ const CardapioCalendarioPage: React.FC = () => {
         </DialogActions>
       </Dialog>
 
+      {/* Dialog de seleção de período */}
+      <Dialog open={openPeriodoDialog} onClose={() => setOpenPeriodoDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Gerar Relatório Detalhado</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Typography variant="body2" color="textSecondary">
+              Selecione o período que deseja incluir no relatório. O PDF conterá todas as refeições 
+              com seus produtos e per capita.
+            </Typography>
+            
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <TextField
+                label="Dia Inicial"
+                type="number"
+                value={periodoForm.diaInicio}
+                onChange={(e) => setPeriodoForm({ ...periodoForm, diaInicio: Number(e.target.value) })}
+                fullWidth
+                inputProps={{ 
+                  min: 1, 
+                  max: cardapio ? new Date(cardapio.ano, cardapio.mes, 0).getDate() : 31 
+                }}
+              />
+              <TextField
+                label="Dia Final"
+                type="number"
+                value={periodoForm.diaFim}
+                onChange={(e) => setPeriodoForm({ ...periodoForm, diaFim: Number(e.target.value) })}
+                fullWidth
+                inputProps={{ 
+                  min: 1, 
+                  max: cardapio ? new Date(cardapio.ano, cardapio.mes, 0).getDate() : 31 
+                }}
+              />
+            </Box>
+            
+            <Box sx={{ bgcolor: '#f5f5f5', p: 2, borderRadius: 1 }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                Período selecionado:
+              </Typography>
+              <Typography variant="body2" color="textSecondary">
+                {periodoForm.diaInicio} a {periodoForm.diaFim} de {cardapio && MESES[cardapio.mes]} de {cardapio?.ano}
+              </Typography>
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenPeriodoDialog(false)}>Cancelar</Button>
+          <Button 
+            onClick={exportarRelatorioDetalhado} 
+            variant="contained" 
+            startIcon={<PdfIcon />}
+            disabled={periodoForm.diaInicio > periodoForm.diaFim}
+          >
+            Gerar PDF
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Dialog de lista completa */}
       <Dialog open={openListDialog} onClose={() => setOpenListDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Refeições do Dia {diaSelecionado}</DialogTitle>
@@ -557,30 +953,76 @@ const CardapioCalendarioPage: React.FC = () => {
 
       {/* Dialog de detalhes da refeição */}
       <Dialog open={openDetalhesDialog} onClose={() => setOpenDetalhesDialog(false)} maxWidth="md" fullWidth>
-        <DialogTitle>{refeicaoDetalhes?.nome}</DialogTitle>
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Typography variant="h6">{refeicaoDetalhes?.nome}</Typography>
+            <Chip 
+              label={refeicaoDetalhes?.ativo ? 'Ativa' : 'Inativa'} 
+              size="small" 
+              color={refeicaoDetalhes?.ativo ? 'success' : 'default'} 
+            />
+          </Box>
+        </DialogTitle>
         <DialogContent>
-          {refeicaoDetalhes && (
+          {loadingDetalhes ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <Typography>Carregando...</Typography>
+            </Box>
+          ) : refeicaoDetalhes && (
             <Box sx={{ pt: 2 }}>
               {refeicaoDetalhes.descricao && (
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" color="textSecondary">Descrição</Typography>
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="subtitle2" color="textSecondary" gutterBottom>Descrição</Typography>
                   <Typography variant="body1">{refeicaoDetalhes.descricao}</Typography>
                 </Box>
               )}
-              
-              {refeicaoDetalhes.observacao && (
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" color="textSecondary">Observação</Typography>
-                  <Typography variant="body2">{refeicaoDetalhes.observacao}</Typography>
-                </Box>
-              )}
 
-              <Box>
-                <Typography variant="subtitle2" color="textSecondary" gutterBottom>Informações</Typography>
-                <Box>
-                  <Typography variant="body2" component="span" sx={{ mr: 1 }}>Status:</Typography>
-                  <Chip label={refeicaoDetalhes.ativo ? 'Ativa' : 'Inativa'} size="small" color={refeicaoDetalhes.ativo ? 'success' : 'default'} />
-                </Box>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" color="textSecondary" gutterBottom sx={{ mb: 1 }}>
+                  Composição da Refeição ({produtosRefeicao.length} {produtosRefeicao.length === 1 ? 'produto' : 'produtos'})
+                </Typography>
+                
+                {produtosRefeicao.length === 0 ? (
+                  <Box sx={{ textAlign: 'center', py: 3, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+                    <Typography variant="body2" color="textSecondary">
+                      Nenhum produto cadastrado nesta refeição
+                    </Typography>
+                  </Box>
+                ) : (
+                  <Box sx={{ border: '1px solid #e0e0e0', borderRadius: 1, overflow: 'hidden' }}>
+                    <Box sx={{ display: 'flex', bgcolor: '#f5f5f5', fontWeight: 600, fontSize: '0.875rem', borderBottom: '1px solid #e0e0e0' }}>
+                      <Box sx={{ flex: 1, p: 1.5, borderRight: '1px solid #e0e0e0' }}>Produto</Box>
+                      <Box sx={{ width: 120, p: 1.5, textAlign: 'center', borderRight: '1px solid #e0e0e0' }}>Per Capita</Box>
+                      <Box sx={{ width: 100, p: 1.5, textAlign: 'center' }}>Unidade</Box>
+                    </Box>
+                    {produtosRefeicao.map((produto, index) => (
+                      <Box 
+                        key={produto.id} 
+                        sx={{ 
+                          display: 'flex', 
+                          borderBottom: index < produtosRefeicao.length - 1 ? '1px solid #e0e0e0' : 'none',
+                          '&:hover': { bgcolor: '#fafafa' }
+                        }}
+                      >
+                        <Box sx={{ flex: 1, p: 1.5, borderRight: '1px solid #e0e0e0' }}>
+                          <Typography variant="body2">{produto.produto?.nome || produto.produto_nome}</Typography>
+                        </Box>
+                        <Box sx={{ width: 120, p: 1.5, textAlign: 'center', borderRight: '1px solid #e0e0e0' }}>
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            {parseFloat(produto.per_capita).toString()}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ width: 100, p: 1.5, textAlign: 'center' }}>
+                          <Chip 
+                            label={produto.tipo_medida === 'gramas' ? 'Gramas' : 'Unidades'} 
+                            size="small" 
+                            variant="outlined"
+                          />
+                        </Box>
+                      </Box>
+                    ))}
+                  </Box>
+                )}
               </Box>
             </Box>
           )}

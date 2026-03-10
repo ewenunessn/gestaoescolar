@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import PageContainer from '../components/PageContainer';
+import { useToast } from '../hooks/useToast';
 import {
     Box, Typography, TextField, Button, IconButton, Select, MenuItem,
     FormControl, InputLabel, Card, CircularProgress, Alert, FormControlLabel,
@@ -231,6 +232,7 @@ const EscolaDetalhesPage = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
+    const toast = useToast();
 
     // Função para formatar data
     const formatDate = (dateString: string | null | undefined) => {
@@ -256,7 +258,6 @@ const EscolaDetalhesPage = () => {
     const [associacoes, setAssociacoes] = useState<EscolaModalidade[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState<any>({});
@@ -304,11 +305,11 @@ const EscolaDetalhesPage = () => {
             const escolaAtualizada = await editarEscola(Number(id), dadosParaEnvio);
             setEscola(escolaAtualizada);
             setIsEditing(false);
-            setSuccessMessage('Escola atualizada com sucesso!');
+            toast.success('Sucesso!', 'Escola atualizada com sucesso!');
             // Invalidar cache do React Query
             queryClient.invalidateQueries({ queryKey: ['escolas'] });
         } catch (err: any) { setError('Erro ao salvar alterações da escola'); }
-        finally { setIsSaving(false); setTimeout(() => setSuccessMessage(null), 3000); }
+        finally { setIsSaving(false); }
     }, [id, formData, queryClient]);
 
     const handleCancelEdit = useCallback(() => {
@@ -342,28 +343,27 @@ const EscolaDetalhesPage = () => {
         try {
             if (editingModalidade) {
                 await editarEscolaModalidade(editingModalidade.id, { quantidade_alunos: Number(modalidadeForm.alunos) });
-                setSuccessMessage('Modalidade atualizada com sucesso!');
+                toast.success('Sucesso!', 'Modalidade atualizada com sucesso!');
             } else {
                 await adicionarEscolaModalidade(Number(id), Number(modalidadeForm.modalidade_id), Number(modalidadeForm.alunos));
-                setSuccessMessage('Modalidade adicionada com sucesso!');
+                toast.success('Sucesso!', 'Modalidade adicionada com sucesso!');
             }
             setModalOpen(false);
             await loadData();
             // Invalidar cache de modalidades para atualizar contagem de alunos
             queryClient.invalidateQueries({ queryKey: ['modalidades'] });
         } catch (err) { setError('Erro ao salvar modalidade'); }
-        finally { setIsSavingModalidade(false); setTimeout(() => setSuccessMessage(null), 3000); }
+        finally { setIsSavingModalidade(false); }
     }, [editingModalidade, modalidadeForm, id, loadData, queryClient]);
 
     const handleDeleteModalidade = useCallback(async (associacaoId: number) => {
         try {
             await removerEscolaModalidade(associacaoId);
-            setSuccessMessage('Modalidade removida com sucesso!');
+            toast.success('Sucesso!', 'Modalidade removida com sucesso!');
             await loadData();
             // Invalidar cache de modalidades para atualizar contagem de alunos
             queryClient.invalidateQueries({ queryKey: ['modalidades'] });
         } catch (err) { setError('Erro ao remover modalidade'); }
-        finally { setTimeout(() => setSuccessMessage(null), 3000); }
     }, [loadData, queryClient]);
 
     const totalAlunos = useMemo(() => associacoes.reduce((total, assoc) => total + assoc.quantidade_alunos, 0), [associacoes]);
@@ -380,8 +380,6 @@ const EscolaDetalhesPage = () => {
                         { label: escola?.nome || 'Detalhes da Escola' }
                     ]}
                 />
-                {successMessage && <Alert severity="success" onClose={() => setSuccessMessage(null)} sx={{ mb: 2 }}>{successMessage}</Alert>}
-                {error && <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>{error}</Alert>}
 
                 <PageHeader
                     escola={escola} totalAlunos={totalAlunos} isEditing={isEditing}

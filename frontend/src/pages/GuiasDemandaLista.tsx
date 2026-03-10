@@ -37,9 +37,9 @@ import {
 import PageContainer from '../components/PageContainer';
 import PageHeader from '../components/PageHeader';
 import PageBreadcrumbs from '../components/PageBreadcrumbs';
-import Toast from '../components/Toast';
 import StatusIndicator from '../components/StatusIndicator';
 import { guiaService } from '../services/guiaService';
+import { useToast } from '../hooks/useToast';
 
 interface Competencia {
   mes: number;
@@ -58,11 +58,11 @@ interface Competencia {
 
 const GuiasDemandaLista: React.FC = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   
   const [competencias, setCompetencias] = useState<Competencia[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   
   // Paginação
   const [page, setPage] = useState(0);
@@ -99,7 +99,7 @@ const GuiasDemandaLista: React.FC = () => {
         nome: `Guia ${formData.mes}/${formData.ano}`,
         observacao: ''
       });
-      setSuccessMessage('Competência criada com sucesso!');
+      toast.success('Sucesso!', 'Competência criada com sucesso!');
       setOpenModal(false);
       loadCompetencias();
     } catch (error) {
@@ -136,10 +136,6 @@ const GuiasDemandaLista: React.FC = () => {
 
   return (
     <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
-      {successMessage && (
-        <Toast message={successMessage} severity="success" onClose={() => setSuccessMessage(null)} />
-      )}
-
       <PageContainer fullHeight>
         <PageBreadcrumbs
           items={[
