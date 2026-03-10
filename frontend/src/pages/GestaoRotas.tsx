@@ -31,7 +31,14 @@ import {
     Tooltip,
     Switch,
     FormControlLabel,
-    InputAdornment
+    InputAdornment,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    Chip
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -357,135 +364,104 @@ const GestaoRotas: React.FC = () => {
                         </Typography>
                     </Box>
                 ) : (
-                    <Grid container spacing={3}>
-                        {paginatedRotas.map((rota) => (
-                            <Grid item xs={12} sm={6} md={4} key={rota.id}>
-                                <Card 
-                                    elevation={0}
-                                    sx={{ 
-                                        height: '100%',
-                                        border: '1px solid',
-                                        borderColor: 'divider',
-                                        borderRadius: 2,
-                                        transition: 'all 0.2s',
-                                        opacity: rota.ativo ? 1 : 0.6,
-                                        bgcolor: rota.ativo ? 'background.paper' : '#f5f5f5',
-                                        '&:hover': { 
-                                            borderColor: 'primary.main',
-                                            transform: rota.ativo ? 'translateY(-2px)' : 'none',
-                                            boxShadow: rota.ativo ? '0 4px 12px rgba(0,0,0,0.05)' : 'none'
-                                        }
-                                    }}
-                                >
-                                    <Box sx={{ p: 2.5 }}>
-                                        <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
-                                            <Box display="flex" alignItems="center" gap={1.5}>
+                    <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', width: '100%', overflow: 'hidden' }}>
+                        <TableContainer sx={{ flex: 1, minHeight: 0 }}>
+                            <Table stickyHeader>
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell width="40"></TableCell>
+                                        <TableCell>Nome</TableCell>
+                                        <TableCell>Descrição</TableCell>
+                                        <TableCell align="center">Escolas</TableCell>
+                                        <TableCell align="center">Status</TableCell>
+                                        <TableCell align="center" width="200">Ações</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {paginatedRotas.map((rota) => (
+                                        <TableRow key={rota.id} hover>
+                                            <TableCell>
                                                 <Box 
                                                     sx={{ 
-                                                        width: 10, 
-                                                        height: 10, 
+                                                        width: 12, 
+                                                        height: 12, 
                                                         borderRadius: '50%', 
                                                         bgcolor: rota.cor,
                                                         boxShadow: `0 0 0 2px ${rota.cor}40`
                                                     }} 
                                                 />
-                                                <Typography variant="subtitle1" fontWeight="600">
+                                            </TableCell>
+                                            <TableCell>
+                                                <Typography variant="body2" sx={{ fontWeight: 600 }}>
                                                     {rota.nome}
                                                 </Typography>
-                                            </Box>
-                                            <IconButton 
-                                                size="small" 
-                                                onClick={(e) => {
-                                                    // Implementar menu de ações aqui se necessário
-                                                    // Por enquanto, vou manter ações diretas simplificadas
-                                                }}
-                                            >
-                                                {/* <MoreVert fontSize="small" /> */}
-                                            </IconButton>
-                                        </Box>
-
-                                        <Typography variant="body2" color="text.secondary" sx={{ 
-                                            mb: 3, 
-                                            minHeight: '2.5em',
-                                            display: '-webkit-box',
-                                            WebkitLineClamp: 2,
-                                            WebkitBoxOrient: 'vertical',
-                                            overflow: 'hidden'
-                                        }}>
-                                            {rota.descricao || 'Sem descrição'}
-                                        </Typography>
-
-                                        <Box display="flex" alignItems="center" gap={3} mb={3}>
-                                            <Box>
-                                                <Typography variant="caption" color="text.secondary" display="block">
-                                                    Escolas
+                                            </TableCell>
+                                            <TableCell>
+                                                <Typography variant="body2" color="text.secondary">
+                                                    {rota.descricao || 'Sem descrição'}
                                                 </Typography>
-                                                <Typography variant="h6" fontWeight="bold">
-                                                    {rota.total_escolas || 0}
-                                                </Typography>
-                                            </Box>
-                                            <Divider orientation="vertical" flexItem />
-                                            <Box>
-                                                <Typography variant="caption" color="text.secondary" display="block">
-                                                    Status
-                                                </Typography>
-                                                <Typography 
-                                                    variant="body2" 
-                                                    fontWeight="medium"
-                                                    color={rota.ativo ? 'success.main' : 'text.disabled'}
-                                                >
-                                                    {rota.ativo ? 'Ativa' : 'Inativa'}
-                                                </Typography>
-                                            </Box>
-                                        </Box>
-
-                                        <Divider sx={{ my: 2 }} />
-
-                                        <Box display="flex" justifyContent="flex-end" gap={1}>
-                                            <Button 
-                                                size="small" 
-                                                color="inherit" 
-                                                onClick={() => navigate(`/gestao-rotas/${rota.id}/escolas`)}
-                                                sx={{ textTransform: 'none', color: 'text.secondary' }}
-                                            >
-                                                Escolas
-                                            </Button>
-                                            <Button 
-                                                size="small" 
-                                                color="primary" 
-                                                onClick={() => abrirModalRota(rota)}
-                                                sx={{ textTransform: 'none' }}
-                                            >
-                                                Editar
-                                            </Button>
-                                            <Button 
-                                                size="small" 
-                                                color="error" 
-                                                onClick={() => deletarRota(rota.id)}
-                                                sx={{ textTransform: 'none', minWidth: 0, px: 1 }}
-                                            >
-                                                <DeleteIcon fontSize="small" />
-                                            </Button>
-                                        </Box>
-                                    </Box>
-                                </Card>
-                            </Grid>
-                        ))}
-                    </Grid>
+                                            </TableCell>
+                                            <TableCell align="center">
+                                                <Chip label={rota.total_escolas || 0} size="small" color="primary" />
+                                            </TableCell>
+                                            <TableCell align="center">
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'center' }}>
+                                                    <StatusIndicator status={rota.ativo ? 'ativo' : 'inativo'} size="small" />
+                                                    <Typography variant="body2" color={rota.ativo ? 'success.main' : 'text.disabled'}>
+                                                        {rota.ativo ? 'Ativa' : 'Inativa'}
+                                                    </Typography>
+                                                </Box>
+                                            </TableCell>
+                                            <TableCell align="center">
+                                                <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
+                                                    <Tooltip title="Gerenciar Escolas">
+                                                        <IconButton 
+                                                            size="small" 
+                                                            color="primary"
+                                                            onClick={() => navigate(`/gestao-rotas/${rota.id}/escolas`)}
+                                                        >
+                                                            <RouteIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <Tooltip title="Editar">
+                                                        <IconButton 
+                                                            size="small" 
+                                                            color="secondary"
+                                                            onClick={() => abrirModalRota(rota)}
+                                                        >
+                                                            <EditIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <Tooltip title="Excluir">
+                                                        <IconButton 
+                                                            size="small" 
+                                                            color="error"
+                                                            onClick={() => deletarRota(rota.id)}
+                                                        >
+                                                            <DeleteIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                </Box>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                        <Box sx={{ borderTop: '1px solid #e9ecef', bgcolor: '#ffffff' }}>
+                            <TablePagination
+                                component="div"
+                                count={filteredRotas.length}
+                                page={page}
+                                onPageChange={handleChangePage}
+                                rowsPerPage={rowsPerPage}
+                                onRowsPerPageChange={handleChangeRowsPerPage}
+                                rowsPerPageOptions={[10, 25, 50, 100]}
+                                labelRowsPerPage="Itens por página:"
+                            />
+                        </Box>
+                    </Box>
                 )}
-                
-                <Box mt={4} display="flex" justifyContent="center" sx={{ borderTop: '1px solid #e9ecef', pt: 2 }}>
-                    <TablePagination
-                        component="div"
-                        count={filteredRotas.length}
-                        page={page}
-                        onPageChange={handleChangePage}
-                        rowsPerPage={rowsPerPage}
-                        onRowsPerPageChange={handleChangeRowsPerPage}
-                        rowsPerPageOptions={[10, 25, 50, 100]}
-                        labelRowsPerPage="Itens por página:"
-                    />
-                </Box>
 
                 {/* Modal de Rota */}
                 <Dialog open={modalRotaAberto} onClose={fecharModalRota} maxWidth="sm" fullWidth>

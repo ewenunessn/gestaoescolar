@@ -60,6 +60,9 @@ const GerenciarAlunosModalidades = lazy(() => import("../pages/GerenciarAlunosMo
 const DashboardConsistencia = lazy(() => import("../components/DashboardConsistencia"));
 const GuiasDemandaAntigo = lazy(() => import("../pages/GuiasDemanda"));
 const GuiasDemanda = lazy(() => import("../pages/GuiasDemandaRefatorado"));
+const GuiasDemandaLista = lazy(() => import("../pages/GuiasDemandaLista"));
+const GuiaDemandaDetalhe = lazy(() => import("../pages/GuiaDemandaDetalhe"));
+const GuiaDemandaEscolaItens = lazy(() => import("../pages/GuiaDemandaEscolaItens"));
 const Romaneio = lazy(() => import("../pages/Romaneio"));
 const GuiaDetalhe = lazy(() => import("../pages/GuiaDetalhe"));
 const Entregas = lazy(() => import("../pages/Entregas"));
@@ -201,6 +204,18 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
 
             <Route
               path="/guias-demanda"
+              element={<LazyRoute><GuiasDemandaLista /></LazyRoute>}
+            />
+            <Route
+              path="/guias-demanda/:guiaId"
+              element={<LazyRoute><GuiaDemandaDetalhe /></LazyRoute>}
+            />
+            <Route
+              path="/guias-demanda/:guiaId/escola/:escolaId"
+              element={<LazyRoute><GuiaDemandaEscolaItens /></LazyRoute>}
+            />
+            <Route
+              path="/guias-demanda-refatorado"
               element={<LazyRoute><GuiasDemanda /></LazyRoute>}
             />
             <Route
@@ -212,7 +227,7 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
               element={<LazyRoute><Romaneio /></LazyRoute>}
             />
             <Route
-              path="/guias-demanda/:id"
+              path="/guias-demanda-old/:id"
               element={<LazyRoute><GuiaDetalhe /></LazyRoute>}
             />
             <Route

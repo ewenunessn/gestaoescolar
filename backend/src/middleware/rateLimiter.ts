@@ -109,10 +109,10 @@ export const rateLimit = (options: RateLimitOptions = {}) => {
  * Rate limiters pré-configurados
  */
 
-// Rate limiter geral (100 req/15min)
+// Rate limiter geral - ajustado para desenvolvimento
 export const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: process.env.NODE_ENV === 'development' ? 1000 : 100, // 1000 em dev, 100 em prod
   message: 'Muitas requisições. Limite: 100 requisições a cada 15 minutos.'
 });
 

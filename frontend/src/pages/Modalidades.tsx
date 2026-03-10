@@ -3,6 +3,7 @@ import StatusIndicator from "../components/StatusIndicator";
 import PageHeader from "../components/PageHeader";
 import PageContainer from "../components/PageContainer";
 import TableFilter, { FilterField } from "../components/TableFilter";
+import Toast from "../components/Toast";
 import {
   Table,
   TableBody,
@@ -257,11 +258,7 @@ const ModalidadesPage = () => {
   return (
     <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
       {successMessage && (
-        <Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}>
-          <Alert severity="success" onClose={() => setSuccessMessage(null)} sx={{ minWidth: 300 }}>
-            {successMessage}
-          </Alert>
-        </Box>
+        <Toast message={successMessage} severity="success" onClose={() => setSuccessMessage(null)} />
       )}
 
       <PageContainer fullHeight>

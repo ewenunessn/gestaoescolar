@@ -631,30 +631,32 @@ export default function ComprovantesEntrega() {
                     />
                   </TableCell>
                   <TableCell align="center">
-                    <IconButton
-                      size="small"
-                      color="primary"
-                      onClick={() => abrirDetalhes(comprovante.id)}
-                      title="Ver detalhes"
-                    >
-                      <VisibilityIcon />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      color="secondary"
-                      onClick={() => imprimirDireto(comprovante.id)}
-                      title="Imprimir"
-                    >
-                      <PrintIcon />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      color="error"
-                      onClick={() => excluirComprovante(comprovante.id, comprovante.numero_comprovante)}
-                      title="Excluir permanentemente"
-                    >
-                      <DeleteIcon />
-                    </IconButton>
+                    <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
+                      <IconButton
+                        size="small"
+                        color="primary"
+                        onClick={() => abrirDetalhes(comprovante.id)}
+                        title="Ver detalhes"
+                      >
+                        <VisibilityIcon />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        color="secondary"
+                        onClick={() => imprimirDireto(comprovante.id)}
+                        title="Imprimir"
+                      >
+                        <PrintIcon />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => excluirComprovante(comprovante.id, comprovante.numero_comprovante)}
+                        title="Excluir permanentemente"
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Box>
                   </TableCell>
                 </TableRow>
               ))

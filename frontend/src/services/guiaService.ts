@@ -28,13 +28,14 @@ export interface GuiaProdutoEscola {
   created_at?: string;
   updated_at?: string;
   data_criacao?: string;
+  data_programada?: string;
   // Campos de entrega
   entrega_confirmada?: boolean;
   quantidade_entregue?: number;
   data_entrega?: string;
   nome_quem_recebeu?: string;
   nome_quem_entregou?: string;
-  status?: 'pendente' | 'entregue' | 'cancelado' | 'programada' | 'parcial';
+  status: 'pendente' | 'entregue' | 'cancelado' | 'programada' | 'parcial';
   // Campos do backend (snake_case)
   guia_id?: number;
   produto_id?: number;
@@ -94,7 +95,7 @@ export const guiaService = {
   // Listar status das escolas para o mês/ano
   async listarStatusEscolas(mes: number, ano: number) {
     const response = await api.get('/guias/status-escolas', { params: { mes, ano } });
-    return response.data;
+    return response.data.data || response.data;
   },
 
   // Criar nova guia
@@ -106,7 +107,7 @@ export const guiaService = {
   // Buscar guia por ID
   async buscarGuia(id: number) {
     const response = await api.get(`/guias/${id}`);
-    return response.data;
+    return response.data.data || response.data;
   },
 
   // Atualizar guia
@@ -146,8 +147,8 @@ export const guiaService = {
   },
 
   // Adicionar produto para escola
-  async adicionarProdutoEscola(escolaId: number, data: Record<string, unknown>) {
-    const response = await api.post(`/guias/escola/${escolaId}/produtos`, data);
+  async adicionarProdutoEscola(data: Record<string, unknown>) {
+    const response = await api.post(`/guias/produtos`, data);
     return response.data;
   },
 
