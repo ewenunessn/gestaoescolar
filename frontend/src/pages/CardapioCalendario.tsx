@@ -8,11 +8,20 @@ import {
 import { ArrowBack as ArrowBackIcon, Delete as DeleteIcon, PictureAsPdf as PdfIcon, MoreVert as MoreIcon } from '@mui/icons-material';
 import { useNotification } from '../context/NotificationContext';
 import PageContainer from '../components/PageContainer';
+import { useInstituicaoForPDF } from '../hooks/useInstituicao';
+import { createPDFHeader, createPDFFooter, getDefaultPDFStyles } from '../utils/pdfUtils';
 import {
   buscarCardapioModalidade, listarRefeicoesCardapio, adicionarRefeicaoDia,
   removerRefeicaoDia, CardapioModalidade, RefeicaoDia, TIPOS_REFEICAO, MESES
 } from '../services/cardapiosModalidade';
 import { listarRefeicoes } from '../services/refeicoes';
+
+// Função para obter URL base da API
+const getApiBaseUrl = () => {
+  return process.env.NODE_ENV === 'production' 
+    ? 'https://gestaoescolar-backend.vercel.app'
+    : 'http://localhost:3000';
+};
 // Importação dinâmica para pdfmake (funciona melhor com Vite)
 const initPdfMake = async () => {
   const pdfMake = (await import('pdfmake/build/pdfmake')).default;
@@ -27,6 +36,7 @@ const CardapioCalendarioPage: React.FC = () => {
   const { cardapioId } = useParams<{ cardapioId: string }>();
   const navigate = useNavigate();
   const { success, error } = useNotification();
+  const { fetchInstituicaoForPDF } = useInstituicaoForPDF();
 
   const [cardapio, setCardapio] = useState<CardapioModalidade | null>(null);
   const [refeicoes, setRefeicoes] = useState<RefeicaoDia[]>([]);
@@ -129,7 +139,7 @@ const CardapioCalendarioPage: React.FC = () => {
         setRefeicaoDetalhes(refeicao);
         
         // Buscar produtos da refeição
-        const response = await fetch(`http://localhost:3000/api/refeicoes/${refeicaoId}/produtos`);
+        const response = await fetch(`${getApiBaseUrl()}/api/refeicoes/${refeicaoId}/produtos`);
         if (response.ok) {
           const produtos = await response.json();
           setProdutosRefeicao(produtos);
@@ -152,6 +162,22 @@ const CardapioCalendarioPage: React.FC = () => {
     
     try {
       const pdfMake = await initPdfMake();
+      
+      // Buscar informações da instituição
+      let instituicao = null;
+      try {
+        const response = await fetch(`${getApiBaseUrl()}/api/instituicao`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        if (response.ok) {
+          instituicao = await response.json();
+        }
+      } catch (err) {
+        console.log('Não foi possível carregar informações da instituição');
+      }
+      
       const semanas = getCalendarioSemanas();
       const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
       
@@ -205,16 +231,46 @@ const CardapioCalendarioPage: React.FC = () => {
         tableBody.push(row);
       });
       
+      // Criar cabeçalho com logo se disponível
+      const headerContent: any[] = [];
+      
+      if (instituicao?.logo_url) {
+        headerContent.push({
+          columns: [
+            {
+              image: instituicao.logo_url.startsWith('data:') ? instituicao.logo_url : `${getApiBaseUrl()}${instituicao.logo_url}`,
+              width: 60,
+              height: 60
+            },
+            {
+              stack: [
+                { text: instituicao.nome || 'Secretaria Municipal de Educação', style: 'header', alignment: 'center' },
+                { text: `Cardapio - ${cardapio.nome}`, style: 'subheader', alignment: 'center' },
+                { text: `${MESES[cardapio.mes]} / ${cardapio.ano} - ${cardapio.modalidade_nome}`, style: 'subheader2', alignment: 'center' }
+              ],
+              width: '*'
+            },
+            { text: '', width: 60 } // Espaço para balancear
+          ],
+          margin: [0, 0, 0, 10]
+        });
+      } else {
+        headerContent.push({
+          stack: [
+            { text: instituicao?.nome || 'Secretaria Municipal de Educação', style: 'header', alignment: 'center' },
+            { text: `Cardapio - ${cardapio.nome}`, style: 'subheader', alignment: 'center' },
+            { text: `${MESES[cardapio.mes]} / ${cardapio.ano} - ${cardapio.modalidade_nome}`, style: 'subheader2', alignment: 'center' }
+          ]
+        });
+      }
+      
       const docDefinition: any = {
         pageSize: 'A4',
         pageOrientation: 'landscape',
         pageMargins: [20, 60, 20, 40],
         header: {
-          stack: [
-            { text: `Cardapio - ${cardapio.nome}`, style: 'header', alignment: 'center' },
-            { text: `${MESES[cardapio.mes]} / ${cardapio.ano} - ${cardapio.modalidade_nome}`, style: 'subheader', alignment: 'center' }
-          ],
-          margin: [0, 15, 0, 0]
+          stack: headerContent,
+          margin: [20, 15, 20, 0]
         },
         content: [
           {
@@ -233,7 +289,8 @@ const CardapioCalendarioPage: React.FC = () => {
         ],
         styles: {
           header: { fontSize: 16, bold: true },
-          subheader: { fontSize: 11, margin: [0, 3, 0, 0] },
+          subheader: { fontSize: 14, bold: true, margin: [0, 3, 0, 0] },
+          subheader2: { fontSize: 11, margin: [0, 3, 0, 0] },
           tableHeader: { bold: true, fontSize: 9, fillColor: '#e3f2fd' }
         }
       };
@@ -252,6 +309,9 @@ const CardapioCalendarioPage: React.FC = () => {
     
     try {
       const pdfMake = await initPdfMake();
+      
+      // Buscar informações da instituição
+      const instituicao = await fetchInstituicaoForPDF();
       
       // Agrupar por tipo e refeição
       const frequencia: Record<string, Record<string, number>> = {};
@@ -306,20 +366,50 @@ const CardapioCalendarioPage: React.FC = () => {
         }
       });
       
+      // Criar cabeçalho com logo se disponível
+      const headerContent: any[] = [];
+      
+      if (instituicao?.logo_url) {
+        headerContent.push({
+          columns: [
+            {
+              image: instituicao.logo_url.startsWith('data:') ? instituicao.logo_url : `http://localhost:3000${instituicao.logo_url}`,
+              width: 50,
+              height: 50
+            },
+            {
+              stack: [
+                { text: instituicao.nome || 'Secretaria Municipal de Educação', style: 'header', alignment: 'center' },
+                { text: `Relatorio de Frequencia - ${cardapio.nome}`, style: 'subheader', alignment: 'center' },
+                { text: `${MESES[cardapio.mes]} / ${cardapio.ano} - ${cardapio.modalidade_nome}`, style: 'subheader2', alignment: 'center' }
+              ],
+              width: '*'
+            },
+            { text: '', width: 50 } // Espaço para balancear
+          ]
+        });
+      } else {
+        headerContent.push({
+          stack: [
+            { text: instituicao?.nome || 'Secretaria Municipal de Educação', style: 'header', alignment: 'center' },
+            { text: `Relatorio de Frequencia - ${cardapio.nome}`, style: 'subheader', alignment: 'center' },
+            { text: `${MESES[cardapio.mes]} / ${cardapio.ano} - ${cardapio.modalidade_nome}`, style: 'subheader2', alignment: 'center' }
+          ]
+        });
+      }
+      
       const docDefinition: any = {
         pageSize: 'A4',
         pageMargins: [40, 80, 40, 40],
         header: {
-          stack: [
-            { text: `Relatorio de Frequencia - ${cardapio.nome}`, style: 'header', alignment: 'center' },
-            { text: `${MESES[cardapio.mes]} / ${cardapio.ano} - ${cardapio.modalidade_nome}`, style: 'subheader', alignment: 'center' }
-          ],
-          margin: [0, 20, 0, 0]
+          stack: headerContent,
+          margin: [40, 20, 40, 0]
         },
         content: content,
         styles: {
           header: { fontSize: 16, bold: true },
-          subheader: { fontSize: 11, margin: [0, 3, 0, 0] },
+          subheader: { fontSize: 14, bold: true, margin: [0, 3, 0, 0] },
+          subheader2: { fontSize: 11, margin: [0, 3, 0, 0] },
           sectionHeader: { fontSize: 12, bold: true },
           tableHeader: { bold: true, fillColor: '#428bca', color: 'white', fontSize: 10 }
         }
@@ -347,6 +437,9 @@ const CardapioCalendarioPage: React.FC = () => {
     
     try {
       const pdfMake = await initPdfMake();
+      
+      // Buscar informações da instituição
+      const instituicao = await fetchInstituicaoForPDF();
       
       // Filtrar refeições do período
       const refeicoesNoPeriodo = refeicoes.filter(
@@ -379,7 +472,7 @@ const CardapioCalendarioPage: React.FC = () => {
       const refeicoesComProdutos = await Promise.all(
         refeicoesNoPeriodo.map(async (ref) => {
           try {
-            const response = await fetch(`http://localhost:3000/api/refeicoes/${ref.refeicao_id}/produtos`);
+            const response = await fetch(`${getApiBaseUrl()}/api/refeicoes/${ref.refeicao_id}/produtos`);
             const produtos = response.ok ? await response.json() : [];
             return { ...ref, produtos };
           } catch {
@@ -513,27 +606,87 @@ const CardapioCalendarioPage: React.FC = () => {
         });
       });
       
-      const docDefinition: any = {
-        pageSize: 'A4',
-        pageMargins: [30, 70, 30, 40],
-        header: {
+      // Criar cabeçalho com logo se disponível
+      const headerContent: any[] = [];
+      
+      if (instituicao?.logo_url) {
+        headerContent.push({
+          columns: [
+            {
+              image: instituicao.logo_url.startsWith('data:') ? instituicao.logo_url : `${getApiBaseUrl()}${instituicao.logo_url}`,
+              width: 50,
+              height: 50
+            },
+            {
+              stack: [
+                { text: instituicao.nome || 'Secretaria Municipal de Educação', style: 'header', alignment: 'center' },
+                { text: `Cardapio Detalhado - ${cardapio.nome}`, style: 'subheader', alignment: 'center' },
+                { 
+                  text: `${MESES[cardapio.mes]}/${cardapio.ano} - ${cardapio.modalidade_nome} | Periodo: ${periodoForm.diaInicio} a ${periodoForm.diaFim}`, 
+                  style: 'subheader2', 
+                  alignment: 'center' 
+                }
+              ],
+              width: '*'
+            },
+            { text: '', width: 50 } // Espaço para balancear
+          ]
+        });
+      } else {
+        headerContent.push({
           stack: [
-            { text: `Cardapio Detalhado - ${cardapio.nome}`, style: 'header', alignment: 'center' },
+            { text: instituicao?.nome || 'Secretaria Municipal de Educação', style: 'header', alignment: 'center' },
+            { text: `Cardapio Detalhado - ${cardapio.nome}`, style: 'subheader', alignment: 'center' },
             { 
               text: `${MESES[cardapio.mes]}/${cardapio.ano} - ${cardapio.modalidade_nome} | Periodo: ${periodoForm.diaInicio} a ${periodoForm.diaFim}`, 
-              style: 'subheader', 
+              style: 'subheader2', 
               alignment: 'center' 
             }
-          ],
-          margin: [0, 15, 0, 0]
+          ]
+        });
+      }
+      
+      // Criar rodapé com assinatura se disponível
+      const footerContent = (currentPage: number, pageCount: number) => {
+        const footerStack: any[] = [
+          {
+            text: `Pagina ${currentPage} de ${pageCount} - Gerado em ${new Date().toLocaleDateString('pt-BR')}`,
+            alignment: 'center',
+            fontSize: 7,
+            color: '#999999',
+            margin: [0, 10, 0, 0]
+          }
+        ];
+        
+        if (instituicao?.secretario_nome && currentPage === pageCount) {
+          footerStack.push({
+            columns: [
+              { text: '', width: '*' },
+              {
+                stack: [
+                  { text: '_'.repeat(40), alignment: 'center', margin: [0, 20, 0, 5] },
+                  { text: instituicao.secretario_nome, alignment: 'center', bold: true, fontSize: 10 },
+                  { text: instituicao.secretario_cargo || 'Secretário(a) de Educação', alignment: 'center', fontSize: 9 }
+                ],
+                width: 200
+              },
+              { text: '', width: '*' }
+            ],
+            margin: [0, 20, 0, 0]
+          });
+        }
+        
+        return { stack: footerStack };
+      };
+      
+      const docDefinition: any = {
+        pageSize: 'A4',
+        pageMargins: [30, 70, 30, 60],
+        header: {
+          stack: headerContent,
+          margin: [30, 15, 30, 0]
         },
-        footer: (currentPage: number, pageCount: number) => ({
-          text: `Pagina ${currentPage} de ${pageCount} - Gerado em ${new Date().toLocaleDateString('pt-BR')}`,
-          alignment: 'center',
-          fontSize: 7,
-          color: '#999999',
-          margin: [0, 10, 0, 0]
-        }),
+        footer: footerContent,
         content: [
           {
             table: {
@@ -559,7 +712,8 @@ const CardapioCalendarioPage: React.FC = () => {
         ],
         styles: {
           header: { fontSize: 14, bold: true },
-          subheader: { fontSize: 9, margin: [0, 3, 0, 0] },
+          subheader: { fontSize: 12, bold: true, margin: [0, 3, 0, 0] },
+          subheader2: { fontSize: 9, margin: [0, 3, 0, 0] },
           tableHeader: { bold: true, fillColor: '#428bca', color: 'white', fontSize: 9 }
         }
       };

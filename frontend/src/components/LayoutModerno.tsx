@@ -103,6 +103,12 @@ const getMenuConfig = (configModuloSaldo: any) => {
         { text: "Comprovantes", icon: <Description />, path: "/comprovantes-entrega" },
       ],
     },
+    {
+      category: "Configurações",
+      items: [
+        { text: "Instituição", icon: <Settings />, path: "/configuracao-instituicao" },
+      ],
+    },
   ];
 };
 
