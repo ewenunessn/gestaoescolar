@@ -39,7 +39,6 @@ import {
   Collapse,
   Divider,
   Grid,
-  TablePagination,
   Checkbox,
   OutlinedInput,
   SelectChangeEvent,
@@ -58,6 +57,7 @@ import {
   ArrowUpward,
   ArrowDownward,
 } from '@mui/icons-material';
+import CompactPagination from '../components/CompactPagination';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { listarEscolas, criarEscola, importarEscolasLote } from '../services/escolas';
 import { useEscolas, useCriarEscola } from '../hooks/queries';
@@ -572,21 +572,14 @@ const EscolasPage = () => {
                   </TableBody>
                 </Table>
               </TableContainer>
-              <Box sx={{ 
-                borderTop: '1px solid #e9ecef',
-                bgcolor: '#ffffff'
-              }}>
-                <TablePagination 
-                  component="div" 
-                  count={filteredEscolas.length} 
-                  page={page} 
-                  onPageChange={handleChangePage} 
-                  rowsPerPage={rowsPerPage} 
-                  onRowsPerPageChange={handleChangeRowsPerPage} 
-                  rowsPerPageOptions={[25, 50, 100, 200]} 
-                  labelRowsPerPage="Itens por página:" 
-                />
-              </Box>
+              <CompactPagination 
+                count={filteredEscolas.length} 
+                page={page} 
+                onPageChange={handleChangePage} 
+                rowsPerPage={rowsPerPage} 
+                onRowsPerPageChange={handleChangeRowsPerPage} 
+                rowsPerPageOptions={[25, 50, 100, 200]} 
+              />
             </Box>
           )}
         </Box>

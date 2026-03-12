@@ -25,8 +25,8 @@ import {
   FormControl,
   InputLabel,
   Tooltip,
-  TablePagination
 } from '@mui/material';
+import CompactPagination from '../components/CompactPagination';
 import {
   Add as AddIcon,
   Search as SearchIcon,
@@ -74,6 +74,10 @@ const GuiasDemandaLista: React.FC = () => {
     mes: new Date().getMonth() + 1,
     ano: new Date().getFullYear()
   });
+  
+  // Estados de validação e controle de mudanças
+  const [formDataInicial, setFormDataInicial] = useState<any>(null);
+  const [confirmClose, setConfirmClose] = useState(false);
 
   useEffect(() => {
     loadCompetencias();
@@ -170,7 +174,15 @@ const GuiasDemandaLista: React.FC = () => {
             <Button
               variant="contained"
               startIcon={<AddIcon />}
-              onClick={() => setOpenModal(true)}
+              onClick={() => {
+                const inicial = {
+                  mes: new Date().getMonth() + 1,
+                  ano: new Date().getFullYear()
+                };
+                setFormData(inicial);
+                setFormDataInicial(JSON.parse(JSON.stringify(inicial)));
+                setOpenModal(true);
+              }}
               size="small"
               sx={{ bgcolor: '#059669', '&:hover': { bgcolor: '#047857' } }}
             >
@@ -255,32 +267,68 @@ const GuiasDemandaLista: React.FC = () => {
                   </TableBody>
                 </Table>
               </TableContainer>
-              <Box sx={{ borderTop: '1px solid #e9ecef', bgcolor: '#ffffff' }}>
-                <TablePagination
-                  component="div"
-                  count={filteredCompetencias.length}
-                  page={page}
-                  onPageChange={(e, newPage) => setPage(newPage)}
-                  rowsPerPage={rowsPerPage}
-                  onRowsPerPageChange={(e) => {
-                    setRowsPerPage(parseInt(e.target.value, 10));
-                    setPage(0);
-                  }}
-                  rowsPerPageOptions={[10, 25, 50]}
-                  labelRowsPerPage="Itens por página:"
-                />
-              </Box>
+              <CompactPagination
+                count={filteredCompetencias.length}
+                page={page}
+                onPageChange={(e, newPage) => setPage(newPage)}
+                rowsPerPage={rowsPerPage}
+                onRowsPerPageChange={(e) => {
+                  setRowsPerPage(parseInt(e.target.value, 10));
+                  setPage(0);
+                }}
+                rowsPerPageOptions={[10, 25, 50]}
+              />
             </Box>
           )}
         </Box>
       </PageContainer>
 
       {/* Modal Nova Competência */}
-      <Dialog open={openModal} onClose={() => setOpenModal(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Nova Competência</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-            <FormControl fullWidth>
+      <Dialog 
+        open={openModal} 
+        onClose={() => {
+          const hasChanges = formData.mes !== formDataInicial?.mes || formData.ano !== formDataInicial?.ano;
+          if (hasChanges) {
+            setConfirmClose(true);
+          } else {
+            setOpenModal(false);
+          }
+        }}
+        maxWidth="xs" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '12px',
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            m: 0
+          }
+        }}
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+          <Typography variant="h6" component="span" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
+            Nova Competência
+          </Typography>
+          <IconButton
+            size="small"
+            onClick={() => {
+              const hasChanges = formData.mes !== formDataInicial?.mes || formData.ano !== formDataInicial?.ano;
+              if (hasChanges) {
+                setConfirmClose(true);
+              } else {
+                setOpenModal(false);
+              }
+            }}
+            sx={{ color: 'text.secondary' }}
+          >
+            <ClearIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2, pb: 1 }}>
+          <Box sx={{ display: 'flex', gap: 1.5 }}>
+            <FormControl fullWidth size="small">
               <InputLabel>Mês</InputLabel>
               <Select
                 value={formData.mes}
@@ -294,7 +342,7 @@ const GuiasDemandaLista: React.FC = () => {
                 ))}
               </Select>
             </FormControl>
-            <FormControl fullWidth>
+            <FormControl fullWidth size="small">
               <InputLabel>Ano</InputLabel>
               <Select
                 value={formData.ano}
@@ -310,10 +358,55 @@ const GuiasDemandaLista: React.FC = () => {
             </FormControl>
           </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenModal(false)}>Cancelar</Button>
+        <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
+          <Button onClick={() => {
+            const hasChanges = formData.mes !== formDataInicial?.mes || formData.ano !== formDataInicial?.ano;
+            if (hasChanges) {
+              setConfirmClose(true);
+            } else {
+              setOpenModal(false);
+            }
+          }} sx={{ color: 'text.secondary' }}>
+            Cancelar
+          </Button>
           <Button onClick={handleCriarCompetencia} variant="contained">
             Criar
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* Dialog de confirmação para fechar */}
+      <Dialog 
+        open={confirmClose} 
+        onClose={() => setConfirmClose(false)}
+        maxWidth="xs"
+        PaperProps={{
+          sx: {
+            borderRadius: '12px',
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            m: 0
+          }
+        }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Typography variant="h6" component="span" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
+            Descartar alterações?
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2, pb: 1 }}>
+          <Typography variant="body2">
+            Você tem alterações não salvas. Deseja realmente descartar essas alterações?
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
+          <Button onClick={() => setConfirmClose(false)} variant="outlined" size="small">
+            Continuar Editando
+          </Button>
+          <Button onClick={() => { setConfirmClose(false); setOpenModal(false); }} color="error" variant="contained" size="small">
+            Descartar
           </Button>
         </DialogActions>
       </Dialog>

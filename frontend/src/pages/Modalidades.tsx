@@ -29,7 +29,6 @@ import {
   CardContent,
   Collapse,
   Divider,
-  TablePagination,
   InputAdornment,
   FormControl,
   InputLabel,
@@ -50,6 +49,7 @@ import {
   Category,
   People as PeopleIcon,
 } from "@mui/icons-material";
+import CompactPagination from '../components/CompactPagination';
 import { useNavigate } from "react-router-dom";
 import {
   criarModalidade,
@@ -400,12 +400,7 @@ const ModalidadesPage = () => {
               </TableBody>
             </Table>
               </TableContainer>
-              <Box sx={{ 
-                borderTop: '1px solid #e9ecef',
-                bgcolor: '#ffffff'
-              }}>
-                <TablePagination component="div" count={filteredModalidades.length} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage} onRowsPerPageChange={handleChangeRowsPerPage} rowsPerPageOptions={[10, 20, 50, 100]} labelRowsPerPage="Linhas por página:" />
-              </Box>
+              <CompactPagination count={filteredModalidades.length} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage} onRowsPerPageChange={handleChangeRowsPerPage} rowsPerPageOptions={[10, 20, 50, 100]} />
             </Box>
           )}
         </Box>

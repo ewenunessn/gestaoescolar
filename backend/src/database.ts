@@ -19,7 +19,9 @@ if (process.env.DATABASE_URL || process.env.POSTGRES_URL) {
         console.log('✅ Usando connection string LOCAL (sem SSL)');
         pool = new Pool({
             connectionString,
-            ssl: false
+            ssl: false,
+            // Configuração de encoding UTF-8
+            client_encoding: 'UTF8'
         });
     } else {
         console.log('✅ Usando connection string para Neon/Vercel (com SSL)');
@@ -27,7 +29,9 @@ if (process.env.DATABASE_URL || process.env.POSTGRES_URL) {
             connectionString,
             ssl: {
                 rejectUnauthorized: false
-            }
+            },
+            // Configuração de encoding UTF-8
+            client_encoding: 'UTF8'
         });
     }
 } else {
@@ -38,7 +42,9 @@ if (process.env.DATABASE_URL || process.env.POSTGRES_URL) {
         database: process.env.DB_NAME || 'alimentacao_escolar',
         password: process.env.DB_PASSWORD || 'admin123',
         port: parseInt(process.env.DB_PORT || '5432'),
-        ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false
+        ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+        // Configuração de encoding UTF-8
+        client_encoding: 'UTF8'
     };
 
     console.log('🔧 Usando configuração local:', {

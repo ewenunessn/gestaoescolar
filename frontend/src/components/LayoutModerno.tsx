@@ -311,7 +311,7 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
   const drawer = (
     <Box sx={{ height: "100%", display: "flex", flexDirection: "column", bgcolor: 'background.sidebar' }}>
-      {/* LOGO NUTRILOG - FIXO NO TOPO */}
+      {/* LOGO - FIXO NO TOPO */}
       <Box sx={{
         p: collapsed ? 1 : 2,
         borderBottom: 1,
@@ -322,67 +322,17 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         justifyContent: 'center',
         bgcolor: 'rgba(0, 0, 0, 0.2)',
       }}>
-        {collapsed ? (
-          <Box sx={{
-            width: 40,
-            height: 40,
-            bgcolor: '#2196f3',
-            borderRadius: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+        <Typography
+          variant="h6"
+          sx={{
+            fontWeight: 700,
             color: 'white',
-            fontWeight: 'bold',
-            fontSize: '1.2rem',
-          }}>
-            N
-          </Box>
-        ) : (
-          <Box sx={{ textAlign: 'center' }}>
-            <Box sx={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 1,
-              mb: 0.5,
-            }}>
-              <Box sx={{
-                width: 32,
-                height: 32,
-                bgcolor: '#2196f3',
-                borderRadius: 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'white',
-                fontWeight: 'bold',
-              }}>
-                🍽️
-              </Box>
-              <Typography
-                variant="h6"
-                sx={{
-                  color: 'white',
-                  fontWeight: 700,
-                  fontSize: '1.1rem',
-                  letterSpacing: '0.5px',
-                }}
-              >
-                Nutri<span style={{ color: '#2196f3' }}>Log</span>
-              </Typography>
-            </Box>
-            <Typography
-              variant="caption"
-              sx={{
-                color: 'rgba(255, 255, 255, 0.5)',
-                fontSize: '0.65rem',
-                display: 'block',
-              }}
-            >
-              Gestão Escolar
-            </Typography>
-          </Box>
-        )}
+            fontSize: collapsed ? '0.9rem' : '1.25rem',
+            letterSpacing: '0.5px',
+          }}
+        >
+          NutriLog
+        </Typography>
       </Box>
 
       {/* Indicador de mudanças recentes */}

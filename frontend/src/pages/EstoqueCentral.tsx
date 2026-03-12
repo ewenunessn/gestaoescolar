@@ -34,8 +34,8 @@ import {
   MenuItem,
   Collapse,
   Divider,
-  TablePagination,
 } from "@mui/material";
+import CompactPagination from '../components/CompactPagination';
 import {
   Search as SearchIcon,
   Inventory,
@@ -283,7 +283,7 @@ const EstoqueCentralPage: React.FC = () => {
                 </TableBody>
               </Table>
             </TableContainer>
-            <TablePagination component="div" count={filteredPosicoes.length} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage} onRowsPerPageChange={handleChangeRowsPerPage} rowsPerPageOptions={[5, 10, 25, 50]} labelRowsPerPage="Itens por página:" />
+            <CompactPagination count={filteredPosicoes.length} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage} onRowsPerPageChange={handleChangeRowsPerPage} rowsPerPageOptions={[5, 10, 25, 50]} />
           </Box>
         )}
       </PageContainer>

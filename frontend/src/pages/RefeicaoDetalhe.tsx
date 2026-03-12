@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import CompactPagination from '../components/CompactPagination';
 import {
   buscarRefeicao,
   editarRefeicao,
@@ -39,7 +40,6 @@ import {
   TableRow,
   Tooltip,
   Autocomplete,
-  TablePagination,
 } from "@mui/material";
 import {
   Delete as DeleteIcon,
@@ -531,21 +531,17 @@ export default function RefeicaoDetalhe() {
                   </Table>
                 </TableContainer>
               </DndContext>
-              <Box sx={{ borderTop: '1px solid #e9ecef', bgcolor: '#ffffff' }}>
-                <TablePagination
-                  component="div"
-                  count={associacoes.length}
-                  page={page}
-                  onPageChange={(e, newPage) => setPage(newPage)}
-                  rowsPerPage={rowsPerPage}
-                  onRowsPerPageChange={(e) => {
-                    setRowsPerPage(parseInt(e.target.value, 10));
-                    setPage(0);
-                  }}
-                  rowsPerPageOptions={[10, 25, 50]}
-                  labelRowsPerPage="Itens por página:"
-                />
-              </Box>
+              <CompactPagination
+                count={associacoes.length}
+                page={page}
+                onPageChange={(e, newPage) => setPage(newPage)}
+                rowsPerPage={rowsPerPage}
+                onRowsPerPageChange={(e) => {
+                  setRowsPerPage(parseInt(e.target.value, 10));
+                  setPage(0);
+                }}
+                rowsPerPageOptions={[10, 25, 50]}
+              />
             </Box>
           )}
         </Box>

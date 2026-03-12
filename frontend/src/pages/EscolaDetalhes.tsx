@@ -3,12 +3,13 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import PageContainer from '../components/PageContainer';
 import { useToast } from '../hooks/useToast';
+import { usePageTitle } from '../contexts/PageTitleContext';
 import {
     Box, Typography, TextField, Button, IconButton, Select, MenuItem,
     FormControl, InputLabel, Card, CircularProgress, Alert, FormControlLabel,
     Switch, Tooltip, Chip, Table, TableBody, TableCell, TableContainer,
     TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions,
-    Paper, Grid, Stack, CardContent
+    Paper, Grid, Stack, CardContent, Menu
 } from '@mui/material';
 import {
     Edit as EditIcon,
@@ -26,6 +27,7 @@ import {
     Email as EmailIcon,
     LocationOn as LocationOnIcon,
     VpnKey as VpnKeyIcon,
+    MoreVert as MoreVertIcon,
 } from '@mui/icons-material';
 import {
     buscarEscola, editarEscola, deletarEscola, listarEscolaModalidades,
@@ -68,60 +70,21 @@ interface EscolaModalidade {
 
 // --- Subcomponentes de UI ---
 
-const PageHeader = ({ escola, totalAlunos, isEditing, onEdit, onSave, onCancel, onDelete, salvando }: {
-    escola: Escola | null;
-    totalAlunos: number;
-    isEditing: boolean;
-    onEdit: () => void;
-    onSave: () => void;
-    onCancel: () => void;
-    onDelete: () => void;
-    salvando: boolean;
-}) => (
-    <Card sx={{ p: 3, mb: 3, borderRadius: '12px' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Typography variant="h4" sx={{ fontWeight: 700, color: 'text.primary' }}>
-                    {escola?.nome}
-                </Typography>
-                <Chip label={escola?.ativo ? 'Ativa' : 'Inativa'} color={escola?.ativo ? 'success' : 'error'} size="small" />
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                    {isEditing ? (
-                        <>
-                            <Button onClick={onCancel} variant="outlined" disabled={salvando} size="small">Cancelar</Button>
-                            <Button onClick={onSave} variant="contained" color="success" disabled={salvando} size="small">
-                                {salvando ? 'Salvando...' : 'Salvar'}
-                            </Button>
-                        </>
-                    ) : (
-                        <>
-                            <Button startIcon={<EditIcon />} onClick={onEdit} variant="outlined" size="small">Editar</Button>
-                            <Button startIcon={<DeleteIcon />} onClick={onDelete} variant="contained" color="error" size="small">Excluir</Button>
-                        </>
-                    )}
-                </Box>
-            </Box>
-        </Box>
-    </Card>
-);
-
 const InfoItem = ({ icon, label, value }: {
     icon: React.ReactNode;
     label: string;
     value: string | undefined;
 }) => (
-    <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 2 }}>
+    <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
         {icon}
         <Box>
-            <Typography variant="caption" color="text.secondary" display="block">{label}</Typography>
-            <Typography variant="body2" fontWeight={500}>{value || 'Não informado'}</Typography>
+            <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.7rem', lineHeight: 1.2 }}>{label}</Typography>
+            <Typography variant="body2" fontWeight={500} sx={{ fontSize: '0.8125rem' }}>{value || 'Não informado'}</Typography>
         </Box>
     </Stack>
 );
 
-const EscolaInfoCard = ({ isEditing, formData, setFormData, associacoes, totalAlunos, openModalidadeModal, handleDeleteModalidade, formatDate }: {
+const EscolaInfoCard = ({ isEditing, formData, setFormData, associacoes, totalAlunos, openModalidadeModal, handleDeleteModalidade, formatDate, onSave, onCancel, salvando }: {
     isEditing: boolean;
     formData: any;
     setFormData: (data: any) => void;
@@ -130,43 +93,56 @@ const EscolaInfoCard = ({ isEditing, formData, setFormData, associacoes, totalAl
     openModalidadeModal: (assoc?: EscolaModalidade) => void;
     handleDeleteModalidade: (id: number) => void;
     formatDate: (dateString: string | null | undefined) => string;
+    onSave: () => void;
+    onCancel: () => void;
+    salvando: boolean;
 }) => (
-    <Grid container spacing={3} sx={{ mb: 4 }}>
+    <Grid container spacing={2} sx={{ mb: 2 }}>
         {/* Card de Informações da Escola */}
         <Grid item xs={12} md={6}>
-            <Card sx={{ p: 3, borderRadius: '12px', height: '100%' }}>
-                <Typography variant="h6" sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 1, color: 'primary.main' }}>
-                    <SchoolIcon />
-                    Informações da Escola
-                </Typography>
+            <Card sx={{ p: 1.5, borderRadius: '8px', height: '100%' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                    <Typography variant="subtitle1" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'primary.main', fontSize: '0.95rem', fontWeight: 600 }}>
+                        <SchoolIcon fontSize="small" />
+                        Informações da Escola
+                    </Typography>
+                    {isEditing && (
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Button onClick={onCancel} variant="outlined" disabled={salvando} size="small" sx={{ minHeight: 28, fontSize: '0.75rem' }}>Cancelar</Button>
+                            <Button onClick={onSave} variant="contained" color="success" disabled={salvando} size="small" sx={{ minHeight: 28, fontSize: '0.75rem' }}>
+                                {salvando ? 'Salvando...' : 'Salvar'}
+                            </Button>
+                        </Box>
+                    )}
+                </Box>
                 {isEditing ? (
                     <>
-                        <TextField label="Nome da Escola" value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} fullWidth margin="dense" required />
-                        <TextField label="Código INEP" value={formData.codigo} onChange={(e) => setFormData({ ...formData, codigo: e.target.value })} fullWidth margin="dense" helperText="Código do INEP (opcional)" />
-                        <TextField label="Endereço" value={formData.endereco} onChange={(e) => setFormData({ ...formData, endereco: e.target.value })} fullWidth margin="dense" multiline rows={2} />
-                        <TextField label="Município" value={formData.municipio} onChange={(e) => setFormData({ ...formData, municipio: e.target.value })} fullWidth margin="dense" />
-                        <TextField label="Código de Acesso (6 dígitos)" value={formData.codigo_acesso} onChange={(e) => setFormData({ ...formData, codigo_acesso: e.target.value.replace(/\D/g, '') })} fullWidth margin="dense" required inputProps={{ maxLength: 6, inputMode: 'numeric', pattern: '[0-9]*' }} helperText="Código numérico de 6 dígitos para acesso da escola" />
-                        <TextField label="Telefone" value={formData.telefone} onChange={(e) => setFormData({ ...formData, telefone: e.target.value })} fullWidth margin="dense" />
-                        <TextField label="E-mail" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} type="email" fullWidth margin="dense" />
-                        <TextField label="Nome do(a) Gestor(a)" value={formData.nome_gestor} onChange={(e) => setFormData({ ...formData, nome_gestor: e.target.value })} fullWidth margin="dense" />
-                        <FormControl fullWidth margin="dense">
+                        <TextField label="Nome da Escola" value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} fullWidth size="small" sx={{ mb: 1 }} required />
+                        <TextField label="Código INEP" value={formData.codigo} onChange={(e) => setFormData({ ...formData, codigo: e.target.value })} fullWidth size="small" sx={{ mb: 1 }} helperText="Código do INEP (opcional)" />
+                        <TextField label="Endereço" value={formData.endereco} onChange={(e) => setFormData({ ...formData, endereco: e.target.value })} fullWidth size="small" sx={{ mb: 1 }} multiline rows={2} />
+                        <TextField label="Município" value={formData.municipio} onChange={(e) => setFormData({ ...formData, municipio: e.target.value })} fullWidth size="small" sx={{ mb: 1 }} />
+                        <TextField label="Código de Acesso (6 dígitos)" value={formData.codigo_acesso} onChange={(e) => setFormData({ ...formData, codigo_acesso: e.target.value.replace(/\D/g, '') })} fullWidth size="small" sx={{ mb: 1 }} required inputProps={{ maxLength: 6, inputMode: 'numeric', pattern: '[0-9]*' }} helperText="Código numérico de 6 dígitos" />
+                        <TextField label="Telefone" value={formData.telefone} onChange={(e) => setFormData({ ...formData, telefone: e.target.value })} fullWidth size="small" sx={{ mb: 1 }} />
+                        <TextField label="E-mail" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} type="email" fullWidth size="small" sx={{ mb: 1 }} />
+                        <TextField label="Nome do(a) Gestor(a)" value={formData.nome_gestor} onChange={(e) => setFormData({ ...formData, nome_gestor: e.target.value })} fullWidth size="small" sx={{ mb: 1 }} />
+                        <FormControl fullWidth size="small" sx={{ mb: 1 }}>
                             <InputLabel>Administração</InputLabel>
                             <Select value={formData.administracao} onChange={(e) => setFormData({ ...formData, administracao: e.target.value as any })} label="Administração">
                                 <MenuItem value=""><em>Nenhuma</em></MenuItem><MenuItem value="municipal">Municipal</MenuItem><MenuItem value="estadual">Estadual</MenuItem><MenuItem value="federal">Federal</MenuItem><MenuItem value="particular">Particular</MenuItem>
                             </Select>
                         </FormControl>
-                        <FormControlLabel control={<Switch checked={formData.ativo} onChange={(e) => setFormData({ ...formData, ativo: e.target.checked })} />} label="Escola Ativa" sx={{ mt: 1 }} />
+                        <FormControlLabel control={<Switch checked={formData.ativo} onChange={(e) => setFormData({ ...formData, ativo: e.target.checked })} size="small" />} label={<Typography variant="body2">Escola Ativa</Typography>} sx={{ mt: 0.5 }} />
                     </>
                 ) : (
                     <>
-                        <InfoItem icon={<SchoolIcon color="action" />} label="Código INEP" value={formData.codigo} />
-                        <InfoItem icon={<LocationOnIcon color="action" />} label="Endereço" value={formData.endereco} />
-                        <InfoItem icon={<LocationOnIcon color="action" />} label="Município" value={formData.municipio} />
-                        <InfoItem icon={<VpnKeyIcon color="action" />} label="Código de Acesso" value={formData.codigo_acesso} />
-                        <InfoItem icon={<PhoneIcon color="action" />} label="Telefone" value={formData.telefone} />
-                        <InfoItem icon={<EmailIcon color="action" />} label="E-mail" value={formData.email} />
-                        <InfoItem icon={<PersonIcon color="action" />} label="Gestor(a)" value={formData.nome_gestor} />
-                        <InfoItem icon={<SchoolIcon color="action" />} label="Administração" value={formData.administracao} />
+                        <InfoItem icon={<SchoolIcon fontSize="small" color="action" />} label="Código INEP" value={formData.codigo} />
+                        <InfoItem icon={<LocationOnIcon fontSize="small" color="action" />} label="Endereço" value={formData.endereco} />
+                        <InfoItem icon={<LocationOnIcon fontSize="small" color="action" />} label="Município" value={formData.municipio} />
+                        <InfoItem icon={<VpnKeyIcon fontSize="small" color="action" />} label="Código de Acesso" value={formData.codigo_acesso} />
+                        <InfoItem icon={<PhoneIcon fontSize="small" color="action" />} label="Telefone" value={formData.telefone} />
+                        <InfoItem icon={<EmailIcon fontSize="small" color="action" />} label="E-mail" value={formData.email} />
+                        <InfoItem icon={<PersonIcon fontSize="small" color="action" />} label="Gestor(a)" value={formData.nome_gestor} />
+                        <InfoItem icon={<SchoolIcon fontSize="small" color="action" />} label="Administração" value={formData.administracao} />
                     </>
                 )}
             </Card>
@@ -174,47 +150,47 @@ const EscolaInfoCard = ({ isEditing, formData, setFormData, associacoes, totalAl
 
         {/* Card de Modalidades */}
         <Grid item xs={12} md={6}>
-            <Card sx={{ p: 3, borderRadius: '12px', height: '100%' }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                    <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'primary.main' }}>
-                        <PeopleIcon />
+            <Card sx={{ p: 1.5, borderRadius: '8px', height: '100%' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                    <Typography variant="subtitle1" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'primary.main', fontSize: '0.95rem', fontWeight: 600 }}>
+                        <PeopleIcon fontSize="small" />
                         Modalidades
                     </Typography>
-                    <Button variant="contained" startIcon={<AddIcon />} onClick={() => openModalidadeModal()} color="success" size="small">
+                    <Button variant="contained" startIcon={<AddIcon fontSize="small" />} onClick={() => openModalidadeModal()} color="success" size="small" sx={{ minHeight: 28, fontSize: '0.75rem' }}>
                         Adicionar
                     </Button>
                 </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
-                    <PeopleIcon color="action" />
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+                    <PeopleIcon fontSize="small" color="action" />
                     <Box>
-                        <Typography variant="caption" color="text.secondary" display="block">Total de Alunos</Typography>
-                        <Typography variant="body2" fontWeight={500}>{totalAlunos}</Typography>
+                        <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.7rem', lineHeight: 1.2 }}>Total de Alunos</Typography>
+                        <Typography variant="body2" fontWeight={500} sx={{ fontSize: '0.8125rem' }}>{totalAlunos}</Typography>
                     </Box>
                 </Box>
                 {associacoes.length === 0 ? (
-                    <Box sx={{ textAlign: 'center', py: 2 }}>
-                        <Typography variant="body2" color="text.secondary">Nenhuma modalidade</Typography>
+                    <Box sx={{ textAlign: 'center', py: 1.5 }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8125rem' }}>Nenhuma modalidade</Typography>
                     </Box>
                 ) : (
-                    <Box sx={{ maxHeight: 200, overflowY: 'auto' }}>
+                    <Box sx={{ maxHeight: 180, overflowY: 'auto' }}>
                         {associacoes.map((assoc) => (
-                            <Box key={assoc.id} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
+                            <Box key={assoc.id} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 0.75, borderBottom: '1px solid', borderColor: 'divider' }}>
                                 <Box sx={{ flex: 1 }}>
-                                    <Typography variant="body2" sx={{ fontWeight: 500 }}>{assoc.modalidade_nome}</Typography>
-                                    <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.75rem' }}>
+                                    <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.8125rem' }}>{assoc.modalidade_nome}</Typography>
+                                    <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.7rem' }}>
                                         Atualizado: {formatDate(assoc.updated_at)}
                                     </Typography>
                                 </Box>
-                                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                                    <Chip label={`${assoc.quantidade_alunos} alunos`} size="small" variant="outlined" />
+                                <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                                    <Chip label={`${assoc.quantidade_alunos} alunos`} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
                                     <Tooltip title="Editar">
-                                        <IconButton size="small" onClick={() => openModalidadeModal(assoc)}>
-                                            <EditIcon fontSize="small" />
+                                        <IconButton size="small" onClick={() => openModalidadeModal(assoc)} sx={{ p: 0.5 }}>
+                                            <EditIcon sx={{ fontSize: 16 }} />
                                         </IconButton>
                                     </Tooltip>
                                     <Tooltip title="Remover">
-                                        <IconButton size="small" onClick={() => handleDeleteModalidade(assoc.id)} color="error">
-                                            <DeleteIcon fontSize="small" />
+                                        <IconButton size="small" onClick={() => handleDeleteModalidade(assoc.id)} color="error" sx={{ p: 0.5 }}>
+                                            <DeleteIcon sx={{ fontSize: 16 }} />
                                         </IconButton>
                                     </Tooltip>
                                 </Box>
@@ -233,6 +209,7 @@ const EscolaDetalhesPage = () => {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const toast = useToast();
+    const { setPageTitle } = usePageTitle();
 
     // Função para formatar data
     const formatDate = (dateString: string | null | undefined) => {
@@ -269,6 +246,18 @@ const EscolaDetalhesPage = () => {
     const [modalidadeForm, setModalidadeForm] = useState({ modalidade_id: '', alunos: '' });
     const [isSavingModalidade, setIsSavingModalidade] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    
+    // Estado do menu de ações
+    const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
+    const menuOpen = Boolean(menuAnchorEl);
+
+    // Atualizar título da página
+    useEffect(() => {
+        if (escola) {
+            setPageTitle(escola.nome);
+        }
+        return () => setPageTitle('');
+    }, [escola, setPageTitle]);
 
     const loadData = useCallback(async () => {
         if (!id) return;
@@ -374,19 +363,23 @@ const EscolaDetalhesPage = () => {
     return (
         <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
             <PageContainer>
-                <PageBreadcrumbs
-                    items={[
-                        { label: 'Escolas', path: '/escolas', icon: <SchoolIcon fontSize="small" /> },
-                        { label: escola?.nome || 'Detalhes da Escola' }
-                    ]}
-                />
-
-                <PageHeader
-                    escola={escola} totalAlunos={totalAlunos} isEditing={isEditing}
-                    onEdit={() => setIsEditing(true)} onSave={handleSaveEscola} onCancel={handleCancelEdit}
-                    onDelete={() => setDeleteDialogOpen(true)}
-                    salvando={isSaving}
-                />
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+                    <PageBreadcrumbs
+                        items={[
+                            { label: 'Escolas', path: '/escolas', icon: <SchoolIcon fontSize="small" /> },
+                            { label: escola?.nome || 'Detalhes da Escola' }
+                        ]}
+                    />
+                    {!isEditing && (
+                        <IconButton 
+                            size="small" 
+                            onClick={(e) => setMenuAnchorEl(e.currentTarget)}
+                            sx={{ ml: 2 }}
+                        >
+                            <MoreVertIcon />
+                        </IconButton>
+                    )}
+                </Box>
 
                 <EscolaInfoCard
                     isEditing={isEditing}
@@ -397,8 +390,29 @@ const EscolaDetalhesPage = () => {
                     openModalidadeModal={openModalidadeModal}
                     handleDeleteModalidade={handleDeleteModalidade}
                     formatDate={formatDate}
+                    onSave={handleSaveEscola}
+                    onCancel={handleCancelEdit}
+                    salvando={isSaving}
                 />
             </PageContainer>
+
+            {/* Menu de ações */}
+            <Menu
+                anchorEl={menuAnchorEl}
+                open={menuOpen}
+                onClose={() => setMenuAnchorEl(null)}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+            >
+                <MenuItem onClick={() => { setMenuAnchorEl(null); setIsEditing(true); }}>
+                    <EditIcon fontSize="small" sx={{ mr: 1 }} />
+                    Editar
+                </MenuItem>
+                <MenuItem onClick={() => { setMenuAnchorEl(null); setDeleteDialogOpen(true); }}>
+                    <DeleteIcon fontSize="small" sx={{ mr: 1 }} color="error" />
+                    <Typography color="error">Excluir</Typography>
+                </MenuItem>
+            </Menu>
 
             {/* Modais fora do PageContainer */}
             <Dialog open={modalOpen} onClose={() => setModalOpen(false)} maxWidth="sm" fullWidth>

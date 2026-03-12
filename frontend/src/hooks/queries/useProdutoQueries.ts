@@ -90,9 +90,6 @@ export function useCriarProduto() {
       if (newProduto?.id) {
         queryClient.setQueryData(queryKeys.produtos.detail(newProduto.id), newProduto);
       }
-      
-      // Invalidar estoque relacionado
-      invalidateQueries.estoque();
     },
   });
 }
@@ -112,9 +109,6 @@ export function useAtualizarProduto() {
       
       // Invalidar para forçar refetch
       queryClient.invalidateQueries({ queryKey: queryKeys.produtos.all });
-      
-      // Invalidar estoque relacionado
-      invalidateQueries.produto(id);
     },
   });
 }
@@ -133,9 +127,6 @@ export function useExcluirProduto() {
       
       // Invalidar para forçar refetch
       queryClient.invalidateQueries({ queryKey: queryKeys.produtos.all });
-      
-      // Invalidar estoque relacionado
-      invalidateQueries.produto(id);
     },
   });
 }

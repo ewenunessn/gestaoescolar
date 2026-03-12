@@ -27,7 +27,8 @@ import {
     Add as AddIcon,
     Edit as EditIcon,
     Delete as DeleteIcon,
-    Save as SaveIcon
+    Save as SaveIcon,
+    Clear as ClearIcon
 } from '@mui/icons-material';
 import pedidosService from '../services/pedidos';
 import { ContratoProduto, PedidoDetalhado } from '../types/pedido';
@@ -90,6 +91,13 @@ export default function CompraForm() {
     });
     const [observacoesItem, setObservacoesItem] = useState('');
     const [erroDialog, setErroDialog] = useState('');
+    
+    // Estados de validação e controle de mudanças
+    const [touchedDialog, setTouchedDialog] = useState<any>({});
+    const [formItemInicial, setFormItemInicial] = useState<any>(null);
+    const [confirmCloseItem, setConfirmCloseItem] = useState(false);
+    const [formCompraInicial, setFormCompraInicial] = useState<any>(null);
+    const [confirmCloseCompra, setConfirmCloseCompra] = useState(false);
 
     useEffect(() => {
         if (isEdit) {
@@ -179,15 +187,47 @@ export default function CompraForm() {
     const abrirDialogAdicionar = () => {
         setItemEditando(null);
         setProdutoSelecionado(null);
+        const formInicial = {
+            produto: null,
+            quantidade: 1,
+            dataEntrega: (() => {
+                const data = new Date();
+                data.setDate(data.getDate() + 7);
+                return data.toISOString().split('T')[0];
+            })(),
+            observacoes: ''
+        };
         setQuantidade(1);
-        setDataEntrega(() => {
-            const data = new Date();
-            data.setDate(data.getDate() + 7);
-            return data.toISOString().split('T')[0];
-        });
+        setDataEntrega(formInicial.dataEntrega);
         setObservacoesItem('');
         setErroDialog('');
+        setTouchedDialog({});
+        setFormItemInicial(JSON.parse(JSON.stringify(formInicial)));
         setDialogItemOpen(true);
+    };
+    
+    const hasUnsavedChangesItem = () => {
+        if (!formItemInicial) return false;
+        const current = {
+            produto: produtoSelecionado,
+            quantidade,
+            dataEntrega,
+            observacoes: observacoesItem
+        };
+        return JSON.stringify(current) !== JSON.stringify(formItemInicial);
+    };
+    
+    const handleCloseItemDialog = () => {
+        if (hasUnsavedChangesItem()) {
+            setConfirmCloseItem(true);
+        } else {
+            setDialogItemOpen(false);
+        }
+    };
+    
+    const confirmCloseItemDialog = () => {
+        setConfirmCloseItem(false);
+        setDialogItemOpen(false);
     };
 
     const abrirDialogEditar = (index: number) => {
@@ -323,26 +363,79 @@ export default function CompraForm() {
     // Diálogo inicial para criar nova compra
     if (dialogInicialOpen && !isEdit) {
         return (
-            <Dialog open={true} maxWidth="sm" fullWidth>
-                <DialogTitle>Nova Compra</DialogTitle>
-                <DialogContent>
+            <Dialog 
+                open={true} 
+                maxWidth="sm" 
+                fullWidth
+                onClose={() => {
+                    const hasChanges = competenciaTemp !== (() => {
+                        const hoje = new Date();
+                        return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+                    })() || observacoesTemp !== '';
+                    
+                    if (hasChanges) {
+                        setConfirmCloseCompra(true);
+                    } else {
+                        navigate('/compras');
+                    }
+                }}
+                PaperProps={{
+                    sx: {
+                        borderRadius: '12px',
+                        position: 'fixed',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        m: 0
+                    }
+                }}
+            >
+                <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+                    <Typography variant="h6" component="span" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
+                        Nova Compra
+                    </Typography>
+                    <IconButton
+                        size="small"
+                        onClick={() => {
+                            const hasChanges = competenciaTemp !== (() => {
+                                const hoje = new Date();
+                                return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+                            })() || observacoesTemp !== '';
+                            
+                            if (hasChanges) {
+                                setConfirmCloseCompra(true);
+                            } else {
+                                navigate('/compras');
+                            }
+                        }}
+                        sx={{ color: 'text.secondary' }}
+                    >
+                        <ClearIcon fontSize="small" />
+                    </IconButton>
+                </DialogTitle>
+                <DialogContent sx={{ pt: 2, pb: 1 }}>
                     {erro && (
-                        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setErro('')}>
-                            {erro}
+                        <Alert severity="error" sx={{ mb: 1.5, py: 0.5 }} onClose={() => setErro('')}>
+                            <Typography variant="body2" sx={{ fontSize: '0.8125rem' }}>
+                                {erro}
+                            </Typography>
                         </Alert>
                     )}
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                         <TextField
                             fullWidth
+                            size="small"
                             label="Competência (Mês/Ano) *"
                             type="month"
                             value={competenciaTemp}
                             onChange={(e) => setCompetenciaTemp(e.target.value)}
                             InputLabelProps={{ shrink: true }}
                             helperText="Define o mês/ano de competência da compra"
+                            required
                         />
                         <TextField
                             fullWidth
+                            size="small"
                             label="Observações Gerais"
                             multiline
                             rows={3}
@@ -352,8 +445,8 @@ export default function CompraForm() {
                         />
                     </Box>
                 </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => navigate('/compras')}>
+                <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
+                    <Button onClick={() => navigate('/compras')} sx={{ color: 'text.secondary' }}>
                         Cancelar
                     </Button>
                     <Button 
@@ -364,6 +457,43 @@ export default function CompraForm() {
                         {loading ? 'Criando...' : 'Criar Compra'}
                     </Button>
                 </DialogActions>
+                
+                {/* Dialog de confirmação para fechar */}
+                <Dialog 
+                    open={confirmCloseCompra} 
+                    onClose={() => setConfirmCloseCompra(false)}
+                    maxWidth="xs"
+                    PaperProps={{
+                        sx: {
+                            borderRadius: '12px',
+                            position: 'fixed',
+                            top: '50%',
+                            left: '50%',
+                            transform: 'translate(-50%, -50%)',
+                            m: 0,
+                            zIndex: 1400
+                        }
+                    }}
+                >
+                    <DialogTitle sx={{ pb: 1 }}>
+                        <Typography variant="h6" component="span" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
+                            Descartar alterações?
+                        </Typography>
+                    </DialogTitle>
+                    <DialogContent sx={{ pt: 2, pb: 1 }}>
+                        <Typography variant="body2">
+                            Você tem alterações não salvas. Deseja realmente descartar essas alterações?
+                        </Typography>
+                    </DialogContent>
+                    <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
+                        <Button onClick={() => setConfirmCloseCompra(false)} variant="outlined" size="small">
+                            Continuar Editando
+                        </Button>
+                        <Button onClick={() => navigate('/compras')} color="error" variant="contained" size="small">
+                            Descartar
+                        </Button>
+                    </DialogActions>
+                </Dialog>
             </Dialog>
         );
     }
@@ -662,157 +792,40 @@ export default function CompraForm() {
             </Box>
 
             {/* Diálogo Adicionar/Editar Item */}
-            <Dialog open={dialogItemOpen} onClose={() => setDialogItemOpen(false)} maxWidth="md" fullWidth>
-                <DialogTitle sx={{ pb: 1 }}>
-                    {itemEditando !== null ? 'Editar Item' : 'Adicionar Item'}
-                </DialogTitle>
-                <DialogContent sx={{ pt: '12px !important' }}>
-                    {erroDialog && (
-                        <Alert severity="error" sx={{ mb: 1.5 }} onClose={() => setErroDialog('')}>
-                            {erroDialog}
-                        </Alert>
-                    )}
-
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                        <Autocomplete
-                            size="small"
-                            value={produtoSelecionado}
-                            onChange={(_, newValue) => {
-                                setProdutoSelecionado(newValue);
-                                setErroDialog('');
-                            }}
-                            options={produtosDisponiveis}
-                            groupBy={(option) => option.fornecedor_nome}
-                            getOptionLabel={(option) => `${option.produto_nome}`}
-                            disabled={itemEditando !== null}
-                            renderInput={(params) => (
-                                <TextField 
-                                    {...params} 
-                                    label="Produto" 
-                                    placeholder="Selecione..."
-                                    required
-                                />
-                            )}
-                            renderOption={(props, option) => {
-                                const { key, ...otherProps} = props;
-                                return (
-                                    <li key={key} {...otherProps}>
-                                        <Box sx={{ width: '100%', py: 0.5 }}>
-                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <Typography variant="body2" fontWeight="500">
-                                                    {option.produto_nome}
-                                                </Typography>
-                                                <Typography variant="caption" color="success.main" fontWeight="600">
-                                                    Saldo: {formatarNumero(Number(option.saldo_disponivel) || Number(option.quantidade_contratada) || 0)}
-                                                </Typography>
-                                            </Box>
-                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.25 }}>
-                                                <Typography variant="caption" color="text.secondary">
-                                                    {option.fornecedor_nome} • Contrato {option.contrato_numero}
-                                                </Typography>
-                                                <Typography variant="caption" color="text.secondary">
-                                                    {formatarMoeda(option.preco_unitario)}/{option.unidade}
-                                                </Typography>
-                                            </Box>
-                                        </Box>
-                                    </li>
-                                );
-                            }}
-                        />
-
-                        {produtoSelecionado && (
-                            <Box sx={{ 
-                                display: 'grid', 
-                                gridTemplateColumns: '1fr 1fr 1fr', 
-                                gap: 2, 
-                                p: 1.5, 
-                                bgcolor: 'grey.50', 
-                                borderRadius: 1,
-                                border: '1px solid',
-                                borderColor: 'grey.200'
-                            }}>
-                                <Box>
-                                    <Typography variant="caption" color="text.secondary" display="block">Saldo Disponível</Typography>
-                                    <Typography variant="body2" fontWeight="600" color="success.main">
-                                        {formatarNumero(Number(produtoSelecionado.saldo_disponivel) || Number(produtoSelecionado.quantidade_contratada) || 0)} {produtoSelecionado.unidade}
-                                    </Typography>
-                                </Box>
-                                <Box>
-                                    <Typography variant="caption" color="text.secondary" display="block">Preço Unitário</Typography>
-                                    <Typography variant="body2" fontWeight="600">
-                                        {formatarMoeda(produtoSelecionado.preco_unitario)}
-                                    </Typography>
-                                </Box>
-                                <Box>
-                                    <Typography variant="caption" color="text.secondary" display="block">Valor Total</Typography>
-                                    <Typography variant="body2" fontWeight="600" color="primary">
-                                        {formatarMoeda(calcularValorItem())}
-                                    </Typography>
-                                </Box>
-                            </Box>
-                        )}
-
-                        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                            <TextField
-                                size="small"
-                                label="Quantidade"
-                                type="number"
-                                value={quantidade}
-                                onChange={(e) => {
-                                    setQuantidade(parseFloat(e.target.value) || 0);
-                                    setErroDialog('');
-                                }}
-                                inputProps={{ min: 0, step: 1 }}
-                                helperText={produtoSelecionado ? `Máx: ${formatarNumero(Number(produtoSelecionado.saldo_disponivel) || Number(produtoSelecionado.quantidade_contratada) || 0)}` : ''}
-                                required
-                            />
-
-                            <TextField
-                                size="small"
-                                label="Data de Entrega"
-                                type="date"
-                                value={dataEntrega}
-                                onChange={(e) => setDataEntrega(e.target.value)}
-                                InputLabelProps={{ shrink: true }}
-                                required
-                            />
-                        </Box>
-
-                        <TextField
-                            size="small"
-                            label="Observações"
-                            multiline
-                            rows={2}
-                            value={observacoesItem}
-                            onChange={(e) => setObservacoesItem(e.target.value)}
-                            placeholder="Observações específicas deste item..."
-                        />
-                    </Box>
-                </DialogContent>
-                <DialogActions sx={{ px: 3, pb: 2 }}>
-                    <Button size="small" onClick={() => setDialogItemOpen(false)}>
-                        Cancelar
-                    </Button>
-                    <Button 
+            <Dialog 
+                open={dialogItemOpen} 
+                onClose={handleCloseItemDialog}
+                maxWidth="sm"
+                fullWidth
+                PaperProps={{
+                    sx: {
+                        borderRadius: '12px',
+                        position: 'fixed',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        m: 0
+                    }
+                }}
+            >
+                <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+                    <Typography variant="h6" component="span" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
+                        {itemEditando !== null ? 'Editar Item' : 'Adicionar Item'}
+                    </Typography>
+                    <IconButton
                         size="small"
-                        onClick={itemEditando !== null ? handleAtualizarItem : handleAdicionarItem}
-                        variant="contained"
-                        disabled={!produtoSelecionado || quantidade <= 0}
+                        onClick={handleCloseItemDialog}
+                        sx={{ color: 'text.secondary' }}
                     >
-                        {itemEditando !== null ? 'Atualizar' : 'Adicionar'}
-                    </Button>
-                </DialogActions>
-            </Dialog>
-
-            {/* Diálogo Adicionar/Editar Item - Compacto */}
-            <Dialog open={dialogItemOpen} onClose={() => setDialogItemOpen(false)} maxWidth="md" fullWidth>
-                <DialogTitle sx={{ pb: 1 }}>
-                    {itemEditando !== null ? 'Editar Item' : 'Adicionar Item'}
+                        <ClearIcon fontSize="small" />
+                    </IconButton>
                 </DialogTitle>
-                <DialogContent sx={{ pt: '12px !important' }}>
+                <DialogContent sx={{ pt: 2, pb: 1 }}>
                     {erroDialog && (
-                        <Alert severity="error" sx={{ mb: 1.5 }} onClose={() => setErroDialog('')}>
-                            {erroDialog}
+                        <Alert severity="error" sx={{ mb: 1.5, py: 0.5 }} onClose={() => setErroDialog('')}>
+                            <Typography variant="body2" sx={{ fontSize: '0.8125rem' }}>
+                                {erroDialog}
+                            </Typography>
                         </Alert>
                     )}
 
@@ -865,29 +878,29 @@ export default function CompraForm() {
 
                         {produtoSelecionado && (
                             <Box sx={{ 
-                                display: 'grid', 
-                                gridTemplateColumns: '1fr 1fr 1fr', 
-                                gap: 2, 
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 1, 
                                 p: 1.5, 
                                 bgcolor: 'grey.50', 
                                 borderRadius: 1,
                                 border: '1px solid',
                                 borderColor: 'grey.200'
                             }}>
-                                <Box>
-                                    <Typography variant="caption" color="text.secondary" display="block">Saldo Disponível</Typography>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <Typography variant="caption" color="text.secondary">Saldo Disponível</Typography>
                                     <Typography variant="body2" fontWeight="600" color="success.main">
                                         {formatarNumero(Number(produtoSelecionado.saldo_disponivel) || Number(produtoSelecionado.quantidade_contratada) || 0)} {produtoSelecionado.unidade}
                                     </Typography>
                                 </Box>
-                                <Box>
-                                    <Typography variant="caption" color="text.secondary" display="block">Preço Unitário</Typography>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <Typography variant="caption" color="text.secondary">Preço Unitário</Typography>
                                     <Typography variant="body2" fontWeight="600">
                                         {formatarMoeda(produtoSelecionado.preco_unitario)}
                                     </Typography>
                                 </Box>
-                                <Box>
-                                    <Typography variant="caption" color="text.secondary" display="block">Valor Total</Typography>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <Typography variant="caption" color="text.secondary">Valor Total</Typography>
                                     <Typography variant="body2" fontWeight="600" color="primary">
                                         {formatarMoeda(calcularValorItem())}
                                     </Typography>
@@ -932,8 +945,8 @@ export default function CompraForm() {
                         />
                     </Box>
                 </DialogContent>
-                <DialogActions sx={{ px: 3, pb: 2 }}>
-                    <Button size="small" onClick={() => setDialogItemOpen(false)}>
+                <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
+                    <Button size="small" onClick={handleCloseItemDialog} sx={{ color: 'text.secondary' }}>
                         Cancelar
                     </Button>
                     <Button 
@@ -943,6 +956,42 @@ export default function CompraForm() {
                         disabled={!produtoSelecionado || quantidade <= 0}
                     >
                         {itemEditando !== null ? 'Atualizar' : 'Adicionar'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+            
+            {/* Dialog de confirmação para fechar item */}
+            <Dialog 
+                open={confirmCloseItem} 
+                onClose={() => setConfirmCloseItem(false)}
+                maxWidth="xs"
+                PaperProps={{
+                    sx: {
+                        borderRadius: '12px',
+                        position: 'fixed',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        m: 0
+                    }
+                }}
+            >
+                <DialogTitle sx={{ pb: 1 }}>
+                    <Typography variant="h6" component="span" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
+                        Descartar alterações?
+                    </Typography>
+                </DialogTitle>
+                <DialogContent sx={{ pt: 2, pb: 1 }}>
+                    <Typography variant="body2">
+                        Você tem alterações não salvas. Deseja realmente descartar essas alterações?
+                    </Typography>
+                </DialogContent>
+                <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
+                    <Button onClick={() => setConfirmCloseItem(false)} variant="outlined" size="small">
+                        Continuar Editando
+                    </Button>
+                    <Button onClick={confirmCloseItemDialog} color="error" variant="contained" size="small">
+                        Descartar
                     </Button>
                 </DialogActions>
             </Dialog>

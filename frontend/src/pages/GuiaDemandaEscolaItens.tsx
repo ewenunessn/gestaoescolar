@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import CompactPagination from '../components/CompactPagination';
 import {
   Box,
   Card,
@@ -16,7 +17,6 @@ import {
   InputAdornment,
   CircularProgress,
   Tooltip,
-  TablePagination,
   Button,
   Dialog,
   DialogTitle,
@@ -386,21 +386,17 @@ const GuiaDemandaEscolaItens: React.FC = () => {
                   </TableBody>
                 </Table>
               </TableContainer>
-              <Box sx={{ borderTop: '1px solid #e9ecef', bgcolor: '#ffffff' }}>
-                <TablePagination
-                  component="div"
-                  count={filteredItens.length}
-                  page={page}
-                  onPageChange={(e, newPage) => setPage(newPage)}
-                  rowsPerPage={rowsPerPage}
-                  onRowsPerPageChange={(e) => {
-                    setRowsPerPage(parseInt(e.target.value, 10));
-                    setPage(0);
-                  }}
-                  rowsPerPageOptions={[10, 25, 50]}
-                  labelRowsPerPage="Itens por página:"
-                />
-              </Box>
+              <CompactPagination
+                count={filteredItens.length}
+                page={page}
+                onPageChange={(e, newPage) => setPage(newPage)}
+                rowsPerPage={rowsPerPage}
+                onRowsPerPageChange={(e) => {
+                  setRowsPerPage(parseInt(e.target.value, 10));
+                  setPage(0);
+                }}
+                rowsPerPageOptions={[10, 25, 50]}
+              />
             </Box>
           )}
         </Box>

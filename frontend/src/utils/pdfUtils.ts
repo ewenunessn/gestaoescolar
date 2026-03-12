@@ -17,9 +17,7 @@ export const createPDFHeader = (options: PDFHeaderOptions) => {
     headerContent.push({
       columns: [
         {
-          image: instituicao.logo_url.startsWith('data:') 
-            ? instituicao.logo_url 
-            : `${getApiBaseUrl()}${instituicao.logo_url}`,
+          image: processImageUrl(instituicao.logo_url),
           width: logoSize.width,
           height: logoSize.height
         },
@@ -104,10 +102,36 @@ export const getDefaultPDFStyles = () => ({
 const getApiBaseUrl = () => {
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
+    const protocol = window.location.protocol;
+    
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       return 'http://localhost:3000';
     }
+    
+    // Para outros ambientes, usar HTTPS
     return 'https://gestaoescolar-backend.vercel.app';
   }
   return 'http://localhost:3000';
+};
+
+// Função para processar URL de imagem de forma segura
+const processImageUrl = (logoUrl: string): string => {
+  if (!logoUrl) return '';
+  
+  // Se for base64, retornar diretamente
+  if (logoUrl.startsWith('data:')) {
+    return logoUrl;
+  }
+  
+  // Se for URL relativa, construir URL completa
+  if (logoUrl.startsWith('/')) {
+    return `${getApiBaseUrl()}${logoUrl}`;
+  }
+  
+  // Se for URL completa, garantir que seja HTTPS em produção
+  if (logoUrl.startsWith('http://') && !logoUrl.includes('localhost')) {
+    return logoUrl.replace('http://', 'https://');
+  }
+  
+  return logoUrl;
 };

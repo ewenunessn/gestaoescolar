@@ -5,9 +5,10 @@ import PageContainer from '../components/PageContainer';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, TextField, CircularProgress, Alert, IconButton,
-  Card, Tooltip, TablePagination, InputAdornment
+  Card, Tooltip, InputAdornment
 } from '@mui/material';
 import { Search as SearchIcon, Category as CategoryIcon } from '@mui/icons-material';
+import CompactPagination from '../components/CompactPagination';
 import { listarEscolas, listarEscolaModalidades, adicionarEscolaModalidade, editarEscolaModalidade, removerEscolaModalidade } from '../services/escolas';
 import { listarModalidades } from '../services/modalidades';
 import PageBreadcrumbs from '../components/PageBreadcrumbs';
@@ -311,16 +312,13 @@ const GerenciarAlunosModalidades: React.FC = () => {
               </TableBody>
             </Table>
           </TableContainer>
-          <TablePagination
-            component="div"
+          <CompactPagination
             count={escolasFiltradas.length}
             page={page}
             onPageChange={handleChangePage}
             rowsPerPage={rowsPerPage}
             onRowsPerPageChange={handleChangeRowsPerPage}
             rowsPerPageOptions={[10, 20, 50, 100]}
-            labelRowsPerPage="Escolas por página:"
-            labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
           />
         </Card>
 

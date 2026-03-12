@@ -27,7 +27,6 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  TablePagination,
   Tooltip
 } from '@mui/material';
 import {
@@ -41,6 +40,7 @@ import {
   ArrowUpward as ArrowUpwardIcon,
   ArrowDownward as ArrowDownwardIcon
 } from '@mui/icons-material';
+import CompactPagination from '../components/CompactPagination';
 import demandasService from '../services/demandas';
 import { listarEscolas } from '../services/escolas';
 import { Demanda, STATUS_DEMANDA } from '../types/demanda';
@@ -890,18 +890,13 @@ export default function DemandasLista() {
             </Table>
           </TableContainer>
 
-            <TablePagination
-              component="div"
+            <CompactPagination
               count={demandas.length}
               page={page}
               onPageChange={handleChangePage}
               rowsPerPage={rowsPerPage}
               onRowsPerPageChange={handleChangeRowsPerPage}
               rowsPerPageOptions={[5, 10, 25, 50]}
-              labelRowsPerPage="Itens por página:"
-              labelDisplayedRows={({ from, to, count }) => 
-                `${from}-${to} de ${count !== -1 ? count : `mais de ${to}`}`
-              }
             />
         </Paper>
         )}

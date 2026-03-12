@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import StatusIndicator from "../components/StatusIndicator";
+import PageHeader from "../components/PageHeader";
 import PageContainer from "../components/PageContainer";
 import TableFilter, { FilterField } from "../components/TableFilter";
 import {
@@ -28,7 +29,6 @@ import {
   Menu,
   Collapse,
   Divider,
-  TablePagination,
   Tooltip,
 } from "@mui/material";
 import {
@@ -40,6 +40,7 @@ import {
   MoreVert,
   FilterList as FilterIcon,
 } from "@mui/icons-material";
+import CompactPagination from '../components/CompactPagination';
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { listarContratos } from "../services/contratos";
 import { listarFornecedores } from "../services/fornecedores";
@@ -204,6 +205,10 @@ const ContratosPage: React.FC = () => {
     <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
       {successMessage && (<Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}><Alert severity="success" onClose={() => setSuccessMessage(null)}>{successMessage}</Alert></Box>)}
       <PageContainer fullHeight>
+        <PageHeader 
+          title="Contratos"
+        />
+        
         <Card sx={{ borderRadius: '12px', p: 2, mb: 2 }}>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2 }}>
             <TextField
@@ -309,9 +314,7 @@ const ContratosPage: React.FC = () => {
                 </TableBody>
               </Table>
             </TableContainer>
-            <Box sx={{ borderTop: '1px solid #e9ecef', bgcolor: '#ffffff' }}>
-              <TablePagination component="div" count={filteredContratos.length} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage} onRowsPerPageChange={handleChangeRowsPerPage} rowsPerPageOptions={[10, 25, 50, 100]} labelRowsPerPage="Itens por página:" />
-            </Box>
+            <CompactPagination count={filteredContratos.length} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage} onRowsPerPageChange={handleChangeRowsPerPage} rowsPerPageOptions={[10, 25, 50, 100]} />
           </Box>
         )}
         </Box>

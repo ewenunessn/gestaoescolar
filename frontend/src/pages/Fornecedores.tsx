@@ -31,7 +31,6 @@ import {
   MenuItem,
   Collapse,
   Divider,
-  TablePagination,
   InputAdornment,
   FormControl,
   InputLabel,
@@ -51,6 +50,7 @@ import {
   MoreVert,
   FilterList as FilterIcon,
 } from "@mui/icons-material";
+import CompactPagination from '../components/CompactPagination';
 import {
   listarFornecedores,
   criarFornecedor,
@@ -119,6 +119,14 @@ const FornecedoresPage: React.FC = () => {
   const [editingFornecedor, setEditingFornecedor] = useState<Fornecedor | null>(null);
   const [fornecedorToDelete, setFornecedorToDelete] = useState<Fornecedor | null>(null);
   const [formData, setFormData] = useState({ nome: "", cnpj: "", email: "", ativo: true, tipo_fornecedor: "empresa" as 'empresa' | 'cooperativa' | 'individual' });
+  
+  // Estados de validação
+  const [erroFornecedor, setErroFornecedor] = useState("");
+  const [touched, setTouched] = useState<any>({});
+  
+  // Estados para controle de mudanças não salvas
+  const [formDataInicial, setFormDataInicial] = useState<any>(null);
+  const [confirmClose, setConfirmClose] = useState(false);
 
   // Função para refresh manual (React Query já gerencia o carregamento automaticamente)
   const handleRefresh = useCallback(() => {
@@ -203,25 +211,73 @@ const FornecedoresPage: React.FC = () => {
 
   // Funções de modais
   const openModal = (fornecedor: Fornecedor | null = null) => {
+    setErroFornecedor("");
+    setTouched({});
     if (fornecedor) {
       setEditingFornecedor(fornecedor);
-      setFormData({ 
+      const formInicial = { 
         nome: fornecedor.nome, 
         cnpj: fornecedor.cnpj, 
         email: fornecedor.email || '', 
         ativo: fornecedor.ativo,
         tipo_fornecedor: fornecedor.tipo_fornecedor || 'empresa'
-      });
+      };
+      setFormData(formInicial);
+      setFormDataInicial(JSON.parse(JSON.stringify(formInicial)));
     } else {
       setEditingFornecedor(null);
-      setFormData({ nome: "", cnpj: "", email: "", ativo: true, tipo_fornecedor: "empresa" });
+      const formInicial = { nome: "", cnpj: "", email: "", ativo: true, tipo_fornecedor: "empresa" as 'empresa' | 'cooperativa' | 'individual' };
+      setFormData(formInicial);
+      setFormDataInicial(JSON.parse(JSON.stringify(formInicial)));
     }
     setModalOpen(true);
   };
   
-  const closeModal = () => setModalOpen(false);
+  const hasUnsavedChanges = () => {
+    if (!formDataInicial) return false;
+    return JSON.stringify(formData) !== JSON.stringify(formDataInicial);
+  };
+  
+  const handleCloseModal = () => {
+    if (hasUnsavedChanges()) {
+      setConfirmClose(true);
+    } else {
+      closeModal();
+    }
+  };
+  
+  const confirmCloseModal = () => {
+    setConfirmClose(false);
+    closeModal();
+  };
+  
+  const closeModal = () => {
+    setModalOpen(false);
+    setErroFornecedor("");
+    setTouched({});
+  };
 
   const handleSave = async () => {
+    // Validação
+    if (!formData.nome.trim()) {
+      setErroFornecedor("Nome é obrigatório.");
+      setTouched({ ...touched, nome: true });
+      return;
+    }
+    
+    if (!formData.cnpj.trim()) {
+      setErroFornecedor("CNPJ é obrigatório.");
+      setTouched({ ...touched, cnpj: true });
+      return;
+    }
+    
+    // Validação básica de CNPJ (apenas formato)
+    const cnpjLimpo = formData.cnpj.replace(/\D/g, '');
+    if (cnpjLimpo.length !== 14) {
+      setErroFornecedor("CNPJ deve ter 14 dígitos.");
+      return;
+    }
+    
     try {
       if (editingFornecedor) {
         await atualizarFornecedorMutation.mutateAsync({ id: editingFornecedor.id, data: formData });
@@ -231,11 +287,11 @@ const FornecedoresPage: React.FC = () => {
         setSuccessMessage('Fornecedor criado com sucesso!');
       }
       closeModal();
-      // Forçar atualização da lista
       await refetch();
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       console.error('Erro ao salvar fornecedor:', err);
+      setErroFornecedor(err.message || 'Erro ao salvar fornecedor.');
     }
   };
 
@@ -390,23 +446,86 @@ const FornecedoresPage: React.FC = () => {
                 </TableBody>
               </Table>
             </TableContainer>
-            <Box sx={{ borderTop: '1px solid #e9ecef', bgcolor: '#ffffff' }}>
-              <TablePagination component="div" count={filteredFornecedores.length} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage} onRowsPerPageChange={handleChangeRowsPerPage} rowsPerPageOptions={[10, 25, 50, 100]} labelRowsPerPage="Itens por página:" />
-            </Box>
+            <CompactPagination count={filteredFornecedores.length} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage} onRowsPerPageChange={handleChangeRowsPerPage} rowsPerPageOptions={[10, 25, 50, 100]} />
           </Box>
         )}
         </Box>
       </PageContainer>
 
       {/* Modal de Criação/Edição */}
-      <Dialog open={modalOpen} onClose={closeModal} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: '12px' } }}>
-        <DialogTitle sx={{ fontWeight: 600 }}>{editingFornecedor ? 'Editar Fornecedor' : 'Novo Fornecedor'}</DialogTitle>
-        <DialogContent sx={{ pt: 2 }}>
-          <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <TextField label="Nome" value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} required />
-            <TextField label="CNPJ" value={formData.cnpj} onChange={(e) => setFormData({ ...formData, cnpj: e.target.value })} required />
-            <TextField label="Email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
-            <FormControl fullWidth>
+      <Dialog 
+        open={modalOpen} 
+        onClose={handleCloseModal}
+        maxWidth="sm" 
+        fullWidth 
+        PaperProps={{ 
+          sx: { 
+            borderRadius: '12px',
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            m: 0
+          } 
+        }}
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+          <Typography variant="h6" component="span" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
+            {editingFornecedor ? 'Editar Fornecedor' : 'Novo Fornecedor'}
+          </Typography>
+          <IconButton
+            size="small"
+            onClick={handleCloseModal}
+            sx={{ color: 'text.secondary' }}
+          >
+            <ClearIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2, pb: 1 }}>
+          {erroFornecedor && (
+            <Alert severity="error" sx={{ mb: 1.5, py: 0.5 }}>
+              <Typography variant="body2" sx={{ fontSize: '0.8125rem' }}>
+                {erroFornecedor}
+              </Typography>
+            </Alert>
+          )}
+          <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            <TextField 
+              label="Nome" 
+              value={formData.nome} 
+              onChange={(e) => {
+                setFormData({ ...formData, nome: e.target.value });
+                if (erroFornecedor) setErroFornecedor("");
+              }}
+              onBlur={() => setTouched({ ...touched, nome: true })}
+              required 
+              size="small"
+              error={touched.nome && !formData.nome.trim()}
+              helperText={touched.nome && !formData.nome.trim() ? "Campo obrigatório" : ""}
+            />
+            <TextField 
+              label="CNPJ" 
+              value={formData.cnpj} 
+              onChange={(e) => {
+                setFormData({ ...formData, cnpj: e.target.value });
+                if (erroFornecedor) setErroFornecedor("");
+              }}
+              onBlur={() => setTouched({ ...touched, cnpj: true })}
+              required 
+              size="small"
+              error={touched.cnpj && !formData.cnpj.trim()}
+              helperText={touched.cnpj && !formData.cnpj.trim() ? "Campo obrigatório" : "Formato: 00.000.000/0000-00"}
+              placeholder="00.000.000/0000-00"
+            />
+            <TextField 
+              label="Email" 
+              value={formData.email} 
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })} 
+              size="small"
+              type="email"
+              placeholder="exemplo@email.com"
+            />
+            <FormControl fullWidth size="small">
               <InputLabel>Tipo de Fornecedor</InputLabel>
               <Select
                 value={formData.tipo_fornecedor}
@@ -418,12 +537,63 @@ const FornecedoresPage: React.FC = () => {
                 <MenuItem value="individual">Individual</MenuItem>
               </Select>
             </FormControl>
-            <FormControlLabel control={<Switch checked={formData.ativo} onChange={(e) => setFormData({ ...formData, ativo: e.target.checked })} />} label="Ativo" />
+            <FormControlLabel 
+              control={
+                <Switch 
+                  checked={formData.ativo} 
+                  onChange={(e) => setFormData({ ...formData, ativo: e.target.checked })} 
+                  size="small"
+                />
+              } 
+              label={<Typography variant="body2">Ativo</Typography>}
+            />
           </Box>
         </DialogContent>
-        <DialogActions sx={{ p: 3, pt: 1 }}>
-          <Button onClick={closeModal} sx={{ color: 'text.secondary' }}>Cancelar</Button>
-          <Button onClick={handleSave} variant="contained" disabled={!formData.nome.trim() || !formData.cnpj.trim()}>Salvar</Button>
+        <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
+          <Button onClick={handleCloseModal} sx={{ color: 'text.secondary' }}>Cancelar</Button>
+          <Button 
+            onClick={handleSave} 
+            variant="contained" 
+            disabled={!formData.nome.trim() || !formData.cnpj.trim()}
+          >
+            Salvar
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* Dialog de confirmação para fechar */}
+      <Dialog 
+        open={confirmClose} 
+        onClose={() => setConfirmClose(false)}
+        maxWidth="xs"
+        PaperProps={{
+          sx: {
+            borderRadius: '12px',
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            m: 0
+          }
+        }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Typography variant="h6" component="span" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
+            Descartar alterações?
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2, pb: 1 }}>
+          <Typography variant="body2">
+            Você tem alterações não salvas. Deseja realmente descartar essas alterações?
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
+          <Button onClick={() => setConfirmClose(false)} variant="outlined" size="small">
+            Continuar Editando
+          </Button>
+          <Button onClick={confirmCloseModal} color="error" variant="contained" size="small">
+            Descartar
+          </Button>
         </DialogActions>
       </Dialog>
       

@@ -530,6 +530,7 @@ export default function FaturamentoDetalhe() {
                   <Chip 
                     label={faturamento.status === 'consumido' ? 'Consumo Registrado' : 'Gerado'} 
                     color={faturamento.status === 'consumido' ? 'success' : 'warning'} 
+                    sx={{ color: 'white' }}
                   />
                 </Box>
                 <Divider sx={{ mb: 2 }} />
@@ -796,9 +797,9 @@ export default function FaturamentoDetalhe() {
                         </TableCell>
                         <TableCell align="center">
                           {item.consumo_registrado ? (
-                            <Chip label="Consumido" color="success" size="small" />
+                            <Chip label="Consumido" color="success" size="small" sx={{ color: 'white' }} />
                           ) : (
-                            <Chip label="Pendente" color="warning" size="small" />
+                            <Chip label="Pendente" color="warning" size="small" sx={{ color: 'white' }} />
                           )}
                         </TableCell>
                         <TableCell align="center">

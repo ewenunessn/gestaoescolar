@@ -373,7 +373,7 @@ const CardapioCalendarioPage: React.FC = () => {
         headerContent.push({
           columns: [
             {
-              image: instituicao.logo_url.startsWith('data:') ? instituicao.logo_url : `http://localhost:3000${instituicao.logo_url}`,
+              image: instituicao.logo_url.startsWith('data:') ? instituicao.logo_url : `https://gestaoescolar-backend.vercel.app${instituicao.logo_url}`,
               width: 50,
               height: 50
             },

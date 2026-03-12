@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import StatusIndicator from '../components/StatusIndicator';
 import PageContainer from '../components/PageContainer';
 import TableFilter, { FilterField } from '../components/TableFilter';
+import CompactPagination from '../components/CompactPagination';
 import {
   Box,
   Card,
@@ -17,7 +18,6 @@ import {
   TextField,
   Grid,
   Button,
-  TablePagination,
   CircularProgress,
   Alert,
   Tooltip,
@@ -1204,29 +1204,22 @@ const SaldoContratosModalidades: React.FC = () => {
               </Table>
             </TableContainer>
 
-            <Box sx={{ borderTop: '1px solid #e9ecef', bgcolor: '#ffffff' }}>
-              <TablePagination
-                component="div"
-                count={total}
-                page={page}
-                onPageChange={(_, newPage) => {
-                  setPage(newPage);
-                  setFiltros({ ...filtros, page: newPage + 1 });
-                }}
-                rowsPerPage={rowsPerPage}
-                onRowsPerPageChange={(event) => {
-                  const newRowsPerPage = parseInt(event.target.value, 10);
-                  setRowsPerPage(newRowsPerPage);
-                  setPage(0);
-                  setFiltros({ ...filtros, page: 1, limit: newRowsPerPage });
-                }}
-                rowsPerPageOptions={[10, 25, 50, 100]}
-                labelRowsPerPage="Itens por página:"
-                labelDisplayedRows={({ from, to, count }) =>
-                  `${from}-${to} de ${count !== -1 ? count : `mais de ${to}`}`
-                }
-              />
-            </Box>
+            <CompactPagination
+              count={total}
+              page={page}
+              onPageChange={(_, newPage) => {
+                setPage(newPage);
+                setFiltros({ ...filtros, page: newPage + 1 });
+              }}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={(event) => {
+                const newRowsPerPage = parseInt(event.target.value, 10);
+                setRowsPerPage(newRowsPerPage);
+                setPage(0);
+                setFiltros({ ...filtros, page: 1, limit: newRowsPerPage });
+              }}
+              rowsPerPageOptions={[10, 25, 50, 100]}
+            />
           </Box>
         )}
         </Box>

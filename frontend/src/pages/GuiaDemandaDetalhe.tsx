@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import CompactPagination from '../components/CompactPagination';
 import {
   Box,
   Card,
@@ -16,7 +17,6 @@ import {
   InputAdornment,
   CircularProgress,
   Tooltip,
-  TablePagination,
   Button,
   Dialog,
   DialogTitle,
@@ -84,6 +84,10 @@ const GuiaDemandaDetalhe: React.FC = () => {
   const [batchStatus, setBatchStatus] = useState<Record<number, string>>({});
   const [batchSaving, setBatchSaving] = useState(false);
   const [produtos, setProdutos] = useState<any[]>([]);
+  
+  // Estados de controle de mudanças
+  const [batchFormInicial, setBatchFormInicial] = useState<any>(null);
+  const [confirmCloseBatch, setConfirmCloseBatch] = useState(false);
   
   // Paginação
   const [page, setPage] = useState(0);
@@ -435,10 +439,10 @@ const GuiaDemandaDetalhe: React.FC = () => {
                           <Chip label={Number(escola.qtd_pendente) || 0} size="small" color="default" />
                         </TableCell>
                         <TableCell align="center">
-                          <Chip label={Number(escola.qtd_programada) || 0} size="small" color="info" />
+                          <Chip label={Number(escola.qtd_programada) || 0} size="small" color="info" sx={{ color: 'white' }} />
                         </TableCell>
                         <TableCell align="center">
-                          <Chip label={Number(escola.qtd_entregue) || 0} size="small" color="success" />
+                          <Chip label={Number(escola.qtd_entregue) || 0} size="small" color="success" sx={{ color: 'white' }} />
                         </TableCell>
                         <TableCell align="center">
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'center' }}>
@@ -469,32 +473,75 @@ const GuiaDemandaDetalhe: React.FC = () => {
                   </TableBody>
                 </Table>
               </TableContainer>
-              <Box sx={{ borderTop: '1px solid #e9ecef', bgcolor: '#ffffff' }}>
-                <TablePagination
-                  component="div"
-                  count={filteredEscolas.length}
-                  page={page}
-                  onPageChange={(e, newPage) => setPage(newPage)}
-                  rowsPerPage={rowsPerPage}
-                  onRowsPerPageChange={(e) => {
-                    setRowsPerPage(parseInt(e.target.value, 10));
-                    setPage(0);
-                  }}
-                  rowsPerPageOptions={[10, 25, 50]}
-                  labelRowsPerPage="Itens por página:"
-                />
-              </Box>
+              <CompactPagination
+                count={filteredEscolas.length}
+                page={page}
+                onPageChange={(e, newPage) => setPage(newPage)}
+                rowsPerPage={rowsPerPage}
+                onRowsPerPageChange={(e) => {
+                  setRowsPerPage(parseInt(e.target.value, 10));
+                  setPage(0);
+                }}
+                rowsPerPageOptions={[10, 25, 50]}
+              />
             </Box>
           )}
         </Box>
       </PageContainer>
 
       {/* Modal Adicionar em Lote */}
-      <Dialog open={openBatchDialog} onClose={() => !batchSaving && setOpenBatchDialog(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Adicionar Produto em Lote</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
-            <FormControl fullWidth>
+      <Dialog 
+        open={openBatchDialog} 
+        onClose={() => {
+          if (batchSaving) return;
+          const hasChanges = batchForm.produtoId !== batchFormInicial?.produtoId || 
+                            batchForm.data_entrega !== batchFormInicial?.data_entrega ||
+                            Object.keys(batchQuantidades).length > 0;
+          if (hasChanges) {
+            setConfirmCloseBatch(true);
+          } else {
+            setOpenBatchDialog(false);
+          }
+        }}
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '12px',
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            m: 0
+          }
+        }}
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+          <Typography variant="h6" component="span" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
+            Adicionar Produto em Lote
+          </Typography>
+          <IconButton
+            size="small"
+            onClick={() => {
+              if (batchSaving) return;
+              const hasChanges = batchForm.produtoId !== batchFormInicial?.produtoId || 
+                                batchForm.data_entrega !== batchFormInicial?.data_entrega ||
+                                Object.keys(batchQuantidades).length > 0;
+              if (hasChanges) {
+                setConfirmCloseBatch(true);
+              } else {
+                setOpenBatchDialog(false);
+              }
+            }}
+            sx={{ color: 'text.secondary' }}
+            disabled={batchSaving}
+          >
+            <ClearIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2, pb: 1 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            <FormControl fullWidth size="small">
               <InputLabel>Produto</InputLabel>
               <Select
                 value={batchForm.produtoId}
@@ -523,19 +570,20 @@ const GuiaDemandaDetalhe: React.FC = () => {
               value={batchForm.data_entrega}
               onChange={(e) => setBatchForm({ ...batchForm, data_entrega: e.target.value })}
               fullWidth
+              size="small"
               InputLabelProps={{ shrink: true }}
               disabled={batchSaving}
             />
 
             {batchForm.produtoId && (
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="subtitle2" sx={{ mb: 2 }}>
+              <Box sx={{ mt: 1 }}>
+                <Typography variant="subtitle2" sx={{ mb: 1.5, fontSize: '0.875rem' }}>
                   Informe as quantidades por escola:
                 </Typography>
-                <Box sx={{ maxHeight: '400px', overflow: 'auto' }}>
+                <Box sx={{ maxHeight: '300px', overflow: 'auto' }}>
                   {escolas.map((escola) => (
-                    <Box key={escola.id} sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'center' }}>
-                      <Typography variant="body2" sx={{ flex: 1, minWidth: '200px' }}>
+                    <Box key={escola.id} sx={{ display: 'flex', gap: 1.5, mb: 1.5, alignItems: 'center' }}>
+                      <Typography variant="body2" sx={{ flex: 1, minWidth: '150px', fontSize: '0.875rem' }}>
                         {escola.nome}
                       </Typography>
                       <TextField
@@ -544,10 +592,10 @@ const GuiaDemandaDetalhe: React.FC = () => {
                         size="small"
                         value={batchQuantidades[escola.id] || ''}
                         onChange={(e) => setBatchQuantidades({ ...batchQuantidades, [escola.id]: e.target.value })}
-                        sx={{ width: '120px' }}
+                        sx={{ width: '100px' }}
                         disabled={batchSaving}
                       />
-                      <FormControl size="small" sx={{ width: '150px' }}>
+                      <FormControl size="small" sx={{ width: '130px' }}>
                         <InputLabel>Status</InputLabel>
                         <Select
                           value={batchStatus[escola.id] || 'pendente'}
@@ -566,7 +614,7 @@ const GuiaDemandaDetalhe: React.FC = () => {
             )}
 
             {batchSaving && (
-              <Box sx={{ mt: 2 }}>
+              <Box sx={{ mt: 1.5 }}>
                 <LinearProgress />
                 <Typography variant="caption" sx={{ mt: 1, display: 'block', textAlign: 'center' }}>
                   Salvando...
@@ -575,12 +623,58 @@ const GuiaDemandaDetalhe: React.FC = () => {
             )}
           </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenBatchDialog(false)} disabled={batchSaving}>
+        <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
+          <Button onClick={() => {
+            if (batchSaving) return;
+            const hasChanges = batchForm.produtoId !== batchFormInicial?.produtoId || 
+                              batchForm.data_entrega !== batchFormInicial?.data_entrega ||
+                              Object.keys(batchQuantidades).length > 0;
+            if (hasChanges) {
+              setConfirmCloseBatch(true);
+            } else {
+              setOpenBatchDialog(false);
+            }
+          }} disabled={batchSaving} sx={{ color: 'text.secondary' }}>
             Cancelar
           </Button>
           <Button onClick={handleBatchSubmit} variant="contained" disabled={batchSaving || !batchForm.produtoId}>
             Salvar
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* Dialog de confirmação para fechar */}
+      <Dialog 
+        open={confirmCloseBatch} 
+        onClose={() => setConfirmCloseBatch(false)}
+        maxWidth="xs"
+        PaperProps={{
+          sx: {
+            borderRadius: '12px',
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            m: 0
+          }
+        }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Typography variant="h6" component="span" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
+            Descartar alterações?
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2, pb: 1 }}>
+          <Typography variant="body2">
+            Você tem alterações não salvas. Deseja realmente descartar essas alterações?
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
+          <Button onClick={() => setConfirmCloseBatch(false)} variant="outlined" size="small">
+            Continuar Editando
+          </Button>
+          <Button onClick={() => { setConfirmCloseBatch(false); setOpenBatchDialog(false); }} color="error" variant="contained" size="small">
+            Descartar
           </Button>
         </DialogActions>
       </Dialog>

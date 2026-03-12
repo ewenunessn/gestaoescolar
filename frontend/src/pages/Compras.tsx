@@ -37,7 +37,6 @@ import {
   Collapse,
   Divider,
   Grid,
-  TablePagination,
   SelectChangeEvent,
 } from '@mui/material';
 import {
@@ -51,6 +50,7 @@ import {
   FilterList as FilterIcon,
   ShoppingCart,
 } from '@mui/icons-material';
+import CompactPagination from '../components/CompactPagination';
 import pedidosService from '../services/pedidos';
 import { Pedido, STATUS_PEDIDO, PedidoFiltros } from '../types/pedido';
 import { formatarMoeda, formatarData } from '../utils/dateUtils';
@@ -493,18 +493,14 @@ const PedidosPage = () => {
                 </TableBody>
               </Table>
             </TableContainer>
-            <Box sx={{ borderTop: '1px solid #e9ecef', bgcolor: '#ffffff' }}>
-              <TablePagination
-                component="div"
-                count={filteredPedidos.length}
-                page={page}
-                onPageChange={handleChangePage}
-                rowsPerPage={rowsPerPage}
-                onRowsPerPageChange={handleChangeRowsPerPage}
-                rowsPerPageOptions={[10, 25, 50, 100]}
-                labelRowsPerPage="Itens por página:"
-              />
-            </Box>
+            <CompactPagination
+              count={filteredPedidos.length}
+              page={page}
+              onPageChange={handleChangePage}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              rowsPerPageOptions={[10, 25, 50, 100]}
+            />
           </Box>
         )}
         </Box>

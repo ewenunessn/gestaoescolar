@@ -4,6 +4,7 @@ import PageHeader from '../components/PageHeader';
 import PageContainer from '../components/PageContainer';
 import TableFilter, { FilterField } from '../components/TableFilter';
 import { useNavigate } from 'react-router-dom';
+import CompactPagination from '../components/CompactPagination';
 import {
     Box,
     Typography,
@@ -23,7 +24,6 @@ import {
     InputLabel,
     Select,
     MenuItem,
-    TablePagination,
     useTheme,
     useMediaQuery,
     SelectChangeEvent,
@@ -448,18 +448,14 @@ const GestaoRotas: React.FC = () => {
                                 </TableBody>
                             </Table>
                         </TableContainer>
-                        <Box sx={{ borderTop: '1px solid #e9ecef', bgcolor: '#ffffff' }}>
-                            <TablePagination
-                                component="div"
-                                count={filteredRotas.length}
-                                page={page}
-                                onPageChange={handleChangePage}
-                                rowsPerPage={rowsPerPage}
-                                onRowsPerPageChange={handleChangeRowsPerPage}
-                                rowsPerPageOptions={[10, 25, 50, 100]}
-                                labelRowsPerPage="Itens por página:"
-                            />
-                        </Box>
+                        <CompactPagination
+                            count={filteredRotas.length}
+                            page={page}
+                            onPageChange={handleChangePage}
+                            rowsPerPage={rowsPerPage}
+                            onRowsPerPageChange={handleChangeRowsPerPage}
+                            rowsPerPageOptions={[10, 25, 50, 100]}
+                        />
                     </Box>
                 )}
 

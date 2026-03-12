@@ -6,8 +6,9 @@ import {
   Box, Button, Card, CardContent, Dialog, DialogTitle, DialogContent, DialogActions,
   FormControl, Grid, IconButton, InputLabel, MenuItem, Select, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, TextField, Typography, Chip, Paper,
-  InputAdornment, TablePagination, CircularProgress, Alert
+  InputAdornment, CircularProgress, Alert
 } from '@mui/material';
+import CompactPagination from '../components/CompactPagination';
 import {
   Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, CalendarMonth as CalendarIcon,
   Visibility as ViewIcon, Search as SearchIcon, Clear as ClearIcon, FilterList as FilterIcon,
@@ -46,6 +47,14 @@ const CardapiosModalidadePage: React.FC = () => {
     observacao: '',
     ativo: true
   });
+  
+  // Estados de validação
+  const [erroCardapio, setErroCardapio] = useState("");
+  const [touched, setTouched] = useState<any>({});
+  
+  // Estados para controle de mudanças não salvas
+  const [formDataInicial, setFormDataInicial] = useState<any>(null);
+  const [confirmClose, setConfirmClose] = useState(false);
   
   const { success, error } = useNotification();
   const navigate = useNavigate();
@@ -153,36 +162,67 @@ const CardapiosModalidadePage: React.FC = () => {
   }, [filters]);
 
   const handleOpenDialog = (cardapio?: CardapioModalidade) => {
+    setErroCardapio("");
+    setTouched({});
     if (cardapio) {
       setEditMode(true);
       setSelectedId(cardapio.id);
-      setFormData({
+      const formInicial = {
         modalidade_id: cardapio.modalidade_id.toString(),
         nome: cardapio.nome,
         mes: cardapio.mes.toString(),
         ano: cardapio.ano.toString(),
         observacao: cardapio.observacao || '',
         ativo: cardapio.ativo
-      });
+      };
+      setFormData(formInicial);
+      setFormDataInicial(JSON.parse(JSON.stringify(formInicial)));
     } else {
       setEditMode(false);
       setSelectedId(null);
-      setFormData({
+      const formInicial = {
         modalidade_id: '',
         nome: '',
         mes: '',
         ano: new Date().getFullYear().toString(),
         observacao: '',
         ativo: true
-      });
+      };
+      setFormData(formInicial);
+      setFormDataInicial(JSON.parse(JSON.stringify(formInicial)));
     }
     setOpenDialog(true);
+  };
+  
+  const hasUnsavedChanges = () => {
+    if (!formDataInicial) return false;
+    return JSON.stringify(formData) !== JSON.stringify(formDataInicial);
+  };
+  
+  const handleCloseDialog = () => {
+    if (hasUnsavedChanges()) {
+      setConfirmClose(true);
+    } else {
+      setOpenDialog(false);
+    }
+  };
+  
+  const confirmCloseDialog = () => {
+    setConfirmClose(false);
+    setOpenDialog(false);
   };
 
   const handleSubmit = async () => {
     try {
+      // Validação
       if (!formData.modalidade_id || !formData.nome || !formData.mes || !formData.ano) {
-        error('Preencha todos os campos obrigatórios');
+        setErroCardapio('Preencha todos os campos obrigatórios');
+        setTouched({ modalidade_id: true, nome: true, mes: true, ano: true });
+        return;
+      }
+      
+      if (parseInt(formData.ano) < 2000 || parseInt(formData.ano) > 2100) {
+        setErroCardapio('Ano deve estar entre 2000 e 2100');
         return;
       }
 
@@ -204,9 +244,10 @@ const CardapiosModalidadePage: React.FC = () => {
       }
 
       setOpenDialog(false);
+      setErroCardapio("");
       loadData();
     } catch (err: any) {
-      error(err.message || 'Erro ao salvar cardápio');
+      setErroCardapio(err.message || 'Erro ao salvar cardápio');
     }
   };
 
@@ -354,68 +395,209 @@ const CardapiosModalidadePage: React.FC = () => {
                   </TableBody>
                 </Table>
               </TableContainer>
-              <Box sx={{ borderTop: '1px solid #e9ecef', bgcolor: '#ffffff' }}>
-                <TablePagination
-                  component="div"
-                  count={filteredCardapios.length}
-                  page={page}
-                  onPageChange={handleChangePage}
-                  rowsPerPage={rowsPerPage}
-                  onRowsPerPageChange={handleChangeRowsPerPage}
-                  rowsPerPageOptions={[10, 25, 50, 100]}
-                  labelRowsPerPage="Itens por página:"
-                />
-              </Box>
+              <CompactPagination
+                count={filteredCardapios.length}
+                page={page}
+                onPageChange={handleChangePage}
+                rowsPerPage={rowsPerPage}
+                onRowsPerPageChange={handleChangeRowsPerPage}
+                rowsPerPageOptions={[10, 25, 50, 100]}
+              />
             </Box>
           )}
         </Box>
       </PageContainer>
 
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{editMode ? 'Editar Cardápio' : 'Novo Cardápio'}</DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <FormControl fullWidth required>
+      <Dialog 
+        open={openDialog} 
+        onClose={handleCloseDialog}
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '12px',
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            m: 0
+          }
+        }}
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+          <Typography variant="h6" component="span" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
+            {editMode ? 'Editar Cardápio' : 'Novo Cardápio'}
+          </Typography>
+          <IconButton
+            size="small"
+            onClick={handleCloseDialog}
+            sx={{ color: 'text.secondary' }}
+          >
+            <ClearIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2, pb: 1 }}>
+          {erroCardapio && (
+            <Alert severity="error" sx={{ mb: 1.5, py: 0.5 }}>
+              <Typography variant="body2" sx={{ fontSize: '0.8125rem' }}>
+                {erroCardapio}
+              </Typography>
+            </Alert>
+          )}
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            <FormControl 
+              fullWidth 
+              required 
+              size="small"
+              error={touched.modalidade_id && !formData.modalidade_id}
+            >
               <InputLabel>Modalidade</InputLabel>
-              <Select value={formData.modalidade_id} onChange={(e) => setFormData({ ...formData, modalidade_id: e.target.value })} label="Modalidade">
+              <Select 
+                value={formData.modalidade_id} 
+                onChange={(e) => {
+                  setFormData({ ...formData, modalidade_id: e.target.value });
+                  if (erroCardapio) setErroCardapio("");
+                }}
+                onBlur={() => setTouched({ ...touched, modalidade_id: true })}
+                label="Modalidade"
+              >
                 {modalidades.map((m) => <MenuItem key={m.id} value={m.id}>{m.nome}</MenuItem>)}
               </Select>
+              {touched.modalidade_id && !formData.modalidade_id && (
+                <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
+                  Campo obrigatório
+                </Typography>
+              )}
             </FormControl>
 
-            <TextField label="Nome do Cardápio" fullWidth required value={formData.nome}
-              onChange={(e) => setFormData({ ...formData, nome: e.target.value })} />
+            <TextField 
+              label="Nome do Cardápio" 
+              fullWidth 
+              required 
+              size="small"
+              value={formData.nome}
+              onChange={(e) => {
+                setFormData({ ...formData, nome: e.target.value });
+                if (erroCardapio) setErroCardapio("");
+              }}
+              onBlur={() => setTouched({ ...touched, nome: true })}
+              error={touched.nome && !formData.nome}
+              helperText={touched.nome && !formData.nome ? "Campo obrigatório" : ""}
+            />
 
-            <Grid container spacing={2}>
+            <Grid container spacing={1.5}>
               <Grid item xs={6}>
-                <FormControl fullWidth required>
+                <FormControl 
+                  fullWidth 
+                  required 
+                  size="small"
+                  error={touched.mes && !formData.mes}
+                >
                   <InputLabel>Mês</InputLabel>
-                  <Select value={formData.mes} onChange={(e) => setFormData({ ...formData, mes: e.target.value })} label="Mês">
+                  <Select 
+                    value={formData.mes} 
+                    onChange={(e) => {
+                      setFormData({ ...formData, mes: e.target.value });
+                      if (erroCardapio) setErroCardapio("");
+                    }}
+                    onBlur={() => setTouched({ ...touched, mes: true })}
+                    label="Mês"
+                  >
                     {Object.entries(MESES).map(([num, nome]) => <MenuItem key={num} value={num}>{nome}</MenuItem>)}
                   </Select>
+                  {touched.mes && !formData.mes && (
+                    <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
+                      Campo obrigatório
+                    </Typography>
+                  )}
                 </FormControl>
               </Grid>
               <Grid item xs={6}>
-                <TextField label="Ano" type="number" fullWidth required value={formData.ano}
-                  onChange={(e) => setFormData({ ...formData, ano: e.target.value })} />
+                <TextField 
+                  label="Ano" 
+                  type="number" 
+                  fullWidth 
+                  required 
+                  size="small"
+                  value={formData.ano}
+                  onChange={(e) => {
+                    setFormData({ ...formData, ano: e.target.value });
+                    if (erroCardapio) setErroCardapio("");
+                  }}
+                  onBlur={() => setTouched({ ...touched, ano: true })}
+                  error={touched.ano && !formData.ano}
+                  helperText={touched.ano && !formData.ano ? "Campo obrigatório" : ""}
+                  inputProps={{ min: 2000, max: 2100 }}
+                />
               </Grid>
             </Grid>
 
-            <TextField label="Observação" fullWidth multiline rows={3} value={formData.observacao}
-              onChange={(e) => setFormData({ ...formData, observacao: e.target.value })} />
+            <TextField 
+              label="Observação" 
+              fullWidth 
+              multiline 
+              rows={3} 
+              size="small"
+              value={formData.observacao}
+              onChange={(e) => setFormData({ ...formData, observacao: e.target.value })} 
+            />
 
-            <FormControl fullWidth>
+            <FormControl fullWidth size="small">
               <InputLabel>Status</InputLabel>
-              <Select value={formData.ativo ? 'ativo' : 'inativo'}
-                onChange={(e) => setFormData({ ...formData, ativo: e.target.value === 'ativo' })} label="Status">
+              <Select 
+                value={formData.ativo ? 'ativo' : 'inativo'}
+                onChange={(e) => setFormData({ ...formData, ativo: e.target.value === 'ativo' })} 
+                label="Status"
+              >
                 <MenuItem value="ativo">Ativo</MenuItem>
                 <MenuItem value="inativo">Inativo</MenuItem>
               </Select>
             </FormControl>
           </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
-          <Button onClick={handleSubmit} variant="contained">{editMode ? 'Salvar' : 'Criar'}</Button>
+        <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
+          <Button onClick={handleCloseDialog} sx={{ color: 'text.secondary' }}>
+            Cancelar
+          </Button>
+          <Button onClick={handleSubmit} variant="contained">
+            {editMode ? 'Salvar' : 'Criar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* Dialog de confirmação para fechar */}
+      <Dialog 
+        open={confirmClose} 
+        onClose={() => setConfirmClose(false)}
+        maxWidth="xs"
+        PaperProps={{
+          sx: {
+            borderRadius: '12px',
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            m: 0
+          }
+        }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Typography variant="h6" component="span" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
+            Descartar alterações?
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2, pb: 1 }}>
+          <Typography variant="body2">
+            Você tem alterações não salvas. Deseja realmente descartar essas alterações?
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
+          <Button onClick={() => setConfirmClose(false)} variant="outlined" size="small">
+            Continuar Editando
+          </Button>
+          <Button onClick={confirmCloseDialog} color="error" variant="contained" size="small">
+            Descartar
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

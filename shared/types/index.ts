@@ -92,7 +92,7 @@ export interface Produto {
   id: ID;
   nome: string;
   descricao?: string;
-  unidade: string;
+  unidade: string; // Obrigatório
   categoria: string;
   ativo: boolean;
   created_at: DateString;
@@ -102,7 +102,7 @@ export interface Produto {
 export interface ProdutoCreate {
   nome: string;
   descricao?: string;
-  unidade: string;
+  unidade: string; // Obrigatório
   categoria: string;
   ativo?: boolean;
 }

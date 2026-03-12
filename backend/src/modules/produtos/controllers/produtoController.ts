@@ -140,6 +140,7 @@ export const listarProdutos = asyncHandler(async (req: Request, res: Response) =
       p.id,
       p.nome,
       p.unidade,
+      p.peso,
       p.descricao,
       p.categoria,
       p.tipo_processamento,
@@ -165,6 +166,7 @@ export const buscarProduto = asyncHandler(async (req: Request, res: Response) =>
       p.id,
       p.nome,
       p.unidade,
+      p.peso,
       p.descricao,
       p.categoria,
       p.tipo_processamento,
@@ -189,26 +191,34 @@ export const buscarProduto = asyncHandler(async (req: Request, res: Response) =>
 export const criarProduto = asyncHandler(async (req: Request, res: Response) => {
   const { 
     nome, 
-    unidade = 'UN',
+    unidade,
     descricao, 
     categoria,
     tipo_processamento,
+    peso,
     perecivel = false,
     ativo = true 
   } = req.body;
 
-  // Validar unidade
-  const unidadesPermitidas = ['UN', 'KG', 'G', 'L', 'ML', 'DZ', 'PCT', 'CX', 'FD', 'SC'];
-  if (unidade && !unidadesPermitidas.includes(unidade.toUpperCase())) {
-    throw new ValidationError(`Unidade inválida. Permitidas: ${unidadesPermitidas.join(', ')}`);
+  // Validar campos obrigatórios
+  if (!nome || !nome.trim()) {
+    throw new ValidationError('Nome do produto é obrigatório');
   }
+  
+  if (!unidade || !unidade.trim()) {
+    throw new ValidationError('Unidade do produto é obrigatória');
+  }
+
+  // Normalizar unidade (remover espaços extras)
+  const unidadeNormalizada = unidade.trim();
+  const pesoNormalizado = peso ? Number(peso) : null;
 
   try {
     const result = await db.query(`
-      INSERT INTO produtos (nome, unidade, descricao, categoria, tipo_processamento, perecivel, ativo, created_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
+      INSERT INTO produtos (nome, unidade, descricao, categoria, tipo_processamento, peso, perecivel, ativo, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)
       RETURNING *
-    `, [nome, unidade.toUpperCase(), descricao, categoria, tipo_processamento, perecivel, ativo]);
+    `, [nome.trim(), unidadeNormalizada, descricao, categoria, tipo_processamento, pesoNormalizado, perecivel, ativo]);
 
     res.status(201).json({
       success: true,
@@ -228,31 +238,39 @@ export const editarProduto = asyncHandler(async (req: Request, res: Response) =>
     descricao, 
     categoria,
     tipo_processamento,
+    peso,
     perecivel,
     ativo 
   } = req.body;
 
-  // Validar unidade se fornecida
-  if (unidade) {
-    const unidadesPermitidas = ['UN', 'KG', 'G', 'L', 'ML', 'DZ', 'PCT', 'CX', 'FD', 'SC'];
-    if (!unidadesPermitidas.includes(unidade.toUpperCase())) {
-      throw new ValidationError(`Unidade inválida. Permitidas: ${unidadesPermitidas.join(', ')}`);
-    }
+  // Validar apenas se campos obrigatórios não estão vazios (quando fornecidos)
+  if (nome !== undefined && !nome?.trim()) {
+    throw new ValidationError('Nome do produto não pode estar vazio');
   }
+  
+  if (unidade !== undefined && !unidade?.trim()) {
+    throw new ValidationError('Unidade do produto não pode estar vazia');
+  }
+
+  // Normalizar valores (aceita qualquer texto, apenas remove espaços extras)
+  const nomeNormalizado = nome !== undefined ? nome.trim() : undefined;
+  const unidadeNormalizada = unidade !== undefined ? unidade.trim() : undefined;
+  const pesoNormalizado = peso !== undefined ? (peso ? Number(peso) : null) : undefined;
 
   const result = await db.query(`
     UPDATE produtos SET
-      nome = $1,
+      nome = COALESCE($1, nome),
       unidade = COALESCE($2, unidade),
-      descricao = $3,
-      categoria = $4,
-      tipo_processamento = $5,
-      perecivel = $6,
-      ativo = $7,
+      descricao = COALESCE($3, descricao),
+      categoria = COALESCE($4, categoria),
+      tipo_processamento = COALESCE($5, tipo_processamento),
+      peso = COALESCE($6, peso),
+      perecivel = COALESCE($7, perecivel),
+      ativo = COALESCE($8, ativo),
       updated_at = CURRENT_TIMESTAMP
-    WHERE id = $8
+    WHERE id = $9
     RETURNING *
-  `, [nome, unidade ? unidade.toUpperCase() : null, descricao, categoria, tipo_processamento, perecivel, ativo, id]);
+  `, [nomeNormalizado, unidadeNormalizada, descricao, categoria, tipo_processamento, pesoNormalizado, perecivel, ativo, id]);
 
   if (result.rows.length === 0) {
     throw new NotFoundError('Produto', id);
@@ -340,71 +358,74 @@ export const buscarComposicaoNutricional = asyncHandler(async (req: Request, res
       }
     });
 
-    if (data.rows.length === 0) {
-      const schema = await detectarSchemaComposicao();
-      const produtoId = Number(req.params.id);
-      if (schema === 'novo') {
-        await db.query(`
-          INSERT INTO produto_composicao_nutricional (produto_id, criado_em)
-          VALUES ($1, CURRENT_TIMESTAMP)
-          ON CONFLICT (produto_id) DO NOTHING
-        `, [produtoId]);
-        const created = await db.query(`
-          SELECT 
-            produto_id,
-            energia_kcal as calorias,
-            proteina_g as proteinas,
-            carboidratos_g as carboidratos,
-            lipideos_g as gorduras,
-            fibra_alimentar_g as fibras,
-            sodio_mg as sodio,
-            acucares_g as acucares,
-            gorduras_saturadas_g,
-            gorduras_trans_g,
-            colesterol_mg as colesterol,
-            calcio_mg as calcio,
-            ferro_mg as ferro,
-            vitamina_e_mg as vitamina_c,
-            vitamina_b1_mg as vitamina_a
-          FROM produto_composicao_nutricional 
-          WHERE produto_id = $1
-        `, [produtoId]);
-        return res.json({ success: true, data: created.rows[0], message: "Composição criada" });
-      } else {
-        await db.query(`
-          INSERT INTO produto_composicao_nutricional (produto_id, created_at)
-          VALUES ($1, CURRENT_TIMESTAMP)
-          ON CONFLICT (produto_id) DO NOTHING
-        `, [produtoId]);
-        const created = await db.query(`
-          SELECT 
-            produto_id,
-            calorias,
-            proteinas,
-            carboidratos,
-            gorduras,
-            fibras,
-            sodio,
-            acucares,
-            gorduras_saturadas as gorduras_saturadas_g,
-            gorduras_trans as gorduras_trans_g,
-            colesterol,
-            calcio,
-            ferro,
-            vitamina_c,
-            vitamina_a
-          FROM produto_composicao_nutricional 
-          WHERE produto_id = $1
-        `, [produtoId]);
-        return res.json({ success: true, data: created.rows[0], message: "Composição criada" });
-      }
+    // Se encontrou dados, retornar imediatamente
+    if (data.rows.length > 0) {
+      return res.json({
+        success: true,
+        data: data.rows[0],
+        message: "Composição nutricional encontrada"
+      });
     }
 
-    res.json({
-      success: true,
-      data: data.rows[0],
-      message: "Composição nutricional encontrada"
-    });
+    // Se não encontrou, criar registro vazio e retornar
+    const schema = await detectarSchemaComposicao();
+    const produtoId = Number(req.params.id);
+    
+    if (schema === 'novo') {
+      await db.query(`
+        INSERT INTO produto_composicao_nutricional (produto_id, criado_em)
+        VALUES ($1, CURRENT_TIMESTAMP)
+        ON CONFLICT (produto_id) DO NOTHING
+      `, [produtoId]);
+      const created = await db.query(`
+        SELECT 
+          produto_id,
+          energia_kcal as calorias,
+          proteina_g as proteinas,
+          carboidratos_g as carboidratos,
+          lipideos_g as gorduras,
+          fibra_alimentar_g as fibras,
+          sodio_mg as sodio,
+          acucares_g as acucares,
+          gorduras_saturadas_g,
+          gorduras_trans_g,
+          colesterol_mg as colesterol,
+          calcio_mg as calcio,
+          ferro_mg as ferro,
+          vitamina_e_mg as vitamina_c,
+          vitamina_b1_mg as vitamina_a
+        FROM produto_composicao_nutricional 
+        WHERE produto_id = $1
+      `, [produtoId]);
+      return res.json({ success: true, data: created.rows[0], message: "Composição criada" });
+    } else {
+      await db.query(`
+        INSERT INTO produto_composicao_nutricional (produto_id, created_at)
+        VALUES ($1, CURRENT_TIMESTAMP)
+        ON CONFLICT (produto_id) DO NOTHING
+      `, [produtoId]);
+      const created = await db.query(`
+        SELECT 
+          produto_id,
+          calorias,
+          proteinas,
+          carboidratos,
+          gorduras,
+          fibras,
+          sodio,
+          acucares,
+          gorduras_saturadas as gorduras_saturadas_g,
+          gorduras_trans as gorduras_trans_g,
+          colesterol,
+          calcio,
+          ferro,
+          vitamina_c,
+          vitamina_a
+        FROM produto_composicao_nutricional 
+        WHERE produto_id = $1
+      `, [produtoId]);
+      return res.json({ success: true, data: created.rows[0], message: "Composição criada" });
+    }
   } catch (error) {
     handleDatabaseError(error);
   }

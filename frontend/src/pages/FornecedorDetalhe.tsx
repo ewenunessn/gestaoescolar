@@ -2,10 +2,12 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import PageContainer from '../components/PageContainer';
+import CompactPagination from '../components/CompactPagination';
+import { usePageTitle } from '../contexts/PageTitleContext';
 import {
   Box, Typography, Card, CardContent, Grid, Button, Chip, Alert,
   CircularProgress, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, Paper, IconButton, Stack, Tooltip
+  TableHead, TableRow, Paper, IconButton, Stack, Tooltip, Menu, MenuItem
 } from "@mui/material";
 import {
   ArrowBack as ArrowBackIcon,
@@ -21,6 +23,7 @@ import {
   ReceiptLong as ReceiptLongIcon,
   MonetizationOn as MonetizationOnIcon,
   Inventory as InventoryIcon,
+  MoreVert as MoreVertIcon,
 } from "@mui/icons-material";
 import { buscarFornecedor } from "../services/fornecedores";
 import { listarContratos } from "../services/contratos";
@@ -61,30 +64,12 @@ const getStatusContrato = (contrato: Contrato) => {
 };
 
 // --- Subcomponentes de UI ---
-const PageHeader = ({ onEdit, onVerItens }) => (
-    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2, mb: 3 }}>
-        <Box>
-            <Typography variant="h4" sx={{ fontWeight: 700, color: 'text.primary' }}>
-                Detalhes do Fornecedor
-            </Typography>
-        </Box>
-        <Stack direction="row" spacing={2}>
-            <Button variant="outlined" startIcon={<InventoryIcon />} onClick={onVerItens}>
-                Ver Todos os Itens
-            </Button>
-            <Button variant="outlined" startIcon={<EditIcon />} onClick={onEdit}>
-                Editar Fornecedor
-            </Button>
-        </Stack>
-    </Box>
-);
-
 const InfoItem = ({ icon, label, value }) => (
-    <Stack direction="row" alignItems="center" spacing={1.5}>
+    <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
         {icon}
         <Box>
-            <Typography variant="caption" color="text.secondary" display="block">{label}</Typography>
-            <Typography variant="body2" fontWeight={500}>{value}</Typography>
+            <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.7rem', lineHeight: 1.2 }}>{label}</Typography>
+            <Typography variant="body2" fontWeight={500} sx={{ fontSize: '0.8125rem' }}>{value}</Typography>
         </Box>
     </Stack>
 );
@@ -94,10 +79,28 @@ export default function FornecedorDetalhe() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { setPageTitle } = usePageTitle();
+  
   const [fornecedor, setFornecedor] = useState<Fornecedor | null>(null);
   const [contratos, setContratos] = useState<Contrato[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Estado do menu de ações
+  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
+  const menuOpen = Boolean(menuAnchorEl);
+  
+  // Estados de paginação
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  // Atualizar título da página
+  useEffect(() => {
+    if (fornecedor) {
+      setPageTitle(fornecedor.nome);
+    }
+    return () => setPageTitle('');
+  }, [fornecedor, setPageTitle]);
 
   const carregarDados = useCallback(async () => {
     if (!id) return;
@@ -134,10 +137,44 @@ export default function FornecedorDetalhe() {
     carregarDados();
   }, [carregarDados]);
 
-  const valorTotalContratos = useMemo(() => 
-    contratos.reduce((total, contrato) => total + (Number(contrato.valor_total_contrato) || 0), 0),
+  const valorContratosVigentes = useMemo(() => 
+    contratos
+      .filter(c => {
+        const hoje = new Date();
+        const inicio = new Date(c.data_inicio);
+        const fim = new Date(c.data_fim);
+        return c.ativo && hoje >= inicio && hoje <= fim;
+      })
+      .reduce((total, contrato) => total + (Number(contrato.valor_total_contrato) || 0), 0),
     [contratos]
   );
+  
+  const valorContratosExpirados = useMemo(() => 
+    contratos
+      .filter(c => {
+        const hoje = new Date();
+        const fim = new Date(c.data_fim);
+        return hoje > fim;
+      })
+      .reduce((total, contrato) => total + (Number(contrato.valor_total_contrato) || 0), 0),
+    [contratos]
+  );
+  
+  // Contratos paginados
+  const paginatedContratos = useMemo(() => {
+    const startIndex = page * rowsPerPage;
+    return contratos.slice(startIndex, startIndex + rowsPerPage);
+  }, [contratos, page, rowsPerPage]);
+
+  // Funções de paginação
+  const handleChangePage = useCallback((event: unknown, newPage: number) => {
+    setPage(newPage);
+  }, []);
+
+  const handleChangeRowsPerPage = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  }, []);
   
   const handleNovoContrato = useCallback(() => navigate(`/contratos/novo?fornecedor_id=${id}`), [navigate, id]);
   const handleVerContrato = useCallback((contratoId: number) => navigate(`/contratos/${contratoId}?from=fornecedor&fornecedor_id=${id}`), [navigate, id]);
@@ -149,86 +186,215 @@ export default function FornecedorDetalhe() {
   if (!fornecedor) return <Alert severity="error">Fornecedor não encontrado</Alert>;
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <PageContainer>
-        <PageBreadcrumbs 
-          items={[
-            { label: 'Fornecedores', path: '/fornecedores', icon: <BusinessIcon fontSize="small" /> },
-            { label: fornecedor?.nome || 'Detalhes do Fornecedor' }
-          ]}
-        />
-        <PageHeader onEdit={handleEditarFornecedor} onVerItens={handleVerItens} />
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
+      <PageContainer fullHeight>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+          <PageBreadcrumbs 
+            items={[
+              { label: 'Fornecedores', path: '/fornecedores', icon: <BusinessIcon fontSize="small" /> },
+              { label: fornecedor?.nome || 'Detalhes do Fornecedor' }
+            ]}
+          />
+          <IconButton 
+            size="small" 
+            onClick={(e) => setMenuAnchorEl(e.currentTarget)}
+            sx={{ ml: 2 }}
+          >
+            <MoreVertIcon />
+          </IconButton>
+        </Box>
 
-        <Grid container spacing={4}>
-          <Grid item xs={12} lg={8}>
-            <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', height: '100%' }}>
-              <CardContent sx={{ p: 3 }}>
-                <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 3 }}>
-                  <BusinessIcon color="primary" sx={{ fontSize: 40 }} />
-                  <Box>
-                    <Typography variant="h5" fontWeight="600">{fornecedor.nome}</Typography>
-                    <Chip label={fornecedor.ativo ? "Ativo" : "Inativo"} color={fornecedor.ativo ? "success" : "error"} size="small" sx={{ mt: 0.5 }} />
+        <Card sx={{ borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', mb: 2 }}>
+          <CardContent sx={{ p: 1.5 }}>
+            <Grid container spacing={2} alignItems="stretch">
+              {/* Primeira coluna - Informações básicas */}
+              <Grid item xs={12} md={5}>
+                <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <InfoItem icon={<BusinessIcon fontSize="small" color="action" />} label="CNPJ" value={fornecedor.cnpj} />
+                  {fornecedor.email && <InfoItem icon={<EmailIcon fontSize="small" color="action" />} label="E-mail" value={fornecedor.email} />}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>Status:</Typography>
+                    <Chip 
+                      label={fornecedor.ativo ? "Ativo" : "Inativo"} 
+                      color={fornecedor.ativo ? "success" : "error"} 
+                      size="small" 
+                      sx={{ height: 20, fontSize: '0.7rem', color: 'white' }} 
+                    />
                   </Box>
-                </Stack>
-                <Grid container spacing={3}>
-                  <Grid item xs={12} md={6}><InfoItem icon={<ReceiptLongIcon color="action" />} label="CNPJ" value={fornecedor.cnpj} /></Grid>
-                  {fornecedor.email && <Grid item xs={12} md={6}><InfoItem icon={<EmailIcon color="action" />} label="E-mail" value={fornecedor.email} /></Grid>}
-                </Grid>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} lg={4}>
-            <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', height: '100%' }}>
-              <CardContent sx={{ p: 3, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
-                <MonetizationOnIcon color="primary" sx={{ fontSize: 40, mb: 1 }}/>
-                <Typography variant="h4" fontWeight="bold">{formatarMoeda(valorTotalContratos)}</Typography>
-                <Typography color="text.secondary">em Valor Total de Contratos</Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
+                </Box>
+              </Grid>
+              
+              {/* Segunda coluna - Contratos Vigentes */}
+              <Grid item xs={12} md={3.5}>
+                <Box sx={{ 
+                  height: '100%', 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  p: 1.5, 
+                  bgcolor: 'rgba(46, 125, 50, 0.08)', 
+                  borderRadius: 1,
+                  border: '1px solid',
+                  borderColor: 'success.light'
+                }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', fontWeight: 500, mb: 0.5 }}>
+                    Contratos Vigentes
+                  </Typography>
+                  <Typography variant="h5" fontWeight="bold" color="success.main" sx={{ fontSize: '1.25rem' }}>
+                    {formatarMoeda(valorContratosVigentes)}
+                  </Typography>
+                </Box>
+              </Grid>
+              
+              {/* Terceira coluna - Contratos Expirados */}
+              <Grid item xs={12} md={3.5}>
+                <Box sx={{ 
+                  height: '100%', 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  p: 1.5, 
+                  bgcolor: 'rgba(211, 47, 47, 0.08)', 
+                  borderRadius: 1,
+                  border: '1px solid',
+                  borderColor: 'error.light'
+                }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', fontWeight: 500, mb: 0.5 }}>
+                    Contratos Expirados
+                  </Typography>
+                  <Typography variant="h5" fontWeight="bold" color="error.main" sx={{ fontSize: '1.25rem' }}>
+                    {formatarMoeda(valorContratosExpirados)}
+                  </Typography>
+                </Box>
+              </Grid>
+            </Grid>
+          </CardContent>
+        </Card>
 
-        <Paper sx={{ mt: 4, width: '100%', overflow: 'hidden', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
-          <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: 1, borderColor: 'divider' }}>
-            <Typography variant="h6" fontWeight="600">Contratos</Typography>
-            <Button variant="contained" startIcon={<AddIcon />} onClick={handleNovoContrato} color="success">
-              Novo Contrato
-            </Button>
-          </Box>
+        {/* Legenda de Status */}
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, px: 0.5 }}>
+          <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 500 }}>
+            Exibindo {contratos.length} {contratos.length === 1 ? 'resultado' : 'resultados'}
+          </Typography>
+          <Button 
+            startIcon={<AddIcon />} 
+            onClick={handleNovoContrato} 
+            variant="contained" 
+            color="success" 
+            size="small"
+          >
+            Novo Contrato
+          </Button>
+        </Box>
+
+        {/* Tabela de Contratos */}
+        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           {contratos.length === 0 ? (
-            <Box sx={{ textAlign: 'center', py: 6 }}>
+            <Card>
+              <CardContent sx={{ textAlign: 'center', py: 6 }}>
                 <MenuBookIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-                <Typography variant="h6" sx={{ color: 'text.secondary' }}>Nenhum contrato encontrado</Typography>
-                <Typography variant="body2" color="text.secondary">Cadastre o primeiro contrato para este fornecedor.</Typography>
+                <Typography variant="h6" sx={{ color: 'text.secondary' }}>
+                  Nenhum contrato encontrado
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  Cadastre o primeiro contrato para este fornecedor.
+                </Typography>
+                <Button 
+                  variant="contained" 
+                  startIcon={<AddIcon />} 
+                  onClick={handleNovoContrato}
+                  color="success"
+                >
+                  Novo Contrato
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', width: '100%', overflow: 'hidden' }}>
+              <TableContainer sx={{ flex: 1, minHeight: 0 }}>
+                <Table stickyHeader size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ py: 1 }}>Número</TableCell>
+                      <TableCell sx={{ py: 1 }}>Vigência</TableCell>
+                      <TableCell sx={{ py: 1 }}>Valor Total</TableCell>
+                      <TableCell sx={{ py: 1 }}>Status</TableCell>
+                      <TableCell align="center" sx={{ py: 1 }}>Ações</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {paginatedContratos.map((contrato) => {
+                      const status = getStatusContrato(contrato);
+                      return (
+                        <TableRow key={contrato.id} hover>
+                          <TableCell sx={{ py: 1 }}>
+                            <Typography variant="body2" fontWeight="600" sx={{ fontSize: '0.8125rem' }}>
+                              {contrato.numero}
+                            </Typography>
+                          </TableCell>
+                          <TableCell sx={{ py: 1 }}>
+                            <Typography variant="body2" sx={{ fontSize: '0.8125rem' }}>
+                              {`${formatarData(contrato.data_inicio)} a ${formatarData(contrato.data_fim)}`}
+                            </Typography>
+                          </TableCell>
+                          <TableCell sx={{ py: 1 }}>
+                            <Typography variant="body2" sx={{ fontSize: '0.8125rem' }}>
+                              {formatarMoeda(contrato.valor_total_contrato)}
+                            </Typography>
+                          </TableCell>
+                          <TableCell sx={{ py: 1 }}>
+                            <Chip 
+                              label={status.status} 
+                              color={status.color} 
+                              size="small" 
+                              sx={{ height: 20, fontSize: '0.7rem', color: status.color !== 'default' ? 'white' : undefined }} 
+                            />
+                          </TableCell>
+                          <TableCell align="center" sx={{ py: 1 }}>
+                            <Tooltip title="Ver Detalhes">
+                              <IconButton size="small" onClick={() => handleVerContrato(contrato.id)} sx={{ p: 0.5 }}>
+                                <VisibilityIcon sx={{ fontSize: 16 }} />
+                              </IconButton>
+                            </Tooltip>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              <CompactPagination
+                count={contratos.length}
+                page={page}
+                onPageChange={handleChangePage}
+                rowsPerPage={rowsPerPage}
+                onRowsPerPageChange={handleChangeRowsPerPage}
+                rowsPerPageOptions={[10, 25, 50, 100]}
+              />
             </Box>
-            ) : (
-              <TableContainer>
-                <Table>
-                  <TableHead><TableRow>
-                  <TableCell>Número</TableCell><TableCell>Vigência</TableCell>
-                  <TableCell>Valor Total</TableCell><TableCell>Status</TableCell><TableCell align="center">Ações</TableCell>
-                </TableRow></TableHead>
-                <TableBody>
-                  {contratos.map((contrato) => {
-                    const status = getStatusContrato(contrato);
-                    return (
-                      <TableRow key={contrato.id} hover>
-                        <TableCell><Typography variant="body2" fontWeight="600">{contrato.numero}</Typography></TableCell>
-                        <TableCell><Typography variant="body2">{`${formatarData(contrato.data_inicio)} a ${formatarData(contrato.data_fim)}`}</Typography></TableCell>
-                        <TableCell>{formatarMoeda(contrato.valor_total_contrato)}</TableCell>
-                        <TableCell><Chip label={status.status} color={status.color} size="small" variant="outlined" /></TableCell>
-                        <TableCell align="center">
-                          <Tooltip title="Ver Detalhes do Contrato"><IconButton size="small" onClick={() => handleVerContrato(contrato.id)}><VisibilityIcon fontSize="small" /></IconButton></Tooltip>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </TableContainer>
           )}
-        </Paper>
+        </Box>
       </PageContainer>
+
+      {/* Menu de ações */}
+      <Menu
+        anchorEl={menuAnchorEl}
+        open={menuOpen}
+        onClose={() => setMenuAnchorEl(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <MenuItem onClick={() => { setMenuAnchorEl(null); handleEditarFornecedor(); }}>
+          <EditIcon fontSize="small" sx={{ mr: 1 }} />
+          Editar Fornecedor
+        </MenuItem>
+        <MenuItem onClick={() => { setMenuAnchorEl(null); handleVerItens(); }}>
+          <InventoryIcon fontSize="small" sx={{ mr: 1 }} />
+          Ver Todos os Itens
+        </MenuItem>
+      </Menu>
     </Box>
   );
 }

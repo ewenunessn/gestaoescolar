@@ -79,7 +79,7 @@ export const changePasswordSchema = z.object({
 export const produtoCreateSchema = z.object({
   nome: nonEmptyStringSchema.max(200, 'Nome muito longo'),
   descricao: z.string().max(500, 'Descrição muito longa').optional(),
-  unidade: nonEmptyStringSchema.max(20, 'Unidade muito longa'),
+  unidade: nonEmptyStringSchema.max(50, 'Unidade muito longa'), // Aceita qualquer texto até 50 caracteres
   categoria: nonEmptyStringSchema.max(100, 'Categoria muito longa'),
   ativo: z.boolean().default(true)
 });

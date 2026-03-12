@@ -5,17 +5,17 @@ import {
   uploadLogoBase64,
   upload 
 } from '../controllers/instituicaoController';
-import authMiddleware from '../middleware/authMiddleware';
+import { authenticateToken } from '../middleware/authMiddleware';
 
 const router = express.Router();
 
 // Buscar configurações da instituição
-router.get('/', authMiddleware, buscarInstituicao);
+router.get('/', authenticateToken, buscarInstituicao);
 
 // Atualizar configurações da instituição (com upload de arquivo)
-router.put('/', authMiddleware, upload.single('logo'), atualizarInstituicao);
+router.put('/', authenticateToken, upload.single('logo'), atualizarInstituicao);
 
 // Upload de logo via base64
-router.post('/logo-base64', authMiddleware, uploadLogoBase64);
+router.post('/logo-base64', authenticateToken, uploadLogoBase64);
 
 export default router;

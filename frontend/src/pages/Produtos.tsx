@@ -42,7 +42,6 @@ import {
   Tooltip,
   Paper,
   Menu,
-  TablePagination,
   Collapse,
   Autocomplete,
   Chip,
@@ -58,22 +57,9 @@ import {
   FilterList as FilterIcon,
   Clear as ClearIcon,
 } from "@mui/icons-material";
+import CompactPagination from '../components/CompactPagination';
 import { useNavigate, useLocation } from "react-router-dom";
 import * as XLSX from 'xlsx';
-
-// Unidades de medida disponíveis
-const UNIDADES_MEDIDA = [
-  { value: 'UN', label: 'Unidade (UN)' },
-  { value: 'KG', label: 'Quilograma (KG)' },
-  { value: 'G', label: 'Grama (G)' },
-  { value: 'L', label: 'Litro (L)' },
-  { value: 'ML', label: 'Mililitro (ML)' },
-  { value: 'DZ', label: 'Dúzia (DZ)' },
-  { value: 'PCT', label: 'Pacote (PCT)' },
-  { value: 'CX', label: 'Caixa (CX)' },
-  { value: 'FD', label: 'Fardo (FD)' },
-  { value: 'SC', label: 'Saco (SC)' },
-];
 
 interface ProdutoForm {
   nome: string;
@@ -81,6 +67,7 @@ interface ProdutoForm {
   descricao: string;
   categoria: string;
   tipo_processamento?: string;
+  peso?: string;
   perecivel?: boolean;
   ativo: boolean;
 }
@@ -119,12 +106,22 @@ const ProdutosPage = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState<ProdutoForm>({
     nome: "",
+    unidade: "",
     descricao: "",
     categoria: "",
     tipo_processamento: "",
+    peso: "",
     perecivel: false,
     ativo: true,
   });
+  
+  // Estados de validação
+  const [erroProduto, setErroProduto] = useState("");
+  const [touched, setTouched] = useState<any>({});
+  
+  // Estados para controle de mudanças não salvas
+  const [formDataInicial, setFormDataInicial] = useState<ProdutoForm | null>(null);
+  const [confirmClose, setConfirmClose] = useState(false);
 
   // Estados do menu de ações
   const [actionsMenuAnchor, setActionsMenuAnchor] = useState<null | HTMLElement>(null);
@@ -226,22 +223,67 @@ const ProdutosPage = () => {
 
   // Funções do modal
   const openModal = () => {
-    setFormData({ nome: "", unidade: "UN", descricao: "", categoria: "", ativo: true });
+    const inicial = { nome: "", unidade: "", descricao: "", categoria: "", peso: "", ativo: true, perecivel: false, tipo_processamento: "" };
+    setFormData(inicial);
+    setFormDataInicial(JSON.parse(JSON.stringify(inicial)));
+    setErroProduto("");
+    setTouched({});
     setModalOpen(true);
   };
+  
+  const hasUnsavedChanges = () => {
+    if (!formDataInicial) return false;
+    return JSON.stringify(formData) !== JSON.stringify(formDataInicial);
+  };
+  
+  const handleCloseModal = () => {
+    if (hasUnsavedChanges()) {
+      setConfirmClose(true);
+    } else {
+      closeModal();
+    }
+  };
+  
+  const confirmCloseModal = () => {
+    setConfirmClose(false);
+    closeModal();
+  };
+  
   const closeModal = () => {
     setModalOpen(false);
+    setErroProduto("");
+    setTouched({});
     setFormData({
       nome: "",
+      unidade: "",
       descricao: "",
       categoria: "",
       tipo_processamento: "",
+      peso: "",
       perecivel: false,
       ativo: true,
     });
   };
 
   const handleSave = async () => {
+    // Validação
+    if (!formData.nome.trim()) {
+      setErroProduto("Nome do produto é obrigatório.");
+      setTouched({ ...touched, nome: true });
+      return;
+    }
+    
+    if (!formData.unidade?.trim()) {
+      setErroProduto("Unidade é obrigatória.");
+      setTouched({ ...touched, unidade: true });
+      return;
+    }
+    
+    if (formData.peso && Number(formData.peso) <= 0) {
+      setErroProduto("Peso deve ser maior que zero.");
+      return;
+    }
+    
     try {
       setIsSaving(true);
       const novoProduto = await criarProdutoMutation.mutateAsync(formData);
@@ -249,8 +291,9 @@ const ProdutosPage = () => {
       closeModal();
       setTimeout(() => setSuccessMessage(null), 3000);
       navigate(`/produtos/${novoProduto.id}`);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao criar produto:', err);
+      setErroProduto(err.message || 'Erro ao criar produto.');
     } finally {
       setIsSaving(false);
     }
@@ -278,7 +321,7 @@ const ProdutosPage = () => {
       // Preparar dados para exportação compatível com importação
       const dadosExportacao = filteredProdutos.map(produto => ({
         nome: produto.nome,
-        unidade: produto.unidade || 'UN',
+        unidade: produto.unidade || '',
         descricao: produto.descricao || '',
         categoria: produto.categoria || '',
         tipo_processamento: produto.tipo_processamento || '',
@@ -595,19 +638,22 @@ const ProdutosPage = () => {
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                           <StatusIndicator status={produto.ativo ? 'ativo' : 'inativo'} size="small" />
                           <Box>
-                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                              {produto.nome}
-                              {isInativo && <Chip label="Inativo" size="small" color="default" sx={{ ml: 1 }} />}
-                            </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                {produto.nome}
+                              </Typography>
+                              {isInativo && <Chip label="Inativo" size="small" color="default" />}
+                            </Box>
                             {produto.descricao && <Typography variant="caption" color="text.secondary">{produto.descricao}</Typography>}
                           </Box>
                         </Box>
                       </TableCell>
                       <TableCell align="center">
                         <Chip 
-                          label={produto.unidade || 'UN'} 
+                          label={produto.unidade || '-'} 
                           size="small" 
                           variant="outlined"
+                          color={produto.unidade ? 'default' : 'error'}
                         />
                       </TableCell>
                       <TableCell align="center">
@@ -626,55 +672,108 @@ const ProdutosPage = () => {
                 </TableBody>
               </Table>
             </TableContainer>
-            <Box sx={{ 
-              borderTop: '1px solid #e9ecef',
-              bgcolor: '#ffffff'
-            }}>
-              <TablePagination 
-                component="div" 
-                count={filteredProdutos.length} 
-                page={page} 
-                onPageChange={handleChangePage} 
-                rowsPerPage={rowsPerPage} 
-                onRowsPerPageChange={handleChangeRowsPerPage} 
-                rowsPerPageOptions={[10, 25, 50, 100]} 
-                labelRowsPerPage="Itens por página:" 
-              />
-            </Box>
+            <CompactPagination 
+              count={filteredProdutos.length} 
+              page={page} 
+              onPageChange={handleChangePage} 
+              rowsPerPage={rowsPerPage} 
+              onRowsPerPageChange={handleChangeRowsPerPage} 
+              rowsPerPageOptions={[10, 25, 50, 100]} 
+            />
             </Box>
           )}
         </Box>
       </PageContainer>
 
       {/* Modal de Criação */}
-      <Dialog open={modalOpen} onClose={closeModal} maxWidth="md" fullWidth PaperProps={{ sx: { borderRadius: '12px' } }}>
-        <DialogTitle sx={{ fontWeight: 600 }}>Novo Produto</DialogTitle>
-        <DialogContent sx={{ pt: 2 }}>
-          <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <TextField label="Nome do Produto" value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} required fullWidth />
+      <Dialog 
+        open={modalOpen} 
+        onClose={handleCloseModal}
+        maxWidth="md" 
+        fullWidth 
+        PaperProps={{ 
+          sx: { 
+            borderRadius: '12px',
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            m: 0
+          } 
+        }}
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+          <Typography variant="h6" component="span" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
+            Novo Produto
+          </Typography>
+          <IconButton
+            size="small"
+            onClick={handleCloseModal}
+            sx={{ color: 'text.secondary' }}
+          >
+            <ClearIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2, pb: 1 }}>
+          {erroProduto && (
+            <Alert severity="error" sx={{ mb: 1.5, py: 0.5 }}>
+              <Typography variant="body2" sx={{ fontSize: '0.8125rem' }}>
+                {erroProduto}
+              </Typography>
+            </Alert>
+          )}
+          <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <TextField 
+              label="Nome do Produto" 
+              value={formData.nome} 
+              onChange={(e) => {
+                setFormData({ ...formData, nome: e.target.value });
+                if (erroProduto) setErroProduto("");
+              }}
+              onBlur={() => setTouched({ ...touched, nome: true })}
+              required 
+              fullWidth 
+              size="small"
+              error={touched.nome && !formData.nome.trim()}
+              helperText={touched.nome && !formData.nome.trim() ? "Campo obrigatório" : ""}
+            />
             <Box sx={{ display: 'flex', gap: 2 }}>
-              <TextField label="Descrição" value={formData.descricao} onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} multiline rows={2} sx={{ flex: 2 }} />
+              <TextField 
+                label="Descrição" 
+                value={formData.descricao} 
+                onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} 
+                multiline 
+                rows={2} 
+                sx={{ flex: 2 }} 
+                size="small"
+              />
               <Autocomplete
+                freeSolo
+                options={[
+                  'Quilograma', 'Grama', 'Miligrama', 'Tonelada',
+                  'Litro', 'Mililitro',
+                  'Unidade', 'Dúzia', 'Caixa', 'Pacote', 'Fardo', 'Saco',
+                  'Lata', 'Galão', 'Bandeja', 'Maço', 'Pote',
+                  'Vidro', 'Sachê', 'Balde'
+                ]}
                 value={formData.unidade}
                 onChange={(event, newValue) => {
-                  setFormData({ ...formData, unidade: newValue || 'UN' });
+                  setFormData({ ...formData, unidade: newValue || '' });
+                  if (newValue && erroProduto) setErroProduto("");
                 }}
-                inputValue={formData.unidade}
                 onInputChange={(event, newInputValue) => {
-                  setFormData({ ...formData, unidade: newInputValue || 'UN' });
+                  setFormData({ ...formData, unidade: newInputValue });
+                  if (newInputValue && erroProduto) setErroProduto("");
                 }}
-                options={UNIDADES_MEDIDA.map(u => u.value)}
-                getOptionLabel={(option) => {
-                  const unidade = UNIDADES_MEDIDA.find(u => u.value === option);
-                  return unidade ? unidade.label : option;
-                }}
-                freeSolo
                 renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Unidade"
+                  <TextField 
+                    {...params} 
+                    label="Unidade" 
                     required
-                    helperText="Selecione ou digite"
+                    size="small"
+                    error={touched.unidade && !formData.unidade?.trim()}
+                    helperText={touched.unidade && !formData.unidade?.trim() ? "Campo obrigatório" : ""}
+                    onBlur={() => setTouched({ ...touched, unidade: true })}
                   />
                 )}
                 sx={{ flex: 1 }}
@@ -687,14 +786,32 @@ const ProdutosPage = () => {
                 value={formData.categoria}
                 onChange={(event, newValue) => setFormData({ ...formData, categoria: newValue || '' })}
                 onInputChange={(event, newInputValue) => setFormData({ ...formData, categoria: newInputValue })}
-                renderInput={(params) => <TextField {...params} label="Categoria" />}
+                renderInput={(params) => <TextField {...params} label="Categoria" size="small" />}
                 sx={{ flex: 1 }}
+              />
+              <TextField
+                label="Peso (gramas)"
+                type="number"
+                value={formData.peso || ''}
+                onChange={(e) => {
+                  setFormData({ ...formData, peso: e.target.value });
+                  if (erroProduto) setErroProduto("");
+                }}
+                helperText="Peso padrão em gramas"
+                inputProps={{ min: 0, step: 0.01 }}
+                sx={{ flex: 1 }}
+                size="small"
+                error={formData.peso !== '' && Number(formData.peso) <= 0}
               />
             </Box>
             <Box sx={{ display: 'flex', gap: 2 }}>
-              <FormControl sx={{ flex: 1 }}>
+              <FormControl sx={{ flex: 1 }} size="small">
                 <InputLabel>Tipo de Processamento</InputLabel>
-                <Select value={formData.tipo_processamento || ''} onChange={(e) => setFormData({ ...formData, tipo_processamento: e.target.value })} label="Tipo de Processamento">
+                <Select 
+                  value={formData.tipo_processamento || ''} 
+                  onChange={(e) => setFormData({ ...formData, tipo_processamento: e.target.value })} 
+                  label="Tipo de Processamento"
+                >
                   <MenuItem value="">Nenhum</MenuItem>
                   <MenuItem value="in natura">In Natura</MenuItem>
                   <MenuItem value="minimamente processado">Minimamente Processado</MenuItem>
@@ -704,14 +821,74 @@ const ProdutosPage = () => {
               </FormControl>
             </Box>
             <Box sx={{ display: 'flex', gap: 2 }}>
-              <FormControlLabel control={<Switch checked={formData.perecivel || false} onChange={(e) => setFormData({ ...formData, perecivel: e.target.checked })} />} label="Produto Perecível" />
-              <FormControlLabel control={<Switch checked={formData.ativo} onChange={(e) => setFormData({ ...formData, ativo: e.target.checked })} />} label="Produto Ativo" />
+              <FormControlLabel 
+                control={
+                  <Switch 
+                    checked={formData.perecivel || false} 
+                    onChange={(e) => setFormData({ ...formData, perecivel: e.target.checked })} 
+                    size="small"
+                  />
+                } 
+                label={<Typography variant="body2">Produto Perecível</Typography>}
+              />
+              <FormControlLabel 
+                control={
+                  <Switch 
+                    checked={formData.ativo} 
+                    onChange={(e) => setFormData({ ...formData, ativo: e.target.checked })} 
+                    size="small"
+                  />
+                } 
+                label={<Typography variant="body2">Produto Ativo</Typography>}
+              />
             </Box>
           </Box>
         </DialogContent>
-        <DialogActions sx={{ p: 3, pt: 1 }}>
-          <Button onClick={closeModal} sx={{ color: 'text.secondary' }}>Cancelar</Button>
-          <Button onClick={handleSave} variant="contained" disabled={isSaving || !formData.nome.trim()}>{isSaving ? 'Salvando...' : 'Criar Produto'}</Button>
+        <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
+          <Button onClick={handleCloseModal} sx={{ color: 'text.secondary' }}>Cancelar</Button>
+          <Button 
+            onClick={handleSave} 
+            variant="contained" 
+            disabled={isSaving || !formData.nome.trim() || !formData.unidade?.trim()}
+          >
+            {isSaving ? 'Salvando...' : 'Criar Produto'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* Dialog de confirmação para fechar */}
+      <Dialog 
+        open={confirmClose} 
+        onClose={() => setConfirmClose(false)}
+        maxWidth="xs"
+        PaperProps={{
+          sx: {
+            borderRadius: '12px',
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            m: 0
+          }
+        }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Typography variant="h6" component="span" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
+            Descartar alterações?
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2, pb: 1 }}>
+          <Typography variant="body2">
+            Você tem alterações não salvas. Deseja realmente descartar essas alterações?
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
+          <Button onClick={() => setConfirmClose(false)} variant="outlined" size="small">
+            Continuar Editando
+          </Button>
+          <Button onClick={confirmCloseModal} color="error" variant="contained" size="small">
+            Descartar
+          </Button>
         </DialogActions>
       </Dialog>
       

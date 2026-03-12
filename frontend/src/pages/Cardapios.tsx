@@ -31,7 +31,6 @@ import {
   Paper,
   Menu,
   Collapse,
-  TablePagination,
   Divider,
 } from "@mui/material";
 import {
@@ -45,6 +44,7 @@ import {
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
 } from "@mui/icons-material";
+import CompactPagination from '../components/CompactPagination';
 import { useNavigate } from "react-router-dom";
 
 // Interface
@@ -243,15 +243,13 @@ const CardapiosPage = () => {
                 </TableBody>
               </Table>
             </TableContainer>
-            <TablePagination 
-              component="div" 
+            <CompactPagination 
               count={filteredCardapios.length} 
               page={page} 
               onPageChange={handleChangePage} 
               rowsPerPage={rowsPerPage} 
               onRowsPerPageChange={handleChangeRowsPerPage} 
               rowsPerPageOptions={[10, 25, 50, 100]} 
-              labelRowsPerPage="Itens por página:" 
             />
           </Box>
         )}

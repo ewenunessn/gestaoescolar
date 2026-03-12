@@ -34,7 +34,6 @@ import {
   Switch,
   Tooltip,
   Menu,
-  TablePagination,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -47,6 +46,7 @@ import {
   Delete,
   Visibility,
 } from '@mui/icons-material';
+import CompactPagination from '../components/CompactPagination';
 import { useNavigate } from 'react-router-dom';
 import { listarRefeicoes, criarRefeicao, editarRefeicao, deletarRefeicao } from '../services/refeicoes';
 import { Refeicao } from '../types/refeicao';
@@ -414,21 +414,14 @@ const RefeicoesPage = () => {
               </TableBody>
             </Table>
               </TableContainer>
-              <Box sx={{ 
-                borderTop: '1px solid #e9ecef',
-                bgcolor: '#ffffff'
-              }}>
-                <TablePagination
-                  component="div"
-                  count={filteredRefeicoes.length}
-                  page={page}
-                  onPageChange={handleChangePage}
-                  rowsPerPage={rowsPerPage}
-                  onRowsPerPageChange={handleChangeRowsPerPage}
-                  rowsPerPageOptions={[10, 25, 50, 100]}
-                  labelRowsPerPage="Linhas por página:"
-                />
-              </Box>
+              <CompactPagination
+                count={filteredRefeicoes.length}
+                page={page}
+                onPageChange={handleChangePage}
+                rowsPerPage={rowsPerPage}
+                onRowsPerPageChange={handleChangeRowsPerPage}
+                rowsPerPageOptions={[10, 25, 50, 100]}
+              />
             </Box>
           )}
         </Box>
