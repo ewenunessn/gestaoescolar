@@ -42,6 +42,7 @@ import faturamentoRoutes from "./modules/faturamentos/routes/faturamentoRoutes";
 import demandasRoutes from "./modules/demandas/routes/demandaRoutes";
 import recebimentoRoutes from "./modules/recebimentos/routes/recebimentoRoutes";
 import instituicaoRoutes from "./routes/instituicao";
+import pnaeRoutes from "./routes/pnaeRoutes";
 
 import { createServer } from 'http';
 import { initializeRedisCache } from "./config/redis";
@@ -273,6 +274,7 @@ app.use("/api/faturamentos", faturamentoRoutes);
 app.use("/api/demandas", demandasRoutes);
 app.use("/api/recebimentos", recebimentoRoutes);
 app.use("/api/instituicao", instituicaoRoutes);
+app.use("/api/pnae", pnaeRoutes);
 
 
 // Rotas de gás removidas
