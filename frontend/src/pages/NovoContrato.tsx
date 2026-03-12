@@ -193,14 +193,16 @@ export default function NovoContrato() {
       {/* Formulário */}
       <Card>
         <CardContent>
-          <Typography variant="h5" gutterBottom>
-            Novo Contrato
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="h5" gutterBottom>
+              Novo Contrato
+            </Typography>
             {fornecedorSelecionado && (
               <Typography variant="subtitle1" color="text.secondary">
                 para {fornecedorSelecionado.nome}
               </Typography>
             )}
-          </Typography>
+          </Box>
 
           {error && (
             <Alert severity="error" sx={{ mb: 3 }}>
