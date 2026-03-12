@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Typography, Container } from '@mui/material';
 import { LocalShipping as LocalShippingIcon } from '@mui/icons-material';
+import { usePageTitle } from '../contexts/PageTitleContext';
 import { EscolasEntregaList } from '../modules/entregas/components/EscolasEntregaList';
 import { ItensEntregaList } from '../modules/entregas/components/ItensEntregaList';
 import { FiltrosEntrega } from '../modules/entregas/components/FiltrosEntrega';
@@ -8,6 +9,7 @@ import { EscolaEntrega } from '../modules/entregas/types';
 import PageBreadcrumbs from '../components/PageBreadcrumbs';
 
 const Entregas: React.FC = () => {
+  const { setPageTitle } = usePageTitle();
   const [escolaSelecionada, setEscolaSelecionada] = useState<EscolaEntrega | null>(null);
   const [filtros, setFiltros] = useState<{
     guiaId?: number;
@@ -19,6 +21,12 @@ const Entregas: React.FC = () => {
     somentePendentes: true,
     dataFim: new Date().toISOString().split('T')[0]
   });
+
+  // Definir título da página
+  useEffect(() => {
+    setPageTitle('Entregas');
+    return () => setPageTitle('');
+  }, [setPageTitle]);
 
   const handleEscolaSelect = (escola: EscolaEntrega) => {
     setEscolaSelecionada(escola);

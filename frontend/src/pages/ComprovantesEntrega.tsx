@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { usePageTitle } from '../contexts/PageTitleContext';
 import {
   Box,
   Paper,
@@ -65,6 +66,7 @@ interface Escola {
 }
 
 export default function ComprovantesEntrega() {
+  const { setPageTitle } = usePageTitle();
   const [comprovantes, setComprovantes] = useState<Comprovante[]>([]);
   const [escolas, setEscolas] = useState<Escola[]>([]);
   const [loading, setLoading] = useState(true);
@@ -79,6 +81,12 @@ export default function ComprovantesEntrega() {
   // Modal de detalhes
   const [comprovanteDetalhes, setComprovanteDetalhes] = useState<Comprovante | null>(null);
   const [modalAberto, setModalAberto] = useState(false);
+
+  // Definir título da página
+  useEffect(() => {
+    setPageTitle('Comprovantes de Entrega');
+    return () => setPageTitle('');
+  }, [setPageTitle]);
 
   useEffect(() => {
     carregarEscolas();

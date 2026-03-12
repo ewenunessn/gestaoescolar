@@ -3,6 +3,7 @@ import PageContainer from '../components/PageContainer';
 import TableFilter, { FilterField } from '../components/TableFilter';
 import StatusIndicator from '../components/StatusIndicator';
 import ViewTabs, { ViewTab } from '../components/ViewTabs';
+import { usePageTitle } from '../contexts/PageTitleContext';
 // Atualizado em 2026-03-08 13:46 - Todas as referências a dataInicio/dataFim agora usam filters.dataInicio/filters.dataFim
 import {
   Box,
@@ -83,6 +84,7 @@ interface RomaneioPorEscola {
 }
 
 const Romaneio: React.FC = () => {
+  const { setPageTitle } = usePageTitle();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [itens, setItens] = useState<ItemRomaneio[]>([]);
@@ -98,6 +100,12 @@ const Romaneio: React.FC = () => {
   
   const [rotaIds, setRotaIds] = useState<number[]>([]);
   const [rotas, setRotas] = useState<RotaEntrega[]>([]);
+
+  // Definir título da página
+  useEffect(() => {
+    setPageTitle('Romaneio de Entrega');
+    return () => setPageTitle('');
+  }, [setPageTitle]);
   const [agrupamento, setAgrupamento] = useState<'produto' | 'escola'>('produto');
 
   // Estado para o modal de detalhes
