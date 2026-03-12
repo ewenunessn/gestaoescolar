@@ -437,9 +437,27 @@ const FornecedoresPage: React.FC = () => {
                       <TableCell align="center"><Typography variant="body2" color="text.secondary" fontFamily="monospace">{formatarDocumento(f.cnpj)}</Typography></TableCell>
                       <TableCell align="center">
                         <Chip 
-                          label={f.tipo_fornecedor === 'empresa' ? 'Empresa' : f.tipo_fornecedor === 'cooperativa' ? 'Cooperativa' : 'Individual'} 
+                          label={
+                            f.tipo_fornecedor === 'AGRICULTURA_FAMILIAR' ? 'Agricultura Familiar' :
+                            f.tipo_fornecedor === 'COOPERATIVA_AF' ? 'Cooperativa AF' :
+                            f.tipo_fornecedor === 'ASSOCIACAO_AF' ? 'Associação AF' :
+                            f.tipo_fornecedor === 'CONVENCIONAL' ? 'Convencional' :
+                            f.tipo_fornecedor === 'empresa' ? 'Empresa' :
+                            f.tipo_fornecedor === 'cooperativa' ? 'Cooperativa' :
+                            f.tipo_fornecedor === 'individual' ? 'Individual' :
+                            f.tipo_fornecedor || 'Não informado'
+                          } 
                           size="small"
-                          color={f.tipo_fornecedor === 'empresa' ? 'primary' : f.tipo_fornecedor === 'cooperativa' ? 'secondary' : 'success'}
+                          color={
+                            f.tipo_fornecedor === 'AGRICULTURA_FAMILIAR' || 
+                            f.tipo_fornecedor === 'COOPERATIVA_AF' || 
+                            f.tipo_fornecedor === 'ASSOCIACAO_AF' ? 'success' : 'default'
+                          }
+                          sx={{
+                            ...(f.tipo_fornecedor === 'AGRICULTURA_FAMILIAR' || 
+                                f.tipo_fornecedor === 'COOPERATIVA_AF' || 
+                                f.tipo_fornecedor === 'ASSOCIACAO_AF' ? { color: 'white' } : {})
+                          }}
                         />
                       </TableCell>
                       <TableCell align="center"><Typography variant="body2" color="text.secondary">{f.email || 'Não informado'}</Typography></TableCell>
