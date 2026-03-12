@@ -76,7 +76,9 @@ interface Fornecedor {
   cnpj: string;
   email?: string;
   ativo: boolean;
-  tipo_fornecedor?: 'empresa' | 'cooperativa' | 'individual';
+  tipo_fornecedor?: string;
+  dap_caf?: string;
+  data_validade_dap?: string;
 }
 
 const FornecedoresPage: React.FC = () => {
@@ -118,7 +120,15 @@ const FornecedoresPage: React.FC = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [editingFornecedor, setEditingFornecedor] = useState<Fornecedor | null>(null);
   const [fornecedorToDelete, setFornecedorToDelete] = useState<Fornecedor | null>(null);
-  const [formData, setFormData] = useState({ nome: "", cnpj: "", email: "", ativo: true, tipo_fornecedor: "empresa" as 'empresa' | 'cooperativa' | 'individual' });
+  const [formData, setFormData] = useState({ 
+    nome: "", 
+    cnpj: "", 
+    email: "", 
+    ativo: true, 
+    tipo_fornecedor: "CONVENCIONAL",
+    dap_caf: "",
+    data_validade_dap: ""
+  });
   
   // Estados de validação
   const [erroFornecedor, setErroFornecedor] = useState("");
@@ -530,13 +540,40 @@ const FornecedoresPage: React.FC = () => {
               <Select
                 value={formData.tipo_fornecedor}
                 label="Tipo de Fornecedor"
-                onChange={(e) => setFormData({ ...formData, tipo_fornecedor: e.target.value as 'empresa' | 'cooperativa' | 'individual' })}
+                onChange={(e) => setFormData({ ...formData, tipo_fornecedor: e.target.value })}
               >
-                <MenuItem value="empresa">Empresa</MenuItem>
-                <MenuItem value="cooperativa">Cooperativa</MenuItem>
-                <MenuItem value="individual">Individual</MenuItem>
+                <MenuItem value="CONVENCIONAL">Convencional</MenuItem>
+                <MenuItem value="AGRICULTURA_FAMILIAR">Agricultura Familiar</MenuItem>
+                <MenuItem value="COOPERATIVA_AF">Cooperativa de Agricultura Familiar</MenuItem>
+                <MenuItem value="ASSOCIACAO_AF">Associação de Agricultura Familiar</MenuItem>
               </Select>
             </FormControl>
+            
+            {/* Campos condicionais para Agricultura Familiar */}
+            {(formData.tipo_fornecedor === 'AGRICULTURA_FAMILIAR' || 
+              formData.tipo_fornecedor === 'COOPERATIVA_AF' || 
+              formData.tipo_fornecedor === 'ASSOCIACAO_AF') && (
+              <>
+                <TextField 
+                  label="DAP/CAF" 
+                  value={formData.dap_caf} 
+                  onChange={(e) => setFormData({ ...formData, dap_caf: e.target.value })} 
+                  size="small"
+                  placeholder="Número da DAP ou CAF"
+                  helperText="Declaração de Aptidão ao PRONAF ou Cadastro Nacional da Agricultura Familiar"
+                />
+                <TextField 
+                  label="Data de Validade DAP/CAF" 
+                  value={formData.data_validade_dap} 
+                  onChange={(e) => setFormData({ ...formData, data_validade_dap: e.target.value })} 
+                  size="small"
+                  type="date"
+                  InputLabelProps={{ shrink: true }}
+                  helperText="Data de validade da documentação"
+                />
+              </>
+            )}
+            
             <FormControlLabel 
               control={
                 <Switch 
