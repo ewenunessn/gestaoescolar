@@ -5,6 +5,10 @@
 /api/pnae
 ```
 
+## ⚖️ Legislação Aplicável
+- **Lei 11.947/2009**: Institui o PNAE
+- **Lei 15.226/2025**: Aumenta percentual mínimo de agricultura familiar de 30% para 45% (vigente desde 2026)
+
 ## Endpoints Disponíveis
 
 ### 1. Dashboard PNAE
@@ -18,11 +22,15 @@ Retorna resumo geral do PNAE para o ano atual.
   "success": true,
   "data": {
     "ano": 2026,
+    "valor_recebido_fnde": 266573.25,
+    "percentual_minimo_obrigatorio": 45,
     "agricultura_familiar": {
-      "percentual_af": 32.50,
+      "percentual_af": 48.50,
       "valor_total": 150000.00,
-      "valor_af": 48750.00,
-      "total_pedidos": 45
+      "valor_af": 129348.00,
+      "total_pedidos": 45,
+      "valor_minimo_obrigatorio": 119957.96,
+      "valor_faltante": 0
     },
     "fornecedores": {
       "total": 12,
@@ -34,8 +42,8 @@ Retorna resumo geral do PNAE para o ano atual.
         "mes": 1,
         "mes_nome": "Jan/26",
         "valor_total": 12000.00,
-        "valor_af": 3600.00,
-        "percentual_af": 30.00
+        "valor_af": 5400.00,
+        "percentual_af": 45.00
       }
     ],
     "alertas": {

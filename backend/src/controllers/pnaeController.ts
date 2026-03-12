@@ -389,22 +389,34 @@ export const getDashboardPNAE = async (req: Request, res: Response) => {
   try {
     const anoAtual = new Date().getFullYear();
 
+    // Calcular valor total recebido do FNDE (soma dos repasses * parcelas das modalidades)
+    const valorRecebidoQuery = `
+      SELECT COALESCE(SUM(valor_repasse * COALESCE(parcelas, 1)), 0) as valor_total_fnde
+      FROM modalidades
+      WHERE ativo = true
+    `;
+    const valorRecebidoResult = await db.query(valorRecebidoQuery);
+    const valorTotalFNDE = parseFloat(valorRecebidoResult.rows[0].valor_total_fnde);
+
     // Percentual agricultura familiar ano atual
     const afQuery = `
       SELECT 
-        ROUND(
-          (SUM(valor_agricultura_familiar) / NULLIF(SUM(valor_itens), 0) * 100)::numeric, 
-          2
-        ) as percentual_af,
         SUM(valor_itens) as valor_total,
         SUM(valor_agricultura_familiar) as valor_af,
         COUNT(DISTINCT pedido_id) as total_pedidos
       FROM vw_pnae_agricultura_familiar
-      WHERE EXTRACT(YEAR FROM data_pedido) = $1
+      WHERE EXTRACT(YEAR FROM TO_DATE(competencia_mes_ano || '-01', 'YYYY-MM-DD')) = $1
     `;
 
     const afResult = await db.query(afQuery, [anoAtual]);
-
+    const valorAF = parseFloat(afResult.rows[0].valor_af || 0);
+    const valorTotal = parseFloat(afResult.rows[0].valor_total || 0);
+    
+    // Calcular percentual sobre valor recebido do FNDE (correto)
+    const percentualAF = valorTotalFNDE > 0 ? (valorAF / valorTotalFNDE * 100) : 0;
+    // Lei nº 15.226/2025: aumentou de 30% para 45% a partir de 2026
+    const percentualMinimoObrigatorio = 45;
+    
     // Fornecedores agricultura familiar
     const fornecedoresQuery = `
       SELECT 
@@ -417,34 +429,74 @@ export const getDashboardPNAE = async (req: Request, res: Response) => {
 
     const fornecedoresResult = await db.query(fornecedoresQuery);
 
-    // Evolução mensal
+    // Evolução mensal - ACUMULADO no ano
     const evolucaoQuery = `
+      WITH meses_ordenados AS (
+        SELECT 
+          CAST(SPLIT_PART(competencia_mes_ano, '-', 2) AS INTEGER) as mes,
+          CASE CAST(SPLIT_PART(competencia_mes_ano, '-', 2) AS INTEGER)
+            WHEN 1 THEN 'Jan/' || SPLIT_PART(competencia_mes_ano, '-', 1)
+            WHEN 2 THEN 'Fev/' || SPLIT_PART(competencia_mes_ano, '-', 1)
+            WHEN 3 THEN 'Mar/' || SPLIT_PART(competencia_mes_ano, '-', 1)
+            WHEN 4 THEN 'Abr/' || SPLIT_PART(competencia_mes_ano, '-', 1)
+            WHEN 5 THEN 'Mai/' || SPLIT_PART(competencia_mes_ano, '-', 1)
+            WHEN 6 THEN 'Jun/' || SPLIT_PART(competencia_mes_ano, '-', 1)
+            WHEN 7 THEN 'Jul/' || SPLIT_PART(competencia_mes_ano, '-', 1)
+            WHEN 8 THEN 'Ago/' || SPLIT_PART(competencia_mes_ano, '-', 1)
+            WHEN 9 THEN 'Set/' || SPLIT_PART(competencia_mes_ano, '-', 1)
+            WHEN 10 THEN 'Out/' || SPLIT_PART(competencia_mes_ano, '-', 1)
+            WHEN 11 THEN 'Nov/' || SPLIT_PART(competencia_mes_ano, '-', 1)
+            WHEN 12 THEN 'Dez/' || SPLIT_PART(competencia_mes_ano, '-', 1)
+          END as mes_nome,
+          SUM(valor_itens) as valor_total,
+          SUM(valor_agricultura_familiar) as valor_af
+        FROM vw_pnae_agricultura_familiar
+        WHERE EXTRACT(YEAR FROM TO_DATE(competencia_mes_ano || '-01', 'YYYY-MM-DD')) = $1
+        GROUP BY competencia_mes_ano, CAST(SPLIT_PART(competencia_mes_ano, '-', 2) AS INTEGER)
+      )
       SELECT 
-        EXTRACT(MONTH FROM data_pedido) as mes,
-        TO_CHAR(data_pedido, 'Mon/YY') as mes_nome,
-        SUM(valor_itens) as valor_total,
-        SUM(valor_agricultura_familiar) as valor_af,
-        ROUND(
-          (SUM(valor_agricultura_familiar) / NULLIF(SUM(valor_itens), 0) * 100)::numeric, 
-          2
-        ) as percentual_af
-      FROM vw_pnae_agricultura_familiar
-      WHERE EXTRACT(YEAR FROM data_pedido) = $1
-      GROUP BY EXTRACT(MONTH FROM data_pedido), TO_CHAR(data_pedido, 'Mon/YY')
+        mes,
+        mes_nome,
+        SUM(valor_total) OVER (ORDER BY mes) as valor_total_acumulado,
+        SUM(valor_af) OVER (ORDER BY mes) as valor_af_acumulado,
+        valor_total as valor_total_mes,
+        valor_af as valor_af_mes
+      FROM meses_ordenados
       ORDER BY mes
     `;
 
     const evolucaoResult = await db.query(evolucaoQuery, [anoAtual]);
+    
+    // Calcular percentual acumulado sobre valor recebido FNDE
+    const evolucaoMensal = evolucaoResult.rows.map(row => ({
+      mes: row.mes,
+      mes_nome: row.mes_nome,
+      valor_total: parseFloat(row.valor_total_mes || 0),
+      valor_af: parseFloat(row.valor_af_mes || 0),
+      valor_total_acumulado: parseFloat(row.valor_total_acumulado || 0),
+      valor_af_acumulado: parseFloat(row.valor_af_acumulado || 0),
+      percentual_af: valorTotalFNDE > 0 ? 
+        (parseFloat(row.valor_af_acumulado || 0) / valorTotalFNDE * 100) : 0
+    }));
 
     res.json({
       success: true,
       data: {
         ano: anoAtual,
-        agricultura_familiar: afResult.rows[0],
+        valor_recebido_fnde: valorTotalFNDE,
+        percentual_minimo_obrigatorio: percentualMinimoObrigatorio,
+        agricultura_familiar: {
+          percentual_af: percentualAF.toFixed(2),
+          valor_total: valorTotal,
+          valor_af: valorAF,
+          total_pedidos: parseInt(afResult.rows[0].total_pedidos || 0),
+          valor_minimo_obrigatorio: (valorTotalFNDE * percentualMinimoObrigatorio / 100).toFixed(2),
+          valor_faltante: Math.max(0, (valorTotalFNDE * percentualMinimoObrigatorio / 100) - valorAF).toFixed(2)
+        },
         fornecedores: fornecedoresResult.rows[0],
-        evolucao_mensal: evolucaoResult.rows,
+        evolucao_mensal: evolucaoMensal,
         alertas: {
-          atende_30_porcento: parseFloat(afResult.rows[0]?.percentual_af || '0') >= 30,
+          atende_30_porcento: percentualAF >= percentualMinimoObrigatorio,
           fornecedores_vencidos: parseInt(fornecedoresResult.rows[0]?.vencidos || '0') > 0,
           fornecedores_vencendo: parseInt(fornecedoresResult.rows[0]?.vencendo || '0') > 0
         }

@@ -1,8 +1,8 @@
-# Conformidade PNAE - Lei 11.947/2009
+# Conformidade PNAE - Lei 11.947/2009 (atualizada pela Lei 15.226/2025)
 
 ## ✅ Implementação Concluída
 
-Este documento descreve as funcionalidades implementadas para atender aos requisitos do PNAE (Programa Nacional de Alimentação Escolar) conforme Lei 11.947/2009.
+Este documento descreve as funcionalidades implementadas para atender aos requisitos do PNAE (Programa Nacional de Alimentação Escolar) conforme Lei 11.947/2009, atualizada pela Lei 15.226/2025 que aumentou o percentual mínimo de agricultura familiar de 30% para 45% a partir de 2026.
 
 ## 🎯 Funcionalidades Implementadas
 

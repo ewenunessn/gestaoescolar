@@ -11,6 +11,7 @@ export async function listarModalidades(req: Request, res: Response) {
         m.descricao,
         m.codigo_financeiro,
         m.valor_repasse,
+        m.parcelas,
         m.ativo,
         m.created_at,
         m.updated_at,
@@ -19,7 +20,7 @@ export async function listarModalidades(req: Request, res: Response) {
       FROM modalidades m
       LEFT JOIN escola_modalidades em ON m.id = em.modalidade_id
       WHERE m.ativo = true
-      GROUP BY m.id, m.nome, m.descricao, m.codigo_financeiro, m.valor_repasse, m.ativo, m.created_at, m.updated_at
+      GROUP BY m.id, m.nome, m.descricao, m.codigo_financeiro, m.valor_repasse, m.parcelas, m.ativo, m.created_at, m.updated_at
       ORDER BY m.nome
     `);
 
@@ -49,6 +50,7 @@ export async function buscarModalidade(req: Request, res: Response) {
         m.descricao,
         m.codigo_financeiro,
         m.valor_repasse,
+        m.parcelas,
         m.ativo,
         m.created_at,
         m.updated_at,
@@ -57,7 +59,7 @@ export async function buscarModalidade(req: Request, res: Response) {
       FROM modalidades m
       LEFT JOIN escola_modalidades em ON m.id = em.modalidade_id
       WHERE m.id = $1
-      GROUP BY m.id, m.nome, m.descricao, m.codigo_financeiro, m.valor_repasse, m.ativo, m.created_at, m.updated_at
+      GROUP BY m.id, m.nome, m.descricao, m.codigo_financeiro, m.valor_repasse, m.parcelas, m.ativo, m.created_at, m.updated_at
     `, [id]);
 
     if (result.rows.length === 0) {
@@ -88,14 +90,15 @@ export async function criarModalidade(req: Request, res: Response) {
       descricao,
       codigo_financeiro,
       valor_repasse = 0,
+      parcelas = 1,
       ativo = true
     } = req.body;
 
     const result = await db.query(`
-      INSERT INTO modalidades (nome, descricao, codigo_financeiro, valor_repasse, ativo, created_at)
-      VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+      INSERT INTO modalidades (nome, descricao, codigo_financeiro, valor_repasse, parcelas, ativo, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
       RETURNING *
-    `, [nome, descricao, codigo_financeiro, valor_repasse, ativo]);
+    `, [nome, descricao, codigo_financeiro, valor_repasse, parcelas, ativo]);
 
     res.json({
       success: true,
@@ -120,6 +123,7 @@ export async function editarModalidade(req: Request, res: Response) {
       descricao,
       codigo_financeiro,
       valor_repasse,
+      parcelas,
       ativo
     } = req.body;
 
@@ -129,11 +133,12 @@ export async function editarModalidade(req: Request, res: Response) {
         descricao = $2,
         codigo_financeiro = $3,
         valor_repasse = $4,
-        ativo = $5,
+        parcelas = $5,
+        ativo = $6,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $6
+      WHERE id = $7
       RETURNING *
-    `, [nome, descricao, codigo_financeiro, valor_repasse, ativo, id]);
+    `, [nome, descricao, codigo_financeiro, valor_repasse, parcelas, ativo, id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({

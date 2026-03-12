@@ -93,7 +93,8 @@ const ModalidadesPage = () => {
     nome: "", 
     descricao: "",
     codigo_financeiro: "", 
-    valor_repasse: 0, 
+    valor_repasse: 0,
+    parcelas: 1,
     ativo: true 
   });
 
@@ -203,11 +204,12 @@ const ModalidadesPage = () => {
         descricao: modalidade.descricao || "",
         codigo_financeiro: modalidade.codigo_financeiro || "",
         valor_repasse: Number(modalidade.valor_repasse),
+        parcelas: Number(modalidade.parcelas) || 1,
         ativo: modalidade.ativo,
       });
     } else {
       setEditingModalidade(null);
-      setFormData({ nome: "", descricao: "", codigo_financeiro: "", valor_repasse: 0, ativo: true });
+      setFormData({ nome: "", descricao: "", codigo_financeiro: "", valor_repasse: 0, parcelas: 1, ativo: true });
     }
     setModalOpen(true);
   };
@@ -218,7 +220,11 @@ const ModalidadesPage = () => {
 
   const handleSave = async () => {
     try {
-      const dataToSend = { ...formData, valor_repasse: Number(formData.valor_repasse) };
+      const dataToSend = { 
+        ...formData, 
+        valor_repasse: Number(formData.valor_repasse),
+        parcelas: Number(formData.parcelas) || 1
+      };
       if (editingModalidade) {
         await updateModalidadeMutation.mutateAsync({ id: editingModalidade.id, data: dataToSend });
         toast.success('Sucesso!', 'Modalidade atualizada com sucesso!');
@@ -349,6 +355,8 @@ const ModalidadesPage = () => {
                   <TableCell sx={{ py: 1 }}>Nome da Modalidade</TableCell>
                   <TableCell align="center" sx={{ py: 1 }}>Código Financeiro</TableCell>
                   <TableCell align="center" sx={{ py: 1 }}>Valor Repasse</TableCell>
+                  <TableCell align="center" sx={{ py: 1 }}>Parcelas</TableCell>
+                  <TableCell align="center" sx={{ py: 1 }}>Total Anual</TableCell>
                   <TableCell align="center" sx={{ py: 1 }}>Alunos</TableCell>
                   <TableCell align="center" sx={{ py: 1 }}>Ações</TableCell>
                 </TableRow>
@@ -372,6 +380,23 @@ const ModalidadesPage = () => {
                     <TableCell align="center">
                       <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
                         {formatCurrency(modalidade.valor_repasse)}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="center">
+                      <Chip 
+                        label={`${modalidade.parcelas || 1}x`} 
+                        size="small" 
+                        sx={{ 
+                          bgcolor: '#e3f2fd', 
+                          color: '#1976d2',
+                          fontWeight: 600,
+                          fontSize: '0.75rem'
+                        }} 
+                      />
+                    </TableCell>
+                    <TableCell align="center">
+                      <Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 600, color: '#2e7d32' }}>
+                        {formatCurrency(Number(modalidade.valor_repasse) * (Number(modalidade.parcelas) || 1))}
                       </Typography>
                     </TableCell>
                     <TableCell align="center">
@@ -438,7 +463,16 @@ const ModalidadesPage = () => {
               type="number" 
               value={formData.valor_repasse} 
               onChange={(e) => setFormData({ ...formData, valor_repasse: parseFloat(e.target.value) || 0 })} 
-              inputProps={{ step: "0.01", min: "0" }} 
+              inputProps={{ step: "0.01", min: "0" }}
+              helperText="Valor de cada parcela do repasse"
+            />
+            <TextField 
+              label="Número de Parcelas" 
+              type="number" 
+              value={formData.parcelas} 
+              onChange={(e) => setFormData({ ...formData, parcelas: parseInt(e.target.value) || 1 })} 
+              inputProps={{ step: "1", min: "1" }}
+              helperText={`Total anual: ${formatCurrency(Number(formData.valor_repasse) * Number(formData.parcelas))}`}
             />
             <FormControlLabel
               control={

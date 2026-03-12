@@ -3,23 +3,29 @@ import api from './api';
 
 export interface DashboardPNAE {
   ano: number;
+  valor_recebido_fnde: number;
+  percentual_minimo_obrigatorio: number;
   agricultura_familiar: {
-    percentual_af: number;
-    valor_total: number;
-    valor_af: number;
-    total_pedidos: number;
+    percentual_af: string | number;
+    valor_total: string | number;
+    valor_af: string | number;
+    total_pedidos: string | number;
+    valor_minimo_obrigatorio: string | number;
+    valor_faltante: string | number;
   };
   fornecedores: {
-    total: number;
-    vencidos: number;
-    vencendo: number;
+    total: string | number;
+    vencidos: string | number;
+    vencendo: string | number;
   };
   evolucao_mensal: Array<{
     mes: number;
     mes_nome: string;
-    valor_total: number;
-    valor_af: number;
-    percentual_af: number;
+    valor_total: string | number;
+    valor_af: string | number;
+    valor_total_acumulado: string | number;
+    valor_af_acumulado: string | number;
+    percentual_af: string | number;
   }>;
   alertas: {
     atende_30_porcento: boolean;

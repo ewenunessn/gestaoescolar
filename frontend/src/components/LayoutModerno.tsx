@@ -33,6 +33,7 @@ import {
   QrCode2,
   Settings,
   Description,
+  Agriculture,
 } from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
 import { logout } from "../services/auth";
@@ -91,6 +92,7 @@ const getMenuConfig = (configModuloSaldo: any) => {
         { text: "Contratos", icon: <Assignment />, path: "/contratos" },
         { text: "Compras", icon: <LocalShipping />, path: "/compras" },
         ...saldoItems,
+        { text: "Dashboard PNAE", icon: <Agriculture />, path: "/pnae/dashboard" },
       ],
     },
     {

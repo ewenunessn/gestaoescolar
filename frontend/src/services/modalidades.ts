@@ -6,6 +6,7 @@ export interface Modalidade {
   descricao?: string;
   codigo_financeiro?: string;
   valor_repasse: number;
+  parcelas?: number;
   ativo: boolean;
   total_alunos?: number;
   total_escolas?: number;
@@ -18,6 +19,7 @@ export interface ModalidadeInput {
   descricao?: string;
   codigo_financeiro?: string;
   valor_repasse?: number;
+  parcelas?: number;
   ativo?: boolean;
 }
 
