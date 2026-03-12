@@ -5,6 +5,7 @@ import PageContainer from "../components/PageContainer";
 import TableFilter, { FilterField } from "../components/TableFilter";
 import {
   importarProdutosLote,
+  deletarProduto,
 } from "../services/produtos";
 import { 
   useProdutos, 
@@ -45,6 +46,7 @@ import {
   Collapse,
   Autocomplete,
   Chip,
+  Checkbox,
 } from "@mui/material";
 import {
   Search as SearchIcon,
@@ -56,6 +58,7 @@ import {
   Upload,
   FilterList as FilterIcon,
   Clear as ClearIcon,
+  Delete as DeleteIcon,
 } from "@mui/icons-material";
 import CompactPagination from '../components/CompactPagination';
 import { useNavigate, useLocation } from "react-router-dom";
@@ -126,10 +129,77 @@ const ProdutosPage = () => {
   // Estados do menu de ações
   const [actionsMenuAnchor, setActionsMenuAnchor] = useState<null | HTMLElement>(null);
 
+  // Estados para seleção múltipla e exclusão em massa
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   // Função para refresh manual (React Query já gerencia o carregamento automaticamente)
   const handleRefresh = useCallback(() => {
     refetch();
   }, [refetch]);
+
+  // Funções de seleção múltipla
+  const handleToggleSelectionMode = useCallback(() => {
+    setSelectionMode(prev => !prev);
+    setSelectedIds([]);
+    setActionsMenuAnchor(null);
+  }, []);
+
+  const handleSelectAll = useCallback((checked: boolean, currentPageProdutos: any[]) => {
+    if (checked) {
+      setSelectedIds(currentPageProdutos.map(p => p.id));
+    } else {
+      setSelectedIds([]);
+    }
+  }, []);
+
+  const handleSelectOne = useCallback((id: number, checked: boolean) => {
+    if (checked) {
+      setSelectedIds(prev => [...prev, id]);
+    } else {
+      setSelectedIds(prev => prev.filter(selectedId => selectedId !== id));
+    }
+  }, []);
+
+  const handleDeleteSelected = useCallback(() => {
+    if (selectedIds.length === 0) return;
+    setDeleteConfirmOpen(true);
+  }, [selectedIds]);
+
+  const selectedProdutos = useMemo(() => {
+    return produtos.filter(p => selectedIds.includes(p.id));
+  }, [produtos, selectedIds]);
+
+  const handleConfirmDelete = useCallback(async () => {
+    setIsDeleting(true);
+    try {
+      const results = await Promise.allSettled(selectedIds.map(id => deletarProduto(id)));
+      
+      const successCount = results.filter(r => r.status === 'fulfilled').length;
+      const failedCount = results.filter(r => r.status === 'rejected').length;
+      
+      if (successCount > 0) {
+        setSuccessMessage(`${successCount} produto(s) excluído(s) com sucesso!`);
+      }
+      
+      if (failedCount > 0) {
+        const failedProducts = selectedProdutos.filter((_, index) => results[index].status === 'rejected');
+        const failedNames = failedProducts.map(p => p.nome).join(', ');
+        setErroProduto(`${failedCount} produto(s) não puderam ser excluídos (${failedNames}). Eles podem estar sendo usados em contratos ou pedidos.`);
+      }
+      
+      setSelectedIds([]);
+      setSelectionMode(false);
+      setDeleteConfirmOpen(false);
+      refetch();
+    } catch (error: any) {
+      setErroProduto(error.message || 'Erro ao excluir produtos');
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [selectedIds, selectedProdutos, refetch]);
 
   // Definir campos de filtro
   const filterFields: FilterField[] = useMemo(() => [
@@ -560,16 +630,43 @@ const ProdutosPage = () => {
               }}
             />
             <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button 
-                variant="outlined" 
-                startIcon={<FilterIcon />} 
-                onClick={(e) => { setFilterAnchorEl(e.currentTarget); setFilterOpen(true); }} 
-                size="small"
-              >
-                Filtros
-              </Button>
-              <Button startIcon={<AddIcon />} onClick={openModal} variant="contained" color="success" size="small">Novo Produto</Button>
-              <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)} size="small"><MoreVert /></IconButton>
+              {selectionMode ? (
+                <>
+                  <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
+                    {selectedIds.length} selecionado(s)
+                  </Typography>
+                  <Button 
+                    variant="contained" 
+                    color="error" 
+                    startIcon={<DeleteIcon />} 
+                    onClick={handleDeleteSelected}
+                    disabled={selectedIds.length === 0}
+                    size="small"
+                  >
+                    Deletar
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    onClick={handleToggleSelectionMode}
+                    size="small"
+                  >
+                    Cancelar
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button 
+                    variant="outlined" 
+                    startIcon={<FilterIcon />} 
+                    onClick={(e) => { setFilterAnchorEl(e.currentTarget); setFilterOpen(true); }} 
+                    size="small"
+                  >
+                    Filtros
+                  </Button>
+                  <Button startIcon={<AddIcon />} onClick={openModal} variant="contained" color="success" size="small">Novo Produto</Button>
+                  <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)} size="small"><MoreVert /></IconButton>
+                </>
+              )}
             </Box>
           </Box>
         </Card>
@@ -616,24 +713,43 @@ const ProdutosPage = () => {
               <Table stickyHeader>
                 <TableHead>
                   <TableRow>
+                    {selectionMode && (
+                      <TableCell padding="checkbox">
+                        <Checkbox
+                          checked={selectedIds.length > 0 && paginatedProdutos.every(p => selectedIds.includes(p.id))}
+                          indeterminate={selectedIds.length > 0 && !paginatedProdutos.every(p => selectedIds.includes(p.id)) && paginatedProdutos.some(p => selectedIds.includes(p.id))}
+                          onChange={(e) => handleSelectAll(e.target.checked, paginatedProdutos)}
+                        />
+                      </TableCell>
+                    )}
                     <TableCell>Nome do Produto</TableCell>
                     <TableCell align="center">Unidade</TableCell>
                     <TableCell align="center">Categoria</TableCell>
-                    <TableCell align="center" width="80">Ações</TableCell>
+                    {!selectionMode && <TableCell align="center" width="80">Ações</TableCell>}
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {paginatedProdutos.map((produto) => {
                     const isInativo = !produto.ativo;
+                    const isSelected = selectedIds.includes(produto.id);
                     return (
                     <TableRow 
                       key={produto.id} 
                       hover 
+                      selected={isSelected}
                       sx={{ 
                         opacity: isInativo ? 0.5 : 1,
                         backgroundColor: isInativo ? 'action.hover' : 'inherit'
                       }}
                     >
+                      {selectionMode && (
+                        <TableCell padding="checkbox">
+                          <Checkbox
+                            checked={isSelected}
+                            onChange={(e) => handleSelectOne(produto.id, e.target.checked)}
+                          />
+                        </TableCell>
+                      )}
                       <TableCell>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                           <StatusIndicator status={produto.ativo ? 'ativo' : 'inativo'} size="small" />
@@ -659,13 +775,15 @@ const ProdutosPage = () => {
                       <TableCell align="center">
                         <Typography variant="body2" color="text.secondary">{produto.categoria || 'N/A'}</Typography>
                       </TableCell>
-                      <TableCell align="center">
-                        <Tooltip title="Ver Detalhes">
-                          <IconButton size="small" onClick={() => navigate(`/produtos/${produto.id}`)} color="primary">
-                            <Visibility fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      </TableCell>
+                      {!selectionMode && (
+                        <TableCell align="center">
+                          <Tooltip title="Ver Detalhes">
+                            <IconButton size="small" onClick={() => navigate(`/produtos/${produto.id}`)} color="primary">
+                              <Visibility fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </TableCell>
+                      )}
                     </TableRow>
                     );
                   })}
@@ -900,7 +1018,39 @@ const ProdutosPage = () => {
         <MenuItem onClick={() => { setActionsMenuAnchor(null); setImportModalOpen(true); }}><Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}><Upload sx={{ fontSize: 18 }} /> <Typography>Importar em Lote</Typography></Box></MenuItem>
         <MenuItem onClick={() => { setActionsMenuAnchor(null); handleExportarProdutos(); }}><Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}><Download sx={{ fontSize: 18 }} /> <Typography>Exportar Excel</Typography></Box></MenuItem>
         <MenuItem onClick={() => { setActionsMenuAnchor(null); handleExportarModelo(); }}><Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}><Download sx={{ fontSize: 18 }} /> <Typography>Exportar Modelo</Typography></Box></MenuItem>
+        <MenuItem onClick={handleToggleSelectionMode}><Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}><DeleteIcon sx={{ fontSize: 18, color: 'error.main' }} /> <Typography color="error">Deletar Múltiplos</Typography></Box></MenuItem>
       </Menu>
+
+      {/* Dialog de Confirmação de Exclusão em Massa */}
+      <Dialog open={deleteConfirmOpen} onClose={() => !isDeleting && setDeleteConfirmOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Confirmar Exclusão</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" gutterBottom>
+            Tem certeza que deseja excluir {selectedIds.length} produto(s)?
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2, mb: 1 }}>
+            Produtos que serão excluídos:
+          </Typography>
+          <Box sx={{ maxHeight: 200, overflowY: 'auto', bgcolor: 'grey.50', p: 1.5, borderRadius: 1 }}>
+            {selectedProdutos.map(produto => (
+              <Typography key={produto.id} variant="body2" sx={{ py: 0.5 }}>
+                • {produto.nome}
+              </Typography>
+            ))}
+          </Box>
+          <Alert severity="warning" sx={{ mt: 2 }}>
+            Esta ação não pode ser desfeita!
+          </Alert>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteConfirmOpen(false)} disabled={isDeleting}>
+            Cancelar
+          </Button>
+          <Button onClick={handleConfirmDelete} variant="contained" color="error" disabled={isDeleting}>
+            {isDeleting ? 'Excluindo...' : 'Excluir'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

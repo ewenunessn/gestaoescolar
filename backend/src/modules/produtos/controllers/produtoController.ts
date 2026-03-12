@@ -287,18 +287,34 @@ export const removerProduto = asyncHandler(async (req: Request, res: Response) =
   const { id } = req.params;
 
   try {
-    const result = await db.query(`
-      DELETE FROM produtos WHERE id = $1 RETURNING *
-    `, [id]);
-
-    if (result.rows.length === 0) {
+    // Verificar se o produto existe
+    const checkResult = await db.query(`SELECT id FROM produtos WHERE id = $1`, [id]);
+    
+    if (checkResult.rows.length === 0) {
       throw new NotFoundError('Produto', id);
     }
 
+    // Deletar em cascata - remover todas as referências primeiro
+    await db.transaction(async (client) => {
+      // Deletar de todas as tabelas que referenciam produtos (apenas as que existem)
+      await client.query(`DELETE FROM estoque_central WHERE produto_id = $1`, [id]);
+      await client.query(`DELETE FROM guia_produto_escola WHERE produto_id = $1`, [id]);
+      await client.query(`DELETE FROM faturamento_itens WHERE produto_id = $1`, [id]);
+      await client.query(`DELETE FROM produto_composicao_nutricional WHERE produto_id = $1`, [id]);
+      await client.query(`DELETE FROM pedido_itens WHERE produto_id = $1`, [id]);
+      await client.query(`DELETE FROM contrato_produtos WHERE produto_id = $1`, [id]);
+      await client.query(`DELETE FROM estoque_lotes WHERE produto_id = $1`, [id]);
+      await client.query(`DELETE FROM estoque_escolas WHERE produto_id = $1`, [id]);
+      await client.query(`DELETE FROM estoque_movimentacoes WHERE produto_id = $1`, [id]);
+      await client.query(`DELETE FROM refeicao_produtos WHERE produto_id = $1`, [id]);
+      
+      // Por fim, deletar o produto
+      await client.query(`DELETE FROM produtos WHERE id = $1`, [id]);
+    });
+
     res.json({
       success: true,
-      message: "Produto removido com sucesso",
-      data: result.rows[0]
+      message: "Produto e todas as suas referências foram removidos com sucesso"
     });
   } catch (error) {
     handleDatabaseError(error);
