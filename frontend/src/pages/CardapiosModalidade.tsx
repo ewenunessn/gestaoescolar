@@ -20,6 +20,7 @@ import {
   removerCardapioModalidade, CardapioModalidade, MESES
 } from '../services/cardapiosModalidade';
 import { listarModalidades } from '../services/modalidadeService';
+import { useNutricionistaQueries } from '../hooks/queries/useNutricionistaQueries';
 import { useNavigate } from 'react-router-dom';
 
 const CardapiosModalidadePage: React.FC = () => {
@@ -29,6 +30,8 @@ const CardapiosModalidadePage: React.FC = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  
+  const { data: nutricionistas = [] } = useNutricionistaQueries.useList();
   
   // Estados de filtros
   const [filterOpen, setFilterOpen] = useState(false);
@@ -45,7 +48,10 @@ const CardapiosModalidadePage: React.FC = () => {
     mes: '',
     ano: new Date().getFullYear().toString(),
     observacao: '',
-    ativo: true
+    ativo: true,
+    nutricionista_id: '',
+    data_aprovacao_nutricionista: '',
+    observacoes_nutricionista: ''
   });
   
   // Estados de validação
@@ -173,7 +179,10 @@ const CardapiosModalidadePage: React.FC = () => {
         mes: cardapio.mes.toString(),
         ano: cardapio.ano.toString(),
         observacao: cardapio.observacao || '',
-        ativo: cardapio.ativo
+        ativo: cardapio.ativo,
+        nutricionista_id: cardapio.nutricionista_id?.toString() || '',
+        data_aprovacao_nutricionista: cardapio.data_aprovacao_nutricionista || '',
+        observacoes_nutricionista: cardapio.observacoes_nutricionista || ''
       };
       setFormData(formInicial);
       setFormDataInicial(JSON.parse(JSON.stringify(formInicial)));
@@ -186,7 +195,10 @@ const CardapiosModalidadePage: React.FC = () => {
         mes: '',
         ano: new Date().getFullYear().toString(),
         observacao: '',
-        ativo: true
+        ativo: true,
+        nutricionista_id: '',
+        data_aprovacao_nutricionista: '',
+        observacoes_nutricionista: ''
       };
       setFormData(formInicial);
       setFormDataInicial(JSON.parse(JSON.stringify(formInicial)));
@@ -232,7 +244,10 @@ const CardapiosModalidadePage: React.FC = () => {
         mes: parseInt(formData.mes),
         ano: parseInt(formData.ano),
         observacao: formData.observacao || undefined,
-        ativo: formData.ativo
+        ativo: formData.ativo,
+        nutricionista_id: formData.nutricionista_id ? parseInt(formData.nutricionista_id) : undefined,
+        data_aprovacao_nutricionista: formData.data_aprovacao_nutricionista || undefined,
+        observacoes_nutricionista: formData.observacoes_nutricionista || undefined
       };
 
       if (editMode && selectedId) {
@@ -350,6 +365,7 @@ const CardapiosModalidadePage: React.FC = () => {
                       <TableCell>Nome</TableCell>
                       <TableCell>Modalidade</TableCell>
                       <TableCell>Competência</TableCell>
+                      <TableCell>Nutricionista</TableCell>
                       <TableCell align="center">Refeições</TableCell>
                       <TableCell align="center">Dias</TableCell>
                       <TableCell align="center" width="120">Ações</TableCell>
@@ -372,6 +388,22 @@ const CardapiosModalidadePage: React.FC = () => {
                             <CalendarIcon fontSize="small" color="action" />
                             <Typography variant="body2">{MESES[cardapio.mes]} / {cardapio.ano}</Typography>
                           </Box>
+                        </TableCell>
+                        <TableCell>
+                          {cardapio.nutricionista_nome ? (
+                            <Box>
+                              <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                {cardapio.nutricionista_nome}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                CRN-{cardapio.nutricionista_crn_regiao} {cardapio.nutricionista_crn}
+                              </Typography>
+                            </Box>
+                          ) : (
+                            <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                              Não atribuído
+                            </Typography>
+                          )}
                         </TableCell>
                         <TableCell align="center">
                           <Chip label={cardapio.total_refeicoes || 0} size="small" color="primary" variant="outlined" />
@@ -541,6 +573,56 @@ const CardapiosModalidadePage: React.FC = () => {
               value={formData.observacao}
               onChange={(e) => setFormData({ ...formData, observacao: e.target.value })} 
             />
+
+            <Box sx={{ borderTop: '1px solid #e0e0e0', pt: 1.5, mt: 0.5 }}>
+              <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, color: 'primary.main' }}>
+                Aprovação Nutricional
+              </Typography>
+              
+              <FormControl fullWidth size="small" sx={{ mb: 1.5 }}>
+                <InputLabel>Nutricionista Responsável</InputLabel>
+                <Select 
+                  value={formData.nutricionista_id} 
+                  onChange={(e) => setFormData({ ...formData, nutricionista_id: e.target.value })}
+                  label="Nutricionista Responsável"
+                >
+                  <MenuItem value="">
+                    <em>Nenhum</em>
+                  </MenuItem>
+                  {nutricionistas.filter(n => n.ativo).map((n) => (
+                    <MenuItem key={n.id} value={n.id}>
+                      {n.nome} - CRN-{n.crn_regiao} {n.crn}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              {formData.nutricionista_id && (
+                <>
+                  <TextField 
+                    label="Data de Aprovação" 
+                    type="date" 
+                    fullWidth 
+                    size="small"
+                    value={formData.data_aprovacao_nutricionista}
+                    onChange={(e) => setFormData({ ...formData, data_aprovacao_nutricionista: e.target.value })}
+                    InputLabelProps={{ shrink: true }}
+                    sx={{ mb: 1.5 }}
+                  />
+
+                  <TextField 
+                    label="Observações do Nutricionista" 
+                    fullWidth 
+                    multiline 
+                    rows={2} 
+                    size="small"
+                    value={formData.observacoes_nutricionista}
+                    onChange={(e) => setFormData({ ...formData, observacoes_nutricionista: e.target.value })}
+                    placeholder="Observações técnicas sobre o cardápio..."
+                  />
+                </>
+              )}
+            </Box>
 
             <FormControl fullWidth size="small">
               <InputLabel>Status</InputLabel>

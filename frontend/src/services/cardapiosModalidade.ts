@@ -8,7 +8,12 @@ export interface CardapioModalidade {
   ano: number;
   observacao?: string;
   ativo: boolean;
+  nutricionista_id?: number;
+  data_aprovacao_nutricionista?: string;
+  observacoes_nutricionista?: string;
   modalidade_nome?: string;
+  nutricionista_nome?: string;
+  nutricionista_crn?: string;
   total_refeicoes?: number;
   total_dias?: number;
   created_at: string;
@@ -74,6 +79,9 @@ export async function criarCardapioModalidade(data: {
   ano: number;
   observacao?: string;
   ativo?: boolean;
+  nutricionista_id?: number;
+  data_aprovacao_nutricionista?: string;
+  observacoes_nutricionista?: string;
 }): Promise<CardapioModalidade> {
   const response = await api.post('/cardapios', data);
   if (response.data.error) throw new Error(response.data.message || 'Erro ao criar cardápio');

@@ -15,13 +15,20 @@ export async function listarCardapiosModalidade(req: Request, res: Response) {
         cm.ano,
         cm.ativo,
         cm.observacao,
+        cm.nutricionista_id,
+        cm.data_aprovacao_nutricionista,
+        cm.observacoes_nutricionista,
         cm.created_at,
         cm.updated_at,
         m.nome as modalidade_nome,
+        n.nome as nutricionista_nome,
+        n.crn as nutricionista_crn,
+        n.crn_regiao as nutricionista_crn_regiao,
         COUNT(DISTINCT crd.id) as total_refeicoes,
         COUNT(DISTINCT crd.dia) as total_dias
       FROM cardapios_modalidade cm
       LEFT JOIN modalidades m ON cm.modalidade_id = m.id
+      LEFT JOIN nutricionistas n ON cm.nutricionista_id = n.id
       LEFT JOIN cardapio_refeicoes_dia crd ON cm.id = crd.cardapio_modalidade_id
       WHERE 1=1
     `;
@@ -49,7 +56,7 @@ export async function listarCardapiosModalidade(req: Request, res: Response) {
       params.push(ativo === 'true' || ativo === true);
     }
     
-    sql += ` GROUP BY cm.id, cm.modalidade_id, cm.nome, cm.mes, cm.ano, cm.ativo, cm.observacao, cm.created_at, cm.updated_at, m.nome`;
+    sql += ` GROUP BY cm.id, cm.modalidade_id, cm.nome, cm.mes, cm.ano, cm.ativo, cm.observacao, cm.nutricionista_id, cm.data_aprovacao_nutricionista, cm.observacoes_nutricionista, cm.created_at, cm.updated_at, m.nome, n.nome, n.crn, n.crn_regiao`;
     sql += ` ORDER BY cm.ano DESC, cm.mes DESC, m.nome`;
     
     const result = await query(sql, params);
@@ -68,9 +75,13 @@ export async function buscarCardapioModalidade(req: Request, res: Response) {
     const result = await query(`
       SELECT 
         cm.*,
-        m.nome as modalidade_nome
+        m.nome as modalidade_nome,
+        n.nome as nutricionista_nome,
+        n.crn as nutricionista_crn,
+        n.crn_regiao as nutricionista_crn_regiao
       FROM cardapios_modalidade cm
       LEFT JOIN modalidades m ON cm.modalidade_id = m.id
+      LEFT JOIN nutricionistas n ON cm.nutricionista_id = n.id
       WHERE cm.id = $1
     `, [id]);
     
@@ -88,17 +99,17 @@ export async function buscarCardapioModalidade(req: Request, res: Response) {
 // Criar cardápio
 export async function criarCardapioModalidade(req: Request, res: Response) {
   try {
-    const { modalidade_id, nome, mes, ano, observacao, ativo } = req.body;
+    const { modalidade_id, nome, mes, ano, observacao, ativo, nutricionista_id, data_aprovacao_nutricionista, observacoes_nutricionista } = req.body;
     
     if (!modalidade_id || !nome || !mes || !ano) {
       return res.status(400).json({ message: 'Campos obrigatórios: modalidade_id, nome, mes, ano' });
     }
     
     const result = await query(`
-      INSERT INTO cardapios_modalidade (modalidade_id, nome, mes, ano, observacao, ativo)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO cardapios_modalidade (modalidade_id, nome, mes, ano, observacao, ativo, nutricionista_id, data_aprovacao_nutricionista, observacoes_nutricionista)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *
-    `, [modalidade_id, nome, mes, ano, observacao, ativo !== false]);
+    `, [modalidade_id, nome, mes, ano, observacao, ativo !== false, nutricionista_id || null, data_aprovacao_nutricionista || null, observacoes_nutricionista || null]);
     
     res.status(201).json(result.rows[0]);
   } catch (error: any) {
@@ -114,7 +125,7 @@ export async function criarCardapioModalidade(req: Request, res: Response) {
 export async function editarCardapioModalidade(req: Request, res: Response) {
   try {
     const { id } = req.params;
-    const { modalidade_id, nome, mes, ano, observacao, ativo } = req.body;
+    const { modalidade_id, nome, mes, ano, observacao, ativo, nutricionista_id, data_aprovacao_nutricionista, observacoes_nutricionista } = req.body;
     
     const result = await query(`
       UPDATE cardapios_modalidade
@@ -123,10 +134,13 @@ export async function editarCardapioModalidade(req: Request, res: Response) {
           mes = COALESCE($3, mes),
           ano = COALESCE($4, ano),
           observacao = $5,
-          ativo = COALESCE($6, ativo)
-      WHERE id = $7
+          ativo = COALESCE($6, ativo),
+          nutricionista_id = COALESCE($7, nutricionista_id),
+          data_aprovacao_nutricionista = $8,
+          observacoes_nutricionista = $9
+      WHERE id = $10
       RETURNING *
-    `, [modalidade_id, nome, mes, ano, observacao, ativo, id]);
+    `, [modalidade_id, nome, mes, ano, observacao, ativo, nutricionista_id, data_aprovacao_nutricionista, observacoes_nutricionista, id]);
     
     if (result.rows.length === 0) {
       return res.status(404).json({ message: 'Cardápio não encontrado' });

@@ -42,6 +42,7 @@ const RefeicaoDetalhe = lazy(() => import("../pages/RefeicaoDetalhe"));
 const Refeicoes = lazy(() => import("../pages/Refeicoes"));
 const Cardapios = lazy(() => import("../pages/CardapiosModalidade"));
 const CardapioCalendario = lazy(() => import("../pages/CardapioCalendario"));
+const Nutricionistas = lazy(() => import("../pages/Nutricionistas"));
 const Fornecedores = lazy(() => import("../pages/Fornecedores"));
 const FornecedorDetalhe = lazy(() => import("../pages/FornecedorDetalhe"));
 const ItensFornecedor = lazy(() => import("../pages/ItensFornecedor"));
@@ -202,6 +203,10 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
             <Route
               path="/cardapios/:cardapioId/calendario"
               element={<LazyRoute><CardapioCalendario /></LazyRoute>}
+            />
+            <Route
+              path="/nutricionistas"
+              element={<LazyRoute><Nutricionistas /></LazyRoute>}
             />
 
             <Route

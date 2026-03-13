@@ -5,7 +5,7 @@ import {
   FormControl, Grid, IconButton, InputLabel, MenuItem, Select, TextField, Typography, Chip, Menu,
   CircularProgress
 } from '@mui/material';
-import { ArrowBack as ArrowBackIcon, Delete as DeleteIcon, PictureAsPdf as PdfIcon, MoreVert as MoreIcon } from '@mui/icons-material';
+import { ArrowBack as ArrowBackIcon, Delete as DeleteIcon, PictureAsPdf as PdfIcon, MoreVert as MoreIcon, DragIndicator as DragIcon } from '@mui/icons-material';
 import { useNotification } from '../context/NotificationContext';
 import PageContainer from '../components/PageContainer';
 import { useInstituicaoForPDF } from '../hooks/useInstituicao';
@@ -15,6 +15,9 @@ import {
   removerRefeicaoDia, CardapioModalidade, RefeicaoDia, TIPOS_REFEICAO, MESES
 } from '../services/cardapiosModalidade';
 import { listarRefeicoes } from '../services/refeicoes';
+import { DndContext, DragOverlay, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { useDraggable, useDroppable } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 
 // Função para obter URL base da API
 const getApiBaseUrl = () => {
@@ -44,16 +47,27 @@ const CardapioCalendarioPage: React.FC = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [openListDialog, setOpenListDialog] = useState(false);
   const [openDetalhesDialog, setOpenDetalhesDialog] = useState(false);
+  const [openDetalhesDiaDialog, setOpenDetalhesDiaDialog] = useState(false);
   const [openPeriodoDialog, setOpenPeriodoDialog] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [diaSelecionado, setDiaSelecionado] = useState<number | null>(null);
   const [refeicaoDetalhes, setRefeicaoDetalhes] = useState<any>(null);
   const [produtosRefeicao, setProdutosRefeicao] = useState<any[]>([]);
   const [loadingDetalhes, setLoadingDetalhes] = useState(false);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [periodoForm, setPeriodoForm] = useState({
     diaInicio: 1,
     diaFim: 31
   });
+
+  // Configurar sensores para drag and drop
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // Requer movimento de 8px para iniciar o drag
+      },
+    })
+  );
   const [formData, setFormData] = useState({
     refeicao_id: '',
     tipo_refeicao: '',
@@ -123,6 +137,12 @@ const CardapioCalendarioPage: React.FC = () => {
     setDiaSelecionado(dia);
     setFormData({ refeicao_id: '', tipo_refeicao: '', observacao: '' });
     setOpenDialog(true);
+  };
+
+  const handleOpenDetalhesDia = async (dia: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDiaSelecionado(dia);
+    setOpenDetalhesDiaDialog(true);
   };
 
   const handleOpenListDialog = (dia: number, e: React.MouseEvent) => {
@@ -761,6 +781,155 @@ const CardapioCalendarioPage: React.FC = () => {
     }
   };
 
+  const handleDragStart = (event: any) => {
+    setActiveId(event.active.id);
+  };
+
+  const handleDragEnd = async (event: any) => {
+    const { active, over } = event;
+    setActiveId(null);
+
+    if (!over || active.id === over.id) return;
+
+    // Extrair IDs
+    const refeicaoId = parseInt(active.id.split('-')[1]);
+    const novoDia = parseInt(over.id.split('-')[1]);
+
+    // Encontrar a refeição
+    const refeicao = refeicoes.find(r => r.id === refeicaoId);
+    if (!refeicao || refeicao.dia === novoDia) return;
+
+    try {
+      // Remover do dia antigo
+      await removerRefeicaoDia(refeicaoId);
+      
+      // Adicionar no novo dia
+      await adicionarRefeicaoDia(parseInt(cardapioId!), {
+        refeicao_id: refeicao.refeicao_id,
+        dia: novoDia,
+        tipo_refeicao: refeicao.tipo_refeicao,
+        observacao: refeicao.observacao || undefined
+      });
+
+      success(`Refeição movida para o dia ${novoDia}`);
+      loadData();
+    } catch (err: any) {
+      error(err.message || 'Erro ao mover refeição');
+      loadData(); // Recarregar para reverter mudanças visuais
+    }
+  };
+
+  // Componente de refeição arrastável
+  const DraggableRefeicao = ({ refeicao }: { refeicao: RefeicaoDia }) => {
+    const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+      id: `refeicao-${refeicao.id}`,
+    });
+
+    const style = {
+      transform: CSS.Translate.toString(transform),
+      opacity: isDragging ? 0.5 : 1,
+    };
+
+    return (
+      <Box
+        ref={setNodeRef}
+        style={style}
+        sx={{
+          p: 0.75,
+          borderRadius: '8px',
+          bgcolor: corTipoRefeicao[refeicao.tipo_refeicao] || '#ccc',
+          color: 'white',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          cursor: isDragging ? 'grabbing' : 'grab',
+          transition: 'all 0.2s',
+          boxShadow: isDragging ? '0 4px 12px rgba(0,0,0,0.3)' : '0 1px 3px rgba(0,0,0,0.12)',
+          '&:hover': {
+            transform: isDragging ? undefined : 'scale(1.02)',
+            boxShadow: isDragging ? undefined : '0 2px 6px rgba(0,0,0,0.2)'
+          }
+        }}
+      >
+        <Box
+          {...listeners}
+          {...attributes}
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.5,
+            flex: 1,
+            minWidth: 0,
+            cursor: 'grab',
+            '&:active': { cursor: 'grabbing' }
+          }}
+        >
+          <DragIcon sx={{ fontSize: '1rem', opacity: 0.7 }} />
+          <Box sx={{ overflow: 'hidden', flex: 1, minWidth: 0 }}>
+            <Typography variant="caption" sx={{ fontWeight: 700, display: 'block', fontSize: '0.65rem', lineHeight: 1.3, opacity: 0.9 }}>
+              {TIPOS_REFEICAO[refeicao.tipo_refeicao]}
+            </Typography>
+            <Typography
+              variant="caption"
+              sx={{
+                display: 'block',
+                fontSize: '0.7rem',
+                lineHeight: 1.2,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                fontWeight: 500
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleOpenDetalhes(refeicao.refeicao_id);
+              }}
+            >
+              {refeicao.refeicao_nome}
+            </Typography>
+          </Box>
+        </Box>
+        <IconButton
+          size="small"
+          sx={{
+            color: 'white',
+            p: 0.5,
+            ml: 0.5,
+            '&:hover': { bgcolor: 'rgba(0,0,0,0.2)' }
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleDelete(refeicao.id);
+          }}
+        >
+          <DeleteIcon sx={{ fontSize: '0.9rem' }} />
+        </IconButton>
+      </Box>
+    );
+  };
+
+  // Componente de dia que aceita drops
+  const DroppableDay = ({ dia, children }: { dia: number; children: React.ReactNode }) => {
+    const { setNodeRef, isOver } = useDroppable({
+      id: `dia-${dia}`,
+    });
+
+    return (
+      <Box
+        ref={setNodeRef}
+        sx={{
+          height: '100%',
+          border: isOver ? '2px dashed #1976d2' : 'none',
+          borderRadius: '12px',
+          bgcolor: isOver ? 'rgba(25, 118, 210, 0.08)' : 'transparent',
+          transition: 'all 0.2s'
+        }}
+      >
+        {children}
+      </Box>
+    );
+  };
+
   const getDiaDaSemana = (diaSemana: number) => {
     const dias = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
     return dias[diaSemana];
@@ -775,8 +944,14 @@ const CardapioCalendarioPage: React.FC = () => {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <PageContainer>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+        <PageContainer>
         <Box display="flex" alignItems="center" mb={2}>
           <IconButton onClick={() => navigate('/cardapios')} sx={{ mr: 2 }}>
             <ArrowBackIcon />
@@ -811,129 +986,194 @@ const CardapioCalendarioPage: React.FC = () => {
         </Box>
 
         {/* Cabeçalho dos dias da semana */}
-        <Box sx={{ mb: 1 }}>
-          <Grid container spacing={0.5}>
+        <Card sx={{ mb: 2, borderRadius: '12px', overflow: 'hidden' }}>
+          <Grid container spacing={0}>
             {['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'].map((dia, index) => (
               <Grid item xs={12 / 7} key={dia}>
                 <Box 
                   sx={{ 
                     textAlign: 'center', 
-                    fontWeight: 'bold', 
-                    py: 0.5,
-                    bgcolor: index === 0 || index === 6 ? '#ffebee' : '#e3f2fd',
-                    borderRadius: 1
+                    fontWeight: 700, 
+                    py: 1.5,
+                    bgcolor: index === 0 || index === 6 ? '#fff3e0' : '#e3f2fd',
+                    borderRight: index < 6 ? '1px solid rgba(0,0,0,0.08)' : 'none',
+                    color: index === 0 || index === 6 ? '#e65100' : '#1565c0'
                   }}
                 >
-                  <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>{dia}</Typography>
+                  <Typography variant="body2" sx={{ fontSize: '0.875rem', letterSpacing: '0.5px' }}>
+                    {dia}
+                  </Typography>
                 </Box>
               </Grid>
             ))}
           </Grid>
-        </Box>
+        </Card>
 
         {/* Calendário */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
           {getCalendarioSemanas().map((semana, semanaIndex) => (
             <Box key={semanaIndex}>
-              <Grid container spacing={0.5}>
+              <Grid container spacing={1}>
                 {semana.map((dia, diaIndex) => {
                   if (dia === null) {
                     return (
                       <Grid item xs={12 / 7} key={`empty-${diaIndex}`}>
-                        <Box sx={{ height: 120, bgcolor: '#e0e0e0', borderRadius: 1, border: '1px solid #bdbdbd' }} />
+                        <Box 
+                          sx={{ 
+                            height: 140, 
+                            bgcolor: '#f5f5f5', 
+                            borderRadius: '12px',
+                            border: '2px dashed #e0e0e0'
+                          }} 
+                        />
                       </Grid>
                     );
                   }
 
                   const refeicoesNoDia = getRefeicoesNoDia(dia);
                   const ehFimDeSemana = diaIndex === 0 || diaIndex === 6;
+                  const hoje = new Date();
+                  const ehHoje = cardapio && 
+                    dia === hoje.getDate() && 
+                    cardapio.mes === (hoje.getMonth() + 1) && 
+                    cardapio.ano === hoje.getFullYear();
 
                   return (
                     <Grid item xs={12 / 7} key={dia}>
-                      <Card 
-                        sx={{ 
-                          cursor: 'pointer',
-                          height: 120,
-                          bgcolor: ehFimDeSemana ? '#fff3e0' : 'white',
-                          border: '1px solid #e0e0e0',
-                          '&:hover': { boxShadow: 2, borderColor: '#1976d2' },
-                          display: 'flex',
-                          flexDirection: 'column'
-                        }}
-                        onClick={() => handleOpenDialog(dia)}
-                      >
-                        <CardContent sx={{ p: 0.5, flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', '&:last-child': { pb: 0.5 } }}>
-                          <Typography variant="h6" sx={{ mb: 0.3, fontSize: '1rem', fontWeight: 'bold', color: ehFimDeSemana ? '#d84315' : 'inherit' }}>
-                            {dia}
-                          </Typography>
-                          
-                          {refeicoesNoDia.length === 0 ? (
-                            <Typography variant="caption" color="textSecondary" sx={{ fontSize: '0.65rem', fontStyle: 'italic' }}>
-                              + Adicionar
-                            </Typography>
-                          ) : (
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3, flex: 1, overflow: 'hidden' }}>
-                              {refeicoesNoDia.slice(0, 3).map((ref) => (
-                                <Box 
-                                  key={ref.id}
-                                  sx={{ 
-                                    p: 0.4, 
-                                    borderRadius: 0.5,
-                                    bgcolor: corTipoRefeicao[ref.tipo_refeicao] || '#ccc',
-                                    color: 'white',
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'flex-start',
-                                    cursor: 'pointer',
-                                    '&:hover': { opacity: 0.9 }
-                                  }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleOpenDetalhes(ref.refeicao_id);
-                                  }}
-                                >
-                                  <Box sx={{ overflow: 'hidden', flex: 1, minWidth: 0 }}>
-                                    <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', fontSize: '0.6rem', lineHeight: 1.2 }}>
-                                      {TIPOS_REFEICAO[ref.tipo_refeicao]}
-                                    </Typography>
-                                    <Typography variant="caption" sx={{ display: 'block', fontSize: '0.55rem', lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                      {ref.refeicao_nome}
-                                    </Typography>
-                                  </Box>
-                                  <IconButton 
-                                    size="small" 
-                                    sx={{ color: 'white', p: 0.2, ml: 0.3, minWidth: 0 }}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDelete(ref.id);
-                                    }}
-                                  >
-                                    <DeleteIcon sx={{ fontSize: '0.75rem' }} />
-                                  </IconButton>
-                                </Box>
-                              ))}
-                              {refeicoesNoDia.length > 3 && (
-                                <Box 
-                                  sx={{ 
-                                    p: 0.4, 
-                                    borderRadius: 0.5,
-                                    bgcolor: '#757575',
-                                    color: 'white',
-                                    textAlign: 'center',
-                                    cursor: 'pointer',
-                                    '&:hover': { bgcolor: '#616161' }
-                                  }}
-                                  onClick={(e) => handleOpenListDialog(dia, e)}
-                                >
-                                  <Typography variant="caption" sx={{ fontSize: '0.6rem', fontWeight: 'bold' }}>
-                                    +{refeicoesNoDia.length - 3} mais
-                                  </Typography>
-                                </Box>
-                              )}
+                      <DroppableDay dia={dia}>
+                        <Card 
+                          sx={{ 
+                            cursor: 'pointer',
+                            height: 140,
+                            bgcolor: ehFimDeSemana ? '#fff8e1' : 'white',
+                            border: ehHoje ? '3px solid #1976d2' : '1px solid #e0e0e0',
+                            borderRadius: '12px',
+                            transition: 'all 0.2s ease-in-out',
+                            '&:hover': { 
+                              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                              transform: 'translateY(-2px)',
+                              borderColor: '#1976d2'
+                            },
+                            display: 'flex',
+                            flexDirection: 'column',
+                            position: 'relative',
+                            overflow: 'visible'
+                          }}
+                          onClick={() => handleOpenDialog(dia)}
+                        >
+                          {ehHoje && (
+                            <Box 
+                              sx={{ 
+                                position: 'absolute',
+                                top: -8,
+                                right: 8,
+                                bgcolor: '#1976d2',
+                                color: 'white',
+                                px: 1,
+                                py: 0.3,
+                                borderRadius: '12px',
+                                fontSize: '0.65rem',
+                                fontWeight: 700,
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                                zIndex: 1
+                              }}
+                            >
+                              HOJE
                             </Box>
                           )}
-                        </CardContent>
-                      </Card>
+                          <CardContent sx={{ p: 1, flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', '&:last-child': { pb: 1 } }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
+                              <Typography 
+                                variant="h6" 
+                                sx={{ 
+                                  fontSize: '1.25rem', 
+                                  fontWeight: 700,
+                                  color: ehHoje ? '#1976d2' : (ehFimDeSemana ? '#e65100' : '#424242'),
+                                  cursor: 'pointer',
+                                  '&:hover': {
+                                    textDecoration: 'underline'
+                                  }
+                                }}
+                                onClick={(e) => handleOpenDetalhesDia(dia, e)}
+                              >
+                                {dia}
+                              </Typography>
+                              {refeicoesNoDia.length > 0 && (
+                                <Chip 
+                                  label={refeicoesNoDia.length} 
+                                  size="small" 
+                                  sx={{ 
+                                    height: 20,
+                                    fontSize: '0.7rem',
+                                    fontWeight: 700,
+                                    bgcolor: '#e3f2fd',
+                                    color: '#1976d2'
+                                  }} 
+                                />
+                              )}
+                            </Box>
+                            
+                            {refeicoesNoDia.length === 0 ? (
+                              <Box 
+                                sx={{ 
+                                  flex: 1,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  border: '2px dashed #e0e0e0',
+                                  borderRadius: '8px',
+                                  bgcolor: 'rgba(0,0,0,0.02)',
+                                  transition: 'all 0.2s',
+                                  '&:hover': {
+                                    borderColor: '#1976d2',
+                                    bgcolor: 'rgba(25, 118, 210, 0.04)'
+                                  }
+                                }}
+                              >
+                                <Typography 
+                                  variant="caption" 
+                                  sx={{ 
+                                    fontSize: '0.75rem',
+                                    color: '#9e9e9e',
+                                    fontWeight: 500
+                                  }}
+                                >
+                                  + Adicionar refeição
+                                </Typography>
+                              </Box>
+                            ) : (
+                              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, flex: 1, overflow: 'hidden' }}>
+                                {refeicoesNoDia.slice(0, 2).map((ref) => (
+                                  <DraggableRefeicao key={ref.id} refeicao={ref} />
+                                ))}
+                                {refeicoesNoDia.length > 2 && (
+                                  <Box 
+                                    sx={{ 
+                                      p: 0.75, 
+                                      borderRadius: '8px',
+                                      bgcolor: 'rgba(0,0,0,0.6)',
+                                      color: 'white',
+                                      textAlign: 'center',
+                                      cursor: 'pointer',
+                                      transition: 'all 0.2s',
+                                      boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+                                      '&:hover': { 
+                                        bgcolor: 'rgba(0,0,0,0.8)',
+                                        transform: 'scale(1.02)'
+                                      }
+                                    }}
+                                    onClick={(e) => handleOpenListDialog(dia, e)}
+                                  >
+                                    <Typography variant="caption" sx={{ fontSize: '0.7rem', fontWeight: 700 }}>
+                                      Ver todas ({refeicoesNoDia.length})
+                                    </Typography>
+                                  </Box>
+                                )}
+                              </Box>
+                            )}
+                          </CardContent>
+                        </Card>
+                      </DroppableDay>
                     </Grid>
                   );
                 })}
@@ -942,6 +1182,27 @@ const CardapioCalendarioPage: React.FC = () => {
           ))}
         </Box>
       </PageContainer>
+    </Box>
+
+      <DragOverlay>
+        {activeId ? (
+          <Box
+            sx={{
+              p: 0.75,
+              borderRadius: '8px',
+              bgcolor: '#1976d2',
+              color: 'white',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+              minWidth: 120,
+              cursor: 'grabbing'
+            }}
+          >
+            <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.7rem' }}>
+              Movendo refeição...
+            </Typography>
+          </Box>
+        ) : null}
+      </DragOverlay>
 
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Adicionar Refeição - Dia {diaSelecionado}</DialogTitle>
@@ -1185,7 +1446,273 @@ const CardapioCalendarioPage: React.FC = () => {
           <Button onClick={() => setOpenDetalhesDialog(false)}>Fechar</Button>
         </DialogActions>
       </Dialog>
-    </Box>
+      {/* Dialog de detalhes do dia */}
+      <Dialog 
+        open={openDetalhesDiaDialog} 
+        onClose={() => setOpenDetalhesDiaDialog(false)} 
+        maxWidth="md" 
+        fullWidth
+        PaperProps={{ sx: { borderRadius: '12px' } }}
+      >
+        <DialogTitle sx={{ bgcolor: '#f5f5f5', borderBottom: '1px solid #e0e0e0' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Box>
+              <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                {diaSelecionado && cardapio && `${diaSelecionado} de ${MESES[cardapio.mes]}`}
+              </Typography>
+              <Typography variant="body2" color="textSecondary">
+                {diaSelecionado && cardapio && new Date(cardapio.ano, cardapio.mes - 1, diaSelecionado).toLocaleDateString('pt-BR', { weekday: 'long' })}
+              </Typography>
+            </Box>
+            <Chip 
+              label={`${diaSelecionado && getRefeicoesNoDia(diaSelecionado).length} refeições`}
+              color="primary"
+              sx={{ fontWeight: 600 }}
+            />
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ p: 0 }}>
+          {diaSelecionado && getRefeicoesNoDia(diaSelecionado).length === 0 ? (
+            <Box sx={{ textAlign: 'center', py: 6 }}>
+              <Typography variant="h6" color="textSecondary" gutterBottom>
+                Nenhuma refeição cadastrada
+              </Typography>
+              <Typography variant="body2" color="textSecondary" sx={{ mb: 3 }}>
+                Clique no botão abaixo para adicionar a primeira refeição deste dia
+              </Typography>
+              <Button 
+                variant="contained" 
+                onClick={() => {
+                  setOpenDetalhesDiaDialog(false);
+                  handleOpenDialog(diaSelecionado);
+                }}
+              >
+                Adicionar Refeição
+              </Button>
+            </Box>
+          ) : (
+            <Box>
+              {diaSelecionado && getRefeicoesNoDia(diaSelecionado).map((ref, index) => (
+                <Box 
+                  key={ref.id}
+                  sx={{ 
+                    borderBottom: index < getRefeicoesNoDia(diaSelecionado).length - 1 ? '1px solid #e0e0e0' : 'none'
+                  }}
+                >
+                  <Box 
+                    sx={{ 
+                      p: 2,
+                      bgcolor: 'white',
+                      '&:hover': { bgcolor: '#fafafa' }
+                    }}
+                  >
+                    {/* Cabeçalho da refeição */}
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Box
+                          sx={{
+                            width: 8,
+                            height: 40,
+                            borderRadius: '4px',
+                            bgcolor: corTipoRefeicao[ref.tipo_refeicao] || '#ccc'
+                          }}
+                        />
+                        <Box>
+                          <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.1rem' }}>
+                            {ref.refeicao_nome}
+                          </Typography>
+                          <Chip
+                            label={TIPOS_REFEICAO[ref.tipo_refeicao]}
+                            size="small"
+                            sx={{
+                              bgcolor: corTipoRefeicao[ref.tipo_refeicao] || '#ccc',
+                              color: 'white',
+                              fontWeight: 600,
+                              fontSize: '0.7rem',
+                              height: 20
+                            }}
+                          />
+                        </Box>
+                      </Box>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => {
+                          setOpenDetalhesDiaDialog(false);
+                          handleDelete(ref.id);
+                        }}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Box>
+
+                    {/* Observação */}
+                    {ref.observacao && (
+                      <Box sx={{ mb: 2, p: 1.5, bgcolor: '#fff3e0', borderRadius: '8px', borderLeft: '4px solid #ff9800' }}>
+                        <Typography variant="caption" sx={{ fontWeight: 600, color: '#e65100', display: 'block', mb: 0.5 }}>
+                          Observação:
+                        </Typography>
+                        <Typography variant="body2" color="textSecondary">
+                          {ref.observacao}
+                        </Typography>
+                      </Box>
+                    )}
+
+                    {/* Produtos da refeição */}
+                    <Box>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: '#616161' }}>
+                        Composição:
+                      </Typography>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                        {(() => {
+                          const refeicaoCompleta = refeicoesDisponiveis.find(r => r.id === ref.refeicao_id);
+                          if (!refeicaoCompleta) {
+                            return (
+                              <Typography variant="body2" color="textSecondary" sx={{ fontStyle: 'italic' }}>
+                                Carregando produtos...
+                              </Typography>
+                            );
+                          }
+                          
+                          // Aqui você pode buscar os produtos da refeição
+                          return (
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              onClick={() => {
+                                setOpenDetalhesDiaDialog(false);
+                                handleOpenDetalhes(ref.refeicao_id);
+                              }}
+                              sx={{ alignSelf: 'flex-start' }}
+                            >
+                              Ver detalhes completos
+                            </Button>
+                          );
+                        })()}
+                      </Box>
+                    </Box>
+
+                    {/* Informações nutricionais (se disponível) */}
+                    {(() => {
+                      const refeicaoCompleta = refeicoesDisponiveis.find(r => r.id === ref.refeicao_id);
+                      if (refeicaoCompleta && (refeicaoCompleta.calorias || refeicaoCompleta.proteinas || refeicaoCompleta.carboidratos)) {
+                        return (
+                          <Box sx={{ mt: 2, p: 1.5, bgcolor: '#e8f5e9', borderRadius: '8px' }}>
+                            <Typography variant="caption" sx={{ fontWeight: 600, color: '#2e7d32', display: 'block', mb: 1 }}>
+                              Informações Nutricionais:
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                              {refeicaoCompleta.calorias && (
+                                <Box>
+                                  <Typography variant="caption" color="textSecondary">Calorias</Typography>
+                                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{refeicaoCompleta.calorias} kcal</Typography>
+                                </Box>
+                              )}
+                              {refeicaoCompleta.proteinas && (
+                                <Box>
+                                  <Typography variant="caption" color="textSecondary">Proteínas</Typography>
+                                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{refeicaoCompleta.proteinas}g</Typography>
+                                </Box>
+                              )}
+                              {refeicaoCompleta.carboidratos && (
+                                <Box>
+                                  <Typography variant="caption" color="textSecondary">Carboidratos</Typography>
+                                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{refeicaoCompleta.carboidratos}g</Typography>
+                                </Box>
+                              )}
+                              {refeicaoCompleta.lipidios && (
+                                <Box>
+                                  <Typography variant="caption" color="textSecondary">Lipídios</Typography>
+                                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{refeicaoCompleta.lipidios}g</Typography>
+                                </Box>
+                              )}
+                            </Box>
+                          </Box>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </Box>
+                </Box>
+              ))}
+
+              {/* Resumo nutricional do dia */}
+              {diaSelecionado && (() => {
+                const refeicoesComInfo = getRefeicoesNoDia(diaSelecionado)
+                  .map(ref => refeicoesDisponiveis.find(r => r.id === ref.refeicao_id))
+                  .filter(r => r && (r.calorias || r.proteinas || r.carboidratos));
+                
+                if (refeicoesComInfo.length > 0) {
+                  const totalCalorias = refeicoesComInfo.reduce((sum, r) => sum + (parseFloat(r.calorias) || 0), 0);
+                  const totalProteinas = refeicoesComInfo.reduce((sum, r) => sum + (parseFloat(r.proteinas) || 0), 0);
+                  const totalCarboidratos = refeicoesComInfo.reduce((sum, r) => sum + (parseFloat(r.carboidratos) || 0), 0);
+                  const totalLipidios = refeicoesComInfo.reduce((sum, r) => sum + (parseFloat(r.lipidios) || 0), 0);
+
+                  return (
+                    <Box sx={{ p: 2, bgcolor: '#e3f2fd', borderTop: '2px solid #1976d2' }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#1565c0', mb: 1.5 }}>
+                        📊 Total Nutricional do Dia
+                      </Typography>
+                      <Grid container spacing={2}>
+                        <Grid item xs={3}>
+                          <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'white', borderRadius: '8px' }}>
+                            <Typography variant="h6" sx={{ fontWeight: 700, color: '#1976d2' }}>
+                              {totalCalorias.toFixed(0)}
+                            </Typography>
+                            <Typography variant="caption" color="textSecondary">kcal</Typography>
+                          </Box>
+                        </Grid>
+                        <Grid item xs={3}>
+                          <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'white', borderRadius: '8px' }}>
+                            <Typography variant="h6" sx={{ fontWeight: 700, color: '#1976d2' }}>
+                              {totalProteinas.toFixed(1)}
+                            </Typography>
+                            <Typography variant="caption" color="textSecondary">Proteínas (g)</Typography>
+                          </Box>
+                        </Grid>
+                        <Grid item xs={3}>
+                          <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'white', borderRadius: '8px' }}>
+                            <Typography variant="h6" sx={{ fontWeight: 700, color: '#1976d2' }}>
+                              {totalCarboidratos.toFixed(1)}
+                            </Typography>
+                            <Typography variant="caption" color="textSecondary">Carboidratos (g)</Typography>
+                          </Box>
+                        </Grid>
+                        <Grid item xs={3}>
+                          <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'white', borderRadius: '8px' }}>
+                            <Typography variant="h6" sx={{ fontWeight: 700, color: '#1976d2' }}>
+                              {totalLipidios.toFixed(1)}
+                            </Typography>
+                            <Typography variant="caption" color="textSecondary">Lipídios (g)</Typography>
+                          </Box>
+                        </Grid>
+                      </Grid>
+                    </Box>
+                  );
+                }
+                return null;
+              })()}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2, bgcolor: '#f5f5f5', borderTop: '1px solid #e0e0e0' }}>
+          <Button onClick={() => setOpenDetalhesDiaDialog(false)}>
+            Fechar
+          </Button>
+          {diaSelecionado && getRefeicoesNoDia(diaSelecionado).length > 0 && (
+            <Button 
+              variant="contained" 
+              onClick={() => {
+                setOpenDetalhesDiaDialog(false);
+                handleOpenDialog(diaSelecionado);
+              }}
+            >
+              Adicionar Refeição
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
+    </DndContext>
   );
 };
 

@@ -83,6 +83,7 @@ const getMenuConfig = (configModuloSaldo: any) => {
       category: "Planejamento",
       items: [
         { text: "Cardápios", icon: <MenuBook />, path: "/cardapios" },
+        { text: "Nutricionistas", icon: <Restaurant />, path: "/nutricionistas" },
       ],
     },
     {

@@ -40,6 +40,10 @@ import {
   TableRow,
   Tooltip,
   Autocomplete,
+  Tabs,
+  Tab,
+  Grid,
+  Divider,
 } from "@mui/material";
 import {
   Delete as DeleteIcon,
@@ -49,6 +53,9 @@ import {
   DragIndicator as DragIndicatorIcon,
   Save as SaveIcon,
   Cancel as CancelIcon,
+  Description as DescriptionIcon,
+  Timer as TimerIcon,
+  LocalDining as LocalDiningIcon,
 } from "@mui/icons-material";
 import PageBreadcrumbs from '../components/PageBreadcrumbs';
 import PageContainer from '../components/PageContainer';
@@ -192,6 +199,7 @@ export default function RefeicaoDetalhe() {
   const [form, setForm] = useState<any>({});
   const [salvando, setSalvando] = useState(false);
   const [openExcluir, setOpenExcluir] = useState(false);
+  const [tabAtiva, setTabAtiva] = useState(0); // 0 = Ingredientes, 1 = Ficha Técnica
   
   // Autocomplete
   const [selectedProduto, setSelectedProduto] = useState<Produto | null>(null);
@@ -444,107 +452,461 @@ export default function RefeicaoDetalhe() {
           </Box>
         </Box>
 
-        {/* Adicionar Produto */}
-        <Card sx={{ borderRadius: '12px', p: 2, mb: 2 }}>
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-            <Autocomplete
-              options={produtosDisponiveis}
-              getOptionLabel={(option) => option.nome}
-              value={selectedProduto}
-              onChange={(_, newValue) => setSelectedProduto(newValue)}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Selecione um produto"
-                  placeholder="Digite para buscar..."
-                  size="small"
+        {/* Tabs */}
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+          <Tabs value={tabAtiva} onChange={(e, newValue) => setTabAtiva(newValue)}>
+            <Tab label="Ingredientes" icon={<RestaurantIcon />} iconPosition="start" />
+            <Tab label="Ficha Técnica" icon={<DescriptionIcon />} iconPosition="start" />
+          </Tabs>
+        </Box>
+
+        {/* Tab 0: Ingredientes */}
+        {tabAtiva === 0 && (
+          <>
+            {/* Adicionar Produto */}
+            <Card sx={{ borderRadius: '12px', p: 2, mb: 2 }}>
+              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                <Autocomplete
+                  options={produtosDisponiveis}
+                  getOptionLabel={(option) => option.nome}
+                  value={selectedProduto}
+                  onChange={(_, newValue) => setSelectedProduto(newValue)}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Selecione um produto"
+                      placeholder="Digite para buscar..."
+                      size="small"
+                    />
+                  )}
+                  sx={{ flex: 1 }}
+                  noOptionsText="Nenhum produto disponível"
                 />
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={adicionarProduto}
+                  disabled={!selectedProduto}
+                  size="small"
+                  sx={{ bgcolor: '#059669', '&:hover': { bgcolor: '#047857' }, whiteSpace: 'nowrap' }}
+                >
+                  Adicionar
+                </Button>
+              </Box>
+            </Card>
+
+            {/* Tabela de Produtos */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 2, px: 1 }}>
+              <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 500 }}>
+                Exibindo {associacoes.length} {associacoes.length === 1 ? 'produto' : 'produtos'}
+              </Typography>
+            </Box>
+
+            <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+              {associacoes.length === 0 ? (
+                <Box textAlign="center" py={8}>
+                  <RestaurantIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
+                  <Typography variant="h6" color="text.secondary">
+                    Nenhum produto adicionado
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                    Use o campo acima para adicionar produtos à refeição
+                  </Typography>
+                </Box>
+              ) : (
+                <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', width: '100%', overflow: 'hidden' }}>
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <TableContainer sx={{ flex: 1, minHeight: 0 }}>
+                      <Table stickyHeader>
+                        <TableHead>
+                          <TableRow>
+                            <TableCell sx={{ width: 50 }}></TableCell>
+                            <TableCell>Produto</TableCell>
+                            <TableCell align="center" sx={{ width: 150 }}>Per Capita</TableCell>
+                            <TableCell align="center" sx={{ width: 120 }}>Unidade</TableCell>
+                            <TableCell align="center" sx={{ width: 100 }}>Ações</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          <SortableContext
+                            items={paginatedAssociacoes.map(a => a.id)}
+                            strategy={verticalListSortingStrategy}
+                          >
+                            {paginatedAssociacoes.map((assoc) => (
+                              <SortableRow
+                                key={assoc.id}
+                                assoc={assoc}
+                                onRemove={() => removerProduto(assoc.id)}
+                                onPerCapitaChange={(value) => atualizarPerCapita(assoc.id, value)}
+                                onTipoMedidaChange={(value) => atualizarTipoMedida(assoc.id, value)}
+                              />
+                            ))}
+                          </SortableContext>
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </DndContext>
+                  <CompactPagination
+                    count={associacoes.length}
+                    page={page}
+                    onPageChange={(e, newPage) => setPage(newPage)}
+                    rowsPerPage={rowsPerPage}
+                    onRowsPerPageChange={(e) => {
+                      setRowsPerPage(parseInt(e.target.value, 10));
+                      setPage(0);
+                    }}
+                    rowsPerPageOptions={[10, 25, 50]}
+                  />
+                </Box>
               )}
-              sx={{ flex: 1 }}
-              noOptionsText="Nenhum produto disponível"
-            />
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={adicionarProduto}
-              disabled={!selectedProduto}
-              size="small"
-              sx={{ bgcolor: '#059669', '&:hover': { bgcolor: '#047857' }, whiteSpace: 'nowrap' }}
-            >
-              Adicionar
-            </Button>
-          </Box>
-        </Card>
-
-        {/* Tabela de Produtos */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 2, px: 1 }}>
-          <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 500 }}>
-            Exibindo {associacoes.length} {associacoes.length === 1 ? 'produto' : 'produtos'}
-          </Typography>
-        </Box>
-
-        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          {associacoes.length === 0 ? (
-            <Box textAlign="center" py={8}>
-              <RestaurantIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-              <Typography variant="h6" color="text.secondary">
-                Nenhum produto adicionado
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                Use o campo acima para adicionar produtos à refeição
-              </Typography>
             </Box>
-          ) : (
-            <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', width: '100%', overflow: 'hidden' }}>
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-              >
-                <TableContainer sx={{ flex: 1, minHeight: 0 }}>
-                  <Table stickyHeader>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell sx={{ width: 50 }}></TableCell>
-                        <TableCell>Produto</TableCell>
-                        <TableCell align="center" sx={{ width: 150 }}>Per Capita</TableCell>
-                        <TableCell align="center" sx={{ width: 120 }}>Unidade</TableCell>
-                        <TableCell align="center" sx={{ width: 100 }}>Ações</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      <SortableContext
-                        items={paginatedAssociacoes.map(a => a.id)}
-                        strategy={verticalListSortingStrategy}
-                      >
-                        {paginatedAssociacoes.map((assoc) => (
-                          <SortableRow
-                            key={assoc.id}
-                            assoc={assoc}
-                            onRemove={() => removerProduto(assoc.id)}
-                            onPerCapitaChange={(value) => atualizarPerCapita(assoc.id, value)}
-                            onTipoMedidaChange={(value) => atualizarTipoMedida(assoc.id, value)}
-                          />
-                        ))}
-                      </SortableContext>
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </DndContext>
-              <CompactPagination
-                count={associacoes.length}
-                page={page}
-                onPageChange={(e, newPage) => setPage(newPage)}
-                rowsPerPage={rowsPerPage}
-                onRowsPerPageChange={(e) => {
-                  setRowsPerPage(parseInt(e.target.value, 10));
-                  setPage(0);
-                }}
-                rowsPerPageOptions={[10, 25, 50]}
-              />
-            </Box>
-          )}
-        </Box>
+          </>
+        )}
+
+        {/* Tab 1: Ficha Técnica */}
+        {tabAtiva === 1 && (
+          <Card sx={{ borderRadius: '12px', p: 3 }}>
+            {editando ? (
+              <Grid container spacing={3}>
+                <Grid item xs={12}>
+                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                    Informações Gerais
+                  </Typography>
+                </Grid>
+                
+                <Grid item xs={12} md={6}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Categoria</InputLabel>
+                    <Select
+                      value={form.categoria || ''}
+                      onChange={(e) => setForm({ ...form, categoria: e.target.value })}
+                      label="Categoria"
+                    >
+                      <MenuItem value="Prato Principal">Prato Principal</MenuItem>
+                      <MenuItem value="Acompanhamento">Acompanhamento</MenuItem>
+                      <MenuItem value="Sobremesa">Sobremesa</MenuItem>
+                      <MenuItem value="Lanche">Lanche</MenuItem>
+                      <MenuItem value="Bebida">Bebida</MenuItem>
+                      <MenuItem value="Salada">Salada</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12} md={3}>
+                  <TextField
+                    label="Tempo de Preparo (min)"
+                    type="number"
+                    fullWidth
+                    size="small"
+                    value={form.tempo_preparo_minutos || ''}
+                    onChange={(e) => setForm({ ...form, tempo_preparo_minutos: e.target.value })}
+                    InputProps={{ inputProps: { min: 0 } }}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={3}>
+                  <TextField
+                    label="Rendimento (porções)"
+                    type="number"
+                    fullWidth
+                    size="small"
+                    value={form.rendimento_porcoes || ''}
+                    onChange={(e) => setForm({ ...form, rendimento_porcoes: e.target.value })}
+                    InputProps={{ inputProps: { min: 1 } }}
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <TextField
+                    label="Modo de Preparo"
+                    fullWidth
+                    multiline
+                    rows={6}
+                    size="small"
+                    value={form.modo_preparo || ''}
+                    onChange={(e) => setForm({ ...form, modo_preparo: e.target.value })}
+                    placeholder="Descreva o passo a passo do preparo..."
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <TextField
+                    label="Utensílios Necessários"
+                    fullWidth
+                    multiline
+                    rows={2}
+                    size="small"
+                    value={form.utensílios || ''}
+                    onChange={(e) => setForm({ ...form, utensílios: e.target.value })}
+                    placeholder="Ex: Panela grande, colher de pau, escorredor..."
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Divider sx={{ my: 1 }} />
+                  <Typography variant="h6" sx={{ mb: 2, mt: 2, fontWeight: 600 }}>
+                    Informação Nutricional (por porção)
+                  </Typography>
+                </Grid>
+
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    label="Calorias (kcal)"
+                    type="number"
+                    fullWidth
+                    size="small"
+                    value={form.calorias_por_porcao || ''}
+                    onChange={(e) => setForm({ ...form, calorias_por_porcao: e.target.value })}
+                    InputProps={{ inputProps: { min: 0, step: 0.01 } }}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    label="Proteínas (g)"
+                    type="number"
+                    fullWidth
+                    size="small"
+                    value={form.proteinas_g || ''}
+                    onChange={(e) => setForm({ ...form, proteinas_g: e.target.value })}
+                    InputProps={{ inputProps: { min: 0, step: 0.01 } }}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    label="Carboidratos (g)"
+                    type="number"
+                    fullWidth
+                    size="small"
+                    value={form.carboidratos_g || ''}
+                    onChange={(e) => setForm({ ...form, carboidratos_g: e.target.value })}
+                    InputProps={{ inputProps: { min: 0, step: 0.01 } }}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    label="Lipídios/Gorduras (g)"
+                    type="number"
+                    fullWidth
+                    size="small"
+                    value={form.lipidios_g || ''}
+                    onChange={(e) => setForm({ ...form, lipidios_g: e.target.value })}
+                    InputProps={{ inputProps: { min: 0, step: 0.01 } }}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    label="Fibras (g)"
+                    type="number"
+                    fullWidth
+                    size="small"
+                    value={form.fibras_g || ''}
+                    onChange={(e) => setForm({ ...form, fibras_g: e.target.value })}
+                    InputProps={{ inputProps: { min: 0, step: 0.01 } }}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    label="Sódio (mg)"
+                    type="number"
+                    fullWidth
+                    size="small"
+                    value={form.sodio_mg || ''}
+                    onChange={(e) => setForm({ ...form, sodio_mg: e.target.value })}
+                    InputProps={{ inputProps: { min: 0, step: 0.01 } }}
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Divider sx={{ my: 1 }} />
+                  <Typography variant="h6" sx={{ mb: 2, mt: 2, fontWeight: 600 }}>
+                    Custo e Observações
+                  </Typography>
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    label="Custo por Porção (R$)"
+                    type="number"
+                    fullWidth
+                    size="small"
+                    value={form.custo_por_porcao || ''}
+                    onChange={(e) => setForm({ ...form, custo_por_porcao: e.target.value })}
+                    InputProps={{ inputProps: { min: 0, step: 0.01 } }}
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <TextField
+                    label="Observações Técnicas"
+                    fullWidth
+                    multiline
+                    rows={3}
+                    size="small"
+                    value={form.observacoes_tecnicas || ''}
+                    onChange={(e) => setForm({ ...form, observacoes_tecnicas: e.target.value })}
+                    placeholder="Observações do nutricionista sobre a preparação..."
+                  />
+                </Grid>
+              </Grid>
+            ) : (
+              <Grid container spacing={3}>
+                <Grid item xs={12}>
+                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                    Informações Gerais
+                  </Typography>
+                </Grid>
+
+                {refeicao.categoria && (
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="body2" color="text.secondary">Categoria</Typography>
+                    <Chip label={refeicao.categoria} size="small" color="primary" sx={{ mt: 0.5 }} />
+                  </Grid>
+                )}
+
+                {refeicao.tempo_preparo_minutos && (
+                  <Grid item xs={12} md={3}>
+                    <Typography variant="body2" color="text.secondary">Tempo de Preparo</Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
+                      <TimerIcon fontSize="small" color="action" />
+                      <Typography variant="body1">{refeicao.tempo_preparo_minutos} minutos</Typography>
+                    </Box>
+                  </Grid>
+                )}
+
+                {refeicao.rendimento_porcoes && (
+                  <Grid item xs={12} md={3}>
+                    <Typography variant="body2" color="text.secondary">Rendimento</Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
+                      <LocalDiningIcon fontSize="small" color="action" />
+                      <Typography variant="body1">{refeicao.rendimento_porcoes} porções</Typography>
+                    </Box>
+                  </Grid>
+                )}
+
+                {refeicao.modo_preparo && (
+                  <Grid item xs={12}>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Modo de Preparo</Typography>
+                    <Typography variant="body1" sx={{ whiteSpace: 'pre-line', bgcolor: '#f5f5f5', p: 2, borderRadius: 1 }}>
+                      {refeicao.modo_preparo}
+                    </Typography>
+                  </Grid>
+                )}
+
+                {refeicao.utensílios && (
+                  <Grid item xs={12}>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Utensílios Necessários</Typography>
+                    <Typography variant="body1">{refeicao.utensílios}</Typography>
+                  </Grid>
+                )}
+
+                {(refeicao.calorias_por_porcao || refeicao.proteinas_g || refeicao.carboidratos_g) && (
+                  <>
+                    <Grid item xs={12}>
+                      <Divider sx={{ my: 1 }} />
+                      <Typography variant="h6" sx={{ mb: 2, mt: 2, fontWeight: 600 }}>
+                        Informação Nutricional (por porção)
+                      </Typography>
+                    </Grid>
+
+                    {refeicao.calorias_por_porcao && (
+                      <Grid item xs={6} md={2}>
+                        <Typography variant="body2" color="text.secondary">Calorias</Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 600 }}>{refeicao.calorias_por_porcao} kcal</Typography>
+                      </Grid>
+                    )}
+
+                    {refeicao.proteinas_g && (
+                      <Grid item xs={6} md={2}>
+                        <Typography variant="body2" color="text.secondary">Proteínas</Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 600 }}>{refeicao.proteinas_g}g</Typography>
+                      </Grid>
+                    )}
+
+                    {refeicao.carboidratos_g && (
+                      <Grid item xs={6} md={2}>
+                        <Typography variant="body2" color="text.secondary">Carboidratos</Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 600 }}>{refeicao.carboidratos_g}g</Typography>
+                      </Grid>
+                    )}
+
+                    {refeicao.lipidios_g && (
+                      <Grid item xs={6} md={2}>
+                        <Typography variant="body2" color="text.secondary">Lipídios</Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 600 }}>{refeicao.lipidios_g}g</Typography>
+                      </Grid>
+                    )}
+
+                    {refeicao.fibras_g && (
+                      <Grid item xs={6} md={2}>
+                        <Typography variant="body2" color="text.secondary">Fibras</Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 600 }}>{refeicao.fibras_g}g</Typography>
+                      </Grid>
+                    )}
+
+                    {refeicao.sodio_mg && (
+                      <Grid item xs={6} md={2}>
+                        <Typography variant="body2" color="text.secondary">Sódio</Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 600 }}>{refeicao.sodio_mg}mg</Typography>
+                      </Grid>
+                    )}
+                  </>
+                )}
+
+                {(refeicao.custo_por_porcao || refeicao.observacoes_tecnicas) && (
+                  <>
+                    <Grid item xs={12}>
+                      <Divider sx={{ my: 1 }} />
+                      <Typography variant="h6" sx={{ mb: 2, mt: 2, fontWeight: 600 }}>
+                        Custo e Observações
+                      </Typography>
+                    </Grid>
+
+                    {refeicao.custo_por_porcao && (
+                      <Grid item xs={12} md={6}>
+                        <Typography variant="body2" color="text.secondary">Custo por Porção</Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 600, color: 'success.main' }}>
+                          R$ {parseFloat(refeicao.custo_por_porcao).toFixed(2)}
+                        </Typography>
+                      </Grid>
+                    )}
+
+                    {refeicao.observacoes_tecnicas && (
+                      <Grid item xs={12}>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Observações Técnicas</Typography>
+                        <Typography variant="body1" sx={{ whiteSpace: 'pre-line', bgcolor: '#f5f5f5', p: 2, borderRadius: 1 }}>
+                          {refeicao.observacoes_tecnicas}
+                        </Typography>
+                      </Grid>
+                    )}
+                  </>
+                )}
+
+                {!refeicao.categoria && !refeicao.modo_preparo && !refeicao.calorias_por_porcao && (
+                  <Grid item xs={12}>
+                    <Box textAlign="center" py={6}>
+                      <DescriptionIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
+                      <Typography variant="h6" color="text.secondary">
+                        Ficha técnica não preenchida
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        Clique em "Editar" para adicionar informações da ficha técnica
+                      </Typography>
+                    </Box>
+                  </Grid>
+                )}
+              </Grid>
+            )}
+          </Card>
+        )}
       </PageContainer>
 
       {/* Modal de confirmação de exclusão */}

@@ -10,10 +10,18 @@ export async function listarRefeicoes(req: Request, res: Response) {
         r.nome,
         r.descricao,
         r.tipo,
+        r.categoria,
         r.ativo,
+        r.tempo_preparo_minutos,
+        r.rendimento_porcoes,
+        r.calorias_por_porcao,
+        r.custo_por_porcao,
         r.created_at,
-        r.updated_at
+        r.updated_at,
+        COUNT(rp.id) as total_produtos
       FROM refeicoes r
+      LEFT JOIN refeicao_produtos rp ON r.id = rp.refeicao_id
+      GROUP BY r.id
       ORDER BY r.nome
     `);
 
@@ -38,13 +46,7 @@ export async function buscarRefeicao(req: Request, res: Response) {
 
     const result = await db.query(`
       SELECT 
-        r.id,
-        r.nome,
-        r.descricao,
-        r.tipo,
-        r.ativo,
-        r.created_at,
-        r.updated_at
+        r.*
       FROM refeicoes r
       WHERE r.id = $1
     `, [id]);
@@ -76,14 +78,37 @@ export async function criarRefeicao(req: Request, res: Response) {
       nome,
       descricao,
       tipo,
+      categoria,
+      modo_preparo,
+      tempo_preparo_minutos,
+      rendimento_porcoes,
+      utensílios,
+      calorias_por_porcao,
+      proteinas_g,
+      carboidratos_g,
+      lipidios_g,
+      fibras_g,
+      sodio_mg,
+      custo_por_porcao,
+      observacoes_tecnicas,
       ativo = true
     } = req.body;
 
     const result = await db.query(`
-      INSERT INTO refeicoes (nome, descricao, tipo, ativo, created_at)
-      VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+      INSERT INTO refeicoes (
+        nome, descricao, tipo, categoria, modo_preparo, tempo_preparo_minutos,
+        rendimento_porcoes, utensílios, calorias_por_porcao, proteinas_g,
+        carboidratos_g, lipidios_g, fibras_g, sodio_mg, custo_por_porcao,
+        observacoes_tecnicas, ativo, created_at
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, CURRENT_TIMESTAMP)
       RETURNING *
-    `, [nome, descricao, tipo, ativo]);
+    `, [
+      nome, descricao, tipo, categoria, modo_preparo, tempo_preparo_minutos,
+      rendimento_porcoes, utensílios, calorias_por_porcao, proteinas_g,
+      carboidratos_g, lipidios_g, fibras_g, sodio_mg, custo_por_porcao,
+      observacoes_tecnicas, ativo
+    ]);
 
     res.json({
       success: true,
@@ -107,19 +132,50 @@ export async function editarRefeicao(req: Request, res: Response) {
       nome,
       descricao,
       tipo,
+      categoria,
+      modo_preparo,
+      tempo_preparo_minutos,
+      rendimento_porcoes,
+      utensílios,
+      calorias_por_porcao,
+      proteinas_g,
+      carboidratos_g,
+      lipidios_g,
+      fibras_g,
+      sodio_mg,
+      custo_por_porcao,
+      observacoes_tecnicas,
       ativo
     } = req.body;
 
     const result = await db.query(`
       UPDATE refeicoes SET
-        nome = $1,
-        descricao = $2,
-        tipo = $3,
-        ativo = $4,
+        nome = COALESCE($1, nome),
+        descricao = COALESCE($2, descricao),
+        tipo = COALESCE($3, tipo),
+        categoria = COALESCE($4, categoria),
+        modo_preparo = $5,
+        tempo_preparo_minutos = $6,
+        rendimento_porcoes = $7,
+        utensílios = $8,
+        calorias_por_porcao = $9,
+        proteinas_g = $10,
+        carboidratos_g = $11,
+        lipidios_g = $12,
+        fibras_g = $13,
+        sodio_mg = $14,
+        custo_por_porcao = $15,
+        observacoes_tecnicas = $16,
+        ativo = COALESCE($17, ativo),
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $5
+      WHERE id = $18
       RETURNING *
-    `, [nome, descricao, tipo, ativo, id]);
+    `, [
+      nome, descricao, tipo, categoria, modo_preparo, tempo_preparo_minutos,
+      rendimento_porcoes, utensílios, calorias_por_porcao, proteinas_g,
+      carboidratos_g, lipidios_g, fibras_g, sodio_mg, custo_por_porcao,
+      observacoes_tecnicas, ativo, id
+    ]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({

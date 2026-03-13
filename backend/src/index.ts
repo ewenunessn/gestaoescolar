@@ -43,6 +43,7 @@ import demandasRoutes from "./modules/demandas/routes/demandaRoutes";
 import recebimentoRoutes from "./modules/recebimentos/routes/recebimentoRoutes";
 import instituicaoRoutes from "./routes/instituicao";
 import pnaeRoutes from "./routes/pnaeRoutes";
+import nutricionistaRoutes from "./routes/nutricionistaRoutes";
 
 import { createServer } from 'http';
 import { initializeRedisCache } from "./config/redis";
@@ -259,6 +260,7 @@ app.use("/api/contrato-produtos", contratoProdutoRoutes);
 app.use("/api/refeicoes", refeicaoRoutes);
 app.use("/api/refeicao-produtos", refeicaoProdutoRoutes);
 app.use("/api/cardapios", cardapioRoutes);
+app.use("/api/nutricionistas", nutricionistaRoutes);
 // app.use("/api/demandas", demandaRoutes); // REMOVIDO - rota duplicada, usar demandasRoutes
 app.use("/api/produtos", longCache, produtoRoutes);
 app.use("/api/produto-modalidades", produtoModalidadeRoutes);
