@@ -333,8 +333,8 @@ export default function PedidoDetalhe() {
         {/* Cabeçalho */}
       <Box sx={{ 
         flexShrink: 0, 
-        px: 3, 
-        py: 2.5, 
+        px: 2, 
+        py: 1, 
         bgcolor: 'white',
         borderBottom: '1px solid #e9ecef'
       }}>
@@ -344,19 +344,19 @@ export default function PedidoDetalhe() {
             { label: `Compra ${pedido.numero}` }
           ]}
         />
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 1.5 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Typography variant="h5" sx={{ fontWeight: 600, color: '#212529' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 0.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#212529' }}>
               Compra {pedido.numero}
             </Typography>
             {getStatusChip(pedido.status)}
-            <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
               {formatarMoeda(pedido.valor_total)}
             </Typography>
           </Box>
-          <Box sx={{ display: 'flex', gap: 1.5 }}>
+          <Box sx={{ display: 'flex', gap: 1 }}>
             {podeAlterarStatus && (
-              <FormControl size="small" sx={{ minWidth: 140 }}>
+              <FormControl size="small" sx={{ minWidth: 120 }}>
                 <InputLabel>Status</InputLabel>
                 <Select
                   value={pedido.status}
@@ -373,6 +373,7 @@ export default function PedidoDetalhe() {
               </FormControl>
             )}
             <Button
+              size="small"
               variant="contained"
               color="primary"
               startIcon={<ReceiptIcon />}
@@ -384,25 +385,19 @@ export default function PedidoDetalhe() {
             </Button>
             {podeEditar && (
               <Button
+                size="small"
                 variant="outlined"
                 startIcon={<EditIcon />}
                 onClick={() => navigate(`/compras/${pedido.id}/editar`)}
                 disabled={processando}
-                sx={{ 
-                  textTransform: 'none',
-                  borderColor: '#dee2e6',
-                  color: '#495057',
-                  '&:hover': {
-                    borderColor: '#adb5bd',
-                    bgcolor: '#f8f9fa'
-                  }
-                }}
+                sx={{ textTransform: 'none', borderColor: '#dee2e6', color: '#495057' }}
               >
                 Editar
               </Button>
             )}
             {podeExcluir && (
               <Button
+                size="small"
                 variant="outlined"
                 color="error"
                 startIcon={<CancelIcon />}
@@ -417,53 +412,30 @@ export default function PedidoDetalhe() {
         </Box>
 
         {/* Informações em linha */}
-        <Box sx={{ display: 'flex', gap: 3, alignItems: 'center', mt: 2 }}>
-          <Box>
-            <Typography variant="caption" sx={{ color: '#6c757d' }}>Número</Typography>
-            <Typography variant="body2" sx={{ fontWeight: 600, color: '#212529' }}>{pedido.numero}</Typography>
-          </Box>
-          <Box>
-            <Typography variant="caption" sx={{ color: '#6c757d' }}>Data</Typography>
-            <Typography variant="body2" sx={{ color: '#212529' }}>{formatarData(pedido.data_pedido)}</Typography>
-          </Box>
-          <Box>
-            <Typography variant="caption" sx={{ color: '#6c757d' }}>Criado por</Typography>
-            <Typography variant="body2" sx={{ color: '#212529' }}>{pedido.usuario_criacao_nome}</Typography>
-          </Box>
-          {pedido.usuario_aprovacao_nome && (
-            <Box>
-              <Typography variant="caption" sx={{ color: '#6c757d' }}>Aprovado por</Typography>
-              <Typography variant="body2" sx={{ color: '#212529' }}>{pedido.usuario_aprovacao_nome}</Typography>
-            </Box>
-          )}
-          <Box>
-            <Typography variant="caption" sx={{ color: '#6c757d' }}>Fornecedores</Typography>
-            <Typography variant="body2" sx={{ fontWeight: 600, color: '#212529' }}>
-              {Array.from(new Set(pedido.itens.map(item => item.fornecedor_nome))).length}
-            </Typography>
-          </Box>
-          <Box>
-            <Typography variant="caption" sx={{ color: '#6c757d' }}>Itens</Typography>
-            <Typography variant="body2" sx={{ fontWeight: 600, color: '#212529' }}>{pedido.itens.length}</Typography>
-          </Box>
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mt: 0.5, flexWrap: 'wrap' }}>
+          <Typography variant="caption" sx={{ color: '#6c757d' }}>
+            <strong>{pedido.numero}</strong> · {formatarData(pedido.data_pedido)} · {pedido.usuario_criacao_nome}
+            {pedido.usuario_aprovacao_nome && ` · Aprovado: ${pedido.usuario_aprovacao_nome}`}
+            {' · '}{Array.from(new Set(pedido.itens.map(i => i.fornecedor_nome))).length} fornecedor(es)
+            {' · '}{pedido.itens.length} {pedido.itens.length === 1 ? 'item' : 'itens'}
+          </Typography>
         </Box>
 
         {pedido.observacoes && (
-          <Alert severity="info" sx={{ mt: 2 }}>
-            <Typography variant="caption" sx={{ color: '#6c757d' }}>Observações</Typography>
-            <Typography variant="body2" sx={{ color: '#212529' }}>{pedido.observacoes}</Typography>
+          <Alert severity="info" sx={{ mt: 0.75, py: 0.25, '& .MuiAlert-message': { py: 0.25 } }}>
+            <Typography variant="caption">{pedido.observacoes}</Typography>
           </Alert>
         )}
 
         {erro && (
-          <Alert severity="error" sx={{ mt: 2 }} onClose={() => setErro('')}>
+          <Alert severity="error" sx={{ mt: 0.75 }} onClose={() => setErro('')}>
             {erro}
           </Alert>
         )}
       </Box>
 
       {/* Tabela de Itens */}
-      <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+      <Typography variant="body2" sx={{ fontWeight: 600, mb: 1, mt: 1.5 }}>
         Itens da Compra
       </Typography>
       
@@ -477,8 +449,8 @@ export default function PedidoDetalhe() {
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center', 
-          px: 3,
-          py: 2,
+          px: 2,
+          py: 1,
           borderBottom: '1px solid #e9ecef'
         }}>
           <Typography variant="body2" sx={{ color: '#6c757d', fontSize: '0.875rem' }}>
