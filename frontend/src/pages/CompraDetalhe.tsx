@@ -45,7 +45,10 @@ import {
   Receipt as ReceiptIcon,
   Comment as CommentIcon,
   CalendarMonth as CalendarIcon,
+  MergeType as MergeIcon,
 } from '@mui/icons-material';
+import Checkbox from '@mui/material/Checkbox';
+import { apiWithRetry } from '../services/api';
 import pedidosService from '../services/pedidos';
 import faturamentoService from '../services/faturamento';
 import ProgramacaoEntregaDialog from '../components/ProgramacaoEntregaDialog';
@@ -89,7 +92,43 @@ export default function PedidoDetalhe() {
     open: boolean; itemId: number; produtoNome: string; unidade: string;
   }>({ open: false, itemId: 0, produtoNome: '', unidade: '' });
 
+  // Estado para mesclar itens
+  const [itensSelecionados, setItensSelecionados] = useState<Set<number>>(new Set());
+  const [mesclando, setMesclando] = useState(false);
+
   const obsPopoverOpen = Boolean(obsAnchorEl);
+
+  const toggleSelecao = (itemId: number) => {
+    setItensSelecionados(prev => {
+      const next = new Set(prev);
+      if (next.has(itemId)) next.delete(itemId);
+      else next.add(itemId);
+      return next;
+    });
+  };
+
+  const itensMesclaveis = pedido
+    ? (() => {
+        if (itensSelecionados.size < 2) return false;
+        const selecionados = pedido.itens.filter(i => itensSelecionados.has(i.id!));
+        const produtoIds = new Set(selecionados.map(i => i.produto_id));
+        return produtoIds.size === 1;
+      })()
+    : false;
+
+  const handleMesclar = async () => {
+    if (!itensMesclaveis) return;
+    try {
+      setMesclando(true);
+      await apiWithRetry.post('/compras/itens/mesclar', { item_ids: Array.from(itensSelecionados) });
+      setItensSelecionados(new Set());
+      await carregarPedido();
+    } catch (error: any) {
+      setErro(error.response?.data?.message || 'Erro ao mesclar itens');
+    } finally {
+      setMesclando(false);
+    }
+  };
 
   const abrirObservacoes = (event: React.MouseEvent<HTMLButtonElement>, item: any) => {
     setObsAnchorEl(event.currentTarget);
@@ -445,15 +484,34 @@ export default function PedidoDetalhe() {
           <Typography variant="body2" sx={{ color: '#6c757d', fontSize: '0.875rem' }}>
             {pedido.itens.length} {pedido.itens.length === 1 ? 'item' : 'itens'}
           </Typography>
-          <Typography variant="body1" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-            {formatarMoeda(pedido.valor_total)}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            {itensSelecionados.size >= 2 && (
+              <Button
+                size="small"
+                variant="contained"
+                color="warning"
+                startIcon={<MergeIcon />}
+                onClick={handleMesclar}
+                disabled={mesclando || !itensMesclaveis}
+                sx={{ textTransform: 'none' }}
+              >
+                {mesclando ? 'Mesclando...' : `Mesclar (${itensSelecionados.size})`}
+              </Button>
+            )}
+            {itensSelecionados.size >= 2 && !itensMesclaveis && (
+              <Typography variant="caption" color="error">Selecione itens do mesmo produto</Typography>
+            )}
+            <Typography variant="body1" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+              {formatarMoeda(pedido.valor_total)}
+            </Typography>
+          </Box>
         </Box>
 
         <TableContainer sx={{ maxHeight: 'calc(100vh - 400px)' }}>
           <Table stickyHeader>
             <TableHead>
               <TableRow>
+                <TableCell padding="checkbox" />
                 <TableCell>Produto</TableCell>
                 <TableCell>Fornecedor</TableCell>
                 <TableCell align="right">Quantidade</TableCell>
@@ -465,8 +523,15 @@ export default function PedidoDetalhe() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {pedido.itens.map((item, index) => (
-                <TableRow key={item.id} hover>
+              {pedido.itens.map((item) => (
+                <TableRow key={item.id} hover selected={itensSelecionados.has(item.id!)}>
+                  <TableCell padding="checkbox">
+                    <Checkbox
+                      size="small"
+                      checked={itensSelecionados.has(item.id!)}
+                      onChange={() => toggleSelecao(item.id!)}
+                    />
+                  </TableCell>
                   <TableCell>
                     <Typography variant="body2" sx={{ fontWeight: 500 }}>
                       {item.produto_nome}
