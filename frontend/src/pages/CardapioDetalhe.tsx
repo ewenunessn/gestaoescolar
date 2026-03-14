@@ -21,6 +21,7 @@ import {
 } from "../services/cardapios";
 import { listarRefeicoes } from "../services/refeicoes";
 import { formatDateForInput } from "../utils/dateUtils";
+import { toNum } from "../utils/formatters";
 import {
   Typography,
   Paper,
@@ -1164,12 +1165,12 @@ export default function CardapioDetalhe() {
                         <TableCell align="right">{produto.per_capita}</TableCell>
                         <TableCell align="right">
                           {produto.unidade === 'unidade' 
-                            ? `${(modalDetalheCusto.total_alunos_modalidade * produto.per_capita).toFixed(3)} ${produto.unidade}`
-                            : `${(modalDetalheCusto.total_alunos_modalidade * produto.per_capita / 1000).toFixed(3)} kg`
+                            ? `${(toNum(modalDetalheCusto.total_alunos_modalidade) * toNum(produto.per_capita)).toFixed(3)} ${produto.unidade}`
+                            : `${(toNum(modalDetalheCusto.total_alunos_modalidade) * toNum(produto.per_capita) / 1000).toFixed(3)} kg`
                           }
                         </TableCell>
-                        <TableCell align="right">R$ {produto.preco_unitario?.toFixed(2)}</TableCell>
-                        <TableCell align="right">R$ {produto.custo_por_aluno_produto?.toFixed(2)}</TableCell>
+                        <TableCell align="right">R$ {toNum(produto.preco_unitario).toFixed(2)}</TableCell>
+                        <TableCell align="right">R$ {toNum(produto.custo_por_aluno_produto).toFixed(2)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -1179,7 +1180,7 @@ export default function CardapioDetalhe() {
                 
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Typography variant="body1">
-                    <strong>Custo por Aluno:</strong> R$ {modalDetalheCusto.custo_por_aluno?.toFixed(2)}
+                    <strong>Custo por Aluno:</strong> R$ {toNum(modalDetalheCusto.custo_por_aluno).toFixed(2)}
                   </Typography>
                   <Typography variant="body1">
                     <strong>Frequência Mensal:</strong> {modalDetalheCusto.frequencia_mensal}x
@@ -1188,7 +1189,7 @@ export default function CardapioDetalhe() {
                 
                 <Box sx={{ mt: 2, p: 2, bgcolor: 'primary.light', borderRadius: 1 }}>
                   <Typography variant="h6" color="primary.contrastText" align="center">
-                    <strong>Custo Total da Refeição: R$ {modalDetalheCusto.custo_total_refeicao?.toFixed(2)}</strong>
+                    <strong>Custo Total da Refeição: R$ {toNum(modalDetalheCusto.custo_total_refeicao).toFixed(2)}</strong>
                   </Typography>
                   <Typography variant="caption" color="primary.contrastText" align="center" display="block">
                     (Custo por aluno × Total de alunos × Frequência mensal)

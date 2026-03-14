@@ -31,6 +31,7 @@ import {
     Visibility,
 } from '@mui/icons-material';
 import { consistenciaService } from '../services/consistenciaService';
+import { toNum } from '../utils/formatters';
 
 interface DashboardData {
     resumo_geral: {
@@ -197,7 +198,7 @@ const DashboardConsistencia: React.FC = () => {
                                 <Typography variant="h6" sx={{ ml: 1 }}>Consistência</Typography>
                             </Box>
                             <Typography variant="h3" color={`${getStatusColor(dashboardData.resumo_geral.percentual_consistencia)}.main`}>
-                                {dashboardData.resumo_geral.percentual_consistencia.toFixed(1)}%
+                                {toNum(dashboardData.resumo_geral.percentual_consistencia).toFixed(1)}%
                             </Typography>
                             <LinearProgress
                                 variant="determinate"
@@ -278,7 +279,7 @@ const DashboardConsistencia: React.FC = () => {
                                         <Box display="flex" alignItems="center">
                                             {getStatusIcon(metrica.percentual_consistencia)}
                                             <Typography variant="body2" sx={{ ml: 1 }}>
-                                                {metrica.percentual_consistencia.toFixed(1)}% consistente
+                                                {toNum(metrica.percentual_consistencia).toFixed(1)}% consistente
                                             </Typography>
                                         </Box>
                                         <LinearProgress
@@ -313,7 +314,7 @@ const DashboardConsistencia: React.FC = () => {
                                 sx={{ mb: 2 }}
                             >
                                 {detalhePedido.resumo.itens_consistentes} de {detalhePedido.resumo.total_itens} itens consistentes
-                                ({detalhePedido.resumo.percentual_consistencia.toFixed(1)}%)
+                                ({toNum(detalhePedido.resumo.percentual_consistencia).toFixed(1)}%)
                             </Alert>
 
                             <TableContainer component={Paper}>

@@ -20,24 +20,19 @@ import {
 } from '../services/produtos';
 import { useAtualizarProduto } from '../hooks/queries/useProdutoQueries';
 import PageBreadcrumbs from '../components/PageBreadcrumbs';
+import { toNum } from '../utils/formatters';
 
 // --- Constantes ---
 const composicaoVazia = {
   produto_id: 0,
-  calorias: "",
   proteinas: "",
-  carboidratos: "",
   gorduras: "",
-  fibras: "",
-  sodio: "",
-  acucares: "",
-  gorduras_saturadas_g: "",
-  gorduras_trans_g: "",
-  colesterol: "",
+  carboidratos: "",
   calcio: "",
   ferro: "",
+  vitamina_a: "",
   vitamina_c: "",
-  vitamina_a: ""
+  sodio: ""
 };
 
 // --- Subcomponentes de UI ---
@@ -79,13 +74,13 @@ const ComposicaoNutricionalCard = ({ composicaoData, onSave, isSaving }) => {
     };
 
     const campos = [
-        { key: 'calorias', label: 'Valor energético', unit: 'kcal' }, 
-        { key: 'carboidratos', label: 'Carboidratos', unit: 'g' },
         { key: 'proteinas', label: 'Proteínas', unit: 'g' },
-        { key: 'gorduras', label: 'Gorduras totais', unit: 'g' },
-        { key: 'gorduras_saturadas_g', label: 'Gorduras saturadas', unit: 'g' }, 
-        { key: 'gorduras_trans_g', label: 'Gorduras trans', unit: 'g' },
-        { key: 'fibras', label: 'Fibra alimentar', unit: 'g' }, 
+        { key: 'gorduras', label: 'Lipídios', unit: 'g' },
+        { key: 'carboidratos', label: 'Carboidratos', unit: 'g' },
+        { key: 'calcio', label: 'Cálcio', unit: 'mg' },
+        { key: 'ferro', label: 'Ferro', unit: 'mg' },
+        { key: 'vitamina_a', label: 'Retinol (Vit. A)', unit: 'mcg' },
+        { key: 'vitamina_c', label: 'Vitamina C', unit: 'mg' },
         { key: 'sodio', label: 'Sódio', unit: 'mg' }
     ];
 
@@ -207,6 +202,7 @@ export default function ProdutoDetalhe() {
         categoria: prod.categoria || '',
         tipo_processamento: prod.tipo_processamento || '',
         peso: prod.peso || '',
+        fator_correcao: prod.fator_correcao || 1.0,
         perecivel: prod.perecivel || false,
         ativo: prod.ativo !== undefined ? prod.ativo : true
       });
@@ -247,6 +243,7 @@ export default function ProdutoDetalhe() {
         categoria: form.categoria,
         tipo_processamento: form.tipo_processamento,
         peso: form.peso ? Number(form.peso) : null,
+        fator_correcao: form.fator_correcao ? Number(form.fator_correcao) : 1.0,
         perecivel: form.perecivel,
         ativo: form.ativo
       };
@@ -302,6 +299,7 @@ export default function ProdutoDetalhe() {
       categoria: produto.categoria || '',
       tipo_processamento: produto.tipo_processamento || '',
       peso: produto.peso || '',
+      fator_correcao: produto.fator_correcao || 1.0,
       perecivel: produto.perecivel || false,
       ativo: produto.ativo !== undefined ? produto.ativo : true
     });
@@ -395,6 +393,22 @@ export default function ProdutoDetalhe() {
                             />
                         </Grid>
                         <Grid item xs={12}>
+                            <TextField
+                                label="Fator de Correção"
+                                type="number"
+                                value={form.fator_correcao || 1.0}
+                                onChange={e => {
+                                    const value = e.target.value.replace(',', '.'); // Aceita vírgula e converte para ponto
+                                    const parsed = parseFloat(value);
+                                    setForm({ ...form, fator_correcao: isNaN(parsed) ? 1.0 : parsed });
+                                }}
+                                fullWidth
+                                size="small"
+                                helperText="Fator para calcular per capita líquido. Ex: 1.15 (batata descascada), 2.5 (arroz cru→cozido)"
+                                inputProps={{ min: 1.0, max: 3.0, step: 0.001 }}
+                            />
+                        </Grid>
+                        <Grid item xs={12}>
                             <FormControl fullWidth size="small">
                                 <InputLabel>Tipo de Processamento</InputLabel>
                                 <Select 
@@ -436,6 +450,14 @@ export default function ProdutoDetalhe() {
                         </Grid>
                         <Grid item xs={12}>
                             <InfoItem label="Peso" value={produto.peso ? `${produto.peso}g` : '-'}/>
+                        </Grid>
+                        <Grid item xs={12}>
+                            <InfoItem 
+                                label="Fator de Correção" 
+                                value={produto.fator_correcao 
+                                    ? `${toNum(produto.fator_correcao).toFixed(3)}` 
+                                    : '1.000'}
+                            />
                         </Grid>
                         <Grid item xs={12}>
                             <InfoItem label="Tipo de Processamento" value={produto.tipo_processamento}/>

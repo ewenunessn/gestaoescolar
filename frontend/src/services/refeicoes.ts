@@ -75,14 +75,18 @@ export async function adicionarRefeicaoProduto(refeicaoProduto: CriarRefeicaoPro
 export async function adicionarProdutoNaRefeicao(
   refeicaoId: number,
   produtoId: number,
-  perCapita: number
+  perCapita: number,
+  tipoMedida: 'gramas' | 'unidades' = 'gramas',
+  perCapitaPorModalidade?: Array<{modalidade_id: number, per_capita: number}>
 ): Promise<RefeicaoProduto> {
   const { data } = await apiWithRetry.post(
     `/refeicao-produtos/${refeicaoId}/produtos`,
     {
       refeicao_id: refeicaoId,
       produto_id: produtoId,
-      per_capita: perCapita
+      per_capita: perCapita,
+      tipo_medida: tipoMedida,
+      per_capita_por_modalidade: perCapitaPorModalidade
     }
   );
   return data.data || data; // Handle both new format {success, data} and old format
@@ -100,11 +104,15 @@ export async function editarRefeicaoProduto(id: number, refeicaoProduto: Atualiz
 export async function editarProdutoNaRefeicao(
   id: number, 
   perCapita: number, 
-  tipoMedida?: 'gramas' | 'unidades'
+  tipoMedida?: 'gramas' | 'unidades',
+  perCapitaPorModalidade?: Array<{modalidade_id: number, per_capita: number}>
 ): Promise<RefeicaoProduto> {
   const payload: any = { per_capita: perCapita };
   if (tipoMedida) {
     payload.tipo_medida = tipoMedida;
+  }
+  if (perCapitaPorModalidade) {
+    payload.per_capita_por_modalidade = perCapitaPorModalidade;
   }
   
   const { data } = await apiWithRetry.put(`/refeicao-produtos/produtos/${id}`, payload);

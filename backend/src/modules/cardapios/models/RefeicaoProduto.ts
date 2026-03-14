@@ -9,6 +9,10 @@ export interface RefeicaoProduto {
   tipo_medida: 'gramas' | 'unidades';
   created_at?: Date;
   updated_at?: Date;
+  per_capita_por_modalidade?: Array<{
+    modalidade_id: number;
+    per_capita: number;
+  }>;
 }
 
 // Listar produtos de uma refeição
@@ -25,8 +29,25 @@ export async function getRefeicaoProdutos(
         rp.tipo_medida,
         rp.created_at,
         rp.updated_at,
-        p.nome as produto_nome,
-        p.unidade
+        json_build_object(
+          'id', p.id,
+          'nome', p.nome,
+          'unidade', p.unidade,
+          'fator_correcao', p.fator_correcao,
+          'ativo', p.ativo
+        ) as produto,
+        (
+          SELECT json_agg(
+            json_build_object(
+              'modalidade_id', rpm.modalidade_id,
+              'modalidade_nome', m.nome,
+              'per_capita', rpm.per_capita_ajustado
+            )
+          )
+          FROM refeicao_produto_modalidade rpm
+          INNER JOIN modalidades m ON m.id = rpm.modalidade_id
+          WHERE rpm.refeicao_produto_id = rp.id
+        ) as per_capita_por_modalidade
       FROM refeicao_produtos rp
       LEFT JOIN produtos p ON rp.produto_id = p.id
       WHERE rp.refeicao_id = $1
@@ -45,24 +66,48 @@ export async function getRefeicaoProdutos(
 export async function addRefeicaoProduto(
   data: Omit<RefeicaoProduto, "id" | "created_at" | "updated_at">
 ): Promise<RefeicaoProduto> {
+  const client = await db.pool.connect();
+  
   try {
+    await client.query('BEGIN');
+    
     const query = `
       INSERT INTO refeicao_produtos (refeicao_id, produto_id, per_capita, tipo_medida)
       VALUES ($1, $2, $3, $4)
       RETURNING *
     `;
 
-    const result = await db.query(query, [
+    const result = await client.query(query, [
       data.refeicao_id,
       data.produto_id,
       data.per_capita,
       data.tipo_medida
     ]);
 
-    return result.rows[0];
+    const refeicaoProduto = result.rows[0];
+
+    // Se houver per capita por modalidade, salvar os ajustes
+    if (data.per_capita_por_modalidade && data.per_capita_por_modalidade.length > 0) {
+      for (const ajuste of data.per_capita_por_modalidade) {
+        await client.query(
+          `INSERT INTO refeicao_produto_modalidade 
+            (refeicao_produto_id, modalidade_id, per_capita_ajustado)
+          VALUES ($1, $2, $3)
+          ON CONFLICT (refeicao_produto_id, modalidade_id) 
+          DO UPDATE SET per_capita_ajustado = $3`,
+          [refeicaoProduto.id, ajuste.modalidade_id, ajuste.per_capita]
+        );
+      }
+    }
+
+    await client.query('COMMIT');
+    return refeicaoProduto;
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error("❌ Erro ao adicionar produto à refeição:", error);
     throw error;
+  } finally {
+    client.release();
   }
 }
 
@@ -70,9 +115,14 @@ export async function addRefeicaoProduto(
 export async function updateRefeicaoProduto(
   id: number,
   per_capita: number,
-  tipo_medida?: 'gramas' | 'unidades'
+  tipo_medida?: 'gramas' | 'unidades',
+  per_capita_por_modalidade?: Array<{modalidade_id: number, per_capita: number}>
 ): Promise<RefeicaoProduto | null> {
+  const client = await db.pool.connect();
+  
   try {
+    await client.query('BEGIN');
+    
     let query: string;
     let params: any[];
 
@@ -94,11 +144,41 @@ export async function updateRefeicaoProduto(
       params = [per_capita, id];
     }
 
-    const result = await db.query(query, params);
-    return result.rows[0] || null;
+    const result = await client.query(query, params);
+    const refeicaoProduto = result.rows[0];
+
+    if (!refeicaoProduto) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+
+    // Se houver per capita por modalidade, atualizar os ajustes
+    if (per_capita_por_modalidade && per_capita_por_modalidade.length > 0) {
+      // Deletar ajustes existentes
+      await client.query(
+        'DELETE FROM refeicao_produto_modalidade WHERE refeicao_produto_id = $1',
+        [id]
+      );
+
+      // Inserir novos ajustes
+      for (const ajuste of per_capita_por_modalidade) {
+        await client.query(
+          `INSERT INTO refeicao_produto_modalidade 
+            (refeicao_produto_id, modalidade_id, per_capita_ajustado)
+          VALUES ($1, $2, $3)`,
+          [id, ajuste.modalidade_id, ajuste.per_capita]
+        );
+      }
+    }
+
+    await client.query('COMMIT');
+    return refeicaoProduto;
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error("❌ Erro ao atualizar produto da refeição:", error);
     throw error;
+  } finally {
+    client.release();
   }
 }
 

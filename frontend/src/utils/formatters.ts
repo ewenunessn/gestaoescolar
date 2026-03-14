@@ -102,3 +102,35 @@ export function formatarDataHora(data: string | Date | null | undefined): string
     return '-';
   }
 }
+
+/**
+ * Converte qualquer valor para number de forma segura.
+ * O PostgreSQL retorna NUMERIC/DECIMAL como string — use esta função antes de .toFixed(), operações aritméticas, etc.
+ * Aceita vírgula como separador decimal.
+ */
+export function toNum(v: any, defaultValue = 0): number {
+  if (v === null || v === undefined || v === '') return defaultValue;
+  const str = typeof v === 'string' ? v.trim().replace(',', '.') : String(v);
+  const n = Number(str);
+  return isNaN(n) || !isFinite(n) ? defaultValue : n;
+}
+
+/**
+ * Converte qualquer valor para number ou null.
+ */
+export function toNumOrNull(v: any): number | null {
+  if (v === null || v === undefined || v === '') return null;
+  const str = typeof v === 'string' ? v.trim().replace(',', '.') : String(v);
+  const n = Number(str);
+  return isNaN(n) || !isFinite(n) ? null : n;
+}
+
+/**
+ * Formata número com casas decimais de forma segura (nunca lança exceção).
+ * Substitui o padrão `value.toFixed(n)` que quebra quando value é string.
+ */
+export function toFixed(v: any, decimals = 2, defaultValue = '0'): string {
+  const n = toNum(v, NaN);
+  if (isNaN(n)) return defaultValue;
+  return n.toFixed(decimals);
+}

@@ -16,9 +16,9 @@ export async function listarRefeicaoProdutos(req: Request, res: Response) {
 // Adicionar produto à refeição
 export async function adicionarRefeicaoProduto(req: Request, res: Response) {
   const refeicao_id = Number(req.params.refeicaoId);
-  const { produto_id, per_capita, tipo_medida = 'gramas' } = req.body;
+  const { produto_id, per_capita, tipo_medida = 'gramas', per_capita_por_modalidade } = req.body;
   
-  if (!produto_id || per_capita == null) {
+  if (!produto_id || (per_capita == null && !per_capita_por_modalidade)) {
     return res
       .status(400)
       .json({ message: "Dados obrigatórios não informados." });
@@ -33,7 +33,7 @@ export async function adicionarRefeicaoProduto(req: Request, res: Response) {
   
   // Validar se o valor está dentro de limites razoáveis
   const limite = tipo_medida === 'unidades' ? 100 : 1000;
-  if (per_capita < 0 || per_capita > limite) {
+  if (per_capita != null && (per_capita < 0 || per_capita > limite)) {
     return res.status(400).json({ 
       message: `per_capita deve estar entre 0 e ${limite} ${tipo_medida}.` 
     });
@@ -42,8 +42,9 @@ export async function adicionarRefeicaoProduto(req: Request, res: Response) {
   const novo = await addRefeicaoProduto({
     refeicao_id,
     produto_id,
-    per_capita,
+    per_capita: per_capita || 0, // Usar 0 se for por modalidade
     tipo_medida,
+    per_capita_por_modalidade, // Passar para o model
   });
   res.status(201).json(novo);
 }
@@ -52,7 +53,7 @@ export async function adicionarRefeicaoProduto(req: Request, res: Response) {
 export async function editarRefeicaoProduto(req: Request, res: Response) {
   try {
     const id = Number(req.params.id);
-    const { per_capita, tipo_medida } = req.body;
+    const { per_capita, tipo_medida, per_capita_por_modalidade } = req.body;
   
     if (per_capita == null) {
       return res.status(400).json({ message: "per_capita é obrigatório." });
@@ -73,7 +74,7 @@ export async function editarRefeicaoProduto(req: Request, res: Response) {
       });
     }
     
-    const atualizado = await updateRefeicaoProduto(id, per_capita, tipo_medida);
+    const atualizado = await updateRefeicaoProduto(id, per_capita, tipo_medida, per_capita_por_modalidade);
     if (!atualizado)
       return res.status(404).json({ message: "Associação não encontrada." });
     res.json(atualizado);

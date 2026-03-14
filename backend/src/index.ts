@@ -44,6 +44,7 @@ import recebimentoRoutes from "./modules/recebimentos/routes/recebimentoRoutes";
 import instituicaoRoutes from "./routes/instituicao";
 import pnaeRoutes from "./routes/pnaeRoutes";
 import nutricionistaRoutes from "./routes/nutricionistaRoutes";
+import planejamentoComprasRoutes from "./routes/planejamentoComprasRoutes";
 
 import { createServer } from 'http';
 import { initializeRedisCache } from "./config/redis";
@@ -259,6 +260,8 @@ app.use("/api/contrato-produtos", contratoProdutoRoutes);
 
 app.use("/api/refeicoes", refeicaoRoutes);
 app.use("/api/refeicao-produtos", refeicaoProdutoRoutes);
+app.use("/api/refeicao-produto-modalidade", require("./routes/refeicaoProdutoModalidadeRoutes").default);
+app.use("/api", require("./routes/refeicaoCalculosRoutes").default); // Cálculos automáticos
 app.use("/api/cardapios", cardapioRoutes);
 app.use("/api/nutricionistas", nutricionistaRoutes);
 // app.use("/api/demandas", demandaRoutes); // REMOVIDO - rota duplicada, usar demandasRoutes
@@ -277,6 +280,7 @@ app.use("/api/demandas", demandasRoutes);
 app.use("/api/recebimentos", recebimentoRoutes);
 app.use("/api/instituicao", instituicaoRoutes);
 app.use("/api/pnae", pnaeRoutes);
+app.use("/api/planejamento-compras", planejamentoComprasRoutes);
 
 
 // Rotas de gás removidas

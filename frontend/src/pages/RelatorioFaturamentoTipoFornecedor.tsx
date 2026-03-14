@@ -25,6 +25,7 @@ import PageBreadcrumbs from '../components/PageBreadcrumbs';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import { relatorioTipoFornecedorModalidade } from '../services/faturamentos';
 import { formatarMoeda } from '../utils/dateUtils';
+import { toNum } from '../utils/formatters';
 
 interface RelatorioItem {
   faturamento_id: number;
@@ -218,7 +219,7 @@ export default function RelatorioFaturamentoTipoFornecedor() {
                             <TableRow key={`${item.tipo_fornecedor}-${item.modalidade_id}`} hover>
                               <TableCell>{item.modalidade_nome}</TableCell>
                               <TableCell align="center">{item.total_itens}</TableCell>
-                              <TableCell align="center">{Number(item.quantidade_total).toFixed(0)}</TableCell>
+                              <TableCell align="center">{toNum(item.quantidade_total).toFixed(0)}</TableCell>
                               <TableCell align="right">
                                 <Typography fontWeight="bold" color="success.main">
                                   {formatarMoeda(item.valor_total)}

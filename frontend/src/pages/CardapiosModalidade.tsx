@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import StatusIndicator from '../components/StatusIndicator';
 import PageContainer from '../components/PageContainer';
 import TableFilter, { FilterField } from '../components/TableFilter';
+import { usePageTitle } from '../contexts/PageTitleContext';
 import {
   Box, Button, Card, CardContent, Dialog, DialogTitle, DialogContent, DialogActions,
   FormControl, Grid, IconButton, InputLabel, MenuItem, Select, Table, TableBody,
@@ -24,6 +25,7 @@ import { useNutricionistaQueries } from '../hooks/queries/useNutricionistaQuerie
 import { useNavigate } from 'react-router-dom';
 
 const CardapiosModalidadePage: React.FC = () => {
+  const { setPageTitle } = usePageTitle();
   const [cardapios, setCardapios] = useState<CardapioModalidade[]>([]);
   const [modalidades, setModalidades] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -66,6 +68,7 @@ const CardapiosModalidadePage: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    setPageTitle('Cardápios por Modalidade');
     loadData();
   }, []);
 

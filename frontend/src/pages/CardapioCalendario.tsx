@@ -7,6 +7,7 @@ import {
 } from '@mui/material';
 import { ArrowBack as ArrowBackIcon, Delete as DeleteIcon, PictureAsPdf as PdfIcon, MoreVert as MoreIcon, DragIndicator as DragIcon } from '@mui/icons-material';
 import { useNotification } from '../context/NotificationContext';
+import { usePageTitle } from '../contexts/PageTitleContext';
 import PageContainer from '../components/PageContainer';
 import { useInstituicaoForPDF } from '../hooks/useInstituicao';
 import { createPDFHeader, createPDFFooter, getDefaultPDFStyles } from '../utils/pdfUtils';
@@ -39,6 +40,7 @@ const CardapioCalendarioPage: React.FC = () => {
   const { cardapioId } = useParams<{ cardapioId: string }>();
   const navigate = useNavigate();
   const { success, error } = useNotification();
+  const { setPageTitle } = usePageTitle();
   const { fetchInstituicaoForPDF } = useInstituicaoForPDF();
 
   const [cardapio, setCardapio] = useState<CardapioModalidade | null>(null);
@@ -88,6 +90,12 @@ const CardapioCalendarioPage: React.FC = () => {
       setCardapio(cardapioData);
       setRefeicoes(refeicoesData);
       setRefeicoesDisponiveis(refeicoesDisp);
+      
+      // Definir título da página
+      if (cardapioData) {
+        const mesNome = MESES[cardapioData.mes - 1];
+        setPageTitle(`Cardápio ${mesNome}/${cardapioData.ano} - ${cardapioData.modalidade_nome}`);
+      }
     } catch (err) {
       error('Erro ao carregar cardápio');
     }

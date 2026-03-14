@@ -34,6 +34,7 @@ import {
   Settings,
   Description,
   Agriculture,
+  Calculate,
 } from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
 import { logout } from "../services/auth";
@@ -92,6 +93,7 @@ const getMenuConfig = (configModuloSaldo: any) => {
         { text: "Fornecedores", icon: <Business />, path: "/fornecedores" },
         { text: "Contratos", icon: <Assignment />, path: "/contratos" },
         { text: "Compras", icon: <LocalShipping />, path: "/compras" },
+        { text: "Planejamento", icon: <Calculate />, path: "/compras/planejamento" },
         ...saldoItems,
         { text: "Dashboard PNAE", icon: <Agriculture />, path: "/pnae/dashboard" },
       ],

@@ -78,6 +78,7 @@ const RelatorioFaturamentoTipoFornecedor = lazy(() => import("../pages/Relatorio
 const FaturamentoDetalhe = lazy(() => import("../pages/FaturamentoDetalhe"));
 const ComprovantesEntrega = lazy(() => import("../pages/ComprovantesEntrega"));
 const ConfiguracaoInstituicao = lazy(() => import("../pages/ConfiguracaoInstituicao"));
+const PlanejamentoCompras = lazy(() => import("../pages/PlanejamentoCompras"));
 const DashboardPNAE = lazy(() => import("../pages/DashboardPNAE"));
 
 interface AppRouterProps {
@@ -286,6 +287,7 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
 
             {/* Rotas de Compras */}
             <Route path="/compras" element={<LazyRoute><Compras /></LazyRoute>} />
+            <Route path="/compras/planejamento" element={<LazyRoute><PlanejamentoCompras /></LazyRoute>} />
             <Route path="/compras/novo" element={<LazyRoute><CompraForm /></LazyRoute>} />
             <Route path="/compras/:id/editar" element={<LazyRoute><CompraForm /></LazyRoute>} />
             <Route path="/compras/:id" element={<LazyRoute><CompraDetalhe /></LazyRoute>} />

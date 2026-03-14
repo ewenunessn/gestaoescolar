@@ -145,6 +145,7 @@ export const listarProdutos = asyncHandler(async (req: Request, res: Response) =
       p.categoria,
       p.tipo_processamento,
       p.perecivel,
+      p.fator_correcao,
       p.ativo,
       p.created_at
     FROM produtos p
@@ -171,6 +172,7 @@ export const buscarProduto = asyncHandler(async (req: Request, res: Response) =>
       p.categoria,
       p.tipo_processamento,
       p.perecivel,
+      p.fator_correcao,
       p.ativo,
       p.created_at,
       p.updated_at
@@ -196,6 +198,7 @@ export const criarProduto = asyncHandler(async (req: Request, res: Response) => 
     categoria,
     tipo_processamento,
     peso,
+    fator_correcao,
     perecivel = false,
     ativo = true 
   } = req.body;
@@ -211,14 +214,20 @@ export const criarProduto = asyncHandler(async (req: Request, res: Response) => 
 
   // Normalizar unidade (remover espaços extras)
   const unidadeNormalizada = unidade.trim();
-  const pesoNormalizado = peso ? Number(peso) : null;
+  const pesoNormalizado = num(peso);
+  const fatorCorrecaoNormalizado = num(fator_correcao) || 1.0;
+
+  // Validar fator de correção
+  if (fatorCorrecaoNormalizado < 1.0) {
+    throw new ValidationError('Fator de correção deve ser maior ou igual a 1.0');
+  }
 
   try {
     const result = await db.query(`
-      INSERT INTO produtos (nome, unidade, descricao, categoria, tipo_processamento, peso, perecivel, ativo, created_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)
+      INSERT INTO produtos (nome, unidade, descricao, categoria, tipo_processamento, peso, fator_correcao, perecivel, ativo, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
       RETURNING *
-    `, [nome.trim(), unidadeNormalizada, descricao, categoria, tipo_processamento, pesoNormalizado, perecivel, ativo]);
+    `, [nome.trim(), unidadeNormalizada, descricao, categoria, tipo_processamento, pesoNormalizado, fatorCorrecaoNormalizado, perecivel, ativo]);
 
     res.status(201).json({
       success: true,
@@ -239,6 +248,7 @@ export const editarProduto = asyncHandler(async (req: Request, res: Response) =>
     categoria,
     tipo_processamento,
     peso,
+    fator_correcao,
     perecivel,
     ativo 
   } = req.body;
@@ -252,10 +262,19 @@ export const editarProduto = asyncHandler(async (req: Request, res: Response) =>
     throw new ValidationError('Unidade do produto não pode estar vazia');
   }
 
+  // Validar fator de correção se fornecido
+  if (fator_correcao !== undefined) {
+    const fatorNum = num(fator_correcao) || 1.0;
+    if (fatorNum < 1.0) {
+      throw new ValidationError('Fator de correção deve ser maior ou igual a 1.0');
+    }
+  }
+
   // Normalizar valores (aceita qualquer texto, apenas remove espaços extras)
   const nomeNormalizado = nome !== undefined ? nome.trim() : undefined;
   const unidadeNormalizada = unidade !== undefined ? unidade.trim() : undefined;
-  const pesoNormalizado = peso !== undefined ? (peso ? Number(peso) : null) : undefined;
+  const pesoNormalizado = peso !== undefined ? num(peso) : undefined;
+  const fatorCorrecaoNormalizado = fator_correcao !== undefined ? num(fator_correcao) || 1.0 : undefined;
 
   const result = await db.query(`
     UPDATE produtos SET
@@ -265,12 +284,13 @@ export const editarProduto = asyncHandler(async (req: Request, res: Response) =>
       categoria = COALESCE($4, categoria),
       tipo_processamento = COALESCE($5, tipo_processamento),
       peso = COALESCE($6, peso),
-      perecivel = COALESCE($7, perecivel),
-      ativo = COALESCE($8, ativo),
+      fator_correcao = COALESCE($7, fator_correcao),
+      perecivel = COALESCE($8, perecivel),
+      ativo = COALESCE($9, ativo),
       updated_at = CURRENT_TIMESTAMP
-    WHERE id = $9
+    WHERE id = $10
     RETURNING *
-  `, [nomeNormalizado, unidadeNormalizada, descricao, categoria, tipo_processamento, pesoNormalizado, perecivel, ativo, id]);
+  `, [nomeNormalizado, unidadeNormalizada, descricao, categoria, tipo_processamento, pesoNormalizado, fatorCorrecaoNormalizado, perecivel, ativo, id]);
 
   if (result.rows.length === 0) {
     throw new NotFoundError('Produto', id);
@@ -343,8 +363,8 @@ export const buscarComposicaoNutricional = asyncHandler(async (req: Request, res
             colesterol_mg as colesterol,
             calcio_mg as calcio,
             ferro_mg as ferro,
-            vitamina_e_mg as vitamina_c,
-            vitamina_b1_mg as vitamina_a
+            vitamina_c_mg as vitamina_c,
+            vitamina_a_mcg as vitamina_a
           FROM produto_composicao_nutricional 
           WHERE produto_id = $1
         `, [id]);
@@ -408,8 +428,8 @@ export const buscarComposicaoNutricional = asyncHandler(async (req: Request, res
           colesterol_mg as colesterol,
           calcio_mg as calcio,
           ferro_mg as ferro,
-          vitamina_e_mg as vitamina_c,
-          vitamina_b1_mg as vitamina_a
+          vitamina_c_mg as vitamina_c,
+          vitamina_a_mcg as vitamina_a
         FROM produto_composicao_nutricional 
         WHERE produto_id = $1
       `, [produtoId]);
@@ -485,6 +505,7 @@ export const salvarComposicaoNutricional = asyncHandler(async (req: Request, res
         vit_c: num(vitamina_c),
         vit_a: num(vitamina_a),
       };
+      
       const existingResult = await db.query(`
         SELECT id FROM produto_composicao_nutricional WHERE produto_id = $1
       `, [id]);
@@ -504,8 +525,8 @@ export const salvarComposicaoNutricional = asyncHandler(async (req: Request, res
               colesterol_mg = $10,
               calcio_mg = $11,
               ferro_mg = $12,
-              vitamina_e_mg = $13,
-              vitamina_b1_mg = $14,
+              vitamina_c_mg = $13,
+              vitamina_a_mcg = $14,
               atualizado_em = CURRENT_TIMESTAMP
             WHERE produto_id = $15
             RETURNING 
@@ -522,8 +543,8 @@ export const salvarComposicaoNutricional = asyncHandler(async (req: Request, res
               colesterol_mg as colesterol,
               calcio_mg as calcio,
               ferro_mg as ferro,
-              vitamina_e_mg as vitamina_c,
-              vitamina_b1_mg as vitamina_a
+              vitamina_c_mg as vitamina_c,
+              vitamina_a_mcg as vitamina_a
           `, [
             pv.calorias, pv.proteinas, pv.carboidratos, pv.gorduras, pv.fibras, pv.sodio,
             pv.acucares, pv.gord_sat, pv.gord_trans, pv.colesterol,
@@ -576,7 +597,7 @@ export const salvarComposicaoNutricional = asyncHandler(async (req: Request, res
             INSERT INTO produto_composicao_nutricional (
               produto_id, energia_kcal, proteina_g, carboidratos_g, lipideos_g, fibra_alimentar_g,
               sodio_mg, acucares_g, gorduras_saturadas_g, gorduras_trans_g, colesterol_mg,
-              calcio_mg, ferro_mg, vitamina_e_mg, vitamina_b1_mg, criado_em
+              calcio_mg, ferro_mg, vitamina_c_mg, vitamina_a_mcg, criado_em
             ) VALUES (
               $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, CURRENT_TIMESTAMP
             ) RETURNING 
@@ -593,8 +614,8 @@ export const salvarComposicaoNutricional = asyncHandler(async (req: Request, res
               colesterol_mg as colesterol,
               calcio_mg as calcio,
               ferro_mg as ferro,
-              vitamina_e_mg as vitamina_c,
-              vitamina_b1_mg as vitamina_a
+              vitamina_c_mg as vitamina_c,
+              vitamina_a_mcg as vitamina_a
           `, [
             id, pv.calorias, pv.proteinas, pv.carboidratos, pv.gorduras, pv.fibras, pv.sodio,
             pv.acucares, pv.gord_sat, pv.gord_trans, pv.colesterol,

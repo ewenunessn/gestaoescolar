@@ -38,45 +38,63 @@
 
 ## ❌ O QUE FALTA - Obrigações Legais
 
-### 1. CARDÁPIOS POR NUTRICIONISTA ⚠️ CRÍTICO
+### 1. CARDÁPIOS POR NUTRICIONISTA ✅ PARCIALMENTE IMPLEMENTADO
 
 **Obrigação Legal:** Lei 11.947/2009, Art. 12
 - Cardápios devem ser elaborados por nutricionista habilitado
 - Deve respeitar hábitos alimentares, cultura local e agricultura familiar
 - Mínimo de 200g de frutas e hortaliças por aluno/semana
 
-**O que falta:**
+**O que já está implementado:**
 ```
-❌ Vínculo de nutricionista responsável
-❌ CRN (Conselho Regional de Nutrição) do nutricionista
-❌ Assinatura digital do nutricionista no cardápio
-❌ Validação nutricional (calorias, macronutrientes)
-❌ Cálculo automático de per capita nutricional
-❌ Controle de frutas e hortaliças (200g/semana)
+✅ Cadastro de nutricionistas (nome, CRN, região CRN, especialidade)
+✅ Vínculo de nutricionista responsável nos cardápios
+✅ Data de aprovação do nutricionista
+✅ Observações do nutricionista no cardápio
+✅ Página de gerenciamento de nutricionistas
 ```
 
-**Impacto:** ALTO - Cardápios sem nutricionista são irregulares
+**O que ainda falta:**
+```
+❌ Assinatura digital do nutricionista no cardápio
+❌ Validação nutricional automática (calorias, macronutrientes)
+❌ Cálculo automático de per capita nutricional
+❌ Controle de frutas e hortaliças (200g/semana)
+❌ Alertas de valores nutricionais inadequados
+```
+
+**Impacto:** MÉDIO - Base já implementada, faltam validações automáticas
 
 ---
 
-### 2. FICHAS TÉCNICAS DE PREPARAÇÃO ⚠️ CRÍTICO
+### 2. FICHAS TÉCNICAS DE PREPARAÇÃO ✅ PARCIALMENTE IMPLEMENTADO
 
 **Obrigação Legal:** Resolução CFN 465/2010
 - Cada refeição deve ter ficha técnica
 - Deve conter: ingredientes, modo de preparo, rendimento, valor nutricional
 
-**O que falta:**
+**O que já está implementado:**
 ```
-❌ Ficha técnica completa por refeição
-❌ Modo de preparo detalhado
-❌ Rendimento (porções)
-❌ Valor nutricional calculado
-❌ Custo por porção
-❌ Tempo de preparo
-❌ Utensílios necessários
+✅ Estrutura de banco de dados completa
+✅ Campos: modo_preparo, tempo_preparo_minutos, rendimento_porcoes
+✅ Campos: utensílios, categoria
+✅ Campos nutricionais: calorias, proteínas, carboidratos, lipídios, fibras, sódio
+✅ Campo: custo_por_porcao
+✅ Campo: observacoes_tecnicas
+✅ Aba "Ficha Técnica" na página de refeições
+✅ Formulário de edição com todos os campos
 ```
 
-**Impacto:** ALTO - Necessário para padronização e controle
+**O que ainda falta:**
+```
+❌ Cálculo automático de valor nutricional (baseado nos ingredientes)
+❌ Cálculo automático de custo (baseado nos produtos)
+❌ Impressão/exportação da ficha técnica em PDF
+❌ Validação de campos obrigatórios
+❌ Biblioteca de receitas prontas
+```
+
+**Impacto:** BAIXO - Estrutura completa, faltam automações
 
 ---
 

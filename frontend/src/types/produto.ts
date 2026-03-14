@@ -8,6 +8,7 @@ export interface Produto {
   perecivel?: boolean;
   per_capita?: number;
   modalidade_id?: number;
+  fator_correcao?: number; // Fator de correção para calcular per capita líquido
   ativo: boolean;
   created_at: string;
   updated_at: string;
@@ -21,6 +22,7 @@ export interface CriarProdutoRequest {
   descricao?: string;
   tipo_processamento?: string;
   perecivel?: boolean;
+  fator_correcao?: number;
   ativo?: boolean;
 }
 
@@ -31,25 +33,20 @@ export interface AtualizarProdutoRequest {
   descricao?: string;
   tipo_processamento?: string;
   perecivel?: boolean;
+  fator_correcao?: number;
   ativo?: boolean;
 }
 
 export interface ComposicaoNutricional {
   produto_id: number;
-  calorias?: number;
   proteinas?: number;
-  carboidratos?: number;
   gorduras?: number;
-  fibras?: number;
-  sodio?: number;
-  acucares?: number;
-  gorduras_saturadas_g?: number;
-  gorduras_trans_g?: number;
-  colesterol?: number;
+  carboidratos?: number;
   calcio?: number;
   ferro?: number;
   vitamina_a?: number;
   vitamina_c?: number;
+  sodio?: number;
 }
 
 export interface ImportarProdutoRequest {
