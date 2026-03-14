@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { usePageTitle } from '../contexts/PageTitleContext';
 import { useToast } from '../hooks/useToast';
 import CalculoDetalhadoModal from '../components/CalculoDetalhadoModal';
@@ -26,6 +27,8 @@ import {
   Select,
   MenuItem,
   IconButton,
+  Divider,
+  Chip,
 } from '@mui/material';
 import {
   Calculate as CalculateIcon,
@@ -33,6 +36,9 @@ import {
   Inventory as InventoryIcon,
   TableChart as TableChartIcon,
   CalendarMonth as CalendarIcon,
+  ShoppingCart as ShoppingCartIcon,
+  Add as AddIcon,
+  Delete as DeleteIcon,
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -40,12 +46,24 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { ptBR } from 'date-fns/locale';
 import PageContainer from '../components/PageContainer';
 import PageBreadcrumbs from '../components/PageBreadcrumbs';
-import { listarEscolas, Escola } from '../services/escolas';
-import { calcularDemandaPorCompetencia, CalculoDemandaResponse } from '../services/planejamentoCompras';
+import { listarEscolas } from '../services/escolas';
+
+interface Escola {
+  id: number;
+  nome: string;
+  ativo: boolean;
+}
+import {
+  calcularDemandaPorCompetencia,
+  gerarPedidosPorPeriodo,
+  CalculoDemandaResponse,
+  PeriodoGerarPedido,
+} from '../services/planejamentoCompras';
 
 export default function PlanejamentoCompras() {
   const { setPageTitle } = usePageTitle();
   const toast = useToast();
+  const navigate = useNavigate();
 
   const [escolas, setEscolas] = useState<Escola[]>([]);
   const [escolasSelecionadas, setEscolasSelecionadas] = useState<Escola[]>([]);
@@ -54,17 +72,16 @@ export default function PlanejamentoCompras() {
   const [dataFim, setDataFim] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
   const [calculando, setCalculando] = useState(false);
+  const [gerandoPedidos, setGerandoPedidos] = useState(false);
   const [resultado, setResultado] = useState<CalculoDemandaResponse | null>(null);
   const [tabAtiva, setTabAtiva] = useState(0);
-  const [modalCalculo, setModalCalculo] = useState<{
-    open: boolean;
-    produto: any;
-    escola: any;
-  }>({
-    open: false,
-    produto: null,
-    escola: null
+  const [modalCalculo, setModalCalculo] = useState<{ open: boolean; produto: any; escola: any }>({
+    open: false, produto: null, escola: null
   });
+
+  // Períodos para geração de pedidos
+  const [periodos, setPeriodos] = useState<PeriodoGerarPedido[]>([]);
+  const [resultadoGeracao, setResultadoGeracao] = useState<any>(null);
 
   useEffect(() => {
     setPageTitle('Planejamento de Compras');
@@ -103,7 +120,7 @@ export default function PlanejamentoCompras() {
     return competencias;
   }
 
-  // Quando competência muda, ajustar datas para o mês inteiro
+  // Quando competência muda, ajustar datas para o mês inteiro e sugerir 2 períodos quinzenais
   useEffect(() => {
     if (competencia) {
       const [ano, mes] = competencia.split('-').map(Number);
@@ -111,8 +128,59 @@ export default function PlanejamentoCompras() {
       const ultimoDia = new Date(ano, mes, 0);
       setDataInicio(primeiroDia);
       setDataFim(ultimoDia);
+
+      // Sugerir 2 períodos quinzenais automaticamente
+      const dia15 = new Date(ano, mes - 1, 15);
+      const fmt = (d: Date) => d.toISOString().split('T')[0];
+      setPeriodos([
+        { data_inicio: fmt(primeiroDia), data_fim: fmt(dia15) },
+        { data_inicio: fmt(new Date(ano, mes - 1, 16)), data_fim: fmt(ultimoDia) },
+      ]);
+      setResultadoGeracao(null);
     }
   }, [competencia]);
+
+  function adicionarPeriodo() {
+    if (!competencia) return;
+    const [ano, mes] = competencia.split('-').map(Number);
+    const primeiroDia = new Date(ano, mes - 1, 1);
+    const fmt = (d: Date) => d.toISOString().split('T')[0];
+    setPeriodos(prev => [...prev, { data_inicio: fmt(primeiroDia), data_fim: fmt(primeiroDia) }]);
+  }
+
+  function removerPeriodo(idx: number) {
+    setPeriodos(prev => prev.filter((_, i) => i !== idx));
+  }
+
+  function atualizarPeriodo(idx: number, campo: keyof PeriodoGerarPedido, valor: string) {
+    setPeriodos(prev => prev.map((p, i) => i === idx ? { ...p, [campo]: valor } : p));
+  }
+
+  async function handleGerarPedidos() {
+    if (!competencia || periodos.length === 0) {
+      toast.warning('Atenção', 'Defina a competência e ao menos um período');
+      return;
+    }
+    setGerandoPedidos(true);
+    setResultadoGeracao(null);
+    try {
+      const res = await gerarPedidosPorPeriodo(
+        competencia,
+        periodos,
+        escolasSelecionadas.length > 0 ? escolasSelecionadas.map(e => e.id) : undefined
+      );
+      setResultadoGeracao(res);
+      if (res.total_criados > 0) {
+        toast.success('Pedidos gerados', `${res.total_criados} pedido(s) criado(s) com sucesso`);
+      } else {
+        toast.error('Erro', 'Nenhum pedido foi criado. Verifique os erros abaixo.');
+      }
+    } catch (error: any) {
+      toast.error('Erro', error.response?.data?.error || 'Não foi possível gerar os pedidos');
+    } finally {
+      setGerandoPedidos(false);
+    }
+  }
 
   async function handleCalcular() {
     if (!competencia) {
@@ -387,6 +455,115 @@ export default function PlanejamentoCompras() {
               </Card>
             </Grid>
           )}
+          {/* Painel: Gerar Pedidos por Período */}
+          {competencia && (
+            <Grid item xs={12}>
+              <Card sx={{ p: 2 }}>
+                <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <ShoppingCartIcon />
+                  Gerar Pedidos por Período
+                </Typography>
+
+                <Alert severity="info" sx={{ mb: 2 }}>
+                  Cada período gera um pedido separado. A data de entrega prevista será a data de início do período.
+                </Alert>
+
+                {periodos.map((periodo, idx) => (
+                  <Box key={idx} sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 1.5 }}>
+                    <Typography variant="body2" sx={{ minWidth: 80, fontWeight: 600 }}>
+                      Período {idx + 1}
+                    </Typography>
+                    <TextField
+                      label="Início"
+                      type="date"
+                      size="small"
+                      value={periodo.data_inicio}
+                      onChange={(e) => atualizarPeriodo(idx, 'data_inicio', e.target.value)}
+                      InputLabelProps={{ shrink: true }}
+                      sx={{ width: 160 }}
+                    />
+                    <TextField
+                      label="Fim"
+                      type="date"
+                      size="small"
+                      value={periodo.data_fim}
+                      onChange={(e) => atualizarPeriodo(idx, 'data_fim', e.target.value)}
+                      InputLabelProps={{ shrink: true }}
+                      sx={{ width: 160 }}
+                    />
+                    <IconButton size="small" color="error" onClick={() => removerPeriodo(idx)}>
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                ))}
+
+                <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+                  <Button
+                    variant="outlined"
+                    startIcon={<AddIcon />}
+                    onClick={adicionarPeriodo}
+                    size="small"
+                  >
+                    Adicionar Período
+                  </Button>
+                  <Button
+                    variant="contained"
+                    startIcon={gerandoPedidos ? <CircularProgress size={18} /> : <ShoppingCartIcon />}
+                    onClick={handleGerarPedidos}
+                    disabled={gerandoPedidos || periodos.length === 0}
+                    sx={{ bgcolor: '#1976d2' }}
+                  >
+                    {gerandoPedidos ? 'Gerando...' : `Gerar ${periodos.length} Pedido(s)`}
+                  </Button>
+                </Box>
+
+                {/* Resultado da geração */}
+                {resultadoGeracao && (
+                  <Box sx={{ mt: 2 }}>
+                    <Divider sx={{ mb: 2 }} />
+                    {resultadoGeracao.pedidos_criados.map((p: any) => (
+                      <Alert
+                        key={p.pedido_id}
+                        severity="success"
+                        sx={{ mb: 1 }}
+                        action={
+                          <Button size="small" onClick={() => navigate(`/compras/${p.pedido_id}`)}>
+                            Ver
+                          </Button>
+                        }
+                      >
+                        <strong>{p.numero}</strong> — {p.total_itens} produto(s) —
+                        Entrega: {new Date(p.periodo.data_inicio + 'T12:00:00').toLocaleDateString('pt-BR')}
+                        {p.sem_contrato.length > 0 && (
+                          <Typography variant="caption" sx={{ display: 'block', color: 'warning.main' }}>
+                            Sem contrato (não incluídos): {p.sem_contrato.join(', ')}
+                          </Typography>
+                        )}
+                      </Alert>
+                    ))}
+                    {resultadoGeracao.erros.map((e: any, i: number) => (
+                      <Alert key={i} severity="error" sx={{ mb: 1 }}>
+                        Período {e.periodo.data_inicio} a {e.periodo.data_fim}: {e.motivo}
+                      </Alert>
+                    ))}
+                    {resultadoGeracao.total_criados > 0 && (
+                      <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                        <Chip
+                          label={`${resultadoGeracao.total_criados} pedido(s) criado(s)`}
+                          color="success"
+                          size="small"
+                        />
+                        <Button size="small" variant="outlined" onClick={() => navigate('/compras')}>
+                          Ver todos os pedidos
+                        </Button>
+                      </Box>
+                    )}
+                  </Box>
+                )}
+              </Card>
+            </Grid>
+          )}
+
         </Grid>
       </PageContainer>
 

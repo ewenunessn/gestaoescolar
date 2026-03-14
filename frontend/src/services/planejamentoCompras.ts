@@ -78,3 +78,37 @@ export async function calcularDemandaPorCompetencia(
   });
   return response.data;
 }
+
+export interface PeriodoGerarPedido {
+  data_inicio: string;
+  data_fim: string;
+}
+
+export interface GerarPedidosResponse {
+  pedidos_criados: {
+    pedido_id: number;
+    numero: string;
+    periodo: PeriodoGerarPedido;
+    total_itens: number;
+    valor_total: number;
+    sem_contrato: string[];
+  }[];
+  erros: { periodo: PeriodoGerarPedido; motivo: string }[];
+  total_criados: number;
+  total_erros: number;
+}
+
+export async function gerarPedidosPorPeriodo(
+  competencia: string,
+  periodos: PeriodoGerarPedido[],
+  escola_ids?: number[],
+  observacoes?: string
+): Promise<GerarPedidosResponse> {
+  const response = await api.post('/planejamento-compras/gerar-pedidos', {
+    competencia,
+    periodos,
+    escola_ids,
+    observacoes
+  });
+  return response.data;
+}
