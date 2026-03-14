@@ -8,14 +8,20 @@ interface Periodo {
   data_fim: string;
 }
 
+interface DemandaEscola {
+  escola_id: number;
+  quantidade_kg: number;
+}
+
 interface ProdutoDemanda {
   produto_id: number;
   produto_nome: string;
   unidade: string;
   quantidade_kg: number;
+  por_escola: DemandaEscola[]; // quebra por escola para programação
 }
 
-// ─── Helper: calcular demanda de produtos para um período ────────────────────
+// ─── Helper: calcular demanda de produtos para um período (com quebra por escola) ─
 async function calcularDemandaPeriodo(
   ano: number,
   mes: number,
@@ -83,6 +89,7 @@ async function calcularDemandaPeriodo(
     pm.get(ref.produto_id)!.push(ref);
   }
 
+  // totais globais + quebra por escola
   const totais = new Map<number, ProdutoDemanda>();
 
   for (const escola of escolas) {
@@ -102,20 +109,34 @@ async function calcularDemandaPeriodo(
           produto_id,
           produto_nome: ref.produto_nome,
           unidade: ref.unidade,
-          quantidade_kg: 0
+          quantidade_kg: 0,
+          por_escola: [],
         });
       }
-      totais.get(produto_id)!.quantidade_kg += qtdKg;
+      const prod = totais.get(produto_id)!;
+      prod.quantidade_kg += qtdKg;
+
+      // acumular por escola (uma escola pode ter múltiplas modalidades)
+      const existente = prod.por_escola.find(e => e.escola_id === escola.escola_id);
+      if (existente) {
+        existente.quantidade_kg += qtdKg;
+      } else {
+        prod.por_escola.push({ escola_id: escola.escola_id, quantidade_kg: qtdKg });
+      }
     }
   }
 
   return Array.from(totais.values()).map(p => ({
     ...p,
-    quantidade_kg: Math.round(p.quantidade_kg * 1000) / 1000
+    quantidade_kg: Math.round(p.quantidade_kg * 1000) / 1000,
+    por_escola: p.por_escola.map(e => ({
+      escola_id: e.escola_id,
+      quantidade_kg: Math.round(e.quantidade_kg * 1000) / 1000,
+    })),
   }));
 }
 
-// ─── Gerar pedidos por período ────────────────────────────────────────────────
+// ─── Gerar pedido único com itens por período ────────────────────────────────
 export const gerarPedidosPorPeriodo = async (req: Request, res: Response) => {
   const { competencia, periodos, escola_ids, observacoes } = req.body as {
     competencia: string;
@@ -130,149 +151,247 @@ export const gerarPedidosPorPeriodo = async (req: Request, res: Response) => {
 
   const [ano, mes] = competencia.split('-').map(Number);
   const usuario_id = (req as any).user?.id || 1;
-
   const meses = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
   const mesAbrev = meses[mes - 1];
 
-  const pedidosCriados: any[] = [];
-  const erros: any[] = [];
+  const client = await db.pool.connect();
+  try {
+    await client.query('BEGIN');
 
-  for (const periodo of periodos) {
-    const client = await db.pool.connect();
-    try {
-      await client.query('BEGIN');
+    // 1. Calcular demanda para cada período
+    const demandasPorPeriodo: { periodo: Periodo; demanda: ProdutoDemanda[] }[] = [];
+    const errosPeriodo: string[] = [];
 
-      // 1. Calcular demanda do período
+    for (const periodo of periodos) {
       const demanda = await calcularDemandaPeriodo(ano, mes, periodo.data_inicio, periodo.data_fim, escola_ids);
-
       if (demanda.length === 0) {
-        erros.push({ periodo, motivo: 'Nenhum produto calculado para este período' });
-        await client.query('ROLLBACK');
-        continue;
+        errosPeriodo.push(`Período ${periodo.data_inicio} a ${periodo.data_fim}: nenhum produto calculado`);
+      } else {
+        demandasPorPeriodo.push({ periodo, demanda });
       }
+    }
 
-      // 2. Cruzar produtos com contratos ativos
-      const produtoIds = demanda.map(d => d.produto_id);
-      const contratosQuery = await client.query(`
-        SELECT
-          cp.id as contrato_produto_id,
-          cp.produto_id,
-          cp.preco_unitario,
-          cp.quantidade_contratada,
-          COALESCE(
-            cp.quantidade_contratada - COALESCE((
-              SELECT SUM(pi.quantidade)
-              FROM pedido_itens pi
-              WHERE pi.contrato_produto_id = cp.id
-            ), 0),
-            cp.quantidade_contratada
-          ) as saldo_disponivel,
-          c.id as contrato_id,
-          c.numero as contrato_numero,
-          f.nome as fornecedor_nome
-        FROM contrato_produtos cp
-        JOIN contratos c ON c.id = cp.contrato_id
-        JOIN fornecedores f ON f.id = c.fornecedor_id
-        WHERE cp.produto_id = ANY($1)
-          AND cp.ativo = true
-          AND c.status = 'ativo'
-          AND c.data_fim >= CURRENT_DATE
-        ORDER BY cp.produto_id, c.data_fim ASC
-      `, [produtoIds]);
+    if (demandasPorPeriodo.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(200).json({
+        pedidos_criados: [],
+        erros: errosPeriodo.map(m => ({ motivo: m })),
+        total_criados: 0,
+        total_erros: errosPeriodo.length,
+      });
+    }
 
-      // Mapear produto_id → melhor contrato (primeiro ativo encontrado)
-      const contratosPorProduto = new Map<number, any>();
-      for (const row of contratosQuery.rows) {
-        if (!contratosPorProduto.has(row.produto_id)) {
-          contratosPorProduto.set(row.produto_id, row);
-        }
-      }
+    // 2. Coletar todos os produto_ids únicos e buscar contratos
+    const todosProdutoIds = [...new Set(demandasPorPeriodo.flatMap(d => d.demanda.map(p => p.produto_id)))];
+    const contratosQuery = await client.query(`
+      SELECT cp.id as contrato_produto_id, cp.produto_id, cp.preco_unitario,
+             c.numero as contrato_numero, f.nome as fornecedor_nome
+      FROM contrato_produtos cp
+      JOIN contratos c ON c.id = cp.contrato_id
+      JOIN fornecedores f ON f.id = c.fornecedor_id
+      WHERE cp.produto_id = ANY($1) AND cp.ativo = true
+        AND c.status = 'ativo' AND c.data_fim >= CURRENT_DATE
+      ORDER BY cp.produto_id, c.data_fim ASC
+    `, [todosProdutoIds]);
 
-      // 3. Montar itens do pedido
-      const itens: any[] = [];
-      const semContrato: string[] = [];
+    const contratosPorProduto = new Map<number, any>();
+    for (const row of contratosQuery.rows) {
+      if (!contratosPorProduto.has(row.produto_id)) contratosPorProduto.set(row.produto_id, row);
+    }
 
+    // 3. Montar itens: um por produto por período
+    const itensPorPeriodo: { periodo: Periodo; produto: ProdutoDemanda; contrato: any }[] = [];
+    const semContrato = new Set<string>();
+
+    for (const { periodo, demanda } of demandasPorPeriodo) {
       for (const prod of demanda) {
         const contrato = contratosPorProduto.get(prod.produto_id);
-        if (!contrato) {
-          semContrato.push(prod.produto_nome);
-          continue;
+        if (!contrato) { semContrato.add(prod.produto_nome); continue; }
+        itensPorPeriodo.push({ periodo, produto: prod, contrato });
+      }
+    }
+
+    if (itensPorPeriodo.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(200).json({
+        pedidos_criados: [],
+        erros: [{ motivo: `Nenhum produto com contrato ativo. Sem contrato: ${[...semContrato].join(', ')}` }],
+        total_criados: 0,
+        total_erros: 1,
+      });
+    }
+
+    // 4. Criar pedido único
+    const maxResult = await client.query(`
+      SELECT COALESCE(MAX(CAST(SUBSTRING(numero FROM LENGTH(numero) - 5) AS INTEGER)), 0) as max_seq
+      FROM pedidos WHERE competencia_mes_ano = $1
+    `, [competencia]);
+    const seq = (parseInt(maxResult.rows[0].max_seq) + 1).toString().padStart(6, '0');
+    const numero = `PED-${mesAbrev}${ano}${seq}`;
+
+    const periodosTexto = periodos.map(p => `${p.data_inicio} a ${p.data_fim}`).join(', ');
+    const obsTexto = [
+      observacoes,
+      `Planejamento: ${periodosTexto}`,
+      semContrato.size > 0 ? `Sem contrato (não incluídos): ${[...semContrato].join(', ')}` : null
+    ].filter(Boolean).join(' | ');
+
+    const pedidoResult = await client.query(`
+      INSERT INTO pedidos (numero, data_pedido, status, valor_total, observacoes, usuario_criacao_id, competencia_mes_ano)
+      VALUES ($1, CURRENT_DATE, 'pendente', 0, $2, $3, $4)
+      RETURNING id
+    `, [numero, obsTexto, usuario_id, competencia]);
+
+    const pedido_id = pedidoResult.rows[0].id;
+
+    // 5. Inserir um item por produto por período, com programação de entrega por escola
+    for (const { periodo, produto, contrato } of itensPorPeriodo) {
+      const qtd = produto.quantidade_kg;
+      const preco = toNum(contrato.preco_unitario);
+
+      const itemResult = await client.query(`
+        INSERT INTO pedido_itens (pedido_id, contrato_produto_id, produto_id, quantidade, preco_unitario, valor_total, data_entrega_prevista, observacoes)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING id
+      `, [pedido_id, contrato.contrato_produto_id, produto.produto_id, qtd, preco, qtd * preco,
+          periodo.data_inicio, `Período: ${periodo.data_inicio} a ${periodo.data_fim}`]);
+
+      const pedido_item_id = itemResult.rows[0].id;
+
+      // Programação de entrega com data de início do período
+      const progResult = await client.query(`
+        INSERT INTO pedido_item_programacoes (pedido_item_id, data_entrega, observacoes)
+        VALUES ($1, $2, $3) RETURNING id
+      `, [pedido_item_id, periodo.data_inicio, `${periodo.data_inicio} a ${periodo.data_fim}`]);
+
+      const programacao_id = progResult.rows[0].id;
+
+      // Escolas com suas quantidades
+      for (const esc of produto.por_escola) {
+        if (esc.quantidade_kg > 0) {
+          await client.query(`
+            INSERT INTO pedido_item_programacao_escolas (programacao_id, escola_id, quantidade)
+            VALUES ($1, $2, $3)
+          `, [programacao_id, esc.escola_id, esc.quantidade_kg]);
         }
-        itens.push({
-          contrato_produto_id: contrato.contrato_produto_id,
-          produto_id: prod.produto_id,
-          quantidade: prod.quantidade_kg,
-          preco_unitario: toNum(contrato.preco_unitario),
-          valor_total: prod.quantidade_kg * toNum(contrato.preco_unitario),
-          data_entrega_prevista: periodo.data_inicio,
-          observacoes: `Gerado automaticamente pelo planejamento. Período: ${periodo.data_inicio} a ${periodo.data_fim}`
-        });
       }
 
-      if (itens.length === 0) {
-        erros.push({ periodo, motivo: `Nenhum produto com contrato ativo. Sem contrato: ${semContrato.join(', ')}` });
-        await client.query('ROLLBACK');
-        continue;
-      }
-
-      // 4. Gerar número do pedido
-      const maxResult = await client.query(`
-        SELECT COALESCE(MAX(CAST(SUBSTRING(numero FROM LENGTH(numero) - 5) AS INTEGER)), 0) as max_seq
-        FROM pedidos WHERE competencia_mes_ano = $1
-      `, [competencia]);
-      const seq = (parseInt(maxResult.rows[0].max_seq) + 1).toString().padStart(6, '0');
-      const numero = `PED-${mesAbrev}${ano}${seq}`;
-
-      const valorTotal = itens.reduce((s, i) => s + i.valor_total, 0);
-      const obsTexto = [
-        observacoes,
-        `Planejamento: ${periodo.data_inicio} a ${periodo.data_fim}`,
-        semContrato.length > 0 ? `Sem contrato (não incluídos): ${semContrato.join(', ')}` : null
-      ].filter(Boolean).join(' | ');
-
-      // 5. Inserir pedido
-      const pedidoResult = await client.query(`
-        INSERT INTO pedidos (numero, data_pedido, status, valor_total, observacoes, usuario_criacao_id, competencia_mes_ano)
-        VALUES ($1, CURRENT_DATE, 'pendente', $2, $3, $4, $5)
-        RETURNING *
-      `, [numero, valorTotal, obsTexto, usuario_id, competencia]);
-
-      const pedido_id = pedidoResult.rows[0].id;
-
-      // 6. Inserir itens
-      for (const item of itens) {
+      // Recalcular quantidade do item pela soma das escolas
+      if (produto.por_escola.length > 0) {
         await client.query(`
-          INSERT INTO pedido_itens (pedido_id, contrato_produto_id, produto_id, quantidade, preco_unitario, valor_total, data_entrega_prevista, observacoes)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-        `, [pedido_id, item.contrato_produto_id, item.produto_id, item.quantidade, item.preco_unitario, item.valor_total, item.data_entrega_prevista, item.observacoes]);
+          UPDATE pedido_itens
+          SET quantidade = (
+            SELECT COALESCE(SUM(pipe.quantidade), 0)
+            FROM pedido_item_programacoes pip
+            JOIN pedido_item_programacao_escolas pipe ON pipe.programacao_id = pip.id
+            WHERE pip.pedido_item_id = $1
+          ),
+          valor_total = preco_unitario * (
+            SELECT COALESCE(SUM(pipe.quantidade), 0)
+            FROM pedido_item_programacoes pip
+            JOIN pedido_item_programacao_escolas pipe ON pipe.programacao_id = pip.id
+            WHERE pip.pedido_item_id = $1
+          ),
+          updated_at = NOW()
+          WHERE id = $1
+        `, [pedido_item_id]);
       }
+    }
 
-      await client.query('COMMIT');
+    // 6. Mesclar automaticamente itens não perecíveis do mesmo produto
+    // Buscar itens do pedido agrupados por produto, com flag perecivel
+    const itensParaMesclar = await client.query(`
+      SELECT pi.id, pi.produto_id, p.perecivel
+      FROM pedido_itens pi
+      JOIN produtos p ON p.id = pi.produto_id
+      WHERE pi.pedido_id = $1
+      ORDER BY pi.produto_id, pi.id
+    `, [pedido_id]);
 
-      pedidosCriados.push({
+    // Agrupar por produto_id, apenas não perecíveis com mais de 1 item
+    const gruposPorProduto = new Map<number, number[]>();
+    for (const row of itensParaMesclar.rows) {
+      if (!row.perecivel) {
+        const lista = gruposPorProduto.get(row.produto_id) || [];
+        lista.push(row.id);
+        gruposPorProduto.set(row.produto_id, lista);
+      }
+    }
+
+    for (const [, ids] of gruposPorProduto) {
+      if (ids.length < 2) continue;
+      const destino_id = ids[0];
+      const outros_ids = ids.slice(1);
+
+      // Migrar programações para o item destino
+      await client.query(`
+        UPDATE pedido_item_programacoes SET pedido_item_id = $1 WHERE pedido_item_id = ANY($2)
+      `, [destino_id, outros_ids]);
+
+      // Deletar itens secundários
+      await client.query(`DELETE FROM pedido_itens WHERE id = ANY($1)`, [outros_ids]);
+
+      // Recalcular quantidade e valor do item destino
+      await client.query(`
+        UPDATE pedido_itens
+        SET quantidade = (
+          SELECT COALESCE(SUM(pipe.quantidade), 0)
+          FROM pedido_item_programacoes pip
+          JOIN pedido_item_programacao_escolas pipe ON pipe.programacao_id = pip.id
+          WHERE pip.pedido_item_id = $1
+        ),
+        data_entrega_prevista = (
+          SELECT MIN(data_entrega) FROM pedido_item_programacoes WHERE pedido_item_id = $1
+        ),
+        observacoes = 'Gerado automaticamente pelo planejamento (períodos mesclados)',
+        updated_at = NOW()
+        WHERE id = $1
+      `, [destino_id]);
+
+      await client.query(`
+        UPDATE pedido_itens SET valor_total = quantidade * preco_unitario, updated_at = NOW() WHERE id = $1
+      `, [destino_id]);
+    }
+
+    // 7. Recalcular valor total do pedido
+    await client.query(`
+      UPDATE pedidos
+      SET valor_total = (SELECT COALESCE(SUM(valor_total), 0) FROM pedido_itens WHERE pedido_id = $1),
+          updated_at = NOW()
+      WHERE id = $1
+    `, [pedido_id]);
+
+    const pedidoAtualizado = await client.query(`SELECT valor_total FROM pedidos WHERE id = $1`, [pedido_id]);
+    const valorTotalReal = toNum(pedidoAtualizado.rows[0]?.valor_total, 0);
+
+    await client.query('COMMIT');
+
+    return res.status(200).json({
+      pedidos_criados: [{
         pedido_id,
         numero,
-        periodo,
-        total_itens: itens.length,
-        valor_total: valorTotal,
-        sem_contrato: semContrato
-      });
+        periodos,
+        total_itens: itensPorPeriodo.length,
+        valor_total: valorTotalReal,
+        sem_contrato: [...semContrato],
+      }],
+      erros: errosPeriodo.map(m => ({ motivo: m })),
+      total_criados: 1,
+      total_erros: errosPeriodo.length,
+    });
 
-    } catch (error) {
-      await client.query('ROLLBACK');
-      console.error('Erro ao gerar pedido para período:', periodo, error);
-      erros.push({ periodo, motivo: error instanceof Error ? error.message : 'Erro interno' });
-    } finally {
-      client.release();
-    }
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Erro ao gerar pedido:', error);
+    return res.status(200).json({
+      pedidos_criados: [],
+      erros: [{ motivo: error instanceof Error ? error.message : 'Erro interno' }],
+      total_criados: 0,
+      total_erros: 1,
+    });
+  } finally {
+    client.release();
   }
-
-  return res.status(pedidosCriados.length > 0 ? 201 : 400).json({
-    pedidos_criados: pedidosCriados,
-    erros,
-    total_criados: pedidosCriados.length,
-    total_erros: erros.length
-  });
 };
 
 // Calcular demanda baseado em competência (busca cardápios automaticamente)
