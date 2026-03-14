@@ -10,6 +10,7 @@ export interface Pedido {
   observacoes?: string;
   usuario_criacao_id: number;
   usuario_criacao_nome?: string;
+  usuario_aprovacao_nome?: string;
   total_itens?: number;
   quantidade_total?: number;
   created_at: string;

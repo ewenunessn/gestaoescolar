@@ -28,6 +28,7 @@ import {
   StepLabel,
   Popover,
   Badge,
+  Tooltip,
   Select,
   MenuItem,
   FormControl,
@@ -42,10 +43,12 @@ import {
   Send as SendIcon,
   Edit as EditIcon,
   Receipt as ReceiptIcon,
-  Comment as CommentIcon
+  Comment as CommentIcon,
+  CalendarMonth as CalendarIcon,
 } from '@mui/icons-material';
 import pedidosService from '../services/pedidos';
 import faturamentoService from '../services/faturamento';
+import ProgramacaoEntregaDialog from '../components/ProgramacaoEntregaDialog';
 import { PedidoDetalhado, STATUS_PEDIDO } from '../types/pedido';
 import PageBreadcrumbs from '../components/PageBreadcrumbs';
 import PageContainer from '../components/PageContainer';
@@ -80,6 +83,11 @@ export default function PedidoDetalhe() {
   // Estado para o popover de observações
   const [obsAnchorEl, setObsAnchorEl] = useState<HTMLButtonElement | null>(null);
   const [obsItemSelecionado, setObsItemSelecionado] = useState<any>(null);
+
+  // Estado para o dialog de programação de entrega
+  const [programacaoDialog, setProgramacaoDialog] = useState<{
+    open: boolean; itemId: number; produtoNome: string; unidade: string;
+  }>({ open: false, itemId: 0, produtoNome: '', unidade: '' });
 
   const obsPopoverOpen = Boolean(obsAnchorEl);
 
@@ -453,6 +461,7 @@ export default function PedidoDetalhe() {
                 <TableCell align="right">Preço Unit.</TableCell>
                 <TableCell align="right">Total</TableCell>
                 <TableCell align="center" width="60">Obs</TableCell>
+                <TableCell align="center" width="60">Prog.</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -505,6 +514,22 @@ export default function PedidoDetalhe() {
                     ) : (
                       <Typography variant="caption" color="text.secondary">-</Typography>
                     )}
+                  </TableCell>
+                  <TableCell align="center">
+                    <Tooltip title="Programação de entrega por escola">
+                      <IconButton
+                        size="small"
+                        color="primary"
+                        onClick={() => setProgramacaoDialog({
+                          open: true,
+                          itemId: item.id!,
+                          produtoNome: item.produto_nome || '',
+                          unidade: item.unidade || 'kg',
+                        })}
+                      >
+                        <CalendarIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
                   </TableCell>
                 </TableRow>
               ))}
@@ -624,6 +649,16 @@ export default function PedidoDetalhe() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Dialog de Programação de Entrega */}
+      <ProgramacaoEntregaDialog
+        open={programacaoDialog.open}
+        onClose={() => setProgramacaoDialog(prev => ({ ...prev, open: false }))}
+        pedidoItemId={programacaoDialog.itemId}
+        produtoNome={programacaoDialog.produtoNome}
+        unidade={programacaoDialog.unidade}
+        onSaved={() => carregarPedido()}
+      />
 
       {/* Popover para observações */}
       <Popover
