@@ -321,15 +321,49 @@ export const gerarPedidosPorPeriodo = async (req: Request, res: Response) => {
     for (const [, ids] of gruposPorProduto) {
       if (ids.length < 2) continue;
       const destino_id = ids[0];
-      const outros_ids = ids.slice(1);
+      const todos_ids = ids; // inclui o destino para consolidar todas as programações
 
-      // Migrar programações para o item destino
+      // Coletar todas as quantidades por escola de todas as programações de todos os itens
+      const escolasResult = await client.query(`
+        SELECT pipe.escola_id, SUM(pipe.quantidade) as quantidade_total
+        FROM pedido_item_programacoes pip
+        JOIN pedido_item_programacao_escolas pipe ON pipe.programacao_id = pip.id
+        WHERE pip.pedido_item_id = ANY($1)
+        GROUP BY pipe.escola_id
+      `, [todos_ids]);
+
+      // Usar a menor data de entrega como data única
+      const dataResult = await client.query(`
+        SELECT MIN(data_entrega) as data_min
+        FROM pedido_item_programacoes
+        WHERE pedido_item_id = ANY($1)
+      `, [todos_ids]);
+      const dataEntrega = dataResult.rows[0].data_min;
+
+      // Remover todas as programações de todos os itens do grupo
       await client.query(`
-        UPDATE pedido_item_programacoes SET pedido_item_id = $1 WHERE pedido_item_id = ANY($2)
-      `, [destino_id, outros_ids]);
+        DELETE FROM pedido_item_programacoes WHERE pedido_item_id = ANY($1)
+      `, [todos_ids]);
 
       // Deletar itens secundários
-      await client.query(`DELETE FROM pedido_itens WHERE id = ANY($1)`, [outros_ids]);
+      await client.query(`DELETE FROM pedido_itens WHERE id = ANY($1)`, [ids.slice(1)]);
+
+      // Criar uma única programação no item destino
+      const progResult = await client.query(`
+        INSERT INTO pedido_item_programacoes (pedido_item_id, data_entrega, observacoes)
+        VALUES ($1, $2, 'Períodos mesclados') RETURNING id
+      `, [destino_id, dataEntrega]);
+      const prog_id = progResult.rows[0].id;
+
+      // Inserir escolas consolidadas
+      for (const row of escolasResult.rows) {
+        if (toNum(row.quantidade_total) > 0) {
+          await client.query(`
+            INSERT INTO pedido_item_programacao_escolas (programacao_id, escola_id, quantidade)
+            VALUES ($1, $2, $3)
+          `, [prog_id, row.escola_id, row.quantidade_total]);
+        }
+      }
 
       // Recalcular quantidade e valor do item destino
       await client.query(`
@@ -340,13 +374,11 @@ export const gerarPedidosPorPeriodo = async (req: Request, res: Response) => {
           JOIN pedido_item_programacao_escolas pipe ON pipe.programacao_id = pip.id
           WHERE pip.pedido_item_id = $1
         ),
-        data_entrega_prevista = (
-          SELECT MIN(data_entrega) FROM pedido_item_programacoes WHERE pedido_item_id = $1
-        ),
+        data_entrega_prevista = $2,
         observacoes = 'Gerado automaticamente pelo planejamento (períodos mesclados)',
         updated_at = NOW()
         WHERE id = $1
-      `, [destino_id]);
+      `, [destino_id, dataEntrega]);
 
       await client.query(`
         UPDATE pedido_itens SET valor_total = quantidade * preco_unitario, updated_at = NOW() WHERE id = $1

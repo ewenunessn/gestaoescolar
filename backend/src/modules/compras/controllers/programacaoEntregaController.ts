@@ -102,6 +102,7 @@ export async function salvarProgramacoes(req: Request, res: Response) {
     }
 
     // Recalcular quantidade total do item = soma de todas as escolas em todas as programações
+    // e sincronizar data_entrega_prevista com a menor data das programações
     await client.query(`
       UPDATE pedido_itens
       SET quantidade = (
@@ -109,6 +110,11 @@ export async function salvarProgramacoes(req: Request, res: Response) {
         FROM pedido_item_programacoes pip
         JOIN pedido_item_programacao_escolas pipe ON pipe.programacao_id = pip.id
         WHERE pip.pedido_item_id = $1
+      ),
+      data_entrega_prevista = (
+        SELECT MIN(data_entrega)
+        FROM pedido_item_programacoes
+        WHERE pedido_item_id = $1
       ),
       updated_at = NOW()
       WHERE id = $1
@@ -161,6 +167,111 @@ export async function salvarProgramacoes(req: Request, res: Response) {
     await client.query('ROLLBACK');
     console.error('Erro ao salvar programações:', error);
     res.status(500).json({ success: false, message: 'Erro ao salvar programações' });
+  } finally {
+    client.release();
+  }
+}
+
+// ─── Mesclar itens do mesmo produto em um único item ─────────────────────────
+// Body: { item_ids: number[] } — o primeiro da lista é o item destino
+export async function mesclarItens(req: Request, res: Response) {
+  const { item_ids } = req.body as { item_ids: number[] };
+
+  if (!Array.isArray(item_ids) || item_ids.length < 2) {
+    return res.status(400).json({ success: false, message: 'Informe ao menos 2 itens para mesclar' });
+  }
+
+  const client = await db.pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Verificar que todos pertencem ao mesmo pedido e mesmo produto
+    const check = await client.query(`
+      SELECT produto_id, pedido_id, COUNT(*) as total
+      FROM pedido_itens WHERE id = ANY($1)
+      GROUP BY produto_id, pedido_id
+    `, [item_ids]);
+
+    if (check.rows.length !== 1) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ success: false, message: 'Todos os itens devem ser do mesmo produto e pedido' });
+    }
+
+    const destino_id = item_ids[0];
+    const todos_ids = item_ids;
+
+    // Coletar quantidades por escola de todos os itens
+    const escolasResult = await client.query(`
+      SELECT pipe.escola_id, SUM(pipe.quantidade) as quantidade_total
+      FROM pedido_item_programacoes pip
+      JOIN pedido_item_programacao_escolas pipe ON pipe.programacao_id = pip.id
+      WHERE pip.pedido_item_id = ANY($1)
+      GROUP BY pipe.escola_id
+    `, [todos_ids]);
+
+    // Menor data de entrega
+    const dataResult = await client.query(`
+      SELECT MIN(data_entrega) as data_min
+      FROM pedido_item_programacoes WHERE pedido_item_id = ANY($1)
+    `, [todos_ids]);
+    const dataEntrega = dataResult.rows[0].data_min;
+
+    // Remover todas as programações de todos os itens do grupo
+    await client.query(`DELETE FROM pedido_item_programacoes WHERE pedido_item_id = ANY($1)`, [todos_ids]);
+
+    // Deletar os itens secundários
+    await client.query(`DELETE FROM pedido_itens WHERE id = ANY($1)`, [item_ids.slice(1)]);
+
+    // Criar uma única programação no item destino
+    const progResult = await client.query(`
+      INSERT INTO pedido_item_programacoes (pedido_item_id, data_entrega, observacoes)
+      VALUES ($1, $2, 'Itens mesclados') RETURNING id
+    `, [destino_id, dataEntrega]);
+    const prog_id = progResult.rows[0].id;
+
+    // Inserir escolas consolidadas
+    for (const row of escolasResult.rows) {
+      if (toNum(row.quantidade_total) > 0) {
+        await client.query(`
+          INSERT INTO pedido_item_programacao_escolas (programacao_id, escola_id, quantidade)
+          VALUES ($1, $2, $3)
+        `, [prog_id, row.escola_id, row.quantidade_total]);
+      }
+    }
+
+    // Recalcular quantidade e valor do item destino
+    await client.query(`
+      UPDATE pedido_itens
+      SET quantidade = (
+        SELECT COALESCE(SUM(pipe.quantidade), 0)
+        FROM pedido_item_programacoes pip
+        JOIN pedido_item_programacao_escolas pipe ON pipe.programacao_id = pip.id
+        WHERE pip.pedido_item_id = $1
+      ),
+      data_entrega_prevista = $2,
+      updated_at = NOW()
+      WHERE id = $1
+    `, [destino_id, dataEntrega]);
+
+    await client.query(`
+      UPDATE pedido_itens SET valor_total = quantidade * preco_unitario, updated_at = NOW() WHERE id = $1
+    `, [destino_id]);
+
+    // Recalcular valor total do pedido
+    await client.query(`
+      UPDATE pedidos
+      SET valor_total = (SELECT COALESCE(SUM(valor_total), 0) FROM pedido_itens WHERE pedido_id = (
+        SELECT pedido_id FROM pedido_itens WHERE id = $1
+      )), updated_at = NOW()
+      WHERE id = (SELECT pedido_id FROM pedido_itens WHERE id = $1)
+    `, [destino_id]);
+
+    await client.query('COMMIT');
+    res.json({ success: true, item_destino_id: destino_id });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Erro ao mesclar itens:', error);
+    res.status(500).json({ success: false, message: 'Erro ao mesclar itens' });
   } finally {
     client.release();
   }
