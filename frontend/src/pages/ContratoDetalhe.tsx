@@ -43,6 +43,7 @@ import {
   Close as CloseIcon
 } from "@mui/icons-material";
 import PageBreadcrumbs from '../components/PageBreadcrumbs';
+import AdicionarProdutosLoteDialog from '../components/AdicionarProdutosLoteDialog';
 
 // --- Constantes e Funções Utilitárias (Fora do Componente) ---
 
@@ -175,7 +176,7 @@ export default function ContratoDetalhe() {
   const [searchOpen, setSearchOpen] = useState(false);
 
   // Estados de Modais (Dialogs)
-  const [dialogState, setDialogState] = useState({ produto: false, editarContrato: false, removerContrato: false, removerProduto: false });
+  const [dialogState, setDialogState] = useState({ produto: false, editarContrato: false, removerContrato: false, removerProduto: false, adicionarLote: false });
   const [formProduto, setFormProduto] = useState<any>({ produto_id: "", quantidade: "", preco_unitario: "", unidade: "Kg" });
   const [formContrato, setFormContrato] = useState<any>(contratoVazio);
   const [editandoProduto, setEditandoProduto] = useState<any | null>(null);
@@ -486,6 +487,30 @@ export default function ContratoDetalhe() {
     }
   };
 
+  const handleAdicionarProdutosLote = async (produtos: any[]) => {
+    try {
+      // Adicionar cada produto individualmente
+      for (const produto of produtos) {
+        const payload = {
+          contrato_id: Number(id),
+          produto_id: produto.id,
+          quantidade_contratada: produto.quantidade_contratada || 0,
+          preco_unitario: produto.preco_unitario || 0,
+          marca: produto.marca || "",
+          peso: produto.peso || null,
+          ativo: true
+        };
+        await adicionarContratoProduto(payload);
+      }
+      
+      setDialogState(prev => ({ ...prev, adicionarLote: false }));
+      setSuccessMessage(`${produtos.length} produto(s) adicionado(s) com sucesso!`);
+      await carregarDados();
+    } catch (error: any) {
+      setErro(error.message || "Erro ao adicionar produtos em lote.");
+    }
+  };
+
   if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}><CircularProgress size={60} /></Box>;
   
   if (erro && !contrato) return (
@@ -536,15 +561,26 @@ export default function ContratoDetalhe() {
           <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 500 }}>
             Exibindo {filteredProdutos.length} {filteredProdutos.length === 1 ? 'resultado' : 'resultados'}
           </Typography>
-          <Button 
-            startIcon={<AddIcon />} 
-            onClick={() => abrirModalProduto()} 
-            variant="contained" 
-            color="add" 
-            size="small"
-          >
-            Adicionar Item
-          </Button>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button 
+              startIcon={<ShoppingCartIcon />} 
+              onClick={() => setDialogState(prev => ({ ...prev, adicionarLote: true }))} 
+              variant="outlined" 
+              color="primary" 
+              size="small"
+            >
+              Adicionar em Lote
+            </Button>
+            <Button 
+              startIcon={<AddIcon />} 
+              onClick={() => abrirModalProduto()} 
+              variant="contained" 
+              color="add" 
+              size="small"
+            >
+              Adicionar Item
+            </Button>
+          </Box>
         </Box>
 
         {/* Tabela de Itens */}
@@ -1246,6 +1282,16 @@ export default function ContratoDetalhe() {
             Excluir Contrato
           </MenuItem>
         </Menu>
+
+        {/* Dialog de Adicionar Produtos em Lote */}
+        <AdicionarProdutosLoteDialog
+          open={dialogState.adicionarLote}
+          onClose={() => setDialogState(prev => ({ ...prev, adicionarLote: false }))}
+          produtosDisponiveis={produtosDisponiveis}
+          produtosJaAdicionados={produtosContrato.map(p => p.produto_id)}
+          onAdicionar={handleAdicionarProdutosLote}
+          contratoId={Number(id)}
+        />
     </Box>
   );
 }
