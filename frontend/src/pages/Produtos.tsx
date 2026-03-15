@@ -7,6 +7,7 @@ import {
   importarProdutosLote,
   deletarProduto,
 } from "../services/produtos";
+import api from "../services/api";
 import { 
   useProdutos, 
   useCriarProduto, 
@@ -372,17 +373,42 @@ const ProdutosPage = () => {
   // Funções de Importação/Exportação
   const handleImportProdutos = async (produtosImportacao: Array<Record<string, unknown>>) => {
     try {
-      setLoading(true);
-      const response = await importarProdutosLote(produtosImportacao);
-      
-      setSuccessMessage(`Importação concluída: ${response.resultados.insercoes} inseridos, ${response.resultados.atualizacoes} atualizados`);
+      let insercoes = 0;
+      let atualizacoes = 0;
+      let erros = 0;
+
+      // Importar produtos um por um
+      for (const produto of produtosImportacao) {
+        try {
+          // Verificar se produto já existe pelo nome
+          const produtoExistente = produtos?.find(
+            p => p.nome.toLowerCase() === String(produto.nome).toLowerCase()
+          );
+
+          if (produtoExistente) {
+            // Atualizar produto existente
+            await api.put(`/produtos/${produtoExistente.id}`, produto);
+            atualizacoes++;
+          } else {
+            // Criar novo produto
+            await api.post('/produtos', produto);
+            insercoes++;
+          }
+        } catch (err) {
+          console.error(`Erro ao importar produto ${produto.nome}:`, err);
+          erros++;
+        }
+      }
+
+      setSuccessMessage(
+        `Importação concluída: ${insercoes} inseridos, ${atualizacoes} atualizados${erros > 0 ? `, ${erros} erro(s)` : ''}`
+      );
       refetch(); // Recarregar dados após importação
       setTimeout(() => setSuccessMessage(null), 5000);
     } catch (err) {
-      setError('Erro ao importar produtos. Verifique os dados e tente novamente.');
-      setTimeout(() => setError(null), 5000);
-    } finally {
-      setLoading(false);
+      console.error('Erro ao importar produtos:', err);
+      setSuccessMessage('Erro ao importar produtos. Verifique os dados e tente novamente.');
+      setTimeout(() => setSuccessMessage(null), 5000);
     }
   };
 
