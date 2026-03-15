@@ -25,7 +25,10 @@ import {
   FileDownload as ExportIcon,
   Add as AddIcon,
   Close as CloseIcon,
-  Upload as UploadIcon
+  Upload as UploadIcon,
+  CheckCircle,
+  Error as ErrorIcon,
+  Warning
 } from '@mui/icons-material';
 import * as XLSX from 'xlsx';
 
@@ -64,6 +67,7 @@ const AdicionarProdutosLoteDialog: React.FC<AdicionarProdutosLoteDialogProps> = 
   const [busca, setBusca] = useState('');
   const [selecionados, setSelecionados] = useState<number[]>([]);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [mostrarValidacao, setMostrarValidacao] = useState(false);
   const [dadosProdutos, setDadosProdutos] = useState<Record<number, Partial<ProdutoSelecionado>>>({});
   const [erroImportacao, setErroImportacao] = useState('');
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -172,10 +176,22 @@ const AdicionarProdutosLoteDialog: React.FC<AdicionarProdutosLoteDialogProps> = 
     });
     setDadosProdutos(dados);
     setMostrarFormulario(true);
+    setMostrarValidacao(false);
+  };
+
+  const handleAvancarParaValidacao = () => {
+    setMostrarFormulario(false);
+    setMostrarValidacao(true);
   };
 
   const handleVoltarParaSelecao = () => {
     setMostrarFormulario(false);
+    setMostrarValidacao(false);
+  };
+
+  const handleVoltarParaFormulario = () => {
+    setMostrarValidacao(false);
+    setMostrarFormulario(true);
   };
 
   const handleChangeDadosProduto = (id: number, campo: string, valor: any) => {
@@ -286,7 +302,8 @@ const AdicionarProdutosLoteDialog: React.FC<AdicionarProdutosLoteDialogProps> = 
         // Atualizar estado
         setSelecionados(novosIds);
         setDadosProdutos(novosDados);
-        setMostrarFormulario(true);
+        setMostrarFormulario(false);
+        setMostrarValidacao(true); // Ir direto para validação após importar
         
       } catch (error) {
         console.error('Erro ao importar Excel:', error);
@@ -306,6 +323,7 @@ const AdicionarProdutosLoteDialog: React.FC<AdicionarProdutosLoteDialogProps> = 
     setBusca('');
     setSelecionados([]);
     setMostrarFormulario(false);
+    setMostrarValidacao(false);
     setDadosProdutos({});
     setErroImportacao('');
     onClose();
@@ -324,7 +342,11 @@ const AdicionarProdutosLoteDialog: React.FC<AdicionarProdutosLoteDialogProps> = 
       <DialogTitle>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Typography variant="h6">
-            {mostrarFormulario ? 'Preencher Dados dos Produtos' : 'Adicionar Produtos em Lote'}
+            {!mostrarFormulario && !mostrarValidacao 
+              ? 'Adicionar Produtos em Lote - Seleção' 
+              : mostrarFormulario 
+              ? 'Adicionar Produtos em Lote - Preenchimento'
+              : 'Adicionar Produtos em Lote - Validação'}
           </Typography>
           <IconButton size="small" onClick={handleFechar}>
             <CloseIcon />
@@ -426,6 +448,114 @@ const AdicionarProdutosLoteDialog: React.FC<AdicionarProdutosLoteDialogProps> = 
               </>
             )}
           </>
+        ) : mostrarValidacao ? (
+          <>
+            {/* Etapa 3: Validação */}
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Revise os dados antes de adicionar ao contrato. Produtos com erros não serão adicionados.
+            </Alert>
+
+            <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+              <Chip
+                icon={<CheckCircle sx={{ fontSize: 16 }} />}
+                label={`${selecionados.filter(id => {
+                  const dados = dadosProdutos[id];
+                  return dados?.quantidade_contratada && dados.quantidade_contratada > 0 &&
+                         dados?.preco_unitario && dados.preco_unitario > 0;
+                }).length} válidos`}
+                sx={{ bgcolor: '#dcfce7', color: '#059669', fontWeight: 600 }}
+              />
+              <Chip
+                icon={<ErrorIcon sx={{ fontSize: 16 }} />}
+                label={`${selecionados.filter(id => {
+                  const dados = dadosProdutos[id];
+                  return !dados?.quantidade_contratada || dados.quantidade_contratada <= 0 ||
+                         !dados?.preco_unitario || dados.preco_unitario <= 0;
+                }).length} com erros`}
+                sx={{ bgcolor: '#fee2e2', color: '#dc2626', fontWeight: 600 }}
+              />
+            </Box>
+
+            <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 400 }}>
+              <Table stickyHeader size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Produto</TableCell>
+                    <TableCell align="center">Qtd. Contratada</TableCell>
+                    <TableCell align="center">Preço Unit.</TableCell>
+                    <TableCell>Marca</TableCell>
+                    <TableCell align="center">Peso (g)</TableCell>
+                    <TableCell align="right">Valor Total</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {selecionados.map(id => {
+                    const produto = produtosNaoAdicionados.find(p => p.id === id)!;
+                    const dados = dadosProdutos[id] || {};
+                    const temErro = !dados.quantidade_contratada || dados.quantidade_contratada <= 0 ||
+                                   !dados.preco_unitario || dados.preco_unitario <= 0;
+                    const valorTotal = (dados.quantidade_contratada || 0) * (dados.preco_unitario || 0);
+
+                    return (
+                      <TableRow 
+                        key={id}
+                        sx={{ bgcolor: temErro ? '#fee2e2' : 'transparent' }}
+                      >
+                        <TableCell>
+                          {temErro ? (
+                            <ErrorIcon sx={{ fontSize: 20, color: '#dc2626' }} />
+                          ) : (
+                            <CheckCircle sx={{ fontSize: 20, color: '#059669' }} />
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" fontWeight={600}>
+                            {produto.nome}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {produto.unidade}
+                          </Typography>
+                          {temErro && (
+                            <Typography variant="caption" sx={{ display: 'block', color: '#dc2626', mt: 0.5 }}>
+                              {!dados.quantidade_contratada || dados.quantidade_contratada <= 0 
+                                ? 'Quantidade inválida' 
+                                : 'Preço inválido'}
+                            </Typography>
+                          )}
+                        </TableCell>
+                        <TableCell align="center">
+                          <Typography variant="body2" color={!dados.quantidade_contratada || dados.quantidade_contratada <= 0 ? 'error' : 'inherit'}>
+                            {dados.quantidade_contratada || '-'}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="center">
+                          <Typography variant="body2" color={!dados.preco_unitario || dados.preco_unitario <= 0 ? 'error' : 'inherit'}>
+                            {dados.preco_unitario ? `R$ ${dados.preco_unitario.toFixed(2)}` : '-'}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2">
+                            {dados.marca || '-'}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="center">
+                          <Typography variant="body2">
+                            {dados.peso || '-'}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="right">
+                          <Typography variant="body2" fontWeight={600} color="primary">
+                            R$ {valorTotal.toFixed(2)}
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </>
         ) : (
           <>
             {/* Etapa 2: Preenchimento de Dados */}
@@ -489,7 +619,7 @@ const AdicionarProdutosLoteDialog: React.FC<AdicionarProdutosLoteDialogProps> = 
       </DialogContent>
 
       <DialogActions>
-        {!mostrarFormulario ? (
+        {!mostrarFormulario && !mostrarValidacao ? (
           <>
             <Button onClick={handleFechar}>Cancelar</Button>
             <input
@@ -521,13 +651,25 @@ const AdicionarProdutosLoteDialog: React.FC<AdicionarProdutosLoteDialogProps> = 
               Avançar ({selecionados.length})
             </Button>
           </>
-        ) : (
+        ) : mostrarFormulario ? (
           <>
             <Button onClick={handleVoltarParaSelecao}>Voltar</Button>
             <Button
               variant="contained"
+              onClick={handleAvancarParaValidacao}
+              disabled={!todosPreenchidos}
+            >
+              Revisar Dados
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button onClick={handleVoltarParaFormulario}>Voltar</Button>
+            <Button
+              variant="contained"
               onClick={handleConfirmarAdicao}
               disabled={!todosPreenchidos}
+              color="success"
             >
               Adicionar Produtos
             </Button>
