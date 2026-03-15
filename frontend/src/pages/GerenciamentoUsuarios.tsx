@@ -403,7 +403,7 @@ export default function GerenciamentoUsuarios() {
                       </Box>
                       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
                         {f.permissoes.length === 0
-                          ? <Typography variant="caption" color="text.secondary">Sem permissões definidas</Typography>
+                          ? (<Typography variant="caption" color="text.secondary">Sem permissões definidas</Typography>)
                           : f.permissoes.map(p => (
                             <Chip
                               key={p.modulo_id}
@@ -421,8 +421,8 @@ export default function GerenciamentoUsuarios() {
               </Box>
             )}
           </>
-        )}
-      </Box>
+        )
+        }
 
       {/* Dialogs */}
       <UsuarioDialog
