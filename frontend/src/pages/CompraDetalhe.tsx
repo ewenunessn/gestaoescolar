@@ -480,79 +480,63 @@ export default function PedidoDetalhe() {
         </Box>
 
         <TableContainer sx={{ maxHeight: 'calc(100vh - 400px)' }}>
-          <Table stickyHeader>
+          <Table stickyHeader size="small">
             <TableHead>
               <TableRow>
-                <TableCell padding="checkbox" />
-                <TableCell>Produto</TableCell>
-                <TableCell>Fornecedor</TableCell>
-                <TableCell align="right">Quantidade</TableCell>
-                <TableCell align="center">Entrega</TableCell>
-                <TableCell align="right">Preço Unit.</TableCell>
-                <TableCell align="right">Total</TableCell>
-                <TableCell align="center" width="60">Obs</TableCell>
-                <TableCell align="center" width="60">Prog.</TableCell>
+                <TableCell padding="checkbox" sx={{ py: 0.5 }} />
+                <TableCell sx={{ py: 0.5, fontSize: '0.75rem' }}>Produto</TableCell>
+                <TableCell sx={{ py: 0.5, fontSize: '0.75rem' }}>Fornecedor</TableCell>
+                <TableCell align="right" sx={{ py: 0.5, fontSize: '0.75rem' }}>Quantidade</TableCell>
+                <TableCell align="center" sx={{ py: 0.5, fontSize: '0.75rem' }}>Entrega</TableCell>
+                <TableCell align="right" sx={{ py: 0.5, fontSize: '0.75rem' }}>Preço Unit.</TableCell>
+                <TableCell align="right" sx={{ py: 0.5, fontSize: '0.75rem' }}>Total</TableCell>
+                <TableCell align="center" width="50" sx={{ py: 0.5, fontSize: '0.75rem' }}>Obs</TableCell>
+                <TableCell align="center" width="50" sx={{ py: 0.5, fontSize: '0.75rem' }}>Prog.</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {pedido.itens.map((item) => (
-                <TableRow key={item.id} hover selected={itensSelecionados.has(item.id!)}>
-                  <TableCell padding="checkbox">
+                <TableRow key={item.id} hover selected={itensSelecionados.has(item.id!)} sx={{ height: 36 }}>
+                  <TableCell padding="checkbox" sx={{ py: 0 }}>
                     <Checkbox
                       size="small"
                       checked={itensSelecionados.has(item.id!)}
                       onChange={() => toggleSelecao(item.id!)}
                     />
                   </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                      {item.produto_nome}
-                    </Typography>
+                  <TableCell sx={{ py: 0.5, fontSize: '0.75rem', fontWeight: 500 }}>
+                    {item.produto_nome}
                   </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">
-                      {item.fornecedor_nome}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {item.contrato_numero}
-                    </Typography>
+                  <TableCell sx={{ py: 0.5, fontSize: '0.75rem' }}>
+                    {item.fornecedor_nome}
+                    {item.contrato_numero && (
+                      <span style={{ color: '#6c757d', marginLeft: 4 }}>· {item.contrato_numero}</span>
+                    )}
                   </TableCell>
-                  <TableCell align="right">
-                    <Typography variant="body2">
-                      {item.quantidade ? formatarNumero(Number(item.quantidade)) : '0'} {item.unidade || ''}
-                    </Typography>
+                  <TableCell align="right" sx={{ py: 0.5, fontSize: '0.75rem' }}>
+                    {item.quantidade ? formatarNumero(Number(item.quantidade)) : '0'} {item.unidade || ''}
                   </TableCell>
-                  <TableCell align="center">
-                    <Typography variant="body2">
-                      {item.data_entrega_prevista ? formatarData(item.data_entrega_prevista) : '-'}
-                    </Typography>
+                  <TableCell align="center" sx={{ py: 0.5, fontSize: '0.75rem' }}>
+                    {item.data_entrega_prevista ? formatarData(item.data_entrega_prevista) : '-'}
                   </TableCell>
-                  <TableCell align="right">
-                    <Typography variant="body2">
-                      {formatarMoeda(item.preco_unitario)}
-                    </Typography>
+                  <TableCell align="right" sx={{ py: 0.5, fontSize: '0.75rem' }}>
+                    {formatarMoeda(item.preco_unitario)}
                   </TableCell>
-                  <TableCell align="right">
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                      {formatarMoeda(item.valor_total)}
-                    </Typography>
+                  <TableCell align="right" sx={{ py: 0.5, fontSize: '0.75rem', fontWeight: 500 }}>
+                    {formatarMoeda(item.valor_total)}
                   </TableCell>
-                  <TableCell align="center">
+                  <TableCell align="center" sx={{ py: 0 }}>
                     {item.observacoes ? (
-                      <IconButton
-                        size="small"
-                        color="primary"
-                        onClick={(e) => abrirObservacoes(e, item)}
-                      >
+                      <IconButton size="small" color="primary" onClick={(e) => abrirObservacoes(e, item)}>
                         <Badge variant="dot" color="primary">
-                          <CommentIcon fontSize="small" />
+                          <CommentIcon sx={{ fontSize: 16 }} />
                         </Badge>
                       </IconButton>
                     ) : (
-                      <Typography variant="caption" color="text.secondary">-</Typography>
+                      <span style={{ color: '#adb5bd', fontSize: '0.75rem' }}>-</span>
                     )}
                   </TableCell>
-                  <TableCell align="center">
+                  <TableCell align="center" sx={{ py: 0 }}>
                     <Tooltip title="Programação de entrega por escola">
                       <IconButton
                         size="small"
@@ -564,7 +548,7 @@ export default function PedidoDetalhe() {
                           unidade: item.unidade || 'kg',
                         })}
                       >
-                        <CalendarIcon fontSize="small" />
+                        <CalendarIcon sx={{ fontSize: 16 }} />
                       </IconButton>
                     </Tooltip>
                   </TableCell>
