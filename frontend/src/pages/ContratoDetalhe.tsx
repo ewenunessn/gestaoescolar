@@ -488,6 +488,8 @@ export default function ContratoDetalhe() {
   };
 
   const handleAdicionarProdutosLote = async (produtos: any[]) => {
+    console.log('📦 Produtos recebidos para adicionar:', produtos);
+    
     const resultados = {
       sucesso: [] as any[],
       erros: [] as { produto: string; erro: string }[]
@@ -505,6 +507,7 @@ export default function ContratoDetalhe() {
           peso: produto.peso || null,
           ativo: true
         };
+        console.log('📝 Payload para adicionar:', payload);
         await adicionarContratoProduto(payload);
         resultados.sucesso.push(produto);
       } catch (error: any) {

@@ -214,6 +214,7 @@ const AdicionarProdutosLoteDialog: React.FC<AdicionarProdutosLoteDialogProps> = 
       };
     });
 
+    console.log('✅ Produtos para adicionar:', produtosParaAdicionar);
     onAdicionar(produtosParaAdicionar);
     handleFechar();
   };
@@ -302,8 +303,8 @@ const AdicionarProdutosLoteDialog: React.FC<AdicionarProdutosLoteDialogProps> = 
         // Atualizar estado
         setSelecionados(novosIds);
         setDadosProdutos(novosDados);
-        setMostrarFormulario(false);
-        setMostrarValidacao(true); // Ir direto para validação após importar
+        setMostrarFormulario(true); // Ir para formulário para permitir edição
+        setMostrarValidacao(false);
         
       } catch (error) {
         console.error('Erro ao importar Excel:', error);
