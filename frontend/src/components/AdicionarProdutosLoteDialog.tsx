@@ -222,36 +222,44 @@ const AdicionarProdutosLoteDialog: React.FC<AdicionarProdutosLoteDialogProps> = 
           return;
         }
 
+        console.log('📊 Total de linhas no Excel:', jsonData.length);
+        console.log('📋 Dados do Excel:', jsonData);
+
         // Validar e processar dados
         const novosIds: number[] = [];
         const novosDados: Record<number, Partial<ProdutoSelecionado>> = {};
+        const erros: string[] = [];
 
-        for (const row of jsonData) {
+        for (let i = 0; i < jsonData.length; i++) {
+          const row = jsonData[i];
+          const linha = i + 2; // +2 porque linha 1 é cabeçalho e array começa em 0
+          
           const produtoId = Number(row.produto_id);
           
           if (!produtoId || isNaN(produtoId)) {
-            setErroImportacao('Arquivo inválido: produto_id ausente ou inválido.');
-            return;
+            erros.push(`Linha ${linha}: produto_id ausente ou inválido`);
+            continue;
           }
 
           const produto = produtosNaoAdicionados.find(p => p.id === produtoId);
           if (!produto) {
-            setErroImportacao(`Produto com ID ${produtoId} não encontrado ou já adicionado.`);
-            return;
+            erros.push(`Linha ${linha}: Produto ID ${produtoId} não encontrado ou já adicionado`);
+            continue;
           }
 
           const quantidadeContratada = Number(row.quantidade_contratada);
           if (!quantidadeContratada || isNaN(quantidadeContratada) || quantidadeContratada <= 0) {
-            setErroImportacao(`Quantidade contratada inválida para o produto ${produto.nome}.`);
-            return;
+            erros.push(`Linha ${linha} (${produto.nome}): Quantidade contratada inválida`);
+            continue;
           }
 
           const precoUnitario = Number(row.preco_unitario);
           if (!precoUnitario || isNaN(precoUnitario) || precoUnitario <= 0) {
-            setErroImportacao(`Preço unitário inválido para o produto ${produto.nome}.`);
-            return;
+            erros.push(`Linha ${linha} (${produto.nome}): Preço unitário inválido`);
+            continue;
           }
 
+          // Produto válido, adicionar
           novosIds.push(produtoId);
           novosDados[produtoId] = {
             quantidade_contratada: quantidadeContratada,
@@ -259,6 +267,20 @@ const AdicionarProdutosLoteDialog: React.FC<AdicionarProdutosLoteDialogProps> = 
             peso: row.peso ? Number(row.peso) : undefined,
             preco_unitario: precoUnitario
           };
+        }
+
+        console.log('✅ Produtos válidos:', novosIds.length);
+        console.log('❌ Erros encontrados:', erros.length);
+
+        if (novosIds.length === 0) {
+          setErroImportacao(`Nenhum produto válido encontrado no arquivo.\n${erros.join('\n')}`);
+          return;
+        }
+
+        // Mostrar aviso se houver erros, mas continuar com os válidos
+        if (erros.length > 0) {
+          console.warn('⚠️ Erros na importação:', erros);
+          setErroImportacao(`${novosIds.length} produtos válidos encontrados. ${erros.length} linhas com erro foram ignoradas.`);
         }
 
         // Atualizar estado

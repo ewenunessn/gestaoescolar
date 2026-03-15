@@ -488,9 +488,14 @@ export default function ContratoDetalhe() {
   };
 
   const handleAdicionarProdutosLote = async (produtos: any[]) => {
-    try {
-      // Adicionar cada produto individualmente
-      for (const produto of produtos) {
+    const resultados = {
+      sucesso: [] as any[],
+      erros: [] as { produto: string; erro: string }[]
+    };
+
+    // Tentar adicionar cada produto individualmente
+    for (const produto of produtos) {
+      try {
         const payload = {
           contrato_id: Number(id),
           produto_id: produto.id,
@@ -501,14 +506,31 @@ export default function ContratoDetalhe() {
           ativo: true
         };
         await adicionarContratoProduto(payload);
+        resultados.sucesso.push(produto);
+      } catch (error: any) {
+        console.error(`Erro ao adicionar produto ${produto.nome}:`, error);
+        resultados.erros.push({
+          produto: produto.nome,
+          erro: error.message || 'Erro desconhecido'
+        });
       }
-      
-      setDialogState(prev => ({ ...prev, adicionarLote: false }));
-      setSuccessMessage(`${produtos.length} produto(s) adicionado(s) com sucesso!`);
-      await carregarDados();
-    } catch (error: any) {
-      setErro(error.message || "Erro ao adicionar produtos em lote.");
     }
+    
+    setDialogState(prev => ({ ...prev, adicionarLote: false }));
+    
+    // Mostrar mensagem de resultado
+    if (resultados.sucesso.length > 0) {
+      setSuccessMessage(`${resultados.sucesso.length} produto(s) adicionado(s) com sucesso!`);
+    }
+    
+    if (resultados.erros.length > 0) {
+      const mensagemErro = `Falha ao adicionar ${resultados.erros.length} produto(s):\n${
+        resultados.erros.map(e => `• ${e.produto}: ${e.erro}`).join('\n')
+      }`;
+      setErro(mensagemErro);
+    }
+    
+    await carregarDados();
   };
 
   if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}><CircularProgress size={60} /></Box>;
