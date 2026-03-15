@@ -39,6 +39,7 @@ import {
   ExpandLess,
   ExpandMore,
   Apps as AppsIcon,
+  AdminPanelSettings,
 } from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
 import { logout } from "../services/auth";
@@ -116,6 +117,7 @@ const getMenuConfig = (_configModuloSaldo: any) => [
     category: "Configurações",
     items: [
       { text: "Instituição", icon: <Settings fontSize="small" />, path: "/configuracao-instituicao" },
+      { text: "Usuários", icon: <AdminPanelSettings fontSize="small" />, path: "/gerenciamento-usuarios", adminOnly: true },
     ],
   },
 ];

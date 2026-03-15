@@ -36,6 +36,7 @@ import {
   Inventory,
 } from '@mui/icons-material';
 import * as XLSX from 'xlsx';
+import { gerarModeloExcelProdutos, gerarModeloCSVProdutos } from '../utils/produtoImportUtils';
 
 interface ImportacaoProdutosProps {
   open: boolean;
@@ -49,6 +50,8 @@ interface ProdutoImportacao {
   descricao?: string;
   categoria?: string;
   tipo_processamento?: string;
+  peso?: number;
+  fator_correcao?: number;
   perecivel?: boolean;
   ativo: boolean;
   status: 'valido' | 'erro' | 'aviso';
@@ -83,190 +86,11 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
   };
 
   const gerarModeloCSV = () => {
-    const headers = [
-      'nome',
-      'unidade',
-      'descricao',
-      'categoria',
-      'tipo_processamento',
-      'perecivel',
-      'ativo'
-    ];
-
-    const exemplos = [
-      [
-        'Arroz Branco Tipo 1',
-        'KG',
-        'Arroz branco polido, tipo 1, classe longo fino',
-        'Cereais',
-        'processado',
-        'false',
-        'true'
-      ],
-      [
-        'Feijão Carioca',
-        'KG',
-        'Feijão carioca tipo 1, classe cores',
-        'Leguminosas',
-        'in natura',
-        'false',
-        'true'
-      ],
-      [
-        'Banana Prata',
-        'KG',
-        'Banana prata fresca, primeira qualidade',
-        'Frutas',
-        'in natura',
-        'true',
-        'true'
-      ],
-      [
-        'Carne Bovina Moída',
-        'KG',
-        'Carne bovina moída, primeira qualidade',
-        'Carnes',
-        'in natura',
-        'true',
-        'true'
-      ],
-      [
-        'Óleo de Soja',
-        'L',
-        'Óleo de soja refinado',
-        'Óleos',
-        'processado',
-        'false',
-        'true'
-      ]
-    ];
-
-    const csvContent = [
-      headers.join(','),
-      ...exemplos.map(linha => linha.map(campo => `"${campo}"`).join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'modelo_importacao_produtos.csv';
-    link.click();
+    gerarModeloCSVProdutos();
   };
 
   const gerarModeloExcel = () => {
-    const headers = [
-      'nome',
-      'unidade',
-      'descricao',
-      'categoria',
-      'tipo_processamento',
-      'perecivel',
-      'ativo'
-    ];
-
-    const exemplos = [
-      [
-        'Arroz Branco Tipo 1',
-        'KG',
-        'Arroz branco polido, tipo 1, classe longo fino',
-        'Cereais',
-        'processado',
-        false,
-        true
-      ],
-      [
-        'Feijão Carioca',
-        'KG',
-        'Feijão carioca tipo 1, classe cores',
-        'Leguminosas',
-        'in natura',
-        false,
-        true
-      ],
-      [
-        'Banana Prata',
-        'KG',
-        'Banana prata fresca, primeira qualidade',
-        'Frutas',
-        'in natura',
-        true,
-        true
-      ],
-      [
-        'Carne Bovina Moída',
-        'KG',
-        'Carne bovina moída, primeira qualidade',
-        'Carnes',
-        'in natura',
-        true,
-        true
-      ],
-      [
-        'Óleo de Soja',
-        'L',
-        'Óleo de soja refinado',
-        'Óleos',
-        'processado',
-        false,
-        true
-      ]
-    ];
-
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...exemplos]);
-
-    // Definir largura das colunas
-    ws['!cols'] = [
-      { wch: 25 }, // nome
-      { wch: 10 }, // unidade
-      { wch: 35 }, // descricao
-      { wch: 15 }, // categoria
-      { wch: 25 }, // tipo_processamento
-      { wch: 10 }, // perecivel
-      { wch: 8 }   // ativo
-    ];
-
-    // Adicionar validação de dados
-    if (!ws['!dataValidation']) ws['!dataValidation'] = [];
-    
-    // Validação para tipo_processamento (coluna E, linhas 2 a 100)
-    ws['!dataValidation'].push({
-      type: 'list',
-      allowBlank: true,
-      sqref: 'E2:E100',
-      formulas: ['"in natura,minimamente processado,processado,ultraprocessado"'],
-      promptTitle: 'Tipo de Processamento',
-      prompt: 'Selecione uma das opções',
-      errorTitle: 'Valor Inválido',
-      error: 'Escolha: in natura, minimamente processado, processado ou ultraprocessado'
-    });
-
-    // Validação para perecivel (coluna F, linhas 2 a 100)
-    ws['!dataValidation'].push({
-      type: 'list',
-      allowBlank: false,
-      sqref: 'F2:F100',
-      formulas: ['"true,false"'],
-      promptTitle: 'Perecível',
-      prompt: 'Selecione true ou false',
-      errorTitle: 'Valor Inválido',
-      error: 'Escolha: true ou false'
-    });
-
-    // Validação para ativo (coluna G, linhas 2 a 100)
-    ws['!dataValidation'].push({
-      type: 'list',
-      allowBlank: false,
-      sqref: 'G2:G100',
-      formulas: ['"true,false"'],
-      promptTitle: 'Ativo',
-      prompt: 'Selecione true ou false',
-      errorTitle: 'Valor Inválido',
-      error: 'Escolha: true ou false'
-    });
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Produtos');
-    XLSX.writeFile(wb, 'modelo_importacao_produtos.xlsx');
+    gerarModeloExcelProdutos();
   };
 
   const processarArquivo = async (file: File) => {
@@ -339,7 +163,10 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
         }
       };
 
-      reader.onerror = () => reject(new Error('Erro ao ler arquivo'));
+      reader.onerror = () => {
+        const errorMessage = 'Erro ao ler arquivo';
+        reject(new Error(errorMessage));
+      };
 
       if (file.name.endsWith('.csv')) {
         reader.readAsText(file);
@@ -357,6 +184,8 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
         descricao: linha.descricao || '',
         categoria: linha.categoria || '',
         tipo_processamento: linha.tipo_processamento || '',
+        peso: linha.peso ? parseFloat(linha.peso) : undefined,
+        fator_correcao: linha.fator_correcao ? parseFloat(linha.fator_correcao) : undefined,
         perecivel: linha.perecivel === 'true' || linha.perecivel === true || linha.perecivel === 1,
         ativo: linha.ativo === 'true' || linha.ativo === true || linha.ativo === 1,
         status: 'valido',
@@ -379,6 +208,16 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
       // Validar tipo de processamento
       if (produto.tipo_processamento && !['in natura', 'minimamente processado', 'processado', 'ultraprocessado'].includes(produto.tipo_processamento)) {
         erros.push('Tipo de processamento deve ser: in natura, minimamente processado, processado ou ultraprocessado');
+      }
+
+      // Validar peso (opcional, mas se fornecido deve ser > 0)
+      if (produto.peso !== undefined && (isNaN(produto.peso) || produto.peso <= 0)) {
+        erros.push('Peso deve ser um número maior que zero');
+      }
+
+      // Validar fator_correcao (opcional, mas se fornecido deve ser > 0)
+      if (produto.fator_correcao !== undefined && (isNaN(produto.fator_correcao) || produto.fator_correcao <= 0)) {
+        erros.push('Fator de correção deve ser um número maior que zero');
       }
 
       // Definir status

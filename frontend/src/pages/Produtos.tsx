@@ -62,7 +62,7 @@ import {
 } from "@mui/icons-material";
 import CompactPagination from '../components/CompactPagination';
 import { useNavigate, useLocation } from "react-router-dom";
-import * as XLSX from 'xlsx';
+import { gerarModeloExcelProdutos } from '../utils/produtoImportUtils';
 
 interface ProdutoForm {
   nome: string;
@@ -485,112 +485,9 @@ const ProdutosPage = () => {
 
   const handleExportarModelo = () => {
     try {
-      // Criar modelo com headers e exemplo
-      const headers = [
-        'nome', 'unidade', 'descricao', 'categoria', 
-        'tipo_processamento', 'perecivel', 'ativo'
-      ];
-
-      const exemplo = [
-        'Arroz Branco Tipo 1',
-        'KG',
-        'Arroz branco polido, tipo 1, classe longo fino',
-        'Cereais',
-        'processado',
-        false,
-        true
-      ];
-
-      // Criar worksheet com headers e exemplo
-      const ws = XLSX.utils.aoa_to_sheet([headers, exemplo]);
-
-      // Ajustar largura das colunas
-      const colWidths = [
-        { wch: 30 }, // nome
-        { wch: 10 }, // unidade
-        { wch: 35 }, // descricao
-        { wch: 15 }, // categoria
-        { wch: 25 }, // tipo_processamento
-        { wch: 10 }, // perecivel
-        { wch: 8 }   // ativo
-      ];
-      ws['!cols'] = colWidths;
-
-      // Adicionar validação de dados para facilitar o preenchimento
-      if (!ws['!dataValidation']) ws['!dataValidation'] = [];
-      
-      // Validação para tipo_processamento (coluna E, linhas 2 a 100)
-      ws['!dataValidation'].push({
-        type: 'list',
-        allowBlank: true,
-        sqref: 'E2:E100',
-        formulas: ['"in natura,minimamente processado,processado,ultraprocessado"'],
-        promptTitle: 'Tipo de Processamento',
-        prompt: 'Selecione uma das opções',
-        errorTitle: 'Valor Inválido',
-        error: 'Escolha: in natura, minimamente processado, processado ou ultraprocessado'
-      });
-
-      // Validação para perecivel (coluna F, linhas 2 a 100)
-      ws['!dataValidation'].push({
-        type: 'list',
-        allowBlank: false,
-        sqref: 'F2:F100',
-        formulas: ['"true,false"'],
-        promptTitle: 'Perecível',
-        prompt: 'Selecione true ou false',
-        errorTitle: 'Valor Inválido',
-        error: 'Escolha: true ou false'
-      });
-
-      // Validação para ativo (coluna G, linhas 2 a 100)
-      ws['!dataValidation'].push({
-        type: 'list',
-        allowBlank: false,
-        sqref: 'G2:G100',
-        formulas: ['"true,false"'],
-        promptTitle: 'Ativo',
-        prompt: 'Selecione true ou false',
-        errorTitle: 'Valor Inválido',
-        error: 'Escolha: true ou false'
-      });
-
-      // Criar workbook e adicionar worksheet
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Modelo_Importacao');
-
-      // Adicionar segunda aba com instruções
-      const instrucoes = [
-        ['INSTRUÇÕES PARA IMPORTAÇÃO DE PRODUTOS'],
-        [''],
-        ['Campo', 'Descrição', 'Obrigatório', 'Exemplo'],
-        ['nome', 'Nome do produto', 'SIM', 'Arroz Branco'],
-        ['unidade', 'Unidade de medida (UN, KG, L, etc)', 'SIM', 'KG'],
-        ['descricao', 'Descrição detalhada do produto', 'NÃO', 'Arroz branco tipo 1'],
-        ['categoria', 'Categoria do produto', 'NÃO', 'Cereais'],
-        ['tipo_processamento', 'Tipo: in natura, minimamente processado, processado, ultraprocessado', 'NÃO', 'processado'],
-        ['perecivel', 'Produto perecível (true/false)', 'NÃO', 'false'],
-        ['ativo', 'Produto ativo (true/false)', 'NÃO', 'true'],
-        [''],
-        ['NOTAS:'],
-        ['- Preencha apenas os campos necessários'],
-        ['- Use true ou false para os campos perecivel e ativo'],
-        ['- O sistema identificará produtos existentes pelo nome e fará atualização'],
-        ['- Unidades comuns: UN, KG, G, L, ML, DZ, PCT, CX, FD, SC']
-      ];
-
-      const wsInstrucoes = XLSX.utils.aoa_to_sheet(instrucoes);
-      wsInstrucoes['!cols'] = [{ wch: 15 }, { wch: 50 }, { wch: 10 }, { wch: 20 }];
-      XLSX.utils.book_append_sheet(wb, wsInstrucoes, 'Instruções');
-
-      // Gerar nome do arquivo
       const dataAtual = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
       const nomeArquivo = `modelo_importacao_produtos_${dataAtual}.xlsx`;
-
-      // Fazer download do arquivo
-      XLSX.writeFile(wb, nomeArquivo);
-
-      // Fechar menu de ações
+      gerarModeloExcelProdutos(nomeArquivo);
       setActionsMenuAnchor(null);
     } catch (error) {
       console.error('Erro ao exportar modelo:', error);

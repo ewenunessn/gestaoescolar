@@ -80,6 +80,7 @@ const ComprovantesEntrega = lazy(() => import("../pages/ComprovantesEntrega"));
 const ConfiguracaoInstituicao = lazy(() => import("../pages/ConfiguracaoInstituicao"));
 const PlanejamentoCompras = lazy(() => import("../pages/PlanejamentoCompras"));
 const DashboardPNAE = lazy(() => import("../pages/DashboardPNAE"));
+const GerenciamentoUsuarios = lazy(() => import("../pages/GerenciamentoUsuarios"));
 
 interface AppRouterProps {
   routerConfig?: {
@@ -349,6 +350,12 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
             <Route
               path="/pnae/dashboard"
               element={<LazyRoute><DashboardPNAE /></LazyRoute>}
+            />
+
+            {/* Gerenciamento de Usuários (admin) */}
+            <Route
+              path="/gerenciamento-usuarios"
+              element={<LazyRoute><GerenciamentoUsuarios /></LazyRoute>}
             />
 
             

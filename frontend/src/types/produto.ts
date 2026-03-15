@@ -51,10 +51,14 @@ export interface ComposicaoNutricional {
 
 export interface ImportarProdutoRequest {
   nome: string;
+  unidade: string;
   categoria?: string;
   descricao?: string;
   tipo_processamento?: string;
+  peso?: number;
+  fator_correcao?: number;
   perecivel?: boolean;
+  ativo?: boolean;
 }
 
 export interface ImportarProdutosResponse {

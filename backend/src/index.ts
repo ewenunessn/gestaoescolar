@@ -15,6 +15,8 @@ import monitoringRoutes from './routes/monitoringRoutes';
 
 // Importar rotas organizadas por módulos
 import userRoutes from "./modules/usuarios/routes/userRoutes";
+import adminUsuariosRoutes from "./modules/usuarios/routes/adminUsuariosRoutes";
+import { ensureAdminTables } from "./modules/usuarios/controllers/adminUsuariosController";
 
 // Importar rotas essenciais
 import escolaRoutes from "./modules/escolas/routes/escolaRoutes";
@@ -249,6 +251,7 @@ app.get("/api/test-db", async (req, res) => {
 app.use("/api/usuarios", userRoutes);
 app.use("/api/auth", userRoutes); // compatibilidade para login
 app.use("/api/permissoes", require("./routes/permissoesRoutes").default);
+app.use("/api/admin", adminUsuariosRoutes);
 
 // Registrar rotas essenciais
 app.use("/api/escolas", mediumCache, escolaRoutes);
@@ -383,6 +386,12 @@ async function iniciarServidor() {
         await createEssentialTables();
       } catch (e) {
         console.error('⚠️ Falha ao criar tabelas essenciais (continuando):', e);
+      }
+
+      try {
+        await ensureAdminTables();
+      } catch (e) {
+        console.error('⚠️ Falha ao criar tabelas de admin (continuando):', e);
       }
 
       try {
