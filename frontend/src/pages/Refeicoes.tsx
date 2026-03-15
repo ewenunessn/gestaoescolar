@@ -315,7 +315,7 @@ const RefeicoesPage = () => {
               >
                 Filtros
               </Button>
-              <Button startIcon={<AddIcon />} onClick={() => openModal()} variant="contained" color="success" size="small">
+              <Button startIcon={<AddIcon />} onClick={() => openModal()} variant="contained" color="add" size="small">
                 Nova Refeição
               </Button>
               <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)} size="small">
@@ -407,7 +407,7 @@ const RefeicoesPage = () => {
                     <TableCell align="center">
                         <Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => handleViewDetails(refeicao)} color="default"><Visibility fontSize="small" /></IconButton></Tooltip>
                         <Tooltip title="Editar"><IconButton size="small" onClick={() => openModal(refeicao)} color="primary"><Edit fontSize="small" /></IconButton></Tooltip>
-                        <Tooltip title="Excluir"><IconButton size="small" onClick={() => openDeleteModal(refeicao)} color="error"><Delete fontSize="small" /></IconButton></Tooltip>
+                        <Tooltip title="Excluir"><IconButton size="small" onClick={() => openDeleteModal(refeicao)} color="delete"><Delete fontSize="small" /></IconButton></Tooltip>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -463,7 +463,7 @@ const RefeicoesPage = () => {
         </DialogContent>
         <DialogActions sx={{ p: 3, pt: 1 }}>
             <Button onClick={closeDeleteModal} sx={{ color: 'text.secondary' }}>Cancelar</Button>
-            <Button onClick={handleDelete} color="error" variant="contained">Excluir</Button>
+            <Button onClick={handleDelete} color="delete" variant="contained">Excluir</Button>
         </DialogActions>
       </Dialog>
       

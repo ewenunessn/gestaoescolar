@@ -102,9 +102,9 @@ const DashboardConsistencia: React.FC = () => {
     };
 
     const getStatusIcon = (percentual: number) => {
-        if (percentual >= 95) return <CheckCircle color="success" />;
+        if (percentual >= 95) return <CheckCircle color="add" />;
         if (percentual >= 80) return <Warning color="warning" />;
-        return <Error color="error" />;
+        return <Error color="delete" />;
     };
 
     useEffect(() => {

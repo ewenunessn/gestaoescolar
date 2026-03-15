@@ -321,8 +321,7 @@ export default function DemandaDetalhe() {
                                             Registrar Envio à SEMAD
                                         </Button>
                                         <Button
-                                            variant="outlined"
-                                            color="error"
+                                            variant="contained" color="delete"
                                             startIcon={<CancelIcon />}
                                             onClick={() => setDialogRecusar(true)}
                                             disabled={processando}
@@ -336,8 +335,7 @@ export default function DemandaDetalhe() {
                                 {ehEnviado && (
                                     <>
                                         <Button
-                                            variant="contained"
-                                            color="success"
+                                            variant="contained" color="add"
                                             startIcon={<CheckCircleIcon />}
                                             onClick={() => setDialogAtender(true)}
                                             disabled={processando}
@@ -345,8 +343,7 @@ export default function DemandaDetalhe() {
                                             Registrar Atendimento
                                         </Button>
                                         <Button
-                                            variant="outlined"
-                                            color="error"
+                                            variant="contained" color="delete"
                                             startIcon={<CancelIcon />}
                                             onClick={() => setDialogNaoAtender(true)}
                                             disabled={processando}
@@ -367,8 +364,7 @@ export default function DemandaDetalhe() {
                                 </Button>
 
                                 <Button
-                                    variant="outlined"
-                                    color="error"
+                                    variant="contained" color="delete"
                                     startIcon={<DeleteIcon />}
                                     onClick={() => setDialogExcluir(true)}
                                     disabled={processando}
@@ -436,8 +432,7 @@ export default function DemandaDetalhe() {
                     </Button>
                     <Button
                         onClick={handleRecusarImediata}
-                        variant="contained"
-                        color="error"
+                        variant="contained" color="delete"
                         disabled={processando || !motivoRecusa.trim()}
                     >
                         {processando ? 'Registrando...' : 'Confirmar Recusa'}
@@ -477,8 +472,7 @@ export default function DemandaDetalhe() {
                     </Button>
                     <Button
                         onClick={handleAtender}
-                        variant="contained"
-                        color="success"
+                        variant="contained" color="add"
                         disabled={processando || !dataResposta}
                     >
                         {processando ? 'Registrando...' : 'Confirmar Atendimento'}
@@ -518,8 +512,7 @@ export default function DemandaDetalhe() {
                     </Button>
                     <Button
                         onClick={handleNaoAtender}
-                        variant="contained"
-                        color="error"
+                        variant="contained" color="delete"
                         disabled={processando || !dataResposta}
                     >
                         {processando ? 'Registrando...' : 'Confirmar Não Atendimento'}
@@ -541,8 +534,7 @@ export default function DemandaDetalhe() {
                     </Button>
                     <Button
                         onClick={handleExcluir}
-                        variant="contained"
-                        color="error"
+                        variant="contained" color="delete"
                         disabled={processando}
                     >
                         {processando ? 'Excluindo...' : 'Confirmar Exclusão'}

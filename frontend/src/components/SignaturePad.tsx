@@ -141,8 +141,7 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, onClear, hei
       </Paper>
       <Box sx={{ display: 'flex', gap: 1 }}>
         <Button
-          variant="outlined"
-          color="error"
+          variant="contained" color="delete"
           startIcon={<ClearIcon />}
           onClick={clear}
           disabled={isEmpty}
@@ -151,8 +150,7 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, onClear, hei
           Limpar
         </Button>
         <Button
-          variant="contained"
-          color="success"
+          variant="contained" color="add"
           startIcon={<CheckIcon />}
           onClick={save}
           disabled={isEmpty}

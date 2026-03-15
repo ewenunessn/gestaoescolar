@@ -543,8 +543,7 @@ export default function DemandasLista() {
                 Filtros
               </Button>
               <Button
-                variant="contained"
-                color="success"
+                variant="contained" color="add"
                 startIcon={<AddIcon />}
                 onClick={handleNovaDemanda}
               >
@@ -795,7 +794,7 @@ export default function DemandasLista() {
                   </IconButton>
                   <IconButton
                     size="small"
-                    color="error"
+                    color="delete"
                     onClick={handleCancelarEdicao}
                     disabled={salvando}
                     title="Cancelar"
@@ -953,8 +952,7 @@ export default function DemandasLista() {
           </Button>
           <Button
             onClick={handleExcluirDemanda}
-            variant="contained"
-            color="error"
+            variant="contained" color="delete"
             disabled={excluindo}
           >
             {excluindo ? 'Excluindo...' : 'Confirmar Exclusão (Enter)'}

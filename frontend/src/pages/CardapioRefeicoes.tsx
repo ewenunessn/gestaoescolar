@@ -225,7 +225,7 @@ const CardapioRefeicoesPage: React.FC = () => {
                       <Box>
                         <IconButton size="small" color="primary" onClick={() => handleOpenProdutosDialog(refeicao)}><ProductIcon /></IconButton>
                         <IconButton size="small" color="primary" onClick={() => handleOpenRefeicaoDialog(refeicao)}><EditIcon /></IconButton>
-                        <IconButton size="small" color="error" onClick={() => handleDeleteRefeicao(refeicao.id)}><DeleteIcon /></IconButton>
+                        <IconButton size="small" color="delete" onClick={() => handleDeleteRefeicao(refeicao.id)}><DeleteIcon /></IconButton>
                       </Box>
                     }>
                       <ListItemText
@@ -285,7 +285,7 @@ const CardapioRefeicoesPage: React.FC = () => {
                   <ListItem secondaryAction={
                     <Box>
                       <IconButton size="small" color="primary" onClick={() => handleOpenAddProdutoDialog(produto)}><EditIcon /></IconButton>
-                      <IconButton size="small" color="error" onClick={() => handleDeleteProduto(produto.id)}><DeleteIcon /></IconButton>
+                      <IconButton size="small" color="delete" onClick={() => handleDeleteProduto(produto.id)}><DeleteIcon /></IconButton>
                     </Box>
                   }>
                     <ListItemText primary={produto.produto_nome}

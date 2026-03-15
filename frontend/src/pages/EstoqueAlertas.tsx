@@ -132,7 +132,7 @@ const EstoqueAlertas: React.FC = () => {
   const getIconeNivel = (nivel: string) => {
     switch (nivel) {
       case 'critical':
-        return <Error color="error" />;
+        return <Error color="delete" />;
       case 'warning':
         return <Warning color="warning" />;
       case 'info':
@@ -203,7 +203,7 @@ const EstoqueAlertas: React.FC = () => {
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" gap={2}>
-                <Error color="error" />
+                <Error color="delete" />
                 <Box>
                   <Typography variant="h6" fontWeight="bold">
                     {estatisticas.criticos}
@@ -386,7 +386,7 @@ const EstoqueAlertas: React.FC = () => {
                       <Tooltip title="Marcar como Resolvido">
                         <IconButton
                           size="small"
-                          color="success"
+                          color="add"
                           onClick={() => handleResolverAlerta(alerta)}
                         >
                           <CheckCircle />
@@ -439,7 +439,7 @@ const EstoqueAlertas: React.FC = () => {
           <Button onClick={() => setModalResolver({ aberto: false, alerta: null })}>
             Cancelar
           </Button>
-          <Button onClick={confirmarResolverAlerta} variant="contained" color="success">
+          <Button onClick={confirmarResolverAlerta} variant="contained" color="add">
             Resolver
           </Button>
         </DialogActions>

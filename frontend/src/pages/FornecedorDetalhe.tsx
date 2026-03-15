@@ -282,7 +282,7 @@ export default function FornecedorDetalhe() {
             startIcon={<AddIcon />} 
             onClick={handleNovoContrato} 
             variant="contained" 
-            color="success" 
+            color="add" 
             size="small"
           >
             Novo Contrato
@@ -305,7 +305,7 @@ export default function FornecedorDetalhe() {
                   variant="contained" 
                   startIcon={<AddIcon />} 
                   onClick={handleNovoContrato}
-                  color="success"
+                  color="add"
                 >
                   Novo Contrato
                 </Button>

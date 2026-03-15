@@ -483,7 +483,7 @@ export default function DemandasListaModal() {
                     </IconButton>
                     <IconButton
                       size="small"
-                      color="error"
+                      color="delete"
                       onClick={() => {
                         setDemandaSelecionada(demanda);
                         setModalExcluir(true);

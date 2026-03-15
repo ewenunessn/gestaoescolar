@@ -343,7 +343,7 @@ const PedidosPage = () => {
                 startIcon={<AddIcon />}
                 onClick={() => navigate('/compras/novo')}
                 variant="contained"
-                color="success"
+                color="add"
                 size="small"
               >
                 Novo Pedido
@@ -481,7 +481,7 @@ const PedidosPage = () => {
                             <IconButton
                               size="small"
                               onClick={() => abrirDialogoExclusao(pedido)}
-                              color="error"
+                              color="delete"
                             >
                               <DeleteIcon fontSize="small" />
                             </IconButton>
@@ -539,8 +539,7 @@ const PedidosPage = () => {
           </Button>
           <Button
             onClick={handleExcluir}
-            color="error"
-            variant="contained"
+            color="delete" variant="contained"
             disabled={processandoExclusao}
           >
             {processandoExclusao ? <CircularProgress size={24} /> : 'Confirmar Exclusão'}

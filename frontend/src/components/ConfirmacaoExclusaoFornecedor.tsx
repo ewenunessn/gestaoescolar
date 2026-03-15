@@ -237,8 +237,7 @@ const ConfirmacaoExclusaoFornecedor: React.FC<ConfirmacaoExclusaoFornecedorProps
         {relacionamentos?.podeExcluir && !loading && (
           <Button
             onClick={onConfirm}
-            variant="contained"
-            color="error"
+            variant="contained" color="delete"
             sx={{
               textTransform: 'none',
             }}

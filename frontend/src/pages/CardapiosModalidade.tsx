@@ -311,7 +311,7 @@ const CardapiosModalidadePage: React.FC = () => {
               <Button variant="outlined" startIcon={<FilterIcon />} onClick={(e) => { setFilterAnchorEl(e.currentTarget); setFilterOpen(true); }} size="small">
                 Filtros
               </Button>
-              <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpenDialog()} size="small" color="success">
+              <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpenDialog()} size="small" color="add">
                 Novo Cardápio
               </Button>
             </Box>
@@ -421,7 +421,7 @@ const CardapiosModalidadePage: React.FC = () => {
                           <IconButton size="small" color="primary" onClick={() => handleOpenDialog(cardapio)} title="Editar">
                             <EditIcon fontSize="small" />
                           </IconButton>
-                          <IconButton size="small" color="error" onClick={() => handleDelete(cardapio.id)} title="Remover">
+                          <IconButton size="small" color="delete" onClick={() => handleDelete(cardapio.id)} title="Remover">
                             <DeleteIcon fontSize="small" />
                           </IconButton>
                         </TableCell>
@@ -680,7 +680,7 @@ const CardapiosModalidadePage: React.FC = () => {
           <Button onClick={() => setConfirmClose(false)} variant="outlined" size="small">
             Continuar Editando
           </Button>
-          <Button onClick={confirmCloseDialog} color="error" variant="contained" size="small">
+          <Button onClick={confirmCloseDialog} color="delete" variant="contained" size="small">
             Descartar
           </Button>
         </DialogActions>

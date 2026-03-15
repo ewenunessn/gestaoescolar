@@ -236,7 +236,7 @@ const ContratosPage: React.FC = () => {
               <Button variant="outlined" startIcon={<FilterIcon />} onClick={(e) => { setFilterAnchorEl(e.currentTarget); setFilterOpen(true); }} size="small">
                 Filtros
               </Button>
-              <Button startIcon={<AddIcon />} onClick={() => navigate("/contratos/novo")} variant="contained" color="success" size="small">Novo Contrato</Button>
+              <Button startIcon={<AddIcon />} onClick={() => navigate("/contratos/novo")} variant="contained" color="add" size="small">Novo Contrato</Button>
               <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)} size="small"><MoreVert /></IconButton>
             </Box>
           </Box>

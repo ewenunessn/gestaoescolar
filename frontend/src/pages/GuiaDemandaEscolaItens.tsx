@@ -373,7 +373,7 @@ const GuiaDemandaEscolaItens: React.FC = () => {
                             <Tooltip title="Excluir">
                               <IconButton
                                 size="small"
-                                color="error"
+                                color="delete"
                                 onClick={() => handleDelete(item.id)}
                               >
                                 <DeleteIcon fontSize="small" />

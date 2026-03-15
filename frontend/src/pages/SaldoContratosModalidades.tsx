@@ -1493,7 +1493,7 @@ const SaldoContratosModalidades: React.FC = () => {
               onClick={salvarQuantidadeInicial}
               variant="contained"
               disabled={salvandoQuantidade || !quantidadeInicial || parseFloat(quantidadeInicial) < 0}
-              color="success"
+              color="add"
               startIcon={salvandoQuantidade ? <CircularProgress size={16} /> : <SaveIcon />}
             >
               {salvandoQuantidade ? 'Salvando...' : 'Salvar Quantidade'}
@@ -1633,7 +1633,7 @@ const SaldoContratosModalidades: React.FC = () => {
                             <Tooltip title="Excluir Consumo">
                               <IconButton
                                 size="small"
-                                color="error"
+                                color="delete"
                                 onClick={() => excluirConsumo(consumo.id)}
                               >
                                 <CancelIcon fontSize="small" />

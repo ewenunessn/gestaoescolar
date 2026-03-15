@@ -405,7 +405,7 @@ const GuiasDemandaLista: React.FC = () => {
           <Button onClick={() => setConfirmClose(false)} variant="outlined" size="small">
             Continuar Editando
           </Button>
-          <Button onClick={() => { setConfirmClose(false); setOpenModal(false); }} color="error" variant="contained" size="small">
+          <Button onClick={() => { setConfirmClose(false); setOpenModal(false); }} color="delete" variant="contained" size="small">
             Descartar
           </Button>
         </DialogActions>

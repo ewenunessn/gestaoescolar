@@ -492,8 +492,7 @@ export default function DemandaDetalhesModal({
                             Registrar Envio à SEMAD (Ctrl+E)
                           </Button>
                           <Button
-                            variant="outlined"
-                            color="error"
+                            variant="contained" color="delete"
                             startIcon={<CancelIcon />}
                             onClick={() => setDialogRecusar(true)}
                             disabled={processando}
@@ -507,8 +506,7 @@ export default function DemandaDetalhesModal({
                       {ehEnviado && (
                         <>
                           <Button
-                            variant="contained"
-                            color="success"
+                            variant="contained" color="add"
                             startIcon={<CheckCircleIcon />}
                             onClick={() => setDialogAtender(true)}
                             disabled={processando}
@@ -516,8 +514,7 @@ export default function DemandaDetalhesModal({
                             Registrar Atendimento (Ctrl+R)
                           </Button>
                           <Button
-                            variant="outlined"
-                            color="error"
+                            variant="contained" color="delete"
                             startIcon={<CancelIcon />}
                             onClick={() => setDialogNaoAtender(true)}
                             disabled={processando}
@@ -538,8 +535,7 @@ export default function DemandaDetalhesModal({
                       </Button>
 
                       <Button
-                        variant="outlined"
-                        color="error"
+                        variant="contained" color="delete"
                         startIcon={<DeleteIcon />}
                         onClick={() => setDialogExcluir(true)}
                         disabled={processando}
@@ -658,8 +654,7 @@ export default function DemandaDetalhesModal({
           </Button>
           <Button
             onClick={handleRecusarImediata}
-            variant="contained"
-            color="error"
+            variant="contained" color="delete"
             disabled={processando || !motivoRecusa.trim()}
           >
             {processando ? 'Registrando...' : 'Confirmar Recusa (Ctrl+Enter)'}
@@ -726,8 +721,7 @@ export default function DemandaDetalhesModal({
           </Button>
           <Button
             onClick={handleAtender}
-            variant="contained"
-            color="success"
+            variant="contained" color="add"
             disabled={processando || !dataResposta}
           >
             {processando ? 'Registrando...' : 'Confirmar Atendimento (Ctrl+Enter)'}
@@ -794,8 +788,7 @@ export default function DemandaDetalhesModal({
           </Button>
           <Button
             onClick={handleNaoAtender}
-            variant="contained"
-            color="error"
+            variant="contained" color="delete"
             disabled={processando || !dataResposta}
           >
             {processando ? 'Registrando...' : 'Confirmar Não Atendimento (Ctrl+Enter)'}
@@ -840,8 +833,7 @@ export default function DemandaDetalhesModal({
           </Button>
           <Button
             onClick={handleExcluir}
-            variant="contained"
-            color="error"
+            variant="contained" color="delete"
             disabled={processando}
           >
             {processando ? 'Excluindo...' : 'Confirmar Exclusão (Enter)'}

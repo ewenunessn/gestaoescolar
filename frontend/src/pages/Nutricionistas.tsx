@@ -253,7 +253,7 @@ const NutricionistasPage = () => {
               startIcon={<AddIcon />} 
               onClick={() => openModal()} 
               variant="contained" 
-              color="success" 
+              color="add" 
               size="small"
             >
               Novo Nutricionista
@@ -336,7 +336,7 @@ const NutricionistasPage = () => {
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Excluir">
-                        <IconButton size="small" onClick={() => openDeleteModal(nutricionista)} color="error">
+                        <IconButton size="small" onClick={() => openDeleteModal(nutricionista)} color="delete">
                           <DeleteIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
@@ -557,7 +557,7 @@ const NutricionistasPage = () => {
           <Button onClick={() => setConfirmClose(false)} variant="outlined" size="small">
             Continuar Editando
           </Button>
-          <Button onClick={confirmCloseModal} color="error" variant="contained" size="small">
+          <Button onClick={confirmCloseModal} color="delete" variant="contained" size="small">
             Descartar
           </Button>
         </DialogActions>
@@ -573,7 +573,7 @@ const NutricionistasPage = () => {
           <Button onClick={closeDeleteModal} sx={{ color: 'text.secondary' }}>
             Cancelar
           </Button>
-          <Button onClick={handleDelete} color="error" variant="contained">
+          <Button onClick={handleDelete} color="delete" variant="contained">
             Excluir
           </Button>
         </DialogActions>

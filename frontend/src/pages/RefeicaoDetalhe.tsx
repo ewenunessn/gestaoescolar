@@ -221,7 +221,7 @@ function SortableRow({ assoc, onRemove, onEdit }: SortableRowProps) {
             </IconButton>
           </Tooltip>
           <Tooltip title="Remover">
-            <IconButton size="small" color="error" onClick={onRemove}>
+            <IconButton size="small" color="delete" onClick={onRemove}>
               <DeleteIcon fontSize="small" />
             </IconButton>
           </Tooltip>
@@ -758,8 +758,7 @@ export default function RefeicaoDetalhe() {
                 </Button>
                 <Button
                   onClick={() => setOpenExcluir(true)}
-                  color="error"
-                  variant="outlined"
+                  color="delete" variant="contained"
                   startIcon={<DeleteIcon />}
                   size="small"
                 >
@@ -1299,7 +1298,7 @@ export default function RefeicaoDetalhe() {
       </DialogContent>
       <DialogActions>
         <Button onClick={() => setOpenExcluir(false)}>Cancelar</Button>
-        <Button onClick={excluirRefeicao} color="error" variant="contained">
+        <Button onClick={excluirRefeicao} color="delete" variant="contained">
           Excluir
         </Button>
       </DialogActions>

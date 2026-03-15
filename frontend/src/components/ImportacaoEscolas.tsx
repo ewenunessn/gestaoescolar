@@ -247,7 +247,7 @@ const ImportacaoEscolas: React.FC<ImportacaoEscolasProps> = ({ open, onClose, on
                         <TableCell sx={{ color: escola.ativo ? 'success.main' : 'error.main' }}>{escola.ativo ? 'Sim' : 'Não'}</TableCell>
 
                         <TableCell align="center">
-                          <Tooltip title="Remover da importação"><IconButton size="small" onClick={() => removerEscola(index)} color="error"><Delete /></IconButton></Tooltip>
+                          <Tooltip title="Remover da importação"><IconButton size="small" onClick={() => removerEscola(index)} color="delete"><Delete /></IconButton></Tooltip>
                         </TableCell>
                       </TableRow>
                     );
@@ -270,7 +270,7 @@ const ImportacaoEscolas: React.FC<ImportacaoEscolasProps> = ({ open, onClose, on
       <DialogActions sx={{ p: 2, borderTop: '1px solid #e5e7eb' }}>
         <Button onClick={handleClose}>Cancelar</Button>
         {activeStep === 1 && (
-          <Button variant="contained" color="success" onClick={handleImport} disabled={validasCount === 0 || loading}>
+          <Button variant="contained" color="add" onClick={handleImport} disabled={validasCount === 0 || loading}>
             Importar {validasCount} Escolas Válidas
           </Button>
         )}

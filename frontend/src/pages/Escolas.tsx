@@ -433,7 +433,7 @@ const EscolasPage = () => {
               <Button variant="outlined" startIcon={<FilterIcon />} onClick={(e) => { setFilterAnchorEl(e.currentTarget); setFilterOpen(true); }} size="small">
                 Filtros
               </Button>
-              <Button startIcon={<AddIcon />} onClick={openModal} variant="contained" color="success" size="small">Nova Escola</Button>
+              <Button startIcon={<AddIcon />} onClick={openModal} variant="contained" color="add" size="small">Nova Escola</Button>
               <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)} size="small"><MoreVert /></IconButton>
             </Box>
           </Box>

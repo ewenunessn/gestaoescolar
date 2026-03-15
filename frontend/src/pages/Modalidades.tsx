@@ -293,7 +293,7 @@ const ModalidadesPage = () => {
               <Button variant="outlined" startIcon={<FilterIcon />} onClick={(e) => { setFilterAnchorEl(e.currentTarget); setFilterOpen(true); }} size="small">
                 Filtros
               </Button>
-              <Button startIcon={<AddIcon />} onClick={() => openModal()} variant="contained" color="success" size="small">
+              <Button startIcon={<AddIcon />} onClick={() => openModal()} variant="contained" color="add" size="small">
                 Nova Modalidade
               </Button>
               <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)} size="small">
@@ -415,7 +415,7 @@ const ModalidadesPage = () => {
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Excluir">
-                        <IconButton size="small" onClick={() => openDeleteModal(modalidade)} color="error">
+                        <IconButton size="small" onClick={() => openDeleteModal(modalidade)} color="delete">
                           <DeleteIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
@@ -499,7 +499,7 @@ const ModalidadesPage = () => {
       <Dialog open={deleteModalOpen} onClose={closeDeleteModal} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: '12px' } }}>
         <DialogTitle sx={{ fontWeight: 600 }}>Confirmar Exclusão</DialogTitle>
         <DialogContent><Typography>Tem certeza que deseja excluir a modalidade "{modalidadeToDelete?.nome}"?</Typography></DialogContent>
-        <DialogActions sx={{ p: 3, pt: 1 }}><Button onClick={closeDeleteModal} sx={{ color: 'text.secondary' }}>Cancelar</Button><Button onClick={handleDelete} color="error" variant="contained">Excluir</Button></DialogActions>
+        <DialogActions sx={{ p: 3, pt: 1 }}><Button onClick={closeDeleteModal} sx={{ color: 'text.secondary' }}>Cancelar</Button><Button onClick={handleDelete} color="delete" variant="contained">Excluir</Button></DialogActions>
       </Dialog>
       
       {/* Menu de Ações */}

@@ -905,8 +905,7 @@ export default function FaturamentoModalidades() {
             Relatório por Tipo
           </Button>
           <Button
-            variant="contained"
-            color="success"
+            variant="contained" color="add"
             startIcon={<ExcelIcon />}
             onClick={gerarExcel}
             disabled={faturamentos.every(f => f.itens.length === 0)}
@@ -1042,7 +1041,7 @@ export default function FaturamentoModalidades() {
                                   <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
                                     <IconButton
                                       size="small"
-                                      color="success"
+                                      color="add"
                                       onClick={salvarFaturamento}
                                       title="Salvar"
                                     >
@@ -1074,7 +1073,7 @@ export default function FaturamentoModalidades() {
                                     </IconButton>
                                     <IconButton
                                       size="small"
-                                      color="error"
+                                      color="delete"
                                       onClick={() => removerItem(faturamento.modalidade_id, item.contrato_produto_id)}
                                       title="Excluir"
                                     >

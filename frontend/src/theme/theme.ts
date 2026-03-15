@@ -9,11 +9,32 @@ declare module '@mui/material/styles' {
   interface Palette {
     sidebarSelection: string;
     tableHover: string;
+    add: PaletteColor;
+    delete: PaletteColor;
+    edit: PaletteColor;
   }
 
   interface PaletteOptions {
     sidebarSelection?: string;
     tableHover?: string;
+    add?: PaletteColorOptions;
+    delete?: PaletteColorOptions;
+    edit?: PaletteColorOptions;
+  }
+}
+
+declare module '@mui/material/Button' {
+  interface ButtonPropsColorOverrides {
+    add: true;
+    delete: true;
+    edit: true;
+  }
+}
+declare module '@mui/material/IconButton' {
+  interface IconButtonPropsColorOverrides {
+    add: true;
+    delete: true;
+    edit: true;
   }
 }
 
@@ -67,31 +88,43 @@ const baseTheme = {
   },
   components: {
     MuiButton: {
+      defaultProps: {
+        size: 'small',
+        disableElevation: true,
+      },
       styleOverrides: {
         root: ({ theme, ownerState }) => ({
           textTransform: 'none' as const,
-          borderRadius: '8px',
+          borderRadius: '6px',
           fontWeight: 500,
+          fontSize: '0.8125rem',
+          lineHeight: 1.4,
+          paddingTop: '4px',
+          paddingBottom: '4px',
+          paddingLeft: '12px',
+          paddingRight: '12px',
+          minHeight: '30px',
+          ...(ownerState.size === 'medium' && {
+            paddingTop: '5px',
+            paddingBottom: '5px',
+            paddingLeft: '14px',
+            paddingRight: '14px',
+            minHeight: '34px',
+          }),
           ...(ownerState.variant === 'contained' && ownerState.color === 'primary' && {
             backgroundColor: theme.palette.primary.main,
             color: theme.palette.primary.contrastText,
-            '&:hover': {
-              backgroundColor: theme.palette.primary.dark,
-            },
+            '&:hover': { backgroundColor: theme.palette.primary.dark },
           }),
           ...(ownerState.variant === 'contained' && ownerState.color === 'success' && {
             backgroundColor: theme.palette.success.main,
             color: theme.palette.success.contrastText,
-            '&:hover': {
-              backgroundColor: theme.palette.success.dark,
-            },
+            '&:hover': { backgroundColor: theme.palette.success.dark },
           }),
           ...(ownerState.variant === 'contained' && ownerState.color === 'error' && {
             backgroundColor: theme.palette.error.main,
             color: theme.palette.error.contrastText,
-            '&:hover': {
-              backgroundColor: theme.palette.error.dark,
-            },
+            '&:hover': { backgroundColor: theme.palette.error.dark },
           }),
           ...(ownerState.variant === 'outlined' && {
             borderColor: theme.palette.divider,
@@ -141,33 +174,120 @@ const baseTheme = {
       },
     },
     MuiChip: {
+      defaultProps: {
+        size: 'small',
+      },
       styleOverrides: {
         root: ({ theme, ownerState }) => ({
+          borderRadius: '4px',
+          fontSize: '0.75rem',
+          fontWeight: 500,
+          height: '22px',
+          ...(ownerState.color === 'default' && ownerState.variant !== 'outlined' && {
+            backgroundColor: '#e9ecef',
+            color: '#495057',
+          }),
           ...(ownerState.color === 'primary' && {
             backgroundColor: theme.palette.primary.main,
             color: theme.palette.primary.contrastText,
           }),
           ...(ownerState.color === 'success' && {
-            backgroundColor: '#1be18eff',
-            color: '#ffffff',
+            backgroundColor: '#d1fae5',
+            color: '#065f46',
+          }),
+          ...(ownerState.color === 'warning' && {
+            backgroundColor: '#fef3c7',
+            color: '#92400e',
           }),
           ...(ownerState.color === 'error' && {
-            backgroundColor: theme.palette.error.main,
-            color: theme.palette.error.contrastText,
+            backgroundColor: '#fee2e2',
+            color: '#991b1b',
+          }),
+          ...(ownerState.color === 'info' && {
+            backgroundColor: '#dbeafe',
+            color: '#1e40af',
           }),
           ...(ownerState.variant === 'outlined' && {
             borderColor: theme.palette.divider,
             color: theme.palette.text.primary,
+            backgroundColor: 'transparent',
           }),
         }),
+        label: {
+          paddingLeft: '8px',
+          paddingRight: '8px',
+        },
       },
     },
     MuiTextField: {
+      defaultProps: {
+        size: 'small',
+      },
       styleOverrides: {
         root: {
           '& .MuiOutlinedInput-root': {
-            borderRadius: '8px',
+            borderRadius: '6px',
+            fontSize: '0.8125rem',
           },
+          '& .MuiInputLabel-root': {
+            fontSize: '0.8125rem',
+          },
+        },
+      },
+    },
+    MuiSelect: {
+      defaultProps: {
+        size: 'small',
+      },
+      styleOverrides: {
+        root: {
+          borderRadius: '6px',
+          fontSize: '0.8125rem',
+        },
+        select: {
+          paddingTop: '5px',
+          paddingBottom: '5px',
+          fontSize: '0.8125rem',
+        },
+      },
+    },
+    MuiFormControl: {
+      defaultProps: {
+        size: 'small',
+      },
+    },
+    MuiInputBase: {
+      styleOverrides: {
+        root: {
+          fontSize: '0.8125rem',
+        },
+        input: {
+          paddingTop: '5px !important',
+          paddingBottom: '5px !important',
+          fontSize: '0.8125rem',
+        },
+      },
+    },
+    MuiInputLabel: {
+      styleOverrides: {
+        root: {
+          fontSize: '0.8125rem',
+        },
+      },
+    },
+    MuiAutocomplete: {
+      defaultProps: {
+        size: 'small',
+      },
+      styleOverrides: {
+        inputRoot: {
+          fontSize: '0.8125rem',
+          borderRadius: '6px',
+        },
+        option: {
+          fontSize: '0.8125rem',
+          paddingTop: '4px !important',
+          paddingBottom: '4px !important',
         },
       },
     },
@@ -210,13 +330,13 @@ const baseTheme = {
             backgroundColor: '#e9ecef',
             color: '#495057',
             fontWeight: 600,
-            fontSize: '0.75rem',
+            fontSize: '0.7rem',
             textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-            paddingTop: '8px',
-            paddingBottom: '8px',
-            paddingLeft: '12px',
-            paddingRight: '12px',
+            letterSpacing: '0.4px',
+            paddingTop: '5px',
+            paddingBottom: '5px',
+            paddingLeft: '10px',
+            paddingRight: '10px',
             borderBottom: '1px solid #dee2e6',
             borderLeft: 'none',
             borderRight: 'none',
@@ -249,11 +369,11 @@ const baseTheme = {
             },
           },
           '& .MuiTableCell-root': {
-            paddingTop: '8px',
-            paddingBottom: '8px',
-            paddingLeft: '12px',
-            paddingRight: '12px',
-            fontSize: '0.875rem',
+            paddingTop: '5px',
+            paddingBottom: '5px',
+            paddingLeft: '10px',
+            paddingRight: '10px',
+            fontSize: '0.8125rem',
             color: '#212529',
             borderBottom: '1px solid #f1f3f5',
             borderLeft: 'none',
@@ -421,6 +541,24 @@ export const lightTheme: Theme = createTheme({
     },
     sidebarSelection: '#38b6ff',
     tableHover: '#fff7f0ff',
+    add: {
+      main: '#38b6ff',
+      light: '#6eceff',
+      dark: '#1fa3f0',
+      contrastText: '#ffffff',
+    },
+    delete: {
+      main: '#e05252',
+      light: '#e87878',
+      dark: '#c93c3c',
+      contrastText: '#ffffff',
+    },
+    edit: {
+      main: '#e8834a',
+      light: '#eda070',
+      dark: '#d06a32',
+      contrastText: '#ffffff',
+    },
   },
   shadows: [
     'none',

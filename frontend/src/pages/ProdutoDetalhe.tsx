@@ -343,7 +343,7 @@ export default function ProdutoDetalhe() {
               actions={isEditing && (
                 <Box sx={{ display: 'flex', gap: 1 }}>
                   <Button onClick={handleCancel} variant="outlined" disabled={isSaving} size="small" sx={{ minHeight: 28, fontSize: '0.75rem' }}>Cancelar</Button>
-                  <Button onClick={handleSave} variant="contained" color="success" disabled={isSaving} size="small" sx={{ minHeight: 28, fontSize: '0.75rem' }}>
+                  <Button onClick={handleSave} variant="contained" color="add" disabled={isSaving} size="small" sx={{ minHeight: 28, fontSize: '0.75rem' }}>
                     {isSaving ? 'Salvando...' : 'Salvar'}
                   </Button>
                 </Box>
@@ -512,7 +512,7 @@ export default function ProdutoDetalhe() {
       <Dialog open={openExcluir} onClose={() => setOpenExcluir(false)}>
             <DialogTitle>Confirmar Exclusão</DialogTitle>
             <DialogContent><Typography>Tem certeza que deseja excluir o produto "{produto.nome}"? Esta ação é irreversível.</Typography></DialogContent>
-            <DialogActions><Button onClick={() => setOpenExcluir(false)}>Cancelar</Button><Button onClick={handleDelete} variant="contained" color="error">Excluir</Button></DialogActions>
+            <DialogActions><Button onClick={() => setOpenExcluir(false)}>Cancelar</Button><Button onClick={handleDelete} variant="contained" color="delete">Excluir</Button></DialogActions>
         </Dialog>
     </Box>
   );

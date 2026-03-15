@@ -173,10 +173,12 @@ export default function PlanejamentoCompras() {
       if (res.total_criados > 0) {
         toast.success('Pedidos gerados', `${res.total_criados} pedido(s) criado(s) com sucesso`);
       } else {
-        toast.error('Erro', 'Nenhum pedido foi criado. Verifique os erros abaixo.');
+        const motivos = res.erros?.map((e: any) => e.motivo).join('; ') || 'Verifique os erros abaixo';
+        toast.error('Nenhum pedido criado', motivos);
       }
     } catch (error: any) {
-      toast.error('Erro', error.response?.data?.error || 'Não foi possível gerar os pedidos');
+      const msg = error.response?.data?.error || error.response?.data?.message || 'Não foi possível gerar os pedidos';
+      toast.error('Erro', msg);
     } finally {
       setGerandoPedidos(false);
     }
@@ -491,7 +493,7 @@ export default function PlanejamentoCompras() {
                       InputLabelProps={{ shrink: true }}
                       sx={{ width: 160 }}
                     />
-                    <IconButton size="small" color="error" onClick={() => removerPeriodo(idx)}>
+                    <IconButton size="small" color="delete" onClick={() => removerPeriodo(idx)}>
                       <DeleteIcon fontSize="small" />
                     </IconButton>
                   </Box>
@@ -532,9 +534,8 @@ export default function PlanejamentoCompras() {
                           </Button>
                         }
                       >
-                        <strong>{p.numero}</strong> — {p.total_itens} produto(s) —
-                        Entrega: {new Date(p.periodo.data_inicio + 'T12:00:00').toLocaleDateString('pt-BR')}
-                        {p.sem_contrato.length > 0 && (
+                        <strong>{p.numero}</strong> — {p.total_itens} item(ns) em {(p.periodos ?? [p.periodo]).length} período(s)
+                        {p.sem_contrato?.length > 0 && (
                           <Typography variant="caption" sx={{ display: 'block', color: 'warning.main' }}>
                             Sem contrato (não incluídos): {p.sem_contrato.join(', ')}
                           </Typography>

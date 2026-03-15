@@ -658,7 +658,7 @@ export default function ComprovantesEntrega() {
                       </IconButton>
                       <IconButton
                         size="small"
-                        color="error"
+                        color="delete"
                         onClick={() => excluirComprovante(comprovante.id, comprovante.numero_comprovante)}
                         title="Excluir permanentemente"
                       >

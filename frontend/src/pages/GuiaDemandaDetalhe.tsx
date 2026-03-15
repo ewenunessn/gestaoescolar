@@ -673,7 +673,7 @@ const GuiaDemandaDetalhe: React.FC = () => {
           <Button onClick={() => setConfirmCloseBatch(false)} variant="outlined" size="small">
             Continuar Editando
           </Button>
-          <Button onClick={() => { setConfirmCloseBatch(false); setOpenBatchDialog(false); }} color="error" variant="contained" size="small">
+          <Button onClick={() => { setConfirmCloseBatch(false); setOpenBatchDialog(false); }} color="delete" variant="contained" size="small">
             Descartar
           </Button>
         </DialogActions>

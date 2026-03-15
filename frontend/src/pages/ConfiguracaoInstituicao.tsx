@@ -202,7 +202,7 @@ const ConfiguracaoInstituicaoPage: React.FC = () => {
                       <Tooltip title="Remover logo">
                         <IconButton
                           size="small"
-                          color="error"
+                          color="delete"
                           onClick={handleRemoveLogo}
                         >
                           <DeleteIcon />

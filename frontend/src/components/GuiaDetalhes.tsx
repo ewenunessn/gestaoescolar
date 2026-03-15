@@ -794,7 +794,7 @@ const GuiaDetalhes: React.FC<GuiaDetalhesProps> = ({ guia, onUpdate, onClose }) 
                   Filtros de Escolas
                 </Typography>
                 {(filtrosEscolaNomes.length > 0 || filtrosModalidades.length > 0) && (
-                  <Button size="small" onClick={limparTodosFiltros} color="error">
+                  <Button size="small" onClick={limparTodosFiltros} color="delete">
                     Limpar Todos
                   </Button>
                 )}

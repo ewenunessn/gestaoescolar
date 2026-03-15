@@ -636,8 +636,7 @@ const ProdutosPage = () => {
                     {selectedIds.length} selecionado(s)
                   </Typography>
                   <Button 
-                    variant="contained" 
-                    color="error" 
+                    variant="contained" color="delete" 
                     startIcon={<DeleteIcon />} 
                     onClick={handleDeleteSelected}
                     disabled={selectedIds.length === 0}
@@ -663,7 +662,7 @@ const ProdutosPage = () => {
                   >
                     Filtros
                   </Button>
-                  <Button startIcon={<AddIcon />} onClick={openModal} variant="contained" color="success" size="small">Novo Produto</Button>
+                  <Button startIcon={<AddIcon />} onClick={openModal} variant="contained" color="add" size="small">Novo Produto</Button>
                   <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)} size="small"><MoreVert /></IconButton>
                 </>
               )}
@@ -1004,7 +1003,7 @@ const ProdutosPage = () => {
           <Button onClick={() => setConfirmClose(false)} variant="outlined" size="small">
             Continuar Editando
           </Button>
-          <Button onClick={confirmCloseModal} color="error" variant="contained" size="small">
+          <Button onClick={confirmCloseModal} color="delete" variant="contained" size="small">
             Descartar
           </Button>
         </DialogActions>
@@ -1046,7 +1045,7 @@ const ProdutosPage = () => {
           <Button onClick={() => setDeleteConfirmOpen(false)} disabled={isDeleting}>
             Cancelar
           </Button>
-          <Button onClick={handleConfirmDelete} variant="contained" color="error" disabled={isDeleting}>
+          <Button onClick={handleConfirmDelete} variant="contained" color="delete" disabled={isDeleting}>
             {isDeleting ? 'Excluindo...' : 'Excluir'}
           </Button>
         </DialogActions>

@@ -435,7 +435,7 @@ const GestaoRotas: React.FC = () => {
                                                     <Tooltip title="Excluir">
                                                         <IconButton 
                                                             size="small" 
-                                                            color="error"
+                                                            color="delete"
                                                             onClick={() => deletarRota(rota.id)}
                                                         >
                                                             <DeleteIcon fontSize="small" />

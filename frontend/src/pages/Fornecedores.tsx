@@ -362,7 +362,7 @@ const FornecedoresPage: React.FC = () => {
               <Button variant="outlined" startIcon={<FilterIcon />} onClick={(e) => { setFilterAnchorEl(e.currentTarget); setFilterOpen(true); }} size="small">
                 Filtros
               </Button>
-              <Button startIcon={<AddIcon />} onClick={() => openModal()} variant="contained" color="success" size="small">Novo Fornecedor</Button>
+              <Button startIcon={<AddIcon />} onClick={() => openModal()} variant="contained" color="add" size="small">Novo Fornecedor</Button>
               <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)} size="small"><MoreVert /></IconButton>
             </Box>
           </Box>
@@ -466,7 +466,7 @@ const FornecedoresPage: React.FC = () => {
                         <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
                           <Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => navigate(`/fornecedores/${f.id}`)} color="primary"><InfoIcon fontSize="small" /></IconButton></Tooltip>
                           <Tooltip title="Editar"><IconButton size="small" onClick={() => openModal(f)} color="secondary"><EditIcon fontSize="small" /></IconButton></Tooltip>
-                          <Tooltip title="Excluir"><IconButton size="small" onClick={() => openDeleteModal(f)} color="error"><DeleteIcon fontSize="small" /></IconButton></Tooltip>
+                          <Tooltip title="Excluir"><IconButton size="small" onClick={() => openDeleteModal(f)} color="delete"><DeleteIcon fontSize="small" /></IconButton></Tooltip>
                         </Box>
                       </TableCell>
                     </TableRow>
@@ -646,7 +646,7 @@ const FornecedoresPage: React.FC = () => {
           <Button onClick={() => setConfirmClose(false)} variant="outlined" size="small">
             Continuar Editando
           </Button>
-          <Button onClick={confirmCloseModal} color="error" variant="contained" size="small">
+          <Button onClick={confirmCloseModal} color="delete" variant="contained" size="small">
             Descartar
           </Button>
         </DialogActions>

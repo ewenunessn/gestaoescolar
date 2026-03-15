@@ -850,8 +850,7 @@ const GuiaDetalhe: React.FC = () => {
                   {itensSelecionados.size} selecionado(s)
                 </Typography>
                 <Button
-                  variant="contained"
-                  color="error"
+                  variant="contained" color="delete"
                   size="small"
                   onClick={handleRemoverSelecionados}
                   disabled={removendoItens}
@@ -1017,7 +1016,7 @@ const GuiaDetalhe: React.FC = () => {
                                 );
                                 setOpenEscolasProduto(false);
                               }}
-                              color="error"
+                              color="delete"
                             >
                               <DeleteIcon />
                             </IconButton>

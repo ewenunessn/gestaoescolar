@@ -20,7 +20,8 @@ import {
 
 import {
   listarProgramacoes,
-  salvarProgramacoes
+  salvarProgramacoes,
+  mesclarItens,
 } from "../controllers/programacaoEntregaController";
 
 import { authenticateToken } from "../../../middleware/authMiddleware";
@@ -43,6 +44,7 @@ router.get("/contrato/:contrato_id/produtos", listarProdutosContrato);
 // Programação de entrega por escola
 router.get("/itens/:pedido_item_id/programacoes", listarProgramacoes);
 router.put("/itens/:pedido_item_id/programacoes", salvarProgramacoes);
+router.post("/itens/mesclar", mesclarItens);
 
 // Rotas de faturamento
 router.get("/:pedido_id/faturamento/previa", calcularPreviaFaturamento);

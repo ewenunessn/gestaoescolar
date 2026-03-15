@@ -271,7 +271,7 @@ function DraggableRefeicao({
               e.stopPropagation();
               onRemove?.();
             }}
-            color="error"
+            color="delete"
           >
             <RemoveIcon />
           </IconButton>
@@ -901,8 +901,7 @@ export default function CardapioDetalhe() {
                     <Button
                       onClick={() => setOpenExcluir(true)}
                       startIcon={<DeleteIcon />}
-                      variant="outlined"
-                      color="error"
+                      variant="contained" color="delete"
                     >
                       Excluir
                     </Button>
@@ -1121,7 +1120,7 @@ export default function CardapioDetalhe() {
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setOpenExcluir(false)}>Cancelar</Button>
-            <Button onClick={excluirCardapio} color="error" variant="contained">
+            <Button onClick={excluirCardapio} color="delete" variant="contained">
               Excluir
             </Button>
           </DialogActions>

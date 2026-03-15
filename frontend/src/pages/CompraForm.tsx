@@ -489,7 +489,7 @@ export default function CompraForm() {
                         <Button onClick={() => setConfirmCloseCompra(false)} variant="outlined" size="small">
                             Continuar Editando
                         </Button>
-                        <Button onClick={() => navigate('/compras')} color="error" variant="contained" size="small">
+                        <Button onClick={() => navigate('/compras')} color="delete" variant="contained" size="small">
                             Descartar
                         </Button>
                     </DialogActions>
@@ -990,7 +990,7 @@ export default function CompraForm() {
                     <Button onClick={() => setConfirmCloseItem(false)} variant="outlined" size="small">
                         Continuar Editando
                     </Button>
-                    <Button onClick={confirmCloseItemDialog} color="error" variant="contained" size="small">
+                    <Button onClick={confirmCloseItemDialog} color="delete" variant="contained" size="small">
                         Descartar
                     </Button>
                 </DialogActions>

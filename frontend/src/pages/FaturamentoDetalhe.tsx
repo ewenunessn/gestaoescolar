@@ -500,8 +500,7 @@ export default function FaturamentoDetalhe() {
         </Typography>
         <Box sx={{ display: 'flex', gap: 2 }}>
           <Button
-            variant="outlined"
-            color="error"
+            variant="contained" color="delete"
             startIcon={<DeleteIcon />}
             onClick={() => setDialogExcluir(true)}
             disabled={processando}
@@ -666,8 +665,7 @@ export default function FaturamentoDetalhe() {
                               {divisao.consumo_registrado ? (
                                 <Button
                                   size="small"
-                                  variant="outlined"
-                                  color="error"
+                                  variant="contained" color="delete"
                                   onClick={() => handleReverterConsumoItem(divisao.faturamento_item_id)}
                                   disabled={processando}
                                 >
@@ -676,8 +674,7 @@ export default function FaturamentoDetalhe() {
                               ) : (
                                 <Button
                                   size="small"
-                                  variant="contained"
-                                  color="success"
+                                  variant="contained" color="add"
                                   onClick={() => handleRegistrarConsumoItem(divisao.faturamento_item_id)}
                                   disabled={processando}
                                 >
@@ -806,8 +803,7 @@ export default function FaturamentoDetalhe() {
                           {item.consumo_registrado ? (
                             <Button
                               size="small"
-                              variant="outlined"
-                              color="error"
+                              variant="contained" color="delete"
                               onClick={() => handleReverterConsumoItem(item.id)}
                               disabled={processando}
                             >
@@ -816,8 +812,7 @@ export default function FaturamentoDetalhe() {
                           ) : (
                             <Button
                               size="small"
-                              variant="contained"
-                              color="success"
+                              variant="contained" color="add"
                               onClick={() => handleRegistrarConsumoItem(item.id)}
                               disabled={processando}
                             >
@@ -879,8 +874,7 @@ export default function FaturamentoDetalhe() {
           </Button>
           <Button
             onClick={confirmarRemoverModalidade}
-            color="error"
-            variant="contained"
+            color="delete" variant="contained"
             disabled={processando}
           >
             {processando ? 'Removendo...' : 'Confirmar Remoção'}
@@ -911,8 +905,7 @@ export default function FaturamentoDetalhe() {
           </Button>
           <Button
             onClick={handleExcluir}
-            color="error"
-            variant="contained"
+            color="delete" variant="contained"
             disabled={processando}
           >
             {processando ? 'Excluindo...' : 'Confirmar Exclusão'}

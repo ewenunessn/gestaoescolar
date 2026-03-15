@@ -256,7 +256,7 @@ export default function FaturamentosPedido() {
                         </IconButton>
                         <IconButton
                           size="small"
-                          color="error"
+                          color="delete"
                           onClick={() => excluirFaturamento(fat.faturamento_id)}
                           title="Excluir"
                         >

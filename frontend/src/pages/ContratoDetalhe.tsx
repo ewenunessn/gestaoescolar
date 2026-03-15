@@ -540,7 +540,7 @@ export default function ContratoDetalhe() {
             startIcon={<AddIcon />} 
             onClick={() => abrirModalProduto()} 
             variant="contained" 
-            color="success" 
+            color="add" 
             size="small"
           >
             Adicionar Item
@@ -563,7 +563,7 @@ export default function ContratoDetalhe() {
                   variant="contained" 
                   startIcon={<AddIcon />} 
                   onClick={() => abrirModalProduto()}
-                  color="success"
+                  color="add"
                 >
                   Adicionar Item
                 </Button>
@@ -725,7 +725,7 @@ export default function ContratoDetalhe() {
                                 </IconButton>
                               </Tooltip>
                               <Tooltip title="Remover">
-                                <IconButton size="small" onClick={() => confirmarRemoverProduto(produto.id)} color="error">
+                                <IconButton size="small" onClick={() => confirmarRemoverProduto(produto.id)} color="delete">
                                   <DeleteIcon fontSize="small" />
                                 </IconButton>
                               </Tooltip>
@@ -931,7 +931,7 @@ export default function ContratoDetalhe() {
           <Button onClick={() => setConfirmCloseDialog(null)} variant="outlined" size="small">
             Continuar Editando
           </Button>
-          <Button onClick={confirmCloseProdutoDialog} color="error" variant="contained" size="small">
+          <Button onClick={confirmCloseProdutoDialog} color="delete" variant="contained" size="small">
             Descartar
           </Button>
         </DialogActions>
@@ -1080,7 +1080,7 @@ export default function ContratoDetalhe() {
             <Button onClick={() => setConfirmCloseDialog(null)} variant="outlined" size="small">
               Continuar Editando
             </Button>
-            <Button onClick={confirmCloseContratoDialog} color="error" variant="contained" size="small">
+            <Button onClick={confirmCloseContratoDialog} color="delete" variant="contained" size="small">
               Descartar
             </Button>
           </DialogActions>
@@ -1130,7 +1130,7 @@ export default function ContratoDetalhe() {
             <Button onClick={() => setDialogState(p => ({...p, removerProduto: false}))} sx={{ color: 'text.secondary' }}>
               Cancelar
             </Button>
-            <Button onClick={removerProdutoConfirmado} color="error" variant="contained">
+            <Button onClick={removerProdutoConfirmado} color="delete" variant="contained">
               Remover
             </Button>
           </DialogActions>
@@ -1185,7 +1185,7 @@ export default function ContratoDetalhe() {
                     <Checkbox 
                       checked={forceDelete} 
                       onChange={e => setForceDelete(e.target.checked)} 
-                      color="error"
+                      color="delete"
                       size="small"
                     />
                   } 
@@ -1205,8 +1205,7 @@ export default function ContratoDetalhe() {
             </Button>
             <Button 
               onClick={removerContratoConfirmado} 
-              color="error" 
-              variant="contained" 
+              color="delete" variant="contained" 
               disabled={dependenciasContrato && !forceDelete}
             >
               Remover

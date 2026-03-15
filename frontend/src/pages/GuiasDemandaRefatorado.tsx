@@ -922,7 +922,7 @@ const GuiasDemandaRefatorado: React.FC = () => {
                       <IconButton size="small" color="primary" onClick={() => handleEditProduct(item)}>
                         <EditIcon />
                       </IconButton>
-                      <IconButton size="small" color="error" onClick={() => handleDeleteProduct(item)}>
+                      <IconButton size="small" color="delete" onClick={() => handleDeleteProduct(item)}>
                         <DeleteIcon />
                       </IconButton>
                     </TableCell>

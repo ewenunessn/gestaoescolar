@@ -109,7 +109,7 @@ const EscolaInfoCard = ({ isEditing, formData, setFormData, associacoes, totalAl
                     {isEditing && (
                         <Box sx={{ display: 'flex', gap: 1 }}>
                             <Button onClick={onCancel} variant="outlined" disabled={salvando} size="small" sx={{ minHeight: 28, fontSize: '0.75rem' }}>Cancelar</Button>
-                            <Button onClick={onSave} variant="contained" color="success" disabled={salvando} size="small" sx={{ minHeight: 28, fontSize: '0.75rem' }}>
+                            <Button onClick={onSave} variant="contained" color="add" disabled={salvando} size="small" sx={{ minHeight: 28, fontSize: '0.75rem' }}>
                                 {salvando ? 'Salvando...' : 'Salvar'}
                             </Button>
                         </Box>
@@ -156,7 +156,7 @@ const EscolaInfoCard = ({ isEditing, formData, setFormData, associacoes, totalAl
                         <PeopleIcon fontSize="small" />
                         Modalidades
                     </Typography>
-                    <Button variant="contained" startIcon={<AddIcon fontSize="small" />} onClick={() => openModalidadeModal()} color="success" size="small" sx={{ minHeight: 28, fontSize: '0.75rem' }}>
+                    <Button variant="contained" startIcon={<AddIcon fontSize="small" />} onClick={() => openModalidadeModal()} color="add" size="small" sx={{ minHeight: 28, fontSize: '0.75rem' }}>
                         Adicionar
                     </Button>
                 </Box>
@@ -189,7 +189,7 @@ const EscolaInfoCard = ({ isEditing, formData, setFormData, associacoes, totalAl
                                         </IconButton>
                                     </Tooltip>
                                     <Tooltip title="Remover">
-                                        <IconButton size="small" onClick={() => handleDeleteModalidade(assoc.id)} color="error" sx={{ p: 0.5 }}>
+                                        <IconButton size="small" onClick={() => handleDeleteModalidade(assoc.id)} color="delete" sx={{ p: 0.5 }}>
                                             <DeleteIcon sx={{ fontSize: 16 }} />
                                         </IconButton>
                                     </Tooltip>
@@ -448,7 +448,7 @@ const EscolaDetalhesPage = () => {
                 <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
                     <DialogTitle>Confirmar Exclusão</DialogTitle>
                     <DialogContent><Typography>Tem certeza que deseja excluir a escola "{escola?.nome}"? Esta ação não pode ser desfeita.</Typography></DialogContent>
-                    <DialogActions><Button onClick={() => setDeleteDialogOpen(false)}>Cancelar</Button><Button onClick={handleDeleteEscola} variant="contained" color="error">Excluir</Button></DialogActions>
+                    <DialogActions><Button onClick={() => setDeleteDialogOpen(false)}>Cancelar</Button><Button onClick={handleDeleteEscola} variant="contained" color="delete">Excluir</Button></DialogActions>
                 </Dialog>
         </Box>
     );

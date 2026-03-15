@@ -1544,7 +1544,7 @@ const CardapioCalendarioPage: React.FC = () => {
                       </Box>
                       <IconButton
                         size="small"
-                        color="error"
+                        color="delete"
                         onClick={() => {
                           setOpenDetalhesDiaDialog(false);
                           handleDelete(ref.id);

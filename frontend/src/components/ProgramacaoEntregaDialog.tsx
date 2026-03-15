@@ -49,7 +49,12 @@ export default function ProgramacaoEntregaDialog({
         listarProgramacoes(pedidoItemId),
         listarEscolas(),
       ]);
-      setProgramacoes(progs.length > 0 ? progs : [novaProgramacao()]);
+      // Normalizar data_entrega para yyyy-MM-dd (o banco pode retornar ISO string)
+      const progsNorm = progs.map(p => ({
+        ...p,
+        data_entrega: p.data_entrega ? p.data_entrega.split('T')[0] : p.data_entrega,
+      }));
+      setProgramacoes(progsNorm.length > 0 ? progsNorm : [novaProgramacao()]);
       setEscolas((esc as any[]).filter((e: any) => e.ativo));
     } catch {
       setErro('Erro ao carregar dados');
@@ -77,7 +82,6 @@ export default function ProgramacaoEntregaDialog({
   function atualizarProgramacao(idx: number, campo: string, valor: string) {
     setProgramacoes(prev => prev.map((p, i) => i === idx ? { ...p, [campo]: valor } : p));
   }
-
   function adicionarEscola(progIdx: number, escola: Escola) {
     setProgramacoes(prev => prev.map((p, i) => {
       if (i !== progIdx) return p;
@@ -173,7 +177,7 @@ export default function ProgramacaoEntregaDialog({
                     color="primary"
                     size="small"
                   />
-                  <IconButton size="small" color="error" onClick={() => removerProgramacao(progIdx)}>
+                  <IconButton size="small" color="delete" onClick={() => removerProgramacao(progIdx)}>
                     <DeleteIcon fontSize="small" />
                   </IconButton>
                 </Box>
@@ -203,7 +207,7 @@ export default function ProgramacaoEntregaDialog({
                             />
                           </TableCell>
                           <TableCell>
-                            <IconButton size="small" color="error" onClick={() => removerEscola(progIdx, escIdx)}>
+                            <IconButton size="small" color="delete" onClick={() => removerEscola(progIdx, escIdx)}>
                               <DeleteIcon fontSize="small" />
                             </IconButton>
                           </TableCell>
