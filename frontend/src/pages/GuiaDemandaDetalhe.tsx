@@ -1,46 +1,19 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import CompactPagination from '../components/CompactPagination';
 import {
-  Box,
-  Card,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TextField,
-  Typography,
-  IconButton,
-  Chip,
-  InputAdornment,
-  CircularProgress,
-  Tooltip,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  LinearProgress
+  Box, Card, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  TextField, Typography, IconButton, Chip, InputAdornment, CircularProgress,
+  Tooltip, Button, Dialog, DialogTitle, DialogContent, DialogActions,
+  FormControl, InputLabel, Select, MenuItem, LinearProgress, Tabs, Tab,
 } from '@mui/material';
 import {
-  Search as SearchIcon,
-  Clear as ClearIcon,
-  Edit as EditIcon,
-  CalendarMonth as CalendarIcon,
-  School as SchoolIcon,
-  FilterList as FilterListIcon,
-  Add as AddIcon
+  Search as SearchIcon, Clear as ClearIcon, Edit as EditIcon,
+  CalendarMonth as CalendarIcon, School as SchoolIcon, Add as AddIcon,
+  Inventory as InventoryIcon, Visibility as VisibilityIcon, Tune as TuneIcon,
 } from '@mui/icons-material';
 import PageContainer from '../components/PageContainer';
 import PageBreadcrumbs from '../components/PageBreadcrumbs';
-import StatusIndicator from '../components/StatusIndicator';
-import TableFilter, { FilterField } from '../components/TableFilter';
+import CompactPagination from '../components/CompactPagination';
 import { guiaService } from '../services/guiaService';
 import { produtoService } from '../services/produtoService';
 import { useToast } from '../hooks/useToast';
@@ -50,7 +23,6 @@ interface EscolaGuia {
   id: number;
   nome: string;
   escola_rota?: string;
-  ordem_rota?: number;
   total_itens: number;
   qtd_pendente: number;
   qtd_programada: number;
@@ -59,67 +31,73 @@ interface EscolaGuia {
   qtd_cancelado: number;
 }
 
+interface ItemGuia {
+  id: number;
+  produto_id: number;
+  produto_nome: string;
+  escola_id: number;
+  escola_nome: string;
+  quantidade: number;
+  quantidade_demanda?: number;
+  unidade: string;
+  status: string;
+  data_entrega?: string;
+}
+
 const GuiaDemandaDetalhe: React.FC = () => {
   const navigate = useNavigate();
   const { guiaId } = useParams<{ guiaId: string }>();
   const toast = useToast();
-  
+
   const [guia, setGuia] = useState<any>(null);
   const [escolas, setEscolas] = useState<EscolaGuia[]>([]);
+  const [itens, setItens] = useState<ItemGuia[]>([]);
   const [loading, setLoading] = useState(false);
+  const [tabAtiva, setTabAtiva] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
-  
-  // Filtros
-  const [filters, setFilters] = useState<Record<string, any>>({});
-  const [filterAnchor, setFilterAnchor] = useState<HTMLElement | null>(null);
-  
-  // Modal de adicionar em lote
+
+  // Dialog: quantidades por escola de um produto
+  const [dialogEscolasOpen, setDialogEscolasOpen] = useState(false);
+  const [produtoSelecionado, setProdutoSelecionado] = useState<{ id: number; nome: string; data_entrega: string | null } | null>(null);
+
+  // Dialog: itens de uma escola
+  const [dialogItensEscolaOpen, setDialogItensEscolaOpen] = useState(false);
+  const [escolaSelecionada, setEscolaSelecionada] = useState<EscolaGuia | null>(null);
+
+  // Modal adicionar em lote
   const [openBatchDialog, setOpenBatchDialog] = useState(false);
-  const [batchForm, setBatchForm] = useState({
-    produtoId: '',
-    unidade: '',
-    data_entrega: new Date().toISOString().split('T')[0]
-  });
+  const [batchForm, setBatchForm] = useState({ produtoId: '', unidade: '', data_entrega: new Date().toISOString().split('T')[0] });
   const [batchQuantidades, setBatchQuantidades] = useState<Record<number, string>>({});
   const [batchStatus, setBatchStatus] = useState<Record<number, string>>({});
   const [batchSaving, setBatchSaving] = useState(false);
   const [produtos, setProdutos] = useState<any[]>([]);
-  
-  // Estados de controle de mudanças
-  const [batchFormInicial, setBatchFormInicial] = useState<any>(null);
-  const [confirmCloseBatch, setConfirmCloseBatch] = useState(false);
-  
+
   // Paginação
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [pageItens, setPageItens] = useState(0);
+  const [pageEscolas, setPageEscolas] = useState(0);
+  const rowsPerPage = 25;
 
   useEffect(() => {
-    if (guiaId) {
-      loadGuiaDetalhes();
-      loadProdutos();
-    }
+    if (guiaId) { loadGuiaDetalhes(); loadProdutos(); }
   }, [guiaId]);
-  
+
   const loadProdutos = async () => {
-    try {
-      const data = await produtoService.listar();
-      setProdutos(data);
-    } catch (error) {
-      console.error('Erro ao carregar produtos:', error);
-    }
+    try { setProdutos(await produtoService.listar()); } catch {}
   };
 
   const loadGuiaDetalhes = async () => {
     try {
       setLoading(true);
       const guiaData = await guiaService.buscarGuia(Number(guiaId));
-      
       setGuia(guiaData);
-      
-      // Carregar escolas usando mes e ano da guia
       if (guiaData?.mes && guiaData?.ano) {
-        const escolasData = await guiaService.listarStatusEscolas(guiaData.mes, guiaData.ano);
+        const [escolasData, itensData] = await Promise.all([
+          guiaService.listarStatusEscolas(guiaData.mes, guiaData.ano, Number(guiaId)),
+          guiaService.listarProdutosGuia(Number(guiaId)),
+        ]);
         setEscolas(escolasData);
+        const raw = itensData?.data ?? itensData ?? [];
+        setItens(raw);
       }
     } catch (error) {
       console.error('Erro ao carregar detalhes da guia:', error);
@@ -128,481 +106,436 @@ const GuiaDemandaDetalhe: React.FC = () => {
     }
   };
 
-  const filteredEscolas = useMemo(() => {
-    let result = escolas.filter(e => 
-      e.nome.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    
-    // Aplicar filtros
-    if (filters.rota) {
-      result = result.filter(e => e.escola_rota === filters.rota);
-    }
-    
-    if (filters.status) {
-      result = result.filter(e => {
-        const totalItens = Number(e.total_itens) || 0;
-        const qtdEntregue = Number(e.qtd_entregue) || 0;
-        const qtdPendente = Number(e.qtd_pendente) || 0;
-        
-        switch (filters.status) {
-          case 'completo':
-            return totalItens > 0 && qtdEntregue === totalItens;
-          case 'pendente':
-            return qtdPendente > 0;
-          case 'sem_itens':
-            return totalItens === 0;
-          case 'parcial':
-            return qtdEntregue > 0 && qtdEntregue < totalItens;
-          default:
-            return true;
-        }
-      });
-    }
-    
-    return result;
-  }, [escolas, searchTerm, filters]);
-
-  const paginatedEscolas = useMemo(() => {
-    const startIndex = page * rowsPerPage;
-    return filteredEscolas.slice(startIndex, startIndex + rowsPerPage);
-  }, [filteredEscolas, page, rowsPerPage]);
-
-  const getStatusColor = (status: string) => {
-    const statusMap: Record<string, 'default' | 'warning' | 'success' | 'error' | 'info'> = {
-      'pendente': 'default',
-      'programada': 'info',
-      'parcial': 'warning',
-      'entregue': 'success',
-      'cancelado': 'error'
-    };
-    return statusMap[status] || 'default';
-  };
-
   const getMesNome = (mes: number) => {
-    const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
-                   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-    return meses[mes - 1];
+    const m = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    return m[mes - 1];
   };
-  
-  // Obter rotas únicas
-  const rotasUnicas = useMemo(() => {
-    const rotas = escolas.map(e => e.escola_rota).filter(Boolean);
-    return Array.from(new Set(rotas)).sort();
-  }, [escolas]);
-  
-  // Definir campos de filtro
-  const filterFields: FilterField[] = [
-    {
-      key: 'rota',
-      label: 'Rota',
-      type: 'select',
-      options: rotasUnicas.map(r => ({ value: r!, label: r! }))
-    },
-    {
-      key: 'status',
-      label: 'Status',
-      type: 'select',
-      options: [
-        { value: 'completo', label: 'Completo' },
-        { value: 'parcial', label: 'Parcial' },
-        { value: 'pendente', label: 'Pendente' },
-        { value: 'sem_itens', label: 'Sem Itens' }
-      ]
+
+  const statusColor = (s: string): any => ({ pendente: 'default', programada: 'info', parcial: 'warning', entregue: 'success', cancelado: 'error' }[s] || 'default');
+
+  // ── Aba Produtos: agrupar itens por (produto_id, data_entrega) ──────────────
+  const produtosAgrupados = useMemo(() => {
+    const map = new Map<string, { produto_id: number; produto_nome: string; unidade: string; data_entrega: string | null; total: number; total_demanda: number; escolas: ItemGuia[] }>();
+    for (const item of itens) {
+      const dataKey = item.data_entrega ? String(item.data_entrega).split('T')[0] : '';
+      const key = `${item.produto_id}__${dataKey}`;
+      if (!map.has(key)) {
+        map.set(key, { produto_id: item.produto_id, produto_nome: item.produto_nome, unidade: item.unidade, data_entrega: dataKey || null, total: 0, total_demanda: 0, escolas: [] });
+      }
+      const g = map.get(key)!;
+      g.total += Number(item.quantidade) || 0;
+      g.total_demanda += Number(item.quantidade_demanda ?? item.quantidade) || 0;
+      g.escolas.push(item);
     }
-  ];
-  
+    return Array.from(map.values()).sort((a, b) => {
+      if (a.produto_nome < b.produto_nome) return -1;
+      if (a.produto_nome > b.produto_nome) return 1;
+      return (a.data_entrega ?? '').localeCompare(b.data_entrega ?? '');
+    });
+  }, [itens]);
+
+  const filteredProdutos = useMemo(() =>
+    produtosAgrupados.filter(p => p.produto_nome?.toLowerCase().includes(searchTerm.toLowerCase())),
+    [produtosAgrupados, searchTerm]);
+
+  // ── Aba Escolas ──────────────────────────────────────────────────────────
+  const escolasComItens = useMemo(() =>
+    escolas.filter(e => {
+      const total = (Number(e.qtd_pendente)||0)+(Number(e.qtd_programada)||0)+(Number(e.qtd_parcial)||0)+(Number(e.qtd_entregue)||0)+(Number(e.qtd_cancelado)||0);
+      return total > 0;
+    }),
+    [escolas]);
+
+  const filteredEscolas = useMemo(() =>
+    escolasComItens.filter(e => e.nome?.toLowerCase().includes(searchTerm.toLowerCase())),
+    [escolasComItens, searchTerm]);
+
+  // Itens da escola selecionada no dialog
+  const itensEscolaSelecionada = useMemo(() => {
+    if (!escolaSelecionada) return [];
+    return itens.filter(i => i.escola_id === escolaSelecionada.id);
+  }, [itens, escolaSelecionada]);
+
+  // Escolas do produto selecionado no dialog — filtra por produto_id E data_entrega
+  const escolasDoProduto = useMemo(() => {
+    if (!produtoSelecionado) return [];
+    return itens.filter(i => {
+      if (i.produto_id !== produtoSelecionado.id) return false;
+      if (produtoSelecionado.data_entrega === null) return !i.data_entrega;
+      const dataItem = i.data_entrega ? String(i.data_entrega).split('T')[0] : null;
+      return dataItem === produtoSelecionado.data_entrega;
+    });
+  }, [itens, produtoSelecionado]);
+
   const handleBatchSubmit = async () => {
-    if (!batchForm.produtoId || !batchForm.data_entrega || !guia) {
-      return;
-    }
-
+    if (!batchForm.produtoId || !batchForm.data_entrega || !guia) return;
     const payloads = escolas
-      .map((escola) => {
-        const quantidade = Number(batchQuantidades[escola.id] || 0);
-        const status = batchStatus[escola.id] || 'pendente';
-        return {
-          escola,
-          quantidade,
-          status
-        };
-      })
-      .filter((item) => item.quantidade > 0);
-
-    if (payloads.length === 0) {
-      return;
-    }
-
+      .map(e => ({ escola: e, quantidade: Number(batchQuantidades[e.id] || 0), status: batchStatus[e.id] || 'pendente' }))
+      .filter(p => p.quantidade > 0);
+    if (!payloads.length) return;
     try {
       setBatchSaving(true);
-
       for (const { escola, quantidade, status } of payloads) {
-        const data = {
-          produtoId: parseInt(batchForm.produtoId),
-          quantidade,
-          unidade: batchForm.unidade || 'Kg',
-          data_entrega: batchForm.data_entrega,
-          mes_competencia: guia.mes,
-          ano_competencia: guia.ano,
-          status
-        };
-
-        // Usar a rota correta: /escola/:escolaId/produtos
-        await api.post(`/guias/escola/${escola.id}/produtos`, data);
+        await api.post(`/guias/escola/${escola.id}/produtos`, {
+          produtoId: parseInt(batchForm.produtoId), quantidade,
+          unidade: batchForm.unidade || 'Kg', data_entrega: batchForm.data_entrega,
+          mes_competencia: guia.mes, ano_competencia: guia.ano, status,
+        });
       }
-
       toast.success('Sucesso!', 'Quantidades adicionadas com sucesso!');
       setOpenBatchDialog(false);
-      setBatchQuantidades({});
-      setBatchStatus({});
+      setBatchQuantidades({}); setBatchStatus({});
       loadGuiaDetalhes();
     } catch (err) {
-      console.error('Erro ao salvar em lote:', err);
+      console.error(err);
     } finally {
       setBatchSaving(false);
     }
   };
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
+  if (loading) return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><CircularProgress /></Box>;
+
+  // ── Resumo ───────────────────────────────────────────────────────────────
+  const totalItens = itens.length;
+  const totalEscolas = escolasComItens.length;
+  const totalEntregues = itens.filter(i => i.status === 'entregue').length;
+  const totalPendentes = itens.filter(i => i.status === 'pendente').length;
 
   return (
     <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
       <PageContainer fullHeight>
-        <PageBreadcrumbs
-          items={[
-            { label: 'Guias de Demanda', path: '/guias-demanda', icon: <CalendarIcon fontSize="small" /> },
-            { label: guia?.nome || 'Detalhes' }
-          ]}
-        />
+        <PageBreadcrumbs items={[
+          { label: 'Guias de Demanda', path: '/guias-demanda', icon: <CalendarIcon fontSize="small" /> },
+          { label: guia ? `${getMesNome(guia.mes)}/${guia.ano}` : 'Detalhes' }
+        ]} />
 
-        {/* Barra de Pesquisa e Cards de Resumo na mesma linha */}
-        <Box sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'stretch' }}>
-          <Card sx={{ borderRadius: '12px', p: 2, flex: '0 0 500px' }}>
-            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-              <TextField
-                placeholder="Buscar escolas..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                size="small"
-                fullWidth
-                sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon sx={{ color: 'text.secondary' }} />
-                    </InputAdornment>
-                  ),
-                  endAdornment: searchTerm && (
-                    <InputAdornment position="end">
-                      <IconButton size="small" onClick={() => setSearchTerm('')}>
-                        <ClearIcon fontSize="small" />
-                      </IconButton>
-                    </InputAdornment>
-                  )
-                }}
-              />
-              <Tooltip title="Filtros">
-                <IconButton
-                  size="small"
-                  onClick={(e) => setFilterAnchor(e.currentTarget)}
-                  sx={{
-                    bgcolor: Object.keys(filters).length > 0 ? 'primary.main' : 'transparent',
-                    color: Object.keys(filters).length > 0 ? 'white' : 'text.secondary',
-                    '&:hover': {
-                      bgcolor: Object.keys(filters).length > 0 ? 'primary.dark' : 'action.hover',
-                    }
-                  }}
-                >
-                  <FilterListIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={() => setOpenBatchDialog(true)}
-                size="small"
-                sx={{ bgcolor: '#059669', '&:hover': { bgcolor: '#047857' }, whiteSpace: 'nowrap' }}
-              >
-                Adicionar em Lote
-              </Button>
-            </Box>
-          </Card>
-          
-          <TableFilter
-            open={Boolean(filterAnchor)}
-            onClose={() => setFilterAnchor(null)}
-            onApply={(newFilters) => {
-              setFilters(newFilters);
-              setFilterAnchor(null);
-            }}
-            fields={filterFields}
-            initialValues={filters}
-            anchorEl={filterAnchor}
-            showSearch={false}
-          />
-          
-          <Card sx={{ p: 1.5, flex: 1, minWidth: '100px' }}>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', whiteSpace: 'nowrap' }}>Total de Escolas</Typography>
-            <Typography variant="h5" sx={{ fontWeight: 600 }}>{escolas.length}</Typography>
-          </Card>
-          <Card sx={{ p: 1.5, flex: 1, minWidth: '100px' }}>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', whiteSpace: 'nowrap' }}>Total de Itens</Typography>
-            <Typography variant="h5" sx={{ fontWeight: 600 }}>
-              {escolas.reduce((sum, e) => sum + 
-                (Number(e.qtd_pendente) || 0) + 
-                (Number(e.qtd_programada) || 0) + 
-                (Number(e.qtd_parcial) || 0) + 
-                (Number(e.qtd_entregue) || 0) + 
-                (Number(e.qtd_cancelado) || 0), 0)}
-            </Typography>
-          </Card>
-          <Card sx={{ p: 1.5, flex: 1, minWidth: '100px' }}>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', whiteSpace: 'nowrap' }}>Entregues</Typography>
-            <Typography variant="h5" sx={{ fontWeight: 600, color: 'success.main' }}>
-              {escolas.reduce((sum, e) => sum + (Number(e.qtd_entregue) || 0), 0)}
-            </Typography>
-          </Card>
-          <Card sx={{ p: 1.5, flex: 1, minWidth: '100px' }}>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', whiteSpace: 'nowrap' }}>Pendentes</Typography>
-            <Typography variant="h5" sx={{ fontWeight: 600, color: 'warning.main' }}>
-              {escolas.reduce((sum, e) => sum + (Number(e.qtd_pendente) || 0), 0)}
-            </Typography>
-          </Card>
+        {/* Cards de resumo */}
+        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+          {[
+            { label: 'Escolas', value: totalEscolas, color: 'primary.main' },
+            { label: 'Itens', value: totalItens },
+            { label: 'Entregues', value: totalEntregues, color: 'success.main' },
+            { label: 'Pendentes', value: totalPendentes, color: 'warning.main' },
+          ].map(c => (
+            <Card key={c.label} sx={{ p: 1.5, flex: 1 }}>
+              <Typography variant="caption" color="text.secondary">{c.label}</Typography>
+              <Typography variant="h5" sx={{ fontWeight: 600, color: c.color }}>{c.value}</Typography>
+            </Card>
+          ))}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Button variant="outlined" startIcon={<TuneIcon />} size="small"
+              onClick={() => navigate(`/guias-demanda/${guiaId}/ajuste`)}
+              sx={{ whiteSpace: 'nowrap' }}>
+              Ajuste Fino
+            </Button>
+            <Button variant="contained" startIcon={<AddIcon />} size="small"
+              onClick={() => setOpenBatchDialog(true)}
+              sx={{ bgcolor: '#059669', '&:hover': { bgcolor: '#047857' }, whiteSpace: 'nowrap' }}>
+              Adicionar em Lote
+            </Button>
+          </Box>
         </Box>
 
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 2, px: 1 }}>
-          <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 500 }}>
-            Exibindo {filteredEscolas.length} {filteredEscolas.length === 1 ? 'escola' : 'escolas'}
-          </Typography>
+        {/* Abas */}
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 1 }}>
+          <Tabs value={tabAtiva} onChange={(_, v) => { setTabAtiva(v); setSearchTerm(''); }}>
+            <Tab label="Por Produto" icon={<InventoryIcon />} iconPosition="start" />
+            <Tab label="Por Escola" icon={<SchoolIcon />} iconPosition="start" />
+          </Tabs>
         </Box>
 
-        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          {loading ? (
-            <Box display="flex" justifyContent="center" py={8}>
-              <CircularProgress />
-            </Box>
-          ) : filteredEscolas.length === 0 ? (
-            <Box textAlign="center" py={8}>
-              <SchoolIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-              <Typography variant="h6" color="text.secondary">
-                {escolas.length === 0 
-                  ? 'Nenhuma escola com itens cadastrados para esta competência'
-                  : 'Nenhuma escola encontrada com o termo de busca'}
-              </Typography>
-              {escolas.length === 0 && (
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                  As escolas aparecerão aqui quando produtos forem adicionados para esta competência
-                </Typography>
-              )}
-            </Box>
-          ) : (
-            <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', width: '100%', overflow: 'hidden' }}>
-              <TableContainer sx={{ flex: 1, minHeight: 0 }}>
-                <Table stickyHeader>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Escola</TableCell>
-                      <TableCell align="center">Total Itens</TableCell>
-                      <TableCell align="center">Pendentes</TableCell>
-                      <TableCell align="center">Programados</TableCell>
-                      <TableCell align="center">Entregues</TableCell>
-                      <TableCell align="center">Status</TableCell>
-                      <TableCell align="center">Ações</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {paginatedEscolas.map((escola) => (
-                      <TableRow key={escola.id} hover>
-                        <TableCell>
-                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                            {escola.nome}
-                          </Typography>
-                        </TableCell>
-                        <TableCell align="center">
-                          <Chip 
-                            label={
-                              (Number(escola.qtd_pendente) || 0) + 
-                              (Number(escola.qtd_programada) || 0) + 
-                              (Number(escola.qtd_parcial) || 0) + 
-                              (Number(escola.qtd_entregue) || 0) + 
-                              (Number(escola.qtd_cancelado) || 0)
-                            } 
-                            size="small" 
-                          />
-                        </TableCell>
-                        <TableCell align="center">
-                          <Chip label={Number(escola.qtd_pendente) || 0} size="small" color="default" />
-                        </TableCell>
-                        <TableCell align="center">
-                          <Chip label={Number(escola.qtd_programada) || 0} size="small" color="info" sx={{ color: 'white' }} />
-                        </TableCell>
-                        <TableCell align="center">
-                          <Chip label={Number(escola.qtd_entregue) || 0} size="small" color="success" sx={{ color: 'white' }} />
-                        </TableCell>
-                        <TableCell align="center">
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'center' }}>
-                            <StatusIndicator 
-                              status={escola.qtd_entregue === escola.total_itens && escola.total_itens > 0 ? 'ativo' : 'inativo'} 
-                              size="small" 
-                            />
-                            <Typography variant="body2">
-                              {escola.qtd_entregue === escola.total_itens && escola.total_itens > 0 ? 'Completo' : 'Pendente'}
-                            </Typography>
-                          </Box>
-                        </TableCell>
-                        <TableCell align="center">
-                          <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
-                            <Tooltip title="Gerenciar Itens">
-                              <IconButton
-                                size="small"
-                                color="primary"
-                                onClick={() => navigate(`/guias-demanda/${guiaId}/escola/${escola.id}`)}
-                              >
-                                <EditIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          </Box>
-                        </TableCell>
+        {/* Busca */}
+        <Box sx={{ mb: 1.5 }}>
+          <TextField placeholder={tabAtiva === 0 ? 'Buscar produto...' : 'Buscar escola...'}
+            value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+            size="small" sx={{ width: 320 }}
+            InputProps={{
+              startAdornment: <InputAdornment position="start"><SearchIcon sx={{ color: 'text.secondary' }} /></InputAdornment>,
+              endAdornment: searchTerm && <InputAdornment position="end"><IconButton size="small" onClick={() => setSearchTerm('')}><ClearIcon fontSize="small" /></IconButton></InputAdornment>,
+            }} />
+        </Box>
+
+        {/* ── Aba 0: Por Produto ── */}
+        {tabAtiva === 0 && (
+          <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            {filteredProdutos.length === 0 ? (
+              <Box textAlign="center" py={8}>
+                <InventoryIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
+                <Typography variant="h6" color="text.secondary">Nenhum produto encontrado</Typography>
+              </Box>
+            ) : (
+              <>
+                <TableContainer sx={{ flex: 1, minHeight: 0 }}>
+                  <Table stickyHeader size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Produto</TableCell>
+                        <TableCell align="center">Data</TableCell>
+                        <TableCell align="center">Unidade</TableCell>
+                        <TableCell align="right">Qtd. Ajustada</TableCell>
+                        <TableCell align="right">Qtd. Demanda</TableCell>
+                        <TableCell align="center">Escolas</TableCell>
+                        <TableCell align="center">Ações</TableCell>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-              <CompactPagination
-                count={filteredEscolas.length}
-                page={page}
-                onPageChange={(e, newPage) => setPage(newPage)}
-                rowsPerPage={rowsPerPage}
-                onRowsPerPageChange={(e) => {
-                  setRowsPerPage(parseInt(e.target.value, 10));
-                  setPage(0);
-                }}
-                rowsPerPageOptions={[10, 25, 50]}
-              />
-            </Box>
-          )}
-        </Box>
+                    </TableHead>
+                    <TableBody>
+                      {filteredProdutos.slice(pageItens * rowsPerPage, (pageItens + 1) * rowsPerPage).map(p => {
+                        const diff = p.total - p.total_demanda;
+                        const hasAjuste = Math.abs(diff) > 0.0005;
+                        return (
+                          <TableRow key={`${p.produto_id}__${p.data_entrega}`} hover>
+                            <TableCell sx={{ fontWeight: 500 }}>{p.produto_nome}</TableCell>
+                            <TableCell align="center">
+                              {p.data_entrega
+                                ? new Date(p.data_entrega + 'T12:00:00').toLocaleDateString('pt-BR')
+                                : '—'}
+                            </TableCell>
+                            <TableCell align="center">{p.unidade}</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 600 }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5 }}>
+                                {hasAjuste && (
+                                  <Chip
+                                    label={`${diff > 0 ? '+' : ''}${diff.toFixed(3)}`}
+                                    size="small"
+                                    color={diff > 0 ? 'success' : 'error'}
+                                    sx={{ height: 14, fontSize: 9, '& .MuiChip-label': { px: 0.5 } }}
+                                  />
+                                )}
+                                <Box sx={{ minWidth: 60, textAlign: 'right' }}>{p.total.toFixed(3)}</Box>
+                              </Box>
+                            </TableCell>
+                            <TableCell align="right" sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>
+                              {p.total_demanda.toFixed(3)}
+                            </TableCell>
+                            <TableCell align="center">
+                              <Chip label={p.escolas.length} size="small" color="primary" />
+                            </TableCell>
+                            <TableCell align="center">
+                              <Tooltip title="Ver quantidades por escola">
+                                <IconButton size="small" color="primary"
+                                  onClick={() => { setProdutoSelecionado({ id: p.produto_id, nome: p.produto_nome, data_entrega: p.data_entrega }); setDialogEscolasOpen(true); }}>
+                                  <VisibilityIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+                <CompactPagination count={filteredProdutos.length} page={pageItens} rowsPerPage={rowsPerPage}
+                  onPageChange={(_, p) => setPageItens(p)}
+                  onRowsPerPageChange={e => { setPageItens(0); }} rowsPerPageOptions={[25]} />
+              </>
+            )}
+          </Box>
+        )}
+
+        {/* ── Aba 1: Por Escola ── */}
+        {tabAtiva === 1 && (
+          <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            {filteredEscolas.length === 0 ? (
+              <Box textAlign="center" py={8}>
+                <SchoolIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
+                <Typography variant="h6" color="text.secondary">Nenhuma escola com itens</Typography>
+              </Box>
+            ) : (
+              <>
+                <TableContainer sx={{ flex: 1, minHeight: 0 }}>
+                  <Table stickyHeader size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Escola</TableCell>
+                        <TableCell align="center">Total Itens</TableCell>
+                        <TableCell align="center">Pendentes</TableCell>
+                        <TableCell align="center">Programados</TableCell>
+                        <TableCell align="center">Entregues</TableCell>
+                        <TableCell align="center">Ações</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {filteredEscolas.slice(pageEscolas * rowsPerPage, (pageEscolas + 1) * rowsPerPage).map(e => {
+                        const total = (Number(e.qtd_pendente)||0)+(Number(e.qtd_programada)||0)+(Number(e.qtd_parcial)||0)+(Number(e.qtd_entregue)||0)+(Number(e.qtd_cancelado)||0);
+                        return (
+                          <TableRow key={e.id} hover>
+                            <TableCell sx={{ fontWeight: 500 }}>{e.nome}</TableCell>
+                            <TableCell align="center"><Chip label={total} size="small" /></TableCell>
+                            <TableCell align="center"><Chip label={Number(e.qtd_pendente)||0} size="small" /></TableCell>
+                            <TableCell align="center"><Chip label={Number(e.qtd_programada)||0} size="small" color="info" /></TableCell>
+                            <TableCell align="center"><Chip label={Number(e.qtd_entregue)||0} size="small" color="success" /></TableCell>
+                            <TableCell align="center">
+                              <Tooltip title="Ver itens desta escola">
+                                <IconButton size="small" color="primary"
+                                  onClick={() => { setEscolaSelecionada(e); setDialogItensEscolaOpen(true); }}>
+                                  <VisibilityIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                              <Tooltip title="Gerenciar itens">
+                                <IconButton size="small" color="default"
+                                  onClick={() => navigate(`/guias-demanda/${guiaId}/escola/${e.id}`)}>
+                                  <EditIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+                <CompactPagination count={filteredEscolas.length} page={pageEscolas} rowsPerPage={rowsPerPage}
+                  onPageChange={(_, p) => setPageEscolas(p)}
+                  onRowsPerPageChange={e => { setPageEscolas(0); }} rowsPerPageOptions={[25]} />
+              </>
+            )}
+          </Box>
+        )}
       </PageContainer>
 
-      {/* Modal Adicionar em Lote */}
-      <Dialog 
-        open={openBatchDialog} 
-        onClose={() => {
-          if (batchSaving) return;
-          const hasChanges = batchForm.produtoId !== batchFormInicial?.produtoId || 
-                            batchForm.data_entrega !== batchFormInicial?.data_entrega ||
-                            Object.keys(batchQuantidades).length > 0;
-          if (hasChanges) {
-            setConfirmCloseBatch(true);
-          } else {
-            setOpenBatchDialog(false);
-          }
-        }}
-        maxWidth="sm" 
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: '12px',
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            m: 0
-          }
-        }}
-      >
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
-          <Typography variant="h6" component="span" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
-            Adicionar Produto em Lote
+      {/* Dialog: quantidades por escola de um produto */}
+      <Dialog open={dialogEscolasOpen} onClose={() => setDialogEscolasOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>{produtoSelecionado?.nome}</Typography>
+          <Typography variant="caption" color="text.secondary">
+            Quantidade por escola
+            {produtoSelecionado?.data_entrega && ` · ${new Date(produtoSelecionado.data_entrega + 'T12:00:00').toLocaleDateString('pt-BR')}`}
           </Typography>
-          <IconButton
-            size="small"
-            onClick={() => {
-              if (batchSaving) return;
-              const hasChanges = batchForm.produtoId !== batchFormInicial?.produtoId || 
-                                batchForm.data_entrega !== batchFormInicial?.data_entrega ||
-                                Object.keys(batchQuantidades).length > 0;
-              if (hasChanges) {
-                setConfirmCloseBatch(true);
-              } else {
-                setOpenBatchDialog(false);
-              }
-            }}
-            sx={{ color: 'text.secondary' }}
-            disabled={batchSaving}
-          >
+        </DialogTitle>
+        <DialogContent sx={{ p: 0 }}>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Escola</TableCell>
+                <TableCell align="right">Qtd. Ajustada</TableCell>
+                <TableCell align="right">Qtd. Demanda</TableCell>
+                <TableCell align="center">Status</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {escolasDoProduto.map(item => {
+                const dem = Number(item.quantidade_demanda ?? item.quantidade);
+                const diff = Number(item.quantidade) - dem;
+                const hasAjuste = Math.abs(diff) > 0.0005;
+                return (
+                  <TableRow key={item.id} hover>
+                    <TableCell>{item.escola_nome}</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 600 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5 }}>
+                        {hasAjuste && (
+                          <Chip label={`${diff > 0 ? '+' : ''}${diff.toFixed(3)}`} size="small" color={diff > 0 ? 'success' : 'error'} sx={{ height: 14, fontSize: 9, '& .MuiChip-label': { px: 0.5 } }} />
+                        )}
+                        <Box sx={{ minWidth: 60, textAlign: 'right' }}>{Number(item.quantidade).toFixed(3)} {item.unidade}</Box>
+                      </Box>
+                    </TableCell>
+                    <TableCell align="right" sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>
+                      {dem.toFixed(3)} {item.unidade}
+                    </TableCell>
+                    <TableCell align="center">
+                      <Chip label={item.status} size="small" color={statusColor(item.status)} />
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+              <TableRow sx={{ bgcolor: 'action.hover' }}>
+                <TableCell sx={{ fontWeight: 700 }}>Total</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 700 }}>
+                  {escolasDoProduto.reduce((s, i) => s + (Number(i.quantidade)||0), 0).toFixed(3)} {escolasDoProduto[0]?.unidade}
+                </TableCell>
+                <TableCell align="right" sx={{ fontWeight: 700, color: 'text.secondary' }}>
+                  {escolasDoProduto.reduce((s, i) => s + (Number(i.quantidade_demanda ?? i.quantidade)||0), 0).toFixed(3)} {escolasDoProduto[0]?.unidade}
+                </TableCell>
+                <TableCell />
+              </TableRow>
+            </TableBody>
+          </Table>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDialogEscolasOpen(false)}>Fechar</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog: itens de uma escola */}
+      <Dialog open={dialogItensEscolaOpen} onClose={() => setDialogItensEscolaOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>{escolaSelecionada?.nome}</Typography>
+          <Typography variant="caption" color="text.secondary">Itens desta escola na guia</Typography>
+        </DialogTitle>
+        <DialogContent sx={{ p: 0 }}>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Produto</TableCell>
+                <TableCell align="center">Data Entrega</TableCell>
+                <TableCell align="right">Quantidade</TableCell>
+                <TableCell align="center">Status</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {itensEscolaSelecionada.map(item => (
+                <TableRow key={item.id} hover>
+                  <TableCell>{item.produto_nome}</TableCell>
+                  <TableCell align="center" sx={{ whiteSpace: 'nowrap' }}>
+                    {item.data_entrega
+                      ? new Date(String(item.data_entrega).includes('T') ? item.data_entrega : item.data_entrega + 'T12:00:00').toLocaleDateString('pt-BR')
+                      : '—'}
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 600 }}>{Number(item.quantidade).toFixed(3)} {item.unidade}</TableCell>
+                  <TableCell align="center">
+                    <Chip label={item.status} size="small" color={statusColor(item.status)} />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => { setDialogItensEscolaOpen(false); navigate(`/guias-demanda/${guiaId}/escola/${escolaSelecionada?.id}`); }}
+            variant="outlined" size="small">
+            Gerenciar Itens
+          </Button>
+          <Button onClick={() => setDialogItensEscolaOpen(false)}>Fechar</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Modal Adicionar em Lote */}
+      <Dialog open={openBatchDialog} onClose={() => !batchSaving && setOpenBatchDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>Adicionar Produto em Lote</Typography>
+          <IconButton size="small" onClick={() => !batchSaving && setOpenBatchDialog(false)} disabled={batchSaving}>
             <ClearIcon fontSize="small" />
           </IconButton>
         </DialogTitle>
-        <DialogContent sx={{ pt: 2, pb: 1 }}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pt: 1 }}>
             <FormControl fullWidth size="small">
               <InputLabel>Produto</InputLabel>
-              <Select
-                value={batchForm.produtoId}
-                label="Produto"
-                onChange={(e) => {
-                  const produto = produtos.find(p => p.id === Number(e.target.value));
-                  setBatchForm({
-                    ...batchForm,
-                    produtoId: e.target.value,
-                    unidade: produto?.unidade || 'Kg'
-                  });
-                }}
-                disabled={batchSaving}
-              >
-                {produtos.map((produto) => (
-                  <MenuItem key={produto.id} value={produto.id}>
-                    {produto.nome}
-                  </MenuItem>
-                ))}
+              <Select value={batchForm.produtoId} label="Produto" disabled={batchSaving}
+                onChange={e => {
+                  const p = produtos.find(x => x.id === Number(e.target.value));
+                  setBatchForm({ ...batchForm, produtoId: e.target.value as string, unidade: p?.unidade || 'Kg' });
+                }}>
+                {produtos.map(p => <MenuItem key={p.id} value={p.id}>{p.nome}</MenuItem>)}
               </Select>
             </FormControl>
-
-            <TextField
-              label="Data de Entrega"
-              type="date"
-              value={batchForm.data_entrega}
-              onChange={(e) => setBatchForm({ ...batchForm, data_entrega: e.target.value })}
-              fullWidth
-              size="small"
-              InputLabelProps={{ shrink: true }}
-              disabled={batchSaving}
-            />
-
+            <TextField label="Data de Entrega" type="date" value={batchForm.data_entrega}
+              onChange={e => setBatchForm({ ...batchForm, data_entrega: e.target.value })}
+              fullWidth size="small" InputLabelProps={{ shrink: true }} disabled={batchSaving} />
             {batchForm.produtoId && (
-              <Box sx={{ mt: 1 }}>
-                <Typography variant="subtitle2" sx={{ mb: 1.5, fontSize: '0.875rem' }}>
-                  Informe as quantidades por escola:
-                </Typography>
-                <Box sx={{ maxHeight: '300px', overflow: 'auto' }}>
-                  {escolas.map((escola) => (
-                    <Box key={escola.id} sx={{ display: 'flex', gap: 1.5, mb: 1.5, alignItems: 'center' }}>
-                      <Typography variant="body2" sx={{ flex: 1, minWidth: '150px', fontSize: '0.875rem' }}>
-                        {escola.nome}
-                      </Typography>
-                      <TextField
-                        label="Quantidade"
-                        type="number"
-                        size="small"
-                        value={batchQuantidades[escola.id] || ''}
-                        onChange={(e) => setBatchQuantidades({ ...batchQuantidades, [escola.id]: e.target.value })}
-                        sx={{ width: '100px' }}
-                        disabled={batchSaving}
-                      />
-                      <FormControl size="small" sx={{ width: '130px' }}>
+              <Box>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>Quantidades por escola:</Typography>
+                <Box sx={{ maxHeight: 300, overflow: 'auto' }}>
+                  {escolas.map(e => (
+                    <Box key={e.id} sx={{ display: 'flex', gap: 1.5, mb: 1, alignItems: 'center' }}>
+                      <Typography variant="body2" sx={{ flex: 1 }}>{e.nome}</Typography>
+                      <TextField label="Qtd" type="number" size="small"
+                        value={batchQuantidades[e.id] || ''}
+                        onChange={ev => setBatchQuantidades({ ...batchQuantidades, [e.id]: ev.target.value })}
+                        sx={{ width: 90 }} disabled={batchSaving} />
+                      <FormControl size="small" sx={{ width: 120 }}>
                         <InputLabel>Status</InputLabel>
-                        <Select
-                          value={batchStatus[escola.id] || 'pendente'}
-                          label="Status"
-                          onChange={(e) => setBatchStatus({ ...batchStatus, [escola.id]: e.target.value })}
-                          disabled={batchSaving}
-                        >
+                        <Select value={batchStatus[e.id] || 'pendente'} label="Status" disabled={batchSaving}
+                          onChange={ev => setBatchStatus({ ...batchStatus, [e.id]: ev.target.value as string })}>
                           <MenuItem value="pendente">Pendente</MenuItem>
                           <MenuItem value="programada">Programada</MenuItem>
                         </Select>
@@ -612,70 +545,12 @@ const GuiaDemandaDetalhe: React.FC = () => {
                 </Box>
               </Box>
             )}
-
-            {batchSaving && (
-              <Box sx={{ mt: 1.5 }}>
-                <LinearProgress />
-                <Typography variant="caption" sx={{ mt: 1, display: 'block', textAlign: 'center' }}>
-                  Salvando...
-                </Typography>
-              </Box>
-            )}
+            {batchSaving && <LinearProgress />}
           </Box>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
-          <Button onClick={() => {
-            if (batchSaving) return;
-            const hasChanges = batchForm.produtoId !== batchFormInicial?.produtoId || 
-                              batchForm.data_entrega !== batchFormInicial?.data_entrega ||
-                              Object.keys(batchQuantidades).length > 0;
-            if (hasChanges) {
-              setConfirmCloseBatch(true);
-            } else {
-              setOpenBatchDialog(false);
-            }
-          }} disabled={batchSaving} sx={{ color: 'text.secondary' }}>
-            Cancelar
-          </Button>
-          <Button onClick={handleBatchSubmit} variant="contained" disabled={batchSaving || !batchForm.produtoId}>
-            Salvar
-          </Button>
-        </DialogActions>
-      </Dialog>
-      
-      {/* Dialog de confirmação para fechar */}
-      <Dialog 
-        open={confirmCloseBatch} 
-        onClose={() => setConfirmCloseBatch(false)}
-        maxWidth="xs"
-        PaperProps={{
-          sx: {
-            borderRadius: '12px',
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            m: 0
-          }
-        }}
-      >
-        <DialogTitle sx={{ pb: 1 }}>
-          <Typography variant="h6" component="span" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
-            Descartar alterações?
-          </Typography>
-        </DialogTitle>
-        <DialogContent sx={{ pt: 2, pb: 1 }}>
-          <Typography variant="body2">
-            Você tem alterações não salvas. Deseja realmente descartar essas alterações?
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
-          <Button onClick={() => setConfirmCloseBatch(false)} variant="outlined" size="small">
-            Continuar Editando
-          </Button>
-          <Button onClick={() => { setConfirmCloseBatch(false); setOpenBatchDialog(false); }} color="delete" variant="contained" size="small">
-            Descartar
-          </Button>
+        <DialogActions>
+          <Button onClick={() => setOpenBatchDialog(false)} disabled={batchSaving}>Cancelar</Button>
+          <Button onClick={handleBatchSubmit} variant="contained" disabled={batchSaving || !batchForm.produtoId}>Salvar</Button>
         </DialogActions>
       </Dialog>
     </Box>

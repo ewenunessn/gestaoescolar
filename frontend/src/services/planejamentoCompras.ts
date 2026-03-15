@@ -98,6 +98,54 @@ export interface GerarPedidosResponse {
   total_erros: number;
 }
 
+export interface GerarGuiasResponse {
+  guias_criadas: {
+    guia_id: number;
+    competencia: string;
+    periodos: PeriodoGerarPedido[];
+    total_produtos: number;
+    total_itens: number;
+    total_escolas: number;
+  }[];
+  erros: { motivo: string }[];
+  total_criadas: number;
+  total_erros: number;
+}
+
+export async function gerarGuiasDemanda(
+  competencia: string,
+  periodos: PeriodoGerarPedido[],
+  escola_ids?: number[],
+  observacoes?: string
+): Promise<GerarGuiasResponse> {
+  const response = await api.post('/planejamento-compras/gerar-guias', {
+    competencia,
+    periodos,
+    escola_ids,
+    observacoes
+  });
+  return response.data;
+}
+
+export interface GerarPedidoDaGuiaResponse {
+  pedidos_criados: {
+    pedido_id: number;
+    numero: string;
+    guia_id: number;
+    total_itens: number;
+    valor_total: number;
+    sem_contrato: string[];
+  }[];
+  erros: { motivo: string }[];
+  total_criados: number;
+  total_erros: number;
+}
+
+export async function gerarPedidoDaGuia(guia_id: number, observacoes?: string): Promise<GerarPedidoDaGuiaResponse> {
+  const response = await api.post('/planejamento-compras/gerar-pedido-da-guia', { guia_id, observacoes });
+  return response.data;
+}
+
 export async function gerarPedidosPorPeriodo(
   competencia: string,
   periodos: PeriodoGerarPedido[],

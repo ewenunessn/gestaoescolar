@@ -56,10 +56,15 @@ interface Escola {
 }
 import {
   calcularDemandaPorCompetencia,
+  gerarGuiasDemanda,
   gerarPedidosPorPeriodo,
+  gerarPedidoDaGuia,
   CalculoDemandaResponse,
   PeriodoGerarPedido,
+  GerarGuiasResponse,
+  GerarPedidoDaGuiaResponse,
 } from '../services/planejamentoCompras';
+import { guiaService } from '../services/guiaService';
 
 export default function PlanejamentoCompras() {
   const { setPageTitle } = usePageTitle();
@@ -80,10 +85,18 @@ export default function PlanejamentoCompras() {
     open: false, produto: null, escola: null
   });
 
+  const [gerandoGuias, setGerandoGuias] = useState(false);
+  const [resultadoGuias, setResultadoGuias] = useState<GerarGuiasResponse | null>(null);
   // Períodos para geração de pedidos
   const [periodos, setPeriodos] = useState<PeriodoGerarPedido[]>([]);
   const [resultadoGeracao, setResultadoGeracao] = useState<any>(null);
   const [seletorOpen, setSeletorOpen] = useState(false);
+
+  // Gerar pedido da guia
+  const [guias, setGuias] = useState<any[]>([]);
+  const [guiaSelecionada, setGuiaSelecionada] = useState<any | null>(null);
+  const [gerandoPedidoGuia, setGerandoPedidoGuia] = useState(false);
+  const [resultadoPedidoGuia, setResultadoPedidoGuia] = useState<GerarPedidoDaGuiaResponse | null>(null);
 
   useEffect(() => {
     setPageTitle('Planejamento de Compras');
@@ -93,8 +106,17 @@ export default function PlanejamentoCompras() {
   async function carregarDados() {
     setLoading(true);
     try {
-      const escolasData = await listarEscolas();
-      setEscolas(escolasData.filter(e => e.ativo));
+      const [escolasData, guiasData] = await Promise.all([
+        listarEscolas(),
+        guiaService.listarGuias(),
+      ]);
+      setEscolas(escolasData.filter((e: any) => e.ativo));
+      // Ordenar guias mais recentes primeiro
+      const guiasOrdenadas = (guiasData?.data ?? guiasData ?? []).sort((a: any, b: any) => {
+        if (a.ano !== b.ano) return b.ano - a.ano;
+        return b.mes - a.mes;
+      });
+      setGuias(guiasOrdenadas);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
       toast.error('Erro', 'Não foi possível carregar os dados');
@@ -149,6 +171,53 @@ export default function PlanejamentoCompras() {
 
   function atualizarPeriodo(idx: number, campo: keyof PeriodoGerarPedido, valor: string) {
     setPeriodos(prev => prev.map((p, i) => i === idx ? { ...p, [campo]: valor } : p));
+  }
+
+  async function handleGerarPedidoDaGuia() {
+    if (!guiaSelecionada) return;
+    setGerandoPedidoGuia(true);
+    setResultadoPedidoGuia(null);
+    try {
+      const res = await gerarPedidoDaGuia(guiaSelecionada.id);
+      setResultadoPedidoGuia(res);
+      if (res.total_criados > 0) {
+        toast.success('Pedido gerado', `Pedido ${res.pedidos_criados[0].numero} criado com sucesso`);
+      } else {
+        toast.error('Erro', res.erros?.[0]?.motivo || 'Nenhum pedido criado');
+      }
+    } catch (error: any) {
+      toast.error('Erro', error.response?.data?.error || 'Não foi possível gerar o pedido');
+    } finally {
+      setGerandoPedidoGuia(false);
+    }
+  }
+
+  async function handleGerarGuias() {
+    if (!competencia || periodos.length === 0) {
+      toast.warning('Atenção', 'Defina a competência e ao menos um período');
+      return;
+    }
+    setGerandoGuias(true);
+    setResultadoGuias(null);
+    try {
+      const res = await gerarGuiasDemanda(
+        competencia,
+        periodos,
+        escolasSelecionadas.length > 0 ? escolasSelecionadas.map(e => e.id) : undefined
+      );
+      setResultadoGuias(res);
+      if (res.total_criadas > 0) {
+        toast.success('Guias geradas', `${res.total_criadas} guia(s) de demanda criada(s) com sucesso`);
+      } else {
+        const motivos = res.erros?.map((e) => e.motivo).join('; ') || 'Verifique os erros abaixo';
+        toast.error('Nenhuma guia criada', motivos);
+      }
+    } catch (error: any) {
+      const msg = error.response?.data?.error || 'Não foi possível gerar as guias';
+      toast.error('Erro', msg);
+    } finally {
+      setGerandoGuias(false);
+    }
   }
 
   async function handleGerarPedidos() {
@@ -452,17 +521,98 @@ export default function PlanejamentoCompras() {
               </Card>
             </Grid>
           )}
-          {/* Painel: Gerar Pedidos por Período */}
+          {/* Painel: Gerar Pedido de Compra a partir de Guia de Demanda */}
+          <Grid item xs={12}>
+            <Card sx={{ p: 2 }}>
+              <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <ShoppingCartIcon />
+                Gerar Compra da Guia de Demanda
+              </Typography>
+
+              <Alert severity="info" sx={{ mb: 2 }}>
+                Selecione uma guia de demanda já ajustada. O pedido de compra será gerado com as quantidades ajustadas e datas de entrega de cada escola.
+              </Alert>
+
+              <FormControl fullWidth sx={{ mb: 2 }}>
+                <InputLabel>Guia de Demanda</InputLabel>
+                <Select
+                  value={guiaSelecionada?.id ?? ''}
+                  label="Guia de Demanda"
+                  onChange={e => setGuiaSelecionada(guias.find(g => g.id === Number(e.target.value)) ?? null)}
+                >
+                  {guias.map(g => {
+                    const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+                    const label = g.nome || `Guia ${meses[(g.mes ?? 1) - 1]}/${g.ano}`;
+                    return (
+                      <MenuItem key={g.id} value={g.id}>
+                        {label} — {g.total_produtos ?? 0} produto(s)
+                      </MenuItem>
+                    );
+                  })}
+                </Select>
+              </FormControl>
+
+              {guiaSelecionada && (
+                <Box sx={{ mb: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                  <Chip label={`Guia #${guiaSelecionada.id}`} size="small" />
+                  <Chip label={`Status: ${guiaSelecionada.status}`} size="small" color={guiaSelecionada.status === 'aberta' ? 'success' : 'default'} />
+                  {guiaSelecionada.competencia_mes_ano && (
+                    <Chip label={`Competência: ${guiaSelecionada.competencia_mes_ano}`} size="small" variant="outlined" />
+                  )}
+                </Box>
+              )}
+
+              <Button
+                variant="contained"
+                startIcon={gerandoPedidoGuia ? <CircularProgress size={18} /> : <ShoppingCartIcon />}
+                onClick={handleGerarPedidoDaGuia}
+                disabled={gerandoPedidoGuia || !guiaSelecionada}
+                sx={{ bgcolor: '#1d4ed8', '&:hover': { bgcolor: '#1e40af' } }}
+              >
+                {gerandoPedidoGuia ? 'Gerando...' : 'Gerar Pedido de Compra'}
+              </Button>
+
+              {resultadoPedidoGuia && (
+                <Box sx={{ mt: 2 }}>
+                  <Divider sx={{ mb: 2 }} />
+                  {resultadoPedidoGuia.pedidos_criados.map(p => (
+                    <Alert
+                      key={p.pedido_id}
+                      severity="success"
+                      sx={{ mb: 1 }}
+                      action={
+                        <Button size="small" onClick={() => navigate(`/compras/${p.pedido_id}`)}>
+                          Ver Pedido
+                        </Button>
+                      }
+                    >
+                      Pedido {p.numero} criado — {p.total_itens} item(ns)
+                      {p.sem_contrato.length > 0 && (
+                        <Typography variant="caption" sx={{ display: 'block', color: 'warning.main' }}>
+                          Sem contrato (não incluídos): {p.sem_contrato.join(', ')}
+                        </Typography>
+                      )}
+                    </Alert>
+                  ))}
+                  {resultadoPedidoGuia.erros?.map((e, i) => (
+                    <Alert key={i} severity="error" sx={{ mb: 1 }}>{e.motivo}</Alert>
+                  ))}
+                </Box>
+              )}
+            </Card>
+          </Grid>
+
+          {/* Painel: Gerar Guias de Demanda por Período */}
           {competencia && (
             <Grid item xs={12}>
               <Card sx={{ p: 2 }}>
                 <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <ShoppingCartIcon />
-                  Gerar Pedidos por Período
+                  <TableChartIcon />
+                  Gerar Guias de Demanda por Escola
                 </Typography>
 
                 <Alert severity="info" sx={{ mb: 2 }}>
-                  Selecione um ou mais períodos no calendário. Cada período gera itens separados no pedido.
+                  Selecione um ou mais períodos. Cada período gera uma guia de demanda com as quantidades por escola, que depois origina o pedido de compra.
                 </Alert>
 
                 {/* Lista de períodos selecionados */}
@@ -492,47 +642,50 @@ export default function PlanejamentoCompras() {
                   </Button>
                   <Button
                     variant="contained"
-                    startIcon={gerandoPedidos ? <CircularProgress size={18} /> : <ShoppingCartIcon />}
-                    onClick={handleGerarPedidos}
-                    disabled={gerandoPedidos || periodos.length === 0}
+                    color="success"
+                    startIcon={gerandoGuias ? <CircularProgress size={18} /> : <TableChartIcon />}
+                    onClick={handleGerarGuias}
+                    disabled={gerandoGuias || periodos.length === 0}
                   >
-                    {gerandoPedidos ? 'Gerando...' : `Gerar Pedido (${periodos.length} período${periodos.length !== 1 ? 's' : ''})`}
+                    {gerandoGuias ? 'Gerando...' : `Gerar Guia${periodos.length !== 1 ? 's' : ''} de Demanda (${periodos.length} período${periodos.length !== 1 ? 's' : ''})`}
                   </Button>
                 </Box>
 
-                {/* Resultado da geração */}
-                {resultadoGeracao && (
+                {/* Resultado da geração de guias */}
+                {resultadoGuias && (
                   <Box sx={{ mt: 2 }}>
                     <Divider sx={{ mb: 2 }} />
-                    {resultadoGeracao.pedidos_criados.map((p: any) => (
+                    {resultadoGuias.guias_criadas.map((g) => (
                       <Alert
-                        key={p.pedido_id}
+                        key={g.guia_id}
                         severity="success"
                         sx={{ mb: 1 }}
                         action={
-                          <Button size="small" onClick={() => navigate(`/compras/${p.pedido_id}`)}>
-                            Ver
+                          <Button size="small" onClick={() => navigate(`/guias-demanda/${g.guia_id}`)}>
+                            Ver Guia
                           </Button>
                         }
                       >
-                        <strong>{p.numero}</strong> — {p.total_itens} item(ns) em {(p.periodos ?? [p.periodo]).length} período(s)
-                        {p.sem_contrato?.length > 0 && (
-                          <Typography variant="caption" sx={{ display: 'block', color: 'warning.main' }}>
-                            Sem contrato (não incluídos): {p.sem_contrato.join(', ')}
+                        Guia #{g.guia_id} — {g.total_escolas} escola(s), {g.total_produtos} produto(s), {g.total_itens} item(ns)
+                        {g.periodos && g.periodos.length > 0 && (
+                          <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary' }}>
+                            {g.periodos.length === 1
+                              ? `Período: ${g.periodos[0].data_inicio} → ${g.periodos[0].data_fim}`
+                              : `${g.periodos.length} períodos: ${g.periodos[0].data_inicio} → ${g.periodos[g.periodos.length - 1].data_fim}`}
                           </Typography>
                         )}
                       </Alert>
                     ))}
-                    {resultadoGeracao.erros?.map((e: any, i: number) => (
+                    {resultadoGuias.erros?.map((e, i) => (
                       <Alert key={i} severity="error" sx={{ mb: 1 }}>
                         {e.motivo}
                       </Alert>
                     ))}
-                    {resultadoGeracao.total_criados > 0 && (
+                    {resultadoGuias.total_criadas > 0 && (
                       <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
-                        <Chip label={`${resultadoGeracao.total_criados} pedido(s) criado(s)`} color="success" size="small" />
-                        <Button size="small" variant="outlined" onClick={() => navigate('/compras')}>
-                          Ver todos os pedidos
+                        <Chip label={`${resultadoGuias.total_criadas} guia(s) criada(s)`} color="success" size="small" />
+                        <Button size="small" variant="outlined" onClick={() => navigate('/guias')}>
+                          Ver todas as guias
                         </Button>
                       </Box>
                     )}

@@ -32,7 +32,8 @@ import {
   Search as SearchIcon,
   Clear as ClearIcon,
   Visibility as VisibilityIcon,
-  CalendarMonth as CalendarIcon
+  CalendarMonth as CalendarIcon,
+  Delete as DeleteIcon,
 } from '@mui/icons-material';
 import PageContainer from '../components/PageContainer';
 import PageHeader from '../components/PageHeader';
@@ -47,6 +48,9 @@ interface Competencia {
   guia_id: number;
   guia_nome: string;
   guia_status: string;
+  competencia_mes_ano?: string;
+  periodo_inicio?: string;
+  periodo_fim?: string;
   total_itens: number;
   total_escolas: number;
   qtd_pendente: number;
@@ -79,6 +83,10 @@ const GuiasDemandaLista: React.FC = () => {
   const [formDataInicial, setFormDataInicial] = useState<any>(null);
   const [confirmClose, setConfirmClose] = useState(false);
 
+  // Exclusão
+  const [confirmDelete, setConfirmDelete] = useState<Competencia | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   useEffect(() => {
     loadCompetencias();
   }, []);
@@ -92,6 +100,22 @@ const GuiasDemandaLista: React.FC = () => {
       console.error('Erro ao carregar competências:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeletarGuia = async () => {
+    if (!confirmDelete) return;
+    try {
+      setDeleting(true);
+      await guiaService.deletarGuia(confirmDelete.guia_id);
+      toast.success('Guia excluída', 'A guia e todos os seus itens foram removidos.');
+      setConfirmDelete(null);
+      loadCompetencias();
+    } catch (error) {
+      console.error('Erro ao deletar guia:', error);
+      toast.error('Erro', 'Não foi possível excluir a guia.');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -113,7 +137,7 @@ const GuiasDemandaLista: React.FC = () => {
 
   const filteredCompetencias = useMemo(() => {
     return competencias.filter(c => 
-      c.guia_nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (c.guia_nome ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       `${c.mes}/${c.ano}`.includes(searchTerm)
     );
   }, [competencias, searchTerm]);
@@ -233,7 +257,7 @@ const GuiasDemandaLista: React.FC = () => {
                         </TableCell>
                         <TableCell>
                           <Typography variant="body2">
-                            {comp.guia_nome}
+                            {comp.guia_nome || `Guia ${comp.mes}/${comp.ano}`}
                           </Typography>
                         </TableCell>
                         <TableCell align="center">
@@ -258,6 +282,15 @@ const GuiasDemandaLista: React.FC = () => {
                                 onClick={() => navigate(`/guias-demanda/${comp.guia_id}`)}
                               >
                                 <VisibilityIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Excluir guia e todos os itens">
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => setConfirmDelete(comp)}
+                              >
+                                <DeleteIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
                           </Box>
@@ -375,6 +408,26 @@ const GuiasDemandaLista: React.FC = () => {
         </DialogActions>
       </Dialog>
       
+      {/* Dialog confirmação exclusão */}
+      <Dialog open={Boolean(confirmDelete)} onClose={() => !deleting && setConfirmDelete(null)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ pb: 1 }}>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>Excluir Guia de Demanda?</Typography>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 1 }}>
+          <Typography variant="body2">
+            Isso vai remover permanentemente a guia{' '}
+            <strong>{confirmDelete ? `${getMesNome(confirmDelete.mes)}/${confirmDelete.ano}` : ''}</strong>{' '}
+            e todos os seus <strong>{confirmDelete?.total_itens ?? 0} item(ns)</strong>. Esta ação não pode ser desfeita.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setConfirmDelete(null)} disabled={deleting}>Cancelar</Button>
+          <Button onClick={handleDeletarGuia} color="error" variant="contained" disabled={deleting}>
+            {deleting ? 'Excluindo...' : 'Excluir'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Dialog de confirmação para fechar */}
       <Dialog 
         open={confirmClose} 

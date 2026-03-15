@@ -7,6 +7,9 @@ export interface Guia {
   nome?: string;
   observacao?: string;
   status: 'aberta' | 'fechada' | 'cancelada';
+  competencia_mes_ano?: string;
+  periodo_inicio?: string;
+  periodo_fim?: string;
   created_at: string;
   updated_at: string;
   total_produtos?: number;
@@ -200,7 +203,7 @@ class GuiaModel {
     return await this.buscarGuia(result.lastID);
   }
 
-  async listarStatusEscolas(mes: number, ano: number): Promise<any[]> {
+  async listarStatusEscolas(mes: number, ano: number, guiaId?: number): Promise<any[]> {
     try {
       console.log(`🔍 [GuiaModel] Listando status das escolas para ${mes}/${ano}`);
       
@@ -269,10 +272,11 @@ class GuiaModel {
             WHERE g.id = gpe.guia_id 
             AND g.mes = $1 
             AND g.ano = $2
+            ${guiaId ? 'AND g.id = $3' : ''}
           )
         GROUP BY e.id, e.nome, e.endereco
         ORDER BY ${hasRotas ? "escola_rota NULLS LAST, ordem_rota NULLS LAST," : ""} e.nome
-      `, [mes, ano]);
+      `, guiaId ? [mes, ano, guiaId] : [mes, ano]);
       return result;
     } catch (error) {
       console.error('❌ [GuiaModel] Erro ao listar status das escolas:', error);
@@ -400,6 +404,7 @@ class GuiaModel {
         DATE(gpe.created_at) as data_criacao,
         COALESCE(gpe.quantidade_total_entregue, 0) as quantidade_total_entregue,
         (gpe.quantidade - COALESCE(gpe.quantidade_total_entregue, 0)) as saldo_pendente,
+        COALESCE(gpe.quantidade_demanda, gpe.quantidade) as quantidade_demanda,
         CASE 
           WHEN COALESCE(gpe.quantidade_total_entregue, 0) >= gpe.quantidade THEN 'entregue'
           WHEN COALESCE(gpe.quantidade_total_entregue, 0) > 0 THEN 'parcial'
@@ -630,6 +635,9 @@ class GuiaModel {
         g.id as guia_id,
         g.nome as guia_nome,
         g.status as guia_status,
+        g.competencia_mes_ano,
+        g.periodo_inicio,
+        g.periodo_fim,
         COUNT(DISTINCT gpe.id) as total_itens,
         COUNT(DISTINCT gpe.escola_id) as total_escolas,
         COUNT(DISTINCT CASE WHEN gpe.status = 'pendente' THEN gpe.id END) as qtd_pendente,
@@ -639,8 +647,8 @@ class GuiaModel {
         COUNT(DISTINCT CASE WHEN gpe.status = 'cancelado' THEN gpe.id END) as qtd_cancelado
       FROM guias g
       LEFT JOIN guia_produto_escola gpe ON g.id = gpe.guia_id
-      GROUP BY g.mes, g.ano, g.id, g.nome, g.status
-      ORDER BY g.ano DESC, g.mes DESC
+      GROUP BY g.mes, g.ano, g.id, g.nome, g.status, g.competencia_mes_ano, g.periodo_inicio, g.periodo_fim
+      ORDER BY g.ano DESC, g.mes DESC, g.periodo_inicio ASC NULLS LAST
     `;
 
     const rows = await db.all(query);
@@ -651,6 +659,9 @@ class GuiaModel {
       guia_id: row.guia_id,
       guia_nome: row.guia_nome,
       guia_status: row.guia_status,
+      competencia_mes_ano: row.competencia_mes_ano,
+      periodo_inicio: row.periodo_inicio,
+      periodo_fim: row.periodo_fim,
       total_itens: Number(row.total_itens) || 0,
       total_escolas: Number(row.total_escolas) || 0,
       qtd_pendente: Number(row.qtd_pendente) || 0,

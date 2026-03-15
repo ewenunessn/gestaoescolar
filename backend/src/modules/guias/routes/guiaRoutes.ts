@@ -45,4 +45,8 @@ router.get('/escola/:escolaId/produtos', guiaController.listarProdutosPorEscola)
 router.post('/escola/:escolaId/produtos', guiaController.adicionarProdutoEscola);
 router.put('/escola/produtos/:itemId', guiaController.atualizarProdutoEscola);
 
+// Ajuste fino de quantidades da guia
+router.get('/:guiaId/ajuste', guiaController.listarItensParaAjuste);
+router.put('/:guiaId/ajuste', guiaController.salvarAjuste);
+
 export default router;

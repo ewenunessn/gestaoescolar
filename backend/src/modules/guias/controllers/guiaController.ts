@@ -535,7 +535,7 @@ export const guiaController = {
   // Listar status das escolas para o mês/ano
   async listarStatusEscolas(req: Request, res: Response) {
     try {
-      const { mes, ano } = req.query;
+      const { mes, ano, guia_id } = req.query;
 
       if (!mes || !ano) {
         return res.status(400).json({ 
@@ -544,8 +544,12 @@ export const guiaController = {
         });
       }
 
-      console.log(`🔍 [GuiaController] Listando status escolas: ${mes}/${ano}`);
-      const escolas = await GuiaModel.listarStatusEscolas(Number(mes), Number(ano));
+      console.log(`🔍 [GuiaController] Listando status escolas: ${mes}/${ano}${guia_id ? ` guia_id=${guia_id}` : ''}`);
+      const escolas = await GuiaModel.listarStatusEscolas(
+        Number(mes),
+        Number(ano),
+        guia_id ? Number(guia_id) : undefined
+      );
       
       res.json(escolas);
     } catch (error) {
@@ -574,9 +578,75 @@ export const guiaController = {
     }
   },
 
-  // Listar competências com resumo de status
-  async listarCompetencias(req: Request, res: Response) {
+  // Listar itens da guia agrupados por (produto, data_entrega) com quantidades por escola — para ajuste fino
+  async listarItensParaAjuste(req: Request, res: Response) {
     try {
+      const { guiaId } = req.params;
+      const guia = await GuiaModel.buscarGuia(parseInt(guiaId));
+      if (!guia) return res.status(404).json({ success: false, error: 'Guia não encontrada' });
+
+      const itens = await GuiaModel.listarProdutosPorGuia(parseInt(guiaId));
+
+      // Agrupar por (produto_id, data_entrega) → lista de { escola_id, quantidade, quantidade_demanda }
+      const grupos = new Map<string, {
+        produto_id: number; produto_nome: string; unidade: string; data_entrega: string | null;
+        escolas: { id: number; nome: string; quantidade: number; quantidade_demanda: number }[];
+      }>();
+
+      for (const item of itens) {
+        const dataKey = item.data_entrega ? String(item.data_entrega).split('T')[0] : '';
+        const key = `${item.produto_id}__${dataKey}`;
+        if (!grupos.has(key)) {
+          grupos.set(key, {
+            produto_id: item.produto_id,
+            produto_nome: (item as any).produto_nome || '',
+            unidade: (item as any).produto_unidade || (item as any).unidade || 'kg',
+            data_entrega: dataKey || null,
+            escolas: [],
+          });
+        }
+        grupos.get(key)!.escolas.push({
+          id: item.escola_id,
+          nome: (item as any).escola_nome || '',
+          quantidade: Number(item.quantidade) || 0,
+          quantidade_demanda: Number((item as any).quantidade_demanda ?? item.quantidade) || 0,
+          item_id: item.id,
+        } as any);
+      }
+
+      res.json({ success: true, data: Array.from(grupos.values()) });
+    } catch (error) {
+      console.error('Erro ao listar itens para ajuste:', error);
+      res.status(500).json({ success: false, error: 'Erro ao listar itens para ajuste' });
+    }
+  },
+
+  // Salvar ajuste fino: recebe array de { item_id, quantidade }
+  async salvarAjuste(req: Request, res: Response) {
+    try {
+      const { guiaId } = req.params;
+      const { ajustes } = req.body as { ajustes: { item_id: number; quantidade: number }[] };
+
+      if (!ajustes || !Array.isArray(ajustes)) {
+        return res.status(400).json({ success: false, error: 'ajustes é obrigatório' });
+      }
+
+      const guia = await GuiaModel.buscarGuia(parseInt(guiaId));
+      if (!guia) return res.status(404).json({ success: false, error: 'Guia não encontrada' });
+
+      for (const aj of ajustes) {
+        await GuiaModel.atualizarProdutoGuia(aj.item_id, { quantidade: aj.quantidade });
+      }
+
+      res.json({ success: true, total_ajustados: ajustes.length });
+    } catch (error) {
+      console.error('Erro ao salvar ajuste:', error);
+      res.status(500).json({ success: false, error: 'Erro ao salvar ajuste' });
+    }
+  },
+
+  // Listar competências com resumo de status
+  async listarCompetencias(req: Request, res: Response) {    try {
       console.log('🔍 [GuiaController] Listando competências');
       
       const competencias = await GuiaModel.listarCompetencias();

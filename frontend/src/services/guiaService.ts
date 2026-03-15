@@ -92,9 +92,11 @@ export const guiaService = {
     return response.data.data || response.data;
   },
 
-  // Listar status das escolas para o mês/ano
-  async listarStatusEscolas(mes: number, ano: number) {
-    const response = await api.get('/guias/status-escolas', { params: { mes, ano } });
+  // Listar status das escolas para o mês/ano (opcionalmente filtrado por guia)
+  async listarStatusEscolas(mes: number, ano: number, guiaId?: number) {
+    const params: Record<string, any> = { mes, ano };
+    if (guiaId) params.guia_id = guiaId;
+    const response = await api.get('/guias/status-escolas', { params });
     return response.data.data || response.data;
   },
 

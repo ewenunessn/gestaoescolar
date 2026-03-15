@@ -92,10 +92,15 @@ const Romaneio: React.FC = () => {
   // Filtros - NOVO SISTEMA
   const [filterOpen, setFilterOpen] = useState(false);
   const [filterAnchorEl, setFilterAnchorEl] = useState<HTMLElement | null>(null);
-  const [filters, setFilters] = useState<Record<string, any>>({
-    dataInicio: new Date().toISOString().split('T')[0],
-    dataFim: new Date().toISOString().split('T')[0],
-    status: 'pendente'
+  const [filters, setFilters] = useState<Record<string, any>>(() => {
+    const hoje = new Date();
+    const primeiroDia = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split('T')[0];
+    const ultimoDia = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toISOString().split('T')[0];
+    return {
+      dataInicio: primeiroDia,
+      dataFim: ultimoDia,
+      status: 'todos',
+    };
   });
   
   const [rotaIds, setRotaIds] = useState<number[]>([]);
