@@ -20,7 +20,7 @@ const PageContainer: React.FC<PageContainerProps> = ({
     <Box
       sx={{
         px: '20px',
-        py: 3,
+        py: 1.5,
         ...(fullHeight && {
           height: 'calc(100vh - 56px)',
           display: 'flex',

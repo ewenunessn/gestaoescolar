@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { usePageTitle } from '../contexts/PageTitleContext';
 import { useToast } from '../hooks/useToast';
 import CalculoDetalhadoModal from '../components/CalculoDetalhadoModal';
+import SeletorPeriodoCalendario from '../components/SeletorPeriodoCalendario';
 import { toNum } from '../utils/formatters';
 import {
   Box,
@@ -82,6 +83,7 @@ export default function PlanejamentoCompras() {
   // Períodos para geração de pedidos
   const [periodos, setPeriodos] = useState<PeriodoGerarPedido[]>([]);
   const [resultadoGeracao, setResultadoGeracao] = useState<any>(null);
+  const [seletorOpen, setSeletorOpen] = useState(false);
 
   useEffect(() => {
     setPageTitle('Planejamento de Compras');
@@ -120,7 +122,7 @@ export default function PlanejamentoCompras() {
     return competencias;
   }
 
-  // Quando competência muda, ajustar datas para o mês inteiro e sugerir 2 períodos quinzenais
+  // Quando competência muda, resetar períodos
   useEffect(() => {
     if (competencia) {
       const [ano, mes] = competencia.split('-').map(Number);
@@ -128,14 +130,7 @@ export default function PlanejamentoCompras() {
       const ultimoDia = new Date(ano, mes, 0);
       setDataInicio(primeiroDia);
       setDataFim(ultimoDia);
-
-      // Sugerir 2 períodos quinzenais automaticamente
-      const dia15 = new Date(ano, mes - 1, 15);
-      const fmt = (d: Date) => d.toISOString().split('T')[0];
-      setPeriodos([
-        { data_inicio: fmt(primeiroDia), data_fim: fmt(dia15) },
-        { data_inicio: fmt(new Date(ano, mes - 1, 16)), data_fim: fmt(ultimoDia) },
-      ]);
+      setPeriodos([]);
       setResultadoGeracao(null);
     }
   }, [competencia]);
@@ -467,55 +462,41 @@ export default function PlanejamentoCompras() {
                 </Typography>
 
                 <Alert severity="info" sx={{ mb: 2 }}>
-                  Cada período gera um pedido separado. A data de entrega prevista será a data de início do período.
+                  Selecione um ou mais períodos no calendário. Cada período gera itens separados no pedido.
                 </Alert>
 
-                {periodos.map((periodo, idx) => (
-                  <Box key={idx} sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 1.5 }}>
-                    <Typography variant="body2" sx={{ minWidth: 80, fontWeight: 600 }}>
-                      Período {idx + 1}
-                    </Typography>
-                    <TextField
-                      label="Início"
-                      type="date"
-                      size="small"
-                      value={periodo.data_inicio}
-                      onChange={(e) => atualizarPeriodo(idx, 'data_inicio', e.target.value)}
-                      InputLabelProps={{ shrink: true }}
-                      sx={{ width: 160 }}
-                    />
-                    <TextField
-                      label="Fim"
-                      type="date"
-                      size="small"
-                      value={periodo.data_fim}
-                      onChange={(e) => atualizarPeriodo(idx, 'data_fim', e.target.value)}
-                      InputLabelProps={{ shrink: true }}
-                      sx={{ width: 160 }}
-                    />
-                    <IconButton size="small" color="delete" onClick={() => removerPeriodo(idx)}>
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
+                {/* Lista de períodos selecionados */}
+                {periodos.length > 0 && (
+                  <Box sx={{ mb: 1.5, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {periodos.map((p, idx) => (
+                      <Chip
+                        key={idx}
+                        label={`Período ${idx + 1}: ${p.data_inicio} → ${p.data_fim}`}
+                        onDelete={() => setPeriodos(prev => prev.filter((_, i) => i !== idx))}
+                        color="primary"
+                        variant="outlined"
+                        size="small"
+                      />
+                    ))}
                   </Box>
-                ))}
+                )}
 
-                <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+                <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
                   <Button
                     variant="outlined"
-                    startIcon={<AddIcon />}
-                    onClick={adicionarPeriodo}
+                    startIcon={<CalendarIcon />}
+                    onClick={() => setSeletorOpen(true)}
                     size="small"
                   >
-                    Adicionar Período
+                    {periodos.length === 0 ? 'Selecionar Período' : 'Adicionar Período'}
                   </Button>
                   <Button
                     variant="contained"
                     startIcon={gerandoPedidos ? <CircularProgress size={18} /> : <ShoppingCartIcon />}
                     onClick={handleGerarPedidos}
                     disabled={gerandoPedidos || periodos.length === 0}
-                    sx={{ bgcolor: '#1976d2' }}
                   >
-                    {gerandoPedidos ? 'Gerando...' : `Gerar ${periodos.length} Pedido(s)`}
+                    {gerandoPedidos ? 'Gerando...' : `Gerar Pedido (${periodos.length} período${periodos.length !== 1 ? 's' : ''})`}
                   </Button>
                 </Box>
 
@@ -542,18 +523,14 @@ export default function PlanejamentoCompras() {
                         )}
                       </Alert>
                     ))}
-                    {resultadoGeracao.erros.map((e: any, i: number) => (
+                    {resultadoGeracao.erros?.map((e: any, i: number) => (
                       <Alert key={i} severity="error" sx={{ mb: 1 }}>
-                        Período {e.periodo.data_inicio} a {e.periodo.data_fim}: {e.motivo}
+                        {e.motivo}
                       </Alert>
                     ))}
                     {resultadoGeracao.total_criados > 0 && (
                       <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
-                        <Chip
-                          label={`${resultadoGeracao.total_criados} pedido(s) criado(s)`}
-                          color="success"
-                          size="small"
-                        />
+                        <Chip label={`${resultadoGeracao.total_criados} pedido(s) criado(s)`} color="success" size="small" />
                         <Button size="small" variant="outlined" onClick={() => navigate('/compras')}>
                           Ver todos os pedidos
                         </Button>
@@ -577,6 +554,16 @@ export default function PlanejamentoCompras() {
           escola={modalCalculo.escola}
         />
       )}
+
+      {/* Seletor de Período via Calendário */}
+      <SeletorPeriodoCalendario
+        open={seletorOpen}
+        onClose={() => setSeletorOpen(false)}
+        onConfirm={(p) => setPeriodos(prev => [...prev, p])}
+        periodosExistentes={periodos}
+        competencia={competencia || undefined}
+        titulo={periodos.length === 0 ? 'Selecionar 1º Período' : `Adicionar Período ${periodos.length + 1}`}
+      />
     </LocalizationProvider>
   );
 }

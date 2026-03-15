@@ -1,7 +1,7 @@
-import React from 'react';
-import { Breadcrumbs, Link, Typography, Box, IconButton } from '@mui/material';
-import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
+import React, { useEffect } from 'react';
+import { Breadcrumbs, Link, Typography, Box } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { usePageTitle } from '../contexts/PageTitleContext';
 
 interface BreadcrumbItem {
   label: string;
@@ -15,80 +15,62 @@ interface PageBreadcrumbsProps {
   showBackButton?: boolean;
 }
 
-export default function PageBreadcrumbs({ items, onBack, showBackButton = true }: PageBreadcrumbsProps) {
+export default function PageBreadcrumbs({ items, onBack }: PageBreadcrumbsProps) {
   const navigate = useNavigate();
+  const { setBackPath } = usePageTitle();
 
-  const handleBack = () => {
+  useEffect(() => {
+    // Determina o caminho de volta: item anterior com path, ou callback
     if (onBack) {
-      onBack();
-    } else if (items.length > 1 && items[items.length - 2].path) {
-      // Navegar para o item anterior no breadcrumb
-      navigate(items[items.length - 2].path!);
-    } else {
-      // Fallback: voltar na história do navegador
-      navigate(-1);
+      // onBack é função — não podemos passar para o headbar, usa navigate(-1) como fallback
+      setBackPath('__back__');
+    } else if (items.length > 1) {
+      const prev = items[items.length - 2];
+      setBackPath(prev.path || '__back__');
     }
-  };
+    return () => setBackPath(null);
+  }, []);
 
   return (
-    <Box sx={{ mb: 3 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-        {showBackButton && (
-          <IconButton 
-            onClick={handleBack}
-            size="small"
-            sx={{ 
-              bgcolor: 'background.paper', 
-              boxShadow: 1,
-              '&:hover': {
-                bgcolor: 'action.hover'
-              }
-            }}
-          >
-            <ArrowBackIcon fontSize="small" />
-          </IconButton>
-        )}
-        
-        <Breadcrumbs>
-          {items.map((item, index) => {
-            const isLast = index === items.length - 1;
-            
-            if (isLast || !item.path) {
-              return (
-                <Typography 
-                  key={index}
-                  color="text.primary" 
-                  sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
-                >
-                  {item.icon}
-                  {item.label}
-                </Typography>
-              );
-            }
+    <Box sx={{ mb: 0.5 }}>
+      <Breadcrumbs sx={{ fontSize: '0.75rem' }}>
+        {items.map((item, index) => {
+          const isLast = index === items.length - 1;
 
+          if (isLast || !item.path) {
             return (
-              <Link
+              <Typography
                 key={index}
-                color="inherit"
-                onClick={() => navigate(item.path!)}
-                sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 1, 
-                  cursor: 'pointer',
-                  textDecoration: 'none',
-                  '&:hover': {
-                    textDecoration: 'underline'
-                  }
-                }}
+                color="text.primary"
+                sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.75rem' }}
               >
                 {item.icon}
                 {item.label}
-              </Link>
+              </Typography>
             );
-          })}
-        </Breadcrumbs>
-      </Box>
+          }
+
+          return (
+            <Link
+              key={index}
+              color="inherit"
+              onClick={() => navigate(item.path!)}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.5,
+                cursor: 'pointer',
+                textDecoration: 'none',
+                fontSize: '0.75rem',
+                '&:hover': { textDecoration: 'underline' },
+              }}
+            >
+              {item.icon}
+              {item.label}
+            </Link>
+          );
+        })}
+      </Breadcrumbs>
     </Box>
   );
 }

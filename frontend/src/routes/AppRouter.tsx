@@ -72,6 +72,8 @@ const GerenciarEscolasRota = lazy(() => import("../pages/GerenciarEscolasRota"))
 const Compras = lazy(() => import("../pages/Compras"));
 const CompraForm = lazy(() => import("../pages/CompraForm"));
 const CompraDetalhe = lazy(() => import("../pages/CompraDetalhe"));
+const ProgramacaoEntregaScreen = lazy(() => import("../pages/ProgramacaoEntregaScreen"));
+const AjusteProgramacoesScreen = lazy(() => import("../pages/AjusteProgramacoesScreen"));
 const FaturamentosCompra = lazy(() => import("../pages/FaturamentosCompra"));
 const FaturamentoModalidades = lazy(() => import("../pages/FaturamentoModalidades"));
 const RelatorioFaturamentoTipoFornecedor = lazy(() => import("../pages/RelatorioFaturamentoTipoFornecedor"));
@@ -291,6 +293,8 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
             <Route path="/compras/novo" element={<LazyRoute><CompraForm /></LazyRoute>} />
             <Route path="/compras/:id/editar" element={<LazyRoute><CompraForm /></LazyRoute>} />
             <Route path="/compras/:id" element={<LazyRoute><CompraDetalhe /></LazyRoute>} />
+            <Route path="/compras/:id/item/:itemId/programacao" element={<LazyRoute><ProgramacaoEntregaScreen /></LazyRoute>} />
+            <Route path="/compras/:id/programacoes-ajuste" element={<LazyRoute><AjusteProgramacoesScreen /></LazyRoute>} />
             <Route path="/compras/:id/faturamentos" element={<LazyRoute><FaturamentosCompra /></LazyRoute>} />
             <Route path="/compras/:id/faturamento/:faturamentoId/relatorio-tipo" element={<LazyRoute><RelatorioFaturamentoTipoFornecedor /></LazyRoute>} />
             <Route path="/compras/:id/faturamento/:faturamentoId" element={<LazyRoute><FaturamentoModalidades /></LazyRoute>} />

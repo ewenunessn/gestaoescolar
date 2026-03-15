@@ -24,6 +24,7 @@ export interface PedidoItem {
   produto_id: number;
   produto_nome?: string;
   unidade?: string;
+  marca?: string;
   quantidade: number;
   preco_unitario: number;
   preco_contrato?: number;

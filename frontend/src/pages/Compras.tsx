@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { usePageTitle } from '../contexts/PageTitleContext';
 import StatusIndicator from '../components/StatusIndicator';
 import PageContainer from '../components/PageContainer';
 import TableFilter, { FilterField } from '../components/TableFilter';
@@ -59,6 +60,9 @@ const PedidosPage = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
+  const { setPageTitle } = usePageTitle();
+
+  useEffect(() => { setPageTitle('Compras'); }, []);
 
   // Estados principais
   const [pedidos, setPedidos] = useState<Pedido[]>([]);

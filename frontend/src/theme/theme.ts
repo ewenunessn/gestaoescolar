@@ -482,6 +482,43 @@ const baseTheme = {
         }),
       },
     },
+    MuiTabs: {
+      styleOverrides: {
+        root: {
+          minHeight: 36,
+          '& .MuiTabs-indicator': {
+            height: 2,
+            borderRadius: '2px 2px 0 0',
+          },
+        },
+        flexContainer: {
+          gap: 0,
+        },
+      },
+    },
+    MuiTab: {
+      styleOverrides: {
+        root: {
+          minHeight: 36,
+          paddingTop: 6,
+          paddingBottom: 6,
+          paddingLeft: 14,
+          paddingRight: 14,
+          textTransform: 'none' as const,
+          fontSize: '0.8125rem',
+          fontWeight: 500,
+          color: '#64748b',
+          '&.Mui-selected': {
+            fontWeight: 600,
+          },
+          '& .MuiTab-iconWrapper': {
+            fontSize: '1rem',
+            marginBottom: '0 !important',
+            marginRight: 4,
+          },
+        },
+      },
+    },
   },
 };
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
+import { usePageTitle } from '../contexts/PageTitleContext';
 import {
   Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
   Divider, IconButton, Table, TableBody, TableCell, TableContainer,
@@ -10,15 +11,15 @@ import {
 import Checkbox from '@mui/material/Checkbox';
 import {
   Cancel as CancelIcon, Edit as EditIcon, Receipt as ReceiptIcon,
-  CalendarMonth as CalendarIcon, MergeType as MergeIcon,
+  CalendarMonth as CalendarIcon, MergeType as MergeIcon, Tune as TuneIcon,
+  PictureAsPdf as PdfIcon,
 } from '@mui/icons-material';
-import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import { listarProgramacoes } from '../services/programacaoEntrega';
 import pedidosService from '../services/pedidos';
 import faturamentoService from '../services/faturamento';
 import { apiWithRetry } from '../services/api';
-import ProgramacaoEntregaDialog from '../components/ProgramacaoEntregaDialog';
+import CompactPagination from '../components/CompactPagination';
 import { PedidoDetalhado, STATUS_PEDIDO } from '../types/pedido';
-import PageBreadcrumbs from '../components/PageBreadcrumbs';
 import PageContainer from '../components/PageContainer';
 import { formatarMoeda, formatarData } from '../utils/dateUtils';
 
@@ -28,6 +29,8 @@ export default function PedidoDetalhe() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  const { setPageTitle, setBackPath } = usePageTitle();
 
   const [pedido, setPedido] = useState<PedidoDetalhado | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,12 +47,220 @@ export default function PedidoDetalhe() {
   const [obsAnchorEl, setObsAnchorEl] = useState<HTMLButtonElement | null>(null);
   const [obsItemSelecionado, setObsItemSelecionado] = useState<any>(null);
 
-  const [programacaoDialog, setProgramacaoDialog] = useState<{
-    open: boolean; itemId: number; produtoNome: string; unidade: string;
-  }>({ open: false, itemId: 0, produtoNome: '', unidade: '' });
+  const [gerandoPdf, setGerandoPdf] = useState(false);
+
+  async function gerarPDFRequisicao() {
+    if (!pedido) return;
+    setGerandoPdf(true);
+    try {
+      const pdfMake = (await import('pdfmake/build/pdfmake')).default;
+      const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default as any;
+      (pdfMake as any).vfs = pdfFonts.pdfMake?.vfs || pdfFonts;
+
+      // Carregar programações de todos os itens
+      const progsMap: Record<number, any[]> = {};
+      await Promise.all(pedido.itens.map(async (item) => {
+        if (!item.id) return;
+        const progs = await listarProgramacoes(item.id);
+        progsMap[item.id] = progs.map(p => ({
+          ...p,
+          data_entrega: p.data_entrega ? p.data_entrega.split('T')[0] : p.data_entrega,
+        }));
+      }));
+
+      // Agrupar itens por fornecedor
+      const fornMap: Record<number, { nome: string; cnpj: string; itens: typeof pedido.itens }> = {};
+      pedido.itens.forEach(item => {
+        const fid = item.fornecedor_id ?? 0;
+        if (!fornMap[fid]) fornMap[fid] = { nome: item.fornecedor_nome ?? '—', cnpj: item.fornecedor_cnpj ?? '—', itens: [] };
+        fornMap[fid].itens.push(item);
+      });
+
+      const C_HEADER = '#2d3748';
+      const C_SUB    = '#4a5568';
+      const C_STRIPE = '#f7f8fa';
+      const C_BORDER = '#e2e8f0';
+      const C_TOTAL  = '#1a202c';
+
+      const competencia = pedido.competencia_mes_ano ?? formatarData(pedido.data_pedido);
+      const docNumero   = pedido.numero;
+
+      // Número de controle: pedidoId + timestamp truncado
+      const ctrlBase = `${pedido.id}-${Date.now().toString(36).toUpperCase()}`;
+
+      const content: any[] = [];
+      let pageSeq = 0;
+
+      Object.values(fornMap).forEach((forn, fi) => {
+        // Agrupar itens do fornecedor por data de entrega (programação)
+        // Montar mapa: data_entrega -> [{ item, quantidade }]
+        const progDataMap: Record<string, { item: typeof pedido.itens[0]; quantidade: number }[]> = {};
+
+        forn.itens.forEach(item => {
+          const progs = progsMap[item.id!] ?? [];
+          if (progs.length === 0) {
+            // Sem programação: usa data prevista ou "Sem data"
+            const key = item.data_entrega_prevista ? item.data_entrega_prevista.split('T')[0] : 'Sem data definida';
+            if (!progDataMap[key]) progDataMap[key] = [];
+            progDataMap[key].push({ item, quantidade: Number(item.quantidade) });
+          } else {
+            progs.forEach(prog => {
+              const key = prog.data_entrega;
+              if (!progDataMap[key]) progDataMap[key] = [];
+              const qtdTotal = prog.escolas.reduce((s: number, e: any) => s + Number(e.quantidade), 0);
+              progDataMap[key].push({ item, quantidade: qtdTotal });
+            });
+          }
+        });
+
+        const datas = Object.keys(progDataMap).sort();
+        let totalFornecedor = 0;
+
+        // Quebra de página entre fornecedores
+        if (fi > 0) content.push({ text: '', pageBreak: 'before' });
+
+        datas.forEach((data, di) => {
+          pageSeq++;
+          const linhas = progDataMap[data];
+          let subtotal = 0;
+
+          // Cabeçalho do fornecedor (só na primeira data)
+          if (di === 0) {
+            content.push({
+              columns: [
+                {
+                  stack: [
+                    { text: 'REQUISIÇÃO DE COMPRA', fontSize: 7, bold: true, color: '#718096', characterSpacing: 1 },
+                    { text: forn.nome, fontSize: 14, bold: true, color: C_TOTAL, margin: [0, 2, 0, 0] },
+                    { text: `CNPJ: ${forn.cnpj}`, fontSize: 8, color: C_SUB, margin: [0, 2, 0, 0] },
+                  ],
+                },
+                {
+                  stack: [
+                    { text: `Pedido: ${docNumero}`, fontSize: 8, alignment: 'right', color: C_SUB },
+                    { text: `Competência: ${competencia}`, fontSize: 8, alignment: 'right', color: C_SUB, margin: [0, 2, 0, 0] },
+                    { text: `Controle: ${ctrlBase}-${String(pageSeq).padStart(3, '0')}`, fontSize: 7, alignment: 'right', color: '#a0aec0', margin: [0, 2, 0, 0] },
+                  ],
+                  width: 180,
+                },
+              ],
+              margin: [0, 0, 0, 8],
+            });
+            content.push({ canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1.5, lineColor: C_HEADER }], margin: [0, 0, 0, 8] });
+          } else {
+            // Próxima data do mesmo fornecedor: número de controle atualizado
+            content.push({
+              text: `Controle: ${ctrlBase}-${String(pageSeq).padStart(3, '0')}`,
+              fontSize: 7, alignment: 'right', color: '#a0aec0', margin: [0, 0, 0, 4],
+            });
+          }
+
+          // Linha de data de entrega
+          content.push({
+            table: {
+              widths: ['*'],
+              body: [[{
+                text: `Data de Entrega: ${data}`,
+                fontSize: 9, bold: true, color: '#ffffff',
+                fillColor: C_SUB, margin: [6, 4, 6, 4],
+              }]],
+            },
+            layout: 'noBorders',
+            margin: [0, 0, 0, 4],
+          });
+
+          // Tabela de itens
+          const tableBody: any[][] = [
+            // Cabeçalho
+            [
+              { text: 'Item', bold: true, fontSize: 8, fillColor: C_HEADER, color: '#fff', margin: [4, 4, 4, 4] },
+              { text: 'Marca', bold: true, fontSize: 8, fillColor: C_HEADER, color: '#fff', alignment: 'center', margin: [4, 4, 4, 4] },
+              { text: 'Unid.', bold: true, fontSize: 8, fillColor: C_HEADER, color: '#fff', alignment: 'center', margin: [4, 4, 4, 4] },
+              { text: 'Vl. Unit.', bold: true, fontSize: 8, fillColor: C_HEADER, color: '#fff', alignment: 'right', margin: [4, 4, 4, 4] },
+              { text: 'Quantidade', bold: true, fontSize: 8, fillColor: C_HEADER, color: '#fff', alignment: 'right', margin: [4, 4, 4, 4] },
+              { text: 'Custo', bold: true, fontSize: 8, fillColor: C_HEADER, color: '#fff', alignment: 'right', margin: [4, 4, 4, 4] },
+            ],
+          ];
+
+          linhas.forEach(({ item, quantidade }, idx) => {
+            const custo = Number(item.preco_unitario) * quantidade;
+            subtotal += custo;
+            const bg = idx % 2 === 0 ? '#ffffff' : C_STRIPE;
+            tableBody.push([
+              { text: item.produto_nome ?? '—', fontSize: 8, fillColor: bg, margin: [4, 3, 4, 3] },
+              { text: item.marca ?? '—', fontSize: 8, fillColor: bg, alignment: 'center', margin: [4, 3, 4, 3] },
+              { text: item.unidade ?? '—', fontSize: 8, fillColor: bg, alignment: 'center', margin: [4, 3, 4, 3] },
+              { text: formatarMoeda(item.preco_unitario), fontSize: 8, fillColor: bg, alignment: 'right', margin: [4, 3, 4, 3] },
+              { text: `${quantidade % 1 === 0 ? quantidade.toFixed(0) : quantidade.toFixed(2)} ${item.unidade ?? ''}`, fontSize: 8, fillColor: bg, alignment: 'right', margin: [4, 3, 4, 3] },
+              { text: formatarMoeda(custo), fontSize: 8, fillColor: bg, alignment: 'right', margin: [4, 3, 4, 3] },
+            ]);
+          });
+
+          // Subtotal da programação
+          totalFornecedor += subtotal;
+          tableBody.push([
+            { text: `Subtotal — ${data}`, colSpan: 5, bold: true, fontSize: 8, fillColor: '#edf2f7', alignment: 'right', margin: [4, 4, 4, 4] },
+            {}, {}, {}, {},
+            { text: formatarMoeda(subtotal), bold: true, fontSize: 8, fillColor: '#edf2f7', alignment: 'right', margin: [4, 4, 4, 4] },
+          ]);
+
+          content.push({
+            table: {
+              headerRows: 1,
+              widths: ['*', 60, 35, 60, 65, 65],
+              body: tableBody,
+            },
+            layout: {
+              hLineWidth: () => 0.5,
+              vLineWidth: () => 0,
+              hLineColor: () => C_BORDER,
+              fillColor: () => null,
+            },
+            margin: [0, 0, 0, 8],
+          });
+        });
+
+        // Total geral do fornecedor
+        content.push({
+          table: {
+            widths: ['*', 100],
+            body: [[
+              { text: `TOTAL GERAL — ${forn.nome}`, bold: true, fontSize: 9, color: '#ffffff', fillColor: C_TOTAL, margin: [6, 5, 6, 5] },
+              { text: formatarMoeda(totalFornecedor), bold: true, fontSize: 10, color: '#ffffff', fillColor: C_TOTAL, alignment: 'right', margin: [6, 5, 6, 5] },
+            ]],
+          },
+          layout: 'noBorders',
+          margin: [0, 4, 0, 0],
+        });
+      });
+
+      const docDef: any = {
+        pageSize: 'A4',
+        pageOrientation: 'portrait',
+        pageMargins: [28, 36, 28, 36],
+        content,
+        footer: (currentPage: number, pageCount: number) => ({
+          columns: [
+            { text: `Pedido ${docNumero} · Competência: ${competencia}`, fontSize: 7, color: '#a0aec0', margin: [28, 0, 0, 0] },
+            { text: `Página ${currentPage} de ${pageCount}`, fontSize: 7, color: '#a0aec0', alignment: 'right', margin: [0, 0, 28, 0] },
+          ],
+        }),
+        defaultStyle: { font: 'Roboto' },
+      };
+
+      pdfMake.createPdf(docDef).download(`requisicao-${docNumero}.pdf`);
+    } catch (e) {
+      console.error(e);
+      setErro('Erro ao gerar PDF');
+    } finally {
+      setGerandoPdf(false);
+    }
+  }
 
   const [itensSelecionados, setItensSelecionados] = useState<Set<number>>(new Set());
   const [mesclando, setMesclando] = useState(false);
+  const [itensPagina, setItensPagina] = useState(0);
+  const [itensPorPagina, setItensPorPagina] = useState(25);
 
   const toggleSelecao = (itemId: number) => {
     setItensSelecionados(prev => {
@@ -79,6 +290,13 @@ export default function PedidoDetalhe() {
   };
 
   useEffect(() => { carregarPedido(); }, [id]);
+  useEffect(() => {
+    if (pedido) {
+      setPageTitle(`Compra ${pedido.numero}`);
+      setBackPath('/compras');
+    }
+    return () => { setBackPath(null); };
+  }, [pedido]);
   useEffect(() => { if (pedido?.id) verificarConsumo(); }, [pedido?.id]);
 
   const carregarPedido = async () => {
@@ -137,14 +355,10 @@ export default function PedidoDetalhe() {
   const ehConcluido = pedido.status === 'concluido';
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <PageContainer>
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
+      <PageContainer fullHeight>
         {/* Cabeçalho */}
         <Box sx={{ px: 2, py: 1, bgcolor: 'white', borderBottom: '1px solid #e9ecef' }}>
-          <PageBreadcrumbs items={[
-            { label: 'Compras', path: '/compras', icon: <ShoppingCartIcon fontSize="small" /> },
-            { label: `Compra ${pedido.numero}` },
-          ]} />
 
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 0.5 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -170,6 +384,14 @@ export default function PedidoDetalhe() {
                   <MenuItem value="cancelado">Cancelado</MenuItem>
                 </Select>
               </FormControl>
+              <Button variant="outlined" startIcon={<TuneIcon />}
+                onClick={() => navigate(`/compras/${pedido.id}/programacoes-ajuste`)} disabled={processando}>
+                Ajuste de Prog.
+              </Button>
+              <Button variant="outlined" startIcon={<PdfIcon />}
+                onClick={gerarPDFRequisicao} disabled={processando || gerandoPdf}>
+                {gerandoPdf ? 'Gerando...' : 'PDF Requisição'}
+              </Button>
               <Button variant="contained" startIcon={<ReceiptIcon />}
                 onClick={() => navigate(`/compras/${pedido.id}/faturamentos`)} disabled={processando}>
                 Faturamento
@@ -201,84 +423,84 @@ export default function PedidoDetalhe() {
         </Box>
 
         {/* Tabela */}
-        <Typography variant="body2" sx={{ fontWeight: 600, mb: 1, mt: 1.5 }}>Itens da Compra</Typography>
-
-        <Box sx={{ bgcolor: 'white', borderRadius: 2, overflow: 'hidden', border: '1px solid #e9ecef' }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', px: 2, py: 0.75, borderBottom: '1px solid #e9ecef' }}>
-            <Typography variant="caption" color="text.secondary">
-              {pedido.itens.length} {pedido.itens.length === 1 ? 'item' : 'itens'}
-            </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              {itensSelecionados.size >= 2 && !itensMesclaveis && (
-                <Typography variant="caption" color="error">Selecione itens do mesmo produto</Typography>
-              )}
-              {itensSelecionados.size >= 2 && (
-                <Button variant="contained" color="warning" startIcon={<MergeIcon />}
-                  onClick={handleMesclar} disabled={mesclando || !itensMesclaveis}>
-                  {mesclando ? 'Mesclando...' : `Mesclar (${itensSelecionados.size})`}
-                </Button>
-              )}
-              <Typography variant="body2" sx={{ fontWeight: 700, color: 'primary.main' }}>
-                {formatarMoeda(pedido.valor_total)}
-              </Typography>
-            </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1, mt: 1.5 }}>
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>Itens da Compra</Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {itensSelecionados.size >= 2 && !itensMesclaveis && (
+              <Typography variant="caption" color="error">Selecione itens do mesmo produto</Typography>
+            )}
+            {itensSelecionados.size >= 2 && (
+              <Button variant="contained" color="warning" startIcon={<MergeIcon />}
+                onClick={handleMesclar} disabled={mesclando || !itensMesclaveis}>
+                {mesclando ? 'Mesclando...' : `Mesclar (${itensSelecionados.size})`}
+              </Button>
+            )}
           </Box>
+        </Box>
 
-          <TableContainer sx={{ maxHeight: 'calc(100vh - 380px)' }}>
-            <Table stickyHeader size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell padding="checkbox" />
-                  <TableCell>Produto</TableCell>
-                  <TableCell>Fornecedor</TableCell>
-                  <TableCell align="right">Quantidade</TableCell>
-                  <TableCell align="center">Entrega</TableCell>
-                  <TableCell align="right">Preço Unit.</TableCell>
-                  <TableCell align="right">Total</TableCell>
-                  <TableCell align="center" width={50}>Prog.</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {pedido.itens.map((item) => (
-                  <TableRow key={item.id} hover selected={itensSelecionados.has(item.id!)}>
-                    <TableCell padding="checkbox">
-                      <Checkbox size="small"
-                        checked={itensSelecionados.has(item.id!)}
-                        onChange={() => toggleSelecao(item.id!)} />
-                    </TableCell>
-                    <TableCell sx={{ fontWeight: 500 }}>{item.produto_nome}</TableCell>
-                    <TableCell>
-                      {item.fornecedor_nome}
-                      {item.contrato_numero && (
-                        <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
-                          · {item.contrato_numero}
-                        </Typography>
-                      )}
-                    </TableCell>
-                    <TableCell align="right">
-                      {item.quantidade ? formatarNumero(Number(item.quantidade)) : '0'} {item.unidade || ''}
-                    </TableCell>
-                    <TableCell align="center">
-                      {item.data_entrega_prevista ? formatarData(item.data_entrega_prevista) : '-'}
-                    </TableCell>
-                    <TableCell align="right">{formatarMoeda(item.preco_unitario)}</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 500 }}>{formatarMoeda(item.valor_total)}</TableCell>
-                    <TableCell align="center" sx={{ py: 0 }}>
-                      <Tooltip title="Programação de entrega por escola">
-                        <IconButton size="small" color="primary"
-                          onClick={() => setProgramacaoDialog({
-                            open: true, itemId: item.id!,
-                            produtoNome: item.produto_nome || '', unidade: item.unidade || 'kg',
-                          })}>
-                          <CalendarIcon sx={{ fontSize: 16 }} />
-                        </IconButton>
-                      </Tooltip>
-                    </TableCell>
+        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <TableContainer sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+              <Table stickyHeader size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell padding="checkbox" />
+                    <TableCell>Produto</TableCell>
+                    <TableCell>Fornecedor</TableCell>
+                    <TableCell align="right">Quantidade</TableCell>
+                    <TableCell align="center">Entrega</TableCell>
+                    <TableCell align="right">Preço Unit.</TableCell>
+                    <TableCell align="right">Total</TableCell>
+                    <TableCell align="center" width={50}>Prog.</TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                </TableHead>
+                <TableBody>
+                  {pedido.itens.slice(itensPagina * itensPorPagina, (itensPagina + 1) * itensPorPagina).map((item) => (
+                    <TableRow key={item.id} hover selected={itensSelecionados.has(item.id!)}>
+                      <TableCell padding="checkbox">
+                        <Checkbox size="small"
+                          checked={itensSelecionados.has(item.id!)}
+                          onChange={() => toggleSelecao(item.id!)} />
+                      </TableCell>
+                      <TableCell sx={{ fontWeight: 500 }}>{item.produto_nome}</TableCell>
+                      <TableCell>
+                        {item.fornecedor_nome}
+                        {item.contrato_numero && (
+                          <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
+                            · {item.contrato_numero}
+                          </Typography>
+                        )}
+                      </TableCell>
+                      <TableCell align="right">
+                        {item.quantidade ? formatarNumero(Number(item.quantidade)) : '0'} {item.unidade || ''}
+                      </TableCell>
+                      <TableCell align="center">
+                        {item.data_entrega_prevista ? formatarData(item.data_entrega_prevista) : '-'}
+                      </TableCell>
+                      <TableCell align="right">{formatarMoeda(item.preco_unitario)}</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 500 }}>{formatarMoeda(item.valor_total)}</TableCell>
+                      <TableCell align="center" sx={{ py: 0 }}>
+                        <Tooltip title="Programação de entrega por escola">
+                          <IconButton size="small" color="primary"
+                            onClick={() => navigate(`/compras/${pedido.id}/item/${item.id}/programacao`)}>
+                            <CalendarIcon sx={{ fontSize: 16 }} />
+                          </IconButton>
+                        </Tooltip>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            <CompactPagination
+              count={pedido.itens.length}
+              page={itensPagina}
+              rowsPerPage={itensPorPagina}
+              onPageChange={(_, p) => setItensPagina(p)}
+              onRowsPerPageChange={(e) => { setItensPorPagina(parseInt(e.target.value, 10)); setItensPagina(0); }}
+              rowsPerPageOptions={[10, 25, 50, 100]}
+            />
+          </Box>
         </Box>
       </PageContainer>
 
@@ -329,16 +551,6 @@ export default function PedidoDetalhe() {
           </Button>
         </DialogActions>
       </Dialog>
-
-      {/* Dialog Programação */}
-      <ProgramacaoEntregaDialog
-        open={programacaoDialog.open}
-        onClose={() => setProgramacaoDialog(p => ({ ...p, open: false }))}
-        pedidoItemId={programacaoDialog.itemId}
-        produtoNome={programacaoDialog.produtoNome}
-        unidade={programacaoDialog.unidade}
-        onSaved={carregarPedido}
-      />
 
       {/* Popover Observações */}
       <Popover open={Boolean(obsAnchorEl)} anchorEl={obsAnchorEl} onClose={() => setObsAnchorEl(null)}

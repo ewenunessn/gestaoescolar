@@ -1,60 +1,67 @@
 import React from 'react';
-import { Tabs, Tab } from '@mui/material';
+import { Box } from '@mui/material';
 
 export interface ViewTab {
-  value: string;
+  value: string | number;
   label: string;
+  icon?: React.ReactNode;
 }
 
 interface ViewTabsProps {
-  value: string;
-  onChange: (value: string) => void;
+  value: string | number;
+  onChange: (value: any) => void;
   tabs: ViewTab[];
 }
 
 const ViewTabs: React.FC<ViewTabsProps> = ({ value, onChange, tabs }) => {
   return (
-    <Tabs
-      value={value}
-      onChange={(e, newValue) => onChange(newValue)}
+    <Box
       sx={{
-        minHeight: 42,
-        '& .MuiTabs-indicator': {
-          display: 'none',
-        },
-        '& .MuiTabs-flexContainer': {
-          gap: 1,
-        },
+        display: 'inline-flex',
+        bgcolor: '#f1f3f5',
+        borderRadius: '8px',
+        p: '3px',
+        gap: '2px',
       }}
     >
-      {tabs.map((tab) => (
-        <Tab
-          key={tab.value}
-          value={tab.value}
-          label={tab.label}
-          sx={{
-            minHeight: 42,
-            textTransform: 'none',
-            fontSize: '0.875rem',
-            fontWeight: 500,
-            color: '#6c757d',
-            bgcolor: value === tab.value ? '#ffffff' : 'transparent',
-            border: '1px solid',
-            borderColor: value === tab.value ? '#dee2e6' : 'transparent',
-            borderRadius: '8px',
-            px: 3,
-            '&.Mui-selected': {
-              color: '#212529',
-              bgcolor: '#ffffff',
-              borderColor: '#dee2e6',
-            },
-            '&:hover': {
-              bgcolor: value === tab.value ? '#ffffff' : '#f8f9fa',
-            },
-          }}
-        />
-      ))}
-    </Tabs>
+      {tabs.map((tab) => {
+        const isSelected = value === tab.value;
+        return (
+          <Box
+            key={String(tab.value)}
+            onClick={() => onChange(tab.value)}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.5,
+              px: 1.5,
+              py: 0.5,
+              borderRadius: '6px',
+              fontSize: '0.8125rem',
+              fontWeight: isSelected ? 600 : 500,
+              color: isSelected ? 'text.primary' : 'text.secondary',
+              bgcolor: isSelected ? '#ffffff' : 'transparent',
+              border: isSelected ? '1px solid #dee2e6' : '1px solid transparent',
+              cursor: 'pointer',
+              userSelect: 'none',
+              transition: 'all 0.15s ease',
+              whiteSpace: 'nowrap',
+              '&:hover': {
+                bgcolor: isSelected ? '#ffffff' : 'rgba(0,0,0,0.04)',
+                color: 'text.primary',
+              },
+            }}
+          >
+            {tab.icon && (
+              <Box sx={{ display: 'flex', alignItems: 'center', fontSize: '1rem' }}>
+                {tab.icon}
+              </Box>
+            )}
+            {tab.label}
+          </Box>
+        );
+      })}
+    </Box>
   );
 };
 

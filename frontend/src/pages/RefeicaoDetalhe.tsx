@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import CompactPagination from '../components/CompactPagination';
@@ -46,10 +46,9 @@ import {
   TableRow,
   Tooltip,
   Autocomplete,
-  Tabs,
-  Tab,
   Grid,
   Divider,
+  Menu,
 } from "@mui/material";
 import {
   Delete as DeleteIcon,
@@ -63,10 +62,12 @@ import {
   Timer as TimerIcon,
   LocalDining as LocalDiningIcon,
   PictureAsPdf as PdfIcon,
+  MoreVert as MoreVertIcon,
 } from "@mui/icons-material";
 import PageBreadcrumbs from '../components/PageBreadcrumbs';
 import PageContainer from '../components/PageContainer';
 import StatusIndicator from '../components/StatusIndicator';
+import ViewTabs from '../components/ViewTabs';
 import {
   DndContext,
   DragEndEvent,
@@ -252,20 +253,21 @@ export default function RefeicaoDetalhe() {
   const [dialogEditarOpen, setDialogEditarOpen] = useState(false);
   const [produtoEditando, setProdutoEditando] = useState<RefeicaoProduto | null>(null);
   const [tabAtiva, setTabAtiva] = useState(0); // 0 = Ingredientes, 1 = Ficha Técnica
+  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   
   // Hooks para cálculos dinâmicos
   const { data: valoresNutricionais, isLoading: loadingNutricional, error: errorNutricional } = useValoresNutricionais(
     Number(id),
     refeicao?.rendimento_porcoes || form.rendimento_porcoes,
-    tabAtiva === 1 && !!refeicao, // Só buscar quando estiver na aba Ficha Técnica
-    modalidadeSelecionada // Passar modalidade selecionada
+    !!refeicao, // Buscar sempre que a refeição estiver carregada
+    modalidadeSelecionada
   );
   
   const { data: custoData, isLoading: loadingCusto, error: errorCusto } = useCustoRefeicao(
     Number(id),
     refeicao?.rendimento_porcoes || form.rendimento_porcoes,
-    tabAtiva === 1 && !!refeicao, // Só buscar quando estiver na aba Ficha Técnica
-    modalidadeSelecionada // Passar modalidade selecionada
+    tabAtiva === 1 && !!refeicao, // Só buscar custo na aba Ficha Técnica
+    modalidadeSelecionada
   );
   
   // Autocomplete
@@ -445,251 +447,221 @@ export default function RefeicaoDetalhe() {
 
   async function gerarPDF() {
     try {
-      console.log('🔍 Iniciando geração de PDF para refeição:', id);
-      
-      // Importar módulos necessários
       const pdfMake = (await import('pdfmake/build/pdfmake')).default;
       const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default as any;
       (pdfMake as any).vfs = pdfFonts.pdfMake?.vfs || pdfFonts;
 
-      // Buscar ingredientes detalhados com composição nutricional
-      console.log('📡 Buscando ingredientes detalhados...');
       const { buscarIngredientesDetalhados } = await import('../services/refeicaoIngredientes');
       const ingredientesDetalhados = await buscarIngredientesDetalhados(Number(id), modalidadeSelecionada);
-      
-      console.log('✅ Ingredientes recebidos:', ingredientesDetalhados.ingredientes.length);
-      if (ingredientesDetalhados.ingredientes.length === 0) {
-        console.warn('⚠️ Nenhum ingrediente encontrado para a refeição');
-      }
 
-      // Adicionar informação da modalidade no título se estiver filtrado
-      const modalidadeNome = modalidadeSelecionada 
-        ? modalidades.find(m => m.id === modalidadeSelecionada)?.nome 
+      const modalidadeNome = modalidadeSelecionada
+        ? modalidades.find(m => m.id === modalidadeSelecionada)?.nome
         : null;
+
+      const ings = ingredientesDetalhados.ingredientes;
+
+      // Totais
+      const totalLiq    = ings.reduce((s, i) => s + toNum(i.per_capita), 0);
+      const totalBruto  = ings.reduce((s, i) => s + toNum(i.per_capita_bruto ?? i.per_capita), 0);
+      const totalProt   = ings.reduce((s, i) => s + toNum(i.proteinas_porcao), 0);
+      const totalLip    = ings.reduce((s, i) => s + toNum(i.lipidios_porcao), 0);
+      const totalCarb   = ings.reduce((s, i) => s + toNum(i.carboidratos_porcao), 0);
+      const totalCalcio = ings.reduce((s, i) => s + toNum(i.calcio_porcao), 0);
+      const totalFerro  = ings.reduce((s, i) => s + toNum(i.ferro_porcao), 0);
+      const totalVitA   = ings.reduce((s, i) => s + toNum(i.vitamina_a_porcao), 0);
+      const totalVitC   = ings.reduce((s, i) => s + toNum(i.vitamina_c_porcao), 0);
+      const totalSodio  = ings.reduce((s, i) => s + toNum(i.sodio_porcao), 0);
+      const totalKcal   = totalProt * 4 + totalCarb * 4 + totalLip * 9;
+      const totalKj     = totalKcal * 4.184;
+
+      // Por 100g
+      const f100    = totalLiq > 0 ? 100 / totalLiq : 0;
+      const kcal100 = totalKcal * f100;
+      const kj100   = kcal100 * 4.184;
+
+      // Paleta neutra
+      const C_HEADER = '#4a5568';
+      const C_TOTAL  = '#2d3748';
+      const C_100G   = '#4a5568';
+      const C_STRIPE = '#f7f8fa';
+      const C_BORDER = '#e2e8f0';
+
+      // Helper: célula de dado
+      const dc = (v: number, dec = 1, bg = '#ffffff') => ({
+        text: v > 0 ? v.toFixed(dec) : '—',
+        alignment: 'center' as const,
+        fontSize: 7,
+        fillColor: bg,
+        color: v > 0 ? '#2d3748' : '#cbd5e0',
+      });
+
+      // Linha de totais helper
+      const mkRow = (label: string, fill: string, liq: string, bruto: string,
+        kcal: number, kj: number, prot: number, lip: number, carb: number,
+        calcio: number, ferro: number, vita: number, vitc: number, sodio: number
+      ): any[] => {
+        const t = (v: string | number, dec?: number) => ({
+          text: typeof v === 'number' ? (dec !== undefined ? v.toFixed(dec) : String(v)) : v,
+          alignment: 'center' as const, bold: true, fontSize: 7, fillColor: fill, color: '#ffffff',
+        });
+        return [
+          { text: label, bold: true, fontSize: 7, fillColor: fill, color: '#ffffff' },
+          t(liq), t(bruto), t('g'),
+          t(kcal, 0), t(kj, 0),
+          t(prot, 1), t(lip, 1), t(carb, 1),
+          t(calcio, 1), t(ferro, 2), t(vita, 1), t(vitc, 1), t(sodio, 1),
+        ];
+      };
 
       const docDefinition: any = {
         pageSize: 'A4',
-        pageMargins: [30, 40, 30, 40],
+        pageOrientation: 'portrait',
+        pageMargins: [28, 36, 28, 36],
         content: [
-          {
-            text: 'FICHA TÉCNICA DE PREPARAÇÃO',
-            style: 'header',
-            alignment: 'center',
-            margin: [0, 0, 0, 20]
-          },
-          {
-            text: refeicao.nome,
-            style: 'title',
-            alignment: 'center',
-            margin: [0, 0, 0, 10]
-          },
-          ...(modalidadeNome ? [{
-            text: `Modalidade: ${modalidadeNome}`,
-            style: 'subtitle',
-            alignment: 'center',
-            margin: [0, 0, 0, 10]
-          }] : []),
-          ...(refeicao.descricao ? [{
-            text: refeicao.descricao,
-            style: 'description',
-            alignment: 'center',
-            margin: [0, 0, 0, 20]
-          }] : []),
-          
-          // Informações Gerais
-          {
-            text: 'INFORMAÇÕES GERAIS',
-            style: 'sectionHeader',
-            margin: [0, 10, 0, 10]
-          },
+          // ── Cabeçalho ──────────────────────────────────────────────
           {
             columns: [
-              { text: 'Categoria:', bold: true, width: 100 },
-              { text: refeicao.categoria || '-', width: '*' }
+              {
+                stack: [
+                  { text: 'FICHA TÉCNICA DE PREPARAÇÃO', fontSize: 7.5, bold: true, color: '#718096', characterSpacing: 1 },
+                  { text: refeicao.nome, fontSize: 18, bold: true, color: '#1a202c', margin: [0, 2, 0, 0] },
+                  ...(modalidadeNome ? [{ text: `Modalidade: ${modalidadeNome}`, fontSize: 8.5, bold: true, color: '#38a169', margin: [0, 3, 0, 0] }] : []),
+                  ...(refeicao.descricao ? [{ text: refeicao.descricao, fontSize: 8, italics: true, color: '#718096', margin: [0, 2, 0, 0] }] : []),
+                ],
+                width: '*',
+              },
+              {
+                stack: [
+                  ...(refeicao.categoria ? [{ text: refeicao.categoria, fontSize: 8, bold: true, color: '#4a5568', alignment: 'right' }] : []),
+                  ...(refeicao.tempo_preparo_minutos ? [{ text: `Preparo: ${refeicao.tempo_preparo_minutos} min`, fontSize: 7.5, color: '#718096', alignment: 'right', margin: [0, 4, 0, 0] }] : []),
+                  ...(refeicao.rendimento_porcoes ? [{ text: `Rendimento: ${refeicao.rendimento_porcoes} porções`, fontSize: 7.5, color: '#718096', alignment: 'right', margin: [0, 2, 0, 0] }] : []),
+                ],
+                width: 130,
+              },
             ],
-            margin: [0, 0, 0, 5]
+            margin: [0, 0, 0, 10],
           },
-          {
-            columns: [
-              { text: 'Tempo de Preparo:', bold: true, width: 100 },
-              { text: refeicao.tempo_preparo_minutos ? `${refeicao.tempo_preparo_minutos} minutos` : '-', width: '*' }
-            ],
-            margin: [0, 0, 0, 5]
-          },
-          {
-            columns: [
-              { text: 'Rendimento:', bold: true, width: 100 },
-              { text: refeicao.rendimento_porcoes ? `${refeicao.rendimento_porcoes} porções` : '-', width: '*' }
-            ],
-            margin: [0, 0, 0, 15]
-          },
+          { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 539, y2: 0, lineWidth: 1.5, lineColor: '#e2e8f0' }], margin: [0, 0, 0, 12] },
 
-          // Ingredientes com Composição Nutricional Detalhada
-          {
-            text: 'INGREDIENTES E COMPOSIÇÃO NUTRICIONAL',
-            style: 'sectionHeader',
-            margin: [0, 5, 0, 5],
-            fontSize: 9
-          },
+          // ── Tabela principal ────────────────────────────────────────
+          { text: 'COMPOSIÇÃO NUTRICIONAL DOS INGREDIENTES', fontSize: 7.5, bold: true, color: '#718096', characterSpacing: 0.5, margin: [0, 0, 0, 5] },
           {
             table: {
               headerRows: 1,
-              widths: [70, 22, 22, 15, 25, 25, 25, 25, 25, 25, 25, 25],
+              widths: ['*', 24, 26, 12, 24, 28, 24, 24, 24, 26, 22, 26, 24, 26],
               body: [
                 [
-                  { text: 'Produto', style: 'tableHeader', fontSize: 6 },
-                  { text: 'Líq.', style: 'tableHeader', alignment: 'center', fontSize: 6 },
-                  { text: 'Bruto', style: 'tableHeader', alignment: 'center', fontSize: 6 },
-                  { text: 'Un', style: 'tableHeader', alignment: 'center', fontSize: 6 },
-                  { text: 'Prot.\n(g)', style: 'tableHeader', alignment: 'center', fontSize: 6 },
-                  { text: 'Lip.\n(g)', style: 'tableHeader', alignment: 'center', fontSize: 6 },
-                  { text: 'Carb.\n(g)', style: 'tableHeader', alignment: 'center', fontSize: 6 },
-                  { text: 'Cálcio\n(mg)', style: 'tableHeader', alignment: 'center', fontSize: 6 },
-                  { text: 'Ferro\n(mg)', style: 'tableHeader', alignment: 'center', fontSize: 6 },
-                  { text: 'Vit A\n(mcg)', style: 'tableHeader', alignment: 'center', fontSize: 6 },
-                  { text: 'Vit C\n(mg)', style: 'tableHeader', alignment: 'center', fontSize: 6 },
-                  { text: 'Sódio\n(mg)', style: 'tableHeader', alignment: 'center', fontSize: 6 }
+                  { text: 'Ingrediente', style: 'th' },
+                  { text: 'PC Líq.\n(g)', style: 'th' },
+                  { text: 'PC Bruto\n(g)', style: 'th' },
+                  { text: 'Un', style: 'th' },
+                  { text: 'kcal', style: 'th' },
+                  { text: 'kJ', style: 'th' },
+                  { text: 'Prot.\n(g)', style: 'th' },
+                  { text: 'Lip.\n(g)', style: 'th' },
+                  { text: 'Carb.\n(g)', style: 'th' },
+                  { text: 'Cálcio\n(mg)', style: 'th' },
+                  { text: 'Ferro\n(mg)', style: 'th' },
+                  { text: 'Vit. A\n(mcg)', style: 'th' },
+                  { text: 'Vit. C\n(mg)', style: 'th' },
+                  { text: 'Sódio\n(mg)', style: 'th' },
                 ],
-                ...ingredientesDetalhados.ingredientes.map(ing => [
-                  { text: ing.produto_nome, fontSize: 7 },
-                  { text: toNum(ing.per_capita).toFixed(1), alignment: 'center', fontSize: 7, color: '#1976d2' },
-                  { text: toNum(ing.per_capita_bruto ?? ing.per_capita).toFixed(1), alignment: 'center', fontSize: 7 },
-                  { text: ing.tipo_medida === 'gramas' ? 'g' : 'un', alignment: 'center', fontSize: 7 },
-                  { text: toNum(ing.proteinas_porcao) > 0 ? toNum(ing.proteinas_porcao).toFixed(1) : '-', alignment: 'center', fontSize: 7 },
-                  { text: toNum(ing.lipidios_porcao) > 0 ? toNum(ing.lipidios_porcao).toFixed(1) : '-', alignment: 'center', fontSize: 7 },
-                  { text: toNum(ing.carboidratos_porcao) > 0 ? toNum(ing.carboidratos_porcao).toFixed(1) : '-', alignment: 'center', fontSize: 7 },
-                  { text: toNum(ing.calcio_porcao) > 0 ? toNum(ing.calcio_porcao).toFixed(1) : '-', alignment: 'center', fontSize: 7 },
-                  { text: toNum(ing.ferro_porcao) > 0 ? toNum(ing.ferro_porcao).toFixed(1) : '-', alignment: 'center', fontSize: 7 },
-                  { text: toNum(ing.vitamina_a_porcao) > 0 ? toNum(ing.vitamina_a_porcao).toFixed(1) : '-', alignment: 'center', fontSize: 7 },
-                  { text: toNum(ing.vitamina_c_porcao) > 0 ? toNum(ing.vitamina_c_porcao).toFixed(1) : '-', alignment: 'center', fontSize: 7 },
-                  { text: toNum(ing.sodio_porcao) > 0 ? toNum(ing.sodio_porcao).toFixed(1) : '-', alignment: 'center', fontSize: 7 }
-                ])
-              ]
+                ...ings.map((ing, idx) => {
+                  const bg = idx % 2 === 0 ? C_STRIPE : '#ffffff';
+                  const kcalIng = toNum(ing.proteinas_porcao) * 4 + toNum(ing.carboidratos_porcao) * 4 + toNum(ing.lipidios_porcao) * 9;
+                  const kjIng   = kcalIng * 4.184;
+                  return [
+                    { text: ing.produto_nome, fontSize: 7, fillColor: bg, color: '#2d3748' },
+                    { text: toNum(ing.per_capita).toFixed(1), alignment: 'center', fontSize: 7, fillColor: bg, bold: true, color: '#2b6cb0' },
+                    { text: toNum(ing.per_capita_bruto ?? ing.per_capita).toFixed(1), alignment: 'center', fontSize: 7, fillColor: bg, color: '#4a5568' },
+                    { text: ing.tipo_medida === 'gramas' ? 'g' : 'un', alignment: 'center', fontSize: 7, fillColor: bg, color: '#718096' },
+                    dc(kcalIng, 0, bg),
+                    dc(kjIng, 0, bg),
+                    dc(toNum(ing.proteinas_porcao), 1, bg),
+                    dc(toNum(ing.lipidios_porcao), 1, bg),
+                    dc(toNum(ing.carboidratos_porcao), 1, bg),
+                    dc(toNum(ing.calcio_porcao), 1, bg),
+                    dc(toNum(ing.ferro_porcao), 2, bg),
+                    dc(toNum(ing.vitamina_a_porcao), 1, bg),
+                    dc(toNum(ing.vitamina_c_porcao), 1, bg),
+                    dc(toNum(ing.sodio_porcao), 1, bg),
+                  ];
+                }),
+                mkRow('TOTAL REFEIÇÃO', C_TOTAL,
+                  totalLiq.toFixed(1), totalBruto.toFixed(1),
+                  totalKcal, totalKj,
+                  totalProt, totalLip, totalCarb, totalCalcio, totalFerro, totalVitA, totalVitC, totalSodio
+                ),
+                mkRow('POR 100g', C_100G,
+                  '100', '—',
+                  kcal100, kj100,
+                  totalProt * f100, totalLip * f100, totalCarb * f100,
+                  totalCalcio * f100, totalFerro * f100, totalVitA * f100, totalVitC * f100, totalSodio * f100
+                ),
+              ],
             },
-            layout: 'lightHorizontalLines',
-            margin: [0, 0, 0, 8]
+            layout: {
+              hLineWidth: (i: number, node: any) => {
+                const n = node.table.body.length;
+                return (i === 0 || i === 1 || i === n - 2 || i === n) ? 1 : 0.3;
+              },
+              vLineWidth: () => 0.3,
+              hLineColor: (i: number, node: any) => {
+                const n = node.table.body.length;
+                return (i === 0 || i === 1 || i === n - 2 || i === n) ? '#a0aec0' : C_BORDER;
+              },
+              vLineColor: () => C_BORDER,
+              paddingTop: () => 3,
+              paddingBottom: () => 3,
+              paddingLeft: (i: number) => i === 0 ? 5 : 2,
+              paddingRight: (i: number) => i === 0 ? 5 : 2,
+            },
+            margin: [0, 0, 0, 16],
           },
 
-          // Informação Nutricional Total (se houver dados calculados)
-          ...(valoresNutricionais && refeicao.rendimento_porcoes ? [
-            {
-              text: 'VALORES NUTRICIONAIS TOTAIS (por porção)',
-              style: 'sectionHeader',
-              margin: [0, 5, 0, 5],
-              fontSize: 9
-            },
-            {
-              columns: [
-                [
-                  { text: 'Proteínas:', bold: true, fontSize: 8 },
-                  { text: `${toNum(valoresNutricionais.por_porcao.proteinas).toFixed(1)}g`, margin: [0, 0, 0, 5], fontSize: 8 }
+          // ── Seção inferior: 2 colunas ───────────────────────────────
+          {
+            columns: [
+              ...(refeicao.modo_preparo ? [{
+                stack: [
+                  { text: 'MODO DE PREPARO', fontSize: 7.5, bold: true, color: '#718096', characterSpacing: 0.5, margin: [0, 0, 0, 4] },
+                  { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 250, y2: 0, lineWidth: 0.8, lineColor: '#e2e8f0' }], margin: [0, 0, 0, 5] },
+                  { text: refeicao.modo_preparo, fontSize: 8, color: '#4a5568', lineHeight: 1.5 },
                 ],
-                [
-                  { text: 'Lipídios:', bold: true, fontSize: 8 },
-                  { text: `${toNum(valoresNutricionais.por_porcao.lipidios).toFixed(1)}g`, margin: [0, 0, 0, 5], fontSize: 8 }
+                width: '*',
+              }] : [{ text: '', width: '*' }]),
+              { width: 16, text: '' },
+              {
+                stack: [
+                  { text: 'INFORMAÇÕES', fontSize: 7.5, bold: true, color: '#718096', characterSpacing: 0.5, margin: [0, 0, 0, 4] },
+                  { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 200, y2: 0, lineWidth: 0.8, lineColor: '#e2e8f0' }], margin: [0, 0, 0, 5] },
+                  ...(refeicao.categoria ? [{ columns: [{ text: 'Categoria', fontSize: 7.5, color: '#718096', width: 80 }, { text: refeicao.categoria, fontSize: 7.5, bold: true, color: '#2d3748', width: '*' }], margin: [0, 0, 0, 3] }] : []),
+                  ...(refeicao.tempo_preparo_minutos ? [{ columns: [{ text: 'Tempo de preparo', fontSize: 7.5, color: '#718096', width: 80 }, { text: `${refeicao.tempo_preparo_minutos} minutos`, fontSize: 7.5, bold: true, color: '#2d3748', width: '*' }], margin: [0, 0, 0, 3] }] : []),
+                  ...(refeicao.rendimento_porcoes ? [{ columns: [{ text: 'Rendimento', fontSize: 7.5, color: '#718096', width: 80 }, { text: `${refeicao.rendimento_porcoes} porções`, fontSize: 7.5, bold: true, color: '#2d3748', width: '*' }], margin: [0, 0, 0, 3] }] : []),
+                  ...(modalidadeNome ? [{ columns: [{ text: 'Modalidade', fontSize: 7.5, color: '#718096', width: 80 }, { text: modalidadeNome, fontSize: 7.5, bold: true, color: '#38a169', width: '*' }], margin: [0, 0, 0, 3] }] : []),
+                  ...(refeicao.utensílios ? [{ text: 'Utensílios', fontSize: 7.5, color: '#718096', margin: [0, 4, 0, 2] }, { text: refeicao.utensílios, fontSize: 7.5, color: '#4a5568' }] : []),
+                  ...(refeicao.observacoes_tecnicas ? [{ text: 'Observações', fontSize: 7.5, color: '#718096', margin: [0, 4, 0, 2] }, { text: refeicao.observacoes_tecnicas, fontSize: 7.5, color: '#4a5568', lineHeight: 1.4 }] : []),
+                  ...(valoresNutricionais?.alertas?.length ? [
+                    { text: 'ALERTAS NUTRICIONAIS', fontSize: 7.5, bold: true, color: '#b7791f', characterSpacing: 0.5, margin: [0, 8, 0, 3] },
+                    ...valoresNutricionais.alertas.map((a: any) => ({ text: `• ${a.mensagem}`, fontSize: 7.5, color: '#92400e', margin: [0, 1, 0, 1] })),
+                  ] : []),
                 ],
-                [
-                  { text: 'Carboidratos:', bold: true, fontSize: 8 },
-                  { text: `${toNum(valoresNutricionais.por_porcao.carboidratos).toFixed(1)}g`, margin: [0, 0, 0, 5], fontSize: 8 }
-                ],
-                [
-                  { text: 'Cálcio:', bold: true, fontSize: 8 },
-                  { text: `${toNum(valoresNutricionais.por_porcao.calcio).toFixed(1)}mg`, margin: [0, 0, 0, 5], fontSize: 8 }
-                ]
-              ],
-              margin: [0, 0, 0, 5]
-            },
-            {
-              columns: [
-                [
-                  { text: 'Ferro:', bold: true, fontSize: 8 },
-                  { text: `${toNum(valoresNutricionais.por_porcao.ferro).toFixed(1)}mg`, margin: [0, 0, 0, 5], fontSize: 8 }
-                ],
-                [
-                  { text: 'Vitamina A:', bold: true, fontSize: 8 },
-                  { text: `${toNum(valoresNutricionais.por_porcao.vitamina_a).toFixed(1)}mcg`, margin: [0, 0, 0, 5], fontSize: 8 }
-                ],
-                [
-                  { text: 'Vitamina C:', bold: true, fontSize: 8 },
-                  { text: `${toNum(valoresNutricionais.por_porcao.vitamina_c).toFixed(1)}mg`, margin: [0, 0, 0, 5], fontSize: 8 }
-                ],
-                [
-                  { text: 'Sódio:', bold: true, fontSize: 8 },
-                  { text: `${toNum(valoresNutricionais.por_porcao.sodio).toFixed(1)}mg`, margin: [0, 0, 0, 5], fontSize: 8 }
-                ]
-              ],
-              margin: [0, 0, 0, 8]
-            }
-          ] : []),
+                width: 220,
+              },
+            ],
+          },
 
-          // Custo (se houver)
-          ...(custoData && refeicao.rendimento_porcoes ? [
-            {
-              text: 'CUSTO ESTIMADO',
-              style: 'sectionHeader',
-              margin: [0, 5, 0, 5],
-              fontSize: 9
-            },
-            {
-              columns: [
-                { text: 'Custo Total:', bold: true, width: 100, fontSize: 8 },
-                { text: `R$ ${toNum(custoData.custo_total).toFixed(2)}`, width: '*', fontSize: 8 }
-              ],
-              margin: [0, 0, 0, 3]
-            },
-            {
-              columns: [
-                { text: 'Custo por Porção:', bold: true, width: 100, fontSize: 8 },
-                { text: `R$ ${toNum(custoData.custo_por_porcao).toFixed(2)}`, width: '*', fontSize: 8 }
-              ],
-              margin: [0, 0, 0, 8]
-            }
-          ] : [])
+          { text: `Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`, fontSize: 6.5, color: '#cbd5e0', alignment: 'right', margin: [0, 16, 0, 0] },
         ],
         styles: {
-          header: {
-            fontSize: 16,
-            bold: true,
-            color: '#1976d2'
-          },
-          title: {
-            fontSize: 14,
-            bold: true
-          },
-          subtitle: {
-            fontSize: 11,
-            bold: true,
-            color: '#059669'
-          },
-          description: {
-            fontSize: 10,
-            italics: true,
-            color: '#666'
-          },
-          sectionHeader: {
-            fontSize: 12,
-            bold: true,
-            color: '#1976d2',
-            decoration: 'underline'
-          },
-          tableHeader: {
-            bold: true,
-            fontSize: 10,
-            color: 'white',
-            fillColor: '#1976d2'
-          }
+          th: { bold: true, fontSize: 6.5, color: '#ffffff', fillColor: C_HEADER, alignment: 'center' },
         },
-        defaultStyle: {
-          fontSize: 10
-        }
+        defaultStyle: { fontSize: 8, color: '#2d3748' },
       };
 
       pdfMake.createPdf(docDefinition).download(`ficha-tecnica-${refeicao.nome.replace(/\s+/g, '-').toLowerCase()}.pdf`);
-      console.log('✅ PDF gerado com sucesso!');
       toast.success('PDF gerado!', 'Ficha técnica exportada com sucesso!');
     } catch (error: any) {
-      console.error('❌ Erro ao gerar PDF:', error);
-      console.error('Stack trace:', error.stack);
       const mensagemErro = error.response?.data?.error || error.message || 'Erro desconhecido';
       toast.error('Erro ao gerar PDF', `Não foi possível gerar o PDF: ${mensagemErro}`);
     }
@@ -716,64 +688,43 @@ export default function RefeicaoDetalhe() {
           ]}
         />
 
-        {/* Botões de Ação */}
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mb: 1.5, mt: 1.5 }}>
+        {/* Tabs + Ações na mesma linha */}
+        <Box sx={{ display: 'flex', alignItems: 'center', borderBottom: 1, borderColor: 'divider', pb: 0.5 }}>
+          <ViewTabs
+            value={tabAtiva}
+            onChange={setTabAtiva}
+            tabs={[
+              { value: 0, label: 'Ingredientes', icon: <RestaurantIcon sx={{ fontSize: 16 }} /> },
+              { value: 1, label: 'Ficha Técnica', icon: <DescriptionIcon sx={{ fontSize: 16 }} /> },
+            ]}
+          />
+          <Box sx={{ flex: 1 }} />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             {editando ? (
               <>
-                <Button
-                  onClick={() => setEditando(false)}
-                  startIcon={<CancelIcon />}
-                  size="small"
-                >
+                <Button onClick={() => setEditando(false)} startIcon={<CancelIcon />} size="small">
                   Cancelar
                 </Button>
-                <Button
-                  onClick={salvarEdicao}
-                  variant="contained"
-                  startIcon={<SaveIcon />}
-                  disabled={salvando}
-                  size="small"
-                >
+                <Button onClick={salvarEdicao} variant="contained" startIcon={<SaveIcon />} disabled={salvando} size="small">
                   Salvar
                 </Button>
               </>
             ) : (
               <>
-                <Button
-                  onClick={gerarPDF}
-                  variant="outlined"
-                  startIcon={<PdfIcon />}
-                  size="small"
-                  sx={{ borderColor: '#d32f2f', color: '#d32f2f', '&:hover': { borderColor: '#b71c1c', bgcolor: '#ffebee' } }}
-                >
-                  Exportar PDF
-                </Button>
-                <Button
-                  onClick={() => setEditando(true)}
-                  variant="outlined"
-                  startIcon={<EditIcon />}
-                  size="small"
-                >
-                  Editar
-                </Button>
-                <Button
-                  onClick={() => setOpenExcluir(true)}
-                  color="delete" variant="contained"
-                  startIcon={<DeleteIcon />}
-                  size="small"
-                >
-                  Excluir
-                </Button>
+                <IconButton size="small" onClick={(e) => setMenuAnchorEl(e.currentTarget)}>
+                  <MoreVertIcon />
+                </IconButton>
+                <Menu anchorEl={menuAnchorEl} open={Boolean(menuAnchorEl)} onClose={() => setMenuAnchorEl(null)}>
+                  <MenuItem onClick={() => { setMenuAnchorEl(null); setEditando(true); }}>
+                    <EditIcon fontSize="small" sx={{ mr: 1 }} /> Editar
+                  </MenuItem>
+                  <MenuItem onClick={() => { setMenuAnchorEl(null); setOpenExcluir(true); }} sx={{ color: 'error.main' }}>
+                    <DeleteIcon fontSize="small" sx={{ mr: 1 }} /> Excluir
+                  </MenuItem>
+                </Menu>
               </>
             )}
-        </Box>
-
-        {/* Tabs */}
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={tabAtiva} onChange={(e, newValue) => setTabAtiva(newValue)}>
-            <Tab label="Ingredientes" icon={<RestaurantIcon />} iconPosition="start" />
-            <Tab label="Ficha Técnica" icon={<DescriptionIcon />} iconPosition="start" />
-          </Tabs>
+          </Box>
         </Box>
       </Box>
 
@@ -782,101 +733,163 @@ export default function RefeicaoDetalhe() {
 
         {/* Tab 0: Ingredientes */}
         {tabAtiva === 0 && (
-          <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            {/* Adicionar Produto */}
-            <Card sx={{ borderRadius: '8px', p: 1.5 }}>
-              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', justifyContent: 'space-between' }}>
-                <Typography variant="body2" color="text.secondary">
-                  Adicione ingredientes à refeição e defina o per capita por modalidade
-                </Typography>
-                <Button
-                  variant="contained"
-                  startIcon={<AddIcon />}
-                  onClick={() => setDialogAdicionarOpen(true)}
-                  size="small"
-                  sx={{ bgcolor: '#059669', '&:hover': { bgcolor: '#047857' }, whiteSpace: 'nowrap' }}
-                >
-                  Adicionar Ingrediente
-                </Button>
-              </Box>
-            </Card>
-
-            {/* Tabela de Produtos */}
-            {associacoes.length === 0 ? (
-              <Box textAlign="center" py={8}>
-                <RestaurantIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-                <Typography variant="h6" color="text.secondary">
-                  Nenhum produto adicionado
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                  Use o campo acima para adicionar produtos à refeição
-                </Typography>
-              </Box>
-            ) : (
-              <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-                <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 500, mb: 1 }}>
-                  Exibindo {associacoes.length} {associacoes.length === 1 ? 'produto' : 'produtos'}
-                </Typography>
-                
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleDragEnd}
-                >
-                  <TableContainer sx={{ flex: 1, minHeight: 0, border: '1px solid #e0e0e0', borderRadius: '8px' }}>
-                    <Table stickyHeader size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell sx={{ width: 50 }}></TableCell>
-                          <TableCell>Produto</TableCell>
-                          <TableCell align="center" sx={{ width: 130 }}>
-                            <Tooltip title="Per capita líquido (consumo efetivo)" arrow>
-                              <Box component="span">Per Capita Líquido</Box>
-                            </Tooltip>
-                          </TableCell>
-                          <TableCell align="center" sx={{ width: 130 }}>
-                            <Tooltip title="Per capita bruto (quantidade de compra)" arrow>
-                              <Box component="span">Per Capita Bruto</Box>
-                            </Tooltip>
-                          </TableCell>
-                          <TableCell align="center" sx={{ width: 120 }}>Unidade</TableCell>
-                          <TableCell align="center" sx={{ width: 120 }}>Ações</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        <SortableContext
-                          items={paginatedAssociacoes.map(a => a.id)}
-                          strategy={verticalListSortingStrategy}
-                        >
-                          {paginatedAssociacoes.map((assoc) => (
-                            <SortableRow
-                              key={assoc.id}
-                              assoc={assoc}
-                              onRemove={() => removerProduto(assoc.id)}
-                              onEdit={() => handleEditarProduto(assoc)}
-                            />
-                          ))}
-                        </SortableContext>
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </DndContext>
-                
-                <Box sx={{ mt: 1 }}>
-                  <CompactPagination
-                    count={associacoes.length}
-                    page={page}
-                    onPageChange={(e, newPage) => setPage(newPage)}
-                    rowsPerPage={rowsPerPage}
-                    onRowsPerPageChange={(e) => {
-                      setRowsPerPage(parseInt(e.target.value, 10));
-                      setPage(0);
-                    }}
-                    rowsPerPageOptions={[10, 25, 50]}
-                  />
+          <Box sx={{ height: '100%', display: 'flex', gap: 1.5 }}>
+            {/* Coluna esquerda: Adicionar + Tabela */}
+            <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+              {/* Adicionar Produto */}
+              <Card sx={{ borderRadius: '8px', p: 1.5 }}>
+                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Adicione ingredientes à refeição e defina o per capita por modalidade
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    startIcon={<AddIcon />}
+                    onClick={() => setDialogAdicionarOpen(true)}
+                    size="small"
+                    sx={{ bgcolor: '#059669', '&:hover': { bgcolor: '#047857' }, whiteSpace: 'nowrap' }}
+                  >
+                    Adicionar Ingrediente
+                  </Button>
                 </Box>
-              </Box>
-            )}
+              </Card>
+
+              {/* Tabela de Produtos */}
+              {associacoes.length === 0 ? (
+                <Box textAlign="center" py={8}>
+                  <RestaurantIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
+                  <Typography variant="h6" color="text.secondary">
+                    Nenhum produto adicionado
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                    Use o campo acima para adicionar produtos à refeição
+                  </Typography>
+                </Box>
+              ) : (
+                <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                  <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 500, mb: 1 }}>
+                    Exibindo {associacoes.length} {associacoes.length === 1 ? 'produto' : 'produtos'}
+                  </Typography>
+                  
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <TableContainer sx={{ flex: 1, minHeight: 0, border: '1px solid #e0e0e0', borderRadius: '8px' }}>
+                      <Table stickyHeader size="small">
+                        <TableHead>
+                          <TableRow>
+                            <TableCell sx={{ width: 50 }}></TableCell>
+                            <TableCell>Produto</TableCell>
+                            <TableCell align="center" sx={{ width: 130 }}>
+                              <Tooltip title="Per capita líquido (consumo efetivo)" arrow>
+                                <Box component="span">Per Capita Líquido</Box>
+                              </Tooltip>
+                            </TableCell>
+                            <TableCell align="center" sx={{ width: 130 }}>
+                              <Tooltip title="Per capita bruto (quantidade de compra)" arrow>
+                                <Box component="span">Per Capita Bruto</Box>
+                              </Tooltip>
+                            </TableCell>
+                            <TableCell align="center" sx={{ width: 120 }}>Unidade</TableCell>
+                            <TableCell align="center" sx={{ width: 120 }}>Ações</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          <SortableContext
+                            items={paginatedAssociacoes.map(a => a.id)}
+                            strategy={verticalListSortingStrategy}
+                          >
+                            {paginatedAssociacoes.map((assoc) => (
+                              <SortableRow
+                                key={assoc.id}
+                                assoc={assoc}
+                                onRemove={() => removerProduto(assoc.id)}
+                                onEdit={() => handleEditarProduto(assoc)}
+                              />
+                            ))}
+                          </SortableContext>
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </DndContext>
+                  
+                  <Box sx={{ mt: 1 }}>
+                    <CompactPagination
+                      count={associacoes.length}
+                      page={page}
+                      onPageChange={(e, newPage) => setPage(newPage)}
+                      rowsPerPage={rowsPerPage}
+                      onRowsPerPageChange={(e) => {
+                        setRowsPerPage(parseInt(e.target.value, 10));
+                        setPage(0);
+                      }}
+                      rowsPerPageOptions={[10, 25, 50]}
+                    />
+                  </Box>
+                </Box>
+              )}
+            </Box>
+
+            {/* Coluna direita: Painel Nutricional */}
+            <Box sx={{ width: 220, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <Card sx={{ borderRadius: '8px', p: 1.5, height: '100%' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+                  <Typography variant="caption" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary' }}>
+                    Nutrição / porção
+                  </Typography>
+                  {loadingNutricional && <CircularProgress size={12} />}
+                </Box>
+
+                {!refeicao?.rendimento_porcoes ? (
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                    Informe o rendimento (porções) na Ficha Técnica para ver os cálculos.
+                  </Typography>
+                ) : associacoes.length === 0 ? (
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                    Adicione ingredientes para ver os valores nutricionais.
+                  </Typography>
+                ) : !loadingNutricional && valoresNutricionais ? (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                    {/* Energia em destaque */}
+                    <Box sx={{ bgcolor: '#f0f4ff', px: 1.5, py: 0.75, borderRadius: 1, mb: 0.5 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Energia</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 700, color: 'primary.main' }}>
+                        {toNum(valoresNutricionais.por_porcao.calorias).toFixed(0)} kcal
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {(toNum(valoresNutricionais.por_porcao.calorias) * 4.184).toFixed(0)} kJ
+                      </Typography>
+                    </Box>
+                    {[
+                      { label: 'Proteínas', value: toNum(valoresNutricionais.por_porcao.proteinas).toFixed(1), unit: 'g' },
+                      { label: 'Lipídios', value: toNum(valoresNutricionais.por_porcao.lipidios).toFixed(1), unit: 'g' },
+                      { label: 'Carboidratos', value: toNum(valoresNutricionais.por_porcao.carboidratos).toFixed(1), unit: 'g' },
+                      { label: 'Cálcio', value: toNum(valoresNutricionais.por_porcao.calcio).toFixed(1), unit: 'mg' },
+                      { label: 'Ferro', value: toNum(valoresNutricionais.por_porcao.ferro).toFixed(1), unit: 'mg' },
+                      { label: 'Vit. A', value: toNum(valoresNutricionais.por_porcao.vitamina_a).toFixed(1), unit: 'mcg' },
+                      { label: 'Vit. C', value: toNum(valoresNutricionais.por_porcao.vitamina_c).toFixed(1), unit: 'mg' },
+                      { label: 'Sódio', value: toNum(valoresNutricionais.por_porcao.sodio).toFixed(1), unit: 'mg' },
+                    ].map(({ label, value, unit }) => (
+                      <Box key={label} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', py: 0.25, borderBottom: '1px solid #f0f0f0' }}>
+                        <Typography variant="caption" color="text.secondary">{label}</Typography>
+                        <Typography variant="caption" sx={{ fontWeight: 700 }}>{value}{unit}</Typography>
+                      </Box>
+                    ))}
+                    {valoresNutricionais.alertas && valoresNutricionais.alertas.length > 0 && (
+                      <Box sx={{ mt: 1, bgcolor: '#fff3cd', px: 1, py: 0.75, borderRadius: 1, border: '1px solid #ffc107' }}>
+                        {valoresNutricionais.alertas.map((alerta, idx) => (
+                          <Typography key={idx} variant="caption" sx={{ display: 'block', fontSize: '0.68rem' }}>⚠ {alerta.mensagem}</Typography>
+                        ))}
+                      </Box>
+                    )}
+                  </Box>
+                ) : !loadingNutricional && errorNutricional ? (
+                  <Typography variant="caption" color="error">Erro ao calcular valores.</Typography>
+                ) : null}
+              </Card>
+            </Box>
           </Box>
         )}
 
@@ -905,6 +918,16 @@ export default function RefeicaoDetalhe() {
                 <Typography variant="caption" color="text.secondary">
                   Os cálculos nutricionais e de custo serão ajustados para esta modalidade
                 </Typography>
+                <Box sx={{ flex: 1 }} />
+                <Button
+                  onClick={gerarPDF}
+                  variant="outlined"
+                  startIcon={<PdfIcon />}
+                  size="small"
+                  sx={{ borderColor: '#d32f2f', color: '#d32f2f', '&:hover': { borderColor: '#b71c1c', bgcolor: '#ffebee' }, whiteSpace: 'nowrap' }}
+                >
+                  Exportar PDF
+                </Button>
               </Box>
             )}
             
@@ -1075,76 +1098,43 @@ export default function RefeicaoDetalhe() {
                     </Grid>
 
                     {!loadingNutricional && valoresNutricionais && (
-                      <>
-                        <Grid item xs={6} md={3}>
-                          <Typography variant="body2" color="text.secondary">Proteínas</Typography>
-                          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                            {toNum(valoresNutricionais.por_porcao.proteinas).toFixed(1)}g
-                          </Typography>
-                        </Grid>
-
-                        <Grid item xs={6} md={3}>
-                          <Typography variant="body2" color="text.secondary">Lipídios</Typography>
-                          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                            {toNum(valoresNutricionais.por_porcao.lipidios).toFixed(1)}g
-                          </Typography>
-                        </Grid>
-
-                        <Grid item xs={6} md={3}>
-                          <Typography variant="body2" color="text.secondary">Carboidratos</Typography>
-                          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                            {toNum(valoresNutricionais.por_porcao.carboidratos).toFixed(1)}g
-                          </Typography>
-                        </Grid>
-
-                        <Grid item xs={6} md={3}>
-                          <Typography variant="body2" color="text.secondary">Cálcio</Typography>
-                          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                            {toNum(valoresNutricionais.por_porcao.calcio).toFixed(1)}mg
-                          </Typography>
-                        </Grid>
-
-                        <Grid item xs={6} md={3}>
-                          <Typography variant="body2" color="text.secondary">Ferro</Typography>
-                          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                            {toNum(valoresNutricionais.por_porcao.ferro).toFixed(1)}mg
-                          </Typography>
-                        </Grid>
-
-                        <Grid item xs={6} md={3}>
-                          <Typography variant="body2" color="text.secondary">Retinol (Vit. A)</Typography>
-                          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                            {toNum(valoresNutricionais.por_porcao.vitamina_a).toFixed(1)}mcg
-                          </Typography>
-                        </Grid>
-
-                        <Grid item xs={6} md={3}>
-                          <Typography variant="body2" color="text.secondary">Vitamina C</Typography>
-                          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                            {toNum(valoresNutricionais.por_porcao.vitamina_c).toFixed(1)}mg
-                          </Typography>
-                        </Grid>
-
-                        <Grid item xs={6} md={3}>
-                          <Typography variant="body2" color="text.secondary">Sódio</Typography>
-                          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                            {toNum(valoresNutricionais.por_porcao.sodio).toFixed(1)}mg
-                          </Typography>
-                        </Grid>
-
-                        {valoresNutricionais.alertas && valoresNutricionais.alertas.length > 0 && (
-                          <Grid item xs={12}>
-                            <Box sx={{ bgcolor: '#fff3cd', p: 1.5, borderRadius: 1, border: '1px solid #ffc107' }}>
-                              <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>Alertas Nutricionais:</Typography>
+                      <Grid item xs={12}>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
+                          {/* Energia em destaque */}
+                          <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, bgcolor: '#f0f4ff', px: 1.5, py: 0.5, borderRadius: 1, border: '1px solid #c7d7f5' }}>
+                            <Typography variant="caption" color="text.secondary">Energia</Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 700, color: 'primary.main' }}>
+                              {toNum(valoresNutricionais.por_porcao.calorias).toFixed(0)} kcal
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              / {(toNum(valoresNutricionais.por_porcao.calorias) * 4.184).toFixed(0)} kJ
+                            </Typography>
+                          </Box>
+                          {[
+                            { label: 'Proteínas', value: toNum(valoresNutricionais.por_porcao.proteinas).toFixed(1), unit: 'g' },
+                            { label: 'Lipídios', value: toNum(valoresNutricionais.por_porcao.lipidios).toFixed(1), unit: 'g' },
+                            { label: 'Carboidratos', value: toNum(valoresNutricionais.por_porcao.carboidratos).toFixed(1), unit: 'g' },
+                            { label: 'Cálcio', value: toNum(valoresNutricionais.por_porcao.calcio).toFixed(1), unit: 'mg' },
+                            { label: 'Ferro', value: toNum(valoresNutricionais.por_porcao.ferro).toFixed(1), unit: 'mg' },
+                            { label: 'Vit. A', value: toNum(valoresNutricionais.por_porcao.vitamina_a).toFixed(1), unit: 'mcg' },
+                            { label: 'Vit. C', value: toNum(valoresNutricionais.por_porcao.vitamina_c).toFixed(1), unit: 'mg' },
+                            { label: 'Sódio', value: toNum(valoresNutricionais.por_porcao.sodio).toFixed(1), unit: 'mg' },
+                          ].map(({ label, value, unit }) => (
+                            <Box key={label} sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, bgcolor: '#f8f9fa', px: 1.5, py: 0.5, borderRadius: 1 }}>
+                              <Typography variant="caption" color="text.secondary">{label}</Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 700 }}>{value}{unit}</Typography>
+                            </Box>
+                          ))}
+                          {valoresNutricionais.alertas && valoresNutricionais.alertas.length > 0 && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, bgcolor: '#fff3cd', px: 1.5, py: 0.5, borderRadius: 1, border: '1px solid #ffc107' }}>
+                              <Typography variant="caption" sx={{ fontWeight: 600 }}>Alertas:</Typography>
                               {valoresNutricionais.alertas.map((alerta, idx) => (
-                                <Typography key={idx} variant="caption" sx={{ display: 'block' }}>
-                                  • {alerta.mensagem}
-                                </Typography>
+                                <Typography key={idx} variant="caption">• {alerta.mensagem}</Typography>
                               ))}
                             </Box>
-                          </Grid>
-                        )}
-                      </>
+                          )}
+                        </Box>
+                      </Grid>
                     )}
                   </>
                 )}

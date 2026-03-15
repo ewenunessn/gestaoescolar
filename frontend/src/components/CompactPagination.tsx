@@ -29,17 +29,17 @@ const CompactPagination: React.FC<CompactPaginationProps> = ({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'flex-end',
-        gap: 2,
-        py: 0.75,
+        gap: 1.5,
+        py: 0.25,
         px: 1.5,
         borderTop: '1px solid',
         borderColor: 'divider',
         bgcolor: 'background.paper',
-        minHeight: 40
+        minHeight: 32,
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8125rem' }}>
+        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
           Itens por página:
         </Typography>
         <Select
@@ -47,36 +47,36 @@ const CompactPagination: React.FC<CompactPaginationProps> = ({
           onChange={(e) => onRowsPerPageChange(e as any)}
           size="small"
           sx={{
-            fontSize: '0.8125rem',
-            height: 28,
+            fontSize: '0.75rem',
+            height: 24,
             '& .MuiSelect-select': {
-              py: 0.25,
+              py: 0,
               pr: 2.5,
-              minHeight: 'auto'
+              minHeight: 'auto',
             },
             '& .MuiOutlinedInput-notchedOutline': {
-              borderColor: 'divider'
-            }
+              borderColor: 'divider',
+            },
           }}
         >
           {rowsPerPageOptions.map((option) => (
-            <MenuItem key={option} value={option} sx={{ fontSize: '0.8125rem', py: 0.5 }}>
+            <MenuItem key={option} value={option} sx={{ fontSize: '0.75rem', py: 0.25 }}>
               {option}
             </MenuItem>
           ))}
         </Select>
       </Box>
 
-      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8125rem' }}>
+      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
         {startItem}–{endItem} de {count}
       </Typography>
 
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0 }}>
         <IconButton
           size="small"
           onClick={(e) => onPageChange(e, page - 1)}
           disabled={page === 0}
-          sx={{ p: 0.5 }}
+          sx={{ p: 0.25 }}
         >
           <ChevronLeft fontSize="small" />
         </IconButton>
@@ -84,7 +84,7 @@ const CompactPagination: React.FC<CompactPaginationProps> = ({
           size="small"
           onClick={(e) => onPageChange(e, page + 1)}
           disabled={page >= totalPages - 1}
-          sx={{ p: 0.5 }}
+          sx={{ p: 0.25 }}
         >
           <ChevronRight fontSize="small" />
         </IconButton>

@@ -138,6 +138,7 @@ export async function buscarCompra(req: Request, res: Response) {
         COALESCE(p.unidade, 'UN') as unidade,
         cp.quantidade_contratada,
         cp.preco_unitario as preco_contrato,
+        COALESCE(cp.marca, '') as marca,
         c.numero as contrato_numero,
         c.id as contrato_id,
         f.nome as fornecedor_nome,

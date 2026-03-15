@@ -35,6 +35,7 @@ import {
   Description,
   Agriculture,
   Calculate,
+  ArrowBack as ArrowBackIcon,
 } from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
 import { logout } from "../services/auth";
@@ -279,7 +280,7 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
   // Dados do usuário atual
   const { user, loading: loadingUser } = useCurrentUser();
-  const { pageTitle } = usePageTitle();
+  const { pageTitle, backPath } = usePageTitle();
 
   // Configurar callback para mostrar indicador quando config mudar
   useEffect(() => {
@@ -580,7 +581,16 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           <MenuIcon />
         </IconButton>
 
-        <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', flex: 1, gap: 1 }}>
+          {backPath && (
+            <IconButton
+              size="small"
+              onClick={() => backPath === '__back__' ? navigate(-1) : navigate(backPath)}
+              sx={{ color: 'text.secondary', '&:hover': { bgcolor: 'action.hover' } }}
+            >
+              <ArrowBackIcon fontSize="small" />
+            </IconButton>
+          )}
           {pageTitle && (
             <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
               {pageTitle}
