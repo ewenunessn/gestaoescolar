@@ -387,7 +387,23 @@ export const listarRelatorios = async (req: Request, res: Response) => {
  */
 export const getDashboardPNAE = async (req: Request, res: Response) => {
   try {
-    const anoAtual = new Date().getFullYear();
+    // Buscar período ativo
+    const periodoQuery = await db.query(`
+      SELECT id, ano, data_inicio, data_fim
+      FROM periodos
+      WHERE ativo = true
+      LIMIT 1
+    `);
+
+    if (periodoQuery.rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Nenhum período ativo encontrado. Configure um período ativo no sistema.'
+      });
+    }
+
+    const periodoAtivo = periodoQuery.rows[0];
+    const anoAtual = periodoAtivo.ano;
 
     // Calcular valor total recebido do FNDE (soma dos repasses * parcelas das modalidades)
     const valorRecebidoQuery = `
@@ -398,7 +414,7 @@ export const getDashboardPNAE = async (req: Request, res: Response) => {
     const valorRecebidoResult = await db.query(valorRecebidoQuery);
     const valorTotalFNDE = parseFloat(valorRecebidoResult.rows[0].valor_total_fnde);
 
-    // Percentual agricultura familiar ano atual
+    // Percentual agricultura familiar do período ativo
     const afQuery = `
       SELECT 
         SUM(valor_itens) as valor_total,
@@ -483,6 +499,12 @@ export const getDashboardPNAE = async (req: Request, res: Response) => {
       success: true,
       data: {
         ano: anoAtual,
+        periodo: {
+          id: periodoAtivo.id,
+          ano: periodoAtivo.ano,
+          data_inicio: periodoAtivo.data_inicio,
+          data_fim: periodoAtivo.data_fim
+        },
         valor_recebido_fnde: valorTotalFNDE,
         percentual_minimo_obrigatorio: percentualMinimoObrigatorio,
         agricultura_familiar: {

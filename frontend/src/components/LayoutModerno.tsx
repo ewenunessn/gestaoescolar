@@ -40,6 +40,7 @@ import {
   ExpandMore,
   Apps as AppsIcon,
   AdminPanelSettings,
+  CalendarToday,
 } from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
 import { logout } from "../services/auth";
@@ -47,6 +48,7 @@ import { useConfigContext } from "../context/ConfigContext";
 import { useConfigChangeIndicator } from "../hooks/useConfigChangeIndicator";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { usePageTitle } from "../contexts/PageTitleContext";
+import { usePeriodoAtivo } from "../hooks/queries/usePeriodosQueries";
 
 const drawerWidth = 220;
 const collapsedDrawerWidth = 64;
@@ -117,6 +119,7 @@ const getMenuConfig = (_configModuloSaldo: any) => [
     category: "Configurações",
     items: [
       { text: "Instituição", icon: <Settings fontSize="small" />, path: "/configuracao-instituicao" },
+      { text: "Períodos", icon: <CalendarToday fontSize="small" />, path: "/periodos", adminOnly: true },
       { text: "Usuários", icon: <AdminPanelSettings fontSize="small" />, path: "/gerenciamento-usuarios", adminOnly: true },
     ],
   },
@@ -316,6 +319,7 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const { hasRecentChange, showChangeIndicator } = useConfigChangeIndicator();
   const { user, loading: loadingUser } = useCurrentUser();
   const { pageTitle, backPath } = usePageTitle();
+  const { data: periodoAtivo, isLoading: loadingPeriodo } = usePeriodoAtivo();
 
   useEffect(() => {
     if (onConfigChanged) onConfigChanged(showChangeIndicator);
@@ -480,7 +484,18 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             <Typography variant="h6" sx={{ fontWeight: 600, color: "text.primary" }}>{pageTitle}</Typography>
           )}
         </Box>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+          {/* Período Ativo */}
+          {!loadingPeriodo && periodoAtivo && (
+            <Box sx={{ display: { xs: "none", sm: "flex" }, alignItems: "center", gap: 0.5 }}>
+              <CalendarToday sx={{ fontSize: 14, color: "text.secondary" }} />
+              <Typography variant="body2" color="text.secondary">
+                {periodoAtivo.ano}
+              </Typography>
+            </Box>
+          )}
+          
+          {/* Usuário Logado */}
           {loadingUser ? <CircularProgress size={16} /> : user ? (
             <>
               <Typography variant="body2" color="text.secondary" sx={{ display: { xs: "none", sm: "block" } }}>Logado como:</Typography>

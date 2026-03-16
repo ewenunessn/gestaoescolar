@@ -81,6 +81,7 @@ const ConfiguracaoInstituicao = lazy(() => import("../pages/ConfiguracaoInstitui
 const PlanejamentoCompras = lazy(() => import("../pages/PlanejamentoCompras"));
 const DashboardPNAE = lazy(() => import("../pages/DashboardPNAE"));
 const GerenciamentoUsuarios = lazy(() => import("../pages/GerenciamentoUsuarios"));
+const GerenciamentoPeriodos = lazy(() => import("../pages/GerenciamentoPeriodos"));
 
 interface AppRouterProps {
   routerConfig?: {
@@ -356,6 +357,12 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
             <Route
               path="/gerenciamento-usuarios"
               element={<LazyRoute><GerenciamentoUsuarios /></LazyRoute>}
+            />
+
+            {/* Gerenciamento de Períodos (admin) */}
+            <Route
+              path="/periodos"
+              element={<LazyRoute><GerenciamentoPeriodos /></LazyRoute>}
             />
 
             
