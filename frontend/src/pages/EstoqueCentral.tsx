@@ -234,8 +234,6 @@ const EstoqueCentralPage: React.FC = () => {
 
         {loading ? (
           <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><CircularProgress size={60} /></CardContent></Card>
-        ) : error ? (
-          <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={loadEstoque}>Tentar Novamente</Button></CardContent></Card>
         ) : filteredPosicoes.length === 0 ? (
           <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Inventory sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} /><Typography variant="h6" sx={{ color: 'text.secondary' }}>Nenhuma posição de estoque encontrada</Typography></CardContent></Card>
         ) : (
