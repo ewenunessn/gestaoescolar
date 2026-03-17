@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useToast } from "../hooks/useToast";
 import StatusIndicator from "../components/StatusIndicator";
 import PageContainer from "../components/PageContainer";
 import TableFilter, { FilterField } from "../components/TableFilter";
@@ -105,8 +106,7 @@ const FornecedoresPage: React.FC = () => {
   
   // Estados locais
   const fornecedores = fornecedoresData?.fornecedores || [];
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const error = queryError?.message || null;
+  const toast = useToast();
 
   // Estados do menu de ações
   const [actionsMenuAnchor, setActionsMenuAnchor] = useState<null | HTMLElement>(null);
@@ -214,7 +214,7 @@ const FornecedoresPage: React.FC = () => {
   // Mostrar mensagem se vier de redirecionamento
   useEffect(() => {
     if (location.state?.message) {
-      setSuccessMessage(location.state.message);
+      toast.success(location.state.message);
       // Limpar o state para não mostrar novamente
       window.history.replaceState({}, document.title);
     }
@@ -292,14 +292,13 @@ const FornecedoresPage: React.FC = () => {
     try {
       if (editingFornecedor) {
         await atualizarFornecedorMutation.mutateAsync({ id: editingFornecedor.id, data: formData });
-        setSuccessMessage('Fornecedor atualizado com sucesso!');
+        toast.success('Fornecedor atualizado com sucesso!');
       } else {
         await criarFornecedorMutation.mutateAsync(formData);
-        setSuccessMessage('Fornecedor criado com sucesso!');
+        toast.success('Fornecedor criado com sucesso!');
       }
       closeModal();
       await refetch();
-      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       console.error('Erro ao salvar fornecedor:', err);
       setErroFornecedor(err.message || 'Erro ao salvar fornecedor.');
@@ -320,9 +319,8 @@ const FornecedoresPage: React.FC = () => {
     if (!fornecedorToDelete) return;
     try {
       await excluirFornecedorMutation.mutateAsync(fornecedorToDelete.id);
-      setSuccessMessage('Fornecedor removido com sucesso!');
+      toast.success('Fornecedor removido com sucesso!');
       closeDeleteModal();
-      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       console.error('Erro ao remover fornecedor:', err);
     }
@@ -334,7 +332,7 @@ const FornecedoresPage: React.FC = () => {
 
   return (
     <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
-      {successMessage && (<Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}><Alert severity="success" onClose={() => setSuccessMessage(null)}>{successMessage}</Alert></Box>)}
+      <PageContainer fullHeight>
       <PageContainer fullHeight>
         <Card sx={{ borderRadius: '12px', p: 2, mb: 2 }}>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2 }}>
@@ -661,7 +659,7 @@ const FornecedoresPage: React.FC = () => {
 
       {/* Menu de Ações */}
       <Menu anchorEl={actionsMenuAnchor} open={Boolean(actionsMenuAnchor)} onClose={() => setActionsMenuAnchor(null)}>
-        <MenuItem onClick={() => { setActionsMenuAnchor(null); refetch(); setSuccessMessage('Lista atualizada com sucesso!'); }}><SearchIcon sx={{ mr: 1 }} /> Atualizar Lista</MenuItem>
+        <MenuItem onClick={() => { setActionsMenuAnchor(null); refetch(); toast.success('Lista atualizada com sucesso!'); }}><SearchIcon sx={{ mr: 1 }} /> Atualizar Lista</MenuItem>
         <Divider />
         <MenuItem onClick={() => { setActionsMenuAnchor(null); setImportModalOpen(true); }}><Upload sx={{ mr: 1 }} /> Importar em Lote</MenuItem>
         <MenuItem onClick={() => { setActionsMenuAnchor(null); handleExportarFornecedores(); }}><Download sx={{ mr: 1 }} /> Exportar Excel</MenuItem>
