@@ -19,6 +19,7 @@ import {
   buscarComposicaoNutricional, salvarComposicaoNutricional,
 } from '../services/produtos';
 import { useAtualizarProduto } from '../hooks/queries/useProdutoQueries';
+import { useToast } from '../hooks/useToast';
 import PageBreadcrumbs from '../components/PageBreadcrumbs';
 import { toNum } from '../utils/formatters';
 import { LoadingOverlay } from '../components/LoadingOverlay';
@@ -162,12 +163,11 @@ export default function ProdutoDetalhe() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { setPageTitle } = usePageTitle();
+  const toast = useToast();
 
   const [produto, setProduto] = useState<any>(null);
   const [composicao, setComposicao] = useState<any>(composicaoVazia);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const [isEditing, setIsEditing] = useState(false);
   const [form, setForm] = useState<any>({});
@@ -191,7 +191,7 @@ export default function ProdutoDetalhe() {
 
   const loadData = useCallback(async () => {
     if (!id) return;
-    setLoading(true); setError(null);
+    setLoading(true);
     try {
       const prod = await buscarProduto(Number(id));
       setProduto(prod); 
@@ -215,7 +215,9 @@ export default function ProdutoDetalhe() {
         console.warn('Composição nutricional não encontrada:', error);
         setComposicao(composicaoVazia);
       }
-    } catch { setError("Produto não encontrado"); } 
+    } catch { 
+      toast.error("Produto não encontrado"); 
+    } 
     finally { setLoading(false); }
   }, [id]);
 
@@ -226,13 +228,13 @@ export default function ProdutoDetalhe() {
     try {
       // Validar apenas se campos obrigatórios não estão vazios
       if (!form.nome?.trim()) {
-        setError('Nome do produto não pode estar vazio');
+        toast.error('Nome do produto não pode estar vazio');
         setIsSaving(false);
         return;
       }
       
       if (!form.unidade?.trim()) {
-        setError('Unidade do produto não pode estar vazia');
+        toast.error('Unidade do produto não pode estar vazia');
         setIsSaving(false);
         return;
       }
@@ -251,14 +253,13 @@ export default function ProdutoDetalhe() {
       const atualizado = await atualizarProdutoMutation.mutateAsync({ id: Number(id), data: dataToSend });
       setProduto(atualizado); 
       setIsEditing(false);
-      setSuccessMessage('Produto atualizado com sucesso!');
+      toast.success('Produto atualizado com sucesso!');
     } catch (err: any) { 
       console.error('Erro ao salvar produto:', err);
-      setError(err?.response?.data?.message || err?.message || "Erro ao salvar alterações"); 
+      toast.error(err?.response?.data?.message || err?.message || "Erro ao salvar alterações"); 
     } 
     finally { 
       setIsSaving(false); 
-      setTimeout(() => setSuccessMessage(null), 3000); 
     }
   }, [id, form, atualizarProdutoMutation]);
 
@@ -275,19 +276,23 @@ export default function ProdutoDetalhe() {
       // Usar a resposta do servidor diretamente ao invés de recarregar
       setComposicao({ ...composicaoVazia, ...resultado });
       
-      setSuccessMessage('Composição nutricional salva!');
+      toast.success('Composição nutricional salva!');
     } catch (error) {
       console.error('❌ Erro ao salvar composição nutricional:', error);
-      setError("Erro ao salvar composição. Tabela pode não estar criada no banco.");
+      toast.error("Erro ao salvar composição. Tabela pode não estar criada no banco.");
     } 
-    finally { setIsSavingComp(false); setTimeout(() => setSuccessMessage(null), 3000); }
+    finally { 
+      setIsSavingComp(false); 
+    }
   }, [id]);
 
   const handleDelete = useCallback(async () => {
     try {
       await deletarProduto(Number(id));
       navigate("/produtos", { state: { successMessage: 'Produto excluído com sucesso!' } });
-    } catch { setError("Erro ao excluir produto"); }
+    } catch { 
+      toast.error("Erro ao excluir produto"); 
+    }
   }, [id, navigate]);
   
   const handleCancel = useCallback(() => { 
@@ -330,9 +335,6 @@ export default function ProdutoDetalhe() {
             </IconButton>
           )}
         </Box>
-        
-        {successMessage && <Alert severity="success" onClose={() => setSuccessMessage(null)} sx={{ mb: 1.5, py: 0.5 }}>{successMessage}</Alert>}
-        {error && <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 1.5, py: 0.5 }}>{error}</Alert>}
         
         <Grid container spacing={2}>
           {/* Primeira linha - Identificação e Composição lado a lado */}

@@ -1,5 +1,4 @@
 import AppRouter from "./routes/AppRouter";
-import { NotificationProvider } from "./context/NotificationContext";
 import { ConfigProvider } from "./context/ConfigContext";
 import { PageTitleProvider } from "./contexts/PageTitleContext";
 import { QueryProvider } from "./providers/QueryProvider";
@@ -24,10 +23,9 @@ export default function App({ routerConfig }: AppProps) {
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <PageTitleProvider>
-          <NotificationProvider>
-            <ConfigProvider>
-              <AppRouter routerConfig={routerConfig} />
-              <ReactToastifyContainer
+          <ConfigProvider>
+            <AppRouter routerConfig={routerConfig} />
+            <ReactToastifyContainer
                 position="top-right"
                 autoClose={4000}
                 hideProgressBar={false}
@@ -40,8 +38,7 @@ export default function App({ routerConfig }: AppProps) {
                 theme="light"
                 style={{ zIndex: 9999 }}
               />
-            </ConfigProvider>
-          </NotificationProvider>
+          </ConfigProvider>
         </PageTitleProvider>
       </ThemeProvider>
     </QueryProvider>

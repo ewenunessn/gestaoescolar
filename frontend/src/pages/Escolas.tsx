@@ -61,6 +61,7 @@ import CompactPagination from '../components/CompactPagination';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { listarEscolas, criarEscola, importarEscolasLote } from '../services/escolas';
 import { useEscolas, useCriarEscola } from '../hooks/queries';
+import { useToast } from '../hooks/useToast';
 import ImportacaoEscolas from '../components/ImportacaoEscolas';
 import LocationSelector from '../components/LocationSelector';
 import { LoadingScreen } from '../components';
@@ -99,10 +100,10 @@ const EscolasPage = () => {
   // React Query hooks
   const escolasQuery = useEscolas();
   const criarEscolaMutation = useCriarEscola();
+  const toast = useToast();
   
   // Estados locais (apenas UI)
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Estados de ações
   const [actionsMenuAnchor, setActionsMenuAnchor] = useState<null | HTMLElement>(null);
@@ -321,7 +322,7 @@ const EscolasPage = () => {
 
   const handleSave = async () => {
     if (!formData.nome.trim()) {
-      alert("O nome da escola é obrigatório.");
+      toast.error("O nome da escola é obrigatório.");
       return;
     }
     

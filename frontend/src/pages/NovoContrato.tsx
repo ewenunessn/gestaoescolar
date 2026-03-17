@@ -19,6 +19,7 @@ import {
 import { ArrowBack, Save, Business as BusinessIcon, Description as DescriptionIcon } from "@mui/icons-material";
 import { listarFornecedores, buscarFornecedor } from "../services/fornecedores";
 import { criarContrato } from "../services/contratos";
+import { useToast } from '../hooks/useToast';
 import PageBreadcrumbs from '../components/PageBreadcrumbs';
 
 interface Fornecedor {
@@ -32,12 +33,12 @@ export default function NovoContrato() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const fornecedorIdParam = searchParams.get("fornecedor_id");
+  const toast = useToast();
 
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
   const [fornecedorSelecionado, setFornecedorSelecionado] = useState<Fornecedor | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     fornecedor_id: "",
@@ -70,7 +71,7 @@ export default function NovoContrato() {
         }));
       }
     } catch (error: any) {
-      setError(error.message || "Erro ao carregar dados");
+      toast.error(error.message || "Erro ao carregar dados");
     } finally {
       setLoading(false);
     }
@@ -105,29 +106,28 @@ export default function NovoContrato() {
     try {
       // Validações
       if (!formData.fornecedor_id) {
-        setError("Selecione um fornecedor");
+        toast.error("Selecione um fornecedor");
         return;
       }
       if (!formData.numero.trim()) {
-        setError("Número do contrato é obrigatório");
+        toast.error("Número do contrato é obrigatório");
         return;
       }
 
       if (!formData.data_inicio) {
-        setError("Data de início é obrigatória");
+        toast.error("Data de início é obrigatória");
         return;
       }
       if (!formData.data_fim) {
-        setError("Data de fim é obrigatória");
+        toast.error("Data de fim é obrigatória");
         return;
       }
       if (new Date(formData.data_fim) <= new Date(formData.data_inicio)) {
-        setError("Data de fim deve ser posterior à data de início");
+        toast.error("Data de fim deve ser posterior à data de início");
         return;
       }
 
       setSaving(true);
-      setError(null);
 
       const novoContrato = await criarContrato({
         ...formData,
@@ -138,7 +138,7 @@ export default function NovoContrato() {
       // Navegar para os detalhes do contrato criado
       navigate(`/contratos/${novoContrato.id}`);
     } catch (error: any) {
-      setError(error.message || "Erro ao criar contrato");
+      toast.error(error.message || "Erro ao criar contrato");
     } finally {
       setSaving(false);
     }

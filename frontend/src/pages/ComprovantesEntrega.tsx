@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { usePageTitle } from '../contexts/PageTitleContext';
+import { useToast } from '../hooks/useToast';
 import {
   Box,
   Paper,
@@ -67,6 +68,7 @@ interface Escola {
 
 export default function ComprovantesEntrega() {
   const { setPageTitle } = usePageTitle();
+  const toast = useToast();
   const [comprovantes, setComprovantes] = useState<Comprovante[]>([]);
   const [escolas, setEscolas] = useState<Escola[]>([]);
   const [loading, setLoading] = useState(true);
@@ -154,7 +156,7 @@ export default function ComprovantesEntrega() {
       setComprovanteDetalhes(response.data);
       setModalAberto(true);
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Erro ao carregar detalhes');
+      toast.error(err.response?.data?.error || 'Erro ao carregar detalhes');
     }
   };
 
@@ -179,7 +181,7 @@ export default function ComprovantesEntrega() {
         printWindow.print();
       }, 250);
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Erro ao imprimir comprovante');
+      toast.error(err.response?.data?.error || 'Erro ao imprimir comprovante');
     }
   };
 
@@ -443,10 +445,10 @@ export default function ComprovantesEntrega() {
 
     try {
       await api.delete(`/entregas/comprovantes/${id}/excluir`);
-      alert('Comprovante excluído com sucesso!');
+      toast.success('Comprovante excluído com sucesso!');
       carregarComprovantes();
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Erro ao excluir comprovante');
+      toast.error(err.response?.data?.error || 'Erro ao excluir comprovante');
     }
   };
 

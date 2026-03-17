@@ -28,6 +28,7 @@ import {
   School
 } from '@mui/icons-material';
 import { register } from '../services/auth';
+import { useToast } from '../hooks/useToast';
 import { useNavigate, Link } from 'react-router-dom';
 
 interface FormData {
@@ -54,6 +55,7 @@ const perfisDisponiveis = [
 
 export default function Registro() {
   const [activeStep, setActiveStep] = useState(0);
+  const toast = useToast();
   const [formData, setFormData] = useState<FormData>({
     nome: '',
     email: '',
@@ -65,7 +67,6 @@ export default function Registro() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
   
   const navigate = useNavigate();
 
@@ -174,7 +175,7 @@ export default function Registro() {
 
       await register(userData);
       
-      setSuccessMessage('Conta criada com sucesso! Redirecionando para o login...');
+      toast.success('Conta criada com sucesso! Redirecionando para o login...');
       
       setTimeout(() => {
         navigate('/login', { 

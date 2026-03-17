@@ -13,6 +13,7 @@ import {
   useCriarProduto, 
   useCategoriasProdutos 
 } from "../hooks/queries";
+import { useToast } from '../hooks/useToast';
 import ImportacaoProdutos from '../components/ImportacaoProdutos';
 import {
   Box,
@@ -80,6 +81,7 @@ interface ProdutoForm {
 const ProdutosPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const toast = useToast();
 
   // Estados de filtros - NOVO SISTEMA
   const [filterOpen, setFilterOpen] = useState(false);
@@ -98,7 +100,6 @@ const ProdutosPage = () => {
   const criarProdutoMutation = useCriarProduto();
   
   // Estados locais
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const error = queryError?.message || null;
 
   // Estados de paginação
@@ -183,7 +184,7 @@ const ProdutosPage = () => {
       const failedCount = results.filter(r => r.status === 'rejected').length;
       
       if (successCount > 0) {
-        setSuccessMessage(`${successCount} produto(s) excluído(s) com sucesso!`);
+        toast.success(`${successCount} produto(s) excluído(s) com sucesso!`);
       }
       
       if (failedCount > 0) {
@@ -225,7 +226,7 @@ const ProdutosPage = () => {
   useEffect(() => {
     const state = location.state as { successMessage?: string } | undefined;
     if (state?.successMessage) {
-      setSuccessMessage(state.successMessage);
+      toast.success(state.successMessage);
       refetch();
       navigate(location.pathname, { replace: true });
     }
@@ -359,9 +360,8 @@ const ProdutosPage = () => {
     try {
       setIsSaving(true);
       const novoProduto = await criarProdutoMutation.mutateAsync(formData);
-      setSuccessMessage('Produto criado com sucesso!');
+      toast.success('Produto criado com sucesso!');
       closeModal();
-      setTimeout(() => setSuccessMessage(null), 3000);
       navigate(`/produtos/${novoProduto.id}`);
     } catch (err: any) {
       console.error('Erro ao criar produto:', err);
@@ -401,15 +401,13 @@ const ProdutosPage = () => {
         }
       }
 
-      setSuccessMessage(
+      toast.success(
         `Importação concluída: ${insercoes} inseridos, ${atualizacoes} atualizados${erros > 0 ? `, ${erros} erro(s)` : ''}`
       );
       refetch(); // Recarregar dados após importação
-      setTimeout(() => setSuccessMessage(null), 5000);
     } catch (err) {
       console.error('Erro ao importar produtos:', err);
-      setSuccessMessage('Erro ao importar produtos. Verifique os dados e tente novamente.');
-      setTimeout(() => setSuccessMessage(null), 5000);
+      toast.error('Erro ao importar produtos. Verifique os dados e tente novamente.');
     }
   };
 
@@ -427,7 +425,7 @@ const ProdutosPage = () => {
       }));
 
       if (dadosExportacao.length === 0) {
-        setError('Nenhum produto para exportar.');
+        toast.error('Nenhum produto para exportar.');
         return;
       }
 
@@ -506,7 +504,7 @@ const ProdutosPage = () => {
       setActionsMenuAnchor(null);
     } catch (error) {
       console.error('Erro ao exportar produtos:', error);
-      setError('Erro ao exportar produtos para Excel.');
+      toast.error('Erro ao exportar produtos para Excel.');
     }
   };
 
@@ -518,13 +516,12 @@ const ProdutosPage = () => {
       setActionsMenuAnchor(null);
     } catch (error) {
       console.error('Erro ao exportar modelo:', error);
-      setError('Erro ao exportar modelo de importação.');
+      toast.error('Erro ao exportar modelo de importação.');
     }
   };
 
   return (
     <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
-      {successMessage && (<Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}><Alert severity="success" onClose={() => setSuccessMessage(null)}>{successMessage}</Alert></Box>)}
       <PageContainer fullHeight>
         <PageHeader 
           title="Produtos"
