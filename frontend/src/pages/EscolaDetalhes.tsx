@@ -35,6 +35,7 @@ import {
 } from '../services/escolas';
 import { listarModalidades } from '../services/modalidades';
 import PageBreadcrumbs from '../components/PageBreadcrumbs';
+import { LoadingOverlay } from '../components/LoadingOverlay';
 // Interfaces
 interface Modalidade {
     id: number;
@@ -450,6 +451,15 @@ const EscolaDetalhesPage = () => {
                     <DialogContent><Typography>Tem certeza que deseja excluir a escola "{escola?.nome}"? Esta ação não pode ser desfeita.</Typography></DialogContent>
                     <DialogActions><Button onClick={() => setDeleteDialogOpen(false)}>Cancelar</Button><Button onClick={handleDeleteEscola} variant="contained" color="delete">Excluir</Button></DialogActions>
                 </Dialog>
+
+            <LoadingOverlay 
+                open={isSaving || isSavingModalidade}
+                message={
+                    isSaving ? 'Salvando escola...' :
+                    isSavingModalidade ? 'Salvando modalidade...' :
+                    'Processando...'
+                }
+            />
         </Box>
     );
 };

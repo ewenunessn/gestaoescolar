@@ -10,6 +10,7 @@ import {
   Add, Edit, Delete, People, AdminPanelSettings, Visibility,
   VisibilityOff, Lock,
 } from "@mui/icons-material";
+import { LoadingOverlay } from "../components/LoadingOverlay";
 import {
   getUsuarios, criarUsuario, atualizarUsuario, excluirUsuario,
   getFuncoes, criarFuncao, atualizarFuncao, excluirFuncao,
@@ -229,6 +230,11 @@ export default function GerenciamentoUsuarios() {
   const [niveis, setNiveis] = useState<NivelPermissao[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState("");
+  
+  // Estados de loading para operações
+  const [salvandoUsuario, setSalvandoUsuario] = useState(false);
+  const [salvandoFuncao, setSalvandoFuncao] = useState(false);
+  const [excluindo, setExcluindo] = useState(false);
 
   // Dialogs
   const [usuarioDialog, setUsuarioDialog] = useState<{ open: boolean; usuario?: Usuario | null }>({ open: false });
@@ -254,25 +260,36 @@ export default function GerenciamentoUsuarios() {
   useEffect(() => { carregar(); }, []);
 
   const handleSaveUsuario = async (data: any) => {
-    if (usuarioDialog.usuario) {
-      await atualizarUsuario(usuarioDialog.usuario.id, data);
-    } else {
-      await criarUsuario(data);
+    setSalvandoUsuario(true);
+    try {
+      if (usuarioDialog.usuario) {
+        await atualizarUsuario(usuarioDialog.usuario.id, data);
+      } else {
+        await criarUsuario(data);
+      }
+      await carregar();
+    } finally {
+      setSalvandoUsuario(false);
     }
-    await carregar();
   };
 
   const handleSaveFuncao = async (data: any) => {
-    if (funcaoDialog.funcao) {
-      await atualizarFuncao(funcaoDialog.funcao.id, data);
-    } else {
-      await criarFuncao(data);
+    setSalvandoFuncao(true);
+    try {
+      if (funcaoDialog.funcao) {
+        await atualizarFuncao(funcaoDialog.funcao.id, data);
+      } else {
+        await criarFuncao(data);
+      }
+      await carregar();
+    } finally {
+      setSalvandoFuncao(false);
     }
-    await carregar();
   };
 
   const handleDelete = async () => {
     if (!confirmDelete) return;
+    setExcluindo(true);
     try {
       if (confirmDelete.tipo === "usuario") await excluirUsuario(confirmDelete.id);
       else await excluirFuncao(confirmDelete.id);
@@ -281,6 +298,8 @@ export default function GerenciamentoUsuarios() {
     } catch (e: any) {
       setErro(e?.response?.data?.message || "Erro ao excluir");
       setConfirmDelete(null);
+    } finally {
+      setExcluindo(false);
     }
   };
 
@@ -349,12 +368,21 @@ export default function GerenciamentoUsuarios() {
                           </TableCell>
                           <TableCell align="right">
                             <Tooltip title="Editar">
-                              <IconButton size="small" onClick={() => setUsuarioDialog({ open: true, usuario: u })}>
+                              <IconButton 
+                                size="small" 
+                                onClick={() => setUsuarioDialog({ open: true, usuario: u })}
+                                disabled={salvandoUsuario || excluindo}
+                              >
                                 <Edit fontSize="small" />
                               </IconButton>
                             </Tooltip>
                             <Tooltip title="Excluir">
-                              <IconButton size="small" color="error" onClick={() => setConfirmDelete({ open: true, tipo: "usuario", id: u.id, nome: u.nome })}>
+                              <IconButton 
+                                size="small" 
+                                color="error" 
+                                onClick={() => setConfirmDelete({ open: true, tipo: "usuario", id: u.id, nome: u.nome })}
+                                disabled={salvandoUsuario || excluindo}
+                              >
                                 <Delete fontSize="small" />
                               </IconButton>
                             </Tooltip>
@@ -390,12 +418,21 @@ export default function GerenciamentoUsuarios() {
                         </Box>
                         <Box>
                           <Tooltip title="Editar">
-                            <IconButton size="small" onClick={() => setFuncaoDialog({ open: true, funcao: f })}>
+                            <IconButton 
+                              size="small" 
+                              onClick={() => setFuncaoDialog({ open: true, funcao: f })}
+                              disabled={salvandoFuncao || excluindo}
+                            >
                               <Edit fontSize="small" />
                             </IconButton>
                           </Tooltip>
                           <Tooltip title="Excluir">
-                            <IconButton size="small" color="error" onClick={() => setConfirmDelete({ open: true, tipo: "funcao", id: f.id, nome: f.nome })}>
+                            <IconButton 
+                              size="small" 
+                              color="error" 
+                              onClick={() => setConfirmDelete({ open: true, tipo: "funcao", id: f.id, nome: f.nome })}
+                              disabled={salvandoFuncao || excluindo}
+                            >
                               <Delete fontSize="small" />
                             </IconButton>
                           </Tooltip>
@@ -448,10 +485,22 @@ export default function GerenciamentoUsuarios() {
           <Typography>Deseja excluir <strong>{confirmDelete?.nome}</strong>? Esta ação não pode ser desfeita.</Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setConfirmDelete(null)}>Cancelar</Button>
-          <Button onClick={handleDelete} color="error" variant="contained">Excluir</Button>
+          <Button onClick={() => setConfirmDelete(null)} disabled={excluindo}>Cancelar</Button>
+          <Button onClick={handleDelete} color="error" variant="contained" disabled={excluindo}>
+            {excluindo ? <CircularProgress size={20} /> : 'Excluir'}
+          </Button>
         </DialogActions>
       </Dialog>
+
+      <LoadingOverlay 
+        open={salvandoUsuario || salvandoFuncao || excluindo}
+        message={
+          salvandoUsuario ? 'Salvando usuário...' :
+          salvandoFuncao ? 'Salvando função...' :
+          excluindo ? 'Excluindo...' :
+          'Processando...'
+        }
+      />
     </Box>
   );
 }

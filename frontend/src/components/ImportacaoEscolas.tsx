@@ -9,6 +9,7 @@ import {
   CloudUpload, Download, CheckCircle, Error, Warning, Delete, School,
 } from '@mui/icons-material';
 import * as XLSX from 'xlsx';
+import { LoadingOverlay } from './LoadingOverlay';
 
 // Interfaces
 interface ImportacaoEscolasProps {
@@ -275,6 +276,11 @@ const ImportacaoEscolas: React.FC<ImportacaoEscolasProps> = ({ open, onClose, on
           </Button>
         )}
       </DialogActions>
+
+      <LoadingOverlay 
+        open={loading && activeStep === 2}
+        message="Importando escolas..."
+      />
     </Dialog>
   );
 };

@@ -58,6 +58,7 @@ import {
   Modalidade, // <-- TIPO IMPORTADO DO SERVIÇO (AGORA CORRETO)
 } from "../services/modalidades";
 import { useModalidades, useCreateModalidade, useUpdateModalidade, useDeleteModalidade } from "../hooks/queries/useModalidadeQueries";
+import { LoadingOverlay } from "../components/LoadingOverlay";
 
 const ModalidadesPage = () => {
   const navigate = useNavigate();
@@ -508,6 +509,20 @@ const ModalidadesPage = () => {
           <PeopleIcon sx={{ mr: 1 }} /> Gerenciar Alunos por Escola
         </MenuItem>
       </Menu>
+
+      <LoadingOverlay 
+        open={
+          createModalidadeMutation.isPending ||
+          updateModalidadeMutation.isPending ||
+          deleteModalidadeMutation.isPending
+        }
+        message={
+          createModalidadeMutation.isPending ? 'Criando modalidade...' :
+          updateModalidadeMutation.isPending ? 'Atualizando modalidade...' :
+          deleteModalidadeMutation.isPending ? 'Excluindo modalidade...' :
+          'Processando...'
+        }
+      />
     </Box>
   );
 };

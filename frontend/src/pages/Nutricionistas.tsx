@@ -47,6 +47,7 @@ import {
   useDeleteNutricionista,
 } from '../hooks/queries/useNutricionistaQueries';
 import { Nutricionista } from '../services/nutricionistas';
+import { LoadingOverlay } from '../components/LoadingOverlay';
 
 const NutricionistasPage = () => {
   const toast = useToast();
@@ -578,6 +579,20 @@ const NutricionistasPage = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <LoadingOverlay 
+        open={
+          createMutation.isPending ||
+          updateMutation.isPending ||
+          deleteMutation.isPending
+        }
+        message={
+          createMutation.isPending ? 'Criando nutricionista...' :
+          updateMutation.isPending ? 'Atualizando nutricionista...' :
+          deleteMutation.isPending ? 'Excluindo nutricionista...' :
+          'Processando...'
+        }
+      />
     </Box>
   );
 };

@@ -64,6 +64,7 @@ import {
 import CompactPagination from '../components/CompactPagination';
 import { useNavigate, useLocation } from "react-router-dom";
 import { gerarModeloExcelProdutos } from '../utils/produtoImportUtils';
+import { LoadingOverlay } from '../components/LoadingOverlay';
 
 interface ProdutoForm {
   nome: string;
@@ -973,6 +974,16 @@ const ProdutosPage = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <LoadingOverlay 
+        open={isSaving || isDeleting || criarProdutoMutation.isPending}
+        message={
+          isSaving ? 'Salvando produto...' :
+          isDeleting ? 'Excluindo produtos...' :
+          criarProdutoMutation.isPending ? 'Criando produto...' :
+          'Processando...'
+        }
+      />
     </Box>
   );
 };

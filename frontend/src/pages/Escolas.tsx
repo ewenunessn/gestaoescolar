@@ -64,6 +64,7 @@ import { useEscolas, useCriarEscola } from '../hooks/queries';
 import ImportacaoEscolas from '../components/ImportacaoEscolas';
 import LocationSelector from '../components/LocationSelector';
 import { LoadingScreen } from '../components';
+import { LoadingOverlay } from '../components/LoadingOverlay';
 import * as XLSX from 'xlsx';
 
 // Interfaces
@@ -611,6 +612,16 @@ const EscolasPage = () => {
         <MenuItem onClick={() => { setActionsMenuAnchor(null); setImportModalOpen(true); }} disabled={loadingImport}><Upload sx={{ mr: 1 }} /> {loadingImport ? 'Importando...' : 'Importar em Lote'}</MenuItem>
         <MenuItem onClick={() => { setActionsMenuAnchor(null); handleExportarEscolas(); }} disabled={loadingExport}><Download sx={{ mr: 1 }} /> {loadingExport ? 'Exportando...' : 'Exportar Excel'}</MenuItem>
       </Menu>
+
+      <LoadingOverlay 
+        open={criarEscolaMutation.isPending || loadingImport || loadingExport}
+        message={
+          criarEscolaMutation.isPending ? 'Salvando escola...' :
+          loadingImport ? 'Importando escolas...' :
+          loadingExport ? 'Exportando para Excel...' :
+          'Processando...'
+        }
+      />
     </PageContainer>
     </Box>
   );

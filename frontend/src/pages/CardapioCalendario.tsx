@@ -19,6 +19,7 @@ import { listarRefeicoes } from '../services/refeicoes';
 import { DndContext, DragOverlay, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
+import { LoadingOverlay } from '../components/LoadingOverlay';
 
 // Função para obter URL base da API
 const getApiBaseUrl = () => {
@@ -56,6 +57,8 @@ const CardapioCalendarioPage: React.FC = () => {
   const [refeicaoDetalhes, setRefeicaoDetalhes] = useState<any>(null);
   const [produtosRefeicao, setProdutosRefeicao] = useState<any[]>([]);
   const [loadingDetalhes, setLoadingDetalhes] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+  const [excluindo, setExcluindo] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [periodoForm, setPeriodoForm] = useState({
     diaInicio: 1,
@@ -756,6 +759,7 @@ const CardapioCalendarioPage: React.FC = () => {
   };
 
   const handleSubmit = async () => {
+    setSalvando(true);
     try {
       if (!formData.refeicao_id || !formData.tipo_refeicao) {
         error('Selecione a refeição e o tipo');
@@ -774,17 +778,22 @@ const CardapioCalendarioPage: React.FC = () => {
       loadData();
     } catch (err: any) {
       error(err.message || 'Erro ao adicionar refeição');
+    } finally {
+      setSalvando(false);
     }
   };
 
   const handleDelete = async (id: number) => {
     if (window.confirm('Remover esta refeição?')) {
+      setExcluindo(true);
       try {
         await removerRefeicaoDia(id);
         success('Refeição removida!');
         loadData();
       } catch (err) {
         error('Erro ao remover refeição');
+      } finally {
+        setExcluindo(false);
       }
     }
   };
@@ -1720,6 +1729,16 @@ const CardapioCalendarioPage: React.FC = () => {
           )}
         </DialogActions>
       </Dialog>
+
+      <LoadingOverlay 
+        open={salvando || excluindo || loadingDetalhes}
+        message={
+          salvando ? 'Salvando refeição...' :
+          excluindo ? 'Excluindo refeição...' :
+          loadingDetalhes ? 'Carregando detalhes...' :
+          'Processando...'
+        }
+      />
     </DndContext>
   );
 };

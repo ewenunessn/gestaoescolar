@@ -23,12 +23,15 @@ import {
 import { listarModalidades } from '../services/modalidadeService';
 import { useNutricionistaQueries } from '../hooks/queries/useNutricionistaQueries';
 import { useNavigate } from 'react-router-dom';
+import { LoadingOverlay } from '../components/LoadingOverlay';
 
 const CardapiosModalidadePage: React.FC = () => {
   const { setPageTitle } = usePageTitle();
   const [cardapios, setCardapios] = useState<CardapioModalidade[]>([]);
   const [modalidades, setModalidades] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+  const [excluindo, setExcluindo] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -228,6 +231,7 @@ const CardapiosModalidadePage: React.FC = () => {
   };
 
   const handleSubmit = async () => {
+    setSalvando(true);
     try {
       // Validação
       if (!formData.modalidade_id || !formData.nome || !formData.mes || !formData.ano) {
@@ -266,17 +270,22 @@ const CardapiosModalidadePage: React.FC = () => {
       loadData();
     } catch (err: any) {
       setErroCardapio(err.message || 'Erro ao salvar cardápio');
+    } finally {
+      setSalvando(false);
     }
   };
 
   const handleDelete = async (id: number) => {
     if (window.confirm('Remover este cardápio?')) {
+      setExcluindo(true);
       try {
         await removerCardapioModalidade(id);
         success('Cardápio removido!');
         loadData();
       } catch (err) {
         error('Erro ao remover cardápio');
+      } finally {
+        setExcluindo(false);
       }
     }
   };
@@ -685,6 +694,15 @@ const CardapiosModalidadePage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <LoadingOverlay 
+        open={salvando || excluindo}
+        message={
+          salvando ? 'Salvando cardápio...' :
+          excluindo ? 'Excluindo cardápio...' :
+          'Processando...'
+        }
+      />
     </Box>
   );
 };

@@ -21,6 +21,7 @@ import {
 import { useAtualizarProduto } from '../hooks/queries/useProdutoQueries';
 import PageBreadcrumbs from '../components/PageBreadcrumbs';
 import { toNum } from '../utils/formatters';
+import { LoadingOverlay } from '../components/LoadingOverlay';
 
 // --- Constantes ---
 const composicaoVazia = {
@@ -514,6 +515,16 @@ export default function ProdutoDetalhe() {
             <DialogContent><Typography>Tem certeza que deseja excluir o produto "{produto.nome}"? Esta ação é irreversível.</Typography></DialogContent>
             <DialogActions><Button onClick={() => setOpenExcluir(false)}>Cancelar</Button><Button onClick={handleDelete} variant="contained" color="delete">Excluir</Button></DialogActions>
         </Dialog>
+
+      <LoadingOverlay 
+        open={isSaving || isSavingComp || atualizarProdutoMutation.isPending}
+        message={
+          isSaving ? 'Salvando produto...' :
+          isSavingComp ? 'Salvando composição nutricional...' :
+          atualizarProdutoMutation.isPending ? 'Atualizando produto...' :
+          'Processando...'
+        }
+      />
     </Box>
   );
 }

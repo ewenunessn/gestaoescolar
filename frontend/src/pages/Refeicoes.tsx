@@ -50,6 +50,7 @@ import CompactPagination from '../components/CompactPagination';
 import { useNavigate } from 'react-router-dom';
 import { listarRefeicoes, criarRefeicao, editarRefeicao, deletarRefeicao } from '../services/refeicoes';
 import { Refeicao } from '../types/refeicao';
+import { LoadingOverlay } from '../components/LoadingOverlay';
 
 const RefeicoesPage = () => {
   const navigate = useNavigate();
@@ -59,6 +60,10 @@ const RefeicoesPage = () => {
   const [refeicoes, setRefeicoes] = useState<Refeicao[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Estados de operações
+  const [salvando, setSalvando] = useState(false);
+  const [excluindo, setExcluindo] = useState(false);
 
   // Estados do menu de ações
   const [actionsMenuAnchor, setActionsMenuAnchor] = useState<null | HTMLElement>(null);
@@ -236,6 +241,7 @@ const RefeicoesPage = () => {
   };
 
   const handleSave = async () => {
+    setSalvando(true);
     try {
       if (editingRefeicao) {
         await editarRefeicao(editingRefeicao.id, formData);
@@ -248,6 +254,8 @@ const RefeicoesPage = () => {
       await loadRefeicoes();
     } catch (err: any) {
       setError('Erro ao salvar refeição. Verifique os dados e tente novamente.');
+    } finally {
+      setSalvando(false);
     }
   };
 
@@ -263,6 +271,7 @@ const RefeicoesPage = () => {
 
   const handleDelete = async () => {
     if (!refeicaoToDelete) return;
+    setExcluindo(true);
     try {
       await deletarRefeicao(refeicaoToDelete.id);
       toast.success('Sucesso!', 'Refeição excluída com sucesso!');
@@ -273,6 +282,8 @@ const RefeicoesPage = () => {
         ? 'Não é possível excluir. A refeição está em uso em um ou mais cardápios.'
         : 'Erro ao excluir a refeição. Tente novamente.';
       setError(message);
+    } finally {
+      setExcluindo(false);
     }
   };
 
@@ -446,9 +457,9 @@ const RefeicoesPage = () => {
           </Box>
         </DialogContent>
         <DialogActions sx={{ p: 3, pt: 1 }}>
-          <Button onClick={closeModal} sx={{ color: 'text.secondary' }}>Cancelar</Button>
-          <Button onClick={handleSave} variant="contained" disabled={!formData.nome.trim()}>
-            {editingRefeicao ? 'Salvar Alterações' : 'Criar'}
+          <Button onClick={closeModal} sx={{ color: 'text.secondary' }} disabled={salvando}>Cancelar</Button>
+          <Button onClick={handleSave} variant="contained" disabled={!formData.nome.trim() || salvando}>
+            {salvando ? 'Salvando...' : (editingRefeicao ? 'Salvar Alterações' : 'Criar')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -462,8 +473,10 @@ const RefeicoesPage = () => {
           </Typography>
         </DialogContent>
         <DialogActions sx={{ p: 3, pt: 1 }}>
-            <Button onClick={closeDeleteModal} sx={{ color: 'text.secondary' }}>Cancelar</Button>
-            <Button onClick={handleDelete} color="delete" variant="contained">Excluir</Button>
+            <Button onClick={closeDeleteModal} sx={{ color: 'text.secondary' }} disabled={excluindo}>Cancelar</Button>
+            <Button onClick={handleDelete} color="delete" variant="contained" disabled={excluindo}>
+              {excluindo ? 'Excluindo...' : 'Excluir'}
+            </Button>
         </DialogActions>
       </Dialog>
       
@@ -474,6 +487,15 @@ const RefeicoesPage = () => {
             <Typography>Nenhuma ação disponível</Typography>
         </MenuItem>
       </Menu>
+
+      <LoadingOverlay 
+        open={salvando || excluindo}
+        message={
+          salvando ? 'Salvando refeição...' :
+          excluindo ? 'Excluindo refeição...' :
+          'Processando...'
+        }
+      />
     </Box>
   );
 };

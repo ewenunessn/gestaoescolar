@@ -36,6 +36,8 @@ import {
 } from '@mui/icons-material';
 import PageContainer from '../components/PageContainer';
 import PageHeader from '../components/PageHeader';
+import { SafeButtonWithOverlay } from '../components/SafeButtonWithOverlay';
+import { LoadingOverlay } from '../components/LoadingOverlay';
 import {
   usePeriodos,
   useCriarPeriodo,
@@ -305,49 +307,61 @@ const GerenciamentoPeriodos = () => {
                       <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
                         {!periodo.ativo && !periodo.fechado && (
                           <Tooltip title={periodo.ocultar_dados ? "Exibir dados nas listagens" : "Ocultar dados nas listagens"}>
-                            <IconButton
-                              size="small"
-                              color={periodo.ocultar_dados ? "warning" : "default"}
-                              onClick={() => handleToggleOcultarDados(periodo.id, periodo.ocultar_dados)}
-                            >
-                              {periodo.ocultar_dados ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                            </IconButton>
+                            <span>
+                              <IconButton
+                                size="small"
+                                color={periodo.ocultar_dados ? "warning" : "default"}
+                                onClick={() => handleToggleOcultarDados(periodo.id, periodo.ocultar_dados)}
+                                disabled={atualizarPeriodoMutation.isPending}
+                              >
+                                {periodo.ocultar_dados ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                              </IconButton>
+                            </span>
                           </Tooltip>
                         )}
                         
                         {!periodo.ativo && !periodo.fechado && (
                           <Tooltip title="Ativar período">
-                            <IconButton
-                              size="small"
-                              color="success"
-                              onClick={() => handleAtivar(periodo.id)}
-                            >
-                              <CheckCircleIcon />
-                            </IconButton>
+                            <span>
+                              <IconButton
+                                size="small"
+                                color="success"
+                                onClick={() => handleAtivar(periodo.id)}
+                                disabled={ativarPeriodoMutation.isPending}
+                              >
+                                <CheckCircleIcon />
+                              </IconButton>
+                            </span>
                           </Tooltip>
                         )}
                         
                         {!periodo.ativo && !periodo.fechado && (
                           <Tooltip title="Fechar período">
-                            <IconButton
-                              size="small"
-                              color="warning"
-                              onClick={() => handleFechar(periodo.id)}
-                            >
-                              <LockIcon />
-                            </IconButton>
+                            <span>
+                              <IconButton
+                                size="small"
+                                color="warning"
+                                onClick={() => handleFechar(periodo.id)}
+                                disabled={fecharPeriodoMutation.isPending}
+                              >
+                                <LockIcon />
+                              </IconButton>
+                            </span>
                           </Tooltip>
                         )}
                         
                         {periodo.fechado && (
                           <Tooltip title="Reabrir período">
-                            <IconButton
-                              size="small"
-                              color="info"
-                              onClick={() => handleReabrir(periodo.id)}
-                            >
-                              <LockOpenIcon />
-                            </IconButton>
+                            <span>
+                              <IconButton
+                                size="small"
+                                color="info"
+                                onClick={() => handleReabrir(periodo.id)}
+                                disabled={reabrirPeriodoMutation.isPending}
+                              >
+                                <LockOpenIcon />
+                              </IconButton>
+                            </span>
                           </Tooltip>
                         )}
                         
@@ -362,13 +376,16 @@ const GerenciamentoPeriodos = () => {
                         
                         {!periodo.ativo && (
                           <Tooltip title="Deletar">
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={() => handleDeletar(periodo.id, periodo.ano)}
-                            >
-                              <DeleteIcon />
-                            </IconButton>
+                            <span>
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => handleDeletar(periodo.id, periodo.ano)}
+                                disabled={deletarPeriodoMutation.isPending}
+                              >
+                                <DeleteIcon />
+                              </IconButton>
+                            </span>
                           </Tooltip>
                         )}
                       </Box>
@@ -431,6 +448,26 @@ const GerenciamentoPeriodos = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <LoadingOverlay 
+        open={
+          ativarPeriodoMutation.isPending ||
+          fecharPeriodoMutation.isPending ||
+          reabrirPeriodoMutation.isPending ||
+          deletarPeriodoMutation.isPending ||
+          atualizarPeriodoMutation.isPending ||
+          criarPeriodoMutation.isPending
+        }
+        message={
+          ativarPeriodoMutation.isPending ? 'Ativando período...' :
+          fecharPeriodoMutation.isPending ? 'Fechando período...' :
+          reabrirPeriodoMutation.isPending ? 'Reabrindo período...' :
+          deletarPeriodoMutation.isPending ? 'Excluindo período...' :
+          atualizarPeriodoMutation.isPending ? 'Atualizando período...' :
+          criarPeriodoMutation.isPending ? 'Criando período...' :
+          'Processando...'
+        }
+      />
     </PageContainer>
   );
 };

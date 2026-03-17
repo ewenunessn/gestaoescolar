@@ -68,6 +68,7 @@ import ImportacaoFornecedores from '../components/ImportacaoFornecedores';
 import ConfirmacaoExclusaoFornecedor from '../components/ConfirmacaoExclusaoFornecedor';
 import * as XLSX from 'xlsx';
 import { formatarDocumento } from "../utils/validacaoDocumento"; // Supondo que você tenha essa util
+import { LoadingOverlay } from '../components/LoadingOverlay';
 
 // Interfaces
 interface Fornecedor {
@@ -665,6 +666,20 @@ const FornecedoresPage: React.FC = () => {
         <MenuItem onClick={() => { setActionsMenuAnchor(null); setImportModalOpen(true); }}><Upload sx={{ mr: 1 }} /> Importar em Lote</MenuItem>
         <MenuItem onClick={() => { setActionsMenuAnchor(null); handleExportarFornecedores(); }}><Download sx={{ mr: 1 }} /> Exportar Excel</MenuItem>
       </Menu>
+
+      <LoadingOverlay 
+        open={
+          criarFornecedorMutation.isPending ||
+          atualizarFornecedorMutation.isPending ||
+          excluirFornecedorMutation.isPending
+        }
+        message={
+          criarFornecedorMutation.isPending ? 'Criando fornecedor...' :
+          atualizarFornecedorMutation.isPending ? 'Atualizando fornecedor...' :
+          excluirFornecedorMutation.isPending ? 'Excluindo fornecedor...' :
+          'Processando...'
+        }
+      />
     </Box>
   );
 };
