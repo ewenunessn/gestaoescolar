@@ -184,8 +184,22 @@ export const gerarPedidosPorPeriodo = async (req: Request, res: Response) => {
     // 2. Coletar todos os produto_ids únicos e buscar contratos
     const todosProdutoIds = [...new Set(demandasPorPeriodo.flatMap(d => d.demanda.map(p => p.produto_id)))];
     const contratosQuery = await client.query(`
-      SELECT cp.id as contrato_produto_id, cp.produto_id, cp.preco_unitario,
-             c.numero as contrato_numero, f.nome as fornecedor_nome
+      SELECT 
+        cp.id as contrato_produto_id, 
+        cp.produto_id, 
+        cp.preco_unitario,
+        cp.quantidade_contratada,
+        c.id as contrato_id,
+        c.numero as contrato_numero, 
+        c.data_fim as contrato_data_fim,
+        f.id as fornecedor_id,
+        f.nome as fornecedor_nome,
+        COALESCE(
+          (SELECT SUM(cpm2.quantidade_disponivel) 
+           FROM contrato_produtos_modalidades cpm2 
+           WHERE cpm2.contrato_produto_id = cp.id AND cpm2.ativo = true),
+          cp.quantidade_contratada
+        ) as saldo_disponivel
       FROM contrato_produtos cp
       JOIN contratos c ON c.id = cp.contrato_id
       JOIN fornecedores f ON f.id = c.fornecedor_id
@@ -194,20 +208,117 @@ export const gerarPedidosPorPeriodo = async (req: Request, res: Response) => {
       ORDER BY cp.produto_id, c.data_fim ASC
     `, [todosProdutoIds]);
 
-    const contratosPorProduto = new Map<number, any>();
+    // Agrupar TODOS os contratos por produto (não apenas o primeiro)
+    const contratosPorProduto = new Map<number, any[]>();
     for (const row of contratosQuery.rows) {
-      if (!contratosPorProduto.has(row.produto_id)) contratosPorProduto.set(row.produto_id, row);
+      if (!contratosPorProduto.has(row.produto_id)) {
+        contratosPorProduto.set(row.produto_id, []);
+      }
+      contratosPorProduto.get(row.produto_id)!.push(row);
     }
 
-    // 3. Montar itens: um por produto por período
-    const itensPorPeriodo: { periodo: Periodo; produto: ProdutoDemanda; contrato: any }[] = [];
+    // Identificar produtos com múltiplos contratos
+    const produtosComMultiplosContratos: any[] = [];
+    const produtosInfo = new Map<number, string>(); // produto_id -> nome
+    
+    for (const { demanda } of demandasPorPeriodo) {
+      for (const prod of demanda) {
+        produtosInfo.set(prod.produto_id, prod.produto_nome);
+        const contratos = contratosPorProduto.get(prod.produto_id) || [];
+        if (contratos.length > 1) {
+          const jaAdicionado = produtosComMultiplosContratos.find(p => p.produto_id === prod.produto_id);
+          if (!jaAdicionado) {
+            produtosComMultiplosContratos.push({
+              produto_id: prod.produto_id,
+              produto_nome: prod.produto_nome,
+              unidade: prod.unidade,
+              quantidade_necessaria: prod.quantidade_kg,
+              contratos: contratos.map(c => ({
+                contrato_produto_id: c.contrato_produto_id,
+                contrato_id: c.contrato_id,
+                contrato_numero: c.contrato_numero,
+                fornecedor_id: c.fornecedor_id,
+                fornecedor_nome: c.fornecedor_nome,
+                preco_unitario: c.preco_unitario,
+                saldo_disponivel: c.saldo_disponivel,
+                data_fim: c.contrato_data_fim
+              }))
+            });
+          }
+        }
+      }
+    }
+
+    // Se houver produtos com múltiplos contratos E não foi fornecida a seleção, retornar para seleção
+    const { contratos_selecionados } = req.body;
+    
+    if (produtosComMultiplosContratos.length > 0 && !contratos_selecionados) {
+      await client.query('ROLLBACK');
+      return res.status(200).json({
+        requer_selecao: true,
+        produtos_multiplos_contratos: produtosComMultiplosContratos,
+        mensagem: `${produtosComMultiplosContratos.length} produto(s) encontrado(s) em múltiplos contratos. Selecione qual contrato usar para cada produto.`
+      });
+    }
+
+    // Se foi fornecida seleção, usar os contratos selecionados
+    const contratosSelecionadosMap = new Map<number, Array<{ contrato_produto_id: number; quantidade?: number }>>();
+    if (contratos_selecionados) {
+      for (const sel of contratos_selecionados) {
+        if (!contratosSelecionadosMap.has(sel.produto_id)) {
+          contratosSelecionadosMap.set(sel.produto_id, []);
+        }
+        contratosSelecionadosMap.get(sel.produto_id)!.push({
+          contrato_produto_id: sel.contrato_produto_id,
+          quantidade: sel.quantidade
+        });
+      }
+    }
+
+    // Montar mapa final de contratos a usar (selecionados ou únicos)
+    const contratosParaUsar = new Map<number, Array<{ contrato: any; quantidade?: number }>>();
+    for (const [produto_id, contratos] of contratosPorProduto) {
+      if (contratos.length === 1) {
+        // Apenas um contrato, usar automaticamente
+        contratosParaUsar.set(produto_id, [{ contrato: contratos[0] }]);
+      } else if (contratosSelecionadosMap.has(produto_id)) {
+        // Múltiplos contratos, usar os selecionados
+        const selecionados = contratosSelecionadosMap.get(produto_id)!;
+        const contratosComDados = selecionados.map(sel => {
+          const contrato = contratos.find(c => c.contrato_produto_id === sel.contrato_produto_id);
+          return contrato ? { contrato, quantidade: sel.quantidade } : null;
+        }).filter(Boolean) as Array<{ contrato: any; quantidade?: number }>;
+        
+        if (contratosComDados.length > 0) {
+          contratosParaUsar.set(produto_id, contratosComDados);
+        }
+      }
+    }
+
+    // 3. Montar itens: um por produto por período (ou múltiplos se houver divisão)
+    const itensPorPeriodo: { periodo: Periodo; produto: ProdutoDemanda; contrato: any; quantidade?: number }[] = [];
     const semContrato = new Set<string>();
 
     for (const { periodo, demanda } of demandasPorPeriodo) {
       for (const prod of demanda) {
-        const contrato = contratosPorProduto.get(prod.produto_id);
-        if (!contrato) { semContrato.add(prod.produto_nome); continue; }
-        itensPorPeriodo.push({ periodo, produto: prod, contrato });
+        const contratosDoP = contratosParaUsar.get(prod.produto_id);
+        if (!contratosDoP || contratosDoP.length === 0) { 
+          semContrato.add(prod.produto_nome); 
+          continue; 
+        }
+        
+        // Se houver divisão de quantidade, criar um item por contrato
+        for (const { contrato, quantidade } of contratosDoP) {
+          itensPorPeriodo.push({ 
+            periodo, 
+            produto: {
+              ...prod,
+              quantidade_kg: quantidade !== undefined ? quantidade : prod.quantidade_kg
+            }, 
+            contrato,
+            quantidade
+          });
+        }
       }
     }
 
@@ -1067,8 +1178,22 @@ export const gerarPedidoDaGuia = async (req: Request, res: Response) => {
     // 4. Buscar contratos ativos para todos os produtos
     const todosProdutoIds = [...new Set(itensResult.rows.map((r: any) => r.produto_id))];
     const contratosResult = await client.query(`
-      SELECT cp.id as contrato_produto_id, cp.produto_id, cp.preco_unitario,
-             c.numero as contrato_numero, f.nome as fornecedor_nome
+      SELECT 
+        cp.id as contrato_produto_id, 
+        cp.produto_id, 
+        cp.preco_unitario,
+        cp.quantidade_contratada,
+        c.id as contrato_id,
+        c.numero as contrato_numero,
+        c.data_fim as contrato_data_fim,
+        f.id as fornecedor_id,
+        f.nome as fornecedor_nome,
+        COALESCE(
+          (SELECT SUM(cpm2.quantidade_disponivel) 
+           FROM contrato_produtos_modalidades cpm2 
+           WHERE cpm2.contrato_produto_id = cp.id AND cpm2.ativo = true),
+          cp.quantidade_contratada
+        ) as saldo_disponivel
       FROM contrato_produtos cp
       JOIN contratos c ON c.id = cp.contrato_id
       JOIN fornecedores f ON f.id = c.fornecedor_id
@@ -1077,16 +1202,95 @@ export const gerarPedidoDaGuia = async (req: Request, res: Response) => {
       ORDER BY cp.produto_id, c.data_fim ASC
     `, [todosProdutoIds]);
 
-    const contratosPorProduto = new Map<number, any>();
+    // Agrupar TODOS os contratos por produto
+    const contratosPorProduto = new Map<number, any[]>();
     for (const row of contratosResult.rows) {
-      if (!contratosPorProduto.has(row.produto_id)) contratosPorProduto.set(row.produto_id, row);
+      if (!contratosPorProduto.has(row.produto_id)) {
+        contratosPorProduto.set(row.produto_id, []);
+      }
+      contratosPorProduto.get(row.produto_id)!.push(row);
+    }
+
+    // Identificar produtos com múltiplos contratos
+    const produtosComMultiplosContratos: any[] = [];
+    const produtosInfo = new Map<number, string>();
+    
+    for (const grupo of grupos.values()) {
+      produtosInfo.set(grupo.produto_id, grupo.produto_nome);
+      const contratos = contratosPorProduto.get(grupo.produto_id) || [];
+      if (contratos.length > 1) {
+        const jaAdicionado = produtosComMultiplosContratos.find(p => p.produto_id === grupo.produto_id);
+        if (!jaAdicionado) {
+          const qtdTotal = grupo.escolas.reduce((sum, e) => sum + e.quantidade, 0);
+          produtosComMultiplosContratos.push({
+            produto_id: grupo.produto_id,
+            produto_nome: grupo.produto_nome,
+            unidade: 'kg',
+            quantidade_necessaria: qtdTotal,
+            contratos: contratos.map(c => ({
+              contrato_produto_id: c.contrato_produto_id,
+              contrato_id: c.contrato_id,
+              contrato_numero: c.contrato_numero,
+              fornecedor_id: c.fornecedor_id,
+              fornecedor_nome: c.fornecedor_nome,
+              preco_unitario: c.preco_unitario,
+              saldo_disponivel: c.saldo_disponivel,
+              data_fim: c.contrato_data_fim
+            }))
+          });
+        }
+      }
+    }
+
+    // Se houver produtos com múltiplos contratos E não foi fornecida a seleção, retornar para seleção
+    const { contratos_selecionados } = req.body;
+    
+    if (produtosComMultiplosContratos.length > 0 && !contratos_selecionados) {
+      await client.query('ROLLBACK');
+      return res.status(200).json({
+        requer_selecao: true,
+        produtos_multiplos_contratos: produtosComMultiplosContratos,
+        mensagem: `${produtosComMultiplosContratos.length} produto(s) encontrado(s) em múltiplos contratos. Selecione qual contrato usar para cada produto.`
+      });
+    }
+
+    // Se foi fornecida seleção, usar os contratos selecionados
+    const contratosSelecionadosMap = new Map<number, Array<{ contrato_produto_id: number; quantidade?: number }>>();
+    if (contratos_selecionados) {
+      for (const sel of contratos_selecionados) {
+        if (!contratosSelecionadosMap.has(sel.produto_id)) {
+          contratosSelecionadosMap.set(sel.produto_id, []);
+        }
+        contratosSelecionadosMap.get(sel.produto_id)!.push({
+          contrato_produto_id: sel.contrato_produto_id,
+          quantidade: sel.quantidade
+        });
+      }
+    }
+
+    // Montar mapa final de contratos a usar
+    const contratosParaUsar = new Map<number, Array<{ contrato: any; quantidade?: number }>>();
+    for (const [produto_id, contratos] of contratosPorProduto) {
+      if (contratos.length === 1) {
+        contratosParaUsar.set(produto_id, [{ contrato: contratos[0] }]);
+      } else if (contratosSelecionadosMap.has(produto_id)) {
+        const selecionados = contratosSelecionadosMap.get(produto_id)!;
+        const contratosComDados = selecionados.map(sel => {
+          const contrato = contratos.find(c => c.contrato_produto_id === sel.contrato_produto_id);
+          return contrato ? { contrato, quantidade: sel.quantidade } : null;
+        }).filter(Boolean) as Array<{ contrato: any; quantidade?: number }>;
+        
+        if (contratosComDados.length > 0) {
+          contratosParaUsar.set(produto_id, contratosComDados);
+        }
+      }
     }
 
     // 5. Separar grupos com e sem contrato
     const semContrato: string[] = [];
     const gruposComContrato: typeof grupos = new Map();
     for (const [key, grupo] of grupos) {
-      if (!contratosPorProduto.has(grupo.produto_id)) {
+      if (!contratosParaUsar.has(grupo.produto_id) || contratosParaUsar.get(grupo.produto_id)!.length === 0) {
         semContrato.push(grupo.produto_nome);
       } else {
         gruposComContrato.set(key, grupo);
@@ -1127,35 +1331,58 @@ export const gerarPedidoDaGuia = async (req: Request, res: Response) => {
 
     // 7. Inserir itens e programações
     for (const grupo of gruposComContrato.values()) {
-      const contrato = contratosPorProduto.get(grupo.produto_id)!;
-      const qtdTotal = grupo.escolas.reduce((s, e) => s + e.quantidade, 0);
-      const preco = toNum(contrato.preco_unitario);
-      const dataEntrega = grupo.data_entrega || new Date().toISOString().split('T')[0];
+      const contratosDoP = contratosParaUsar.get(grupo.produto_id)!;
+      
+      // Se houver divisão, criar um item por contrato
+      for (const { contrato, quantidade: qtdContrato } of contratosDoP) {
+        // Se quantidade foi especificada (divisão), usar ela; senão usar total do grupo
+        const qtdTotal = qtdContrato !== undefined 
+          ? qtdContrato 
+          : grupo.escolas.reduce((s, e) => s + e.quantidade, 0);
+        
+        const preco = toNum(contrato.preco_unitario);
+        const dataEntrega = grupo.data_entrega || new Date().toISOString().split('T')[0];
 
-      const itemResult = await client.query(`
-        INSERT INTO pedido_itens (pedido_id, contrato_produto_id, produto_id, quantidade, preco_unitario, valor_total, data_entrega_prevista, observacoes)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-        RETURNING id
-      `, [pedido_id, contrato.contrato_produto_id, grupo.produto_id, qtdTotal, preco, qtdTotal * preco,
-          dataEntrega, `Guia #${guia_id}`]);
+        const itemResult = await client.query(`
+          INSERT INTO pedido_itens (pedido_id, contrato_produto_id, produto_id, quantidade, preco_unitario, valor_total, data_entrega_prevista, observacoes)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          RETURNING id
+        `, [pedido_id, contrato.contrato_produto_id, grupo.produto_id, qtdTotal, preco, qtdTotal * preco,
+            dataEntrega, qtdContrato !== undefined ? `Guia #${guia_id} (${qtdTotal.toFixed(2)}kg deste contrato)` : `Guia #${guia_id}`]);
 
-      const pedido_item_id = itemResult.rows[0].id;
+        const pedido_item_id = itemResult.rows[0].id;
 
-      // Programação de entrega
-      const progResult = await client.query(`
-        INSERT INTO pedido_item_programacoes (pedido_item_id, data_entrega, observacoes)
-        VALUES ($1, $2, $3) RETURNING id
-      `, [pedido_item_id, dataEntrega, `Guia de Demanda #${guia_id}`]);
+        // Programação de entrega
+        const progResult = await client.query(`
+          INSERT INTO pedido_item_programacoes (pedido_item_id, data_entrega, observacoes)
+          VALUES ($1, $2, $3) RETURNING id
+        `, [pedido_item_id, dataEntrega, `Guia de Demanda #${guia_id}`]);
 
-      const programacao_id = progResult.rows[0].id;
+        const programacao_id = progResult.rows[0].id;
 
-      // Escolas com quantidades
-      for (const esc of grupo.escolas) {
-        if (esc.quantidade > 0) {
-          await client.query(`
-            INSERT INTO pedido_item_programacao_escolas (programacao_id, escola_id, quantidade)
-            VALUES ($1, $2, $3)
-          `, [programacao_id, esc.escola_id, Math.round(esc.quantidade * 1000) / 1000]);
+        // Escolas com quantidades (proporcionais se houver divisão)
+        if (qtdContrato !== undefined) {
+          // Divisão: distribuir proporcionalmente entre escolas
+          const totalGrupo = grupo.escolas.reduce((s, e) => s + e.quantidade, 0);
+          for (const esc of grupo.escolas) {
+            if (esc.quantidade > 0) {
+              const qtdProporcional = (esc.quantidade / totalGrupo) * qtdContrato;
+              await client.query(`
+                INSERT INTO pedido_item_programacao_escolas (programacao_id, escola_id, quantidade)
+                VALUES ($1, $2, $3)
+              `, [programacao_id, esc.escola_id, Math.round(qtdProporcional * 1000) / 1000]);
+            }
+          }
+        } else {
+          // Sem divisão: usar quantidades originais
+          for (const esc of grupo.escolas) {
+            if (esc.quantidade > 0) {
+              await client.query(`
+                INSERT INTO pedido_item_programacao_escolas (programacao_id, escola_id, quantidade)
+                VALUES ($1, $2, $3)
+              `, [programacao_id, esc.escola_id, Math.round(esc.quantidade * 1000) / 1000]);
+            }
+          }
         }
       }
     }

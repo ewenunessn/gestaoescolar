@@ -141,8 +141,16 @@ export interface GerarPedidoDaGuiaResponse {
   total_erros: number;
 }
 
-export async function gerarPedidoDaGuia(guia_id: number, observacoes?: string): Promise<GerarPedidoDaGuiaResponse> {
-  const response = await api.post('/planejamento-compras/gerar-pedido-da-guia', { guia_id, observacoes });
+export async function gerarPedidoDaGuia(
+  guia_id: number, 
+  contratos_selecionados?: { produto_id: number; contrato_produto_id: number; quantidade?: number }[],
+  observacoes?: string
+): Promise<GerarPedidoDaGuiaResponse> {
+  const response = await api.post('/planejamento-compras/gerar-pedido-da-guia', { 
+    guia_id, 
+    contratos_selecionados,
+    observacoes 
+  });
   return response.data;
 }
 
@@ -150,12 +158,14 @@ export async function gerarPedidosPorPeriodo(
   competencia: string,
   periodos: PeriodoGerarPedido[],
   escola_ids?: number[],
+  contratos_selecionados?: { produto_id: number; contrato_produto_id: number; quantidade?: number }[],
   observacoes?: string
 ): Promise<GerarPedidosResponse> {
   const response = await api.post('/planejamento-compras/gerar-pedidos', {
     competencia,
     periodos,
     escola_ids,
+    contratos_selecionados,
     observacoes
   });
   return response.data;

@@ -4,6 +4,7 @@ import { usePageTitle } from '../contexts/PageTitleContext';
 import { useToast } from '../hooks/useToast';
 import CalculoDetalhadoModal from '../components/CalculoDetalhadoModal';
 import SeletorPeriodoCalendario from '../components/SeletorPeriodoCalendario';
+import SelecionarContratosDialog from '../components/SelecionarContratosDialog';
 import { toNum } from '../utils/formatters';
 import {
   Box,
@@ -92,6 +93,11 @@ export default function PlanejamentoCompras() {
   const [resultadoGeracao, setResultadoGeracao] = useState<any>(null);
   const [seletorOpen, setSeletorOpen] = useState(false);
 
+  // Estados para seleção de contratos
+  const [produtosMultiplosContratos, setProdutosMultiplosContratos] = useState<any[]>([]);
+  const [dialogSelecaoContratos, setDialogSelecaoContratos] = useState(false);
+  const [contratosSelecionados, setContratosSelecionados] = useState<any[]>([]);
+
   // Gerar pedido da guia
   const [guias, setGuias] = useState<any[]>([]);
   const [guiaSelecionada, setGuiaSelecionada] = useState<any | null>(null);
@@ -178,10 +184,25 @@ export default function PlanejamentoCompras() {
     setGerandoPedidoGuia(true);
     setResultadoPedidoGuia(null);
     try {
-      const res = await gerarPedidoDaGuia(guiaSelecionada.id);
+      const res = await gerarPedidoDaGuia(
+        guiaSelecionada.id,
+        contratosSelecionados.length > 0 ? contratosSelecionados : undefined
+      );
+      
+      // Se requer seleção de contratos, abrir dialog
+      if (res.requer_selecao) {
+        setProdutosMultiplosContratos(res.produtos_multiplos_contratos || []);
+        setDialogSelecaoContratos(true);
+        toast.info('Seleção necessária', res.mensagem || 'Selecione os contratos para continuar');
+        return;
+      }
+      
       setResultadoPedidoGuia(res);
       if (res.total_criados > 0) {
         toast.success('Pedido gerado', `Pedido ${res.pedidos_criados[0].numero} criado com sucesso`);
+        // Limpar seleção após sucesso
+        setContratosSelecionados([]);
+        setProdutosMultiplosContratos([]);
       } else {
         toast.error('Erro', res.erros?.[0]?.motivo || 'Nenhum pedido criado');
       }
@@ -231,11 +252,24 @@ export default function PlanejamentoCompras() {
       const res = await gerarPedidosPorPeriodo(
         competencia,
         periodos,
-        escolasSelecionadas.length > 0 ? escolasSelecionadas.map(e => e.id) : undefined
+        escolasSelecionadas.length > 0 ? escolasSelecionadas.map(e => e.id) : undefined,
+        contratosSelecionados.length > 0 ? contratosSelecionados : undefined
       );
+      
+      // Se requer seleção de contratos, abrir dialog
+      if (res.requer_selecao) {
+        setProdutosMultiplosContratos(res.produtos_multiplos_contratos || []);
+        setDialogSelecaoContratos(true);
+        toast.info('Seleção necessária', res.mensagem || 'Selecione os contratos para continuar');
+        return;
+      }
+      
       setResultadoGeracao(res);
       if (res.total_criados > 0) {
         toast.success('Pedidos gerados', `${res.total_criados} pedido(s) criado(s) com sucesso`);
+        // Limpar seleção após sucesso
+        setContratosSelecionados([]);
+        setProdutosMultiplosContratos([]);
       } else {
         const motivos = res.erros?.map((e: any) => e.motivo).join('; ') || 'Verifique os erros abaixo';
         toast.error('Nenhum pedido criado', motivos);
@@ -247,6 +281,24 @@ export default function PlanejamentoCompras() {
       setGerandoPedidos(false);
     }
   }
+
+  const handleConfirmarSelecaoContratos = (selecao: { produto_id: number; contrato_produto_id: number }[]) => {
+    setContratosSelecionados(selecao);
+    setDialogSelecaoContratos(false);
+    // Tentar gerar pedidos novamente com a seleção
+    // Verificar qual função estava sendo executada
+    if (guiaSelecionada) {
+      setTimeout(() => handleGerarPedidoDaGuia(), 100);
+    } else {
+      setTimeout(() => handleGerarPedidos(), 100);
+    }
+  };
+
+  const handleCancelarSelecaoContratos = () => {
+    setDialogSelecaoContratos(false);
+    setProdutosMultiplosContratos([]);
+    setContratosSelecionados([]);
+  };
 
   async function handleCalcular() {
     if (!competencia) {
@@ -716,6 +768,14 @@ export default function PlanejamentoCompras() {
         periodosExistentes={periodos}
         competencia={competencia || undefined}
         titulo={periodos.length === 0 ? 'Selecionar 1º Período' : `Adicionar Período ${periodos.length + 1}`}
+      />
+
+      {/* Dialog de Seleção de Contratos */}
+      <SelecionarContratosDialog
+        open={dialogSelecaoContratos}
+        onClose={handleCancelarSelecaoContratos}
+        produtos={produtosMultiplosContratos}
+        onConfirmar={handleConfirmarSelecaoContratos}
       />
     </LocalizationProvider>
   );
