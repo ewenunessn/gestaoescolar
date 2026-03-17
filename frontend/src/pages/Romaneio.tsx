@@ -4,6 +4,7 @@ import TableFilter, { FilterField } from '../components/TableFilter';
 import StatusIndicator from '../components/StatusIndicator';
 import ViewTabs, { ViewTab } from '../components/ViewTabs';
 import { usePageTitle } from '../contexts/PageTitleContext';
+import { useRomaneio, useRotas, useAtualizarProdutoEscola } from '../hooks/queries/useRomaneioQueries';
 // Atualizado em 2026-03-08 13:46 - Todas as referências a dataInicio/dataFim agora usam filters.dataInicio/filters.dataFim
 import {
   Box,
@@ -59,11 +60,10 @@ import {
   Refresh as RefreshIcon
 } from '@mui/icons-material';
 import { useNotification } from '../context/NotificationContext';
-import { guiaService } from '../services/guiaService';
-import { rotaService } from '../modules/entregas/services/rotaService';
 import { RotaEntrega } from '../modules/entregas/types/rota';
 import { format } from 'date-fns';
 import QRCode from 'qrcode';
+import { LoadingOverlay } from '../components/LoadingOverlay';
 
 interface ItemRomaneio {
   id: number;
@@ -85,9 +85,6 @@ interface RomaneioPorEscola {
 
 const Romaneio: React.FC = () => {
   const { setPageTitle } = usePageTitle();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [itens, setItens] = useState<ItemRomaneio[]>([]);
   
   // Filtros - NOVO SISTEMA
   const [filterOpen, setFilterOpen] = useState(false);
@@ -104,7 +101,18 @@ const Romaneio: React.FC = () => {
   });
   
   const [rotaIds, setRotaIds] = useState<number[]>([]);
-  const [rotas, setRotas] = useState<RotaEntrega[]>([]);
+  
+  // React Query hooks
+  const { data: rotas = [], isLoading: loadingRotas } = useRotas();
+  const { data: itens = [], isLoading: loading, error: queryError } = useRomaneio({
+    data_inicio: filters.dataInicio,
+    data_fim: filters.dataFim,
+    status: filters.status === 'todos' ? undefined : filters.status,
+    rota_id: rotaIds.length === 1 ? rotaIds[0] : undefined
+  });
+  const atualizarProdutoEscolaMutation = useAtualizarProdutoEscola();
+  
+  const error = queryError ? 'Erro ao carregar dados do romaneio' : null;
 
   // Definir título da página
   useEffect(() => {
@@ -129,48 +137,14 @@ const Romaneio: React.FC = () => {
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
   const [showQRDialog, setShowQRDialog] = useState(false);
 
-  const carregarRotas = async () => {
-    try {
-      const data = await rotaService.listarRotas();
-      setRotas(data);
-    } catch (err) {
-      console.error('Erro ao carregar rotas:', err);
-    }
-  };
-
-  const carregarRomaneio = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await guiaService.listarRomaneio({
-        data_inicio: filters.dataInicio || new Date().toISOString().split('T')[0],
-        data_fim: filters.dataFim || new Date().toISOString().split('T')[0],
-        status: filters.status === 'todos' ? undefined : filters.status,
-        rota_id: rotaIds.length === 1 ? rotaIds[0] : undefined
-      });
-      setItens(Array.isArray(data) ? data : []);
-      
-      // Gerar QR Code automaticamente se houver rotas selecionadas
-      if (rotaIds.length > 0) {
-        await gerarQRCodeAutomatico();
-      } else {
-        setQrCodeUrl('');
-      }
-    } catch (err) {
-      console.error('Erro ao carregar romaneio:', err);
-      setError('Erro ao carregar dados do romaneio');
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Gerar QR Code automaticamente quando houver rotas selecionadas
   useEffect(() => {
-    carregarRotas();
-  }, []);
-
-  useEffect(() => {
-    carregarRomaneio();
-  }, [filters, rotaIds]);
+    if (rotaIds.length > 0 && filters.dataInicio && filters.dataFim) {
+      gerarQRCodeAutomatico();
+    } else {
+      setQrCodeUrl('');
+    }
+  }, [rotaIds, filters.dataInicio, filters.dataFim]);
 
   const handlePrint = async () => {
     // Gerar QR Code antes de imprimir se houver rotas selecionadas
@@ -423,7 +397,11 @@ const Romaneio: React.FC = () => {
         return;
       }
 
-      await guiaService.atualizarProdutoEscola(itemId, { status: newStatus });
+      await atualizarProdutoEscolaMutation.mutateAsync({
+        id: itemId,
+        data: { status: newStatus }
+      });
+      
       success(`Status atualizado para ${getStatusItemLabel(newStatus)}`);
       
       // Atualizar lista localmente
@@ -433,9 +411,6 @@ const Romaneio: React.FC = () => {
         );
         setSelectedProduct({ ...selectedProduct, escolas: updatedEscolas });
       }
-      
-      // Recarregar dados gerais
-      carregarRomaneio();
       
     } catch (err: any) {
       console.error('Erro ao atualizar status:', err);
@@ -532,7 +507,7 @@ const Romaneio: React.FC = () => {
               >
                 Filtros
               </Button>
-              <IconButton size="small" onClick={carregarRomaneio} disabled={loading} title="Atualizar">
+              <IconButton size="small" disabled={loading} title="Atualizar (dados atualizados automaticamente)">
                 <RefreshIcon />
               </IconButton>
               <Button
@@ -996,6 +971,12 @@ const Romaneio: React.FC = () => {
       </PageContainer>
 
       {/* Modais fora do PageContainer */}
+      
+      {/* Loading Overlay */}
+      <LoadingOverlay 
+        open={atualizarProdutoEscolaMutation.isPending}
+        message="Atualizando status..."
+      />
     </Box>
   );
 };

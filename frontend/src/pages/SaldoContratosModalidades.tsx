@@ -47,6 +47,16 @@ import saldoContratosModalidadesService, {
   ProdutoContratoOption,
   SaldoContratosModalidadesFilters
 } from '../services/saldoContratosModalidadesService';
+import {
+  useSaldosModalidades,
+  useModalidades,
+  useProdutosContratos,
+  useCadastrarSaldoModalidade,
+  useRegistrarConsumo,
+  useExcluirConsumo,
+  useHistoricoConsumo
+} from '../hooks/queries/useSaldoContratosQueries';
+import { LoadingOverlay } from '../components/LoadingOverlay';
 
 
 
@@ -143,10 +153,6 @@ const ModalidadeRow: React.FC<ModalidadeRowProps> = ({
 };
 
 const SaldoContratosModalidades: React.FC = () => {
-  const [dados, setDados] = useState<SaldoContratoModalidadeItem[]>([]);
-  const [modalidades, setModalidades] = useState<ModalidadeOption[]>([]);
-  const [produtosContratos, setProdutosContratos] = useState<ProdutoContratoOption[]>([]);
-  const [loading, setLoading] = useState(true);
   const { success, error: toastError } = useToast();
   const timeoutRef = React.useRef<number | null>(null);
 
@@ -165,23 +171,17 @@ const SaldoContratosModalidades: React.FC = () => {
 
   // Estados para quantidade inicial
   const [quantidadeInicial, setQuantidadeInicial] = useState('');
-  const [salvandoQuantidade, setSalvandoQuantidade] = useState(false);
 
   // Estados para consumo
   const [quantidadeConsumo, setQuantidadeConsumo] = useState('');
   const [dataConsumo, setDataConsumo] = useState('');
   const [observacaoConsumo, setObservacaoConsumo] = useState('');
-  const [registrandoConsumo, setRegistrandoConsumo] = useState(false);
 
-  // Estados para histórico
-  const [historicoConsumo, setHistoricoConsumo] = useState<any[]>([]);
-  const [carregandoHistorico, setCarregandoHistorico] = useState(false);
+  // Estados para histórico - agora usa React Query
 
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(25);
-  const [total, setTotal] = useState(0);
-  const [estatisticas, setEstatisticas] = useState<any>(null);
 
   // Estados de filtros - NOVO SISTEMA
   const [filterOpen, setFilterOpen] = useState(false);
@@ -193,6 +193,30 @@ const SaldoContratosModalidades: React.FC = () => {
     page: 1,
     limit: 25
   });
+
+  // React Query hooks
+  const { data: responseData, isLoading: loading } = useSaldosModalidades({
+    ...filtros,
+    page: page + 1,
+    limit: rowsPerPage
+  });
+  const { data: modalidades = [] } = useModalidades();
+  const { data: produtosContratos = [] } = useProdutosContratos();
+  const cadastrarSaldoMutation = useCadastrarSaldoModalidade();
+  const registrarConsumoMutation = useRegistrarConsumo();
+  const excluirConsumoMutation = useExcluirConsumo();
+  
+  // Hook para histórico (só carrega quando itemSelecionado existe)
+  const { data: historicoData, isLoading: carregandoHistorico } = useHistoricoConsumo(
+    itemSelecionado?.id || 0,
+    !!itemSelecionado && dialogHistoricoOpen
+  );
+  
+  // Extrair dados da resposta
+  const dados = responseData?.data || [];
+  const total = responseData?.pagination?.total || 0;
+  const estatisticas = responseData?.estatisticas || null;
+  const historicoConsumo = historicoData?.data?.historico || [];
 
   // Definir campos de filtro
   const filterFields: FilterField[] = useMemo(() => [
@@ -237,18 +261,6 @@ const SaldoContratosModalidades: React.FC = () => {
       }
     }
   }, [contratoSelecionadoIndex, dialogSelecionarContrato]);
-
-  // Carregar dados iniciais
-  useEffect(() => {
-    carregarDados();
-    carregarModalidades();
-    carregarProdutosContratos();
-  }, []);
-
-  // Recarregar quando filtros mudarem
-  useEffect(() => {
-    carregarDados();
-  }, [filtros]);
 
   // Atalhos de teclado
   useEffect(() => {
@@ -390,45 +402,6 @@ const SaldoContratosModalidades: React.FC = () => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [filters, dados, linhaSelecionada, dialogGerenciarModalidades, dialogQuantidadeInicial, dialogConsumoAberto, dialogHistoricoOpen, modalidadesProduto, modalidadeEditandoIndex]);
-
-  const carregarDados = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await saldoContratosModalidadesService.listarSaldosModalidades({
-        ...filtros,
-        page: page + 1,
-        limit: rowsPerPage
-      });
-
-      setDados(response.data);
-      setTotal(response.pagination.total);
-      setEstatisticas(response.estatisticas);
-    } catch (err: any) {
-      setError(err.message || 'Erro ao carregar dados');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const carregarModalidades = async () => {
-    try {
-      const modalidadesList = await saldoContratosModalidadesService.listarModalidades();
-      setModalidades(modalidadesList);
-    } catch (err) {
-      console.error('Erro ao carregar modalidades:', err);
-    }
-  };
-
-  const carregarProdutosContratos = async () => {
-    try {
-      const produtosList = await saldoContratosModalidadesService.listarProdutosContratos();
-      setProdutosContratos(produtosList);
-    } catch (err) {
-      console.error('Erro ao carregar produtos de contratos:', err);
-    }
-  };
 
   // Funções para gerenciar modalidades
   const abrirDialogSelecionarContrato = (produto: any) => {
@@ -604,10 +577,8 @@ const SaldoContratosModalidades: React.FC = () => {
       return;
     }
 
-    setSalvandoQuantidade(true);
-
     try {
-      await saldoContratosModalidadesService.cadastrarSaldoModalidade({
+      await cadastrarSaldoMutation.mutateAsync({
         contrato_produto_id: produtoSelecionado.contrato_produto_id,
         modalidade_id: modalidadeSelecionada.id,
         quantidade_inicial: novaQuantidade
@@ -626,13 +597,9 @@ const SaldoContratosModalidades: React.FC = () => {
 
       fecharDialogQuantidadeInicial();
 
-      // Recarregar dados da tabela principal em background
-      carregarDados();
     } catch (error: any) {
       console.error('Erro ao salvar quantidade inicial:', error);
       setError(error.response?.data?.message || 'Erro ao salvar quantidade inicial');
-    } finally {
-      setSalvandoQuantidade(false);
     }
   };
 
@@ -675,11 +642,10 @@ const SaldoContratosModalidades: React.FC = () => {
       return;
     }
 
-    setSalvandoQuantidade(true);
     console.log('Iniciando salvamento...');
 
     try {
-      await saldoContratosModalidadesService.cadastrarSaldoModalidade({
+      await cadastrarSaldoMutation.mutateAsync({
         contrato_produto_id: produtoSelecionado.contrato_produto_id,
         modalidade_id: modalidadeSelecionada.id,
         quantidade_inicial: novaQuantidade
@@ -717,13 +683,9 @@ const SaldoContratosModalidades: React.FC = () => {
         success('Todas as quantidades foram atualizadas!');
       }
 
-      // Recarregar dados da tabela principal em background
-      carregarDados();
     } catch (error: any) {
       console.error('Erro ao salvar quantidade inicial:', error);
       setError(error.response?.data?.message || 'Erro ao salvar quantidade inicial');
-    } finally {
-      setSalvandoQuantidade(false);
     }
   };
 
@@ -764,14 +726,15 @@ const SaldoContratosModalidades: React.FC = () => {
     }
 
     try {
-      await saldoContratosModalidadesService.excluirConsumoModalidade(itemSelecionado.id, consumoId);
+      await excluirConsumoMutation.mutateAsync({
+        saldoId: itemSelecionado.id,
+        consumoId: consumoId
+      });
+      
       success('Consumo excluído com sucesso!');
 
       // Recarregar histórico
       await abrirDialogHistorico(itemSelecionado);
-
-      // Recarregar dados da tabela principal
-      await carregarDados();
 
       // Se o modal de gerenciar modalidades estiver aberto, recarregar também
       if (dialogGerenciarModalidades && produtoSelecionado) {
@@ -823,21 +786,16 @@ const SaldoContratosModalidades: React.FC = () => {
       return;
     }
 
-    setRegistrandoConsumo(true);
-
     try {
-      await saldoContratosModalidadesService.registrarConsumoModalidade(
-        itemSelecionado.id,
-        quantidade,
-        observacaoConsumo || undefined,
-        dataConsumo || undefined
-      );
+      await registrarConsumoMutation.mutateAsync({
+        id: itemSelecionado.id,
+        quantidade: quantidade,
+        observacao: observacaoConsumo || undefined,
+        dataConsumo: dataConsumo || undefined
+      });
 
       success('Consumo registrado com sucesso!');
       fecharDialogConsumo();
-
-      // Recarregar dados da tabela principal
-      await carregarDados();
 
       // Se o modal de gerenciar modalidades estiver aberto, recarregar também
       if (dialogGerenciarModalidades && produtoSelecionado) {
@@ -846,8 +804,6 @@ const SaldoContratosModalidades: React.FC = () => {
     } catch (error: any) {
       console.error('Erro ao registrar consumo:', error);
       setError(error.response?.data?.message || 'Erro ao registrar consumo');
-    } finally {
-      setRegistrandoConsumo(false);
     }
   };
 
@@ -856,23 +812,12 @@ const SaldoContratosModalidades: React.FC = () => {
     setItemSelecionado(item);
     setError(null);
     setDialogHistoricoOpen(true);
-    setCarregandoHistorico(true);
-
-    try {
-      const result = await saldoContratosModalidadesService.buscarHistoricoConsumoModalidade(item.id);
-      setHistoricoConsumo(result.data?.historico || []);
-    } catch (error) {
-      console.error('Erro ao carregar histórico de consumo:', error);
-      setHistoricoConsumo([]);
-    } finally {
-      setCarregandoHistorico(false);
-    }
+    // O histórico será carregado automaticamente pelo hook useHistoricoConsumo
   };
 
   const fecharDialogHistorico = () => {
     setDialogHistoricoOpen(false);
     setItemSelecionado(null);
-    setHistoricoConsumo([]);
   };
 
   // Agrupar dados por produto (somando todos os contratos)
@@ -1654,6 +1599,20 @@ const SaldoContratosModalidades: React.FC = () => {
             </Button>
           </DialogActions>
         </Dialog>
+        
+        {/* Loading Overlays */}
+        <LoadingOverlay 
+          open={cadastrarSaldoMutation.isPending}
+          message="Salvando quantidade inicial..."
+        />
+        <LoadingOverlay 
+          open={registrarConsumoMutation.isPending}
+          message="Registrando consumo..."
+        />
+        <LoadingOverlay 
+          open={excluirConsumoMutation.isPending}
+          message="Excluindo consumo..."
+        />
     </Box>
   );
 };
