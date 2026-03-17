@@ -38,3 +38,5 @@ export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
     </Backdrop>
   );
 };
+
+export default LoadingOverlay;
