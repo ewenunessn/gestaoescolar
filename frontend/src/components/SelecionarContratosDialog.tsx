@@ -8,6 +8,7 @@ import {
   Close as CloseIcon, CheckCircle as CheckIcon, CallSplit as DividirIcon, 
   Add as AddIcon, Delete as DeleteIcon,
 } from '@mui/icons-material';
+import { toNum, toFixed, formatarMoeda } from '../utils/formatters';
 
 interface Contrato {
   contrato_produto_id: number;
@@ -133,12 +134,13 @@ export default function SelecionarContratosDialog({ open, onClose, produtos, onC
     
     produtos.forEach(produto => {
       let restante = produto.quantidade_necessaria;
-      const contratosOrdenados = [...produto.contratos].sort((a, b) => b.saldo_disponivel - a.saldo_disponivel);
+      const contratosOrdenados = [...produto.contratos].sort((a, b) => toNum(b.saldo_disponivel) - toNum(a.saldo_disponivel));
       const distribuicao: ContratoSelecionado[] = [];
 
       for (const contrato of contratosOrdenados) {
         if (restante <= 0) break;
-        const quantidade = Math.min(restante, contrato.saldo_disponivel);
+        const saldo = toNum(contrato.saldo_disponivel);
+        const quantidade = Math.min(restante, saldo);
         if (quantidade > 0) {
           distribuicao.push({ contrato_produto_id: contrato.contrato_produto_id, quantidade });
           restante -= quantidade;
@@ -185,9 +187,6 @@ export default function SelecionarContratosDialog({ open, onClose, produtos, onC
     
     return true;
   });
-
-  const formatarMoeda = (valor: number) => 
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
 
   const getContrato = (produto: ProdutoMultiplosContratos, contrato_produto_id: number) => {
     return produto.contratos.find(c => c.contrato_produto_id === contrato_produto_id);
@@ -266,7 +265,7 @@ export default function SelecionarContratosDialog({ open, onClose, produtos, onC
                                   <Box>
                                     <Typography variant="body2">{c.fornecedor_nome}</Typography>
                                     <Typography variant="caption" color="text.secondary">
-                                      {c.contrato_numero} • {formatarMoeda(c.preco_unitario)}/{produto.unidade} • Saldo: {c.saldo_disponivel.toFixed(2)}
+                                      {c.contrato_numero} • {formatarMoeda(c.preco_unitario)}/{produto.unidade} • Saldo: {toFixed(c.saldo_disponivel, 2)}
                                     </Typography>
                                   </Box>
                                 </MenuItem>
@@ -295,7 +294,7 @@ export default function SelecionarContratosDialog({ open, onClose, produtos, onC
                         </Box>
 
                         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-                          Valor: {formatarMoeda(contratoSel.quantidade * contrato.preco_unitario)}
+                          Valor: {formatarMoeda(contratoSel.quantidade * toNum(contrato.preco_unitario))}
                         </Typography>
                       </Box>
                     );
