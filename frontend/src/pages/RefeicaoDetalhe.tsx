@@ -5,18 +5,19 @@ import CompactPagination from '../components/CompactPagination';
 import AdicionarIngredienteDialog from '../components/AdicionarIngredienteDialog';
 import EditarIngredienteDialog from '../components/EditarIngredienteDialog';
 import { usePageTitle } from "../contexts/PageTitleContext";
-import {
-  buscarRefeicao,
-  editarRefeicao,
-  deletarRefeicao,
-  listarProdutosDaRefeicao,
-  adicionarProdutoNaRefeicao,
-  editarProdutoNaRefeicao,
-  removerProdutoDaRefeicao,
-} from "../services/refeicoes";
-import { listarProdutos } from "../services/produtos";
-import { listarModalidades, Modalidade } from "../services/modalidades";
+import { Modalidade } from "../services/modalidades";
 import { useToast } from "../hooks/useToast";
+import {
+  useRefeicao,
+  useProdutosDaRefeicao,
+  useProdutos,
+  useModalidades,
+  useEditarRefeicao,
+  useDeletarRefeicao,
+  useAdicionarProdutoNaRefeicao,
+  useEditarProdutoNaRefeicao,
+  useRemoverProdutoDaRefeicao,
+} from "../hooks/queries/useRefeicaoDetalheQueries";
 import { useValoresNutricionais, useCustoRefeicao } from "../hooks/useRefeicaoCalculos";
 import { toNum } from "../utils/formatters";
 import {
@@ -239,15 +240,21 @@ export default function RefeicaoDetalhe() {
   const toast = useToast();
   const { setPageTitle } = usePageTitle();
   
-  const [refeicao, setRefeicao] = useState<any>(null);
-  const [produtos, setProdutos] = useState<Produto[]>([]);
-  const [associacoes, setAssociacoes] = useState<RefeicaoProduto[]>([]);
-  const [modalidades, setModalidades] = useState<Modalidade[]>([]);
+  // React Query hooks
+  const { data: refeicao, isLoading: loading } = useRefeicao(Number(id));
+  const { data: associacoes = [] } = useProdutosDaRefeicao(Number(id));
+  const { data: produtos = [] } = useProdutos();
+  const { data: modalidades = [] } = useModalidades();
+  
+  const editarRefeicaoMutation = useEditarRefeicao();
+  const deletarRefeicaoMutation = useDeletarRefeicao();
+  const adicionarProdutoMutation = useAdicionarProdutoNaRefeicao();
+  const editarProdutoMutation = useEditarProdutoNaRefeicao();
+  const removerProdutoMutation = useRemoverProdutoDaRefeicao();
+  
   const [modalidadeSelecionada, setModalidadeSelecionada] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
   const [editando, setEditando] = useState(false);
   const [form, setForm] = useState<any>({});
-  const [salvando, setSalvando] = useState(false);
   const [openExcluir, setOpenExcluir] = useState(false);
   const [dialogAdicionarOpen, setDialogAdicionarOpen] = useState(false);
   const [dialogEditarOpen, setDialogEditarOpen] = useState(false);
@@ -285,64 +292,45 @@ export default function RefeicaoDetalhe() {
     })
   );
 
+  // Atualizar form e título quando refeição carregar
   useEffect(() => {
-    async function fetchData() {
-      setLoading(true);
-      try {
-        const ref = await buscarRefeicao(Number(id));
-        if (!ref) {
-          toast.error('Erro', 'Refeição não encontrada');
-          navigate('/refeicoes');
-          return;
-        }
-        setRefeicao(ref);
-        setForm(ref);
-        setPageTitle(ref.nome); // Define o título da página
-        const [produtosData, associacoesData, modalidadesData] = await Promise.all([
-          listarProdutos(),
-          listarProdutosDaRefeicao(Number(id)),
-          listarModalidades(),
-        ]);
-        setProdutos(produtosData);
-        setAssociacoes(associacoesData);
-        const ativas = modalidadesData.filter(m => m.ativo);
-        setModalidades(ativas);
-        // Selecionar primeira modalidade por padrão
-        if (ativas.length > 0) {
-          setModalidadeSelecionada(ativas[0].id);
-        }
-      } catch (error) {
-        console.error("Erro ao buscar refeição:", error);
-        toast.error('Erro ao carregar', 'Não foi possível carregar a refeição. Tente novamente.');
-      } finally {
-        setLoading(false);
+    if (refeicao) {
+      setForm(refeicao);
+      setPageTitle(refeicao.nome);
+      
+      // Selecionar primeira modalidade ativa por padrão
+      const ativas = modalidades.filter(m => m.ativo);
+      if (ativas.length > 0 && !modalidadeSelecionada) {
+        setModalidadeSelecionada(ativas[0].id);
       }
     }
-    fetchData();
-  }, [id, setPageTitle]);
+  }, [refeicao, modalidades, setPageTitle]);
+  
+  // Verificar se refeição não foi encontrada
+  useEffect(() => {
+    if (!loading && !refeicao && id) {
+      toast.error('Erro', 'Refeição não encontrada');
+      navigate('/refeicoes');
+    }
+  }, [loading, refeicao, id, navigate, toast]);
 
   const produtosDisponiveis = produtos.filter(
     (produto) => !associacoes.some((assoc) => assoc.produto_id === produto.id)
   );
 
   async function salvarEdicao() {
-    setSalvando(true);
     try {
-      const atualizado = await editarRefeicao(Number(id), form);
-      setRefeicao(atualizado);
+      await editarRefeicaoMutation.mutateAsync({ id: Number(id), data: form });
       setEditando(false);
       toast.success('Sucesso!', 'Refeição atualizada com sucesso!');
-      queryClient.invalidateQueries({ queryKey: ['refeicoes'] });
     } catch {
       toast.error('Erro ao salvar', 'Não foi possível salvar as alterações.');
-    } finally {
-      setSalvando(false);
     }
   }
 
   async function excluirRefeicao() {
     try {
-      await deletarRefeicao(Number(id));
+      await deletarRefeicaoMutation.mutateAsync(Number(id));
       toast.success('Sucesso!', 'Refeição excluída com sucesso!');
       navigate("/refeicoes");
     } catch {
@@ -357,18 +345,13 @@ export default function RefeicaoDetalhe() {
     perCapitaPorModalidade: Array<{modalidade_id: number, per_capita: number}>
   ) {
     try {
-      await adicionarProdutoNaRefeicao(
-        Number(id),
+      await adicionarProdutoMutation.mutateAsync({
+        refeicaoId: Number(id),
         produtoId,
-        perCapitaGeral || 0,
+        perCapita: perCapitaGeral || 0,
         tipoMedida,
-        perCapitaPorModalidade
-      );
-      const novasAssociacoes = await listarProdutosDaRefeicao(Number(id));
-      setAssociacoes(novasAssociacoes);
-      // Invalidar queries de cálculos para recalcular
-      queryClient.invalidateQueries({ queryKey: ['valores-nutricionais', Number(id)] });
-      queryClient.invalidateQueries({ queryKey: ['custo-refeicao', Number(id)] });
+        perCapitaPorModalidade,
+      });
       toast.success('Sucesso!', 'Produto adicionado à refeição!');
     } catch (error) {
       console.error('Erro ao adicionar produto:', error);
@@ -378,12 +361,7 @@ export default function RefeicaoDetalhe() {
 
   async function removerProduto(assocId: number) {
     try {
-      await removerProdutoDaRefeicao(assocId);
-      const novasAssociacoes = await listarProdutosDaRefeicao(Number(id));
-      setAssociacoes(novasAssociacoes);
-      // Invalidar queries de cálculos para recalcular
-      queryClient.invalidateQueries({ queryKey: ['valores-nutricionais', Number(id)] });
-      queryClient.invalidateQueries({ queryKey: ['custo-refeicao', Number(id)] });
+      await removerProdutoMutation.mutateAsync({ id: assocId, refeicaoId: Number(id) });
       toast.success('Sucesso!', 'Produto removido da refeição!');
     } catch {
       toast.error('Erro ao remover', 'Não foi possível remover o produto.');
@@ -403,20 +381,13 @@ export default function RefeicaoDetalhe() {
     if (!produtoEditando) return;
 
     try {
-      // Atualizar produto com novo per capita e tipo de medida
-      await editarProdutoNaRefeicao(
-        produtoEditando.id,
-        perCapitaGeral || 0,
+      await editarProdutoMutation.mutateAsync({
+        id: produtoEditando.id,
+        refeicaoId: Number(id),
+        perCapita: perCapitaGeral || 0,
         tipoMedida,
-        perCapitaPorModalidade
-      );
-      
-      const novasAssociacoes = await listarProdutosDaRefeicao(Number(id));
-      setAssociacoes(novasAssociacoes);
-      
-      // Invalidar queries de cálculos para recalcular
-      queryClient.invalidateQueries({ queryKey: ['valores-nutricionais', Number(id)] });
-      queryClient.invalidateQueries({ queryKey: ['custo-refeicao', Number(id)] });
+        perCapitaPorModalidade,
+      });
       
       toast.success('Sucesso!', 'Produto atualizado!');
     } catch (error) {
@@ -702,11 +673,11 @@ export default function RefeicaoDetalhe() {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             {editando ? (
               <>
-                <Button onClick={() => setEditando(false)} startIcon={<CancelIcon />} size="small">
+                <Button onClick={() => setEditando(false)} startIcon={<CancelIcon />} size="small" disabled={editarRefeicaoMutation.isPending}>
                   Cancelar
                 </Button>
-                <Button onClick={salvarEdicao} variant="contained" startIcon={<SaveIcon />} disabled={salvando} size="small">
-                  Salvar
+                <Button onClick={salvarEdicao} variant="contained" startIcon={<SaveIcon />} size="small" disabled={editarRefeicaoMutation.isPending}>
+                  {editarRefeicaoMutation.isPending ? 'Salvando...' : 'Salvar'}
                 </Button>
               </>
             ) : (

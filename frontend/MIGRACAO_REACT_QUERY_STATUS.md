@@ -13,10 +13,32 @@ Migrar todas as chamadas de API para React Query, eliminando:
 2. ✅ CardapiosModalidade.tsx - Migrado para React Query
 3. ✅ CardapioCalendario.tsx - Substituído fetch() por axios
 
-### ⏳ ALTA PRIORIDADE - PENDENTE
-1. ⏳ RefeicaoDetalhe.tsx - Usa chamadas diretas de refeicoes service
-2. ⏳ Romaneio.tsx - Usa guiaService e rotaService
-3. ⏳ SaldoContratosModalidades.tsx - Usa saldoContratosModalidadesService
+### ⏳ ALTA PRIORIDADE - PENDENTE (Complexidade Alta)
+
+Estas 3 páginas são significativamente mais complexas e requerem análise detalhada:
+
+1. **RefeicaoDetalhe.tsx** (Complexidade: ALTA)
+   - Usa 7 funções diferentes do refeicoes service
+   - Gerencia produtos da refeição com drag-and-drop
+   - Integra com hooks de cálculos nutricionais
+   - Gera PDF com dados complexos
+   - Requer hook dedicado: `useRefeicaoDetalheQueries.ts`
+
+2. **Romaneio.tsx** (Complexidade: ALTA)
+   - Usa guiaService e rotaService
+   - Gerencia QR codes e impressão
+   - Múltiplos agrupamentos de dados
+   - Navegação por teclado complexa
+   - Requer hooks: `useRomaneioQueries.ts` e `useRotaQueries.ts`
+
+3. **SaldoContratosModalidades.tsx** (Complexidade: MUITO ALTA)
+   - 1662 linhas de código
+   - Gerencia saldos, consumos e histórico
+   - Múltiplos diálogos e estados
+   - Navegação por teclado avançada
+   - Requer hook: `useSaldoContratosQueries.ts`
+
+**Estimativa:** Cada página requer 2-3 horas de trabalho cuidadoso para migração completa.
 
 ## Hooks Criados
 
@@ -99,8 +121,27 @@ const handleSubmit = async () => {
 
 ## Próximos Passos
 
-1. Migrar RefeicaoDetalhe.tsx
-2. Migrar Romaneio.tsx
-3. Migrar SaldoContratosModalidades.tsx
-4. Avaliar prioridade média e baixa
-5. Documentar padrões e boas práticas
+### Fase 1: Completar Alta Prioridade (Estimativa: 6-9 horas)
+1. Criar `useRefeicaoDetalheQueries.ts` e migrar RefeicaoDetalhe.tsx
+2. Criar `useRomaneioQueries.ts` + `useRotaQueries.ts` e migrar Romaneio.tsx
+3. Criar `useSaldoContratosQueries.ts` e migrar SaldoContratosModalidades.tsx
+
+### Fase 2: Prioridade Média
+- Avaliar outras páginas com chamadas diretas
+- Migrar páginas de relatórios
+- Migrar páginas de gestão
+
+### Fase 3: Documentação
+- Documentar padrões e boas práticas
+- Criar guia de migração para desenvolvedores
+- Atualizar README com informações sobre React Query
+
+## Progresso Atual
+
+**Alta Prioridade:** 50% completo (3/6 páginas)
+- ✅ Refeicoes.tsx
+- ✅ CardapiosModalidade.tsx  
+- ✅ CardapioCalendario.tsx
+- ⏳ RefeicaoDetalhe.tsx
+- ⏳ Romaneio.tsx
+- ⏳ SaldoContratosModalidades.tsx
