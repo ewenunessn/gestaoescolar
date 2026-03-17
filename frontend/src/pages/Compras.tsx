@@ -5,6 +5,7 @@ import { useToast } from '../hooks/useToast';
 import StatusIndicator from '../components/StatusIndicator';
 import PageContainer from '../components/PageContainer';
 import TableFilter, { FilterField } from '../components/TableFilter';
+import GerarPedidoDaGuiaDialog from '../components/GerarPedidoDaGuiaDialog';
 import {
   Box,
   Typography,
@@ -51,6 +52,7 @@ import {
   MoreVert,
   FilterList as FilterIcon,
   ShoppingCart,
+  TuneRounded,
 } from '@mui/icons-material';
 import CompactPagination from '../components/CompactPagination';
 import pedidosService from '../services/pedidos';
@@ -88,6 +90,7 @@ const PedidosPage = () => {
   const [dialogExcluir, setDialogExcluir] = useState(false);
   const [pedidoParaExcluir, setPedidoParaExcluir] = useState<Pedido | null>(null);
   const [processandoExclusao, setProcessandoExclusao] = useState(false);
+  const [dialogGerarDaGuia, setDialogGerarDaGuia] = useState(false);
 
   const loadPedidos = useCallback(async () => {
     try {
@@ -328,6 +331,15 @@ const PedidosPage = () => {
                 Filtros
               </Button>
               <Button
+                startIcon={<ShoppingCart />}
+                onClick={() => setDialogGerarDaGuia(true)}
+                variant="outlined"
+                color="primary"
+                size="small"
+              >
+                Gerar da Guia
+              </Button>
+              <Button
                 startIcon={<AddIcon />}
                 onClick={() => navigate('/compras/novo')}
                 variant="contained"
@@ -540,6 +552,13 @@ const PedidosPage = () => {
           <Download sx={{ mr: 1 }} /> {loadingExport ? 'Exportando...' : 'Exportar Excel'}
         </MenuItem>
       </Menu>
+
+      {/* Dialog Gerar Pedido da Guia */}
+      <GerarPedidoDaGuiaDialog
+        open={dialogGerarDaGuia}
+        onClose={() => setDialogGerarDaGuia(false)}
+        onSuccess={() => loadPedidos()}
+      />
     </Box>
   );
 };
