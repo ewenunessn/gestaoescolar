@@ -48,22 +48,27 @@ import {
 } from '@mui/icons-material';
 import CompactPagination from '../components/CompactPagination';
 import { useNavigate } from 'react-router-dom';
-import { listarRefeicoes, criarRefeicao, editarRefeicao, deletarRefeicao } from '../services/refeicoes';
 import { Refeicao } from '../types/refeicao';
 import { LoadingOverlay } from '../components/LoadingOverlay';
+import { 
+  useRefeicoes, 
+  useCriarRefeicao, 
+  useEditarRefeicao, 
+  useDeletarRefeicao 
+} from '../hooks/queries/useRefeicaoQueries';
 
 const RefeicoesPage = () => {
   const navigate = useNavigate();
   const toast = useToast();
 
-  // Estados principais
-  const [refeicoes, setRefeicoes] = useState<Refeicao[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // React Query hooks
+  const { data: refeicoes = [], isLoading: loading, error: queryError } = useRefeicoes();
+  const criarRefeicaoMutation = useCriarRefeicao();
+  const editarRefeicaoMutation = useEditarRefeicao();
+  const deletarRefeicaoMutation = useDeletarRefeicao();
   
-  // Estados de operações
-  const [salvando, setSalvando] = useState(false);
-  const [excluindo, setExcluindo] = useState(false);
+  // Estados locais (apenas UI)
+  const [error, setError] = useState<string | null>(null);
 
   // Estados do menu de ações
   const [actionsMenuAnchor, setActionsMenuAnchor] = useState<null | HTMLElement>(null);
@@ -89,25 +94,12 @@ const RefeicoesPage = () => {
     ativo: true,
   });
 
-  // Carregar refeições
-  const loadRefeicoes = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await listarRefeicoes();
-      setRefeicoes(Array.isArray(data) ? data : []);
-    } catch (err: any) {
-      console.error('Erro ao carregar refeições:', err);
-      setError('Erro ao carregar refeições. Tente novamente.');
-      setRefeicoes([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Tratar erros do React Query
   useEffect(() => {
-    loadRefeicoes();
-  }, []);
+    if (queryError) {
+      setError('Erro ao carregar refeições. Tente novamente.');
+    }
+  }, [queryError]);
 
   // Mapear tipos de refeição para exibição
   const tiposRefeicao = {
@@ -241,21 +233,17 @@ const RefeicoesPage = () => {
   };
 
   const handleSave = async () => {
-    setSalvando(true);
     try {
       if (editingRefeicao) {
-        await editarRefeicao(editingRefeicao.id, formData);
+        await editarRefeicaoMutation.mutateAsync({ id: editingRefeicao.id, data: formData });
         toast.success('Sucesso!', 'Refeição atualizada com sucesso!');
       } else {
-        await criarRefeicao(formData);
+        await criarRefeicaoMutation.mutateAsync(formData);
         toast.success('Sucesso!', 'Refeição criada com sucesso!');
       }
       closeModal();
-      await loadRefeicoes();
     } catch (err: any) {
       setError('Erro ao salvar refeição. Verifique os dados e tente novamente.');
-    } finally {
-      setSalvando(false);
     }
   };
 
@@ -271,19 +259,15 @@ const RefeicoesPage = () => {
 
   const handleDelete = async () => {
     if (!refeicaoToDelete) return;
-    setExcluindo(true);
     try {
-      await deletarRefeicao(refeicaoToDelete.id);
+      await deletarRefeicaoMutation.mutateAsync(refeicaoToDelete.id);
       toast.success('Sucesso!', 'Refeição excluída com sucesso!');
       closeDeleteModal();
-      await loadRefeicoes();
     } catch (err: any) {
       const message = err.response?.data?.message.includes('cardapios')
         ? 'Não é possível excluir. A refeição está em uso em um ou mais cardápios.'
         : 'Erro ao excluir a refeição. Tente novamente.';
       setError(message);
-    } finally {
-      setExcluindo(false);
     }
   };
 
@@ -377,7 +361,6 @@ const RefeicoesPage = () => {
             <Card>
               <CardContent sx={{ textAlign: 'center', py: 6 }}>
                 <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
-                <Button variant="contained" onClick={loadRefeicoes}>Tentar Novamente</Button>
               </CardContent>
             </Card>
           ) : filteredRefeicoes.length === 0 ? (
@@ -457,9 +440,9 @@ const RefeicoesPage = () => {
           </Box>
         </DialogContent>
         <DialogActions sx={{ p: 3, pt: 1 }}>
-          <Button onClick={closeModal} sx={{ color: 'text.secondary' }} disabled={salvando}>Cancelar</Button>
-          <Button onClick={handleSave} variant="contained" disabled={!formData.nome.trim() || salvando}>
-            {salvando ? 'Salvando...' : (editingRefeicao ? 'Salvar Alterações' : 'Criar')}
+          <Button onClick={closeModal} sx={{ color: 'text.secondary' }} disabled={criarRefeicaoMutation.isPending || editarRefeicaoMutation.isPending}>Cancelar</Button>
+          <Button onClick={handleSave} variant="contained" disabled={!formData.nome.trim() || criarRefeicaoMutation.isPending || editarRefeicaoMutation.isPending}>
+            {criarRefeicaoMutation.isPending || editarRefeicaoMutation.isPending ? 'Salvando...' : (editingRefeicao ? 'Salvar Alterações' : 'Criar')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -473,9 +456,9 @@ const RefeicoesPage = () => {
           </Typography>
         </DialogContent>
         <DialogActions sx={{ p: 3, pt: 1 }}>
-            <Button onClick={closeDeleteModal} sx={{ color: 'text.secondary' }} disabled={excluindo}>Cancelar</Button>
-            <Button onClick={handleDelete} color="delete" variant="contained" disabled={excluindo}>
-              {excluindo ? 'Excluindo...' : 'Excluir'}
+            <Button onClick={closeDeleteModal} sx={{ color: 'text.secondary' }} disabled={deletarRefeicaoMutation.isPending}>Cancelar</Button>
+            <Button onClick={handleDelete} color="delete" variant="contained" disabled={deletarRefeicaoMutation.isPending}>
+              {deletarRefeicaoMutation.isPending ? 'Excluindo...' : 'Excluir'}
             </Button>
         </DialogActions>
       </Dialog>
@@ -489,10 +472,11 @@ const RefeicoesPage = () => {
       </Menu>
 
       <LoadingOverlay 
-        open={salvando || excluindo}
+        open={criarRefeicaoMutation.isPending || editarRefeicaoMutation.isPending || deletarRefeicaoMutation.isPending}
         message={
-          salvando ? 'Salvando refeição...' :
-          excluindo ? 'Excluindo refeição...' :
+          criarRefeicaoMutation.isPending ? 'Criando refeição...' :
+          editarRefeicaoMutation.isPending ? 'Atualizando refeição...' :
+          deletarRefeicaoMutation.isPending ? 'Excluindo refeição...' :
           'Processando...'
         }
       />

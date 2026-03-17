@@ -16,27 +16,30 @@ import {
   MoreVert
 } from '@mui/icons-material';
 import { useNotification } from '../context/NotificationContext';
-import {
-  listarCardapiosModalidade, criarCardapioModalidade, editarCardapioModalidade,
-  removerCardapioModalidade, CardapioModalidade, MESES
-} from '../services/cardapiosModalidade';
+import { CardapioModalidade, MESES } from '../services/cardapiosModalidade';
 import { listarModalidades } from '../services/modalidadeService';
 import { useNutricionistaQueries } from '../hooks/queries/useNutricionistaQueries';
+import {
+  useCardapiosModalidade,
+  useCriarCardapioModalidade,
+  useEditarCardapioModalidade,
+  useRemoverCardapioModalidade
+} from '../hooks/queries/useCardapioModalidadeQueries';
 import { useNavigate } from 'react-router-dom';
 import { LoadingOverlay } from '../components/LoadingOverlay';
 
 const CardapiosModalidadePage: React.FC = () => {
   const { setPageTitle } = usePageTitle();
-  const [cardapios, setCardapios] = useState<CardapioModalidade[]>([]);
+  const { data: cardapios = [], isLoading: loading } = useCardapiosModalidade();
   const [modalidades, setModalidades] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [salvando, setSalvando] = useState(false);
-  const [excluindo, setExcluindo] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   
   const { data: nutricionistas = [] } = useNutricionistaQueries.useList();
+  const criarCardapioMutation = useCriarCardapioModalidade();
+  const editarCardapioMutation = useEditarCardapioModalidade();
+  const removerCardapioMutation = useRemoverCardapioModalidade();
   
   // Estados de filtros
   const [filterOpen, setFilterOpen] = useState(false);
@@ -72,22 +75,15 @@ const CardapiosModalidadePage: React.FC = () => {
 
   useEffect(() => {
     setPageTitle('Cardápios por Modalidade');
-    loadData();
+    loadModalidades();
   }, []);
 
-  const loadData = async () => {
+  const loadModalidades = async () => {
     try {
-      setLoading(true);
-      const [cardapiosData, modalidadesData] = await Promise.all([
-        listarCardapiosModalidade(),
-        listarModalidades()
-      ]);
-      setCardapios(cardapiosData);
+      const modalidadesData = await listarModalidades();
       setModalidades(modalidadesData);
     } catch (err) {
-      error('Erro ao carregar cardápios');
-    } finally {
-      setLoading(false);
+      error('Erro ao carregar modalidades');
     }
   };
 
@@ -231,7 +227,6 @@ const CardapiosModalidadePage: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-    setSalvando(true);
     try {
       // Validação
       if (!formData.modalidade_id || !formData.nome || !formData.mes || !formData.ano) {
@@ -258,34 +253,27 @@ const CardapiosModalidadePage: React.FC = () => {
       };
 
       if (editMode && selectedId) {
-        await editarCardapioModalidade(selectedId, data);
+        await editarCardapioMutation.mutateAsync({ id: selectedId, data });
         success('Cardápio atualizado!');
       } else {
-        await criarCardapioModalidade(data);
+        await criarCardapioMutation.mutateAsync(data);
         success('Cardápio criado!');
       }
 
       setOpenDialog(false);
       setErroCardapio("");
-      loadData();
     } catch (err: any) {
       setErroCardapio(err.message || 'Erro ao salvar cardápio');
-    } finally {
-      setSalvando(false);
     }
   };
 
   const handleDelete = async (id: number) => {
     if (window.confirm('Remover este cardápio?')) {
-      setExcluindo(true);
       try {
-        await removerCardapioModalidade(id);
+        await removerCardapioMutation.mutateAsync(id);
         success('Cardápio removido!');
-        loadData();
       } catch (err) {
         error('Erro ao remover cardápio');
-      } finally {
-        setExcluindo(false);
       }
     }
   };
@@ -696,10 +684,11 @@ const CardapiosModalidadePage: React.FC = () => {
       </Dialog>
 
       <LoadingOverlay 
-        open={salvando || excluindo}
+        open={criarCardapioMutation.isPending || editarCardapioMutation.isPending || removerCardapioMutation.isPending}
         message={
-          salvando ? 'Salvando cardápio...' :
-          excluindo ? 'Excluindo cardápio...' :
+          criarCardapioMutation.isPending ? 'Criando cardápio...' :
+          editarCardapioMutation.isPending ? 'Salvando cardápio...' :
+          removerCardapioMutation.isPending ? 'Excluindo cardápio...' :
           'Processando...'
         }
       />

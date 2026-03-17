@@ -20,6 +20,7 @@ import { DndContext, DragOverlay, closestCenter, PointerSensor, useSensor, useSe
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { LoadingOverlay } from '../components/LoadingOverlay';
+import api from '../services/api';
 
 // Função para obter URL base da API
 const getApiBaseUrl = () => {
@@ -170,13 +171,8 @@ const CardapioCalendarioPage: React.FC = () => {
         setRefeicaoDetalhes(refeicao);
         
         // Buscar produtos da refeição
-        const response = await fetch(`${getApiBaseUrl()}/api/refeicoes/${refeicaoId}/produtos`);
-        if (response.ok) {
-          const produtos = await response.json();
-          setProdutosRefeicao(produtos);
-        } else {
-          setProdutosRefeicao([]);
-        }
+        const response = await api.get(`/refeicoes/${refeicaoId}/produtos`);
+        setProdutosRefeicao(response.data || []);
         
         setOpenDetalhesDialog(true);
       }
@@ -197,14 +193,8 @@ const CardapioCalendarioPage: React.FC = () => {
       // Buscar informações da instituição
       let instituicao = null;
       try {
-        const response = await fetch(`${getApiBaseUrl()}/api/instituicao`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-        if (response.ok) {
-          instituicao = await response.json();
-        }
+        const response = await api.get('/instituicao');
+        instituicao = response.data;
       } catch (err) {
         console.log('Não foi possível carregar informações da instituição');
       }
@@ -503,8 +493,8 @@ const CardapioCalendarioPage: React.FC = () => {
       const refeicoesComProdutos = await Promise.all(
         refeicoesNoPeriodo.map(async (ref) => {
           try {
-            const response = await fetch(`${getApiBaseUrl()}/api/refeicoes/${ref.refeicao_id}/produtos`);
-            const produtos = response.ok ? await response.json() : [];
+            const response = await api.get(`/refeicoes/${ref.refeicao_id}/produtos`);
+            const produtos = response.data || [];
             return { ...ref, produtos };
           } catch {
             return { ...ref, produtos: [] };
