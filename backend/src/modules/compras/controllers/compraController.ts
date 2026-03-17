@@ -78,9 +78,7 @@ export async function listarCompras(req: Request, res: Response) {
       LEFT JOIN contrato_produtos cp ON pi.contrato_produto_id = cp.id
       LEFT JOIN contratos c ON cp.contrato_id = c.id
       LEFT JOIN fornecedores f ON c.fornecedor_id = f.id
-      LEFT JOIN periodos per ON p.periodo_id = per.id
       WHERE ${whereClause}
-        AND (per.ocultar_dados = false OR per.ocultar_dados IS NULL)
       GROUP BY p.id, u.nome, ua.nome
       ORDER BY p.created_at DESC
       LIMIT ${limitParam} OFFSET ${offsetParam}
@@ -89,9 +87,7 @@ export async function listarCompras(req: Request, res: Response) {
     const totalResult = await db.query(`
       SELECT COUNT(*) as total
       FROM pedidos p
-      LEFT JOIN periodos per ON p.periodo_id = per.id
       WHERE ${whereClause}
-        AND (per.ocultar_dados = false OR per.ocultar_dados IS NULL)
     `, params.slice(0, -2));
 
     res.json({
