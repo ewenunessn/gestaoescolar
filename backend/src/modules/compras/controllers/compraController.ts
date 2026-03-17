@@ -162,7 +162,6 @@ export async function buscarCompra(req: Request, res: Response) {
       LEFT JOIN produtos p ON cp.produto_id = p.id
       LEFT JOIN contratos c ON cp.contrato_id = c.id
       LEFT JOIN fornecedores f ON c.fornecedor_id = f.id
-      LEFT JOIN periodos per ON p.periodo_id = per.id
       WHERE pi.pedido_id = $1
       ORDER BY p.nome
     `;

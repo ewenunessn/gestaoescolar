@@ -195,7 +195,7 @@ const SaldoContratosModalidades: React.FC = () => {
   });
 
   // React Query hooks
-  const { data: responseData, isLoading: loading } = useSaldosModalidades({
+  const { data: responseData, isLoading: loading, refetch: carregarDados } = useSaldosModalidades({
     ...filtros,
     page: page + 1,
     limit: rowsPerPage
@@ -1431,17 +1431,17 @@ const SaldoContratosModalidades: React.FC = () => {
             )}
           </DialogContent>
           <DialogActions>
-            <Button size="small" onClick={fecharDialogQuantidadeInicial} disabled={salvandoQuantidade}>
+            <Button size="small" onClick={fecharDialogQuantidadeInicial} disabled={cadastrarSaldoMutation.isPending}>
               Cancelar
             </Button>
             <Button
               onClick={salvarQuantidadeInicial}
               variant="contained"
-              disabled={salvandoQuantidade || !quantidadeInicial || parseFloat(quantidadeInicial) < 0}
+              disabled={cadastrarSaldoMutation.isPending || !quantidadeInicial || parseFloat(quantidadeInicial) < 0}
               color="add"
-              startIcon={salvandoQuantidade ? <CircularProgress size={16} /> : <SaveIcon />}
+              startIcon={cadastrarSaldoMutation.isPending ? <CircularProgress size={16} /> : <SaveIcon />}
             >
-              {salvandoQuantidade ? 'Salvando...' : 'Salvar Quantidade'}
+              {cadastrarSaldoMutation.isPending ? 'Salvando...' : 'Salvar Quantidade'}
             </Button>
           </DialogActions>
         </Dialog>
@@ -1523,16 +1523,16 @@ const SaldoContratosModalidades: React.FC = () => {
             )}
           </DialogContent>
           <DialogActions>
-            <Button size="small" onClick={fecharDialogConsumo} disabled={registrandoConsumo}>
+            <Button size="small" onClick={fecharDialogConsumo} disabled={registrarConsumoMutation.isPending}>
               Cancelar
             </Button>
             <Button
               onClick={registrarConsumo}
               variant="contained"
-              disabled={registrandoConsumo || !quantidadeConsumo || parseFloat(quantidadeConsumo) <= 0}
-              startIcon={registrandoConsumo ? <CircularProgress size={16} /> : <RestaurantIcon />}
+              disabled={registrarConsumoMutation.isPending || !quantidadeConsumo || parseFloat(quantidadeConsumo) <= 0}
+              startIcon={registrarConsumoMutation.isPending ? <CircularProgress size={16} /> : <RestaurantIcon />}
             >
-              {registrandoConsumo ? 'Registrando...' : 'Registrar Consumo'}
+              {registrarConsumoMutation.isPending ? 'Registrando...' : 'Registrar Consumo'}
             </Button>
           </DialogActions>
         </Dialog>
