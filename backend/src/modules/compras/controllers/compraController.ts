@@ -57,13 +57,13 @@ export async function listarCompras(req: Request, res: Response) {
 
     const offset = (Number(page) - 1) * Number(limit);
     paramCount++;
-    const limitParam = paramCount;
+    const limitParam = `$${paramCount}`;
     paramCount++;
-    const offsetParam = paramCount;
+    const offsetParam = `$${paramCount}`;
     params.push(Number(limit), offset);
 
     const pedidosResult = await db.query(`
-      SELECT 
+      SELECT
         p.*,
         u.nome as usuario_criacao_nome,
         ua.nome as usuario_aprovacao_nome,
@@ -78,16 +78,20 @@ export async function listarCompras(req: Request, res: Response) {
       LEFT JOIN contrato_produtos cp ON pi.contrato_produto_id = cp.id
       LEFT JOIN contratos c ON cp.contrato_id = c.id
       LEFT JOIN fornecedores f ON c.fornecedor_id = f.id
+      LEFT JOIN periodos per ON p.periodo_id = per.id
       WHERE ${whereClause}
+        AND (per.ocultar_dados = false OR per.ocultar_dados IS NULL)
       GROUP BY p.id, u.nome, ua.nome
       ORDER BY p.created_at DESC
-      LIMIT $${limitParam} OFFSET $${offsetParam}
+      LIMIT ${limitParam} OFFSET ${offsetParam}
     `, params);
 
     const totalResult = await db.query(`
-      SELECT COUNT(*) as total 
+      SELECT COUNT(*) as total
       FROM pedidos p
+      LEFT JOIN periodos per ON p.periodo_id = per.id
       WHERE ${whereClause}
+        AND (per.ocultar_dados = false OR per.ocultar_dados IS NULL)
     `, params.slice(0, -2));
 
     res.json({
@@ -98,15 +102,17 @@ export async function listarCompras(req: Request, res: Response) {
       limit: Number(limit),
       totalPages: Math.ceil(Number(totalResult.rows[0].total) / Number(limit))
     });
-  } catch (error) {
-    console.error("❌ Erro ao listar pedidos:", error);
+
+  } catch (error: any) {
+    console.error('Erro ao listar compras:', error);
     res.status(500).json({
       success: false,
-      message: "Erro ao listar pedidos",
-      error: error instanceof Error ? error.message : 'Erro desconhecido'
+      message: 'Erro ao listar compras',
+      error: error.message
     });
   }
 }
+
 
 export async function buscarCompra(req: Request, res: Response) {
   try {
@@ -156,6 +162,7 @@ export async function buscarCompra(req: Request, res: Response) {
       LEFT JOIN produtos p ON cp.produto_id = p.id
       LEFT JOIN contratos c ON cp.contrato_id = c.id
       LEFT JOIN fornecedores f ON c.fornecedor_id = f.id
+      LEFT JOIN periodos per ON p.periodo_id = per.id
       WHERE pi.pedido_id = $1
       ORDER BY p.nome
     `;

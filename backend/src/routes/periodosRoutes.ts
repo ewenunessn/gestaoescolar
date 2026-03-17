@@ -7,16 +7,24 @@ import {
   ativarPeriodo,
   fecharPeriodo,
   reabrirPeriodo,
-  deletarPeriodo
+  deletarPeriodo,
+  selecionarPeriodoUsuario
 } from '../controllers/periodosController';
+import { authenticateToken } from '../middleware/authMiddleware';
 
 const router = Router();
+
+// Aplicar autenticação em todas as rotas
+router.use(authenticateToken);
 
 // Listar todos os períodos
 router.get('/', listarPeriodos);
 
-// Obter período ativo
+// Obter período ativo (ou período do usuário)
 router.get('/ativo', obterPeriodoAtivo);
+
+// Selecionar período do usuário
+router.post('/selecionar', selecionarPeriodoUsuario);
 
 // Criar novo período
 router.post('/', criarPeriodo);

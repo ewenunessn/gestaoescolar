@@ -21,6 +21,8 @@ import {
   Alert,
   CircularProgress,
   Tooltip,
+  FormControlLabel,
+  Switch,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -29,6 +31,8 @@ import {
   Lock as LockIcon,
   LockOpen as LockOpenIcon,
   CheckCircle as CheckCircleIcon,
+  VisibilityOff as VisibilityOffIcon,
+  Visibility as VisibilityIcon,
 } from '@mui/icons-material';
 import PageContainer from '../components/PageContainer';
 import PageHeader from '../components/PageHeader';
@@ -56,6 +60,7 @@ const GerenciamentoPeriodos = () => {
   const [editando, setEditando] = useState<Periodo | null>(null);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [ocultarInativos, setOcultarInativos] = useState(false);
   const [formData, setFormData] = useState({
     ano: new Date().getFullYear() + 1,
     descricao: '',
@@ -150,6 +155,18 @@ const GerenciamentoPeriodos = () => {
     }
   };
 
+  const handleToggleOcultarDados = async (id: number, ocultar: boolean) => {
+    try {
+      await atualizarPeriodoMutation.mutateAsync({
+        id,
+        data: { ocultar_dados: !ocultar }
+      });
+      setSuccessMessage(`Dados ${!ocultar ? 'ocultados' : 'exibidos'} com sucesso!`);
+    } catch (err: any) {
+      setErrorMessage(err.response?.data?.message || 'Erro ao atualizar período');
+    }
+  };
+
   if (isLoading) {
     return (
       <PageContainer>
@@ -169,6 +186,9 @@ const GerenciamentoPeriodos = () => {
   }
 
   const periodoAtivo = periodos?.find(p => p.ativo);
+  const periodosFiltrados = ocultarInativos 
+    ? periodos?.filter(p => p.ativo || p.fechado)
+    : periodos;
 
   return (
     <PageContainer>
@@ -199,13 +219,29 @@ const GerenciamentoPeriodos = () => {
         <CardContent>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
             <Typography variant="h6">Períodos Cadastrados</Typography>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => handleOpenDialog()}
-            >
-              Novo Período
-            </Button>
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={ocultarInativos}
+                    onChange={(e) => setOcultarInativos(e.target.checked)}
+                    size="small"
+                  />
+                }
+                label={
+                  <Typography variant="body2" color="text.secondary">
+                    Ocultar inativos
+                  </Typography>
+                }
+              />
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => handleOpenDialog()}
+              >
+                Novo Período
+              </Button>
+            </Box>
           </Box>
 
           <TableContainer>
@@ -222,7 +258,7 @@ const GerenciamentoPeriodos = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {periodos?.map((periodo) => (
+                {periodosFiltrados?.map((periodo) => (
                   <TableRow key={periodo.id}>
                     <TableCell>
                       <Typography variant="body1" fontWeight={periodo.ativo ? 700 : 400}>
@@ -246,6 +282,13 @@ const GerenciamentoPeriodos = () => {
                       {!periodo.ativo && !periodo.fechado && (
                         <Chip label="Inativo" color="default" size="small" />
                       )}
+                      {periodo.ocultar_dados && !periodo.ativo && (
+                        <Chip 
+                          label="Dados ocultos" 
+                          size="small" 
+                          sx={{ ml: 0.5, bgcolor: 'warning.light', color: 'warning.contrastText' }}
+                        />
+                      )}
                     </TableCell>
                     <TableCell>
                       <Typography variant="caption" display="block">
@@ -260,6 +303,18 @@ const GerenciamentoPeriodos = () => {
                     </TableCell>
                     <TableCell align="right">
                       <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                        {!periodo.ativo && !periodo.fechado && (
+                          <Tooltip title={periodo.ocultar_dados ? "Exibir dados nas listagens" : "Ocultar dados nas listagens"}>
+                            <IconButton
+                              size="small"
+                              color={periodo.ocultar_dados ? "warning" : "default"}
+                              onClick={() => handleToggleOcultarDados(periodo.id, periodo.ocultar_dados)}
+                            >
+                              {periodo.ocultar_dados ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                        
                         {!periodo.ativo && !periodo.fechado && (
                           <Tooltip title="Ativar período">
                             <IconButton

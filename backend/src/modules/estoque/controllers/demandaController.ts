@@ -2,6 +2,7 @@
 import { Request, Response } from "express";
 import * as ExcelJS from 'exceljs';
 import db from "../../../database";
+import { obterPeriodoUsuario } from "../../../utils/periodoHelper";
 
 interface DemandaItem {
   produto_id: number;
@@ -387,49 +388,63 @@ export async function gerarDemandaMultiplosCardapios(req: Request, res: Response
 export async function listarCardapiosDisponiveis(req: Request, res: Response) {
   try {
     const { escola_ids, modalidade_ids } = req.query;
+    const userId = (req as any).user?.id;
+
+    // Obter período do usuário ou período ativo global
+    const periodoId = await obterPeriodoUsuario(userId);
 
     // Construir filtros dinâmicos
     let escolaFilter = '';
     let modalidadeFilter = '';
+    let periodoFilter = '';
     const params: any[] = [];
     let paramIndex = 1;
 
+    if (periodoId) {
+      periodoFilter = `AND cm.periodo_id = $${paramIndex}`;
+      params.push(periodoId);
+      paramIndex++;
+    }
+
     if (escola_ids) {
       const escolaIdsArray = Array.isArray(escola_ids) ? escola_ids : [escola_ids];
-      escolaFilter = `AND (c.modalidade_id IN (
-        SELECT DISTINCT em.modalidade_id 
-        FROM escola_modalidades em 
+      escolaFilter = `AND (cm.modalidade_id IN (
+        SELECT DISTINCT em.modalidade_id
+        FROM escola_modalidades em
         WHERE em.escola_id = ANY($${paramIndex})
-      ) OR c.modalidade_id IS NULL)`;
+      ) OR cm.modalidade_id IS NULL)`;
       params.push(escolaIdsArray.map(Number));
       paramIndex++;
     }
 
     if (modalidade_ids) {
       const modalidadeIdsArray = Array.isArray(modalidade_ids) ? modalidade_ids : [modalidade_ids];
-      modalidadeFilter = `AND (c.modalidade_id = ANY($${paramIndex}) OR c.modalidade_id IS NULL)`;
+      modalidadeFilter = `AND (cm.modalidade_id = ANY($${paramIndex}) OR cm.modalidade_id IS NULL)`;
       params.push(modalidadeIdsArray.map(Number));
       paramIndex++;
     }
 
     const query = `
       SELECT DISTINCT
-        c.id,
-        c.nome,
-        c.descricao,
-        c.data_inicio,
-        c.data_fim,
-        c.modalidade_id,
+        cm.id,
+        cm.nome,
+        cm.mes,
+        cm.ano,
+        cm.modalidade_id,
+        cm.periodo_id,
         m.nome as modalidade_nome,
-        COUNT(cr.id) as total_refeicoes
-      FROM cardapios c
-      LEFT JOIN modalidades m ON c.modalidade_id = m.id
-      LEFT JOIN cardapio_refeicoes cr ON c.id = cr.cardapio_id
-      WHERE c.ativo = true
+        p.ano as periodo_ano,
+        COUNT(crd.id) as total_refeicoes
+      FROM cardapios_modalidade cm
+      LEFT JOIN modalidades m ON cm.modalidade_id = m.id
+      LEFT JOIN periodos p ON cm.periodo_id = p.id
+      LEFT JOIN cardapio_refeicoes_dia crd ON cm.id = crd.cardapio_modalidade_id
+      WHERE cm.ativo = true
+        ${periodoFilter}
         ${escolaFilter}
         ${modalidadeFilter}
-      GROUP BY c.id, c.nome, c.descricao, c.data_inicio, c.data_fim, c.modalidade_id, m.nome
-      ORDER BY c.nome
+      GROUP BY cm.id, cm.nome, cm.mes, cm.ano, cm.modalidade_id, cm.periodo_id, m.nome, p.ano
+      ORDER BY cm.ano DESC, cm.mes DESC, cm.nome
     `;
 
     const result = await db.query(query, params);
@@ -449,6 +464,7 @@ export async function listarCardapiosDisponiveis(req: Request, res: Response) {
     });
   }
 }
+
 
 export async function exportarDemandaMensal(req: Request, res: Response) {
   try {

@@ -1,10 +1,15 @@
 import { Request, Response } from 'express';
 import { query } from '../../../database';
+import { obterPeriodoUsuario } from '../../../utils/periodoHelper';
 
 // Listar cardápios
 export async function listarCardapiosModalidade(req: Request, res: Response) {
   try {
     const { modalidade_id, mes, ano, ativo } = req.query;
+    const userId = (req as any).user?.id;
+    
+    // Obter período do usuário ou período ativo global
+    const periodoId = await obterPeriodoUsuario(userId);
     
     let sql = `
       SELECT 
@@ -20,21 +25,30 @@ export async function listarCardapiosModalidade(req: Request, res: Response) {
         cm.observacoes_nutricionista,
         cm.created_at,
         cm.updated_at,
+        cm.periodo_id,
         m.nome as modalidade_nome,
         n.nome as nutricionista_nome,
         n.crn as nutricionista_crn,
         n.crn_regiao as nutricionista_crn_regiao,
+        p.ano as periodo_ano,
         COUNT(DISTINCT crd.id) as total_refeicoes,
         COUNT(DISTINCT crd.dia) as total_dias
       FROM cardapios_modalidade cm
       LEFT JOIN modalidades m ON cm.modalidade_id = m.id
       LEFT JOIN nutricionistas n ON cm.nutricionista_id = n.id
       LEFT JOIN cardapio_refeicoes_dia crd ON cm.id = crd.cardapio_modalidade_id
+      LEFT JOIN periodos p ON cm.periodo_id = p.id
       WHERE 1=1
     `;
     
     const params: any[] = [];
     let paramCount = 1;
+    
+    // Filtrar pelo período do usuário
+    if (periodoId) {
+      sql += ` AND cm.periodo_id = $${paramCount++}`;
+      params.push(periodoId);
+    }
     
     if (modalidade_id) {
       sql += ` AND cm.modalidade_id = $${paramCount++}`;
@@ -56,7 +70,7 @@ export async function listarCardapiosModalidade(req: Request, res: Response) {
       params.push(ativo === 'true' || ativo === true);
     }
     
-    sql += ` GROUP BY cm.id, cm.modalidade_id, cm.nome, cm.mes, cm.ano, cm.ativo, cm.observacao, cm.nutricionista_id, cm.data_aprovacao_nutricionista, cm.observacoes_nutricionista, cm.created_at, cm.updated_at, m.nome, n.nome, n.crn, n.crn_regiao`;
+    sql += ` GROUP BY cm.id, cm.modalidade_id, cm.nome, cm.mes, cm.ano, cm.ativo, cm.observacao, cm.nutricionista_id, cm.data_aprovacao_nutricionista, cm.observacoes_nutricionista, cm.created_at, cm.updated_at, cm.periodo_id, m.nome, n.nome, n.crn, n.crn_regiao, p.ano`;
     sql += ` ORDER BY cm.ano DESC, cm.mes DESC, m.nome`;
     
     const result = await query(sql, params);

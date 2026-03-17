@@ -8,6 +8,7 @@ import {
   fecharPeriodo,
   reabrirPeriodo,
   deletarPeriodo,
+  selecionarPeriodo,
   Periodo
 } from '../../services/periodos';
 
@@ -98,6 +99,24 @@ export const useDeletarPeriodo = () => {
     mutationFn: deletarPeriodo,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['periodos'] });
+    },
+  });
+};
+
+// Mutation para selecionar período do usuário
+export const useSelecionarPeriodo = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: selecionarPeriodo,
+    onSuccess: () => {
+      // Invalidar todas as queries
+      queryClient.invalidateQueries();
+      
+      // Recarregar a página após um pequeno delay para garantir que a API foi atualizada
+      setTimeout(() => {
+        window.location.reload();
+      }, 300);
     },
   });
 };

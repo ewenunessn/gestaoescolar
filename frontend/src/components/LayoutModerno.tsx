@@ -48,7 +48,7 @@ import { useConfigContext } from "../context/ConfigContext";
 import { useConfigChangeIndicator } from "../hooks/useConfigChangeIndicator";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { usePageTitle } from "../contexts/PageTitleContext";
-import { usePeriodoAtivo } from "../hooks/queries/usePeriodosQueries";
+import { SeletorPeriodo } from './SeletorPeriodo';
 
 const drawerWidth = 220;
 const collapsedDrawerWidth = 64;
@@ -319,7 +319,6 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const { hasRecentChange, showChangeIndicator } = useConfigChangeIndicator();
   const { user, loading: loadingUser } = useCurrentUser();
   const { pageTitle, backPath } = usePageTitle();
-  const { data: periodoAtivo, isLoading: loadingPeriodo } = usePeriodoAtivo();
 
   useEffect(() => {
     if (onConfigChanged) onConfigChanged(showChangeIndicator);
@@ -485,15 +484,10 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           )}
         </Box>
         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-          {/* Período Ativo */}
-          {!loadingPeriodo && periodoAtivo && (
-            <Box sx={{ display: { xs: "none", sm: "flex" }, alignItems: "center", gap: 0.5 }}>
-              <CalendarToday sx={{ fontSize: 14, color: "text.secondary" }} />
-              <Typography variant="body2" color="text.secondary">
-                {periodoAtivo.ano}
-              </Typography>
-            </Box>
-          )}
+          {/* Seletor de Período */}
+          <Box sx={{ display: { xs: "none", sm: "flex" } }}>
+            <SeletorPeriodo />
+          </Box>
           
           {/* Usuário Logado */}
           {loadingUser ? <CircularProgress size={16} /> : user ? (

@@ -11,7 +11,7 @@ export const listarPeriodos = async (req: Request, res: Response) => {
         p.*,
         (SELECT COUNT(*) FROM pedidos WHERE periodo_id = p.id) as total_pedidos,
         (SELECT COUNT(*) FROM guias WHERE periodo_id = p.id) as total_guias,
-        (SELECT COUNT(*) FROM cardapios WHERE periodo_id = p.id) as total_cardapios
+        (SELECT COUNT(*) FROM cardapios_modalidade WHERE periodo_id = p.id) as total_cardapios
       FROM periodos p
       ORDER BY p.ano DESC
     `;
@@ -33,10 +33,36 @@ export const listarPeriodos = async (req: Request, res: Response) => {
 };
 
 /**
- * Obter período ativo
+ * Obter período ativo ou período do usuário
  */
 export const obterPeriodoAtivo = async (req: Request, res: Response) => {
   try {
+    const userId = (req as any).user?.id;
+    
+    // Se usuário está logado, verificar se tem período selecionado
+    if (userId) {
+      const usuarioPeriodo = await db.query(
+        'SELECT periodo_selecionado_id FROM usuarios WHERE id = $1',
+        [userId]
+      );
+      
+      if (usuarioPeriodo.rows.length > 0 && usuarioPeriodo.rows[0].periodo_selecionado_id) {
+        const periodoUsuario = await db.query(
+          'SELECT * FROM periodos WHERE id = $1',
+          [usuarioPeriodo.rows[0].periodo_selecionado_id]
+        );
+        
+        if (periodoUsuario.rows.length > 0) {
+          return res.json({
+            success: true,
+            data: periodoUsuario.rows[0],
+            fonte: 'usuario'
+          });
+        }
+      }
+    }
+    
+    // Caso contrário, retornar período ativo global
     const query = 'SELECT * FROM periodos WHERE ativo = true LIMIT 1';
     const result = await db.query(query);
 
@@ -49,7 +75,8 @@ export const obterPeriodoAtivo = async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      data: result.rows[0]
+      data: result.rows[0],
+      fonte: 'global'
     });
   } catch (error: any) {
     console.error('Erro ao obter período ativo:', error);
@@ -119,7 +146,25 @@ export const criarPeriodo = async (req: Request, res: Response) => {
 export const atualizarPeriodo = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { descricao, data_inicio, data_fim } = req.body;
+    const { descricao, data_inicio, data_fim, ocultar_dados } = req.body;
+
+    // Verificar se período existe e se está ativo
+    const periodoAtual = await db.query('SELECT ativo FROM periodos WHERE id = $1', [id]);
+    
+    if (periodoAtual.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Período não encontrado'
+      });
+    }
+
+    // Validação: período ativo não pode ter ocultar_dados = true
+    if (periodoAtual.rows[0].ativo && ocultar_dados === true) {
+      return res.status(400).json({
+        success: false,
+        message: 'Não é possível ocultar dados do período ativo. Ative outro período primeiro.'
+      });
+    }
 
     const query = `
       UPDATE periodos
@@ -127,19 +172,13 @@ export const atualizarPeriodo = async (req: Request, res: Response) => {
         descricao = COALESCE($1, descricao),
         data_inicio = COALESCE($2, data_inicio),
         data_fim = COALESCE($3, data_fim),
+        ocultar_dados = COALESCE($4, ocultar_dados),
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $4
+      WHERE id = $5
       RETURNING *
     `;
 
-    const result = await db.query(query, [descricao, data_inicio, data_fim, id]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Período não encontrado'
-      });
-    }
+    const result = await db.query(query, [descricao, data_inicio, data_fim, ocultar_dados, id]);
 
     res.json({
       success: true,
@@ -180,10 +219,10 @@ export const ativarPeriodo = async (req: Request, res: Response) => {
       });
     }
 
-    // Ativar período (trigger desativa os outros automaticamente)
+    // Ativar período e garantir que ocultar_dados seja false
     const query = `
       UPDATE periodos
-      SET ativo = true, updated_at = CURRENT_TIMESTAMP
+      SET ativo = true, ocultar_dados = false, updated_at = CURRENT_TIMESTAMP
       WHERE id = $1
       RETURNING *
     `;
@@ -318,7 +357,7 @@ export const deletarPeriodo = async (req: Request, res: Response) => {
     // Verificar se tem registros vinculados
     const pedidos = await db.query('SELECT COUNT(*) FROM pedidos WHERE periodo_id = $1', [id]);
     const guias = await db.query('SELECT COUNT(*) FROM guias WHERE periodo_id = $1', [id]);
-    const cardapios = await db.query('SELECT COUNT(*) FROM cardapios WHERE periodo_id = $1', [id]);
+    const cardapios = await db.query('SELECT COUNT(*) FROM cardapios_modalidade WHERE periodo_id = $1', [id]);
 
     const totalRegistros = 
       parseInt(pedidos.rows[0].count) + 
@@ -343,6 +382,59 @@ export const deletarPeriodo = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Erro ao deletar período',
+      error: error.message
+    });
+  }
+};
+
+
+/**
+ * Selecionar período do usuário
+ */
+export const selecionarPeriodoUsuario = async (req: Request, res: Response) => {
+  try {
+    const { periodoId } = req.body;
+    const userId = (req as any).user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Usuário não autenticado'
+      });
+    }
+
+    if (!periodoId) {
+      return res.status(400).json({
+        success: false,
+        message: 'periodoId é obrigatório'
+      });
+    }
+
+    // Verificar se período existe
+    const periodo = await db.query('SELECT * FROM periodos WHERE id = $1', [periodoId]);
+    if (periodo.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Período não encontrado'
+      });
+    }
+
+    // Atualizar período selecionado do usuário
+    await db.query(
+      'UPDATE usuarios SET periodo_selecionado_id = $1 WHERE id = $2',
+      [periodoId, userId]
+    );
+
+    res.json({
+      success: true,
+      message: `Período ${periodo.rows[0].ano} selecionado com sucesso`,
+      data: periodo.rows[0]
+    });
+  } catch (error: any) {
+    console.error('Erro ao selecionar período:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao selecionar período',
       error: error.message
     });
   }

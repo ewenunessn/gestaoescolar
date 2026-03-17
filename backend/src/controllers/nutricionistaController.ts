@@ -181,7 +181,7 @@ export async function removerNutricionista(req: Request, res: Response) {
     
     // Verificar se há cardápios vinculados
     const cardapios = await db.query(
-      'SELECT COUNT(*) as total FROM cardapios WHERE nutricionista_id = $1',
+      'SELECT COUNT(*) as total FROM cardapios_modalidade WHERE nutricionista_id = $1',
       [id]
     );
     

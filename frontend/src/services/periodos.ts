@@ -8,6 +8,7 @@ export interface Periodo {
   data_fim: string;
   ativo: boolean;
   fechado: boolean;
+  ocultar_dados: boolean;
   created_at: string;
   updated_at: string;
   total_pedidos?: number;
@@ -41,6 +42,7 @@ export const atualizarPeriodo = async (
     descricao?: string;
     data_inicio?: string;
     data_fim?: string;
+    ocultar_dados?: boolean;
   }
 ): Promise<Periodo> => {
   const response = await api.put(`/periodos/${id}`, data);
@@ -64,4 +66,9 @@ export const reabrirPeriodo = async (id: number): Promise<Periodo> => {
 
 export const deletarPeriodo = async (id: number): Promise<void> => {
   await api.delete(`/periodos/${id}`);
+};
+
+export const selecionarPeriodo = async (periodoId: number): Promise<Periodo> => {
+  const response = await api.post('/periodos/selecionar', { periodoId });
+  return response.data.data;
 };

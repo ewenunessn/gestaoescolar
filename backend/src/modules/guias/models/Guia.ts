@@ -168,6 +168,8 @@ class GuiaModel {
           COUNT(DISTINCT gpe.id) as total_produtos
         FROM guias g
         LEFT JOIN guia_produto_escola gpe ON g.id = gpe.guia_id
+        LEFT JOIN periodos per ON g.periodo_id = per.id
+        WHERE (per.ocultar_dados = false OR per.ocultar_dados IS NULL)
         GROUP BY g.id, g.mes, g.ano, g.nome, g.observacao, g.status, g.created_at, g.updated_at
         ORDER BY g.created_at DESC
       `);
