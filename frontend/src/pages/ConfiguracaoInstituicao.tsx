@@ -58,8 +58,8 @@ const ConfiguracaoInstituicaoPage: React.FC = () => {
         setLogoPreview(data.logo_url);
       }
     } catch (err) {
-      toast.error('Erro ao carregar configurações da instituição');
-      console.error(err);
+      toast.toast.error('Erro ao carregar configurações da instituição');
+      console.toast.error(err);
     } finally {
       setLoading(false);
     }
@@ -81,13 +81,13 @@ const ConfiguracaoInstituicaoPage: React.FC = () => {
     // Validar tipo de arquivo
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/svg+xml'];
     if (!allowedTypes.includes(file.type)) {
-      toast.error('Apenas imagens são permitidas (JPEG, PNG, GIF, SVG)');
+      toast.toast.error('Apenas imagens são permitidas (JPEG, PNG, GIF, SVG)');
       return;
     }
 
     // Validar tamanho (5MB)
     if (file.size > 5 * 1024 * 1024) {
-      toast.error('A imagem deve ter no máximo 5MB');
+      toast.toast.error('A imagem deve ter no máximo 5MB');
       return;
     }
 
@@ -96,8 +96,8 @@ const ConfiguracaoInstituicaoPage: React.FC = () => {
       setLogoFile(file);
       setLogoPreview(base64);
     } catch (err) {
-      toast.error('Erro ao processar imagem');
-      console.error(err);
+      toast.toast.error('Erro ao processar imagem');
+      console.toast.error(err);
     }
   };
 
@@ -110,7 +110,7 @@ const ConfiguracaoInstituicaoPage: React.FC = () => {
     event.preventDefault();
     
     if (!formData.nome.trim()) {
-      toast.error('Nome da instituição é obrigatório');
+      toast.toast.error('Nome da instituição é obrigatório');
       return;
     }
 
@@ -125,13 +125,13 @@ const ConfiguracaoInstituicaoPage: React.FC = () => {
       // Atualizar dados da instituição
       const response = await atualizarInstituicao(formData);
       
-      toast.success(response.message);
+      toast.toast.success(response.message);
       setInstituicao(response.instituicao);
       setLogoFile(null); // Limpar arquivo temporário
       
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Erro ao salvar configurações');
-      console.error(err);
+      toast.toast.error(err.response?.data?.message || 'Erro ao salvar configurações');
+      console.toast.error(err);
     } finally {
       setSaving(false);
     }

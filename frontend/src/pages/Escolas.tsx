@@ -102,8 +102,7 @@ const EscolasPage = () => {
   const criarEscolaMutation = useCriarEscola();
   const toast = useToast();
   
-  // Estados locais (apenas UI)
-  const [error, setError] = useState<string | null>(null);
+  // Estados locais (apenas UI) - removidos error e successMessage (usando react-toastify)
 
   // Estados de ações
   const [actionsMenuAnchor, setActionsMenuAnchor] = useState<null | HTMLElement>(null);
@@ -162,7 +161,7 @@ const EscolasPage = () => {
   useEffect(() => {
     const state = location.state as { successMessage?: string } | undefined;
     if (state?.successMessage) {
-      setSuccessMessage(state.successMessage);
+      toast.success(state.successMessage);
       loadEscolas();
       navigate(location.pathname, { replace: true });
     }
@@ -328,19 +327,19 @@ const EscolasPage = () => {
     
     criarEscolaMutation.mutate(formData, {
       onSuccess: () => {
-        setSuccessMessage('Escola criada com sucesso!');
+        toast.success('Escola criada com sucesso!');
         closeModal();
       },
       onError: (error: any) => {
         const errorMessage = error?.response?.data?.message || error?.message || 'Erro ao salvar a escola. Verifique os dados e tente novamente.';
-        setError(errorMessage);
+        toast.error(errorMessage);
       }
     });
   };
 
   const handleImportEscolas = async (escolasParaImportar: any[]) => {
     if (!escolasParaImportar || escolasParaImportar.length === 0) {
-      setError("Nenhum dado válido para importar.");
+      toast.error("Nenhum dado válido para importar.");
       return;
     }
     try {
@@ -349,13 +348,13 @@ const EscolasPage = () => {
       const response = await importarEscolasLote(escolasParaImportar);
       const { sucesso_count = 0, erros = [] } = response.data || {};
 
-      setSuccessMessage(`${sucesso_count} escolas foram importadas com sucesso.`);
+      toast.success(`${sucesso_count} escolas foram importadas com sucesso.`);
       if (erros.length > 0) {
         setErrosImportacao(erros);
       }
       loadEscolas();
     } catch (err) {
-      setError('Ocorreu um erro crítico durante a importação.');
+      toast.error('Ocorreu um erro crítico durante a importação.');
     } finally {
       setLoadingImport(false);
     }
@@ -363,7 +362,7 @@ const EscolasPage = () => {
 
   const handleExportarEscolas = () => {
     if (filteredEscolas.length === 0) {
-      setError("Não há escolas para exportar com os filtros atuais.");
+      toast.error("Não há escolas para exportar com os filtros atuais.");
       return;
     }
     try {
@@ -383,9 +382,9 @@ const EscolasPage = () => {
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Escolas');
       XLSX.writeFile(workbook, `Relatorio_Escolas_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.xlsx`);
-      setSuccessMessage("Exportação concluída com sucesso!");
+      toast.success("Exportação concluída com sucesso!");
     } catch (err) {
-      setError("Ocorreu um erro ao gerar o arquivo Excel.");
+      toast.error("Ocorreu um erro ao gerar o arquivo Excel.");
     } finally {
       setLoadingExport(false);
     }
@@ -400,9 +399,6 @@ const EscolasPage = () => {
 
   return (
     <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
-      {successMessage && (<Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}><Alert severity="success" onClose={() => setSuccessMessage(null)}>{successMessage}</Alert></Box>)}
-      {error && (<Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}><Alert severity="error" onClose={() => setError(null)}>{error}</Alert></Box>)}
-
       <PageContainer fullHeight>
         <PageHeader 
           title="Escolas"
@@ -485,7 +481,7 @@ const EscolasPage = () => {
 
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           {loading ? (<LoadingScreen message="Carregando escolas..." />
-          ) : error && escolas.length === 0 ? (<Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={loadEscolas}>Tentar Novamente</Button></CardContent></Card>
+          ) : escolasQuery.isError && escolas.length === 0 ? (<Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Alert severity="error" sx={{ mb: 2 }}>Erro ao carregar escolas</Alert><Button variant="contained" onClick={loadEscolas}>Tentar Novamente</Button></CardContent></Card>
           ) : filteredEscolas.length === 0 ? (<Card><CardContent sx={{ textAlign: 'center', py: 6 }}><School sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} /><Typography variant="h6" sx={{ color: 'text.secondary' }}>Nenhuma escola encontrada</Typography></CardContent></Card>
           ) : (
             <Box sx={{ width: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>

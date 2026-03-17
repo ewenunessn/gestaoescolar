@@ -201,7 +201,7 @@ const Romaneio: React.FC = () => {
       
       setQrCodeUrl(qrUrl);
     } catch (error) {
-      console.error('Erro ao gerar QR Code:', error);
+      console.toast.error('Erro ao gerar QR Code:', error);
     }
   };
 
@@ -393,7 +393,7 @@ const Romaneio: React.FC = () => {
       const itemId = itemStatusEditing.id;
       
       if (!itemId) {
-        toast.error('Item sem identificador para atualização');
+        toast.toast.error('Item sem identificador para atualização');
         return;
       }
 
@@ -402,7 +402,7 @@ const Romaneio: React.FC = () => {
         data: { status: newStatus }
       });
       
-      toast.success(`Status atualizado para ${getStatusItemLabel(newStatus)}`);
+      toast.toast.success(`Status atualizado para ${getStatusItemLabel(newStatus)}`);
       
       // Atualizar lista localmente
       if (selectedProduct) {
@@ -413,8 +413,8 @@ const Romaneio: React.FC = () => {
       }
       
     } catch (err: any) {
-      console.error('Erro ao atualizar status:', err);
-      toast.error('Erro ao atualizar status do item');
+      console.toast.error('Erro ao atualizar status:', err);
+      toast.toast.error('Erro ao atualizar status do item');
     } finally {
       handleCloseStatusMenu();
     }

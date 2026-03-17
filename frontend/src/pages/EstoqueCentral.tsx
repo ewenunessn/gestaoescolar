@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useToast } from "../hooks/useToast";
 import StatusIndicator from "../components/StatusIndicator";
 import PageHeader from "../components/PageHeader";
 import PageContainer from "../components/PageContainer";
@@ -75,8 +76,7 @@ const EstoqueCentralPage: React.FC = () => {
   const [posicoes, setPosicoes] = useState<EstoquePosicao[]>([]);
   const [alertas, setAlertas] = useState<AlertaEstoque[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const toast = useToast();
 
   // Estados do menu de ações
   const [actionsMenuAnchor, setActionsMenuAnchor] = useState<null | HTMLElement>(null);
@@ -99,7 +99,6 @@ const EstoqueCentralPage: React.FC = () => {
   const loadEstoque = useCallback(async () => {
     try {
       setLoading(true);
-      setError(null);
       const [posicoesData, alertasData] = await Promise.all([
         getPosicaoEstoque(mostrarTodos),
         getAlertas()
@@ -107,7 +106,7 @@ const EstoqueCentralPage: React.FC = () => {
       setPosicoes(Array.isArray(posicoesData) ? posicoesData : []);
       setAlertas(Array.isArray(alertasData) ? alertasData : []);
     } catch (err) {
-      setError("Erro ao carregar dados do estoque. Tente novamente.");
+      toast.error("Erro ao carregar dados do estoque. Tente novamente.");
     } finally {
       setLoading(false);
     }
@@ -148,10 +147,9 @@ const EstoqueCentralPage: React.FC = () => {
     try {
       await atualizarAlertas();
       await loadEstoque();
-      setSuccessMessage("Alertas atualizados com sucesso!");
-      setTimeout(() => setSuccessMessage(null), 3000);
+      toast.success("Alertas atualizados com sucesso!");
     } catch (err) {
-      setError("Erro ao atualizar alertas.");
+      toast.error("Erro ao atualizar alertas.");
     }
   };
 
@@ -167,10 +165,9 @@ const EstoqueCentralPage: React.FC = () => {
       setModalOpen(false);
       setFormData({ produto_id: "", lote: "", quantidade: "", data_validade: "" });
       await loadEstoque();
-      setSuccessMessage("Entrada registrada com sucesso!");
-      setTimeout(() => setSuccessMessage(null), 3000);
+      toast.success("Entrada registrada com sucesso!");
     } catch (err: any) {
-      setError(err.response?.data?.message || "Erro ao registrar entrada.");
+      toast.error(err.response?.data?.message || "Erro ao registrar entrada.");
     }
   };
 
@@ -205,7 +202,6 @@ const EstoqueCentralPage: React.FC = () => {
 
   return (
     <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
-      {successMessage && (<Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}><Alert severity="success" onClose={() => setSuccessMessage(null)}>{successMessage}</Alert></Box>)}
       <PageContainer fullHeight>
           <PageHeader 
             title="Estoque Central"

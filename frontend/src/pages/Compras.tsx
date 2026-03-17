@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePageTitle } from '../contexts/PageTitleContext';
+import { useToast } from '../hooks/useToast';
 import StatusIndicator from '../components/StatusIndicator';
 import PageContainer from '../components/PageContainer';
 import TableFilter, { FilterField } from '../components/TableFilter';
@@ -67,8 +68,7 @@ const PedidosPage = () => {
   // Estados principais
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const toast = useToast();
 
   // Estados de ações
   const [actionsMenuAnchor, setActionsMenuAnchor] = useState<null | HTMLElement>(null);
@@ -92,7 +92,6 @@ const PedidosPage = () => {
   const loadPedidos = useCallback(async () => {
     try {
       setLoading(true);
-      setError(null);
       const response = await pedidosService.listar({
         status: filters.status,
         data_inicio: filters.data_from,
@@ -104,7 +103,7 @@ const PedidosPage = () => {
       setPedidos(Array.isArray(response.data) ? response.data : []);
       setTotal(response.total || 0);
     } catch (err: any) {
-      setError('Erro ao carregar pedidos. Tente novamente.');
+      toast.error('Erro ao carregar pedidos. Tente novamente.');
       setPedidos([]);
     } finally {
       setLoading(false);
@@ -204,12 +203,12 @@ const PedidosPage = () => {
     try {
       setProcessandoExclusao(true);
       await pedidosService.excluirPedido(pedidoParaExcluir.id);
-      setSuccessMessage('Pedido excluído com sucesso!');
+      toast.success('Pedido excluído com sucesso!');
       setDialogExcluir(false);
       setPedidoParaExcluir(null);
       await loadPedidos();
     } catch (error: any) {
-      setError('Erro ao excluir pedido. Tente novamente.');
+      toast.error('Erro ao excluir pedido. Tente novamente.');
     } finally {
       setProcessandoExclusao(false);
     }
@@ -295,21 +294,6 @@ const PedidosPage = () => {
 
   return (
     <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
-      {successMessage && (
-        <Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}>
-          <Alert severity="success" onClose={() => setSuccessMessage(null)}>
-            {successMessage}
-          </Alert>
-        </Box>
-      )}
-      {error && (
-        <Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}>
-          <Alert severity="error" onClose={() => setError(null)}>
-            {error}
-          </Alert>
-        </Box>
-      )}
-
       <PageContainer fullHeight>
         <Card sx={{ borderRadius: '12px', p: 2, mb: 2 }}>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2 }}>
@@ -396,11 +380,10 @@ const PedidosPage = () => {
               <CircularProgress size={60} />
             </CardContent>
           </Card>
-        ) : error && pedidos.length === 0 ? (
+        ) : pedidos.length === 0 ? (
           <Card>
             <CardContent sx={{ textAlign: 'center', py: 6 }}>
-              <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
-              <Button variant="contained" onClick={loadPedidos}>Tentar Novamente</Button>
+              <Typography variant="h6" sx={{ color: 'text.secondary' }}>Nenhum pedido encontrado</Typography>
             </CardContent>
           </Card>
         ) : filteredPedidos.length === 0 ? (

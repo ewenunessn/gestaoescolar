@@ -83,7 +83,7 @@ const CardapiosModalidadePage: React.FC = () => {
       const modalidadesData = await listarModalidades();
       setModalidades(modalidadesData);
     } catch (err) {
-      toast.error('Erro ao carregar modalidades');
+      toast.toast.error('Erro ao carregar modalidades');
     }
   };
 
@@ -254,10 +254,10 @@ const CardapiosModalidadePage: React.FC = () => {
 
       if (editMode && selectedId) {
         await editarCardapioMutation.mutateAsync({ id: selectedId, data });
-        toast.success('Cardápio atualizado!');
+        toast.toast.success('Cardápio atualizado!');
       } else {
         await criarCardapioMutation.mutateAsync(data);
-        toast.success('Cardápio criado!');
+        toast.toast.success('Cardápio criado!');
       }
 
       setOpenDialog(false);
@@ -271,9 +271,9 @@ const CardapiosModalidadePage: React.FC = () => {
     if (window.confirm('Remover este cardápio?')) {
       try {
         await removerCardapioMutation.mutateAsync(id);
-        toast.success('Cardápio removido!');
+        toast.toast.success('Cardápio removido!');
       } catch (err) {
-        toast.error('Erro ao remover cardápio');
+        toast.toast.error('Erro ao remover cardápio');
       }
     }
   };
