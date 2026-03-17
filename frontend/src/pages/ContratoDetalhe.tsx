@@ -126,6 +126,13 @@ const ContratoInfoCard = ({ contrato, fornecedor, valorTotal }) => {
                   }
                 </Typography>
               </Box>
+              {contrato.status && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8125rem' }}>
+                    <strong>Status:</strong> {contrato.status.charAt(0).toUpperCase() + contrato.status.slice(1)}
+                  </Typography>
+                </Box>
+              )}
             </Box>
           </Grid>
           <Grid item xs={12} md={4}>
@@ -1083,7 +1090,7 @@ export default function ContratoDetalhe() {
               error={touched.data_fim && !formContrato.data_fim}
               helperText={touched.data_fim && !formContrato.data_fim ? "Campo obrigatório" : ""}
             />
-            <FormControl fullWidth size="small">
+            <FormControl fullWidth size="small" sx={{ mb: 1.5 }}>
               <InputLabel>Modalidade de Licitação</InputLabel>
               <Select
                 value={formContrato.tipo_licitacao || 'pregao_eletronico'}
@@ -1098,6 +1105,19 @@ export default function ContratoDetalhe() {
                 <MenuItem value="concorrencia">Concorrência</MenuItem>
                 <MenuItem value="tomada_precos">Tomada de Preços</MenuItem>
                 <MenuItem value="convite">Convite</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl fullWidth size="small">
+              <InputLabel>Status do Contrato</InputLabel>
+              <Select
+                value={formContrato.status || 'ativo'}
+                label="Status do Contrato"
+                onChange={e => setFormContrato({ ...formContrato, status: e.target.value })}
+              >
+                <MenuItem value="ativo">Ativo</MenuItem>
+                <MenuItem value="suspenso">Suspenso</MenuItem>
+                <MenuItem value="cancelado">Cancelado</MenuItem>
+                <MenuItem value="encerrado">Encerrado</MenuItem>
               </Select>
             </FormControl>
           </DialogContent>

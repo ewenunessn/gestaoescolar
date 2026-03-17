@@ -53,6 +53,7 @@ interface Contrato {
   data_inicio: string;
   data_fim: string;
   ativo: boolean;
+  status?: string;
   valor_total_contrato?: number;
 }
 
@@ -287,6 +288,7 @@ const ContratosPage: React.FC = () => {
                   <TableRow>
                     <TableCell>Número</TableCell>
                     <TableCell align="center">Fornecedor</TableCell>
+                    <TableCell align="center">Status</TableCell>
                     <TableCell align="center">Vigência</TableCell>
                     <TableCell align="center">Valor Total</TableCell>
                     <TableCell align="center" width="80">Ações</TableCell>
@@ -304,6 +306,14 @@ const ContratosPage: React.FC = () => {
                           </Box>
                         </TableCell>
                         <TableCell align="center"><Typography variant="body2" color="text.secondary">{fornecedorMap.get(contrato.fornecedor_id) || "N/A"}</Typography></TableCell>
+                        <TableCell align="center">
+                          <Chip 
+                            label={contrato.status ? contrato.status.charAt(0).toUpperCase() + contrato.status.slice(1) : 'Ativo'} 
+                            size="small"
+                            color={contrato.status === 'ativo' ? 'success' : contrato.status === 'suspenso' ? 'warning' : 'default'}
+                            sx={{ minWidth: 80 }}
+                          />
+                        </TableCell>
                         <TableCell align="center"><Typography variant="body2" color="text.secondary">{`${formatarData(contrato.data_inicio)} a ${formatarData(contrato.data_fim)}`}</Typography></TableCell>
                         <TableCell align="center"><Typography variant="body2" color="text.secondary">{formatarValor(contrato.valor_total_contrato)}</Typography></TableCell>
 
