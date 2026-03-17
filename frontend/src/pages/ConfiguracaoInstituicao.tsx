@@ -4,7 +4,7 @@ import {
   Alert, CircularProgress, Divider, IconButton, Tooltip
 } from '@mui/material';
 import { PhotoCamera as PhotoCameraIcon, Delete as DeleteIcon, Save as SaveIcon } from '@mui/icons-material';
-import { useNotification } from '../context/NotificationContext';
+import { useToast } from '../hooks/useToast';
 import PageContainer from '../components/PageContainer';
 import {
   buscarInstituicao,
@@ -16,7 +16,7 @@ import {
 } from '../services/instituicao';
 
 const ConfiguracaoInstituicaoPage: React.FC = () => {
-  const { success, error } = useNotification();
+  const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [instituicao, setInstituicao] = useState<Instituicao | null>(null);
@@ -58,7 +58,7 @@ const ConfiguracaoInstituicaoPage: React.FC = () => {
         setLogoPreview(data.logo_url);
       }
     } catch (err) {
-      error('Erro ao carregar configurações da instituição');
+      toast.error('Erro ao carregar configurações da instituição');
       console.error(err);
     } finally {
       setLoading(false);
@@ -81,13 +81,13 @@ const ConfiguracaoInstituicaoPage: React.FC = () => {
     // Validar tipo de arquivo
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/svg+xml'];
     if (!allowedTypes.includes(file.type)) {
-      error('Apenas imagens são permitidas (JPEG, PNG, GIF, SVG)');
+      toast.error('Apenas imagens são permitidas (JPEG, PNG, GIF, SVG)');
       return;
     }
 
     // Validar tamanho (5MB)
     if (file.size > 5 * 1024 * 1024) {
-      error('A imagem deve ter no máximo 5MB');
+      toast.error('A imagem deve ter no máximo 5MB');
       return;
     }
 
@@ -96,7 +96,7 @@ const ConfiguracaoInstituicaoPage: React.FC = () => {
       setLogoFile(file);
       setLogoPreview(base64);
     } catch (err) {
-      error('Erro ao processar imagem');
+      toast.error('Erro ao processar imagem');
       console.error(err);
     }
   };
@@ -110,7 +110,7 @@ const ConfiguracaoInstituicaoPage: React.FC = () => {
     event.preventDefault();
     
     if (!formData.nome.trim()) {
-      error('Nome da instituição é obrigatório');
+      toast.error('Nome da instituição é obrigatório');
       return;
     }
 
@@ -125,12 +125,12 @@ const ConfiguracaoInstituicaoPage: React.FC = () => {
       // Atualizar dados da instituição
       const response = await atualizarInstituicao(formData);
       
-      success(response.message);
+      toast.success(response.message);
       setInstituicao(response.instituicao);
       setLogoFile(null); // Limpar arquivo temporário
       
     } catch (err: any) {
-      error(err.response?.data?.message || 'Erro ao salvar configurações');
+      toast.error(err.response?.data?.message || 'Erro ao salvar configurações');
       console.error(err);
     } finally {
       setSaving(false);

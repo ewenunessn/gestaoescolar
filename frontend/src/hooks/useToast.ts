@@ -1,75 +1,80 @@
-import { useNotification } from '../context/NotificationContext';
+import { useToastify } from './useToastify';
 
 export const useToast = () => {
-  const { success, error, warning, info } = useNotification();
-
+  const toastify = useToastify();
+  
   return {
     // Notificações de sucesso
     successSave: (message?: string) => 
-      success("Salvo com sucesso!", message || "As alterações foram salvas.", 4000),
+      toastify.success(message || "Salvo com sucesso!"),
     
     successDelete: (item?: string) => 
-      success("Excluído!", `${item || 'Item'} foi excluído com sucesso.`, 4000),
+      toastify.success(`${item || 'Item'} excluído com sucesso!`),
     
     successCreate: (item?: string) => 
-      success("Criado!", `${item || 'Item'} foi criado com sucesso.`, 4000),
+      toastify.success(`${item || 'Item'} criado com sucesso!`),
     
     successUpdate: (item?: string) => 
-      success("Atualizado!", `${item || 'Item'} foi atualizado com sucesso.`, 4000),
+      toastify.success(`${item || 'Item'} atualizado com sucesso!`),
 
     // Notificações de erro
     errorLoad: (item?: string) => 
-      error("Erro ao carregar", `Não foi possível carregar ${item || 'os dados'}. Tente novamente.`, 6000),
+      toastify.error(`Erro ao carregar ${item || 'os dados'}. Tente novamente.`),
     
     errorSave: (message?: string) => 
-      error("Erro ao salvar", message || "Não foi possível salvar as alterações. Tente novamente.", 6000),
+      toastify.error(message || "Erro ao salvar. Tente novamente."),
     
     errorDelete: (item?: string) => 
-      error("Erro ao excluir", `Não foi possível excluir ${item || 'o item'}. Tente novamente.`, 6000),
+      toastify.error(`Erro ao excluir ${item || 'o item'}. Tente novamente.`),
     
     errorNetwork: () => 
-      error("Erro de conexão", "Verifique sua conexão com a internet e tente novamente.", 7000),
+      toastify.error("Erro de conexão. Verifique sua internet e tente novamente."),
     
     errorAuth: () => 
-      error("Sessão expirada", "Sua sessão expirou. Faça login novamente.", 7000),
+      toastify.error("Sessão expirada. Faça login novamente."),
 
     // Notificações de aviso
     warningUnsaved: () => 
-      warning("Alterações não salvas", "Você tem alterações não salvas. Salve antes de continuar.", 6000),
+      toastify.warning("Você tem alterações não salvas. Salve antes de continuar."),
     
     warningRequired: (fields?: string) => 
-      warning("Campos obrigatórios", `${fields || 'Alguns campos'} são obrigatórios.`, 5000),
+      toastify.warning(`${fields || 'Alguns campos'} são obrigatórios.`),
     
     warningLimit: (limit?: string) => 
-      warning("Limite atingido", `${limit || 'Limite'} foi atingido.`, 5000),
+      toastify.warning(`${limit || 'Limite'} foi atingido.`),
 
     // Notificações de informação
     infoProcessing: (action?: string) => 
-      info("Processando...", `${action || 'Operação'} está sendo processada.`, 3000),
+      toastify.info(`${action || 'Operação'} está sendo processada...`),
     
     infoNoData: (item?: string) => 
-      info("Nenhum resultado", `Nenhum ${item || 'resultado'} encontrado.`, 4000),
+      toastify.info(`Nenhum ${item || 'resultado'} encontrado.`),
 
     // Funções diretas para casos customizados
-    success,
-    error,
-    warning,
-    info,
+    success: (title: string, message?: string) => {
+      const fullMessage = message ? `${title}: ${message}` : title;
+      return toastify.success(fullMessage);
+    },
+    error: (title: string, message?: string) => {
+      const fullMessage = message ? `${title}: ${message}` : title;
+      return toastify.error(fullMessage);
+    },
+    warning: (title: string, message?: string) => {
+      const fullMessage = message ? `${title}: ${message}` : title;
+      return toastify.warning(fullMessage);
+    },
+    info: (title: string, message?: string) => {
+      const fullMessage = message ? `${title}: ${message}` : title;
+      return toastify.info(fullMessage);
+    },
     
     // Função genérica showToast para compatibilidade
-    showToast: (type: 'success' | 'error' | 'warning' | 'info', title: string, message?: string, duration?: number) => {
-      switch (type) {
-        case 'success':
-          return success(title, message, duration);
-        case 'error':
-          return error(title, message, duration);
-        case 'warning':
-          return warning(title, message, duration);
-        case 'info':
-          return info(title, message, duration);
-        default:
-          return info(title, message, duration);
-      }
+    showToast: (type: 'success' | 'error' | 'warning' | 'info', title: string, message?: string) => {
+      const fullMessage = message ? `${title}: ${message}` : title;
+      return toastify.showToast(type, fullMessage);
     },
+
+    // Expor todas as funções do toastify
+    ...toastify,
   };
 };

@@ -59,7 +59,7 @@ import {
   Clear as ClearIcon,
   Refresh as RefreshIcon
 } from '@mui/icons-material';
-import { useNotification } from '../context/NotificationContext';
+import { useToast } from '../hooks/useToast';
 import { RotaEntrega } from '../modules/entregas/types/rota';
 import { format } from 'date-fns';
 import QRCode from 'qrcode';
@@ -131,7 +131,7 @@ const Romaneio: React.FC = () => {
 
   const [statusMenuAnchor, setStatusMenuAnchor] = useState<null | HTMLElement>(null);
   const [itemStatusEditing, setItemStatusEditing] = useState<any>(null);
-  const { success, error: showError } = useNotification();
+  const toast = useToast();
   
   // Estado para QR Code
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
@@ -393,7 +393,7 @@ const Romaneio: React.FC = () => {
       const itemId = itemStatusEditing.id;
       
       if (!itemId) {
-        showError('Item sem identificador para atualização');
+        toast.error('Item sem identificador para atualização');
         return;
       }
 
@@ -402,7 +402,7 @@ const Romaneio: React.FC = () => {
         data: { status: newStatus }
       });
       
-      success(`Status atualizado para ${getStatusItemLabel(newStatus)}`);
+      toast.success(`Status atualizado para ${getStatusItemLabel(newStatus)}`);
       
       // Atualizar lista localmente
       if (selectedProduct) {
@@ -414,7 +414,7 @@ const Romaneio: React.FC = () => {
       
     } catch (err: any) {
       console.error('Erro ao atualizar status:', err);
-      showError('Erro ao atualizar status do item');
+      toast.error('Erro ao atualizar status do item');
     } finally {
       handleCloseStatusMenu();
     }

@@ -22,7 +22,7 @@ import {
   School as SchoolIcon,
   Inventory as InventoryIcon
 } from '@mui/icons-material';
-import { useNotification } from '../context/NotificationContext';
+import { useToast } from '../hooks/useToast';
 import { guiaService, Guia, AddProdutoGuiaData } from '../services/guiaService';
 import { listarProdutos } from '../services/produtos';
 import { escolaService } from '../services/escolaService';
@@ -63,7 +63,7 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
   const [showConfirmacao, setShowConfirmacao] = useState(false);
   
 
-  const { success, error } = useNotification();
+  const toast = useToast();
 
   const [estoqueItem, setEstoqueItem] = useState<EstoqueEscolarItem | null>(null);
   const [estoqueLoading, setEstoqueLoading] = useState(false);
@@ -113,7 +113,7 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
       setProdutosList(Array.isArray(produtosData) ? produtosData : []);
     } catch (err: any) {
       console.error('Erro ao carregar dados:', err);
-      error('Erro ao carregar dados');
+      toast.error('Erro ao carregar dados');
     } finally {
       setLoading(false);
     }
@@ -177,7 +177,7 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
       if (itemExistente) {
         // Verificar se já foi entregue
         if (itemExistente.entrega_confirmada) {
-          error('Este lote já foi entregue para esta escola. Não é possível adicionar mais itens.');
+          toast.error('Este lote já foi entregue para esta escola. Não é possível adicionar mais itens.');
           return false;
         }
 
@@ -246,7 +246,7 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
 
   const handleSalvar = async (atualizarExistente = false) => {
     if (!guia || !selectedProduto || !selectedEscola || !quantidade || !unidade) {
-      error('Preencha todos os campos obrigatórios');
+      toast.error('Preencha todos os campos obrigatórios');
       return;
     }
 
@@ -296,7 +296,7 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
         };
 
         await guiaService.adicionarProdutoGuia(guia.id, data);
-        success(`Quantidade atualizada para ${parseFloat(quantidade).toLocaleString('pt-BR')} ${unidade}`);
+        toast.success(`Quantidade atualizada para ${parseFloat(quantidade).toLocaleString('pt-BR')} ${unidade}`);
       } else {
         // Adicionar novo item
         const data: AddProdutoGuiaData = {
@@ -310,7 +310,7 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
         };
 
         await guiaService.adicionarProdutoGuia(guia.id, data);
-        success('Produto adicionado com sucesso!');
+        toast.success('Produto adicionado com sucesso!');
       }
 
       // Limpar formulário
@@ -318,7 +318,7 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
       onUpdate();
       onClose();
     } catch (errorCatch: any) {
-      error(errorCatch.response?.data?.error || 'Erro ao salvar produto');
+      toast.error(errorCatch.response?.data?.error || 'Erro ao salvar produto');
     } finally {
       setLoading(false);
     }

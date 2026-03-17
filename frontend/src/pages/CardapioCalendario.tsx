@@ -6,7 +6,7 @@ import {
   CircularProgress
 } from '@mui/material';
 import { ArrowBack as ArrowBackIcon, Delete as DeleteIcon, PictureAsPdf as PdfIcon, MoreVert as MoreIcon, DragIndicator as DragIcon } from '@mui/icons-material';
-import { useNotification } from '../context/NotificationContext';
+import { useToast } from '../hooks/useToast';
 import { usePageTitle } from '../contexts/PageTitleContext';
 import PageContainer from '../components/PageContainer';
 import { useInstituicaoForPDF } from '../hooks/useInstituicao';
@@ -41,7 +41,7 @@ const initPdfMake = async () => {
 const CardapioCalendarioPage: React.FC = () => {
   const { cardapioId } = useParams<{ cardapioId: string }>();
   const navigate = useNavigate();
-  const { success, error } = useNotification();
+  const toast = useToast();
   const { setPageTitle } = usePageTitle();
   const { fetchInstituicaoForPDF } = useInstituicaoForPDF();
 
@@ -101,7 +101,7 @@ const CardapioCalendarioPage: React.FC = () => {
         setPageTitle(`Cardápio ${mesNome}/${cardapioData.ano} - ${cardapioData.modalidade_nome}`);
       }
     } catch (err) {
-      error('Erro ao carregar cardápio');
+      toast.error('Erro ao carregar cardápio');
     }
   };
 
@@ -177,7 +177,7 @@ const CardapioCalendarioPage: React.FC = () => {
         setOpenDetalhesDialog(true);
       }
     } catch (err) {
-      error('Erro ao carregar detalhes');
+      toast.error('Erro ao carregar detalhes');
       setProdutosRefeicao([]);
     } finally {
       setLoadingDetalhes(false);
@@ -317,10 +317,10 @@ const CardapioCalendarioPage: React.FC = () => {
       };
       
       pdfMake.createPdf(docDefinition).download(`cardapio-${cardapio.mes}-${cardapio.ano}.pdf`);
-      success('PDF do calendário gerado!');
+      toast.success('PDF do calendário gerado!');
       setAnchorEl(null);
     } catch (err) {
-      error('Erro ao gerar PDF do calendário');
+      toast.error('Erro ao gerar PDF do calendário');
       console.error(err);
     }
   };
@@ -437,10 +437,10 @@ const CardapioCalendarioPage: React.FC = () => {
       };
       
       pdfMake.createPdf(docDefinition).download(`frequencia-cardapio-${cardapio.mes}-${cardapio.ano}.pdf`);
-      success('PDF de frequência gerado!');
+      toast.success('PDF de frequência gerado!');
       setAnchorEl(null);
     } catch (err) {
-      error('Erro ao gerar PDF de frequência');
+      toast.error('Erro ao gerar PDF de frequência');
       console.error(err);
     }
   };
@@ -484,7 +484,7 @@ const CardapioCalendarioPage: React.FC = () => {
           ]
         };
         pdfMake.createPdf(docDefinition).download(`cardapio-detalhado-${cardapio.mes}-${cardapio.ano}.pdf`);
-        success('PDF gerado!');
+        toast.success('PDF gerado!');
         setOpenPeriodoDialog(false);
         return;
       }
@@ -740,10 +740,10 @@ const CardapioCalendarioPage: React.FC = () => {
       };
       
       pdfMake.createPdf(docDefinition).download(`cardapio-detalhado-${cardapio.mes}-${cardapio.ano}.pdf`);
-      success('PDF gerado com sucesso!');
+      toast.success('PDF gerado com sucesso!');
       setOpenPeriodoDialog(false);
     } catch (err) {
-      error('Erro ao gerar PDF');
+      toast.error('Erro ao gerar PDF');
       console.error(err);
     }
   };
@@ -752,7 +752,7 @@ const CardapioCalendarioPage: React.FC = () => {
     setSalvando(true);
     try {
       if (!formData.refeicao_id || !formData.tipo_refeicao) {
-        error('Selecione a refeição e o tipo');
+        toast.error('Selecione a refeição e o tipo');
         return;
       }
 
@@ -763,11 +763,11 @@ const CardapioCalendarioPage: React.FC = () => {
         observacao: formData.observacao || undefined
       });
 
-      success('Refeição adicionada!');
+      toast.success('Refeição adicionada!');
       setOpenDialog(false);
       loadData();
     } catch (err: any) {
-      error(err.message || 'Erro ao adicionar refeição');
+      toast.error(err.message || 'Erro ao adicionar refeição');
     } finally {
       setSalvando(false);
     }
@@ -778,10 +778,10 @@ const CardapioCalendarioPage: React.FC = () => {
       setExcluindo(true);
       try {
         await removerRefeicaoDia(id);
-        success('Refeição removida!');
+        toast.success('Refeição removida!');
         loadData();
       } catch (err) {
-        error('Erro ao remover refeição');
+        toast.error('Erro ao remover refeição');
       } finally {
         setExcluindo(false);
       }
@@ -818,10 +818,10 @@ const CardapioCalendarioPage: React.FC = () => {
         observacao: refeicao.observacao || undefined
       });
 
-      success(`Refeição movida para o dia ${novoDia}`);
+      toast.success(`Refeição movida para o dia ${novoDia}`);
       loadData();
     } catch (err: any) {
-      error(err.message || 'Erro ao mover refeição');
+      toast.error(err.message || 'Erro ao mover refeição');
       loadData(); // Recarregar para reverter mudanças visuais
     }
   };

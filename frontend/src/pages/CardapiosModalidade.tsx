@@ -15,7 +15,7 @@ import {
   Visibility as ViewIcon, Search as SearchIcon, Clear as ClearIcon, FilterList as FilterIcon,
   MoreVert
 } from '@mui/icons-material';
-import { useNotification } from '../context/NotificationContext';
+import { useToast } from '../hooks/useToast';
 import { CardapioModalidade, MESES } from '../services/cardapiosModalidade';
 import { listarModalidades } from '../services/modalidadeService';
 import { useNutricionistaQueries } from '../hooks/queries/useNutricionistaQueries';
@@ -70,7 +70,7 @@ const CardapiosModalidadePage: React.FC = () => {
   const [formDataInicial, setFormDataInicial] = useState<any>(null);
   const [confirmClose, setConfirmClose] = useState(false);
   
-  const { success, error } = useNotification();
+  const toast = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -83,7 +83,7 @@ const CardapiosModalidadePage: React.FC = () => {
       const modalidadesData = await listarModalidades();
       setModalidades(modalidadesData);
     } catch (err) {
-      error('Erro ao carregar modalidades');
+      toast.error('Erro ao carregar modalidades');
     }
   };
 
@@ -254,10 +254,10 @@ const CardapiosModalidadePage: React.FC = () => {
 
       if (editMode && selectedId) {
         await editarCardapioMutation.mutateAsync({ id: selectedId, data });
-        success('Cardápio atualizado!');
+        toast.success('Cardápio atualizado!');
       } else {
         await criarCardapioMutation.mutateAsync(data);
-        success('Cardápio criado!');
+        toast.success('Cardápio criado!');
       }
 
       setOpenDialog(false);
@@ -271,9 +271,9 @@ const CardapiosModalidadePage: React.FC = () => {
     if (window.confirm('Remover este cardápio?')) {
       try {
         await removerCardapioMutation.mutateAsync(id);
-        success('Cardápio removido!');
+        toast.success('Cardápio removido!');
       } catch (err) {
-        error('Erro ao remover cardápio');
+        toast.error('Erro ao remover cardápio');
       }
     }
   };

@@ -3,10 +3,11 @@ import { NotificationProvider } from "./context/NotificationContext";
 import { ConfigProvider } from "./context/ConfigContext";
 import { PageTitleProvider } from "./contexts/PageTitleContext";
 import { QueryProvider } from "./providers/QueryProvider";
-import ToastContainer from "./components/ToastContainer";
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import theme from './theme/theme';
+import { ToastContainer as ReactToastifyContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 interface AppProps {
   routerConfig?: {
@@ -26,7 +27,19 @@ export default function App({ routerConfig }: AppProps) {
           <NotificationProvider>
             <ConfigProvider>
               <AppRouter routerConfig={routerConfig} />
-              <ToastContainer />
+              <ReactToastifyContainer
+                position="top-right"
+                autoClose={4000}
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+                theme="light"
+                style={{ zIndex: 9999 }}
+              />
             </ConfigProvider>
           </NotificationProvider>
         </PageTitleProvider>
