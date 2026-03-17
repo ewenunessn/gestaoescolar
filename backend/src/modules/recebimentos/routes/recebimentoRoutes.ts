@@ -1,31 +1,22 @@
 import { Router } from 'express';
 import * as recebimentoController from '../controllers/recebimentoController';
 import { authenticateToken } from '../../../middleware/authMiddleware';
+import { requireLeitura, requireEscrita } from '../../../middleware/permissionMiddleware';
 
 const router = Router();
 
 // Todas as rotas requerem autenticação
 router.use(authenticateToken);
 
-// Listar pedidos pendentes e parciais
-router.get('/pedidos-pendentes', recebimentoController.listarPedidosPendentes);
+// Rotas de LEITURA
+router.get('/pedidos-pendentes', requireLeitura('recebimentos'), recebimentoController.listarPedidosPendentes);
+router.get('/pedidos-concluidos', requireLeitura('recebimentos'), recebimentoController.listarPedidosConcluidos);
+router.get('/pedidos/:pedidoId/fornecedores', requireLeitura('recebimentos'), recebimentoController.listarFornecedoresPedido);
+router.get('/pedidos/:pedidoId/fornecedores/:fornecedorId/itens', requireLeitura('recebimentos'), recebimentoController.listarItensFornecedor);
+router.get('/itens/:pedidoItemId/recebimentos', requireLeitura('recebimentos'), recebimentoController.listarRecebimentosItem);
+router.get('/pedidos/:pedidoId/historico', requireLeitura('recebimentos'), recebimentoController.historicoRecebimentosPedido);
 
-// Listar pedidos concluídos
-router.get('/pedidos-concluidos', recebimentoController.listarPedidosConcluidos);
-
-// Listar fornecedores de um pedido
-router.get('/pedidos/:pedidoId/fornecedores', recebimentoController.listarFornecedoresPedido);
-
-// Listar itens de um fornecedor em um pedido
-router.get('/pedidos/:pedidoId/fornecedores/:fornecedorId/itens', recebimentoController.listarItensFornecedor);
-
-// Registrar recebimento
-router.post('/registrar', recebimentoController.registrarRecebimento);
-
-// Listar recebimentos de um item
-router.get('/itens/:pedidoItemId/recebimentos', recebimentoController.listarRecebimentosItem);
-
-// Histórico de recebimentos de um pedido
-router.get('/pedidos/:pedidoId/historico', recebimentoController.historicoRecebimentosPedido);
+// Rotas de ESCRITA
+router.post('/registrar', requireEscrita('recebimentos'), recebimentoController.registrarRecebimento);
 
 export default router;

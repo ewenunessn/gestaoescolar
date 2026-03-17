@@ -7,25 +7,22 @@ import {
   removerFornecedor,
   verificarRelacionamentosFornecedor
 } from "../controllers/fornecedorController";
+import { authenticateToken } from "../../../middleware/authMiddleware";
+import { requireLeitura, requireEscrita } from "../../../middleware/permissionMiddleware";
 
 const router = Router();
 
-// Listar fornecedores (com filtros e paginação)
-router.get("/", listarFornecedores);
+// Todas as rotas requerem autenticação
+router.use(authenticateToken);
 
-// Verificar relacionamentos do fornecedor (deve vir antes da rota /:id)
-router.get("/:id/relacionamentos", verificarRelacionamentosFornecedor);
+// Rotas de LEITURA
+router.get("/", requireLeitura('fornecedores'), listarFornecedores);
+router.get("/:id/relacionamentos", requireLeitura('fornecedores'), verificarRelacionamentosFornecedor);
+router.get("/:id", requireLeitura('fornecedores'), buscarFornecedor);
 
-// Buscar fornecedor por ID
-router.get("/:id", buscarFornecedor);
-
-// Criar novo fornecedor
-router.post("/", criarFornecedor);
-
-// Editar fornecedor
-router.put("/:id", editarFornecedor);
-
-// Remover fornecedor
-router.delete("/:id", removerFornecedor);
+// Rotas de ESCRITA
+router.post("/", requireEscrita('fornecedores'), criarFornecedor);
+router.put("/:id", requireEscrita('fornecedores'), editarFornecedor);
+router.delete("/:id", requireEscrita('fornecedores'), removerFornecedor);
 
 export default router;

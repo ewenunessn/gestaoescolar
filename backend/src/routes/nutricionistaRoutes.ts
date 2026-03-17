@@ -8,15 +8,21 @@ import {
   desativarNutricionista
 } from '../controllers/nutricionistaController';
 import { authenticateToken } from '../middleware/authMiddleware';
+import { requireLeitura, requireEscrita } from '../middleware/permissionMiddleware';
 
 const router = Router();
 
-// Rotas de nutricionistas
-router.get('/', authenticateToken, listarNutricionistas);
-router.get('/:id', authenticateToken, buscarNutricionista);
-router.post('/', authenticateToken, criarNutricionista);
-router.put('/:id', authenticateToken, editarNutricionista);
-router.delete('/:id', authenticateToken, removerNutricionista);
-router.patch('/:id/desativar', authenticateToken, desativarNutricionista);
+// Todas as rotas requerem autenticação
+router.use(authenticateToken);
+
+// Rotas de LEITURA
+router.get('/', requireLeitura('nutricionistas'), listarNutricionistas);
+router.get('/:id', requireLeitura('nutricionistas'), buscarNutricionista);
+
+// Rotas de ESCRITA
+router.post('/', requireEscrita('nutricionistas'), criarNutricionista);
+router.put('/:id', requireEscrita('nutricionistas'), editarNutricionista);
+router.delete('/:id', requireEscrita('nutricionistas'), removerNutricionista);
+router.patch('/:id/desativar', requireEscrita('nutricionistas'), desativarNutricionista);
 
 export default router;

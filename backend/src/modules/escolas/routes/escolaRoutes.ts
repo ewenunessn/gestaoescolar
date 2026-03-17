@@ -1,6 +1,7 @@
 import { Router } from "express";
 import * as escolaController from "../controllers/escolaController";
 import { authenticateToken } from "../../../middleware/authMiddleware";
+import { requireLeitura, requireEscrita } from "../../../middleware/permissionMiddleware";
 
 const router = Router();
 
@@ -18,10 +19,13 @@ if (!listarEscolas || !buscarEscola || !criarEscola || !editarEscola || !remover
   throw new Error("Controladores de escolas não carregados corretamente");
 }
 
-router.get("/", listarEscolas);
-router.get("/:id", buscarEscola);
-router.post("/", criarEscola);
-router.put("/:id", editarEscola);
-router.delete("/:id", removerEscola);
+// Rotas de LEITURA
+router.get("/", requireLeitura('escolas'), listarEscolas);
+router.get("/:id", requireLeitura('escolas'), buscarEscola);
+
+// Rotas de ESCRITA
+router.post("/", requireEscrita('escolas'), criarEscola);
+router.put("/:id", requireEscrita('escolas'), editarEscola);
+router.delete("/:id", requireEscrita('escolas'), removerEscola);
 
 export default router;

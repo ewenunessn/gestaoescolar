@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { authenticateToken } from "../../../middleware/authMiddleware";
+import { requireLeitura, requireEscrita } from "../../../middleware/permissionMiddleware";
 import { 
   listarCardapiosModalidade,
   buscarCardapioModalidade,
@@ -13,16 +14,19 @@ import {
 
 const router = Router();
 
-// Cardápios por modalidade
-router.get("/", authenticateToken, listarCardapiosModalidade);
-router.post("/", authenticateToken, criarCardapioModalidade);
-router.get("/:id", authenticateToken, buscarCardapioModalidade);
-router.put("/:id", authenticateToken, editarCardapioModalidade);
-router.delete("/:id", authenticateToken, removerCardapioModalidade);
+// Todas as rotas requerem autenticação
+router.use(authenticateToken);
 
-// Refeições do cardápio
-router.get("/:cardapioId/refeicoes", authenticateToken, listarRefeicoesCardapio);
-router.post("/:cardapioId/refeicoes", authenticateToken, adicionarRefeicaoDia);
-router.delete("/refeicoes/:id", authenticateToken, removerRefeicaoDia);
+// Rotas de LEITURA - Cardápios por modalidade
+router.get("/", requireLeitura('cardapios'), listarCardapiosModalidade);
+router.get("/:id", requireLeitura('cardapios'), buscarCardapioModalidade);
+router.get("/:cardapioId/refeicoes", requireLeitura('cardapios'), listarRefeicoesCardapio);
+
+// Rotas de ESCRITA - Cardápios por modalidade
+router.post("/", requireEscrita('cardapios'), criarCardapioModalidade);
+router.put("/:id", requireEscrita('cardapios'), editarCardapioModalidade);
+router.delete("/:id", requireEscrita('cardapios'), removerCardapioModalidade);
+router.post("/:cardapioId/refeicoes", requireEscrita('cardapios'), adicionarRefeicaoDia);
+router.delete("/refeicoes/:id", requireEscrita('cardapios'), removerRefeicaoDia);
 
 export default router;

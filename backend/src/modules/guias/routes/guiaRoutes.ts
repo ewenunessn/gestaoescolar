@@ -1,11 +1,12 @@
 import { Router } from 'express';
 import { guiaController } from '../controllers/guiaController';
-// import { devAuthMiddleware as authenticateToken } from '../../../middlewares';
+import { authenticateToken } from '../../../middleware/authMiddleware';
+import { requireLeitura, requireEscrita } from '../../../middleware/permissionMiddleware';
 
 const router = Router();
 
-// TEMPORARIAMENTE SEM MIDDLEWARES PARA DEBUG
-// router.use(authenticateToken);
+// Todas as rotas requerem autenticação
+router.use(authenticateToken);
 
 // Rota de teste
 router.get('/test', (req, res) => {
@@ -13,40 +14,28 @@ router.get('/test', (req, res) => {
   res.json({ success: true, message: 'Rota de teste funcionando' });
 });
 
-// Rotas de guias
-router.get('/competencias', guiaController.listarCompetencias);
-router.get('/status-escolas', guiaController.listarStatusEscolas);
-router.get('/romaneio', guiaController.listarRomaneio);
-router.get('/', guiaController.listarGuias);
-router.post('/', guiaController.criarGuia);
-router.get('/:id', guiaController.buscarGuia);
-router.put('/:id', guiaController.atualizarGuia);
-router.delete('/:id', guiaController.deletarGuia);
+// Rotas de guias - LEITURA
+router.get('/competencias', requireLeitura('guias'), guiaController.listarCompetencias);
+router.get('/status-escolas', requireLeitura('guias'), guiaController.listarStatusEscolas);
+router.get('/romaneio', requireLeitura('guias'), guiaController.listarRomaneio);
+router.get('/', requireLeitura('guias'), guiaController.listarGuias);
+router.get('/:id', requireLeitura('guias'), guiaController.buscarGuia);
+router.get('/:guiaId/produtos', requireLeitura('guias'), guiaController.listarProdutosGuia);
+router.get('/:guiaId/itens', requireLeitura('guias'), guiaController.listarItensGuia);
+router.get('/escola/:escolaId/produtos', requireLeitura('guias'), guiaController.listarProdutosPorEscola);
+router.get('/:guiaId/ajuste', requireLeitura('guias'), guiaController.listarItensParaAjuste);
 
-// Rotas de produtos dentro das guias
-router.post('/:guiaId/produtos', guiaController.adicionarProdutoGuia);
-router.get('/:guiaId/produtos', guiaController.listarProdutosGuia);
-router.delete('/:guiaId/produtos/:produtoId/escolas/:escolaId', guiaController.removerProdutoGuia);
-
-// Rota para atualizar dados de entrega
-router.put('/:guiaId/produtos/:produtoId/escolas/:escolaId/entrega', guiaController.atualizarEntrega);
-
-// Rota para atualizar campo para_entrega
-router.put('/itens/:itemId/para-entrega', guiaController.atualizarParaEntrega);
-
-// Rota para remover item pelo ID
-router.delete('/itens/:itemId', guiaController.removerItemGuia);
-
-// Rota para listar todos os itens de uma guia
-router.get('/:guiaId/itens', guiaController.listarItensGuia);
-
-// Novas rotas por escola
-router.get('/escola/:escolaId/produtos', guiaController.listarProdutosPorEscola);
-router.post('/escola/:escolaId/produtos', guiaController.adicionarProdutoEscola);
-router.put('/escola/produtos/:itemId', guiaController.atualizarProdutoEscola);
-
-// Ajuste fino de quantidades da guia
-router.get('/:guiaId/ajuste', guiaController.listarItensParaAjuste);
-router.put('/:guiaId/ajuste', guiaController.salvarAjuste);
+// Rotas de guias - ESCRITA
+router.post('/', requireEscrita('guias'), guiaController.criarGuia);
+router.put('/:id', requireEscrita('guias'), guiaController.atualizarGuia);
+router.delete('/:id', requireEscrita('guias'), guiaController.deletarGuia);
+router.post('/:guiaId/produtos', requireEscrita('guias'), guiaController.adicionarProdutoGuia);
+router.delete('/:guiaId/produtos/:produtoId/escolas/:escolaId', requireEscrita('guias'), guiaController.removerProdutoGuia);
+router.put('/:guiaId/produtos/:produtoId/escolas/:escolaId/entrega', requireEscrita('guias'), guiaController.atualizarEntrega);
+router.put('/itens/:itemId/para-entrega', requireEscrita('guias'), guiaController.atualizarParaEntrega);
+router.delete('/itens/:itemId', requireEscrita('guias'), guiaController.removerItemGuia);
+router.post('/escola/:escolaId/produtos', requireEscrita('guias'), guiaController.adicionarProdutoEscola);
+router.put('/escola/produtos/:itemId', requireEscrita('guias'), guiaController.atualizarProdutoEscola);
+router.put('/:guiaId/ajuste', requireEscrita('guias'), guiaController.salvarAjuste);
 
 export default router;

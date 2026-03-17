@@ -2,42 +2,43 @@ import { Router } from 'express';
 import EntregaController from '../controllers/EntregaController';
 import HistoricoEntregaController from '../controllers/HistoricoEntregaController';
 import ComprovanteEntregaController from '../controllers/ComprovanteEntregaController';
+import { authenticateToken } from '../../../middleware/authMiddleware';
+import { requireLeitura, requireEscrita } from '../../../middleware/permissionMiddleware';
 
 const router = Router();
 
-// Listar escolas com itens para entrega
-router.get('/escolas', EntregaController.listarEscolas);
+// Todas as rotas requerem autenticação
+router.use(authenticateToken);
 
-// Obter estatísticas gerais de entregas
-router.get('/estatisticas', EntregaController.obterEstatisticas);
+// Rotas de LEITURA - Entregas
+router.get('/escolas', requireLeitura('entregas'), EntregaController.listarEscolas);
+router.get('/estatisticas', requireLeitura('entregas'), EntregaController.obterEstatisticas);
+router.get('/escolas/:escolaId/itens', requireLeitura('entregas'), EntregaController.listarItensPorEscola);
+router.get('/itens/:itemId', requireLeitura('entregas'), EntregaController.buscarItem);
 
-// Listar itens para entrega de uma escola específica
-router.get('/escolas/:escolaId/itens', EntregaController.listarItensPorEscola);
+// Rotas de LEITURA - Histórico
+router.get('/itens/:itemId/historico', requireLeitura('entregas'), HistoricoEntregaController.listarPorItem);
+router.get('/escolas/:escolaId/historico', requireLeitura('entregas'), HistoricoEntregaController.listarPorEscola);
+router.get('/itens/:itemId/completo', requireLeitura('entregas'), HistoricoEntregaController.buscarItemComHistorico);
+router.get('/escolas/:escolaId/itens-completo', requireLeitura('entregas'), HistoricoEntregaController.listarItensComHistorico);
+router.get('/itens/:itemId/saldo', requireLeitura('entregas'), HistoricoEntregaController.calcularSaldo);
 
-// Buscar um item específico
-router.get('/itens/:itemId', EntregaController.buscarItem);
+// Rotas de LEITURA - Comprovantes
+router.get('/comprovantes', requireLeitura('entregas'), ComprovanteEntregaController.listar);
+router.get('/comprovantes/:id', requireLeitura('entregas'), ComprovanteEntregaController.buscarPorId);
+router.get('/comprovantes/numero/:numero', requireLeitura('entregas'), ComprovanteEntregaController.buscarPorNumero);
+router.get('/comprovantes/escola/:escolaId', requireLeitura('entregas'), ComprovanteEntregaController.listarPorEscola);
 
-// Confirmar entrega de um item
-router.post('/itens/:itemId/confirmar', EntregaController.confirmarEntrega);
+// Rotas de ESCRITA - Entregas
+router.post('/itens/:itemId/confirmar', requireEscrita('entregas'), EntregaController.confirmarEntrega);
+router.post('/itens/:itemId/cancelar', requireEscrita('entregas'), EntregaController.cancelarEntrega);
 
-// Cancelar entrega de um item
-router.post('/itens/:itemId/cancelar', EntregaController.cancelarEntrega);
+// Rotas de ESCRITA - Histórico
+router.delete('/historico/:id', requireEscrita('entregas'), HistoricoEntregaController.deletar);
 
-// Rotas de histórico de entregas
-router.get('/itens/:itemId/historico', HistoricoEntregaController.listarPorItem);
-router.get('/escolas/:escolaId/historico', HistoricoEntregaController.listarPorEscola);
-router.get('/itens/:itemId/completo', HistoricoEntregaController.buscarItemComHistorico);
-router.get('/escolas/:escolaId/itens-completo', HistoricoEntregaController.listarItensComHistorico);
-router.get('/itens/:itemId/saldo', HistoricoEntregaController.calcularSaldo);
-router.delete('/historico/:id', HistoricoEntregaController.deletar);
-
-// Rotas de comprovantes de entrega
-router.post('/comprovantes', ComprovanteEntregaController.criar);
-router.get('/comprovantes', ComprovanteEntregaController.listar);
-router.get('/comprovantes/:id', ComprovanteEntregaController.buscarPorId);
-router.get('/comprovantes/numero/:numero', ComprovanteEntregaController.buscarPorNumero);
-router.get('/comprovantes/escola/:escolaId', ComprovanteEntregaController.listarPorEscola);
-router.delete('/comprovantes/:id', ComprovanteEntregaController.cancelar);
-router.delete('/comprovantes/:id/excluir', ComprovanteEntregaController.excluir);
+// Rotas de ESCRITA - Comprovantes
+router.post('/comprovantes', requireEscrita('entregas'), ComprovanteEntregaController.criar);
+router.delete('/comprovantes/:id', requireEscrita('entregas'), ComprovanteEntregaController.cancelar);
+router.delete('/comprovantes/:id/excluir', requireEscrita('entregas'), ComprovanteEntregaController.excluir);
 
 export default router;

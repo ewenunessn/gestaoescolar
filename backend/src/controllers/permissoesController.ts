@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import db from "../database";
+import { limparCachePermissoes } from '../middleware/permissionMiddleware';
 
 // Listar todos os módulos disponíveis
 export async function listarModulos(req: Request, res: Response) {
@@ -126,6 +127,9 @@ export async function definirPermissoesUsuario(req: Request, res: Response) {
     }
 
     await client.query('COMMIT');
+
+    // Limpar cache de permissões do usuário
+    limparCachePermissoes(parseInt(usuario_id));
 
     res.json({
       success: true,

@@ -7,24 +7,22 @@ import {
   removerContrato,
   obterEstatisticasContratos
 } from "../controllers/contratoController";
+import { authenticateToken } from "../../../middleware/authMiddleware";
+import { requireLeitura, requireEscrita } from "../../../middleware/permissionMiddleware";
+
 const router = Router();
 
-// Obter estatísticas de contratos
-router.get("/estatisticas", obterEstatisticasContratos);
+// Todas as rotas requerem autenticação
+router.use(authenticateToken);
 
-// Listar contratos (com filtros e paginação)
-router.get("/", listarContratos);
+// Rotas de LEITURA
+router.get("/estatisticas", requireLeitura('contratos'), obterEstatisticasContratos);
+router.get("/", requireLeitura('contratos'), listarContratos);
+router.get("/:id", requireLeitura('contratos'), buscarContrato);
 
-// Buscar contrato por ID
-router.get("/:id", buscarContrato);
-
-// Criar novo contrato
-router.post("/", criarContrato);
-
-// Editar contrato
-router.put("/:id", editarContrato);
-
-// Remover contrato
-router.delete("/:id", removerContrato);
+// Rotas de ESCRITA
+router.post("/", requireEscrita('contratos'), criarContrato);
+router.put("/:id", requireEscrita('contratos'), editarContrato);
+router.delete("/:id", requireEscrita('contratos'), removerContrato);
 
 export default router;

@@ -10,21 +10,24 @@ import {
   listarRelatorios,
   getDashboardPNAE
 } from '../controllers/pnaeController';
+import { authenticateToken } from '../middleware/authMiddleware';
+import { requireLeitura, requireEscrita } from '../middleware/permissionMiddleware';
 
 const router = Router();
 
-// Dashboard
-router.get('/dashboard', getDashboardPNAE);
+// Todas as rotas requerem autenticação
+router.use(authenticateToken);
 
-// Relatórios
-router.get('/relatorios/agricultura-familiar', getRelatorioAgriculturaFamiliar);
-router.get('/relatorios/per-capita', getRelatorioPerCapita);
-router.get('/relatorios', listarRelatorios);
-router.post('/relatorios', salvarRelatorio);
+// Rotas de LEITURA
+router.get('/dashboard', requireLeitura('pnae'), getDashboardPNAE);
+router.get('/relatorios/agricultura-familiar', requireLeitura('pnae'), getRelatorioAgriculturaFamiliar);
+router.get('/relatorios/per-capita', requireLeitura('pnae'), getRelatorioPerCapita);
+router.get('/relatorios', requireLeitura('pnae'), listarRelatorios);
+router.get('/per-capita', requireLeitura('pnae'), getValoresPerCapita);
 
-// Valores Per Capita
-router.get('/per-capita', getValoresPerCapita);
-router.post('/per-capita', criarValorPerCapita);
-router.put('/per-capita/:id', atualizarValorPerCapita);
+// Rotas de ESCRITA
+router.post('/relatorios', requireEscrita('pnae'), salvarRelatorio);
+router.post('/per-capita', requireEscrita('pnae'), criarValorPerCapita);
+router.put('/per-capita/:id', requireEscrita('pnae'), atualizarValorPerCapita);
 
 export default router;

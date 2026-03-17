@@ -13,20 +13,28 @@ import {
   editarRefeicaoProduto,
   removerRefeicaoProduto,
 } from "../controllers/refeicaoProdutoController";
+import { authenticateToken } from "../../../middleware/authMiddleware";
+import { requireLeitura, requireEscrita } from "../../../middleware/permissionMiddleware";
+
 const router = Router();
 
-// Rotas para refeições - CRUD Completo
-router.get("/", listarRefeicoes);                    // GET /api/refeicoes - Listar todas
-router.get("/:id", buscarRefeicao);                  // GET /api/refeicoes/:id - Buscar por ID
-router.post("/", criarRefeicao);                     // POST /api/refeicoes - Criar nova
-router.put("/:id", editarRefeicao);                  // PUT /api/refeicoes/:id - Atualizar
-router.delete("/:id", removerRefeicao);              // DELETE /api/refeicoes/:id - Deletar
-router.patch("/:id/toggle", toggleAtivoRefeicao);    // PATCH /api/refeicoes/:id/toggle - Ativar/Desativar
+// Todas as rotas requerem autenticação
+router.use(authenticateToken);
 
-// Rotas para produtos da refeição
-router.get("/:refeicaoId/produtos", listarRefeicaoProdutos);      // GET /api/refeicoes/:refeicaoId/produtos
-router.post("/:refeicaoId/produtos", adicionarRefeicaoProduto);   // POST /api/refeicoes/:refeicaoId/produtos
-router.put("/produtos/:id", editarRefeicaoProduto);               // PUT /api/refeicoes/produtos/:id
-router.delete("/produtos/:id", removerRefeicaoProduto);           // DELETE /api/refeicoes/produtos/:id
+// Rotas de LEITURA - Refeições
+router.get("/", requireLeitura('refeicoes'), listarRefeicoes);
+router.get("/:id", requireLeitura('refeicoes'), buscarRefeicao);
+router.get("/:refeicaoId/produtos", requireLeitura('refeicoes'), listarRefeicaoProdutos);
+
+// Rotas de ESCRITA - Refeições
+router.post("/", requireEscrita('refeicoes'), criarRefeicao);
+router.put("/:id", requireEscrita('refeicoes'), editarRefeicao);
+router.delete("/:id", requireEscrita('refeicoes'), removerRefeicao);
+router.patch("/:id/toggle", requireEscrita('refeicoes'), toggleAtivoRefeicao);
+
+// Rotas de ESCRITA - Produtos da refeição
+router.post("/:refeicaoId/produtos", requireEscrita('refeicoes'), adicionarRefeicaoProduto);
+router.put("/produtos/:id", requireEscrita('refeicoes'), editarRefeicaoProduto);
+router.delete("/produtos/:id", requireEscrita('refeicoes'), removerRefeicaoProduto);
 
 export default router;

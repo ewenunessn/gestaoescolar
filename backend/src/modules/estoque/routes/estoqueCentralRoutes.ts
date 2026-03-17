@@ -1,28 +1,25 @@
 import { Router } from 'express';
 import EstoqueCentralController from '../controllers/EstoqueCentralController';
+import { authenticateToken } from '../../../middleware/authMiddleware';
+import { requireLeitura, requireEscrita } from '../../../middleware/permissionMiddleware';
 
 const router = Router();
 
-// Listar estoque central
-router.get('/', EstoqueCentralController.listar);
+// Todas as rotas requerem autenticação
+router.use(authenticateToken);
 
-// Buscar estoque por produto
-router.get('/produto/:produtoId', EstoqueCentralController.buscarPorProduto);
+// Rotas de LEITURA
+router.get('/', requireLeitura('estoque'), EstoqueCentralController.listar);
+router.get('/produto/:produtoId', requireLeitura('estoque'), EstoqueCentralController.buscarPorProduto);
+router.get('/:estoqueId/lotes', requireLeitura('estoque'), EstoqueCentralController.listarLotes);
+router.get('/alertas/vencimento', requireLeitura('estoque'), EstoqueCentralController.listarLotesProximosVencimento);
+router.get('/alertas/estoque-baixo', requireLeitura('estoque'), EstoqueCentralController.listarEstoqueBaixo);
+router.get('/movimentacoes', requireLeitura('estoque'), EstoqueCentralController.listarMovimentacoes);
 
-// Movimentações
-router.post('/simular-saida', EstoqueCentralController.simularSaida);
-router.post('/entrada', EstoqueCentralController.registrarEntrada);
-router.post('/saida', EstoqueCentralController.registrarSaida);
-router.post('/ajuste', EstoqueCentralController.registrarAjuste);
-
-// Lotes
-router.get('/:estoqueId/lotes', EstoqueCentralController.listarLotes);
-
-// Alertas
-router.get('/alertas/vencimento', EstoqueCentralController.listarLotesProximosVencimento);
-router.get('/alertas/estoque-baixo', EstoqueCentralController.listarEstoqueBaixo);
-
-// Histórico de movimentações
-router.get('/movimentacoes', EstoqueCentralController.listarMovimentacoes);
+// Rotas de ESCRITA
+router.post('/simular-saida', requireEscrita('estoque'), EstoqueCentralController.simularSaida);
+router.post('/entrada', requireEscrita('estoque'), EstoqueCentralController.registrarEntrada);
+router.post('/saida', requireEscrita('estoque'), EstoqueCentralController.registrarSaida);
+router.post('/ajuste', requireEscrita('estoque'), EstoqueCentralController.registrarAjuste);
 
 export default router;

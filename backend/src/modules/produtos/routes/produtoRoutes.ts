@@ -10,30 +10,23 @@ import {
   standardizarComposicaoNutricional
 } from "../controllers/produtoController";
 import { authenticateToken } from "../../../middleware/authMiddleware";
+import { requireLeitura, requireEscrita } from "../../../middleware/permissionMiddleware";
+
 const router = Router();
 
-// Listar produtos
-router.get("/", listarProdutos);
+// Todas as rotas requerem autenticação
+router.use(authenticateToken);
 
-// Buscar produto por ID
-router.get("/:id", buscarProduto);
+// Rotas de LEITURA
+router.get("/", requireLeitura('produtos'), listarProdutos);
+router.get("/:id", requireLeitura('produtos'), buscarProduto);
+router.get("/:id/composicao-nutricional", requireLeitura('produtos'), buscarComposicaoNutricional);
 
-// Buscar composição nutricional do produto
-router.get("/:id/composicao-nutricional", buscarComposicaoNutricional);
-
-// Salvar composição nutricional do produto
-router.put("/:id/composicao-nutricional", salvarComposicaoNutricional);
-
-// Padronizar esquema da composição nutricional (admin)
-router.post("/standardize-composicao", authenticateToken, standardizarComposicaoNutricional);
-
-// Criar novo produto
-router.post("/", criarProduto);
-
-// Editar produto
-router.put("/:id", editarProduto);
-
-// Remover produto
-router.delete("/:id", removerProduto);
+// Rotas de ESCRITA
+router.post("/", requireEscrita('produtos'), criarProduto);
+router.put("/:id", requireEscrita('produtos'), editarProduto);
+router.put("/:id/composicao-nutricional", requireEscrita('produtos'), salvarComposicaoNutricional);
+router.post("/standardize-composicao", requireEscrita('produtos'), standardizarComposicaoNutricional);
+router.delete("/:id", requireEscrita('produtos'), removerProduto);
 
 export default router;
