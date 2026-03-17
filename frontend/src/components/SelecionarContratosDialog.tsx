@@ -117,11 +117,23 @@ export default function SelecionarContratosDialog({ open, onClose, produtos, onC
   };
 
   const handleAlterarQuantidade = (produto_id: number, index: number, quantidade: number) => {
+    const produto = produtos.find(p => p.produto_id === produto_id);
+    if (!produto) return;
+
     setContratosSelecionados(prev => {
       const novo = new Map(prev);
       const contratos = [...(novo.get(produto_id) || [])];
       if (contratos[index]) {
-        contratos[index] = { ...contratos[index], quantidade: Math.max(0, quantidade) };
+        // Calcular o total alocado nos outros contratos
+        const totalOutros = contratos.reduce((sum, c, i) => i === index ? sum : sum + c.quantidade, 0);
+        
+        // Quantidade máxima permitida para este contrato
+        const maxPermitido = produto.quantidade_necessaria - totalOutros;
+        
+        // Limitar a quantidade entre 0 e o máximo permitido
+        const qtdLimitada = Math.max(0, Math.min(quantidade, maxPermitido));
+        
+        contratos[index] = { ...contratos[index], quantidade: qtdLimitada };
       }
       novo.set(produto_id, contratos);
       return novo;
@@ -225,9 +237,10 @@ export default function SelecionarContratosDialog({ open, onClose, produtos, onC
           const emDivisao = modoDivisao.get(produto.produto_id) || false;
           const totalAlocado = getTotalAlocado(produto.produto_id);
           const diferenca = produto.quantidade_necessaria - totalAlocado;
+          const isValido = Math.abs(diferenca) < 0.01;
 
           return (
-            <Card key={produto.produto_id} sx={{ mb: 2 }}>
+            <Card key={produto.produto_id} sx={{ mb: 2, border: isValido ? '1px solid' : '2px solid', borderColor: isValido ? 'grey.300' : 'warning.main' }}>
               <CardContent>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 1.5 }}>
                   <Box>
@@ -248,6 +261,12 @@ export default function SelecionarContratosDialog({ open, onClose, produtos, onC
                   {contratosDoP.map((contratoSel, idx) => {
                     const contrato = getContrato(produto, contratoSel.contrato_produto_id);
                     if (!contrato) return null;
+
+                    // Calcular quanto já foi alocado nos outros contratos
+                    const totalOutros = contratosDoP.reduce((sum, c, i) => i === idx ? sum : sum + c.quantidade, 0);
+                    const maxPermitido = produto.quantidade_necessaria - totalOutros;
+                    const saldoContrato = toNum(contrato.saldo_disponivel);
+                    const maxPossivelNeste = Math.min(maxPermitido, saldoContrato);
 
                     return (
                       <Box key={idx} sx={{ p: 1.5, bgcolor: 'grey.50', borderRadius: 1, border: '1px solid', borderColor: 'grey.200' }}>
@@ -282,7 +301,13 @@ export default function SelecionarContratosDialog({ open, onClose, produtos, onC
                                 value={contratoSel.quantidade}
                                 onChange={(e) => handleAlterarQuantidade(produto.produto_id, idx, Number(e.target.value))}
                                 sx={{ width: 150 }}
-                                inputProps={{ min: 0, step: 0.01 }}
+                                inputProps={{ 
+                                  min: 0, 
+                                  max: maxPossivelNeste,
+                                  step: 0.01 
+                                }}
+                                helperText={maxPossivelNeste < maxPermitido ? `Máx: ${toFixed(maxPossivelNeste, 2)} (saldo)` : `Máx: ${toFixed(maxPermitido, 2)}`}
+                                error={contratoSel.quantidade > maxPossivelNeste}
                               />
                               {contratosDoP.length > 1 && (
                                 <IconButton size="small" onClick={() => handleRemoverContrato(produto.produto_id, idx)} color="error">
@@ -313,21 +338,85 @@ export default function SelecionarContratosDialog({ open, onClose, produtos, onC
                 </Stack>
 
                 {emDivisao && (
-                  <Box sx={{ mt: 1.5, p: 1, bgcolor: Math.abs(diferenca) < 0.01 ? 'success.50' : 'warning.50', borderRadius: 1 }}>
-                    <Typography variant="caption" sx={{ fontWeight: 600 }}>
-                      Total alocado: {totalAlocado.toFixed(2)} / {produto.quantidade_necessaria.toFixed(2)} {produto.unidade}
-                    </Typography>
-                    {Math.abs(diferenca) >= 0.01 && (
-                      <Typography variant="caption" color="warning.dark" sx={{ display: 'block' }}>
-                        {diferenca > 0 ? `Faltam ${diferenca.toFixed(2)}` : `Excesso de ${Math.abs(diferenca).toFixed(2)}`} {produto.unidade}
+                  <>
+                    <Box sx={{ mt: 1.5, p: 1, bgcolor: Math.abs(diferenca) < 0.01 ? 'success.50' : 'warning.50', borderRadius: 1 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                        Total alocado: {totalAlocado.toFixed(2)} / {produto.quantidade_necessaria.toFixed(2)} {produto.unidade}
                       </Typography>
+                      {Math.abs(diferenca) >= 0.01 && (
+                        <Typography variant="caption" color="warning.dark" sx={{ display: 'block' }}>
+                          {diferenca > 0 ? `Faltam ${diferenca.toFixed(2)}` : `Excesso de ${Math.abs(diferenca).toFixed(2)}`} {produto.unidade}
+                        </Typography>
+                      )}
+                    </Box>
+                    
+                    {diferenca > 0.01 && contratosDoP.length < produto.contratos.length && (
+                      <Button
+                        size="small"
+                        variant="text"
+                        color="primary"
+                        onClick={() => {
+                          // Distribuir o restante automaticamente
+                          const restante = diferenca;
+                          const contratosDisponiveis = produto.contratos.filter(c => 
+                            !contratosDoP.find(cp => cp.contrato_produto_id === c.contrato_produto_id)
+                          );
+                          
+                          if (contratosDisponiveis.length > 0) {
+                            // Pegar o contrato com maior saldo
+                            const melhorContrato = contratosDisponiveis.sort((a, b) => 
+                              toNum(b.saldo_disponivel) - toNum(a.saldo_disponivel)
+                            )[0];
+                            
+                            const saldoDisponivel = toNum(melhorContrato.saldo_disponivel);
+                            const qtdAdicionar = Math.min(restante, saldoDisponivel);
+                            
+                            if (qtdAdicionar > 0) {
+                              setContratosSelecionados(prev => {
+                                const novo = new Map(prev);
+                                const contratos = [...(novo.get(produto.produto_id) || [])];
+                                contratos.push({
+                                  contrato_produto_id: melhorContrato.contrato_produto_id,
+                                  quantidade: qtdAdicionar
+                                });
+                                novo.set(produto.produto_id, contratos);
+                                return novo;
+                              });
+                            }
+                          }
+                        }}
+                        sx={{ mt: 1 }}
+                      >
+                        Adicionar contrato para completar ({diferenca.toFixed(2)} {produto.unidade})
+                      </Button>
                     )}
-                  </Box>
+                  </>
                 )}
               </CardContent>
             </Card>
           );
         })}
+
+        {/* Resumo Final */}
+        <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>Resumo da Seleção</Typography>
+          {produtos.map(produto => {
+            const contratosDoP = contratosSelecionados.get(produto.produto_id) || [];
+            const emDivisao = modoDivisao.get(produto.produto_id) || false;
+            const totalAlocado = getTotalAlocado(produto.produto_id);
+            const diferenca = produto.quantidade_necessaria - totalAlocado;
+            const isValido = Math.abs(diferenca) < 0.01;
+            
+            return (
+              <Box key={produto.produto_id} sx={{ mb: 1 }}>
+                <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  {isValido ? '✓' : '⚠️'} {produto.produto_nome}: {totalAlocado.toFixed(2)} / {produto.quantidade_necessaria.toFixed(2)} {produto.unidade}
+                  {emDivisao && ` (${contratosDoP.length} contrato${contratosDoP.length > 1 ? 's' : ''})`}
+                </Typography>
+              </Box>
+            );
+          })}
+        </Box>
       </DialogContent>
 
       <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
