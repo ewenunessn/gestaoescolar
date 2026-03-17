@@ -39,6 +39,7 @@ export default function NovoContrato() {
   const [fornecedorSelecionado, setFornecedorSelecionado] = useState<Fornecedor | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string>('');
 
   const [formData, setFormData] = useState({
     fornecedor_id: "",

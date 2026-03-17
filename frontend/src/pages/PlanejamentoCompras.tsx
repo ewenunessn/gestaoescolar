@@ -282,7 +282,7 @@ export default function PlanejamentoCompras() {
     }
   }
 
-  const handleConfirmarSelecaoContratos = (selecao: { produto_id: number; contrato_produto_id: number }[]) => {
+  const handleConfirmarSelecaoContratos = (selecao: { produto_id: number; contrato_produto_id: number; quantidade?: number }[]) => {
     setContratosSelecionados(selecao);
     setDialogSelecaoContratos(false);
     // Tentar gerar pedidos novamente com a seleção
