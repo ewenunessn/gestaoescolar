@@ -46,19 +46,31 @@ export function requireAdmin(req: Request, res: Response, next: Function) {
 export const listarUsuarios = asyncHandler(async (req: Request, res: Response) => {
   const result = await db.query(`
     SELECT u.id, u.nome, u.email, u.tipo, u.ativo, u.funcao_id,
-           f.nome as funcao_nome, u.created_at, u.updated_at
+           f.nome as funcao_nome, u.escola_id, e.nome as escola_nome,
+           u.tipo_secretaria, u.created_at, u.updated_at
     FROM usuarios u
     LEFT JOIN funcoes f ON u.funcao_id = f.id
+    LEFT JOIN escolas e ON u.escola_id = e.id
     ORDER BY u.nome
   `);
   res.json({ success: true, data: result.rows });
 });
 
 export const criarUsuario = asyncHandler(async (req: Request, res: Response) => {
-  const { nome, email, senha, tipo = 'usuario', funcao_id, ativo = true } = req.body;
+  const { nome, email, senha, tipo = 'usuario', funcao_id, ativo = true, escola_id, tipo_secretaria = 'educacao' } = req.body;
 
   if (!nome || !email || !senha) {
     throw new ValidationError('nome, email e senha são obrigatórios');
+  }
+
+  // Validar tipo_secretaria
+  if (tipo_secretaria && !['educacao', 'escola'].includes(tipo_secretaria)) {
+    throw new ValidationError('tipo_secretaria deve ser "educacao" ou "escola"');
+  }
+
+  // Se tipo_secretaria é 'escola', escola_id é obrigatório
+  if (tipo_secretaria === 'escola' && !escola_id) {
+    throw new ValidationError('escola_id é obrigatório para usuários de secretaria de escola');
   }
 
   const existe = await db.query('SELECT id FROM usuarios WHERE email = $1', [email]);
@@ -66,17 +78,17 @@ export const criarUsuario = asyncHandler(async (req: Request, res: Response) => 
 
   const hash = await bcrypt.hash(senha, 10);
   const result = await db.query(`
-    INSERT INTO usuarios (nome, email, senha, tipo, funcao_id, ativo)
-    VALUES ($1, $2, $3, $4, $5, $6)
-    RETURNING id, nome, email, tipo, funcao_id, ativo, created_at
-  `, [nome, email, hash, tipo, funcao_id || null, ativo]);
+    INSERT INTO usuarios (nome, email, senha, tipo, funcao_id, ativo, escola_id, tipo_secretaria)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    RETURNING id, nome, email, tipo, funcao_id, ativo, escola_id, tipo_secretaria, created_at
+  `, [nome, email, hash, tipo, funcao_id || null, ativo, escola_id || null, tipo_secretaria]);
 
   res.status(201).json({ success: true, data: result.rows[0], message: 'Usuário criado com sucesso' });
 });
 
 export const atualizarUsuario = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { nome, email, senha, tipo, funcao_id, ativo } = req.body;
+  const { nome, email, senha, tipo, funcao_id, ativo, escola_id, tipo_secretaria } = req.body;
 
   const existe = await db.query('SELECT id FROM usuarios WHERE id = $1', [id]);
   if (existe.rows.length === 0) throw new NotFoundError('Usuário', id);
@@ -85,6 +97,16 @@ export const atualizarUsuario = asyncHandler(async (req: Request, res: Response)
   if (email) {
     const emailCheck = await db.query('SELECT id FROM usuarios WHERE email = $1 AND id != $2', [email, id]);
     if (emailCheck.rows.length > 0) throw new ConflictError('E-mail já em uso por outro usuário');
+  }
+
+  // Validar tipo_secretaria
+  if (tipo_secretaria && !['educacao', 'escola'].includes(tipo_secretaria)) {
+    throw new ValidationError('tipo_secretaria deve ser "educacao" ou "escola"');
+  }
+
+  // Se tipo_secretaria é 'escola', escola_id é obrigatório
+  if (tipo_secretaria === 'escola' && !escola_id) {
+    throw new ValidationError('escola_id é obrigatório para usuários de secretaria de escola');
   }
 
   const sets: string[] = [];
@@ -96,13 +118,15 @@ export const atualizarUsuario = asyncHandler(async (req: Request, res: Response)
   if (tipo !== undefined) { sets.push(`tipo = $${idx++}`); values.push(tipo); }
   if (funcao_id !== undefined) { sets.push(`funcao_id = $${idx++}`); values.push(funcao_id || null); }
   if (ativo !== undefined) { sets.push(`ativo = $${idx++}`); values.push(ativo); }
+  if (escola_id !== undefined) { sets.push(`escola_id = $${idx++}`); values.push(escola_id || null); }
+  if (tipo_secretaria !== undefined) { sets.push(`tipo_secretaria = $${idx++}`); values.push(tipo_secretaria); }
   if (senha) { sets.push(`senha = $${idx++}`); values.push(await bcrypt.hash(senha, 10)); }
   sets.push(`updated_at = CURRENT_TIMESTAMP`);
 
   values.push(id);
   const result = await db.query(`
     UPDATE usuarios SET ${sets.join(', ')} WHERE id = $${idx}
-    RETURNING id, nome, email, tipo, funcao_id, ativo, updated_at
+    RETURNING id, nome, email, tipo, funcao_id, ativo, escola_id, tipo_secretaria, updated_at
   `, values);
 
   res.json({ success: true, data: result.rows[0], message: 'Usuário atualizado com sucesso' });

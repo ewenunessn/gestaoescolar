@@ -45,6 +45,7 @@ import {
   Edit,
   Delete,
   Visibility,
+  ContentCopy,
 } from '@mui/icons-material';
 import CompactPagination from '../components/CompactPagination';
 import { useNavigate } from 'react-router-dom';
@@ -54,7 +55,8 @@ import {
   useRefeicoes, 
   useCriarRefeicao, 
   useEditarRefeicao, 
-  useDeletarRefeicao 
+  useDeletarRefeicao,
+  useDuplicarRefeicao
 } from '../hooks/queries/useRefeicaoQueries';
 
 const RefeicoesPage = () => {
@@ -66,6 +68,7 @@ const RefeicoesPage = () => {
   const criarRefeicaoMutation = useCriarRefeicao();
   const editarRefeicaoMutation = useEditarRefeicao();
   const deletarRefeicaoMutation = useDeletarRefeicao();
+  const duplicarRefeicaoMutation = useDuplicarRefeicao();
   
   // Estados locais (apenas UI)
   const [error, setError] = useState<string | null>(null);
@@ -85,8 +88,11 @@ const RefeicoesPage = () => {
   // Estados de modais
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [duplicateModalOpen, setDuplicateModalOpen] = useState(false);
   const [editingRefeicao, setEditingRefeicao] = useState<Refeicao | null>(null);
   const [refeicaoToDelete, setRefeicaoToDelete] = useState<Refeicao | null>(null);
+  const [refeicaoToDuplicate, setRefeicaoToDuplicate] = useState<Refeicao | null>(null);
+  const [duplicateNome, setDuplicateNome] = useState('');
   const [formData, setFormData] = useState({
     nome: '',
     descricao: '',
@@ -275,6 +281,32 @@ const RefeicoesPage = () => {
     navigate(`/refeicoes/${refeicao.id}`);
   };
 
+  const openDuplicateModal = (refeicao: Refeicao) => {
+    setRefeicaoToDuplicate(refeicao);
+    setDuplicateNome(`${refeicao.nome} (Cópia)`);
+    setDuplicateModalOpen(true);
+  };
+
+  const closeDuplicateModal = () => {
+    setDuplicateModalOpen(false);
+    setRefeicaoToDuplicate(null);
+    setDuplicateNome('');
+  };
+
+  const handleDuplicate = async () => {
+    if (!refeicaoToDuplicate || !duplicateNome.trim()) return;
+    try {
+      await duplicarRefeicaoMutation.mutateAsync({ 
+        id: refeicaoToDuplicate.id, 
+        nome: duplicateNome.trim() 
+      });
+      toast.success('Sucesso!', 'Refeição duplicada com sucesso!');
+      closeDuplicateModal();
+    } catch (err: any) {
+      setError('Erro ao duplicar refeição. Tente novamente.');
+    }
+  };
+
   return (
     <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
       <PageContainer fullHeight>
@@ -378,7 +410,7 @@ const RefeicoesPage = () => {
                 <TableRow>
                   <TableCell align="left">Nome da Refeição</TableCell>
                   <TableCell align="center">Tipo</TableCell>
-                  <TableCell align="center" width="120">Ações</TableCell>
+                  <TableCell align="center" width="180">Ações</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -400,6 +432,7 @@ const RefeicoesPage = () => {
                     </TableCell>
                     <TableCell align="center">
                         <Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => handleViewDetails(refeicao)} color="default"><Visibility fontSize="small" /></IconButton></Tooltip>
+                        <Tooltip title="Duplicar"><IconButton size="small" onClick={() => openDuplicateModal(refeicao)} color="primary"><ContentCopy fontSize="small" /></IconButton></Tooltip>
                         <Tooltip title="Editar"><IconButton size="small" onClick={() => openModal(refeicao)} color="primary"><Edit fontSize="small" /></IconButton></Tooltip>
                         <Tooltip title="Excluir"><IconButton size="small" onClick={() => openDeleteModal(refeicao)} color="delete"><Delete fontSize="small" /></IconButton></Tooltip>
                     </TableCell>
@@ -471,12 +504,46 @@ const RefeicoesPage = () => {
         </MenuItem>
       </Menu>
 
+      {/* Modal de Duplicar Refeição */}
+      <Dialog open={duplicateModalOpen} onClose={closeDuplicateModal} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: '12px' } }}>
+        <DialogTitle sx={{ fontWeight: 600 }}>Duplicar Refeição</DialogTitle>
+        <DialogContent sx={{ pt: 2 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Alert severity="info" sx={{ mb: 1 }}>
+              Todos os dados da refeição "{refeicaoToDuplicate?.nome}" serão copiados, incluindo produtos e ingredientes. Apenas altere o nome da nova refeição.
+            </Alert>
+            <TextField 
+              label="Nome da Nova Refeição" 
+              value={duplicateNome} 
+              onChange={(e) => setDuplicateNome(e.target.value)} 
+              required 
+              autoFocus
+              fullWidth
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 3, pt: 1 }}>
+          <Button onClick={closeDuplicateModal} sx={{ color: 'text.secondary' }} disabled={duplicarRefeicaoMutation.isPending}>
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleDuplicate} 
+            variant="contained" 
+            disabled={!duplicateNome.trim() || duplicarRefeicaoMutation.isPending}
+            startIcon={<ContentCopy />}
+          >
+            {duplicarRefeicaoMutation.isPending ? 'Duplicando...' : 'Duplicar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <LoadingOverlay 
-        open={criarRefeicaoMutation.isPending || editarRefeicaoMutation.isPending || deletarRefeicaoMutation.isPending}
+        open={criarRefeicaoMutation.isPending || editarRefeicaoMutation.isPending || deletarRefeicaoMutation.isPending || duplicarRefeicaoMutation.isPending}
         message={
           criarRefeicaoMutation.isPending ? 'Criando refeição...' :
           editarRefeicaoMutation.isPending ? 'Atualizando refeição...' :
           deletarRefeicaoMutation.isPending ? 'Excluindo refeição...' :
+          duplicarRefeicaoMutation.isPending ? 'Duplicando refeição...' :
           'Processando...'
         }
       />

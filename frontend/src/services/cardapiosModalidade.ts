@@ -55,21 +55,53 @@ export async function listarCardapiosModalidade(filtros?: {
   ano?: number;
   ativo?: boolean;
 }): Promise<CardapioModalidade[]> {
-  const params = new URLSearchParams();
-  if (filtros?.modalidade_id) params.append('modalidade_id', filtros.modalidade_id.toString());
-  if (filtros?.mes) params.append('mes', filtros.mes.toString());
-  if (filtros?.ano) params.append('ano', filtros.ano.toString());
-  if (filtros?.ativo !== undefined) params.append('ativo', filtros.ativo.toString());
-  
-  const response = await api.get(`/cardapios?${params.toString()}`);
-  if (response.data.error) throw new Error(response.data.message || 'Erro ao listar cardápios');
-  return response.data;
+  try {
+    const params = new URLSearchParams();
+    if (filtros?.modalidade_id) params.append('modalidade_id', filtros.modalidade_id.toString());
+    if (filtros?.mes) params.append('mes', filtros.mes.toString());
+    if (filtros?.ano) params.append('ano', filtros.ano.toString());
+    if (filtros?.ativo !== undefined) params.append('ativo', filtros.ativo.toString());
+    
+    const response = await api.get(`/cardapios?${params.toString()}`);
+    
+    // Backend retorna array diretamente em response.data
+    if (Array.isArray(response.data)) {
+      return response.data;
+    }
+    
+    // Ou pode retornar { data: [...] }
+    if (response.data && response.data.data) {
+      return response.data.data;
+    }
+    
+    // Fallback para array vazio
+    console.warn('Resposta inesperada da API:', response.data);
+    return [];
+  } catch (error) {
+    console.error('Erro ao listar cardápios:', error);
+    throw error;
+  }
 }
 
 export async function buscarCardapioModalidade(id: number): Promise<CardapioModalidade> {
-  const response = await api.get(`/cardapios/${id}`);
-  if (response.data.error) throw new Error(response.data.message || 'Erro ao buscar cardápio');
-  return response.data;
+  try {
+    const response = await api.get(`/cardapios/${id}`);
+    
+    // Backend retorna objeto diretamente em response.data
+    if (response.data && !response.data.data) {
+      return response.data;
+    }
+    
+    // Ou pode retornar { data: {...} }
+    if (response.data && response.data.data) {
+      return response.data.data;
+    }
+    
+    throw new Error('Resposta inválida da API');
+  } catch (error) {
+    console.error('Erro ao buscar cardápio:', error);
+    throw error;
+  }
 }
 
 export async function criarCardapioModalidade(data: {
@@ -83,27 +115,78 @@ export async function criarCardapioModalidade(data: {
   data_aprovacao_nutricionista?: string;
   observacoes_nutricionista?: string;
 }): Promise<CardapioModalidade> {
-  const response = await api.post('/cardapios', data);
-  if (response.data.error) throw new Error(response.data.message || 'Erro ao criar cardápio');
-  return response.data;
+  try {
+    const response = await api.post('/cardapios', data);
+    
+    // Backend retorna objeto diretamente em response.data
+    if (response.data && !response.data.data) {
+      return response.data;
+    }
+    
+    // Ou pode retornar { data: {...} }
+    if (response.data && response.data.data) {
+      return response.data.data;
+    }
+    
+    throw new Error('Resposta inválida da API');
+  } catch (error) {
+    console.error('Erro ao criar cardápio:', error);
+    throw error;
+  }
 }
 
 export async function editarCardapioModalidade(id: number, data: Partial<CardapioModalidade>): Promise<CardapioModalidade> {
-  const response = await api.put(`/cardapios/${id}`, data);
-  if (response.data.error) throw new Error(response.data.message || 'Erro ao editar cardápio');
-  return response.data;
+  try {
+    const response = await api.put(`/cardapios/${id}`, data);
+    
+    // Backend retorna objeto diretamente em response.data
+    if (response.data && !response.data.data) {
+      return response.data;
+    }
+    
+    // Ou pode retornar { data: {...} }
+    if (response.data && response.data.data) {
+      return response.data.data;
+    }
+    
+    throw new Error('Resposta inválida da API');
+  } catch (error) {
+    console.error('Erro ao editar cardápio:', error);
+    throw error;
+  }
 }
 
 export async function removerCardapioModalidade(id: number): Promise<void> {
-  const response = await api.delete(`/cardapios/${id}`);
-  if (response.data.error) throw new Error(response.data.message || 'Erro ao remover cardápio');
+  try {
+    await api.delete(`/cardapios/${id}`);
+  } catch (error) {
+    console.error('Erro ao remover cardápio:', error);
+    throw error;
+  }
 }
 
 // Refeições do cardápio
 export async function listarRefeicoesCardapio(cardapioId: number): Promise<RefeicaoDia[]> {
-  const response = await api.get(`/cardapios/${cardapioId}/refeicoes`);
-  if (response.data.error) throw new Error(response.data.message || 'Erro ao listar refeições');
-  return response.data;
+  try {
+    const response = await api.get(`/cardapios/${cardapioId}/refeicoes`);
+    
+    // Backend retorna array diretamente em response.data
+    if (Array.isArray(response.data)) {
+      return response.data;
+    }
+    
+    // Ou pode retornar { data: [...] }
+    if (response.data && response.data.data) {
+      return response.data.data;
+    }
+    
+    // Fallback para array vazio
+    console.warn('Resposta inesperada da API:', response.data);
+    return [];
+  } catch (error) {
+    console.error('Erro ao listar refeições:', error);
+    throw error;
+  }
 }
 
 export async function adicionarRefeicaoDia(cardapioId: number, data: {
@@ -112,12 +195,31 @@ export async function adicionarRefeicaoDia(cardapioId: number, data: {
   tipo_refeicao: string;
   observacao?: string;
 }): Promise<RefeicaoDia> {
-  const response = await api.post(`/cardapios/${cardapioId}/refeicoes`, data);
-  if (response.data.error) throw new Error(response.data.message || 'Erro ao adicionar refeição');
-  return response.data;
+  try {
+    const response = await api.post(`/cardapios/${cardapioId}/refeicoes`, data);
+    
+    // Backend retorna objeto diretamente em response.data
+    if (response.data && !response.data.data) {
+      return response.data;
+    }
+    
+    // Ou pode retornar { data: {...} }
+    if (response.data && response.data.data) {
+      return response.data.data;
+    }
+    
+    throw new Error('Resposta inválida da API');
+  } catch (error) {
+    console.error('Erro ao adicionar refeição:', error);
+    throw error;
+  }
 }
 
 export async function removerRefeicaoDia(id: number): Promise<void> {
-  const response = await api.delete(`/cardapios/refeicoes/${id}`);
-  if (response.data.error) throw new Error(response.data.message || 'Erro ao remover refeição');
+  try {
+    await api.delete(`/cardapios/refeicoes/${id}`);
+  } catch (error) {
+    console.error('Erro ao remover refeição:', error);
+    throw error;
+  }
 }

@@ -20,9 +20,10 @@ export interface CriarModalidadeData {
 class ModalidadeService {
   private baseUrl = '/modalidades';
 
-  async listar(): Promise<Modalidade[]> {
+  async listar(ativo?: boolean): Promise<Modalidade[]> {
     try {
-      const response = await api.get(this.baseUrl);
+      const params = ativo !== undefined ? `?ativo=${ativo}` : '';
+      const response = await api.get(`${this.baseUrl}${params}`);
       return response.data.data || response.data;
     } catch (error) {
       console.error('Erro ao listar modalidades:', error);
@@ -71,8 +72,8 @@ class ModalidadeService {
 }
 
 // Funções auxiliares para compatibilidade
-export async function listarModalidades(): Promise<Modalidade[]> {
-  return modalidadeService.listar();
+export async function listarModalidades(ativo?: boolean): Promise<Modalidade[]> {
+  return modalidadeService.listar(ativo);
 }
 
 export async function criarModalidade(dados: CriarModalidadeData): Promise<Modalidade> {

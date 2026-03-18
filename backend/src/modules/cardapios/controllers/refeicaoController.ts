@@ -262,3 +262,122 @@ export async function toggleAtivoRefeicao(req: Request, res: Response) {
     });
   }
 }
+
+export async function duplicarRefeicao(req: Request, res: Response) {
+  const client = await db.pool.connect();
+  
+  try {
+    const { id } = req.params;
+    const { nome } = req.body;
+
+    if (!nome || !nome.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Nome da nova refeição é obrigatório"
+      });
+    }
+
+    await client.query('BEGIN');
+
+    // Buscar refeição original
+    const refeicaoOriginal = await client.query(`
+      SELECT * FROM refeicoes WHERE id = $1
+    `, [id]);
+
+    if (refeicaoOriginal.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({
+        success: false,
+        message: "Refeição não encontrada"
+      });
+    }
+
+    const original = refeicaoOriginal.rows[0];
+
+    // Criar nova refeição com os dados da original
+    const novaRefeicao = await client.query(`
+      INSERT INTO refeicoes (
+        nome, descricao, tipo, categoria, modo_preparo, tempo_preparo_minutos,
+        rendimento_porcoes, utensílios, calorias_por_porcao, proteinas_g,
+        carboidratos_g, lipidios_g, fibras_g, sodio_mg, custo_por_porcao,
+        observacoes_tecnicas, ativo, created_at
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, CURRENT_TIMESTAMP)
+      RETURNING *
+    `, [
+      nome.trim(),
+      original.descricao,
+      original.tipo,
+      original.categoria,
+      original.modo_preparo,
+      original.tempo_preparo_minutos,
+      original.rendimento_porcoes,
+      original.utensílios,
+      original.calorias_por_porcao,
+      original.proteinas_g,
+      original.carboidratos_g,
+      original.lipidios_g,
+      original.fibras_g,
+      original.sodio_mg,
+      original.custo_por_porcao,
+      original.observacoes_tecnicas,
+      true // Nova refeição sempre começa ativa
+    ]);
+
+    const novaRefeicaoId = novaRefeicao.rows[0].id;
+
+    // Copiar produtos da refeição (com todas as colunas corretas)
+    const produtosCopiados = await client.query(`
+      INSERT INTO refeicao_produtos (
+        refeicao_id, produto_id, per_capita, tipo_medida, observacoes, ordem, tipo_ingrediente
+      )
+      SELECT 
+        $1, produto_id, per_capita, tipo_medida, observacoes, ordem, tipo_ingrediente
+      FROM refeicao_produtos
+      WHERE refeicao_id = $2
+      RETURNING id, produto_id
+    `, [novaRefeicaoId, id]);
+
+    // Copiar configurações por modalidade (usando refeicao_produto_id correto)
+    // Para cada produto copiado, copiar suas configurações de modalidade
+    for (const produtoNovo of produtosCopiados.rows) {
+      // Encontrar o produto original correspondente
+      const produtoOriginal = await client.query(`
+        SELECT id FROM refeicao_produtos
+        WHERE refeicao_id = $1 AND produto_id = $2
+        LIMIT 1
+      `, [id, produtoNovo.produto_id]);
+
+      if (produtoOriginal.rows.length > 0) {
+        // Copiar as configurações de modalidade do produto original para o novo
+        await client.query(`
+          INSERT INTO refeicao_produto_modalidade (
+            refeicao_produto_id, modalidade_id, per_capita_ajustado, observacao
+          )
+          SELECT 
+            $1, modalidade_id, per_capita_ajustado, observacao
+          FROM refeicao_produto_modalidade
+          WHERE refeicao_produto_id = $2
+        `, [produtoNovo.id, produtoOriginal.rows[0].id]);
+      }
+    }
+
+    await client.query('COMMIT');
+
+    res.json({
+      success: true,
+      message: "Refeição duplicada com sucesso",
+      data: novaRefeicao.rows[0]
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error("❌ Erro ao duplicar refeição:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao duplicar refeição",
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  } finally {
+    client.release();
+  }
+}

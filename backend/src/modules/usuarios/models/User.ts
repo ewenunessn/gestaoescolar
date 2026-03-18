@@ -9,6 +9,8 @@ export interface User {
   tipo: string;
   ativo: boolean;
   institution_id?: string; // UUID da instituição (opcional)
+  escola_id?: number; // ID da escola associada (para secretaria de escola)
+  tipo_secretaria?: string; // Tipo de secretaria: 'educacao' ou 'escola'
   created_at: string;
   updated_at: string;
 }
@@ -49,7 +51,7 @@ export async function createUserTable(): Promise<void> {
 // Buscar usuário por email
 export async function findUserByEmail(email: string): Promise<User | undefined> {
   try {
-    const result = await db.get('SELECT id, nome, email, senha, tipo, ativo, institution_id, created_at, updated_at FROM usuarios WHERE email = $1', [email]);
+    const result = await db.get('SELECT id, nome, email, senha, tipo, ativo, institution_id, escola_id, tipo_secretaria, created_at, updated_at FROM usuarios WHERE email = $1', [email]);
     return result;
   } catch (error) {
     console.error('❌ Erro ao buscar usuário por email:', error);

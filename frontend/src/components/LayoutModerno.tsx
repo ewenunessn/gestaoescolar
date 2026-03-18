@@ -119,6 +119,7 @@ const getMenuConfig = (_configModuloSaldo: any) => [
     category: "Configurações",
     items: [
       { text: "Instituição", icon: <Settings fontSize="small" />, path: "/configuracao-instituicao" },
+      { text: "Calendário Letivo", icon: <CalendarToday fontSize="small" />, path: "/calendario-letivo" },
       { text: "Períodos", icon: <CalendarToday fontSize="small" />, path: "/periodos", adminOnly: true },
       { text: "Usuários", icon: <AdminPanelSettings fontSize="small" />, path: "/gerenciamento-usuarios", adminOnly: true },
     ],

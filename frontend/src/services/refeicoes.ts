@@ -46,6 +46,11 @@ export async function deletarRefeicao(id: number): Promise<void> {
   await apiWithRetry.delete(`/refeicoes/${id}`);
 }
 
+export async function duplicarRefeicao(id: number, nome: string): Promise<Refeicao> {
+  const { data } = await apiWithRetry.post(`/refeicoes/${id}/duplicar`, { nome });
+  return data.data || data;
+}
+
 export async function listarRefeicaoProdutos(refeicaoId: number): Promise<RefeicaoProduto[]> {
   const { data } = await apiWithRetry.get(
     `/refeicao-produtos/${refeicaoId}/produtos`

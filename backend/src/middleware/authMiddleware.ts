@@ -9,6 +9,9 @@ export interface AuthenticatedRequest extends Request {
     nome: string;
     tipo: string;
     isSystemAdmin?: boolean;
+    escola_id?: number;
+    tipo_secretaria?: string;
+    institution_id?: string;
   };
 }
 
@@ -36,7 +39,10 @@ export function authenticateToken(req: Request, res: Response, next: NextFunctio
       email: decoded.email,
       nome: decoded.nome,
       tipo: decoded.tipo,
-      isSystemAdmin: decoded.isSystemAdmin
+      isSystemAdmin: decoded.isSystemAdmin,
+      escola_id: decoded.escola_id,
+      tipo_secretaria: decoded.tipo_secretaria,
+      institution_id: decoded.institution_id
     };
 
     next();
@@ -84,7 +90,10 @@ export function optionalAuth(req: Request, res: Response, next: NextFunction) {
       email: decoded.email,
       nome: decoded.nome,
       tipo: decoded.tipo,
-      isSystemAdmin: decoded.isSystemAdmin
+      isSystemAdmin: decoded.isSystemAdmin,
+      escola_id: decoded.escola_id,
+      tipo_secretaria: decoded.tipo_secretaria,
+      institution_id: decoded.institution_id
     };
   } catch (error) {
     // Ignora erros de token em autenticação opcional

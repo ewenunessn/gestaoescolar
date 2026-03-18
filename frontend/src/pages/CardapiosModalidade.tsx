@@ -80,10 +80,12 @@ const CardapiosModalidadePage: React.FC = () => {
 
   const loadModalidades = async () => {
     try {
+      // Carregar todas as modalidades (incluindo inativas) para o seletor do formulário
       const modalidadesData = await listarModalidades();
       setModalidades(modalidadesData);
-    } catch (err) {
-      toast.toast.error('Erro ao carregar modalidades');
+    } catch (err: any) {
+      console.error('Erro ao carregar modalidades:', err);
+      toast.error('Erro ao carregar modalidades');
     }
   };
 
@@ -175,6 +177,13 @@ const CardapiosModalidadePage: React.FC = () => {
     if (cardapio) {
       setEditMode(true);
       setSelectedId(cardapio.id);
+      
+      // Converter data ISO para formato yyyy-MM-dd se necessário
+      let dataAprovacao = cardapio.data_aprovacao_nutricionista || '';
+      if (dataAprovacao && dataAprovacao.includes('T')) {
+        dataAprovacao = dataAprovacao.split('T')[0];
+      }
+      
       const formInicial = {
         modalidade_id: cardapio.modalidade_id.toString(),
         nome: cardapio.nome,
@@ -183,7 +192,7 @@ const CardapiosModalidadePage: React.FC = () => {
         observacao: cardapio.observacao || '',
         ativo: cardapio.ativo,
         nutricionista_id: cardapio.nutricionista_id?.toString() || '',
-        data_aprovacao_nutricionista: cardapio.data_aprovacao_nutricionista || '',
+        data_aprovacao_nutricionista: dataAprovacao,
         observacoes_nutricionista: cardapio.observacoes_nutricionista || ''
       };
       setFormData(formInicial);
@@ -254,10 +263,10 @@ const CardapiosModalidadePage: React.FC = () => {
 
       if (editMode && selectedId) {
         await editarCardapioMutation.mutateAsync({ id: selectedId, data });
-        toast.toast.success('Cardápio atualizado!');
+        toast.success('Cardápio atualizado!');
       } else {
         await criarCardapioMutation.mutateAsync(data);
-        toast.toast.success('Cardápio criado!');
+        toast.success('Cardápio criado!');
       }
 
       setOpenDialog(false);
@@ -271,9 +280,9 @@ const CardapiosModalidadePage: React.FC = () => {
     if (window.confirm('Remover este cardápio?')) {
       try {
         await removerCardapioMutation.mutateAsync(id);
-        toast.toast.success('Cardápio removido!');
+        toast.success('Cardápio removido!');
       } catch (err) {
-        toast.toast.error('Erro ao remover cardápio');
+        toast.error('Erro ao remover cardápio');
       }
     }
   };
@@ -493,7 +502,7 @@ const CardapiosModalidadePage: React.FC = () => {
                 onBlur={() => setTouched({ ...touched, modalidade_id: true })}
                 label="Modalidade"
               >
-                {modalidades.map((m) => <MenuItem key={m.id} value={m.id}>{m.nome}</MenuItem>)}
+                {modalidades.map((m) => <MenuItem key={m.id} value={m.id.toString()}>{m.nome}</MenuItem>)}
               </Select>
               {touched.modalidade_id && !formData.modalidade_id && (
                 <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>

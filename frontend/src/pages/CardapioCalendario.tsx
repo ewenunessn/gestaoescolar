@@ -3,9 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box, Button, Card, CardContent, Dialog, DialogTitle, DialogContent, DialogActions,
   FormControl, Grid, IconButton, InputLabel, MenuItem, Select, TextField, Typography, Chip, Menu,
-  CircularProgress
+  CircularProgress, Divider, Alert
 } from '@mui/material';
-import { ArrowBack as ArrowBackIcon, Delete as DeleteIcon, PictureAsPdf as PdfIcon, MoreVert as MoreIcon, DragIndicator as DragIcon } from '@mui/icons-material';
+import { ArrowBack as ArrowBackIcon, Delete as DeleteIcon, PictureAsPdf as PdfIcon, MoreVert as MoreIcon, DragIndicator as DragIcon, Event as EventIcon } from '@mui/icons-material';
 import { useToast } from '../hooks/useToast';
 import { usePageTitle } from '../contexts/PageTitleContext';
 import PageContainer from '../components/PageContainer';
@@ -16,10 +16,12 @@ import {
   removerRefeicaoDia, CardapioModalidade, RefeicaoDia, TIPOS_REFEICAO, MESES
 } from '../services/cardapiosModalidade';
 import { listarRefeicoes } from '../services/refeicoes';
+import { listarEventosPorMes, getLabelsEventos, getCoresEventos } from '../services/calendarioLetivo';
 import { DndContext, DragOverlay, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { LoadingOverlay } from '../components/LoadingOverlay';
+import { DetalheDiaCardapioDialog } from '../components/DetalheDiaCardapioDialog';
 import api from '../services/api';
 
 // Função para obter URL base da API
@@ -48,6 +50,7 @@ const CardapioCalendarioPage: React.FC = () => {
   const [cardapio, setCardapio] = useState<CardapioModalidade | null>(null);
   const [refeicoes, setRefeicoes] = useState<RefeicaoDia[]>([]);
   const [refeicoesDisponiveis, setRefeicoesDisponiveis] = useState<any[]>([]);
+  const [eventosCalendario, setEventosCalendario] = useState<any[]>([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [openListDialog, setOpenListDialog] = useState(false);
   const [openDetalhesDialog, setOpenDetalhesDialog] = useState(false);
@@ -94,6 +97,17 @@ const CardapioCalendarioPage: React.FC = () => {
       setCardapio(cardapioData);
       setRefeicoes(refeicoesData);
       setRefeicoesDisponiveis(refeicoesDisp);
+      
+      // Carregar eventos do calendário letivo
+      if (cardapioData) {
+        try {
+          const eventos = await listarEventosPorMes(0, cardapioData.ano, cardapioData.mes);
+          setEventosCalendario(eventos);
+        } catch (error) {
+          console.error('Erro ao carregar eventos do calendário:', error);
+          setEventosCalendario([]);
+        }
+      }
       
       // Definir título da página
       if (cardapioData) {
@@ -143,6 +157,16 @@ const CardapioCalendarioPage: React.FC = () => {
 
   const getRefeicoesNoDia = (dia: number) => {
     return refeicoes.filter(r => r.dia === dia);
+  };
+
+  const getEventosNoDia = (dia: number) => {
+    if (!cardapio) return [];
+    const dataStr = `${cardapio.ano}-${String(cardapio.mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+    return eventosCalendario.filter(evento => {
+      const dataInicio = evento.data_inicio.split('T')[0];
+      const dataFim = evento.data_fim ? evento.data_fim.split('T')[0] : dataInicio;
+      return dataStr >= dataInicio && dataStr <= dataFim;
+    });
   };
 
   const handleOpenDialog = (dia: number) => {
@@ -1218,12 +1242,12 @@ const CardapioCalendarioPage: React.FC = () => {
             <FormControl fullWidth required>
               <InputLabel>Refeição</InputLabel>
               <Select 
-                value={formData.refeicao_id} 
+                value={String(formData.refeicao_id || '')} 
                 onChange={(e) => setFormData({ ...formData, refeicao_id: e.target.value })} 
                 label="Refeição"
               >
                 {refeicoesDisponiveis.map((r) => (
-                  <MenuItem key={r.id} value={r.id}>
+                  <MenuItem key={r.id} value={String(r.id)}>
                     {r.nome} {r.descricao && `- ${r.descricao}`}
                   </MenuItem>
                 ))}
@@ -1233,7 +1257,7 @@ const CardapioCalendarioPage: React.FC = () => {
             <FormControl fullWidth required>
               <InputLabel>Tipo de Refeição</InputLabel>
               <Select 
-                value={formData.tipo_refeicao} 
+                value={String(formData.tipo_refeicao || '')} 
                 onChange={(e) => setFormData({ ...formData, tipo_refeicao: e.target.value })} 
                 label="Tipo de Refeição"
               >
@@ -1453,272 +1477,29 @@ const CardapioCalendarioPage: React.FC = () => {
           <Button onClick={() => setOpenDetalhesDialog(false)}>Fechar</Button>
         </DialogActions>
       </Dialog>
-      {/* Dialog de detalhes do dia */}
-      <Dialog 
-        open={openDetalhesDiaDialog} 
-        onClose={() => setOpenDetalhesDiaDialog(false)} 
-        maxWidth="md" 
-        fullWidth
-        PaperProps={{ sx: { borderRadius: '12px' } }}
-      >
-        <DialogTitle sx={{ bgcolor: '#f5f5f5', borderBottom: '1px solid #e0e0e0' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Box>
-              <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                {diaSelecionado && cardapio && `${diaSelecionado} de ${MESES[cardapio.mes]}`}
-              </Typography>
-              <Typography variant="body2" color="textSecondary">
-                {diaSelecionado && cardapio && new Date(cardapio.ano, cardapio.mes - 1, diaSelecionado).toLocaleDateString('pt-BR', { weekday: 'long' })}
-              </Typography>
-            </Box>
-            <Chip 
-              label={`${diaSelecionado && getRefeicoesNoDia(diaSelecionado).length} refeições`}
-              color="primary"
-              sx={{ fontWeight: 600 }}
-            />
-          </Box>
-        </DialogTitle>
-        <DialogContent sx={{ p: 0 }}>
-          {diaSelecionado && getRefeicoesNoDia(diaSelecionado).length === 0 ? (
-            <Box sx={{ textAlign: 'center', py: 6 }}>
-              <Typography variant="h6" color="textSecondary" gutterBottom>
-                Nenhuma refeição cadastrada
-              </Typography>
-              <Typography variant="body2" color="textSecondary" sx={{ mb: 3 }}>
-                Clique no botão abaixo para adicionar a primeira refeição deste dia
-              </Typography>
-              <Button 
-                variant="contained" 
-                onClick={() => {
-                  setOpenDetalhesDiaDialog(false);
-                  handleOpenDialog(diaSelecionado);
-                }}
-              >
-                Adicionar Refeição
-              </Button>
-            </Box>
-          ) : (
-            <Box>
-              {diaSelecionado && getRefeicoesNoDia(diaSelecionado).map((ref, index) => (
-                <Box 
-                  key={ref.id}
-                  sx={{ 
-                    borderBottom: index < getRefeicoesNoDia(diaSelecionado).length - 1 ? '1px solid #e0e0e0' : 'none'
-                  }}
-                >
-                  <Box 
-                    sx={{ 
-                      p: 2,
-                      bgcolor: 'white',
-                      '&:hover': { bgcolor: '#fafafa' }
-                    }}
-                  >
-                    {/* Cabeçalho da refeição */}
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <Box
-                          sx={{
-                            width: 8,
-                            height: 40,
-                            borderRadius: '4px',
-                            bgcolor: corTipoRefeicao[ref.tipo_refeicao] || '#ccc'
-                          }}
-                        />
-                        <Box>
-                          <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.1rem' }}>
-                            {ref.refeicao_nome}
-                          </Typography>
-                          <Chip
-                            label={TIPOS_REFEICAO[ref.tipo_refeicao]}
-                            size="small"
-                            sx={{
-                              bgcolor: corTipoRefeicao[ref.tipo_refeicao] || '#ccc',
-                              color: 'white',
-                              fontWeight: 600,
-                              fontSize: '0.7rem',
-                              height: 20
-                            }}
-                          />
-                        </Box>
-                      </Box>
-                      <IconButton
-                        size="small"
-                        color="delete"
-                        onClick={() => {
-                          setOpenDetalhesDiaDialog(false);
-                          handleDelete(ref.id);
-                        }}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </Box>
 
-                    {/* Observação */}
-                    {ref.observacao && (
-                      <Box sx={{ mb: 2, p: 1.5, bgcolor: '#fff3e0', borderRadius: '8px', borderLeft: '4px solid #ff9800' }}>
-                        <Typography variant="caption" sx={{ fontWeight: 600, color: '#e65100', display: 'block', mb: 0.5 }}>
-                          Observação:
-                        </Typography>
-                        <Typography variant="body2" color="textSecondary">
-                          {ref.observacao}
-                        </Typography>
-                      </Box>
-                    )}
-
-                    {/* Produtos da refeição */}
-                    <Box>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: '#616161' }}>
-                        Composição:
-                      </Typography>
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                        {(() => {
-                          const refeicaoCompleta = refeicoesDisponiveis.find(r => r.id === ref.refeicao_id);
-                          if (!refeicaoCompleta) {
-                            return (
-                              <Typography variant="body2" color="textSecondary" sx={{ fontStyle: 'italic' }}>
-                                Carregando produtos...
-                              </Typography>
-                            );
-                          }
-                          
-                          // Aqui você pode buscar os produtos da refeição
-                          return (
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              onClick={() => {
-                                setOpenDetalhesDiaDialog(false);
-                                handleOpenDetalhes(ref.refeicao_id);
-                              }}
-                              sx={{ alignSelf: 'flex-start' }}
-                            >
-                              Ver detalhes completos
-                            </Button>
-                          );
-                        })()}
-                      </Box>
-                    </Box>
-
-                    {/* Informações nutricionais (se disponível) */}
-                    {(() => {
-                      const refeicaoCompleta = refeicoesDisponiveis.find(r => r.id === ref.refeicao_id);
-                      if (refeicaoCompleta && (refeicaoCompleta.calorias || refeicaoCompleta.proteinas || refeicaoCompleta.carboidratos)) {
-                        return (
-                          <Box sx={{ mt: 2, p: 1.5, bgcolor: '#e8f5e9', borderRadius: '8px' }}>
-                            <Typography variant="caption" sx={{ fontWeight: 600, color: '#2e7d32', display: 'block', mb: 1 }}>
-                              Informações Nutricionais:
-                            </Typography>
-                            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                              {refeicaoCompleta.calorias && (
-                                <Box>
-                                  <Typography variant="caption" color="textSecondary">Calorias</Typography>
-                                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{refeicaoCompleta.calorias} kcal</Typography>
-                                </Box>
-                              )}
-                              {refeicaoCompleta.proteinas && (
-                                <Box>
-                                  <Typography variant="caption" color="textSecondary">Proteínas</Typography>
-                                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{refeicaoCompleta.proteinas}g</Typography>
-                                </Box>
-                              )}
-                              {refeicaoCompleta.carboidratos && (
-                                <Box>
-                                  <Typography variant="caption" color="textSecondary">Carboidratos</Typography>
-                                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{refeicaoCompleta.carboidratos}g</Typography>
-                                </Box>
-                              )}
-                              {refeicaoCompleta.lipidios && (
-                                <Box>
-                                  <Typography variant="caption" color="textSecondary">Lipídios</Typography>
-                                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{refeicaoCompleta.lipidios}g</Typography>
-                                </Box>
-                              )}
-                            </Box>
-                          </Box>
-                        );
-                      }
-                      return null;
-                    })()}
-                  </Box>
-                </Box>
-              ))}
-
-              {/* Resumo nutricional do dia */}
-              {diaSelecionado && (() => {
-                const refeicoesComInfo = getRefeicoesNoDia(diaSelecionado)
-                  .map(ref => refeicoesDisponiveis.find(r => r.id === ref.refeicao_id))
-                  .filter(r => r && (r.calorias || r.proteinas || r.carboidratos));
-                
-                if (refeicoesComInfo.length > 0) {
-                  const totalCalorias = refeicoesComInfo.reduce((sum, r) => sum + (parseFloat(r.calorias) || 0), 0);
-                  const totalProteinas = refeicoesComInfo.reduce((sum, r) => sum + (parseFloat(r.proteinas) || 0), 0);
-                  const totalCarboidratos = refeicoesComInfo.reduce((sum, r) => sum + (parseFloat(r.carboidratos) || 0), 0);
-                  const totalLipidios = refeicoesComInfo.reduce((sum, r) => sum + (parseFloat(r.lipidios) || 0), 0);
-
-                  return (
-                    <Box sx={{ p: 2, bgcolor: '#e3f2fd', borderTop: '2px solid #1976d2' }}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#1565c0', mb: 1.5 }}>
-                        📊 Total Nutricional do Dia
-                      </Typography>
-                      <Grid container spacing={2}>
-                        <Grid item xs={3}>
-                          <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'white', borderRadius: '8px' }}>
-                            <Typography variant="h6" sx={{ fontWeight: 700, color: '#1976d2' }}>
-                              {totalCalorias.toFixed(0)}
-                            </Typography>
-                            <Typography variant="caption" color="textSecondary">kcal</Typography>
-                          </Box>
-                        </Grid>
-                        <Grid item xs={3}>
-                          <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'white', borderRadius: '8px' }}>
-                            <Typography variant="h6" sx={{ fontWeight: 700, color: '#1976d2' }}>
-                              {totalProteinas.toFixed(1)}
-                            </Typography>
-                            <Typography variant="caption" color="textSecondary">Proteínas (g)</Typography>
-                          </Box>
-                        </Grid>
-                        <Grid item xs={3}>
-                          <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'white', borderRadius: '8px' }}>
-                            <Typography variant="h6" sx={{ fontWeight: 700, color: '#1976d2' }}>
-                              {totalCarboidratos.toFixed(1)}
-                            </Typography>
-                            <Typography variant="caption" color="textSecondary">Carboidratos (g)</Typography>
-                          </Box>
-                        </Grid>
-                        <Grid item xs={3}>
-                          <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'white', borderRadius: '8px' }}>
-                            <Typography variant="h6" sx={{ fontWeight: 700, color: '#1976d2' }}>
-                              {totalLipidios.toFixed(1)}
-                            </Typography>
-                            <Typography variant="caption" color="textSecondary">Lipídios (g)</Typography>
-                          </Box>
-                        </Grid>
-                      </Grid>
-                    </Box>
-                  );
-                }
-                return null;
-              })()}
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ p: 2, bgcolor: '#f5f5f5', borderTop: '1px solid #e0e0e0' }}>
-          <Button onClick={() => setOpenDetalhesDiaDialog(false)}>
-            Fechar
-          </Button>
-          {diaSelecionado && getRefeicoesNoDia(diaSelecionado).length > 0 && (
-            <Button 
-              variant="contained" 
-              onClick={() => {
-                setOpenDetalhesDiaDialog(false);
-                handleOpenDialog(diaSelecionado);
-              }}
-            >
-              Adicionar Refeição
-            </Button>
-          )}
-        </DialogActions>
-      </Dialog>
+      {/* Dialog de detalhes do dia com refeições e eventos */}
+      <DetalheDiaCardapioDialog
+        open={openDetalhesDiaDialog}
+        onClose={() => setOpenDetalhesDiaDialog(false)}
+        diaSelecionado={diaSelecionado}
+        cardapio={cardapio}
+        refeicoesDia={diaSelecionado ? getRefeicoesNoDia(diaSelecionado) : []}
+        eventosDia={diaSelecionado ? getEventosNoDia(diaSelecionado) : []}
+        corTipoRefeicao={corTipoRefeicao}
+        onAdicionarRefeicao={() => {
+          setOpenDetalhesDiaDialog(false);
+          handleOpenDialog(diaSelecionado);
+        }}
+        onExcluirRefeicao={(id) => {
+          setOpenDetalhesDiaDialog(false);
+          handleDelete(id);
+        }}
+        onVerDetalhes={(refeicaoId) => {
+          setOpenDetalhesDiaDialog(false);
+          handleOpenDetalhes(refeicaoId);
+        }}
+      />
 
       <LoadingOverlay 
         open={salvando || excluindo || loadingDetalhes}

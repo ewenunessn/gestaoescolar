@@ -4,16 +4,19 @@ import {
   Box, Card, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   TextField, Typography, IconButton, Chip, InputAdornment, CircularProgress,
   Tooltip, Button, Dialog, DialogTitle, DialogContent, DialogActions,
-  FormControl, InputLabel, Select, MenuItem, LinearProgress, Tabs, Tab,
+  FormControl, InputLabel, Select, MenuItem, LinearProgress,
 } from '@mui/material';
 import {
   Search as SearchIcon, Clear as ClearIcon, Edit as EditIcon,
   CalendarMonth as CalendarIcon, School as SchoolIcon, Add as AddIcon,
   Inventory as InventoryIcon, Visibility as VisibilityIcon, Tune as TuneIcon,
+  ShoppingCart as ShoppingCartIcon,
 } from '@mui/icons-material';
 import PageContainer from '../components/PageContainer';
 import PageBreadcrumbs from '../components/PageBreadcrumbs';
 import CompactPagination from '../components/CompactPagination';
+import GerarPedidoDaGuiaDialog from '../components/GerarPedidoDaGuiaDialog';
+import ViewTabs from '../components/ViewTabs';
 import { guiaService } from '../services/guiaService';
 import { produtoService } from '../services/produtoService';
 import { useToast } from '../hooks/useToast';
@@ -71,6 +74,9 @@ const GuiaDemandaDetalhe: React.FC = () => {
   const [batchStatus, setBatchStatus] = useState<Record<number, string>>({});
   const [batchSaving, setBatchSaving] = useState(false);
   const [produtos, setProdutos] = useState<any[]>([]);
+
+  // Dialog gerar pedido
+  const [dialogGerarPedido, setDialogGerarPedido] = useState(false);
 
   // Paginação
   const [pageItens, setPageItens] = useState(0);
@@ -233,15 +239,24 @@ const GuiaDemandaDetalhe: React.FC = () => {
               sx={{ bgcolor: '#059669', '&:hover': { bgcolor: '#047857' }, whiteSpace: 'nowrap' }}>
               Adicionar em Lote
             </Button>
+            <Button variant="contained" startIcon={<ShoppingCartIcon />} size="small"
+              onClick={() => setDialogGerarPedido(true)}
+              sx={{ bgcolor: '#1d4ed8', '&:hover': { bgcolor: '#1e40af' }, whiteSpace: 'nowrap' }}>
+              Gerar Pedido
+            </Button>
           </Box>
         </Box>
 
         {/* Abas */}
-        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 1 }}>
-          <Tabs value={tabAtiva} onChange={(_, v) => { setTabAtiva(v); setSearchTerm(''); }}>
-            <Tab label="Por Produto" icon={<InventoryIcon />} iconPosition="start" />
-            <Tab label="Por Escola" icon={<SchoolIcon />} iconPosition="start" />
-          </Tabs>
+        <Box sx={{ mb: 1.5 }}>
+          <ViewTabs
+            value={tabAtiva}
+            onChange={(v) => { setTabAtiva(v); setSearchTerm(''); }}
+            tabs={[
+              { value: 0, label: 'Por Produto', icon: <InventoryIcon sx={{ fontSize: 16 }} /> },
+              { value: 1, label: 'Por Escola', icon: <SchoolIcon sx={{ fontSize: 16 }} /> },
+            ]}
+          />
         </Box>
 
         {/* Busca */}
@@ -497,6 +512,17 @@ const GuiaDemandaDetalhe: React.FC = () => {
           <Button onClick={() => setDialogItensEscolaOpen(false)}>Fechar</Button>
         </DialogActions>
       </Dialog>
+
+      {/* Dialog Gerar Pedido */}
+      <GerarPedidoDaGuiaDialog
+        open={dialogGerarPedido}
+        onClose={() => setDialogGerarPedido(false)}
+        onSuccess={() => {
+          toast.success('Pedido gerado com sucesso!');
+          setDialogGerarPedido(false);
+        }}
+        guiaIdInicial={guia?.id}
+      />
 
       {/* Modal Adicionar em Lote */}
       <Dialog open={openBatchDialog} onClose={() => !batchSaving && setOpenBatchDialog(false)} maxWidth="sm" fullWidth>

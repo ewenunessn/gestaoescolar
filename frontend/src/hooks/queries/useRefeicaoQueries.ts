@@ -4,6 +4,7 @@ import {
   criarRefeicao, 
   editarRefeicao, 
   deletarRefeicao,
+  duplicarRefeicao,
   Refeicao 
 } from '../../services/refeicoes';
 
@@ -49,6 +50,19 @@ export const useDeletarRefeicao = () => {
   
   return useMutation({
     mutationFn: (id: number) => deletarRefeicao(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: REFEICOES_QUERY_KEY });
+    },
+  });
+};
+
+// Hook para duplicar refeição
+export const useDuplicarRefeicao = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ id, nome }: { id: number; nome: string }) => 
+      duplicarRefeicao(id, nome),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: REFEICOES_QUERY_KEY });
     },

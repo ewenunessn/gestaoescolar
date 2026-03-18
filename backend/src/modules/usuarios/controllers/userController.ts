@@ -92,6 +92,12 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   console.log("✅ Senha correta, gerando token...");
   console.log("🔐 [LOGIN] NODE_ENV:", process.env.NODE_ENV);
   console.log("🔐 [LOGIN] JWT_SECRET configurado:", config.jwtSecret ? 'Sim' : 'Não');
+  console.log("🔐 [LOGIN] Dados do usuário do banco:", {
+    id: user.id,
+    tipo: user.tipo,
+    escola_id: user.escola_id,
+    tipo_secretaria: user.tipo_secretaria
+  });
   
   // Verificar se é administrador do sistema (tipo 'admin')
   const isSystemAdmin = user.tipo === 'admin';
@@ -102,8 +108,12 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     email: user.email,
     nome: user.nome,
     institution_id: user.institution_id,
+    escola_id: user.escola_id,
+    tipo_secretaria: user.tipo_secretaria || 'educacao',
     isSystemAdmin
   };
+  
+  console.log("🔐 [LOGIN] Payload do token:", tokenPayload);
 
   const token = jwt.sign(tokenPayload, config.jwtSecret as string, { expiresIn: config.jwtExpiresIn as any });
   
@@ -120,6 +130,8 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
       token, 
       tipo: user.tipo, 
       nome: user.nome,
+      escola_id: user.escola_id,
+      tipo_secretaria: user.tipo_secretaria || 'educacao',
       isSystemAdmin
     }
   });

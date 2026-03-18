@@ -17,6 +17,7 @@ import {
   getModulos, getNiveis,
   Usuario, Funcao, Modulo, NivelPermissao,
 } from "../services/adminUsuarios";
+import api from "../services/api";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -34,21 +35,22 @@ interface UsuarioDialogProps {
   open: boolean;
   usuario?: Usuario | null;
   funcoes: Funcao[];
+  escolas: any[];
   onClose: () => void;
   onSave: (data: any) => Promise<void>;
 }
 
-function UsuarioDialog({ open, usuario, funcoes, onClose, onSave }: UsuarioDialogProps) {
-  const [form, setForm] = useState({ nome: "", email: "", senha: "", tipo: "usuario", funcao_id: "", ativo: true });
+function UsuarioDialog({ open, usuario, funcoes, escolas, onClose, onSave }: UsuarioDialogProps) {
+  const [form, setForm] = useState({ nome: "", email: "", senha: "", tipo: "usuario", funcao_id: "", ativo: true, tipo_secretaria: "educacao", escola_id: "" });
   const [showSenha, setShowSenha] = useState(false);
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState("");
 
   useEffect(() => {
     if (usuario) {
-      setForm({ nome: usuario.nome, email: usuario.email, senha: "", tipo: usuario.tipo, funcao_id: String(usuario.funcao_id ?? ""), ativo: usuario.ativo });
+      setForm({ nome: usuario.nome, email: usuario.email, senha: "", tipo: usuario.tipo, funcao_id: String(usuario.funcao_id ?? ""), ativo: usuario.ativo, tipo_secretaria: usuario.tipo_secretaria || "educacao", escola_id: String(usuario.escola_id ?? "") });
     } else {
-      setForm({ nome: "", email: "", senha: "", tipo: "usuario", funcao_id: "", ativo: true });
+      setForm({ nome: "", email: "", senha: "", tipo: "usuario", funcao_id: "", ativo: true, tipo_secretaria: "educacao", escola_id: "" });
     }
     setErro("");
   }, [usuario, open]);
@@ -104,6 +106,31 @@ function UsuarioDialog({ open, usuario, funcoes, onClose, onSave }: UsuarioDialo
             {funcoes.map(f => <MenuItem key={f.id} value={String(f.id)}>{f.nome}</MenuItem>)}
           </Select>
         </FormControl>
+        <FormControl fullWidth>
+          <InputLabel>Tipo de Secretaria</InputLabel>
+          <Select 
+            value={form.tipo_secretaria} 
+            label="Tipo de Secretaria" 
+            onChange={e => setForm(f => ({ ...f, tipo_secretaria: e.target.value as 'educacao' | 'escola', escola_id: e.target.value === 'educacao' ? '' : f.escola_id }))}
+          >
+            <MenuItem value="educacao">Secretaria de Educação</MenuItem>
+            <MenuItem value="escola">Secretaria de Escola</MenuItem>
+          </Select>
+        </FormControl>
+        {form.tipo_secretaria === 'escola' && (
+          <FormControl fullWidth>
+            <InputLabel>Escola</InputLabel>
+            <Select
+              value={form.escola_id}
+              label="Escola"
+              onChange={e => setForm(f => ({ ...f, escola_id: e.target.value }))}
+              required
+            >
+              <MenuItem value=""><em>Selecione uma escola</em></MenuItem>
+              {(escolas || []).map(e => <MenuItem key={e.id} value={String(e.id)}>{e.nome}</MenuItem>)}
+            </Select>
+          </FormControl>
+        )}
         <FormControlLabel
           control={<Switch checked={form.ativo} onChange={e => setForm(f => ({ ...f, ativo: e.target.checked }))} />}
           label="Usuário ativo"
@@ -228,6 +255,7 @@ export default function GerenciamentoUsuarios() {
   const [funcoes, setFuncoes] = useState<Funcao[]>([]);
   const [modulos, setModulos] = useState<Modulo[]>([]);
   const [niveis, setNiveis] = useState<NivelPermissao[]>([]);
+  const [escolas, setEscolas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState("");
   
@@ -245,11 +273,18 @@ export default function GerenciamentoUsuarios() {
     setLoading(true);
     setErro("");
     try {
-      const [u, f, m, n] = await Promise.all([getUsuarios(), getFuncoes(), getModulos(), getNiveis()]);
+      const [u, f, m, n, esc] = await Promise.all([
+        getUsuarios(), 
+        getFuncoes(), 
+        getModulos(), 
+        getNiveis(),
+        api.get('/escolas').then(res => res.data.data || res.data)
+      ]);
       setUsuarios(u);
       setFuncoes(f);
       setModulos(m);
       setNiveis(n);
+      setEscolas(Array.isArray(esc) ? esc : []);
     } catch (e: any) {
       setErro(e?.response?.data?.message || "Erro ao carregar dados");
     } finally {
@@ -339,6 +374,7 @@ export default function GerenciamentoUsuarios() {
                         <TableCell>E-mail</TableCell>
                         <TableCell>Tipo</TableCell>
                         <TableCell>Função</TableCell>
+                        <TableCell>Escola</TableCell>
                         <TableCell>Status</TableCell>
                         <TableCell align="right">Ações</TableCell>
                       </TableRow>
@@ -363,6 +399,13 @@ export default function GerenciamentoUsuarios() {
                             />
                           </TableCell>
                           <TableCell>{u.funcao_nome ?? <Typography variant="body2" color="text.secondary">—</Typography>}</TableCell>
+                          <TableCell>
+                            {u.escola_nome ? (
+                              <Chip label={u.escola_nome} size="small" color="primary" variant="outlined" />
+                            ) : (
+                              <Typography variant="body2" color="text.secondary">—</Typography>
+                            )}
+                          </TableCell>
                           <TableCell>
                             <Chip label={u.ativo ? "Ativo" : "Inativo"} color={u.ativo ? "success" : "default"} size="small" />
                           </TableCell>
@@ -466,6 +509,7 @@ export default function GerenciamentoUsuarios() {
         open={usuarioDialog.open}
         usuario={usuarioDialog.usuario}
         funcoes={funcoes}
+        escolas={escolas}
         onClose={() => setUsuarioDialog({ open: false })}
         onSave={handleSaveUsuario}
       />

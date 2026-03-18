@@ -5,7 +5,8 @@ import {
   criarRefeicao, 
   editarRefeicao, 
   removerRefeicao, 
-  toggleAtivoRefeicao 
+  toggleAtivoRefeicao,
+  duplicarRefeicao
 } from "../controllers/refeicaoController";
 import {
   listarRefeicaoProdutos,
@@ -28,6 +29,7 @@ router.get("/:refeicaoId/produtos", requireLeitura('refeicoes'), listarRefeicaoP
 
 // Rotas de ESCRITA - Refeições
 router.post("/", requireEscrita('refeicoes'), criarRefeicao);
+router.post("/:id/duplicar", requireEscrita('refeicoes'), duplicarRefeicao);
 router.put("/:id", requireEscrita('refeicoes'), editarRefeicao);
 router.delete("/:id", requireEscrita('refeicoes'), removerRefeicao);
 router.patch("/:id/toggle", requireEscrita('refeicoes'), toggleAtivoRefeicao);

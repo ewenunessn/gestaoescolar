@@ -42,25 +42,38 @@ export default function Login() {
       localStorage.setItem("nome", response.nome);
       try {
         const payload = JSON.parse(atob(response.token.split(".")[1]));
-        localStorage.setItem("user", JSON.stringify({
+        const userData = {
           id: payload.id,
           nome: response.nome,
           email: response.email || email,
           tipo: response.tipo,
           perfil: response.tipo,
           institution_id: payload.institution_id || response.institution_id,
-        }));
+          escola_id: payload.escola_id || response.escola_id,
+          tipo_secretaria: payload.tipo_secretaria || response.tipo_secretaria || 'educacao',
+        };
+        localStorage.setItem("user", JSON.stringify(userData));
+        
+        // Redirecionar baseado no tipo de secretaria
+        const redirectPath = userData.tipo_secretaria === 'escola' ? '/portal-escola' : '/dashboard';
+        startTransition(() => navigate(redirectPath));
       } catch {
-        localStorage.setItem("user", JSON.stringify({
+        const userData = {
           id: response.id || 1,
           nome: response.nome,
           email: response.email || email,
           tipo: response.tipo,
           perfil: response.tipo,
           institution_id: response.institution_id,
-        }));
+          escola_id: response.escola_id,
+          tipo_secretaria: response.tipo_secretaria || 'educacao',
+        };
+        localStorage.setItem("user", JSON.stringify(userData));
+        
+        // Redirecionar baseado no tipo de secretaria
+        const redirectPath = userData.tipo_secretaria === 'escola' ? '/portal-escola' : '/dashboard';
+        startTransition(() => navigate(redirectPath));
       }
-      startTransition(() => navigate("/dashboard"));
     } catch (err: any) {
       setErro(err.message || "E-mail ou senha incorretos");
     } finally {

@@ -48,6 +48,8 @@ import pnaeRoutes from "./routes/pnaeRoutes";
 import nutricionistaRoutes from "./routes/nutricionistaRoutes";
 import planejamentoComprasRoutes from "./routes/planejamentoComprasRoutes";
 import periodosRoutes from "./routes/periodosRoutes";
+import escolaPortalRoutes from "./routes/escolaPortalRoutes";
+import calendarioLetivoRoutes from "./routes/calendarioLetivoRoutes";
 
 import { createServer } from 'http';
 import { initializeRedisCache } from "./config/redis";
@@ -286,6 +288,8 @@ app.use("/api/instituicao", instituicaoRoutes);
 app.use("/api/pnae", pnaeRoutes);
 app.use("/api/planejamento-compras", planejamentoComprasRoutes);
 app.use("/api/periodos", periodosRoutes);
+app.use("/api/escola-portal", escolaPortalRoutes);
+app.use("/api", calendarioLetivoRoutes);
 
 
 // Rotas de gás removidas

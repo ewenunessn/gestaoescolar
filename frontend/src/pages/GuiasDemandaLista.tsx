@@ -25,6 +25,8 @@ import {
   FormControl,
   InputLabel,
   Tooltip,
+  Alert,
+  Divider,
 } from '@mui/material';
 import CompactPagination from '../components/CompactPagination';
 import {
@@ -34,13 +36,16 @@ import {
   Visibility as VisibilityIcon,
   CalendarMonth as CalendarIcon,
   Delete as DeleteIcon,
+  TableChart as TableChartIcon,
 } from '@mui/icons-material';
 import PageContainer from '../components/PageContainer';
 import PageHeader from '../components/PageHeader';
 import PageBreadcrumbs from '../components/PageBreadcrumbs';
 import StatusIndicator from '../components/StatusIndicator';
+import SeletorPeriodoCalendario, { Periodo } from '../components/SeletorPeriodoCalendario';
 import { guiaService } from '../services/guiaService';
 import { useToast } from '../hooks/useToast';
+import { gerarGuiasDemanda, GerarGuiasResponse } from '../services/planejamentoCompras';
 
 interface Competencia {
   mes: number;
@@ -86,6 +91,14 @@ const GuiasDemandaLista: React.FC = () => {
   // Exclusão
   const [confirmDelete, setConfirmDelete] = useState<Competencia | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Modal gerar guia de demanda
+  const [openGerarGuia, setOpenGerarGuia] = useState(false);
+  const [competenciaGerar, setCompetenciaGerar] = useState('');
+  const [periodosGerar, setPeriodosGerar] = useState<Periodo[]>([]);
+  const [seletorOpen, setSeletorOpen] = useState(false);
+  const [gerandoGuias, setGerandoGuias] = useState(false);
+  const [resultadoGuias, setResultadoGuias] = useState<GerarGuiasResponse | null>(null);
 
   useEffect(() => {
     loadCompetencias();
@@ -133,6 +146,61 @@ const GuiasDemandaLista: React.FC = () => {
     } catch (error) {
       console.error('Erro ao criar competência:', error);
     }
+  };
+
+  // Gerar lista de competências (últimos 12 meses + próximos 3)
+  function gerarCompetenciasDisponiveis() {
+    const competencias = [];
+    const hoje = new Date();
+    
+    for (let i = -12; i <= 3; i++) {
+      const data = new Date(hoje.getFullYear(), hoje.getMonth() + i, 1);
+      const ano = data.getFullYear();
+      const mes = String(data.getMonth() + 1).padStart(2, '0');
+      const mesNome = data.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+      competencias.push({
+        valor: `${ano}-${mes}`,
+        label: mesNome.charAt(0).toUpperCase() + mesNome.slice(1)
+      });
+    }
+    
+    return competencias;
+  }
+
+  const handleGerarGuias = async () => {
+    if (!competenciaGerar || periodosGerar.length === 0) {
+      toast.warning('Atenção', 'Defina a competência e ao menos um período');
+      return;
+    }
+    setGerandoGuias(true);
+    setResultadoGuias(null);
+    try {
+      const res = await gerarGuiasDemanda(
+        competenciaGerar,
+        periodosGerar,
+        undefined // todas as escolas
+      );
+      setResultadoGuias(res);
+      if (res.total_criadas > 0) {
+        toast.success('Guias geradas', `${res.total_criadas} guia(s) de demanda criada(s) com sucesso`);
+        loadCompetencias(); // Recarregar lista
+      } else {
+        const motivos = res.erros?.map((e) => e.motivo).join('; ') || 'Verifique os erros abaixo';
+        toast.error('Nenhuma guia criada', motivos);
+      }
+    } catch (error: any) {
+      const msg = error.response?.data?.error || 'Não foi possível gerar as guias';
+      toast.error('Erro', msg);
+    } finally {
+      setGerandoGuias(false);
+    }
+  };
+
+  const handleFecharModalGerar = () => {
+    setOpenGerarGuia(false);
+    setCompetenciaGerar('');
+    setPeriodosGerar([]);
+    setResultadoGuias(null);
   };
 
   const filteredCompetencias = useMemo(() => {
@@ -211,6 +279,15 @@ const GuiasDemandaLista: React.FC = () => {
               sx={{ bgcolor: '#059669', '&:hover': { bgcolor: '#047857' } }}
             >
               Nova Competência
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<TableChartIcon />}
+              onClick={() => setOpenGerarGuia(true)}
+              size="small"
+              sx={{ bgcolor: '#1d4ed8', '&:hover': { bgcolor: '#1e40af' } }}
+            >
+              Gerar Guia de Demanda
             </Button>
           </Box>
         </Card>
@@ -463,6 +540,156 @@ const GuiasDemandaLista: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Modal Gerar Guia de Demanda */}
+      <Dialog 
+        open={openGerarGuia} 
+        onClose={handleFecharModalGerar}
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '12px',
+          }
+        }}
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+          <Typography variant="h6" component="span" sx={{ fontWeight: 600, fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: 1 }}>
+            <TableChartIcon />
+            Gerar Guia de Demanda
+          </Typography>
+          <IconButton
+            size="small"
+            onClick={handleFecharModalGerar}
+            sx={{ color: 'text.secondary' }}
+          >
+            <ClearIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2, pb: 1 }}>
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Selecione a competência e um ou mais períodos. Cada período gera uma guia de demanda com as quantidades por escola.
+          </Alert>
+
+          <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+            <InputLabel>Competência</InputLabel>
+            <Select
+              value={competenciaGerar}
+              onChange={(e) => {
+                setCompetenciaGerar(e.target.value);
+                setPeriodosGerar([]);
+                setResultadoGuias(null);
+              }}
+              label="Competência"
+            >
+              {gerarCompetenciasDisponiveis().map((comp) => (
+                <MenuItem key={comp.valor} value={comp.valor}>
+                  {comp.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {competenciaGerar && (
+            <>
+              {/* Lista de períodos selecionados */}
+              {periodosGerar.length > 0 && (
+                <Box sx={{ mb: 1.5, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                  {periodosGerar.map((p, idx) => (
+                    <Chip
+                      key={idx}
+                      label={`Período ${idx + 1}: ${p.data_inicio} → ${p.data_fim}`}
+                      onDelete={() => setPeriodosGerar(prev => prev.filter((_, i) => i !== idx))}
+                      color="primary"
+                      variant="outlined"
+                      size="small"
+                    />
+                  ))}
+                </Box>
+              )}
+
+              <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<CalendarIcon />}
+                  onClick={() => setSeletorOpen(true)}
+                  size="small"
+                  fullWidth
+                >
+                  {periodosGerar.length === 0 ? 'Selecionar Período' : 'Adicionar Período'}
+                </Button>
+              </Box>
+            </>
+          )}
+
+          {/* Resultado da geração de guias */}
+          {resultadoGuias && (
+            <Box sx={{ mt: 2 }}>
+              <Divider sx={{ mb: 2 }} />
+              {resultadoGuias.guias_criadas.map((g) => (
+                <Alert
+                  key={g.guia_id}
+                  severity="success"
+                  sx={{ mb: 1 }}
+                  action={
+                    <Button size="small" onClick={() => {
+                      handleFecharModalGerar();
+                      navigate(`/guias-demanda/${g.guia_id}`);
+                    }}>
+                      Ver Guia
+                    </Button>
+                  }
+                >
+                  Guia #{g.guia_id} — {g.total_escolas} escola(s), {g.total_produtos} produto(s), {g.total_itens} item(ns)
+                  {g.periodos && g.periodos.length > 0 && (
+                    <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary' }}>
+                      {g.periodos.length === 1
+                        ? `Período: ${g.periodos[0].data_inicio} → ${g.periodos[0].data_fim}`
+                        : `${g.periodos.length} períodos: ${g.periodos[0].data_inicio} → ${g.periodos[g.periodos.length - 1].data_fim}`}
+                    </Typography>
+                  )}
+                </Alert>
+              ))}
+              {resultadoGuias.erros?.map((e, i) => (
+                <Alert key={i} severity="error" sx={{ mb: 1 }}>
+                  {e.motivo}
+                </Alert>
+              ))}
+              {resultadoGuias.total_criadas > 0 && (
+                <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                  <Chip label={`${resultadoGuias.total_criadas} guia(s) criada(s)`} color="success" size="small" />
+                </Box>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
+          <Button onClick={handleFecharModalGerar} sx={{ color: 'text.secondary' }}>
+            {resultadoGuias && resultadoGuias.total_criadas > 0 ? 'Fechar' : 'Cancelar'}
+          </Button>
+          {(!resultadoGuias || resultadoGuias.total_criadas === 0) && (
+            <Button 
+              onClick={handleGerarGuias} 
+              variant="contained"
+              disabled={gerandoGuias || !competenciaGerar || periodosGerar.length === 0}
+              startIcon={gerandoGuias ? <CircularProgress size={18} /> : <TableChartIcon />}
+              sx={{ bgcolor: '#1d4ed8', '&:hover': { bgcolor: '#1e40af' } }}
+            >
+              {gerandoGuias ? 'Gerando...' : `Gerar Guia${periodosGerar.length !== 1 ? 's' : ''} (${periodosGerar.length} período${periodosGerar.length !== 1 ? 's' : ''})`}
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
+
+      {/* Seletor de Período via Calendário */}
+      <SeletorPeriodoCalendario
+        open={seletorOpen}
+        onClose={() => setSeletorOpen(false)}
+        onConfirm={(p) => setPeriodosGerar(prev => [...prev, p])}
+        periodosExistentes={periodosGerar}
+        competencia={competenciaGerar || undefined}
+        titulo={periodosGerar.length === 0 ? 'Selecionar 1º Período' : `Adicionar Período ${periodosGerar.length + 1}`}
+      />
     </Box>
   );
 };

@@ -4,6 +4,11 @@ import db from "../../../database";
 
 export async function listarModalidades(req: Request, res: Response) {
   try {
+    // Permitir filtrar por status ativo via query param
+    const { ativo } = req.query;
+    const whereClause = ativo !== undefined ? 'WHERE m.ativo = $1' : '';
+    const params = ativo !== undefined ? [ativo === 'true'] : [];
+    
     const result = await db.query(`
       SELECT 
         m.id,
@@ -19,10 +24,10 @@ export async function listarModalidades(req: Request, res: Response) {
         COUNT(em.id) as total_escolas
       FROM modalidades m
       LEFT JOIN escola_modalidades em ON m.id = em.modalidade_id
-      WHERE m.ativo = true
+      ${whereClause}
       GROUP BY m.id, m.nome, m.descricao, m.codigo_financeiro, m.valor_repasse, m.parcelas, m.ativo, m.created_at, m.updated_at
       ORDER BY m.nome
-    `);
+    `, params);
 
     res.json({
       success: true,

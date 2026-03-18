@@ -6,7 +6,7 @@ export interface Modulo { id: number; nome: string; slug: string; icone?: string
 export interface NivelPermissao { id: number; nome: string; slug: string; nivel: number; }
 export interface FuncaoPermissao { modulo_id: number; modulo_nome: string; modulo_slug: string; nivel_permissao_id: number; nivel_nome: string; nivel: number; }
 export interface Funcao { id: number; nome: string; descricao?: string; ativo: boolean; permissoes: FuncaoPermissao[]; }
-export interface Usuario { id: number; nome: string; email: string; tipo: string; ativo: boolean; funcao_id?: number; funcao_nome?: string; created_at: string; }
+export interface Usuario { id: number; nome: string; email: string; tipo: string; ativo: boolean; funcao_id?: number; funcao_nome?: string; escola_id?: number; escola_nome?: string; tipo_secretaria?: 'educacao' | 'escola'; created_at: string; updated_at?: string; }
 
 // Usuários
 export const getUsuarios = async (): Promise<Usuario[]> => {

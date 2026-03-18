@@ -56,6 +56,7 @@ const EstoqueLotes = lazy(() => import("../pages/EstoqueLotes"));
 const EstoqueMovimentacoes = lazy(() => import("../pages/EstoqueMovimentacoes"));
 const EstoqueAlertas = lazy(() => import("../pages/EstoqueAlertas"));
 const EstoqueEscolar = lazy(() => import("../pages/EstoqueEscolar"));
+const EstoqueEscolaPortal = lazy(() => import("../pages/EstoqueEscolaPortal"));
 const SaldoContratosModalidades = lazy(() => import("../pages/SaldoContratosModalidades"));
 const GerenciarAlunosModalidades = lazy(() => import("../pages/GerenciarAlunosModalidades"));
 const DashboardConsistencia = lazy(() => import("../components/DashboardConsistencia"));
@@ -82,6 +83,8 @@ const PlanejamentoCompras = lazy(() => import("../pages/PlanejamentoCompras"));
 const DashboardPNAE = lazy(() => import("../pages/DashboardPNAE"));
 const GerenciamentoUsuarios = lazy(() => import("../pages/GerenciamentoUsuarios"));
 const GerenciamentoPeriodos = lazy(() => import("../pages/GerenciamentoPeriodos"));
+const CalendarioLetivo = lazy(() => import("../pages/CalendarioLetivo"));
+const PortalEscola = lazy(() => import("../pages/PortalEscola"));
 
 interface AppRouterProps {
   routerConfig?: {
@@ -314,6 +317,10 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
               element={<LazyRoute><EstoqueEscolar /></LazyRoute>}
             />
             <Route
+              path="/estoque-escola-portal"
+              element={<LazyRoute><EstoqueEscolaPortal /></LazyRoute>}
+            />
+            <Route
               path="/estoque-moderno/produtos/:produto_id/lotes"
               element={<LazyRoute><EstoqueLotes /></LazyRoute>}
             />
@@ -363,6 +370,18 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
             <Route
               path="/periodos"
               element={<LazyRoute><GerenciamentoPeriodos /></LazyRoute>}
+            />
+
+            {/* Portal da Escola (secretaria de escola) */}
+            <Route
+              path="/portal-escola"
+              element={<LazyRoute><PortalEscola /></LazyRoute>}
+            />
+
+            {/* Calendário Letivo */}
+            <Route
+              path="/calendario-letivo"
+              element={<LazyRoute><CalendarioLetivo /></LazyRoute>}
             />
 
             

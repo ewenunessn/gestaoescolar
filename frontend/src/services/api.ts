@@ -17,10 +17,13 @@ const makeRequestWithRetry = async <T>(
   requestFn: () => Promise<T>,
   retries = apiConfig.retries
 ): Promise<T> => {
+  let lastError: any;
+  
   for (let i = 0; i < retries; i++) {
     try {
       return await requestFn();
     } catch (error) {
+      lastError = error;
       const axiosError = error as AxiosError;
       if (
         axiosError.code === "ERR_NETWORK" ||
@@ -37,6 +40,9 @@ const makeRequestWithRetry = async <T>(
       throw error;
     }
   }
+  
+  // Se chegou aqui, todas as tentativas falharam
+  throw lastError || new Error('Todas as tentativas falharam');
 };
 
 // Utilitário para extrair mensagem de um payload desconhecido

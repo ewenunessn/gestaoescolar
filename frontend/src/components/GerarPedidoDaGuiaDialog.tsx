@@ -13,9 +13,10 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  guiaIdInicial?: number;
 }
 
-export default function GerarPedidoDaGuiaDialog({ open, onClose, onSuccess }: Props) {
+export default function GerarPedidoDaGuiaDialog({ open, onClose, onSuccess, guiaIdInicial }: Props) {
   const [guias, setGuias] = useState<any[]>([]);
   const [guiaSelecionada, setGuiaSelecionada] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
@@ -28,6 +29,16 @@ export default function GerarPedidoDaGuiaDialog({ open, onClose, onSuccess }: Pr
       carregarGuias();
     }
   }, [open]);
+
+  // Pré-selecionar guia se guiaIdInicial foi fornecido
+  useEffect(() => {
+    if (guiaIdInicial && guias.length > 0) {
+      const guia = guias.find(g => g.id === guiaIdInicial);
+      if (guia) {
+        setGuiaSelecionada(guia);
+      }
+    }
+  }, [guiaIdInicial, guias]);
 
   async function carregarGuias() {
     setLoading(true);
