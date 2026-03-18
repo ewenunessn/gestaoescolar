@@ -7,7 +7,7 @@ import {
   Box, Button, Card, CardContent, Dialog, DialogTitle, DialogContent, DialogActions,
   FormControl, Grid, IconButton, InputLabel, MenuItem, Select, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, TextField, Typography, Chip, Paper,
-  InputAdornment, CircularProgress, Alert
+  InputAdornment, CircularProgress, Alert, Autocomplete
 } from '@mui/material';
 import CompactPagination from '../components/CompactPagination';
 import {
@@ -52,6 +52,7 @@ const CardapiosModalidadePage: React.FC = () => {
   
   const [formData, setFormData] = useState({
     modalidade_id: '',
+    modalidades_ids: [] as number[],
     nome: '',
     mes: '',
     ano: new Date().getFullYear().toString(),
@@ -184,8 +185,12 @@ const CardapiosModalidadePage: React.FC = () => {
         dataAprovacao = dataAprovacao.split('T')[0];
       }
       
+      // Obter modalidades do cardápio (usar modalidades_ids se disponível, senão usar modalidade_id)
+      const modalidadesIds = (cardapio as any).modalidades_ids || [cardapio.modalidade_id];
+      
       const formInicial = {
         modalidade_id: cardapio.modalidade_id.toString(),
+        modalidades_ids: modalidadesIds,
         nome: cardapio.nome,
         mes: cardapio.mes.toString(),
         ano: cardapio.ano.toString(),
@@ -202,6 +207,7 @@ const CardapiosModalidadePage: React.FC = () => {
       setSelectedId(null);
       const formInicial = {
         modalidade_id: '',
+        modalidades_ids: [],
         nome: '',
         mes: '',
         ano: new Date().getFullYear().toString(),
@@ -238,9 +244,9 @@ const CardapiosModalidadePage: React.FC = () => {
   const handleSubmit = async () => {
     try {
       // Validação
-      if (!formData.modalidade_id || !formData.nome || !formData.mes || !formData.ano) {
+      if (formData.modalidades_ids.length === 0 || !formData.nome || !formData.mes || !formData.ano) {
         setErroCardapio('Preencha todos os campos obrigatórios');
-        setTouched({ modalidade_id: true, nome: true, mes: true, ano: true });
+        setTouched({ modalidades_ids: true, nome: true, mes: true, ano: true });
         return;
       }
       
@@ -250,7 +256,7 @@ const CardapiosModalidadePage: React.FC = () => {
       }
 
       const data = {
-        modalidade_id: parseInt(formData.modalidade_id),
+        modalidades_ids: formData.modalidades_ids,
         nome: formData.nome,
         mes: parseInt(formData.mes),
         ano: parseInt(formData.ano),
@@ -390,7 +396,15 @@ const CardapiosModalidadePage: React.FC = () => {
                           </Box>
                         </TableCell>
                         <TableCell>
-                          <Typography variant="body2" color="text.secondary">{cardapio.modalidade_nome}</Typography>
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                            {(cardapio as any).modalidades_nomes ? (
+                              (cardapio as any).modalidades_nomes.split(', ').map((nome: string, idx: number) => (
+                                <Chip key={idx} label={nome} size="small" variant="outlined" />
+                              ))
+                            ) : (
+                              <Typography variant="body2" color="text.secondary">{cardapio.modalidade_nome}</Typography>
+                            )}
+                          </Box>
                         </TableCell>
                         <TableCell>
                           <Box display="flex" alignItems="center" gap={1}>
@@ -486,30 +500,42 @@ const CardapiosModalidadePage: React.FC = () => {
             </Alert>
           )}
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            <FormControl 
-              fullWidth 
-              required 
-              size="small"
-              error={touched.modalidade_id && !formData.modalidade_id}
-            >
-              <InputLabel>Modalidade</InputLabel>
-              <Select 
-                value={formData.modalidade_id} 
-                onChange={(e) => {
-                  setFormData({ ...formData, modalidade_id: e.target.value });
-                  if (erroCardapio) setErroCardapio("");
-                }}
-                onBlur={() => setTouched({ ...touched, modalidade_id: true })}
-                label="Modalidade"
-              >
-                {modalidades.map((m) => <MenuItem key={m.id} value={m.id.toString()}>{m.nome}</MenuItem>)}
-              </Select>
-              {touched.modalidade_id && !formData.modalidade_id && (
-                <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
-                  Campo obrigatório
-                </Typography>
+            <Autocomplete
+              multiple
+              options={modalidades}
+              getOptionLabel={(option) => option.nome}
+              value={modalidades.filter(m => formData.modalidades_ids.includes(m.id))}
+              onChange={(_, newValue) => {
+                setFormData({ ...formData, modalidades_ids: newValue.map(m => m.id) });
+                if (erroCardapio) setErroCardapio("");
+              }}
+              onBlur={() => setTouched({ ...touched, modalidades_ids: true })}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Modalidades"
+                  required
+                  size="small"
+                  error={touched.modalidades_ids && formData.modalidades_ids.length === 0}
+                  helperText={
+                    touched.modalidades_ids && formData.modalidades_ids.length === 0
+                      ? "Selecione pelo menos uma modalidade"
+                      : "Selecione uma ou mais modalidades para este cardápio"
+                  }
+                />
               )}
-            </FormControl>
+              renderTags={(value, getTagProps) =>
+                value.map((option, index) => (
+                  <Chip
+                    label={option.nome}
+                    size="small"
+                    {...getTagProps({ index })}
+                  />
+                ))
+              }
+              noOptionsText="Nenhuma modalidade encontrada"
+              sx={{ mb: 0.5 }}
+            />
 
             <TextField 
               label="Nome do Cardápio" 

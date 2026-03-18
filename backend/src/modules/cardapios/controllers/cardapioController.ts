@@ -32,12 +32,16 @@ export async function listarCardapiosModalidade(req: Request, res: Response) {
         n.crn_regiao as nutricionista_crn_regiao,
         p.ano as periodo_ano,
         COUNT(DISTINCT crd.id) as total_refeicoes,
-        COUNT(DISTINCT crd.dia) as total_dias
+        COUNT(DISTINCT crd.dia) as total_dias,
+        ARRAY_AGG(DISTINCT cm2.modalidade_id) FILTER (WHERE cm2.modalidade_id IS NOT NULL) as modalidades_ids,
+        STRING_AGG(DISTINCT m2.nome, ', ') FILTER (WHERE m2.nome IS NOT NULL) as modalidades_nomes
       FROM cardapios_modalidade cm
       LEFT JOIN modalidades m ON cm.modalidade_id = m.id
       LEFT JOIN nutricionistas n ON cm.nutricionista_id = n.id
       LEFT JOIN cardapio_refeicoes_dia crd ON cm.id = crd.cardapio_modalidade_id
       LEFT JOIN periodos p ON cm.periodo_id = p.id
+      LEFT JOIN cardapio_modalidades cm2 ON cm.id = cm2.cardapio_id
+      LEFT JOIN modalidades m2 ON cm2.modalidade_id = m2.id
       WHERE 1=1
     `;
     
@@ -51,7 +55,7 @@ export async function listarCardapiosModalidade(req: Request, res: Response) {
     }
     
     if (modalidade_id) {
-      sql += ` AND cm.modalidade_id = $${paramCount++}`;
+      sql += ` AND cm2.modalidade_id = $${paramCount++}`;
       params.push(modalidade_id);
     }
     
@@ -92,11 +96,16 @@ export async function buscarCardapioModalidade(req: Request, res: Response) {
         m.nome as modalidade_nome,
         n.nome as nutricionista_nome,
         n.crn as nutricionista_crn,
-        n.crn_regiao as nutricionista_crn_regiao
+        n.crn_regiao as nutricionista_crn_regiao,
+        ARRAY_AGG(DISTINCT cm2.modalidade_id) FILTER (WHERE cm2.modalidade_id IS NOT NULL) as modalidades_ids,
+        STRING_AGG(DISTINCT m2.nome, ', ') FILTER (WHERE m2.nome IS NOT NULL) as modalidades_nomes
       FROM cardapios_modalidade cm
       LEFT JOIN modalidades m ON cm.modalidade_id = m.id
       LEFT JOIN nutricionistas n ON cm.nutricionista_id = n.id
+      LEFT JOIN cardapio_modalidades cm2 ON cm.id = cm2.cardapio_id
+      LEFT JOIN modalidades m2 ON cm2.modalidade_id = m2.id
       WHERE cm.id = $1
+      GROUP BY cm.id, m.nome, n.nome, n.crn, n.crn_regiao
     `, [id]);
     
     if (result.rows.length === 0) {
@@ -113,19 +122,49 @@ export async function buscarCardapioModalidade(req: Request, res: Response) {
 // Criar cardápio
 export async function criarCardapioModalidade(req: Request, res: Response) {
   try {
-    const { modalidade_id, nome, mes, ano, observacao, ativo, nutricionista_id, data_aprovacao_nutricionista, observacoes_nutricionista } = req.body;
+    const { modalidade_id, modalidades_ids, nome, mes, ano, observacao, ativo, nutricionista_id, data_aprovacao_nutricionista, observacoes_nutricionista } = req.body;
     
-    if (!modalidade_id || !nome || !mes || !ano) {
-      return res.status(400).json({ message: 'Campos obrigatórios: modalidade_id, nome, mes, ano' });
+    // Aceitar tanto modalidade_id (legado) quanto modalidades_ids (novo)
+    const modalidadesArray = modalidades_ids || (modalidade_id ? [modalidade_id] : []);
+    
+    if (modalidadesArray.length === 0 || !nome || !mes || !ano) {
+      return res.status(400).json({ message: 'Campos obrigatórios: modalidades_ids (array), nome, mes, ano' });
     }
+    
+    // Usar primeira modalidade como padrão na tabela principal (compatibilidade)
+    const primeiraModalidade = modalidadesArray[0];
     
     const result = await query(`
       INSERT INTO cardapios_modalidade (modalidade_id, nome, mes, ano, observacao, ativo, nutricionista_id, data_aprovacao_nutricionista, observacoes_nutricionista)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *
-    `, [modalidade_id, nome, mes, ano, observacao, ativo !== false, nutricionista_id || null, data_aprovacao_nutricionista || null, observacoes_nutricionista || null]);
+    `, [primeiraModalidade, nome, mes, ano, observacao, ativo !== false, nutricionista_id || null, data_aprovacao_nutricionista || null, observacoes_nutricionista || null]);
     
-    res.status(201).json(result.rows[0]);
+    const cardapioId = result.rows[0].id;
+    
+    // Inserir todas as modalidades na tabela de junção
+    for (const modalidadeId of modalidadesArray) {
+      await query(`
+        INSERT INTO cardapio_modalidades (cardapio_id, modalidade_id)
+        VALUES ($1, $2)
+        ON CONFLICT (cardapio_id, modalidade_id) DO NOTHING
+      `, [cardapioId, modalidadeId]);
+    }
+    
+    // Buscar cardápio com modalidades associadas
+    const cardapioCompleto = await query(`
+      SELECT 
+        cm.*,
+        ARRAY_AGG(DISTINCT cm2.modalidade_id) as modalidades_ids,
+        STRING_AGG(DISTINCT m.nome, ', ') as modalidades_nomes
+      FROM cardapios_modalidade cm
+      LEFT JOIN cardapio_modalidades cm2 ON cm.id = cm2.cardapio_id
+      LEFT JOIN modalidades m ON cm2.modalidade_id = m.id
+      WHERE cm.id = $1
+      GROUP BY cm.id
+    `, [cardapioId]);
+    
+    res.status(201).json(cardapioCompleto.rows[0]);
   } catch (error: any) {
     console.error('❌ Erro ao criar cardápio:', error);
     if (error.code === '23505') {
@@ -139,7 +178,7 @@ export async function criarCardapioModalidade(req: Request, res: Response) {
 export async function editarCardapioModalidade(req: Request, res: Response) {
   try {
     const { id } = req.params;
-    const { modalidade_id, nome, mes, ano, observacao, ativo, nutricionista_id, data_aprovacao_nutricionista, observacoes_nutricionista } = req.body;
+    const { modalidade_id, modalidades_ids, nome, mes, ano, observacao, ativo, nutricionista_id, data_aprovacao_nutricionista, observacoes_nutricionista } = req.body;
     
     const result = await query(`
       UPDATE cardapios_modalidade
@@ -160,7 +199,35 @@ export async function editarCardapioModalidade(req: Request, res: Response) {
       return res.status(404).json({ message: 'Cardápio não encontrado' });
     }
     
-    res.json(result.rows[0]);
+    // Se modalidades_ids foi fornecido, atualizar tabela de junção
+    if (modalidades_ids && Array.isArray(modalidades_ids)) {
+      // Remover modalidades antigas
+      await query('DELETE FROM cardapio_modalidades WHERE cardapio_id = $1', [id]);
+      
+      // Inserir novas modalidades
+      for (const modalidadeId of modalidades_ids) {
+        await query(`
+          INSERT INTO cardapio_modalidades (cardapio_id, modalidade_id)
+          VALUES ($1, $2)
+          ON CONFLICT (cardapio_id, modalidade_id) DO NOTHING
+        `, [id, modalidadeId]);
+      }
+    }
+    
+    // Buscar cardápio atualizado com modalidades
+    const cardapioCompleto = await query(`
+      SELECT 
+        cm.*,
+        ARRAY_AGG(DISTINCT cm2.modalidade_id) FILTER (WHERE cm2.modalidade_id IS NOT NULL) as modalidades_ids,
+        STRING_AGG(DISTINCT m.nome, ', ') FILTER (WHERE m.nome IS NOT NULL) as modalidades_nomes
+      FROM cardapios_modalidade cm
+      LEFT JOIN cardapio_modalidades cm2 ON cm.id = cm2.cardapio_id
+      LEFT JOIN modalidades m ON cm2.modalidade_id = m.id
+      WHERE cm.id = $1
+      GROUP BY cm.id
+    `, [id]);
+    
+    res.json(cardapioCompleto.rows[0]);
   } catch (error: any) {
     console.error('❌ Erro ao editar cardápio:', error);
     if (error.code === '23505') {

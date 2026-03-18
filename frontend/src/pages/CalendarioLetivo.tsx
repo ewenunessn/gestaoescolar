@@ -226,9 +226,22 @@ export default function CalendarioLetivo() {
           {/* Card de eventos do dia selecionado */}
           {diaSelecionado && (
             <Card sx={{ p: 2 }}>
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                Eventos de {new Date(diaSelecionado + 'T12:00:00').toLocaleDateString('pt-BR')}
-              </Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6">
+                  Eventos de {new Date(diaSelecionado + 'T12:00:00').toLocaleDateString('pt-BR')}
+                </Typography>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<AddIcon />}
+                  onClick={() => {
+                    setEventoEditando(null);
+                    setDialogEventoOpen(true);
+                  }}
+                >
+                  Adicionar
+                </Button>
+              </Box>
 
               {eventosDoDia.length > 0 ? (
                 <List dense>

@@ -32,11 +32,14 @@ async function calcularDemandaPeriodo(
   const diaInicio = parseInt(data_inicio.split('-')[2]);
   const diaFim = parseInt(data_fim.split('-')[2]);
 
+  // Buscar cardápios ativos com suas modalidades (usando tabela de junção)
   const cardapiosQuery = await db.pool.query(`
-    SELECT DISTINCT cm.id, cm.modalidade_id
+    SELECT DISTINCT cm.id, cm2.modalidade_id
     FROM cardapios_modalidade cm
     INNER JOIN cardapio_refeicoes_dia crd ON crd.cardapio_modalidade_id = cm.id
+    LEFT JOIN cardapio_modalidades cm2 ON cm2.cardapio_id = cm.id
     WHERE cm.ativo = true AND cm.ano = $1 AND cm.mes = $2
+      AND cm2.modalidade_id IS NOT NULL
   `, [ano, mes]);
 
   if (cardapiosQuery.rows.length === 0) return [];
@@ -61,7 +64,7 @@ async function calcularDemandaPeriodo(
   const refeicoesQuery = await db.pool.query(`
     SELECT
       crd.dia,
-      cm.modalidade_id,
+      cm2.modalidade_id,
       rp.produto_id,
       p.nome as produto_nome,
       p.unidade,
@@ -70,11 +73,12 @@ async function calcularDemandaPeriodo(
       rp.tipo_medida
     FROM cardapio_refeicoes_dia crd
     INNER JOIN cardapios_modalidade cm ON cm.id = crd.cardapio_modalidade_id
+    INNER JOIN cardapio_modalidades cm2 ON cm2.cardapio_id = cm.id
     INNER JOIN refeicoes r ON r.id = crd.refeicao_id
     INNER JOIN refeicao_produtos rp ON rp.refeicao_id = r.id
     INNER JOIN produtos p ON p.id = rp.produto_id
     LEFT JOIN refeicao_produto_modalidade rpm
-      ON rpm.refeicao_produto_id = rp.id AND rpm.modalidade_id = cm.modalidade_id
+      ON rpm.refeicao_produto_id = rp.id AND rpm.modalidade_id = cm2.modalidade_id
     WHERE crd.cardapio_modalidade_id = ANY($1)
       AND crd.ativo = true
       AND crd.dia BETWEEN $2 AND $3
@@ -573,19 +577,21 @@ export const calcularDemandaPorCompetencia = async (req: Request, res: Response)
       ultimoDia: ultimoDiaStr
     });
 
-    // Buscar cardápios NOVOS (cardapios_modalidade) da competência
+    // Buscar cardápios NOVOS (cardapios_modalidade) da competência com suas modalidades
     const cardapiosQuery = await db.pool.query(`
       SELECT DISTINCT 
         cm.id, 
         cm.nome, 
-        cm.modalidade_id,
+        cm2.modalidade_id,
         cm.mes,
         cm.ano
       FROM cardapios_modalidade cm
       INNER JOIN cardapio_refeicoes_dia crd ON crd.cardapio_modalidade_id = cm.id
+      LEFT JOIN cardapio_modalidades cm2 ON cm2.cardapio_id = cm.id
       WHERE cm.ativo = true
         AND cm.ano = $1
         AND cm.mes = $2
+        AND cm2.modalidade_id IS NOT NULL
       ORDER BY cm.nome
     `, [ano, mes]);
 
@@ -674,7 +680,7 @@ export const calcularDemandaPorCompetencia = async (req: Request, res: Response)
         crd.id as cardapio_refeicao_dia_id,
         crd.cardapio_modalidade_id,
         crd.dia,
-        cm.modalidade_id,
+        cm2.modalidade_id,
         r.id as refeicao_id,
         r.nome as refeicao_nome,
         rp.id as refeicao_produto_id,
@@ -686,10 +692,11 @@ export const calcularDemandaPorCompetencia = async (req: Request, res: Response)
         rp.tipo_medida
       FROM cardapio_refeicoes_dia crd
       INNER JOIN cardapios_modalidade cm ON cm.id = crd.cardapio_modalidade_id
+      INNER JOIN cardapio_modalidades cm2 ON cm2.cardapio_id = cm.id
       INNER JOIN refeicoes r ON r.id = crd.refeicao_id
       INNER JOIN refeicao_produtos rp ON rp.refeicao_id = r.id
       INNER JOIN produtos p ON p.id = rp.produto_id
-      LEFT JOIN refeicao_produto_modalidade rpm ON rpm.refeicao_produto_id = rp.id AND rpm.modalidade_id = cm.modalidade_id
+      LEFT JOIN refeicao_produto_modalidade rpm ON rpm.refeicao_produto_id = rp.id AND rpm.modalidade_id = cm2.modalidade_id
       WHERE crd.cardapio_modalidade_id = ANY($1)
         AND crd.ativo = true
         AND crd.dia BETWEEN $2 AND $3

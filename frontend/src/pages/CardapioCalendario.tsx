@@ -5,10 +5,11 @@ import {
   FormControl, Grid, IconButton, InputLabel, MenuItem, Select, TextField, Typography, Chip, Menu,
   CircularProgress, Divider, Alert
 } from '@mui/material';
-import { ArrowBack as ArrowBackIcon, Delete as DeleteIcon, PictureAsPdf as PdfIcon, MoreVert as MoreIcon, DragIndicator as DragIcon, Event as EventIcon } from '@mui/icons-material';
+import { ArrowBack as ArrowBackIcon, Delete as DeleteIcon, PictureAsPdf as PdfIcon, MoreVert as MoreIcon, Event as EventIcon, CalendarMonth as CalendarIcon, RestaurantMenu as RestaurantIcon } from '@mui/icons-material';
 import { useToast } from '../hooks/useToast';
 import { usePageTitle } from '../contexts/PageTitleContext';
 import PageContainer from '../components/PageContainer';
+import CalendarioCardapio from '../components/CalendarioCardapio';
 import { useInstituicaoForPDF } from '../hooks/useInstituicao';
 import { createPDFHeader, createPDFFooter, getDefaultPDFStyles } from '../utils/pdfUtils';
 import {
@@ -17,9 +18,6 @@ import {
 } from '../services/cardapiosModalidade';
 import { listarRefeicoes } from '../services/refeicoes';
 import { listarEventosPorMes, getLabelsEventos, getCoresEventos } from '../services/calendarioLetivo';
-import { DndContext, DragOverlay, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { useDraggable, useDroppable } from '@dnd-kit/core';
-import { CSS } from '@dnd-kit/utilities';
 import { LoadingOverlay } from '../components/LoadingOverlay';
 import { DetalheDiaCardapioDialog } from '../components/DetalheDiaCardapioDialog';
 import api from '../services/api';
@@ -57,26 +55,18 @@ const CardapioCalendarioPage: React.FC = () => {
   const [openDetalhesDiaDialog, setOpenDetalhesDiaDialog] = useState(false);
   const [openPeriodoDialog, setOpenPeriodoDialog] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [ano, setAno] = useState(0);
+  const [mes, setMes] = useState(0);
   const [diaSelecionado, setDiaSelecionado] = useState<number | null>(null);
   const [refeicaoDetalhes, setRefeicaoDetalhes] = useState<any>(null);
   const [produtosRefeicao, setProdutosRefeicao] = useState<any[]>([]);
   const [loadingDetalhes, setLoadingDetalhes] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
-  const [activeId, setActiveId] = useState<string | null>(null);
   const [periodoForm, setPeriodoForm] = useState({
     diaInicio: 1,
     diaFim: 31
   });
-
-  // Configurar sensores para drag and drop
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8, // Requer movimento de 8px para iniciar o drag
-      },
-    })
-  );
   const [formData, setFormData] = useState({
     refeicao_id: '',
     tipo_refeicao: '',
@@ -86,6 +76,13 @@ const CardapioCalendarioPage: React.FC = () => {
   useEffect(() => {
     if (cardapioId) loadData();
   }, [cardapioId]);
+
+  useEffect(() => {
+    if (cardapio) {
+      setAno(cardapio.ano);
+      setMes(cardapio.mes);
+    }
+  }, [cardapio]);
 
   const loadData = async () => {
     try {
@@ -119,40 +116,28 @@ const CardapioCalendarioPage: React.FC = () => {
     }
   };
 
-  const getCalendarioSemanas = () => {
-    if (!cardapio) return [];
-    
-    const primeiroDia = new Date(cardapio.ano, cardapio.mes - 1, 1);
-    const ultimoDia = new Date(cardapio.ano, cardapio.mes, 0).getDate();
-    const diaSemanaInicio = primeiroDia.getDay(); // 0 = domingo
-    
-    const semanas: (number | null)[][] = [];
-    let semanaAtual: (number | null)[] = [];
-    
-    // Preenche dias vazios antes do primeiro dia
-    for (let i = 0; i < diaSemanaInicio; i++) {
-      semanaAtual.push(null);
+  const handleMesAnterior = () => {
+    if (mes === 1) {
+      setMes(12);
+      setAno(ano - 1);
+    } else {
+      setMes(mes - 1);
     }
-    
-    // Preenche os dias do mês
-    for (let dia = 1; dia <= ultimoDia; dia++) {
-      semanaAtual.push(dia);
-      
-      if (semanaAtual.length === 7) {
-        semanas.push(semanaAtual);
-        semanaAtual = [];
-      }
+  };
+
+  const handleProximoMes = () => {
+    if (mes === 12) {
+      setMes(1);
+      setAno(ano + 1);
+    } else {
+      setMes(mes + 1);
     }
-    
-    // Preenche dias vazios após o último dia
-    if (semanaAtual.length > 0) {
-      while (semanaAtual.length < 7) {
-        semanaAtual.push(null);
-      }
-      semanas.push(semanaAtual);
-    }
-    
-    return semanas;
+  };
+
+  const handleDiaClick = (data: string) => {
+    const dia = parseInt(data.split('-')[2]);
+    setDiaSelecionado(dia);
+    setOpenDetalhesDiaDialog(true);
   };
 
   const getRefeicoesNoDia = (dia: number) => {
@@ -223,7 +208,38 @@ const CardapioCalendarioPage: React.FC = () => {
         console.log('Não foi possível carregar informações da instituição');
       }
       
-      const semanas = getCalendarioSemanas();
+      // Gerar semanas do calendário para o PDF
+      const getCalendarioSemanasParaPDF = () => {
+        const primeiroDia = new Date(cardapio.ano, cardapio.mes - 1, 1);
+        const ultimoDia = new Date(cardapio.ano, cardapio.mes, 0).getDate();
+        const diaSemanaInicio = primeiroDia.getDay();
+        
+        const semanas: (number | null)[][] = [];
+        let semanaAtual: (number | null)[] = [];
+        
+        for (let i = 0; i < diaSemanaInicio; i++) {
+          semanaAtual.push(null);
+        }
+        
+        for (let dia = 1; dia <= ultimoDia; dia++) {
+          semanaAtual.push(dia);
+          if (semanaAtual.length === 7) {
+            semanas.push(semanaAtual);
+            semanaAtual = [];
+          }
+        }
+        
+        if (semanaAtual.length > 0) {
+          while (semanaAtual.length < 7) {
+            semanaAtual.push(null);
+          }
+          semanas.push(semanaAtual);
+        }
+        
+        return semanas;
+      };
+      
+      const semanas = getCalendarioSemanasParaPDF();
       const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
       
       // Criar corpo da tabela do calendário
@@ -812,155 +828,6 @@ const CardapioCalendarioPage: React.FC = () => {
     }
   };
 
-  const handleDragStart = (event: any) => {
-    setActiveId(event.active.id);
-  };
-
-  const handleDragEnd = async (event: any) => {
-    const { active, over } = event;
-    setActiveId(null);
-
-    if (!over || active.id === over.id) return;
-
-    // Extrair IDs
-    const refeicaoId = parseInt(active.id.split('-')[1]);
-    const novoDia = parseInt(over.id.split('-')[1]);
-
-    // Encontrar a refeição
-    const refeicao = refeicoes.find(r => r.id === refeicaoId);
-    if (!refeicao || refeicao.dia === novoDia) return;
-
-    try {
-      // Remover do dia antigo
-      await removerRefeicaoDia(refeicaoId);
-      
-      // Adicionar no novo dia
-      await adicionarRefeicaoDia(parseInt(cardapioId!), {
-        refeicao_id: refeicao.refeicao_id,
-        dia: novoDia,
-        tipo_refeicao: refeicao.tipo_refeicao,
-        observacao: refeicao.observacao || undefined
-      });
-
-      toast.success(`Refeição movida para o dia ${novoDia}`);
-      loadData();
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao mover refeição');
-      loadData(); // Recarregar para reverter mudanças visuais
-    }
-  };
-
-  // Componente de refeição arrastável
-  const DraggableRefeicao = ({ refeicao }: { refeicao: RefeicaoDia }) => {
-    const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-      id: `refeicao-${refeicao.id}`,
-    });
-
-    const style = {
-      transform: CSS.Translate.toString(transform),
-      opacity: isDragging ? 0.5 : 1,
-    };
-
-    return (
-      <Box
-        ref={setNodeRef}
-        style={style}
-        sx={{
-          p: 0.75,
-          borderRadius: '8px',
-          bgcolor: corTipoRefeicao[refeicao.tipo_refeicao] || '#ccc',
-          color: 'white',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          cursor: isDragging ? 'grabbing' : 'grab',
-          transition: 'all 0.2s',
-          boxShadow: isDragging ? '0 4px 12px rgba(0,0,0,0.3)' : '0 1px 3px rgba(0,0,0,0.12)',
-          '&:hover': {
-            transform: isDragging ? undefined : 'scale(1.02)',
-            boxShadow: isDragging ? undefined : '0 2px 6px rgba(0,0,0,0.2)'
-          }
-        }}
-      >
-        <Box
-          {...listeners}
-          {...attributes}
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 0.5,
-            flex: 1,
-            minWidth: 0,
-            cursor: 'grab',
-            '&:active': { cursor: 'grabbing' }
-          }}
-        >
-          <DragIcon sx={{ fontSize: '1rem', opacity: 0.7 }} />
-          <Box sx={{ overflow: 'hidden', flex: 1, minWidth: 0 }}>
-            <Typography variant="caption" sx={{ fontWeight: 700, display: 'block', fontSize: '0.65rem', lineHeight: 1.3, opacity: 0.9 }}>
-              {TIPOS_REFEICAO[refeicao.tipo_refeicao]}
-            </Typography>
-            <Typography
-              variant="caption"
-              sx={{
-                display: 'block',
-                fontSize: '0.7rem',
-                lineHeight: 1.2,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                fontWeight: 500
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleOpenDetalhes(refeicao.refeicao_id);
-              }}
-            >
-              {refeicao.refeicao_nome}
-            </Typography>
-          </Box>
-        </Box>
-        <IconButton
-          size="small"
-          sx={{
-            color: 'white',
-            p: 0.5,
-            ml: 0.5,
-            '&:hover': { bgcolor: 'rgba(0,0,0,0.2)' }
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleDelete(refeicao.id);
-          }}
-        >
-          <DeleteIcon sx={{ fontSize: '0.9rem' }} />
-        </IconButton>
-      </Box>
-    );
-  };
-
-  // Componente de dia que aceita drops
-  const DroppableDay = ({ dia, children }: { dia: number; children: React.ReactNode }) => {
-    const { setNodeRef, isOver } = useDroppable({
-      id: `dia-${dia}`,
-    });
-
-    return (
-      <Box
-        ref={setNodeRef}
-        sx={{
-          height: '100%',
-          border: isOver ? '2px dashed #1976d2' : 'none',
-          borderRadius: '12px',
-          bgcolor: isOver ? 'rgba(25, 118, 210, 0.08)' : 'transparent',
-          transition: 'all 0.2s'
-        }}
-      >
-        {children}
-      </Box>
-    );
-  };
-
   const getDiaDaSemana = (diaSemana: number) => {
     const dias = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
     return dias[diaSemana];
@@ -974,21 +841,38 @@ const CardapioCalendarioPage: React.FC = () => {
     jantar: '#AB47BC'
   };
 
+  // Converter refeições para formato de eventos para o CalendarioMensal
+  const refeicoesComoEventos = refeicoes.map(ref => {
+    const dataStr = cardapio 
+      ? `${cardapio.ano}-${String(cardapio.mes).padStart(2, '0')}-${String(ref.dia).padStart(2, '0')}`
+      : '';
+    
+    return {
+      id: ref.id,
+      titulo: `${TIPOS_REFEICAO[ref.tipo_refeicao]}: ${ref.refeicao_nome}`,
+      tipo_evento: 'refeicao',
+      data_inicio: dataStr,
+      data_fim: dataStr,
+      cor: corTipoRefeicao[ref.tipo_refeicao] || '#ccc',
+      descricao: ref.observacao || '',
+      // Dados extras para uso interno
+      _refeicao: ref
+    };
+  });
+
+  // Combinar eventos do calendário letivo com refeições
+  const todosEventos = [...eventosCalendario, ...refeicoesComoEventos];
+
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
-      <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-        <PageContainer>
-        <Box display="flex" alignItems="center" mb={2}>
+    <>
+      <PageContainer>
+      {/* Header com botão voltar e ações */}
+      <Box display="flex" alignItems="center" mb={3}>
           <IconButton onClick={() => navigate('/cardapios')} sx={{ mr: 2 }}>
             <ArrowBackIcon />
           </IconButton>
           <Box flex={1}>
-            <Typography variant="h5">{cardapio?.nome}</Typography>
+            <Typography variant="h5" sx={{ fontWeight: 600 }}>{cardapio?.nome}</Typography>
             <Typography variant="body2" color="textSecondary">
               {cardapio && `${MESES[cardapio.mes]} / ${cardapio.ano} - ${cardapio.modalidade_nome}`}
             </Typography>
@@ -996,244 +880,116 @@ const CardapioCalendarioPage: React.FC = () => {
           <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} color="primary">
             <PdfIcon />
           </IconButton>
-          <Menu
-            anchorEl={anchorEl}
-            open={Boolean(anchorEl)}
-            onClose={() => setAnchorEl(null)}
-          >
-            <MenuItem onClick={exportarCalendarioPDF}>
-              <PdfIcon sx={{ mr: 1 }} fontSize="small" />
-              Exportar Calendário
-            </MenuItem>
-            <MenuItem onClick={exportarFrequenciaPDF}>
-              <PdfIcon sx={{ mr: 1 }} fontSize="small" />
-              Exportar Frequência
-            </MenuItem>
-            <MenuItem onClick={handleOpenPeriodoDialog}>
-              <PdfIcon sx={{ mr: 1 }} fontSize="small" />
-              Relatório Detalhado
-            </MenuItem>
-          </Menu>
         </Box>
 
-        {/* Cabeçalho dos dias da semana */}
-        <Card sx={{ mb: 2, borderRadius: '12px', overflow: 'hidden' }}>
-          <Grid container spacing={0}>
-            {['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'].map((dia, index) => (
-              <Grid item xs={12 / 7} key={dia}>
-                <Box 
-                  sx={{ 
-                    textAlign: 'center', 
-                    fontWeight: 700, 
-                    py: 1.5,
-                    bgcolor: index === 0 || index === 6 ? '#fff3e0' : '#e3f2fd',
-                    borderRight: index < 6 ? '1px solid rgba(0,0,0,0.08)' : 'none',
-                    color: index === 0 || index === 6 ? '#e65100' : '#1565c0'
-                  }}
-                >
-                  <Typography variant="body2" sx={{ fontSize: '0.875rem', letterSpacing: '0.5px' }}>
-                    {dia}
+        <Grid container spacing={3}>
+          {/* Coluna principal - Calendário */}
+          <Grid item xs={12} lg={8}>
+            <Card sx={{ p: 3 }}>
+              <CalendarioCardapio
+                ano={ano}
+                mes={mes}
+                eventos={todosEventos}
+                onMesAnterior={handleMesAnterior}
+                onProximoMes={handleProximoMes}
+                onDiaClick={handleDiaClick}
+              />
+            </Card>
+          </Grid>
+
+          {/* Coluna lateral - Informações */}
+          <Grid item xs={12} lg={4}>
+            {/* Card de resumo do cardápio */}
+            <Card sx={{ p: 2, mb: 2 }}>
+              <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <CalendarIcon />
+                Resumo do Cardápio
+              </Typography>
+
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Box>
+                  <Typography variant="body2" color="text.secondary">
+                    Total de refeições
+                  </Typography>
+                  <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main' }}>
+                    {refeicoes.length}
                   </Typography>
                 </Box>
-              </Grid>
-            ))}
-          </Grid>
-        </Card>
 
-        {/* Calendário */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          {getCalendarioSemanas().map((semana, semanaIndex) => (
-            <Box key={semanaIndex}>
-              <Grid container spacing={1}>
-                {semana.map((dia, diaIndex) => {
-                  if (dia === null) {
+                <Divider />
+
+                <Box>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                    Por tipo de refeição
+                  </Typography>
+                  {Object.entries(
+                    refeicoes.reduce((acc, r) => {
+                      acc[r.tipo_refeicao] = (acc[r.tipo_refeicao] || 0) + 1;
+                      return acc;
+                    }, {} as Record<string, number>)
+                  ).map(([tipo, count]) => (
+                    <Box key={tipo} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                      <Typography variant="body2">
+                        {TIPOS_REFEICAO[tipo]}
+                      </Typography>
+                      <Chip label={count} size="small" sx={{ bgcolor: corTipoRefeicao[tipo], color: 'white' }} />
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            </Card>
+
+            {/* Card de eventos do calendário letivo */}
+            {eventosCalendario.length > 0 && (
+              <Card sx={{ p: 2 }}>
+                <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <EventIcon />
+                  Eventos do Mês
+                </Typography>
+
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  {Object.entries(
+                    eventosCalendario.reduce((acc, e) => {
+                      acc[e.tipo_evento] = (acc[e.tipo_evento] || 0) + 1;
+                      return acc;
+                    }, {} as Record<string, number>)
+                  ).map(([tipo, count]) => {
+                    const labels = getLabelsEventos();
                     return (
-                      <Grid item xs={12 / 7} key={`empty-${diaIndex}`}>
-                        <Box 
-                          sx={{ 
-                            height: 140, 
-                            bgcolor: '#f5f5f5', 
-                            borderRadius: '12px',
-                            border: '2px dashed #e0e0e0'
-                          }} 
-                        />
-                      </Grid>
+                      <Box key={tipo} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="body2">
+                          {labels[tipo as keyof typeof labels]}
+                        </Typography>
+                        <Chip label={count} size="small" />
+                      </Box>
                     );
-                  }
+                  })}
+                </Box>
+              </Card>
+            )}
+          </Grid>
+        </Grid>
 
-                  const refeicoesNoDia = getRefeicoesNoDia(dia);
-                  const ehFimDeSemana = diaIndex === 0 || diaIndex === 6;
-                  const hoje = new Date();
-                  const ehHoje = cardapio && 
-                    dia === hoje.getDate() && 
-                    cardapio.mes === (hoje.getMonth() + 1) && 
-                    cardapio.ano === hoje.getFullYear();
-
-                  return (
-                    <Grid item xs={12 / 7} key={dia}>
-                      <DroppableDay dia={dia}>
-                        <Card 
-                          sx={{ 
-                            cursor: 'pointer',
-                            height: 140,
-                            bgcolor: ehFimDeSemana ? '#fff8e1' : 'white',
-                            border: ehHoje ? '3px solid #1976d2' : '1px solid #e0e0e0',
-                            borderRadius: '12px',
-                            transition: 'all 0.2s ease-in-out',
-                            '&:hover': { 
-                              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                              transform: 'translateY(-2px)',
-                              borderColor: '#1976d2'
-                            },
-                            display: 'flex',
-                            flexDirection: 'column',
-                            position: 'relative',
-                            overflow: 'visible'
-                          }}
-                          onClick={() => handleOpenDialog(dia)}
-                        >
-                          {ehHoje && (
-                            <Box 
-                              sx={{ 
-                                position: 'absolute',
-                                top: -8,
-                                right: 8,
-                                bgcolor: '#1976d2',
-                                color: 'white',
-                                px: 1,
-                                py: 0.3,
-                                borderRadius: '12px',
-                                fontSize: '0.65rem',
-                                fontWeight: 700,
-                                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                                zIndex: 1
-                              }}
-                            >
-                              HOJE
-                            </Box>
-                          )}
-                          <CardContent sx={{ p: 1, flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', '&:last-child': { pb: 1 } }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
-                              <Typography 
-                                variant="h6" 
-                                sx={{ 
-                                  fontSize: '1.25rem', 
-                                  fontWeight: 700,
-                                  color: ehHoje ? '#1976d2' : (ehFimDeSemana ? '#e65100' : '#424242'),
-                                  cursor: 'pointer',
-                                  '&:hover': {
-                                    textDecoration: 'underline'
-                                  }
-                                }}
-                                onClick={(e) => handleOpenDetalhesDia(dia, e)}
-                              >
-                                {dia}
-                              </Typography>
-                              {refeicoesNoDia.length > 0 && (
-                                <Chip 
-                                  label={refeicoesNoDia.length} 
-                                  size="small" 
-                                  sx={{ 
-                                    height: 20,
-                                    fontSize: '0.7rem',
-                                    fontWeight: 700,
-                                    bgcolor: '#e3f2fd',
-                                    color: '#1976d2'
-                                  }} 
-                                />
-                              )}
-                            </Box>
-                            
-                            {refeicoesNoDia.length === 0 ? (
-                              <Box 
-                                sx={{ 
-                                  flex: 1,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  border: '2px dashed #e0e0e0',
-                                  borderRadius: '8px',
-                                  bgcolor: 'rgba(0,0,0,0.02)',
-                                  transition: 'all 0.2s',
-                                  '&:hover': {
-                                    borderColor: '#1976d2',
-                                    bgcolor: 'rgba(25, 118, 210, 0.04)'
-                                  }
-                                }}
-                              >
-                                <Typography 
-                                  variant="caption" 
-                                  sx={{ 
-                                    fontSize: '0.75rem',
-                                    color: '#9e9e9e',
-                                    fontWeight: 500
-                                  }}
-                                >
-                                  + Adicionar refeição
-                                </Typography>
-                              </Box>
-                            ) : (
-                              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, flex: 1, overflow: 'hidden' }}>
-                                {refeicoesNoDia.slice(0, 2).map((ref) => (
-                                  <DraggableRefeicao key={ref.id} refeicao={ref} />
-                                ))}
-                                {refeicoesNoDia.length > 2 && (
-                                  <Box 
-                                    sx={{ 
-                                      p: 0.75, 
-                                      borderRadius: '8px',
-                                      bgcolor: 'rgba(0,0,0,0.6)',
-                                      color: 'white',
-                                      textAlign: 'center',
-                                      cursor: 'pointer',
-                                      transition: 'all 0.2s',
-                                      boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
-                                      '&:hover': { 
-                                        bgcolor: 'rgba(0,0,0,0.8)',
-                                        transform: 'scale(1.02)'
-                                      }
-                                    }}
-                                    onClick={(e) => handleOpenListDialog(dia, e)}
-                                  >
-                                    <Typography variant="caption" sx={{ fontSize: '0.7rem', fontWeight: 700 }}>
-                                      Ver todas ({refeicoesNoDia.length})
-                                    </Typography>
-                                  </Box>
-                                )}
-                              </Box>
-                            )}
-                          </CardContent>
-                        </Card>
-                      </DroppableDay>
-                    </Grid>
-                  );
-                })}
-              </Grid>
-            </Box>
-          ))}
-        </Box>
+        {/* Menu de ações */}
+        <Menu
+          anchorEl={anchorEl}
+          open={Boolean(anchorEl)}
+          onClose={() => setAnchorEl(null)}
+        >
+          <MenuItem onClick={exportarCalendarioPDF}>
+            <PdfIcon sx={{ mr: 1 }} fontSize="small" />
+            Exportar Calendário
+          </MenuItem>
+          <MenuItem onClick={exportarFrequenciaPDF}>
+            <PdfIcon sx={{ mr: 1 }} fontSize="small" />
+            Exportar Frequência
+          </MenuItem>
+          <MenuItem onClick={handleOpenPeriodoDialog}>
+            <PdfIcon sx={{ mr: 1 }} fontSize="small" />
+            Relatório Detalhado
+          </MenuItem>
+        </Menu>
       </PageContainer>
-    </Box>
-
-      <DragOverlay>
-        {activeId ? (
-          <Box
-            sx={{
-              p: 0.75,
-              borderRadius: '8px',
-              bgcolor: '#1976d2',
-              color: 'white',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-              minWidth: 120,
-              cursor: 'grabbing'
-            }}
-          >
-            <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.7rem' }}>
-              Movendo refeição...
-            </Typography>
-          </Box>
-        ) : null}
-      </DragOverlay>
 
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Adicionar Refeição - Dia {diaSelecionado}</DialogTitle>
@@ -1510,7 +1266,7 @@ const CardapioCalendarioPage: React.FC = () => {
           'Processando...'
         }
       />
-    </DndContext>
+    </>
   );
 };
 
