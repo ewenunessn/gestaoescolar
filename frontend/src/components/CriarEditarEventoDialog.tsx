@@ -10,7 +10,6 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Grid,
   Box,
   CircularProgress
 } from '@mui/material';
@@ -40,10 +39,6 @@ export default function CriarEditarEventoDialog({
     tipo_evento: 'evento_escolar',
     data_inicio: dataInicial || new Date().toISOString().split('T')[0],
     data_fim: '',
-    hora_inicio: '',
-    hora_fim: '',
-    local: '',
-    responsavel: '',
     cor: '#007bff',
     observacoes: ''
   });
@@ -57,9 +52,7 @@ export default function CriarEditarEventoDialog({
       setForm({
         ...evento,
         data_inicio: evento.data_inicio.split('T')[0],
-        data_fim: evento.data_fim ? evento.data_fim.split('T')[0] : '',
-        hora_inicio: evento.hora_inicio || '',
-        hora_fim: evento.hora_fim || ''
+        data_fim: evento.data_fim ? evento.data_fim.split('T')[0] : ''
       });
     } else if (dataInicial) {
       setForm(prev => ({ ...prev, data_inicio: dataInicial }));
@@ -95,10 +88,6 @@ export default function CriarEditarEventoDialog({
         tipo_evento: 'evento_escolar',
         data_inicio: new Date().toISOString().split('T')[0],
         data_fim: '',
-        hora_inicio: '',
-        hora_fim: '',
-        local: '',
-        responsavel: '',
         cor: '#007bff',
         observacoes: ''
       });
@@ -116,19 +105,20 @@ export default function CriarEditarEventoDialog({
       </DialogTitle>
 
       <DialogContent>
-        <Grid container spacing={2} sx={{ mt: 0.5 }}>
-          <Grid item xs={12}>
-            <TextField
-              label="Título"
-              fullWidth
-              required
-              value={form.titulo}
-              onChange={(e) => handleChange('titulo', e.target.value)}
-            />
-          </Grid>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 1 }}>
+          {/* Título */}
+          <TextField
+            label="Título do Evento"
+            fullWidth
+            required
+            value={form.titulo}
+            onChange={(e) => handleChange('titulo', e.target.value)}
+            placeholder="Ex: Reunião de Pais, Feriado Nacional..."
+          />
 
-          <Grid item xs={12} md={6}>
-            <FormControl fullWidth required>
+          {/* Tipo e Cor */}
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <FormControl fullWidth required sx={{ flex: 2 }}>
               <InputLabel>Tipo de Evento</InputLabel>
               <Select
                 value={form.tipo_evento}
@@ -152,104 +142,63 @@ export default function CriarEditarEventoDialog({
                 ))}
               </Select>
             </FormControl>
-          </Grid>
 
-          <Grid item xs={12} md={6}>
-            <TextField
-              label="Cor"
-              type="color"
-              fullWidth
-              value={form.cor}
-              onChange={(e) => handleChange('cor', e.target.value)}
-            />
-          </Grid>
+            <Box sx={{ flex: 1, minWidth: 120 }}>
+              <TextField
+                label="Cor"
+                type="color"
+                fullWidth
+                value={form.cor}
+                onChange={(e) => handleChange('cor', e.target.value)}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Box>
+          </Box>
 
-          <Grid item xs={12} md={6}>
+          {/* Datas */}
+          <Box sx={{ display: 'flex', gap: 2 }}>
             <TextField
               label="Data de Início"
               type="date"
-              fullWidth
               required
               value={form.data_inicio}
               onChange={(e) => handleChange('data_inicio', e.target.value)}
               InputLabelProps={{ shrink: true }}
+              sx={{ flex: 1 }}
             />
-          </Grid>
-
-          <Grid item xs={12} md={6}>
             <TextField
-              label="Data de Término"
+              label="Data de Término (opcional)"
               type="date"
-              fullWidth
               value={form.data_fim}
               onChange={(e) => handleChange('data_fim', e.target.value)}
               InputLabelProps={{ shrink: true }}
-              helperText="Deixe em branco para evento de um dia"
+              helperText="Para eventos de múltiplos dias"
+              sx={{ flex: 1 }}
             />
-          </Grid>
+          </Box>
 
-          <Grid item xs={12} md={6}>
-            <TextField
-              label="Hora de Início"
-              type="time"
-              fullWidth
-              value={form.hora_inicio}
-              onChange={(e) => handleChange('hora_inicio', e.target.value)}
-              InputLabelProps={{ shrink: true }}
-            />
-          </Grid>
+          {/* Descrição */}
+          <TextField
+            label="Descrição (opcional)"
+            fullWidth
+            multiline
+            rows={3}
+            value={form.descricao}
+            onChange={(e) => handleChange('descricao', e.target.value)}
+            placeholder="Adicione detalhes sobre o evento..."
+          />
 
-          <Grid item xs={12} md={6}>
-            <TextField
-              label="Hora de Término"
-              type="time"
-              fullWidth
-              value={form.hora_fim}
-              onChange={(e) => handleChange('hora_fim', e.target.value)}
-              InputLabelProps={{ shrink: true }}
-            />
-          </Grid>
-
-          <Grid item xs={12} md={6}>
-            <TextField
-              label="Local"
-              fullWidth
-              value={form.local}
-              onChange={(e) => handleChange('local', e.target.value)}
-            />
-          </Grid>
-
-          <Grid item xs={12} md={6}>
-            <TextField
-              label="Responsável"
-              fullWidth
-              value={form.responsavel}
-              onChange={(e) => handleChange('responsavel', e.target.value)}
-            />
-          </Grid>
-
-          <Grid item xs={12}>
-            <TextField
-              label="Descrição"
-              fullWidth
-              multiline
-              rows={3}
-              value={form.descricao}
-              onChange={(e) => handleChange('descricao', e.target.value)}
-            />
-          </Grid>
-
-          <Grid item xs={12}>
-            <TextField
-              label="Observações"
-              fullWidth
-              multiline
-              rows={2}
-              value={form.observacoes}
-              onChange={(e) => handleChange('observacoes', e.target.value)}
-            />
-          </Grid>
-        </Grid>
+          {/* Observações */}
+          <TextField
+            label="Observações (opcional)"
+            fullWidth
+            multiline
+            rows={2}
+            value={form.observacoes}
+            onChange={(e) => handleChange('observacoes', e.target.value)}
+            placeholder="Informações adicionais..."
+          />
+        </Box>
       </DialogContent>
 
       <DialogActions>

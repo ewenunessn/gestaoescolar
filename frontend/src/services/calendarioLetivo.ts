@@ -167,7 +167,7 @@ export const excluirExcecao = async (id: number): Promise<void> => {
 
 // Cores por tipo de evento
 export const getCoresEventos = () => ({
-  dia_letivo: '#28a745',
+  dia_letivo_excepcional: '#28a745',
   feriado_nacional: '#dc3545',
   feriado_estadual: '#dc3545',
   feriado_municipal: '#dc3545',
@@ -175,18 +175,12 @@ export const getCoresEventos = () => ({
   evento_escolar: '#007bff',
   recesso: '#ffc107',
   ferias: '#ffc107',
-  reuniao_pedagogica: '#6f42c1',
-  conselho_classe: '#6f42c1',
-  formacao: '#6f42c1',
-  avaliacao: '#17a2b8',
-  entrega_boletim: '#17a2b8',
-  matricula: '#20c997',
   outro: '#6c757d'
 });
 
 // Labels dos tipos de evento
 export const getLabelsEventos = () => ({
-  dia_letivo: 'Dia Letivo',
+  dia_letivo_excepcional: 'Dia Letivo Excepcional',
   feriado_nacional: 'Feriado Nacional',
   feriado_estadual: 'Feriado Estadual',
   feriado_municipal: 'Feriado Municipal',
@@ -194,11 +188,5 @@ export const getLabelsEventos = () => ({
   evento_escolar: 'Evento Escolar',
   recesso: 'Recesso',
   ferias: 'Férias',
-  reuniao_pedagogica: 'Reunião Pedagógica',
-  conselho_classe: 'Conselho de Classe',
-  formacao: 'Formação',
-  avaliacao: 'Avaliação',
-  entrega_boletim: 'Entrega de Boletim',
-  matricula: 'Matrícula',
   outro: 'Outro'
 });

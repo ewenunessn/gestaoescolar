@@ -326,6 +326,60 @@ class EstoqueCentralController {
   }
 
   /**
+   * Listar todos os alertas (consolidado)
+   * GET /api/estoque-central/alertas?apenas_nao_resolvidos=true
+   */
+  async listarAlertas(req: Request, res: Response) {
+    try {
+      const apenasNaoResolvidos = req.query.apenas_nao_resolvidos === 'true';
+      const dias = parseInt(req.query.dias as string) || 30;
+
+      // Buscar lotes próximos do vencimento e estoque baixo
+      const [lotesVencimento, produtosEstoqueBaixo] = await Promise.all([
+        EstoqueCentralModel.listarLotesProximosVencimento(dias),
+        EstoqueCentralModel.listarEstoqueBaixo()
+      ]);
+
+      // Formatar como alertas
+      const alertas = [
+        ...lotesVencimento.map((lote: any) => ({
+          id: `vencimento-${lote.id}`,
+          produto_id: lote.produto_id,
+          lote_id: lote.id,
+          tipo: 'vencimento_proximo',
+          nivel: lote.dias_para_vencimento <= 7 ? 'critical' : 'warning',
+          titulo: `Lote próximo do vencimento`,
+          descricao: `${lote.produto_nome} - Lote ${lote.lote} vence em ${lote.dias_para_vencimento} dias`,
+          data_alerta: new Date().toISOString(),
+          visualizado: false,
+          resolvido: false,
+          produto_nome: lote.produto_nome,
+          lote: lote.lote
+        })),
+        ...produtosEstoqueBaixo.map((produto: any) => ({
+          id: `estoque-baixo-${produto.id}`,
+          produto_id: produto.id,
+          lote_id: null,
+          tipo: produto.quantidade_total === 0 ? 'estoque_zerado' : 'estoque_baixo',
+          nivel: produto.quantidade_total === 0 ? 'critical' : 'warning',
+          titulo: produto.quantidade_total === 0 ? 'Estoque zerado' : 'Estoque baixo',
+          descricao: `${produto.nome} - Quantidade: ${produto.quantidade_total} ${produto.unidade}`,
+          data_alerta: new Date().toISOString(),
+          visualizado: false,
+          resolvido: false,
+          produto_nome: produto.nome,
+          lote: null
+        }))
+      ];
+
+      res.json({ success: true, data: alertas });
+    } catch (error: any) {
+      console.error('Erro ao listar alertas:', error);
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  /**
    * Listar movimentações
    * GET /api/estoque-central/movimentacoes?estoque_id=1&tipo=entrada&data_inicio=2026-01-01&data_fim=2026-12-31
    */

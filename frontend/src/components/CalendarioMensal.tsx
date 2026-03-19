@@ -99,41 +99,67 @@ export default function CalendarioMensal({
 
   const hoje = new Date().toISOString().split('T')[0];
 
-  const getDiaStyle = (diaInfo: typeof dias[0]) => {
+  // Função para determinar o estilo do container do dia
+  const getDiaContainerStyle = (diaInfo: typeof dias[0], diaSemana: number) => {
     const { data, mes: mesDia } = diaInfo;
     const isHoje = data === hoje;
     const isOutroMes = mesDia !== 'atual';
-    const isLetivo = diasLetivos.includes(data);
-    const isNaoLetivo = diasNaoLetivos.includes(data);
-    const eventosNoDia = eventosPorData[data] || [];
-    const temFeriado = eventosNoDia.some(e => e.tipo_evento.includes('feriado'));
-    const temRecesso = eventosNoDia.some(e => ['recesso', 'ferias'].includes(e.tipo_evento));
+    const isFimDeSemana = diaSemana === 0 || diaSemana === 6;
 
     let bgcolor = 'transparent';
-    let color = isOutroMes ? 'text.disabled' : 'text.primary';
     let border = '1px solid transparent';
+    let opacity = isOutroMes ? 0.5 : 1;
 
     if (isHoje) {
       border = '2px solid #1976d2';
     }
 
+    // Aplicar cor de fundo apenas para dias do mês atual
     if (!isOutroMes) {
-      if (temFeriado) {
-        bgcolor = '#ffebee';
+      const eventosNoDia = eventosPorData[data] || [];
+      const temFeriado = eventosNoDia.some(e => e.tipo_evento.includes('feriado'));
+      const temRecesso = eventosNoDia.some(e => ['recesso', 'ferias'].includes(e.tipo_evento));
+
+      // Prioridade: fim de semana > feriado > recesso > letivo (padrão)
+      if (isFimDeSemana) {
+        bgcolor = '#ffebee'; // Vermelho claro para sábado e domingo
+      } else if (temFeriado) {
+        bgcolor = '#ffebee'; // Vermelho claro para feriados
       } else if (temRecesso) {
-        bgcolor = '#fff3e0';
-      } else if (isLetivo) {
+        bgcolor = '#fff3e0'; // Laranja claro para recessos
+      } else {
+        // Todos os outros dias são letivos (verde claro)
         bgcolor = '#e8f5e9';
-      } else if (isNaoLetivo) {
-        bgcolor = '#f5f5f5';
       }
     }
 
-    return {
-      bgcolor,
-      color,
-      border,
-      opacity: isOutroMes ? 0.5 : 1
+    return { bgcolor, border, opacity };
+  };
+
+  // Função para determinar a cor do número do dia
+  const getNumeroCorStyle = (diaInfo: typeof dias[0], diaSemana: number) => {
+    const { data, mes: mesDia } = diaInfo;
+    const isHoje = data === hoje;
+    const isOutroMes = mesDia !== 'atual';
+    const isFimDeSemana = diaSemana === 0 || diaSemana === 6;
+
+    // Cor do texto
+    if (isOutroMes) {
+      return { color: 'text.disabled', fontWeight: 500 };
+    }
+
+    // Fim de semana sempre tem número vermelho
+    if (isFimDeSemana) {
+      return { 
+        color: '#d32f2f', 
+        fontWeight: isHoje ? 700 : 500 
+      };
+    }
+
+    // Dias normais
+    return { 
+      color: 'text.primary', 
+      fontWeight: isHoje ? 700 : 500 
     };
   };
 
@@ -155,27 +181,38 @@ export default function CalendarioMensal({
       {/* Grade do calendário */}
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 0.5 }}>
         {/* Cabeçalho dos dias da semana */}
-        {DIAS_SEMANA.map(dia => (
-          <Box
-            key={dia}
-            sx={{
-              textAlign: 'center',
-              py: 1,
-              fontWeight: 600,
-              fontSize: '0.875rem',
-              color: 'text.secondary',
-              bgcolor: 'grey.100',
-              borderRadius: '4px'
-            }}
-          >
-            {dia}
-          </Box>
-        ))}
+        {DIAS_SEMANA.map((dia, index) => {
+          const isFimDeSemana = index === 0 || index === 6; // Domingo (0) ou Sábado (6)
+          return (
+            <Box
+              key={dia}
+              sx={{
+                textAlign: 'center',
+                py: 1,
+                fontWeight: 600,
+                fontSize: '0.875rem',
+                color: isFimDeSemana ? '#d32f2f' : 'text.secondary',
+                bgcolor: isFimDeSemana ? '#ffebee' : 'grey.100',
+                borderRadius: '4px'
+              }}
+            >
+              {dia}
+            </Box>
+          );
+        })}
 
         {/* Dias do mês */}
         {dias.map((diaInfo, index) => {
+          // Calcular dia da semana baseado na posição no grid (0=Domingo, 6=Sábado)
+          const diaSemana = index % 7;
+          const isFimDeSemana = diaSemana === 0 || diaSemana === 6;
+          
+          // Obter estilos
+          const containerStyle = getDiaContainerStyle(diaInfo, diaSemana);
+          const numeroStyle = getNumeroCorStyle(diaInfo, diaSemana);
+          
+          // Eventos do dia
           const eventosNoDia = eventosPorData[diaInfo.data] || [];
-          const style = getDiaStyle(diaInfo);
 
           return (
             <Tooltip
@@ -200,15 +237,18 @@ export default function CalendarioMensal({
             >
               <Box
                 onClick={() => diaInfo.mes === 'atual' && onDiaClick(diaInfo.data)}
+                data-dia-semana={diaSemana}
+                data-fim-semana={isFimDeSemana ? 'true' : 'false'}
                 sx={{
                   minHeight: 80,
                   p: 0.5,
                   cursor: diaInfo.mes === 'atual' ? 'pointer' : 'default',
                   borderRadius: '4px',
                   transition: 'all 0.2s',
-                  ...style,
+                  bgcolor: containerStyle.bgcolor,
+                  border: containerStyle.border,
+                  opacity: containerStyle.opacity,
                   '&:hover': diaInfo.mes === 'atual' ? {
-                    bgcolor: style.bgcolor === 'transparent' ? 'grey.100' : style.bgcolor,
                     transform: 'scale(1.02)',
                     boxShadow: 1
                   } : {}
@@ -218,8 +258,9 @@ export default function CalendarioMensal({
                 <Typography
                   variant="body2"
                   sx={{
-                    fontWeight: diaInfo.data === hoje ? 700 : 500,
-                    mb: 0.5
+                    mb: 0.5,
+                    color: numeroStyle.color,
+                    fontWeight: numeroStyle.fontWeight
                   }}
                 >
                   {diaInfo.dia}
@@ -258,15 +299,11 @@ export default function CalendarioMensal({
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
           <Box sx={{ width: 16, height: 16, bgcolor: '#ffebee', borderRadius: '4px' }} />
-          <Typography variant="caption">Feriado</Typography>
+          <Typography variant="caption">Fim de Semana/Feriado</Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
           <Box sx={{ width: 16, height: 16, bgcolor: '#fff3e0', borderRadius: '4px' }} />
           <Typography variant="caption">Recesso/Férias</Typography>
-        </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-          <Box sx={{ width: 16, height: 16, bgcolor: '#f5f5f5', borderRadius: '4px' }} />
-          <Typography variant="caption">Não Letivo</Typography>
         </Box>
       </Box>
     </Box>

@@ -10,8 +10,10 @@ router.use(authenticateToken);
 
 // Rotas de LEITURA
 router.get('/', requireLeitura('estoque'), EstoqueCentralController.listar);
+router.get('/posicao', requireLeitura('estoque'), EstoqueCentralController.listar); // Alias para compatibilidade
 router.get('/produto/:produtoId', requireLeitura('estoque'), EstoqueCentralController.buscarPorProduto);
 router.get('/:estoqueId/lotes', requireLeitura('estoque'), EstoqueCentralController.listarLotes);
+router.get('/alertas', requireLeitura('estoque'), EstoqueCentralController.listarAlertas); // Endpoint consolidado de alertas
 router.get('/alertas/vencimento', requireLeitura('estoque'), EstoqueCentralController.listarLotesProximosVencimento);
 router.get('/alertas/estoque-baixo', requireLeitura('estoque'), EstoqueCentralController.listarEstoqueBaixo);
 router.get('/movimentacoes', requireLeitura('estoque'), EstoqueCentralController.listarMovimentacoes);

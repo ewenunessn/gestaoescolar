@@ -21,6 +21,8 @@ Criado um componente customizado especificamente para exibir cardápios, baseado
 - ✅ Texto branco sobre fundo colorido para melhor legibilidade
 - ✅ Até 3 refeições visíveis por dia
 - ✅ Indicador "+X mais" quando há mais de 3 refeições
+- ✅ **Sábado e domingo** com fundo cinza claro (#f5f5f5)
+- ✅ **Cabeçalho** de sábado e domingo em vermelho (#d32f2f) com fundo rosa claro (#ffebee)
 
 #### 2. Cores por Tipo de Refeição
 - 🟠 Café da Manhã: `#FFA726` (laranja)
