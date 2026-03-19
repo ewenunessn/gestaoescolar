@@ -9,6 +9,7 @@
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
     "test": "jest",
+    "configure-db": "node scripts/configure-neon.js",
     "init-neon": "node scripts/init-neon-schema.js",
     "check-neon": "node check-neon-tables.js",
     "sync-neon": "node run-neon-migrations.js",

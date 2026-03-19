@@ -1,15 +1,33 @@
-// Configuração PostgreSQL - Sistema de Alimentação Escolar
+// ========================================
+// CONFIGURAÇÃO PostgreSQL - Sistema de Alimentação Escolar
+// ========================================
+// 
+// Este arquivo suporta duas configurações de banco:
+// 
+// 1. BANCO NEON/VERCEL (Recomendado para desenvolvimento e produção):
+//    - Use DATABASE_URL ou POSTGRES_URL no arquivo .env
+//    - Exemplo: DATABASE_URL=postgresql://user:pass@host/db?sslmode=require
+// 
+// 2. BANCO LOCAL (Para desenvolvimento offline):
+//    - Use variáveis individuais: DB_USER, DB_HOST, DB_NAME, etc.
+//    - Certifique-se de que DATABASE_URL esteja comentada no .env
+// 
+// A detecção é automática: se DATABASE_URL existir, usa Neon/Vercel,
+// caso contrário, usa configuração local.
+// ========================================
+
 import { Pool, PoolClient, QueryResult } from 'pg';
 
-// Configuração do banco de dados
-// Prioriza DATABASE_URL (Vercel/Neon) sobre variáveis individuais
 let pool: Pool;
 
+console.log('🔍 Verificando configuração do banco...');
 console.log('🔍 DATABASE_URL presente?', !!process.env.DATABASE_URL);
 console.log('🔍 POSTGRES_URL presente?', !!process.env.POSTGRES_URL);
 
 if (process.env.DATABASE_URL || process.env.POSTGRES_URL) {
-    // Usar DATABASE_URL ou POSTGRES_URL (produção - Vercel/Neon)
+    // ========================================
+    // CONFIGURAÇÃO NEON/VERCEL (Connection String)
+    // ========================================
     const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
     
     // Detectar se é ambiente local (localhost) ou produção (Neon/Vercel)
@@ -20,22 +38,27 @@ if (process.env.DATABASE_URL || process.env.POSTGRES_URL) {
         pool = new Pool({
             connectionString,
             ssl: false,
-            // Configuração de encoding UTF-8
             client_encoding: 'UTF8'
         });
     } else {
-        console.log('✅ Usando connection string para Neon/Vercel (com SSL)');
+        console.log('✅ Usando NEON/VERCEL (com SSL)');
         pool = new Pool({
             connectionString,
             ssl: {
                 rejectUnauthorized: false
             },
-            // Configuração de encoding UTF-8
             client_encoding: 'UTF8'
         });
     }
 } else {
-    // Usar variáveis individuais (desenvolvimento local)
+    // ========================================
+    // CONFIGURAÇÃO BANCO LOCAL (Variáveis individuais)
+    // ========================================
+    // Para usar esta configuração:
+    // 1. Comente DATABASE_URL no arquivo .env
+    // 2. Descomente e configure as variáveis DB_* no .env
+    // 3. Certifique-se de que o PostgreSQL local está rodando
+    
     const dbConfig = {
         user: process.env.DB_USER || 'postgres',
         host: process.env.DB_HOST || 'localhost',
@@ -43,11 +66,10 @@ if (process.env.DATABASE_URL || process.env.POSTGRES_URL) {
         password: process.env.DB_PASSWORD || 'admin123',
         port: parseInt(process.env.DB_PORT || '5432'),
         ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
-        // Configuração de encoding UTF-8
         client_encoding: 'UTF8'
     };
 
-    console.log('🔧 Usando configuração local:', {
+    console.log('🔧 Usando configuração BANCO LOCAL:', {
         host: dbConfig.host,
         port: dbConfig.port,
         database: dbConfig.database,
