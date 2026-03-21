@@ -17,7 +17,6 @@ export async function listarEscolas(req, res) {
         e.id,
         e.nome,
         e.codigo,
-        e.codigo_acesso,
         e.endereco,
         e.municipio,
         e.endereco_maps,
@@ -32,7 +31,7 @@ export async function listarEscolas(req, res) {
       FROM escolas e
       LEFT JOIN escola_modalidades em ON e.id = em.escola_id
       LEFT JOIN modalidades m ON em.modalidade_id = m.id
-      GROUP BY e.id, e.nome, e.codigo, e.codigo_acesso, e.endereco, e.municipio, e.endereco_maps, 
+      GROUP BY e.id, e.nome, e.codigo, e.endereco, e.municipio, e.endereco_maps, 
                e.telefone, e.email, e.nome_gestor, e.administracao, e.ativo, e.created_at
       ORDER BY e.nome
     `);
@@ -63,7 +62,6 @@ export async function buscarEscola(req, res) {
         e.id,
         e.nome,
         e.codigo,
-        e.codigo_acesso,
         e.endereco,
         e.municipio,
         e.endereco_maps,
@@ -104,7 +102,6 @@ export async function criarEscola(req, res) {
     const {
       nome,
       codigo,
-      codigo_acesso,
       endereco,
       municipio,
       endereco_maps,
@@ -117,12 +114,12 @@ export async function criarEscola(req, res) {
 
     const result = await db.query(`
       INSERT INTO escolas (
-        nome, codigo, codigo_acesso, endereco, municipio, endereco_maps,
+        nome, codigo, endereco, municipio, endereco_maps,
         telefone, email, nome_gestor, administracao, ativo, created_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)
       RETURNING *
-    `, [nome, codigo, codigo_acesso, endereco, municipio, endereco_maps, telefone, email, nome_gestor, administracao, ativo]);
+    `, [nome, codigo, endereco, municipio, endereco_maps, telefone, email, nome_gestor, administracao, ativo]);
 
     res.json({
       success: true,
@@ -145,7 +142,6 @@ export async function editarEscola(req, res) {
     const {
       nome,
       codigo,
-      codigo_acesso,
       endereco,
       municipio,
       endereco_maps,
@@ -160,19 +156,18 @@ export async function editarEscola(req, res) {
       UPDATE escolas SET
         nome = $1,
         codigo = $2,
-        codigo_acesso = $3,
-        endereco = $4,
-        municipio = $5,
-        endereco_maps = $6,
-        telefone = $7,
-        email = $8,
-        nome_gestor = $9,
-        administracao = $10,
-        ativo = $11,
+        endereco = $3,
+        municipio = $4,
+        endereco_maps = $5,
+        telefone = $6,
+        email = $7,
+        nome_gestor = $8,
+        administracao = $9,
+        ativo = $10,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $12
+      WHERE id = $11
       RETURNING *
-    `, [nome, codigo, codigo_acesso, endereco, municipio, endereco_maps, telefone, email, nome_gestor, administracao, ativo, id]);
+    `, [nome, codigo, endereco, municipio, endereco_maps, telefone, email, nome_gestor, administracao, ativo, id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({

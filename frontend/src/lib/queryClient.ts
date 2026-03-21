@@ -24,8 +24,8 @@ export const queryClient = new QueryClient({
       },
       // Intervalo de retry exponencial
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-      // Refetch quando a janela ganha foco
-      refetchOnWindowFocus: true,
+      // Refetch quando a janela ganha foco - DESABILITADO EM DESENVOLVIMENTO
+      refetchOnWindowFocus: process.env.NODE_ENV === 'production',
       // Refetch quando reconecta à internet
       refetchOnReconnect: true,
       // Não refetch automaticamente quando monta

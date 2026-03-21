@@ -1,7 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
   Box,
-  Card,
   Typography,
   Button,
   IconButton,
@@ -10,35 +9,27 @@ import {
   DialogContent,
   DialogActions,
   TextField,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   CircularProgress,
   Alert,
   Chip,
   Tooltip,
   Switch,
   FormControlLabel,
-  InputAdornment,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
+  Popover,
+  Divider,
+  Grid,
 } from '@mui/material';
 import {
-  Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
-  Search as SearchIcon,
   Clear as ClearIcon,
 } from '@mui/icons-material';
 import PageContainer from '../components/PageContainer';
 import PageHeader from '../components/PageHeader';
-import StatusIndicator from '../components/StatusIndicator';
-import CompactPagination from '../components/CompactPagination';
 import { useToast } from '../hooks/useToast';
 import {
   useNutricionistas,
@@ -48,20 +39,23 @@ import {
 } from '../hooks/queries/useNutricionistaQueries';
 import { Nutricionista } from '../services/nutricionistas';
 import { LoadingOverlay } from '../components/LoadingOverlay';
+import { DataTable } from '../components/DataTable';
+import { ColumnDef } from '@tanstack/react-table';
 
 const NutricionistasPage = () => {
   const toast = useToast();
   
-  // Estados
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(20);
+  // Estados de filtro
+  const [filterAnchorEl, setFilterAnchorEl] = useState<HTMLElement | null>(null);
+  const [filters, setFilters] = useState({
+    status: 'todos',
+  });
+
+  // Estados de modais
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [editingNutricionista, setEditingNutricionista] = useState<Nutricionista | null>(null);
   const [nutricionistaToDelete, setNutricionistaToDelete] = useState<Nutricionista | null>(null);
-  const [confirmClose, setConfirmClose] = useState(false);
-  const [formDataInicial, setFormDataInicial] = useState<any>(null);
   const [touched, setTouched] = useState<any>({});
   const [erroNutricionista, setErroNutricionista] = useState('');
   const [formData, setFormData] = useState({
@@ -76,44 +70,134 @@ const NutricionistasPage = () => {
   });
 
   // Queries e mutations
-  const { data: nutricionistas = [], isLoading, error } = useNutricionistas();
+  const { data: nutricionistas = [], isLoading: loading, error } = useNutricionistas();
   const createMutation = useCreateNutricionista();
   const updateMutation = useUpdateNutricionista();
   const deleteMutation = useDeleteNutricionista();
 
   // Filtrar nutricionistas
-  const filteredNutricionistas = useMemo(() => {
+  const nutricionistasFiltrados = useMemo(() => {
     return nutricionistas.filter((n) => {
-      if (search) {
-        const searchLower = search.toLowerCase();
-        return (
-          n.nome.toLowerCase().includes(searchLower) ||
-          n.crn.toLowerCase().includes(searchLower) ||
-          n.crn_regiao.toLowerCase().includes(searchLower)
-        );
-      }
+      // Filtro de status
+      if (filters.status === 'ativo' && !n.ativo) return false;
+      if (filters.status === 'inativo' && n.ativo) return false;
+      
       return true;
     });
-  }, [nutricionistas, search]);
+  }, [nutricionistas, filters]);
 
-  // Paginar
-  const paginatedNutricionistas = useMemo(() => {
-    const startIndex = page * rowsPerPage;
-    return filteredNutricionistas.slice(startIndex, startIndex + rowsPerPage);
-  }, [filteredNutricionistas, page, rowsPerPage]);
+  const handleRowClick = useCallback((nutricionista: Nutricionista) => {
+    openModal(nutricionista);
+  }, []);
+
+  const columns = useMemo<ColumnDef<Nutricionista>[]>(() => [
+    { 
+      accessorKey: 'id', 
+      header: 'ID',
+      size: 80,
+      enableSorting: true,
+    },
+    { 
+      accessorKey: 'nome', 
+      header: 'Nome',
+      size: 300,
+      enableSorting: true,
+    },
+    { 
+      id: 'crn',
+      header: 'CRN',
+      size: 150,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <Chip
+          label={`${row.original.crn_regiao} ${row.original.crn}`}
+          size="small"
+          sx={{ bgcolor: '#e3f2fd', color: '#1976d2', fontWeight: 600 }}
+        />
+      ),
+    },
+    { 
+      accessorKey: 'especialidade', 
+      header: 'Especialidade',
+      size: 150,
+      enableSorting: true,
+      cell: ({ getValue }) => {
+        const value = getValue() as string | undefined;
+        return (
+          <Typography variant="body2" color="text.secondary">
+            {value || '-'}
+          </Typography>
+        );
+      },
+    },
+    { 
+      id: 'contato',
+      header: 'Contato',
+      size: 200,
+      enableSorting: false,
+      cell: ({ row }) => {
+        const contato = row.original.email || row.original.telefone || '-';
+        return (
+          <Typography variant="body2" color="text.secondary">
+            {contato}
+          </Typography>
+        );
+      },
+    },
+    { 
+      accessorKey: 'ativo', 
+      header: 'Status',
+      size: 100,
+      enableSorting: true,
+      cell: ({ getValue }) => (
+        <Tooltip title={getValue() ? 'Ativo' : 'Inativo'}>
+          <Box
+            sx={{
+              width: 12,
+              height: 12,
+              borderRadius: '50%',
+              backgroundColor: getValue() ? 'success.main' : 'error.main',
+              display: 'inline-block',
+            }}
+          />
+        </Tooltip>
+      ),
+    },
+    {
+      id: 'actions',
+      header: 'Ações',
+      size: 100,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <Box sx={{ display: 'flex', gap: 0.5 }} onClick={(e) => e.stopPropagation()}>
+          <Tooltip title="Editar">
+            <IconButton
+              size="small"
+              onClick={() => openModal(row.original)}
+            >
+              <EditIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Excluir">
+            <IconButton
+              size="small"
+              onClick={() => openDeleteModal(row.original)}
+            >
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      ),
+    },
+  ], []);
 
   // Funções
-  const hasUnsavedChanges = () => {
-    if (!formDataInicial) return false;
-    return JSON.stringify(formData) !== JSON.stringify(formDataInicial);
-  };
-
   const openModal = (nutricionista: Nutricionista | null = null) => {
     setErroNutricionista('');
     setTouched({});
     if (nutricionista) {
       setEditingNutricionista(nutricionista);
-      const formInicial = {
+      setFormData({
         nome: nutricionista.nome,
         crn: nutricionista.crn,
         crn_regiao: nutricionista.crn_regiao,
@@ -122,12 +206,10 @@ const NutricionistasPage = () => {
         telefone: nutricionista.telefone || '',
         especialidade: nutricionista.especialidade || '',
         ativo: nutricionista.ativo,
-      };
-      setFormData(formInicial);
-      setFormDataInicial(JSON.parse(JSON.stringify(formInicial)));
+      });
     } else {
       setEditingNutricionista(null);
-      const formInicial = {
+      setFormData({
         nome: '',
         crn: '',
         crn_regiao: '',
@@ -136,24 +218,12 @@ const NutricionistasPage = () => {
         telefone: '',
         especialidade: '',
         ativo: true,
-      };
-      setFormData(formInicial);
-      setFormDataInicial(JSON.parse(JSON.stringify(formInicial)));
+      });
     }
     setModalOpen(true);
   };
 
   const closeModal = () => {
-    if (hasUnsavedChanges()) {
-      setConfirmClose(true);
-    } else {
-      setModalOpen(false);
-      setEditingNutricionista(null);
-    }
-  };
-
-  const confirmCloseModal = () => {
-    setConfirmClose(false);
     setModalOpen(false);
     setEditingNutricionista(null);
   };
@@ -169,14 +239,12 @@ const NutricionistasPage = () => {
 
       if (editingNutricionista) {
         await updateMutation.mutateAsync({ id: editingNutricionista.id, data: formData });
-        toast.success('Sucesso!', 'Nutricionista atualizado com sucesso!');
+        toast.success('Nutricionista atualizado com sucesso!');
       } else {
         await createMutation.mutateAsync(formData);
-        toast.success('Sucesso!', 'Nutricionista criado com sucesso!');
+        toast.success('Nutricionista criado com sucesso!');
       }
-      setModalOpen(false);
-      setEditingNutricionista(null);
-      setErroNutricionista('');
+      closeModal();
     } catch (err: any) {
       setErroNutricionista(err.response?.data?.message || 'Erro ao salvar nutricionista');
     }
@@ -196,22 +264,12 @@ const NutricionistasPage = () => {
     if (!nutricionistaToDelete) return;
     try {
       await deleteMutation.mutateAsync(nutricionistaToDelete.id);
-      toast.success('Sucesso!', 'Nutricionista excluído com sucesso!');
+      toast.success('Nutricionista excluído com sucesso!');
       closeDeleteModal();
     } catch (err: any) {
-      toast.error('Erro', err.response?.data?.message || 'Erro ao excluir nutricionista');
+      toast.error(err.response?.data?.message || 'Erro ao excluir nutricionista');
     }
   };
-
-  if (isLoading) {
-    return (
-      <PageContainer>
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
-          <CircularProgress size={60} />
-        </Box>
-      </PageContainer>
-    );
-  }
 
   if (error) {
     return (
@@ -222,359 +280,320 @@ const NutricionistasPage = () => {
   }
 
   return (
-    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <PageContainer fullHeight>
         <PageHeader title="Nutricionistas" />
-        
-        {/* Barra de busca e ações */}
-        <Card sx={{ borderRadius: '12px', p: 2, mb: 2 }}>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2 }}>
-            <TextField
-              placeholder="Buscar nutricionistas..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              size="small"
-              sx={{ flex: 1, minWidth: '200px', '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon sx={{ color: 'text.secondary' }} />
-                  </InputAdornment>
-                ),
-                endAdornment: search && (
-                  <InputAdornment position="end">
-                    <IconButton size="small" onClick={() => setSearch('')}>
-                      <ClearIcon fontSize="small" />
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-            />
-            <Button 
-              startIcon={<AddIcon />} 
-              onClick={() => openModal()} 
-              variant="contained" 
-              color="add" 
-              size="small"
-            >
-              Novo Nutricionista
-            </Button>
-          </Box>
-        </Card>
 
-        {/* Legenda de status */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 2, px: 1 }}>
-          <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 500 }}>
-            Exibindo {filteredNutricionistas.length} {filteredNutricionistas.length === 1 ? 'resultado' : 'resultados'}
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <StatusIndicator status="ativo" size="small" />
-              <Typography variant="body2" sx={{ color: '#495057', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                ATIVOS
-              </Typography>
-              <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 600 }}>
-                {filteredNutricionistas.filter(n => n.ativo).length}
-              </Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <StatusIndicator status="inativo" size="small" />
-              <Typography variant="body2" sx={{ color: '#495057', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                INATIVOS
-              </Typography>
-              <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 600 }}>
-                {filteredNutricionistas.filter(n => !n.ativo).length}
-              </Typography>
-            </Box>
-          </Box>
-        </Box>
-
-        {/* Tabela */}
-        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', width: '100%', overflow: 'hidden' }}>
-          <TableContainer sx={{ flex: 1, minHeight: 0 }}>
-            <Table stickyHeader>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Nome</TableCell>
-                  <TableCell align="center">CRN</TableCell>
-                  <TableCell align="center">Especialidade</TableCell>
-                  <TableCell align="center">Contato</TableCell>
-                  <TableCell align="center" width="120">Ações</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {paginatedNutricionistas.map((nutricionista) => (
-                  <TableRow key={nutricionista.id} hover>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <StatusIndicator status={nutricionista.ativo ? 'ativo' : 'inativo'} size="small" />
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {nutricionista.nome}
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                    <TableCell align="center">
-                      <Chip
-                        label={`${nutricionista.crn_regiao} ${nutricionista.crn}`}
-                        size="small"
-                        sx={{ bgcolor: '#e3f2fd', color: '#1976d2', fontWeight: 600 }}
-                      />
-                    </TableCell>
-                    <TableCell align="center">
-                      <Typography variant="body2" color="text.secondary">
-                        {nutricionista.especialidade || '-'}
-                      </Typography>
-                    </TableCell>
-                    <TableCell align="center">
-                      <Typography variant="body2" color="text.secondary">
-                        {nutricionista.email || nutricionista.telefone || '-'}
-                      </Typography>
-                    </TableCell>
-                    <TableCell align="center">
-                      <Tooltip title="Editar">
-                        <IconButton size="small" onClick={() => openModal(nutricionista)} color="primary">
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Excluir">
-                        <IconButton size="small" onClick={() => openDeleteModal(nutricionista)} color="delete">
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-          <CompactPagination
-            count={filteredNutricionistas.length}
-            page={page}
-            onPageChange={(_, newPage) => setPage(newPage)}
-            rowsPerPage={rowsPerPage}
-            onRowsPerPageChange={(e) => {
-              setRowsPerPage(parseInt(e.target.value, 10));
-              setPage(0);
-            }}
-            rowsPerPageOptions={[10, 20, 50]}
+        {/* DataTable com altura fixa para scroll */}
+        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <DataTable
+            data={nutricionistasFiltrados}
+            columns={columns}
+            loading={loading}
+            onRowClick={handleRowClick}
+            searchPlaceholder="Buscar nutricionistas..."
+            onCreateClick={() => openModal()}
+            createButtonLabel="Novo Nutricionista"
+            onFilterClick={(e) => setFilterAnchorEl(e.currentTarget)}
           />
         </Box>
       </PageContainer>
 
-      {/* Modal de Criação/Edição */}
-      <Dialog 
-        open={modalOpen} 
-        onClose={closeModal} 
-        maxWidth="md" 
-        fullWidth 
-        PaperProps={{ 
-          sx: { 
-            borderRadius: '12px',
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            m: 0
-          } 
+      {/* Popover de Filtros */}
+      <Popover
+        open={Boolean(filterAnchorEl)}
+        anchorEl={filterAnchorEl}
+        onClose={() => setFilterAnchorEl(null)}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
         }}
       >
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
-          <Typography variant="h6" component="span" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
+        <Box sx={{ p: 2, minWidth: 280 }}>
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            Filtros
+          </Typography>
+          
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Status</InputLabel>
+            <Select
+              value={filters.status}
+              label="Status"
+              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+            >
+              <MenuItem value="todos">Todos</MenuItem>
+              <MenuItem value="ativo">Ativos</MenuItem>
+              <MenuItem value="inativo">Inativos</MenuItem>
+            </Select>
+          </FormControl>
+
+          <Divider sx={{ my: 2 }} />
+
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => {
+                setFilters({ status: 'todos' });
+              }}
+            >
+              Limpar
+            </Button>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={() => setFilterAnchorEl(null)}
+            >
+              Aplicar
+            </Button>
+          </Box>
+          
+          {/* Indicador de filtros ativos */}
+          {filters.status !== 'todos' && (
+            <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+              <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                Filtros ativos:
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                <Chip
+                  label={`Status: ${filters.status === 'ativo' ? 'Ativos' : 'Inativos'}`}
+                  size="small"
+                  onDelete={() => setFilters({ ...filters, status: 'todos' })}
+                />
+              </Box>
+            </Box>
+          )}
+        </Box>
+      </Popover>
+
+      {/* Modal de Criação/Edição */}
+      <Dialog open={modalOpen} onClose={closeModal} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ pb: 1 }}>
+          <Typography variant="h5" component="div" sx={{ fontWeight: 600 }}>
             {editingNutricionista ? 'Editar Nutricionista' : 'Novo Nutricionista'}
           </Typography>
-          <IconButton
-            size="small"
-            onClick={closeModal}
-            sx={{ color: 'text.secondary' }}
-          >
-            <ClearIcon fontSize="small" />
-          </IconButton>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            Preencha os dados do nutricionista
+          </Typography>
         </DialogTitle>
-        <DialogContent sx={{ pt: 2, pb: 1 }}>
+        <DialogContent dividers>
           {erroNutricionista && (
-            <Alert severity="error" sx={{ mb: 1.5, py: 0.5 }}>
-              <Typography variant="body2" sx={{ fontSize: '0.8125rem' }}>
+            <Alert severity="error" sx={{ mb: 2 }}>
+              <Typography variant="body2">
                 {erroNutricionista}
               </Typography>
             </Alert>
           )}
-          <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <TextField
-              label="Nome Completo"
-              fullWidth
-              required
-              size="small"
-              value={formData.nome}
-              onChange={(e) => {
-                setFormData({ ...formData, nome: e.target.value });
-                if (erroNutricionista) setErroNutricionista("");
-              }}
-              onBlur={() => setTouched({ ...touched, nome: true })}
-              error={touched.nome && !formData.nome.trim()}
-              helperText={touched.nome && !formData.nome.trim() ? "Campo obrigatório" : ""}
-            />
-
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <FormControl fullWidth required size="small" sx={{ flex: 1 }} error={touched.crn_regiao && !formData.crn_regiao}>
-                <InputLabel>Região CRN</InputLabel>
-                <Select
-                  value={formData.crn_regiao}
-                  onChange={(e) => {
-                    setFormData({ ...formData, crn_regiao: e.target.value });
-                    if (erroNutricionista) setErroNutricionista("");
-                  }}
-                  onBlur={() => setTouched({ ...touched, crn_regiao: true })}
-                  label="Região CRN"
-                >
-                  <MenuItem value="CRN-1">CRN-1 (RJ/ES)</MenuItem>
-                  <MenuItem value="CRN-2">CRN-2 (RS)</MenuItem>
-                  <MenuItem value="CRN-3">CRN-3 (SP/MS)</MenuItem>
-                  <MenuItem value="CRN-4">CRN-4 (RJ)</MenuItem>
-                  <MenuItem value="CRN-5">CRN-5 (PR)</MenuItem>
-                  <MenuItem value="CRN-6">CRN-6 (MG)</MenuItem>
-                  <MenuItem value="CRN-7">CRN-7 (BA/SE)</MenuItem>
-                  <MenuItem value="CRN-8">CRN-8 (PE/AL)</MenuItem>
-                  <MenuItem value="CRN-9">CRN-9 (GO/TO/DF)</MenuItem>
-                  <MenuItem value="CRN-10">CRN-10 (SC)</MenuItem>
-                </Select>
-                {touched.crn_regiao && !formData.crn_regiao && (
-                  <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
-                    Campo obrigatório
-                  </Typography>
-                )}
-              </FormControl>
-
-              <TextField
-                label="Número CRN"
-                fullWidth
-                required
-                size="small"
-                sx={{ flex: 1 }}
-                value={formData.crn}
-                onChange={(e) => {
-                  setFormData({ ...formData, crn: e.target.value });
-                  if (erroNutricionista) setErroNutricionista("");
-                }}
-                onBlur={() => setTouched({ ...touched, crn: true })}
-                error={touched.crn && !formData.crn.trim()}
-                helperText={touched.crn && !formData.crn.trim() ? "Campo obrigatório" : "Ex: 12345"}
-              />
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 2 }}>
+            {/* Informações Pessoais */}
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: 'primary.main' }}>
+                Informações Pessoais
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <TextField
+                    label="Nome Completo"
+                    fullWidth
+                    required
+                    value={formData.nome}
+                    onChange={(e) => {
+                      setFormData({ ...formData, nome: e.target.value });
+                      if (erroNutricionista) setErroNutricionista("");
+                    }}
+                    onBlur={() => setTouched({ ...touched, nome: true })}
+                    error={touched.nome && !formData.nome.trim()}
+                    helperText={touched.nome && !formData.nome.trim() ? "Campo obrigatório" : ""}
+                    placeholder="Ex: Maria Silva Santos"
+                  />
+                </Grid>
+              </Grid>
             </Box>
 
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <TextField
-                label="CPF"
-                fullWidth
-                size="small"
-                sx={{ flex: 1 }}
-                value={formData.cpf}
-                onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
-                placeholder="000.000.000-00"
-              />
+            <Divider />
 
-              <TextField
-                label="Telefone"
-                fullWidth
-                size="small"
-                sx={{ flex: 1 }}
-                value={formData.telefone}
-                onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
-                placeholder="(00) 00000-0000"
-              />
+            {/* Registro Profissional */}
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: 'primary.main' }}>
+                Registro Profissional
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth required error={touched.crn_regiao && !formData.crn_regiao}>
+                    <InputLabel>Região CRN</InputLabel>
+                    <Select
+                      value={formData.crn_regiao}
+                      onChange={(e) => {
+                        setFormData({ ...formData, crn_regiao: e.target.value });
+                        if (erroNutricionista) setErroNutricionista("");
+                      }}
+                      onBlur={() => setTouched({ ...touched, crn_regiao: true })}
+                      label="Região CRN"
+                    >
+                      <MenuItem value="CRN-1">CRN-1 (RJ/ES)</MenuItem>
+                      <MenuItem value="CRN-2">CRN-2 (RS)</MenuItem>
+                      <MenuItem value="CRN-3">CRN-3 (SP/MS)</MenuItem>
+                      <MenuItem value="CRN-4">CRN-4 (RJ)</MenuItem>
+                      <MenuItem value="CRN-5">CRN-5 (PR)</MenuItem>
+                      <MenuItem value="CRN-6">CRN-6 (MG)</MenuItem>
+                      <MenuItem value="CRN-7">CRN-7 (BA/SE)</MenuItem>
+                      <MenuItem value="CRN-8">CRN-8 (PE/AL)</MenuItem>
+                      <MenuItem value="CRN-9">CRN-9 (GO/TO/DF)</MenuItem>
+                      <MenuItem value="CRN-10">CRN-10 (SC)</MenuItem>
+                    </Select>
+                    {touched.crn_regiao && !formData.crn_regiao && (
+                      <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
+                        Campo obrigatório
+                      </Typography>
+                    )}
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Número CRN"
+                    fullWidth
+                    required
+                    value={formData.crn}
+                    onChange={(e) => {
+                      setFormData({ ...formData, crn: e.target.value });
+                      if (erroNutricionista) setErroNutricionista("");
+                    }}
+                    onBlur={() => setTouched({ ...touched, crn: true })}
+                    error={touched.crn && !formData.crn.trim()}
+                    helperText={touched.crn && !formData.crn.trim() ? "Campo obrigatório" : "Ex: 12345"}
+                    placeholder="12345"
+                  />
+                </Grid>
+              </Grid>
             </Box>
 
-            <TextField
-              label="E-mail"
-              type="email"
-              fullWidth
-              size="small"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              placeholder="nutricionista@exemplo.com"
-            />
+            <Divider />
 
-            <TextField
-              label="Especialidade"
-              fullWidth
-              size="small"
-              value={formData.especialidade}
-              onChange={(e) => setFormData({ ...formData, especialidade: e.target.value })}
-              placeholder="Ex: Nutrição Escolar, Clínica, Esportiva"
-            />
+            {/* Contato */}
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: 'primary.main' }}>
+                Contato
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="CPF"
+                    fullWidth
+                    value={formData.cpf}
+                    onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
+                    placeholder="000.000.000-00"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Telefone"
+                    fullWidth
+                    value={formData.telefone}
+                    onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
+                    placeholder="(00) 00000-0000"
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    label="E-mail"
+                    type="email"
+                    fullWidth
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    placeholder="nutricionista@exemplo.com"
+                  />
+                </Grid>
+              </Grid>
+            </Box>
 
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={formData.ativo}
-                  onChange={(e) => setFormData({ ...formData, ativo: e.target.checked })}
-                  size="small"
-                />
-              }
-              label={<Typography variant="body2">Nutricionista Ativo</Typography>}
-            />
+            <Divider />
+
+            {/* Especialização */}
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: 'primary.main' }}>
+                Especialização
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <TextField
+                    label="Especialidade"
+                    fullWidth
+                    value={formData.especialidade}
+                    onChange={(e) => setFormData({ ...formData, especialidade: e.target.value })}
+                    placeholder="Ex: Nutrição Escolar, Clínica, Esportiva"
+                    helperText="Área de especialização do nutricionista"
+                  />
+                </Grid>
+              </Grid>
+            </Box>
+
+            <Divider />
+
+            {/* Status */}
+            <Box>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={formData.ativo}
+                    onChange={(e) => setFormData({ ...formData, ativo: e.target.checked })}
+                    color="primary"
+                  />
+                }
+                label={
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      Nutricionista Ativo
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Nutricionistas ativos aparecem no sistema
+                    </Typography>
+                  </Box>
+                }
+              />
+            </Box>
           </Box>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
-          <Button onClick={closeModal} sx={{ color: 'text.secondary' }}>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button 
+            onClick={closeModal} 
+            variant="outlined" 
+            disabled={createMutation.isPending || updateMutation.isPending}
+          >
             Cancelar
           </Button>
           <Button
             onClick={handleSave}
             variant="contained"
             disabled={createMutation.isPending || updateMutation.isPending || !formData.nome.trim() || !formData.crn.trim() || !formData.crn_regiao}
+            startIcon={(createMutation.isPending || updateMutation.isPending) ? <CircularProgress size={20} /> : null}
           >
-            {createMutation.isPending || updateMutation.isPending ? 'Salvando...' : (editingNutricionista ? 'Salvar' : 'Criar Nutricionista')}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Dialog de confirmação para fechar */}
-      <Dialog 
-        open={confirmClose} 
-        onClose={() => setConfirmClose(false)}
-        maxWidth="xs"
-        PaperProps={{
-          sx: {
-            borderRadius: '12px',
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            m: 0
-          }
-        }}
-      >
-        <DialogTitle sx={{ pb: 1 }}>
-          <Typography variant="h6" component="span" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
-            Descartar alterações?
-          </Typography>
-        </DialogTitle>
-        <DialogContent sx={{ pt: 2, pb: 1 }}>
-          <Typography variant="body2">
-            Você tem alterações não salvas. Deseja realmente descartar essas alterações?
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
-          <Button onClick={() => setConfirmClose(false)} variant="outlined" size="small">
-            Continuar Editando
-          </Button>
-          <Button onClick={confirmCloseModal} color="delete" variant="contained" size="small">
-            Descartar
+            {(createMutation.isPending || updateMutation.isPending) ? 'Salvando...' : (editingNutricionista ? 'Salvar Alterações' : 'Criar Nutricionista')}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Modal de Confirmação de Exclusão */}
-      <Dialog open={deleteModalOpen} onClose={closeDeleteModal} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: '12px' } }}>
-        <DialogTitle sx={{ fontWeight: 600 }}>Confirmar Exclusão</DialogTitle>
+      <Dialog open={deleteModalOpen} onClose={closeDeleteModal} maxWidth="xs" fullWidth>
+        <DialogTitle>Confirmar Exclusão</DialogTitle>
         <DialogContent>
-          <Typography>Tem certeza que deseja excluir o nutricionista "{nutricionistaToDelete?.nome}"?</Typography>
+          <Typography>
+            Tem certeza que deseja excluir o nutricionista "{nutricionistaToDelete?.nome}"?
+          </Typography>
         </DialogContent>
-        <DialogActions sx={{ p: 3, pt: 1 }}>
-          <Button onClick={closeDeleteModal} sx={{ color: 'text.secondary' }}>
+        <DialogActions>
+          <Button onClick={closeDeleteModal} disabled={deleteMutation.isPending}>
             Cancelar
           </Button>
-          <Button onClick={handleDelete} color="delete" variant="contained">
+          <Button 
+            onClick={handleDelete} 
+            color="error" 
+            variant="contained"
+            disabled={deleteMutation.isPending}
+          >
             Excluir
           </Button>
         </DialogActions>

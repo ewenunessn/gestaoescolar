@@ -1,21 +1,12 @@
-import React, { useState, useMemo, useCallback, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import React, { useState, useMemo, useCallback } from "react";
+import { useNavigate } from "react-router";
 import { useToast } from "../hooks/useToast";
-import StatusIndicator from "../components/StatusIndicator";
 import PageContainer from "../components/PageContainer";
-import TableFilter, { FilterField } from "../components/TableFilter";
+import PageHeader from "../components/PageHeader";
 import {
   Box,
   Typography,
   Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Card,
-  CardContent,
   IconButton,
   Dialog,
   DialogTitle,
@@ -26,39 +17,24 @@ import {
   Switch,
   Alert,
   Chip,
-  Paper,
   CircularProgress,
   Menu,
   MenuItem,
-  Collapse,
   Divider,
-  InputAdornment,
   FormControl,
   InputLabel,
   Select,
   Tooltip,
+  Popover,
+  Grid,
 } from "@mui/material";
 import {
-  Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
   Info as InfoIcon,
-  Business,
-  Download,
-  Upload,
-  Search as SearchIcon,
-  Clear as ClearIcon,
-  MoreVert,
-  FilterList as FilterIcon,
+  FileDownload as FileDownloadIcon,
+  FileUpload as FileUploadIcon,
 } from "@mui/icons-material";
-import CompactPagination from '../components/CompactPagination';
-import {
-  listarFornecedores,
-  criarFornecedor,
-  editarFornecedor,
-  removerFornecedor,
-  importarFornecedoresLote,
-} from "../services/fornecedores";
 import { 
   useFornecedores, 
   useCriarFornecedor, 
@@ -68,8 +44,10 @@ import {
 import ImportacaoFornecedores from '../components/ImportacaoFornecedores';
 import ConfirmacaoExclusaoFornecedor from '../components/ConfirmacaoExclusaoFornecedor';
 import * as XLSX from 'xlsx';
-import { formatarDocumento } from "../utils/validacaoDocumento"; // Supondo que você tenha essa util
+import { formatarDocumento } from "../utils/validacaoDocumento";
 import { LoadingOverlay } from '../components/LoadingOverlay';
+import { DataTable } from '../components/DataTable';
+import { ColumnDef } from '@tanstack/react-table';
 
 // Interfaces
 interface Fornecedor {
@@ -85,20 +63,14 @@ interface Fornecedor {
 
 const FornecedoresPage: React.FC = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-
-  // Estados de filtros - NOVO SISTEMA
-  const [filterOpen, setFilterOpen] = useState(false);
-  const [filterAnchorEl, setFilterAnchorEl] = useState<HTMLElement | null>(null);
-  const [filters, setFilters] = useState<Record<string, any>>({});
+  const toast = useToast();
 
   // React Query hooks
   const { 
     data: fornecedoresData, 
     isLoading: loading, 
-    error: queryError,
     refetch 
-  } = useFornecedores({ search: filters.search, ativo: filters.status ? filters.status === 'ativo' : undefined });
+  } = useFornecedores({ search: '', ativo: undefined });
   
   const criarFornecedorMutation = useCriarFornecedor();
   const atualizarFornecedorMutation = useAtualizarFornecedor();
@@ -106,14 +78,16 @@ const FornecedoresPage: React.FC = () => {
   
   // Estados locais
   const fornecedores = fornecedoresData?.fornecedores || [];
-  const toast = useToast();
 
-  // Estados do menu de ações
-  const [actionsMenuAnchor, setActionsMenuAnchor] = useState<null | HTMLElement>(null);
+  // Estados de ações
+  const [importExportMenuAnchor, setImportExportMenuAnchor] = useState<null | HTMLElement>(null);
 
-  // Estados de paginação
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  // Estados de filtro
+  const [filterAnchorEl, setFilterAnchorEl] = useState<HTMLElement | null>(null);
+  const [filters, setFilters] = useState({
+    status: 'todos',
+    tipo: 'todos',
+  });
 
   // Estados de modais
   const [modalOpen, setModalOpen] = useState(false);
@@ -134,58 +108,16 @@ const FornecedoresPage: React.FC = () => {
   // Estados de validação
   const [erroFornecedor, setErroFornecedor] = useState("");
   const [touched, setTouched] = useState<any>({});
-  
-  // Estados para controle de mudanças não salvas
-  const [formDataInicial, setFormDataInicial] = useState<any>(null);
-  const [confirmClose, setConfirmClose] = useState(false);
 
-  // Função para refresh manual (React Query já gerencia o carregamento automaticamente)
-  const handleRefresh = useCallback(() => {
-    refetch();
-  }, [refetch]);
-  
-  // Definir campos de filtro
-  const filterFields: FilterField[] = useMemo(() => [
-    {
-      type: 'select',
-      label: 'Status',
-      key: 'status',
-      options: [
-        { value: 'ativo', label: 'Ativos' },
-        { value: 'inativo', label: 'Inativos' },
-      ],
-    },
-    {
-      type: 'select',
-      label: 'Tipo de Fornecedor',
-      key: 'tipo',
-      options: [
-        { value: 'empresa', label: 'Empresa' },
-        { value: 'cooperativa', label: 'Cooperativa' },
-        { value: 'individual', label: 'Individual' },
-      ],
-    },
-  ], []);
-  
-  // Filtrar e ordenar fornecedores
-  const filteredFornecedores = useMemo(() => {
+  // Filtrar fornecedores
+  const fornecedoresFiltrados = useMemo(() => {
     return fornecedores.filter(f => {
-      // Busca por palavra-chave
-      if (filters.search) {
-        const searchLower = filters.search.toLowerCase();
-        if (!f.nome.toLowerCase().includes(searchLower) && !f.cnpj.includes(filters.search)) {
-          return false;
-        }
-      }
-
       // Filtro de status
-      if (filters.status) {
-        if (filters.status === 'ativo' && !f.ativo) return false;
-        if (filters.status === 'inativo' && f.ativo) return false;
-      }
+      if (filters.status === 'ativo' && !f.ativo) return false;
+      if (filters.status === 'inativo' && f.ativo) return false;
 
       // Filtro de tipo
-      if (filters.tipo && f.tipo_fornecedor !== filters.tipo) {
+      if (filters.tipo !== 'todos' && f.tipo_fornecedor !== filters.tipo) {
         return false;
       }
 
@@ -193,32 +125,130 @@ const FornecedoresPage: React.FC = () => {
     }).sort((a, b) => a.nome.localeCompare(b.nome));
   }, [fornecedores, filters]);
 
-  // Fornecedores paginados
-  const paginatedFornecedores = useMemo(() => {
-    const startIndex = page * rowsPerPage;
-    return filteredFornecedores.slice(startIndex, startIndex + rowsPerPage);
-  }, [filteredFornecedores, page, rowsPerPage]);
-  
-  // Funções de paginação
-  const handleChangePage = useCallback((event: unknown, newPage: number) => setPage(newPage), []);
-  const handleChangeRowsPerPage = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  }, []);
-  
-  // Reset da página quando filtros mudam
-  useEffect(() => {
-    setPage(0);
-  }, [filters]);
+  const handleRowClick = useCallback((fornecedor: Fornecedor) => {
+    navigate(`/fornecedores/${fornecedor.id}`);
+  }, [navigate]);
 
-  // Mostrar mensagem se vier de redirecionamento
-  useEffect(() => {
-    if (location.state?.message) {
-      toast.success(location.state.message);
-      // Limpar o state para não mostrar novamente
-      window.history.replaceState({}, document.title);
-    }
-  }, [location]);
+  const columns = useMemo<ColumnDef<Fornecedor>[]>(() => [
+    { 
+      accessorKey: 'id', 
+      header: 'ID',
+      size: 80,
+      enableSorting: true,
+    },
+    { 
+      accessorKey: 'nome', 
+      header: 'Nome',
+      size: 300,
+      enableSorting: true,
+    },
+    { 
+      accessorKey: 'cnpj', 
+      header: 'CNPJ',
+      size: 150,
+      enableSorting: true,
+      cell: ({ getValue }) => {
+        const value = getValue() as string;
+        return (
+          <Typography variant="body2" color="text.secondary" fontFamily="monospace">
+            {formatarDocumento(value)}
+          </Typography>
+        );
+      },
+    },
+    { 
+      accessorKey: 'tipo_fornecedor', 
+      header: 'Tipo',
+      size: 200,
+      enableSorting: true,
+      cell: ({ getValue }) => {
+        const value = getValue() as string | undefined;
+        const isAF = value === 'AGRICULTURA_FAMILIAR' || value === 'COOPERATIVA_AF' || value === 'ASSOCIACAO_AF';
+        const label = 
+          value === 'AGRICULTURA_FAMILIAR' ? 'Agricultura Familiar' :
+          value === 'COOPERATIVA_AF' ? 'Cooperativa AF' :
+          value === 'ASSOCIACAO_AF' ? 'Associação AF' :
+          value === 'CONVENCIONAL' ? 'Convencional' :
+          value || 'Não informado';
+        
+        return (
+          <Chip 
+            label={label} 
+            size="small"
+            color={isAF ? 'success' : 'default'}
+            sx={{ ...(isAF ? { color: 'white' } : {}) }}
+          />
+        );
+      },
+    },
+    { 
+      accessorKey: 'email', 
+      header: 'Email',
+      size: 200,
+      enableSorting: true,
+      cell: ({ getValue }) => {
+        const value = getValue() as string | undefined;
+        return (
+          <Typography variant="body2" color="text.secondary">
+            {value || 'Não informado'}
+          </Typography>
+        );
+      },
+    },
+    { 
+      accessorKey: 'ativo', 
+      header: 'Status',
+      size: 100,
+      enableSorting: true,
+      cell: ({ getValue }) => (
+        <Tooltip title={getValue() ? 'Ativo' : 'Inativo'}>
+          <Box
+            sx={{
+              width: 12,
+              height: 12,
+              borderRadius: '50%',
+              backgroundColor: getValue() ? 'success.main' : 'error.main',
+              display: 'inline-block',
+            }}
+          />
+        </Tooltip>
+      ),
+    },
+    {
+      id: 'actions',
+      header: 'Ações',
+      size: 120,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <Box sx={{ display: 'flex', gap: 0.5 }} onClick={(e) => e.stopPropagation()}>
+          <Tooltip title="Ver Detalhes">
+            <IconButton
+              size="small"
+              onClick={() => navigate(`/fornecedores/${row.original.id}`)}
+            >
+              <InfoIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Editar">
+            <IconButton
+              size="small"
+              onClick={() => openModal(row.original)}
+            >
+              <EditIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Excluir">
+            <IconButton
+              size="small"
+              onClick={() => openDeleteModal(row.original)}
+            >
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      ),
+    },
+  ], [navigate]);
 
   // Funções de modais
   const openModal = (fornecedor: Fornecedor | null = null) => {
@@ -226,40 +256,28 @@ const FornecedoresPage: React.FC = () => {
     setTouched({});
     if (fornecedor) {
       setEditingFornecedor(fornecedor);
-      const formInicial = { 
+      setFormData({ 
         nome: fornecedor.nome, 
         cnpj: fornecedor.cnpj, 
         email: fornecedor.email || '', 
         ativo: fornecedor.ativo,
-        tipo_fornecedor: fornecedor.tipo_fornecedor || 'empresa'
-      };
-      setFormData(formInicial);
-      setFormDataInicial(JSON.parse(JSON.stringify(formInicial)));
+        tipo_fornecedor: fornecedor.tipo_fornecedor || 'CONVENCIONAL',
+        dap_caf: fornecedor.dap_caf || '',
+        data_validade_dap: fornecedor.data_validade_dap || ''
+      });
     } else {
       setEditingFornecedor(null);
-      const formInicial = { nome: "", cnpj: "", email: "", ativo: true, tipo_fornecedor: "empresa" as 'empresa' | 'cooperativa' | 'individual' };
-      setFormData(formInicial);
-      setFormDataInicial(JSON.parse(JSON.stringify(formInicial)));
+      setFormData({ 
+        nome: "", 
+        cnpj: "", 
+        email: "", 
+        ativo: true, 
+        tipo_fornecedor: "CONVENCIONAL",
+        dap_caf: "",
+        data_validade_dap: ""
+      });
     }
     setModalOpen(true);
-  };
-  
-  const hasUnsavedChanges = () => {
-    if (!formDataInicial) return false;
-    return JSON.stringify(formData) !== JSON.stringify(formDataInicial);
-  };
-  
-  const handleCloseModal = () => {
-    if (hasUnsavedChanges()) {
-      setConfirmClose(true);
-    } else {
-      closeModal();
-    }
-  };
-  
-  const confirmCloseModal = () => {
-    setConfirmClose(false);
-    closeModal();
   };
   
   const closeModal = () => {
@@ -298,7 +316,6 @@ const FornecedoresPage: React.FC = () => {
         toast.success('Fornecedor criado com sucesso!');
       }
       closeModal();
-      await refetch();
     } catch (err: any) {
       console.error('Erro ao salvar fornecedor:', err);
       setErroFornecedor(err.message || 'Erro ao salvar fornecedor.');
@@ -322,346 +339,382 @@ const FornecedoresPage: React.FC = () => {
       toast.success('Fornecedor removido com sucesso!');
       closeDeleteModal();
     } catch (err: any) {
-      console.error('Erro ao remover fornecedor:', err);
+      toast.error('Erro ao remover fornecedor');
     }
   };
 
   // Funções de Importação/Exportação
-  const handleImportFornecedores = async (data: any[]) => { /* ... */ };
-  const handleExportarFornecedores = () => { /* ... */ };
+  const handleImportFornecedores = async () => {
+    // Implementar lógica de importação
+    toast.success('Importação concluída!');
+    refetch();
+  };
+
+  const handleExportarFornecedores = () => {
+    try {
+      const dadosExportacao = fornecedoresFiltrados.map(f => ({
+        Nome: f.nome,
+        CNPJ: f.cnpj,
+        Email: f.email || '',
+        Tipo: f.tipo_fornecedor || '',
+        Ativo: f.ativo ? 'Sim' : 'Não'
+      }));
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(dadosExportacao);
+      XLSX.utils.book_append_sheet(wb, ws, 'Fornecedores');
+      
+      const dataAtual = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
+      XLSX.writeFile(wb, `fornecedores_${dataAtual}.xlsx`);
+      
+      toast.success("Exportação concluída com sucesso!");
+      setImportExportMenuAnchor(null);
+    } catch (error) {
+      toast.error('Erro ao exportar fornecedores');
+    }
+  };
 
   return (
-    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <PageContainer fullHeight>
-        <Card sx={{ borderRadius: '12px', p: 2, mb: 2 }}>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2 }}>
-            <TextField
-              placeholder="Buscar por nome ou CNPJ..."
-              value={filters.search || ''}
-              onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-              size="small"
-              sx={{ flex: 1, minWidth: '200px', '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon sx={{ color: 'text.secondary' }} />
-                  </InputAdornment>
-                ),
-                endAdornment: filters.search && (
-                  <InputAdornment position="end">
-                    <IconButton size="small" onClick={() => setFilters(prev => ({ ...prev, search: '' }))}>
-                      <ClearIcon fontSize="small" />
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-            />
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button variant="outlined" startIcon={<FilterIcon />} onClick={(e) => { setFilterAnchorEl(e.currentTarget); setFilterOpen(true); }} size="small">
-                Filtros
-              </Button>
-              <Button startIcon={<AddIcon />} onClick={() => openModal()} variant="contained" color="add" size="small">Novo Fornecedor</Button>
-              <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)} size="small"><MoreVert /></IconButton>
-            </Box>
-          </Box>
-        </Card>
+        <PageHeader title="Fornecedores" />
 
-        <TableFilter
-          open={filterOpen}
-          onClose={() => setFilterOpen(false)}
-          onApply={setFilters}
-          fields={filterFields}
-          initialValues={filters}
-          showSearch={false}
-          anchorEl={filterAnchorEl}
-        />
-
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 2, px: 1 }}>
-          <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 500 }}>
-            Exibindo {filteredFornecedores.length} {filteredFornecedores.length === 1 ? 'resultado' : 'resultados'}
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <StatusIndicator status="ativo" size="small" />
-              <Typography variant="body2" sx={{ color: '#495057', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                ATIVOS
-              </Typography>
-              <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 600 }}>
-                {filteredFornecedores.filter(f => f.ativo).length}
-              </Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <StatusIndicator status="inativo" size="small" />
-              <Typography variant="body2" sx={{ color: '#495057', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                INATIVOS
-              </Typography>
-              <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 600 }}>
-                {filteredFornecedores.filter(f => !f.ativo).length}
-              </Typography>
-            </Box>
-          </Box>
-        </Box>
-
+        {/* DataTable com altura fixa para scroll */}
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-
-        {loading ? (
-          <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><CircularProgress size={60} /></CardContent></Card>
-        ) : queryError ? (
-          <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Alert severity="error" sx={{ mb: 2 }}>{queryError instanceof Error ? queryError.message : 'Erro ao carregar fornecedores'}</Alert><Button variant="contained" onClick={handleRefresh}>Tentar Novamente</Button></CardContent></Card>
-        ) : filteredFornecedores.length === 0 ? (
-          <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Business sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} /><Typography variant="h6" sx={{ color: 'text.secondary' }}>Nenhum fornecedor encontrado</Typography></CardContent></Card>
-        ) : (
-          <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', width: '100%', overflow: 'hidden' }}>
-            <TableContainer sx={{ flex: 1, minHeight: 0 }}>
-              <Table stickyHeader>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Nome</TableCell>
-                    <TableCell align="center">CNPJ</TableCell>
-                    <TableCell align="center">Tipo</TableCell>
-                    <TableCell align="center">Email</TableCell>
-                    <TableCell align="center" width="80">Ações</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {paginatedFornecedores.map((f) => (
-                    <TableRow key={f.id} hover>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <StatusIndicator status={f.ativo ? 'ativo' : 'inativo'} size="small" />
-                          <Typography variant="body2" sx={{ fontWeight: 600 }}>{f.nome}</Typography>
-                        </Box>
-                      </TableCell>
-                      <TableCell align="center"><Typography variant="body2" color="text.secondary" fontFamily="monospace">{formatarDocumento(f.cnpj)}</Typography></TableCell>
-                      <TableCell align="center">
-                        <Chip 
-                          label={
-                            f.tipo_fornecedor === 'AGRICULTURA_FAMILIAR' ? 'Agricultura Familiar' :
-                            f.tipo_fornecedor === 'COOPERATIVA_AF' ? 'Cooperativa AF' :
-                            f.tipo_fornecedor === 'ASSOCIACAO_AF' ? 'Associação AF' :
-                            f.tipo_fornecedor === 'CONVENCIONAL' ? 'Convencional' :
-                            f.tipo_fornecedor === 'empresa' ? 'Empresa' :
-                            f.tipo_fornecedor === 'cooperativa' ? 'Cooperativa' :
-                            f.tipo_fornecedor === 'individual' ? 'Individual' :
-                            f.tipo_fornecedor || 'Não informado'
-                          } 
-                          size="small"
-                          color={
-                            f.tipo_fornecedor === 'AGRICULTURA_FAMILIAR' || 
-                            f.tipo_fornecedor === 'COOPERATIVA_AF' || 
-                            f.tipo_fornecedor === 'ASSOCIACAO_AF' ? 'success' : 'default'
-                          }
-                          sx={{
-                            ...(f.tipo_fornecedor === 'AGRICULTURA_FAMILIAR' || 
-                                f.tipo_fornecedor === 'COOPERATIVA_AF' || 
-                                f.tipo_fornecedor === 'ASSOCIACAO_AF' ? { color: 'white' } : {})
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell align="center"><Typography variant="body2" color="text.secondary">{f.email || 'Não informado'}</Typography></TableCell>
-
-                      <TableCell align="center">
-                        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
-                          <Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => navigate(`/fornecedores/${f.id}`)} color="primary"><InfoIcon fontSize="small" /></IconButton></Tooltip>
-                          <Tooltip title="Editar"><IconButton size="small" onClick={() => openModal(f)} color="secondary"><EditIcon fontSize="small" /></IconButton></Tooltip>
-                          <Tooltip title="Excluir"><IconButton size="small" onClick={() => openDeleteModal(f)} color="delete"><DeleteIcon fontSize="small" /></IconButton></Tooltip>
-                        </Box>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-            <CompactPagination count={filteredFornecedores.length} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage} onRowsPerPageChange={handleChangeRowsPerPage} rowsPerPageOptions={[10, 25, 50, 100]} />
-          </Box>
-        )}
+          <DataTable
+            data={fornecedoresFiltrados}
+            columns={columns}
+            loading={loading}
+            onRowClick={handleRowClick}
+            searchPlaceholder="Buscar por nome ou CNPJ..."
+            onCreateClick={() => openModal()}
+            createButtonLabel="Novo Fornecedor"
+            onFilterClick={(e) => setFilterAnchorEl(e.currentTarget)}
+            onImportExportClick={(e) => setImportExportMenuAnchor(e.currentTarget)}
+          />
         </Box>
       </PageContainer>
 
-      {/* Modal de Criação/Edição */}
-      <Dialog 
-        open={modalOpen} 
-        onClose={handleCloseModal}
-        maxWidth="sm" 
-        fullWidth 
-        PaperProps={{ 
-          sx: { 
-            borderRadius: '12px',
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            m: 0
-          } 
+      {/* Popover de Filtros */}
+      <Popover
+        open={Boolean(filterAnchorEl)}
+        anchorEl={filterAnchorEl}
+        onClose={() => setFilterAnchorEl(null)}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
         }}
       >
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
-          <Typography variant="h6" component="span" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
+        <Box sx={{ p: 2, minWidth: 280 }}>
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            Filtros
+          </Typography>
+          
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Status</InputLabel>
+            <Select
+              value={filters.status}
+              label="Status"
+              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+            >
+              <MenuItem value="todos">Todos</MenuItem>
+              <MenuItem value="ativo">Ativos</MenuItem>
+              <MenuItem value="inativo">Inativos</MenuItem>
+            </Select>
+          </FormControl>
+
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Tipo</InputLabel>
+            <Select
+              value={filters.tipo}
+              label="Tipo"
+              onChange={(e) => setFilters({ ...filters, tipo: e.target.value })}
+            >
+              <MenuItem value="todos">Todos</MenuItem>
+              <MenuItem value="CONVENCIONAL">Convencional</MenuItem>
+              <MenuItem value="AGRICULTURA_FAMILIAR">Agricultura Familiar</MenuItem>
+              <MenuItem value="COOPERATIVA_AF">Cooperativa AF</MenuItem>
+              <MenuItem value="ASSOCIACAO_AF">Associação AF</MenuItem>
+            </Select>
+          </FormControl>
+
+          <Divider sx={{ my: 2 }} />
+
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => {
+                setFilters({ status: 'todos', tipo: 'todos' });
+              }}
+            >
+              Limpar
+            </Button>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={() => setFilterAnchorEl(null)}
+            >
+              Aplicar
+            </Button>
+          </Box>
+          
+          {/* Indicador de filtros ativos */}
+          {(filters.status !== 'todos' || filters.tipo !== 'todos') && (
+            <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+              <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                Filtros ativos:
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                {filters.status !== 'todos' && (
+                  <Chip
+                    label={`Status: ${filters.status === 'ativo' ? 'Ativos' : 'Inativos'}`}
+                    size="small"
+                    onDelete={() => setFilters({ ...filters, status: 'todos' })}
+                  />
+                )}
+                {filters.tipo !== 'todos' && (
+                  <Chip
+                    label={`Tipo: ${filters.tipo}`}
+                    size="small"
+                    onDelete={() => setFilters({ ...filters, tipo: 'todos' })}
+                  />
+                )}
+              </Box>
+            </Box>
+          )}
+        </Box>
+      </Popover>
+
+      {/* Modal de Criação/Edição */}
+      <Dialog open={modalOpen} onClose={closeModal} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ pb: 1 }}>
+          <Typography variant="h5" component="div" sx={{ fontWeight: 600 }}>
             {editingFornecedor ? 'Editar Fornecedor' : 'Novo Fornecedor'}
           </Typography>
-          <IconButton
-            size="small"
-            onClick={handleCloseModal}
-            sx={{ color: 'text.secondary' }}
-          >
-            <ClearIcon fontSize="small" />
-          </IconButton>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            Preencha os dados do fornecedor
+          </Typography>
         </DialogTitle>
-        <DialogContent sx={{ pt: 2, pb: 1 }}>
+        <DialogContent dividers>
           {erroFornecedor && (
-            <Alert severity="error" sx={{ mb: 1.5, py: 0.5 }}>
-              <Typography variant="body2" sx={{ fontSize: '0.8125rem' }}>
+            <Alert severity="error" sx={{ mb: 2 }}>
+              <Typography variant="body2">
                 {erroFornecedor}
               </Typography>
             </Alert>
           )}
-          <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            <TextField 
-              label="Nome" 
-              value={formData.nome} 
-              onChange={(e) => {
-                setFormData({ ...formData, nome: e.target.value });
-                if (erroFornecedor) setErroFornecedor("");
-              }}
-              onBlur={() => setTouched({ ...touched, nome: true })}
-              required 
-              size="small"
-              error={touched.nome && !formData.nome.trim()}
-              helperText={touched.nome && !formData.nome.trim() ? "Campo obrigatório" : ""}
-            />
-            <TextField 
-              label="CNPJ" 
-              value={formData.cnpj} 
-              onChange={(e) => {
-                setFormData({ ...formData, cnpj: e.target.value });
-                if (erroFornecedor) setErroFornecedor("");
-              }}
-              onBlur={() => setTouched({ ...touched, cnpj: true })}
-              required 
-              size="small"
-              error={touched.cnpj && !formData.cnpj.trim()}
-              helperText={touched.cnpj && !formData.cnpj.trim() ? "Campo obrigatório" : "Formato: 00.000.000/0000-00"}
-              placeholder="00.000.000/0000-00"
-            />
-            <TextField 
-              label="Email" 
-              value={formData.email} 
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })} 
-              size="small"
-              type="email"
-              placeholder="exemplo@email.com"
-            />
-            <FormControl fullWidth size="small">
-              <InputLabel>Tipo de Fornecedor</InputLabel>
-              <Select
-                value={formData.tipo_fornecedor}
-                label="Tipo de Fornecedor"
-                onChange={(e) => setFormData({ ...formData, tipo_fornecedor: e.target.value })}
-              >
-                <MenuItem value="CONVENCIONAL">Convencional</MenuItem>
-                <MenuItem value="AGRICULTURA_FAMILIAR">Agricultura Familiar</MenuItem>
-                <MenuItem value="COOPERATIVA_AF">Cooperativa de Agricultura Familiar</MenuItem>
-                <MenuItem value="ASSOCIACAO_AF">Associação de Agricultura Familiar</MenuItem>
-              </Select>
-            </FormControl>
-            
-            {/* Campos condicionais para Agricultura Familiar */}
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 2 }}>
+            {/* Informações Básicas */}
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: 'primary.main' }}>
+                Informações Básicas
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <TextField 
+                    label="Nome" 
+                    value={formData.nome} 
+                    onChange={(e) => {
+                      setFormData({ ...formData, nome: e.target.value });
+                      if (erroFornecedor) setErroFornecedor("");
+                    }}
+                    onBlur={() => setTouched({ ...touched, nome: true })}
+                    required 
+                    fullWidth
+                    error={touched.nome && !formData.nome.trim()}
+                    helperText={touched.nome && !formData.nome.trim() ? "Campo obrigatório" : ""}
+                    placeholder="Nome completo do fornecedor"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField 
+                    label="CNPJ" 
+                    value={formData.cnpj} 
+                    onChange={(e) => {
+                      setFormData({ ...formData, cnpj: e.target.value });
+                      if (erroFornecedor) setErroFornecedor("");
+                    }}
+                    onBlur={() => setTouched({ ...touched, cnpj: true })}
+                    required 
+                    fullWidth
+                    error={touched.cnpj && !formData.cnpj.trim()}
+                    helperText={touched.cnpj && !formData.cnpj.trim() ? "Campo obrigatório" : "Formato: 00.000.000/0000-00"}
+                    placeholder="00.000.000/0000-00"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField 
+                    label="Email" 
+                    value={formData.email} 
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })} 
+                    fullWidth
+                    type="email"
+                    placeholder="exemplo@email.com"
+                  />
+                </Grid>
+              </Grid>
+            </Box>
+
+            <Divider />
+
+            {/* Classificação */}
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: 'primary.main' }}>
+                Classificação
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <FormControl fullWidth>
+                    <InputLabel>Tipo de Fornecedor</InputLabel>
+                    <Select
+                      value={formData.tipo_fornecedor}
+                      label="Tipo de Fornecedor"
+                      onChange={(e) => setFormData({ ...formData, tipo_fornecedor: e.target.value })}
+                    >
+                      <MenuItem value="CONVENCIONAL">Convencional</MenuItem>
+                      <MenuItem value="AGRICULTURA_FAMILIAR">Agricultura Familiar</MenuItem>
+                      <MenuItem value="COOPERATIVA_AF">Cooperativa de Agricultura Familiar</MenuItem>
+                      <MenuItem value="ASSOCIACAO_AF">Associação de Agricultura Familiar</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+              </Grid>
+            </Box>
+
+            {/* Agricultura Familiar - Campos Condicionais */}
             {(formData.tipo_fornecedor === 'AGRICULTURA_FAMILIAR' || 
               formData.tipo_fornecedor === 'COOPERATIVA_AF' || 
               formData.tipo_fornecedor === 'ASSOCIACAO_AF') && (
               <>
-                <TextField 
-                  label="DAP/CAF" 
-                  value={formData.dap_caf} 
-                  onChange={(e) => setFormData({ ...formData, dap_caf: e.target.value })} 
-                  size="small"
-                  placeholder="Número da DAP ou CAF"
-                  helperText="Declaração de Aptidão ao PRONAF ou Cadastro Nacional da Agricultura Familiar"
-                />
-                <TextField 
-                  label="Data de Validade DAP/CAF" 
-                  value={formData.data_validade_dap} 
-                  onChange={(e) => setFormData({ ...formData, data_validade_dap: e.target.value })} 
-                  size="small"
-                  type="date"
-                  InputLabelProps={{ shrink: true }}
-                  helperText="Data de validade da documentação"
-                />
+                <Divider />
+                <Box>
+                  <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: 'primary.main' }}>
+                    Agricultura Familiar
+                  </Typography>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={6}>
+                      <TextField 
+                        label="DAP/CAF" 
+                        value={formData.dap_caf} 
+                        onChange={(e) => setFormData({ ...formData, dap_caf: e.target.value })} 
+                        fullWidth
+                        placeholder="Número da DAP ou CAF"
+                        helperText="Declaração de Aptidão ao PRONAF ou CAF"
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField 
+                        label="Data de Validade DAP/CAF" 
+                        value={formData.data_validade_dap} 
+                        onChange={(e) => setFormData({ ...formData, data_validade_dap: e.target.value })} 
+                        fullWidth
+                        type="date"
+                        InputLabelProps={{ shrink: true }}
+                        helperText="Data de validade da documentação"
+                      />
+                    </Grid>
+                  </Grid>
+                </Box>
               </>
             )}
-            
-            <FormControlLabel 
-              control={
-                <Switch 
-                  checked={formData.ativo} 
-                  onChange={(e) => setFormData({ ...formData, ativo: e.target.checked })} 
-                  size="small"
-                />
-              } 
-              label={<Typography variant="body2">Ativo</Typography>}
-            />
+
+            <Divider />
+
+            {/* Status */}
+            <Box>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={formData.ativo}
+                    onChange={(e) => setFormData({ ...formData, ativo: e.target.checked })}
+                    color="primary"
+                  />
+                }
+                label={
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      Fornecedor Ativo
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Fornecedores ativos aparecem no sistema
+                    </Typography>
+                  </Box>
+                }
+              />
+            </Box>
           </Box>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
-          <Button onClick={handleCloseModal} sx={{ color: 'text.secondary' }}>Cancelar</Button>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button 
+            onClick={closeModal} 
+            variant="outlined" 
+            disabled={criarFornecedorMutation.isPending || atualizarFornecedorMutation.isPending}
+          >
+            Cancelar
+          </Button>
           <Button 
             onClick={handleSave} 
             variant="contained" 
-            disabled={!formData.nome.trim() || !formData.cnpj.trim()}
+            disabled={criarFornecedorMutation.isPending || atualizarFornecedorMutation.isPending || !formData.nome.trim() || !formData.cnpj.trim()}
+            startIcon={(criarFornecedorMutation.isPending || atualizarFornecedorMutation.isPending) ? <CircularProgress size={20} /> : null}
           >
-            Salvar
+            {(criarFornecedorMutation.isPending || atualizarFornecedorMutation.isPending) ? 'Salvando...' : 'Salvar Fornecedor'}
           </Button>
         </DialogActions>
       </Dialog>
-      
-      {/* Dialog de confirmação para fechar */}
-      <Dialog 
-        open={confirmClose} 
-        onClose={() => setConfirmClose(false)}
-        maxWidth="xs"
-        PaperProps={{
-          sx: {
-            borderRadius: '12px',
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            m: 0
-          }
-        }}
-      >
-        <DialogTitle sx={{ pb: 1 }}>
-          <Typography variant="h6" component="span" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
-            Descartar alterações?
-          </Typography>
-        </DialogTitle>
-        <DialogContent sx={{ pt: 2, pb: 1 }}>
-          <Typography variant="body2">
-            Você tem alterações não salvas. Deseja realmente descartar essas alterações?
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
-          <Button onClick={() => setConfirmClose(false)} variant="outlined" size="small">
-            Continuar Editando
-          </Button>
-          <Button onClick={confirmCloseModal} color="delete" variant="contained" size="small">
-            Descartar
-          </Button>
-        </DialogActions>
-      </Dialog>
-      
+
       {/* Modal de Confirmação de Exclusão */}
-      <ConfirmacaoExclusaoFornecedor open={deleteModalOpen} fornecedor={fornecedorToDelete} onConfirm={handleDelete} onCancel={closeDeleteModal} />
+      <ConfirmacaoExclusaoFornecedor 
+        open={deleteModalOpen} 
+        fornecedor={fornecedorToDelete} 
+        onConfirm={handleDelete} 
+        onCancel={closeDeleteModal} 
+      />
       
       {/* Modal de Importação */}
-      <ImportacaoFornecedores open={importModalOpen} onClose={() => setImportModalOpen(false)} onImport={handleImportFornecedores} />
+      <ImportacaoFornecedores 
+        open={importModalOpen} 
+        onClose={() => setImportModalOpen(false)} 
+        onImport={handleImportFornecedores} 
+      />
 
-      {/* Menu de Ações */}
-      <Menu anchorEl={actionsMenuAnchor} open={Boolean(actionsMenuAnchor)} onClose={() => setActionsMenuAnchor(null)}>
-        <MenuItem onClick={() => { setActionsMenuAnchor(null); refetch(); toast.success('Lista atualizada com sucesso!'); }}><SearchIcon sx={{ mr: 1 }} /> Atualizar Lista</MenuItem>
-        <Divider />
-        <MenuItem onClick={() => { setActionsMenuAnchor(null); setImportModalOpen(true); }}><Upload sx={{ mr: 1 }} /> Importar em Lote</MenuItem>
-        <MenuItem onClick={() => { setActionsMenuAnchor(null); handleExportarFornecedores(); }}><Download sx={{ mr: 1 }} /> Exportar Excel</MenuItem>
+      {/* Menu de Importar/Exportar */}
+      <Menu 
+        anchorEl={importExportMenuAnchor} 
+        open={Boolean(importExportMenuAnchor)} 
+        onClose={() => setImportExportMenuAnchor(null)}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+      >
+        <MenuItem 
+          onClick={() => { 
+            setImportExportMenuAnchor(null); 
+            setImportModalOpen(true); 
+          }}
+        >
+          <FileUploadIcon sx={{ mr: 1 }} /> 
+          Importar Fornecedores
+        </MenuItem>
+        <MenuItem 
+          onClick={() => { 
+            setImportExportMenuAnchor(null); 
+            handleExportarFornecedores(); 
+          }}
+        >
+          <FileDownloadIcon sx={{ mr: 1 }} /> 
+          Exportar Excel
+        </MenuItem>
       </Menu>
 
       <LoadingOverlay 

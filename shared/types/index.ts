@@ -64,10 +64,14 @@ export interface AuthResponse {
 export interface Escola {
   id: ID;
   nome: string;
+  codigo?: string; // Código INEP (também usado para acesso ao sistema)
   endereco?: string;
+  municipio?: string;
+  endereco_maps?: string;
   telefone?: string;
   email?: string;
-  diretor?: string;
+  nome_gestor?: string;
+  administracao?: 'municipal' | 'estadual' | 'federal' | 'particular';
   ativo: boolean;
   created_at: DateString;
   updated_at: DateString;
@@ -75,10 +79,14 @@ export interface Escola {
 
 export interface EscolaCreate {
   nome: string;
+  codigo?: string; // Código INEP (também usado para acesso ao sistema)
   endereco?: string;
+  municipio?: string;
+  endereco_maps?: string;
   telefone?: string;
   email?: string;
-  diretor?: string;
+  nome_gestor?: string;
+  administracao?: 'municipal' | 'estadual' | 'federal' | 'particular';
   ativo?: boolean;
 }
 

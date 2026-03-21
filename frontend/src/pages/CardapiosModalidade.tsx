@@ -1,20 +1,37 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import StatusIndicator from '../components/StatusIndicator';
-import PageContainer from '../components/PageContainer';
-import TableFilter, { FilterField } from '../components/TableFilter';
-import { usePageTitle } from '../contexts/PageTitleContext';
 import {
-  Box, Button, Card, CardContent, Dialog, DialogTitle, DialogContent, DialogActions,
-  FormControl, Grid, IconButton, InputLabel, MenuItem, Select, Table, TableBody,
-  TableCell, TableContainer, TableHead, TableRow, TextField, Typography, Chip, Paper,
-  InputAdornment, CircularProgress, Alert, Autocomplete
+  Box,
+  Typography,
+  Button,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  FormControl,
+  Grid,
+  InputLabel,
+  MenuItem,
+  Select,
+  TextField,
+  Chip,
+  CircularProgress,
+  Alert,
+  Autocomplete,
+  Tooltip,
+  Popover,
+  Divider,
 } from '@mui/material';
-import CompactPagination from '../components/CompactPagination';
 import {
-  Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, CalendarMonth as CalendarIcon,
-  Visibility as ViewIcon, Search as SearchIcon, Clear as ClearIcon, FilterList as FilterIcon,
-  MoreVert
+  Add as AddIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  CalendarMonth as CalendarIcon,
+  Visibility as ViewIcon,
+  Clear as ClearIcon,
 } from '@mui/icons-material';
+import { ColumnDef } from '@tanstack/react-table';
+import { useNavigate } from 'react-router';
 import { useToast } from '../hooks/useToast';
 import { CardapioModalidade, MESES } from '../services/cardapiosModalidade';
 import { listarModalidades } from '../services/modalidadeService';
@@ -25,31 +42,43 @@ import {
   useEditarCardapioModalidade,
   useRemoverCardapioModalidade
 } from '../hooks/queries/useCardapioModalidadeQueries';
-import { useNavigate } from 'react-router-dom';
 import { LoadingOverlay } from '../components/LoadingOverlay';
+import { DataTable } from '../components/DataTable';
+import PageHeader from '../components/PageHeader';
+import PageContainer from '../components/PageContainer';
 
 const CardapiosModalidadePage: React.FC = () => {
-  const { setPageTitle } = usePageTitle();
+  const navigate = useNavigate();
+  const toast = useToast();
+
+  // React Query hooks
   const { data: cardapios = [], isLoading: loading } = useCardapiosModalidade();
-  const [modalidades, setModalidades] = useState<any[]>([]);
-  const [openDialog, setOpenDialog] = useState(false);
-  const [editMode, setEditMode] = useState(false);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-  
   const { data: nutricionistas = [] } = useNutricionistaQueries.useList();
   const criarCardapioMutation = useCriarCardapioModalidade();
   const editarCardapioMutation = useEditarCardapioModalidade();
   const removerCardapioMutation = useRemoverCardapioModalidade();
-  
-  // Estados de filtros
-  const [filterOpen, setFilterOpen] = useState(false);
+
+  // Garantir que cardapios é sempre um array
+  const cardapiosArray = Array.isArray(cardapios) ? cardapios : [];
+
+  // Estados principais
+  const [modalidades, setModalidades] = useState<any[]>([]);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [cardapioToDelete, setCardapioToDelete] = useState<CardapioModalidade | null>(null);
+  const [confirmClose, setConfirmClose] = useState(false);
+
+  // Estados de filtro
   const [filterAnchorEl, setFilterAnchorEl] = useState<HTMLElement | null>(null);
-  const [filters, setFilters] = useState<Record<string, any>>({});
-  
-  // Estados de paginação
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(25);
-  
+  const [filters, setFilters] = useState({
+    modalidade: 'todos',
+    mes: 'todos',
+    status: 'todos',
+  });
+
+  // Estados do formulário
   const [formData, setFormData] = useState({
     modalidade_id: '',
     modalidades_ids: [] as number[],
@@ -62,26 +91,18 @@ const CardapiosModalidadePage: React.FC = () => {
     data_aprovacao_nutricionista: '',
     observacoes_nutricionista: ''
   });
-  
+
   // Estados de validação
   const [erroCardapio, setErroCardapio] = useState("");
   const [touched, setTouched] = useState<any>({});
-  
-  // Estados para controle de mudanças não salvas
   const [formDataInicial, setFormDataInicial] = useState<any>(null);
-  const [confirmClose, setConfirmClose] = useState(false);
-  
-  const toast = useToast();
-  const navigate = useNavigate();
 
   useEffect(() => {
-    setPageTitle('Cardápios por Modalidade');
     loadModalidades();
   }, []);
 
   const loadModalidades = async () => {
     try {
-      // Carregar todas as modalidades (incluindo inativas) para o seletor do formulário
       const modalidadesData = await listarModalidades();
       setModalidades(modalidadesData);
     } catch (err: any) {
@@ -90,58 +111,22 @@ const CardapiosModalidadePage: React.FC = () => {
     }
   };
 
-  // Definir campos de filtro
-  const filterFields: FilterField[] = useMemo(() => [
-    {
-      type: 'select',
-      label: 'Modalidade',
-      key: 'modalidade',
-      options: modalidades.map(m => ({ value: m.id.toString(), label: m.nome })),
-    },
-    {
-      type: 'select',
-      label: 'Mês',
-      key: 'mes',
-      options: Object.entries(MESES).map(([num, nome]) => ({ value: num, label: nome })),
-    },
-    {
-      type: 'select',
-      label: 'Status',
-      key: 'status',
-      options: [
-        { value: 'ativo', label: 'Ativo' },
-        { value: 'inativo', label: 'Inativo' },
-      ],
-    },
-  ], [modalidades]);
-
   // Filtrar cardápios
-  const filteredCardapios = useMemo(() => {
-    return cardapios.filter(cardapio => {
-      // Busca por palavra-chave
-      if (filters.search) {
-        const searchLower = filters.search.toLowerCase();
-        if (!cardapio.nome.toLowerCase().includes(searchLower) &&
-            !(cardapio.modalidade_nome || '').toLowerCase().includes(searchLower)) {
-          return false;
-        }
-      }
-
+  const cardapiosFiltrados = useMemo(() => {
+    return cardapiosArray.filter((cardapio) => {
       // Filtro de modalidade
-      if (filters.modalidade && cardapio.modalidade_id.toString() !== filters.modalidade) {
+      if (filters.modalidade !== 'todos' && cardapio.modalidade_id.toString() !== filters.modalidade) {
         return false;
       }
 
       // Filtro de mês
-      if (filters.mes && cardapio.mes.toString() !== filters.mes) {
+      if (filters.mes !== 'todos' && cardapio.mes.toString() !== filters.mes) {
         return false;
       }
 
       // Filtro de status
-      if (filters.status) {
-        if (filters.status === 'ativo' && !cardapio.ativo) return false;
-        if (filters.status === 'inativo' && cardapio.ativo) return false;
-      }
+      if (filters.status === 'ativo' && !cardapio.ativo) return false;
+      if (filters.status === 'inativo' && cardapio.ativo) return false;
 
       return true;
     }).sort((a, b) => {
@@ -149,28 +134,166 @@ const CardapiosModalidadePage: React.FC = () => {
       if (a.ano !== b.ano) return b.ano - a.ano;
       return b.mes - a.mes;
     });
-  }, [cardapios, filters]);
+  }, [cardapiosArray, filters]);
 
-  // Cardápios paginados
-  const paginatedCardapios = useMemo(() => {
-    const startIndex = page * rowsPerPage;
-    return filteredCardapios.slice(startIndex, startIndex + rowsPerPage);
-  }, [filteredCardapios, page, rowsPerPage]);
+  // Definir colunas
+  const columns = useMemo<ColumnDef<CardapioModalidade>[]>(() => [
+    {
+      accessorKey: 'id',
+      header: 'ID',
+      size: 80,
+      enableSorting: true,
+    },
+    {
+      accessorKey: 'nome',
+      header: 'Nome',
+      size: 250,
+      enableSorting: true,
+      cell: ({ row }) => (
+        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+          {row.original.nome}
+        </Typography>
+      ),
+    },
+    {
+      id: 'modalidades',
+      header: 'Modalidades',
+      size: 250,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+          {(row.original as any).modalidades_nomes ? (
+            (row.original as any).modalidades_nomes.split(', ').map((nome: string, idx: number) => (
+              <Chip key={idx} label={nome} size="small" variant="outlined" />
+            ))
+          ) : (
+            <Chip label={row.original.modalidade_nome} size="small" variant="outlined" />
+          )}
+        </Box>
+      ),
+    },
+    {
+      id: 'competencia',
+      header: 'Competência',
+      size: 150,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <Box display="flex" alignItems="center" gap={1}>
+          <CalendarIcon fontSize="small" color="action" />
+          <Typography variant="body2">
+            {MESES[row.original.mes]} / {row.original.ano}
+          </Typography>
+        </Box>
+      ),
+    },
 
-  // Funções de paginação
-  const handleChangePage = useCallback((event: unknown, newPage: number) => {
-    setPage(newPage);
-  }, []);
+    {
+      id: 'nutricionista',
+      header: 'Nutricionista',
+      size: 200,
+      enableSorting: false,
+      cell: ({ row }) => {
+        const cardapio = row.original as any;
+        return cardapio.nutricionista_nome ? (
+          <Box>
+            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+              {cardapio.nutricionista_nome}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              CRN-{cardapio.nutricionista_crn_regiao} {cardapio.nutricionista_crn}
+            </Typography>
+          </Box>
+        ) : (
+          <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+            Não atribuído
+          </Typography>
+        );
+      },
+    },
+    {
+      accessorKey: 'total_refeicoes',
+      header: 'Preparações',
+      size: 120,
+      enableSorting: true,
+      cell: ({ getValue }) => {
+        const value = getValue() as number | undefined;
+        return <Chip label={String(value || 0)} size="small" color="primary" variant="outlined" />;
+      },
+    },
+    {
+      accessorKey: 'total_dias',
+      header: 'Dias',
+      size: 100,
+      enableSorting: true,
+      cell: ({ getValue }) => {
+        const value = getValue() as number | undefined;
+        return <Chip label={String(value || 0)} size="small" />;
+      },
+    },
+    {
+      accessorKey: 'ativo',
+      header: 'Status',
+      size: 100,
+      enableSorting: true,
+      cell: ({ getValue }) => (
+        <Tooltip title={getValue() ? 'Ativo' : 'Inativo'}>
+          <Box
+            sx={{
+              width: 12,
+              height: 12,
+              borderRadius: '50%',
+              backgroundColor: getValue() ? 'success.main' : 'error.main',
+              display: 'inline-block',
+            }}
+          />
+        </Tooltip>
+      ),
+    },
+    {
+      id: 'actions',
+      header: 'Ações',
+      size: 150,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <Box sx={{ display: 'flex', gap: 0.5 }} onClick={(e) => e.stopPropagation()}>
+          <Tooltip title="Ver Calendário">
+            <IconButton
+              size="small"
+              onClick={() => navigate(`/cardapios/${row.original.id}/calendario`)}
+              color="primary"
+            >
+              <ViewIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Editar">
+            <IconButton
+              size="small"
+              onClick={() => handleOpenDialog(row.original)}
+            >
+              <EditIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Excluir">
+            <IconButton
+              size="small"
+              onClick={() => openDeleteModal(row.original)}
+            >
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      ),
+    },
+  ], [navigate]);
 
-  const handleChangeRowsPerPage = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  }, []);
+  const handleRowClick = useCallback((cardapio: CardapioModalidade) => {
+    navigate(`/cardapios/${cardapio.id}/calendario`);
+  }, [navigate]);
 
-  // Reset da página quando filtros mudam
-  useEffect(() => {
-    setPage(0);
-  }, [filters]);
+  const hasUnsavedChanges = () => {
+    if (!formDataInicial) return false;
+    return JSON.stringify(formData) !== JSON.stringify(formDataInicial);
+  };
 
   const handleOpenDialog = (cardapio?: CardapioModalidade) => {
     setErroCardapio("");
@@ -178,16 +301,16 @@ const CardapiosModalidadePage: React.FC = () => {
     if (cardapio) {
       setEditMode(true);
       setSelectedId(cardapio.id);
-      
+
       // Converter data ISO para formato yyyy-MM-dd se necessário
       let dataAprovacao = cardapio.data_aprovacao_nutricionista || '';
       if (dataAprovacao && dataAprovacao.includes('T')) {
         dataAprovacao = dataAprovacao.split('T')[0];
       }
-      
-      // Obter modalidades do cardápio (usar modalidades_ids se disponível, senão usar modalidade_id)
+
+      // Obter modalidades do cardápio
       const modalidadesIds = (cardapio as any).modalidades_ids || [cardapio.modalidade_id];
-      
+
       const formInicial = {
         modalidade_id: cardapio.modalidade_id.toString(),
         modalidades_ids: modalidadesIds,
@@ -222,12 +345,7 @@ const CardapiosModalidadePage: React.FC = () => {
     }
     setOpenDialog(true);
   };
-  
-  const hasUnsavedChanges = () => {
-    if (!formDataInicial) return false;
-    return JSON.stringify(formData) !== JSON.stringify(formDataInicial);
-  };
-  
+
   const handleCloseDialog = () => {
     if (hasUnsavedChanges()) {
       setConfirmClose(true);
@@ -235,7 +353,7 @@ const CardapiosModalidadePage: React.FC = () => {
       setOpenDialog(false);
     }
   };
-  
+
   const confirmCloseDialog = () => {
     setConfirmClose(false);
     setOpenDialog(false);
@@ -249,7 +367,7 @@ const CardapiosModalidadePage: React.FC = () => {
         setTouched({ modalidades_ids: true, nome: true, mes: true, ano: true });
         return;
       }
-      
+
       if (parseInt(formData.ano) < 2000 || parseInt(formData.ano) > 2100) {
         setErroCardapio('Ano deve estar entre 2000 e 2100');
         return;
@@ -282,449 +400,483 @@ const CardapiosModalidadePage: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (window.confirm('Remover este cardápio?')) {
-      try {
-        await removerCardapioMutation.mutateAsync(id);
-        toast.success('Cardápio removido!');
-      } catch (err) {
-        toast.error('Erro ao remover cardápio');
-      }
+  const openDeleteModal = (cardapio: CardapioModalidade) => {
+    setCardapioToDelete(cardapio);
+    setDeleteModalOpen(true);
+  };
+
+  const closeDeleteModal = () => {
+    setDeleteModalOpen(false);
+    setCardapioToDelete(null);
+  };
+
+  const handleDelete = async () => {
+    if (!cardapioToDelete) return;
+    try {
+      await removerCardapioMutation.mutateAsync(cardapioToDelete.id);
+      toast.success('Cardápio removido!');
+      closeDeleteModal();
+    } catch (err: any) {
+      const errorMessage = err?.response?.data?.message || 'Erro ao remover. O cardápio pode estar em uso.';
+      toast.error(errorMessage);
     }
   };
 
   return (
-    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
+    <Box
+      sx={{
+        height: 'calc(100vh - 56px)',
+        bgcolor: '#ffffff',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
       <PageContainer fullHeight>
-        <Card sx={{ borderRadius: '12px', p: 2, mb: 2 }}>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2 }}>
-            <TextField
-              placeholder="Buscar cardápios..."
-              value={filters.search || ''}
-              onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-              size="small"
-              sx={{ flex: 1, minWidth: '200px', '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon sx={{ color: 'text.secondary' }} />
-                  </InputAdornment>
-                ),
-                endAdornment: filters.search && (
-                  <InputAdornment position="end">
-                    <IconButton size="small" onClick={() => setFilters(prev => ({ ...prev, search: '' }))}>
-                      <ClearIcon fontSize="small" />
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-            />
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button variant="outlined" startIcon={<FilterIcon />} onClick={(e) => { setFilterAnchorEl(e.currentTarget); setFilterOpen(true); }} size="small">
-                Filtros
-              </Button>
-              <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpenDialog()} size="small" color="add">
-                Novo Cardápio
-              </Button>
-            </Box>
-          </Box>
-        </Card>
+        <PageHeader title="Cardápios" />
 
-        <TableFilter
-          open={filterOpen}
-          onClose={() => setFilterOpen(false)}
-          onApply={setFilters}
-          fields={filterFields}
-          initialValues={filters}
-          showSearch={false}
-          anchorEl={filterAnchorEl}
-        />
-
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 2, px: 1 }}>
-          <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 500 }}>
-            Exibindo {filteredCardapios.length} {filteredCardapios.length === 1 ? 'resultado' : 'resultados'}
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <StatusIndicator status="ativo" size="small" />
-              <Typography variant="body2" sx={{ color: '#495057', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                ATIVOS
-              </Typography>
-              <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 600 }}>
-                {filteredCardapios.filter(c => c.ativo).length}
-              </Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <StatusIndicator status="inativo" size="small" />
-              <Typography variant="body2" sx={{ color: '#495057', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                INATIVOS
-              </Typography>
-              <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 600 }}>
-                {filteredCardapios.filter(c => !c.ativo).length}
-              </Typography>
-            </Box>
-          </Box>
-        </Box>
-
+        {/* DataTable com altura fixa para scroll */}
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          {loading ? (
-            <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><CircularProgress size={60} /></CardContent></Card>
-          ) : filteredCardapios.length === 0 ? (
-            <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><CalendarIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} /><Typography variant="h6" sx={{ color: 'text.secondary' }}>Nenhum cardápio encontrado</Typography></CardContent></Card>
-          ) : (
-            <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', width: '100%', overflow: 'hidden' }}>
-              <TableContainer sx={{ flex: 1, minHeight: 0 }}>
-                <Table stickyHeader>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Nome</TableCell>
-                      <TableCell>Modalidade</TableCell>
-                      <TableCell>Competência</TableCell>
-                      <TableCell>Nutricionista</TableCell>
-                      <TableCell align="center">Refeições</TableCell>
-                      <TableCell align="center">Dias</TableCell>
-                      <TableCell align="center" width="120">Ações</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {paginatedCardapios.map((cardapio) => (
-                      <TableRow key={cardapio.id} hover>
-                        <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <StatusIndicator status={cardapio.ativo ? 'ativo' : 'inativo'} size="small" />
-                            <Typography variant="body2" sx={{ fontWeight: 600 }}>{cardapio.nome}</Typography>
-                          </Box>
-                        </TableCell>
-                        <TableCell>
-                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                            {(cardapio as any).modalidades_nomes ? (
-                              (cardapio as any).modalidades_nomes.split(', ').map((nome: string, idx: number) => (
-                                <Chip key={idx} label={nome} size="small" variant="outlined" />
-                              ))
-                            ) : (
-                              <Typography variant="body2" color="text.secondary">{cardapio.modalidade_nome}</Typography>
-                            )}
-                          </Box>
-                        </TableCell>
-                        <TableCell>
-                          <Box display="flex" alignItems="center" gap={1}>
-                            <CalendarIcon fontSize="small" color="action" />
-                            <Typography variant="body2">{MESES[cardapio.mes]} / {cardapio.ano}</Typography>
-                          </Box>
-                        </TableCell>
-                        <TableCell>
-                          {cardapio.nutricionista_nome ? (
-                            <Box>
-                              <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                {cardapio.nutricionista_nome}
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                CRN-{cardapio.nutricionista_crn_regiao} {cardapio.nutricionista_crn}
-                              </Typography>
-                            </Box>
-                          ) : (
-                            <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                              Não atribuído
-                            </Typography>
-                          )}
-                        </TableCell>
-                        <TableCell align="center">
-                          <Chip label={cardapio.total_refeicoes || 0} size="small" color="primary" variant="outlined" />
-                        </TableCell>
-                        <TableCell align="center">
-                          <Chip label={cardapio.total_dias || 0} size="small" />
-                        </TableCell>
-                        <TableCell align="center">
-                          <IconButton size="small" color="primary" onClick={() => navigate(`/cardapios/${cardapio.id}/calendario`)} title="Ver calendário">
-                            <ViewIcon fontSize="small" />
-                          </IconButton>
-                          <IconButton size="small" color="primary" onClick={() => handleOpenDialog(cardapio)} title="Editar">
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                          <IconButton size="small" color="delete" onClick={() => handleDelete(cardapio.id)} title="Remover">
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-              <CompactPagination
-                count={filteredCardapios.length}
-                page={page}
-                onPageChange={handleChangePage}
-                rowsPerPage={rowsPerPage}
-                onRowsPerPageChange={handleChangeRowsPerPage}
-                rowsPerPageOptions={[10, 25, 50, 100]}
-              />
-            </Box>
-          )}
+          <DataTable
+            data={cardapiosFiltrados}
+            columns={columns}
+            loading={loading}
+            onRowClick={handleRowClick}
+            searchPlaceholder="Buscar cardápios..."
+            onCreateClick={() => handleOpenDialog()}
+            createButtonLabel="Novo Cardápio"
+            onFilterClick={(e) => setFilterAnchorEl(e.currentTarget)}
+          />
         </Box>
       </PageContainer>
 
-      <Dialog 
-        open={openDialog} 
-        onClose={handleCloseDialog}
-        maxWidth="sm" 
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: '12px',
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            m: 0
-          }
+      {/* Popover de Filtros */}
+      <Popover
+        open={Boolean(filterAnchorEl)}
+        anchorEl={filterAnchorEl}
+        onClose={() => setFilterAnchorEl(null)}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
         }}
       >
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
-          <Typography variant="h6" component="span" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
-            {editMode ? 'Editar Cardápio' : 'Novo Cardápio'}
+        <Box sx={{ p: 2, minWidth: 280 }}>
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            Filtros
           </Typography>
-          <IconButton
-            size="small"
-            onClick={handleCloseDialog}
-            sx={{ color: 'text.secondary' }}
-          >
-            <ClearIcon fontSize="small" />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent sx={{ pt: 2, pb: 1 }}>
-          {erroCardapio && (
-            <Alert severity="error" sx={{ mb: 1.5, py: 0.5 }}>
-              <Typography variant="body2" sx={{ fontSize: '0.8125rem' }}>
-                {erroCardapio}
+
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Modalidade</InputLabel>
+            <Select
+              value={filters.modalidade}
+              label="Modalidade"
+              onChange={(e) => setFilters({ ...filters, modalidade: e.target.value })}
+            >
+              <MenuItem value="todos">Todas</MenuItem>
+              {modalidades.map((m) => (
+                <MenuItem key={m.id} value={m.id.toString()}>
+                  {m.nome}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Mês</InputLabel>
+            <Select
+              value={filters.mes}
+              label="Mês"
+              onChange={(e) => setFilters({ ...filters, mes: e.target.value })}
+            >
+              <MenuItem value="todos">Todos</MenuItem>
+              {Object.entries(MESES).map(([num, nome]) => (
+                <MenuItem key={num} value={num}>
+                  {nome}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Status</InputLabel>
+            <Select
+              value={filters.status}
+              label="Status"
+              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+            >
+              <MenuItem value="todos">Todos</MenuItem>
+              <MenuItem value="ativo">Ativos</MenuItem>
+              <MenuItem value="inativo">Inativos</MenuItem>
+            </Select>
+          </FormControl>
+
+          <Divider sx={{ my: 2 }} />
+
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => {
+                setFilters({ modalidade: 'todos', mes: 'todos', status: 'todos' });
+              }}
+            >
+              Limpar
+            </Button>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={() => setFilterAnchorEl(null)}
+            >
+              Aplicar
+            </Button>
+          </Box>
+
+          {/* Indicador de filtros ativos */}
+          {(filters.modalidade !== 'todos' || filters.mes !== 'todos' || filters.status !== 'todos') && (
+            <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ mb: 1, display: 'block' }}
+              >
+                Filtros ativos:
               </Typography>
+              <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                {filters.modalidade !== 'todos' && (
+                  <Chip
+                    label={`Modalidade: ${
+                      modalidades.find(m => m.id.toString() === filters.modalidade)?.nome || 'Selecionada'
+                    }`}
+                    size="small"
+                    onDelete={() => setFilters({ ...filters, modalidade: 'todos' })}
+                  />
+                )}
+                {filters.mes !== 'todos' && (
+                  <Chip
+                    label={`Mês: ${MESES[parseInt(filters.mes)]}`}
+                    size="small"
+                    onDelete={() => setFilters({ ...filters, mes: 'todos' })}
+                  />
+                )}
+                {filters.status !== 'todos' && (
+                  <Chip
+                    label={`Status: ${filters.status === 'ativo' ? 'Ativos' : 'Inativos'}`}
+                    size="small"
+                    onDelete={() => setFilters({ ...filters, status: 'todos' })}
+                  />
+                )}
+              </Box>
+            </Box>
+          )}
+        </Box>
+      </Popover>
+
+      {/* Modal de Criação/Edição */}
+      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ pb: 1 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box>
+              <Typography variant="h5" component="div" sx={{ fontWeight: 600 }}>
+                {editMode ? 'Editar Cardápio' : 'Novo Cardápio'}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                Preencha os dados do cardápio
+              </Typography>
+            </Box>
+            <IconButton size="small" onClick={handleCloseDialog} sx={{ color: 'text.secondary' }}>
+              <ClearIcon fontSize="small" />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent dividers>
+          {erroCardapio && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              <Typography variant="body2">{erroCardapio}</Typography>
             </Alert>
           )}
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            <Autocomplete
-              multiple
-              options={modalidades}
-              getOptionLabel={(option) => option.nome}
-              value={modalidades.filter(m => formData.modalidades_ids.includes(m.id))}
-              onChange={(_, newValue) => {
-                setFormData({ ...formData, modalidades_ids: newValue.map(m => m.id) });
-                if (erroCardapio) setErroCardapio("");
-              }}
-              onBlur={() => setTouched({ ...touched, modalidades_ids: true })}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Modalidades"
-                  required
-                  size="small"
-                  error={touched.modalidades_ids && formData.modalidades_ids.length === 0}
-                  helperText={
-                    touched.modalidades_ids && formData.modalidades_ids.length === 0
-                      ? "Selecione pelo menos uma modalidade"
-                      : "Selecione uma ou mais modalidades para este cardápio"
-                  }
-                />
-              )}
-              renderTags={(value, getTagProps) =>
-                value.map((option, index) => (
-                  <Chip
-                    label={option.nome}
-                    size="small"
-                    {...getTagProps({ index })}
-                  />
-                ))
-              }
-              noOptionsText="Nenhuma modalidade encontrada"
-              sx={{ mb: 0.5 }}
-            />
-
-            <TextField 
-              label="Nome do Cardápio" 
-              fullWidth 
-              required 
-              size="small"
-              value={formData.nome}
-              onChange={(e) => {
-                setFormData({ ...formData, nome: e.target.value });
-                if (erroCardapio) setErroCardapio("");
-              }}
-              onBlur={() => setTouched({ ...touched, nome: true })}
-              error={touched.nome && !formData.nome}
-              helperText={touched.nome && !formData.nome ? "Campo obrigatório" : ""}
-            />
-
-            <Grid container spacing={1.5}>
-              <Grid item xs={6}>
-                <FormControl 
-                  fullWidth 
-                  required 
-                  size="small"
-                  error={touched.mes && !formData.mes}
-                >
-                  <InputLabel>Mês</InputLabel>
-                  <Select 
-                    value={formData.mes} 
-                    onChange={(e) => {
-                      setFormData({ ...formData, mes: e.target.value });
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 2 }}>
+            {/* Informações Básicas */}
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: 'primary.main' }}>
+                Informações Básicas
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <Autocomplete
+                    multiple
+                    options={modalidades}
+                    getOptionLabel={(option) => option.nome}
+                    value={modalidades.filter(m => formData.modalidades_ids.includes(m.id))}
+                    onChange={(_, newValue) => {
+                      setFormData({ ...formData, modalidades_ids: newValue.map(m => m.id) });
                       if (erroCardapio) setErroCardapio("");
                     }}
-                    onBlur={() => setTouched({ ...touched, mes: true })}
-                    label="Mês"
+                    onBlur={() => setTouched({ ...touched, modalidades_ids: true })}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Modalidades"
+                        required
+                        error={touched.modalidades_ids && formData.modalidades_ids.length === 0}
+                        helperText={
+                          touched.modalidades_ids && formData.modalidades_ids.length === 0
+                            ? "Selecione pelo menos uma modalidade"
+                            : "Selecione uma ou mais modalidades para este cardápio"
+                        }
+                      />
+                    )}
+                    renderTags={(value, getTagProps) =>
+                      value.map((option, index) => (
+                        <Chip
+                          label={option.nome}
+                          size="small"
+                          {...getTagProps({ index })}
+                        />
+                      ))
+                    }
+                    noOptionsText="Nenhuma modalidade encontrada"
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    label="Nome do Cardápio"
+                    fullWidth
+                    required
+                    value={formData.nome}
+                    onChange={(e) => {
+                      setFormData({ ...formData, nome: e.target.value });
+                      if (erroCardapio) setErroCardapio("");
+                    }}
+                    onBlur={() => setTouched({ ...touched, nome: true })}
+                    error={touched.nome && !formData.nome}
+                    helperText={touched.nome && !formData.nome ? "Campo obrigatório" : ""}
+                    placeholder="Ex: Cardápio Março 2024"
+                  />
+                </Grid>
+                <Grid item xs={6}>
+                  <FormControl
+                    fullWidth
+                    required
+                    error={touched.mes && !formData.mes}
                   >
-                    {Object.entries(MESES).map(([num, nome]) => <MenuItem key={num} value={num}>{nome}</MenuItem>)}
-                  </Select>
-                  {touched.mes && !formData.mes && (
-                    <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
-                      Campo obrigatório
-                    </Typography>
-                  )}
-                </FormControl>
-              </Grid>
-              <Grid item xs={6}>
-                <TextField 
-                  label="Ano" 
-                  type="number" 
-                  fullWidth 
-                  required 
-                  size="small"
-                  value={formData.ano}
-                  onChange={(e) => {
-                    setFormData({ ...formData, ano: e.target.value });
-                    if (erroCardapio) setErroCardapio("");
-                  }}
-                  onBlur={() => setTouched({ ...touched, ano: true })}
-                  error={touched.ano && !formData.ano}
-                  helperText={touched.ano && !formData.ano ? "Campo obrigatório" : ""}
-                  inputProps={{ min: 2000, max: 2100 }}
-                />
-              </Grid>
-            </Grid>
-
-            <TextField 
-              label="Observação" 
-              fullWidth 
-              multiline 
-              rows={3} 
-              size="small"
-              value={formData.observacao}
-              onChange={(e) => setFormData({ ...formData, observacao: e.target.value })} 
-            />
-
-            <Box sx={{ borderTop: '1px solid #e0e0e0', pt: 1.5, mt: 0.5 }}>
-              <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, color: 'primary.main' }}>
-                Aprovação Nutricional
-              </Typography>
-              
-              <FormControl fullWidth size="small" sx={{ mb: 1.5 }}>
-                <InputLabel>Nutricionista Responsável</InputLabel>
-                <Select 
-                  value={formData.nutricionista_id} 
-                  onChange={(e) => setFormData({ ...formData, nutricionista_id: e.target.value })}
-                  label="Nutricionista Responsável"
-                >
-                  <MenuItem value="">
-                    <em>Nenhum</em>
-                  </MenuItem>
-                  {nutricionistas.filter(n => n.ativo).map((n) => (
-                    <MenuItem key={n.id} value={n.id}>
-                      {n.nome} - CRN-{n.crn_regiao} {n.crn}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              {formData.nutricionista_id && (
-                <>
-                  <TextField 
-                    label="Data de Aprovação" 
-                    type="date" 
-                    fullWidth 
-                    size="small"
-                    value={formData.data_aprovacao_nutricionista}
-                    onChange={(e) => setFormData({ ...formData, data_aprovacao_nutricionista: e.target.value })}
-                    InputLabelProps={{ shrink: true }}
-                    sx={{ mb: 1.5 }}
+                    <InputLabel>Mês</InputLabel>
+                    <Select
+                      value={formData.mes}
+                      onChange={(e) => {
+                        setFormData({ ...formData, mes: e.target.value });
+                        if (erroCardapio) setErroCardapio("");
+                      }}
+                      onBlur={() => setTouched({ ...touched, mes: true })}
+                      label="Mês"
+                    >
+                      {Object.entries(MESES).map(([num, nome]) => (
+                        <MenuItem key={num} value={num}>
+                          {nome}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={6}>
+                  <TextField
+                    label="Ano"
+                    type="number"
+                    fullWidth
+                    required
+                    value={formData.ano}
+                    onChange={(e) => {
+                      setFormData({ ...formData, ano: e.target.value });
+                      if (erroCardapio) setErroCardapio("");
+                    }}
+                    onBlur={() => setTouched({ ...touched, ano: true })}
+                    error={touched.ano && !formData.ano}
+                    helperText={touched.ano && !formData.ano ? "Campo obrigatório" : ""}
+                    inputProps={{ min: 2000, max: 2100 }}
                   />
-
-                  <TextField 
-                    label="Observações do Nutricionista" 
-                    fullWidth 
-                    multiline 
-                    rows={2} 
-                    size="small"
-                    value={formData.observacoes_nutricionista}
-                    onChange={(e) => setFormData({ ...formData, observacoes_nutricionista: e.target.value })}
-                    placeholder="Observações técnicas sobre o cardápio..."
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    label="Observação"
+                    fullWidth
+                    multiline
+                    rows={3}
+                    value={formData.observacao}
+                    onChange={(e) => setFormData({ ...formData, observacao: e.target.value })}
+                    placeholder="Observações gerais sobre o cardápio"
                   />
-                </>
-              )}
+                </Grid>
+              </Grid>
             </Box>
 
-            <FormControl fullWidth size="small">
-              <InputLabel>Status</InputLabel>
-              <Select 
-                value={formData.ativo ? 'ativo' : 'inativo'}
-                onChange={(e) => setFormData({ ...formData, ativo: e.target.value === 'ativo' })} 
-                label="Status"
-              >
-                <MenuItem value="ativo">Ativo</MenuItem>
-                <MenuItem value="inativo">Inativo</MenuItem>
-              </Select>
-            </FormControl>
+            <Divider />
+
+            {/* Aprovação Nutricional */}
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: 'primary.main' }}>
+                Aprovação Nutricional
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <FormControl fullWidth>
+                    <InputLabel>Nutricionista Responsável</InputLabel>
+                    <Select
+                      value={formData.nutricionista_id}
+                      onChange={(e) => setFormData({ ...formData, nutricionista_id: e.target.value })}
+                      label="Nutricionista Responsável"
+                    >
+                      <MenuItem value="">
+                        <em>Nenhum</em>
+                      </MenuItem>
+                      {nutricionistas && Array.isArray(nutricionistas) && nutricionistas.filter(n => n.ativo).map((n) => (
+                        <MenuItem key={n.id} value={n.id}>
+                          {n.nome} - CRN-{n.crn_regiao} {n.crn}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                {formData.nutricionista_id && (
+                  <>
+                    <Grid item xs={12}>
+                      <TextField
+                        label="Data de Aprovação"
+                        type="date"
+                        fullWidth
+                        value={formData.data_aprovacao_nutricionista}
+                        onChange={(e) => setFormData({ ...formData, data_aprovacao_nutricionista: e.target.value })}
+                        InputLabelProps={{ shrink: true }}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <TextField
+                        label="Observações do Nutricionista"
+                        fullWidth
+                        multiline
+                        rows={2}
+                        value={formData.observacoes_nutricionista}
+                        onChange={(e) => setFormData({ ...formData, observacoes_nutricionista: e.target.value })}
+                        placeholder="Observações técnicas sobre o cardápio..."
+                      />
+                    </Grid>
+                  </>
+                )}
+              </Grid>
+            </Box>
+
+            <Divider />
+
+            {/* Status */}
+            <Box>
+              <FormControl fullWidth>
+                <InputLabel>Status</InputLabel>
+                <Select
+                  value={formData.ativo ? 'ativo' : 'inativo'}
+                  onChange={(e) => setFormData({ ...formData, ativo: e.target.value === 'ativo' })}
+                  label="Status"
+                >
+                  <MenuItem value="ativo">Ativo</MenuItem>
+                  <MenuItem value="inativo">Inativo</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
           </Box>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
-          <Button onClick={handleCloseDialog} sx={{ color: 'text.secondary' }}>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button
+            onClick={handleCloseDialog}
+            variant="outlined"
+            disabled={criarCardapioMutation.isPending || editarCardapioMutation.isPending}
+          >
             Cancelar
           </Button>
-          <Button onClick={handleSubmit} variant="contained">
-            {editMode ? 'Salvar' : 'Criar'}
+          <Button
+            onClick={handleSubmit}
+            variant="contained"
+            disabled={
+              criarCardapioMutation.isPending ||
+              editarCardapioMutation.isPending ||
+              formData.modalidades_ids.length === 0 ||
+              !formData.nome.trim()
+            }
+            startIcon={
+              (criarCardapioMutation.isPending || editarCardapioMutation.isPending) ? (
+                <CircularProgress size={20} />
+              ) : null
+            }
+          >
+            {(criarCardapioMutation.isPending || editarCardapioMutation.isPending)
+              ? 'Salvando...'
+              : editMode
+              ? 'Salvar Cardápio'
+              : 'Criar Cardápio'}
           </Button>
         </DialogActions>
       </Dialog>
-      
+
+      {/* Modal de Confirmação de Exclusão */}
+      <Dialog open={deleteModalOpen} onClose={closeDeleteModal} maxWidth="xs" fullWidth>
+        <DialogTitle>Confirmar Exclusão</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Tem certeza que deseja excluir o cardápio "{cardapioToDelete?.nome}"? Esta ação não pode ser desfeita.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeDeleteModal} disabled={removerCardapioMutation.isPending}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleDelete}
+            color="error"
+            variant="contained"
+            disabled={removerCardapioMutation.isPending}
+          >
+            {removerCardapioMutation.isPending ? 'Excluindo...' : 'Excluir'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Dialog de confirmação para fechar */}
-      <Dialog 
-        open={confirmClose} 
-        onClose={() => setConfirmClose(false)}
-        maxWidth="xs"
-        PaperProps={{
-          sx: {
-            borderRadius: '12px',
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            m: 0
-          }
-        }}
-      >
-        <DialogTitle sx={{ pb: 1 }}>
-          <Typography variant="h6" component="span" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
+      <Dialog open={confirmClose} onClose={() => setConfirmClose(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>
+          <Typography variant="h6" component="span" sx={{ fontWeight: 600 }}>
             Descartar alterações?
           </Typography>
         </DialogTitle>
-        <DialogContent sx={{ pt: 2, pb: 1 }}>
+        <DialogContent>
           <Typography variant="body2">
             Você tem alterações não salvas. Deseja realmente descartar essas alterações?
           </Typography>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
-          <Button onClick={() => setConfirmClose(false)} variant="outlined" size="small">
+        <DialogActions>
+          <Button onClick={() => setConfirmClose(false)} variant="outlined">
             Continuar Editando
           </Button>
-          <Button onClick={confirmCloseDialog} color="delete" variant="contained" size="small">
+          <Button onClick={confirmCloseDialog} color="error" variant="contained">
             Descartar
           </Button>
         </DialogActions>
       </Dialog>
 
-      <LoadingOverlay 
-        open={criarCardapioMutation.isPending || editarCardapioMutation.isPending || removerCardapioMutation.isPending}
+      <LoadingOverlay
+        open={
+          criarCardapioMutation.isPending ||
+          editarCardapioMutation.isPending ||
+          removerCardapioMutation.isPending
+        }
         message={
-          criarCardapioMutation.isPending ? 'Criando cardápio...' :
-          editarCardapioMutation.isPending ? 'Salvando cardápio...' :
-          removerCardapioMutation.isPending ? 'Excluindo cardápio...' :
-          'Processando...'
+          criarCardapioMutation.isPending
+            ? 'Criando cardápio...'
+            : editarCardapioMutation.isPending
+            ? 'Salvando cardápio...'
+            : removerCardapioMutation.isPending
+            ? 'Excluindo cardápio...'
+            : 'Processando...'
         }
       />
     </Box>

@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { ColumnDef } from '@tanstack/react-table';
 import StatusIndicator from '../components/StatusIndicator';
 import PageContainer from '../components/PageContainer';
+import PageHeader from '../components/PageHeader';
+import { DataTableAdvanced } from '../components/DataTableAdvanced';
 import TableFilter, { FilterField } from '../components/TableFilter';
 import CompactPagination from '../components/CompactPagination';
 import {
@@ -27,12 +30,17 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Paper
+  Paper,
+  Popover,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Menu
 } from '@mui/material';
 import { 
   Search as SearchIcon, 
   Download as DownloadIcon, 
-  Refresh as RefreshIcon, 
   FilterList as FilterIcon, 
   Restaurant as RestaurantIcon, 
   History as HistoryIcon,
@@ -187,6 +195,7 @@ const SaldoContratosModalidades: React.FC = () => {
   const [filterOpen, setFilterOpen] = useState(false);
   const [filterAnchorEl, setFilterAnchorEl] = useState<HTMLElement | null>(null);
   const [filters, setFilters] = useState<Record<string, any>>({});
+  const [importExportMenuAnchor, setImportExportMenuAnchor] = useState<HTMLElement | null>(null);
 
   // Filtros para API
   const [filtros, setFiltros] = useState<SaldoContratosModalidadesFilters>({
@@ -215,7 +224,6 @@ const SaldoContratosModalidades: React.FC = () => {
   // Extrair dados da resposta
   const dados = responseData?.data || [];
   const total = responseData?.pagination?.total || 0;
-  const estatisticas = responseData?.estatisticas || null;
   const historicoConsumo = historicoData?.data?.historico || [];
 
   // Definir campos de filtro
@@ -373,7 +381,6 @@ const SaldoContratosModalidades: React.FC = () => {
       // Tab no modal de edição de quantidade - ir para próxima modalidade
       if (e.key === 'Tab' && dialogQuantidadeInicial && !e.shiftKey) {
         e.preventDefault();
-        console.log('Tab pressionado - salvando e indo para próxima modalidade');
         salvarEProximaModalidade();
         return;
       }
@@ -381,7 +388,6 @@ const SaldoContratosModalidades: React.FC = () => {
       // Enter no modal de edição - salvar e fechar
       if (e.key === 'Enter' && dialogQuantidadeInicial) {
         e.preventDefault();
-        console.log('Enter pressionado - salvando e fechando');
         salvarQuantidadeInicial();
         return;
       }
@@ -416,8 +422,6 @@ const SaldoContratosModalidades: React.FC = () => {
   };
 
   const abrirDialogGerenciarModalidades = async (produto: any) => {
-    console.log('Produto recebido:', produto);
-    setProdutoSelecionado(produto);
     setError(null);
     setDialogGerenciarModalidades(true);
     setCarregandoModalidades(true);
@@ -434,18 +438,22 @@ const SaldoContratosModalidades: React.FC = () => {
         (item: any) => item.contrato_produto_id === produto.contrato_produto_id
       );
 
-      console.log('Modalidades atualizadas:', modalidadesAtualizadas);
-
-      // Se encontrou modalidades, pegar o nome do produto da primeira
+      // SEMPRE usar os dados do servidor se disponíveis
       if (modalidadesAtualizadas.length > 0) {
+        const primeiraModalidade = modalidadesAtualizadas[0];
         const produtoAtualizado = {
-          ...produto,
-          produto_nome: modalidadesAtualizadas[0].produto_nome,
-          unidade: modalidadesAtualizadas[0].unidade,
-          quantidade_contrato: modalidadesAtualizadas[0].quantidade_contrato || produto.quantidade_contrato
+          contrato_produto_id: produto.contrato_produto_id,
+          produto_nome: primeiraModalidade.produto_nome,
+          contrato_numero: primeiraModalidade.contrato_numero,
+          fornecedor_nome: primeiraModalidade.fornecedor_nome,
+          unidade: primeiraModalidade.unidade,
+          quantidade_contrato: primeiraModalidade.quantidade_contrato || produto.quantidade_contrato,
+          preco_unitario: primeiraModalidade.preco_unitario
         };
-        console.log('Produto atualizado:', produtoAtualizado);
         setProdutoSelecionado(produtoAtualizado);
+      } else {
+        // Se não encontrou modalidades, usar o produto original
+        setProdutoSelecionado(produto);
       }
 
       // Carregar todas as modalidades disponíveis
@@ -470,6 +478,8 @@ const SaldoContratosModalidades: React.FC = () => {
     } catch (error) {
       console.error('Erro ao carregar modalidades:', error);
       setModalidadesProduto([]);
+      // Mesmo com erro, tentar usar o produto original
+      setProdutoSelecionado(produto);
     } finally {
       setCarregandoModalidades(false);
     }
@@ -604,14 +614,11 @@ const SaldoContratosModalidades: React.FC = () => {
   };
 
   const salvarEProximaModalidade = async () => {
-    console.log('salvarEProximaModalidade chamada');
     if (!produtoSelecionado || !modalidadeSelecionada) {
-      console.log('Produto ou modalidade não selecionados');
       return;
     }
 
     const novaQuantidade = parseFloat(quantidadeInicial);
-    console.log('Nova quantidade:', novaQuantidade);
 
     if (isNaN(novaQuantidade) || novaQuantidade < 0) {
       setError('Quantidade deve ser um número válido e não negativo');
@@ -641,8 +648,6 @@ const SaldoContratosModalidades: React.FC = () => {
       setError(`A soma das modalidades não pode exceder a quantidade contratada`);
       return;
     }
-
-    console.log('Iniciando salvamento...');
 
     try {
       await cadastrarSaldoMutation.mutateAsync({
@@ -875,25 +880,100 @@ const SaldoContratosModalidades: React.FC = () => {
     }));
   };
 
-  // Aplicar filtros do TableFilter aos dados
-  const filteredData = useMemo(() => {
-    return agruparPorProduto(dados).filter(produto => {
-      // Busca por palavra-chave
-      if (filters.search) {
-        const searchLower = filters.search.toLowerCase();
-        if (!produto.produto_nome.toLowerCase().includes(searchLower)) {
-          return false;
-        }
-      }
-      
-      // Filtro por status
-      if (filters.status && produto.status !== filters.status) {
-        return false;
-      }
-      
-      return true;
-    });
-  }, [dados, filters]);
+  // Aplicar apenas filtro de busca local (status já vem filtrado do servidor)
+  const produtosAgrupados = useMemo(() => {
+    return agruparPorProduto(dados);
+  }, [dados]);
+
+  // Definir colunas do DataTable
+  const columns = useMemo<ColumnDef<any>[]>(() => [
+    {
+      accessorKey: 'produto_nome',
+      header: 'Produto',
+      size: 300,
+      enableSorting: true,
+      cell: ({ row }) => {
+        const produto = row.original;
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <StatusIndicator 
+              status={produto.status === 'ESGOTADO' ? 'error' : produto.status === 'BAIXO_ESTOQUE' ? 'warning' : 'success'} 
+              size="small" 
+            />
+            <Box>
+              <Typography variant="body2" fontWeight="bold">
+                {produto.produto_nome}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {produto.contratos.length} contrato(s)
+              </Typography>
+            </Box>
+          </Box>
+        );
+      },
+    },
+    {
+      accessorKey: 'unidade',
+      header: 'Unidade',
+      size: 100,
+      align: 'center',
+      enableSorting: true,
+    },
+    {
+      accessorKey: 'total_inicial',
+      header: 'Total Inicial',
+      size: 130,
+      align: 'right',
+      enableSorting: true,
+      cell: ({ getValue }) => formatarNumero(getValue() as number),
+    },
+    {
+      accessorKey: 'total_consumido',
+      header: 'Total Consumido',
+      size: 150,
+      align: 'right',
+      enableSorting: true,
+      cell: ({ getValue }) => formatarNumero(getValue() as number),
+    },
+    {
+      accessorKey: 'total_disponivel',
+      header: 'Total Disponível',
+      size: 150,
+      align: 'right',
+      enableSorting: true,
+      cell: ({ getValue }) => (
+        <Typography variant="body2" fontWeight="bold" color="primary">
+          {formatarNumero(getValue() as number)}
+        </Typography>
+      ),
+    },
+    {
+      id: 'actions',
+      header: 'Ações',
+      size: 180,
+      align: 'center',
+      cell: ({ row }) => {
+        const produto = row.original;
+        return (
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (produto.contratos.length > 1) {
+                abrirDialogSelecionarContrato(produto);
+              } else {
+                abrirDialogGerenciarModalidades(produto.contratos[0]);
+              }
+            }}
+            sx={{ fontSize: '0.75rem' }}
+          >
+            Gerenciar Modalidades
+          </Button>
+        );
+      },
+    },
+  ], []);
 
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);
@@ -937,6 +1017,10 @@ const SaldoContratosModalidades: React.FC = () => {
   };
 
   const formatarNumero = (valor: number) => {
+    // Tratar valores inválidos
+    if (valor === null || valor === undefined || isNaN(valor)) {
+      return '0,00';
+    }
     return new Intl.NumberFormat('pt-BR', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
@@ -963,72 +1047,21 @@ const SaldoContratosModalidades: React.FC = () => {
   }
 
   return (
-    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <PageContainer fullHeight>
-        <Card sx={{ borderRadius: '12px', p: 2, mb: 2 }}>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2 }}>
-            <TextField
-              placeholder="Pesquisar produto..."
-              value={filters.search || ''}
-              onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-              size="small"
-              sx={{ flex: 1, minWidth: '200px', '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon sx={{ color: 'text.secondary' }} />
-                  </InputAdornment>
-                ),
-                endAdornment: filters.search && (
-                  <InputAdornment position="end">
-                    <IconButton size="small" onClick={() => setFilters(prev => ({ ...prev, search: '' }))}>
-                      <ClearIcon fontSize="small" />
-                    </IconButton>
-                  </InputAdornment>
-                )
-              }}
-            />
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button
-                variant="outlined"
-                startIcon={<FilterIcon />}
-                onClick={(e) => { setFilterAnchorEl(e.currentTarget); setFilterOpen(true); }}
-                size="small"
-              >
-                Filtros
-              </Button>
-              <Tooltip title="Atualizar">
-                <IconButton size="small" onClick={carregarDados} disabled={loading}>
-                  <RefreshIcon />
-                </IconButton>
-              </Tooltip>
-              <Button size="small" variant="outlined" startIcon={<DownloadIcon />} onClick={exportarCSV} disabled={loading}>
-                Exportar
-              </Button>
-            </Box>
-          </Box>
-        </Card>
+        <PageHeader title="Saldo Contratos por Modalidade" />
 
-        <TableFilter
-          open={filterOpen}
-          onClose={() => setFilterOpen(false)}
-          onApply={setFilters}
-          fields={filterFields}
-          initialValues={filters}
-          showSearch={false}
-          anchorEl={filterAnchorEl}
-        />
-
+        {/* Legenda de Status */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 2, px: 1 }}>
           <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 500 }}>
-            Exibindo {filteredData.length} {filteredData.length === 1 ? 'produto' : 'produtos'}
+            Exibindo {produtosAgrupados.length} {produtosAgrupados.length === 1 ? 'produto' : 'produtos'}
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             {(() => {
               const statusLegend = [
-                { status: 'success', label: 'DISPONÍVEL', count: filteredData.filter(p => p.status === 'DISPONIVEL').length },
-                { status: 'warning', label: 'BAIXO ESTOQUE', count: filteredData.filter(p => p.status === 'BAIXO_ESTOQUE').length },
-                { status: 'error', label: 'ESGOTADO', count: filteredData.filter(p => p.status === 'ESGOTADO').length }
+                { status: 'success', label: 'DISPONÍVEL', count: produtosAgrupados.filter(p => p.status === 'DISPONIVEL').length },
+                { status: 'warning', label: 'BAIXO ESTOQUE', count: produtosAgrupados.filter(p => p.status === 'BAIXO_ESTOQUE').length },
+                { status: 'error', label: 'ESGOTADO', count: produtosAgrupados.filter(p => p.status === 'ESGOTADO').length }
               ];
               return statusLegend.map((item) => (
                 <Box key={item.status} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -1045,132 +1078,96 @@ const SaldoContratosModalidades: React.FC = () => {
           </Box>
         </Box>
 
+        {/* DataTableAdvanced */}
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-
-        {loading ? (
-          <Card>
-            <CardContent sx={{ textAlign: 'center', py: 6 }}>
-              <CircularProgress />
-              <Typography variant="body2" sx={{ mt: 2 }}>Carregando...</Typography>
-            </CardContent>
-          </Card>
-        ) : total === 0 ? (
-          <Card>
-            <CardContent sx={{ textAlign: 'center', py: 6 }}>
-              <Typography variant="h6" sx={{ color: 'text.secondary' }}>
-                Nenhum produto encontrado
-              </Typography>
-            </CardContent>
-          </Card>
-        ) : (
-          <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', width: '100%', overflow: 'hidden' }}>
-            <TableContainer sx={{ flex: 1, minHeight: 0 }}>
-              <Table stickyHeader>
-                <TableHead>
-                  <TableRow>
-                    <TableCell sx={{ width: '30%' }}>Produto</TableCell>
-                    <TableCell align="center" sx={{ width: '10%' }}>Unidade</TableCell>
-                    <TableCell align="center" sx={{ width: '15%' }}>Total Inicial</TableCell>
-                    <TableCell align="center" sx={{ width: '15%' }}>Total Consumido</TableCell>
-                    <TableCell align="center" sx={{ width: '15%' }}>Total Disponível</TableCell>
-                    <TableCell align="center" sx={{ width: '15%' }}>Ações</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {loading && dados.length > 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} align="center">
-                        <CircularProgress size={24} />
-                      </TableCell>
-                    </TableRow>
-                  ) : dados.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} align="center">
-                        Nenhum resultado encontrado
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredData.map((produto, index) => (
-                      <TableRow
-                        key={produto.produto_nome}
-                        data-row-index={index}
-                        hover
-                        sx={{
-                          backgroundColor: linhaSelecionada === index ? '#e3f2fd' : 'inherit',
-                          cursor: 'pointer',
-                          '&:hover': {
-                            backgroundColor: linhaSelecionada === index ? '#bbdefb' : undefined
-                          }
-                        }}
-                        onClick={() => setLinhaSelecionada(index)}
-                        onDoubleClick={() => produto.contratos.length > 1 ? abrirDialogSelecionarContrato(produto) : abrirDialogGerenciarModalidades(produto.contratos[0])}
-                      >
-                        <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <StatusIndicator status={produto.status === 'ESGOTADO' ? 'error' : produto.status === 'BAIXO_ESTOQUE' ? 'warning' : 'success'} size="small" />
-                            <Box>
-                              <Typography variant="body2" fontWeight="bold">
-                                {produto.produto_nome}
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                {produto.contratos.length} contrato(s)
-                              </Typography>
-                            </Box>
-                          </Box>
-                        </TableCell>
-                        <TableCell align="center">{produto.unidade}</TableCell>
-                        <TableCell align="center">{formatarNumero(produto.total_inicial)}</TableCell>
-                        <TableCell align="center">{formatarNumero(produto.total_consumido)}</TableCell>
-                        <TableCell align="center">
-                          <Typography variant="body2" fontWeight="bold" color="primary">
-                            {formatarNumero(produto.total_disponivel)}
-                          </Typography>
-                        </TableCell>
-                        <TableCell align="center">
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            onClick={() => produto.contratos.length > 1 ? abrirDialogSelecionarContrato(produto) : abrirDialogGerenciarModalidades(produto.contratos[0])}
-                            sx={{ fontSize: '0.75rem' }}
-                          >
-                            Gerenciar Modalidades
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-
-            <CompactPagination
-              count={total}
-              page={page}
-              onPageChange={(_, newPage) => {
-                setPage(newPage);
-                setFiltros({ ...filtros, page: newPage + 1 });
-              }}
-              rowsPerPage={rowsPerPage}
-              onRowsPerPageChange={(event) => {
-                const newRowsPerPage = parseInt(event.target.value, 10);
-                setRowsPerPage(newRowsPerPage);
-                setPage(0);
-                setFiltros({ ...filtros, page: 1, limit: newRowsPerPage });
-              }}
-              rowsPerPageOptions={[10, 25, 50, 100]}
-            />
-          </Box>
-        )}
+          <DataTableAdvanced
+            data={produtosAgrupados}
+            columns={columns}
+            loading={loading}
+            onRowClick={(produto: any) => {
+              if (produto.contratos.length > 1) {
+                abrirDialogSelecionarContrato(produto);
+              } else {
+                abrirDialogGerenciarModalidades(produto.contratos[0]);
+              }
+            }}
+            searchPlaceholder="Buscar produtos..."
+            onFilterClick={(e) => setFilterAnchorEl(e.currentTarget)}
+            onImportExportClick={(e) => setImportExportMenuAnchor(e.currentTarget)}
+            emptyMessage="Nenhum produto encontrado"
+          />
         </Box>
+
+        {/* Popover de Filtros */}
+        <Popover
+          open={Boolean(filterAnchorEl)}
+          anchorEl={filterAnchorEl}
+          onClose={() => setFilterAnchorEl(null)}
+          anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'right',
+          }}
+          transformOrigin={{
+            vertical: 'top',
+            horizontal: 'right',
+          }}
+        >
+          <Box sx={{ p: 2, minWidth: 250 }}>
+            <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600 }}>
+              Filtros
+            </Typography>
+
+            <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+              <InputLabel>Status do Produto</InputLabel>
+              <Select
+                value={filters.status || ''}
+                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                label="Status do Produto"
+              >
+                <MenuItem value="">Todos</MenuItem>
+                <MenuItem value="DISPONIVEL">Disponível</MenuItem>
+                <MenuItem value="BAIXO_ESTOQUE">Baixo Estoque</MenuItem>
+                <MenuItem value="ESGOTADO">Esgotado</MenuItem>
+              </Select>
+            </FormControl>
+
+            <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+              <Button
+                size="small"
+                onClick={() => {
+                  setFilters({});
+                  setFilterAnchorEl(null);
+                }}
+              >
+                Limpar
+              </Button>
+              <Button
+                size="small"
+                variant="contained"
+                onClick={() => setFilterAnchorEl(null)}
+              >
+                Aplicar
+              </Button>
+            </Box>
+          </Box>
+        </Popover>
       </PageContainer>
 
       {/* Modais fora do PageContainer */}
+
+      {/* Menu Importar/Exportar */}
+      <Menu
+        anchorEl={importExportMenuAnchor}
+        open={Boolean(importExportMenuAnchor)}
+        onClose={() => setImportExportMenuAnchor(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <MenuItem onClick={() => { setImportExportMenuAnchor(null); exportarCSV(); }} disabled={loading}>
+          <DownloadIcon sx={{ mr: 1, fontSize: 18 }} />
+          Exportar CSV
+        </MenuItem>
+      </Menu>
       
       {/* Modal de Seleção de Contrato */}
         <Dialog
@@ -1348,12 +1345,10 @@ const SaldoContratosModalidades: React.FC = () => {
             if (e.key === 'Tab' && !e.shiftKey) {
               e.preventDefault();
               e.stopPropagation();
-              console.log('Tab capturado no Dialog');
               salvarEProximaModalidade();
             } else if (e.key === 'Enter') {
               e.preventDefault();
               e.stopPropagation();
-              console.log('Enter capturado no Dialog');
               salvarQuantidadeInicial();
             }
           }}
@@ -1364,9 +1359,9 @@ const SaldoContratosModalidades: React.FC = () => {
               Editar Quantidade Inicial
             </Box>
             {modalidadeSelecionada && (
-              <Typography variant="h6" sx={{ fontWeight: 'bold', fontSize: '1.25rem' }}>
+              <Box component="span" sx={{ fontWeight: 'bold', fontSize: '1.25rem', display: 'block' }}>
                 Modalidade: {modalidadeSelecionada.nome}
-              </Typography>
+              </Box>
             )}
           </DialogTitle>
           <DialogContent>

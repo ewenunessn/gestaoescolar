@@ -85,7 +85,7 @@ const getMenuConfig = (_configModuloSaldo: any) => [
   {
     category: "Cardápios",
     items: [
-      { text: "Refeições", icon: <Restaurant fontSize="small" />, path: "/refeicoes" },
+      { text: "Preparações", icon: <Restaurant fontSize="small" />, path: "/preparacoes" },
       { text: "Cardápios", icon: <MenuBook fontSize="small" />,   path: "/cardapios" },
     ],
   },

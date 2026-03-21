@@ -272,7 +272,7 @@ export default function CalendarioCardapio({
                 {/* Refeições com texto */}
                 <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0.25, overflow: 'hidden' }}>
                   {refeicoesNoDia.slice(0, 3).map(refeicao => {
-                    // Extrair apenas o nome da refeição (depois do ":")
+                    // Extrair apenas o nome da preparação (depois do ":")
                     const nomeRefeicao = refeicao.titulo.includes(':') 
                       ? refeicao.titulo.split(':')[1].trim() 
                       : refeicao.titulo;

@@ -25,7 +25,6 @@ interface EscolaValidada {
   telefone?: string;
   nome_gestor?: string;
   administracao?: 'municipal' | 'estadual' | 'federal' | 'particular';
-  codigo_acesso?: string;
   ativo: boolean;
   status: 'valido' | 'erro' | 'aviso';
 }
@@ -53,10 +52,10 @@ const ImportacaoEscolas: React.FC<ImportacaoEscolasProps> = ({ open, onClose, on
   };
 
   const gerarModeloExcel = () => {
-    const headers = [ 'Nome', 'Endereço', 'Município', 'Telefone', 'Email', 'Gestor', 'Administração', 'Código de Acesso', 'Ativo', 'Modalidades' ];
+    const headers = [ 'Nome', 'Código INEP', 'Endereço', 'Município', 'Telefone', 'Email', 'Gestor', 'Administração', 'Ativo', 'Modalidades' ];
     const exemplos = [
-        ['Escola Exemplo 1', 'Rua das Flores, 123', 'São Paulo', '(11) 99999-9999', 'escola1@email.com', 'Maria Santos', 'Municipal', 'ESC001', 'Sim', 'Ensino Fundamental, EJA'],
-        ['Escola Exemplo 2', 'Avenida Principal, 456', 'Rio de Janeiro', '(21) 88888-8888', 'escola2@email.com', 'João Oliveira', 'Estadual', 'ESC002', 'Sim', 'Ensino Médio'],
+        ['Escola Exemplo 1', '12345678', 'Rua das Flores, 123', 'São Paulo', '(11) 99999-9999', 'escola1@email.com', 'Maria Santos', 'Municipal', 'Sim', 'Ensino Fundamental, EJA'],
+        ['Escola Exemplo 2', '87654321', 'Avenida Principal, 456', 'Rio de Janeiro', '(21) 88888-8888', 'escola2@email.com', 'João Oliveira', 'Estadual', 'Sim', 'Ensino Médio'],
       ];
     const ws = XLSX.utils.aoa_to_sheet([headers, ...exemplos]);
     ws['!cols'] = headers.map(h => ({ wch: Math.max(h.length + 10, 18) }));
@@ -98,7 +97,6 @@ const ImportacaoEscolas: React.FC<ImportacaoEscolasProps> = ({ open, onClose, on
         telefone: String(linha.telefone || linha['Telefone'] || '').trim(),
         nome_gestor: String(linha.nome_gestor || linha['Gestor'] || linha['Nome do Gestor'] || '').trim(),
         administracao: String(linha.administracao || linha['Administração'] || '').toLowerCase().trim() as any,
-        codigo_acesso: String(linha.codigo_acesso || linha['Código de Acesso'] || '').trim(),
         ativo: String(ativoRaw).toLowerCase() === 'sim' || String(ativoRaw).toLowerCase() === 'ativa' || String(ativoRaw).toLowerCase() === 'true' || ativoRaw === true,
         status: 'valido',
       };
@@ -111,9 +109,6 @@ const ImportacaoEscolas: React.FC<ImportacaoEscolasProps> = ({ open, onClose, on
         escola.status = 'erro';
       }
 
-      if (escola.codigo_acesso && escola.codigo_acesso.length > 20) {
-        escola.status = 'erro';
-      }
       return escola;
     });
   };
@@ -215,7 +210,7 @@ const ImportacaoEscolas: React.FC<ImportacaoEscolasProps> = ({ open, onClose, on
               <Alert severity="info" icon={false} sx={{ p: 1, py: 0.5 }}><strong>Modo Inteligente:</strong> Escolas existentes serão atualizadas e novas serão inseridas.</Alert>
             </Box>
 
-            {errosCount > 0 && <Alert severity="warning" sx={{ mb: 2 }}>Existem {errosCount} escolas com erros que não serão importadas. Verifique: nome (mín. 3 caracteres), administração (municipal/estadual/federal/particular) e código de acesso (máx. 20 caracteres). Corrija na planilha e reenvie.</Alert>}
+            {errosCount > 0 && <Alert severity="warning" sx={{ mb: 2 }}>Existem {errosCount} escolas com erros que não serão importadas. Verifique: nome (mín. 3 caracteres) e administração (municipal/estadual/federal/particular). Corrija na planilha e reenvie.</Alert>}
             
             <Alert severity="success" sx={{ mb: 2 }}>
               <strong>Importação Inteligente:</strong><br/>
@@ -229,7 +224,7 @@ const ImportacaoEscolas: React.FC<ImportacaoEscolasProps> = ({ open, onClose, on
                 <TableHead><TableRow>
                   <TableCell>Status</TableCell><TableCell>Nome</TableCell><TableCell>Endereço</TableCell>
                   <TableCell>Município</TableCell><TableCell>Telefone</TableCell><TableCell>Gestor</TableCell>
-                  <TableCell>Administração</TableCell><TableCell>Código de Acesso</TableCell><TableCell>Ativo</TableCell>
+                  <TableCell>Administração</TableCell><TableCell>Ativo</TableCell>
                   <TableCell align="center">Ações</TableCell>
                 </TableRow></TableHead>
                 <TableBody>
@@ -244,7 +239,6 @@ const ImportacaoEscolas: React.FC<ImportacaoEscolasProps> = ({ open, onClose, on
                         <TableCell>{escola.telefone || '-'}</TableCell>
                         <TableCell>{escola.nome_gestor || '-'}</TableCell>
                         <TableCell>{escola.administracao || '-'}</TableCell>
-                        <TableCell>{escola.codigo_acesso || '-'}</TableCell>
                         <TableCell sx={{ color: escola.ativo ? 'success.main' : 'error.main' }}>{escola.ativo ? 'Sim' : 'Não'}</TableCell>
 
                         <TableCell align="center">

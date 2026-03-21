@@ -2,6 +2,7 @@ import { Box, Typography, Chip } from '@mui/material';
 import StatusIndicator from './StatusIndicator';
 import { useEffect } from 'react';
 import { usePageTitle } from '../contexts/PageTitleContext';
+import PageBreadcrumbs from './PageBreadcrumbs';
 
 interface StatusLegendItem {
   status: string;
@@ -9,14 +10,29 @@ interface StatusLegendItem {
   count: number;
 }
 
+interface BreadcrumbItem {
+  label: string;
+  path?: string;
+  icon?: React.ReactNode;
+}
+
 interface PageHeaderProps {
   title: string;
   totalCount?: number;
   statusLegend?: StatusLegendItem[];
   subtitle?: string;
+  breadcrumbs?: BreadcrumbItem[];
+  onBack?: () => void;
 }
 
-export default function PageHeader({ title, totalCount, statusLegend, subtitle }: PageHeaderProps) {
+export default function PageHeader({ 
+  title, 
+  totalCount, 
+  statusLegend, 
+  subtitle,
+  breadcrumbs,
+  onBack 
+}: PageHeaderProps) {
   const { setPageTitle } = usePageTitle();
 
   useEffect(() => {
@@ -26,6 +42,10 @@ export default function PageHeader({ title, totalCount, statusLegend, subtitle }
 
   return (
     <Box sx={{ mb: 2 }}>
+      {breadcrumbs && breadcrumbs.length > 0 && (
+        <PageBreadcrumbs items={breadcrumbs} onBack={onBack} />
+      )}
+      
       {(subtitle || totalCount !== undefined) && (
         <Typography variant="body2" sx={{ 
           color: 'text.secondary', 

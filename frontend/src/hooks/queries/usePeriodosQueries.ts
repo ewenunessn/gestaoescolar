@@ -18,6 +18,8 @@ export const usePeriodos = () => {
     queryKey: ['periodos'],
     queryFn: listarPeriodos,
     staleTime: 1000 * 60 * 5, // 5 minutos
+    retry: false, // Desabilitar retry para evitar sobrecarga
+    refetchOnWindowFocus: false, // Não refetch ao focar na janela
   });
 };
 
@@ -27,6 +29,8 @@ export const usePeriodoAtivo = () => {
     queryKey: ['periodo-ativo'],
     queryFn: obterPeriodoAtivo,
     staleTime: 1000 * 60 * 5, // 5 minutos
+    retry: false, // Desabilitar retry para evitar sobrecarga
+    refetchOnWindowFocus: false, // Não refetch ao focar na janela
   });
 };
 

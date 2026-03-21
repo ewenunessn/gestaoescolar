@@ -101,7 +101,7 @@ class SaldoContratosModalidadesController {
           f.nome as fornecedor_nome,
           f.id as fornecedor_id,
           cp.preco_unitario,
-          cp.quantidade_contratada,
+          cp.quantidade_contratada as quantidade_contrato,
           m.id as modalidade_id,
           m.nome as modalidade_nome,
           COALESCE(cpm.quantidade_inicial, 0) as quantidade_inicial,

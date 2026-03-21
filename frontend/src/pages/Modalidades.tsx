@@ -1,17 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import StatusIndicator from "../components/StatusIndicator";
 import PageHeader from "../components/PageHeader";
 import PageContainer from "../components/PageContainer";
-import TableFilter, { FilterField } from "../components/TableFilter";
 import { useToast } from "../hooks/useToast";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
   Typography,
   CircularProgress,
   Alert,
@@ -25,11 +16,7 @@ import {
   Box,
   Chip,
   Tooltip,
-  Card,
-  CardContent,
-  Collapse,
   Divider,
-  InputAdornment,
   FormControl,
   InputLabel,
   Select,
@@ -37,28 +24,21 @@ import {
   Menu,
   Switch,
   FormControlLabel,
+  Popover,
+  Grid,
 } from "@mui/material";
 import {
   Edit as EditIcon,
   Delete as DeleteIcon,
-  Add as AddIcon,
-  Search as SearchIcon,
-  FilterList as FilterIcon,
   Clear as ClearIcon,
-  MoreVert,
-  Category,
   People as PeopleIcon,
 } from "@mui/icons-material";
-import CompactPagination from '../components/CompactPagination';
 import { useNavigate } from "react-router-dom";
-import {
-  criarModalidade,
-  editarModalidade,
-  removerModalidade,
-  Modalidade, // <-- TIPO IMPORTADO DO SERVIÇO (AGORA CORRETO)
-} from "../services/modalidades";
+import { Modalidade } from "../services/modalidades";
 import { useModalidades, useCreateModalidade, useUpdateModalidade, useDeleteModalidade } from "../hooks/queries/useModalidadeQueries";
 import { LoadingOverlay } from "../components/LoadingOverlay";
+import { DataTable } from "../components/DataTable";
+import { ColumnDef } from "@tanstack/react-table";
 
 const ModalidadesPage = () => {
   const navigate = useNavigate();
@@ -70,20 +50,15 @@ const ModalidadesPage = () => {
   const updateModalidadeMutation = useUpdateModalidade();
   const deleteModalidadeMutation = useDeleteModalidade();
   
-  // Estados de UI
-  const [error, setError] = useState<string | null>(null);
-  
-  // Estados do menu de ações
-  const [actionsMenuAnchor, setActionsMenuAnchor] = useState<null | HTMLElement>(null);
+  // Estados de ações
+  const [importExportMenuAnchor, setImportExportMenuAnchor] = useState<null | HTMLElement>(null);
 
-  // Estados de filtros - NOVO SISTEMA
-  const [filterOpen, setFilterOpen] = useState(false);
+  // Estados de filtro
   const [filterAnchorEl, setFilterAnchorEl] = useState<HTMLElement | null>(null);
-  const [filters, setFilters] = useState<Record<string, any>>({});
-
-  // Estados de paginação
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(20);
+  const [filters, setFilters] = useState({
+    status: 'todos',
+    sortBy: 'nome',
+  });
 
   // Estados de modais
   const [modalOpen, setModalOpen] = useState(false);
@@ -99,57 +74,15 @@ const ModalidadesPage = () => {
     ativo: true 
   });
 
-  // Tratar erros do React Query
-  useEffect(() => {
-    if (queryError) {
-      setError("Erro ao carregar modalidades. Tente novamente.");
-    } else {
-      setError(null);
-    }
-  }, [queryError]);
-
-  // Definir campos de filtro
-  const filterFields: FilterField[] = useMemo(() => [
-    {
-      type: 'select',
-      label: 'Status',
-      key: 'status',
-      options: [
-        { value: 'ativo', label: 'Ativas' },
-        { value: 'inativo', label: 'Inativas' },
-      ],
-    },
-    {
-      type: 'select',
-      label: 'Ordenar por',
-      key: 'sortBy',
-      options: [
-        { value: 'nome', label: 'Nome' },
-        { value: 'valor', label: 'Valor Repasse' },
-        { value: 'status', label: 'Status' },
-      ],
-    },
-  ], []);
-
   // Filtrar e ordenar modalidades
-  const filteredModalidades = useMemo(() => {
+  const modalidadesFiltradas = useMemo(() => {
     const sortBy = filters.sortBy || 'nome';
     
     return modalidades
       .filter((modalidade) => {
-        // Busca por palavra-chave
-        if (filters.search) {
-          const searchLower = filters.search.toLowerCase();
-          if (!modalidade.nome.toLowerCase().includes(searchLower)) {
-            return false;
-          }
-        }
-
         // Filtro de status
-        if (filters.status) {
-          if (filters.status === 'ativo' && !modalidade.ativo) return false;
-          if (filters.status === 'inativo' && modalidade.ativo) return false;
-        }
+        if (filters.status === 'ativo' && !modalidade.ativo) return false;
+        if (filters.status === 'inativo' && modalidade.ativo) return false;
 
         return true;
       })
@@ -167,26 +100,150 @@ const ModalidadesPage = () => {
       });
   }, [modalidades, filters]);
 
-  // Modalidades paginadas
-  const paginatedModalidades = useMemo(() => {
-    const startIndex = page * rowsPerPage;
-    return filteredModalidades.slice(startIndex, startIndex + rowsPerPage);
-  }, [filteredModalidades, page, rowsPerPage]);
-
-  // Funções de paginação
-  const handleChangePage = useCallback((event: unknown, newPage: number) => {
-    setPage(newPage);
+  const handleRowClick = useCallback((modalidade: Modalidade) => {
+    openModal(modalidade);
   }, []);
 
-  const handleChangeRowsPerPage = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  }, []);
-
-  // Reset da página quando filtros mudam
-  useEffect(() => {
-    setPage(0);
-  }, [filters]);
+  const columns = useMemo<ColumnDef<Modalidade>[]>(() => [
+    { 
+      accessorKey: 'id', 
+      header: 'ID',
+      size: 80,
+      enableSorting: true,
+    },
+    { 
+      accessorKey: 'nome', 
+      header: 'Nome da Modalidade',
+      size: 300,
+      enableSorting: true,
+    },
+    { 
+      accessorKey: 'codigo_financeiro', 
+      header: 'Código Financeiro',
+      size: 150,
+      enableSorting: true,
+      cell: ({ getValue }) => {
+        const value = getValue() as string | undefined;
+        return (
+          <Typography variant="body2" color="text.secondary">
+            {value || '-'}
+          </Typography>
+        );
+      },
+    },
+    { 
+      accessorKey: 'valor_repasse', 
+      header: 'Valor Repasse',
+      size: 120,
+      enableSorting: true,
+      cell: ({ getValue }) => {
+        const value = getValue() as number;
+        return (
+          <Typography variant="body2" color="text.secondary">
+            {formatCurrency(value)}
+          </Typography>
+        );
+      },
+    },
+    { 
+      accessorKey: 'parcelas', 
+      header: 'Parcelas',
+      size: 100,
+      enableSorting: true,
+      cell: ({ getValue }) => {
+        const value = getValue() as number;
+        return (
+          <Chip 
+            label={`${value || 1}x`} 
+            size="small" 
+            sx={{ 
+              bgcolor: '#e3f2fd', 
+              color: '#1976d2',
+              fontWeight: 600,
+              fontSize: '0.75rem'
+            }} 
+          />
+        );
+      },
+    },
+    { 
+      id: 'total_anual',
+      header: 'Total Anual',
+      size: 120,
+      enableSorting: false,
+      cell: ({ row }) => {
+        const valor = Number(row.original.valor_repasse);
+        const parcelas = Number(row.original.parcelas) || 1;
+        return (
+          <Typography variant="body2" sx={{ fontWeight: 600, color: '#2e7d32' }}>
+            {formatCurrency(valor * parcelas)}
+          </Typography>
+        );
+      },
+    },
+    { 
+      accessorKey: 'total_alunos', 
+      header: 'Alunos',
+      size: 100,
+      enableSorting: true,
+      cell: ({ getValue }) => {
+        const value = getValue() as number | undefined;
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
+            <PeopleIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+              {value || 0}
+            </Typography>
+          </Box>
+        );
+      },
+    },
+    { 
+      accessorKey: 'ativo', 
+      header: 'Status',
+      size: 100,
+      enableSorting: true,
+      cell: ({ getValue }) => (
+        <Tooltip title={getValue() ? 'Ativa' : 'Inativa'}>
+          <Box
+            sx={{
+              width: 12,
+              height: 12,
+              borderRadius: '50%',
+              backgroundColor: getValue() ? 'success.main' : 'error.main',
+              display: 'inline-block',
+            }}
+          />
+        </Tooltip>
+      ),
+    },
+    {
+      id: 'actions',
+      header: 'Ações',
+      size: 100,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <Box sx={{ display: 'flex', gap: 0.5 }} onClick={(e) => e.stopPropagation()}>
+          <Tooltip title="Editar">
+            <IconButton
+              size="small"
+              onClick={() => openModal(row.original)}
+            >
+              <EditIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Excluir">
+            <IconButton
+              size="small"
+              onClick={() => openDeleteModal(row.original)}
+            >
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      ),
+    },
+  ], []);
 
   // Formatar valor para moeda
   const formatCurrency = (value: number | string) => {
@@ -228,14 +285,14 @@ const ModalidadesPage = () => {
       };
       if (editingModalidade) {
         await updateModalidadeMutation.mutateAsync({ id: editingModalidade.id, data: dataToSend });
-        toast.success('Sucesso!', 'Modalidade atualizada com sucesso!');
+        toast.success('Modalidade atualizada com sucesso!');
       } else {
         await createModalidadeMutation.mutateAsync(dataToSend);
-        toast.success('Sucesso!', 'Modalidade criada com sucesso!');
+        toast.success('Modalidade criada com sucesso!');
       }
       closeModal();
     } catch (err) {
-      setError("Erro ao salvar modalidade. Verifique os dados e tente novamente.");
+      toast.error("Erro ao salvar modalidade. Verifique os dados e tente novamente.");
     }
   };
 
@@ -253,259 +310,296 @@ const ModalidadesPage = () => {
     if (!modalidadeToDelete) return;
     try {
       await deleteModalidadeMutation.mutateAsync(modalidadeToDelete.id);
-      toast.success('Sucesso!', 'Modalidade excluída com sucesso!');
+      toast.success('Modalidade excluída com sucesso!');
       closeDeleteModal();
     } catch (err) {
-      setError("Erro ao excluir. A modalidade pode estar em uso.");
+      toast.error("Erro ao excluir. A modalidade pode estar em uso.");
     }
   };
   
   return (
-    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <PageContainer fullHeight>
-        <PageHeader 
-          title="Modalidades"
-        />
-        
-        <Card sx={{ borderRadius: '12px', p: 2, mb: 2 }}>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2 }}>
-            <TextField
-              placeholder="Buscar modalidades..."
-              value={filters.search || ''}
-              onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-              size="small"
-              sx={{ flex: 1, minWidth: '200px', '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon sx={{ color: 'text.secondary' }} />
-                  </InputAdornment>
-                ),
-                endAdornment: filters.search && (
-                  <InputAdornment position="end">
-                    <IconButton size="small" onClick={() => setFilters(prev => ({ ...prev, search: '' }))}>
-                      <ClearIcon fontSize="small" />
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-            />
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button variant="outlined" startIcon={<FilterIcon />} onClick={(e) => { setFilterAnchorEl(e.currentTarget); setFilterOpen(true); }} size="small">
-                Filtros
-              </Button>
-              <Button startIcon={<AddIcon />} onClick={() => openModal()} variant="contained" color="add" size="small">
-                Nova Modalidade
-              </Button>
-              <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)} size="small">
-                <MoreVert />
-              </IconButton>
-            </Box>
-          </Box>
-        </Card>
+        <PageHeader title="Modalidades" />
 
-        <TableFilter
-          open={filterOpen}
-          onClose={() => setFilterOpen(false)}
-          onApply={setFilters}
-          fields={filterFields}
-          initialValues={filters}
-          showSearch={false}
-          anchorEl={filterAnchorEl}
-        />
-
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 2, px: 1 }}>
-          <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 500 }}>
-            Exibindo {filteredModalidades.length} {filteredModalidades.length === 1 ? 'resultado' : 'resultados'}
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <StatusIndicator status="ativo" size="small" />
-              <Typography variant="body2" sx={{ color: '#495057', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                ATIVAS
-              </Typography>
-              <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 600 }}>
-                {filteredModalidades.filter(m => m.ativo).length}
-              </Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <StatusIndicator status="inativo" size="small" />
-              <Typography variant="body2" sx={{ color: '#495057', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                INATIVAS
-              </Typography>
-              <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 600 }}>
-                {filteredModalidades.filter(m => !m.ativo).length}
-              </Typography>
-            </Box>
-          </Box>
-        </Box>
-
+        {/* DataTable com altura fixa para scroll */}
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          {loading ? (
-            <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><CircularProgress size={60} /></CardContent></Card>
-          ) : error ? (
-            <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={() => refetch()}>Tentar Novamente</Button></CardContent></Card>
-          ) : filteredModalidades.length === 0 ? (
-            <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Category sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} /><Typography variant="h6" sx={{ color: 'text.secondary' }}>Nenhuma modalidade encontrada</Typography></CardContent></Card>
-          ) : (
-            <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', width: '100%', overflow: 'hidden' }}>
-              <TableContainer sx={{ flex: 1, minHeight: 0 }}>
-                <Table stickyHeader>
-                <TableHead>
-                <TableRow>
-                  <TableCell sx={{ py: 1 }}>Nome da Modalidade</TableCell>
-                  <TableCell align="center" sx={{ py: 1 }}>Código Financeiro</TableCell>
-                  <TableCell align="center" sx={{ py: 1 }}>Valor Repasse</TableCell>
-                  <TableCell align="center" sx={{ py: 1 }}>Parcelas</TableCell>
-                  <TableCell align="center" sx={{ py: 1 }}>Total Anual</TableCell>
-                  <TableCell align="center" sx={{ py: 1 }}>Alunos</TableCell>
-                  <TableCell align="center" sx={{ py: 1 }}>Ações</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {paginatedModalidades.map((modalidade) => (
-                  <TableRow key={modalidade.id} hover sx={{ '& td': { py: 0.75 } }}>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <StatusIndicator status={modalidade.ativo ? 'ativo' : 'inativo'} size="small" />
-                        <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>
-                          {modalidade.nome}
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                    <TableCell align="center">
-                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
-                        {modalidade.codigo_financeiro || '-'}
-                      </Typography>
-                    </TableCell>
-                    <TableCell align="center">
-                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
-                        {formatCurrency(modalidade.valor_repasse)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell align="center">
-                      <Chip 
-                        label={`${modalidade.parcelas || 1}x`} 
-                        size="small" 
-                        sx={{ 
-                          bgcolor: '#e3f2fd', 
-                          color: '#1976d2',
-                          fontWeight: 600,
-                          fontSize: '0.75rem'
-                        }} 
-                      />
-                    </TableCell>
-                    <TableCell align="center">
-                      <Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 600, color: '#2e7d32' }}>
-                        {formatCurrency(Number(modalidade.valor_repasse) * (Number(modalidade.parcelas) || 1))}
-                      </Typography>
-                    </TableCell>
-                    <TableCell align="center">
-                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
-                        <PeopleIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', fontWeight: 500 }}>
-                          {modalidade.total_alunos || 0}
-                        </Typography>
-                      </Box>
-                    </TableCell>
-
-                    <TableCell align="center">
-                      <Tooltip title="Editar">
-                        <IconButton size="small" onClick={() => openModal(modalidade)} color="primary">
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Excluir">
-                        <IconButton size="small" onClick={() => openDeleteModal(modalidade)} color="delete">
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-              </TableContainer>
-              <CompactPagination count={filteredModalidades.length} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage} onRowsPerPageChange={handleChangeRowsPerPage} rowsPerPageOptions={[10, 20, 50, 100]} />
-            </Box>
-          )}
+          <DataTable
+            data={modalidadesFiltradas}
+            columns={columns}
+            loading={loading}
+            onRowClick={handleRowClick}
+            searchPlaceholder="Buscar modalidades..."
+            onCreateClick={() => openModal()}
+            createButtonLabel="Nova Modalidade"
+            onFilterClick={(e) => setFilterAnchorEl(e.currentTarget)}
+            onImportExportClick={(e) => setImportExportMenuAnchor(e.currentTarget)}
+          />
         </Box>
       </PageContainer>
 
+      {/* Popover de Filtros */}
+      <Popover
+        open={Boolean(filterAnchorEl)}
+        anchorEl={filterAnchorEl}
+        onClose={() => setFilterAnchorEl(null)}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+      >
+        <Box sx={{ p: 2, minWidth: 280 }}>
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            Filtros
+          </Typography>
+          
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Status</InputLabel>
+            <Select
+              value={filters.status}
+              label="Status"
+              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+            >
+              <MenuItem value="todos">Todas</MenuItem>
+              <MenuItem value="ativo">Ativas</MenuItem>
+              <MenuItem value="inativo">Inativas</MenuItem>
+            </Select>
+          </FormControl>
+
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Ordenar por</InputLabel>
+            <Select
+              value={filters.sortBy}
+              label="Ordenar por"
+              onChange={(e) => setFilters({ ...filters, sortBy: e.target.value })}
+            >
+              <MenuItem value="nome">Nome</MenuItem>
+              <MenuItem value="valor">Valor Repasse</MenuItem>
+              <MenuItem value="status">Status</MenuItem>
+            </Select>
+          </FormControl>
+
+          <Divider sx={{ my: 2 }} />
+
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => {
+                setFilters({ status: 'todos', sortBy: 'nome' });
+              }}
+            >
+              Limpar
+            </Button>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={() => setFilterAnchorEl(null)}
+            >
+              Aplicar
+            </Button>
+          </Box>
+          
+          {/* Indicador de filtros ativos */}
+          {(filters.status !== 'todos' || filters.sortBy !== 'nome') && (
+            <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+              <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                Filtros ativos:
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                {filters.status !== 'todos' && (
+                  <Chip
+                    label={`Status: ${filters.status === 'ativo' ? 'Ativas' : 'Inativas'}`}
+                    size="small"
+                    onDelete={() => setFilters({ ...filters, status: 'todos' })}
+                  />
+                )}
+                {filters.sortBy !== 'nome' && (
+                  <Chip
+                    label={`Ordem: ${filters.sortBy === 'valor' ? 'Valor' : 'Status'}`}
+                    size="small"
+                    onDelete={() => setFilters({ ...filters, sortBy: 'nome' })}
+                  />
+                )}
+              </Box>
+            </Box>
+          )}
+        </Box>
+      </Popover>
+
       {/* Modal de Criação/Edição */}
-      <Dialog open={modalOpen} onClose={closeModal} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: '12px' } }}>
-        <DialogTitle sx={{ fontWeight: 600 }}>{editingModalidade ? 'Editar Modalidade' : 'Nova Modalidade'}</DialogTitle>
-        <DialogContent sx={{ pt: 2 }}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <TextField 
-              label="Nome da Modalidade" 
-              value={formData.nome} 
-              onChange={(e) => setFormData({ ...formData, nome: e.target.value })} 
-              required 
-            />
-            <TextField 
-              label="Descrição" 
-              value={formData.descricao} 
-              onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} 
-              placeholder="Descrição da modalidade (opcional)"
-              helperText="Descrição detalhada da modalidade de ensino"
-              multiline
-              rows={2}
-            />
-            <TextField 
-              label="Código Financeiro" 
-              value={formData.codigo_financeiro} 
-              onChange={(e) => setFormData({ ...formData, codigo_financeiro: e.target.value })} 
-              placeholder="Ex: 2.036, 1.025, FIN-001"
-              helperText="Código usado no sistema financeiro (opcional)"
-            />
-            <TextField 
-              label="Valor do Repasse (R$)" 
-              type="number" 
-              value={formData.valor_repasse} 
-              onChange={(e) => setFormData({ ...formData, valor_repasse: parseFloat(e.target.value) || 0 })} 
-              inputProps={{ step: "0.01", min: "0" }}
-              helperText="Valor de cada parcela do repasse"
-            />
-            <TextField 
-              label="Número de Parcelas" 
-              type="number" 
-              value={formData.parcelas} 
-              onChange={(e) => setFormData({ ...formData, parcelas: parseInt(e.target.value) || 1 })} 
-              inputProps={{ step: "1", min: "1" }}
-              helperText={`Total anual: ${formatCurrency(Number(formData.valor_repasse) * Number(formData.parcelas))}`}
-            />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={formData.ativo}
-                  onChange={(e) => setFormData({ ...formData, ativo: e.target.checked })}
-                  color="primary"
-                />
-              }
-              label="Modalidade Ativa"
-              sx={{ mt: 1 }}
-            />
+      <Dialog open={modalOpen} onClose={closeModal} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ pb: 1 }}>
+          <Typography variant="h5" component="div" sx={{ fontWeight: 600 }}>
+            {editingModalidade ? 'Editar Modalidade' : 'Nova Modalidade'}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            Preencha os dados da modalidade de ensino
+          </Typography>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 2 }}>
+            {/* Informações Básicas */}
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: 'primary.main' }}>
+                Informações Básicas
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <TextField 
+                    label="Nome da Modalidade" 
+                    value={formData.nome} 
+                    onChange={(e) => setFormData({ ...formData, nome: e.target.value })} 
+                    required 
+                    fullWidth
+                    placeholder="Ex: Ensino Fundamental, Ensino Médio"
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField 
+                    label="Descrição" 
+                    value={formData.descricao} 
+                    onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} 
+                    placeholder="Descrição da modalidade (opcional)"
+                    helperText="Descrição detalhada da modalidade de ensino"
+                    multiline
+                    rows={2}
+                    fullWidth
+                  />
+                </Grid>
+              </Grid>
+            </Box>
+
+            <Divider />
+
+            {/* Dados Financeiros */}
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: 'primary.main' }}>
+                Dados Financeiros
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <TextField 
+                    label="Código Financeiro" 
+                    value={formData.codigo_financeiro} 
+                    onChange={(e) => setFormData({ ...formData, codigo_financeiro: e.target.value })} 
+                    placeholder="Ex: 2.036, 1.025, FIN-001"
+                    helperText="Código usado no sistema financeiro (opcional)"
+                    fullWidth
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField 
+                    label="Valor do Repasse (R$)" 
+                    type="number" 
+                    value={formData.valor_repasse} 
+                    onChange={(e) => setFormData({ ...formData, valor_repasse: parseFloat(e.target.value) || 0 })} 
+                    inputProps={{ step: "0.01", min: "0" }}
+                    helperText="Valor de cada parcela do repasse"
+                    fullWidth
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField 
+                    label="Número de Parcelas" 
+                    type="number" 
+                    value={formData.parcelas} 
+                    onChange={(e) => setFormData({ ...formData, parcelas: parseInt(e.target.value) || 1 })} 
+                    inputProps={{ step: "1", min: "1" }}
+                    helperText={`Total anual: ${formatCurrency(Number(formData.valor_repasse) * Number(formData.parcelas))}`}
+                    fullWidth
+                  />
+                </Grid>
+              </Grid>
+            </Box>
+
+            <Divider />
+
+            {/* Status */}
+            <Box>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={formData.ativo}
+                    onChange={(e) => setFormData({ ...formData, ativo: e.target.checked })}
+                    color="primary"
+                  />
+                }
+                label={
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      Modalidade Ativa
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Modalidades ativas aparecem no sistema e podem receber alunos
+                    </Typography>
+                  </Box>
+                }
+              />
+            </Box>
           </Box>
         </DialogContent>
-        <DialogActions sx={{ p: 3, pt: 1 }}>
-          <Button onClick={closeModal} sx={{ color: 'text.secondary' }}>Cancelar</Button>
-          <Button onClick={handleSave} variant="contained" disabled={!formData.nome.trim()}>
-            {editingModalidade ? 'Salvar Alterações' : 'Criar'}
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button 
+            onClick={closeModal} 
+            variant="outlined" 
+            disabled={createModalidadeMutation.isPending || updateModalidadeMutation.isPending}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleSave} 
+            variant="contained" 
+            disabled={createModalidadeMutation.isPending || updateModalidadeMutation.isPending || !formData.nome.trim()}
+            startIcon={(createModalidadeMutation.isPending || updateModalidadeMutation.isPending) ? <CircularProgress size={20} /> : null}
+          >
+            {(createModalidadeMutation.isPending || updateModalidadeMutation.isPending) ? 'Salvando...' : (editingModalidade ? 'Salvar Alterações' : 'Criar Modalidade')}
           </Button>
         </DialogActions>
       </Dialog>
       
       {/* Modal de Confirmação de Exclusão */}
-      <Dialog open={deleteModalOpen} onClose={closeDeleteModal} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: '12px' } }}>
-        <DialogTitle sx={{ fontWeight: 600 }}>Confirmar Exclusão</DialogTitle>
-        <DialogContent><Typography>Tem certeza que deseja excluir a modalidade "{modalidadeToDelete?.nome}"?</Typography></DialogContent>
-        <DialogActions sx={{ p: 3, pt: 1 }}><Button onClick={closeDeleteModal} sx={{ color: 'text.secondary' }}>Cancelar</Button><Button onClick={handleDelete} color="delete" variant="contained">Excluir</Button></DialogActions>
+      <Dialog open={deleteModalOpen} onClose={closeDeleteModal} maxWidth="xs" fullWidth>
+        <DialogTitle>Confirmar Exclusão</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Tem certeza que deseja excluir a modalidade "{modalidadeToDelete?.nome}"?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeDeleteModal} disabled={deleteModalidadeMutation.isPending}>
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleDelete} 
+            color="error" 
+            variant="contained"
+            disabled={deleteModalidadeMutation.isPending}
+          >
+            Excluir
+          </Button>
+        </DialogActions>
       </Dialog>
       
-      {/* Menu de Ações */}
-      <Menu anchorEl={actionsMenuAnchor} open={Boolean(actionsMenuAnchor)} onClose={() => setActionsMenuAnchor(null)}>
-        <MenuItem onClick={() => { setActionsMenuAnchor(null); navigate('/modalidades/gerenciar-alunos'); }}>
+      {/* Menu de Importar/Exportar */}
+      <Menu 
+        anchorEl={importExportMenuAnchor} 
+        open={Boolean(importExportMenuAnchor)} 
+        onClose={() => setImportExportMenuAnchor(null)}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+      >
+        <MenuItem onClick={() => { setImportExportMenuAnchor(null); navigate('/modalidades/gerenciar-alunos'); }}>
           <PeopleIcon sx={{ mr: 1 }} /> Gerenciar Alunos por Escola
         </MenuItem>
       </Menu>

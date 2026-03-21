@@ -111,17 +111,13 @@ async function ensureProdutoComposicaoNutricionalTable() {
 // Configuração CORS usando config.json
 const corsOptions = {
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    console.log('🔍 CORS Check - Origin:', origin);
-    
     // Permitir requisições sem origin (mobile apps, Postman, etc.)
     if (!origin) {
-      console.log('✅ CORS: Permitido (sem origin)');
       return callback(null, true);
     }
     
-    // Em desenvolvimento, permitir qualquer origem
+    // Em desenvolvimento, permitir qualquer origem (sem logs para evitar poluição)
     if (process.env.NODE_ENV === 'development') {
-      console.log('✅ CORS: Permitido (desenvolvimento)');
       return callback(null, true);
     }
     

@@ -1,14 +1,13 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { ColumnDef } from '@tanstack/react-table';
 import StatusIndicator from '../components/StatusIndicator';
 import PageHeader from '../components/PageHeader';
 import PageContainer from '../components/PageContainer';
-import TableFilter, { FilterField } from '../components/TableFilter';
+import { DataTableAdvanced } from '../components/DataTableAdvanced';
 import { useNavigate } from 'react-router-dom';
-import CompactPagination from '../components/CompactPagination';
 import {
     Box,
     Typography,
-    Card,
     Button,
     Grid,
     Dialog,
@@ -19,34 +18,22 @@ import {
     IconButton,
     Alert,
     CircularProgress,
-    Divider,
+    FormControlLabel,
+    Switch,
+    Avatar,
+    Tooltip,
+    Chip,
+    Popover,
     FormControl,
     InputLabel,
     Select,
-    MenuItem,
-    useTheme,
-    useMediaQuery,
-    SelectChangeEvent,
-    Avatar,
-    Tooltip,
-    Switch,
-    FormControlLabel,
-    InputAdornment,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
-    Chip
+    MenuItem
 } from '@mui/material';
 import {
     Add as AddIcon,
     Edit as EditIcon,
     Delete as DeleteIcon,
     Route as RouteIcon,
-    Search as SearchIcon,
-    Clear as ClearIcon,
     FilterList as FilterIcon,
     Save as SaveIcon
 } from '@mui/icons-material';
@@ -55,11 +42,7 @@ import { rotaService } from '../modules/entregas/services/rotaService';
 import { RotaEntrega, CreateRotaData } from '../modules/entregas/types/rota';
 import PageBreadcrumbs from '../components/PageBreadcrumbs';
 
-
-
 const GestaoRotas: React.FC = () => {
-    const theme = useTheme();
-    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const navigate = useNavigate();
 
     const [rotas, setRotas] = useState<RotaEntrega[]>([]);
@@ -71,14 +54,9 @@ const GestaoRotas: React.FC = () => {
     const [modalRotaAberto, setModalRotaAberto] = useState(false);
     const [rotaEditando, setRotaEditando] = useState<RotaEntrega | null>(null);
 
-    // Estados de filtros - NOVO SISTEMA
-    const [filterOpen, setFilterOpen] = useState(false);
+    // Estados de filtros
     const [filterAnchorEl, setFilterAnchorEl] = useState<HTMLElement | null>(null);
     const [filters, setFilters] = useState<Record<string, any>>({});
-
-    // Estados de paginação
-    const [page, setPage] = useState(0);
-    const [rowsPerPage, setRowsPerPage] = useState(10);
 
     // Estados do formulário
     const [formRota, setFormRota] = useState<CreateRotaData>({
@@ -88,11 +66,6 @@ const GestaoRotas: React.FC = () => {
         ativo: true
     });
     const [salvando, setSalvando] = useState(false);
-
-
-
-
-
 
     const loadRotas = useCallback(async () => {
         try {
@@ -112,42 +85,8 @@ const GestaoRotas: React.FC = () => {
         loadRotas();
     }, [loadRotas]);
 
-    // Definir campos de filtro
-    const filterFields: FilterField[] = useMemo(() => [
-        {
-            type: 'select',
-            label: 'Status',
-            key: 'status',
-            options: [
-                { value: 'ativo', label: 'Ativas' },
-                { value: 'inativo', label: 'Inativas' },
-            ],
-        },
-        {
-            type: 'select',
-            label: 'Ordenar por',
-            key: 'sortBy',
-            options: [
-                { value: 'name', label: 'Nome (A-Z)' },
-                { value: 'escolas', label: 'Mais Escolas' },
-                { value: 'status', label: 'Status' },
-            ],
-        },
-    ], []);
-
-
-
     const filteredRotas = useMemo(() => {
         return rotas.filter(rota => {
-            // Busca por palavra-chave
-            if (filters.search) {
-                const searchLower = filters.search.toLowerCase();
-                if (!(rota.nome.toLowerCase().includes(searchLower) ||
-                      rota.descricao?.toLowerCase().includes(searchLower))) {
-                    return false;
-                }
-            }
-            
             // Filtro por status
             if (filters.status) {
                 const matchesStatus = filters.status === 'ativo' ? rota.ativo : !rota.ativo;
@@ -162,19 +101,6 @@ const GestaoRotas: React.FC = () => {
             return a.nome.localeCompare(b.nome);
         });
     }, [rotas, filters]);
-
-    const paginatedRotas = useMemo(() => {
-        const startIndex = page * rowsPerPage;
-        return filteredRotas.slice(startIndex, startIndex + rowsPerPage);
-    }, [filteredRotas, page, rowsPerPage]);
-
-    const handleChangePage = useCallback((event: unknown, newPage: number) => setPage(newPage), []);
-    const handleChangeRowsPerPage = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-        setRowsPerPage(parseInt(event.target.value, 10));
-        setPage(0);
-    }, []);
-
-    useEffect(() => { setPage(0); }, [filters]);
 
     const abrirModalRota = (rota?: RotaEntrega) => {
         if (rota) {
@@ -243,8 +169,110 @@ const GestaoRotas: React.FC = () => {
         }
     };
 
+    // Definir colunas da tabela
+    const columns = useMemo<ColumnDef<RotaEntrega>[]>(() => [
+        {
+            accessorKey: 'cor',
+            header: '',
+            size: 40,
+            enableSorting: false,
+            cell: ({ row }) => (
+                <Box 
+                    sx={{ 
+                        width: 12, 
+                        height: 12, 
+                        borderRadius: '50%', 
+                        bgcolor: row.original.cor,
+                        boxShadow: `0 0 0 2px ${row.original.cor}40`
+                    }} 
+                />
+            )
+        },
+        {
+            accessorKey: 'nome',
+            header: 'Nome',
+            size: 200,
+            cell: ({ row }) => (
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {row.original.nome}
+                </Typography>
+            )
+        },
+        {
+            accessorKey: 'descricao',
+            header: 'Descrição',
+            size: 300,
+            cell: ({ row }) => (
+                <Typography variant="body2" color="text.secondary">
+                    {row.original.descricao || 'Sem descrição'}
+                </Typography>
+            )
+        },
+        {
+            accessorKey: 'total_escolas',
+            header: 'Escolas',
+            size: 100,
+            align: 'center',
+            cell: ({ row }) => (
+                <Chip label={row.original.total_escolas || 0} size="small" color="primary" />
+            )
+        },
+        {
+            accessorKey: 'ativo',
+            header: 'Status',
+            size: 120,
+            align: 'center',
+            cell: ({ row }) => (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'center' }}>
+                    <StatusIndicator status={row.original.ativo ? 'ativo' : 'inativo'} size="small" />
+                    <Typography variant="body2" color={row.original.ativo ? 'success.main' : 'text.disabled'}>
+                        {row.original.ativo ? 'Ativa' : 'Inativa'}
+                    </Typography>
+                </Box>
+            )
+        },
+        {
+            id: 'actions',
+            header: 'Ações',
+            size: 200,
+            align: 'center',
+            enableSorting: false,
+            cell: ({ row }) => (
+                <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
+                    <Tooltip title="Gerenciar Escolas">
+                        <IconButton 
+                            size="small" 
+                            color="primary"
+                            onClick={() => navigate(`/gestao-rotas/${row.original.id}/escolas`)}
+                        >
+                            <RouteIcon fontSize="small" />
+                        </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Editar">
+                        <IconButton 
+                            size="small" 
+                            color="secondary"
+                            onClick={() => abrirModalRota(row.original)}
+                        >
+                            <EditIcon fontSize="small" />
+                        </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Excluir">
+                        <IconButton 
+                            size="small" 
+                            color="error"
+                            onClick={() => deletarRota(row.original.id)}
+                        >
+                            <DeleteIcon fontSize="small" />
+                        </IconButton>
+                    </Tooltip>
+                </Box>
+            )
+        }
+    ], [navigate]);
+
     return (
-        <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
+        <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
             {successMessage && (
                 <Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}>
                     <Alert severity="success" onClose={() => setSuccessMessage(null)}>
@@ -266,65 +294,9 @@ const GestaoRotas: React.FC = () => {
                         { label: 'Gestão de Rotas', icon: <RouteIcon fontSize="small" /> }
                     ]}
                 />
-                <PageHeader 
-                    title="Gestão de Rotas de Entrega"
-                />
+                <PageHeader title="Gestão de Rotas de Entrega" />
 
-                <Card sx={{ borderRadius: '12px', p: 2, mb: 2 }}>
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2 }}>
-                        <TextField
-                            placeholder="Buscar rotas..."
-                            value={filters.search || ''}
-                            onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-                            size="small"
-                            sx={{ flex: 1, minWidth: '200px', '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
-                            InputProps={{
-                                startAdornment: (
-                                    <InputAdornment position="start">
-                                        <SearchIcon sx={{ color: 'text.secondary' }} />
-                                    </InputAdornment>
-                                ),
-                                endAdornment: filters.search && (
-                                    <InputAdornment position="end">
-                                        <IconButton size="small" onClick={() => setFilters(prev => ({ ...prev, search: '' }))}>
-                                            <ClearIcon fontSize="small" />
-                                        </IconButton>
-                                    </InputAdornment>
-                                )
-                            }}
-                        />
-                        <Box sx={{ display: 'flex', gap: 1 }}>
-                            <Button
-                                variant="outlined"
-                                startIcon={<FilterIcon />}
-                                onClick={(e) => { setFilterAnchorEl(e.currentTarget); setFilterOpen(true); }}
-                                size="small"
-                            >
-                                Filtros
-                            </Button>
-                            <Button
-                                variant="contained"
-                                onClick={() => abrirModalRota()}
-                                startIcon={<AddIcon />}
-                                size="small"
-                                sx={{ bgcolor: '#059669', '&:hover': { bgcolor: '#047857' } }}
-                            >
-                                Nova Rota
-                            </Button>
-                        </Box>
-                    </Box>
-                </Card>
-
-                <TableFilter
-                    open={filterOpen}
-                    onClose={() => setFilterOpen(false)}
-                    onApply={setFilters}
-                    fields={filterFields}
-                    initialValues={filters}
-                    showSearch={false}
-                    anchorEl={filterAnchorEl}
-                />
-
+                {/* Legenda de Status */}
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 2, px: 1 }}>
                     <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 500 }}>
                         Exibindo {filteredRotas.length} {filteredRotas.length === 1 ? 'rota' : 'rotas'}
@@ -356,108 +328,89 @@ const GestaoRotas: React.FC = () => {
                         <Typography color="error" gutterBottom>{error}</Typography>
                         <Button variant="outlined" onClick={loadRotas}>Tentar Novamente</Button>
                     </Box>
-                ) : filteredRotas.length === 0 ? (
-                    <Box textAlign="center" py={8} color="text.secondary">
-                        <RouteIcon sx={{ fontSize: 48, opacity: 0.2, mb: 2 }} />
-                        <Typography variant="body1">
-                            Nenhuma rota encontrada
-                        </Typography>
-                    </Box>
                 ) : (
-                    <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', width: '100%', overflow: 'hidden' }}>
-                        <TableContainer sx={{ flex: 1, minHeight: 0 }}>
-                            <Table stickyHeader>
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell width="40"></TableCell>
-                                        <TableCell>Nome</TableCell>
-                                        <TableCell>Descrição</TableCell>
-                                        <TableCell align="center">Escolas</TableCell>
-                                        <TableCell align="center">Status</TableCell>
-                                        <TableCell align="center" width="200">Ações</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {paginatedRotas.map((rota) => (
-                                        <TableRow key={rota.id} hover>
-                                            <TableCell>
-                                                <Box 
-                                                    sx={{ 
-                                                        width: 12, 
-                                                        height: 12, 
-                                                        borderRadius: '50%', 
-                                                        bgcolor: rota.cor,
-                                                        boxShadow: `0 0 0 2px ${rota.cor}40`
-                                                    }} 
-                                                />
-                                            </TableCell>
-                                            <TableCell>
-                                                <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                                                    {rota.nome}
-                                                </Typography>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Typography variant="body2" color="text.secondary">
-                                                    {rota.descricao || 'Sem descrição'}
-                                                </Typography>
-                                            </TableCell>
-                                            <TableCell align="center">
-                                                <Chip label={rota.total_escolas || 0} size="small" color="primary" />
-                                            </TableCell>
-                                            <TableCell align="center">
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'center' }}>
-                                                    <StatusIndicator status={rota.ativo ? 'ativo' : 'inativo'} size="small" />
-                                                    <Typography variant="body2" color={rota.ativo ? 'success.main' : 'text.disabled'}>
-                                                        {rota.ativo ? 'Ativa' : 'Inativa'}
-                                                    </Typography>
-                                                </Box>
-                                            </TableCell>
-                                            <TableCell align="center">
-                                                <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
-                                                    <Tooltip title="Gerenciar Escolas">
-                                                        <IconButton 
-                                                            size="small" 
-                                                            color="primary"
-                                                            onClick={() => navigate(`/gestao-rotas/${rota.id}/escolas`)}
-                                                        >
-                                                            <RouteIcon fontSize="small" />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                    <Tooltip title="Editar">
-                                                        <IconButton 
-                                                            size="small" 
-                                                            color="secondary"
-                                                            onClick={() => abrirModalRota(rota)}
-                                                        >
-                                                            <EditIcon fontSize="small" />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                    <Tooltip title="Excluir">
-                                                        <IconButton 
-                                                            size="small" 
-                                                            color="delete"
-                                                            onClick={() => deletarRota(rota.id)}
-                                                        >
-                                                            <DeleteIcon fontSize="small" />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                </Box>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
-                        <CompactPagination
-                            count={filteredRotas.length}
-                            page={page}
-                            onPageChange={handleChangePage}
-                            rowsPerPage={rowsPerPage}
-                            onRowsPerPageChange={handleChangeRowsPerPage}
-                            rowsPerPageOptions={[10, 25, 50, 100]}
-                        />
-                    </Box>
+                    <DataTableAdvanced
+                        data={filteredRotas}
+                        columns={columns}
+                        searchPlaceholder="Buscar rotas..."
+                        emptyMessage="Nenhuma rota encontrada"
+                        emptyIcon={<RouteIcon sx={{ fontSize: 48, opacity: 0.2 }} />}
+                        actions={
+                            <>
+                                <Button
+                                    variant="outlined"
+                                    startIcon={<FilterIcon />}
+                                    onClick={(e) => setFilterAnchorEl(e.currentTarget)}
+                                    size="small"
+                                >
+                                    Filtros
+                                </Button>
+                                <Button
+                                    variant="contained"
+                                    onClick={() => abrirModalRota()}
+                                    startIcon={<AddIcon />}
+                                    size="small"
+                                    sx={{ bgcolor: '#059669', '&:hover': { bgcolor: '#047857' } }}
+                                >
+                                    Nova Rota
+                                </Button>
+                            </>
+                        }
+                    />
                 )}
+
+                {/* Popover de Filtros */}
+                <Popover
+                    open={Boolean(filterAnchorEl)}
+                    anchorEl={filterAnchorEl}
+                    onClose={() => setFilterAnchorEl(null)}
+                    anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                    transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                >
+                    <Box sx={{ p: 2, minWidth: 250 }}>
+                        <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600 }}>
+                            Filtros
+                        </Typography>
+                        
+                        <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+                            <InputLabel>Status</InputLabel>
+                            <Select
+                                value={filters.status || ''}
+                                onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+                                label="Status"
+                            >
+                                <MenuItem value="">Todos</MenuItem>
+                                <MenuItem value="ativo">Ativas</MenuItem>
+                                <MenuItem value="inativo">Inativas</MenuItem>
+                            </Select>
+                        </FormControl>
+
+                        <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+                            <InputLabel>Ordenar por</InputLabel>
+                            <Select
+                                value={filters.sortBy || 'name'}
+                                onChange={(e) => setFilters(prev => ({ ...prev, sortBy: e.target.value }))}
+                                label="Ordenar por"
+                            >
+                                <MenuItem value="name">Nome (A-Z)</MenuItem>
+                                <MenuItem value="escolas">Mais Escolas</MenuItem>
+                                <MenuItem value="status">Status</MenuItem>
+                            </Select>
+                        </FormControl>
+
+                        <Button
+                            fullWidth
+                            variant="outlined"
+                            size="small"
+                            onClick={() => {
+                                setFilters({});
+                                setFilterAnchorEl(null);
+                            }}
+                        >
+                            Limpar Filtros
+                        </Button>
+                    </Box>
+                </Popover>
 
                 {/* Modal de Rota */}
                 <Dialog open={modalRotaAberto} onClose={fecharModalRota} maxWidth="sm" fullWidth>
@@ -558,8 +511,6 @@ const GestaoRotas: React.FC = () => {
                                     </Box>
                                 </Box>
                             </Grid>
-
-
                         </Grid>
                     </DialogContent>
 

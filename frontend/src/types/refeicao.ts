@@ -6,6 +6,13 @@ export interface Refeicao {
   ativo: boolean;
   created_at: string;
   updated_at: string;
+  // Campos adicionais para ficha técnica
+  categoria?: string;
+  tempo_preparo_minutos?: number;
+  rendimento_porcoes?: number;
+  modo_preparo?: string;
+  utensilios?: string;
+  observacoes_tecnicas?: string;
 }
 
 export interface CriarRefeicaoRequest {

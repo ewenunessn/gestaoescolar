@@ -71,7 +71,7 @@ export const DetalheDiaCardapioDialog: React.FC<DetalheDiaCardapioDialogProps> =
           {refeicoesDia.length === 0 ? (
             <Card variant="outlined" sx={{ bgcolor: '#fafafa', textAlign: 'center', py: 3 }}>
               <Typography variant="body2" color="text.secondary">
-                Nenhuma refeição cadastrada
+                Nenhuma preparação cadastrada
               </Typography>
             </Card>
           ) : (
@@ -217,7 +217,7 @@ export const DetalheDiaCardapioDialog: React.FC<DetalheDiaCardapioDialogProps> =
           onClick={onAdicionarRefeicao}
           sx={{ textTransform: 'none' }}
         >
-          Adicionar Refeição
+          Adicionar Preparação
         </Button>
       </DialogActions>
     </Dialog>

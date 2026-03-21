@@ -38,8 +38,8 @@ const Modalidades = lazy(() => import("../pages/Modalidades"));
 const Produtos = lazy(() => import("../pages/Produtos"));
 const ProdutoDetalhe = lazy(() => import("../pages/ProdutoDetalhe"));
 const EscolaDetalhes = lazy(() => import("../pages/EscolaDetalhes"));
-const RefeicaoDetalhe = lazy(() => import("../pages/RefeicaoDetalhe"));
-const Refeicoes = lazy(() => import("../pages/Refeicoes"));
+const PreparacaoDetalhe = lazy(() => import("../pages/PreparacaoDetalhe"));
+const Preparacoes = lazy(() => import("../pages/Preparacoes"));
 const Cardapios = lazy(() => import("../pages/CardapiosModalidade"));
 const CardapioCalendario = lazy(() => import("../pages/CardapioCalendario"));
 const Nutricionistas = lazy(() => import("../pages/Nutricionistas"));
@@ -195,12 +195,12 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
               element={<LazyRoute><ProdutoDetalhe /></LazyRoute>}
             />
             <Route
-              path="/refeicoes"
-              element={<LazyRoute><Refeicoes /></LazyRoute>}
+              path="/preparacoes"
+              element={<LazyRoute><Preparacoes /></LazyRoute>}
             /> 
             <Route
-              path="/refeicoes/:id"
-              element={<LazyRoute><RefeicaoDetalhe /></LazyRoute>}
+              path="/preparacoes/:id"
+              element={<LazyRoute><PreparacaoDetalhe /></LazyRoute>}
             />
             <Route
               path="/cardapios"

@@ -1,21 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router';
 import {
   Box,
   Button,
-  Card,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TextField,
-  Typography,
   IconButton,
-  Chip,
-  InputAdornment,
-  CircularProgress,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -27,25 +15,29 @@ import {
   Tooltip,
   Alert,
   Divider,
+  Typography,
+  Chip,
+  CircularProgress,
+  Popover,
 } from '@mui/material';
-import CompactPagination from '../components/CompactPagination';
 import {
   Add as AddIcon,
-  Search as SearchIcon,
-  Clear as ClearIcon,
   Visibility as VisibilityIcon,
   CalendarMonth as CalendarIcon,
   Delete as DeleteIcon,
   TableChart as TableChartIcon,
+  Clear as ClearIcon,
 } from '@mui/icons-material';
+import { ColumnDef } from '@tanstack/react-table';
 import PageContainer from '../components/PageContainer';
 import PageHeader from '../components/PageHeader';
 import PageBreadcrumbs from '../components/PageBreadcrumbs';
-import StatusIndicator from '../components/StatusIndicator';
 import SeletorPeriodoCalendario, { Periodo } from '../components/SeletorPeriodoCalendario';
 import { guiaService } from '../services/guiaService';
 import { useToast } from '../hooks/useToast';
 import { gerarGuiasDemanda, GerarGuiasResponse } from '../services/planejamentoCompras';
+import { DataTable } from '../components/DataTable';
+import { LoadingOverlay } from '../components/LoadingOverlay';
 
 interface Competencia {
   mes: number;
@@ -68,28 +60,30 @@ interface Competencia {
 const GuiasDemandaLista: React.FC = () => {
   const navigate = useNavigate();
   const toast = useToast();
-  
+
+  // Estados principais
   const [competencias, setCompetencias] = useState<Competencia[]>([]);
   const [loading, setLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  
-  // Paginação
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  
+
+  // Estados de filtro
+  const [filterAnchorEl, setFilterAnchorEl] = useState<HTMLElement | null>(null);
+  const [filters, setFilters] = useState({
+    status: 'todos',
+    mes: 'todos',
+  });
+
   // Modal nova competência
   const [openModal, setOpenModal] = useState(false);
   const [formData, setFormData] = useState({
     mes: new Date().getMonth() + 1,
     ano: new Date().getFullYear()
   });
-  
-  // Estados de validação e controle de mudanças
   const [formDataInicial, setFormDataInicial] = useState<any>(null);
   const [confirmClose, setConfirmClose] = useState(false);
 
   // Exclusão
-  const [confirmDelete, setConfirmDelete] = useState<Competencia | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [competenciaToDelete, setCompetenciaToDelete] = useState<Competencia | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   // Modal gerar guia de demanda
@@ -111,22 +105,166 @@ const GuiasDemandaLista: React.FC = () => {
       setCompetencias(data);
     } catch (error) {
       console.error('Erro ao carregar competências:', error);
+      toast.error('Erro ao carregar guias de demanda');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDeletarGuia = async () => {
-    if (!confirmDelete) return;
+  const getMesNome = (mes: number) => {
+    const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    return meses[mes - 1];
+  };
+
+  const getStatusColor = (status: string): 'default' | 'warning' | 'success' | 'error' => {
+    const statusMap: Record<string, 'default' | 'warning' | 'success' | 'error'> = {
+      'rascunho': 'default',
+      'em_andamento': 'warning',
+      'finalizada': 'success',
+      'cancelada': 'error'
+    };
+    return statusMap[status] || 'default';
+  };
+
+  // Filtrar competências
+  const competenciasFiltradas = useMemo(() => {
+    return competencias.filter((comp) => {
+      // Filtro de status
+      if (filters.status !== 'todos' && comp.guia_status !== filters.status) {
+        return false;
+      }
+
+      // Filtro de mês
+      if (filters.mes !== 'todos' && comp.mes.toString() !== filters.mes) {
+        return false;
+      }
+
+      return true;
+    }).sort((a, b) => {
+      // Ordenar por ano e mês (mais recente primeiro)
+      if (a.ano !== b.ano) return b.ano - a.ano;
+      return b.mes - a.mes;
+    });
+  }, [competencias, filters]);
+
+  // Definir colunas
+  const columns = useMemo<ColumnDef<Competencia>[]>(() => [
+    {
+      accessorKey: 'guia_id',
+      header: 'ID',
+      size: 80,
+      enableSorting: true,
+    },
+    {
+      id: 'competencia',
+      header: 'Competência',
+      size: 150,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+          {getMesNome(row.original.mes)}/{row.original.ano}
+        </Typography>
+      ),
+    },
+    {
+      accessorKey: 'guia_nome',
+      header: 'Nome',
+      size: 250,
+      enableSorting: true,
+      cell: ({ getValue, row }) => (
+        <Typography variant="body2">
+          {getValue() as string || `Guia ${row.original.mes}/${row.original.ano}`}
+        </Typography>
+      ),
+    },
+    {
+      accessorKey: 'total_escolas',
+      header: 'Escolas',
+      size: 100,
+      enableSorting: true,
+      cell: ({ getValue }) => (
+        <Chip label={String(getValue() || 0)} size="small" color="primary" />
+      ),
+    },
+    {
+      accessorKey: 'total_itens',
+      header: 'Itens',
+      size: 100,
+      enableSorting: true,
+      cell: ({ getValue }) => (
+        <Chip label={String(getValue() || 0)} size="small" />
+      ),
+    },
+    {
+      accessorKey: 'guia_status',
+      header: 'Status',
+      size: 120,
+      enableSorting: true,
+      cell: ({ getValue }) => {
+        const status = getValue() as string;
+        return (
+          <Chip
+            label={status}
+            size="small"
+            color={getStatusColor(status)}
+          />
+        );
+      },
+    },
+    {
+      id: 'actions',
+      header: 'Ações',
+      size: 120,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <Box sx={{ display: 'flex', gap: 0.5 }} onClick={(e) => e.stopPropagation()}>
+          <Tooltip title="Ver Detalhes">
+            <IconButton
+              size="small"
+              onClick={() => navigate(`/guias-demanda/${row.original.guia_id}`)}
+              color="primary"
+            >
+              <VisibilityIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Excluir">
+            <IconButton
+              size="small"
+              onClick={() => openDeleteModal(row.original)}
+            >
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      ),
+    },
+  ], [navigate]);
+
+  const handleRowClick = useCallback((comp: Competencia) => {
+    navigate(`/guias-demanda/${comp.guia_id}`);
+  }, [navigate]);
+
+  const openDeleteModal = (comp: Competencia) => {
+    setCompetenciaToDelete(comp);
+    setDeleteModalOpen(true);
+  };
+
+  const closeDeleteModal = () => {
+    setDeleteModalOpen(false);
+    setCompetenciaToDelete(null);
+  };
+
+  const handleDelete = async () => {
+    if (!competenciaToDelete) return;
     try {
       setDeleting(true);
-      await guiaService.deletarGuia(confirmDelete.guia_id);
-      toast.success('Guia excluída', 'A guia e todos os seus itens foram removidos.');
-      setConfirmDelete(null);
+      await guiaService.deletarGuia(competenciaToDelete.guia_id);
+      toast.success('Guia excluída com sucesso!');
+      closeDeleteModal();
       loadCompetencias();
     } catch (error) {
       console.error('Erro ao deletar guia:', error);
-      toast.error('Erro', 'Não foi possível excluir a guia.');
+      toast.error('Não foi possível excluir a guia.');
     } finally {
       setDeleting(false);
     }
@@ -140,19 +278,19 @@ const GuiasDemandaLista: React.FC = () => {
         nome: `Guia ${formData.mes}/${formData.ano}`,
         observacao: ''
       });
-      toast.success('Sucesso!', 'Competência criada com sucesso!');
+      toast.success('Competência criada com sucesso!');
       setOpenModal(false);
       loadCompetencias();
     } catch (error) {
       console.error('Erro ao criar competência:', error);
+      toast.error('Erro ao criar competência');
     }
   };
 
-  // Gerar lista de competências (últimos 12 meses + próximos 3)
-  function gerarCompetenciasDisponiveis() {
+  const gerarCompetenciasDisponiveis = () => {
     const competencias = [];
     const hoje = new Date();
-    
+
     for (let i = -12; i <= 3; i++) {
       const data = new Date(hoje.getFullYear(), hoje.getMonth() + i, 1);
       const ano = data.getFullYear();
@@ -163,13 +301,13 @@ const GuiasDemandaLista: React.FC = () => {
         label: mesNome.charAt(0).toUpperCase() + mesNome.slice(1)
       });
     }
-    
+
     return competencias;
-  }
+  };
 
   const handleGerarGuias = async () => {
     if (!competenciaGerar || periodosGerar.length === 0) {
-      toast.warning('Atenção', 'Defina a competência e ao menos um período');
+      toast.warning('Defina a competência e ao menos um período');
       return;
     }
     setGerandoGuias(true);
@@ -178,19 +316,19 @@ const GuiasDemandaLista: React.FC = () => {
       const res = await gerarGuiasDemanda(
         competenciaGerar,
         periodosGerar,
-        undefined // todas as escolas
+        undefined
       );
       setResultadoGuias(res);
       if (res.total_criadas > 0) {
-        toast.success('Guias geradas', `${res.total_criadas} guia(s) de demanda criada(s) com sucesso`);
-        loadCompetencias(); // Recarregar lista
+        toast.success(`${res.total_criadas} guia(s) de demanda criada(s) com sucesso`);
+        loadCompetencias();
       } else {
         const motivos = res.erros?.map((e) => e.motivo).join('; ') || 'Verifique os erros abaixo';
-        toast.error('Nenhuma guia criada', motivos);
+        toast.error(motivos);
       }
     } catch (error: any) {
       const msg = error.response?.data?.error || 'Não foi possível gerar as guias';
-      toast.error('Erro', msg);
+      toast.error(msg);
     } finally {
       setGerandoGuias(false);
     }
@@ -203,35 +341,16 @@ const GuiasDemandaLista: React.FC = () => {
     setResultadoGuias(null);
   };
 
-  const filteredCompetencias = useMemo(() => {
-    return competencias.filter(c => 
-      (c.guia_nome ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      `${c.mes}/${c.ano}`.includes(searchTerm)
-    );
-  }, [competencias, searchTerm]);
-
-  const paginatedCompetencias = useMemo(() => {
-    const startIndex = page * rowsPerPage;
-    return filteredCompetencias.slice(startIndex, startIndex + rowsPerPage);
-  }, [filteredCompetencias, page, rowsPerPage]);
-
-  const getMesNome = (mes: number) => {
-    const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-    return meses[mes - 1];
-  };
-
-  const getStatusColor = (status: string) => {
-    const statusMap: Record<string, 'default' | 'warning' | 'success' | 'error'> = {
-      'rascunho': 'default',
-      'em_andamento': 'warning',
-      'finalizada': 'success',
-      'cancelada': 'error'
-    };
-    return statusMap[status] || 'default';
-  };
-
   return (
-    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
+    <Box
+      sx={{
+        height: 'calc(100vh - 56px)',
+        bgcolor: '#ffffff',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
       <PageContainer fullHeight>
         <PageBreadcrumbs
           items={[
@@ -240,46 +359,9 @@ const GuiasDemandaLista: React.FC = () => {
         />
         <PageHeader title="Guias de Demanda" />
 
-        <Card sx={{ borderRadius: '12px', p: 2, mb: 2 }}>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2 }}>
-            <TextField
-              placeholder="Buscar guias..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              size="small"
-              sx={{ flex: 1, minWidth: '200px', '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon sx={{ color: 'text.secondary' }} />
-                  </InputAdornment>
-                ),
-                endAdornment: searchTerm && (
-                  <InputAdornment position="end">
-                    <IconButton size="small" onClick={() => setSearchTerm('')}>
-                      <ClearIcon fontSize="small" />
-                    </IconButton>
-                  </InputAdornment>
-                )
-              }}
-            />
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => {
-                const inicial = {
-                  mes: new Date().getMonth() + 1,
-                  ano: new Date().getFullYear()
-                };
-                setFormData(inicial);
-                setFormDataInicial(JSON.parse(JSON.stringify(inicial)));
-                setOpenModal(true);
-              }}
-              size="small"
-              sx={{ bgcolor: '#059669', '&:hover': { bgcolor: '#047857' } }}
-            >
-              Nova Competência
-            </Button>
+        {/* DataTable com altura fixa para scroll */}
+        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
             <Button
               variant="contained"
               startIcon={<TableChartIcon />}
@@ -290,155 +372,163 @@ const GuiasDemandaLista: React.FC = () => {
               Gerar Guia de Demanda
             </Button>
           </Box>
-        </Card>
-
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 2, px: 1 }}>
-          <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 500 }}>
-            Exibindo {filteredCompetencias.length} {filteredCompetencias.length === 1 ? 'guia' : 'guias'}
-          </Typography>
-        </Box>
-
-        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          {loading ? (
-            <Box display="flex" justifyContent="center" py={8}>
-              <CircularProgress />
-            </Box>
-          ) : filteredCompetencias.length === 0 ? (
-            <Box textAlign="center" py={8}>
-              <CalendarIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-              <Typography variant="h6" color="text.secondary">
-                Nenhuma guia encontrada
-              </Typography>
-            </Box>
-          ) : (
-            <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', width: '100%', overflow: 'hidden' }}>
-              <TableContainer sx={{ flex: 1, minHeight: 0 }}>
-                <Table stickyHeader>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Competência</TableCell>
-                      <TableCell>Nome</TableCell>
-                      <TableCell align="center">Escolas</TableCell>
-                      <TableCell align="center">Itens</TableCell>
-                      <TableCell align="center">Status</TableCell>
-                      <TableCell align="center">Ações</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {paginatedCompetencias.map((comp) => (
-                      <TableRow key={comp.guia_id} hover>
-                        <TableCell>
-                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                            {getMesNome(comp.mes)}/{comp.ano}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2">
-                            {comp.guia_nome || `Guia ${comp.mes}/${comp.ano}`}
-                          </Typography>
-                        </TableCell>
-                        <TableCell align="center">
-                          <Chip label={comp.total_escolas} size="small" color="primary" />
-                        </TableCell>
-                        <TableCell align="center">
-                          <Chip label={comp.total_itens} size="small" />
-                        </TableCell>
-                        <TableCell align="center">
-                          <Chip 
-                            label={comp.guia_status} 
-                            size="small" 
-                            color={getStatusColor(comp.guia_status)}
-                          />
-                        </TableCell>
-                        <TableCell align="center">
-                          <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
-                            <Tooltip title="Ver Detalhes">
-                              <IconButton
-                                size="small"
-                                color="primary"
-                                onClick={() => navigate(`/guias-demanda/${comp.guia_id}`)}
-                              >
-                                <VisibilityIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Excluir guia e todos os itens">
-                              <IconButton
-                                size="small"
-                                color="error"
-                                onClick={() => setConfirmDelete(comp)}
-                              >
-                                <DeleteIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          </Box>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-              <CompactPagination
-                count={filteredCompetencias.length}
-                page={page}
-                onPageChange={(e, newPage) => setPage(newPage)}
-                rowsPerPage={rowsPerPage}
-                onRowsPerPageChange={(e) => {
-                  setRowsPerPage(parseInt(e.target.value, 10));
-                  setPage(0);
-                }}
-                rowsPerPageOptions={[10, 25, 50]}
-              />
-            </Box>
-          )}
+          <DataTable
+            data={competenciasFiltradas}
+            columns={columns}
+            loading={loading}
+            onRowClick={handleRowClick}
+            searchPlaceholder="Buscar guias..."
+            onCreateClick={() => {
+              const inicial = {
+                mes: new Date().getMonth() + 1,
+                ano: new Date().getFullYear()
+              };
+              setFormData(inicial);
+              setFormDataInicial(JSON.parse(JSON.stringify(inicial)));
+              setOpenModal(true);
+            }}
+            createButtonLabel="Nova Competência"
+            onFilterClick={(e) => setFilterAnchorEl(e.currentTarget)}
+          />
         </Box>
       </PageContainer>
 
-      {/* Modal Nova Competência */}
-      <Dialog 
-        open={openModal} 
-        onClose={() => {
-          const hasChanges = formData.mes !== formDataInicial?.mes || formData.ano !== formDataInicial?.ano;
-          if (hasChanges) {
-            setConfirmClose(true);
-          } else {
-            setOpenModal(false);
-          }
+      {/* Popover de Filtros */}
+      <Popover
+        open={Boolean(filterAnchorEl)}
+        anchorEl={filterAnchorEl}
+        onClose={() => setFilterAnchorEl(null)}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right',
         }}
-        maxWidth="xs" 
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: '12px',
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            m: 0
-          }
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
         }}
       >
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
-          <Typography variant="h6" component="span" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
-            Nova Competência
+        <Box sx={{ p: 2, minWidth: 280 }}>
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            Filtros
           </Typography>
-          <IconButton
-            size="small"
-            onClick={() => {
+
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Mês</InputLabel>
+            <Select
+              value={filters.mes}
+              label="Mês"
+              onChange={(e) => setFilters({ ...filters, mes: e.target.value })}
+            >
+              <MenuItem value="todos">Todos</MenuItem>
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((mes) => (
+                <MenuItem key={mes} value={mes.toString()}>
+                  {getMesNome(mes)}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Status</InputLabel>
+            <Select
+              value={filters.status}
+              label="Status"
+              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+            >
+              <MenuItem value="todos">Todos</MenuItem>
+              <MenuItem value="rascunho">Rascunho</MenuItem>
+              <MenuItem value="em_andamento">Em Andamento</MenuItem>
+              <MenuItem value="finalizada">Finalizada</MenuItem>
+              <MenuItem value="cancelada">Cancelada</MenuItem>
+            </Select>
+          </FormControl>
+
+          <Divider sx={{ my: 2 }} />
+
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => {
+                setFilters({ mes: 'todos', status: 'todos' });
+              }}
+            >
+              Limpar
+            </Button>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={() => setFilterAnchorEl(null)}
+            >
+              Aplicar
+            </Button>
+          </Box>
+
+          {/* Indicador de filtros ativos */}
+          {(filters.mes !== 'todos' || filters.status !== 'todos') && (
+            <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ mb: 1, display: 'block' }}
+              >
+                Filtros ativos:
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                {filters.mes !== 'todos' && (
+                  <Chip
+                    label={`Mês: ${getMesNome(parseInt(filters.mes))}`}
+                    size="small"
+                    onDelete={() => setFilters({ ...filters, mes: 'todos' })}
+                  />
+                )}
+                {filters.status !== 'todos' && (
+                  <Chip
+                    label={`Status: ${filters.status}`}
+                    size="small"
+                    onDelete={() => setFilters({ ...filters, status: 'todos' })}
+                  />
+                )}
+              </Box>
+            </Box>
+          )}
+        </Box>
+      </Popover>
+
+      {/* Modal Nova Competência */}
+      <Dialog open={openModal} onClose={() => {
+        const hasChanges = formData.mes !== formDataInicial?.mes || formData.ano !== formDataInicial?.ano;
+        if (hasChanges) {
+          setConfirmClose(true);
+        } else {
+          setOpenModal(false);
+        }
+      }} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ pb: 1 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box>
+              <Typography variant="h5" component="div" sx={{ fontWeight: 600 }}>
+                Nova Competência
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                Selecione o mês e ano
+              </Typography>
+            </Box>
+            <IconButton size="small" onClick={() => {
               const hasChanges = formData.mes !== formDataInicial?.mes || formData.ano !== formDataInicial?.ano;
               if (hasChanges) {
                 setConfirmClose(true);
               } else {
                 setOpenModal(false);
               }
-            }}
-            sx={{ color: 'text.secondary' }}
-          >
-            <ClearIcon fontSize="small" />
-          </IconButton>
+            }} sx={{ color: 'text.secondary' }}>
+              <ClearIcon fontSize="small" />
+            </IconButton>
+          </Box>
         </DialogTitle>
-        <DialogContent sx={{ pt: 2, pb: 1 }}>
-          <Box sx={{ display: 'flex', gap: 1.5 }}>
-            <FormControl fullWidth size="small">
+        <DialogContent dividers>
+          <Box sx={{ display: 'flex', gap: 2, pt: 2 }}>
+            <FormControl fullWidth>
               <InputLabel>Mês</InputLabel>
               <Select
                 value={formData.mes}
@@ -452,7 +542,7 @@ const GuiasDemandaLista: React.FC = () => {
                 ))}
               </Select>
             </FormControl>
-            <FormControl fullWidth size="small">
+            <FormControl fullWidth>
               <InputLabel>Ano</InputLabel>
               <Select
                 value={formData.ano}
@@ -468,7 +558,7 @@ const GuiasDemandaLista: React.FC = () => {
             </FormControl>
           </Box>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
+        <DialogActions sx={{ px: 3, py: 2 }}>
           <Button onClick={() => {
             const hasChanges = formData.mes !== formDataInicial?.mes || formData.ano !== formDataInicial?.ano;
             if (hasChanges) {
@@ -476,102 +566,78 @@ const GuiasDemandaLista: React.FC = () => {
             } else {
               setOpenModal(false);
             }
-          }} sx={{ color: 'text.secondary' }}>
+          }} variant="outlined">
             Cancelar
           </Button>
           <Button onClick={handleCriarCompetencia} variant="contained">
-            Criar
+            Criar Competência
           </Button>
         </DialogActions>
       </Dialog>
-      
-      {/* Dialog confirmação exclusão */}
-      <Dialog open={Boolean(confirmDelete)} onClose={() => !deleting && setConfirmDelete(null)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ pb: 1 }}>
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>Excluir Guia de Demanda?</Typography>
-        </DialogTitle>
-        <DialogContent sx={{ pt: 1 }}>
-          <Typography variant="body2">
-            Isso vai remover permanentemente a guia{' '}
-            <strong>{confirmDelete ? `${getMesNome(confirmDelete.mes)}/${confirmDelete.ano}` : ''}</strong>{' '}
-            e todos os seus <strong>{confirmDelete?.total_itens ?? 0} item(ns)</strong>. Esta ação não pode ser desfeita.
+
+      {/* Modal de Confirmação de Exclusão */}
+      <Dialog open={deleteModalOpen} onClose={closeDeleteModal} maxWidth="xs" fullWidth>
+        <DialogTitle>Confirmar Exclusão</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Tem certeza que deseja excluir a guia{' '}
+            <strong>{competenciaToDelete ? `${getMesNome(competenciaToDelete.mes)}/${competenciaToDelete.ano}` : ''}</strong>
+            {' '}e todos os seus <strong>{competenciaToDelete?.total_itens ?? 0} item(ns)</strong>? Esta ação não pode ser desfeita.
           </Typography>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setConfirmDelete(null)} disabled={deleting}>Cancelar</Button>
-          <Button onClick={handleDeletarGuia} color="error" variant="contained" disabled={deleting}>
+        <DialogActions>
+          <Button onClick={closeDeleteModal} disabled={deleting}>
+            Cancelar
+          </Button>
+          <Button onClick={handleDelete} color="error" variant="contained" disabled={deleting}>
             {deleting ? 'Excluindo...' : 'Excluir'}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Dialog de confirmação para fechar */}
-      <Dialog 
-        open={confirmClose} 
-        onClose={() => setConfirmClose(false)}
-        maxWidth="xs"
-        PaperProps={{
-          sx: {
-            borderRadius: '12px',
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            m: 0
-          }
-        }}
-      >
-        <DialogTitle sx={{ pb: 1 }}>
-          <Typography variant="h6" component="span" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
+      <Dialog open={confirmClose} onClose={() => setConfirmClose(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>
+          <Typography variant="h6" component="span" sx={{ fontWeight: 600 }}>
             Descartar alterações?
           </Typography>
         </DialogTitle>
-        <DialogContent sx={{ pt: 2, pb: 1 }}>
+        <DialogContent>
           <Typography variant="body2">
             Você tem alterações não salvas. Deseja realmente descartar essas alterações?
           </Typography>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
-          <Button onClick={() => setConfirmClose(false)} variant="outlined" size="small">
+        <DialogActions>
+          <Button onClick={() => setConfirmClose(false)} variant="outlined">
             Continuar Editando
           </Button>
-          <Button onClick={() => { setConfirmClose(false); setOpenModal(false); }} color="delete" variant="contained" size="small">
+          <Button onClick={() => { setConfirmClose(false); setOpenModal(false); }} color="error" variant="contained">
             Descartar
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Modal Gerar Guia de Demanda */}
-      <Dialog 
-        open={openGerarGuia} 
-        onClose={handleFecharModalGerar}
-        maxWidth="sm" 
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: '12px',
-          }
-        }}
-      >
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
-          <Typography variant="h6" component="span" sx={{ fontWeight: 600, fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: 1 }}>
-            <TableChartIcon />
-            Gerar Guia de Demanda
-          </Typography>
-          <IconButton
-            size="small"
-            onClick={handleFecharModalGerar}
-            sx={{ color: 'text.secondary' }}
-          >
-            <ClearIcon fontSize="small" />
-          </IconButton>
+      <Dialog open={openGerarGuia} onClose={handleFecharModalGerar} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ pb: 1 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <TableChartIcon />
+              <Typography variant="h5" component="div" sx={{ fontWeight: 600 }}>
+                Gerar Guia de Demanda
+              </Typography>
+            </Box>
+            <IconButton size="small" onClick={handleFecharModalGerar} sx={{ color: 'text.secondary' }}>
+              <ClearIcon fontSize="small" />
+            </IconButton>
+          </Box>
         </DialogTitle>
-        <DialogContent sx={{ pt: 2, pb: 1 }}>
+        <DialogContent dividers>
           <Alert severity="info" sx={{ mb: 2 }}>
             Selecione a competência e um ou mais períodos. Cada período gera uma guia de demanda com as quantidades por escola.
           </Alert>
 
-          <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+          <FormControl fullWidth sx={{ mb: 2 }}>
             <InputLabel>Competência</InputLabel>
             <Select
               value={competenciaGerar}
@@ -592,9 +658,8 @@ const GuiasDemandaLista: React.FC = () => {
 
           {competenciaGerar && (
             <>
-              {/* Lista de períodos selecionados */}
               {periodosGerar.length > 0 && (
-                <Box sx={{ mb: 1.5, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                <Box sx={{ mb: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                   {periodosGerar.map((p, idx) => (
                     <Chip
                       key={idx}
@@ -608,21 +673,18 @@ const GuiasDemandaLista: React.FC = () => {
                 </Box>
               )}
 
-              <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-                <Button
-                  variant="outlined"
-                  startIcon={<CalendarIcon />}
-                  onClick={() => setSeletorOpen(true)}
-                  size="small"
-                  fullWidth
-                >
-                  {periodosGerar.length === 0 ? 'Selecionar Período' : 'Adicionar Período'}
-                </Button>
-              </Box>
+              <Button
+                variant="outlined"
+                startIcon={<CalendarIcon />}
+                onClick={() => setSeletorOpen(true)}
+                size="small"
+                fullWidth
+              >
+                {periodosGerar.length === 0 ? 'Selecionar Período' : 'Adicionar Período'}
+              </Button>
             </>
           )}
 
-          {/* Resultado da geração de guias */}
           {resultadoGuias && (
             <Box sx={{ mt: 2 }}>
               <Divider sx={{ mb: 2 }} />
@@ -663,13 +725,13 @@ const GuiasDemandaLista: React.FC = () => {
             </Box>
           )}
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
-          <Button onClick={handleFecharModalGerar} sx={{ color: 'text.secondary' }}>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button onClick={handleFecharModalGerar} variant="outlined">
             {resultadoGuias && resultadoGuias.total_criadas > 0 ? 'Fechar' : 'Cancelar'}
           </Button>
           {(!resultadoGuias || resultadoGuias.total_criadas === 0) && (
-            <Button 
-              onClick={handleGerarGuias} 
+            <Button
+              onClick={handleGerarGuias}
               variant="contained"
               disabled={gerandoGuias || !competenciaGerar || periodosGerar.length === 0}
               startIcon={gerandoGuias ? <CircularProgress size={18} /> : <TableChartIcon />}
@@ -689,6 +751,15 @@ const GuiasDemandaLista: React.FC = () => {
         periodosExistentes={periodosGerar}
         competencia={competenciaGerar || undefined}
         titulo={periodosGerar.length === 0 ? 'Selecionar 1º Período' : `Adicionar Período ${periodosGerar.length + 1}`}
+      />
+
+      <LoadingOverlay
+        open={deleting || gerandoGuias}
+        message={
+          deleting ? 'Excluindo guia...' :
+          gerandoGuias ? 'Gerando guias de demanda...' :
+          'Processando...'
+        }
       />
     </Box>
   );

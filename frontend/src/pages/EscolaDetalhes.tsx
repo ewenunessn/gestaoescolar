@@ -45,8 +45,7 @@ interface Modalidade {
 interface Escola {
     id: number;
     nome: string;
-    codigo?: string;
-    codigo_acesso: string;
+    codigo?: string; // Código INEP (também usado para acesso ao sistema)
     endereco?: string;
     municipio?: string;
     telefone?: string;
@@ -119,10 +118,9 @@ const EscolaInfoCard = ({ isEditing, formData, setFormData, associacoes, totalAl
                 {isEditing ? (
                     <>
                         <TextField label="Nome da Escola" value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} fullWidth size="small" sx={{ mb: 1 }} required />
-                        <TextField label="Código INEP" value={formData.codigo} onChange={(e) => setFormData({ ...formData, codigo: e.target.value })} fullWidth size="small" sx={{ mb: 1 }} helperText="Código do INEP (opcional)" />
+                        <TextField label="Código INEP" value={formData.codigo} onChange={(e) => setFormData({ ...formData, codigo: e.target.value })} fullWidth size="small" sx={{ mb: 1 }} helperText="Código do INEP - também usado para acesso ao sistema" />
                         <TextField label="Endereço" value={formData.endereco} onChange={(e) => setFormData({ ...formData, endereco: e.target.value })} fullWidth size="small" sx={{ mb: 1 }} multiline rows={2} />
                         <TextField label="Município" value={formData.municipio} onChange={(e) => setFormData({ ...formData, municipio: e.target.value })} fullWidth size="small" sx={{ mb: 1 }} />
-                        <TextField label="Código de Acesso (6 dígitos)" value={formData.codigo_acesso} onChange={(e) => setFormData({ ...formData, codigo_acesso: e.target.value.replace(/\D/g, '') })} fullWidth size="small" sx={{ mb: 1 }} required inputProps={{ maxLength: 6, inputMode: 'numeric', pattern: '[0-9]*' }} helperText="Código numérico de 6 dígitos" />
                         <TextField label="Telefone" value={formData.telefone} onChange={(e) => setFormData({ ...formData, telefone: e.target.value })} fullWidth size="small" sx={{ mb: 1 }} />
                         <TextField label="E-mail" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} type="email" fullWidth size="small" sx={{ mb: 1 }} />
                         <TextField label="Nome do(a) Gestor(a)" value={formData.nome_gestor} onChange={(e) => setFormData({ ...formData, nome_gestor: e.target.value })} fullWidth size="small" sx={{ mb: 1 }} />
@@ -139,7 +137,6 @@ const EscolaInfoCard = ({ isEditing, formData, setFormData, associacoes, totalAl
                         <InfoItem icon={<SchoolIcon fontSize="small" color="action" />} label="Código INEP" value={formData.codigo} />
                         <InfoItem icon={<LocationOnIcon fontSize="small" color="action" />} label="Endereço" value={formData.endereco} />
                         <InfoItem icon={<LocationOnIcon fontSize="small" color="action" />} label="Município" value={formData.municipio} />
-                        <InfoItem icon={<VpnKeyIcon fontSize="small" color="action" />} label="Código de Acesso" value={formData.codigo_acesso} />
                         <InfoItem icon={<PhoneIcon fontSize="small" color="action" />} label="Telefone" value={formData.telefone} />
                         <InfoItem icon={<EmailIcon fontSize="small" color="action" />} label="E-mail" value={formData.email} />
                         <InfoItem icon={<PersonIcon fontSize="small" color="action" />} label="Gestor(a)" value={formData.nome_gestor} />
@@ -272,7 +269,7 @@ const EscolaDetalhesPage = () => {
             ]);
             setEscola(escolaData);
             setFormData({
-                nome: escolaData.nome || '', codigo: escolaData.codigo || '', codigo_acesso: escolaData.codigo_acesso || '',
+                nome: escolaData.nome || '', codigo: escolaData.codigo || '',
                 endereco: escolaData.endereco || '', municipio: escolaData.municipio || '', telefone: escolaData.telefone || '',
                 email: escolaData.email || '', nome_gestor: escolaData.nome_gestor || '',
                 administracao: escolaData.administracao || '', ativo: escolaData.ativo,
@@ -306,7 +303,7 @@ const EscolaDetalhesPage = () => {
         setIsEditing(false);
         if (escola) {
             setFormData({
-                nome: escola.nome || '', codigo: escola.codigo || '', codigo_acesso: escola.codigo_acesso || '',
+                nome: escola.nome || '', codigo: escola.codigo || '',
                 endereco: escola.endereco || '', municipio: escola.municipio || '', telefone: escola.telefone || '',
                 email: escola.email || '', nome_gestor: escola.nome_gestor || '',
                 administracao: escola.administracao || '', ativo: escola.ativo,

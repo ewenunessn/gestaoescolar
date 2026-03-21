@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router';
 import {
   Box, Button, Card, CardContent, Dialog, DialogTitle, DialogContent, DialogActions,
   FormControl, Grid, IconButton, InputLabel, MenuItem, Select, TextField, Typography, Chip, Menu,
@@ -179,7 +179,7 @@ const CardapioCalendarioPage: React.FC = () => {
       if (refeicao) {
         setRefeicaoDetalhes(refeicao);
         
-        // Buscar produtos da refeição
+        // Buscar produtos da preparação
         const response = await api.get(`/refeicoes/${refeicaoId}/produtos`);
         setProdutosRefeicao(response.data || []);
         
@@ -374,7 +374,7 @@ const CardapioCalendarioPage: React.FC = () => {
       // Buscar informações da instituição
       const instituicao = await fetchInstituicaoForPDF();
       
-      // Agrupar por tipo e refeição
+      // Agrupar por tipo e preparação
       const frequencia: Record<string, Record<string, number>> = {};
       
       refeicoes.forEach(ref => {
@@ -389,7 +389,7 @@ const CardapioCalendarioPage: React.FC = () => {
       
       const content: any[] = [];
       
-      // Para cada tipo de refeição
+      // Para cada tipo de preparação
       Object.entries(TIPOS_REFEICAO).forEach(([tipo, tipoNome]) => {
         if (frequencia[tipo]) {
           content.push({
@@ -622,7 +622,7 @@ const CardapioCalendarioPage: React.FC = () => {
           }
           
           if (refIdx === 0) {
-            // Primeira refeição do dia
+            // Primeira preparação do dia
             tableBody.push([
               { 
                 text: dataFormatada, 
@@ -792,7 +792,7 @@ const CardapioCalendarioPage: React.FC = () => {
     setSalvando(true);
     try {
       if (!formData.refeicao_id || !formData.tipo_refeicao) {
-        toast.error('Selecione a refeição e o tipo');
+        toast.error('Selecione a preparação e o tipo');
         return;
       }
 
@@ -803,25 +803,25 @@ const CardapioCalendarioPage: React.FC = () => {
         observacao: formData.observacao || undefined
       });
 
-      toast.success('Refeição adicionada!');
+      toast.success('Preparação adicionada!');
       setOpenDialog(false);
       loadData();
     } catch (err: any) {
-      toast.error(err.message || 'Erro ao adicionar refeição');
+      toast.error(err.message || 'Erro ao adicionar preparação');
     } finally {
       setSalvando(false);
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (window.confirm('Remover esta refeição?')) {
+    if (window.confirm('Remover esta preparação?')) {
       setExcluindo(true);
       try {
         await removerRefeicaoDia(id);
-        toast.success('Refeição removida!');
+        toast.success('Preparação removida!');
         loadData();
       } catch (err) {
-        toast.error('Erro ao remover refeição');
+        toast.error('Erro ao remover preparação');
       } finally {
         setExcluindo(false);
       }
@@ -909,7 +909,7 @@ const CardapioCalendarioPage: React.FC = () => {
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <Box>
                   <Typography variant="body2" color="text.secondary">
-                    Total de refeições
+                    Total de preparações
                   </Typography>
                   <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main' }}>
                     {refeicoes.length}
@@ -920,7 +920,7 @@ const CardapioCalendarioPage: React.FC = () => {
 
                 <Box>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                    Por tipo de refeição
+                    Por tipo de preparação
                   </Typography>
                   {Object.entries(
                     refeicoes.reduce((acc, r) => {
@@ -960,7 +960,7 @@ const CardapioCalendarioPage: React.FC = () => {
                         <Typography variant="body2">
                           {labels[tipo as keyof typeof labels]}
                         </Typography>
-                        <Chip label={count} size="small" />
+                        <Chip label={String(count)} size="small" />
                       </Box>
                     );
                   })}
@@ -992,15 +992,15 @@ const CardapioCalendarioPage: React.FC = () => {
       </PageContainer>
 
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Adicionar Refeição - Dia {diaSelecionado}</DialogTitle>
+        <DialogTitle>Adicionar Preparação - Dia {diaSelecionado}</DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
             <FormControl fullWidth required>
-              <InputLabel>Refeição</InputLabel>
+              <InputLabel>Preparação</InputLabel>
               <Select 
                 value={String(formData.refeicao_id || '')} 
                 onChange={(e) => setFormData({ ...formData, refeicao_id: e.target.value })} 
-                label="Refeição"
+                label="Preparação"
               >
                 {refeicoesDisponiveis.map((r) => (
                   <MenuItem key={r.id} value={String(r.id)}>
@@ -1011,11 +1011,11 @@ const CardapioCalendarioPage: React.FC = () => {
             </FormControl>
 
             <FormControl fullWidth required>
-              <InputLabel>Tipo de Refeição</InputLabel>
+              <InputLabel>Tipo de Preparação</InputLabel>
               <Select 
                 value={String(formData.tipo_refeicao || '')} 
                 onChange={(e) => setFormData({ ...formData, tipo_refeicao: e.target.value })} 
-                label="Tipo de Refeição"
+                label="Tipo de Preparação"
               >
                 {Object.entries(TIPOS_REFEICAO).map(([key, label]) => (
                   <MenuItem key={key} value={key}>{label}</MenuItem>
@@ -1045,7 +1045,7 @@ const CardapioCalendarioPage: React.FC = () => {
         <DialogContent>
           <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
             <Typography variant="body2" color="textSecondary">
-              Selecione o período que deseja incluir no relatório. O PDF conterá todas as refeições 
+              Selecione o período que deseja incluir no relatório. O PDF conterá todas as preparações 
               com seus produtos e per capita.
             </Typography>
             
@@ -1099,7 +1099,7 @@ const CardapioCalendarioPage: React.FC = () => {
 
       {/* Dialog de lista completa */}
       <Dialog open={openListDialog} onClose={() => setOpenListDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Refeições do Dia {diaSelecionado}</DialogTitle>
+        <DialogTitle>Preparações do Dia {diaSelecionado}</DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
             {diaSelecionado && getRefeicoesNoDia(diaSelecionado).map((ref) => (
@@ -1153,7 +1153,7 @@ const CardapioCalendarioPage: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Dialog de detalhes da refeição */}
+      {/* Dialog de detalhes da preparação */}
       <Dialog open={openDetalhesDialog} onClose={() => setOpenDetalhesDialog(false)} maxWidth="md" fullWidth>
         <DialogTitle>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -1181,13 +1181,13 @@ const CardapioCalendarioPage: React.FC = () => {
 
               <Box sx={{ mb: 2 }}>
                 <Typography variant="subtitle2" color="textSecondary" gutterBottom sx={{ mb: 1 }}>
-                  Composição da Refeição ({produtosRefeicao.length} {produtosRefeicao.length === 1 ? 'produto' : 'produtos'})
+                  Composição da Preparação ({produtosRefeicao.length} {produtosRefeicao.length === 1 ? 'produto' : 'produtos'})
                 </Typography>
                 
                 {produtosRefeicao.length === 0 ? (
                   <Box sx={{ textAlign: 'center', py: 3, bgcolor: '#f5f5f5', borderRadius: 1 }}>
                     <Typography variant="body2" color="textSecondary">
-                      Nenhum produto cadastrado nesta refeição
+                      Nenhum produto cadastrado nesta preparação
                     </Typography>
                   </Box>
                 ) : (
@@ -1234,7 +1234,7 @@ const CardapioCalendarioPage: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Dialog de detalhes do dia com refeições e eventos */}
+      {/* Dialog de detalhes do dia com preparações e eventos */}
       <DetalheDiaCardapioDialog
         open={openDetalhesDiaDialog}
         onClose={() => setOpenDetalhesDiaDialog(false)}
@@ -1260,8 +1260,8 @@ const CardapioCalendarioPage: React.FC = () => {
       <LoadingOverlay 
         open={salvando || excluindo || loadingDetalhes}
         message={
-          salvando ? 'Salvando refeição...' :
-          excluindo ? 'Excluindo refeição...' :
+          salvando ? 'Salvando preparação...' :
+          excluindo ? 'Excluindo preparação...' :
           loadingDetalhes ? 'Carregando detalhes...' :
           'Processando...'
         }

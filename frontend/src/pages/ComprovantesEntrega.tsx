@@ -1,19 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { ColumnDef } from '@tanstack/react-table';
 import { usePageTitle } from '../contexts/PageTitleContext';
 import { useToast } from '../hooks/useToast';
+import StatusIndicator from '../components/StatusIndicator';
+import PageHeader from '../components/PageHeader';
+import PageContainer from '../components/PageContainer';
+import { DataTableAdvanced } from '../components/DataTableAdvanced';
 import {
   Box,
-  Paper,
   Typography,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Button,
-  TextField,
-  MenuItem,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -21,18 +17,28 @@ import {
   Chip,
   IconButton,
   Grid,
-  Card,
-  CardContent,
   Divider,
-  Alert
+  Alert,
+  TableContainer,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
+  Popover,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  TextField
 } from '@mui/material';
 import {
   Visibility as VisibilityIcon,
   Print as PrintIcon,
-  Search as SearchIcon,
   Close as CloseIcon,
   Description as DescriptionIcon,
-  Delete as DeleteIcon
+  Delete as DeleteIcon,
+  FilterList as FilterIcon
 } from '@mui/icons-material';
 import api from '../services/api';
 
@@ -75,16 +81,13 @@ export default function ComprovantesEntrega() {
   const [error, setError] = useState('');
   
   // Filtros
-  const [escolaFiltro, setEscolaFiltro] = useState<number | ''>('');
-  const [numeroFiltro, setNumeroFiltro] = useState('');
-  const [dataInicio, setDataInicio] = useState('');
-  const [dataFim, setDataFim] = useState('');
+  const [filterAnchorEl, setFilterAnchorEl] = useState<HTMLElement | null>(null);
+  const [filters, setFilters] = useState<Record<string, any>>({});
   
   // Modal de detalhes
   const [comprovanteDetalhes, setComprovanteDetalhes] = useState<Comprovante | null>(null);
   const [modalAberto, setModalAberto] = useState(false);
 
-  // Definir título da página
   useEffect(() => {
     setPageTitle('Comprovantes de Entrega');
     return () => setPageTitle('');
@@ -98,12 +101,11 @@ export default function ComprovantesEntrega() {
   const carregarEscolas = async () => {
     try {
       const response = await api.get('/escolas');
-      // A API pode retornar um objeto com a propriedade 'escolas' ou diretamente um array
       const escolasData = Array.isArray(response.data) ? response.data : (response.data.escolas || []);
       setEscolas(escolasData);
     } catch (err) {
       console.error('Erro ao carregar escolas:', err);
-      setEscolas([]); // Garantir que sempre seja um array
+      setEscolas([]);
     }
   };
 
@@ -114,28 +116,28 @@ export default function ComprovantesEntrega() {
       
       let url = '/entregas/comprovantes?limit=100';
       
-      if (escolaFiltro) {
-        url = `/entregas/comprovantes/escola/${escolaFiltro}?limit=100`;
+      if (filters.escola) {
+        url = `/entregas/comprovantes/escola/${filters.escola}?limit=100`;
       }
       
       const response = await api.get(url);
       let dados = response.data.comprovantes || response.data;
       
       // Aplicar filtros locais
-      if (numeroFiltro) {
+      if (filters.numero) {
         dados = dados.filter((c: Comprovante) => 
-          c.numero_comprovante.toLowerCase().includes(numeroFiltro.toLowerCase())
+          c.numero_comprovante.toLowerCase().includes(filters.numero.toLowerCase())
         );
       }
       
-      if (dataInicio) {
+      if (filters.dataInicio) {
         dados = dados.filter((c: Comprovante) => 
-          new Date(c.data_entrega) >= new Date(dataInicio)
+          new Date(c.data_entrega) >= new Date(filters.dataInicio)
         );
       }
       
-      if (dataFim) {
-        const fim = new Date(dataFim);
+      if (filters.dataFim) {
+        const fim = new Date(filters.dataFim);
         fim.setHours(23, 59, 59, 999);
         dados = dados.filter((c: Comprovante) => 
           new Date(c.data_entrega) <= fim
@@ -149,6 +151,10 @@ export default function ComprovantesEntrega() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    carregarComprovantes();
+  }, [filters]);
 
   const abrirDetalhes = async (id: number) => {
     try {
@@ -431,13 +437,6 @@ export default function ComprovantesEntrega() {
     return valor.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 3 });
   };
 
-  const limparFiltros = () => {
-    setEscolaFiltro('');
-    setNumeroFiltro('');
-    setDataInicio('');
-    setDataFim('');
-  };
-
   const excluirComprovante = async (id: number, numero: string) => {
     if (!window.confirm(`Tem certeza que deseja EXCLUIR PERMANENTEMENTE o comprovante ${numero}?\n\nEsta ação não pode ser desfeita!`)) {
       return;
@@ -452,399 +451,399 @@ export default function ComprovantesEntrega() {
     }
   };
 
-  return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box>
-          <Typography variant="h4" component="h1">
-            <DescriptionIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-            Comprovantes de Entrega
-          </Typography>
-          <Typography variant="caption" color="textSecondary" sx={{ ml: 5 }}>
-            NUTRILOG - Sistema de Gestão e Logística de Alimentação Escolar
-          </Typography>
-        </Box>
-      </Box>
-
-      {/* Filtros */}
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          Filtros
+  // Definir colunas da tabela
+  const columns = useMemo<ColumnDef<Comprovante>[]>(() => [
+    {
+      accessorKey: 'numero_comprovante',
+      header: 'Número',
+      size: 180,
+      cell: ({ row }) => (
+        <Typography variant="body2" fontWeight="bold">
+          {row.original.numero_comprovante}
         </Typography>
-        <Grid container spacing={2}>
-          <Grid item xs={12} md={3}>
-            <TextField
-              select
-              fullWidth
-              label="Escola"
-              value={escolaFiltro}
-              onChange={(e) => setEscolaFiltro(e.target.value as number | '')}
+      )
+    },
+    {
+      accessorKey: 'escola_nome',
+      header: 'Escola',
+      size: 200
+    },
+    {
+      accessorKey: 'data_entrega',
+      header: 'Data',
+      size: 150,
+      cell: ({ row }) => (
+        new Date(row.original.data_entrega).toLocaleString('pt-BR')
+      )
+    },
+    {
+      accessorKey: 'nome_quem_entregou',
+      header: 'Entregador',
+      size: 150
+    },
+    {
+      accessorKey: 'nome_quem_recebeu',
+      header: 'Recebedor',
+      size: 150
+    },
+    {
+      accessorKey: 'total_itens',
+      header: 'Itens',
+      size: 80,
+      align: 'center',
+      cell: ({ row }) => (
+        <Chip label={row.original.total_itens} size="small" color="primary" />
+      )
+    },
+    {
+      accessorKey: 'status',
+      header: 'Status',
+      size: 120,
+      align: 'center',
+      cell: ({ row }) => (
+        <Chip
+          label={row.original.status}
+          size="small"
+          color={row.original.status === 'finalizado' ? 'success' : 'default'}
+        />
+      )
+    },
+    {
+      id: 'actions',
+      header: 'Ações',
+      size: 150,
+      align: 'center',
+      enableSorting: false,
+      cell: ({ row }) => (
+        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
+          <IconButton
+            size="small"
+            color="primary"
+            onClick={() => abrirDetalhes(row.original.id)}
+            title="Ver detalhes"
+          >
+            <VisibilityIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            size="small"
+            color="secondary"
+            onClick={() => imprimirDireto(row.original.id)}
+            title="Imprimir"
+          >
+            <PrintIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            size="small"
+            color="error"
+            onClick={() => excluirComprovante(row.original.id, row.original.numero_comprovante)}
+            title="Excluir permanentemente"
+          >
+            <DeleteIcon fontSize="small" />
+          </IconButton>
+        </Box>
+      )
+    }
+  ], []);
+
+  // Estatísticas
+  const estatisticas = useMemo(() => ({
+    total: comprovantes.length,
+    totalItens: comprovantes.reduce((sum, c) => sum + c.total_itens, 0),
+    escolasAtendidas: new Set(comprovantes.map(c => c.escola_id)).size
+  }), [comprovantes]);
+
+  return (
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <PageContainer fullHeight>
+        <PageHeader title="Comprovantes de Entrega" />
+
+        {/* Estatísticas */}
+        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+          <Box sx={{ flex: 1, p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+            <Typography variant="body2" color="text.secondary">Total de Comprovantes</Typography>
+            <Typography variant="h5">{estatisticas.total}</Typography>
+          </Box>
+          <Box sx={{ flex: 1, p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+            <Typography variant="body2" color="text.secondary">Total de Itens</Typography>
+            <Typography variant="h5">{estatisticas.totalItens}</Typography>
+          </Box>
+          <Box sx={{ flex: 1, p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+            <Typography variant="body2" color="text.secondary">Escolas Atendidas</Typography>
+            <Typography variant="h5">{estatisticas.escolasAtendidas}</Typography>
+          </Box>
+        </Box>
+
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+
+        <DataTableAdvanced
+          data={comprovantes}
+          columns={columns}
+          searchPlaceholder="Buscar comprovantes..."
+          emptyMessage="Nenhum comprovante encontrado"
+          emptyIcon={<DescriptionIcon sx={{ fontSize: 48, opacity: 0.2 }} />}
+          loading={loading}
+          actions={
+            <Button
+              variant="outlined"
+              startIcon={<FilterIcon />}
+              onClick={(e) => setFilterAnchorEl(e.currentTarget)}
               size="small"
             >
-              <MenuItem value="">Todas</MenuItem>
-              {escolas.map((escola) => (
-                <MenuItem key={escola.id} value={escola.id}>
-                  {escola.nome}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Grid>
-          <Grid item xs={12} md={3}>
+              Filtros
+            </Button>
+          }
+        />
+
+        {/* Popover de Filtros */}
+        <Popover
+          open={Boolean(filterAnchorEl)}
+          anchorEl={filterAnchorEl}
+          onClose={() => setFilterAnchorEl(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        >
+          <Box sx={{ p: 2, minWidth: 300 }}>
+            <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600 }}>
+              Filtros
+            </Typography>
+            
+            <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+              <InputLabel>Escola</InputLabel>
+              <Select
+                value={filters.escola || ''}
+                onChange={(e) => setFilters(prev => ({ ...prev, escola: e.target.value }))}
+                label="Escola"
+              >
+                <MenuItem value="">Todas</MenuItem>
+                {escolas.map((escola) => (
+                  <MenuItem key={escola.id} value={escola.id}>
+                    {escola.nome}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
             <TextField
               fullWidth
-              label="Número do Comprovante"
-              value={numeroFiltro}
-              onChange={(e) => setNumeroFiltro(e.target.value)}
               size="small"
+              label="Número do Comprovante"
+              value={filters.numero || ''}
+              onChange={(e) => setFilters(prev => ({ ...prev, numero: e.target.value }))}
               placeholder="COMP-2026-03-00001"
+              sx={{ mb: 2 }}
             />
-          </Grid>
-          <Grid item xs={12} md={2}>
+
             <TextField
               fullWidth
+              size="small"
               type="date"
               label="Data Início"
-              value={dataInicio}
-              onChange={(e) => setDataInicio(e.target.value)}
-              size="small"
+              value={filters.dataInicio || ''}
+              onChange={(e) => setFilters(prev => ({ ...prev, dataInicio: e.target.value }))}
               InputLabelProps={{ shrink: true }}
+              sx={{ mb: 2 }}
             />
-          </Grid>
-          <Grid item xs={12} md={2}>
+
             <TextField
               fullWidth
+              size="small"
               type="date"
               label="Data Fim"
-              value={dataFim}
-              onChange={(e) => setDataFim(e.target.value)}
-              size="small"
+              value={filters.dataFim || ''}
+              onChange={(e) => setFilters(prev => ({ ...prev, dataFim: e.target.value }))}
               InputLabelProps={{ shrink: true }}
+              sx={{ mb: 2 }}
             />
-          </Grid>
-          <Grid item xs={12} md={2}>
+
             <Button
               fullWidth
-              variant="contained"
-              startIcon={<SearchIcon />}
-              onClick={carregarComprovantes}
-              sx={{ height: '40px' }}
+              variant="outlined"
+              size="small"
+              onClick={() => {
+                setFilters({});
+                setFilterAnchorEl(null);
+              }}
             >
-              Buscar
-            </Button>
-          </Grid>
-        </Grid>
-        {(escolaFiltro || numeroFiltro || dataInicio || dataFim) && (
-          <Box sx={{ mt: 2 }}>
-            <Button size="small" onClick={limparFiltros}>
               Limpar Filtros
             </Button>
           </Box>
-        )}
-      </Paper>
+        </Popover>
 
-      {/* Estatísticas */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={12} md={4}>
-          <Card>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                Total de Comprovantes
-              </Typography>
-              <Typography variant="h4">
-                {comprovantes.length}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} md={4}>
-          <Card>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                Total de Itens Entregues
-              </Typography>
-              <Typography variant="h4">
-                {comprovantes.reduce((sum, c) => sum + c.total_itens, 0)}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} md={4}>
-          <Card>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                Escolas Atendidas
-              </Typography>
-              <Typography variant="h4">
-                {new Set(comprovantes.map(c => c.escola_id)).size}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-
-      {/* Tabela */}
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Número</TableCell>
-              <TableCell>Escola</TableCell>
-              <TableCell>Data</TableCell>
-              <TableCell>Entregador</TableCell>
-              <TableCell>Recebedor</TableCell>
-              <TableCell align="center">Itens</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell align="center">Ações</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={8} align="center">
-                  Carregando...
-                </TableCell>
-              </TableRow>
-            ) : comprovantes.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} align="center">
-                  Nenhum comprovante encontrado
-                </TableCell>
-              </TableRow>
-            ) : (
-              comprovantes.map((comprovante) => (
-                <TableRow key={comprovante.id} hover>
-                  <TableCell>
-                    <Typography variant="body2" fontWeight="bold">
-                      {comprovante.numero_comprovante}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>{comprovante.escola_nome}</TableCell>
-                  <TableCell>
-                    {new Date(comprovante.data_entrega).toLocaleString('pt-BR')}
-                  </TableCell>
-                  <TableCell>{comprovante.nome_quem_entregou}</TableCell>
-                  <TableCell>{comprovante.nome_quem_recebeu}</TableCell>
-                  <TableCell align="center">
-                    <Chip label={comprovante.total_itens} size="small" color="primary" />
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      label={comprovante.status}
-                      size="small"
-                      color={comprovante.status === 'finalizado' ? 'success' : 'default'}
-                    />
-                  </TableCell>
-                  <TableCell align="center">
-                    <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
-                      <IconButton
-                        size="small"
-                        color="primary"
-                        onClick={() => abrirDetalhes(comprovante.id)}
-                        title="Ver detalhes"
-                      >
-                        <VisibilityIcon />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        color="secondary"
-                        onClick={() => imprimirDireto(comprovante.id)}
-                        title="Imprimir"
-                      >
-                        <PrintIcon />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        color="delete"
-                        onClick={() => excluirComprovante(comprovante.id, comprovante.numero_comprovante)}
-                        title="Excluir permanentemente"
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </Box>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
-
-      {/* Modal de Detalhes */}
-      <Dialog
-        open={modalAberto}
-        onClose={fecharModal}
-        maxWidth="md"
-        fullWidth
-      >
-        {comprovanteDetalhes && (
-          <>
-            <DialogTitle>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="h6">
-                  Comprovante {comprovanteDetalhes.numero_comprovante}
-                </Typography>
-                <IconButton onClick={fecharModal} size="small">
-                  <CloseIcon />
-                </IconButton>
-              </Box>
-            </DialogTitle>
-            <DialogContent dividers>
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <Typography variant="subtitle2" color="textSecondary">
-                    Escola
+        {/* Modal de Detalhes */}
+        <Dialog
+          open={modalAberto}
+          onClose={fecharModal}
+          maxWidth="md"
+          fullWidth
+        >
+          {comprovanteDetalhes && (
+            <>
+              <DialogTitle>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="h6">
+                    Comprovante {comprovanteDetalhes.numero_comprovante}
                   </Typography>
-                  <Typography variant="body1" gutterBottom>
-                    {comprovanteDetalhes.escola_nome}
-                  </Typography>
-                  {comprovanteDetalhes.escola_endereco && (
-                    <Typography variant="body2" color="textSecondary">
-                      {comprovanteDetalhes.escola_endereco}
-                    </Typography>
-                  )}
-                </Grid>
-                
-                <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle2" color="textSecondary">
-                    Data da Entrega
-                  </Typography>
-                  <Typography variant="body1">
-                    {new Date(comprovanteDetalhes.data_entrega).toLocaleString('pt-BR')}
-                  </Typography>
-                </Grid>
-                
-                <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle2" color="textSecondary">
-                    Status
-                  </Typography>
-                  <Chip
-                    label={comprovanteDetalhes.status}
-                    color={comprovanteDetalhes.status === 'finalizado' ? 'success' : 'default'}
-                  />
-                </Grid>
-                
-                <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle2" color="textSecondary">
-                    Entregador
-                  </Typography>
-                  <Typography variant="body1">
-                    {comprovanteDetalhes.nome_quem_entregou}
-                  </Typography>
-                </Grid>
-                
-                <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle2" color="textSecondary">
-                    Recebedor
-                  </Typography>
-                  <Typography variant="body1">
-                    {comprovanteDetalhes.nome_quem_recebeu}
-                    {comprovanteDetalhes.cargo_recebedor && (
-                      <Typography variant="body2" color="textSecondary">
-                        {comprovanteDetalhes.cargo_recebedor}
-                      </Typography>
-                    )}
-                  </Typography>
-                </Grid>
-                
-                {comprovanteDetalhes.observacao && (
+                  <IconButton onClick={fecharModal} size="small">
+                    <CloseIcon />
+                  </IconButton>
+                </Box>
+              </DialogTitle>
+              <DialogContent dividers>
+                <Grid container spacing={2}>
                   <Grid item xs={12}>
                     <Typography variant="subtitle2" color="textSecondary">
-                      Observações
+                      Escola
+                    </Typography>
+                    <Typography variant="body1" gutterBottom>
+                      {comprovanteDetalhes.escola_nome}
+                    </Typography>
+                    {comprovanteDetalhes.escola_endereco && (
+                      <Typography variant="body2" color="textSecondary">
+                        {comprovanteDetalhes.escola_endereco}
+                      </Typography>
+                    )}
+                  </Grid>
+                  
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="textSecondary">
+                      Data da Entrega
                     </Typography>
                     <Typography variant="body1">
-                      {comprovanteDetalhes.observacao}
+                      {new Date(comprovanteDetalhes.data_entrega).toLocaleString('pt-BR')}
                     </Typography>
                   </Grid>
-                )}
-                
-                <Grid item xs={12}>
-                  <Divider sx={{ my: 2 }} />
-                  <Typography variant="h6" gutterBottom>
-                    Itens Entregues ({comprovanteDetalhes.total_itens})
-                  </Typography>
-                  <TableContainer>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Produto</TableCell>
-                          <TableCell align="right">Quantidade</TableCell>
-                          <TableCell>Unidade</TableCell>
-                          {comprovanteDetalhes.itens.some(i => i.lote) && (
-                            <TableCell>Lote</TableCell>
-                          )}
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {comprovanteDetalhes.itens.map((item) => (
-                          <TableRow key={item.id}>
-                            <TableCell>{item.produto_nome}</TableCell>
-                            <TableCell align="right">
-                              {formatarQuantidade(item.quantidade_entregue)}
-                            </TableCell>
-                            <TableCell>{item.unidade}</TableCell>
-                            {comprovanteDetalhes.itens.some(i => i.lote) && (
-                              <TableCell>{item.lote || '-'}</TableCell>
-                            )}
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </Grid>
-                
-                {comprovanteDetalhes.assinatura_base64 && (
+                  
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="textSecondary">
+                      Status
+                    </Typography>
+                    <Chip
+                      label={comprovanteDetalhes.status}
+                      color={comprovanteDetalhes.status === 'finalizado' ? 'success' : 'default'}
+                    />
+                  </Grid>
+                  
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="textSecondary">
+                      Entregador
+                    </Typography>
+                    <Typography variant="body1">
+                      {comprovanteDetalhes.nome_quem_entregou}
+                    </Typography>
+                  </Grid>
+                  
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="textSecondary">
+                      Recebedor
+                    </Typography>
+                    <Typography variant="body1">
+                      {comprovanteDetalhes.nome_quem_recebeu}
+                      {comprovanteDetalhes.cargo_recebedor && (
+                        <Typography variant="body2" color="textSecondary">
+                          {comprovanteDetalhes.cargo_recebedor}
+                        </Typography>
+                      )}
+                    </Typography>
+                  </Grid>
+                  
+                  {comprovanteDetalhes.observacao && (
+                    <Grid item xs={12}>
+                      <Typography variant="subtitle2" color="textSecondary">
+                        Observações
+                      </Typography>
+                      <Typography variant="body1">
+                        {comprovanteDetalhes.observacao}
+                      </Typography>
+                    </Grid>
+                  )}
+                  
                   <Grid item xs={12}>
                     <Divider sx={{ my: 2 }} />
-                    <Typography variant="subtitle2" color="textSecondary" gutterBottom>
-                      Assinatura Digital do Recebedor
+                    <Typography variant="h6" gutterBottom>
+                      Itens Entregues ({comprovanteDetalhes.total_itens})
                     </Typography>
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        mt: 2
-                      }}
-                    >
-                      <Box
-                        component="img"
-                        src={comprovanteDetalhes.assinatura_base64}
-                        alt="Assinatura Digital"
-                        sx={{
-                          maxWidth: '300px',
-                          maxHeight: '120px',
-                          border: '1px solid #ddd',
-                          borderRadius: 1,
-                          p: 1,
-                          backgroundColor: '#fff'
-                        }}
-                      />
-                    </Box>
+                    <TableContainer>
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>Produto</TableCell>
+                            <TableCell align="right">Quantidade</TableCell>
+                            <TableCell>Unidade</TableCell>
+                            {comprovanteDetalhes.itens.some(i => i.lote) && (
+                              <TableCell>Lote</TableCell>
+                            )}
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {comprovanteDetalhes.itens.map((item) => (
+                            <TableRow key={item.id}>
+                              <TableCell>{item.produto_nome}</TableCell>
+                              <TableCell align="right">
+                                {formatarQuantidade(item.quantidade_entregue)}
+                              </TableCell>
+                              <TableCell>{item.unidade}</TableCell>
+                              {comprovanteDetalhes.itens.some(i => i.lote) && (
+                                <TableCell>{item.lote || '-'}</TableCell>
+                              )}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
                   </Grid>
-                )}
-              </Grid>
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={fecharModal}>
-                Fechar
-              </Button>
-              <Button
-                variant="contained"
-                startIcon={<PrintIcon />}
-                onClick={imprimirComprovante}
-              >
-                Imprimir
-              </Button>
-            </DialogActions>
-          </>
-        )}
-      </Dialog>
+                  
+                  {comprovanteDetalhes.assinatura_base64 && (
+                    <Grid item xs={12}>
+                      <Divider sx={{ my: 2 }} />
+                      <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+                        Assinatura Digital do Recebedor
+                      </Typography>
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          mt: 2
+                        }}
+                      >
+                        <Box
+                          component="img"
+                          src={comprovanteDetalhes.assinatura_base64}
+                          alt="Assinatura Digital"
+                          sx={{
+                            maxWidth: '300px',
+                            maxHeight: '120px',
+                            border: '1px solid #ddd',
+                            borderRadius: 1,
+                            p: 1,
+                            backgroundColor: '#fff'
+                          }}
+                        />
+                      </Box>
+                    </Grid>
+                  )}
+                </Grid>
+              </DialogContent>
+              <DialogActions>
+                <Button onClick={fecharModal}>
+                  Fechar
+                </Button>
+                <Button
+                  variant="contained"
+                  startIcon={<PrintIcon />}
+                  onClick={imprimirComprovante}
+                >
+                  Imprimir
+                </Button>
+              </DialogActions>
+            </>
+          )}
+        </Dialog>
+      </PageContainer>
     </Box>
   );
 }

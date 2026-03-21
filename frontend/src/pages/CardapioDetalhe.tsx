@@ -470,11 +470,11 @@ export default function CardapioDetalhe() {
       });
       
       console.log('Refeições do cardápio carregadas:', refeicoesCardapioData);
-      console.log('Quantidade de refeições:', refeicoesCardapioData?.length || 0);
+      console.log('Quantidade de preparações:', refeicoesCardapioData?.length || 0);
       
-      // Log detalhado da primeira refeição para debug
+      // Log detalhado da primeira preparação para debug
       if (refeicoesCardapioData && refeicoesCardapioData.length > 0) {
-        console.log('Primeira refeição:', refeicoesCardapioData[0]);
+        console.log('Primeira preparação:', refeicoesCardapioData[0]);
         console.log('Objeto refeicao:', refeicoesCardapioData[0].refeicao);
       }
       
@@ -583,14 +583,14 @@ export default function CardapioDetalhe() {
   const adicionarRefeicao = async (refeicaoId: number) => {
     if (!cardapio?.id) return;
     
-    // Verificar se a refeição já está adicionada
+    // Verificar se a preparação já está adicionada
     const jaAdicionada = refeicoesAdicionadas.some(item => 
       item.refeicao_id === refeicaoId && 
       item.modalidade_id === cardapio.modalidade_id
     );
     
     if (jaAdicionada) {
-      setErro("Esta refeição já está adicionada ao cardápio");
+      setErro("Esta preparação já está adicionada ao cardápio");
       // Limpar erro após 3 segundos
       setTimeout(() => setErro(""), 3000);
       return;
@@ -604,12 +604,12 @@ export default function CardapioDetalhe() {
         frequencia_mensal: 1
       };
       
-      console.log('Adicionando refeição - dados:', dadosParaEnviar);
+      console.log('Adicionando preparação - dados:', dadosParaEnviar);
       console.log('Cardápio atual:', cardapio);
       
       const novaAssociacao = await adicionarCardapioRefeicao(dadosParaEnviar);
       
-      // Buscar dados da refeição
+      // Buscar dados da preparação
       const refeicao = refeicoesDisponiveis.find(r => r.id === refeicaoId);
       if (refeicao) {
         setRefeicoesAdicionadas(prev => [...prev, {
@@ -618,20 +618,20 @@ export default function CardapioDetalhe() {
         }]);
         
         // Mostrar mensagem de sucesso
-        setSucesso(`Refeição "${refeicao.nome}" adicionada com sucesso!`);
+        setSucesso(`Preparação "${refeicao.nome}" adicionada com sucesso!`);
         setTimeout(() => setSucesso(""), 3000);
       }
       
       // Limpar qualquer erro anterior
       setErro("");
     } catch (error: any) {
-      console.error("Erro ao adicionar refeição:", error);
+      console.error("Erro ao adicionar preparação:", error);
       
       // Verificar se é erro de duplicação
       if (error.response?.data?.code === "ALREADY_EXISTS") {
-        setErro("Esta refeição já está adicionada ao cardápio");
+        setErro("Esta preparação já está adicionada ao cardápio");
       } else {
-        setErro("Erro ao adicionar refeição");
+        setErro("Erro ao adicionar preparação");
       }
       
       // Limpar erro após 3 segundos
@@ -648,8 +648,8 @@ export default function CardapioDetalhe() {
       await deletarCardapioRefeicao(parseInt(id), associacaoId);
       setRefeicoesAdicionadas(prev => prev.filter(r => r.id !== associacaoId));
     } catch (error) {
-      console.error("Erro ao remover refeição:", error);
-      setErro("Erro ao remover refeição");
+      console.error("Erro ao remover preparação:", error);
+      setErro("Erro ao remover preparação");
     }
   };
 
@@ -701,20 +701,20 @@ export default function CardapioDetalhe() {
 
     // Se soltar em "adicionadas"
     if (overId === "adicionadas") {
-      // Verificar se a refeição já está adicionada
+      // Verificar se a preparação já está adicionada
       const jaAdicionada = refeicoesAdicionadas.some(r => r.refeicao_id === activeRefeicaoId);
       
       if (jaAdicionada) {
         // Se já está adicionada e foi solta no mesmo container, cancelar a remoção (não fazer nada)
         // Isso permite que o usuário "cancele" uma remoção acidental
-        console.log("Refeição já adicionada - cancelando ação (mantendo no cardápio)");
+        console.log("Preparação já adicionada - cancelando ação (mantendo no cardápio)");
       } else if (refeicoesDisponiveis.some(r => r.id === activeRefeicaoId)) {
         // Se está disponível e não foi adicionada, adicionar
         adicionarRefeicao(activeRefeicaoId);
       }
     }
     
-    // Se soltar em "disponiveis" e a refeição está adicionada
+    // Se soltar em "disponiveis" e a preparação está adicionada
     if (overId === "disponiveis" && refeicoesAdicionadas.some(r => r.refeicao_id === activeRefeicaoId)) {
       const associacao = refeicoesAdicionadas.find(r => r.refeicao_id === activeRefeicaoId);
       if (associacao) {
@@ -1097,7 +1097,7 @@ export default function CardapioDetalhe() {
                         color: "text.secondary",
                       }}
                     >
-                      <Typography>Nenhuma refeição adicionada</Typography>
+                      <Typography>Nenhuma preparação adicionada</Typography>
                     </Box>
                   )}
                 </DroppableZone>
@@ -1188,7 +1188,7 @@ export default function CardapioDetalhe() {
                 
                 <Box sx={{ mt: 2, p: 2, bgcolor: 'primary.light', borderRadius: 1 }}>
                   <Typography variant="h6" color="primary.contrastText" align="center">
-                    <strong>Custo Total da Refeição: R$ {toNum(modalDetalheCusto.custo_total_refeicao).toFixed(2)}</strong>
+                    <strong>Custo Total da Preparação: R$ {toNum(modalDetalheCusto.custo_total_refeicao).toFixed(2)}</strong>
                   </Typography>
                   <Typography variant="caption" color="primary.contrastText" align="center" display="block">
                     (Custo por aluno × Total de alunos × Frequência mensal)

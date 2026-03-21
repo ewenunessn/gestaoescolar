@@ -1,11 +1,10 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
-import CompactPagination from '../components/CompactPagination';
+import { createColumnHelper } from '@tanstack/react-table';
+import { DataTableAdvanced } from '../components/DataTableAdvanced';
 import AdicionarIngredienteDialog from '../components/AdicionarIngredienteDialog';
 import EditarIngredienteDialog from '../components/EditarIngredienteDialog';
 import { usePageTitle } from "../contexts/PageTitleContext";
-import { Modalidade } from "../services/modalidades";
 import { useToast } from "../hooks/useToast";
 import {
   useRefeicao,
@@ -33,20 +32,11 @@ import {
   Card,
   Chip,
   IconButton,
-  Switch,
-  FormControlLabel,
   Select,
   MenuItem,
   FormControl,
   InputLabel,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Tooltip,
-  Autocomplete,
   Grid,
   Divider,
   Menu,
@@ -56,7 +46,6 @@ import {
   Edit as EditIcon,
   Add as AddIcon,
   Restaurant as RestaurantIcon,
-  DragIndicator as DragIndicatorIcon,
   Save as SaveIcon,
   Cancel as CancelIcon,
   Description as DescriptionIcon,
@@ -66,25 +55,7 @@ import {
   MoreVert as MoreVertIcon,
 } from "@mui/icons-material";
 import PageBreadcrumbs from '../components/PageBreadcrumbs';
-import PageContainer from '../components/PageContainer';
-import StatusIndicator from '../components/StatusIndicator';
 import ViewTabs from '../components/ViewTabs';
-import {
-  DndContext,
-  DragEndEvent,
-  closestCenter,
-  useSensor,
-  useSensors,
-  PointerSensor,
-  DragOverlay,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-  useSortable,
-  arrayMove,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 
 interface Produto {
   id: number;
@@ -94,7 +65,7 @@ interface Produto {
   ativo: boolean;
 }
 
-interface RefeicaoProduto {
+interface preparacaoProduto {
   id: number;
   produto_id: number;
   per_capita: number;
@@ -106,142 +77,20 @@ interface RefeicaoProduto {
     modalidade_nome: string;
     per_capita: number;
   }>;
-  per_capita_efetivo?: number; // Per capita filtrado pela modalidade
+  per_capita_efetivo?: number;
 }
 
-interface SortableRowProps {
-  assoc: RefeicaoProduto;
-  onRemove: () => void;
-  onEdit: () => void;
-}
+// Definição das colunas do DataTable
+const columnHelper = createColumnHelper<preparacaoProduto>();
 
-function SortableRow({ assoc, onRemove, onEdit }: SortableRowProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: assoc.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
-  // SEMPRE mostrar range (menor - maior), independente da modalidade selecionada
-  const unidade = assoc.tipo_medida === 'gramas' ? 'g' : 'un';
-  const fatorCorrecao = toNum(assoc.produto?.fator_correcao, 1.0);
-  
-  // Per capita cadastrado é LÍQUIDO (consumo)
-  const perCapitasLiquido = assoc.per_capita_por_modalidade?.map(m => toNum(m.per_capita)) || [toNum(assoc.per_capita)];
-  const minPerCapitaLiquido = Math.min(...perCapitasLiquido);
-  const maxPerCapitaLiquido = Math.max(...perCapitasLiquido);
-  
-  const perCapitaLiquidoTexto = minPerCapitaLiquido === maxPerCapitaLiquido
-    ? `${minPerCapitaLiquido}${unidade}`
-    : `${minPerCapitaLiquido} - ${maxPerCapitaLiquido}${unidade}`;
-
-  // Calcular per capita bruto (compra) = líquido * fator
-  const minPerCapitaBruto = minPerCapitaLiquido * fatorCorrecao;
-  const maxPerCapitaBruto = maxPerCapitaLiquido * fatorCorrecao;
-  
-  const perCapitaBrutoTexto = minPerCapitaLiquido === maxPerCapitaLiquido
-    ? `${minPerCapitaBruto.toFixed(1)}${unidade}`
-    : `${minPerCapitaBruto.toFixed(1)} - ${maxPerCapitaBruto.toFixed(1)}${unidade}`;
-
-  const tooltipContent = assoc.per_capita_por_modalidade && assoc.per_capita_por_modalidade.length > 0 ? (
-    <Box>
-      <Typography variant="caption" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>
-        Per Capita por Modalidade:
-      </Typography>
-      {assoc.per_capita_por_modalidade.map((mod) => (
-        <Typography key={mod.modalidade_id} variant="caption" sx={{ display: 'block' }}>
-          {mod.modalidade_nome}: {mod.per_capita}{unidade} (líquido) → {(toNum(mod.per_capita) * fatorCorrecao).toFixed(1)}{unidade} (bruto)
-        </Typography>
-      ))}
-      {fatorCorrecao > 1.0 && (
-        <Typography variant="caption" sx={{ display: 'block', mt: 0.5, fontStyle: 'italic', color: 'warning.main' }}>
-          Fator de correção: {fatorCorrecao.toFixed(3)}
-        </Typography>
-      )}
-    </Box>
-  ) : (
-    <Box>
-      <Typography variant="caption" sx={{ display: 'block' }}>
-        Per capita único: {assoc.per_capita}{unidade} (líquido)
-      </Typography>
-      <Typography variant="caption" sx={{ display: 'block' }}>
-        Per capita bruto: {(toNum(assoc.per_capita) * fatorCorrecao).toFixed(1)}{unidade}
-      </Typography>
-      {fatorCorrecao > 1.0 && (
-        <Typography variant="caption" sx={{ display: 'block', mt: 0.5, fontStyle: 'italic', color: 'warning.main' }}>
-          Fator de correção: {fatorCorrecao.toFixed(3)}
-        </Typography>
-      )}
-    </Box>
-  );
-
-  return (
-    <TableRow ref={setNodeRef} style={style} hover>
-      <TableCell sx={{ width: 50, cursor: 'grab' }} {...attributes} {...listeners}>
-        <DragIndicatorIcon color="action" />
-      </TableCell>
-      <TableCell>
-        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-          {assoc.produto?.nome}
-        </Typography>
-      </TableCell>
-      <TableCell align="center" sx={{ width: 130 }}>
-        <Tooltip title={tooltipContent} arrow placement="top">
-          <Typography variant="body2" sx={{ cursor: 'help', fontWeight: 500, color: 'primary.main' }}>
-            {perCapitaLiquidoTexto}
-          </Typography>
-        </Tooltip>
-      </TableCell>
-      <TableCell align="center" sx={{ width: 130 }}>
-        <Tooltip title={tooltipContent} arrow placement="top">
-          <Typography variant="body2" sx={{ cursor: 'help', fontWeight: 500 }}>
-            {perCapitaBrutoTexto}
-          </Typography>
-        </Tooltip>
-      </TableCell>
-      <TableCell align="center" sx={{ width: 120 }}>
-        <Chip 
-          label={assoc.tipo_medida === 'gramas' ? 'Gramas' : 'Unidades'} 
-          size="small" 
-          variant="outlined"
-        />
-      </TableCell>
-      <TableCell align="center" sx={{ width: 120 }}>
-        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
-          <Tooltip title="Editar">
-            <IconButton size="small" color="primary" onClick={onEdit}>
-              <EditIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Remover">
-            <IconButton size="small" color="delete" onClick={onRemove}>
-              <DeleteIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        </Box>
-      </TableCell>
-    </TableRow>
-  );
-}
-
-export default function RefeicaoDetalhe() {
+export default function PreparacaoDetalhe() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const toast = useToast();
   const { setPageTitle } = usePageTitle();
   
   // React Query hooks
-  const { data: refeicao, isLoading: loading } = useRefeicao(Number(id));
+  const { data: preparacao, isLoading: loading } = useRefeicao(Number(id));
   const { data: associacoes = [] } = useProdutosDaRefeicao(Number(id));
   const { data: produtos = [] } = useProdutos();
   const { data: modalidades = [] } = useModalidades();
@@ -258,45 +107,160 @@ export default function RefeicaoDetalhe() {
   const [openExcluir, setOpenExcluir] = useState(false);
   const [dialogAdicionarOpen, setDialogAdicionarOpen] = useState(false);
   const [dialogEditarOpen, setDialogEditarOpen] = useState(false);
-  const [produtoEditando, setProdutoEditando] = useState<RefeicaoProduto | null>(null);
+  const [produtoEditando, setProdutoEditando] = useState<preparacaoProduto | null>(null);
   const [tabAtiva, setTabAtiva] = useState(0); // 0 = Ingredientes, 1 = Ficha Técnica
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
-  
+
   // Hooks para cálculos dinâmicos
   const { data: valoresNutricionais, isLoading: loadingNutricional, error: errorNutricional } = useValoresNutricionais(
     Number(id),
-    refeicao?.rendimento_porcoes || form.rendimento_porcoes,
-    !!refeicao, // Buscar sempre que a refeição estiver carregada
+    preparacao?.rendimento_porcoes || form.rendimento_porcoes,
+    !!preparacao, // Buscar sempre que a refeição estiver carregada
     modalidadeSelecionada
   );
   
   const { data: custoData, isLoading: loadingCusto, error: errorCusto } = useCustoRefeicao(
     Number(id),
-    refeicao?.rendimento_porcoes || form.rendimento_porcoes,
-    tabAtiva === 1 && !!refeicao, // Só buscar custo na aba Ficha Técnica
+    preparacao?.rendimento_porcoes || form.rendimento_porcoes,
+    tabAtiva === 1 && !!preparacao, // Só buscar custo na aba Ficha Técnica
     modalidadeSelecionada
   );
-  
-  // Autocomplete
-  const [selectedProduto, setSelectedProduto] = useState<Produto | null>(null);
-  
-  // Paginação
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 5,
+  // Definição das colunas do DataTable
+  const columns = useMemo(() => [
+    columnHelper.accessor('produto.nome', {
+      id: 'produto',
+      header: 'Produto',
+      cell: (info) => (
+        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+          {info.getValue()}
+        </Typography>
+      ),
+    }),
+    columnHelper.display({
+      id: 'per_capita_liquido',
+      header: () => (
+        <Tooltip title="Per Capita Líquido (consumo efetivo)" arrow>
+          <Box component="span">Per Capita Líquido</Box>
+        </Tooltip>
+      ),
+      cell: ({ row }) => {
+        const assoc = row.original;
+        const unidade = assoc.tipo_medida === 'gramas' ? 'g' : 'un';
+        const fatorCorrecao = toNum(assoc.produto?.fator_correcao, 1.0);
+        const perCapitasLiquido = assoc.per_capita_por_modalidade?.map(m => toNum(m.per_capita)) || [toNum(assoc.per_capita)];
+        const minPerCapitaLiquido = Math.min(...perCapitasLiquido);
+        const maxPerCapitaLiquido = Math.max(...perCapitasLiquido);
+        const perCapitaLiquidoTexto = minPerCapitaLiquido === maxPerCapitaLiquido
+          ? `${minPerCapitaLiquido}${unidade}`
+          : `${minPerCapitaLiquido} - ${maxPerCapitaLiquido}${unidade}`;
+
+        const tooltipContent = assoc.per_capita_por_modalidade && assoc.per_capita_por_modalidade.length > 0 ? (
+          <Box>
+            <Typography variant="caption" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>
+              Per Capita por Modalidade:
+            </Typography>
+            {assoc.per_capita_por_modalidade.map((mod) => (
+              <Typography key={mod.modalidade_id} variant="caption" sx={{ display: 'block' }}>
+                {mod.modalidade_nome}: {mod.per_capita}{unidade} (líquido) → {(toNum(mod.per_capita) * fatorCorrecao).toFixed(1)}{unidade} (bruto)
+              </Typography>
+            ))}
+            {fatorCorrecao > 1.0 && (
+              <Typography variant="caption" sx={{ display: 'block', mt: 0.5, fontStyle: 'italic', color: 'warning.main' }}>
+                Fator de correção: {fatorCorrecao.toFixed(3)}
+              </Typography>
+            )}
+          </Box>
+        ) : (
+          <Box>
+            <Typography variant="caption" sx={{ display: 'block' }}>
+              Per capita único: {assoc.per_capita}{unidade} (líquido)
+            </Typography>
+            <Typography variant="caption" sx={{ display: 'block' }}>
+              Per capita bruto: {(toNum(assoc.per_capita) * fatorCorrecao).toFixed(1)}{unidade}
+            </Typography>
+            {fatorCorrecao > 1.0 && (
+              <Typography variant="caption" sx={{ display: 'block', mt: 0.5, fontStyle: 'italic', color: 'warning.main' }}>
+                Fator de correção: {fatorCorrecao.toFixed(3)}
+              </Typography>
+            )}
+          </Box>
+        );
+
+        return (
+          <Tooltip title={tooltipContent} arrow placement="top">
+            <Typography variant="body2" sx={{ cursor: 'help', fontWeight: 500, color: 'primary.main', textAlign: 'center' }}>
+              {perCapitaLiquidoTexto}
+            </Typography>
+          </Tooltip>
+        );
       },
-    })
-  );
+    }),
+    columnHelper.display({
+      id: 'per_capita_bruto',
+      header: () => (
+        <Tooltip title="Per capita bruto (quantidade de compra)" arrow>
+          <Box component="span">Per Capita Bruto</Box>
+        </Tooltip>
+      ),
+      cell: ({ row }) => {
+        const assoc = row.original;
+        const unidade = assoc.tipo_medida === 'gramas' ? 'g' : 'un';
+        const fatorCorrecao = toNum(assoc.produto?.fator_correcao, 1.0);
+        const perCapitasLiquido = assoc.per_capita_por_modalidade?.map(m => toNum(m.per_capita)) || [toNum(assoc.per_capita)];
+        const minPerCapitaLiquido = Math.min(...perCapitasLiquido);
+        const maxPerCapitaLiquido = Math.max(...perCapitasLiquido);
+        const minPerCapitaBruto = minPerCapitaLiquido * fatorCorrecao;
+        const maxPerCapitaBruto = maxPerCapitaLiquido * fatorCorrecao;
+        const perCapitaBrutoTexto = minPerCapitaLiquido === maxPerCapitaLiquido
+          ? `${minPerCapitaBruto.toFixed(1)}${unidade}`
+          : `${minPerCapitaBruto.toFixed(1)} - ${maxPerCapitaBruto.toFixed(1)}${unidade}`;
+
+        return (
+          <Typography variant="body2" sx={{ fontWeight: 500, textAlign: 'center' }}>
+            {perCapitaBrutoTexto}
+          </Typography>
+        );
+      },
+    }),
+    columnHelper.accessor('tipo_medida', {
+      id: 'unidade',
+      header: 'Unidade',
+      cell: (info) => (
+        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+          <Chip 
+            label={info.getValue() === 'gramas' ? 'Gramas' : 'Unidades'} 
+            size="small" 
+            variant="outlined"
+          />
+        </Box>
+      ),
+    }),
+    columnHelper.display({
+      id: 'acoes',
+      header: 'Ações',
+      cell: ({ row }) => (
+        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
+          <Tooltip title="Editar">
+            <IconButton size="small" color="primary" onClick={() => handleEditarProduto(row.original)}>
+              <EditIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Remover">
+            <IconButton size="small" color="error" onClick={() => removerProduto(row.original.id)}>
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      ),
+    }),
+  ], []);
 
   // Atualizar form e título quando refeição carregar
   useEffect(() => {
-    if (refeicao) {
-      setForm(refeicao);
-      setPageTitle(refeicao.nome);
+    if (preparacao) {
+      setForm(preparacao);
+      setPageTitle(preparacao.nome);
       
       // Selecionar primeira modalidade ativa por padrão
       const ativas = modalidades.filter(m => m.ativo);
@@ -304,15 +268,15 @@ export default function RefeicaoDetalhe() {
         setModalidadeSelecionada(ativas[0].id);
       }
     }
-  }, [refeicao, modalidades, setPageTitle]);
+  }, [preparacao, modalidades, setPageTitle]);
   
   // Verificar se refeição não foi encontrada
   useEffect(() => {
-    if (!loading && !refeicao && id) {
-      toast.error('Erro', 'Refeição não encontrada');
-      navigate('/refeicoes');
+    if (!loading && !preparacao && id) {
+      toast.error('Refeição não encontrada');
+      navigate('/preparacoes');
     }
-  }, [loading, refeicao, id, navigate, toast]);
+  }, [loading, preparacao, id, navigate, toast]);
 
   const produtosDisponiveis = produtos.filter(
     (produto) => !associacoes.some((assoc) => assoc.produto_id === produto.id)
@@ -322,19 +286,19 @@ export default function RefeicaoDetalhe() {
     try {
       await editarRefeicaoMutation.mutateAsync({ id: Number(id), data: form });
       setEditando(false);
-      toast.success('Sucesso!', 'Refeição atualizada com sucesso!');
+      toast.success('Refeição atualizada com sucesso!');
     } catch {
-      toast.error('Erro ao salvar', 'Não foi possível salvar as alterações.');
+      toast.error('Não foi possível salvar as alterações.');
     }
   }
 
-  async function excluirRefeicao() {
+  async function excluirpreparacao() {
     try {
       await deletarRefeicaoMutation.mutateAsync(Number(id));
-      toast.success('Sucesso!', 'Refeição excluída com sucesso!');
-      navigate("/refeicoes");
+      toast.success('Refeição excluída com sucesso!');
+      navigate("/preparacoes");
     } catch {
-      toast.error('Erro ao excluir', 'Não foi possível excluir a refeição.');
+      toast.error('Não foi possível excluir a refeição.');
     }
   }
 
@@ -352,23 +316,23 @@ export default function RefeicaoDetalhe() {
         tipoMedida,
         perCapitaPorModalidade,
       });
-      toast.success('Sucesso!', 'Produto adicionado à refeição!');
+      toast.success('Produto adicionado à refeição!');
     } catch (error) {
       console.error('Erro ao adicionar produto:', error);
-      toast.error('Erro ao adicionar', 'Não foi possível adicionar o produto.');
+      toast.error('Não foi possível adicionar o produto.');
     }
   }
 
   async function removerProduto(assocId: number) {
     try {
       await removerProdutoMutation.mutateAsync({ id: assocId, refeicaoId: Number(id) });
-      toast.success('Sucesso!', 'Produto removido da refeição!');
+      toast.success('Produto removido da refeição!');
     } catch {
-      toast.error('Erro ao remover', 'Não foi possível remover o produto.');
+      toast.error('Não foi possível remover o produto.');
     }
   }
 
-  function handleEditarProduto(assoc: RefeicaoProduto) {
+  function handleEditarProduto(assoc: preparacaoProduto) {
     setProdutoEditando(assoc);
     setDialogEditarOpen(true);
   }
@@ -389,32 +353,12 @@ export default function RefeicaoDetalhe() {
         perCapitaPorModalidade,
       });
       
-      toast.success('Sucesso!', 'Produto atualizado!');
+      toast.success('Produto atualizado!');
     } catch (error) {
       console.error('Erro ao editar produto:', error);
-      toast.error('Erro ao editar', 'Não foi possível editar o produto.');
+      toast.error('Não foi possível editar o produto.');
     }
   }
-
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-
-    if (!over || active.id === over.id) return;
-
-    setAssociacoes((items) => {
-      const oldIndex = items.findIndex((item) => item.id === active.id);
-      const newIndex = items.findIndex((item) => item.id === over.id);
-      return arrayMove(items, oldIndex, newIndex);
-    });
-  }
-
-  // Filtrar associações pela modalidade selecionada
-  const associacoesFiltradas = associacoes;
-
-  const paginatedAssociacoes = associacoesFiltradas.slice(
-    page * rowsPerPage,
-    page * rowsPerPage + rowsPerPage
-  );
 
   async function gerarPDF() {
     try {
@@ -489,23 +433,23 @@ export default function RefeicaoDetalhe() {
         pageOrientation: 'portrait',
         pageMargins: [28, 36, 28, 36],
         content: [
-          // ── Cabeçalho ──────────────────────────────────────────────
+          // -- Cabeçalho ----------------------------------------------
           {
             columns: [
               {
                 stack: [
-                  { text: 'FICHA TÉCNICA DE PREPARAÇÃO', fontSize: 7.5, bold: true, color: '#718096', characterSpacing: 1 },
-                  { text: refeicao.nome, fontSize: 18, bold: true, color: '#1a202c', margin: [0, 2, 0, 0] },
+                  { text: 'Ficha Técnica DE PREPARAÇÃO', fontSize: 7.5, bold: true, color: '#718096', characterSpacing: 1 },
+                  { text: preparacao.nome, fontSize: 18, bold: true, color: '#1a202c', margin: [0, 2, 0, 0] },
                   ...(modalidadeNome ? [{ text: `Modalidade: ${modalidadeNome}`, fontSize: 8.5, bold: true, color: '#38a169', margin: [0, 3, 0, 0] }] : []),
-                  ...(refeicao.descricao ? [{ text: refeicao.descricao, fontSize: 8, italics: true, color: '#718096', margin: [0, 2, 0, 0] }] : []),
+                  ...(preparacao.descricao ? [{ text: preparacao.descricao, fontSize: 8, italics: true, color: '#718096', margin: [0, 2, 0, 0] }] : []),
                 ],
                 width: '*',
               },
               {
                 stack: [
-                  ...(refeicao.categoria ? [{ text: refeicao.categoria, fontSize: 8, bold: true, color: '#4a5568', alignment: 'right' }] : []),
-                  ...(refeicao.tempo_preparo_minutos ? [{ text: `Preparo: ${refeicao.tempo_preparo_minutos} min`, fontSize: 7.5, color: '#718096', alignment: 'right', margin: [0, 4, 0, 0] }] : []),
-                  ...(refeicao.rendimento_porcoes ? [{ text: `Rendimento: ${refeicao.rendimento_porcoes} porções`, fontSize: 7.5, color: '#718096', alignment: 'right', margin: [0, 2, 0, 0] }] : []),
+                  ...(preparacao.categoria ? [{ text: preparacao.categoria, fontSize: 8, bold: true, color: '#4a5568', alignment: 'right' }] : []),
+                  ...(preparacao.tempo_preparo_minutos ? [{ text: `Preparo: ${preparacao.tempo_preparo_minutos} min`, fontSize: 7.5, color: '#718096', alignment: 'right', margin: [0, 4, 0, 0] }] : []),
+                  ...(preparacao.rendimento_porcoes ? [{ text: `Rendimento: ${preparacao.rendimento_porcoes} porções`, fontSize: 7.5, color: '#718096', alignment: 'right', margin: [0, 2, 0, 0] }] : []),
                 ],
                 width: 130,
               },
@@ -514,7 +458,7 @@ export default function RefeicaoDetalhe() {
           },
           { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 539, y2: 0, lineWidth: 1.5, lineColor: '#e2e8f0' }], margin: [0, 0, 0, 12] },
 
-          // ── Tabela principal ────────────────────────────────────────
+          // -- Tabela principal ----------------------------------------
           { text: 'COMPOSIÇÃO NUTRICIONAL DOS INGREDIENTES', fontSize: 7.5, bold: true, color: '#718096', characterSpacing: 0.5, margin: [0, 0, 0, 5] },
           {
             table: {
@@ -558,7 +502,7 @@ export default function RefeicaoDetalhe() {
                     dc(toNum(ing.sodio_porcao), 1, bg),
                   ];
                 }),
-                mkRow('TOTAL REFEIÇÃO', C_TOTAL,
+                mkRow('TOTAL Preparação', C_TOTAL,
                   totalLiq.toFixed(1), totalBruto.toFixed(1),
                   totalKcal, totalKj,
                   totalProt, totalLip, totalCarb, totalCalcio, totalFerro, totalVitA, totalVitC, totalSodio
@@ -590,28 +534,28 @@ export default function RefeicaoDetalhe() {
             margin: [0, 0, 0, 16],
           },
 
-          // ── Seção inferior: 2 colunas ───────────────────────────────
+          // -- Seção inferior: 2 colunas -------------------------------
           {
             columns: [
-              ...(refeicao.modo_preparo ? [{
+              ...(preparacao.modo_preparo ? [{
                 stack: [
                   { text: 'MODO DE PREPARO', fontSize: 7.5, bold: true, color: '#718096', characterSpacing: 0.5, margin: [0, 0, 0, 4] },
                   { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 250, y2: 0, lineWidth: 0.8, lineColor: '#e2e8f0' }], margin: [0, 0, 0, 5] },
-                  { text: refeicao.modo_preparo, fontSize: 8, color: '#4a5568', lineHeight: 1.5 },
+                  { text: preparacao.modo_preparo, fontSize: 8, color: '#4a5568', lineHeight: 1.5 },
                 ],
                 width: '*',
               }] : [{ text: '', width: '*' }]),
               { width: 16, text: '' },
               {
                 stack: [
-                  { text: 'INFORMAÇÕES', fontSize: 7.5, bold: true, color: '#718096', characterSpacing: 0.5, margin: [0, 0, 0, 4] },
+                  { text: 'informações', fontSize: 7.5, bold: true, color: '#718096', characterSpacing: 0.5, margin: [0, 0, 0, 4] },
                   { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 200, y2: 0, lineWidth: 0.8, lineColor: '#e2e8f0' }], margin: [0, 0, 0, 5] },
-                  ...(refeicao.categoria ? [{ columns: [{ text: 'Categoria', fontSize: 7.5, color: '#718096', width: 80 }, { text: refeicao.categoria, fontSize: 7.5, bold: true, color: '#2d3748', width: '*' }], margin: [0, 0, 0, 3] }] : []),
-                  ...(refeicao.tempo_preparo_minutos ? [{ columns: [{ text: 'Tempo de preparo', fontSize: 7.5, color: '#718096', width: 80 }, { text: `${refeicao.tempo_preparo_minutos} minutos`, fontSize: 7.5, bold: true, color: '#2d3748', width: '*' }], margin: [0, 0, 0, 3] }] : []),
-                  ...(refeicao.rendimento_porcoes ? [{ columns: [{ text: 'Rendimento', fontSize: 7.5, color: '#718096', width: 80 }, { text: `${refeicao.rendimento_porcoes} porções`, fontSize: 7.5, bold: true, color: '#2d3748', width: '*' }], margin: [0, 0, 0, 3] }] : []),
+                  ...(preparacao.categoria ? [{ columns: [{ text: 'Categoria', fontSize: 7.5, color: '#718096', width: 80 }, { text: preparacao.categoria, fontSize: 7.5, bold: true, color: '#2d3748', width: '*' }], margin: [0, 0, 0, 3] }] : []),
+                  ...(preparacao.tempo_preparo_minutos ? [{ columns: [{ text: 'Tempo de preparo', fontSize: 7.5, color: '#718096', width: 80 }, { text: `${preparacao.tempo_preparo_minutos} minutos`, fontSize: 7.5, bold: true, color: '#2d3748', width: '*' }], margin: [0, 0, 0, 3] }] : []),
+                  ...(preparacao.rendimento_porcoes ? [{ columns: [{ text: 'Rendimento', fontSize: 7.5, color: '#718096', width: 80 }, { text: `${preparacao.rendimento_porcoes} porções`, fontSize: 7.5, bold: true, color: '#2d3748', width: '*' }], margin: [0, 0, 0, 3] }] : []),
                   ...(modalidadeNome ? [{ columns: [{ text: 'Modalidade', fontSize: 7.5, color: '#718096', width: 80 }, { text: modalidadeNome, fontSize: 7.5, bold: true, color: '#38a169', width: '*' }], margin: [0, 0, 0, 3] }] : []),
-                  ...(refeicao.utensílios ? [{ text: 'Utensílios', fontSize: 7.5, color: '#718096', margin: [0, 4, 0, 2] }, { text: refeicao.utensílios, fontSize: 7.5, color: '#4a5568' }] : []),
-                  ...(refeicao.observacoes_tecnicas ? [{ text: 'Observações', fontSize: 7.5, color: '#718096', margin: [0, 4, 0, 2] }, { text: refeicao.observacoes_tecnicas, fontSize: 7.5, color: '#4a5568', lineHeight: 1.4 }] : []),
+                  ...(preparacao.utensilios ? [{ text: 'Utensílios', fontSize: 7.5, color: '#718096', margin: [0, 4, 0, 2] }, { text: preparacao.utensilios, fontSize: 7.5, color: '#4a5568' }] : []),
+                  ...(preparacao.observacoes_tecnicas ? [{ text: 'Observações', fontSize: 7.5, color: '#718096', margin: [0, 4, 0, 2] }, { text: preparacao.observacoes_tecnicas, fontSize: 7.5, color: '#4a5568', lineHeight: 1.4 }] : []),
                   ...(valoresNutricionais?.alertas?.length ? [
                     { text: 'ALERTAS NUTRICIONAIS', fontSize: 7.5, bold: true, color: '#b7791f', characterSpacing: 0.5, margin: [0, 8, 0, 3] },
                     ...valoresNutricionais.alertas.map((a: any) => ({ text: `• ${a.mensagem}`, fontSize: 7.5, color: '#92400e', margin: [0, 1, 0, 1] })),
@@ -630,11 +574,11 @@ export default function RefeicaoDetalhe() {
         defaultStyle: { fontSize: 8, color: '#2d3748' },
       };
 
-      pdfMake.createPdf(docDefinition).download(`ficha-tecnica-${refeicao.nome.replace(/\s+/g, '-').toLowerCase()}.pdf`);
-      toast.success('PDF gerado!', 'Ficha técnica exportada com sucesso!');
+      pdfMake.createPdf(docDefinition).download(`ficha-tecnica-${preparacao.nome.replace(/\s+/g, '-').toLowerCase()}.pdf`);
+      toast.success('Ficha Técnica exportada com sucesso!');
     } catch (error: any) {
       const mensagemErro = error.response?.data?.error || error.message || 'Erro desconhecido';
-      toast.error('Erro ao gerar PDF', `Não foi possível gerar o PDF: ${mensagemErro}`);
+      toast.error(`Não foi possível gerar o PDF: ${mensagemErro}`);
     }
   }
 
@@ -646,7 +590,7 @@ export default function RefeicaoDetalhe() {
     );
   }
 
-  if (!refeicao) return null;
+  if (!preparacao) return null;
 
   return (
     <>
@@ -654,8 +598,8 @@ export default function RefeicaoDetalhe() {
       <Box sx={{ flex: 0, px: 2, pt: 1.5 }}>
         <PageBreadcrumbs 
           items={[
-            { label: 'Refeições', path: '/refeicoes', icon: <RestaurantIcon fontSize="small" /> },
-            { label: refeicao?.nome || 'Detalhes da Refeição' }
+            { label: 'Preparações', path: '/preparacoes', icon: <RestaurantIcon fontSize="small" /> },
+            { label: preparacao?.nome || 'Detalhes da Preparação' }
           ]}
         />
 
@@ -707,100 +651,25 @@ export default function RefeicaoDetalhe() {
           <Box sx={{ height: '100%', display: 'flex', gap: 1.5 }}>
             {/* Coluna esquerda: Adicionar + Tabela */}
             <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-              {/* Adicionar Produto */}
-              <Card sx={{ borderRadius: '8px', p: 1.5 }}>
-                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', justifyContent: 'space-between' }}>
-                  <Typography variant="body2" color="text.secondary">
-                    Adicione ingredientes à refeição e defina o per capita por modalidade
-                  </Typography>
-                  <Button
-                    variant="contained"
-                    startIcon={<AddIcon />}
-                    onClick={() => setDialogAdicionarOpen(true)}
-                    size="small"
-                    sx={{ bgcolor: '#059669', '&:hover': { bgcolor: '#047857' }, whiteSpace: 'nowrap' }}
-                  >
-                    Adicionar Ingrediente
-                  </Button>
-                </Box>
-              </Card>
-
-              {/* Tabela de Produtos */}
-              {associacoes.length === 0 ? (
-                <Box textAlign="center" py={8}>
-                  <RestaurantIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-                  <Typography variant="h6" color="text.secondary">
-                    Nenhum produto adicionado
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                    Use o campo acima para adicionar produtos à refeição
-                  </Typography>
-                </Box>
-              ) : (
-                <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-                  <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 500, mb: 1 }}>
-                    Exibindo {associacoes.length} {associacoes.length === 1 ? 'produto' : 'produtos'}
-                  </Typography>
-                  
-                  <DndContext
-                    sensors={sensors}
-                    collisionDetection={closestCenter}
-                    onDragEnd={handleDragEnd}
-                  >
-                    <TableContainer sx={{ flex: 1, minHeight: 0, border: '1px solid #e0e0e0', borderRadius: '8px' }}>
-                      <Table stickyHeader size="small">
-                        <TableHead>
-                          <TableRow>
-                            <TableCell sx={{ width: 50 }}></TableCell>
-                            <TableCell>Produto</TableCell>
-                            <TableCell align="center" sx={{ width: 130 }}>
-                              <Tooltip title="Per capita líquido (consumo efetivo)" arrow>
-                                <Box component="span">Per Capita Líquido</Box>
-                              </Tooltip>
-                            </TableCell>
-                            <TableCell align="center" sx={{ width: 130 }}>
-                              <Tooltip title="Per capita bruto (quantidade de compra)" arrow>
-                                <Box component="span">Per Capita Bruto</Box>
-                              </Tooltip>
-                            </TableCell>
-                            <TableCell align="center" sx={{ width: 120 }}>Unidade</TableCell>
-                            <TableCell align="center" sx={{ width: 120 }}>Ações</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          <SortableContext
-                            items={paginatedAssociacoes.map(a => a.id)}
-                            strategy={verticalListSortingStrategy}
-                          >
-                            {paginatedAssociacoes.map((assoc) => (
-                              <SortableRow
-                                key={assoc.id}
-                                assoc={assoc}
-                                onRemove={() => removerProduto(assoc.id)}
-                                onEdit={() => handleEditarProduto(assoc)}
-                              />
-                            ))}
-                          </SortableContext>
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </DndContext>
-                  
-                  <Box sx={{ mt: 1 }}>
-                    <CompactPagination
-                      count={associacoes.length}
-                      page={page}
-                      onPageChange={(e, newPage) => setPage(newPage)}
-                      rowsPerPage={rowsPerPage}
-                      onRowsPerPageChange={(e) => {
-                        setRowsPerPage(parseInt(e.target.value, 10));
-                        setPage(0);
-                      }}
-                      rowsPerPageOptions={[10, 25, 50]}
-                    />
-                  </Box>
-                </Box>
-              )}
+              <Box sx={{ flex: 1, minHeight: 0 }}>
+                <DataTableAdvanced<preparacaoProduto>
+                  data={associacoes as preparacaoProduto[]}
+                  columns={columns}
+                  enableColumnVisibility={false}
+                  searchPlaceholder="Buscar ingrediente..."
+                  toolbarActions={
+                    <Button
+                      variant="contained"
+                      startIcon={<AddIcon />}
+                      onClick={() => setDialogAdicionarOpen(true)}
+                      size="small"
+                      sx={{ bgcolor: '#059669', '&:hover': { bgcolor: '#047857' }, whiteSpace: 'nowrap' }}
+                    >
+                      Adicionar Ingrediente
+                    </Button>
+                  }
+                />
+              </Box>
             </Box>
 
             {/* Coluna direita: Painel Nutricional */}
@@ -813,7 +682,7 @@ export default function RefeicaoDetalhe() {
                   {loadingNutricional && <CircularProgress size={12} />}
                 </Box>
 
-                {!refeicao?.rendimento_porcoes ? (
+                {!preparacao?.rendimento_porcoes ? (
                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
                     Informe o rendimento (porções) na Ficha Técnica para ver os cálculos.
                   </Typography>
@@ -851,7 +720,7 @@ export default function RefeicaoDetalhe() {
                     {valoresNutricionais.alertas && valoresNutricionais.alertas.length > 0 && (
                       <Box sx={{ mt: 1, bgcolor: '#fff3cd', px: 1, py: 0.75, borderRadius: 1, border: '1px solid #ffc107' }}>
                         {valoresNutricionais.alertas.map((alerta, idx) => (
-                          <Typography key={idx} variant="caption" sx={{ display: 'block', fontSize: '0.68rem' }}>⚠ {alerta.mensagem}</Typography>
+                          <Typography key={idx} variant="caption" sx={{ display: 'block', fontSize: '0.68rem' }}>• {alerta.mensagem}</Typography>
                         ))}
                       </Box>
                     )}
@@ -907,7 +776,7 @@ export default function RefeicaoDetalhe() {
                 <Grid container spacing={2}>
                   <Grid item xs={12}>
                     <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1.1rem', mb: 1.5 }}>
-                      Informações Gerais
+                      informações Gerais
                     </Typography>
                   </Grid>
                 
@@ -973,8 +842,8 @@ export default function RefeicaoDetalhe() {
                     multiline
                     rows={1}
                     size="small"
-                    value={form.utensílios || ''}
-                    onChange={(e) => setForm({ ...form, utensílios: e.target.value })}
+                    value={form.utensilios || ''}
+                    onChange={(e) => setForm({ ...form, utensilios: e.target.value })}
                     placeholder="Ex: Panela grande, colher de pau, escorredor..."
                   />
                 </Grid>
@@ -1002,51 +871,51 @@ export default function RefeicaoDetalhe() {
                   </Typography>
                 </Grid>
 
-                {refeicao.categoria && (
+                {preparacao.categoria && (
                   <Grid item xs={12} md={6}>
                     <Typography variant="body2" color="text.secondary">Categoria</Typography>
-                    <Chip label={refeicao.categoria} size="small" color="primary" sx={{ mt: 0.5 }} />
+                    <Chip label={preparacao.categoria} size="small" color="primary" sx={{ mt: 0.5 }} />
                   </Grid>
                 )}
 
-                {refeicao.tempo_preparo_minutos && (
+                {preparacao.tempo_preparo_minutos && (
                   <Grid item xs={12} md={3}>
                     <Typography variant="body2" color="text.secondary">Tempo de Preparo</Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
                       <TimerIcon fontSize="small" color="action" />
-                      <Typography variant="body1">{refeicao.tempo_preparo_minutos} minutos</Typography>
+                      <Typography variant="body1">{preparacao.tempo_preparo_minutos} minutos</Typography>
                     </Box>
                   </Grid>
                 )}
 
-                {refeicao.rendimento_porcoes && (
+                {preparacao.rendimento_porcoes && (
                   <Grid item xs={12} md={3}>
                     <Typography variant="body2" color="text.secondary">Rendimento</Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
                       <LocalDiningIcon fontSize="small" color="action" />
-                      <Typography variant="body1">{refeicao.rendimento_porcoes} porções</Typography>
+                      <Typography variant="body1">{preparacao.rendimento_porcoes} porções</Typography>
                     </Box>
                   </Grid>
                 )}
 
-                {refeicao.modo_preparo && (
+                {preparacao.modo_preparo && (
                   <Grid item xs={12}>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Modo de Preparo</Typography>
                     <Typography variant="body1" sx={{ whiteSpace: 'pre-line', bgcolor: '#f5f5f5', p: 2, borderRadius: 1 }}>
-                      {refeicao.modo_preparo}
+                      {preparacao.modo_preparo}
                     </Typography>
                   </Grid>
                 )}
 
-                {refeicao.utensílios && (
+                {preparacao.utensilios && (
                   <Grid item xs={12}>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Utensílios Necessários</Typography>
-                    <Typography variant="body1">{refeicao.utensílios}</Typography>
+                    <Typography variant="body1">{preparacao.utensilios}</Typography>
                   </Grid>
                 )}
 
                 {/* Composição Nutricional Calculada Dinamicamente */}
-                {refeicao.rendimento_porcoes && associacoes.length > 0 && (
+                {preparacao.rendimento_porcoes && associacoes.length > 0 && (
                   <>
                     <Grid item xs={12}>
                       <Divider sx={{ my: 0.5 }} />
@@ -1058,12 +927,12 @@ export default function RefeicaoDetalhe() {
                       </Box>
                       {!loadingNutricional && errorNutricional && (
                         <Typography variant="caption" color="error" sx={{ display: 'block', mb: 1 }}>
-                          ⚠️ Erro ao calcular valores nutricionais
+                          ?? Erro ao calcular valores nutricionais
                         </Typography>
                       )}
                       {!loadingNutricional && valoresNutricionais?.aviso && (
                         <Typography variant="caption" color="warning.main" sx={{ display: 'block', mb: 1 }}>
-                          ⚠️ {valoresNutricionais.aviso}
+                          ?? {valoresNutricionais.aviso}
                         </Typography>
                       )}
                     </Grid>
@@ -1111,7 +980,7 @@ export default function RefeicaoDetalhe() {
                 )}
 
                 {/* Custo Estimado Calculado Dinamicamente */}
-                {refeicao.rendimento_porcoes && associacoes.length > 0 && (
+                {preparacao.rendimento_porcoes && associacoes.length > 0 && (
                   <>
                     <Grid item xs={12}>
                       <Divider sx={{ my: 0.5 }} />
@@ -1123,12 +992,12 @@ export default function RefeicaoDetalhe() {
                       </Box>
                       {!loadingCusto && errorCusto && (
                         <Typography variant="caption" color="error" sx={{ display: 'block', mb: 1 }}>
-                          ⚠️ Erro ao calcular custo
+                          ?? Erro ao calcular custo
                         </Typography>
                       )}
                       {!loadingCusto && custoData?.aviso && (
                         <Typography variant="caption" color="warning.main" sx={{ display: 'block', mb: 1 }}>
-                          ⚠️ {custoData.aviso}
+                          ?? {custoData.aviso}
                         </Typography>
                       )}
                     </Grid>
@@ -1166,7 +1035,7 @@ export default function RefeicaoDetalhe() {
                   </>
                 )}
 
-                {refeicao.observacoes_tecnicas && (
+                {preparacao.observacoes_tecnicas && (
                   <>
                     <Grid item xs={12}>
                       <Divider sx={{ my: 0.5 }} />
@@ -1177,27 +1046,27 @@ export default function RefeicaoDetalhe() {
                     <Grid item xs={12}>
                       <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Observações Técnicas</Typography>
                       <Typography variant="body1" sx={{ whiteSpace: 'pre-line', bgcolor: '#f5f5f5', p: 2, borderRadius: 1 }}>
-                        {refeicao.observacoes_tecnicas}
+                        {preparacao.observacoes_tecnicas}
                       </Typography>
                     </Grid>
                   </>
                 )}
 
-                {!refeicao.categoria && !refeicao.modo_preparo && associacoes.length === 0 && (
+                {!preparacao.categoria && !preparacao.modo_preparo && associacoes.length === 0 && (
                   <Grid item xs={12}>
                     <Box textAlign="center" py={6}>
                       <DescriptionIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
                       <Typography variant="h6" color="text.secondary">
-                        Ficha técnica não preenchida
+                        Ficha Técnica não preenchida
                       </Typography>
                       <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                        Clique em "Editar" para adicionar informações da ficha técnica
+                        Clique em "Editar" para adicionar informações da Ficha Técnica
                       </Typography>
                     </Box>
                   </Grid>
                 )}
 
-                {!refeicao.rendimento_porcoes && associacoes.length > 0 && (
+                {!preparacao.rendimento_porcoes && associacoes.length > 0 && (
                   <Grid item xs={12}>
                     <Box textAlign="center" py={4} sx={{ bgcolor: '#fff3cd', borderRadius: 1 }}>
                       <Typography variant="body1" color="warning.dark">
@@ -1207,11 +1076,11 @@ export default function RefeicaoDetalhe() {
                   </Grid>
                 )}
 
-                {refeicao.rendimento_porcoes && associacoes.length === 0 && (
+                {preparacao.rendimento_porcoes && associacoes.length === 0 && (
                   <Grid item xs={12}>
                     <Box textAlign="center" py={4} sx={{ bgcolor: '#fff3cd', borderRadius: 1 }}>
                       <Typography variant="body1" color="warning.dark">
-                        ⚠️ Adicione ingredientes na aba "Ingredientes" para calcular valores
+                        ?? Adicione ingredientes na aba "Ingredientes" para calcular valores
                       </Typography>
                     </Box>
                   </Grid>
@@ -1251,15 +1120,15 @@ export default function RefeicaoDetalhe() {
 
     {/* Modal de confirmação de exclusão */}
     <Dialog open={openExcluir} onClose={() => setOpenExcluir(false)}>
-      <DialogTitle>Excluir Refeição</DialogTitle>
+      <DialogTitle>Excluir Preparação</DialogTitle>
       <DialogContent>
         <Typography>
-          Tem certeza que deseja excluir esta refeição? Esta ação não pode ser desfeita.
+          Tem certeza que deseja excluir esta Preparação? Esta ação não pode ser desfeita.
         </Typography>
       </DialogContent>
       <DialogActions>
         <Button onClick={() => setOpenExcluir(false)}>Cancelar</Button>
-        <Button onClick={excluirRefeicao} color="delete" variant="contained">
+        <Button onClick={excluirpreparacao} color="delete" variant="contained">
           Excluir
         </Button>
       </DialogActions>
@@ -1267,3 +1136,5 @@ export default function RefeicaoDetalhe() {
     </>
   );
 }
+
+

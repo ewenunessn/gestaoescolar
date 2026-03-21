@@ -327,7 +327,7 @@ const baseTheme = {
           top: 0,
           zIndex: 10,
           '& .MuiTableCell-root': {
-            backgroundColor: '#e9ecef',
+            backgroundColor: '#f5f5f5',
             color: '#495057',
             fontWeight: 600,
             fontSize: '0.7rem',
@@ -344,14 +344,6 @@ const baseTheme = {
             position: 'sticky',
             top: 0,
             zIndex: 10,
-            '&:first-of-type': {
-              borderTopLeftRadius: '8px',
-              borderBottomLeftRadius: '8px',
-            },
-            '&:last-of-type': {
-              borderTopRightRadius: '8px',
-              borderBottomRightRadius: '8px',
-            },
           },
         }),
       },
@@ -527,9 +519,9 @@ export const lightTheme: Theme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: '#2563eb',
-      light: '#3b82f6',
-      dark: '#1d4ed8',
+      main: '#000000',
+      light: '#333333',
+      dark: '#000000',
       contrastText: '#ffffff',
     },
     secondary: {
