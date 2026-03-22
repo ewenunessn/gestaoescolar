@@ -6,8 +6,12 @@ export interface CurrentUser {
   id: number;
   nome: string;
   email: string;
-  tipo: string; // Campo que vem do backend
-  perfil?: string; // Campo mapeado para compatibilidade
+  tipo: string;
+  perfil?: string;
+  escola_id?: number;
+  isSystemAdmin?: boolean;
+  tipo_secretaria?: string;
+  institution_id?: string;
   telefone?: string;
   cargo?: string;
   departamento?: string;
@@ -40,6 +44,10 @@ export const useCurrentUser = () => {
           email: tokenPayload.email,
           tipo: tokenPayload.tipo,
           perfil: tokenPayload.tipo,
+          escola_id: tokenPayload.escola_id,
+          isSystemAdmin: tokenPayload.isSystemAdmin,
+          tipo_secretaria: tokenPayload.tipo_secretaria,
+          institution_id: tokenPayload.institution_id,
         };
         console.log('🚀 [INIT] Usuário extraído do token:', userData);
         return userData;
@@ -67,9 +75,10 @@ export const useCurrentUser = () => {
       const response = await apiWithRetry.get('/usuarios/me');
       const userData = response.data?.data || response.data;
       
-      // Mapear o campo 'tipo' para 'perfil' para compatibilidade
+      // Mapear campos para compatibilidade
       if (userData) {
         userData.perfil = userData.tipo;
+        userData.isSystemAdmin = userData.tipo === 'admin';
         // Atualizar localStorage com dados frescos
         localStorage.setItem('user', JSON.stringify(userData));
       }

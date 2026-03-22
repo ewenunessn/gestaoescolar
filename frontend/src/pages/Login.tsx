@@ -51,11 +51,13 @@ export default function Login() {
           institution_id: payload.institution_id || response.institution_id,
           escola_id: payload.escola_id || response.escola_id,
           tipo_secretaria: payload.tipo_secretaria || response.tipo_secretaria || 'educacao',
+          isSystemAdmin: payload.isSystemAdmin || response.isSystemAdmin || false,
         };
         localStorage.setItem("user", JSON.stringify(userData));
         
-        // Redirecionar baseado no tipo de secretaria
-        const redirectPath = userData.tipo_secretaria === 'escola' ? '/portal-escola' : '/dashboard';
+        // Redirecionar: usuário com escola_id e não admin vai para portal-escola
+        const isEscolaUser = !!(userData.escola_id && userData.tipo !== 'admin' && !payload.isSystemAdmin);
+        const redirectPath = isEscolaUser ? '/portal-escola' : '/dashboard';
         startTransition(() => navigate(redirectPath));
       } catch {
         const userData = {
@@ -70,8 +72,9 @@ export default function Login() {
         };
         localStorage.setItem("user", JSON.stringify(userData));
         
-        // Redirecionar baseado no tipo de secretaria
-        const redirectPath = userData.tipo_secretaria === 'escola' ? '/portal-escola' : '/dashboard';
+        // Redirecionar: usuário com escola_id e não admin vai para portal-escola
+        const isEscolaUserFallback = !!(userData.escola_id && userData.tipo !== 'admin');
+        const redirectPath = isEscolaUserFallback ? '/portal-escola' : '/dashboard';
         startTransition(() => navigate(redirectPath));
       }
     } catch (err: any) {

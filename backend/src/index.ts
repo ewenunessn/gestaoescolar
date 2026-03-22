@@ -55,6 +55,7 @@ import gruposIngredientesRoutes from "./routes/gruposIngredientesRoutes";
 import solicitacoesAlimentosRoutes from "./routes/solicitacoesAlimentosRoutes";
 import dashboardRoutes from "./routes/dashboardRoutes";
 import notificacoesRoutes from "./routes/notificacoesRoutes";
+import disparosNotificacaoRoutes from "./routes/disparosNotificacaoRoutes";
 
 import { createServer } from 'http';
 import { initializeRedisCache } from "./config/redis";
@@ -296,6 +297,7 @@ app.use("/api/grupos-ingredientes", gruposIngredientesRoutes);
 app.use("/api/solicitacoes-alimentos", solicitacoesAlimentosRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/notificacoes", notificacoesRoutes);
+app.use("/api/disparos-notificacao", disparosNotificacaoRoutes);
 
 
 // Rotas de gás removidas
@@ -445,6 +447,24 @@ async function iniciarServidor() {
           console.log(`🐘 Banco: ${config.database.host}:${config.database.port}/${config.database.name}`);
           console.log(`🌍 Ambiente: ${process.env.NODE_ENV || 'development'}`);
           console.log(`🔗 Foreign Keys CASCADE: Ativas`);
+
+          // Job: processar disparos agendados a cada 60s
+          setInterval(async () => {
+            try {
+              const db = (await import('./database')).default;
+              const pendentes = await db.query(`
+                SELECT id FROM disparos_notificacao
+                WHERE status = 'pendente' AND agendado_para IS NOT NULL AND agendado_para <= NOW()
+              `);
+              if (pendentes.rows.length > 0) {
+                console.log(`⏰ [disparos] Processando ${pendentes.rows.length} disparo(s) agendado(s)`);
+                const { default: axios } = await import('axios');
+                await axios.post(`http://localhost:${currentPort}/api/disparos-notificacao/processar-agendados`, {}, {
+                  headers: { 'x-internal-job': '1' }
+                }).catch(() => {});
+              }
+            } catch { /* silencioso */ }
+          }, 60_000);
         });
         server.on('error', (err: any) => {
           if (err && err.code === 'EADDRINUSE' && retries > 0) {

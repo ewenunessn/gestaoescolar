@@ -160,7 +160,8 @@ export const getProfile = asyncHandler(async (req: Request, res: Response) => {
   }
 
   const result = await db.query(`
-    SELECT id, nome, email, tipo, ativo, institution_id, created_at, updated_at
+    SELECT id, nome, email, tipo, ativo, institution_id,
+           escola_id, tipo_secretaria, funcao_id, created_at, updated_at
     FROM usuarios 
     WHERE id = $1
   `, [userId]);

@@ -26,10 +26,21 @@ const PageLoader = () => (
   </div>
 );
 
-// Componente que verifica autenticação e redireciona de forma síncrona
+// Redireciona para a rota inicial correta conforme tipo de usuário
 function RootRedirect() {
-  const isAuth = isAuthenticated();
-  return <Navigate to={isAuth ? "/dashboard" : "/login"} replace />;
+  if (!isAuthenticated()) return <Navigate to="/login" replace />;
+
+  // Detectar se é usuário de escola pelo token JWT (sem chamada de API)
+  try {
+    const token = localStorage.getItem('token');
+    if (token) {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const isEscolaUser = !!(payload.escola_id && payload.tipo !== 'admin' && !payload.isSystemAdmin);
+      if (isEscolaUser) return <Navigate to="/portal-escola" replace />;
+    }
+  } catch { /* fallback para dashboard */ }
+
+  return <Navigate to="/dashboard" replace />;
 }
 
 // Lazy loading para páginas menos críticas
@@ -88,6 +99,7 @@ const CalendarioLetivo = lazy(() => import("../pages/CalendarioLetivo"));
 const SolicitacoesAlimentos = lazy(() => import("../pages/SolicitacoesAlimentos"));
 const SolicitacaoEscolaDetalhe = lazy(() => import("../pages/SolicitacaoEscolaDetalhe"));
 const PortalEscola = lazy(() => import("../pages/PortalEscola"));
+const DisparosNotificacao = lazy(() => import("../pages/DisparosNotificacao"));
 
 interface AppRouterProps {
   routerConfig?: {
@@ -400,6 +412,12 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
             <Route
               path="/calendario-letivo"
               element={<LazyRoute><CalendarioLetivo /></LazyRoute>}
+            />
+
+            {/* Disparos de Notificação */}
+            <Route
+              path="/disparos-notificacao"
+              element={<LazyRoute><DisparosNotificacao /></LazyRoute>}
             />
 
             

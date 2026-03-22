@@ -50,6 +50,9 @@ export function isAuthenticated(): boolean {
 export function logout() {
   console.log("🚪 Fazendo logout...");
   localStorage.removeItem("token");
+  localStorage.removeItem("user");
+  localStorage.removeItem("perfil");
+  localStorage.removeItem("nome");
   window.location.href = "/login";
 }
 
