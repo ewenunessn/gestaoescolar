@@ -2,7 +2,7 @@ import api from './api';
 
 export type AlvoDisparo = 'todas' | 'modalidade' | 'selecao';
 export type TipoNotificacao = 'info' | 'aviso' | 'sucesso' | 'erro';
-export type StatusDisparo = 'pendente' | 'processando' | 'enviado' | 'cancelado' | 'erro';
+export type StatusDisparo = 'processando' | 'enviado' | 'erro';
 
 export interface Disparo {
   id: number;
@@ -14,7 +14,6 @@ export interface Disparo {
   modalidade_id?: number;
   modalidade_nome?: string;
   escola_ids?: number[];
-  agendado_para?: string;
   status: StatusDisparo;
   total_enviado: number;
   erro_msg?: string;
@@ -32,7 +31,6 @@ export interface CriarDisparoPayload {
   alvo: AlvoDisparo;
   modalidade_id?: number;
   escola_ids?: number[];
-  agendado_para?: string; // ISO string ou undefined para imediato
 }
 
 export const listarDisparos = async (): Promise<Disparo[]> => {
@@ -43,8 +41,4 @@ export const listarDisparos = async (): Promise<Disparo[]> => {
 export const criarDisparo = async (payload: CriarDisparoPayload): Promise<Disparo> => {
   const res = await api.post('/disparos-notificacao', payload);
   return res.data.data;
-};
-
-export const cancelarDisparo = async (id: number): Promise<void> => {
-  await api.delete(`/disparos-notificacao/${id}`);
 };

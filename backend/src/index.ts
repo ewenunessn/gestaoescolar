@@ -448,23 +448,7 @@ async function iniciarServidor() {
           console.log(`🌍 Ambiente: ${process.env.NODE_ENV || 'development'}`);
           console.log(`🔗 Foreign Keys CASCADE: Ativas`);
 
-          // Job: processar disparos agendados a cada 60s
-          setInterval(async () => {
-            try {
-              const db = (await import('./database')).default;
-              const pendentes = await db.query(`
-                SELECT id FROM disparos_notificacao
-                WHERE status = 'pendente' AND agendado_para IS NOT NULL AND agendado_para <= NOW()
-              `);
-              if (pendentes.rows.length > 0) {
-                console.log(`⏰ [disparos] Processando ${pendentes.rows.length} disparo(s) agendado(s)`);
-                const { default: axios } = await import('axios');
-                await axios.post(`http://localhost:${currentPort}/api/disparos-notificacao/processar-agendados`, {}, {
-                  headers: { 'x-internal-job': '1' }
-                }).catch(() => {});
-              }
-            } catch { /* silencioso */ }
-          }, 60_000);
+
         });
         server.on('error', (err: any) => {
           if (err && err.code === 'EADDRINUSE' && retries > 0) {

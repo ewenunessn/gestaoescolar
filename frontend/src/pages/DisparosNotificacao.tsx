@@ -6,24 +6,22 @@ import {
   Typography, Alert, CircularProgress, Paper,
 } from '@mui/material';
 import {
-  Add as AddIcon, Cancel as CancelIcon, Send as SendIcon,
-  Schedule as ScheduleIcon, CheckCircle, Error as ErrorIcon,
-  HourglassEmpty, Refresh,
+  Add as AddIcon, Send as SendIcon,
+  CheckCircle, Error as ErrorIcon, HourglassEmpty, Refresh,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import {
   Disparo, CriarDisparoPayload, AlvoDisparo, TipoNotificacao,
-  listarDisparos, criarDisparo, cancelarDisparo,
+  listarDisparos, criarDisparo,
 } from '../services/disparosNotificacao';
 import api from '../services/api';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const STATUS_CHIP: Record<string, { label: string; color: any; icon: React.ReactElement }> = {
-  pendente:     { label: 'Agendado',    color: 'warning', icon: <HourglassEmpty sx={{ fontSize: 14 }} /> },
-  processando:  { label: 'Enviando…',  color: 'info',    icon: <CircularProgress size={12} /> },
-  enviado:      { label: 'Enviado',     color: 'success', icon: <CheckCircle sx={{ fontSize: 14 }} /> },
-  cancelado:    { label: 'Cancelado',   color: 'default', icon: <CancelIcon sx={{ fontSize: 14 }} /> },
-  erro:         { label: 'Erro',        color: 'error',   icon: <ErrorIcon sx={{ fontSize: 14 }} /> },
+  pendente:    { label: 'Pendente',  color: 'warning', icon: <HourglassEmpty sx={{ fontSize: 14 }} /> },
+  processando: { label: 'Enviando…', color: 'info',    icon: <CircularProgress size={12} /> },
+  enviado:     { label: 'Enviado',   color: 'success', icon: <CheckCircle sx={{ fontSize: 14 }} /> },
+  erro:        { label: 'Erro',      color: 'error',   icon: <ErrorIcon sx={{ fontSize: 14 }} /> },
 };
 
 const TIPO_COLORS: Record<TipoNotificacao, string> = {
@@ -48,8 +46,6 @@ function FormDialog({ open, onClose, onSaved, escolas, modalidades }: FormDialog
   const [form, setForm] = useState<CriarDisparoPayload>({
     titulo: '', mensagem: '', link: '', tipo: 'info', alvo: 'todas',
   });
-  const [agendado, setAgendado] = useState(false);
-  const [dataHora, setDataHora] = useState('');
   const [escolasSel, setEscolasSel] = useState<number[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -62,12 +58,6 @@ function FormDialog({ open, onClose, onSaved, escolas, modalidades }: FormDialog
     if (form.alvo === 'selecao' && !escolasSel.length) {
       toast.error('Selecione ao menos uma escola'); return;
     }
-    if (agendado && !dataHora) {
-      toast.error('Informe a data e hora do agendamento'); return;
-    }
-    if (agendado && new Date(dataHora) <= new Date()) {
-      toast.error('A data de agendamento deve ser no futuro'); return;
-    }
 
     setSaving(true);
     try {
@@ -76,10 +66,9 @@ function FormDialog({ open, onClose, onSaved, escolas, modalidades }: FormDialog
         link: form.link || undefined,
         escola_ids: form.alvo === 'selecao' ? escolasSel : undefined,
         modalidade_id: form.alvo === 'modalidade' ? form.modalidade_id : undefined,
-        agendado_para: agendado ? new Date(dataHora).toISOString() : undefined,
       };
       await criarDisparo(payload);
-      toast.success(agendado ? 'Disparo agendado com sucesso' : 'Notificações enviadas com sucesso');
+      toast.success('Notificações enviadas com sucesso');
       onSaved();
       onClose();
     } catch (e: any) {
@@ -94,16 +83,10 @@ function FormDialog({ open, onClose, onSaved, escolas, modalidades }: FormDialog
       <DialogTitle sx={{ fontWeight: 700 }}>Novo Disparo de Notificação</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2.5} sx={{ pt: 1 }}>
-          {/* Título */}
           <TextField label="Título" value={form.titulo} onChange={e => set('titulo', e.target.value)} fullWidth required size="small" inputProps={{ maxLength: 200 }} />
-
-          {/* Mensagem */}
           <TextField label="Mensagem" value={form.mensagem} onChange={e => set('mensagem', e.target.value)} fullWidth required multiline rows={3} size="small" />
-
-          {/* Link opcional */}
           <TextField label="Link (opcional)" value={form.link} onChange={e => set('link', e.target.value)} fullWidth size="small" placeholder="Ex: /portal-escola" />
 
-          {/* Tipo */}
           <FormControl size="small" fullWidth>
             <InputLabel>Tipo</InputLabel>
             <Select value={form.tipo} label="Tipo" onChange={e => set('tipo', e.target.value as TipoNotificacao)}>
@@ -114,7 +97,6 @@ function FormDialog({ open, onClose, onSaved, escolas, modalidades }: FormDialog
             </Select>
           </FormControl>
 
-          {/* Alvo */}
           <FormControl>
             <FormLabel sx={{ fontSize: '0.85rem', fontWeight: 600, mb: 0.5 }}>Destinatários</FormLabel>
             <RadioGroup row value={form.alvo} onChange={e => set('alvo', e.target.value as AlvoDisparo)}>
@@ -124,7 +106,6 @@ function FormDialog({ open, onClose, onSaved, escolas, modalidades }: FormDialog
             </RadioGroup>
           </FormControl>
 
-          {/* Modalidade */}
           {form.alvo === 'modalidade' && (
             <FormControl size="small" fullWidth>
               <InputLabel>Modalidade</InputLabel>
@@ -134,7 +115,6 @@ function FormDialog({ open, onClose, onSaved, escolas, modalidades }: FormDialog
             </FormControl>
           )}
 
-          {/* Seleção de escolas */}
           {form.alvo === 'selecao' && (
             <FormControl size="small" fullWidth>
               <InputLabel>Escolas</InputLabel>
@@ -148,36 +128,15 @@ function FormDialog({ open, onClose, onSaved, escolas, modalidades }: FormDialog
               </Select>
             </FormControl>
           )}
-
-          {/* Agendamento */}
-          <FormControl>
-            <FormLabel sx={{ fontSize: '0.85rem', fontWeight: 600, mb: 0.5 }}>Envio</FormLabel>
-            <RadioGroup row value={agendado ? 'agendado' : 'imediato'} onChange={e => setAgendado(e.target.value === 'agendado')}>
-              <FormControlLabel value="imediato" control={<Radio size="small" />} label="Imediato" />
-              <FormControlLabel value="agendado" control={<Radio size="small" />} label="Agendar para data/hora" />
-            </RadioGroup>
-          </FormControl>
-
-          {agendado && (
-            <TextField
-              label="Data e hora do envio"
-              type="datetime-local"
-              value={dataHora}
-              onChange={e => setDataHora(e.target.value)}
-              fullWidth size="small"
-              InputLabelProps={{ shrink: true }}
-              inputProps={{ min: new Date(Date.now() + 60_000).toISOString().slice(0, 16) }}
-            />
-          )}
         </Stack>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
         <Button onClick={onClose} disabled={saving}>Cancelar</Button>
         <Button
           variant="contained" onClick={handleSubmit} disabled={saving}
-          startIcon={saving ? <CircularProgress size={16} /> : agendado ? <ScheduleIcon /> : <SendIcon />}
+          startIcon={saving ? <CircularProgress size={16} /> : <SendIcon />}
         >
-          {saving ? 'Enviando…' : agendado ? 'Agendar' : 'Enviar agora'}
+          {saving ? 'Enviando…' : 'Enviar agora'}
         </Button>
       </DialogActions>
     </Dialog>
@@ -203,28 +162,17 @@ export default function DisparosNotificacao() {
 
   useEffect(() => {
     carregar();
-    // Carregar escolas e modalidades para o formulário
     api.get('/escolas').then(r => setEscolas(r.data.data || r.data)).catch(() => {});
     api.get('/modalidades').then(r => setModalidades(r.data.data || r.data)).catch(() => {});
   }, []);
 
-  const handleCancelar = async (id: number) => {
-    if (!confirm('Cancelar este disparo agendado?')) return;
-    try {
-      await cancelarDisparo(id);
-      toast.success('Disparo cancelado');
-      carregar();
-    } catch { toast.error('Erro ao cancelar'); }
-  };
-
   return (
     <Box sx={{ p: 3, maxWidth: 1100, mx: 'auto' }}>
-      {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
         <Box>
           <Typography variant="h5" fontWeight={700}>Disparos de Notificação</Typography>
           <Typography variant="body2" color="text.secondary">
-            Envie notificações para usuários das escolas — imediato ou agendado
+            Envie notificações para usuários das escolas
           </Typography>
         </Box>
         <Stack direction="row" spacing={1}>
@@ -237,7 +185,6 @@ export default function DisparosNotificacao() {
         </Stack>
       </Box>
 
-      {/* Lista */}
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}><CircularProgress /></Box>
       ) : disparos.length === 0 ? (
@@ -249,9 +196,7 @@ export default function DisparosNotificacao() {
             return (
               <Paper key={d.id} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
                 <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-                  {/* Indicador de tipo */}
                   <Box sx={{ width: 4, borderRadius: 2, bgcolor: TIPO_COLORS[d.tipo], alignSelf: 'stretch', flexShrink: 0 }} />
-
                   <Box sx={{ flex: 1, minWidth: 0 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 0.5 }}>
                       <Typography variant="subtitle2" fontWeight={700} noWrap>{d.titulo}</Typography>
@@ -262,18 +207,11 @@ export default function DisparosNotificacao() {
                         : `${d.escola_ids?.length || 0} escola(s)`
                       } variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
                     </Box>
-
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>{d.mensagem}</Typography>
-
                     <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
                       <Typography variant="caption" color="text.disabled">
                         Criado por {d.criado_por_nome} em {fmtDate(d.created_at)}
                       </Typography>
-                      {d.agendado_para && (
-                        <Typography variant="caption" color="warning.main">
-                          ⏰ Agendado para {fmtDate(d.agendado_para)}
-                        </Typography>
-                      )}
                       {d.status === 'enviado' && (
                         <Typography variant="caption" color="success.main">
                           ✓ {d.total_enviado} notificação(ões) enviada(s) em {fmtDate(d.enviado_at)}
@@ -284,15 +222,6 @@ export default function DisparosNotificacao() {
                       )}
                     </Box>
                   </Box>
-
-                  {/* Ação cancelar */}
-                  {d.status === 'pendente' && (
-                    <Tooltip title="Cancelar agendamento">
-                      <IconButton size="small" color="error" onClick={() => handleCancelar(d.id)}>
-                        <CancelIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  )}
                 </Box>
               </Paper>
             );
