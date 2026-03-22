@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { createColumnHelper } from '@tanstack/react-table';
 import { DataTableAdvanced } from '../components/DataTableAdvanced';
 import AdicionarIngredienteDialog from '../components/AdicionarIngredienteDialog';
+import AdicionarGrupoIngredientesDialog from '../components/AdicionarGrupoIngredientesDialog';
 import EditarIngredienteDialog from '../components/EditarIngredienteDialog';
 import { usePageTitle } from "../contexts/PageTitleContext";
 import { useToast } from "../hooks/useToast";
@@ -106,6 +107,7 @@ export default function PreparacaoDetalhe() {
   const [form, setForm] = useState<any>({});
   const [openExcluir, setOpenExcluir] = useState(false);
   const [dialogAdicionarOpen, setDialogAdicionarOpen] = useState(false);
+  const [dialogGrupoOpen, setDialogGrupoOpen] = useState(false);
   const [dialogEditarOpen, setDialogEditarOpen] = useState(false);
   const [produtoEditando, setProdutoEditando] = useState<preparacaoProduto | null>(null);
   const [tabAtiva, setTabAtiva] = useState(0); // 0 = Ingredientes, 1 = Ficha Técnica
@@ -303,8 +305,7 @@ export default function PreparacaoDetalhe() {
   }
 
   async function adicionarProduto(
-    produtoId: number,
-    perCapitaGeral: number | null,
+    produtoId: number,    perCapitaGeral: number | null,
     tipoMedida: 'gramas' | 'unidades',
     perCapitaPorModalidade: Array<{modalidade_id: number, per_capita: number}>
   ) {
@@ -323,8 +324,26 @@ export default function PreparacaoDetalhe() {
     }
   }
 
-  async function removerProduto(assocId: number) {
-    try {
+  async function adicionarGrupo(itens: Array<{ produto_id: number; per_capita: number; tipo_medida: string }>) {
+    let adicionados = 0;
+    for (const item of itens) {
+      try {
+        await adicionarProdutoMutation.mutateAsync({
+          refeicaoId: Number(id),
+          produtoId: item.produto_id,
+          perCapita: item.per_capita,
+          tipoMedida: item.tipo_medida as 'gramas' | 'unidades',
+          perCapitaPorModalidade: [],
+        });
+        adicionados++;
+      } catch {
+        // ignora duplicados
+      }
+    }
+    toast.success(`${adicionados} ingrediente(s) adicionado(s) do grupo`);
+  }
+
+  async function removerProduto(assocId: number) {    try {
       await removerProdutoMutation.mutateAsync({ id: assocId, refeicaoId: Number(id) });
       toast.success('Produto removido da refeição!');
     } catch {
@@ -658,15 +677,26 @@ export default function PreparacaoDetalhe() {
                   enableColumnVisibility={false}
                   searchPlaceholder="Buscar ingrediente..."
                   toolbarActions={
-                    <Button
-                      variant="contained"
-                      startIcon={<AddIcon />}
-                      onClick={() => setDialogAdicionarOpen(true)}
-                      size="small"
-                      sx={{ bgcolor: '#059669', '&:hover': { bgcolor: '#047857' }, whiteSpace: 'nowrap' }}
-                    >
-                      Adicionar Ingrediente
-                    </Button>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Button
+                        variant="outlined"
+                        startIcon={<AddIcon />}
+                        onClick={() => setDialogGrupoOpen(true)}
+                        size="small"
+                        sx={{ whiteSpace: 'nowrap' }}
+                      >
+                        Adicionar Grupo
+                      </Button>
+                      <Button
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                        onClick={() => setDialogAdicionarOpen(true)}
+                        size="small"
+                        sx={{ bgcolor: '#059669', '&:hover': { bgcolor: '#047857' }, whiteSpace: 'nowrap' }}
+                      >
+                        Adicionar Ingrediente
+                      </Button>
+                    </Box>
                   }
                 />
               </Box>
@@ -1093,9 +1123,16 @@ export default function PreparacaoDetalhe() {
       </Box>
     </Box>
 
+    {/* Diálogo de Adicionar Grupo */}
+    <AdicionarGrupoIngredientesDialog
+      open={dialogGrupoOpen}
+      onClose={() => setDialogGrupoOpen(false)}
+      onSelect={adicionarGrupo}
+      produtos={produtos}
+    />
+
     {/* Diálogo de Adicionar Ingrediente */}
-    <AdicionarIngredienteDialog
-      open={dialogAdicionarOpen}
+    <AdicionarIngredienteDialog      open={dialogAdicionarOpen}
       onClose={() => setDialogAdicionarOpen(false)}
       onConfirm={adicionarProduto}
       produtos={produtosDisponiveis}

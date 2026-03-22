@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import PageContainer from '../components/PageContainer';
@@ -7,13 +7,17 @@ import {
   Box, Typography, Button, Card, CardContent, CircularProgress,
   Alert, Dialog, DialogTitle, DialogContent, DialogActions, TextField,
   Chip, FormControlLabel, Switch, Paper, Grid, Stack, Autocomplete,
-  FormControl, InputLabel, Select, MenuItem, IconButton, Menu
+  FormControl, InputLabel, Select, MenuItem, IconButton, Menu, Tooltip,
+  InputAdornment
 } from '@mui/material';
 import {
   Edit as EditIcon, Delete as DeleteIcon, Save as SaveIcon,
   Cancel as CancelIcon, Inventory as InventoryIcon, Science as ScienceIcon, 
   Fingerprint as FingerprintIcon, Notes as NotesIcon, MoreVert as MoreVertIcon,
+  AutoAwesome as AutoAwesomeIcon, Biotech as BiotechIcon,
 } from '@mui/icons-material';
+import BuscarTacoDialog from '../components/BuscarTacoDialog';
+import { mapearTacoParaComposicao, TacoAlimento } from '../services/taco';
 import {
   buscarProduto, deletarProduto,
   buscarComposicaoNutricional, salvarComposicaoNutricional,
@@ -27,14 +31,20 @@ import { LoadingOverlay } from '../components/LoadingOverlay';
 // --- Constantes ---
 const composicaoVazia = {
   produto_id: 0,
+  calorias: "",
   proteinas: "",
   gorduras: "",
   carboidratos: "",
+  fibras: "",
   calcio: "",
   ferro: "",
   vitamina_a: "",
   vitamina_c: "",
-  sodio: ""
+  sodio: "",
+  gorduras_saturadas_g: "",
+  gorduras_trans_g: "",
+  colesterol: "",
+  acucares: "",
 };
 
 // --- Subcomponentes de UI ---
@@ -61,7 +71,7 @@ const InfoItem = ({ label, value }) => (
     </Box>
 );
 
-const ComposicaoNutricionalCard = ({ composicaoData, onSave, isSaving }) => {
+const ComposicaoNutricionalCard = ({ composicaoData, onSave, isSaving, onCarregarTaco }) => {
     const [editingField, setEditingField] = useState<string | null>(null);
     const [formData, setFormData] = useState(composicaoData);
     useEffect(() => { setFormData(composicaoData); }, [composicaoData]);
@@ -76,14 +86,18 @@ const ComposicaoNutricionalCard = ({ composicaoData, onSave, isSaving }) => {
     };
 
     const campos = [
+        { key: 'calorias', label: 'Energia', unit: 'kcal' },
         { key: 'proteinas', label: 'Proteínas', unit: 'g' },
         { key: 'gorduras', label: 'Lipídios', unit: 'g' },
         { key: 'carboidratos', label: 'Carboidratos', unit: 'g' },
+        { key: 'fibras', label: 'Fibra Alimentar', unit: 'g' },
         { key: 'calcio', label: 'Cálcio', unit: 'mg' },
         { key: 'ferro', label: 'Ferro', unit: 'mg' },
         { key: 'vitamina_a', label: 'Retinol (Vit. A)', unit: 'mcg' },
         { key: 'vitamina_c', label: 'Vitamina C', unit: 'mg' },
-        { key: 'sodio', label: 'Sódio', unit: 'mg' }
+        { key: 'sodio', label: 'Sódio', unit: 'mg' },
+        { key: 'colesterol', label: 'Colesterol', unit: 'mg' },
+        { key: 'gorduras_saturadas_g', label: 'Gord. Saturadas', unit: 'g' },
     ];
 
     return (
@@ -91,6 +105,25 @@ const ComposicaoNutricionalCard = ({ composicaoData, onSave, isSaving }) => {
             title="Composição Nutricional" 
             icon={<ScienceIcon color="primary" fontSize="small" />}
         >
+            {/* Botão discreto para carregar da TACO */}
+            <Box sx={{ mb: 1 }}>
+                <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<AutoAwesomeIcon sx={{ fontSize: 14 }} />}
+                    onClick={onCarregarTaco}
+                    sx={{
+                        fontSize: '0.7rem',
+                        py: 0.25,
+                        px: 1,
+                        borderColor: 'divider',
+                        color: 'text.secondary',
+                        '&:hover': { borderColor: 'primary.main', color: 'primary.main' },
+                    }}
+                >
+                    Carregar da TACO
+                </Button>
+            </Box>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                 {campos.map(c => (
                     <Box key={c.key} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 0.5, borderBottom: '1px solid', borderColor: 'divider' }}>
@@ -181,6 +214,10 @@ export default function ProdutoDetalhe() {
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(menuAnchorEl);
 
+  // Estado do dialog TACO
+  const [tacoDialogOpen, setTacoDialogOpen] = useState(false);
+  const [tacoCamposOpen, setTacoCamposOpen] = useState(false);
+
   // Atualizar título da página
   useEffect(() => {
     if (produto) {
@@ -209,9 +246,8 @@ export default function ProdutoDetalhe() {
       });
       try {
         const comp = await buscarComposicaoNutricional(Number(id));
-        setComposicao({ ...composicaoVazia, ...comp });
+        if (comp) setComposicao({ ...composicaoVazia, ...comp });
       } catch (error) {
-        // Tratar erro 500 como "sem dados" - tabela pode não existir
         console.warn('Composição nutricional não encontrada:', error);
         setComposicao(composicaoVazia);
       }
@@ -263,26 +299,26 @@ export default function ProdutoDetalhe() {
     }
   }, [id, form, atualizarProdutoMutation]);
 
-  const handleSaveComposition = useCallback(async (compData) => {
+  const handleTacoCampos = useCallback((alimento: TacoAlimento) => {
+    setForm((prev: any) => ({
+      ...prev,
+      categoria: alimento.categoria || prev.categoria,
+    }));
+    toast.success(`Categoria preenchida da TACO: ${alimento.nome}`);
+  }, [toast]);
+
+  const handleSaveComposition = useCallback(async (compData, nomeAlimento?: string) => {
     setIsSavingComp(true);
     try {
-      console.log('📤 Enviando composição:', compData);
       const dataToSend = { ...Object.fromEntries(Object.entries(compData).map(([k, v]) => [k, v === "" ? null : Number(v)])) };
-      console.log('📤 Dados processados:', dataToSend);
-      
       const resultado = await salvarComposicaoNutricional(Number(id), dataToSend);
-      console.log('✅ Resposta do servidor:', resultado);
-      
-      // Usar a resposta do servidor diretamente ao invés de recarregar
       setComposicao({ ...composicaoVazia, ...resultado });
-      
-      toast.success('Composição nutricional salva!');
+      toast.success(nomeAlimento ? `Composição carregada da TACO: ${nomeAlimento}` : 'Composição nutricional salva!');
     } catch (error) {
       console.error('❌ Erro ao salvar composição nutricional:', error);
-      toast.error("Erro ao salvar composição. Tabela pode não estar criada no banco.");
-    } 
-    finally { 
-      setIsSavingComp(false); 
+      toast.error("Erro ao salvar composição nutricional.");
+    } finally {
+      setIsSavingComp(false);
     }
   }, [id]);
 
@@ -380,7 +416,24 @@ export default function ProdutoDetalhe() {
                             />
                         </Grid>
                         <Grid item xs={12}>
-                            <TextField label="Categoria" value={form.categoria || ""} onChange={e => setForm({ ...form, categoria: e.target.value })} fullWidth size="small" />
+                            <TextField
+                                label="Categoria"
+                                value={form.categoria || ""}
+                                onChange={e => setForm({ ...form, categoria: e.target.value })}
+                                fullWidth
+                                size="small"
+                                InputProps={{
+                                    endAdornment: (
+                                        <InputAdornment position="end">
+                                            <Tooltip title="Buscar categoria na TACO">
+                                                <IconButton size="small" edge="end" onClick={() => setTacoCamposOpen(true)} sx={{ color: 'text.secondary' }}>
+                                                    <BiotechIcon sx={{ fontSize: 18 }} />
+                                                </IconButton>
+                                            </Tooltip>
+                                        </InputAdornment>
+                                    ),
+                                }}
+                            />
                         </Grid>
                         <Grid item xs={12}>
                             <TextField
@@ -400,7 +453,7 @@ export default function ProdutoDetalhe() {
                                 type="number"
                                 value={form.fator_correcao || 1.0}
                                 onChange={e => {
-                                    const value = e.target.value.replace(',', '.'); // Aceita vírgula e converte para ponto
+                                    const value = e.target.value.replace(',', '.');
                                     const parsed = parseFloat(value);
                                     setForm({ ...form, fator_correcao: isNaN(parsed) ? 1.0 : parsed });
                                 }}
@@ -475,7 +528,12 @@ export default function ProdutoDetalhe() {
           {/* Composição Nutricional - mesma altura */}
           <Grid item xs={12} md={6} sx={{ display: 'flex' }}>
             <Box sx={{ width: '100%' }}>
-              <ComposicaoNutricionalCard composicaoData={composicao} onSave={handleSaveComposition} isSaving={isSavingComp} />
+              <ComposicaoNutricionalCard
+                composicaoData={composicao}
+                onSave={handleSaveComposition}
+                isSaving={isSavingComp}
+                onCarregarTaco={() => setTacoDialogOpen(true)}
+              />
             </Box>
           </Grid>
 
@@ -510,6 +568,25 @@ export default function ProdutoDetalhe() {
         </MenuItem>
       </Menu>
 
+      {/* Dialog TACO - composição nutricional */}
+      <BuscarTacoDialog
+        open={tacoDialogOpen}
+        onClose={() => setTacoDialogOpen(false)}
+        onSelect={(composicaoTaco, nomeAlimento) => {
+          handleSaveComposition(composicaoTaco, nomeAlimento);
+        }}
+        initialQuery={form.nome || produto?.nome}
+      />
+
+      {/* Dialog TACO - campos do produto (categoria) */}
+      <BuscarTacoDialog
+        open={tacoCamposOpen}
+        onClose={() => setTacoCamposOpen(false)}
+        onSelect={() => {}}
+        onSelectAlimento={handleTacoCampos}
+        initialQuery={form.nome || produto?.nome}
+      />
+
       {/* Modal fora do PageContainer */}
       <Dialog open={openExcluir} onClose={() => setOpenExcluir(false)}>
             <DialogTitle>Confirmar Exclusão</DialogTitle>
@@ -529,3 +606,5 @@ export default function ProdutoDetalhe() {
     </Box>
   );
 }
+
+

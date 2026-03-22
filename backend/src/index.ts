@@ -50,6 +50,11 @@ import planejamentoComprasRoutes from "./routes/planejamentoComprasRoutes";
 import periodosRoutes from "./routes/periodosRoutes";
 import escolaPortalRoutes from "./routes/escolaPortalRoutes";
 import calendarioLetivoRoutes from "./routes/calendarioLetivoRoutes";
+import tacoRoutes from "./routes/tacoRoutes";
+import gruposIngredientesRoutes from "./routes/gruposIngredientesRoutes";
+import solicitacoesAlimentosRoutes from "./routes/solicitacoesAlimentosRoutes";
+import dashboardRoutes from "./routes/dashboardRoutes";
+import notificacoesRoutes from "./routes/notificacoesRoutes";
 
 import { createServer } from 'http';
 import { initializeRedisCache } from "./config/redis";
@@ -286,6 +291,11 @@ app.use("/api/planejamento-compras", planejamentoComprasRoutes);
 app.use("/api/periodos", periodosRoutes);
 app.use("/api/escola-portal", escolaPortalRoutes);
 app.use("/api", calendarioLetivoRoutes);
+app.use("/api/taco", tacoRoutes);
+app.use("/api/grupos-ingredientes", gruposIngredientesRoutes);
+app.use("/api/solicitacoes-alimentos", solicitacoesAlimentosRoutes);
+app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/notificacoes", notificacoesRoutes);
 
 
 // Rotas de gás removidas

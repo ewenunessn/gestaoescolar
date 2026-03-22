@@ -419,12 +419,7 @@ const RefeicoesPage = () => {
                     <TableCell align="left">
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <StatusIndicator status={refeicao.ativo ? 'ativo' : 'inativo'} size="small" />
-                        <Box>
-                          <Typography variant="body2" sx={{ fontWeight: 600 }}>{refeicao.nome}</Typography>
-                          {refeicao.descricao && (
-                            <Typography variant="caption" color="text.secondary">{refeicao.descricao}</Typography>
-                          )}
-                        </Box>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>{refeicao.nome}</Typography>
                       </Box>
                     </TableCell>
                     <TableCell align="center">

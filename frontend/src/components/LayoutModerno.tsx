@@ -41,6 +41,7 @@ import {
   Apps as AppsIcon,
   AdminPanelSettings,
   CalendarToday,
+  ShoppingCart,
 } from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
 import { logout } from "../services/auth";
@@ -49,6 +50,8 @@ import { useConfigChangeIndicator } from "../hooks/useConfigChangeIndicator";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { usePageTitle } from "../contexts/PageTitleContext";
 import { SeletorPeriodo } from './SeletorPeriodo';
+import NotificacoesMenu from './NotificacoesMenu';
+import { NotificacoesProvider } from '../contexts/NotificacoesContext';
 
 const drawerWidth = 220;
 const collapsedDrawerWidth = 64;
@@ -113,6 +116,12 @@ const getMenuConfig = (_configModuloSaldo: any) => [
     items: [
       { text: "Estoque Central", icon: <Inventory fontSize="small" />, path: "/estoque-central" },
       { text: "Estoque Escolar", icon: <School fontSize="small" />,    path: "/estoque-escolar" },
+    ],
+  },
+  {
+    category: "Escolas",
+    items: [
+      { text: "Solicitações de Alimentos", icon: <ShoppingCart fontSize="small" />, path: "/solicitacoes-alimentos" },
     ],
   },
   {
@@ -432,6 +441,7 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   );
 
   return (
+    <NotificacoesProvider>
     <Box sx={{ display: "flex", minHeight: "100vh" }}>
       <Box component="nav" sx={{ width: { md: collapsed ? collapsedDrawerWidth : drawerWidth }, flexShrink: { md: 0 }, transition: "width 0.25s ease" }}>
         <Drawer
@@ -489,6 +499,9 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           <Box sx={{ display: { xs: "none", sm: "flex" } }}>
             <SeletorPeriodo />
           </Box>
+
+          {/* Notificações */}
+          <NotificacoesMenu />
           
           {/* Usuário Logado */}
           {loadingUser ? <CircularProgress size={16} /> : user ? (
@@ -514,6 +527,7 @@ const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         {children}
       </Box>
     </Box>
+    </NotificacoesProvider>
   );
 };
 

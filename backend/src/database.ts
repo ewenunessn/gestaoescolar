@@ -24,11 +24,12 @@ console.log('🔍 Verificando configuração do banco...');
 console.log('🔍 DATABASE_URL presente?', !!process.env.DATABASE_URL);
 console.log('🔍 POSTGRES_URL presente?', !!process.env.POSTGRES_URL);
 
-if (process.env.DATABASE_URL || process.env.POSTGRES_URL) {
+if (process.env.NEON_DATABASE_URL || process.env.DATABASE_URL || process.env.POSTGRES_URL) {
     // ========================================
     // CONFIGURAÇÃO NEON/VERCEL (Connection String)
     // ========================================
-    const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+    // Prioridade: NEON_DATABASE_URL > POSTGRES_URL > DATABASE_URL
+    const connectionString = process.env.NEON_DATABASE_URL || process.env.POSTGRES_URL || process.env.DATABASE_URL;
     
     // Detectar se é ambiente local (localhost) ou produção (Neon/Vercel)
     const isLocalDatabase = connectionString.includes('localhost') || connectionString.includes('127.0.0.1');
@@ -38,16 +39,22 @@ if (process.env.DATABASE_URL || process.env.POSTGRES_URL) {
         pool = new Pool({
             connectionString,
             ssl: false,
-            client_encoding: 'UTF8'
+            client_encoding: 'UTF8',
+            max: 10,
+            idleTimeoutMillis: 30000,
+            connectionTimeoutMillis: 5000,
         });
     } else {
         console.log('✅ Usando NEON/VERCEL (com SSL)');
         pool = new Pool({
             connectionString,
-            ssl: {
-                rejectUnauthorized: false
-            },
-            client_encoding: 'UTF8'
+            ssl: { rejectUnauthorized: false },
+            client_encoding: 'UTF8',
+            max: 5,                      // Neon tem limite de conexões
+            idleTimeoutMillis: 10000,    // Fecha idle antes do Neon matar (~5min)
+            connectionTimeoutMillis: 10000,
+            keepAlive: true,
+            keepAliveInitialDelayMillis: 10000,
         });
     }
 } else {
@@ -96,6 +103,12 @@ async function query(text: string, params: any[] = []): Promise<QueryResult> {
 
         return res;
     } catch (error: any) {
+        // Reconecta automaticamente se a conexão foi encerrada pelo servidor
+        if (error.message?.includes('Connection terminated') || error.code === 'ECONNRESET') {
+            console.warn('⚠️ Conexão encerrada, tentando novamente...');
+            const res = await pool.query(text, params);
+            return res;
+        }
         console.error('Erro na query PostgreSQL:', error.message);
         console.error('Query:', text);
         console.error('Params:', params);

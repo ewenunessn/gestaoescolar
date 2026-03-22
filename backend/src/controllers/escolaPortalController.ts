@@ -127,29 +127,29 @@ export const getCardapiosSemana = asyncHandler(async (req: Request, res: Respons
 
   const modalidadeIds = modalidades.rows.map(m => m.id);
 
-  // Buscar cardápios do mês atual para as modalidades da escola
+  // Semana atual: segunda-feira até domingo
+  // Se hoje é domingo, a "semana" é a próxima (seg a dom)
   const hoje = new Date();
-  const mesAtual = hoje.getMonth() + 1;
-  const anoAtual = hoje.getFullYear();
+  const diaSemana = hoje.getDay(); // 0=dom, 1=seg...6=sab
 
-  // Calcular início e fim da semana atual (dias do mês)
-  const diaSemana = hoje.getDay();
+  // Dias até a próxima segunda (ou hoje se for segunda)
+  const diasAteSegunda = diaSemana === 0 ? 1 : diaSemana === 1 ? 0 : -(diaSemana - 1);
   const inicioSemana = new Date(hoje);
-  inicioSemana.setDate(hoje.getDate() - diaSemana + (diaSemana === 0 ? -6 : 1));
+  inicioSemana.setDate(hoje.getDate() + diasAteSegunda);
   const fimSemana = new Date(inicioSemana);
   fimSemana.setDate(inicioSemana.getDate() + 6);
 
-  const diaInicioSemana = inicioSemana.getDate();
-  const diaFimSemana = fimSemana.getDate();
+  const fmt = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 
+  // Buscar cardápios da semana usando exclusivamente a tabela de junção cardapio_modalidades
   const result = await db.query(`
     SELECT 
       cm.id,
       cm.mes,
       cm.ano,
-      cm.modalidade_id,
-      m.nome as modalidade_nome,
       crd.dia,
+      STRING_AGG(DISTINCT m.nome, ', ' ORDER BY m.nome) as modalidades_nomes,
       json_agg(
         json_build_object(
           'id', r.id,
@@ -158,18 +158,21 @@ export const getCardapiosSemana = asyncHandler(async (req: Request, res: Respons
         ) ORDER BY crd.tipo_refeicao, r.nome
       ) FILTER (WHERE r.id IS NOT NULL) as refeicoes
     FROM cardapios_modalidade cm
-    INNER JOIN modalidades m ON cm.modalidade_id = m.id
+    INNER JOIN cardapio_modalidades cjm ON cjm.cardapio_id = cm.id
+    INNER JOIN modalidades m ON m.id = cjm.modalidade_id
     INNER JOIN cardapio_refeicoes_dia crd ON cm.id = crd.cardapio_modalidade_id
     LEFT JOIN refeicoes r ON crd.refeicao_id = r.id
-    WHERE cm.modalidade_id = ANY($1)
-      AND cm.mes = $2
-      AND cm.ano = $3
-      AND crd.dia >= $4
-      AND crd.dia <= $5
+    WHERE cjm.modalidade_id = ANY($1)
       AND crd.ativo = true
-    GROUP BY cm.id, cm.mes, cm.ano, cm.modalidade_id, m.nome, crd.dia
-    ORDER BY crd.dia, m.nome
-  `, [modalidadeIds, mesAtual, anoAtual, diaInicioSemana, diaFimSemana]);
+      AND make_date(cm.ano, cm.mes, crd.dia) >= $2::date
+      AND make_date(cm.ano, cm.mes, crd.dia) <= $3::date
+    GROUP BY cm.id, cm.mes, cm.ano, crd.dia
+    ORDER BY cm.ano, cm.mes, crd.dia
+  `, [
+    modalidadeIds,
+    fmt(inicioSemana),
+    fmt(fimSemana),
+  ]);
 
   res.json({ success: true, data: result.rows });
 });

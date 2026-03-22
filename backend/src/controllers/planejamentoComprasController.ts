@@ -612,10 +612,14 @@ export const calcularDemandaPorCompetencia = async (req: Request, res: Response)
       
       // Buscar cardápios próximos
       const cardapiosProximos = await db.pool.query(`
-        SELECT id, nome, mes, ano, modalidade_id
-        FROM cardapios_modalidade
-        WHERE ativo = true
-        ORDER BY ano DESC, mes DESC
+        SELECT cm.id, cm.nome, cm.mes, cm.ano,
+          STRING_AGG(DISTINCT m.nome, ', ' ORDER BY m.nome) as modalidades_nomes
+        FROM cardapios_modalidade cm
+        LEFT JOIN cardapio_modalidades cjm ON cjm.cardapio_id = cm.id
+        LEFT JOIN modalidades m ON m.id = cjm.modalidade_id
+        WHERE cm.ativo = true
+        GROUP BY cm.id, cm.nome, cm.mes, cm.ano
+        ORDER BY cm.ano DESC, cm.mes DESC
         LIMIT 3
       `);
       

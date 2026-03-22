@@ -40,8 +40,15 @@ export const SeletorPeriodo: React.FC = () => {
     return <CircularProgress size={20} />;
   }
 
-  if (!periodos || !periodoAtivo) {
-    return null;
+  if (!periodos?.length || !periodoAtivo) {
+    return (
+      <Tooltip title="Nenhum período cadastrado. Acesse Configurações > Períodos.">
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, opacity: 0.5, cursor: 'default' }}>
+          <CalendarToday fontSize="small" />
+          <Typography variant="caption" color="text.secondary">Sem período</Typography>
+        </Box>
+      </Tooltip>
+    );
   }
 
   const periodoGlobalAtivo = periodos.find(p => p.ativo);

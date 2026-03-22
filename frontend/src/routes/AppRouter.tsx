@@ -83,7 +83,10 @@ const PlanejamentoCompras = lazy(() => import("../pages/PlanejamentoCompras"));
 const DashboardPNAE = lazy(() => import("../pages/DashboardPNAE"));
 const GerenciamentoUsuarios = lazy(() => import("../pages/GerenciamentoUsuarios"));
 const GerenciamentoPeriodos = lazy(() => import("../pages/GerenciamentoPeriodos"));
+const GruposIngredientes = lazy(() => import("../pages/GruposIngredientes"));
 const CalendarioLetivo = lazy(() => import("../pages/CalendarioLetivo"));
+const SolicitacoesAlimentos = lazy(() => import("../pages/SolicitacoesAlimentos"));
+const SolicitacaoEscolaDetalhe = lazy(() => import("../pages/SolicitacaoEscolaDetalhe"));
 const PortalEscola = lazy(() => import("../pages/PortalEscola"));
 
 interface AppRouterProps {
@@ -371,11 +374,26 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
               path="/periodos"
               element={<LazyRoute><GerenciamentoPeriodos /></LazyRoute>}
             />
+            {/* Grupos de Ingredientes */}
+            <Route
+              path="/grupos-ingredientes"
+              element={<LazyRoute><GruposIngredientes /></LazyRoute>}
+            />
 
             {/* Portal da Escola (secretaria de escola) */}
             <Route
               path="/portal-escola"
               element={<LazyRoute><PortalEscola /></LazyRoute>}
+            />
+
+            {/* Solicitações de Alimentos (módulo principal) */}
+            <Route
+              path="/solicitacoes-alimentos"
+              element={<LazyRoute><SolicitacoesAlimentos /></LazyRoute>}
+            />
+            <Route
+              path="/solicitacoes-alimentos/:escolaId"
+              element={<LazyRoute><SolicitacaoEscolaDetalhe /></LazyRoute>}
             />
 
             {/* Calendário Letivo */}

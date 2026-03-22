@@ -47,6 +47,7 @@ interface DataTableProps<TData> {
   createButtonLabel?: string;
   onFilterClick?: (event: React.MouseEvent<HTMLElement>) => void;
   onImportExportClick?: (event: React.MouseEvent<HTMLElement>) => void;
+  toolbarExtra?: React.ReactNode;
 }
 
 export function DataTable<TData>({
@@ -60,6 +61,7 @@ export function DataTable<TData>({
   createButtonLabel = 'Criar',
   onFilterClick,
   onImportExportClick,
+  toolbarExtra,
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -146,6 +148,9 @@ export function DataTable<TData>({
             </Tooltip>
           )}
           
+          {/* Ações extras da toolbar */}
+          {toolbarExtra}
+
           {/* Ícone de filtro */}
           {onFilterClick && (
             <Tooltip title="Filtros">

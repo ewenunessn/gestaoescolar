@@ -408,18 +408,21 @@ export async function listarCardapiosDisponiveis(req: Request, res: Response) {
 
     if (escola_ids) {
       const escolaIdsArray = Array.isArray(escola_ids) ? escola_ids : [escola_ids];
-      escolaFilter = `AND (cm.modalidade_id IN (
-        SELECT DISTINCT em.modalidade_id
-        FROM escola_modalidades em
-        WHERE em.escola_id = ANY($${paramIndex})
-      ) OR cm.modalidade_id IS NULL)`;
+      escolaFilter = `AND EXISTS (
+        SELECT 1 FROM cardapio_modalidades cjm
+        INNER JOIN escola_modalidades em ON em.modalidade_id = cjm.modalidade_id
+        WHERE cjm.cardapio_id = cm.id AND em.escola_id = ANY($${paramIndex})
+      )`;
       params.push(escolaIdsArray.map(Number));
       paramIndex++;
     }
 
     if (modalidade_ids) {
       const modalidadeIdsArray = Array.isArray(modalidade_ids) ? modalidade_ids : [modalidade_ids];
-      modalidadeFilter = `AND (cm.modalidade_id = ANY($${paramIndex}) OR cm.modalidade_id IS NULL)`;
+      modalidadeFilter = `AND EXISTS (
+        SELECT 1 FROM cardapio_modalidades cjm
+        WHERE cjm.cardapio_id = cm.id AND cjm.modalidade_id = ANY($${paramIndex})
+      )`;
       params.push(modalidadeIdsArray.map(Number));
       paramIndex++;
     }
@@ -430,20 +433,21 @@ export async function listarCardapiosDisponiveis(req: Request, res: Response) {
         cm.nome,
         cm.mes,
         cm.ano,
-        cm.modalidade_id,
         cm.periodo_id,
-        m.nome as modalidade_nome,
         p.ano as periodo_ano,
-        COUNT(crd.id) as total_refeicoes
+        COUNT(crd.id) as total_refeicoes,
+        ARRAY_AGG(DISTINCT cjm.modalidade_id) FILTER (WHERE cjm.modalidade_id IS NOT NULL) as modalidades_ids,
+        STRING_AGG(DISTINCT m.nome, ', ' ORDER BY m.nome) FILTER (WHERE m.nome IS NOT NULL) as modalidades_nomes
       FROM cardapios_modalidade cm
-      LEFT JOIN modalidades m ON cm.modalidade_id = m.id
       LEFT JOIN periodos p ON cm.periodo_id = p.id
       LEFT JOIN cardapio_refeicoes_dia crd ON cm.id = crd.cardapio_modalidade_id
+      LEFT JOIN cardapio_modalidades cjm ON cjm.cardapio_id = cm.id
+      LEFT JOIN modalidades m ON m.id = cjm.modalidade_id
       WHERE cm.ativo = true
         ${periodoFilter}
         ${escolaFilter}
         ${modalidadeFilter}
-      GROUP BY cm.id, cm.nome, cm.mes, cm.ano, cm.modalidade_id, cm.periodo_id, m.nome, p.ano
+      GROUP BY cm.id, cm.nome, cm.mes, cm.ano, cm.periodo_id, p.ano
       ORDER BY cm.ano DESC, cm.mes DESC, cm.nome
     `;
 

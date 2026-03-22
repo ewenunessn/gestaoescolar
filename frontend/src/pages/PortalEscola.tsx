@@ -1,11 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Card, Typography, Grid, Chip, CircularProgress, Alert, Tabs, Tab, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button } from '@mui/material';
-import { School as SchoolIcon, Inventory as InventoryIcon, CheckCircle as CheckCircleIcon, Warning as WarningIcon, Restaurant as RestaurantIcon, Dashboard as DashboardIcon, Assignment as AssignmentIcon, Warehouse as WarehouseIcon } from '@mui/icons-material';
+import { Box, Card, Typography, Grid, Chip, CircularProgress, Alert, Tabs, Tab, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, TextField, IconButton, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete } from '@mui/material';
+import { School as SchoolIcon, Inventory as InventoryIcon, CheckCircle as CheckCircleIcon, Warning as WarningIcon, Restaurant as RestaurantIcon, Dashboard as DashboardIcon, Assignment as AssignmentIcon, Warehouse as WarehouseIcon, Add as AddIcon, Delete as DeleteIcon, ShoppingCart as ShoppingCartIcon } from '@mui/icons-material';
 import PageContainer from '../components/PageContainer';
 import PageHeader from '../components/PageHeader';
 import ViewTabs from '../components/ViewTabs';
 import api from '../services/api';
+import { useToast } from '../hooks/useToast';
+import {
+  listarMinhasSolicitacoes, criarSolicitacao, cancelarSolicitacao,
+  Solicitacao, NovoItemData,
+} from '../services/solicitacoesAlimentos';
+import { listarProdutos, Produto } from '../services/produtoService';
 
 const DIAS_SEMANA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
@@ -19,11 +25,71 @@ export default function PortalEscola() {
   const [modalidadeSelecionada, setModalidadeSelecionada] = useState(0);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState('');
-  const [abaAtiva, setAbaAtiva] = useState(0); // 0 = Dashboard, 1 = Guia de Demanda, 2 = Cardápio
+  const [abaAtiva, setAbaAtiva] = useState(0); // 0=Dashboard, 1=Guia de Demanda, 2=Cardápio, 3=Solicitações
+
+  // Estado das solicitações
+  const [solicitacoes, setSolicitacoes] = useState<Solicitacao[]>([]);
+  const [loadingSol, setLoadingSol] = useState(false);
+  const [novaOpen, setNovaOpen] = useState(false);
+  const [produtos, setProdutos] = useState<Produto[]>([]);
+  // itens do formulário de nova solicitação
+  const [novaObs, setNovaObs] = useState('');
+  const [novaItens, setNovaItens] = useState<NovoItemData[]>([{ nome_produto: '', quantidade: 1, unidade: 'kg' }]);
+  const [salvandoSol, setSalvandoSol] = useState(false);
+  const toast = useToast();
 
   useEffect(() => {
     carregarDados();
+    listarProdutos().then(setProdutos).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (abaAtiva === 3) carregarSolicitacoes();
+  }, [abaAtiva]);
+
+  const carregarSolicitacoes = async () => {
+    setLoadingSol(true);
+    try {
+      const data = await listarMinhasSolicitacoes();
+      setSolicitacoes(data);
+    } catch {
+      toast.error('Erro ao carregar solicitações');
+    } finally {
+      setLoadingSol(false);
+    }
+  };
+
+  const handleCriarSolicitacao = async () => {
+    const itensValidos = novaItens.filter(i => i.nome_produto.trim());
+    if (itensValidos.length === 0) { toast.error('Adicione ao menos um item'); return; }
+    for (const i of itensValidos) {
+      if (!i.quantidade || i.quantidade <= 0) { toast.error('Quantidade inválida em um dos itens'); return; }
+      if (!i.unidade.trim()) { toast.error('Unidade obrigatória em todos os itens'); return; }
+    }
+    setSalvandoSol(true);
+    try {
+      await criarSolicitacao({ observacao: novaObs, itens: itensValidos });
+      toast.success('Solicitação enviada');
+      setNovaOpen(false);
+      setNovaObs('');
+      setNovaItens([{ nome_produto: '', quantidade: 1, unidade: 'kg' }]);
+      carregarSolicitacoes();
+    } catch {
+      toast.error('Erro ao enviar solicitação');
+    } finally {
+      setSalvandoSol(false);
+    }
+  };
+
+  const handleCancelarSolicitacao = async (id: number) => {
+    try {
+      await cancelarSolicitacao(id);
+      toast.success('Solicitação cancelada');
+      carregarSolicitacoes();
+    } catch {
+      toast.error('Erro ao cancelar solicitação');
+    }
+  };
 
   const carregarDados = async () => {
     try {
@@ -72,6 +138,7 @@ export default function PortalEscola() {
   }
 
   return (
+    <>
     <PageContainer>
       <PageHeader 
         title={escola?.nome || 'Portal da Escola'} 
@@ -87,6 +154,7 @@ export default function PortalEscola() {
             { value: 0, label: 'Dashboard', icon: <DashboardIcon /> },
             { value: 1, label: 'Guia de Demanda', icon: <AssignmentIcon /> },
             { value: 2, label: 'Cardápio', icon: <RestaurantIcon /> },
+            { value: 3, label: 'Solicitações', icon: <ShoppingCartIcon /> },
           ]}
         />
       </Box>
@@ -413,6 +481,156 @@ export default function PortalEscola() {
           </Grid>
         </Grid>
       )}
+
+      {/* Conteúdo da aba Solicitações */}
+      {abaAtiva === 3 && (
+        <Box>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setNovaOpen(true)}>
+              Nova Solicitação
+            </Button>
+          </Box>
+
+          {loadingSol ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
+          ) : solicitacoes.length === 0 ? (
+            <Alert severity="info">Nenhuma solicitação enviada ainda.</Alert>
+          ) : (
+            <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '8px' }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow sx={{ bgcolor: 'grey.50' }}>
+                    <TableCell sx={{ fontWeight: 600 }}>Data</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Itens</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Observação</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
+                    <TableCell />
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {solicitacoes.map(s => {
+                    const statusColor = s.status === 'pendente' ? 'warning' : s.status === 'concluida' ? 'success' : s.status === 'parcial' ? 'info' : 'error';
+                    const statusLabel = s.status === 'pendente' ? 'Pendente' : s.status === 'concluida' ? 'Concluída' : s.status === 'parcial' ? 'Parcial' : 'Cancelada';
+                    return (
+                      <TableRow key={s.id} hover>
+                        <TableCell>{new Date(s.created_at).toLocaleDateString('pt-BR')}</TableCell>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+                            {s.itens.map(item => (
+                              <Typography key={item.id} variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                <Chip
+                                  label={item.status === 'pendente' ? 'Pend.' : item.status === 'aceito' ? 'Aceito' : 'Recusado'}
+                                  color={item.status === 'pendente' ? 'warning' : item.status === 'aceito' ? 'success' : 'error'}
+                                  size="small"
+                                  sx={{ fontSize: '0.6rem', height: 16 }}
+                                />
+                                {item.nome_produto} — {item.quantidade} {item.unidade}
+                                {item.justificativa_recusa && (
+                                  <Typography component="span" variant="caption" color="error.main"> ({item.justificativa_recusa})</Typography>
+                                )}
+                              </Typography>
+                            ))}
+                          </Box>
+                        </TableCell>
+                        <TableCell sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>{s.observacao || '—'}</TableCell>
+                        <TableCell>
+                          <Chip label={statusLabel} color={statusColor} size="small" />
+                        </TableCell>
+                        <TableCell>
+                          {s.status === 'pendente' && (
+                            <Tooltip title="Cancelar">
+                              <IconButton size="small" color="error" onClick={() => handleCancelarSolicitacao(s.id)}>
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </Box>
+      )}
     </PageContainer>
+
+    {/* Dialog nova solicitação */}
+    <Dialog open={novaOpen} onClose={() => setNovaOpen(false)} maxWidth="sm" fullWidth>
+      <DialogTitle>Nova Solicitação de Alimentos</DialogTitle>
+      <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
+        <TextField
+          label="Observação geral (opcional)"
+          value={novaObs}
+          onChange={e => setNovaObs(e.target.value)}
+          fullWidth size="small" multiline rows={2}
+        />
+
+        <Typography variant="subtitle2" sx={{ mt: 1 }}>Itens</Typography>
+
+        {novaItens.map((item, idx) => (
+          <Box key={idx} sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+            <Autocomplete<Produto>
+              options={produtos}
+              getOptionLabel={p => p.nome}
+              value={produtos.find(p => p.id === item.produto_id) ?? null}
+              onChange={(_, p) => setNovaItens(prev => prev.map((it, i) =>
+                i === idx ? { ...it, produto_id: p?.id, nome_produto: p?.nome ?? '', unidade: p?.unidade || it.unidade } : it
+              ))}
+              onInputChange={(_, val, reason) => {
+                if (reason === 'input')
+                  setNovaItens(prev => prev.map((it, i) => i === idx ? { ...it, nome_produto: val, produto_id: undefined } : it));
+              }}
+              inputValue={item.nome_produto}
+              size="small"
+              sx={{ flex: 2 }}
+              renderInput={params => (
+                <TextField {...params} label="Produto" autoFocus={idx === 0} />
+              )}
+            />
+            <TextField
+              label="Qtd"
+              type="number"
+              value={item.quantidade}
+              onChange={e => setNovaItens(prev => prev.map((it, i) => i === idx ? { ...it, quantidade: Number(e.target.value) } : it))}
+              size="small"
+              sx={{ flex: 1 }}
+              inputProps={{ min: 0.001, step: 0.001 }}
+            />
+            <TextField
+              label="Unidade"
+              value={item.unidade}
+              onChange={e => setNovaItens(prev => prev.map((it, i) => i === idx ? { ...it, unidade: e.target.value } : it))}
+              size="small"
+              sx={{ flex: 1 }}
+              placeholder="kg, un..."
+            />
+            {novaItens.length > 1 && (
+              <IconButton size="small" color="error" sx={{ mt: 0.5 }}
+                onClick={() => setNovaItens(prev => prev.filter((_, i) => i !== idx))}>
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            )}
+          </Box>
+        ))}
+
+        <Button
+          size="small"
+          startIcon={<AddIcon />}
+          onClick={() => setNovaItens(prev => [...prev, { nome_produto: '', quantidade: 1, unidade: 'kg' }])}
+          sx={{ alignSelf: 'flex-start' }}
+        >
+          Adicionar item
+        </Button>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setNovaOpen(false)}>Cancelar</Button>
+        <Button variant="contained" onClick={handleCriarSolicitacao} disabled={salvandoSol}>
+          {salvandoSol ? 'Enviando...' : 'Enviar'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+    </>
   );
 }

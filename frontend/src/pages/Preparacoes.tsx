@@ -33,6 +33,7 @@ import {
   Delete as DeleteIcon,
   Visibility as VisibilityIcon,
   ContentCopy as ContentCopyIcon,
+  GroupWork as GroupWorkIcon,
 } from '@mui/icons-material';
 import { 
   useRefeicoes, 
@@ -129,16 +130,9 @@ const PreparacoesPage: React.FC = () => {
       size: 300,
       enableSorting: true,
       cell: ({ row }) => (
-        <Box>
-          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-            {row.original.nome}
-          </Typography>
-          {row.original.descricao && (
-            <Typography variant="caption" color="text.secondary">
-              {row.original.descricao}
-            </Typography>
-          )}
-        </Box>
+        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+          {row.original.nome}
+        </Typography>
       ),
     },
     { 
@@ -341,6 +335,19 @@ const PreparacoesPage: React.FC = () => {
             onCreateClick={() => openModal()}
             createButtonLabel="Nova Preparação"
             onFilterClick={(e) => setFilterAnchorEl(e.currentTarget)}
+            toolbarExtra={
+              <Tooltip title="Gerenciar grupos de ingredientes">
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<GroupWorkIcon />}
+                  onClick={() => navigate('/grupos-ingredientes')}
+                  sx={{ whiteSpace: 'nowrap' }}
+                >
+                  Grupos
+                </Button>
+              </Tooltip>
+            }
           />
         </Box>
       </PageContainer>
