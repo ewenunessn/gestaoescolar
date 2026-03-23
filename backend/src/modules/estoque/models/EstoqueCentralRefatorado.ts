@@ -215,7 +215,7 @@ class EstoqueCentralModel {
     offset = 0
   ) {
     let query = `
-      SELECT m.*, p.nome as produto_nome, p.unidade
+      SELECT m.*, p.nome as produto_nome, p.unidade_distribuicao
       FROM estoque_central_movimentacoes m
       INNER JOIN estoque_central ec ON ec.id = m.estoque_central_id
       INNER JOIN produtos p ON p.id = ec.produto_id
@@ -257,3 +257,4 @@ class EstoqueCentralModel {
 }
 
 export default new EstoqueCentralModel();
+

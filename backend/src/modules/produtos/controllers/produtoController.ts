@@ -139,15 +139,20 @@ export const listarProdutos = asyncHandler(async (req: Request, res: Response) =
     SELECT 
       p.id,
       p.nome,
-      p.unidade,
-      p.peso,
       p.descricao,
-      p.categoria,
       p.tipo_processamento,
+      p.categoria,
+      p.validade_minima,
+      p.imagem_url,
       p.perecivel,
-      p.fator_correcao,
       p.ativo,
-      p.created_at
+      p.created_at,
+      p.updated_at,
+      p.estoque_minimo,
+      p.fator_correcao::text as fator_correcao,
+      p.tipo_fator_correcao,
+      p.unidade_distribuicao,
+      p.peso::text as peso
     FROM produtos p
     ORDER BY p.nome
   `);
@@ -162,73 +167,89 @@ export const listarProdutos = asyncHandler(async (req: Request, res: Response) =
 export const buscarProduto = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
 
+  console.log(`🔍 [buscarProduto] Iniciando busca do produto ID: ${id}`);
+
   const result = await db.query(`
     SELECT 
       p.id,
       p.nome,
-      p.unidade,
-      p.peso,
       p.descricao,
-      p.categoria,
       p.tipo_processamento,
+      p.categoria,
+      p.validade_minima,
+      p.imagem_url,
       p.perecivel,
-      p.fator_correcao,
       p.ativo,
       p.created_at,
-      p.updated_at
+      p.updated_at,
+      p.estoque_minimo,
+      p.fator_correcao::text as fator_correcao,
+      p.tipo_fator_correcao,
+      p.unidade_distribuicao,
+      p.peso::text as peso
     FROM produtos p 
     WHERE p.id = $1
   `, [id]);
+
+  console.log(`✅ [buscarProduto] Query executada. Rows: ${result.rows.length}`);
 
   if (result.rows.length === 0) {
     throw new NotFoundError('Produto', id);
   }
 
+  const produto = result.rows[0];
+  console.log(`📦 [buscarProduto] Produto: ${produto.nome}`);
+
   res.json({
     success: true,
-    data: result.rows[0]
+    data: produto
   });
 });
 
 export const criarProduto = asyncHandler(async (req: Request, res: Response) => {
   const { 
     nome, 
-    unidade,
     descricao, 
-    categoria,
     tipo_processamento,
-    peso,
-    fator_correcao,
+    categoria,
+    validade_minima,
+    imagem_url,
     perecivel = false,
     ativo = true,
-    unidade_compra,
+    estoque_minimo = 0,
+    fator_correcao = 1.0,
+    tipo_fator_correcao = 'perda',
+    unidade_distribuicao,
+    peso
   } = req.body;
 
   // Validar campos obrigatórios
   if (!nome || !nome.trim()) {
     throw new ValidationError('Nome do produto é obrigatório');
   }
-  
-  if (!unidade || !unidade.trim()) {
-    throw new ValidationError('Unidade do produto é obrigatória');
-  }
 
-  // Normalizar unidade (remover espaços extras)
-  const unidadeNormalizada = unidade.trim();
-  const pesoNormalizado = num(peso);
   const fatorCorrecaoNormalizado = num(fator_correcao) || 1.0;
+  const pesoNormalizado = peso !== undefined ? num(peso) : null;
 
   // Validar fator de correção
-  if (fatorCorrecaoNormalizado < 1.0) {
-    throw new ValidationError('Fator de correção deve ser maior ou igual a 1.0');
+  if (fatorCorrecaoNormalizado < 0) {
+    throw new ValidationError('Fator de correção deve ser maior ou igual a 0');
   }
 
   try {
     const result = await db.query(`
-      INSERT INTO produtos (nome, unidade, descricao, categoria, tipo_processamento, peso, fator_correcao, perecivel, ativo, unidade_compra, created_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)
+      INSERT INTO produtos (
+        nome, descricao, tipo_processamento, categoria, validade_minima, 
+        imagem_url, perecivel, ativo, estoque_minimo, fator_correcao, 
+        tipo_fator_correcao, unidade_distribuicao, peso, created_at, updated_at
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       RETURNING *
-    `, [nome.trim(), unidadeNormalizada, descricao, categoria, tipo_processamento, pesoNormalizado, fatorCorrecaoNormalizado, perecivel, ativo, unidade_compra || null]);
+    `, [
+      nome.trim(), descricao, tipo_processamento, categoria, validade_minima,
+      imagem_url, perecivel, ativo, estoque_minimo, fatorCorrecaoNormalizado,
+      tipo_fator_correcao, unidade_distribuicao, pesoNormalizado
+    ]);
 
     res.status(201).json({
       success: true,
@@ -244,56 +265,60 @@ export const editarProduto = asyncHandler(async (req: Request, res: Response) =>
   const { id } = req.params;
   const { 
     nome, 
-    unidade,
     descricao, 
-    categoria,
     tipo_processamento,
-    peso,
-    fator_correcao,
+    categoria,
+    validade_minima,
+    imagem_url,
     perecivel,
     ativo,
-    unidade_compra,
+    estoque_minimo,
+    fator_correcao,
+    tipo_fator_correcao,
+    unidade_distribuicao,
+    peso
   } = req.body;
 
   // Validar apenas se campos obrigatórios não estão vazios (quando fornecidos)
   if (nome !== undefined && !nome?.trim()) {
     throw new ValidationError('Nome do produto não pode estar vazio');
   }
-  
-  if (unidade !== undefined && !unidade?.trim()) {
-    throw new ValidationError('Unidade do produto não pode estar vazia');
-  }
 
   // Validar fator de correção se fornecido
   if (fator_correcao !== undefined) {
     const fatorNum = num(fator_correcao) || 1.0;
-    if (fatorNum < 1.0) {
-      throw new ValidationError('Fator de correção deve ser maior ou igual a 1.0');
+    if (fatorNum < 0) {
+      throw new ValidationError('Fator de correção deve ser maior ou igual a 0');
     }
   }
 
-  // Normalizar valores (aceita qualquer texto, apenas remove espaços extras)
   const nomeNormalizado = nome !== undefined ? nome.trim() : undefined;
-  const unidadeNormalizada = unidade !== undefined ? unidade.trim() : undefined;
-  const pesoNormalizado = peso !== undefined ? num(peso) : undefined;
   const fatorCorrecaoNormalizado = fator_correcao !== undefined ? num(fator_correcao) || 1.0 : undefined;
+  const pesoNormalizado = peso !== undefined ? num(peso) : undefined;
 
   const result = await db.query(`
     UPDATE produtos SET
       nome = COALESCE($1, nome),
-      unidade = COALESCE($2, unidade),
-      descricao = COALESCE($3, descricao),
+      descricao = COALESCE($2, descricao),
+      tipo_processamento = COALESCE($3, tipo_processamento),
       categoria = COALESCE($4, categoria),
-      tipo_processamento = COALESCE($5, tipo_processamento),
-      peso = COALESCE($6, peso),
-      fator_correcao = COALESCE($7, fator_correcao),
-      perecivel = COALESCE($8, perecivel),
-      ativo = COALESCE($9, ativo),
-      unidade_compra = COALESCE($10, unidade_compra),
+      validade_minima = COALESCE($5, validade_minima),
+      imagem_url = COALESCE($6, imagem_url),
+      perecivel = COALESCE($7, perecivel),
+      ativo = COALESCE($8, ativo),
+      estoque_minimo = COALESCE($9, estoque_minimo),
+      fator_correcao = COALESCE($10, fator_correcao),
+      tipo_fator_correcao = COALESCE($11, tipo_fator_correcao),
+      unidade_distribuicao = COALESCE($12, unidade_distribuicao),
+      peso = COALESCE($13, peso),
       updated_at = CURRENT_TIMESTAMP
-    WHERE id = $11
+    WHERE id = $14
     RETURNING *
-  `, [nomeNormalizado, unidadeNormalizada, descricao, categoria, tipo_processamento, pesoNormalizado, fatorCorrecaoNormalizado, perecivel, ativo, unidade_compra !== undefined ? (unidade_compra || null) : undefined, id]);
+  `, [
+    nomeNormalizado, descricao, tipo_processamento, categoria, validade_minima,
+    imagem_url, perecivel, ativo, estoque_minimo, fatorCorrecaoNormalizado,
+    tipo_fator_correcao, unidade_distribuicao, pesoNormalizado, id
+  ]);
 
   if (result.rows.length === 0) {
     throw new NotFoundError('Produto', id);

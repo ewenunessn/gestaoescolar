@@ -49,7 +49,7 @@ export async function listarEstoqueEscola(req: Request, res: Response) {
         COALESCE(ee.quantidade_maxima, 0) as quantidade_maxima,
         ee.data_ultima_atualizacao,
         ee.observacoes,
-        COALESCE(p.unidade, 'UN') as unidade
+        COALESCE(p.unidade_distribuicao, 'UN') as unidade
       FROM produtos p
       LEFT JOIN estoque_escolas ee 
         ON ee.produto_id = p.id AND ee.escola_id = $1
@@ -122,7 +122,7 @@ export async function debugEstoqueEscola(req: Request, res: Response) {
         COALESCE(ee.quantidade_maxima, 0) as quantidade_maxima,
         ee.data_ultima_atualizacao,
         ee.observacoes,
-        COALESCE(p.unidade, 'UN') as unidade
+        COALESCE(p.unidade_distribuicao, 'UN') as unidade
       FROM produtos p
       LEFT JOIN estoque_escolas ee 
         ON ee.produto_id = p.id AND ee.escola_id = $1

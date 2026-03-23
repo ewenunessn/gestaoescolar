@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -48,6 +48,9 @@ interface DataTableProps<TData> {
   onFilterClick?: (event: React.MouseEvent<HTMLElement>) => void;
   onImportExportClick?: (event: React.MouseEvent<HTMLElement>) => void;
   toolbarExtra?: React.ReactNode;
+  initialColumnVisibility?: Record<string, boolean>;
+  initialPageSize?: number; // Tamanho inicial da página
+  autoCalculatePageSize?: boolean; // Calcular automaticamente baseado na altura
 }
 
 export function DataTable<TData>({
@@ -62,15 +65,70 @@ export function DataTable<TData>({
   onFilterClick,
   onImportExportClick,
   toolbarExtra,
+  initialColumnVisibility = {},
+  initialPageSize = 10,
+  autoCalculatePageSize = false,
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
+  const [columnVisibility, setColumnVisibility] = useState(initialColumnVisibility);
   const [pagination, setPagination] = useState({
     pageIndex: 0,
-    pageSize: 10,
+    pageSize: initialPageSize,
   });
   const [searchOpen, setSearchOpen] = useState(false);
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+
+  // Calcular pageSize baseado na altura disponível
+  useEffect(() => {
+    if (!autoCalculatePageSize) return;
+
+    const calculatePageSize = () => {
+      if (!tableContainerRef.current) return;
+
+      const container = tableContainerRef.current;
+      const availableHeight = container.clientHeight;
+      
+      // Altura aproximada de cada linha (ajuste conforme necessário)
+      const rowHeight = 53; // altura padrão de uma TableRow do MUI
+      
+      // Calcular quantas linhas cabem
+      const calculatedPageSize = Math.floor(availableHeight / rowHeight);
+      
+      // Mínimo de 5 linhas, máximo de 100
+      const newPageSize = Math.max(5, Math.min(100, calculatedPageSize));
+      
+      setPagination((prev) => ({
+        ...prev,
+        pageSize: newPageSize,
+      }));
+    };
+
+    // Calcular inicialmente
+    calculatePageSize();
+
+    // Recalcular quando a janela for redimensionada
+    const handleResize = () => {
+      calculatePageSize();
+    };
+
+    window.addEventListener('resize', handleResize);
+    
+    // Usar ResizeObserver para detectar mudanças no container
+    const resizeObserver = new ResizeObserver(() => {
+      calculatePageSize();
+    });
+
+    if (tableContainerRef.current) {
+      resizeObserver.observe(tableContainerRef.current);
+    }
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      resizeObserver.disconnect();
+    };
+  }, [autoCalculatePageSize]);
 
   const table = useReactTable({
     data,
@@ -79,11 +137,13 @@ export function DataTable<TData>({
       sorting,
       columnFilters,
       globalFilter,
+      columnVisibility,
       pagination,
     },
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onGlobalFilterChange: setGlobalFilter,
+    onColumnVisibilityChange: setColumnVisibility,
     onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -257,7 +317,10 @@ export function DataTable<TData>({
         </TableContainer>
 
         {/* Body da tabela - com scroll */}
-        <TableContainer sx={{ flex: 1, overflow: 'auto' }}>
+        <TableContainer 
+          ref={tableContainerRef}
+          sx={{ flex: 1, overflow: 'auto' }}
+        >
           <Table sx={{ borderCollapse: 'separate' }}>
             <TableBody>
               {loading ? (

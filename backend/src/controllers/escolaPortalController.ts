@@ -95,7 +95,7 @@ export const getItensGuiaEscola = asyncHandler(async (req: Request, res: Respons
     SELECT 
       gpe.*,
       p.nome as produto_nome,
-      p.unidade
+      p.unidade_distribuicao
     FROM guia_produto_escola gpe
     INNER JOIN produtos p ON gpe.produto_id = p.id
     WHERE gpe.guia_id = $1 AND gpe.escola_id = $2
@@ -176,3 +176,4 @@ export const getCardapiosSemana = asyncHandler(async (req: Request, res: Respons
 
   res.json({ success: true, data: result.rows });
 });
+

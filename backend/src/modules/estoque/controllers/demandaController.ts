@@ -9,6 +9,8 @@ interface DemandaItem {
   produto_nome: string;
   unidade_medida: string;
   quantidade_total: number;
+  quantidade_embalagens?: number; // Quantidade em unidades de embalagem
+  peso_embalagem?: number; // Peso da embalagem em gramas
   valor_total: number;
   detalhes: {
     escola_nome: string;
@@ -21,6 +23,38 @@ interface DemandaItem {
     tipo_medida: string;
     quantidade_calculada: number;
   }[];
+}
+
+// ─── Helper: Converter kg para unidades de embalagem ─────────────────────────
+function converterParaEmbalagem(quantidade_kg: number, peso_embalagem_g: number): number {
+  const quantidadeGramas = quantidade_kg * 1000;
+  return Math.ceil(quantidadeGramas / peso_embalagem_g);
+}
+
+// ─── Helper: Aplicar conversão de embalagem se aplicável ─────────────────────
+function aplicarConversaoEmbalagem(
+  quantidade_kg: number,
+  peso_g: number | null,
+  unidade_distribuicao: string | null
+): { quantidade: number; unidade: string; quantidade_embalagens?: number } {
+  // Se tem peso definido e não é kg, converter para unidades
+  const unidadeLower = (unidade_distribuicao || '').toLowerCase().trim();
+  const isKg = unidadeLower === 'quilograma' || unidadeLower === 'kg' || unidadeLower === 'kilo';
+  
+  if (peso_g && peso_g > 0 && unidade_distribuicao && !isKg) {
+    const quantidadeEmbalagens = converterParaEmbalagem(quantidade_kg, peso_g);
+    return {
+      quantidade: quantidadeEmbalagens,
+      unidade: unidade_distribuicao,
+      quantidade_embalagens: quantidadeEmbalagens
+    };
+  }
+  
+  // Caso contrário, manter em kg
+  return {
+    quantidade: quantidade_kg,
+    unidade: unidade_distribuicao || 'kg'
+  };
 }
 
 // Função para calcular quantidade baseada no tipo de medida
@@ -76,19 +110,20 @@ export async function gerarDemandaMensal(req: Request, res: Response) {
     // Query complexa para calcular demanda - suporta múltiplos cardápios por escola
     // Busca o MAIOR preço dos contratos ativos, depois preco_referencia como fallback
     const query = `
-      SELECT 
+      SELECT
         p.id as produto_id,
         p.nome as produto_nome,
-        p.unidade as unidade_medida,
+        p.unidade_distribuicao as unidade_medida,
+        p.peso as peso_embalagem,
         p.preco_referencia,
         COALESCE(
-          (SELECT MAX(cp2.preco_unitario) 
-           FROM contrato_produtos cp2 
-           INNER JOIN contratos ct2 ON cp2.contrato_id = ct2.id 
-           WHERE cp2.produto_id = p.id 
-           AND ct2.ativo = true 
+          (SELECT MAX(cp2.preco_unitario)
+           FROM contrato_produtos cp2
+           INNER JOIN contratos ct2 ON cp2.contrato_id = ct2.id
+           WHERE cp2.produto_id = p.id
+           AND ct2.ativo = true
            AND CURRENT_DATE BETWEEN ct2.data_inicio AND ct2.data_fim),
-          p.preco_referencia, 
+          p.preco_referencia,
           0
         ) as preco_unitario,
         p.fator_divisao,
@@ -129,6 +164,7 @@ export async function gerarDemandaMensal(req: Request, res: Response) {
         produto_id,
         produto_nome,
         unidade_medida,
+        peso_embalagem,
         preco_referencia,
         preco_unitario,
         fator_divisao,
@@ -144,10 +180,10 @@ export async function gerarDemandaMensal(req: Request, res: Response) {
 
       // Calcular quantidade baseada no tipo de medida
       const quantidade_calculada = calcularQuantidade(
-        quantidade_alunos, 
-        frequencia_mensal, 
-        per_capita, 
-        tipo_medida, 
+        quantidade_alunos,
+        frequencia_mensal,
+        per_capita,
+        tipo_medida,
         fator_divisao
       );
 
@@ -156,6 +192,7 @@ export async function gerarDemandaMensal(req: Request, res: Response) {
           produto_id,
           produto_nome,
           unidade_medida,
+          peso_embalagem: peso_embalagem ? Number(peso_embalagem) : undefined,
           quantidade_total: 0,
           valor_total: 0,
           detalhes: []
@@ -165,7 +202,7 @@ export async function gerarDemandaMensal(req: Request, res: Response) {
       const item = demandaMap.get(produto_id)!;
       item.quantidade_total += quantidade_calculada;
       item.valor_total += quantidade_calculada * (preco_unitario || 0);
-      
+
       item.detalhes.push({
         escola_nome,
         modalidade_nome,
@@ -179,7 +216,21 @@ export async function gerarDemandaMensal(req: Request, res: Response) {
       });
     });
 
-    const demanda = Array.from(demandaMap.values());
+    // Aplicar conversão de embalagem nos produtos
+    const demanda = Array.from(demandaMap.values()).map(item => {
+      const conversao = aplicarConversaoEmbalagem(
+        item.quantidade_total,
+        item.peso_embalagem || null,
+        item.unidade_medida
+      );
+
+      return {
+        ...item,
+        unidade_medida: conversao.unidade,
+        quantidade_embalagens: conversao.quantidade_embalagens,
+        quantidade_total: Math.round(item.quantidade_total * 100) / 100
+      };
+    });
 
     // Calcular totais gerais
     const totalValor = demanda.reduce((sum, item) => sum + item.valor_total, 0);
@@ -210,6 +261,7 @@ export async function gerarDemandaMensal(req: Request, res: Response) {
     });
   }
 }
+
 
 export async function gerarDemandaMultiplosCardapios(req: Request, res: Response) {
   try {
@@ -247,7 +299,7 @@ export async function gerarDemandaMultiplosCardapios(req: Request, res: Response
       SELECT 
         p.id as produto_id,
         p.nome as produto_nome,
-        p.unidade as unidade_medida,
+        p.unidade_distribuicao as unidade_medida,
         p.preco_referencia,
         COALESCE(
           (SELECT MAX(cp2.preco_unitario) 
@@ -552,7 +604,7 @@ export async function exportarDemandaExcel(req: Request, res: Response) {
       SELECT 
         p.id as produto_id,
         p.nome as produto_nome,
-        p.unidade as unidade_medida,
+        p.unidade_distribuicao as unidade_medida,
         p.preco_referencia,
         COALESCE(
           (SELECT MAX(cp2.preco_unitario) 

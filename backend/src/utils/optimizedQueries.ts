@@ -16,7 +16,7 @@ export const getEstoqueEscolarResumoOptimized = async (
       p.nome as produto_nome,
       p.descricao as produto_descricao,
       p.categoria,
-      COALESCE(p.unidade, 'UN') as unidade,
+      COALESCE(p.unidade_distribuicao, 'UN') as unidade,
       COUNT(DISTINCT e.id) as total_escolas,
       COUNT(DISTINCT ee.escola_id) FILTER (WHERE ee.quantidade_atual > 0) as total_escolas_com_estoque,
       COALESCE(SUM(ee.quantidade_atual), 0) as total_quantidade
@@ -41,7 +41,7 @@ export const getMatrizEstoqueOptimized = async (produtoIds?: number[], limitePro
       p.id as produto_id,
       p.nome as produto_nome,
       p.categoria,
-      p.unidade,
+      p.unidade_distribuicao as unidade,
       COALESCE(ee.quantidade_atual, 0) as quantidade_atual,
       (SELECT MIN(data_validade) FROM estoque_lotes el WHERE el.escola_id = e.id AND el.produto_id = p.id AND el.status = 'ativo') as data_validade
     FROM escolas e
@@ -50,7 +50,7 @@ export const getMatrizEstoqueOptimized = async (produtoIds?: number[], limitePro
         p.id, 
         p.nome, 
         p.categoria,
-        COALESCE(p.unidade, 'UN') as unidade
+        COALESCE(p.unidade_distribuicao, 'UN') as unidade
       FROM produtos p
       WHERE p.ativo = true 
       ORDER BY p.categoria NULLS LAST, p.nome
@@ -79,7 +79,7 @@ export const getEstoqueMultiplosProdutosOptimized = async (
       p.nome as produto_nome,
       p.descricao as produto_descricao,
       p.categoria,
-      COALESCE(p.unidade, 'UN') as unidade,
+      COALESCE(p.unidade_distribuicao, 'UN') as unidade,
       e.id as escola_id,
       e.nome as escola_nome,
       COALESCE(ee.quantidade_atual, 0) as quantidade_atual,
@@ -132,7 +132,7 @@ export const getRelatorioValidadePorEscolaOptimized = async (escolaId: number, d
       p.id as produto_id,
       p.nome as produto_nome,
       p.categoria,
-      COALESCE(p.unidade, 'UN') as unidade,
+      COALESCE(p.unidade_distribuicao, 'UN') as unidade,
       COALESCE(ee.quantidade_atual, 0) as quantidade_atual
     FROM produtos p
     LEFT JOIN estoque_escolas ee ON (ee.produto_id = p.id AND ee.escola_id = $1)

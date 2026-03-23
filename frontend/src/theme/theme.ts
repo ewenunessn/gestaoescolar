@@ -194,6 +194,9 @@ const baseTheme = {
           ...(ownerState.color === 'success' && {
             backgroundColor: '#d1fae5',
             color: '#065f46',
+            '& .MuiChip-label': {
+              color: '#065f46',
+            },
           }),
           ...(ownerState.color === 'warning' && {
             backgroundColor: '#fef3c7',

@@ -41,7 +41,7 @@ export class ContratoProdutoModel {
 
   async buscarPorContrato(contratoId: number): Promise<ContratoProduto[]> {
     const query = `
-      SELECT cp.*, p.nome as produto_nome, p.unidade as unidade_medida
+      SELECT cp.*, p.nome as produto_nome, p.unidade_distribuicao as unidade_medida
       FROM contrato_produtos cp
       JOIN produtos p ON cp.produto_id = p.id
       WHERE cp.contrato_id = $1 AND cp.ativo = true

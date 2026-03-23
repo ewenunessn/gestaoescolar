@@ -50,7 +50,7 @@ export class PedidoItemModel {
       SELECT 
         pi.*,
         p.nome as produto_nome,
-        COALESCE(p.unidade, 'UN') as unidade,
+        COALESCE(p.unidade_distribuicao, 'UN') as unidade,
         cp.quantidade_contratada,
         cp.preco_unitario as preco_contrato
       FROM pedido_itens pi

@@ -57,24 +57,34 @@ import * as XLSX from 'xlsx';
 interface Produto {
   id: number;
   nome: string;
-  unidade: string;
   descricao?: string;
-  categoria?: string;
   tipo_processamento?: string;
-  peso?: string;
+  categoria?: string;
+  validade_minima?: number;
+  imagem_url?: string;
   perecivel?: boolean;
   ativo: boolean;
+  estoque_minimo?: number;
+  fator_correcao?: number;
+  tipo_fator_correcao?: string;
+  unidade_distribuicao?: string;
+  peso?: number;
 }
 
 interface ProdutoForm {
   nome: string;
-  unidade: string;
   descricao: string;
-  categoria: string;
   tipo_processamento?: string;
-  peso?: string;
+  categoria: string;
+  validade_minima?: number;
+  imagem_url?: string;
   perecivel?: boolean;
   ativo: boolean;
+  estoque_minimo?: number;
+  fator_correcao?: number;
+  tipo_fator_correcao?: string;
+  unidade_distribuicao?: string;
+  peso?: number;
 }
 
 const ProdutosPage = () => {
@@ -113,13 +123,16 @@ const ProdutosPage = () => {
   
   const [formData, setFormData] = useState<ProdutoForm>({
     nome: "",
-    unidade: "",
     descricao: "",
     categoria: "",
     tipo_processamento: "",
-    peso: "",
     perecivel: false,
     ativo: true,
+    estoque_minimo: 0,
+    fator_correcao: 1.0,
+    tipo_fator_correcao: "perda",
+    unidade_distribuicao: "",
+    peso: undefined,
   });
   
   // Estados de validação
@@ -169,7 +182,7 @@ const ProdutosPage = () => {
       enableSorting: true,
     },
     { 
-      accessorKey: 'unidade', 
+      accessorKey: 'unidade_distribuicao', 
       header: 'Unidade',
       size: 120,
       enableSorting: true,
@@ -246,13 +259,16 @@ const ProdutosPage = () => {
   const openModal = () => {
     setFormData({ 
       nome: "", 
-      unidade: "", 
       descricao: "", 
       categoria: "", 
-      peso: "", 
+      tipo_processamento: "",
       ativo: true, 
-      perecivel: false, 
-      tipo_processamento: "" 
+      perecivel: false,
+      estoque_minimo: 0,
+      fator_correcao: 1.0,
+      tipo_fator_correcao: "perda",
+      unidade_distribuicao: "",
+      peso: undefined
     });
     setErroProduto("");
     setTouched({});
@@ -265,13 +281,16 @@ const ProdutosPage = () => {
     setTouched({});
     setFormData({
       nome: "",
-      unidade: "",
       descricao: "",
       categoria: "",
       tipo_processamento: "",
-      peso: "",
       perecivel: false,
       ativo: true,
+      estoque_minimo: 0,
+      fator_correcao: 1.0,
+      tipo_fator_correcao: "perda",
+      unidade_distribuicao: "",
+      peso: undefined
     });
   };
 
@@ -306,14 +325,8 @@ const ProdutosPage = () => {
       return;
     }
     
-    if (!formData.unidade?.trim()) {
-      setErroProduto("Unidade é obrigatória.");
-      setTouched({ ...touched, unidade: true });
-      return;
-    }
-    
-    if (formData.peso && Number(formData.peso) <= 0) {
-      setErroProduto("Peso deve ser maior que zero.");
+    if (formData.fator_correcao && Number(formData.fator_correcao) < 0) {
+      setErroProduto("Fator de correção deve ser maior ou igual a 0.");
       return;
     }
     
@@ -378,12 +391,17 @@ const ProdutosPage = () => {
       // Preparar dados para exportação compatível com importação
       const dadosExportacao = produtosFiltrados.map(produto => ({
         nome: produto.nome,
-        unidade: produto.unidade || '',
         descricao: produto.descricao || '',
-        categoria: produto.categoria || '',
         tipo_processamento: produto.tipo_processamento || '',
+        categoria: produto.categoria || '',
+        validade_minima: produto.validade_minima || '',
         perecivel: produto.perecivel || false,
-        ativo: produto.ativo
+        ativo: produto.ativo,
+        estoque_minimo: produto.estoque_minimo || 0,
+        fator_correcao: produto.fator_correcao || 1.0,
+        tipo_fator_correcao: produto.tipo_fator_correcao || 'perda',
+        unidade_distribuicao: produto.unidade_distribuicao || '',
+        peso: produto.peso || ''
       }));
 
       if (dadosExportacao.length === 0) {
@@ -398,12 +416,17 @@ const ProdutosPage = () => {
       // Ajustar largura das colunas
       const colWidths = [
         { wch: 30 }, // nome
-        { wch: 10 }, // unidade
-        { wch: 35 }, // descricao
-        { wch: 15 }, // categoria
+        { wch: 40 }, // descricao
         { wch: 25 }, // tipo_processamento
+        { wch: 15 }, // categoria
+        { wch: 15 }, // validade_minima
         { wch: 10 }, // perecivel
-        { wch: 8 }   // ativo
+        { wch: 8 },  // ativo
+        { wch: 15 }, // estoque_minimo
+        { wch: 15 }, // fator_correcao
+        { wch: 20 }, // tipo_fator_correcao
+        { wch: 20 }, // unidade_distribuicao
+        { wch: 12 }  // peso
       ];
       ws['!cols'] = colWidths;
 
@@ -456,6 +479,7 @@ const ProdutosPage = () => {
             createButtonLabel="Novo Produto"
             onFilterClick={(e) => setFilterAnchorEl(e.currentTarget)}
             onImportExportClick={(e) => setImportExportMenuAnchor(e.currentTarget)}
+            initialPageSize={50}
           />
         </Box>
       </PageContainer>
@@ -614,7 +638,7 @@ const ProdutosPage = () => {
             {/* Classificação */}
             <Box>
               <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: 'primary.main' }}>
-                Classificação
+                Classificação e Controle
               </Typography>
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={6}>
@@ -627,23 +651,18 @@ const ProdutosPage = () => {
                       'Lata', 'Galão', 'Bandeja', 'Maço', 'Pote',
                       'Vidro', 'Sachê', 'Balde'
                     ]}
-                    value={formData.unidade}
+                    value={formData.unidade_distribuicao || ''}
                     onChange={(event, newValue) => {
-                      setFormData({ ...formData, unidade: newValue || '' });
-                      if (newValue && erroProduto) setErroProduto("");
+                      setFormData({ ...formData, unidade_distribuicao: newValue || '' });
                     }}
                     onInputChange={(event, newInputValue) => {
-                      setFormData({ ...formData, unidade: newInputValue });
-                      if (newInputValue && erroProduto) setErroProduto("");
+                      setFormData({ ...formData, unidade_distribuicao: newInputValue });
                     }}
                     renderInput={(params) => (
                       <TextField 
                         {...params} 
-                        label="Unidade" 
-                        required
-                        error={touched.unidade && !formData.unidade?.trim()}
-                        helperText={touched.unidade && !formData.unidade?.trim() ? "Campo obrigatório" : "Ex: Quilograma, Litro, Unidade"}
-                        onBlur={() => setTouched({ ...touched, unidade: true })}
+                        label="Unidade de Distribuição" 
+                        helperText="Ex: Quilograma, Litro, Unidade"
                       />
                     )}
                   />
@@ -666,20 +685,72 @@ const ProdutosPage = () => {
                 </Grid>
                 <Grid item xs={12} sm={6}>
                   <TextField
+                    label="Estoque Mínimo"
+                    type="number"
+                    value={formData.estoque_minimo || 0}
+                    onChange={(e) => {
+                      setFormData({ ...formData, estoque_minimo: Number(e.target.value) });
+                    }}
+                    helperText="Quantidade mínima em estoque"
+                    inputProps={{ min: 0, step: 1 }}
+                    fullWidth
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Validade Mínima (dias)"
+                    type="number"
+                    value={formData.validade_minima || ''}
+                    onChange={(e) => {
+                      setFormData({ ...formData, validade_minima: Number(e.target.value) });
+                    }}
+                    helperText="Dias mínimos de validade"
+                    inputProps={{ min: 0, step: 1 }}
+                    fullWidth
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
                     label="Peso (gramas)"
                     type="number"
                     value={formData.peso || ''}
                     onChange={(e) => {
-                      setFormData({ ...formData, peso: e.target.value });
-                      if (erroProduto) setErroProduto("");
+                      setFormData({ ...formData, peso: e.target.value ? Number(e.target.value) : undefined });
                     }}
-                    helperText="Peso padrão em gramas"
+                    helperText="Peso da embalagem em gramas"
                     inputProps={{ min: 0, step: 0.01 }}
                     fullWidth
-                    error={formData.peso !== '' && Number(formData.peso) <= 0}
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Fator de Correção"
+                    type="number"
+                    value={formData.fator_correcao || 1.0}
+                    onChange={(e) => {
+                      setFormData({ ...formData, fator_correcao: Number(e.target.value) });
+                      if (erroProduto) setErroProduto("");
+                    }}
+                    helperText="Fator para cálculo de perdas"
+                    inputProps={{ min: 0, step: 0.001 }}
+                    fullWidth
+                    error={formData.fator_correcao !== undefined && Number(formData.fator_correcao) < 0}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>Tipo de Fator</InputLabel>
+                    <Select 
+                      value={formData.tipo_fator_correcao || 'perda'} 
+                      onChange={(e) => setFormData({ ...formData, tipo_fator_correcao: e.target.value })} 
+                      label="Tipo de Fator"
+                    >
+                      <MenuItem value="perda">Perda</MenuItem>
+                      <MenuItem value="rendimento">Rendimento</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12}>
                   <FormControl fullWidth>
                     <InputLabel>Tipo de Processamento</InputLabel>
                     <Select 
@@ -763,7 +834,7 @@ const ProdutosPage = () => {
           <Button 
             onClick={handleSave} 
             variant="contained" 
-            disabled={criarProdutoMutation.isPending || !formData.nome.trim() || !formData.unidade?.trim()}
+            disabled={criarProdutoMutation.isPending || !formData.nome.trim()}
             startIcon={criarProdutoMutation.isPending ? <CircularProgress size={20} /> : null}
           >
             {criarProdutoMutation.isPending ? 'Salvando...' : 'Salvar Produto'}

@@ -335,6 +335,7 @@ const PreparacoesPage: React.FC = () => {
             onCreateClick={() => openModal()}
             createButtonLabel="Nova Preparação"
             onFilterClick={(e) => setFilterAnchorEl(e.currentTarget)}
+            initialPageSize={50}
             toolbarExtra={
               <Tooltip title="Gerenciar grupos de ingredientes">
                 <Button

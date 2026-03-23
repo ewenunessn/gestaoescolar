@@ -137,7 +137,7 @@ export async function buscarCompra(req: Request, res: Response) {
       SELECT 
         pi.*,
         p.nome as produto_nome,
-        COALESCE(p.unidade, 'UN') as unidade,
+        COALESCE(p.unidade_distribuicao, 'UN') as unidade,
         cp.quantidade_contratada,
         cp.preco_unitario as preco_contrato,
         COALESCE(cp.marca, '') as marca,
@@ -720,7 +720,7 @@ export async function listarProdutosContrato(req: Request, res: Response) {
       SELECT 
         cp.*,
         p.nome as produto_nome,
-        COALESCE(p.unidade, 'UN') as unidade,
+        COALESCE(p.unidade_distribuicao, 'UN') as unidade,
         p.descricao as produto_descricao,
         c.numero as contrato_numero,
         f.nome as fornecedor_nome,
@@ -772,7 +772,7 @@ export async function listarTodosProdutosDisponiveis(req: Request, res: Response
         ) as saldo_disponivel,
         p.id as produto_id,
         p.nome as produto_nome,
-        COALESCE(p.unidade, 'UN') as unidade,
+        COALESCE(p.unidade_distribuicao, 'UN') as unidade,
         p.descricao as produto_descricao,
         c.id as contrato_id,
         c.numero as contrato_numero,

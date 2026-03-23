@@ -95,7 +95,7 @@ class SaldoContratosModalidadesController {
         SELECT 
           cp.id as contrato_produto_id,
           p.nome as produto_nome,
-          COALESCE(p.unidade, 'UN') as unidade,
+          COALESCE(p.unidade_distribuicao, 'UN') as unidade,
           c.numero as contrato_numero,
           c.id as contrato_id,
           f.nome as fornecedor_nome,
@@ -318,7 +318,7 @@ class SaldoContratosModalidadesController {
           c.data_inicio,
           c.data_fim,
           p.nome as produto_nome,
-          COALESCE(p.unidade, 'UN') as unidade,
+          COALESCE(p.unidade_distribuicao, 'UN') as unidade,
           f.nome as fornecedor_nome
         FROM contrato_produtos cp
         JOIN contratos c ON cp.contrato_id = c.id
@@ -508,7 +508,7 @@ class SaldoContratosModalidadesController {
           cpm.contrato_produto_id,
           cpm.modalidade_id,
           p.nome as produto_nome,
-          COALESCE(p.unidade, 'UN') as unidade,
+          COALESCE(p.unidade_distribuicao, 'UN') as unidade,
           m.nome as modalidade_nome,
           c.numero as contrato_numero
         FROM contrato_produtos_modalidades cpm

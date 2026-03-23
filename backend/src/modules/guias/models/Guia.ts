@@ -165,7 +165,8 @@ class GuiaModel {
       const result = await db.all(`
         SELECT 
           g.*,
-          COUNT(DISTINCT gpe.id) as total_produtos
+          COUNT(DISTINCT gpe.id) as total_produtos,
+          COUNT(DISTINCT gpe.escola_id) as total_escolas
         FROM guias g
         LEFT JOIN guia_produto_escola gpe ON g.id = gpe.guia_id
         LEFT JOIN periodos per ON g.periodo_id = per.id
@@ -401,7 +402,7 @@ class GuiaModel {
       SELECT 
         gpe.*,
         p.nome as produto_nome,
-        p.unidade as produto_unidade,
+        p.unidade_distribuicao as produto_unidade,
         e.nome as escola_nome,
         DATE(gpe.created_at) as data_criacao,
         COALESCE(gpe.quantidade_total_entregue, 0) as quantidade_total_entregue,
@@ -586,7 +587,7 @@ class GuiaModel {
       SELECT 
         gpe.*,
         p.nome as produto_nome,
-        p.unidade as produto_unidade,
+        p.unidade_distribuicao as produto_unidade,
         g.mes,
         g.ano,
         g.observacao as guia_observacao
@@ -676,3 +677,4 @@ class GuiaModel {
 }
 
 export default new GuiaModel();
+

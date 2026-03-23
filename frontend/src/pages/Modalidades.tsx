@@ -334,6 +334,7 @@ const ModalidadesPage = () => {
             createButtonLabel="Nova Modalidade"
             onFilterClick={(e) => setFilterAnchorEl(e.currentTarget)}
             onImportExportClick={(e) => setImportExportMenuAnchor(e.currentTarget)}
+            initialPageSize={50}
           />
         </Box>
       </PageContainer>

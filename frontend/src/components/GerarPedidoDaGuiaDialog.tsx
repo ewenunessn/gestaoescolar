@@ -8,6 +8,7 @@ import { Close as CloseIcon, ShoppingCart as ShoppingCartIcon } from '@mui/icons
 import { guiaService } from '../services/guiaService';
 import { gerarPedidoDaGuia } from '../services/planejamentoCompras';
 import { useToast } from '../hooks/useToast';
+import SelecionarContratosDialog from './SelecionarContratosDialog';
 
 interface Props {
   open: boolean;
@@ -22,7 +23,22 @@ export default function GerarPedidoDaGuiaDialog({ open, onClose, onSuccess, guia
   const [loading, setLoading] = useState(false);
   const [gerando, setGerando] = useState(false);
   const [pedidoGerado, setPedidoGerado] = useState<any>(null);
+  const [produtosSemContrato, setProdutosSemContrato] = useState<any[]>([]);
+  const [mostrarConfirmacao, setMostrarConfirmacao] = useState(false);
+  const [produtosComContrato, setProdutosComContrato] = useState(0);
+  
+  // Estados para seleção de múltiplos contratos
+  const [produtosMultiplosContratos, setProdutosMultiplosContratos] = useState<any[]>([]);
+  const [dialogSelecaoContratos, setDialogSelecaoContratos] = useState(false);
+  const [contratosSelecionados, setContratosSelecionados] = useState<any[]>([]);
+  
   const toast = useToast();
+
+  // Debug: Log quando estados mudam
+  useEffect(() => {
+    console.log('🔄 Estado dialogSelecaoContratos mudou:', dialogSelecaoContratos);
+    console.log('🔄 Produtos múltiplos contratos:', produtosMultiplosContratos.length);
+  }, [dialogSelecaoContratos, produtosMultiplosContratos]);
 
   useEffect(() => {
     if (open) {
@@ -73,14 +89,115 @@ export default function GerarPedidoDaGuiaDialog({ open, onClose, onSuccess, guia
       return;
     }
 
+    console.log('🚀 Iniciando geração de pedido...');
+    console.log('📋 Guia selecionada:', guiaSelecionada.id);
+    console.log('📋 Contratos já selecionados:', contratosSelecionados);
+
     setGerando(true);
     try {
-      const resultado = await gerarPedidoDaGuia(guiaSelecionada.id);
+      const resultado = await gerarPedidoDaGuia(
+        guiaSelecionada.id,
+        contratosSelecionados.length > 0 ? contratosSelecionados : undefined
+      );
+      
+      console.log('📋 Resultado completo recebido:', JSON.stringify(resultado, null, 2));
+      
+      // Verificar se requer seleção de múltiplos contratos
+      if ((resultado as any).requer_selecao) {
+        console.log('⚠️ Requer seleção de múltiplos contratos');
+        console.log('📦 Produtos com múltiplos contratos:', (resultado as any).produtos_multiplos_contratos);
+        
+        setProdutosMultiplosContratos((resultado as any).produtos_multiplos_contratos || []);
+        setDialogSelecaoContratos(true);
+        setGerando(false);
+        
+        console.log('✅ Dialog de seleção deve abrir agora');
+        
+        // Se também houver produtos sem contrato, guardar para mostrar depois
+        if ((resultado as any).produtos_sem_contrato?.length > 0) {
+          console.log('⚠️ Também há produtos sem contrato:', (resultado as any).produtos_sem_contrato);
+          setProdutosSemContrato((resultado as any).produtos_sem_contrato);
+        }
+        
+        return;
+      }
+      
+      // Verificar se requer confirmação (produtos sem contrato)
+      if ((resultado as any).requer_confirmacao) {
+        console.log('⚠️ Requer confirmação (produtos sem contrato)');
+        setProdutosSemContrato((resultado as any).produtos_sem_contrato || []);
+        setProdutosComContrato((resultado as any).produtos_com_contrato || 0);
+        setMostrarConfirmacao(true);
+        setGerando(false);
+        return;
+      }
       
       if (resultado.total_criados > 0) {
         const pedido = resultado.pedidos_criados[0];
+        
+        console.log('✅ Pedido criado com sucesso:', pedido);
+        
+        // Mostrar aviso se houver produtos sem contrato
+        if ((resultado as any).aviso) {
+          toast.warning((resultado as any).aviso);
+        }
+        
         toast.success(`Pedido ${pedido.numero} gerado com sucesso!`);
         setPedidoGerado(pedido);
+        
+        // Limpar estados
+        setContratosSelecionados([]);
+        setProdutosMultiplosContratos([]);
+        setProdutosSemContrato([]);
+        
+        if (onSuccess) {
+          onSuccess();
+        }
+        
+        onClose();
+      } else {
+        console.log('❌ Nenhum pedido criado');
+        const erro = resultado.erros?.[0]?.motivo || 'Nenhum pedido foi criado';
+        toast.error(erro);
+      }
+    } catch (error: any) {
+      console.error('❌ Erro ao gerar pedido:', error);
+      console.error('❌ Response data:', error.response?.data);
+      const mensagem = error.response?.data?.error || error.response?.data?.mensagem || 'Erro ao gerar pedido';
+      toast.error(mensagem);
+    } finally {
+      setGerando(false);
+    }
+  }
+
+  async function handleConfirmarComSemContrato() {
+    if (!guiaSelecionada) return;
+
+    setGerando(true);
+    setMostrarConfirmacao(false);
+    
+    try {
+      const resultado = await gerarPedidoDaGuia(
+        guiaSelecionada.id,
+        contratosSelecionados.length > 0 ? contratosSelecionados : undefined,
+        true
+      );
+      
+      if (resultado.total_criados > 0) {
+        const pedido = resultado.pedidos_criados[0];
+        
+        // Mostrar aviso sobre produtos sem contrato
+        if ((resultado as any).aviso) {
+          toast.warning((resultado as any).aviso);
+        }
+        
+        toast.success(`Pedido ${pedido.numero} gerado com sucesso!`);
+        setPedidoGerado(pedido);
+        
+        // Limpar estados
+        setContratosSelecionados([]);
+        setProdutosMultiplosContratos([]);
+        setProdutosSemContrato([]);
         
         if (onSuccess) {
           onSuccess();
@@ -92,11 +209,32 @@ export default function GerarPedidoDaGuiaDialog({ open, onClose, onSuccess, guia
         toast.error(erro);
       }
     } catch (error: any) {
-      const mensagem = error.response?.data?.error || 'Erro ao gerar pedido';
+      const mensagem = error.response?.data?.error || error.response?.data?.mensagem || 'Erro ao gerar pedido';
       toast.error(mensagem);
     } finally {
       setGerando(false);
+      setProdutosSemContrato([]);
     }
+  }
+
+  function handleCancelarConfirmacao() {
+    setMostrarConfirmacao(false);
+    setProdutosSemContrato([]);
+    setProdutosComContrato(0);
+  }
+
+  function handleConfirmarSelecaoContratos(selecao: { produto_id: number; contrato_produto_id: number; quantidade?: number }[]) {
+    setContratosSelecionados(selecao);
+    setDialogSelecaoContratos(false);
+    
+    // Tentar gerar pedido novamente com a seleção
+    setTimeout(() => handleGerar(), 100);
+  }
+
+  function handleCancelarSelecaoContratos() {
+    setDialogSelecaoContratos(false);
+    setProdutosMultiplosContratos([]);
+    setContratosSelecionados([]);
   }
 
   const formatarCompetencia = (guia: any) => {
@@ -120,7 +258,35 @@ export default function GerarPedidoDaGuiaDialog({ open, onClose, onSuccess, guia
       </DialogTitle>
 
       <DialogContent>
-        {loading ? (
+        {mostrarConfirmacao ? (
+          <>
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                Produtos sem contrato ativo
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 2 }}>
+                {produtosSemContrato.length} produto(s) não possuem contrato ativo e serão ignorados.
+                Deseja continuar apenas com os {produtosComContrato} produtos que têm contrato?
+              </Typography>
+            </Alert>
+
+            <Box sx={{ maxHeight: 300, overflowY: 'auto', p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                Produtos que serão ignorados:
+              </Typography>
+              {produtosSemContrato.map((produto, idx) => (
+                <Box key={idx} sx={{ mb: 1, p: 1, bgcolor: 'white', borderRadius: 1 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                    {produto.produto_nome}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Quantidade: {produto.quantidade.toFixed(2)} kg
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          </>
+        ) : loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
             <CircularProgress />
           </Box>
@@ -176,18 +342,49 @@ export default function GerarPedidoDaGuiaDialog({ open, onClose, onSuccess, guia
       </DialogContent>
 
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={onClose} disabled={gerando}>
-          Cancelar
-        </Button>
-        <Button
-          onClick={handleGerar}
-          variant="contained"
-          disabled={!guiaSelecionada || gerando || loading}
-          startIcon={gerando ? <CircularProgress size={20} /> : <ShoppingCartIcon />}
-        >
-          {gerando ? 'Gerando...' : 'Gerar Pedido'}
-        </Button>
+        {mostrarConfirmacao ? (
+          <>
+            <Button onClick={handleCancelarConfirmacao} disabled={gerando}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleConfirmarComSemContrato}
+              variant="contained"
+              color="warning"
+              disabled={gerando}
+              startIcon={gerando ? <CircularProgress size={20} /> : <ShoppingCartIcon />}
+            >
+              {gerando ? 'Gerando...' : 'Continuar Mesmo Assim'}
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button onClick={onClose} disabled={gerando}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleGerar}
+              variant="contained"
+              disabled={!guiaSelecionada || gerando || loading}
+              startIcon={gerando ? <CircularProgress size={20} /> : <ShoppingCartIcon />}
+            >
+              {gerando ? 'Gerando...' : 'Gerar Pedido'}
+            </Button>
+          </>
+        )}
       </DialogActions>
+      
+      {/* Dialog de Seleção de Múltiplos Contratos */}
+      {console.log('🎨 Renderizando SelecionarContratosDialog:', { 
+        open: dialogSelecaoContratos, 
+        produtos: produtosMultiplosContratos.length 
+      })}
+      <SelecionarContratosDialog
+        open={dialogSelecaoContratos}
+        onClose={handleCancelarSelecaoContratos}
+        produtos={produtosMultiplosContratos}
+        onConfirmar={handleConfirmarSelecaoContratos}
+      />
     </Dialog>
   );
 }

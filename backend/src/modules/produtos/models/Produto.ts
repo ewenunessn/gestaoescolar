@@ -4,18 +4,19 @@ export interface Produto {
   id: number;
   nome: string;
   descricao?: string;
-  unidade?: string;
-  fator_divisao?: number;
-  tipo_processamento?: string; // in natura, minimamente processado, processado, ultraprocessado
+  tipo_processamento?: string;
   categoria?: string;
-  marca?: string;
-  codigo_barras?: string;
-  peso?: number; // peso em gramas
   validade_minima?: number;
   imagem_url?: string;
-  estoque_minimo?: number;
-  perecivel: boolean; // indica se o produto é perecível
+  perecivel: boolean;
   ativo: boolean;
+  created_at?: Date;
+  updated_at?: Date;
+  estoque_minimo?: number;
+  fator_correcao?: number;
+  tipo_fator_correcao?: string;
+  unidade_distribuicao?: string;
+  peso?: number;
 }
 
 export async function createProdutoTable() {

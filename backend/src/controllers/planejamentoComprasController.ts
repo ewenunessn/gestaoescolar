@@ -18,7 +18,98 @@ interface ProdutoDemanda {
   produto_nome: string;
   unidade: string;
   quantidade_kg: number;
+  quantidade_embalagens?: number; // Quantidade em unidades de embalagem (pacotes, caixas, etc)
+  peso_embalagem?: number; // Peso da embalagem em gramas
   por_escola: DemandaEscola[]; // quebra por escola para programação
+}
+
+interface ConversaoCompra {
+  quantidade_compra: number;
+  unidade_compra: string;
+  quantidade_kg: number;
+  quantidade_distribuicao?: number;
+  unidade_distribuicao?: string;
+}
+
+// ─── Helper: Converter demanda para unidade de compra ────────────────────────
+function converterDemandaParaCompra(
+  quantidade_kg: number,
+  produto: {
+    peso_distribuicao_g?: number;
+    unidade_distribuicao?: string;
+  },
+  contrato: {
+    peso_embalagem_g?: number;
+    unidade_compra?: string;
+    fator_conversao?: number;
+  }
+): ConversaoCompra {
+  // Calcular quantidade em unidade de distribuição (para referência)
+  let quantidade_distribuicao: number | undefined;
+  if (produto.peso_distribuicao_g && produto.peso_distribuicao_g > 0) {
+    const quantidadeGramas = quantidade_kg * 1000;
+    quantidade_distribuicao = Math.ceil(quantidadeGramas / produto.peso_distribuicao_g);
+  }
+  
+  // Converter para unidade de compra
+  let quantidade_compra: number;
+  let unidade_compra: string;
+  
+  if (contrato.fator_conversao && contrato.fator_conversao > 0) {
+    // Usar fator de conversão manual se disponível
+    const base = quantidade_distribuicao || quantidade_kg;
+    quantidade_compra = Math.ceil(base * contrato.fator_conversao);
+    unidade_compra = contrato.unidade_compra || 'UN';
+  } else if (contrato.peso_embalagem_g && contrato.peso_embalagem_g > 0) {
+    // Usar conversão por peso
+    const quantidadeGramas = quantidade_kg * 1000;
+    quantidade_compra = Math.ceil(quantidadeGramas / contrato.peso_embalagem_g);
+    unidade_compra = contrato.unidade_compra || 'UN';
+  } else {
+    // Sem conversão, manter em kg
+    quantidade_compra = Math.round(quantidade_kg * 1000) / 1000;
+    unidade_compra = 'kg';
+  }
+  
+  return {
+    quantidade_compra,
+    unidade_compra,
+    quantidade_kg: Math.round(quantidade_kg * 1000) / 1000,
+    quantidade_distribuicao,
+    unidade_distribuicao: produto.unidade_distribuicao
+  };
+}
+
+// ─── Helper: Converter kg para unidades de embalagem ─────────────────────────
+function converterParaEmbalagem(quantidade_kg: number, peso_embalagem_g: number): number {
+  const quantidadeGramas = quantidade_kg * 1000;
+  return Math.ceil(quantidadeGramas / peso_embalagem_g);
+}
+
+// ─── Helper: Aplicar conversão de embalagem se aplicável ─────────────────────
+function aplicarConversaoEmbalagem(
+  quantidade_kg: number,
+  peso_g: number | null,
+  unidade_distribuicao: string | null
+): { quantidade: number; unidade: string; quantidade_embalagens?: number } {
+  // Se tem peso definido e não é kg, converter para unidades
+  const unidadeLower = (unidade_distribuicao || '').toLowerCase().trim();
+  const isKg = unidadeLower === 'quilograma' || unidadeLower === 'kg' || unidadeLower === 'kilo';
+  
+  if (peso_g && peso_g > 0 && unidade_distribuicao && !isKg) {
+    const quantidadeEmbalagens = converterParaEmbalagem(quantidade_kg, peso_g);
+    return {
+      quantidade: quantidadeEmbalagens,
+      unidade: unidade_distribuicao,
+      quantidade_embalagens: quantidadeEmbalagens
+    };
+  }
+  
+  // Caso contrário, manter em kg
+  return {
+    quantidade: quantidade_kg,
+    unidade: unidade_distribuicao || 'kg'
+  };
 }
 
 // ─── Helper: calcular demanda de produtos para um período (com quebra por escola) ─
@@ -67,7 +158,8 @@ async function calcularDemandaPeriodo(
       cm2.modalidade_id,
       rp.produto_id,
       p.nome as produto_nome,
-      p.unidade,
+      p.unidade_distribuicao as unidade,
+      p.peso as peso_embalagem,
       COALESCE(p.fator_correcao, 1.0) as fator_correcao,
       COALESCE(rpm.per_capita_ajustado, rp.per_capita) as per_capita,
       rp.tipo_medida
@@ -104,16 +196,44 @@ async function calcularDemandaPeriodo(
       const ref = ocorrencias[0];
       const perCapita = toNum(ref.per_capita, 0);
       const fator = toNum(ref.fator_correcao, 1.0);
-      const perCapitaBruto = perCapita * fator;
-      const perCapitaGramas = ref.tipo_medida === 'unidades' ? perCapitaBruto * 100 : perCapitaBruto;
-      const qtdKg = (escola.numero_alunos * perCapitaGramas * ocorrencias.length) / 1000;
+      
+      // CORREÇÃO: Para produtos em UNIDADES, usar o peso do produto
+      let qtdKg: number;
+      
+      if (ref.tipo_medida === 'unidades') {
+        // Per capita em UNIDADES (ex: 1 ovo)
+        // Quantidade = alunos × per_capita × frequência
+        const quantidadeUnidades = escola.numero_alunos * perCapita * ocorrencias.length;
+        
+        // Converter para kg usando o peso do produto (se disponível)
+        if (ref.peso_embalagem && ref.peso_embalagem > 0) {
+          // peso_embalagem está em gramas
+          qtdKg = (quantidadeUnidades * ref.peso_embalagem) / 1000;
+        } else {
+          // Se não tem peso, assumir que 1 unidade = 100g (fallback)
+          qtdKg = (quantidadeUnidades * 100) / 1000;
+        }
+      } else {
+        // Per capita em GRAMAS (ex: 150g de arroz)
+        const perCapitaBruto = perCapita * fator;
+        qtdKg = (escola.numero_alunos * perCapitaBruto * ocorrencias.length) / 1000;
+      }
 
       if (!totais.has(produto_id)) {
+        const ref = ocorrencias[0];
+        const conversao = aplicarConversaoEmbalagem(
+          qtdKg,
+          ref.peso_embalagem ? Number(ref.peso_embalagem) : null,
+          ref.unidade
+        );
+        
         totais.set(produto_id, {
           produto_id,
           produto_nome: ref.produto_nome,
-          unidade: ref.unidade,
+          unidade: conversao.unidade,
           quantidade_kg: 0,
+          quantidade_embalagens: conversao.quantidade_embalagens,
+          peso_embalagem: ref.peso_embalagem ? Number(ref.peso_embalagem) : undefined,
           por_escola: [],
         });
       }
@@ -130,14 +250,25 @@ async function calcularDemandaPeriodo(
     }
   }
 
-  return Array.from(totais.values()).map(p => ({
-    ...p,
-    quantidade_kg: Math.round(p.quantidade_kg * 1000) / 1000,
-    por_escola: p.por_escola.map(e => ({
-      escola_id: e.escola_id,
-      quantidade_kg: Math.round(e.quantidade_kg * 1000) / 1000,
-    })),
-  }));
+  return Array.from(totais.values()).map(p => {
+    // Recalcular quantidade em embalagens com o total final
+    const conversao = aplicarConversaoEmbalagem(
+      p.quantidade_kg,
+      p.peso_embalagem || null,
+      p.unidade
+    );
+    
+    return {
+      ...p,
+      quantidade_kg: Math.round(p.quantidade_kg * 1000) / 1000,
+      quantidade_embalagens: conversao.quantidade_embalagens,
+      unidade: conversao.unidade,
+      por_escola: p.por_escola.map(e => ({
+        escola_id: e.escola_id,
+        quantidade_kg: Math.round(e.quantidade_kg * 1000) / 1000,
+      })),
+    };
+  });
 }
 
 // ─── Gerar pedido único com itens por período ────────────────────────────────
@@ -193,11 +324,16 @@ export const gerarPedidosPorPeriodo = async (req: Request, res: Response) => {
         cp.produto_id, 
         cp.preco_unitario,
         cp.quantidade_contratada,
+        cp.peso_embalagem,
+        cp.unidade_compra,
+        cp.fator_conversao,
         c.id as contrato_id,
         c.numero as contrato_numero, 
         c.data_fim as contrato_data_fim,
         f.id as fornecedor_id,
         f.nome as fornecedor_nome,
+        p.peso as peso_distribuicao,
+        p.unidade_distribuicao,
         COALESCE(
           (SELECT SUM(cpm2.quantidade_disponivel) 
            FROM contrato_produtos_modalidades cpm2 
@@ -207,6 +343,7 @@ export const gerarPedidosPorPeriodo = async (req: Request, res: Response) => {
       FROM contrato_produtos cp
       JOIN contratos c ON c.id = cp.contrato_id
       JOIN fornecedores f ON f.id = c.fornecedor_id
+      JOIN produtos p ON p.id = cp.produto_id
       WHERE cp.produto_id = ANY($1) AND cp.ativo = true
         AND c.status = 'ativo' AND c.data_fim >= CURRENT_DATE
       ORDER BY cp.produto_id, c.data_fim ASC
@@ -361,15 +498,46 @@ export const gerarPedidosPorPeriodo = async (req: Request, res: Response) => {
 
     // 5. Inserir um item por produto por período, com programação de entrega por escola
     for (const { periodo, produto, contrato } of itensPorPeriodo) {
-      const qtd = produto.quantidade_kg;
+      // Converter demanda para unidade de compra
+      const conversao = converterDemandaParaCompra(
+        produto.quantidade_kg,
+        {
+          peso_distribuicao_g: contrato.peso_distribuicao ? Number(contrato.peso_distribuicao) : undefined,
+          unidade_distribuicao: contrato.unidade_distribuicao
+        },
+        {
+          peso_embalagem_g: contrato.peso_embalagem ? Number(contrato.peso_embalagem) : undefined,
+          unidade_compra: contrato.unidade_compra,
+          fator_conversao: contrato.fator_conversao ? Number(contrato.fator_conversao) : undefined
+        }
+      );
+      
       const preco = toNum(contrato.preco_unitario);
+      const valorTotal = conversao.quantidade_compra * preco;
 
       const itemResult = await client.query(`
-        INSERT INTO pedido_itens (pedido_id, contrato_produto_id, produto_id, quantidade, preco_unitario, valor_total, data_entrega_prevista, observacoes)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        INSERT INTO pedido_itens (
+          pedido_id, contrato_produto_id, produto_id, 
+          quantidade, unidade, quantidade_kg,
+          quantidade_distribuicao, unidade_distribuicao,
+          preco_unitario, valor_total, data_entrega_prevista, observacoes
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         RETURNING id
-      `, [pedido_id, contrato.contrato_produto_id, produto.produto_id, qtd, preco, qtd * preco,
-          periodo.data_inicio, `Período: ${periodo.data_inicio} a ${periodo.data_fim}`]);
+      `, [
+        pedido_id, 
+        contrato.contrato_produto_id, 
+        produto.produto_id, 
+        conversao.quantidade_compra,
+        conversao.unidade_compra,
+        conversao.quantidade_kg,
+        conversao.quantidade_distribuicao,
+        conversao.unidade_distribuicao,
+        preco, 
+        valorTotal,
+        periodo.data_inicio, 
+        `Período: ${periodo.data_inicio} a ${periodo.data_fim}`
+      ]);
 
       const pedido_item_id = itemResult.rows[0].id;
 
@@ -690,7 +858,8 @@ export const calcularDemandaPorCompetencia = async (req: Request, res: Response)
         rp.id as refeicao_produto_id,
         rp.produto_id,
         p.nome as produto_nome,
-        p.unidade,
+        p.unidade_distribuicao as unidade,
+        p.peso as peso_embalagem,
         COALESCE(p.fator_correcao, 1.0) as fator_correcao,
         COALESCE(rpm.per_capita_ajustado, rp.per_capita) as per_capita,
         rp.tipo_medida
@@ -790,10 +959,13 @@ export const calcularDemandaPorCompetencia = async (req: Request, res: Response)
         });
 
         if (!produtosEscola.has(produto_id)) {
+          const peso_emb = primeiraOcorrencia.peso_embalagem ? Number(primeiraOcorrencia.peso_embalagem) : null;
+          
           produtosEscola.set(produto_id, {
             produto_id,
             produto_nome,
             unidade,
+            peso_embalagem: peso_emb,
             quantidade_kg: 0,
             quantidade_gramas: 0,
             vezes_no_periodo: 0,
@@ -816,10 +988,13 @@ export const calcularDemandaPorCompetencia = async (req: Request, res: Response)
 
         // Acumular no mapa global
         if (!produtosMap.has(produto_id)) {
+          const peso_emb = primeiraOcorrencia.peso_embalagem ? Number(primeiraOcorrencia.peso_embalagem) : null;
+          
           produtosMap.set(produto_id, {
             produto_id,
             produto_nome,
             unidade,
+            peso_embalagem: peso_emb,
             quantidade_total_kg: 0
           });
         }
@@ -828,7 +1003,21 @@ export const calcularDemandaPorCompetencia = async (req: Request, res: Response)
         produtoGlobal.quantidade_total_kg += quantidadeKg;
       }
 
-      demandaEscola.produtos = Array.from(produtosEscola.values());
+      demandaEscola.produtos = Array.from(produtosEscola.values()).map(prod => {
+        // Aplicar conversão de embalagem
+        const conversao = aplicarConversaoEmbalagem(
+          prod.quantidade_kg,
+          prod.peso_embalagem,
+          prod.unidade
+        );
+        
+        return {
+          ...prod,
+          unidade: conversao.unidade,
+          quantidade_embalagens: conversao.quantidade_embalagens,
+          quantidade_kg: Math.round(prod.quantidade_kg * 100) / 100
+        };
+      });
       demandaPorEscola.push(demandaEscola);
     }
 
@@ -869,22 +1058,44 @@ export const calcularDemandaPorCompetencia = async (req: Request, res: Response)
         numero_alunos: totalAlunos,
         produtos: Array.from(produtosConsolidados.entries()).map(([produto_id, quantidade_kg]) => {
           const produtoInfo = Array.from(produtosMap.values()).find(p => p.produto_id === produto_id);
+          
+          // Aplicar conversão de embalagem
+          const conversao = aplicarConversaoEmbalagem(
+            quantidade_kg,
+            produtoInfo?.peso_embalagem || null,
+            produtoInfo?.unidade || null
+          );
+          
           return {
             produto_id,
             produto_nome: produtoInfo?.produto_nome || '',
-            quantidade_kg: Math.round(quantidade_kg * 100) / 100
+            unidade: conversao.unidade,
+            quantidade_kg: Math.round(quantidade_kg * 100) / 100,
+            quantidade_embalagens: conversao.quantidade_embalagens,
+            peso_embalagem: produtoInfo?.peso_embalagem
           };
         })
       };
     });
 
     // Preparar demanda por produto
-    const demandaPorProduto = Array.from(produtosMap.values()).map(prod => ({
-      produto_id: prod.produto_id,
-      produto_nome: prod.produto_nome,
-      unidade: prod.unidade,
-      quantidade_total_kg: Math.round(prod.quantidade_total_kg * 100) / 100
-    }));
+    const demandaPorProduto = Array.from(produtosMap.values()).map(prod => {
+      // Aplicar conversão de embalagem
+      const conversao = aplicarConversaoEmbalagem(
+        prod.quantidade_total_kg,
+        prod.peso_embalagem,
+        prod.unidade
+      );
+      
+      return {
+        produto_id: prod.produto_id,
+        produto_nome: prod.produto_nome,
+        unidade: conversao.unidade,
+        quantidade_total_kg: Math.round(prod.quantidade_total_kg * 100) / 100,
+        quantidade_embalagens: conversao.quantidade_embalagens,
+        peso_embalagem: prod.peso_embalagem
+      };
+    });
 
     const escolasUnicasCount = escolasUnicas.size;
 
@@ -982,14 +1193,14 @@ export const gerarGuiasDemanda = async (req: Request, res: Response) => {
     // Buscar flag perecivel + dados de embalagem de todos os produtos envolvidos
     const todosProdutoIds = [...new Set(demandasPorPeriodo.flatMap(d => d.demanda.map(p => p.produto_id)))];
     const perecivelResult = await client.query(`
-      SELECT id, perecivel, peso, unidade_compra FROM produtos WHERE id = ANY($1)
+      SELECT id, perecivel, peso, unidade_distribuicao FROM produtos WHERE id = ANY($1)
     `, [todosProdutoIds]);
     const perecivelMap = new Map<number, boolean>(perecivelResult.rows.map((r: any) => [r.id, !!r.perecivel]));
-    // peso em gramas → usado para converter kg → pacotes/unidades quando unidade_compra estiver definido
+    // peso em gramas → usado para converter kg → pacotes/unidades quando unidade_distribuicao estiver definido
     const embalagemMap = new Map<number, { peso_g: number; unidade: string }>(
       perecivelResult.rows
-        .filter((r: any) => r.peso && r.peso > 0 && r.unidade_compra)
-        .map((r: any) => [r.id, { peso_g: Number(r.peso), unidade: r.unidade_compra }])
+        .filter((r: any) => r.peso && r.peso > 0 && r.unidade_distribuicao)
+        .map((r: any) => [r.id, { peso_g: Number(r.peso), unidade: r.unidade_distribuicao }])
     );
 
     // Helper: converte kg para unidades de embalagem (arredonda para cima)
@@ -1103,7 +1314,14 @@ export const gerarGuiasDemanda = async (req: Request, res: Response) => {
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Erro ao gerar guias de demanda:', error);
-    return res.status(500).json({ error: error instanceof Error ? error.message : 'Erro interno' });
+    const errorMessage = error instanceof Error ? error.message : 'Erro interno';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    console.error('Stack trace:', errorStack);
+    return res.status(500).json({ 
+      error: errorMessage,
+      detalhes: errorStack,
+      tipo: error instanceof Error ? error.constructor.name : typeof error
+    });
   } finally {
     client.release();
   }
@@ -1114,6 +1332,8 @@ export const gerarGuiasDemanda = async (req: Request, res: Response) => {
 // sem recalcular pelo cardápio.
 export const gerarPedidoDaGuia = async (req: Request, res: Response) => {
   const { guia_id, observacoes } = req.body as { guia_id: number; observacoes?: string };
+
+  console.log('🚀 Gerando pedido da guia:', { guia_id, observacoes });
 
   if (!guia_id) {
     return res.status(400).json({ error: 'guia_id é obrigatório' });
@@ -1132,10 +1352,12 @@ export const gerarPedidoDaGuia = async (req: Request, res: Response) => {
 
     if (guiaResult.rows.length === 0) {
       await client.query('ROLLBACK');
+      console.log('❌ Guia não encontrada:', guia_id);
       return res.status(404).json({ error: 'Guia não encontrada' });
     }
 
     const guia = guiaResult.rows[0];
+    console.log('📋 Guia encontrada:', guia);
     const competencia = guia.competencia_mes_ano || `${guia.ano}-${String(guia.mes).padStart(2, '0')}`;
     const [ano, mes] = competencia.split('-').map(Number);
     const meses = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
@@ -1230,11 +1452,16 @@ export const gerarPedidoDaGuia = async (req: Request, res: Response) => {
         cp.produto_id, 
         cp.preco_unitario,
         cp.quantidade_contratada,
+        cp.peso_embalagem,
+        cp.unidade_compra,
+        cp.fator_conversao,
         c.id as contrato_id,
         c.numero as contrato_numero,
         c.data_fim as contrato_data_fim,
         f.id as fornecedor_id,
         f.nome as fornecedor_nome,
+        p.peso as peso_distribuicao,
+        p.unidade_distribuicao,
         COALESCE(
           (SELECT SUM(cpm2.quantidade_disponivel) 
            FROM contrato_produtos_modalidades cpm2 
@@ -1244,10 +1471,14 @@ export const gerarPedidoDaGuia = async (req: Request, res: Response) => {
       FROM contrato_produtos cp
       JOIN contratos c ON c.id = cp.contrato_id
       JOIN fornecedores f ON f.id = c.fornecedor_id
+      JOIN produtos p ON p.id = cp.produto_id
       WHERE cp.produto_id = ANY($1) AND cp.ativo = true
         AND c.status = 'ativo' AND c.data_fim >= CURRENT_DATE
       ORDER BY cp.produto_id, c.data_fim ASC
     `, [todosProdutoIds]);
+
+    console.log('📦 Contratos encontrados:', contratosResult.rows.length);
+    console.log('📋 Produtos buscados:', todosProdutoIds);
 
     // Agrupar TODOS os contratos por produto
     const contratosPorProduto = new Map<number, any[]>();
@@ -1258,50 +1489,121 @@ export const gerarPedidoDaGuia = async (req: Request, res: Response) => {
       contratosPorProduto.get(row.produto_id)!.push(row);
     }
 
-    // Identificar produtos com múltiplos contratos
-    const produtosComMultiplosContratos: any[] = [];
-    const produtosInfo = new Map<number, string>();
+    console.log('📊 Produtos com contratos:', contratosPorProduto.size);
+
+    // PRIMEIRO: Identificar produtos SEM contrato
+    console.log('🔍 Verificando produtos sem contrato...');
+    const produtosSemContrato: Array<{ produto_id: number; produto_nome: string; quantidade: number }> = [];
+    const produtosComContrato: number[] = [];
     
-    for (const grupo of grupos.values()) {
-      produtosInfo.set(grupo.produto_id, grupo.produto_nome);
-      const contratos = contratosPorProduto.get(grupo.produto_id) || [];
-      if (contratos.length > 1) {
-        const jaAdicionado = produtosComMultiplosContratos.find(p => p.produto_id === grupo.produto_id);
-        if (!jaAdicionado) {
-          const qtdTotal = grupo.escolas.reduce((sum, e) => sum + e.quantidade, 0);
-          produtosComMultiplosContratos.push({
+    try {
+      for (const grupo of grupos.values()) {
+        const contratos = contratosPorProduto.get(grupo.produto_id) || [];
+        const qtdTotal = grupo.escolas.reduce((sum, e) => sum + e.quantidade, 0);
+        
+        if (contratos.length === 0) {
+          produtosSemContrato.push({
             produto_id: grupo.produto_id,
             produto_nome: grupo.produto_nome,
-            unidade: 'kg',
-            quantidade_necessaria: qtdTotal,
-            contratos: contratos.map(c => ({
-              contrato_produto_id: c.contrato_produto_id,
-              contrato_id: c.contrato_id,
-              contrato_numero: c.contrato_numero,
-              fornecedor_id: c.fornecedor_id,
-              fornecedor_nome: c.fornecedor_nome,
-              preco_unitario: c.preco_unitario,
-              saldo_disponivel: c.saldo_disponivel,
-              data_fim: c.contrato_data_fim
-            }))
+            quantidade: qtdTotal
           });
+        } else {
+          produtosComContrato.push(grupo.produto_id);
         }
       }
+      
+      console.log('✅ Produtos COM contrato:', produtosComContrato.length);
+      console.log('❌ Produtos SEM contrato:', produtosSemContrato.length);
+      
+      if (produtosSemContrato.length > 0) {
+        console.log('📋 Detalhes produtos sem contrato:', produtosSemContrato.map(p => `${p.produto_nome} (${p.quantidade}kg)`).join(', '));
+      }
+    } catch (error) {
+      console.error('❌ Erro ao verificar produtos sem contrato:', error);
+      throw error;
     }
 
-    // Se houver produtos com múltiplos contratos E não foi fornecida a seleção, retornar para seleção
+    // SEGUNDO: Identificar produtos com múltiplos contratos (ANTES de verificar sem contrato)
+    console.log('🔍 Verificando produtos com múltiplos contratos...');
+    const produtosComMultiplosContratos: any[] = [];
+    
+    try {
+      for (const grupo of grupos.values()) {
+        const contratos = contratosPorProduto.get(grupo.produto_id) || [];
+        if (contratos.length > 1) {
+          const jaAdicionado = produtosComMultiplosContratos.find(p => p.produto_id === grupo.produto_id);
+          if (!jaAdicionado) {
+            const qtdTotal = grupo.escolas.reduce((sum, e) => sum + e.quantidade, 0);
+            produtosComMultiplosContratos.push({
+              produto_id: grupo.produto_id,
+              produto_nome: grupo.produto_nome,
+              unidade: 'kg',
+              quantidade_necessaria: qtdTotal,
+              contratos: contratos.map(c => ({
+                contrato_produto_id: c.contrato_produto_id,
+                contrato_id: c.contrato_id,
+                contrato_numero: c.contrato_numero,
+                fornecedor_id: c.fornecedor_id,
+                fornecedor_nome: c.fornecedor_nome,
+                preco_unitario: c.preco_unitario,
+                saldo_disponivel: c.saldo_disponivel,
+                data_fim: c.contrato_data_fim
+              }))
+            });
+          }
+        }
+      }
+      
+      console.log('📊 Produtos com múltiplos contratos:', produtosComMultiplosContratos.length);
+    } catch (error) {
+      console.error('❌ Erro ao verificar múltiplos contratos:', error);
+      throw error;
+    }
+
+    // TERCEIRO: Se houver produtos com múltiplos contratos E não foi fornecida a seleção, retornar para seleção
     const { contratos_selecionados } = req.body;
+    
+    console.log('🔍 Verificando seleção de contratos...');
+    console.log('📋 Contratos selecionados recebidos:', contratos_selecionados ? 'SIM' : 'NÃO');
+    console.log('📊 Produtos com múltiplos contratos:', produtosComMultiplosContratos.length);
     
     if (produtosComMultiplosContratos.length > 0 && !contratos_selecionados) {
       await client.query('ROLLBACK');
+      console.log('⚠️ Retornando para seleção de múltiplos contratos');
       return res.status(200).json({
         requer_selecao: true,
         produtos_multiplos_contratos: produtosComMultiplosContratos,
+        produtos_sem_contrato: produtosSemContrato.length > 0 ? produtosSemContrato : undefined,
         mensagem: `${produtosComMultiplosContratos.length} produto(s) encontrado(s) em múltiplos contratos. Selecione qual contrato usar para cada produto.`
       });
     }
+    
+    console.log('✅ Prosseguindo com geração do pedido...');
 
-    // Se foi fornecida seleção, usar os contratos selecionados
+    // QUARTO: Se TODOS os produtos não têm contrato, retornar erro
+    if (produtosSemContrato.length > 0 && produtosComContrato.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        error: 'Nenhum produto da guia possui contrato ativo',
+        produtos_sem_contrato: produtosSemContrato,
+        mensagem: `Todos os ${produtosSemContrato.length} produtos da guia não possuem contrato ativo. Cadastre contratos antes de gerar o pedido.`
+      });
+    }
+
+    // QUINTO: Se ALGUNS produtos não têm contrato, perguntar ao usuário
+    const { ignorar_sem_contrato } = req.body;
+    
+    if (produtosSemContrato.length > 0 && !ignorar_sem_contrato) {
+      await client.query('ROLLBACK');
+      return res.status(200).json({
+        requer_confirmacao: true,
+        produtos_sem_contrato: produtosSemContrato,
+        produtos_com_contrato: produtosComContrato.length,
+        mensagem: `${produtosSemContrato.length} produto(s) não possuem contrato ativo e serão ignorados. Deseja continuar apenas com os ${produtosComContrato.length} produtos que têm contrato?`
+      });
+    }
+
+    // SEXTO: Se foi fornecida seleção, usar os contratos selecionados
     const contratosSelecionadosMap = new Map<number, Array<{ contrato_produto_id: number; quantidade?: number }>>();
     if (contratos_selecionados) {
       for (const sel of contratos_selecionados) {
@@ -1315,57 +1617,79 @@ export const gerarPedidoDaGuia = async (req: Request, res: Response) => {
       }
     }
 
-    // Montar mapa final de contratos a usar
+    // SÉTIMO: Montar mapa final de contratos a usar (apenas produtos COM contrato)
+    console.log('🔧 Montando mapa de contratos a usar...');
     const contratosParaUsar = new Map<number, Array<{ contrato: any; quantidade?: number }>>();
-    for (const [produto_id, contratos] of contratosPorProduto) {
-      if (contratos.length === 1) {
-        contratosParaUsar.set(produto_id, [{ contrato: contratos[0] }]);
-      } else if (contratosSelecionadosMap.has(produto_id)) {
-        const selecionados = contratosSelecionadosMap.get(produto_id)!;
-        const contratosComDados = selecionados.map(sel => {
-          const contrato = contratos.find(c => c.contrato_produto_id === sel.contrato_produto_id);
-          return contrato ? { contrato, quantidade: sel.quantidade } : null;
-        }).filter(Boolean) as Array<{ contrato: any; quantidade?: number }>;
+    
+    try {
+      for (const [produto_id, contratos] of contratosPorProduto) {
+        // Ignorar produtos sem contrato (já tratados acima)
+        if (contratos.length === 0) continue;
         
-        if (contratosComDados.length > 0) {
-          contratosParaUsar.set(produto_id, contratosComDados);
+        if (contratos.length === 1) {
+          contratosParaUsar.set(produto_id, [{ contrato: contratos[0] }]);
+        } else if (contratosSelecionadosMap.has(produto_id)) {
+          const selecionados = contratosSelecionadosMap.get(produto_id)!;
+          const contratosComDados = selecionados.map(sel => {
+            const contrato = contratos.find(c => c.contrato_produto_id === sel.contrato_produto_id);
+            return contrato ? { contrato, quantidade: sel.quantidade } : null;
+          }).filter(Boolean) as Array<{ contrato: any; quantidade?: number }>;
+          
+          if (contratosComDados.length > 0) {
+            contratosParaUsar.set(produto_id, contratosComDados);
+          }
         }
       }
+      
+      console.log('✅ Contratos mapeados:', contratosParaUsar.size);
+    } catch (error) {
+      console.error('❌ Erro ao montar mapa de contratos:', error);
+      throw error;
     }
 
-    // 5. Separar grupos com e sem contrato
-    const semContrato: string[] = [];
+    // SEXTO: Filtrar apenas grupos COM contrato para criar o pedido
+    console.log('🔧 Filtrando grupos com contrato...');
     const gruposComContrato: typeof grupos = new Map();
-    for (const [key, grupo] of grupos) {
-      if (!contratosParaUsar.has(grupo.produto_id) || contratosParaUsar.get(grupo.produto_id)!.length === 0) {
-        semContrato.push(grupo.produto_nome);
-      } else {
-        gruposComContrato.set(key, grupo);
+    
+    try {
+      for (const [key, grupo] of grupos) {
+        if (contratosParaUsar.has(grupo.produto_id) && contratosParaUsar.get(grupo.produto_id)!.length > 0) {
+          gruposComContrato.set(key, grupo);
+        }
       }
+      
+      console.log('✅ Grupos com contrato:', gruposComContrato.size);
+      console.log('📊 Total de grupos:', grupos.size);
+    } catch (error) {
+      console.error('❌ Erro ao filtrar grupos:', error);
+      throw error;
     }
 
     if (gruposComContrato.size === 0) {
       await client.query('ROLLBACK');
-      return res.status(200).json({
-        pedidos_criados: [],
-        erros: [{ motivo: `Nenhum produto com contrato ativo. Sem contrato: ${semContrato.join(', ')}` }],
-        total_criados: 0,
-        total_erros: 1,
+      const nomesSemContrato = produtosSemContrato.map(p => p.produto_nome).join(', ');
+      return res.status(400).json({
+        error: 'Nenhum produto com contrato ativo para gerar pedido',
+        produtos_sem_contrato: produtosSemContrato,
+        mensagem: `Produtos sem contrato: ${nomesSemContrato}`
       });
     }
 
-    // 6. Criar o pedido
+    // SÉTIMO: Criar o pedido
+    console.log('📝 Criando pedido...');
     const maxResult = await client.query(`
       SELECT COALESCE(MAX(CAST(SUBSTRING(numero FROM LENGTH(numero) - 5) AS INTEGER)), 0) as max_seq
       FROM pedidos WHERE competencia_mes_ano = $1
     `, [competencia]);
     const seq = (parseInt(maxResult.rows[0].max_seq) + 1).toString().padStart(6, '0');
     const numero = `PED-${mesAbrev}${ano}${seq}`;
+    console.log('📋 Número do pedido:', numero);
 
+    const nomesSemContrato = produtosSemContrato.map(p => p.produto_nome).join(', ');
     const obsTexto = [
       observacoes,
       `Gerado da Guia de Demanda #${guia_id} (${guia.nome || competencia})`,
-      semContrato.length > 0 ? `Sem contrato (não incluídos): ${semContrato.join(', ')}` : null,
+      produtosSemContrato.length > 0 ? `Sem contrato (não incluídos): ${nomesSemContrato}` : null,
     ].filter(Boolean).join(' | ');
 
     const pedidoResult = await client.query(`
@@ -1383,19 +1707,51 @@ export const gerarPedidoDaGuia = async (req: Request, res: Response) => {
       // Se houver divisão, criar um item por contrato
       for (const { contrato, quantidade: qtdContrato } of contratosDoP) {
         // Se quantidade foi especificada (divisão), usar ela; senão usar total do grupo
-        const qtdTotal = qtdContrato !== undefined 
+        const qtdTotalKg = qtdContrato !== undefined 
           ? qtdContrato 
           : grupo.escolas.reduce((s, e) => s + e.quantidade, 0);
         
+        // Converter para unidade de compra
+        const conversao = converterDemandaParaCompra(
+          qtdTotalKg,
+          {
+            peso_distribuicao_g: contrato.peso_distribuicao ? Number(contrato.peso_distribuicao) : undefined,
+            unidade_distribuicao: contrato.unidade_distribuicao
+          },
+          {
+            peso_embalagem_g: contrato.peso_embalagem ? Number(contrato.peso_embalagem) : undefined,
+            unidade_compra: contrato.unidade_compra,
+            fator_conversao: contrato.fator_conversao ? Number(contrato.fator_conversao) : undefined
+          }
+        );
+        
         const preco = toNum(contrato.preco_unitario);
+        const valorTotal = conversao.quantidade_compra * preco;
         const dataEntrega = grupo.data_entrega || new Date().toISOString().split('T')[0];
 
         const itemResult = await client.query(`
-          INSERT INTO pedido_itens (pedido_id, contrato_produto_id, produto_id, quantidade, preco_unitario, valor_total, data_entrega_prevista, observacoes)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          INSERT INTO pedido_itens (
+            pedido_id, contrato_produto_id, produto_id,
+            quantidade, unidade, quantidade_kg,
+            quantidade_distribuicao, unidade_distribuicao,
+            preco_unitario, valor_total, data_entrega_prevista, observacoes
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
           RETURNING id
-        `, [pedido_id, contrato.contrato_produto_id, grupo.produto_id, qtdTotal, preco, qtdTotal * preco,
-            dataEntrega, qtdContrato !== undefined ? `Guia #${guia_id} (${qtdTotal.toFixed(2)}kg deste contrato)` : `Guia #${guia_id}`]);
+        `, [
+          pedido_id, 
+          contrato.contrato_produto_id, 
+          grupo.produto_id, 
+          conversao.quantidade_compra,
+          conversao.unidade_compra,
+          conversao.quantidade_kg,
+          conversao.quantidade_distribuicao,
+          conversao.unidade_distribuicao,
+          preco, 
+          valorTotal,
+          dataEntrega, 
+          qtdContrato !== undefined ? `Guia #${guia_id} (${qtdTotalKg.toFixed(2)}kg deste contrato)` : `Guia #${guia_id}`
+        ]);
 
         const pedido_item_id = itemResult.rows[0].id;
 
@@ -1446,6 +1802,7 @@ export const gerarPedidoDaGuia = async (req: Request, res: Response) => {
     const valorTotal = toNum(pedidoAtualizado.rows[0]?.valor_total, 0);
 
     await client.query('COMMIT');
+    console.log('✅ Pedido criado com sucesso:', { pedido_id, numero, valorTotal });
 
     return res.status(200).json({
       pedidos_criados: [{
@@ -1454,16 +1811,20 @@ export const gerarPedidoDaGuia = async (req: Request, res: Response) => {
         guia_id,
         total_itens: gruposComContrato.size,
         valor_total: valorTotal,
-        sem_contrato: semContrato,
+        produtos_sem_contrato: produtosSemContrato.length > 0 ? produtosSemContrato : undefined,
       }],
       erros: [],
       total_criados: 1,
       total_erros: 0,
+      aviso: produtosSemContrato.length > 0 
+        ? `${produtosSemContrato.length} produto(s) não incluído(s) por falta de contrato: ${nomesSemContrato}`
+        : undefined
     });
 
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('Erro ao gerar pedido da guia:', error);
+    console.error('❌ Erro ao gerar pedido da guia:', error);
+    console.error('Stack:', error instanceof Error ? error.stack : error);
     return res.status(500).json({ error: error instanceof Error ? error.message : 'Erro interno' });
   } finally {
     client.release();

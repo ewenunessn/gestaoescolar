@@ -184,7 +184,7 @@ export class FaturamentoService {
         f.cnpj as fornecedor_cnpj,
         p.id as produto_id,
         p.nome as produto_nome,
-        COALESCE(p.unidade, 'UN') as unidade 
+        COALESCE(p.unidade_distribuicao, 'UN') as unidade 
       FROM pedido_itens pi
       JOIN contrato_produtos cp ON pi.contrato_produto_id = cp.id
       JOIN contratos c ON cp.contrato_id = c.id

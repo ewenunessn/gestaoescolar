@@ -63,3 +63,8 @@ export async function listarContratosPorFornecedor(fornecedor_id: number) {
   const { data } = await apiWithRetry.get(`/contratos/fornecedor/${fornecedor_id}`);
   return data.data || []; // Return the actual array from the response
 }
+
+export async function buscarContratosPorProduto(termo: string) {
+  const { data } = await apiWithRetry.get(`/contratos/buscar-por-produto?termo=${encodeURIComponent(termo)}`);
+  return data.data || []; // Return the actual array from the response
+}

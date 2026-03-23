@@ -16,10 +16,12 @@ export async function listarContratos(req: Request, res: Response) {
         c.status,
         c.ativo,
         c.created_at,
-        COALESCE(SUM(cp.quantidade_contratada * cp.preco_unitario), 0) as valor_total_contrato
+        COALESCE(SUM(cp.quantidade_contratada * cp.preco_unitario), 0) as valor_total_contrato,
+        STRING_AGG(DISTINCT p.nome, ' | ') as produtos
       FROM contratos c
       LEFT JOIN fornecedores f ON c.fornecedor_id = f.id
       LEFT JOIN contrato_produtos cp ON c.id = cp.contrato_id AND cp.ativo = true
+      LEFT JOIN produtos p ON cp.produto_id = p.id
       GROUP BY c.id, f.nome
       ORDER BY c.numero
     `);
@@ -201,6 +203,56 @@ export async function obterEstatisticasContratos(req: Request, res: Response) {
     res.status(500).json({
       success: false,
       message: "Erro ao obter estatísticas",
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+}
+
+export async function buscarContratosPorProduto(req: Request, res: Response) {
+  try {
+    const { termo } = req.query;
+
+    if (!termo || typeof termo !== 'string' || termo.trim().length < 2) {
+      return res.status(400).json({
+        success: false,
+        message: "Termo de busca deve ter pelo menos 2 caracteres"
+      });
+    }
+
+    const result = await db.query(`
+      SELECT DISTINCT
+        c.id,
+        c.numero,
+        c.fornecedor_id,
+        f.nome as fornecedor_nome,
+        c.data_inicio,
+        c.data_fim,
+        c.valor_total,
+        c.status,
+        c.ativo,
+        c.created_at,
+        COALESCE(SUM(cp.quantidade_contratada * cp.preco_unitario), 0) as valor_total_contrato,
+        STRING_AGG(DISTINCT p.nome, ', ') as produtos_encontrados
+      FROM contratos c
+      LEFT JOIN fornecedores f ON c.fornecedor_id = f.id
+      LEFT JOIN contrato_produtos cp ON c.id = cp.contrato_id AND cp.ativo = true
+      LEFT JOIN produtos p ON cp.produto_id = p.id
+      WHERE LOWER(p.nome) LIKE LOWER($1)
+      GROUP BY c.id, f.nome
+      ORDER BY c.numero
+    `, [`%${termo.trim()}%`]);
+
+    res.json({
+      success: true,
+      data: result.rows,
+      total: result.rows.length,
+      termo: termo.trim()
+    });
+  } catch (error) {
+    console.error("❌ Erro ao buscar contratos por produto:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao buscar contratos por produto",
       error: error instanceof Error ? error.message : 'Erro desconhecido'
     });
   }

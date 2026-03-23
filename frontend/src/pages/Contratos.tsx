@@ -44,6 +44,7 @@ interface Contrato {
   ativo: boolean;
   status?: string;
   valor_total_contrato?: number;
+  produtos?: string; // Lista de produtos para busca
 }
 
 interface Fornecedor {
@@ -224,9 +225,23 @@ const ContratosPage: React.FC = () => {
           </Box>
         ),
       },
+      // Coluna oculta para busca por produtos
+      {
+        accessorKey: 'produtos',
+        header: 'Produtos',
+        size: 0,
+        enableSorting: false,
+        enableColumnFilter: false,
+        enableGlobalFilter: true,
+      },
     ],
     [fornecedorMap, getStatusContrato, navigate]
   );
+
+  // Configurar visibilidade inicial das colunas
+  const initialColumnVisibility = useMemo(() => ({
+    produtos: false, // Ocultar coluna de produtos
+  }), []);
 
   const handleRowClick = useCallback(
     (contrato: Contrato) => {
@@ -282,10 +297,12 @@ const ContratosPage: React.FC = () => {
             columns={columns}
             loading={loading}
             onRowClick={handleRowClick}
-            searchPlaceholder="Buscar contratos..."
+            searchPlaceholder="Buscar por número, fornecedor ou produto..."
             onCreateClick={() => navigate('/contratos/novo')}
             createButtonLabel="Novo Contrato"
             onFilterClick={(e) => setFilterAnchorEl(e.currentTarget)}
+            initialColumnVisibility={initialColumnVisibility}
+            initialPageSize={50}
           />
         </Box>
       </PageContainer>

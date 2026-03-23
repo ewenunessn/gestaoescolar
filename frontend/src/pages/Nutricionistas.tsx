@@ -295,6 +295,7 @@ const NutricionistasPage = () => {
             onCreateClick={() => openModal()}
             createButtonLabel="Novo Nutricionista"
             onFilterClick={(e) => setFilterAnchorEl(e.currentTarget)}
+            initialPageSize={50}
           />
         </Box>
       </PageContainer>

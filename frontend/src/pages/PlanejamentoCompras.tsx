@@ -479,7 +479,18 @@ export default function PlanejamentoCompras() {
                               {escola.produtos.map((prod) => (
                                 <TableRow key={prod.produto_id}>
                                   <TableCell>{prod.produto_nome}</TableCell>
-                                  <TableCell align="right">{toNum(prod.quantidade_kg).toFixed(2)} kg</TableCell>
+                                  <TableCell align="right">
+                                    {prod.quantidade_embalagens ? (
+                                      <>
+                                        <strong>{prod.quantidade_embalagens}</strong> {prod.unidade}
+                                        <span style={{ color: '#6b7280', fontSize: '0.875rem', marginLeft: '8px' }}>
+                                          ({toNum(prod.quantidade_kg).toFixed(2)}kg)
+                                        </span>
+                                      </>
+                                    ) : (
+                                      `${toNum(prod.quantidade_kg).toFixed(2)} kg`
+                                    )}
+                                  </TableCell>
                                   <TableCell align="center">
                                     <IconButton
                                       size="small"
@@ -522,7 +533,16 @@ export default function PlanejamentoCompras() {
                           <TableRow key={prod.produto_id}>
                             <TableCell>{prod.produto_nome}</TableCell>
                             <TableCell align="right" sx={{ fontWeight: 600 }}>
-                              {toNum(prod.quantidade_total_kg).toFixed(2)} kg
+                              {prod.quantidade_embalagens ? (
+                                <>
+                                  <strong>{prod.quantidade_embalagens}</strong> {prod.unidade}
+                                  <span style={{ color: '#6b7280', fontSize: '0.875rem', marginLeft: '8px' }}>
+                                    ({toNum(prod.quantidade_total_kg).toFixed(2)}kg)
+                                  </span>
+                                </>
+                              ) : (
+                                `${toNum(prod.quantidade_total_kg).toFixed(2)} kg`
+                              )}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -558,9 +578,20 @@ export default function PlanejamentoCompras() {
                             </TableCell>
                             {resultado.demanda_por_produto.map((prod) => {
                               const produtoEscola = escola.produtos.find(p => p.produto_id === prod.produto_id);
+                              if (!produtoEscola) return <TableCell key={prod.produto_id} align="right">-</TableCell>;
+                              
                               return (
                                 <TableCell key={prod.produto_id} align="right">
-                                  {produtoEscola ? `${toNum(produtoEscola.quantidade_kg).toFixed(2)} kg` : '-'}
+                                  {produtoEscola.quantidade_embalagens ? (
+                                    <>
+                                      <strong>{produtoEscola.quantidade_embalagens}</strong> {prod.unidade}
+                                      <span style={{ color: '#6b7280', fontSize: '0.75rem', display: 'block' }}>
+                                        ({toNum(produtoEscola.quantidade_kg).toFixed(2)}kg)
+                                      </span>
+                                    </>
+                                  ) : (
+                                    `${toNum(produtoEscola.quantidade_kg).toFixed(2)} kg`
+                                  )}
                                 </TableCell>
                               );
                             })}

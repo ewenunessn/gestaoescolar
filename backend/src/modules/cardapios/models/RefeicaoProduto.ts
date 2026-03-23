@@ -32,7 +32,7 @@ export async function getRefeicaoProdutos(
         json_build_object(
           'id', p.id,
           'nome', p.nome,
-          'unidade', p.unidade,
+          'unidade', p.unidade_distribuicao,
           'fator_correcao', p.fator_correcao,
           'ativo', p.ativo
         ) as produto,

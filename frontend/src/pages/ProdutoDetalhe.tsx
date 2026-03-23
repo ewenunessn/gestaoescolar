@@ -235,15 +235,18 @@ export default function ProdutoDetalhe() {
       // Garantir que o formulário seja inicializado com todos os dados do produto
       setForm({
         nome: prod.nome || '',
-        unidade: prod.unidade || '',
         descricao: prod.descricao || '',
         categoria: prod.categoria || '',
         tipo_processamento: prod.tipo_processamento || '',
-        peso: prod.peso || '',
-        fator_correcao: prod.fator_correcao || 1.0,
+        validade_minima: prod.validade_minima || '',
+        imagem_url: prod.imagem_url || '',
         perecivel: prod.perecivel || false,
         ativo: prod.ativo !== undefined ? prod.ativo : true,
-        unidade_compra: prod.unidade_compra || '',
+        estoque_minimo: prod.estoque_minimo || 0,
+        fator_correcao: prod.fator_correcao || 1.0,
+        tipo_fator_correcao: prod.tipo_fator_correcao || 'perda',
+        unidade_distribuicao: prod.unidade_distribuicao || '',
+        peso: prod.peso || '',
       });
       try {
         const comp = await buscarComposicaoNutricional(Number(id));
@@ -270,23 +273,20 @@ export default function ProdutoDetalhe() {
         return;
       }
       
-      if (!form.unidade?.trim()) {
-        toast.error('Unidade do produto não pode estar vazia');
-        setIsSaving(false);
-        return;
-      }
-      
       const dataToSend: any = {
         nome: form.nome.trim(),
-        unidade: form.unidade.trim(),
         descricao: form.descricao,
         categoria: form.categoria,
         tipo_processamento: form.tipo_processamento,
-        peso: form.peso ? Number(form.peso) : null,
-        fator_correcao: form.fator_correcao ? Number(form.fator_correcao) : 1.0,
+        validade_minima: form.validade_minima ? Number(form.validade_minima) : null,
+        imagem_url: form.imagem_url,
         perecivel: form.perecivel,
         ativo: form.ativo,
-        unidade_compra: form.unidade_compra || null,
+        estoque_minimo: form.estoque_minimo ? Number(form.estoque_minimo) : 0,
+        fator_correcao: form.fator_correcao ? Number(form.fator_correcao) : 1.0,
+        tipo_fator_correcao: form.tipo_fator_correcao || 'perda',
+        unidade_distribuicao: form.unidade_distribuicao,
+        peso: form.peso ? Number(form.peso) : null,
       };
       const atualizado = await atualizarProdutoMutation.mutateAsync({ id: Number(id), data: dataToSend });
       setProduto(atualizado); 
@@ -338,15 +338,18 @@ export default function ProdutoDetalhe() {
     // Restaurar dados originais do produto
     setForm({
       nome: produto.nome || '',
-      unidade: produto.unidade || '',
       descricao: produto.descricao || '',
       categoria: produto.categoria || '',
       tipo_processamento: produto.tipo_processamento || '',
-      peso: produto.peso || '',
-      fator_correcao: produto.fator_correcao || 1.0,
+      validade_minima: produto.validade_minima || '',
+      imagem_url: produto.imagem_url || '',
       perecivel: produto.perecivel || false,
       ativo: produto.ativo !== undefined ? produto.ativo : true,
-      unidade_compra: produto.unidade_compra || '',
+      estoque_minimo: produto.estoque_minimo || 0,
+      fator_correcao: produto.fator_correcao || 1.0,
+      tipo_fator_correcao: produto.tipo_fator_correcao || 'perda',
+      unidade_distribuicao: produto.unidade_distribuicao || '',
+      peso: produto.peso || '',
     });
   }, [produto]);
 
@@ -405,14 +408,13 @@ export default function ProdutoDetalhe() {
                                     'Lata', 'Galão', 'Bandeja', 'Maço', 'Pote',
                                     'Vidro', 'Sachê', 'Balde'
                                 ]}
-                                value={form.unidade || ''}
-                                onChange={(event, newValue) => setForm({ ...form, unidade: newValue || '' })}
-                                onInputChange={(event, newInputValue) => setForm({ ...form, unidade: newInputValue })}
+                                value={form.unidade_distribuicao || ''}
+                                onChange={(event, newValue) => setForm({ ...form, unidade_distribuicao: newValue || '' })}
+                                onInputChange={(event, newInputValue) => setForm({ ...form, unidade_distribuicao: newInputValue })}
                                 renderInput={(params) => (
                                     <TextField 
                                         {...params} 
-                                        label="Unidade" 
-                                        required
+                                        label="Unidade de Distribuição" 
                                         size="small"
                                     />
                                 )}
@@ -440,32 +442,38 @@ export default function ProdutoDetalhe() {
                         </Grid>
                         <Grid item xs={12}>
                             <TextField
+                                label="Estoque Mínimo"
+                                type="number"
+                                value={form.estoque_minimo || 0}
+                                onChange={e => setForm({ ...form, estoque_minimo: e.target.value })}
+                                fullWidth
+                                size="small"
+                                helperText="Quantidade mínima em estoque"
+                                inputProps={{ min: 0, step: 1 }}
+                            />
+                        </Grid>
+                        <Grid item xs={12}>
+                            <TextField
+                                label="Validade Mínima (dias)"
+                                type="number"
+                                value={form.validade_minima || ''}
+                                onChange={e => setForm({ ...form, validade_minima: e.target.value })}
+                                fullWidth
+                                size="small"
+                                helperText="Dias mínimos de validade"
+                                inputProps={{ min: 0, step: 1 }}
+                            />
+                        </Grid>
+                        <Grid item xs={12}>
+                            <TextField
                                 label="Peso (gramas)"
                                 type="number"
                                 value={form.peso || ''}
                                 onChange={e => setForm({ ...form, peso: e.target.value })}
                                 fullWidth
                                 size="small"
-                                helperText="Peso da embalagem em gramas. Se preenchido junto com Unidade de Compra, a guia de demanda converte kg → pacotes automaticamente."
+                                helperText="Peso da embalagem em gramas"
                                 inputProps={{ min: 0, step: 0.01 }}
-                            />
-                        </Grid>
-                        <Grid item xs={12}>
-                            <Autocomplete
-                                freeSolo
-                                options={['pct', 'cx', 'un', 'fd', 'sc', 'lata', 'balde']}
-                                value={form.unidade_compra || ''}
-                                onChange={(_, v) => setForm({ ...form, unidade_compra: v || '' })}
-                                onInputChange={(_, v) => setForm({ ...form, unidade_compra: v })}
-                                disabled={!form.peso}
-                                renderInput={(params) => (
-                                    <TextField
-                                        {...params}
-                                        label="Unidade de Compra"
-                                        size="small"
-                                        helperText={form.peso ? `Guia gerada em ${form.unidade_compra || 'pct'} (1 ${form.unidade_compra || 'pct'} = ${form.peso}g)` : 'Preencha o Peso primeiro'}
-                                    />
-                                )}
                             />
                         </Grid>
                         <Grid item xs={12}>
@@ -480,9 +488,22 @@ export default function ProdutoDetalhe() {
                                 }}
                                 fullWidth
                                 size="small"
-                                helperText="Fator para calcular per capita líquido. Ex: 1.15 (batata descascada), 2.5 (arroz cru→cozido)"
-                                inputProps={{ min: 1.0, max: 3.0, step: 0.001 }}
+                                helperText="Fator para cálculo de perdas/rendimento"
+                                inputProps={{ min: 0, step: 0.001 }}
                             />
+                        </Grid>
+                        <Grid item xs={12}>
+                            <FormControl fullWidth size="small">
+                                <InputLabel>Tipo de Fator</InputLabel>
+                                <Select 
+                                    value={form.tipo_fator_correcao || 'perda'} 
+                                    onChange={e => setForm({ ...form, tipo_fator_correcao: e.target.value })}
+                                    label="Tipo de Fator"
+                                >
+                                    <MenuItem value="perda">Perda</MenuItem>
+                                    <MenuItem value="rendimento">Rendimento</MenuItem>
+                                </Select>
+                            </FormControl>
                         </Grid>
                         <Grid item xs={12}>
                             <FormControl fullWidth size="small">
@@ -519,10 +540,16 @@ export default function ProdutoDetalhe() {
                             <InfoItem label="Nome" value={produto.nome}/>
                         </Grid>
                         <Grid item xs={12}>
-                            <InfoItem label="Unidade" value={produto.unidade || '-'}/>
+                            <InfoItem label="Unidade de Distribuição" value={produto.unidade_distribuicao || '-'}/>
                         </Grid>
                         <Grid item xs={12}>
                             <InfoItem label="Categoria" value={produto.categoria}/>
+                        </Grid>
+                        <Grid item xs={12}>
+                            <InfoItem label="Estoque Mínimo" value={produto.estoque_minimo || '0'}/>
+                        </Grid>
+                        <Grid item xs={12}>
+                            <InfoItem label="Validade Mínima" value={produto.validade_minima ? `${produto.validade_minima} dias` : '-'}/>
                         </Grid>
                         <Grid item xs={12}>
                             <InfoItem label="Peso" value={produto.peso ? `${produto.peso}g` : '-'}/>
@@ -531,8 +558,8 @@ export default function ProdutoDetalhe() {
                             <InfoItem 
                                 label="Fator de Correção" 
                                 value={produto.fator_correcao 
-                                    ? `${toNum(produto.fator_correcao).toFixed(3)}` 
-                                    : '1.000'}
+                                    ? `${toNum(produto.fator_correcao).toFixed(3)} (${produto.tipo_fator_correcao || 'perda'})` 
+                                    : '1.000 (perda)'}
                             />
                         </Grid>
                         <Grid item xs={12}>
@@ -541,22 +568,6 @@ export default function ProdutoDetalhe() {
                         <Grid item xs={12}>
                             <InfoItem label="Perecível" value={produto.perecivel ? 'Sim' : 'Não'}/>
                         </Grid>
-                        {produto.peso && produto.unidade_compra && (
-                            <Grid item xs={12}>
-                                <InfoItem
-                                    label="Unidade de Compra"
-                                    value={`${produto.unidade_compra} (1 ${produto.unidade_compra} = ${produto.peso}g)`}
-                                />
-                            </Grid>
-                        )}
-                        {produto.peso_embalagem_g && (
-                            <Grid item xs={12}>
-                                <InfoItem
-                                    label="Embalagem / Unidade de Compra"
-                                    value={`${produto.peso_embalagem_g}g por ${produto.unidade_compra || 'pct'} — guia gerada em ${produto.unidade_compra || 'pct'}`}
-                                />
-                            </Grid>
-                        )}
                     </Grid>
                 )}
             </SectionPaper>

@@ -7,107 +7,142 @@ import * as XLSX from 'xlsx';
 
 export const PRODUTO_IMPORT_HEADERS = [
   'nome',
-  'unidade',
   'descricao',
-  'categoria',
   'tipo_processamento',
-  'peso',
-  'fator_correcao',
+  'categoria',
+  'validade_minima',
   'perecivel',
-  'ativo'
+  'ativo',
+  'estoque_minimo',
+  'fator_correcao',
+  'tipo_fator_correcao',
+  'unidade_distribuicao',
+  'peso'
 ];
 
 export const PRODUTO_IMPORT_EXEMPLOS = [
   [
     'Arroz Branco Tipo 1',
-    'KG',
     'Arroz branco polido, tipo 1, classe longo fino',
-    'Cereais',
     'processado',
-    1.0,
-    1.0,
+    'Cereais',
+    180,
     'false',
-    'true'
+    'true',
+    100,
+    1.0,
+    'perda',
+    'KG',
+    1000
   ],
   [
     'Feijão Carioca',
-    'KG',
     'Feijão carioca tipo 1, classe cores',
-    'Leguminosas',
     'in natura',
-    1.0,
-    1.0,
+    'Leguminosas',
+    365,
     'false',
-    'true'
+    'true',
+    50,
+    1.0,
+    'perda',
+    'KG',
+    1000
   ],
   [
     'Banana Prata',
-    'KG',
     'Banana prata fresca, primeira qualidade',
-    'Frutas',
     'in natura',
-    0.12,
-    1.4,
+    'Frutas',
+    7,
     'true',
-    'true'
+    'true',
+    0,
+    1.4,
+    'perda',
+    'KG',
+    120
   ],
   [
-    'Carne Bovina Moída',
-    'KG',
-    'Carne bovina moída, primeira qualidade',
-    'Carnes',
+    'Ovo De Galinha',
+    'Ovo de galinha tipo extra, branco',
     'in natura',
-    1.0,
-    1.0,
+    'Ovos',
+    30,
     'true',
-    'true'
+    'true',
+    200,
+    1.0,
+    'perda',
+    'Unidade',
+    60
   ],
   [
     'Óleo de Soja',
-    'L',
     'Óleo de soja refinado',
-    'Óleos',
     'processado',
-    0.92,
-    1.0,
+    'Óleos',
+    365,
     'false',
-    'true'
+    'true',
+    20,
+    1.0,
+    'perda',
+    'L',
+    920
   ]
 ];
 
 export const PRODUTO_IMPORT_COL_WIDTHS = [
   { wch: 30 }, // nome
-  { wch: 10 }, // unidade
-  { wch: 35 }, // descricao
-  { wch: 15 }, // categoria
+  { wch: 40 }, // descricao
   { wch: 25 }, // tipo_processamento
-  { wch: 10 }, // peso
-  { wch: 15 }, // fator_correcao
+  { wch: 15 }, // categoria
+  { wch: 15 }, // validade_minima
   { wch: 10 }, // perecivel
-  { wch: 8 }   // ativo
+  { wch: 8 },  // ativo
+  { wch: 15 }, // estoque_minimo
+  { wch: 15 }, // fator_correcao
+  { wch: 20 }, // tipo_fator_correcao
+  { wch: 20 }, // unidade_distribuicao
+  { wch: 12 }  // peso
 ];
 
 export const PRODUTO_IMPORT_INSTRUCOES = [
   ['INSTRUÇÕES PARA IMPORTAÇÃO DE PRODUTOS'],
   [''],
   ['Campo', 'Descrição', 'Obrigatório', 'Exemplo'],
-  ['nome', 'Nome do produto', 'SIM', 'Arroz Branco'],
-  ['unidade', 'Unidade de medida (UN, KG, L, etc)', 'SIM', 'KG'],
-  ['descricao', 'Descrição detalhada do produto', 'NÃO', 'Arroz branco tipo 1'],
-  ['categoria', 'Categoria do produto', 'NÃO', 'Cereais'],
+  ['nome', 'Nome do produto', 'SIM', 'Arroz Branco Tipo 1'],
+  ['descricao', 'Descrição detalhada do produto', 'NÃO', 'Arroz branco polido tipo 1'],
   ['tipo_processamento', 'Tipo: in natura, minimamente processado, processado, ultraprocessado', 'NÃO', 'processado'],
-  ['peso', 'Peso unitário em kg (para conversões)', 'NÃO', '1.0'],
-  ['fator_correcao', 'Fator de correção (perdas no preparo)', 'NÃO', '1.0'],
+  ['categoria', 'Categoria do produto', 'NÃO', 'Cereais'],
+  ['validade_minima', 'Validade mínima em dias', 'NÃO', '180'],
   ['perecivel', 'Produto perecível (true/false)', 'NÃO', 'false'],
   ['ativo', 'Produto ativo (true/false)', 'NÃO', 'true'],
+  ['estoque_minimo', 'Estoque mínimo em unidades', 'NÃO', '100'],
+  ['fator_correcao', 'Fator de correção (perdas/rendimento)', 'NÃO', '1.0'],
+  ['tipo_fator_correcao', 'Tipo: perda ou rendimento', 'NÃO', 'perda'],
+  ['unidade_distribuicao', 'Unidade de distribuição (KG, L, Unidade, etc)', 'NÃO', 'KG'],
+  ['peso', 'Peso unitário em gramas', 'NÃO', '1000'],
   [''],
-  ['NOTAS:'],
-  ['- Preencha apenas os campos necessários'],
+  ['NOTAS IMPORTANTES:'],
+  ['- Nome é obrigatório e identifica o produto'],
   ['- Use true ou false para os campos perecivel e ativo'],
-  ['- Peso: usado para conversões de unidades (ex: 0.12 para banana)'],
-  ['- Fator de correção: >= 1.0, considera perdas no preparo (ex: 1.4 para banana com casca)'],
+  ['- Peso: em GRAMAS (ex: 1000 para 1kg, 60 para 1 ovo)'],
+  ['- Fator de correção: >= 1.0 para perdas (ex: 1.4 para banana com casca)'],
+  ['- Fator de correção: <= 1.0 para rendimento (ex: 0.8 para arroz que rende 80%)'],
+  ['- Tipo fator correção: "perda" ou "rendimento"'],
+  ['- Unidade distribuição: como o produto é distribuído (KG, L, Unidade, Pacote, etc)'],
+  ['- Validade mínima: em dias (ex: 7 para frutas, 180 para arroz)'],
+  ['- Estoque mínimo: quantidade mínima para alerta'],
   ['- O sistema identificará produtos existentes pelo nome e fará atualização'],
-  ['- Unidades comuns: UN, KG, G, L, ML, DZ, PCT, CX, FD, SC']
+  [''],
+  ['EXEMPLOS DE PESO (em gramas):'],
+  ['- Arroz (pacote 1kg): 1000'],
+  ['- Ovo: 60'],
+  ['- Banana: 120'],
+  ['- Óleo (litro): 920'],
+  ['- Pão francês: 50']
 ];
 
 /**
@@ -124,11 +159,11 @@ export function gerarModeloExcelProdutos(nomeArquivo?: string): void {
   // Adicionar validação de dados
   if (!ws['!dataValidation']) ws['!dataValidation'] = [];
   
-  // Validação para tipo_processamento (coluna E, linhas 2 a 100)
+  // Validação para tipo_processamento (coluna C, linhas 2 a 100)
   ws['!dataValidation'].push({
     type: 'list',
     allowBlank: true,
-    sqref: 'E2:E100',
+    sqref: 'C2:C100',
     formulas: ['"in natura,minimamente processado,processado,ultraprocessado"'],
     promptTitle: 'Tipo de Processamento',
     prompt: 'Selecione uma das opções',
@@ -136,11 +171,11 @@ export function gerarModeloExcelProdutos(nomeArquivo?: string): void {
     error: 'Escolha: in natura, minimamente processado, processado ou ultraprocessado'
   });
 
-  // Validação para perecivel (coluna H, linhas 2 a 100)
+  // Validação para perecivel (coluna F, linhas 2 a 100)
   ws['!dataValidation'].push({
     type: 'list',
     allowBlank: false,
-    sqref: 'H2:H100',
+    sqref: 'F2:F100',
     formulas: ['"true,false"'],
     promptTitle: 'Perecível',
     prompt: 'Selecione true ou false',
@@ -148,16 +183,28 @@ export function gerarModeloExcelProdutos(nomeArquivo?: string): void {
     error: 'Escolha: true ou false'
   });
 
-  // Validação para ativo (coluna I, linhas 2 a 100)
+  // Validação para ativo (coluna G, linhas 2 a 100)
   ws['!dataValidation'].push({
     type: 'list',
     allowBlank: false,
-    sqref: 'I2:I100',
+    sqref: 'G2:G100',
     formulas: ['"true,false"'],
     promptTitle: 'Ativo',
     prompt: 'Selecione true ou false',
     errorTitle: 'Valor Inválido',
     error: 'Escolha: true ou false'
+  });
+
+  // Validação para tipo_fator_correcao (coluna J, linhas 2 a 100)
+  ws['!dataValidation'].push({
+    type: 'list',
+    allowBlank: true,
+    sqref: 'J2:J100',
+    formulas: ['"perda,rendimento"'],
+    promptTitle: 'Tipo Fator Correção',
+    prompt: 'Selecione perda ou rendimento',
+    errorTitle: 'Valor Inválido',
+    error: 'Escolha: perda ou rendimento'
   });
 
   // Criar workbook e adicionar worksheet

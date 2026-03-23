@@ -1,5 +1,5 @@
 // Controller de contrato-produtos para PostgreSQL
-// peso, marca e unidade são definidos por contrato (não pelo produto base)
+// marca, peso_embalagem, unidade_compra e fator_conversao são definidos por contrato
 import { Request, Response } from "express";
 import db from "../../../database";
 
@@ -13,8 +13,9 @@ export async function listarContratoProdutos(req: Request, res: Response) {
         cp.preco_unitario,
         cp.quantidade_contratada,
         cp.marca,
-        cp.peso,
-        cp.unidade,
+        cp.peso_embalagem,
+        cp.unidade_compra,
+        cp.fator_conversao,
         cp.ativo,
         p.nome as produto_nome,
         c.numero as contrato_numero
@@ -46,8 +47,9 @@ export async function listarProdutosPorContrato(req: Request, res: Response) {
         cp.preco_unitario,
         cp.quantidade_contratada,
         cp.marca,
-        cp.peso,
-        cp.unidade,
+        cp.peso_embalagem,
+        cp.unidade_compra,
+        cp.fator_conversao,
         cp.ativo,
         p.nome as produto_nome,
         p.descricao as produto_descricao,
@@ -87,8 +89,9 @@ export async function listarProdutosPorFornecedor(req: Request, res: Response) {
         cp.preco_unitario,
         cp.quantidade_contratada,
         cp.marca,
-        cp.peso,
-        cp.unidade,
+        cp.peso_embalagem,
+        cp.unidade_compra,
+        cp.fator_conversao,
         p.nome as produto_nome,
         c.numero as contrato_numero
       FROM contrato_produtos cp
@@ -121,8 +124,9 @@ export async function buscarContratoProduto(req: Request, res: Response) {
         cp.preco_unitario,
         cp.quantidade_contratada,
         cp.marca,
-        cp.peso,
-        cp.unidade,
+        cp.peso_embalagem,
+        cp.unidade_compra,
+        cp.fator_conversao,
         cp.ativo,
         p.nome as produto_nome,
         c.numero as contrato_numero
@@ -155,8 +159,9 @@ export async function criarContratoProduto(req: Request, res: Response) {
       preco_unitario, 
       quantidade_contratada,
       marca,
-      peso,
-      unidade,
+      peso_embalagem,
+      unidade_compra,
+      fator_conversao,
       ativo = true 
     } = req.body;
 
@@ -172,7 +177,7 @@ export async function criarContratoProduto(req: Request, res: Response) {
       return res.status(404).json({ success: false, message: "Contrato não encontrado" });
     }
 
-    const produtoCheck = await db.query(`SELECT id, nome, unidade FROM produtos WHERE id = $1`, [produto_id]);
+    const produtoCheck = await db.query(`SELECT id, nome FROM produtos WHERE id = $1`, [produto_id]);
     if (produtoCheck.rows.length === 0) {
       return res.status(404).json({ success: false, message: "Produto não encontrado" });
     }
@@ -189,17 +194,24 @@ export async function criarContratoProduto(req: Request, res: Response) {
       });
     }
 
-    // Usar unidade do contrato, ou fallback para unidade do produto
-    const unidadeFinal = unidade || produtoCheck.rows[0].unidade || null;
-
     const result = await db.query(`
       INSERT INTO contrato_produtos (
         contrato_id, produto_id, preco_unitario, quantidade_contratada,
-        marca, peso, unidade, ativo
+        marca, peso_embalagem, unidade_compra, fator_conversao, ativo
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *
-    `, [contrato_id, produto_id, preco_unitario, quantidade_contratada, marca || null, peso || null, unidadeFinal, ativo]);
+    `, [
+      contrato_id, 
+      produto_id, 
+      preco_unitario, 
+      quantidade_contratada, 
+      marca || null, 
+      peso_embalagem || null, 
+      unidade_compra || null,
+      fator_conversao || null,
+      ativo
+    ]);
 
     res.json({
       success: true,
@@ -219,7 +231,7 @@ export async function criarContratoProduto(req: Request, res: Response) {
 export async function editarContratoProduto(req: Request, res: Response) {
   try {
     const { id } = req.params;
-    const { preco_unitario, quantidade_contratada, marca, peso, unidade, ativo } = req.body;
+    const { preco_unitario, quantidade_contratada, marca, peso_embalagem, unidade_compra, fator_conversao, ativo } = req.body;
 
     const updates: string[] = [];
     const values: any[] = [];
@@ -228,8 +240,9 @@ export async function editarContratoProduto(req: Request, res: Response) {
     if (preco_unitario !== undefined) { updates.push(`preco_unitario = $${paramIndex++}`); values.push(preco_unitario); }
     if (quantidade_contratada !== undefined) { updates.push(`quantidade_contratada = $${paramIndex++}`); values.push(quantidade_contratada); }
     if (marca !== undefined) { updates.push(`marca = $${paramIndex++}`); values.push(marca); }
-    if (peso !== undefined) { updates.push(`peso = $${paramIndex++}`); values.push(peso); }
-    if (unidade !== undefined) { updates.push(`unidade = $${paramIndex++}`); values.push(unidade); }
+    if (peso_embalagem !== undefined) { updates.push(`peso_embalagem = $${paramIndex++}`); values.push(peso_embalagem); }
+    if (unidade_compra !== undefined) { updates.push(`unidade_compra = $${paramIndex++}`); values.push(unidade_compra); }
+    if (fator_conversao !== undefined) { updates.push(`fator_conversao = $${paramIndex++}`); values.push(fator_conversao); }
     if (ativo !== undefined) { updates.push(`ativo = $${paramIndex++}`); values.push(ativo); }
 
     if (updates.length === 0) {

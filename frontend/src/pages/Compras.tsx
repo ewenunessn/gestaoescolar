@@ -288,6 +288,7 @@ const PedidosPage = () => {
             onCreateClick={() => navigate('/compras/novo')}
             createButtonLabel="Novo Pedido"
             onFilterClick={(e) => setFilterAnchorEl(e.currentTarget)}
+            initialPageSize={50}
           />
         </Box>
       </PageContainer>

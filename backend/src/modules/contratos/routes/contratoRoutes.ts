@@ -5,7 +5,8 @@ import {
   criarContrato,
   editarContrato,
   removerContrato,
-  obterEstatisticasContratos
+  obterEstatisticasContratos,
+  buscarContratosPorProduto
 } from "../controllers/contratoController";
 import { authenticateToken } from "../../../middleware/authMiddleware";
 import { requireLeitura, requireEscrita } from "../../../middleware/permissionMiddleware";
@@ -17,6 +18,7 @@ router.use(authenticateToken);
 
 // Rotas de LEITURA
 router.get("/estatisticas", requireLeitura('contratos'), obterEstatisticasContratos);
+router.get("/buscar-por-produto", requireLeitura('contratos'), buscarContratosPorProduto);
 router.get("/", requireLeitura('contratos'), listarContratos);
 router.get("/:id", requireLeitura('contratos'), buscarContrato);
 

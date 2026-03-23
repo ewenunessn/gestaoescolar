@@ -19,6 +19,8 @@ export interface DemandaPorEscola {
     unidade: string;
     quantidade_kg: number;
     quantidade_gramas: number;
+    quantidade_embalagens?: number;
+    peso_embalagem?: number;
   }[];
 }
 
@@ -27,6 +29,8 @@ export interface DemandaPorProduto {
   produto_nome: string;
   unidade: string;
   quantidade_total_kg: number;
+  quantidade_embalagens?: number;
+  peso_embalagem?: number;
 }
 
 export interface DemandaConsolidada {
@@ -38,6 +42,8 @@ export interface DemandaConsolidada {
     produto_id: number;
     produto_nome: string;
     quantidade_kg: number;
+    quantidade_embalagens?: number;
+    peso_embalagem?: number;
   }[];
 }
 
@@ -144,11 +150,13 @@ export interface GerarPedidoDaGuiaResponse {
 export async function gerarPedidoDaGuia(
   guia_id: number, 
   contratos_selecionados?: { produto_id: number; contrato_produto_id: number; quantidade?: number }[],
+  ignorar_sem_contrato?: boolean,
   observacoes?: string
 ): Promise<GerarPedidoDaGuiaResponse> {
   const response = await api.post('/planejamento-compras/gerar-pedido-da-guia', { 
     guia_id, 
     contratos_selecionados,
+    ignorar_sem_contrato,
     observacoes 
   });
   return response.data;
