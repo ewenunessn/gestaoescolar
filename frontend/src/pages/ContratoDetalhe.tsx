@@ -47,7 +47,7 @@ import AdicionarProdutosLoteDialog from '../components/AdicionarProdutosLoteDial
 
 // --- Constantes e Funções Utilitárias (Fora do Componente) ---
 
-const produtoVazio = { produto_id: "", quantidade: "", preco_unitario: "", marca: "", peso: "" };
+const produtoVazio = { produto_id: "", quantidade: "", preco_unitario: "", marca: "", peso: "", unidade: "" };
 const contratoVazio = { fornecedor_id: "", numero: "", data_inicio: "", data_fim: "", ativo: true };
 
 const formatarData = (data: string) => new Date(data).toLocaleDateString("pt-BR", { timeZone: 'UTC' });
@@ -334,7 +334,8 @@ export default function ContratoDetalhe() {
         quantidade: produto.quantidade, 
         preco_unitario: produto.preco_unitario,
         marca: produto.marca || "",
-        peso: produto.peso ? formatarNumero(produto.peso) : ""
+        peso: produto.peso ? formatarNumero(produto.peso) : "",
+        unidade: produto.unidade || ""
       };
       setFormProduto(formInicial);
       setFormProdutoInicial(JSON.parse(JSON.stringify(formInicial)));
@@ -390,6 +391,7 @@ export default function ContratoDetalhe() {
         preco_unitario: Number(formProduto.preco_unitario),
         marca: formProduto.marca || "",
         peso: formProduto.peso ? Number(formProduto.peso.toString().replace(',', '.')) : null,
+        unidade: formProduto.unidade || null,
         ativo: true
       };
       
@@ -512,6 +514,7 @@ export default function ContratoDetalhe() {
           preco_unitario: produto.preco_unitario || 0,
           marca: produto.marca || "",
           peso: produto.peso || null,
+          unidade: produto.unidade || null,
           ativo: true
         };
         console.log('📝 Payload para adicionar:', payload);
@@ -860,7 +863,12 @@ export default function ContratoDetalhe() {
             value={produtoSelecionado}
             onChange={(_, newValue) => {
               setProdutoSelecionado(newValue);
-              setFormProduto({ ...formProduto, produto_id: newValue?.id || "", peso: newValue?.peso ? formatarNumero(newValue.peso) : "" });
+              setFormProduto({ 
+                ...formProduto, 
+                produto_id: newValue?.id || "", 
+                peso: newValue?.peso ? formatarNumero(newValue.peso) : "",
+                unidade: formProduto.unidade || newValue?.unidade || ""
+              });
               if (newValue) {
                 setTouched({ ...touched, produto_id: true });
                 if (erroProduto) setErroProduto("");
@@ -899,7 +907,7 @@ export default function ContratoDetalhe() {
           {produtoSelecionado && (
             <Alert severity="info" sx={{ mb: 1.5, py: 0.5 }}>
               <Typography variant="body2" sx={{ fontSize: '0.8125rem' }}>
-                <strong>Unidade:</strong> {produtoSelecionado.unidade || "-"}
+                <strong>Unidade padrão:</strong> {produtoSelecionado.unidade || "-"}
                 {produtoSelecionado.peso && <> • <strong>Peso padrão:</strong> {formatarNumero(produtoSelecionado.peso)}g</>}
               </Typography>
             </Alert>
@@ -938,10 +946,30 @@ export default function ContratoDetalhe() {
             fullWidth 
             size="small"
             sx={{ mb: 1.5 }} 
-            placeholder="Ex: 1000 para 1kg" 
-            helperText="Deixe vazio para usar o peso padrão do produto"
+            placeholder="Ex: 500 para 500g, 1000 para 1kg" 
+            helperText="Peso da embalagem neste contrato (pode diferir do produto base)"
             inputProps={{ min: 0 }} 
           />
+          <FormControl fullWidth size="small" sx={{ mb: 1.5 }}>
+            <InputLabel>Unidade</InputLabel>
+            <Select
+              value={formProduto.unidade || ""}
+              label="Unidade"
+              onChange={e => setFormProduto({ ...formProduto, unidade: e.target.value })}
+            >
+              <MenuItem value="">Padrão do produto</MenuItem>
+              <MenuItem value="KG">KG - Quilograma</MenuItem>
+              <MenuItem value="G">G - Grama</MenuItem>
+              <MenuItem value="L">L - Litro</MenuItem>
+              <MenuItem value="ML">ML - Mililitro</MenuItem>
+              <MenuItem value="UN">UN - Unidade</MenuItem>
+              <MenuItem value="PCT">PCT - Pacote</MenuItem>
+              <MenuItem value="CX">CX - Caixa</MenuItem>
+              <MenuItem value="DZ">DZ - Dúzia</MenuItem>
+              <MenuItem value="SC">SC - Saco</MenuItem>
+              <MenuItem value="FD">FD - Fardo</MenuItem>
+            </Select>
+          </FormControl>
           <TextField 
             label="Preço Unitário *" 
             type="number" 

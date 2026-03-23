@@ -979,12 +979,24 @@ export const gerarGuiasDemanda = async (req: Request, res: Response) => {
       guia_id = guiaResult.rows[0].id;
     }
 
-    // Buscar flag perecivel de todos os produtos envolvidos
+    // Buscar flag perecivel + dados de embalagem de todos os produtos envolvidos
     const todosProdutoIds = [...new Set(demandasPorPeriodo.flatMap(d => d.demanda.map(p => p.produto_id)))];
     const perecivelResult = await client.query(`
-      SELECT id, perecivel FROM produtos WHERE id = ANY($1)
+      SELECT id, perecivel, peso, unidade_compra FROM produtos WHERE id = ANY($1)
     `, [todosProdutoIds]);
     const perecivelMap = new Map<number, boolean>(perecivelResult.rows.map((r: any) => [r.id, !!r.perecivel]));
+    // peso em gramas → usado para converter kg → pacotes/unidades quando unidade_compra estiver definido
+    const embalagemMap = new Map<number, { peso_g: number; unidade: string }>(
+      perecivelResult.rows
+        .filter((r: any) => r.peso && r.peso > 0 && r.unidade_compra)
+        .map((r: any) => [r.id, { peso_g: Number(r.peso), unidade: r.unidade_compra }])
+    );
+
+    // Helper: converte kg para unidades de embalagem (arredonda para cima)
+    const converterParaEmbalagem = (quantidade_kg: number, peso_g: number): number => {
+      const quantidadeGramas = quantidade_kg * 1000;
+      return Math.ceil(quantidadeGramas / peso_g);
+    };
 
     // Montar estrutura de itens a inserir:
     // - Perecíveis: 1 linha por (produto, escola, período) com data_entrega = data_inicio do período
@@ -995,14 +1007,27 @@ export const gerarGuiasDemanda = async (req: Request, res: Response) => {
     for (const { periodo, demanda } of demandasPorPeriodo) {
       for (const produto of demanda) {
         const perecivel = perecivelMap.get(produto.produto_id) ?? true; // default: tratar como perecível se não souber
+        const embalagem = embalagemMap.get(produto.produto_id);
         for (const esc of produto.por_escola) {
           if (esc.quantidade_kg <= 0) continue;
+
+          // Converter kg → unidades de embalagem se o produto tiver peso_embalagem_g
+          let quantidade: number;
+          let unidade: string;
+          if (embalagem) {
+            quantidade = converterParaEmbalagem(esc.quantidade_kg, embalagem.peso_g);
+            unidade = embalagem.unidade;
+          } else {
+            quantidade = esc.quantidade_kg;
+            unidade = produto.unidade || 'kg';
+          }
+
           if (perecivel) {
             pereciveisParaInserir.push({
               produto_id: produto.produto_id,
               escola_id: esc.escola_id,
-              quantidade: esc.quantidade_kg,
-              unidade: produto.unidade || 'kg',
+              quantidade,
+              unidade,
               data_entrega: periodo.data_inicio,
             });
           } else {
@@ -1012,11 +1037,18 @@ export const gerarGuiasDemanda = async (req: Request, res: Response) => {
                 produto_id: produto.produto_id,
                 escola_id: esc.escola_id,
                 quantidade: 0,
-                unidade: produto.unidade || 'kg',
+                unidade,
                 data_entrega: periodo.data_inicio, // menor data (períodos são processados em ordem)
               });
             }
-            naoPereciveisMap.get(key)!.quantidade += esc.quantidade_kg;
+            // Para não perecíveis com embalagem: somar em kg e converter no final
+            if (embalagem) {
+              naoPereciveisMap.get(key)!.quantidade += esc.quantidade_kg;
+              // marcar para converter depois
+              (naoPereciveisMap.get(key) as any)._embalagem = embalagem;
+            } else {
+              naoPereciveisMap.get(key)!.quantidade += esc.quantidade_kg;
+            }
           }
         }
       }
@@ -1035,12 +1067,16 @@ export const gerarGuiasDemanda = async (req: Request, res: Response) => {
 
     // Inserir não perecíveis (1 linha por escola, quantidade somada)
     for (const item of naoPereciveisMap.values()) {
-      const qtd = Math.round(item.quantidade * 1000) / 1000;
+      const emb = (item as any)._embalagem as { peso_g: number; unidade: string } | undefined;
+      const qtd = emb
+        ? converterParaEmbalagem(item.quantidade, emb.peso_g)
+        : Math.round(item.quantidade * 1000) / 1000;
+      const unid = emb ? emb.unidade : item.unidade;
       await client.query(`
         INSERT INTO guia_produto_escola
           (guia_id, produto_id, escola_id, quantidade, quantidade_demanda, unidade, data_entrega, status, created_at, updated_at)
         VALUES ($1, $2, $3, $4, $4, $5, $6, 'pendente', NOW(), NOW())
-      `, [guia_id, item.produto_id, item.escola_id, qtd, item.unidade, item.data_entrega]);
+      `, [guia_id, item.produto_id, item.escola_id, qtd, unid, item.data_entrega]);
       totalItens++;
     }
 

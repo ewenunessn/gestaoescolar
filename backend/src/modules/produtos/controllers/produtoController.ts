@@ -200,7 +200,8 @@ export const criarProduto = asyncHandler(async (req: Request, res: Response) => 
     peso,
     fator_correcao,
     perecivel = false,
-    ativo = true 
+    ativo = true,
+    unidade_compra,
   } = req.body;
 
   // Validar campos obrigatórios
@@ -224,10 +225,10 @@ export const criarProduto = asyncHandler(async (req: Request, res: Response) => 
 
   try {
     const result = await db.query(`
-      INSERT INTO produtos (nome, unidade, descricao, categoria, tipo_processamento, peso, fator_correcao, perecivel, ativo, created_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
+      INSERT INTO produtos (nome, unidade, descricao, categoria, tipo_processamento, peso, fator_correcao, perecivel, ativo, unidade_compra, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)
       RETURNING *
-    `, [nome.trim(), unidadeNormalizada, descricao, categoria, tipo_processamento, pesoNormalizado, fatorCorrecaoNormalizado, perecivel, ativo]);
+    `, [nome.trim(), unidadeNormalizada, descricao, categoria, tipo_processamento, pesoNormalizado, fatorCorrecaoNormalizado, perecivel, ativo, unidade_compra || null]);
 
     res.status(201).json({
       success: true,
@@ -250,7 +251,8 @@ export const editarProduto = asyncHandler(async (req: Request, res: Response) =>
     peso,
     fator_correcao,
     perecivel,
-    ativo 
+    ativo,
+    unidade_compra,
   } = req.body;
 
   // Validar apenas se campos obrigatórios não estão vazios (quando fornecidos)
@@ -287,10 +289,11 @@ export const editarProduto = asyncHandler(async (req: Request, res: Response) =>
       fator_correcao = COALESCE($7, fator_correcao),
       perecivel = COALESCE($8, perecivel),
       ativo = COALESCE($9, ativo),
+      unidade_compra = COALESCE($10, unidade_compra),
       updated_at = CURRENT_TIMESTAMP
-    WHERE id = $10
+    WHERE id = $11
     RETURNING *
-  `, [nomeNormalizado, unidadeNormalizada, descricao, categoria, tipo_processamento, pesoNormalizado, fatorCorrecaoNormalizado, perecivel, ativo, id]);
+  `, [nomeNormalizado, unidadeNormalizada, descricao, categoria, tipo_processamento, pesoNormalizado, fatorCorrecaoNormalizado, perecivel, ativo, unidade_compra !== undefined ? (unidade_compra || null) : undefined, id]);
 
   if (result.rows.length === 0) {
     throw new NotFoundError('Produto', id);

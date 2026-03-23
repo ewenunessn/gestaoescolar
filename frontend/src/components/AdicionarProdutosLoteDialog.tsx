@@ -18,7 +18,11 @@ import {
   Typography,
   Chip,
   IconButton,
-  Alert
+  Alert,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -40,11 +44,12 @@ interface Produto {
   peso?: number;
 }
 
-interface ProdutoSelecionado extends Produto {
+interface ProdutoSelecionado extends Omit<Produto, 'unidade'> {
   preco_unitario?: number;
   quantidade_contratada?: number;
   marca?: string;
   peso?: number;
+  unidade?: string;
 }
 
 interface AdicionarProdutosLoteDialogProps {
@@ -107,11 +112,12 @@ const AdicionarProdutosLoteDialog: React.FC<AdicionarProdutosLoteDialogProps> = 
       .map(p => ({
         produto_id: p.id,
         nome: p.nome,
-        unidade: p.unidade,
+        unidade_produto: p.unidade,
         categoria: p.categoria || '',
         quantidade_contratada: '',
         marca: '',
         peso: p.peso || '',
+        unidade_contrato: p.unidade || '',
         preco_unitario: ''
       }));
 
@@ -121,11 +127,12 @@ const AdicionarProdutosLoteDialog: React.FC<AdicionarProdutosLoteDialogProps> = 
     ws['!cols'] = [
       { wch: 10 }, // produto_id
       { wch: 40 }, // nome
-      { wch: 10 }, // unidade
+      { wch: 15 }, // unidade_produto
       { wch: 20 }, // categoria
       { wch: 20 }, // quantidade_contratada
       { wch: 20 }, // marca
       { wch: 15 }, // peso
+      { wch: 15 }, // unidade_contrato
       { wch: 15 }  // preco_unitario
     ];
 
@@ -139,18 +146,18 @@ const AdicionarProdutosLoteDialog: React.FC<AdicionarProdutosLoteDialogProps> = 
       ['Campo', 'Descrição', 'Obrigatório'],
       ['produto_id', 'ID do produto (não alterar)', 'SIM'],
       ['nome', 'Nome do produto (não alterar)', 'SIM'],
-      ['unidade', 'Unidade (não alterar)', 'SIM'],
+      ['unidade_produto', 'Unidade padrão do produto (não alterar)', 'SIM'],
       ['categoria', 'Categoria (não alterar)', 'NÃO'],
       ['quantidade_contratada', 'Quantidade contratada', 'SIM'],
-      ['marca', 'Marca do produto', 'NÃO'],
-      ['peso', 'Peso em gramas (já preenchido se o produto tiver)', 'NÃO'],
+      ['marca', 'Marca do produto neste contrato', 'NÃO'],
+      ['peso', 'Peso em gramas da embalagem neste contrato', 'NÃO'],
+      ['unidade_contrato', 'Unidade específica deste contrato (ex: PCT, KG)', 'NÃO'],
       ['preco_unitario', 'Preço unitário do produto', 'SIM'],
       [''],
       ['NOTAS:'],
-      ['- Não altere as colunas produto_id, nome, unidade e categoria'],
-      ['- Preencha quantidade_contratada e preco_unitario com valores numéricos'],
-      ['- Peso já vem preenchido se o produto tiver, mas pode ser alterado'],
-      ['- Peso deve ser em gramas (ex: 1000 para 1kg)'],
+      ['- Não altere as colunas produto_id, nome, unidade_produto e categoria'],
+      ['- unidade_contrato pode diferir da unidade_produto (ex: biscoito 500g vs 345g)'],
+      ['- Peso deve ser em gramas (ex: 500 para 500g, 1000 para 1kg)'],
       ['- Após preencher, importe o arquivo de volta no sistema']
     ];
 
@@ -171,6 +178,7 @@ const AdicionarProdutosLoteDialog: React.FC<AdicionarProdutosLoteDialogProps> = 
         quantidade_contratada: undefined,
         marca: '',
         peso: produto?.peso || undefined,
+        unidade: produto?.unidade || '',
         preco_unitario: undefined
       };
     });
@@ -282,6 +290,7 @@ const AdicionarProdutosLoteDialog: React.FC<AdicionarProdutosLoteDialogProps> = 
             quantidade_contratada: quantidadeContratada,
             marca: row.marca || '',
             peso: row.peso ? Number(row.peso) : undefined,
+            unidade: row.unidade_contrato || row.unidade || undefined,
             preco_unitario: precoUnitario
           };
         }
@@ -607,9 +616,29 @@ const AdicionarProdutosLoteDialog: React.FC<AdicionarProdutosLoteDialogProps> = 
                         size="small"
                         value={dados.peso || ''}
                         onChange={(e) => handleChangeDadosProduto(id, 'peso', parseFloat(e.target.value))}
-                        placeholder="Ex: 1000 para 1kg"
+                        placeholder="Ex: 500 para 500g"
                         inputProps={{ min: 0 }}
                       />
+                      <FormControl size="small" fullWidth>
+                        <InputLabel>Unidade neste contrato</InputLabel>
+                        <Select
+                          value={dados.unidade || ''}
+                          label="Unidade neste contrato"
+                          onChange={(e) => handleChangeDadosProduto(id, 'unidade', e.target.value)}
+                        >
+                          <MenuItem value="">Padrão ({produto.unidade || '-'})</MenuItem>
+                          <MenuItem value="KG">KG</MenuItem>
+                          <MenuItem value="G">G</MenuItem>
+                          <MenuItem value="L">L</MenuItem>
+                          <MenuItem value="ML">ML</MenuItem>
+                          <MenuItem value="UN">UN</MenuItem>
+                          <MenuItem value="PCT">PCT</MenuItem>
+                          <MenuItem value="CX">CX</MenuItem>
+                          <MenuItem value="DZ">DZ</MenuItem>
+                          <MenuItem value="SC">SC</MenuItem>
+                          <MenuItem value="FD">FD</MenuItem>
+                        </Select>
+                      </FormControl>
                     </Box>
                   </Paper>
                 );

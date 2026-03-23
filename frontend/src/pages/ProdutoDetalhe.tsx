@@ -242,7 +242,8 @@ export default function ProdutoDetalhe() {
         peso: prod.peso || '',
         fator_correcao: prod.fator_correcao || 1.0,
         perecivel: prod.perecivel || false,
-        ativo: prod.ativo !== undefined ? prod.ativo : true
+        ativo: prod.ativo !== undefined ? prod.ativo : true,
+        unidade_compra: prod.unidade_compra || '',
       });
       try {
         const comp = await buscarComposicaoNutricional(Number(id));
@@ -277,14 +278,15 @@ export default function ProdutoDetalhe() {
       
       const dataToSend: any = {
         nome: form.nome.trim(),
-        unidade: form.unidade.trim(), // Aceita qualquer texto
+        unidade: form.unidade.trim(),
         descricao: form.descricao,
         categoria: form.categoria,
         tipo_processamento: form.tipo_processamento,
         peso: form.peso ? Number(form.peso) : null,
         fator_correcao: form.fator_correcao ? Number(form.fator_correcao) : 1.0,
         perecivel: form.perecivel,
-        ativo: form.ativo
+        ativo: form.ativo,
+        unidade_compra: form.unidade_compra || null,
       };
       const atualizado = await atualizarProdutoMutation.mutateAsync({ id: Number(id), data: dataToSend });
       setProduto(atualizado); 
@@ -343,7 +345,8 @@ export default function ProdutoDetalhe() {
       peso: produto.peso || '',
       fator_correcao: produto.fator_correcao || 1.0,
       perecivel: produto.perecivel || false,
-      ativo: produto.ativo !== undefined ? produto.ativo : true
+      ativo: produto.ativo !== undefined ? produto.ativo : true,
+      unidade_compra: produto.unidade_compra || '',
     });
   }, [produto]);
 
@@ -443,8 +446,26 @@ export default function ProdutoDetalhe() {
                                 onChange={e => setForm({ ...form, peso: e.target.value })}
                                 fullWidth
                                 size="small"
-                                helperText="Peso padrão do produto em gramas"
+                                helperText="Peso da embalagem em gramas. Se preenchido junto com Unidade de Compra, a guia de demanda converte kg → pacotes automaticamente."
                                 inputProps={{ min: 0, step: 0.01 }}
+                            />
+                        </Grid>
+                        <Grid item xs={12}>
+                            <Autocomplete
+                                freeSolo
+                                options={['pct', 'cx', 'un', 'fd', 'sc', 'lata', 'balde']}
+                                value={form.unidade_compra || ''}
+                                onChange={(_, v) => setForm({ ...form, unidade_compra: v || '' })}
+                                onInputChange={(_, v) => setForm({ ...form, unidade_compra: v })}
+                                disabled={!form.peso}
+                                renderInput={(params) => (
+                                    <TextField
+                                        {...params}
+                                        label="Unidade de Compra"
+                                        size="small"
+                                        helperText={form.peso ? `Guia gerada em ${form.unidade_compra || 'pct'} (1 ${form.unidade_compra || 'pct'} = ${form.peso}g)` : 'Preencha o Peso primeiro'}
+                                    />
+                                )}
                             />
                         </Grid>
                         <Grid item xs={12}>
@@ -520,6 +541,22 @@ export default function ProdutoDetalhe() {
                         <Grid item xs={12}>
                             <InfoItem label="Perecível" value={produto.perecivel ? 'Sim' : 'Não'}/>
                         </Grid>
+                        {produto.peso && produto.unidade_compra && (
+                            <Grid item xs={12}>
+                                <InfoItem
+                                    label="Unidade de Compra"
+                                    value={`${produto.unidade_compra} (1 ${produto.unidade_compra} = ${produto.peso}g)`}
+                                />
+                            </Grid>
+                        )}
+                        {produto.peso_embalagem_g && (
+                            <Grid item xs={12}>
+                                <InfoItem
+                                    label="Embalagem / Unidade de Compra"
+                                    value={`${produto.peso_embalagem_g}g por ${produto.unidade_compra || 'pct'} — guia gerada em ${produto.unidade_compra || 'pct'}`}
+                                />
+                            </Grid>
+                        )}
                     </Grid>
                 )}
             </SectionPaper>
