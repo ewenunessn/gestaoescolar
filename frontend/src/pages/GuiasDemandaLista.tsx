@@ -19,6 +19,8 @@ import {
   Chip,
   CircularProgress,
   Popover,
+  Checkbox,
+  FormControlLabel,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -33,9 +35,10 @@ import PageContainer from '../components/PageContainer';
 import PageHeader from '../components/PageHeader';
 import PageBreadcrumbs from '../components/PageBreadcrumbs';
 import SeletorPeriodoCalendario, { Periodo } from '../components/SeletorPeriodoCalendario';
+import { JobProgressModal } from '../components/JobProgressModal';
 import { guiaService } from '../services/guiaService';
 import { useToast } from '../hooks/useToast';
-import { gerarGuiasDemanda, GerarGuiasResponse } from '../services/planejamentoCompras';
+import { iniciarGeracaoGuiasAsync, GerarGuiasResponse } from '../services/planejamentoCompras';
 import { DataTable } from '../components/DataTable';
 import { LoadingOverlay } from '../components/LoadingOverlay';
 
@@ -91,8 +94,14 @@ const GuiasDemandaLista: React.FC = () => {
   const [competenciaGerar, setCompetenciaGerar] = useState('');
   const [periodosGerar, setPeriodosGerar] = useState<Periodo[]>([]);
   const [seletorOpen, setSeletorOpen] = useState(false);
+  const [considerarIndiceCoccao, setConsiderarIndiceCoccao] = useState(true);
+  const [considerarFatorCorrecao, setConsiderarFatorCorrecao] = useState(true);
   const [gerandoGuias, setGerandoGuias] = useState(false);
   const [resultadoGuias, setResultadoGuias] = useState<GerarGuiasResponse | null>(null);
+  
+  // Job progress
+  const [jobProgressOpen, setJobProgressOpen] = useState(false);
+  const [currentJobId, setCurrentJobId] = useState<number | null>(null);
 
   useEffect(() => {
     loadCompetencias();
@@ -310,28 +319,45 @@ const GuiasDemandaLista: React.FC = () => {
       toast.warning('Defina a competência e ao menos um período');
       return;
     }
-    setGerandoGuias(true);
-    setResultadoGuias(null);
+    
     try {
-      const res = await gerarGuiasDemanda(
+      // Iniciar job assíncrono
+      const response = await iniciarGeracaoGuiasAsync(
         competenciaGerar,
         periodosGerar,
-        undefined
+        undefined,
+        undefined,
+        considerarIndiceCoccao,
+        considerarFatorCorrecao
       );
-      setResultadoGuias(res);
-      if (res.total_criadas > 0) {
-        toast.success(`${res.total_criadas} guia(s) de demanda criada(s) com sucesso`);
-        loadCompetencias();
-      } else {
-        const motivos = res.erros?.map((e) => e.motivo).join('; ') || 'Verifique os erros abaixo';
-        toast.error(motivos);
-      }
+      
+      // Fechar modal de configuração
+      setOpenGerarGuia(false);
+      
+      // Abrir modal de progresso
+      setCurrentJobId(response.job_id);
+      setJobProgressOpen(true);
+      
+      // Removido: toast.info - não precisa notificar ao iniciar
     } catch (error: any) {
-      const msg = error.response?.data?.error || 'Não foi possível gerar as guias';
+      const msg = error.response?.data?.error || 'Não foi possível iniciar a geração de guias';
       toast.error(msg);
-    } finally {
-      setGerandoGuias(false);
     }
+  };
+
+  const handleJobComplete = (resultado: any) => {
+    if (resultado) {
+      toast.success(`Guia gerada com sucesso! ${resultado.total_produtos} produtos, ${resultado.total_itens} itens, ${resultado.total_escolas} escolas.`);
+      loadCompetencias();
+    }
+  };
+
+  const handleCloseJobProgress = () => {
+    setJobProgressOpen(false);
+    setCurrentJobId(null);
+    setCompetenciaGerar('');
+    setPeriodosGerar([]);
+    setResultadoGuias(null);
   };
 
   const handleFecharModalGerar = () => {
@@ -682,6 +708,48 @@ const GuiasDemandaLista: React.FC = () => {
               >
                 {periodosGerar.length === 0 ? 'Selecionar Período' : 'Adicionar Período'}
               </Button>
+
+              {/* Opções de Cálculo */}
+              <Box sx={{ mt: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, mb: 1.5 }}>
+                  Opções de Cálculo
+                </Typography>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={considerarIndiceCoccao}
+                      onChange={(e) => setConsiderarIndiceCoccao(e.target.checked)}
+                      size="small"
+                    />
+                  }
+                  label={
+                    <Box>
+                      <Typography variant="body2">Considerar Índice de Cocção (IC)</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Ajusta a quantidade considerando mudança de peso no cozimento
+                      </Typography>
+                    </Box>
+                  }
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={considerarFatorCorrecao}
+                      onChange={(e) => setConsiderarFatorCorrecao(e.target.checked)}
+                      size="small"
+                    />
+                  }
+                  label={
+                    <Box>
+                      <Typography variant="body2">Considerar Fator de Correção (FC)</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Ajusta a quantidade considerando perda no pré-preparo
+                      </Typography>
+                    </Box>
+                  }
+                  sx={{ mt: 1 }}
+                />
+              </Box>
             </>
           )}
 
@@ -753,13 +821,17 @@ const GuiasDemandaLista: React.FC = () => {
         titulo={periodosGerar.length === 0 ? 'Selecionar 1º Período' : `Adicionar Período ${periodosGerar.length + 1}`}
       />
 
+      {/* Modal de Progresso do Job */}
+      <JobProgressModal
+        open={jobProgressOpen}
+        jobId={currentJobId}
+        onClose={handleCloseJobProgress}
+        onComplete={handleJobComplete}
+      />
+
       <LoadingOverlay
-        open={deleting || gerandoGuias}
-        message={
-          deleting ? 'Excluindo guia...' :
-          gerandoGuias ? 'Gerando guias de demanda...' :
-          'Processando...'
-        }
+        open={deleting}
+        message={deleting ? 'Excluindo guia...' : 'Processando...'}
       />
     </Box>
   );

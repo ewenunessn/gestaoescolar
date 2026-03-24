@@ -46,7 +46,7 @@ interface AdicionarIngredienteDialogProps {
   onConfirm: (
     produtoId: number,
     perCapitaGeral: number | null,
-    tipoMedida: 'gramas' | 'unidades',
+    tipoMedida: 'gramas' | 'mililitros' | 'unidades',
     perCapitaPorModalidade: PerCapitaPorModalidade[]
   ) => void;
   produtos: Produto[];
@@ -60,7 +60,7 @@ export default function AdicionarIngredienteDialog({
 }: AdicionarIngredienteDialogProps) {
   const [selectedProduto, setSelectedProduto] = useState<Produto | null>(null);
   const [perCapitaGeral, setPerCapitaGeral] = useState<string>('100');
-  const [tipoMedida, setTipoMedida] = useState<'gramas' | 'unidades'>('gramas');
+  const [tipoMedida, setTipoMedida] = useState<'gramas' | 'mililitros' | 'unidades'>('gramas');
   const [modoAvancado, setModoAvancado] = useState(false);
   const [modalidades, setModalidades] = useState<Modalidade[]>([]);
   const [perCapitaPorModalidade, setPerCapitaPorModalidade] = useState<Record<number, string>>({});
@@ -211,6 +211,7 @@ export default function AdicionarIngredienteDialog({
               label="Unidade de Medida"
             >
               <MenuItem value="gramas">Gramas (g)</MenuItem>
+              <MenuItem value="mililitros">Mililitros (ml)</MenuItem>
               <MenuItem value="unidades">Unidades (un)</MenuItem>
             </Select>
           </FormControl>
@@ -230,7 +231,7 @@ export default function AdicionarIngredienteDialog({
                     max: tipoMedida === 'unidades' ? 100 : 1000,
                     step: tipoMedida === 'unidades' ? 1 : 0.1,
                   },
-                  endAdornment: <Typography variant="body2" color="text.secondary">{tipoMedida === 'gramas' ? 'g' : 'un'}</Typography>
+                  endAdornment: <Typography variant="body2" color="text.secondary">{tipoMedida === 'gramas' ? 'g' : tipoMedida === 'mililitros' ? 'ml' : 'un'}</Typography>
                 }}
                 helperText="Quantidade que será efetivamente consumida (após preparo)"
               />
@@ -243,7 +244,7 @@ export default function AdicionarIngredienteDialog({
                       Per Capita Bruto (compra):
                     </Typography>
                     <Typography variant="h6" color="primary">
-                      {(toNum(perCapitaGeral) * toNum(selectedProduto.fator_correcao)).toFixed(1)}{tipoMedida === 'gramas' ? 'g' : 'un'}
+                      {(toNum(perCapitaGeral) * toNum(selectedProduto.fator_correcao)).toFixed(1)}{tipoMedida === 'gramas' ? 'g' : tipoMedida === 'mililitros' ? 'ml' : 'un'}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
                       Fator de correção: {toNum(selectedProduto.fator_correcao).toFixed(3)} - Quantidade a comprar
@@ -290,13 +291,13 @@ export default function AdicionarIngredienteDialog({
                           max: tipoMedida === 'unidades' ? 100 : 1000,
                           step: tipoMedida === 'unidades' ? 1 : 0.1,
                         },
-                        endAdornment: <Typography variant="body2" color="text.secondary">{tipoMedida === 'gramas' ? 'g' : 'un'}</Typography>
+                        endAdornment: <Typography variant="body2" color="text.secondary">{tipoMedida === 'gramas' ? 'g' : tipoMedida === 'mililitros' ? 'ml' : 'un'}</Typography>
                       }}
                     />
                     {/* Mostrar Per Capita Líquido */}
                     {selectedProduto && selectedProduto.fator_correcao && parseFloat(perCapitaPorModalidade[mod.id] || '0') > 0 && (
                       <Typography variant="caption" color="primary" sx={{ display: 'block', mt: 0.5, ml: 1 }}>
-                        Líquido: {(toNum(perCapitaPorModalidade[mod.id]) / toNum(selectedProduto.fator_correcao, 1)).toFixed(1)}{tipoMedida === 'gramas' ? 'g' : 'un'}
+                        Líquido: {(toNum(perCapitaPorModalidade[mod.id]) / toNum(selectedProduto.fator_correcao, 1)).toFixed(1)}{tipoMedida === 'gramas' ? 'g' : tipoMedida === 'mililitros' ? 'ml' : 'un'}
                       </Typography>
                     )}
                   </Grid>

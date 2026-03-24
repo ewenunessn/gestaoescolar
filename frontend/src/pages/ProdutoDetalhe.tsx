@@ -7,14 +7,13 @@ import {
   Box, Typography, Button, Card, CardContent, CircularProgress,
   Alert, Dialog, DialogTitle, DialogContent, DialogActions, TextField,
   Chip, FormControlLabel, Switch, Paper, Grid, Stack, Autocomplete,
-  FormControl, InputLabel, Select, MenuItem, IconButton, Menu, Tooltip,
-  InputAdornment
+  FormControl, InputLabel, Select, MenuItem, IconButton, Tooltip,
 } from '@mui/material';
 import {
   Edit as EditIcon, Delete as DeleteIcon, Save as SaveIcon,
   Cancel as CancelIcon, Inventory as InventoryIcon, Science as ScienceIcon, 
-  Fingerprint as FingerprintIcon, Notes as NotesIcon, MoreVert as MoreVertIcon,
-  AutoAwesome as AutoAwesomeIcon, Biotech as BiotechIcon,
+  Fingerprint as FingerprintIcon, Notes as NotesIcon,
+  AutoAwesome as AutoAwesomeIcon,
 } from '@mui/icons-material';
 import BuscarTacoDialog from '../components/BuscarTacoDialog';
 import { mapearTacoParaComposicao, TacoAlimento } from '../services/taco';
@@ -27,6 +26,8 @@ import { useToast } from '../hooks/useToast';
 import PageBreadcrumbs from '../components/PageBreadcrumbs';
 import { toNum } from '../utils/formatters';
 import { LoadingOverlay } from '../components/LoadingOverlay';
+import UnidadeMedidaSelect from '../components/UnidadeMedidaSelect';
+import { useUnidadesMedida } from '../hooks/queries/useUnidadesMedidaQueries';
 
 // --- Constantes ---
 const composicaoVazia = {
@@ -64,12 +65,113 @@ const SectionPaper = ({ title, icon, children, actions }) => (
     </Paper>
 );
 
-const InfoItem = ({ label, value }) => (
-    <Box sx={{ mb: 1 }}>
-        <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.7rem', lineHeight: 1.2 }}>{label}</Typography>
-        <Typography variant="body2" fontWeight={500} sx={{ fontSize: '0.8125rem' }}>{value || 'Não informado'}</Typography>
+const EditableField = ({ 
+  label, 
+  value, 
+  field, 
+  editingField, 
+  formValue,
+  onEdit, 
+  onSave, 
+  onCancel, 
+  onChange,
+  isSaving,
+  type = 'text',
+  options = null,
+  helperText = null,
+  multiline = false,
+  rows = 1,
+  autocompleteOptions = null,
+}) => {
+  const isEditing = editingField === field;
+  
+  return (
+    <Box sx={{ mb: 1.5 }}>
+      <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.7rem', lineHeight: 1.2, mb: 0.5 }}>
+        {label}
+      </Typography>
+      {isEditing ? (
+        <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'flex-start' }}>
+          {options ? (
+            <FormControl fullWidth size="small">
+              <Select 
+                value={formValue || ''} 
+                onChange={(e) => onChange(field, e.target.value)}
+                sx={{ fontSize: '0.8125rem' }}
+              >
+                {options.map(opt => (
+                  <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          ) : autocompleteOptions ? (
+            <Autocomplete
+              freeSolo
+              fullWidth
+              size="small"
+              options={autocompleteOptions}
+              value={formValue || ''}
+              onChange={(event, newValue) => onChange(field, newValue || '')}
+              onInputChange={(event, newInputValue) => onChange(field, newInputValue)}
+              renderInput={(params) => (
+                <TextField 
+                  {...params} 
+                  size="small"
+                  sx={{ fontSize: '0.8125rem' }}
+                />
+              )}
+            />
+          ) : (
+            <TextField 
+              value={formValue || ''} 
+              onChange={(e) => onChange(field, e.target.value)}
+              type={type}
+              size="small"
+              fullWidth
+              multiline={multiline}
+              rows={rows}
+              helperText={helperText}
+              sx={{ 
+                '& .MuiInputBase-input': { 
+                  fontSize: '0.8125rem'
+                }
+              }}
+              autoFocus
+            />
+          )}
+          <IconButton 
+            size="small" 
+            onClick={() => onSave(field)}
+            disabled={isSaving}
+            sx={{ p: 0.5, mt: multiline ? 0 : 0.5 }}
+          >
+            <SaveIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+          <IconButton 
+            size="small" 
+            onClick={() => onCancel(field)}
+            sx={{ p: 0.5, mt: multiline ? 0 : 0.5 }}
+          >
+            <CancelIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+        </Box>
+      ) : (
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="body2" fontWeight={500} sx={{ fontSize: '0.8125rem', flex: 1 }}>
+            {value || 'Não informado'}
+          </Typography>
+          <IconButton 
+            size="small" 
+            onClick={() => onEdit(field)}
+            sx={{ p: 0.5, opacity: 0.6, '&:hover': { opacity: 1 } }}
+          >
+            <EditIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+        </Box>
+      )}
     </Box>
-);
+  );
+};
 
 const ComposicaoNutricionalCard = ({ composicaoData, onSave, isSaving, onCarregarTaco }) => {
     const [editingField, setEditingField] = useState<string | null>(null);
@@ -202,21 +304,16 @@ export default function ProdutoDetalhe() {
   const [composicao, setComposicao] = useState<any>(composicaoVazia);
   const [loading, setLoading] = useState(true);
 
-  const [isEditing, setIsEditing] = useState(false);
+  const [editingField, setEditingField] = useState<string | null>(null);
   const [form, setForm] = useState<any>({});
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingComp, setIsSavingComp] = useState(false);
   const [openExcluir, setOpenExcluir] = useState(false);
   const queryClient = useQueryClient();
   const atualizarProdutoMutation = useAtualizarProduto();
-  
-  // Estado do menu de ações
-  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
-  const menuOpen = Boolean(menuAnchorEl);
 
   // Estado do dialog TACO
   const [tacoDialogOpen, setTacoDialogOpen] = useState(false);
-  const [tacoCamposOpen, setTacoCamposOpen] = useState(false);
 
   // Atualizar título da página
   useEffect(() => {
@@ -244,7 +341,7 @@ export default function ProdutoDetalhe() {
         ativo: prod.ativo !== undefined ? prod.ativo : true,
         estoque_minimo: prod.estoque_minimo || 0,
         fator_correcao: prod.fator_correcao || 1.0,
-        tipo_fator_correcao: prod.tipo_fator_correcao || 'perda',
+        indice_coccao: prod.indice_coccao || 1.0,
         unidade_distribuicao: prod.unidade_distribuicao || '',
         peso: prod.peso || '',
       });
@@ -263,35 +360,37 @@ export default function ProdutoDetalhe() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const handleSave = useCallback(async () => {
+  const handleSave = useCallback(async (field: string) => {
     setIsSaving(true);
     try {
       // Validar apenas se campos obrigatórios não estão vazios
-      if (!form.nome?.trim()) {
+      if (field === 'nome' && !form.nome?.trim()) {
         toast.error('Nome do produto não pode estar vazio');
         setIsSaving(false);
         return;
       }
       
       const dataToSend: any = {
-        nome: form.nome.trim(),
-        descricao: form.descricao,
-        categoria: form.categoria,
-        tipo_processamento: form.tipo_processamento,
-        validade_minima: form.validade_minima ? Number(form.validade_minima) : null,
-        imagem_url: form.imagem_url,
-        perecivel: form.perecivel,
-        ativo: form.ativo,
-        estoque_minimo: form.estoque_minimo ? Number(form.estoque_minimo) : 0,
-        fator_correcao: form.fator_correcao ? Number(form.fator_correcao) : 1.0,
-        tipo_fator_correcao: form.tipo_fator_correcao || 'perda',
-        unidade_distribuicao: form.unidade_distribuicao,
-        peso: form.peso ? Number(form.peso) : null,
+        nome: form.nome?.trim() || produto.nome,
+        descricao: form.descricao !== undefined ? form.descricao : produto.descricao,
+        categoria: form.categoria !== undefined ? form.categoria : produto.categoria,
+        tipo_processamento: form.tipo_processamento !== undefined ? form.tipo_processamento : produto.tipo_processamento,
+        validade_minima: form.validade_minima !== undefined ? (form.validade_minima ? Number(form.validade_minima) : null) : produto.validade_minima,
+        imagem_url: form.imagem_url !== undefined ? form.imagem_url : produto.imagem_url,
+        perecivel: form.perecivel !== undefined ? form.perecivel : produto.perecivel,
+        ativo: form.ativo !== undefined ? form.ativo : produto.ativo,
+        estoque_minimo: form.estoque_minimo !== undefined ? (form.estoque_minimo ? Number(form.estoque_minimo) : 0) : produto.estoque_minimo,
+        fator_correcao: form.fator_correcao !== undefined ? (form.fator_correcao ? Number(form.fator_correcao) : 1.0) : produto.fator_correcao,
+        indice_coccao: form.indice_coccao !== undefined ? (form.indice_coccao ? Number(form.indice_coccao) : 1.0) : produto.indice_coccao,
+        unidade_distribuicao: form.unidade_distribuicao !== undefined ? form.unidade_distribuicao : produto.unidade_distribuicao,
+        unidade_medida_id: form.unidade_medida_id !== undefined ? form.unidade_medida_id : produto.unidade_medida_id,
+        peso: form.peso !== undefined ? (form.peso ? Number(form.peso) : null) : produto.peso,
       };
+      
       const atualizado = await atualizarProdutoMutation.mutateAsync({ id: Number(id), data: dataToSend });
-      setProduto(atualizado); 
-      setIsEditing(false);
-      toast.success('Produto atualizado com sucesso!');
+      setProduto(atualizado);
+      setEditingField(null);
+      toast.success('Campo atualizado com sucesso!');
     } catch (err: any) { 
       console.error('Erro ao salvar produto:', err);
       toast.error(err?.response?.data?.message || err?.message || "Erro ao salvar alterações"); 
@@ -299,15 +398,7 @@ export default function ProdutoDetalhe() {
     finally { 
       setIsSaving(false); 
     }
-  }, [id, form, atualizarProdutoMutation]);
-
-  const handleTacoCampos = useCallback((alimento: TacoAlimento) => {
-    setForm((prev: any) => ({
-      ...prev,
-      categoria: alimento.categoria || prev.categoria,
-    }));
-    toast.success(`Categoria preenchida da TACO: ${alimento.nome}`);
-  }, [toast]);
+  }, [id, form, produto, atualizarProdutoMutation, toast]);
 
   const handleSaveComposition = useCallback(async (compData, nomeAlimento?: string) => {
     setIsSavingComp(true);
@@ -324,6 +415,44 @@ export default function ProdutoDetalhe() {
     }
   }, [id]);
 
+  const handleTacoSelect = useCallback(async (composicaoTaco: any, nomeAlimento: string, alimento: TacoAlimento) => {
+    // Salvar composição nutricional
+    await handleSaveComposition(composicaoTaco, nomeAlimento);
+    
+    // Atualizar e salvar categoria automaticamente
+    if (alimento.categoria && alimento.categoria !== produto.categoria) {
+      setForm((prev: any) => ({
+        ...prev,
+        categoria: alimento.categoria,
+      }));
+      
+      try {
+        const dataToSend: any = {
+          nome: produto.nome,
+          descricao: produto.descricao,
+          categoria: alimento.categoria,
+          tipo_processamento: produto.tipo_processamento,
+          validade_minima: produto.validade_minima,
+          imagem_url: produto.imagem_url,
+          perecivel: produto.perecivel,
+          ativo: produto.ativo,
+          estoque_minimo: produto.estoque_minimo,
+          fator_correcao: produto.fator_correcao,
+          indice_coccao: produto.indice_coccao,
+          unidade_distribuicao: produto.unidade_distribuicao,
+          peso: produto.peso,
+        };
+        
+        const atualizado = await atualizarProdutoMutation.mutateAsync({ id: Number(id), data: dataToSend });
+        setProduto(atualizado);
+        toast.success(`Categoria atualizada: ${alimento.categoria}`);
+      } catch (err: any) {
+        console.error('Erro ao salvar categoria:', err);
+        toast.error('Erro ao salvar categoria automaticamente');
+      }
+    }
+  }, [handleSaveComposition, produto, id, atualizarProdutoMutation, toast]);
+
   const handleDelete = useCallback(async () => {
     try {
       await deletarProduto(Number(id));
@@ -333,24 +462,13 @@ export default function ProdutoDetalhe() {
     }
   }, [id, navigate]);
   
-  const handleCancel = useCallback(() => { 
-    setIsEditing(false); 
-    // Restaurar dados originais do produto
-    setForm({
-      nome: produto.nome || '',
-      descricao: produto.descricao || '',
-      categoria: produto.categoria || '',
-      tipo_processamento: produto.tipo_processamento || '',
-      validade_minima: produto.validade_minima || '',
-      imagem_url: produto.imagem_url || '',
-      perecivel: produto.perecivel || false,
-      ativo: produto.ativo !== undefined ? produto.ativo : true,
-      estoque_minimo: produto.estoque_minimo || 0,
-      fator_correcao: produto.fator_correcao || 1.0,
-      tipo_fator_correcao: produto.tipo_fator_correcao || 'perda',
-      unidade_distribuicao: produto.unidade_distribuicao || '',
-      peso: produto.peso || '',
-    });
+  const handleCancel = useCallback((field: string) => { 
+    setEditingField(null);
+    // Restaurar valor original do campo
+    setForm((prev: any) => ({
+      ...prev,
+      [field]: produto[field],
+    }));
   }, [produto]);
 
   if (loading) return <Box sx={{ display: "flex", justifyContent: "center", alignItems: 'center', minHeight: '80vh' }}><CircularProgress size={60} /></Box>;
@@ -366,15 +484,6 @@ export default function ProdutoDetalhe() {
               { label: produto?.nome || 'Detalhes do Produto' }
             ]}
           />
-          {!isEditing && (
-            <IconButton 
-              size="small" 
-              onClick={(e) => setMenuAnchorEl(e.currentTarget)}
-              sx={{ ml: 2 }}
-            >
-              <MoreVertIcon />
-            </IconButton>
-          )}
         </Box>
         
         <Grid container spacing={2}>
@@ -384,192 +493,223 @@ export default function ProdutoDetalhe() {
             <SectionPaper 
               title="Identificação do Produto" 
               icon={<FingerprintIcon color="primary" fontSize="small" />}
-              actions={isEditing && (
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  <Button onClick={handleCancel} variant="outlined" disabled={isSaving} size="small" sx={{ minHeight: 28, fontSize: '0.75rem' }}>Cancelar</Button>
-                  <Button onClick={handleSave} variant="contained" color="add" disabled={isSaving} size="small" sx={{ minHeight: 28, fontSize: '0.75rem' }}>
-                    {isSaving ? 'Salvando...' : 'Salvar'}
-                  </Button>
-                </Box>
-              )}
+              actions={
+                <Tooltip title="Excluir">
+                  <IconButton size="small" onClick={() => setOpenExcluir(true)} color="error">
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              }
             >
-                {isEditing ? (
-                    <Grid container spacing={1.5}>
-                        <Grid item xs={12}>
-                            <TextField label="Nome do Produto" value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} fullWidth required size="small" />
-                        </Grid>
-                        <Grid item xs={12}>
-                            <Autocomplete
-                                freeSolo
-                                options={[
-                                    'Quilograma', 'Grama', 'Miligrama', 'Tonelada',
-                                    'Litro', 'Mililitro',
-                                    'Unidade', 'Dúzia', 'Caixa', 'Pacote', 'Fardo', 'Saco',
-                                    'Lata', 'Galão', 'Bandeja', 'Maço', 'Pote',
-                                    'Vidro', 'Sachê', 'Balde'
-                                ]}
-                                value={form.unidade_distribuicao || ''}
-                                onChange={(event, newValue) => setForm({ ...form, unidade_distribuicao: newValue || '' })}
-                                onInputChange={(event, newInputValue) => setForm({ ...form, unidade_distribuicao: newInputValue })}
-                                renderInput={(params) => (
-                                    <TextField 
-                                        {...params} 
-                                        label="Unidade de Distribuição" 
-                                        size="small"
-                                    />
-                                )}
-                            />
-                        </Grid>
-                        <Grid item xs={12}>
-                            <TextField
-                                label="Categoria"
-                                value={form.categoria || ""}
-                                onChange={e => setForm({ ...form, categoria: e.target.value })}
-                                fullWidth
-                                size="small"
-                                InputProps={{
-                                    endAdornment: (
-                                        <InputAdornment position="end">
-                                            <Tooltip title="Buscar categoria na TACO">
-                                                <IconButton size="small" edge="end" onClick={() => setTacoCamposOpen(true)} sx={{ color: 'text.secondary' }}>
-                                                    <BiotechIcon sx={{ fontSize: 18 }} />
-                                                </IconButton>
-                                            </Tooltip>
-                                        </InputAdornment>
-                                    ),
-                                }}
-                            />
-                        </Grid>
-                        <Grid item xs={12}>
-                            <TextField
-                                label="Estoque Mínimo"
-                                type="number"
-                                value={form.estoque_minimo || 0}
-                                onChange={e => setForm({ ...form, estoque_minimo: e.target.value })}
-                                fullWidth
-                                size="small"
-                                helperText="Quantidade mínima em estoque"
-                                inputProps={{ min: 0, step: 1 }}
-                            />
-                        </Grid>
-                        <Grid item xs={12}>
-                            <TextField
-                                label="Validade Mínima (dias)"
-                                type="number"
-                                value={form.validade_minima || ''}
-                                onChange={e => setForm({ ...form, validade_minima: e.target.value })}
-                                fullWidth
-                                size="small"
-                                helperText="Dias mínimos de validade"
-                                inputProps={{ min: 0, step: 1 }}
-                            />
-                        </Grid>
-                        <Grid item xs={12}>
-                            <TextField
-                                label="Peso (gramas)"
-                                type="number"
-                                value={form.peso || ''}
-                                onChange={e => setForm({ ...form, peso: e.target.value })}
-                                fullWidth
-                                size="small"
-                                helperText="Peso da embalagem em gramas"
-                                inputProps={{ min: 0, step: 0.01 }}
-                            />
-                        </Grid>
-                        <Grid item xs={12}>
-                            <TextField
-                                label="Fator de Correção"
-                                type="number"
-                                value={form.fator_correcao || 1.0}
-                                onChange={e => {
-                                    const value = e.target.value.replace(',', '.');
-                                    const parsed = parseFloat(value);
-                                    setForm({ ...form, fator_correcao: isNaN(parsed) ? 1.0 : parsed });
-                                }}
-                                fullWidth
-                                size="small"
-                                helperText="Fator para cálculo de perdas/rendimento"
-                                inputProps={{ min: 0, step: 0.001 }}
-                            />
-                        </Grid>
-                        <Grid item xs={12}>
-                            <FormControl fullWidth size="small">
-                                <InputLabel>Tipo de Fator</InputLabel>
-                                <Select 
-                                    value={form.tipo_fator_correcao || 'perda'} 
-                                    onChange={e => setForm({ ...form, tipo_fator_correcao: e.target.value })}
-                                    label="Tipo de Fator"
-                                >
-                                    <MenuItem value="perda">Perda</MenuItem>
-                                    <MenuItem value="rendimento">Rendimento</MenuItem>
-                                </Select>
-                            </FormControl>
-                        </Grid>
-                        <Grid item xs={12}>
-                            <FormControl fullWidth size="small">
-                                <InputLabel>Tipo de Processamento</InputLabel>
-                                <Select 
-                                    value={form.tipo_processamento || ""} 
-                                    onChange={e => setForm({ ...form, tipo_processamento: e.target.value })}
-                                    label="Tipo de Processamento"
-                                >
-                                    <MenuItem value="">Nenhum</MenuItem>
-                                    <MenuItem value="in natura">In Natura</MenuItem>
-                                    <MenuItem value="minimamente processado">Minimamente Processado</MenuItem>
-                                    <MenuItem value="processado">Processado</MenuItem>
-                                    <MenuItem value="ultraprocessado">Ultraprocessado</MenuItem>
-                                </Select>
-                            </FormControl>
-                        </Grid>
-                        <Grid item xs={12}>
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                                <FormControlLabel 
-                                    control={<Switch checked={form.perecivel || false} onChange={e => setForm({ ...form, perecivel: e.target.checked })} size="small" />} 
-                                    label={<Typography variant="body2">Produto Perecível</Typography>}
-                                />
-                                <FormControlLabel 
-                                    control={<Switch checked={form.ativo} onChange={e => setForm({ ...form, ativo: e.target.checked })} size="small" />} 
-                                    label={<Typography variant="body2">Produto Ativo</Typography>}
-                                />
-                            </Box>
-                        </Grid>
-                    </Grid>
-                ) : (
-                    <Grid container spacing={1.5}>
-                        <Grid item xs={12}>
-                            <InfoItem label="Nome" value={produto.nome}/>
-                        </Grid>
-                        <Grid item xs={12}>
-                            <InfoItem label="Unidade de Distribuição" value={produto.unidade_distribuicao || '-'}/>
-                        </Grid>
-                        <Grid item xs={12}>
-                            <InfoItem label="Categoria" value={produto.categoria}/>
-                        </Grid>
-                        <Grid item xs={12}>
-                            <InfoItem label="Estoque Mínimo" value={produto.estoque_minimo || '0'}/>
-                        </Grid>
-                        <Grid item xs={12}>
-                            <InfoItem label="Validade Mínima" value={produto.validade_minima ? `${produto.validade_minima} dias` : '-'}/>
-                        </Grid>
-                        <Grid item xs={12}>
-                            <InfoItem label="Peso" value={produto.peso ? `${produto.peso}g` : '-'}/>
-                        </Grid>
-                        <Grid item xs={12}>
-                            <InfoItem 
-                                label="Fator de Correção" 
-                                value={produto.fator_correcao 
-                                    ? `${toNum(produto.fator_correcao).toFixed(3)} (${produto.tipo_fator_correcao || 'perda'})` 
-                                    : '1.000 (perda)'}
-                            />
-                        </Grid>
-                        <Grid item xs={12}>
-                            <InfoItem label="Tipo de Processamento" value={produto.tipo_processamento}/>
-                        </Grid>
-                        <Grid item xs={12}>
-                            <InfoItem label="Perecível" value={produto.perecivel ? 'Sim' : 'Não'}/>
-                        </Grid>
-                    </Grid>
-                )}
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                <EditableField
+                  label="Nome"
+                  value={produto.nome}
+                  field="nome"
+                  editingField={editingField}
+                  formValue={form.nome}
+                  onEdit={(field) => setEditingField(field)}
+                  onSave={handleSave}
+                  onCancel={handleCancel}
+                  onChange={(field, value) => setForm({ ...form, [field]: value })}
+                  isSaving={isSaving}
+                />
+                
+                {/* Campo especial para Unidade de Distribuição */}
+                <Box sx={{ mb: 1.5 }}>
+                  <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.7rem', lineHeight: 1.2, mb: 0.5 }}>
+                    Unidade de Distribuição
+                  </Typography>
+                  {editingField === 'unidade_medida_id' ? (
+                    <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'flex-start' }}>
+                      <Box sx={{ flex: 1 }}>
+                        <UnidadeMedidaSelect
+                          value={form.unidade_medida_id || produto.unidade_medida_id}
+                          onChange={(unidadeId) => setForm({ ...form, unidade_medida_id: unidadeId })}
+                          size="small"
+                          label=""
+                        />
+                      </Box>
+                      <IconButton 
+                        size="small" 
+                        onClick={() => handleSave('unidade_medida_id')}
+                        disabled={isSaving}
+                        sx={{ p: 0.5, mt: 0.5 }}
+                      >
+                        <SaveIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                      <IconButton 
+                        size="small" 
+                        onClick={() => handleCancel('unidade_medida_id')}
+                        sx={{ p: 0.5, mt: 0.5 }}
+                      >
+                        <CancelIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    </Box>
+                  ) : (
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Typography variant="body2" fontWeight={500} sx={{ fontSize: '0.8125rem', flex: 1 }}>
+                        {produto.unidade_distribuicao || 'Não informado'}
+                      </Typography>
+                      <IconButton 
+                        size="small" 
+                        onClick={() => setEditingField('unidade_medida_id')}
+                        sx={{ p: 0.5, opacity: 0.6, '&:hover': { opacity: 1 } }}
+                      >
+                        <EditIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    </Box>
+                  )}
+                </Box>
+                
+                <EditableField
+                  label="Categoria"
+                  value={produto.categoria || '-'}
+                  field="categoria"
+                  editingField={editingField}
+                  formValue={form.categoria}
+                  onEdit={(field) => setEditingField(field)}
+                  onSave={handleSave}
+                  onCancel={handleCancel}
+                  onChange={(field, value) => setForm({ ...form, [field]: value })}
+                  isSaving={isSaving}
+                  helperText="Pode ser preenchida automaticamente ao carregar da TACO"
+                />
+                
+                <EditableField
+                  label="Estoque Mínimo"
+                  value={produto.estoque_minimo || '0'}
+                  field="estoque_minimo"
+                  editingField={editingField}
+                  formValue={form.estoque_minimo}
+                  onEdit={(field) => setEditingField(field)}
+                  onSave={handleSave}
+                  onCancel={handleCancel}
+                  onChange={(field, value) => setForm({ ...form, [field]: value })}
+                  isSaving={isSaving}
+                  type="number"
+                />
+                
+                <EditableField
+                  label="Validade Mínima"
+                  value={produto.validade_minima ? `${produto.validade_minima} dias` : '-'}
+                  field="validade_minima"
+                  editingField={editingField}
+                  formValue={form.validade_minima}
+                  onEdit={(field) => setEditingField(field)}
+                  onSave={handleSave}
+                  onCancel={handleCancel}
+                  onChange={(field, value) => setForm({ ...form, [field]: value })}
+                  isSaving={isSaving}
+                  type="number"
+                  helperText="Dias mínimos de validade"
+                />
+                
+                <EditableField
+                  label="Peso"
+                  value={produto.peso ? `${produto.peso}g` : '-'}
+                  field="peso"
+                  editingField={editingField}
+                  formValue={form.peso}
+                  onEdit={(field) => setEditingField(field)}
+                  onSave={handleSave}
+                  onCancel={handleCancel}
+                  onChange={(field, value) => setForm({ ...form, [field]: value })}
+                  isSaving={isSaving}
+                  type="number"
+                  helperText="Peso da embalagem em gramas"
+                />
+                
+                <EditableField
+                  label="Fator de Correção"
+                  value={produto.fator_correcao 
+                    ? `${toNum(produto.fator_correcao).toFixed(3)}` 
+                    : '1.000'}
+                  field="fator_correcao"
+                  editingField={editingField}
+                  formValue={form.fator_correcao}
+                  onEdit={(field) => setEditingField(field)}
+                  onSave={handleSave}
+                  onCancel={handleCancel}
+                  onChange={(field, value) => setForm({ ...form, [field]: value })}
+                  isSaving={isSaving}
+                  type="number"
+                  helperText="Perda no pré-preparo (limpeza, descascamento). Sempre ≥ 1.0. Ex: Batata=1.18"
+                />
+                
+                <EditableField
+                  label="Índice de Cocção"
+                  value={produto.indice_coccao 
+                    ? `${toNum(produto.indice_coccao).toFixed(3)}` 
+                    : '1.000'}
+                  field="indice_coccao"
+                  editingField={editingField}
+                  formValue={form.indice_coccao}
+                  onEdit={(field) => setEditingField(field)}
+                  onSave={handleSave}
+                  onCancel={handleCancel}
+                  onChange={(field, value) => setForm({ ...form, [field]: value })}
+                  isSaving={isSaving}
+                  type="number"
+                  helperText="Mudança de peso no cozimento. >1 ganha (Arroz=2.5), <1 perde (Carne=0.7)"
+                />
+                
+                <EditableField
+                  label="Tipo de Processamento"
+                  value={produto.tipo_processamento || '-'}
+                  field="tipo_processamento"
+                  editingField={editingField}
+                  formValue={form.tipo_processamento}
+                  onEdit={(field) => setEditingField(field)}
+                  onSave={handleSave}
+                  onCancel={handleCancel}
+                  onChange={(field, value) => setForm({ ...form, [field]: value })}
+                  isSaving={isSaving}
+                  options={[
+                    { value: '', label: 'Nenhum' },
+                    { value: 'in natura', label: 'In Natura' },
+                    { value: 'minimamente processado', label: 'Minimamente Processado' },
+                    { value: 'processado', label: 'Processado' },
+                    { value: 'ultraprocessado', label: 'Ultraprocessado' }
+                  ]}
+                />
+                
+                <Box sx={{ mt: 0.5 }}>
+                  <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.7rem', lineHeight: 1.2, mb: 0.5 }}>
+                    Status
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 2 }}>
+                    <FormControlLabel 
+                      control={
+                        <Switch 
+                          checked={produto.perecivel || false} 
+                          onChange={(e) => {
+                            setForm({ ...form, perecivel: e.target.checked });
+                            setEditingField('perecivel');
+                            setTimeout(() => handleSave('perecivel'), 100);
+                          }}
+                          size="small" 
+                        />
+                      } 
+                      label={<Typography variant="body2" sx={{ fontSize: '0.8125rem' }}>Perecível</Typography>}
+                    />
+                    <FormControlLabel 
+                      control={
+                        <Switch 
+                          checked={produto.ativo !== undefined ? produto.ativo : true} 
+                          onChange={(e) => {
+                            setForm({ ...form, ativo: e.target.checked });
+                            setEditingField('ativo');
+                            setTimeout(() => handleSave('ativo'), 100);
+                          }}
+                          size="small" 
+                        />
+                      } 
+                      label={<Typography variant="body2" sx={{ fontSize: '0.8125rem' }}>Ativo</Typography>}
+                    />
+                  </Box>
+                </Box>
+              </Box>
             </SectionPaper>
           </Grid>
 
@@ -588,50 +728,32 @@ export default function ProdutoDetalhe() {
           {/* Segunda linha - Descrição ocupando toda a largura */}
           <Grid item xs={12}>
             <SectionPaper title="Descrição" icon={<NotesIcon color="primary" fontSize="small" />}>
-                {isEditing ? 
-                    <TextField label="Descrição do Produto" value={form.descricao || ""} onChange={e => setForm({ ...form, descricao: e.target.value })} fullWidth multiline rows={3} size="small" />
-                    :
-                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8125rem' }}>{produto.descricao || 'Nenhuma descrição fornecida.'}</Typography>
-                }
+              <EditableField
+                label="Descrição do Produto"
+                value={produto.descricao || 'Nenhuma descrição fornecida.'}
+                field="descricao"
+                editingField={editingField}
+                formValue={form.descricao}
+                onEdit={(field) => setEditingField(field)}
+                onSave={handleSave}
+                onCancel={handleCancel}
+                onChange={(field, value) => setForm({ ...form, [field]: value })}
+                isSaving={isSaving}
+                multiline={true}
+                rows={3}
+              />
             </SectionPaper>
           </Grid>
         </Grid>
       </PageContainer>
 
-      {/* Menu de ações */}
-      <Menu
-        anchorEl={menuAnchorEl}
-        open={menuOpen}
-        onClose={() => setMenuAnchorEl(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-      >
-        <MenuItem onClick={() => { setMenuAnchorEl(null); setIsEditing(true); }}>
-          <EditIcon fontSize="small" sx={{ mr: 1 }} />
-          Editar
-        </MenuItem>
-        <MenuItem onClick={() => { setMenuAnchorEl(null); setOpenExcluir(true); }}>
-          <DeleteIcon fontSize="small" sx={{ mr: 1 }} color="error" />
-          <Typography color="error">Excluir</Typography>
-        </MenuItem>
-      </Menu>
-
-      {/* Dialog TACO - composição nutricional */}
+      {/* Dialog TACO - composição nutricional E categoria */}
       <BuscarTacoDialog
         open={tacoDialogOpen}
         onClose={() => setTacoDialogOpen(false)}
-        onSelect={(composicaoTaco, nomeAlimento) => {
-          handleSaveComposition(composicaoTaco, nomeAlimento);
+        onSelect={(composicaoTaco, nomeAlimento, alimento) => {
+          handleTacoSelect(composicaoTaco, nomeAlimento, alimento);
         }}
-        initialQuery={form.nome || produto?.nome}
-      />
-
-      {/* Dialog TACO - campos do produto (categoria) */}
-      <BuscarTacoDialog
-        open={tacoCamposOpen}
-        onClose={() => setTacoCamposOpen(false)}
-        onSelect={() => {}}
-        onSelectAlimento={handleTacoCampos}
         initialQuery={form.nome || produto?.nome}
       />
 

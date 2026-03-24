@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import db from '../database';
 import { toNum } from '../utils/typeHelpers';
+import { JobService } from '../services/jobService';
 
 // ─── Tipos internos ───────────────────────────────────────────────────────────
 interface Periodo {
@@ -33,47 +34,40 @@ interface ConversaoCompra {
 
 // ─── Helper: Converter demanda para unidade de compra ────────────────────────
 function converterDemandaParaCompra(
-  quantidade_kg: number,
+  quantidade_demanda: number,
   produto: {
     peso_distribuicao_g?: number;
     unidade_distribuicao?: string;
-  },
-  contrato: {
-    peso_embalagem_g?: number;
-    unidade_compra?: string;
-    fator_conversao?: number;
   }
 ): ConversaoCompra {
-  // Calcular quantidade em unidade de distribuição (para referência)
-  let quantidade_distribuicao: number | undefined;
-  if (produto.peso_distribuicao_g && produto.peso_distribuicao_g > 0) {
-    const quantidadeGramas = quantidade_kg * 1000;
-    quantidade_distribuicao = Math.ceil(quantidadeGramas / produto.peso_distribuicao_g);
-  }
+  // SIMPLIFICADO: Sem conversão! Demanda = Compra
+  // O peso do produto já é o peso da embalagem comprada
   
-  // Converter para unidade de compra
-  let quantidade_compra: number;
-  let unidade_compra: string;
+  const unidadeLower = (produto.unidade_distribuicao || '').toLowerCase().trim();
+  const isKg = unidadeLower === 'quilograma' || unidadeLower === 'kg' || unidadeLower === 'kilo';
   
-  if (contrato.fator_conversao && contrato.fator_conversao > 0) {
-    // Usar fator de conversão manual se disponível
-    const base = quantidade_distribuicao || quantidade_kg;
-    quantidade_compra = Math.ceil(base * contrato.fator_conversao);
-    unidade_compra = contrato.unidade_compra || 'UN';
-  } else if (contrato.peso_embalagem_g && contrato.peso_embalagem_g > 0) {
-    // Usar conversão por peso
-    const quantidadeGramas = quantidade_kg * 1000;
-    quantidade_compra = Math.ceil(quantidadeGramas / contrato.peso_embalagem_g);
-    unidade_compra = contrato.unidade_compra || 'UN';
+  let quantidade_distribuicao: number;
+  let quantidade_kg: number;
+  
+  if (isKg) {
+    // Unidade é KG
+    quantidade_kg = quantidade_demanda;
+    quantidade_distribuicao = quantidade_demanda;
   } else {
-    // Sem conversão, manter em kg
-    quantidade_compra = Math.round(quantidade_kg * 1000) / 1000;
-    unidade_compra = 'kg';
+    // Unidade é UNIDADE
+    quantidade_distribuicao = quantidade_demanda;
+    // Calcular KG se tiver peso
+    if (produto.peso_distribuicao_g && produto.peso_distribuicao_g > 0) {
+      quantidade_kg = (quantidade_distribuicao * produto.peso_distribuicao_g) / 1000;
+    } else {
+      quantidade_kg = quantidade_distribuicao;
+    }
   }
   
+  // SEM CONVERSÃO: quantidade_compra = quantidade_distribuicao
   return {
-    quantidade_compra,
-    unidade_compra,
+    quantidade_compra: Math.ceil(quantidade_distribuicao),
+    unidade_compra: produto.unidade_distribuicao || 'UN',
     quantidade_kg: Math.round(quantidade_kg * 1000) / 1000,
     quantidade_distribuicao,
     unidade_distribuicao: produto.unidade_distribuicao
@@ -118,7 +112,9 @@ async function calcularDemandaPeriodo(
   mes: number,
   data_inicio: string,
   data_fim: string,
-  escola_ids?: number[]
+  escola_ids?: number[],
+  considerar_indice_coccao: boolean = true,
+  considerar_fator_correcao: boolean = true
 ): Promise<ProdutoDemanda[]> {
   const diaInicio = parseInt(data_inicio.split('-')[2]);
   const diaFim = parseInt(data_fim.split('-')[2]);
@@ -161,6 +157,7 @@ async function calcularDemandaPeriodo(
       p.unidade_distribuicao as unidade,
       p.peso as peso_embalagem,
       COALESCE(p.fator_correcao, 1.0) as fator_correcao,
+      COALESCE(p.indice_coccao, 1.0) as indice_coccao,
       COALESCE(rpm.per_capita_ajustado, rp.per_capita) as per_capita,
       rp.tipo_medida
     FROM cardapio_refeicoes_dia crd
@@ -195,6 +192,7 @@ async function calcularDemandaPeriodo(
     for (const [produto_id, ocorrencias] of pm.entries()) {
       const ref = ocorrencias[0];
       const perCapita = toNum(ref.per_capita, 0);
+      const indiceCoccao = toNum(ref.indice_coccao, 1.0);
       const fator = toNum(ref.fator_correcao, 1.0);
       
       // CORREÇÃO: Para produtos em UNIDADES, usar o peso do produto
@@ -214,8 +212,12 @@ async function calcularDemandaPeriodo(
           qtdKg = (quantidadeUnidades * 100) / 1000;
         }
       } else {
-        // Per capita em GRAMAS (ex: 150g de arroz)
-        const perCapitaBruto = perCapita * fator;
+        // Per capita em GRAMAS (ex: 150g de arroz cozido)
+        // LÓGICA CORRETA: IC primeiro (cozimento), depois FC (pré-preparo)
+        // 1. Calcular quanto precisa CRU (antes de cozinhar)
+        const perCapitaCru = considerar_indice_coccao ? perCapita / indiceCoccao : perCapita;
+        // 2. Calcular quanto precisa COMPRAR (antes de limpar/descascar)
+        const perCapitaBruto = considerar_fator_correcao ? perCapitaCru * fator : perCapitaCru;
         qtdKg = (escola.numero_alunos * perCapitaBruto * ocorrencias.length) / 1000;
       }
 
@@ -504,11 +506,6 @@ export const gerarPedidosPorPeriodo = async (req: Request, res: Response) => {
         {
           peso_distribuicao_g: contrato.peso_distribuicao ? Number(contrato.peso_distribuicao) : undefined,
           unidade_distribuicao: contrato.unidade_distribuicao
-        },
-        {
-          peso_embalagem_g: contrato.peso_embalagem ? Number(contrato.peso_embalagem) : undefined,
-          unidade_compra: contrato.unidade_compra,
-          fator_conversao: contrato.fator_conversao ? Number(contrato.fator_conversao) : undefined
         }
       );
       
@@ -1125,11 +1122,13 @@ export const calcularDemandaPorCompetencia = async (req: Request, res: Response)
 // Múltiplos períodos geram 1 única guia por competência.
 // Cada item recebe data_entrega = data_inicio do período que o originou.
 export const gerarGuiasDemanda = async (req: Request, res: Response) => {
-  const { competencia, periodos, escola_ids, observacoes } = req.body as {
+  const { competencia, periodos, escola_ids, observacoes, considerar_indice_coccao, considerar_fator_correcao } = req.body as {
     competencia: string;
     periodos: Periodo[];
     escola_ids?: number[];
     observacoes?: string;
+    considerar_indice_coccao?: boolean;
+    considerar_fator_correcao?: boolean;
   };
 
   if (!competencia || !periodos || periodos.length === 0) {
@@ -1147,7 +1146,15 @@ export const gerarGuiasDemanda = async (req: Request, res: Response) => {
     // Calcular demanda para cada período
     const demandasPorPeriodo: { periodo: Periodo; demanda: ProdutoDemanda[] }[] = [];
     for (const periodo of periodos) {
-      const demanda = await calcularDemandaPeriodo(ano, mes, periodo.data_inicio, periodo.data_fim, escola_ids);
+      const demanda = await calcularDemandaPeriodo(
+        ano, 
+        mes, 
+        periodo.data_inicio, 
+        periodo.data_fim, 
+        escola_ids,
+        considerar_indice_coccao,
+        considerar_fator_correcao
+      );
       if (demanda.length === 0) {
         erros.push(`Período ${periodo.data_inicio} a ${periodo.data_fim}: nenhum produto calculado`);
       } else {
@@ -1452,9 +1459,6 @@ export const gerarPedidoDaGuia = async (req: Request, res: Response) => {
         cp.produto_id, 
         cp.preco_unitario,
         cp.quantidade_contratada,
-        cp.peso_embalagem,
-        cp.unidade_compra,
-        cp.fator_conversao,
         c.id as contrato_id,
         c.numero as contrato_numero,
         c.data_fim as contrato_data_fim,
@@ -1711,17 +1715,12 @@ export const gerarPedidoDaGuia = async (req: Request, res: Response) => {
           ? qtdContrato 
           : grupo.escolas.reduce((s, e) => s + e.quantidade, 0);
         
-        // Converter para unidade de compra
+        // Converter para unidade de compra (SIMPLIFICADO: sem conversão!)
         const conversao = converterDemandaParaCompra(
           qtdTotalKg,
           {
             peso_distribuicao_g: contrato.peso_distribuicao ? Number(contrato.peso_distribuicao) : undefined,
             unidade_distribuicao: contrato.unidade_distribuicao
-          },
-          {
-            peso_embalagem_g: contrato.peso_embalagem ? Number(contrato.peso_embalagem) : undefined,
-            unidade_compra: contrato.unidade_compra,
-            fator_conversao: contrato.fator_conversao ? Number(contrato.fator_conversao) : undefined
           }
         );
         
@@ -1830,3 +1829,671 @@ export const gerarPedidoDaGuia = async (req: Request, res: Response) => {
     client.release();
   }
 };
+
+
+// ─── Iniciar Job de Geração de Guias (Assíncrono) ────────────────────────────
+export const iniciarGeracaoGuias = async (req: Request, res: Response) => {
+  const { competencia, periodos, escola_ids, observacoes, considerar_indice_coccao, considerar_fator_correcao } = req.body as {
+    competencia: string;
+    periodos: Periodo[];
+    escola_ids?: number[];
+    observacoes?: string;
+    considerar_indice_coccao?: boolean;
+    considerar_fator_correcao?: boolean;
+  };
+
+  if (!competencia || !periodos || periodos.length === 0) {
+    return res.status(400).json({ error: 'Competência e períodos são obrigatórios' });
+  }
+
+  try {
+    // Criar job
+    const job = await JobService.criarJob(
+      'gerar_guias',
+      {
+        competencia,
+        periodos,
+        escola_ids,
+        observacoes,
+        considerar_indice_coccao,
+        considerar_fator_correcao,
+      },
+      (req as any).usuario?.id
+    );
+
+    // Processar em background (não aguarda)
+    processarGeracaoGuiasBackground(job.id).catch(err => {
+      console.error('Erro ao processar job em background:', err);
+    });
+
+    return res.status(202).json({
+      job_id: job.id,
+      status: 'pendente',
+      message: 'Geração de guias iniciada. Acompanhe o progresso.',
+    });
+  } catch (error) {
+    console.error('Erro ao iniciar job:', error);
+    return res.status(500).json({ error: 'Erro ao iniciar geração de guias' });
+  }
+};
+
+// ─── Processar Geração de Guias em Background ────────────────────────────────
+async function processarGeracaoGuiasBackground(jobId: number) {
+  const job = await JobService.buscarJob(jobId);
+  if (!job) {
+    console.error(`Job ${jobId} não encontrado`);
+    return;
+  }
+
+  const { competencia, periodos, escola_ids, observacoes, considerar_indice_coccao, considerar_fator_correcao } = job.parametros;
+  const [ano, mes] = competencia.split('-').map(Number);
+
+  const client = await db.pool.connect();
+
+  try {
+    await JobService.atualizarStatus(jobId, 'processando', { progresso: 0 });
+    await client.query('BEGIN');
+
+    const erros: string[] = [];
+
+    // Calcular demanda para cada período
+    await JobService.atualizarStatus(jobId, 'processando', { progresso: 10 });
+    
+    const demandasPorPeriodo: { periodo: Periodo; demanda: ProdutoDemanda[] }[] = [];
+    for (let i = 0; i < periodos.length; i++) {
+      const periodo = periodos[i];
+      const demanda = await calcularDemandaPeriodo(
+        ano,
+        mes,
+        periodo.data_inicio,
+        periodo.data_fim,
+        escola_ids,
+        considerar_indice_coccao,
+        considerar_fator_correcao
+      );
+      
+      if (demanda.length === 0) {
+        erros.push(`Período ${periodo.data_inicio} a ${periodo.data_fim}: nenhum produto calculado`);
+      } else {
+        demandasPorPeriodo.push({ periodo, demanda });
+      }
+
+      // Atualizar progresso (10% a 40%)
+      const progressoPeriodos = 10 + Math.floor((i + 1) / periodos.length * 30);
+      await JobService.atualizarStatus(jobId, 'processando', { progresso: progressoPeriodos });
+    }
+
+    if (demandasPorPeriodo.length === 0) {
+      await client.query('ROLLBACK');
+      await JobService.atualizarStatus(jobId, 'erro', {
+        progresso: 100,
+        erro: 'Nenhum produto calculado para os períodos informados',
+        resultado: { erros: erros.map(m => ({ motivo: m })) },
+      });
+      return;
+    }
+
+    // Buscar ou criar guia
+    await JobService.atualizarStatus(jobId, 'processando', { progresso: 45 });
+    
+    const guiaExistente = await client.query(`SELECT id FROM guias WHERE competencia_mes_ano = $1`, [competencia]);
+    let guia_id: number;
+
+    if (guiaExistente.rows.length > 0) {
+      guia_id = guiaExistente.rows[0].id;
+      await client.query(`DELETE FROM guia_produto_escola WHERE guia_id = $1`, [guia_id]);
+      await client.query(`
+        UPDATE guias SET status = 'aberta', observacao = $1, job_id = $2, updated_at = NOW() WHERE id = $3
+      `, [observacoes || null, jobId, guia_id]);
+    } else {
+      const meses = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
+      const nomePadrao = `Guia ${meses[mes - 1]}/${ano}`;
+      const guiaResult = await client.query(`
+        INSERT INTO guias (mes, ano, nome, competencia_mes_ano, observacao, status, job_id, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, 'aberta', $6, NOW(), NOW())
+        RETURNING id
+      `, [mes, ano, nomePadrao, competencia, observacoes || null, jobId]);
+      guia_id = guiaResult.rows[0].id;
+    }
+
+    await JobService.atualizarStatus(jobId, 'processando', { progresso: 50 });
+
+    // Buscar dados de produtos
+    const todosProdutoIds = [...new Set(demandasPorPeriodo.flatMap(d => d.demanda.map(p => p.produto_id)))];
+    const perecivelResult = await client.query(`
+      SELECT id, perecivel, peso, unidade_distribuicao FROM produtos WHERE id = ANY($1)
+    `, [todosProdutoIds]);
+    
+    const perecivelMap = new Map<number, boolean>(perecivelResult.rows.map((r: any) => [r.id, !!r.perecivel]));
+    const embalagemMap = new Map<number, { peso_g: number; unidade: string }>(
+      perecivelResult.rows
+        .filter((r: any) => r.peso && r.peso > 0 && r.unidade_distribuicao)
+        .map((r: any) => [r.id, { peso_g: Number(r.peso), unidade: r.unidade_distribuicao }])
+    );
+
+    const converterParaEmbalagem = (quantidade_kg: number, peso_g: number): number => {
+      const quantidadeGramas = quantidade_kg * 1000;
+      return Math.ceil(quantidadeGramas / peso_g);
+    };
+
+    // Montar itens
+    const pereciveisParaInserir: { produto_id: number; escola_id: number; quantidade: number; unidade: string; data_entrega: string }[] = [];
+    const naoPereciveisMap = new Map<string, { produto_id: number; escola_id: number; quantidade: number; unidade: string; data_entrega: string }>();
+
+    for (const { periodo, demanda } of demandasPorPeriodo) {
+      for (const produto of demanda) {
+        const perecivel = perecivelMap.get(produto.produto_id) ?? true;
+        const embalagem = embalagemMap.get(produto.produto_id);
+        
+        for (const esc of produto.por_escola) {
+          if (esc.quantidade_kg <= 0) continue;
+
+          let quantidade: number;
+          let unidade: string;
+          
+          if (embalagem) {
+            quantidade = converterParaEmbalagem(esc.quantidade_kg, embalagem.peso_g);
+            unidade = embalagem.unidade;
+          } else {
+            quantidade = esc.quantidade_kg;
+            unidade = produto.unidade || 'kg';
+          }
+
+          if (perecivel) {
+            pereciveisParaInserir.push({
+              produto_id: produto.produto_id,
+              escola_id: esc.escola_id,
+              quantidade,
+              unidade,
+              data_entrega: periodo.data_inicio,
+            });
+          } else {
+            const key = `${produto.produto_id}__${esc.escola_id}`;
+            if (!naoPereciveisMap.has(key)) {
+              naoPereciveisMap.set(key, {
+                produto_id: produto.produto_id,
+                escola_id: esc.escola_id,
+                quantidade: 0,
+                unidade,
+                data_entrega: periodo.data_inicio,
+              });
+            }
+            
+            if (embalagem) {
+              naoPereciveisMap.get(key)!.quantidade += esc.quantidade_kg;
+              (naoPereciveisMap.get(key) as any)._embalagem = embalagem;
+            } else {
+              naoPereciveisMap.get(key)!.quantidade += esc.quantidade_kg;
+            }
+          }
+        }
+      }
+    }
+
+    await JobService.atualizarStatus(jobId, 'processando', { progresso: 60 });
+
+    // Inserir itens com progresso
+    let totalItens = 0;
+    const totalParaInserir = pereciveisParaInserir.length + naoPereciveisMap.size;
+    let itensInseridos = 0;
+    const tempoInicio = Date.now();
+
+    for (const item of pereciveisParaInserir) {
+      await client.query(`
+        INSERT INTO guia_produto_escola
+          (guia_id, produto_id, escola_id, quantidade, quantidade_demanda, unidade, data_entrega, status, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $4, $5, $6, 'pendente', NOW(), NOW())
+      `, [guia_id, item.produto_id, item.escola_id, item.quantidade, item.unidade, item.data_entrega]);
+      
+      totalItens++;
+      itensInseridos++;
+      
+      // Atualizar progresso (60% a 90%) com tempo estimado
+      if (itensInseridos % 10 === 0 || itensInseridos === totalParaInserir) {
+        const progressoItens = 60 + Math.floor((itensInseridos / totalParaInserir) * 30);
+        
+        // Calcular tempo estimado
+        const tempoDecorrido = (Date.now() - tempoInicio) / 1000; // segundos
+        const tempoMedioPorItem = itensInseridos > 0 ? tempoDecorrido / itensInseridos : 0;
+        const itensRestantes = totalParaInserir - itensInseridos;
+        const tempoEstimado = Math.ceil(itensRestantes * tempoMedioPorItem);
+        
+        await JobService.atualizarStatus(jobId, 'processando', { 
+          progresso: progressoItens,
+          itens_processados: itensInseridos,
+          tempo_estimado: tempoEstimado
+        });
+      }
+    }
+
+    for (const item of naoPereciveisMap.values()) {
+      const emb = (item as any)._embalagem as { peso_g: number; unidade: string } | undefined;
+      const qtd = emb ? converterParaEmbalagem(item.quantidade, emb.peso_g) : Math.round(item.quantidade * 1000) / 1000;
+      const unid = emb ? emb.unidade : item.unidade;
+      
+      await client.query(`
+        INSERT INTO guia_produto_escola
+          (guia_id, produto_id, escola_id, quantidade, quantidade_demanda, unidade, data_entrega, status, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $4, $5, $6, 'pendente', NOW(), NOW())
+      `, [guia_id, item.produto_id, item.escola_id, qtd, unid, item.data_entrega]);
+      
+      totalItens++;
+      itensInseridos++;
+      
+      if (itensInseridos % 10 === 0 || itensInseridos === totalParaInserir) {
+        const progressoItens = 60 + Math.floor((itensInseridos / totalParaInserir) * 30);
+        
+        // Calcular tempo estimado
+        const tempoDecorrido = (Date.now() - tempoInicio) / 1000;
+        const tempoMedioPorItem = itensInseridos > 0 ? tempoDecorrido / itensInseridos : 0;
+        const itensRestantes = totalParaInserir - itensInseridos;
+        const tempoEstimado = Math.ceil(itensRestantes * tempoMedioPorItem);
+        
+        await JobService.atualizarStatus(jobId, 'processando', { 
+          progresso: progressoItens,
+          itens_processados: itensInseridos,
+          tempo_estimado: tempoEstimado
+        });
+      }
+    }
+
+    await client.query('COMMIT');
+    await JobService.atualizarStatus(jobId, 'concluido', {
+      progresso: 100,
+      resultado: {
+        guia_id,
+        competencia,
+        total_produtos: todosProdutoIds.length,
+        total_itens: totalItens,
+        total_escolas: new Set(demandasPorPeriodo.flatMap(d => d.demanda.flatMap(p => p.por_escola.map(e => e.escola_id)))).size,
+        erros: erros.map(m => ({ motivo: m })),
+      },
+    });
+
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Erro ao processar job:', error);
+    
+    await JobService.atualizarStatus(jobId, 'erro', {
+      progresso: 100,
+      erro: error instanceof Error ? error.message : 'Erro desconhecido',
+    });
+  } finally {
+    client.release();
+  }
+}
+
+// ─── Buscar Status do Job ─────────────────────────────────────────────────────
+export const buscarStatusJob = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  try {
+    const job = await JobService.buscarJob(parseInt(id));
+    
+    if (!job) {
+      return res.status(404).json({ error: 'Job não encontrado' });
+    }
+
+    return res.json(job);
+  } catch (error) {
+    console.error('Erro ao buscar job:', error);
+    return res.status(500).json({ error: 'Erro ao buscar status do job' });
+  }
+};
+
+// ─── Listar Jobs do Usuário ───────────────────────────────────────────────────
+export const listarJobsUsuario = async (req: Request, res: Response) => {
+  try {
+    const usuario_id = (req as any).usuario?.id;
+    
+    if (!usuario_id) {
+      return res.status(401).json({ error: 'Usuário não autenticado' });
+    }
+
+    const jobs = await JobService.listarJobsUsuario(usuario_id, 50);
+    return res.json(jobs);
+  } catch (error) {
+    console.error('Erro ao listar jobs:', error);
+    return res.status(500).json({ error: 'Erro ao listar jobs' });
+  }
+};
+
+
+// ─── Iniciar Job de Geração de Pedido (Assíncrono) ───────────────────────────
+export const iniciarGeracaoPedido = async (req: Request, res: Response) => {
+  const { guia_id, observacoes, contratos_selecionados, ignorar_sem_contrato } = req.body;
+
+  if (!guia_id) {
+    return res.status(400).json({ error: 'guia_id é obrigatório' });
+  }
+
+  try {
+    // Criar job
+    const job = await JobService.criarJob(
+      'gerar_pedido',
+      {
+        guia_id,
+        observacoes,
+        contratos_selecionados,
+        ignorar_sem_contrato,
+      },
+      (req as any).usuario?.id || (req as any).user?.id
+    );
+
+    // Processar em background
+    processarGeracaoPedidoBackground(job.id).catch(err => {
+      console.error('Erro ao processar job de pedido em background:', err);
+    });
+
+    return res.status(202).json({
+      job_id: job.id,
+      status: 'pendente',
+      message: 'Geração de pedido iniciada. Acompanhe o progresso.',
+    });
+  } catch (error) {
+    console.error('Erro ao iniciar job de pedido:', error);
+    return res.status(500).json({ error: 'Erro ao iniciar geração de pedido' });
+  }
+};
+
+// ─── Processar Geração de Pedido em Background ───────────────────────────────
+async function processarGeracaoPedidoBackground(jobId: number) {
+  const job = await JobService.buscarJob(jobId);
+  if (!job) {
+    console.error(`Job ${jobId} não encontrado`);
+    return;
+  }
+
+  const { guia_id, observacoes, contratos_selecionados, ignorar_sem_contrato } = job.parametros;
+  const usuario_id = job.usuario_id || 1;
+  const client = await db.pool.connect();
+
+  try {
+    await JobService.atualizarStatus(jobId, 'processando', { progresso: 0 });
+    await client.query('BEGIN');
+
+    // Progresso: 0-10% - Buscar guia
+    await JobService.atualizarStatus(jobId, 'processando', { progresso: 5 });
+    
+    const guiaResult = await client.query(`
+      SELECT id, mes, ano, competencia_mes_ano, nome FROM guias WHERE id = $1
+    `, [guia_id]);
+
+    if (guiaResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      await JobService.atualizarStatus(jobId, 'erro', {
+        progresso: 100,
+        erro: 'Guia não encontrada',
+      });
+      return;
+    }
+
+    const guia = guiaResult.rows[0];
+    const competencia = guia.competencia_mes_ano || `${guia.ano}-${String(guia.mes).padStart(2, '0')}`;
+    const [ano, mes] = competencia.split('-').map(Number);
+    const meses = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+    const mesAbrev = meses[mes - 1];
+
+    // Progresso: 10-30% - Buscar itens e processar grupos
+    await JobService.atualizarStatus(jobId, 'processando', { progresso: 10 });
+    
+    const itensResult = await client.query(`
+      SELECT
+        gpe.id as item_id, gpe.produto_id, gpe.escola_id, gpe.quantidade, gpe.unidade, gpe.data_entrega,
+        p.nome as produto_nome, p.perecivel, e.nome as escola_nome
+      FROM guia_produto_escola gpe
+      JOIN produtos p ON p.id = gpe.produto_id
+      JOIN escolas e ON e.id = gpe.escola_id
+      WHERE gpe.guia_id = $1 AND gpe.quantidade > 0
+      ORDER BY gpe.produto_id, gpe.data_entrega, gpe.escola_id
+    `, [guia_id]);
+
+    if (itensResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      await JobService.atualizarStatus(jobId, 'erro', {
+        progresso: 100,
+        erro: 'A guia não possui itens com quantidade > 0',
+      });
+      return;
+    }
+
+    await JobService.atualizarStatus(jobId, 'processando', { progresso: 20 });
+
+    // Agrupar itens (lógica simplificada da função original)
+    const grupos = new Map();
+    const toDateStr = (val: any): string | null => {
+      if (!val) return null;
+      if (val instanceof Date) return val.toISOString().split('T')[0];
+      const s = String(val);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+      if (s.includes('T')) return s.split('T')[0];
+      const d = new Date(s);
+      return isNaN(d.getTime()) ? null : d.toISOString().split('T')[0];
+    };
+
+    for (const row of itensResult.rows) {
+      const dataKey = toDateStr(row.data_entrega);
+      const key = row.perecivel ? `${row.produto_id}__${dataKey ?? ''}` : `${row.produto_id}__np`;
+
+      if (!grupos.has(key)) {
+        grupos.set(key, {
+          produto_id: row.produto_id,
+          produto_nome: row.produto_nome,
+          perecivel: row.perecivel,
+          data_entrega: row.perecivel ? dataKey : null,
+          escolas: [],
+        });
+      }
+
+      const g = grupos.get(key)!;
+      const existente = g.escolas.find((e: any) => e.escola_id === row.escola_id);
+      if (existente) {
+        existente.quantidade += Number(row.quantidade);
+      } else {
+        g.escolas.push({ escola_id: row.escola_id, escola_nome: row.escola_nome, quantidade: Number(row.quantidade) });
+      }
+
+      if (!row.perecivel && dataKey) {
+        if (!g.data_entrega || dataKey < g.data_entrega) {
+          g.data_entrega = dataKey;
+        }
+      }
+    }
+
+    // Progresso: 30-50% - Buscar contratos
+    await JobService.atualizarStatus(jobId, 'processando', { progresso: 30 });
+
+    const todosProdutoIds = [...new Set(itensResult.rows.map((r: any) => r.produto_id))];
+    const contratosResult = await client.query(`
+      SELECT 
+        cp.id as contrato_produto_id, cp.produto_id, cp.preco_unitario, cp.quantidade_contratada,
+        c.id as contrato_id, c.numero as contrato_numero, c.data_fim as contrato_data_fim,
+        f.id as fornecedor_id, f.nome as fornecedor_nome,
+        p.peso as peso_distribuicao, p.unidade_distribuicao,
+        COALESCE(
+          (SELECT SUM(cpm2.quantidade_disponivel) 
+           FROM contrato_produtos_modalidades cpm2 
+           WHERE cpm2.contrato_produto_id = cp.id AND cpm2.ativo = true),
+          cp.quantidade_contratada
+        ) as saldo_disponivel
+      FROM contrato_produtos cp
+      JOIN contratos c ON c.id = cp.contrato_id
+      JOIN fornecedores f ON f.id = c.fornecedor_id
+      JOIN produtos p ON p.id = cp.produto_id
+      WHERE cp.produto_id = ANY($1) AND cp.ativo = true
+        AND c.status = 'ativo' AND c.data_fim >= CURRENT_DATE
+      ORDER BY cp.produto_id, c.data_fim ASC
+    `, [todosProdutoIds]);
+
+    const contratosPorProduto = new Map<number, any[]>();
+    for (const row of contratosResult.rows) {
+      if (!contratosPorProduto.has(row.produto_id)) {
+        contratosPorProduto.set(row.produto_id, []);
+      }
+      contratosPorProduto.get(row.produto_id)!.push(row);
+    }
+
+    await JobService.atualizarStatus(jobId, 'processando', { progresso: 40 });
+
+    // Filtrar produtos sem contrato
+    const produtosSemContrato: any[] = [];
+    const gruposComContrato = new Map();
+    
+    for (const [key, grupo] of grupos) {
+      const contratos = contratosPorProduto.get(grupo.produto_id) || [];
+      if (contratos.length === 0) {
+        const qtdTotal = grupo.escolas.reduce((sum: number, e: any) => sum + e.quantidade, 0);
+        produtosSemContrato.push({
+          produto_id: grupo.produto_id,
+          produto_nome: grupo.produto_nome,
+          quantidade: qtdTotal
+        });
+      } else {
+        gruposComContrato.set(key, grupo);
+      }
+    }
+
+    if (gruposComContrato.size === 0) {
+      await client.query('ROLLBACK');
+      await JobService.atualizarStatus(jobId, 'erro', {
+        progresso: 100,
+        erro: 'Nenhum produto com contrato ativo para gerar pedido',
+        resultado: { produtos_sem_contrato: produtosSemContrato }
+      });
+      return;
+    }
+
+    // Progresso: 50-60% - Criar pedido
+    await JobService.atualizarStatus(jobId, 'processando', { progresso: 50 });
+
+    const maxResult = await client.query(`
+      SELECT COALESCE(MAX(CAST(SUBSTRING(numero FROM LENGTH(numero) - 5) AS INTEGER)), 0) as max_seq
+      FROM pedidos WHERE competencia_mes_ano = $1
+    `, [competencia]);
+    const seq = (parseInt(maxResult.rows[0].max_seq) + 1).toString().padStart(6, '0');
+    const numero = `PED-${mesAbrev}${ano}${seq}`;
+
+    const nomesSemContrato = produtosSemContrato.map(p => p.produto_nome).join(', ');
+    const obsTexto = [
+      observacoes,
+      `Gerado da Guia de Demanda #${guia_id} (${guia.nome || competencia})`,
+      produtosSemContrato.length > 0 ? `Sem contrato (não incluídos): ${nomesSemContrato}` : null,
+    ].filter(Boolean).join(' | ');
+
+    const pedidoResult = await client.query(`
+      INSERT INTO pedidos (numero, data_pedido, status, valor_total, observacoes, usuario_criacao_id, competencia_mes_ano, guia_id)
+      VALUES ($1, CURRENT_DATE, 'pendente', 0, $2, $3, $4, $5)
+      RETURNING id
+    `, [numero, obsTexto, usuario_id, competencia, guia_id]);
+
+    const pedido_id = pedidoResult.rows[0].id;
+
+    // Progresso: 60-90% - Inserir itens
+    await JobService.atualizarStatus(jobId, 'processando', { progresso: 60 });
+    
+    const totalGrupos = gruposComContrato.size;
+    let gruposProcessados = 0;
+    const tempoInicio = Date.now();
+
+    for (const grupo of gruposComContrato.values()) {
+      const contratos = contratosPorProduto.get(grupo.produto_id) || [];
+      const contrato = contratos[0]; // Usar primeiro contrato (simplificado)
+      
+      const qtdTotalKg = grupo.escolas.reduce((s: number, e: any) => s + e.quantidade, 0);
+      const conversao = converterDemandaParaCompra(qtdTotalKg, {
+        peso_distribuicao_g: contrato.peso_distribuicao ? Number(contrato.peso_distribuicao) : undefined,
+        unidade_distribuicao: contrato.unidade_distribuicao
+      });
+      
+      const preco = toNum(contrato.preco_unitario);
+      const valorTotal = conversao.quantidade_compra * preco;
+      const dataEntrega = grupo.data_entrega || new Date().toISOString().split('T')[0];
+
+      const itemResult = await client.query(`
+        INSERT INTO pedido_itens (
+          pedido_id, contrato_produto_id, produto_id, quantidade, unidade, quantidade_kg,
+          quantidade_distribuicao, unidade_distribuicao, preco_unitario, valor_total, data_entrega_prevista, observacoes
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        RETURNING id
+      `, [
+        pedido_id, contrato.contrato_produto_id, grupo.produto_id, conversao.quantidade_compra,
+        conversao.unidade_compra, conversao.quantidade_kg, conversao.quantidade_distribuicao,
+        conversao.unidade_distribuicao, preco, valorTotal, dataEntrega, `Guia #${guia_id}`
+      ]);
+
+      const pedido_item_id = itemResult.rows[0].id;
+
+      const progResult = await client.query(`
+        INSERT INTO pedido_item_programacoes (pedido_item_id, data_entrega, observacoes)
+        VALUES ($1, $2, $3) RETURNING id
+      `, [pedido_item_id, dataEntrega, `Guia de Demanda #${guia_id}`]);
+
+      const programacao_id = progResult.rows[0].id;
+
+      for (const esc of grupo.escolas) {
+        if (esc.quantidade > 0) {
+          await client.query(`
+            INSERT INTO pedido_item_programacao_escolas (programacao_id, escola_id, quantidade)
+            VALUES ($1, $2, $3)
+          `, [programacao_id, esc.escola_id, Math.round(esc.quantidade * 1000) / 1000]);
+        }
+      }
+
+      gruposProcessados++;
+      
+      // Atualizar progresso a cada 5 grupos
+      if (gruposProcessados % 5 === 0 || gruposProcessados === totalGrupos) {
+        const progressoItens = 60 + Math.floor((gruposProcessados / totalGrupos) * 30);
+        const tempoDecorrido = (Date.now() - tempoInicio) / 1000;
+        const tempoMedioPorGrupo = gruposProcessados > 0 ? tempoDecorrido / gruposProcessados : 0;
+        const gruposRestantes = totalGrupos - gruposProcessados;
+        const tempoEstimado = Math.ceil(gruposRestantes * tempoMedioPorGrupo);
+        
+        await JobService.atualizarStatus(jobId, 'processando', {
+          progresso: progressoItens,
+          itens_processados: gruposProcessados,
+          tempo_estimado: tempoEstimado
+        });
+      }
+    }
+
+    // Progresso: 90-100% - Finalizar
+    await JobService.atualizarStatus(jobId, 'processando', { progresso: 95 });
+
+    await client.query(`
+      UPDATE pedidos
+      SET valor_total = (SELECT COALESCE(SUM(valor_total), 0) FROM pedido_itens WHERE pedido_id = $1),
+          updated_at = NOW()
+      WHERE id = $1
+    `, [pedido_id]);
+
+    const pedidoAtualizado = await client.query(`SELECT valor_total FROM pedidos WHERE id = $1`, [pedido_id]);
+    const valorTotal = toNum(pedidoAtualizado.rows[0]?.valor_total, 0);
+
+    await client.query('COMMIT');
+    
+    await JobService.atualizarStatus(jobId, 'concluido', {
+      progresso: 100,
+      resultado: {
+        pedido_id,
+        numero,
+        guia_id,
+        total_itens: gruposComContrato.size,
+        valor_total: valorTotal,
+        produtos_sem_contrato: produtosSemContrato.length > 0 ? produtosSemContrato : undefined,
+      },
+    });
+
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Erro ao processar job de pedido:', error);
+    
+    await JobService.atualizarStatus(jobId, 'erro', {
+      progresso: 100,
+      erro: error instanceof Error ? error.message : 'Erro desconhecido',
+    });
+  } finally {
+    client.release();
+  }
+}

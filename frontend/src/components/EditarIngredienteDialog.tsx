@@ -34,13 +34,13 @@ interface EditarIngredienteDialogProps {
   onClose: () => void;
   onConfirm: (
     perCapitaGeral: number | null,
-    tipoMedida: 'gramas' | 'unidades',
+    tipoMedida: 'gramas' | 'mililitros' | 'unidades',
     perCapitaPorModalidade: PerCapitaPorModalidade[]
   ) => void;
   produtoNome: string;
   produtoFatorCorrecao?: number;
   perCapitaAtual: number;
-  tipoMedidaAtual: 'gramas' | 'unidades';
+  tipoMedidaAtual: 'gramas' | 'mililitros' | 'unidades';
   perCapitaPorModalidadeAtual?: Array<{modalidade_id: number, modalidade_nome: string, per_capita: number}>;
 }
 
@@ -55,7 +55,7 @@ export default function EditarIngredienteDialog({
   perCapitaPorModalidadeAtual,
 }: EditarIngredienteDialogProps) {
   const [perCapitaGeral, setPerCapitaGeral] = useState<string>(String(perCapitaAtual));
-  const [tipoMedida, setTipoMedida] = useState<'gramas' | 'unidades'>(tipoMedidaAtual);
+  const [tipoMedida, setTipoMedida] = useState<'gramas' | 'mililitros' | 'unidades'>(tipoMedidaAtual);
   const [modoAvancado, setModoAvancado] = useState(false);
   const [modalidades, setModalidades] = useState<Modalidade[]>([]);
   const [perCapitaPorModalidade, setPerCapitaPorModalidade] = useState<Record<number, string>>({});
@@ -185,10 +185,11 @@ export default function EditarIngredienteDialog({
             <InputLabel>Unidade de Medida</InputLabel>
             <Select
               value={tipoMedida}
-              onChange={(e) => setTipoMedida(e.target.value as 'gramas' | 'unidades')}
+              onChange={(e) => setTipoMedida(e.target.value as 'gramas' | 'mililitros' | 'unidades')}
               label="Unidade de Medida"
             >
               <MenuItem value="gramas">Gramas (g)</MenuItem>
+              <MenuItem value="mililitros">Mililitros (ml)</MenuItem>
               <MenuItem value="unidades">Unidades (un)</MenuItem>
             </Select>
           </FormControl>
@@ -208,7 +209,7 @@ export default function EditarIngredienteDialog({
                     max: tipoMedida === 'unidades' ? 100 : 1000,
                     step: tipoMedida === 'unidades' ? 1 : 0.1,
                   },
-                  endAdornment: <Typography variant="body2" color="text.secondary">{tipoMedida === 'gramas' ? 'g' : 'un'}</Typography>
+                  endAdornment: <Typography variant="body2" color="text.secondary">{tipoMedida === 'gramas' ? 'g' : tipoMedida === 'mililitros' ? 'ml' : 'un'}</Typography>
                 }}
                 helperText="Este valor será aplicado para todas as modalidades"
               />
@@ -221,7 +222,7 @@ export default function EditarIngredienteDialog({
                       Per Capita Bruto (compra):
                     </Typography>
                     <Typography variant="h6" color="primary">
-                      {(toNum(perCapitaGeral) * toNum(produtoFatorCorrecao)).toFixed(1)}{tipoMedida === 'gramas' ? 'g' : 'un'}
+                      {(toNum(perCapitaGeral) * toNum(produtoFatorCorrecao)).toFixed(1)}{tipoMedida === 'gramas' ? 'g' : tipoMedida === 'mililitros' ? 'ml' : 'un'}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
                       Fator de correção: {toNum(produtoFatorCorrecao).toFixed(3)}
@@ -268,13 +269,13 @@ export default function EditarIngredienteDialog({
                           max: tipoMedida === 'unidades' ? 100 : 1000,
                           step: tipoMedida === 'unidades' ? 1 : 0.1,
                         },
-                        endAdornment: <Typography variant="body2" color="text.secondary">{tipoMedida === 'gramas' ? 'g' : 'un'}</Typography>
+                        endAdornment: <Typography variant="body2" color="text.secondary">{tipoMedida === 'gramas' ? 'g' : tipoMedida === 'mililitros' ? 'ml' : 'un'}</Typography>
                       }}
                     />
                     {/* Mostrar Per Capita Bruto */}
                     {produtoFatorCorrecao && produtoFatorCorrecao > 1.0 && parseFloat(perCapitaPorModalidade[mod.id] || '0') > 0 && (
                       <Typography variant="caption" color="primary" sx={{ display: 'block', mt: 0.5, ml: 1 }}>
-                        Bruto: {(toNum(perCapitaPorModalidade[mod.id]) * toNum(produtoFatorCorrecao, 1)).toFixed(1)}{tipoMedida === 'gramas' ? 'g' : 'un'}
+                        Bruto: {(toNum(perCapitaPorModalidade[mod.id]) * toNum(produtoFatorCorrecao, 1)).toFixed(1)}{tipoMedida === 'gramas' ? 'g' : tipoMedida === 'mililitros' ? 'ml' : 'un'}
                       </Typography>
                     )}
                   </Grid>

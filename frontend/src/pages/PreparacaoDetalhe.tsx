@@ -5,6 +5,7 @@ import { DataTableAdvanced } from '../components/DataTableAdvanced';
 import AdicionarIngredienteDialog from '../components/AdicionarIngredienteDialog';
 import AdicionarGrupoIngredientesDialog from '../components/AdicionarGrupoIngredientesDialog';
 import EditarIngredienteDialog from '../components/EditarIngredienteDialog';
+import DetalhamentoCustoModal from '../components/DetalhamentoCustoModal';
 import { usePageTitle } from "../contexts/PageTitleContext";
 import { useToast } from "../hooks/useToast";
 import {
@@ -70,7 +71,7 @@ interface preparacaoProduto {
   id: number;
   produto_id: number;
   per_capita: number;
-  tipo_medida: 'gramas' | 'unidades';
+  tipo_medida: 'gramas' | 'mililitros' | 'unidades';
   ordem?: number;
   produto?: Produto;
   per_capita_por_modalidade?: Array<{
@@ -109,6 +110,7 @@ export default function PreparacaoDetalhe() {
   const [dialogAdicionarOpen, setDialogAdicionarOpen] = useState(false);
   const [dialogGrupoOpen, setDialogGrupoOpen] = useState(false);
   const [dialogEditarOpen, setDialogEditarOpen] = useState(false);
+  const [detalhamentoCustoOpen, setDetalhamentoCustoOpen] = useState(false);
   const [produtoEditando, setProdutoEditando] = useState<preparacaoProduto | null>(null);
   const [tabAtiva, setTabAtiva] = useState(0); // 0 = Ingredientes, 1 = Ficha Técnica
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
@@ -148,7 +150,7 @@ export default function PreparacaoDetalhe() {
       ),
       cell: ({ row }) => {
         const assoc = row.original;
-        const unidade = assoc.tipo_medida === 'gramas' ? 'g' : 'un';
+        const unidade = assoc.tipo_medida === 'gramas' ? 'g' : assoc.tipo_medida === 'mililitros' ? 'ml' : 'un';
         const fatorCorrecao = toNum(assoc.produto?.fator_correcao, 1.0);
         const perCapitasLiquido = assoc.per_capita_por_modalidade?.map(m => toNum(m.per_capita)) || [toNum(assoc.per_capita)];
         const minPerCapitaLiquido = Math.min(...perCapitasLiquido);
@@ -207,7 +209,7 @@ export default function PreparacaoDetalhe() {
       ),
       cell: ({ row }) => {
         const assoc = row.original;
-        const unidade = assoc.tipo_medida === 'gramas' ? 'g' : 'un';
+        const unidade = assoc.tipo_medida === 'gramas' ? 'g' : assoc.tipo_medida === 'mililitros' ? 'ml' : 'un';
         const fatorCorrecao = toNum(assoc.produto?.fator_correcao, 1.0);
         const perCapitasLiquido = assoc.per_capita_por_modalidade?.map(m => toNum(m.per_capita)) || [toNum(assoc.per_capita)];
         const minPerCapitaLiquido = Math.min(...perCapitasLiquido);
@@ -231,7 +233,7 @@ export default function PreparacaoDetalhe() {
       cell: (info) => (
         <Box sx={{ display: 'flex', justifyContent: 'center' }}>
           <Chip 
-            label={info.getValue() === 'gramas' ? 'Gramas' : 'Unidades'} 
+            label={info.getValue() === 'gramas' ? 'Gramas' : info.getValue() === 'mililitros' ? 'Mililitros' : 'Unidades'} 
             size="small" 
             variant="outlined"
           />
@@ -358,7 +360,7 @@ export default function PreparacaoDetalhe() {
 
   async function confirmarEdicaoProduto(
     perCapitaGeral: number | null,
-    tipoMedida: 'gramas' | 'unidades',
+    tipoMedida: 'gramas' | 'mililitros' | 'unidades',
     perCapitaPorModalidade: Array<{modalidade_id: number, per_capita: number}>
   ) {
     if (!produtoEditando) return;
@@ -508,7 +510,7 @@ export default function PreparacaoDetalhe() {
                     { text: ing.produto_nome, fontSize: 7, fillColor: bg, color: '#2d3748' },
                     { text: toNum(ing.per_capita).toFixed(1), alignment: 'center', fontSize: 7, fillColor: bg, bold: true, color: '#2b6cb0' },
                     { text: toNum(ing.per_capita_bruto ?? ing.per_capita).toFixed(1), alignment: 'center', fontSize: 7, fillColor: bg, color: '#4a5568' },
-                    { text: ing.tipo_medida === 'gramas' ? 'g' : 'un', alignment: 'center', fontSize: 7, fillColor: bg, color: '#718096' },
+                    { text: ing.tipo_medida === 'gramas' ? 'g' : ing.tipo_medida === 'mililitros' ? 'ml' : 'un', alignment: 'center', fontSize: 7, fillColor: bg, color: '#718096' },
                     dc(kcalIng, 0, bg),
                     dc(kjIng, 0, bg),
                     dc(toNum(ing.proteinas_porcao), 1, bg),
@@ -957,7 +959,7 @@ export default function PreparacaoDetalhe() {
                       </Box>
                       {!loadingNutricional && errorNutricional && (
                         <Typography variant="caption" color="error" sx={{ display: 'block', mb: 1 }}>
-                          ?? Erro ao calcular valores nutricionais
+                          ⚠️ Erro ao calcular valores nutricionais
                         </Typography>
                       )}
                       {!loadingNutricional && valoresNutricionais?.aviso && (
@@ -1019,15 +1021,25 @@ export default function PreparacaoDetalhe() {
                           Custo Estimado
                         </Typography>
                         {loadingCusto && <CircularProgress size={16} />}
+                        {!loadingCusto && custoData && custoData.detalhamento && (
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={() => setDetalhamentoCustoOpen(true)}
+                            sx={{ ml: 'auto' }}
+                          >
+                            Ver Detalhamento
+                          </Button>
+                        )}
                       </Box>
                       {!loadingCusto && errorCusto && (
                         <Typography variant="caption" color="error" sx={{ display: 'block', mb: 1 }}>
-                          ?? Erro ao calcular custo
+                          ⚠️ Erro ao calcular custo
                         </Typography>
                       )}
                       {!loadingCusto && custoData?.aviso && (
                         <Typography variant="caption" color="warning.main" sx={{ display: 'block', mb: 1 }}>
-                          ?? {custoData.aviso}
+                          ⚠️ {custoData.aviso}
                         </Typography>
                       )}
                     </Grid>
@@ -1152,6 +1164,18 @@ export default function PreparacaoDetalhe() {
         perCapitaAtual={produtoEditando.per_capita}
         tipoMedidaAtual={produtoEditando.tipo_medida}
         perCapitaPorModalidadeAtual={produtoEditando.per_capita_por_modalidade}
+      />
+    )}
+
+    {/* Modal de Detalhamento do Custo */}
+    {custoData && custoData.detalhamento && (
+      <DetalhamentoCustoModal
+        open={detalhamentoCustoOpen}
+        onClose={() => setDetalhamentoCustoOpen(false)}
+        detalhamento={custoData.detalhamento}
+        custoTotal={custoData.custo_total}
+        custoPorPorcao={custoData.custo_por_porcao}
+        rendimentoPorcoes={custoData.rendimento_porcoes || preparacao?.rendimento_porcoes || 1}
       />
     )}
 

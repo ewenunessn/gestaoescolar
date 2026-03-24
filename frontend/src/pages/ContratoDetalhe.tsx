@@ -47,7 +47,7 @@ import AdicionarProdutosLoteDialog from '../components/AdicionarProdutosLoteDial
 
 // --- Constantes e Funções Utilitárias (Fora do Componente) ---
 
-const produtoVazio = { produto_id: "", quantidade: "", preco_unitario: "", marca: "", peso: "", unidade: "", peso_embalagem: "", unidade_compra: "", fator_conversao: "" };
+const produtoVazio = { produto_id: "", quantidade: "", preco_unitario: "", marca: "" };
 const contratoVazio = { fornecedor_id: "", numero: "", data_inicio: "", data_fim: "", ativo: true };
 
 const formatarData = (data: string) => new Date(data).toLocaleDateString("pt-BR", { timeZone: 'UTC' });
@@ -184,7 +184,7 @@ export default function ContratoDetalhe() {
 
   // Estados de Modais (Dialogs)
   const [dialogState, setDialogState] = useState({ produto: false, editarContrato: false, removerContrato: false, removerProduto: false, adicionarLote: false });
-  const [formProduto, setFormProduto] = useState<any>({ produto_id: "", quantidade: "", preco_unitario: "", unidade: "Kg", peso_embalagem: "", unidade_compra: "", fator_conversao: "" });
+  const [formProduto, setFormProduto] = useState<any>({ produto_id: "", quantidade: "", preco_unitario: "", marca: "" });
   const [formContrato, setFormContrato] = useState<any>(contratoVazio);
   const [editandoProduto, setEditandoProduto] = useState<any | null>(null);
   const [removerId, setRemoverId] = useState<number | null>(null);
@@ -333,12 +333,7 @@ export default function ContratoDetalhe() {
         produto_id: produto.produto_id, 
         quantidade: produto.quantidade, 
         preco_unitario: produto.preco_unitario,
-        marca: produto.marca || "",
-        peso: produto.peso ? formatarNumero(produto.peso) : "",
-        unidade: produto.unidade || "",
-        peso_embalagem: produto.peso_embalagem ? formatarNumero(produto.peso_embalagem) : "",
-        unidade_compra: produto.unidade_compra || "",
-        fator_conversao: produto.fator_conversao ? formatarNumero(produto.fator_conversao) : ""
+        marca: produto.marca || ""
       };
       setFormProduto(formInicial);
       setFormProdutoInicial(JSON.parse(JSON.stringify(formInicial)));
@@ -393,11 +388,6 @@ export default function ContratoDetalhe() {
         quantidade_contratada: Number(formProduto.quantidade), 
         preco_unitario: Number(formProduto.preco_unitario),
         marca: formProduto.marca || "",
-        peso: formProduto.peso ? Number(formProduto.peso.toString().replace(',', '.')) : null,
-        unidade: formProduto.unidade || null,
-        peso_embalagem: formProduto.peso_embalagem ? Number(formProduto.peso_embalagem.toString().replace(',', '.')) : null,
-        unidade_compra: formProduto.unidade_compra || null,
-        fator_conversao: formProduto.fator_conversao ? Number(formProduto.fator_conversao.toString().replace(',', '.')) : null,
         ativo: true
       };
       
@@ -710,8 +700,6 @@ export default function ContratoDetalhe() {
                         </Box>
                       </TableCell>
                       <TableCell align="center" sx={{ height: 56, py: 1 }}>Marca</TableCell>
-                      <TableCell align="center" sx={{ height: 56, py: 1 }}>Peso</TableCell>
-                      <TableCell align="center" sx={{ height: 56, py: 1 }}>Unidade</TableCell>
                       <TableCell align="center" sx={{ height: 56, py: 1 }}>Quantidade</TableCell>
                       <TableCell align="center" sx={{ height: 56, py: 1 }}>Preço Unitário</TableCell>
                       <TableCell align="center" sx={{ height: 56, py: 1 }}>Valor Total</TableCell>
@@ -722,7 +710,7 @@ export default function ContratoDetalhe() {
                   <TableBody>
                     {paginatedProdutos.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={9} align="center" sx={{ py: 6 }}>
+                        <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
                           <SearchIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
                           <Typography variant="body1" color="text.secondary" sx={{ mb: 0.5 }}>
                             Nenhum item encontrado
@@ -763,18 +751,6 @@ export default function ContratoDetalhe() {
                               <Typography variant="body2" color="text.secondary">
                                 {produto.marca || "-"}
                               </Typography>
-                            </TableCell>
-                            <TableCell align="center">
-                              <Typography variant="body2" color="text.secondary">
-                                {produto.peso ? `${formatarNumero(produto.peso)}g` : "-"}
-                              </Typography>
-                            </TableCell>
-                            <TableCell align="center">
-                              <Chip 
-                                label={produto.unidade || "-"} 
-                                size="small" 
-                                variant="outlined"
-                              />
                             </TableCell>
                             <TableCell align="center">
                               <Typography variant="body2">{produto.quantidade}</Typography>
@@ -870,9 +846,7 @@ export default function ContratoDetalhe() {
               setProdutoSelecionado(newValue);
               setFormProduto({ 
                 ...formProduto, 
-                produto_id: newValue?.id || "", 
-                peso: newValue?.peso ? formatarNumero(newValue.peso) : "",
-                unidade: formProduto.unidade || newValue?.unidade || ""
+                produto_id: newValue?.id || ""
               });
               if (newValue) {
                 setTouched({ ...touched, produto_id: true });
@@ -886,9 +860,9 @@ export default function ContratoDetalhe() {
                 <Box>
                   <Typography variant="body2">{option.nome}</Typography>
                   <Typography variant="caption" color="text.secondary">
-                    {option.categoria && `${option.categoria} • `}
-                    {option.unidade && `Unidade: ${option.unidade}`}
-                    {option.peso && ` • Peso padrão: ${formatarNumero(option.peso)}g`}
+                    {option.categoria && `${option.categoria}`}
+                    {option.unidade_distribuicao && ` • Unidade: ${option.unidade_distribuicao}`}
+                    {option.peso && ` • Peso: ${formatarNumero(option.peso)}g`}
                   </Typography>
                 </Box>
               </li>
@@ -912,8 +886,9 @@ export default function ContratoDetalhe() {
           {produtoSelecionado && (
             <Alert severity="info" sx={{ mb: 1.5, py: 0.5 }}>
               <Typography variant="body2" sx={{ fontSize: '0.8125rem' }}>
-                <strong>Unidade padrão:</strong> {produtoSelecionado.unidade || "-"}
-                {produtoSelecionado.peso && <> • <strong>Peso padrão:</strong> {formatarNumero(produtoSelecionado.peso)}g</>}
+                <strong>Produto:</strong> {produtoSelecionado.nome}
+                {produtoSelecionado.unidade_distribuicao && <> • <strong>Unidade:</strong> {produtoSelecionado.unidade_distribuicao}</>}
+                {produtoSelecionado.peso && <> • <strong>Peso:</strong> {formatarNumero(produtoSelecionado.peso)}g</>}
               </Typography>
             </Alert>
           )}
@@ -944,38 +919,6 @@ export default function ContratoDetalhe() {
             placeholder="Ex: Tio João, Camil, etc." 
           />
           <TextField 
-            label="Peso (gramas)" 
-            type="number" 
-            value={formProduto.peso || ""} 
-            onChange={e => setFormProduto({ ...formProduto, peso: e.target.value })} 
-            fullWidth 
-            size="small"
-            sx={{ mb: 1.5 }} 
-            placeholder="Ex: 500 para 500g, 1000 para 1kg" 
-            helperText="Peso da embalagem neste contrato (pode diferir do produto base)"
-            inputProps={{ min: 0 }} 
-          />
-          <FormControl fullWidth size="small" sx={{ mb: 1.5 }}>
-            <InputLabel>Unidade</InputLabel>
-            <Select
-              value={formProduto.unidade || ""}
-              label="Unidade"
-              onChange={e => setFormProduto({ ...formProduto, unidade: e.target.value })}
-            >
-              <MenuItem value="">Padrão do produto</MenuItem>
-              <MenuItem value="KG">KG - Quilograma</MenuItem>
-              <MenuItem value="G">G - Grama</MenuItem>
-              <MenuItem value="L">L - Litro</MenuItem>
-              <MenuItem value="ML">ML - Mililitro</MenuItem>
-              <MenuItem value="UN">UN - Unidade</MenuItem>
-              <MenuItem value="PCT">PCT - Pacote</MenuItem>
-              <MenuItem value="CX">CX - Caixa</MenuItem>
-              <MenuItem value="DZ">DZ - Dúzia</MenuItem>
-              <MenuItem value="SC">SC - Saco</MenuItem>
-              <MenuItem value="FD">FD - Fardo</MenuItem>
-            </Select>
-          </FormControl>
-          <TextField 
             label="Preço Unitário *" 
             type="number" 
             value={formProduto.preco_unitario} 
@@ -991,58 +934,6 @@ export default function ContratoDetalhe() {
             error={touched.preco_unitario && (!formProduto.preco_unitario || Number(formProduto.preco_unitario) <= 0)}
             helperText={touched.preco_unitario && (!formProduto.preco_unitario ? "Campo obrigatório" : Number(formProduto.preco_unitario) <= 0 ? "Deve ser maior que zero" : "")}
             inputProps={{ min: 0, step: 0.01 }} 
-          />
-          
-          <Typography variant="subtitle2" sx={{ mt: 2, mb: 1, fontWeight: 600, color: 'primary.main' }}>
-            Dados de Compra (Conversão de Unidades)
-          </Typography>
-          <Alert severity="info" sx={{ mb: 1.5, py: 0.5 }}>
-            <Typography variant="caption" sx={{ fontSize: '0.75rem' }}>
-              Configure como este produto é comprado. Exemplo: Compra em caixas de 5kg, mas distribui em pacotes de 500g.
-            </Typography>
-          </Alert>
-          
-          <TextField 
-            label="Peso da Embalagem de Compra (gramas)" 
-            type="number" 
-            value={formProduto.peso_embalagem || ""} 
-            onChange={e => setFormProduto({ ...formProduto, peso_embalagem: e.target.value })} 
-            fullWidth 
-            size="small"
-            sx={{ mb: 1.5 }} 
-            placeholder="Ex: 5000 para caixa de 5kg" 
-            helperText="Peso da embalagem que você compra do fornecedor"
-            inputProps={{ min: 0 }} 
-          />
-          
-          <FormControl fullWidth size="small" sx={{ mb: 1.5 }}>
-            <InputLabel>Unidade de Compra</InputLabel>
-            <Select
-              value={formProduto.unidade_compra || ""}
-              label="Unidade de Compra"
-              onChange={e => setFormProduto({ ...formProduto, unidade_compra: e.target.value })}
-            >
-              <MenuItem value="">Não especificado</MenuItem>
-              <MenuItem value="Caixa">Caixa</MenuItem>
-              <MenuItem value="Fardo">Fardo</MenuItem>
-              <MenuItem value="Saco">Saco</MenuItem>
-              <MenuItem value="Pacote">Pacote</MenuItem>
-              <MenuItem value="Unidade">Unidade</MenuItem>
-              <MenuItem value="Dúzia">Dúzia</MenuItem>
-              <MenuItem value="KG">KG - Quilograma</MenuItem>
-            </Select>
-          </FormControl>
-          
-          <TextField 
-            label="Fator de Conversão (opcional)" 
-            type="number" 
-            value={formProduto.fator_conversao || ""} 
-            onChange={e => setFormProduto({ ...formProduto, fator_conversao: e.target.value })} 
-            fullWidth 
-            size="small"
-            placeholder="Ex: 0.1 se 10 pacotes = 1 caixa" 
-            helperText="Use apenas se a conversão por peso não for adequada"
-            inputProps={{ min: 0, step: 0.001 }} 
           />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>

@@ -150,7 +150,7 @@ export const listarProdutos = asyncHandler(async (req: Request, res: Response) =
       p.updated_at,
       p.estoque_minimo,
       p.fator_correcao::text as fator_correcao,
-      p.tipo_fator_correcao,
+      p.indice_coccao::text as indice_coccao,
       p.unidade_distribuicao,
       p.peso::text as peso
     FROM produtos p
@@ -184,7 +184,7 @@ export const buscarProduto = asyncHandler(async (req: Request, res: Response) =>
       p.updated_at,
       p.estoque_minimo,
       p.fator_correcao::text as fator_correcao,
-      p.tipo_fator_correcao,
+      p.indice_coccao::text as indice_coccao,
       p.unidade_distribuicao,
       p.peso::text as peso
     FROM produtos p 
@@ -218,7 +218,7 @@ export const criarProduto = asyncHandler(async (req: Request, res: Response) => 
     ativo = true,
     estoque_minimo = 0,
     fator_correcao = 1.0,
-    tipo_fator_correcao = 'perda',
+    indice_coccao = 1.0,
     unidade_distribuicao,
     peso
   } = req.body;
@@ -229,11 +229,17 @@ export const criarProduto = asyncHandler(async (req: Request, res: Response) => 
   }
 
   const fatorCorrecaoNormalizado = num(fator_correcao) || 1.0;
+  const indiceCoccaoNormalizado = num(indice_coccao) || 1.0;
   const pesoNormalizado = peso !== undefined ? num(peso) : null;
 
-  // Validar fator de correção
-  if (fatorCorrecaoNormalizado < 0) {
-    throw new ValidationError('Fator de correção deve ser maior ou igual a 0');
+  // Validar fator de correção (sempre >= 1.0 - perda no pré-preparo)
+  if (fatorCorrecaoNormalizado < 1.0) {
+    throw new ValidationError('Fator de correção deve ser maior ou igual a 1.0 (representa perda no pré-preparo)');
+  }
+
+  // Validar índice de cocção (pode ser qualquer valor > 0)
+  if (indiceCoccaoNormalizado <= 0) {
+    throw new ValidationError('Índice de cocção deve ser maior que 0');
   }
 
   try {
@@ -241,14 +247,14 @@ export const criarProduto = asyncHandler(async (req: Request, res: Response) => 
       INSERT INTO produtos (
         nome, descricao, tipo_processamento, categoria, validade_minima, 
         imagem_url, perecivel, ativo, estoque_minimo, fator_correcao, 
-        tipo_fator_correcao, unidade_distribuicao, peso, created_at, updated_at
+        indice_coccao, unidade_distribuicao, peso, created_at, updated_at
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       RETURNING *
     `, [
       nome.trim(), descricao, tipo_processamento, categoria, validade_minima,
       imagem_url, perecivel, ativo, estoque_minimo, fatorCorrecaoNormalizado,
-      tipo_fator_correcao, unidade_distribuicao, pesoNormalizado
+      indiceCoccaoNormalizado, unidade_distribuicao, pesoNormalizado
     ]);
 
     res.status(201).json({
@@ -274,8 +280,9 @@ export const editarProduto = asyncHandler(async (req: Request, res: Response) =>
     ativo,
     estoque_minimo,
     fator_correcao,
-    tipo_fator_correcao,
+    indice_coccao,
     unidade_distribuicao,
+    unidade_medida_id,
     peso
   } = req.body;
 
@@ -284,16 +291,25 @@ export const editarProduto = asyncHandler(async (req: Request, res: Response) =>
     throw new ValidationError('Nome do produto não pode estar vazio');
   }
 
-  // Validar fator de correção se fornecido
+  // Validar fator de correção se fornecido (sempre >= 1.0)
   if (fator_correcao !== undefined) {
     const fatorNum = num(fator_correcao) || 1.0;
-    if (fatorNum < 0) {
-      throw new ValidationError('Fator de correção deve ser maior ou igual a 0');
+    if (fatorNum < 1.0) {
+      throw new ValidationError('Fator de correção deve ser maior ou igual a 1.0 (representa perda no pré-preparo)');
+    }
+  }
+
+  // Validar índice de cocção se fornecido (pode ser qualquer valor > 0)
+  if (indice_coccao !== undefined) {
+    const indiceNum = num(indice_coccao) || 1.0;
+    if (indiceNum <= 0) {
+      throw new ValidationError('Índice de cocção deve ser maior que 0');
     }
   }
 
   const nomeNormalizado = nome !== undefined ? nome.trim() : undefined;
   const fatorCorrecaoNormalizado = fator_correcao !== undefined ? num(fator_correcao) || 1.0 : undefined;
+  const indiceCoccaoNormalizado = indice_coccao !== undefined ? num(indice_coccao) || 1.0 : undefined;
   const pesoNormalizado = peso !== undefined ? num(peso) : undefined;
 
   const result = await db.query(`
@@ -308,16 +324,17 @@ export const editarProduto = asyncHandler(async (req: Request, res: Response) =>
       ativo = COALESCE($8, ativo),
       estoque_minimo = COALESCE($9, estoque_minimo),
       fator_correcao = COALESCE($10, fator_correcao),
-      tipo_fator_correcao = COALESCE($11, tipo_fator_correcao),
+      indice_coccao = COALESCE($11, indice_coccao),
       unidade_distribuicao = COALESCE($12, unidade_distribuicao),
-      peso = COALESCE($13, peso),
+      unidade_medida_id = COALESCE($13, unidade_medida_id),
+      peso = COALESCE($14, peso),
       updated_at = CURRENT_TIMESTAMP
-    WHERE id = $14
+    WHERE id = $15
     RETURNING *
   `, [
     nomeNormalizado, descricao, tipo_processamento, categoria, validade_minima,
     imagem_url, perecivel, ativo, estoque_minimo, fatorCorrecaoNormalizado,
-    tipo_fator_correcao, unidade_distribuicao, pesoNormalizado, id
+    indiceCoccaoNormalizado, unidade_distribuicao, unidade_medida_id, pesoNormalizado, id
   ]);
 
   if (result.rows.length === 0) {

@@ -8,6 +8,7 @@ interface IngredienteNutricional {
   per_capita: number;
   tipo_medida: string;
   fator_correcao: number;
+  indice_coccao: number;
   calorias_100g: number | null;
   proteinas_100g: number | null;
   carboidratos_100g: number | null;
@@ -26,6 +27,7 @@ interface IngredienteCusto {
   per_capita: number;
   tipo_medida: string;
   fator_correcao: number;
+  indice_coccao: number;
   preco_unitario: number | null;
 }
 
@@ -43,6 +45,7 @@ export const calcularValoresNutricionais = async (req: Request, res: Response) =
         COALESCE(rpm.per_capita_ajustado, rp.per_capita) as per_capita,
         rp.tipo_medida,
         COALESCE(p.fator_correcao, 1.0) as fator_correcao,
+        COALESCE(p.indice_coccao, 1.0) as indice_coccao,
         pcn.energia_kcal as calorias_100g,
         pcn.proteina_g as proteinas_100g,
         pcn.carboidratos_g as carboidratos_100g,
@@ -66,6 +69,7 @@ export const calcularValoresNutricionais = async (req: Request, res: Response) =
         rp.per_capita,
         rp.tipo_medida,
         COALESCE(p.fator_correcao, 1.0) as fator_correcao,
+        COALESCE(p.indice_coccao, 1.0) as indice_coccao,
         pcn.energia_kcal as calorias_100g,
         pcn.proteina_g as proteinas_100g,
         pcn.carboidratos_g as carboidratos_100g,
@@ -249,6 +253,7 @@ export const calcularCusto = async (req: Request, res: Response) => {
         COALESCE(rpm.per_capita_ajustado, rp.per_capita) as per_capita,
         rp.tipo_medida,
         COALESCE(p.fator_correcao, 1.0) as fator_correcao,
+        COALESCE(p.indice_coccao, 1.0) as indice_coccao,
         cp.preco_unitario
       FROM refeicao_produtos rp
       INNER JOIN produtos p ON p.id = rp.produto_id
@@ -273,6 +278,7 @@ export const calcularCusto = async (req: Request, res: Response) => {
         rp.per_capita,
         rp.tipo_medida,
         COALESCE(p.fator_correcao, 1.0) as fator_correcao,
+        COALESCE(p.indice_coccao, 1.0) as indice_coccao,
         cp.preco_unitario
       FROM refeicao_produtos rp
       INNER JOIN produtos p ON p.id = rp.produto_id
@@ -320,10 +326,18 @@ export const calcularCusto = async (req: Request, res: Response) => {
         return;
       }
 
-      // Per capita cadastrado é LÍQUIDO (consumo)
+      // Per capita cadastrado é LÍQUIDO (consumo final - cozido)
       // Para calcular custo, precisamos do BRUTO (compra)
+      // Lógica correta: IC primeiro (cozimento), depois FC (pré-preparo)
+      
+      const indiceCoccao = toNum(ing.indice_coccao, 1.0);
       const fatorCorrecao = toNum(ing.fator_correcao, 1.0);
-      const perCapitaBruto = ing.per_capita * fatorCorrecao;
+      
+      // 1. Calcular quanto precisa CRU (antes de cozinhar)
+      const perCapitaCru = ing.per_capita / indiceCoccao;
+      
+      // 2. Calcular quanto precisa COMPRAR (antes de limpar/descascar)
+      const perCapitaBruto = perCapitaCru * fatorCorrecao;
 
       // Calcular custo baseado no per capita BRUTO
       // preco_unitario é por kg, per capita é em gramas ou unidades
@@ -343,8 +357,10 @@ export const calcularCusto = async (req: Request, res: Response) => {
       detalhamento.push({
         produto: ing.produto_nome,
         quantidade_liquida: ing.per_capita,
+        quantidade_crua: perCapitaCru,
         quantidade_bruta: perCapitaBruto,
         unidade: ing.tipo_medida,
+        indice_coccao: indiceCoccao,
         fator_correcao: fatorCorrecao,
         preco_unitario: ing.preco_unitario,
         custo: Math.round(custo * 100) / 100

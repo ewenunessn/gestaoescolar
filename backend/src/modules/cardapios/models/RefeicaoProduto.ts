@@ -6,7 +6,7 @@ export interface RefeicaoProduto {
   refeicao_id: number;
   produto_id: number;
   per_capita: number;
-  tipo_medida: 'gramas' | 'unidades';
+  tipo_medida: 'gramas' | 'mililitros' | 'unidades';
   created_at?: Date;
   updated_at?: Date;
   per_capita_por_modalidade?: Array<{
@@ -115,7 +115,7 @@ export async function addRefeicaoProduto(
 export async function updateRefeicaoProduto(
   id: number,
   per_capita: number,
-  tipo_medida?: 'gramas' | 'unidades',
+  tipo_medida?: 'gramas' | 'mililitros' | 'unidades',
   per_capita_por_modalidade?: Array<{modalidade_id: number, per_capita: number}>
 ): Promise<RefeicaoProduto | null> {
   const client = await db.pool.connect();

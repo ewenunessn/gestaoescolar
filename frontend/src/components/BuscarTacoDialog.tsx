@@ -10,7 +10,7 @@ import { buscarTaco, mapearTacoParaComposicao, TacoAlimento } from '../services/
 interface BuscarTacoDialogProps {
   open: boolean;
   onClose: () => void;
-  onSelect: (composicao: ReturnType<typeof mapearTacoParaComposicao>, nomeAlimento: string) => void;
+  onSelect: (composicao: ReturnType<typeof mapearTacoParaComposicao>, nomeAlimento: string, alimento: TacoAlimento) => void;
   onSelectAlimento?: (alimento: TacoAlimento) => void;
   initialQuery?: string;
 }
@@ -60,7 +60,7 @@ export default function BuscarTacoDialog({ open, onClose, onSelect, onSelectAlim
     if (onSelectAlimento) {
       onSelectAlimento(alimento);
     } else {
-      onSelect(mapearTacoParaComposicao(alimento), alimento.nome);
+      onSelect(mapearTacoParaComposicao(alimento), alimento.nome, alimento);
     }
     handleClose();
   };

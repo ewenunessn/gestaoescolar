@@ -25,9 +25,9 @@ export async function adicionarRefeicaoProduto(req: Request, res: Response) {
   }
   
   // Validar tipo_medida
-  if (!['gramas', 'unidades'].includes(tipo_medida)) {
+  if (!['gramas', 'mililitros', 'unidades'].includes(tipo_medida)) {
     return res.status(400).json({ 
-      message: "tipo_medida deve ser 'gramas' ou 'unidades'." 
+      message: "tipo_medida deve ser 'gramas', 'mililitros' ou 'unidades'." 
     });
   }
   
@@ -60,9 +60,9 @@ export async function editarRefeicaoProduto(req: Request, res: Response) {
     }
     
     // Validar tipo_medida se fornecido
-    if (tipo_medida && !['gramas', 'unidades'].includes(tipo_medida)) {
+    if (tipo_medida && !['gramas', 'mililitros', 'unidades'].includes(tipo_medida)) {
       return res.status(400).json({ 
-        message: "tipo_medida deve ser 'gramas' ou 'unidades'." 
+        message: "tipo_medida deve ser 'gramas', 'mililitros' ou 'unidades'." 
       });
     }
     

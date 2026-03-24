@@ -411,11 +411,13 @@ const GuiaDemandaDetalhe: React.FC = () => {
       {/* Dialog: quantidades por escola de um produto */}
       <Dialog open={dialogEscolasOpen} onClose={() => setDialogEscolasOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>{produtoSelecionado?.nome}</Typography>
-          <Typography variant="caption" color="text.secondary">
-            Quantidade por escola
-            {produtoSelecionado?.data_entrega && ` · ${new Date(produtoSelecionado.data_entrega + 'T12:00:00').toLocaleDateString('pt-BR')}`}
-          </Typography>
+          <Box>
+            <span style={{ fontWeight: 600, fontSize: '1.25rem' }}>{produtoSelecionado?.nome}</span>
+            <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '4px' }}>
+              Quantidade por escola
+              {produtoSelecionado?.data_entrega && ` · ${new Date(produtoSelecionado.data_entrega + 'T12:00:00').toLocaleDateString('pt-BR')}`}
+            </div>
+          </Box>
         </DialogTitle>
         <DialogContent sx={{ p: 0 }}>
           <Table size="small">
@@ -473,8 +475,10 @@ const GuiaDemandaDetalhe: React.FC = () => {
       {/* Dialog: itens de uma escola */}
       <Dialog open={dialogItensEscolaOpen} onClose={() => setDialogItensEscolaOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>{escolaSelecionada?.nome}</Typography>
-          <Typography variant="caption" color="text.secondary">Itens desta escola na guia</Typography>
+          <Box>
+            <span style={{ fontWeight: 600, fontSize: '1.25rem' }}>{escolaSelecionada?.nome}</span>
+            <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '4px' }}>Itens desta escola na guia</div>
+          </Box>
         </DialogTitle>
         <DialogContent sx={{ p: 0 }}>
           <Table size="small">
@@ -527,7 +531,7 @@ const GuiaDemandaDetalhe: React.FC = () => {
       {/* Modal Adicionar em Lote */}
       <Dialog open={openBatchDialog} onClose={() => !batchSaving && setOpenBatchDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>Adicionar Produto em Lote</Typography>
+          <span style={{ fontWeight: 600, fontSize: '1.25rem' }}>Adicionar Produto em Lote</span>
           <IconButton size="small" onClick={() => !batchSaving && setOpenBatchDialog(false)} disabled={batchSaving}>
             <ClearIcon fontSize="small" />
           </IconButton>

@@ -637,6 +637,7 @@ const AdicionarProdutosLoteDialog: React.FC<AdicionarProdutosLoteDialogProps> = 
                           <MenuItem value="DZ">DZ</MenuItem>
                           <MenuItem value="SC">SC</MenuItem>
                           <MenuItem value="FD">FD</MenuItem>
+                          <MenuItem value="GF">GF - Garrafa</MenuItem>
                         </Select>
                       </FormControl>
                     </Box>

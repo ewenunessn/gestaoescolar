@@ -56,6 +56,7 @@ import solicitacoesAlimentosRoutes from "./routes/solicitacoesAlimentosRoutes";
 import dashboardRoutes from "./routes/dashboardRoutes";
 import notificacoesRoutes from "./routes/notificacoesRoutes";
 import disparosNotificacaoRoutes from "./routes/disparosNotificacaoRoutes";
+import unidadeMedidaRoutes from "./modules/unidades/routes/unidadeMedidaRoutes";
 
 import { createServer } from 'http';
 import { initializeRedisCache } from "./config/redis";
@@ -275,6 +276,7 @@ app.use("/api/nutricionistas", nutricionistaRoutes);
 // app.use("/api/demandas", demandaRoutes); // REMOVIDO - rota duplicada, usar demandasRoutes
 app.use("/api/produtos", longCache, produtoRoutes);
 app.use("/api/produto-modalidades", produtoModalidadeRoutes);
+app.use("/api/unidades-medida", longCache, unidadeMedidaRoutes);
 app.use("/api/estoque-central", estoqueCentralRoutes);
 app.use("/api/estoque-escolar", estoqueEscolarRoutes);
 
