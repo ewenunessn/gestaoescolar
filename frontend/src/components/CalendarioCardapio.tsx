@@ -182,7 +182,7 @@ export default function CalendarioCardapio({
       </Box>
 
       {/* Grade do calendário */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 0.5 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 0.5, width: '100%' }}>
         {/* Cabeçalho dos dias da semana */}
         {DIAS_SEMANA.map((dia, index) => {
           const isFimDeSemana = index === 0 || index === 6; // Domingo (0) ou Sábado (6)
@@ -196,7 +196,8 @@ export default function CalendarioCardapio({
                 fontSize: '0.875rem',
                 color: isFimDeSemana ? '#d32f2f' : 'text.secondary',
                 bgcolor: isFimDeSemana ? '#ffebee' : 'grey.100',
-                borderRadius: '4px'
+                borderRadius: '4px',
+                minWidth: 0
               }}
             >
               {dia}
@@ -241,6 +242,7 @@ export default function CalendarioCardapio({
                 data-fim-semana={isFimDeSemana ? 'true' : 'false'}
                 sx={{
                   minHeight: 100,
+                  minWidth: 0,
                   p: 0.5,
                   cursor: diaInfo.mes === 'atual' ? 'pointer' : 'default',
                   borderRadius: '4px',
@@ -253,7 +255,8 @@ export default function CalendarioCardapio({
                     boxShadow: 1
                   } : {},
                   display: 'flex',
-                  flexDirection: 'column'
+                  flexDirection: 'column',
+                  overflow: 'hidden'
                 }}
               >
                 {/* Número do dia */}
@@ -270,7 +273,7 @@ export default function CalendarioCardapio({
                 </Typography>
 
                 {/* Refeições com texto */}
-                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0.25, overflow: 'hidden' }}>
+                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0.25, overflow: 'hidden', width: '100%', minWidth: 0 }}>
                   {refeicoesNoDia.slice(0, 3).map(refeicao => {
                     // Extrair apenas o nome da preparação (depois do ":")
                     const nomeRefeicao = refeicao.titulo.includes(':') 
@@ -291,7 +294,10 @@ export default function CalendarioCardapio({
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap',
-                          lineHeight: 1.2
+                          lineHeight: 1.2,
+                          maxWidth: '100%',
+                          minWidth: 0,
+                          display: 'block'
                         }}
                       >
                         {nomeRefeicao}

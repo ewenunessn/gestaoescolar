@@ -152,7 +152,22 @@ export const listarProdutos = asyncHandler(async (req: Request, res: Response) =
       p.fator_correcao::text as fator_correcao,
       p.indice_coccao::text as indice_coccao,
       p.unidade_distribuicao,
-      p.peso::text as peso
+      p.peso::text as peso,
+      CASE 
+        WHEN EXISTS (
+          SELECT 1 FROM produto_composicao_nutricional pcn 
+          WHERE pcn.produto_id = p.id
+        ) THEN true 
+        ELSE false 
+      END as tem_composicao_nutricional,
+      CASE 
+        WHEN EXISTS (
+          SELECT 1 FROM contrato_produtos cp 
+          INNER JOIN contratos c ON cp.contrato_id = c.id
+          WHERE cp.produto_id = p.id AND cp.ativo = true AND c.ativo = true
+        ) THEN true 
+        ELSE false 
+      END as tem_contrato
     FROM produtos p
     ORDER BY p.nome
   `);
@@ -228,6 +243,12 @@ export const criarProduto = asyncHandler(async (req: Request, res: Response) => 
     throw new ValidationError('Nome do produto é obrigatório');
   }
 
+  // Validar tipo de processamento
+  const tiposProcessamentoValidos = ['in natura', 'minimamente processado', 'ingrediente culinário', 'processado', 'ultraprocessado'];
+  if (tipo_processamento && !tiposProcessamentoValidos.includes(tipo_processamento)) {
+    throw new ValidationError(`Tipo de processamento inválido. Valores aceitos: ${tiposProcessamentoValidos.join(', ')}`);
+  }
+
   const fatorCorrecaoNormalizado = num(fator_correcao) || 1.0;
   const indiceCoccaoNormalizado = num(indice_coccao) || 1.0;
   const pesoNormalizado = peso !== undefined ? num(peso) : null;
@@ -289,6 +310,12 @@ export const editarProduto = asyncHandler(async (req: Request, res: Response) =>
   // Validar apenas se campos obrigatórios não estão vazios (quando fornecidos)
   if (nome !== undefined && !nome?.trim()) {
     throw new ValidationError('Nome do produto não pode estar vazio');
+  }
+
+  // Validar tipo de processamento se fornecido
+  const tiposProcessamentoValidos = ['in natura', 'minimamente processado', 'ingrediente culinário', 'processado', 'ultraprocessado'];
+  if (tipo_processamento && !tiposProcessamentoValidos.includes(tipo_processamento)) {
+    throw new ValidationError(`Tipo de processamento inválido. Valores aceitos: ${tiposProcessamentoValidos.join(', ')}`);
   }
 
   // Validar fator de correção se fornecido (sempre >= 1.0)

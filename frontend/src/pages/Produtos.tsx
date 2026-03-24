@@ -69,6 +69,8 @@ interface Produto {
   tipo_fator_correcao?: string;
   unidade_distribuicao?: string;
   peso?: number;
+  tem_composicao_nutricional?: boolean;
+  tem_contrato?: boolean;
 }
 
 interface ProdutoForm {
@@ -226,6 +228,44 @@ const ProdutosPage = () => {
           />
         </Tooltip>
       ),
+    },
+    { 
+      accessorKey: 'tem_composicao_nutricional', 
+      header: 'Composição',
+      size: 120,
+      enableSorting: true,
+      cell: ({ getValue }) => {
+        const temComposicao = getValue() as boolean;
+        return (
+          <Tooltip title={temComposicao ? 'Possui composição nutricional cadastrada' : 'Sem composição nutricional'}>
+            <Chip 
+              label={temComposicao ? 'Sim' : 'Não'} 
+              size="small" 
+              color={temComposicao ? 'success' : 'default'}
+              variant={temComposicao ? 'filled' : 'outlined'}
+            />
+          </Tooltip>
+        );
+      },
+    },
+    { 
+      accessorKey: 'tem_contrato', 
+      header: 'Contrato',
+      size: 120,
+      enableSorting: true,
+      cell: ({ getValue }) => {
+        const temContrato = getValue() as boolean;
+        return (
+          <Tooltip title={temContrato ? 'Possui contrato ativo' : 'Sem contrato ativo'}>
+            <Chip 
+              label={temContrato ? 'Sim' : 'Não'} 
+              size="small" 
+              color={temContrato ? 'primary' : 'default'}
+              variant={temContrato ? 'filled' : 'outlined'}
+            />
+          </Tooltip>
+        );
+      },
     },
     {
       id: 'actions',
@@ -761,6 +801,7 @@ const ProdutosPage = () => {
                       <MenuItem value="">Nenhum</MenuItem>
                       <MenuItem value="in natura">In Natura</MenuItem>
                       <MenuItem value="minimamente processado">Minimamente Processado</MenuItem>
+                      <MenuItem value="ingrediente culinário">Ingrediente Culinário</MenuItem>
                       <MenuItem value="processado">Processado</MenuItem>
                       <MenuItem value="ultraprocessado">Ultraprocessado</MenuItem>
                     </Select>
