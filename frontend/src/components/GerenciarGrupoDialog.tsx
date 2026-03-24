@@ -3,7 +3,7 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, TextField, Box, Typography, IconButton,
   List, ListItem, ListItemText, ListItemSecondaryAction,
-  Autocomplete, Divider, Chip,
+  Autocomplete, Divider, Chip, Select, MenuItem, FormControl, InputLabel,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
@@ -25,6 +25,7 @@ export default function GerenciarGrupoDialog({ open, onClose, onSaved, grupo, pr
   const [itens, setItens] = useState<Array<{ produto_id: number; produto_nome: string; per_capita: string; tipo_medida: string }>>([]);
   const [produtoSel, setProdutoSel] = useState<Produto | null>(null);
   const [perCapita, setPerCapita] = useState('');
+  const [tipoMedida, setTipoMedida] = useState('gramas');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -39,6 +40,7 @@ export default function GerenciarGrupoDialog({ open, onClose, onSaved, grupo, pr
       })) || []);
       setProdutoSel(null);
       setPerCapita('');
+      setTipoMedida('gramas');
     }
   }, [open, grupo]);
 
@@ -49,10 +51,11 @@ export default function GerenciarGrupoDialog({ open, onClose, onSaved, grupo, pr
       produto_id: produtoSel.id,
       produto_nome: produtoSel.nome,
       per_capita: perCapita,
-      tipo_medida: 'gramas',
+      tipo_medida: tipoMedida,
     }]);
     setProdutoSel(null);
     setPerCapita('');
+    setTipoMedida('gramas');
   }
 
   function removerItem(produtoId: number) {
@@ -86,6 +89,15 @@ export default function GerenciarGrupoDialog({ open, onClose, onSaved, grupo, pr
 
   const produtosDisponiveis = produtos.filter(p => !itens.find(i => i.produto_id === p.id));
 
+  const getUnidadeLabel = (tipo: string) => {
+    switch (tipo) {
+      case 'gramas': return 'g';
+      case 'unidade': return 'un';
+      case 'mililitros': return 'ml';
+      default: return tipo;
+    }
+  };
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle component="div">
@@ -112,14 +124,26 @@ export default function GerenciarGrupoDialog({ open, onClose, onSaved, grupo, pr
               renderInput={params => <TextField {...params} label="Produto" />}
             />
             <TextField
-              label="Per capita (g)"
+              label="Per capita"
               type="number"
               value={perCapita}
               onChange={e => setPerCapita(e.target.value)}
               size="small"
-              sx={{ width: 120 }}
+              sx={{ width: 100 }}
               inputProps={{ min: 0, step: 0.1 }}
             />
+            <FormControl size="small" sx={{ width: 100 }}>
+              <InputLabel>Unidade</InputLabel>
+              <Select
+                value={tipoMedida}
+                onChange={e => setTipoMedida(e.target.value)}
+                label="Unidade"
+              >
+                <MenuItem value="gramas">g</MenuItem>
+                <MenuItem value="unidade">un</MenuItem>
+                <MenuItem value="mililitros">ml</MenuItem>
+              </Select>
+            </FormControl>
             <IconButton onClick={adicionarItem} disabled={!produtoSel || !perCapita} color="primary" sx={{ mt: 0.5 }}>
               <AddIcon />
             </IconButton>
@@ -136,7 +160,7 @@ export default function GerenciarGrupoDialog({ open, onClose, onSaved, grupo, pr
                 <ListItem key={item.produto_id} disableGutters sx={{ borderBottom: '1px solid', borderColor: 'divider' }}>
                   <ListItemText
                     primary={item.produto_nome}
-                    secondary={`${item.per_capita}g per capita`}
+                    secondary={`${item.per_capita}${getUnidadeLabel(item.tipo_medida)} per capita`}
                   />
                   <ListItemSecondaryAction>
                     <IconButton size="small" onClick={() => removerItem(item.produto_id)}>
