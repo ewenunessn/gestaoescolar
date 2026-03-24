@@ -312,11 +312,11 @@ const CardapiosModalidadePage: React.FC = () => {
       const modalidadesIds = (cardapio as any).modalidades_ids || [cardapio.modalidade_id];
 
       const formInicial = {
-        modalidade_id: cardapio.modalidade_id.toString(),
+        modalidade_id: cardapio.modalidade_id?.toString() || '',
         modalidades_ids: modalidadesIds,
         nome: cardapio.nome,
-        mes: cardapio.mes.toString(),
-        ano: cardapio.ano.toString(),
+        mes: cardapio.mes?.toString() || '',
+        ano: cardapio.ano?.toString() || '',
         observacao: cardapio.observacao || '',
         ativo: cardapio.ativo,
         nutricionista_id: cardapio.nutricionista_id?.toString() || '',

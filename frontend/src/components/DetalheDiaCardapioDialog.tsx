@@ -50,12 +50,14 @@ export const DetalheDiaCardapioDialog: React.FC<DetalheDiaCardapioDialogProps> =
     >
       {/* Cabeçalho */}
       <DialogTitle sx={{ pb: 1 }}>
-        <Typography variant="h6" sx={{ fontWeight: 600 }}>
-          {diaSelecionado && cardapio && `${diaSelecionado} de ${MESES[cardapio.mes - 1]}`}
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          {diaSelecionado && cardapio && new Date(cardapio.ano, cardapio.mes - 1, diaSelecionado).toLocaleDateString('pt-BR', { weekday: 'long' })}
-        </Typography>
+        <Box>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            {diaSelecionado && cardapio && `${diaSelecionado} de ${MESES[cardapio.mes - 1]}`}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {diaSelecionado && cardapio && new Date(cardapio.ano, cardapio.mes - 1, diaSelecionado).toLocaleDateString('pt-BR', { weekday: 'long' })}
+          </Typography>
+        </Box>
       </DialogTitle>
 
       <DialogContent sx={{ px: 3, py: 2 }}>

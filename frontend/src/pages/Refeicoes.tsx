@@ -51,6 +51,7 @@ import CompactPagination from '../components/CompactPagination';
 import { useNavigate } from 'react-router-dom';
 import { Refeicao } from '../types/refeicao';
 import { LoadingOverlay } from '../components/LoadingOverlay';
+import { TIPOS_REFEICAO } from '../services/cardapiosModalidade';
 import { 
   useRefeicoes, 
   useCriarRefeicao, 
@@ -107,14 +108,8 @@ const RefeicoesPage = () => {
     }
   }, [queryError]);
 
-  // Mapear tipos de refeição para exibição
-  const tiposRefeicao = {
-    'cafe_manha': 'Café da Manhã',
-    'almoco': 'Almoço',
-    'lanche_tarde': 'Lanche da Tarde',
-    'jantar': 'Jantar',
-    'ceia': 'Ceia'
-  };
+  // Usar tipos de refeição padronizados do cardápio
+  const tiposRefeicao = TIPOS_REFEICAO;
 
   // Definir campos de filtro
   const filterFields: FilterField[] = useMemo(() => [

@@ -46,6 +46,7 @@ import { LoadingOverlay } from '../components/LoadingOverlay';
 import { DataTable } from '../components/DataTable';
 import { ColumnDef } from '@tanstack/react-table';
 import { Refeicao } from '../types/refeicao';
+import { TIPOS_REFEICAO } from '../services/cardapiosModalidade';
 
 const PreparacoesPage: React.FC = () => {
   const navigate = useNavigate();
@@ -88,14 +89,8 @@ const PreparacoesPage: React.FC = () => {
   const [erroPreparacao, setErroPreparacao] = useState('');
   const [touched, setTouched] = useState<any>({});
 
-  // Mapear tipos de preparação para exibição
-  const tiposPreparacao = {
-    'cafe_manha': 'Café da Manhã',
-    'almoco': 'Almoço',
-    'lanche_tarde': 'Lanche da Tarde',
-    'jantar': 'Jantar',
-    'ceia': 'Ceia'
-  };
+  // Usar tipos de refeição padronizados do cardápio
+  const tiposPreparacao = TIPOS_REFEICAO;
 
   // Filtrar preparações
   const preparacoesFiltradas = useMemo(() => {
