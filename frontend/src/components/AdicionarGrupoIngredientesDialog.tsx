@@ -97,14 +97,15 @@ export default function AdicionarGrupoIngredientesDialog({ open, onClose, onSele
                     <ListItemText
                       primary={<Typography variant="body2" fontWeight={500}>{g.nome}</Typography>}
                       secondary={
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+                        <Box component="span" sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
                           {g.itens.length === 0
-                            ? <Typography variant="caption" color="text.secondary">Sem ingredientes</Typography>
+                            ? <Typography component="span" variant="caption" color="text.secondary">Sem ingredientes</Typography>
                             : g.itens.map(i => (
                               <Chip key={i.produto_id} label={`${i.produto_nome} ${i.per_capita}g`} size="small" sx={{ fontSize: '0.65rem', height: 18 }} />
                             ))}
                         </Box>
                       }
+                      secondaryTypographyProps={{ component: 'div' }}
                     />
                   </ListItemButton>
                 ))}

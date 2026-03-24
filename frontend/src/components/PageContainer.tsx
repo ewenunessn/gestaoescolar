@@ -22,10 +22,11 @@ const PageContainer: React.FC<PageContainerProps> = ({
         px: '20px',
         py: 1.5,
         ...(fullHeight && {
-          height: 'calc(100vh - 56px)',
+          height: '100%',
           display: 'flex',
           flexDirection: 'column',
           minHeight: 0,
+          overflow: 'hidden',
         }),
         ...sx,
       }}

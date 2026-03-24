@@ -27,6 +27,8 @@ import {
   Tooltip,
   Popover,
   Grid,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -51,6 +53,8 @@ import { TIPOS_REFEICAO } from '../services/cardapiosModalidade';
 const PreparacoesPage: React.FC = () => {
   const navigate = useNavigate();
   const toast = useToast();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   // React Query hooks
   const { 
@@ -443,7 +447,13 @@ const PreparacoesPage: React.FC = () => {
       </Popover>
 
       {/* Modal de Criação/Edição */}
-      <Dialog open={modalOpen} onClose={closeModal} maxWidth="md" fullWidth>
+      <Dialog 
+        open={modalOpen} 
+        onClose={closeModal} 
+        maxWidth="md" 
+        fullWidth
+        fullScreen={isMobile}
+      >
         <DialogTitle sx={{ pb: 1 }}>
           <Typography variant="h5" component="div" sx={{ fontWeight: 600 }}>
             {editingPreparacao ? 'Editar Preparação' : 'Nova Preparação'}
@@ -591,7 +601,13 @@ const PreparacoesPage: React.FC = () => {
       </Dialog>
 
       {/* Modal de Duplicar Preparação */}
-      <Dialog open={duplicateModalOpen} onClose={closeDuplicateModal} maxWidth="sm" fullWidth>
+      <Dialog 
+        open={duplicateModalOpen} 
+        onClose={closeDuplicateModal} 
+        maxWidth="sm" 
+        fullWidth
+        fullScreen={isMobile}
+      >
         <DialogTitle sx={{ pb: 1 }}>
           <Typography variant="h5" component="div" sx={{ fontWeight: 600 }}>
             Duplicar Preparação
