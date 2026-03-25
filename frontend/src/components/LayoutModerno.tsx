@@ -22,6 +22,7 @@ import { NotificacoesProvider } from '../contexts/NotificacoesContext';
 import { NotificacoesEscolaProvider } from '../contexts/NotificacoesEscolaContext';
 import NotificacoesMenu from './NotificacoesMenu';
 import NotificacoesEscolaMenu from './NotificacoesEscolaMenu';
+import JobsMenu from './JobsMenu';
 
 const drawerWidth = 220;
 const collapsedDrawerWidth = 64;
@@ -368,6 +369,7 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
               <SeletorPeriodo />
             </Box>
           )}
+          <JobsMenu />
           {isEscolaUser ? <NotificacoesEscolaMenu /> : <NotificacoesMenu />}
           {loadingUser ? <CircularProgress size={16} /> : user ? (
             <>
