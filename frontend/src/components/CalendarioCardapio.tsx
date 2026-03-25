@@ -1,4 +1,4 @@
-import { Box, Typography, IconButton, Tooltip } from '@mui/material';
+import { Box, Typography, IconButton, Tooltip, useMediaQuery, useTheme } from '@mui/material';
 import { ChevronLeft, ChevronRight } from '@mui/icons-material';
 
 interface EventoCalendario {
@@ -35,6 +35,9 @@ export default function CalendarioCardapio({
   onProximoMes,
   onDiaClick
 }: CalendarioCardapioProps) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
   
   // Gerar dias do mês
   const primeiroDia = new Date(ano, mes - 1, 1);
@@ -182,7 +185,14 @@ export default function CalendarioCardapio({
       </Box>
 
       {/* Grade do calendário */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 0.5, width: '100%' }}>
+      <Box sx={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(7, 1fr)', 
+        gap: isMobile ? 0.15 : 0.5, 
+        width: '100%',
+        overflow: isMobile ? 'auto' : 'visible',
+        WebkitOverflowScrolling: 'touch',
+      }}>
         {/* Cabeçalho dos dias da semana */}
         {DIAS_SEMANA.map((dia, index) => {
           const isFimDeSemana = index === 0 || index === 6; // Domingo (0) ou Sábado (6)
@@ -191,16 +201,16 @@ export default function CalendarioCardapio({
               key={dia}
               sx={{
                 textAlign: 'center',
-                py: 1,
+                py: isMobile ? 0.5 : 1,
                 fontWeight: 600,
-                fontSize: '0.875rem',
+                fontSize: isMobile ? '0.65rem' : '0.875rem',
                 color: isFimDeSemana ? '#d32f2f' : 'text.secondary',
                 bgcolor: isFimDeSemana ? '#ffebee' : 'grey.100',
                 borderRadius: '4px',
                 minWidth: 0
               }}
             >
-              {dia}
+              {isMobile ? dia.substring(0, 1) : dia}
             </Box>
           );
         })}
@@ -241,18 +251,18 @@ export default function CalendarioCardapio({
                 data-dia-semana={diaSemana}
                 data-fim-semana={isFimDeSemana ? 'true' : 'false'}
                 sx={{
-                  minHeight: 100,
+                  minHeight: isMobile ? 60 : isTablet ? 80 : 100,
                   minWidth: 0,
-                  p: 0.5,
+                  p: isMobile ? 0.25 : 0.5,
                   cursor: diaInfo.mes === 'atual' ? 'pointer' : 'default',
-                  borderRadius: '4px',
+                  borderRadius: isMobile ? '2px' : '4px',
                   transition: 'all 0.2s',
                   bgcolor: containerStyle.bgcolor,
                   border: containerStyle.border,
                   opacity: containerStyle.opacity,
                   '&:hover': diaInfo.mes === 'atual' ? {
-                    transform: 'scale(1.02)',
-                    boxShadow: 1
+                    transform: isMobile ? 'none' : 'scale(1.02)',
+                    boxShadow: isMobile ? 0 : 1
                   } : {},
                   display: 'flex',
                   flexDirection: 'column',
@@ -263,8 +273,8 @@ export default function CalendarioCardapio({
                 <Typography
                   variant="body2"
                   sx={{
-                    mb: 0.5,
-                    fontSize: '0.875rem',
+                    mb: isMobile ? 0.25 : 0.5,
+                    fontSize: isMobile ? '0.65rem' : '0.875rem',
                     color: numeroStyle.color,
                     fontWeight: numeroStyle.fontWeight
                   }}
@@ -273,8 +283,8 @@ export default function CalendarioCardapio({
                 </Typography>
 
                 {/* Refeições com texto */}
-                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0.25, overflow: 'hidden', width: '100%', minWidth: 0 }}>
-                  {refeicoesNoDia.slice(0, 3).map(refeicao => {
+                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: isMobile ? 0.15 : 0.25, overflow: 'hidden', width: '100%', minWidth: 0 }}>
+                  {refeicoesNoDia.slice(0, isMobile ? 2 : 3).map(refeicao => {
                     // Extrair apenas o nome da preparação (depois do ":")
                     const nomeRefeicao = refeicao.titulo.includes(':') 
                       ? refeicao.titulo.split(':')[1].trim() 
@@ -286,10 +296,10 @@ export default function CalendarioCardapio({
                         sx={{
                           bgcolor: refeicao.cor,
                           color: 'white',
-                          px: 0.5,
-                          py: 0.25,
-                          borderRadius: '3px',
-                          fontSize: '0.65rem',
+                          px: isMobile ? 0.25 : 0.5,
+                          py: isMobile ? 0.15 : 0.25,
+                          borderRadius: isMobile ? '2px' : '3px',
+                          fontSize: isMobile ? '0.5rem' : '0.65rem',
                           fontWeight: 600,
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
@@ -304,22 +314,22 @@ export default function CalendarioCardapio({
                       </Box>
                     );
                   })}
-                  {refeicoesNoDia.length > 3 && (
-                    <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.secondary', textAlign: 'center' }}>
-                      +{refeicoesNoDia.length - 3} mais
+                  {refeicoesNoDia.length > (isMobile ? 2 : 3) && (
+                    <Typography variant="caption" sx={{ fontSize: isMobile ? '0.5rem' : '0.6rem', color: 'text.secondary', textAlign: 'center' }}>
+                      +{refeicoesNoDia.length - (isMobile ? 2 : 3)}
                     </Typography>
                   )}
                 </Box>
 
                 {/* Indicadores de outros eventos */}
                 {outrosEventos.length > 0 && (
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.25, mt: 0.5 }}>
-                    {outrosEventos.slice(0, 3).map(evento => (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: isMobile ? 0.15 : 0.25, mt: isMobile ? 0.25 : 0.5 }}>
+                    {outrosEventos.slice(0, isMobile ? 2 : 3).map(evento => (
                       <Box
                         key={evento.id}
                         sx={{
-                          width: 6,
-                          height: 6,
+                          width: isMobile ? 4 : 6,
+                          height: isMobile ? 4 : 6,
                           borderRadius: '50%',
                           bgcolor: evento.cor
                         }}

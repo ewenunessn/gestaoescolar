@@ -42,6 +42,8 @@ import {
   Grid,
   Divider,
   Menu,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import {
   Delete as DeleteIcon,
@@ -90,6 +92,9 @@ export default function PreparacaoDetalhe() {
   const navigate = useNavigate();
   const toast = useToast();
   const { setPageTitle } = usePageTitle();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isSmallMobile = useMediaQuery(theme.breakpoints.down('sm'));
   
   // React Query hooks
   const { data: preparacao, isLoading: loading } = useRefeicao(Number(id));
@@ -243,22 +248,73 @@ export default function PreparacaoDetalhe() {
     columnHelper.display({
       id: 'acoes',
       header: 'Ações',
-      cell: ({ row }) => (
-        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
-          <Tooltip title="Editar">
-            <IconButton size="small" color="primary" onClick={() => handleEditarProduto(row.original)}>
-              <EditIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Remover">
-            <IconButton size="small" color="error" onClick={() => removerProduto(row.original.id)}>
-              <DeleteIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        </Box>
-      ),
+      cell: ({ row }) => {
+        const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+        
+        return isMobile ? (
+          // Mobile: Menu com 3 pontos
+          <>
+            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+              <IconButton 
+                size="small" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setAnchorEl(e.currentTarget);
+                }}
+              >
+                <MoreVertIcon fontSize="small" />
+              </IconButton>
+            </Box>
+            <Menu
+              anchorEl={anchorEl}
+              open={Boolean(anchorEl)}
+              onClose={(e: any) => {
+                e?.stopPropagation?.();
+                setAnchorEl(null);
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <MenuItem 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setAnchorEl(null);
+                  handleEditarProduto(row.original);
+                }}
+              >
+                <EditIcon fontSize="small" sx={{ mr: 1 }} />
+                Editar
+              </MenuItem>
+              <MenuItem 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setAnchorEl(null);
+                  removerProduto(row.original.id);
+                }}
+                sx={{ color: 'error.main' }}
+              >
+                <DeleteIcon fontSize="small" sx={{ mr: 1 }} />
+                Remover
+              </MenuItem>
+            </Menu>
+          </>
+        ) : (
+          // Desktop: Botões separados
+          <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
+            <Tooltip title="Editar">
+              <IconButton size="small" color="primary" onClick={() => handleEditarProduto(row.original)}>
+                <EditIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Remover">
+              <IconButton size="small" color="error" onClick={() => removerProduto(row.original.id)}>
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        );
+      },
     }),
-  ], []);
+  ], [isMobile]);
 
   // Atualizar form e título quando refeição carregar
   useEffect(() => {
@@ -615,8 +671,14 @@ export default function PreparacaoDetalhe() {
 
   return (
     <>
-    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <Box sx={{ flex: 0, px: 2, pt: 1.5 }}>
+    <Box sx={{ 
+      height: '100vh',
+      bgcolor: '#ffffff', 
+      display: 'flex', 
+      flexDirection: 'column', 
+      overflow: 'hidden' 
+    }}>
+      <Box sx={{ flex: 0, px: isMobile ? 1 : 2, pt: 1.5 }}>
         <PageBreadcrumbs 
           items={[
             { label: 'Preparações', path: '/preparacoes', icon: <RestaurantIcon fontSize="small" /> },
@@ -625,17 +687,25 @@ export default function PreparacaoDetalhe() {
         />
 
         {/* Tabs + Ações na mesma linha */}
-        <Box sx={{ display: 'flex', alignItems: 'center', borderBottom: 1, borderColor: 'divider', pb: 0.5 }}>
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: isMobile ? 'column' : 'row',
+          alignItems: isMobile ? 'stretch' : 'center',
+          borderBottom: 1, 
+          borderColor: 'divider', 
+          pb: 0.5,
+          gap: isMobile ? 1 : 0,
+        }}>
           <ViewTabs
             value={tabAtiva}
             onChange={setTabAtiva}
             tabs={[
-              { value: 0, label: 'Ingredientes', icon: <RestaurantIcon sx={{ fontSize: 16 }} /> },
-              { value: 1, label: 'Ficha Técnica', icon: <DescriptionIcon sx={{ fontSize: 16 }} /> },
+              { value: 0, label: isMobile ? 'Ingred.' : 'Ingredientes', icon: <RestaurantIcon sx={{ fontSize: 16 }} /> },
+              { value: 1, label: isMobile ? 'Ficha' : 'Ficha Técnica', icon: <DescriptionIcon sx={{ fontSize: 16 }} /> },
             ]}
           />
           <Box sx={{ flex: 1 }} />
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: isMobile ? 'flex-end' : 'flex-start' }}>
             {editando ? (
               <>
                 <Button onClick={() => setEditando(false)} startIcon={<CancelIcon />} size="small" disabled={editarRefeicaoMutation.isPending}>
@@ -665,38 +735,38 @@ export default function PreparacaoDetalhe() {
       </Box>
 
       {/* Conteúdo das Tabs */}
-      <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', px: 2, py: 1.5 }}>
+      <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', px: isMobile ? 1 : 2, py: 1.5 }}>
 
         {/* Tab 0: Ingredientes */}
         {tabAtiva === 0 && (
-          <Box sx={{ height: '100%', display: 'flex', gap: 1.5 }}>
+          <Box sx={{ height: '100%', display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 1.5 }}>
             {/* Coluna esquerda: Adicionar + Tabela */}
             <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-              <Box sx={{ flex: 1, minHeight: 0 }}>
+              <Box sx={{ flex: 1, minHeight: isMobile ? 400 : 0 }}>
                 <DataTableAdvanced<preparacaoProduto>
                   data={associacoes as preparacaoProduto[]}
                   columns={columns}
                   enableColumnVisibility={false}
                   searchPlaceholder="Buscar ingrediente..."
                   toolbarActions={
-                    <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Box sx={{ display: 'flex', gap: 1, width: '100%', flexWrap: 'wrap' }}>
                       <Button
                         variant="outlined"
                         startIcon={<AddIcon />}
                         onClick={() => setDialogGrupoOpen(true)}
                         size="small"
-                        sx={{ whiteSpace: 'nowrap' }}
+                        sx={{ whiteSpace: 'nowrap', flex: isSmallMobile ? 1 : 'none' }}
                       >
-                        Adicionar Grupo
+                        {isSmallMobile ? 'Grupo' : 'Adicionar Grupo'}
                       </Button>
                       <Button
                         variant="contained"
                         startIcon={<AddIcon />}
                         onClick={() => setDialogAdicionarOpen(true)}
                         size="small"
-                        sx={{ bgcolor: '#059669', '&:hover': { bgcolor: '#047857' }, whiteSpace: 'nowrap' }}
+                        sx={{ bgcolor: '#059669', '&:hover': { bgcolor: '#047857' }, whiteSpace: 'nowrap', flex: isSmallMobile ? 1 : 'none' }}
                       >
-                        Adicionar Ingrediente
+                        {isSmallMobile ? 'Ingrediente' : 'Adicionar Ingrediente'}
                       </Button>
                     </Box>
                   }
@@ -705,8 +775,8 @@ export default function PreparacaoDetalhe() {
             </Box>
 
             {/* Coluna direita: Painel Nutricional */}
-            <Box sx={{ width: 220, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <Card sx={{ borderRadius: '8px', p: 1.5, height: '100%' }}>
+            <Box sx={{ width: isMobile ? '100%' : 220, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <Card sx={{ borderRadius: '8px', p: 1.5, height: isMobile ? 'auto' : '100%' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
                   <Typography variant="caption" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary' }}>
                     Nutrição / porção
@@ -770,11 +840,19 @@ export default function PreparacaoDetalhe() {
           <Card sx={{ borderRadius: '8px', p: 2, maxWidth: '100%', overflow: 'auto' }}>
             {/* Seletor de Modalidade - apenas na Ficha Técnica */}
             {!editando && modalidades.length > 0 && (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, pb: 2, borderBottom: '1px solid #e0e0e0' }}>
-                <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+              <Box sx={{ 
+                display: 'flex', 
+                flexDirection: isSmallMobile ? 'column' : 'row',
+                alignItems: isSmallMobile ? 'stretch' : 'center',
+                gap: 2, 
+                mb: 2, 
+                pb: 2, 
+                borderBottom: '1px solid #e0e0e0' 
+              }}>
+                <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, flexShrink: 0 }}>
                   Visualizar valores para:
                 </Typography>
-                <FormControl size="small" sx={{ minWidth: 200 }}>
+                <FormControl size="small" sx={{ minWidth: isSmallMobile ? '100%' : 200 }}>
                   <Select
                     value={modalidadeSelecionada || ''}
                     onChange={(e) => setModalidadeSelecionada(Number(e.target.value))}
@@ -787,15 +865,18 @@ export default function PreparacaoDetalhe() {
                     ))}
                   </Select>
                 </FormControl>
-                <Typography variant="caption" color="text.secondary">
-                  Os cálculos nutricionais e de custo serão ajustados para esta modalidade
-                </Typography>
+                {!isSmallMobile && (
+                  <Typography variant="caption" color="text.secondary">
+                    Os cálculos nutricionais e de custo serão ajustados para esta modalidade
+                  </Typography>
+                )}
                 <Box sx={{ flex: 1 }} />
                 <Button
                   onClick={gerarPDF}
                   variant="outlined"
                   startIcon={<PdfIcon />}
                   size="small"
+                  fullWidth={isSmallMobile}
                   sx={{ borderColor: '#d32f2f', color: '#d32f2f', '&:hover': { borderColor: '#b71c1c', bgcolor: '#ffebee' }, whiteSpace: 'nowrap' }}
                 >
                   Exportar PDF
