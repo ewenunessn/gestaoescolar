@@ -248,10 +248,28 @@ export async function buscarStatusJob(jobId: number): Promise<Job> {
 
 /**
  * Lista jobs do usuário
+ * Usa validateStatus para não lançar erro em 401/404
  */
 export async function listarJobs(): Promise<Job[]> {
-  const response = await api.get('/planejamento-compras/jobs');
-  return response.data;
+  try {
+    const response = await api.get('/planejamento-compras/jobs', {
+      validateStatus: (status) => {
+        // Aceitar 200-299 e também 401/404 sem lançar erro
+        return (status >= 200 && status < 300) || status === 401 || status === 404;
+      }
+    });
+    
+    // Se for 401 ou 404, retornar array vazio
+    if (response.status === 401 || response.status === 404) {
+      console.warn('Jobs não disponíveis:', response.status);
+      return [];
+    }
+    
+    return response.data || [];
+  } catch (error: any) {
+    console.error('Erro ao listar jobs:', error);
+    return [];
+  }
 }
 
 

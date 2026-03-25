@@ -40,9 +40,10 @@ export default function JobsMenu() {
     setLoading(true);
     try {
       const data = await listarJobs();
-      setJobs(data);
-    } catch (error) {
-      console.error('Erro ao carregar jobs:', error);
+      setJobs(data || []);
+    } catch (error: any) {
+      console.error('JobsMenu: Erro ao carregar jobs:', error);
+      setJobs([]);
     } finally {
       setLoading(false);
     }
