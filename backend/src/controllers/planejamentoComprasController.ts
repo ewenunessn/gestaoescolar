@@ -1863,16 +1863,36 @@ export const iniciarGeracaoGuias = async (req: Request, res: Response) => {
       (req as any).usuario?.id
     );
 
-    // Processar em background (não aguarda)
-    processarGeracaoGuiasBackground(job.id).catch(err => {
-      console.error('Erro ao processar job em background:', err);
-    });
+    // Detectar se está no Vercel (serverless)
+    const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV !== undefined;
 
-    return res.status(202).json({
-      job_id: job.id,
-      status: 'pendente',
-      message: 'Geração de guias iniciada. Acompanhe o progresso.',
-    });
+    if (isVercel) {
+      // No Vercel, processar de forma síncrona (aguardar conclusão)
+      console.log('🔄 Ambiente Vercel detectado - processando de forma síncrona');
+      await processarGeracaoGuiasBackground(job.id);
+      
+      // Buscar job atualizado
+      const jobAtualizado = await JobService.buscarJob(job.id);
+      
+      return res.status(200).json({
+        job_id: job.id,
+        status: jobAtualizado?.status || 'concluido',
+        message: 'Guias geradas com sucesso',
+        resultado: jobAtualizado?.resultado
+      });
+    } else {
+      // Em ambiente local/tradicional, processar em background (não aguarda)
+      console.log('🔄 Processando em background');
+      processarGeracaoGuiasBackground(job.id).catch(err => {
+        console.error('Erro ao processar job em background:', err);
+      });
+
+      return res.status(202).json({
+        job_id: job.id,
+        status: 'pendente',
+        message: 'Geração de guias iniciada. Acompanhe o progresso.',
+      });
+    }
   } catch (error) {
     console.error('Erro ao iniciar job:', error);
     return res.status(500).json({ error: 'Erro ao iniciar geração de guias' });
@@ -2182,16 +2202,36 @@ export const iniciarGeracaoPedido = async (req: Request, res: Response) => {
       (req as any).usuario?.id || (req as any).user?.id
     );
 
-    // Processar em background
-    processarGeracaoPedidoBackground(job.id).catch(err => {
-      console.error('Erro ao processar job de pedido em background:', err);
-    });
+    // Detectar se está no Vercel (serverless)
+    const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV !== undefined;
 
-    return res.status(202).json({
-      job_id: job.id,
-      status: 'pendente',
-      message: 'Geração de pedido iniciada. Acompanhe o progresso.',
-    });
+    if (isVercel) {
+      // No Vercel, processar de forma síncrona (aguardar conclusão)
+      console.log('🔄 Ambiente Vercel detectado - processando pedido de forma síncrona');
+      await processarGeracaoPedidoBackground(job.id);
+      
+      // Buscar job atualizado
+      const jobAtualizado = await JobService.buscarJob(job.id);
+      
+      return res.status(200).json({
+        job_id: job.id,
+        status: jobAtualizado?.status || 'concluido',
+        message: 'Pedido gerado com sucesso',
+        resultado: jobAtualizado?.resultado
+      });
+    } else {
+      // Em ambiente local/tradicional, processar em background
+      console.log('🔄 Processando pedido em background');
+      processarGeracaoPedidoBackground(job.id).catch(err => {
+        console.error('Erro ao processar job de pedido em background:', err);
+      });
+
+      return res.status(202).json({
+        job_id: job.id,
+        status: 'pendente',
+        message: 'Geração de pedido iniciada. Acompanhe o progresso.',
+      });
+    }
   } catch (error) {
     console.error('Erro ao iniciar job de pedido:', error);
     return res.status(500).json({ error: 'Erro ao iniciar geração de pedido' });
