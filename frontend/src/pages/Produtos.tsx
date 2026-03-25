@@ -524,99 +524,101 @@ const ProdutosPage = () => {
         </Box>
       </PageContainer>
 
-      {/* Popover de Filtros */}
-      <Popover
-        open={Boolean(filterAnchorEl)}
-        anchorEl={filterAnchorEl}
-        onClose={() => setFilterAnchorEl(null)}
-        anchorOrigin={{
-          vertical: 'bottom',
-          horizontal: 'right',
-        }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
-      >
-        <Box sx={{ p: 2, minWidth: 280 }}>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            Filtros
-          </Typography>
-          
-          <FormControl fullWidth sx={{ mb: 2 }}>
-            <InputLabel>Status</InputLabel>
-            <Select
-              value={filters.status}
-              label="Status"
-              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-            >
-              <MenuItem value="todos">Todos</MenuItem>
-              <MenuItem value="ativo">Ativos</MenuItem>
-              <MenuItem value="inativo">Inativos</MenuItem>
-            </Select>
-          </FormControl>
+      {/* Popover de Filtros - Renderização condicional para melhor performance */}
+      {Boolean(filterAnchorEl) && (
+        <Popover
+          open={true}
+          anchorEl={filterAnchorEl}
+          onClose={() => setFilterAnchorEl(null)}
+          anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'right',
+          }}
+          transformOrigin={{
+            vertical: 'top',
+            horizontal: 'right',
+          }}
+        >
+          <Box sx={{ p: 2, minWidth: 280 }}>
+            <Typography variant="h6" sx={{ mb: 2 }}>
+              Filtros
+            </Typography>
+            
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel>Status</InputLabel>
+              <Select
+                value={filters.status}
+                label="Status"
+                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+              >
+                <MenuItem value="todos">Todos</MenuItem>
+                <MenuItem value="ativo">Ativos</MenuItem>
+                <MenuItem value="inativo">Inativos</MenuItem>
+              </Select>
+            </FormControl>
 
-          <FormControl fullWidth sx={{ mb: 2 }}>
-            <InputLabel>Categoria</InputLabel>
-            <Select
-              value={filters.categoria}
-              label="Categoria"
-              onChange={(e) => setFilters({ ...filters, categoria: e.target.value })}
-            >
-              <MenuItem value="todos">Todas</MenuItem>
-              {categorias.map((cat) => (
-                <MenuItem key={cat} value={cat}>{cat}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel>Categoria</InputLabel>
+              <Select
+                value={filters.categoria}
+                label="Categoria"
+                onChange={(e) => setFilters({ ...filters, categoria: e.target.value })}
+              >
+                <MenuItem value="todos">Todas</MenuItem>
+                {categorias.map((cat) => (
+                  <MenuItem key={cat} value={cat}>{cat}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
 
-          <Divider sx={{ my: 2 }} />
+            <Divider sx={{ my: 2 }} />
 
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => {
-                setFilters({ status: 'todos', categoria: 'todos' });
-              }}
-            >
-              Limpar
-            </Button>
-            <Button
-              variant="contained"
-              size="small"
-              onClick={() => setFilterAnchorEl(null)}
-            >
-              Aplicar
-            </Button>
-          </Box>
-          
-          {/* Indicador de filtros ativos */}
-          {(filters.status !== 'todos' || filters.categoria !== 'todos') && (
-            <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
-              <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
-                Filtros ativos:
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                {filters.status !== 'todos' && (
-                  <Chip
-                    label={`Status: ${filters.status === 'ativo' ? 'Ativos' : 'Inativos'}`}
-                    size="small"
-                    onDelete={() => setFilters({ ...filters, status: 'todos' })}
-                  />
-                )}
-                {filters.categoria !== 'todos' && (
-                  <Chip
-                    label={`Categoria: ${filters.categoria}`}
-                    size="small"
-                    onDelete={() => setFilters({ ...filters, categoria: 'todos' })}
-                  />
-                )}
-              </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => {
+                  setFilters({ status: 'todos', categoria: 'todos' });
+                }}
+              >
+                Limpar
+              </Button>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => setFilterAnchorEl(null)}
+              >
+                Aplicar
+              </Button>
             </Box>
-          )}
-        </Box>
-      </Popover>
+            
+            {/* Indicador de filtros ativos */}
+            {(filters.status !== 'todos' || filters.categoria !== 'todos') && (
+              <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+                <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                  Filtros ativos:
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                  {filters.status !== 'todos' && (
+                    <Chip
+                      label={`Status: ${filters.status === 'ativo' ? 'Ativos' : 'Inativos'}`}
+                      size="small"
+                      onDelete={() => setFilters({ ...filters, status: 'todos' })}
+                    />
+                  )}
+                  {filters.categoria !== 'todos' && (
+                    <Chip
+                      label={`Categoria: ${filters.categoria}`}
+                      size="small"
+                      onDelete={() => setFilters({ ...filters, categoria: 'todos' })}
+                    />
+                  )}
+                </Box>
+              </Box>
+            )}
+          </Box>
+        </Popover>
+      )}
 
       {/* Modal de Criação */}
       <Dialog open={modalOpen} onClose={closeModal} maxWidth="md" fullWidth>
@@ -908,50 +910,52 @@ const ProdutosPage = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Menu de Importar/Exportar */}
-      <Menu 
-        anchorEl={importExportMenuAnchor} 
-        open={Boolean(importExportMenuAnchor)} 
-        onClose={() => setImportExportMenuAnchor(null)}
-        anchorOrigin={{
-          vertical: 'bottom',
-          horizontal: 'right',
-        }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
-      >
-        <MenuItem 
-          onClick={() => { 
-            setImportExportMenuAnchor(null); 
-            setImportModalOpen(true); 
-          }} 
-          disabled={loadingImport}
-        >
-          <FileUploadIcon sx={{ mr: 1 }} /> 
-          {loadingImport ? 'Importando...' : 'Importar Produtos'}
-        </MenuItem>
-        <MenuItem 
-          onClick={() => { 
-            setImportExportMenuAnchor(null); 
-            handleExportarProdutos(); 
-          }} 
-          disabled={loadingExport}
-        >
-          <FileDownloadIcon sx={{ mr: 1 }} /> 
-          {loadingExport ? 'Exportando...' : 'Exportar Excel'}
-        </MenuItem>
-        <MenuItem 
-          onClick={() => { 
-            setImportExportMenuAnchor(null); 
-            handleExportarModelo(); 
+      {/* Menu de Importar/Exportar - Renderização condicional para melhor performance */}
+      {Boolean(importExportMenuAnchor) && (
+        <Menu 
+          anchorEl={importExportMenuAnchor} 
+          open={true}
+          onClose={() => setImportExportMenuAnchor(null)}
+          anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'right',
+          }}
+          transformOrigin={{
+            vertical: 'top',
+            horizontal: 'right',
           }}
         >
-          <FileDownloadIcon sx={{ mr: 1 }} /> 
-          Exportar Modelo
-        </MenuItem>
-      </Menu>
+          <MenuItem 
+            onClick={() => { 
+              setImportExportMenuAnchor(null); 
+              setImportModalOpen(true); 
+            }} 
+            disabled={loadingImport}
+          >
+            <FileUploadIcon sx={{ mr: 1 }} /> 
+            {loadingImport ? 'Importando...' : 'Importar Produtos'}
+          </MenuItem>
+          <MenuItem 
+            onClick={() => { 
+              setImportExportMenuAnchor(null); 
+              handleExportarProdutos(); 
+            }} 
+            disabled={loadingExport}
+          >
+            <FileDownloadIcon sx={{ mr: 1 }} /> 
+            {loadingExport ? 'Exportando...' : 'Exportar Excel'}
+          </MenuItem>
+          <MenuItem 
+            onClick={() => { 
+              setImportExportMenuAnchor(null); 
+              handleExportarModelo(); 
+            }}
+          >
+            <FileDownloadIcon sx={{ mr: 1 }} /> 
+            Exportar Modelo
+          </MenuItem>
+        </Menu>
+      )}
 
       <LoadingOverlay 
         open={criarProdutoMutation.isPending || loadingImport || loadingExport}

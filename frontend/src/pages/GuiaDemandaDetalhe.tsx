@@ -173,6 +173,29 @@ const GuiaDemandaDetalhe: React.FC = () => {
     });
   }, [itens, produtoSelecionado]);
 
+  // Matriz consolidada: escolas x produtos
+  const matrizConsolidada = useMemo(() => {
+    // Obter lista única de produtos
+    const produtosUnicos = Array.from(new Set(itens.map(i => i.produto_id)))
+      .map(pid => {
+        const item = itens.find(i => i.produto_id === pid);
+        return { id: pid, nome: item?.produto_nome || '', unidade: item?.unidade || 'Kg' };
+      })
+      .sort((a, b) => a.nome.localeCompare(b.nome));
+
+    // Criar matriz
+    const matriz = escolasComItens.map(escola => {
+      const linha: any = { escola_id: escola.id, escola_nome: escola.nome };
+      produtosUnicos.forEach(produto => {
+        const item = itens.find(i => i.escola_id === escola.id && i.produto_id === produto.id);
+        linha[`produto_${produto.id}`] = item ? Number(item.quantidade) : 0;
+      });
+      return linha;
+    });
+
+    return { produtos: produtosUnicos, matriz };
+  }, [itens, escolasComItens]);
+
   const handleBatchSubmit = async () => {
     if (!batchForm.produtoId || !batchForm.data_entrega || !guia) return;
     const payloads = escolas
@@ -255,6 +278,7 @@ const GuiaDemandaDetalhe: React.FC = () => {
             tabs={[
               { value: 0, label: 'Por Produto', icon: <InventoryIcon sx={{ fontSize: 16 }} /> },
               { value: 1, label: 'Por Escola', icon: <SchoolIcon sx={{ fontSize: 16 }} /> },
+              { value: 2, label: 'Consolidada', icon: <TuneIcon sx={{ fontSize: 16 }} /> },
             ]}
           />
         </Box>
@@ -406,6 +430,116 @@ const GuiaDemandaDetalhe: React.FC = () => {
             )}
           </Box>
         )}
+
+        {/* ── Aba 2: Consolidada ── */}
+        {tabAtiva === 2 && (
+          <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            {matrizConsolidada.produtos.length === 0 ? (
+              <Box textAlign="center" py={8}>
+                <TuneIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
+                <Typography variant="h6" color="text.secondary">Nenhum dado para consolidar</Typography>
+              </Box>
+            ) : (
+              <>
+                <Box sx={{ mb: 2, p: 2, bgcolor: 'info.lighter', borderRadius: 1 }}>
+                  <Typography variant="body2" color="info.dark">
+                    📊 Visão consolidada: cada linha representa uma escola e cada coluna um produto.
+                    Os valores mostram a quantidade total de cada produto por escola.
+                  </Typography>
+                </Box>
+                <TableContainer sx={{ flex: 1, minHeight: 0, overflowX: 'auto' }}>
+                  <Table stickyHeader size="small" sx={{ minWidth: 800 }}>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell sx={{ fontWeight: 700, minWidth: 200, position: 'sticky', left: 0, bgcolor: 'background.paper', zIndex: 3 }}>
+                          Escola
+                        </TableCell>
+                        {matrizConsolidada.produtos.map(produto => (
+                          <TableCell key={produto.id} align="right" sx={{ fontWeight: 700, minWidth: 120 }}>
+                            <Tooltip title={produto.nome}>
+                              <Box sx={{ 
+                                maxWidth: 120, 
+                                overflow: 'hidden', 
+                                textOverflow: 'ellipsis', 
+                                whiteSpace: 'nowrap' 
+                              }}>
+                                {produto.nome}
+                              </Box>
+                            </Tooltip>
+                            <Typography variant="caption" color="text.secondary" display="block">
+                              ({produto.unidade})
+                            </Typography>
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {matrizConsolidada.matriz
+                        .filter(linha => linha.escola_nome.toLowerCase().includes(searchTerm.toLowerCase()))
+                        .map((linha, index) => (
+                        <TableRow key={linha.escola_id} hover>
+                          <TableCell sx={{ fontWeight: 500, position: 'sticky', left: 0, bgcolor: 'background.paper', zIndex: 1 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Chip 
+                                label={index + 1} 
+                                size="small" 
+                                sx={{ 
+                                  minWidth: 32, 
+                                  height: 24, 
+                                  fontWeight: 600,
+                                  bgcolor: 'primary.main',
+                                  color: 'white'
+                                }} 
+                              />
+                              {linha.escola_nome}
+                            </Box>
+                          </TableCell>
+                          {matrizConsolidada.produtos.map(produto => {
+                            const quantidade = linha[`produto_${produto.id}`];
+                            return (
+                              <TableCell key={produto.id} align="right">
+                                {quantidade > 0 ? (
+                                  <Chip 
+                                    label={quantidade.toFixed(3)} 
+                                    size="small" 
+                                    color="primary"
+                                    variant="outlined"
+                                  />
+                                ) : (
+                                  <Typography variant="body2" color="text.disabled">—</Typography>
+                                )}
+                              </TableCell>
+                            );
+                          })}
+                        </TableRow>
+                      ))}
+                      {/* Linha de totais */}
+                      <TableRow sx={{ bgcolor: 'action.hover' }}>
+                        <TableCell sx={{ fontWeight: 700, position: 'sticky', left: 0, bgcolor: 'action.hover', zIndex: 1 }}>
+                          TOTAL
+                        </TableCell>
+                        {matrizConsolidada.produtos.map(produto => {
+                          const total = matrizConsolidada.matriz.reduce((sum, linha) => 
+                            sum + (linha[`produto_${produto.id}`] || 0), 0
+                          );
+                          return (
+                            <TableCell key={produto.id} align="right" sx={{ fontWeight: 700 }}>
+                              <Chip 
+                                label={total.toFixed(3)} 
+                                size="small" 
+                                color="success"
+                              />
+                            </TableCell>
+                          );
+                        })}
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </>
+            )}
+          </Box>
+        )}
       </PageContainer>
 
       {/* Dialog: quantidades por escola de um produto */}
@@ -430,13 +564,28 @@ const GuiaDemandaDetalhe: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {escolasDoProduto.map(item => {
+              {escolasDoProduto.map((item, index) => {
                 const dem = Number(item.quantidade_demanda ?? item.quantidade);
                 const diff = Number(item.quantidade) - dem;
                 const hasAjuste = Math.abs(diff) > 0.0005;
                 return (
                   <TableRow key={item.id} hover>
-                    <TableCell>{item.escola_nome}</TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Chip 
+                          label={index + 1} 
+                          size="small" 
+                          sx={{ 
+                            minWidth: 32, 
+                            height: 24, 
+                            fontWeight: 600,
+                            bgcolor: 'primary.main',
+                            color: 'white'
+                          }} 
+                        />
+                        {item.escola_nome}
+                      </Box>
+                    </TableCell>
                     <TableCell align="right" sx={{ fontWeight: 600 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5 }}>
                         {hasAjuste && (

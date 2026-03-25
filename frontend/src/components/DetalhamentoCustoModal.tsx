@@ -61,7 +61,7 @@ export default function DetalhamentoCustoModal({
       <DialogContent>
         <Box mb={2}>
           <Typography variant="body2" color="text.secondary" gutterBottom>
-            Este detalhamento mostra como o custo é calculado considerando o Índice de Cocção (IC) e o Fator de Correção (FC).
+            Este detalhamento mostra como o custo é calculado considerando o Fator de Correção (FC).
           </Typography>
         </Box>
 
@@ -71,8 +71,6 @@ export default function DetalhamentoCustoModal({
               <TableRow sx={{ bgcolor: 'grey.100' }}>
                 <TableCell><strong>Produto</strong></TableCell>
                 <TableCell align="right"><strong>Qtd Líquida</strong></TableCell>
-                <TableCell align="right"><strong>IC</strong></TableCell>
-                <TableCell align="right"><strong>Qtd Crua</strong></TableCell>
                 <TableCell align="right"><strong>FC</strong></TableCell>
                 <TableCell align="right"><strong>Qtd Bruta</strong></TableCell>
                 <TableCell align="right"><strong>Preço Unit.</strong></TableCell>
@@ -91,7 +89,7 @@ export default function DetalhamentoCustoModal({
                     )}
                   </TableCell>
                   
-                  {/* Quantidade Líquida (o que o aluno come - cozido) */}
+                  {/* Quantidade Líquida (o que o aluno come) */}
                   <TableCell align="right">
                     <Typography variant="body2">
                       {toNum(item.quantidade_liquida).toFixed(2)}
@@ -99,31 +97,6 @@ export default function DetalhamentoCustoModal({
                     <Typography variant="caption" color="text.secondary">
                       {item.unidade}
                     </Typography>
-                  </TableCell>
-                  
-                  {/* Índice de Cocção */}
-                  <TableCell align="right">
-                    <Chip 
-                      label={item.indice_coccao ? toNum(item.indice_coccao).toFixed(2) : '1.00'} 
-                      size="small" 
-                      color={item.indice_coccao && item.indice_coccao !== 1 ? 'info' : 'default'}
-                    />
-                  </TableCell>
-                  
-                  {/* Quantidade Crua (antes de cozinhar) */}
-                  <TableCell align="right">
-                    {item.quantidade_crua !== undefined ? (
-                      <>
-                        <Typography variant="body2">
-                          {toNum(item.quantidade_crua).toFixed(2)}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {item.unidade}
-                        </Typography>
-                      </>
-                    ) : (
-                      <Typography variant="body2" color="text.secondary">-</Typography>
-                    )}
                   </TableCell>
                   
                   {/* Fator de Correção */}
@@ -196,16 +169,13 @@ export default function DetalhamentoCustoModal({
             📊 Como o custo é calculado:
           </Typography>
           <Typography variant="caption" display="block" gutterBottom>
-            1️⃣ <strong>Qtd Líquida</strong>: O que o aluno vai comer (cozido)
+            1️⃣ <strong>Qtd Líquida</strong>: O que o aluno vai comer (per capita cadastrado)
           </Typography>
           <Typography variant="caption" display="block" gutterBottom>
-            2️⃣ <strong>Qtd Crua</strong> = Qtd Líquida ÷ IC (antes de cozinhar)
-          </Typography>
-          <Typography variant="caption" display="block" gutterBottom>
-            3️⃣ <strong>Qtd Bruta</strong> = Qtd Crua × FC (o que precisa comprar)
+            2️⃣ <strong>Qtd Bruta</strong> = Qtd Líquida × FC (o que precisa comprar considerando perdas)
           </Typography>
           <Typography variant="caption" display="block">
-            4️⃣ <strong>Custo</strong> = Qtd Bruta × Preço Unitário
+            3️⃣ <strong>Custo</strong> = Qtd Bruta × Preço Unitário
           </Typography>
         </Box>
       </DialogContent>

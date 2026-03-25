@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, startTransition } from 'react';
 import {
   Box,
   Typography,
@@ -47,6 +47,7 @@ import { LoadingOverlay } from '../components/LoadingOverlay';
 import { DataTable } from '../components/DataTable';
 import PageHeader from '../components/PageHeader';
 import PageContainer from '../components/PageContainer';
+import FiltrosEscolas from '../components/FiltrosEscolas';
 import * as XLSX from 'xlsx';
 
 // Interfaces
@@ -102,6 +103,37 @@ const EscolasPage = () => {
     status: 'todos',
     administracao: 'todos',
   });
+
+  // Callbacks memoizados para melhor performance
+  const handleFilterOpen = useCallback((event: React.MouseEvent<HTMLElement>) => {
+    startTransition(() => {
+      setFilterAnchorEl(event.currentTarget);
+    });
+  }, []);
+  
+  const handleFilterClose = useCallback(() => {
+    startTransition(() => {
+      setFilterAnchorEl(null);
+    });
+  }, []);
+  
+  const handleImportExportOpen = useCallback((event: React.MouseEvent<HTMLElement>) => {
+    startTransition(() => {
+      setImportExportMenuAnchor(event.currentTarget);
+    });
+  }, []);
+  
+  const handleImportExportClose = useCallback(() => {
+    startTransition(() => {
+      setImportExportMenuAnchor(null);
+    });
+  }, []);
+  
+  const handleFiltersChange = useCallback((newFilters: { status: string; administracao: string }) => {
+    startTransition(() => {
+      setFilters(newFilters);
+    });
+  }, []);
   
   const [formData, setFormData] = useState({
     nome: '',
@@ -381,107 +413,20 @@ const EscolasPage = () => {
             searchPlaceholder="Buscar escolas..."
             onCreateClick={openModal}
             createButtonLabel="Nova Escola"
-            onFilterClick={(e) => setFilterAnchorEl(e.currentTarget)}
-            onImportExportClick={(e) => setImportExportMenuAnchor(e.currentTarget)}
+            onFilterClick={handleFilterOpen}
+            onImportExportClick={handleImportExportOpen}
             initialPageSize={50}
           />
         </Box>
       </PageContainer>
 
-      {/* Popover de Filtros */}
-      <Popover
-        open={Boolean(filterAnchorEl)}
+      {/* Popover de Filtros - Componente isolado para melhor performance */}
+      <FiltrosEscolas
         anchorEl={filterAnchorEl}
-        onClose={() => setFilterAnchorEl(null)}
-        anchorOrigin={{
-          vertical: 'bottom',
-          horizontal: 'right',
-        }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
-      >
-        <Box sx={{ p: 2, minWidth: 280 }}>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            Filtros
-          </Typography>
-          
-          <FormControl fullWidth sx={{ mb: 2 }}>
-            <InputLabel>Status</InputLabel>
-            <Select
-              value={filters.status}
-              label="Status"
-              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-            >
-              <MenuItem value="todos">Todos</MenuItem>
-              <MenuItem value="ativo">Ativas</MenuItem>
-              <MenuItem value="inativo">Inativas</MenuItem>
-            </Select>
-          </FormControl>
-
-          <FormControl fullWidth sx={{ mb: 2 }}>
-            <InputLabel>Administração</InputLabel>
-            <Select
-              value={filters.administracao}
-              label="Administração"
-              onChange={(e) => setFilters({ ...filters, administracao: e.target.value })}
-            >
-              <MenuItem value="todos">Todas</MenuItem>
-              <MenuItem value="municipal">Municipal</MenuItem>
-              <MenuItem value="estadual">Estadual</MenuItem>
-              <MenuItem value="federal">Federal</MenuItem>
-              <MenuItem value="particular">Particular</MenuItem>
-            </Select>
-          </FormControl>
-
-          <Divider sx={{ my: 2 }} />
-
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => {
-                setFilters({ status: 'todos', administracao: 'todos' });
-              }}
-            >
-              Limpar
-            </Button>
-            <Button
-              variant="contained"
-              size="small"
-              onClick={() => setFilterAnchorEl(null)}
-            >
-              Aplicar
-            </Button>
-          </Box>
-          
-          {/* Indicador de filtros ativos */}
-          {(filters.status !== 'todos' || filters.administracao !== 'todos') && (
-            <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
-              <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
-                Filtros ativos:
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                {filters.status !== 'todos' && (
-                  <Chip
-                    label={`Status: ${filters.status === 'ativo' ? 'Ativas' : 'Inativas'}`}
-                    size="small"
-                    onDelete={() => setFilters({ ...filters, status: 'todos' })}
-                  />
-                )}
-                {filters.administracao !== 'todos' && (
-                  <Chip
-                    label={`Adm: ${filters.administracao.charAt(0).toUpperCase() + filters.administracao.slice(1)}`}
-                    size="small"
-                    onDelete={() => setFilters({ ...filters, administracao: 'todos' })}
-                  />
-                )}
-              </Box>
-            </Box>
-          )}
-        </Box>
-      </Popover>
+        onClose={handleFilterClose}
+        filters={filters}
+        onFiltersChange={handleFiltersChange}
+      />
 
       {/* Modal de Criação */}
       <Dialog open={modalOpen} onClose={closeModal} maxWidth="md" fullWidth>
@@ -706,41 +651,44 @@ const EscolasPage = () => {
         </MenuItem>
       </Menu>
 
-      {/* Menu de Importar/Exportar */}
-      <Menu 
-        anchorEl={importExportMenuAnchor} 
-        open={Boolean(importExportMenuAnchor)} 
-        onClose={() => setImportExportMenuAnchor(null)}
-        anchorOrigin={{
-          vertical: 'bottom',
-          horizontal: 'right',
-        }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
-      >
-        <MenuItem 
-          onClick={() => { 
-            setImportExportMenuAnchor(null); 
-            setImportModalOpen(true); 
-          }} 
-          disabled={loadingImport}
+      {/* Menu de Importar/Exportar - Renderização condicional para melhor performance */}
+      {Boolean(importExportMenuAnchor) && (
+        <Menu 
+          anchorEl={importExportMenuAnchor} 
+          open={true}
+          onClose={handleImportExportClose}
+          disablePortal
+          anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'right',
+          }}
+          transformOrigin={{
+            vertical: 'top',
+            horizontal: 'right',
+          }}
         >
-          <FileUploadIcon sx={{ mr: 1 }} /> 
-          {loadingImport ? 'Importando...' : 'Importar Escolas'}
-        </MenuItem>
-        <MenuItem 
-          onClick={() => { 
-            setImportExportMenuAnchor(null); 
-            handleExportarEscolas(); 
-          }} 
-          disabled={loadingExport}
-        >
-          <FileDownloadIcon sx={{ mr: 1 }} /> 
-          {loadingExport ? 'Exportando...' : 'Exportar Excel'}
-        </MenuItem>
-      </Menu>
+          <MenuItem 
+            onClick={() => { 
+              setImportExportMenuAnchor(null); 
+              setImportModalOpen(true); 
+            }} 
+            disabled={loadingImport}
+          >
+            <FileUploadIcon sx={{ mr: 1 }} /> 
+            {loadingImport ? 'Importando...' : 'Importar Escolas'}
+          </MenuItem>
+          <MenuItem 
+            onClick={() => { 
+              setImportExportMenuAnchor(null); 
+              handleExportarEscolas(); 
+            }} 
+            disabled={loadingExport}
+          >
+            <FileDownloadIcon sx={{ mr: 1 }} /> 
+            {loadingExport ? 'Exportando...' : 'Exportar Excel'}
+          </MenuItem>
+        </Menu>
+      )}
 
       <LoadingOverlay 
         open={criarEscolaMutation.isPending || excluirEscolaMutation.isPending || loadingImport || loadingExport}

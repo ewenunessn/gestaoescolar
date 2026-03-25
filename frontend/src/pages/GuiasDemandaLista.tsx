@@ -94,7 +94,6 @@ const GuiasDemandaLista: React.FC = () => {
   const [competenciaGerar, setCompetenciaGerar] = useState('');
   const [periodosGerar, setPeriodosGerar] = useState<Periodo[]>([]);
   const [seletorOpen, setSeletorOpen] = useState(false);
-  const [considerarIndiceCoccao, setConsiderarIndiceCoccao] = useState(true);
   const [considerarFatorCorrecao, setConsiderarFatorCorrecao] = useState(true);
   const [gerandoGuias, setGerandoGuias] = useState(false);
   const [resultadoGuias, setResultadoGuias] = useState<GerarGuiasResponse | null>(null);
@@ -327,7 +326,7 @@ const GuiasDemandaLista: React.FC = () => {
         periodosGerar,
         undefined,
         undefined,
-        considerarIndiceCoccao,
+        false, // índice de cocção desabilitado
         considerarFatorCorrecao
       );
       
@@ -717,23 +716,6 @@ const GuiasDemandaLista: React.FC = () => {
                 <FormControlLabel
                   control={
                     <Checkbox
-                      checked={considerarIndiceCoccao}
-                      onChange={(e) => setConsiderarIndiceCoccao(e.target.checked)}
-                      size="small"
-                    />
-                  }
-                  label={
-                    <Box>
-                      <Typography variant="body2">Considerar Índice de Cocção (IC)</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Ajusta a quantidade considerando mudança de peso no cozimento
-                      </Typography>
-                    </Box>
-                  }
-                />
-                <FormControlLabel
-                  control={
-                    <Checkbox
                       checked={considerarFatorCorrecao}
                       onChange={(e) => setConsiderarFatorCorrecao(e.target.checked)}
                       size="small"
@@ -747,7 +729,6 @@ const GuiasDemandaLista: React.FC = () => {
                       </Typography>
                     </Box>
                   }
-                  sx={{ mt: 1 }}
                 />
               </Box>
             </>

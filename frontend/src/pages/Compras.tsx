@@ -35,7 +35,6 @@ import pedidosService from '../services/pedidos';
 import { Pedido, STATUS_PEDIDO } from '../types/pedido';
 import { formatarMoeda, formatarData } from '../utils/dateUtils';
 import { DataTable } from '../components/DataTable';
-import { LoadingOverlay } from '../components/LoadingOverlay';
 
 const PedidosPage = () => {
   const navigate = useNavigate();
@@ -433,11 +432,6 @@ const PedidosPage = () => {
           setDialogGerarDaGuia(false);
           loadPedidos();
         }}
-      />
-
-      <LoadingOverlay
-        open={loading && pedidos.length === 0}
-        message="Carregando pedidos..."
       />
     </Box>
   );

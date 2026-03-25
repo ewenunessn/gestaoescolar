@@ -113,7 +113,7 @@ async function calcularDemandaPeriodo(
   data_inicio: string,
   data_fim: string,
   escola_ids?: number[],
-  considerar_indice_coccao: boolean = true,
+  considerar_indice_coccao: boolean = false, // DESABILITADO POR PADRÃO
   considerar_fator_correcao: boolean = true
 ): Promise<ProdutoDemanda[]> {
   const diaInicio = parseInt(data_inicio.split('-')[2]);
@@ -213,8 +213,10 @@ async function calcularDemandaPeriodo(
         }
       } else {
         // Per capita em GRAMAS (ex: 150g de arroz cozido)
-        // LÓGICA CORRETA: IC primeiro (cozimento), depois FC (pré-preparo)
-        // 1. Calcular quanto precisa CRU (antes de cozinhar)
+        // NOTA: Índice de cocção DESABILITADO por padrão (considerar_indice_coccao = false)
+        // O campo existe no banco apenas para referência, mas não é aplicado automaticamente
+        // LÓGICA: Apenas FC (fator de correção) é aplicado se habilitado
+        // 1. Per capita já está no estado final (cozido)
         const perCapitaCru = considerar_indice_coccao ? perCapita / indiceCoccao : perCapita;
         // 2. Calcular quanto precisa COMPRAR (antes de limpar/descascar)
         const perCapitaBruto = considerar_fator_correcao ? perCapitaCru * fator : perCapitaCru;

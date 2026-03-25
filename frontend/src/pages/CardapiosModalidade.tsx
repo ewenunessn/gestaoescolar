@@ -451,129 +451,132 @@ const CardapiosModalidadePage: React.FC = () => {
       </PageContainer>
 
       {/* Popover de Filtros */}
-      <Popover
-        open={Boolean(filterAnchorEl)}
-        anchorEl={filterAnchorEl}
-        onClose={() => setFilterAnchorEl(null)}
-        anchorOrigin={{
-          vertical: 'bottom',
-          horizontal: 'right',
-        }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
-      >
-        <Box sx={{ p: 2, minWidth: 280 }}>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            Filtros
-          </Typography>
+      {/* Popover de Filtros - Renderização condicional para melhor performance */}
+      {Boolean(filterAnchorEl) && (
+        <Popover
+          open={true}
+          anchorEl={filterAnchorEl}
+          onClose={() => setFilterAnchorEl(null)}
+          anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'right',
+          }}
+          transformOrigin={{
+            vertical: 'top',
+            horizontal: 'right',
+          }}
+        >
+          <Box sx={{ p: 2, minWidth: 280 }}>
+            <Typography variant="h6" sx={{ mb: 2 }}>
+              Filtros
+            </Typography>
 
-          <FormControl fullWidth sx={{ mb: 2 }}>
-            <InputLabel>Modalidade</InputLabel>
-            <Select
-              value={filters.modalidade}
-              label="Modalidade"
-              onChange={(e) => setFilters({ ...filters, modalidade: e.target.value })}
-            >
-              <MenuItem value="todos">Todas</MenuItem>
-              {modalidades.map((m) => (
-                <MenuItem key={m.id} value={m.id.toString()}>
-                  {m.nome}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <FormControl fullWidth sx={{ mb: 2 }}>
-            <InputLabel>Mês</InputLabel>
-            <Select
-              value={filters.mes}
-              label="Mês"
-              onChange={(e) => setFilters({ ...filters, mes: e.target.value })}
-            >
-              <MenuItem value="todos">Todos</MenuItem>
-              {Object.entries(MESES).map(([num, nome]) => (
-                <MenuItem key={num} value={num}>
-                  {nome}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <FormControl fullWidth sx={{ mb: 2 }}>
-            <InputLabel>Status</InputLabel>
-            <Select
-              value={filters.status}
-              label="Status"
-              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-            >
-              <MenuItem value="todos">Todos</MenuItem>
-              <MenuItem value="ativo">Ativos</MenuItem>
-              <MenuItem value="inativo">Inativos</MenuItem>
-            </Select>
-          </FormControl>
-
-          <Divider sx={{ my: 2 }} />
-
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => {
-                setFilters({ modalidade: 'todos', mes: 'todos', status: 'todos' });
-              }}
-            >
-              Limpar
-            </Button>
-            <Button
-              variant="contained"
-              size="small"
-              onClick={() => setFilterAnchorEl(null)}
-            >
-              Aplicar
-            </Button>
-          </Box>
-
-          {/* Indicador de filtros ativos */}
-          {(filters.modalidade !== 'todos' || filters.mes !== 'todos' || filters.status !== 'todos') && (
-            <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ mb: 1, display: 'block' }}
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel>Modalidade</InputLabel>
+              <Select
+                value={filters.modalidade}
+                label="Modalidade"
+                onChange={(e) => setFilters({ ...filters, modalidade: e.target.value })}
               >
-                Filtros ativos:
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                {filters.modalidade !== 'todos' && (
-                  <Chip
-                    label={`Modalidade: ${
-                      modalidades.find(m => m.id.toString() === filters.modalidade)?.nome || 'Selecionada'
-                    }`}
-                    size="small"
-                    onDelete={() => setFilters({ ...filters, modalidade: 'todos' })}
-                  />
-                )}
-                {filters.mes !== 'todos' && (
-                  <Chip
-                    label={`Mês: ${MESES[parseInt(filters.mes)]}`}
-                    size="small"
-                    onDelete={() => setFilters({ ...filters, mes: 'todos' })}
-                  />
-                )}
-                {filters.status !== 'todos' && (
-                  <Chip
-                    label={`Status: ${filters.status === 'ativo' ? 'Ativos' : 'Inativos'}`}
-                    size="small"
-                    onDelete={() => setFilters({ ...filters, status: 'todos' })}
-                  />
-                )}
-              </Box>
+                <MenuItem value="todos">Todas</MenuItem>
+                {modalidades.map((m) => (
+                  <MenuItem key={m.id} value={m.id.toString()}>
+                    {m.nome}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel>Mês</InputLabel>
+              <Select
+                value={filters.mes}
+                label="Mês"
+                onChange={(e) => setFilters({ ...filters, mes: e.target.value })}
+              >
+                <MenuItem value="todos">Todos</MenuItem>
+                {Object.entries(MESES).map(([num, nome]) => (
+                  <MenuItem key={num} value={num}>
+                    {nome}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel>Status</InputLabel>
+              <Select
+                value={filters.status}
+                label="Status"
+                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+              >
+                <MenuItem value="todos">Todos</MenuItem>
+                <MenuItem value="ativo">Ativos</MenuItem>
+                <MenuItem value="inativo">Inativos</MenuItem>
+              </Select>
+            </FormControl>
+
+            <Divider sx={{ my: 2 }} />
+
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => {
+                  setFilters({ modalidade: 'todos', mes: 'todos', status: 'todos' });
+                }}
+              >
+                Limpar
+              </Button>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => setFilterAnchorEl(null)}
+              >
+                Aplicar
+              </Button>
             </Box>
-          )}
-        </Box>
-      </Popover>
+
+            {/* Indicador de filtros ativos */}
+            {(filters.modalidade !== 'todos' || filters.mes !== 'todos' || filters.status !== 'todos') && (
+              <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ mb: 1, display: 'block' }}
+                >
+                  Filtros ativos:
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                  {filters.modalidade !== 'todos' && (
+                    <Chip
+                      label={`Modalidade: ${
+                        modalidades.find(m => m.id.toString() === filters.modalidade)?.nome || 'Selecionada'
+                      }`}
+                      size="small"
+                      onDelete={() => setFilters({ ...filters, modalidade: 'todos' })}
+                    />
+                  )}
+                  {filters.mes !== 'todos' && (
+                    <Chip
+                      label={`Mês: ${MESES[parseInt(filters.mes)]}`}
+                      size="small"
+                      onDelete={() => setFilters({ ...filters, mes: 'todos' })}
+                    />
+                  )}
+                  {filters.status !== 'todos' && (
+                    <Chip
+                      label={`Status: ${filters.status === 'ativo' ? 'Ativos' : 'Inativos'}`}
+                      size="small"
+                      onDelete={() => setFilters({ ...filters, status: 'todos' })}
+                    />
+                  )}
+                </Box>
+              </Box>
+            )}
+          </Box>
+        </Popover>
+      )}
 
       {/* Modal de Criação/Edição */}
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>

@@ -328,16 +328,13 @@ export const calcularCusto = async (req: Request, res: Response) => {
 
       // Per capita cadastrado é LÍQUIDO (consumo final - cozido)
       // Para calcular custo, precisamos do BRUTO (compra)
-      // Lógica correta: IC primeiro (cozimento), depois FC (pré-preparo)
+      // NOTA: Índice de cocção NÃO é aplicado (per capita já considera produto final)
+      // Apenas o Fator de Correção é aplicado (perda no pré-preparo)
       
-      const indiceCoccao = toNum(ing.indice_coccao, 1.0);
       const fatorCorrecao = toNum(ing.fator_correcao, 1.0);
       
-      // 1. Calcular quanto precisa CRU (antes de cozinhar)
-      const perCapitaCru = ing.per_capita / indiceCoccao;
-      
-      // 2. Calcular quanto precisa COMPRAR (antes de limpar/descascar)
-      const perCapitaBruto = perCapitaCru * fatorCorrecao;
+      // Calcular quanto precisa COMPRAR (antes de limpar/descascar)
+      const perCapitaBruto = ing.per_capita * fatorCorrecao;
 
       // Calcular custo baseado no per capita BRUTO
       // preco_unitario é por kg, per capita é em gramas ou unidades
@@ -357,10 +354,8 @@ export const calcularCusto = async (req: Request, res: Response) => {
       detalhamento.push({
         produto: ing.produto_nome,
         quantidade_liquida: ing.per_capita,
-        quantidade_crua: perCapitaCru,
         quantidade_bruta: perCapitaBruto,
         unidade: ing.tipo_medida,
-        indice_coccao: indiceCoccao,
         fator_correcao: fatorCorrecao,
         preco_unitario: ing.preco_unitario,
         custo: Math.round(custo * 100) / 100

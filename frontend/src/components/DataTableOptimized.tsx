@@ -1,4 +1,4 @@
-import React, { useState, useCallback, memo } from 'react';
+import React, { useState, useMemo, useCallback, memo } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -36,7 +36,7 @@ import AddIcon from '@mui/icons-material/Add';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 
-interface DataTableProps<TData> {
+interface DataTableOptimizedProps<TData> {
   data: TData[];
   columns: ColumnDef<TData, any>[];
   loading?: boolean;
@@ -50,7 +50,6 @@ interface DataTableProps<TData> {
   toolbarExtra?: React.ReactNode;
   initialColumnVisibility?: Record<string, boolean>;
   initialPageSize?: number;
-  autoCalculatePageSize?: boolean; // Mantido para compatibilidade
 }
 
 // Componente de linha memoizado para evitar re-renders desnecessários
@@ -91,7 +90,7 @@ const TableRowMemo = memo(function TableRowMemo<TData>({
   );
 });
 
-export const DataTable = memo(function DataTable<TData>({
+export const DataTableOptimized = memo(function DataTableOptimized<TData>({
   data,
   columns,
   loading = false,
@@ -105,7 +104,7 @@ export const DataTable = memo(function DataTable<TData>({
   toolbarExtra,
   initialColumnVisibility = {},
   initialPageSize = 50,
-}: DataTableProps<TData>) {
+}: DataTableOptimizedProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
@@ -268,6 +267,7 @@ export const DataTable = memo(function DataTable<TData>({
           stickyHeader
           sx={{ 
             minWidth: 650,
+            // Otimização: table-layout fixed para melhor performance
             tableLayout: 'auto',
           }}
         >
@@ -373,4 +373,4 @@ export const DataTable = memo(function DataTable<TData>({
       />
     </Paper>
   );
-}) as <TData>(props: DataTableProps<TData>) => JSX.Element;
+}) as <TData>(props: DataTableOptimizedProps<TData>) => JSX.Element;

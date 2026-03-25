@@ -80,7 +80,7 @@ export const PRODUTO_IMPORT_EXEMPLOS = [
   [
     'Óleo de Soja',
     'Óleo de soja refinado',
-    'processado',
+    'ingrediente culinário',
     'Óleos',
     365,
     'false',
@@ -114,7 +114,7 @@ export const PRODUTO_IMPORT_INSTRUCOES = [
   ['Campo', 'Descrição', 'Obrigatório', 'Exemplo'],
   ['nome', 'Nome do produto', 'SIM', 'Arroz Branco Tipo 1'],
   ['descricao', 'Descrição detalhada do produto', 'NÃO', 'Arroz branco polido tipo 1'],
-  ['tipo_processamento', 'Tipo: in natura, minimamente processado, processado, ultraprocessado', 'NÃO', 'processado'],
+  ['tipo_processamento', 'Tipo: in natura, minimamente processado, ingrediente culinário, processado, ultraprocessado', 'NÃO', 'processado'],
   ['categoria', 'Categoria do produto', 'NÃO', 'Cereais'],
   ['validade_minima', 'Validade mínima em dias', 'NÃO', '180'],
   ['perecivel', 'Produto perecível (true/false)', 'NÃO', 'false'],
@@ -164,11 +164,11 @@ export function gerarModeloExcelProdutos(nomeArquivo?: string): void {
     type: 'list',
     allowBlank: true,
     sqref: 'C2:C100',
-    formulas: ['"in natura,minimamente processado,processado,ultraprocessado"'],
+    formulas: ['"in natura,minimamente processado,ingrediente culinário,processado,ultraprocessado"'],
     promptTitle: 'Tipo de Processamento',
     prompt: 'Selecione uma das opções',
     errorTitle: 'Valor Inválido',
-    error: 'Escolha: in natura, minimamente processado, processado ou ultraprocessado'
+    error: 'Escolha: in natura, minimamente processado, ingrediente culinário, processado ou ultraprocessado'
   });
 
   // Validação para perecivel (coluna F, linhas 2 a 100)

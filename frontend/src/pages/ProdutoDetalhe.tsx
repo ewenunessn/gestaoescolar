@@ -669,6 +669,7 @@ export default function ProdutoDetalhe() {
                     { value: '', label: 'Nenhum' },
                     { value: 'in natura', label: 'In Natura' },
                     { value: 'minimamente processado', label: 'Minimamente Processado' },
+                    { value: 'ingrediente culinário', label: 'Ingrediente Culinário' },
                     { value: 'processado', label: 'Processado' },
                     { value: 'ultraprocessado', label: 'Ultraprocessado' }
                   ]}

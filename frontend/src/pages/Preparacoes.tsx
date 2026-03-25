@@ -352,99 +352,101 @@ const PreparacoesPage: React.FC = () => {
         </Box>
       </PageContainer>
 
-      {/* Popover de Filtros */}
-      <Popover
-        open={Boolean(filterAnchorEl)}
-        anchorEl={filterAnchorEl}
-        onClose={() => setFilterAnchorEl(null)}
-        anchorOrigin={{
-          vertical: 'bottom',
-          horizontal: 'right',
-        }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
-      >
-        <Box sx={{ p: 2, minWidth: 280 }}>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            Filtros
-          </Typography>
-          
-          <FormControl fullWidth sx={{ mb: 2 }}>
-            <InputLabel>Status</InputLabel>
-            <Select
-              value={filters.status}
-              label="Status"
-              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-            >
-              <MenuItem value="todos">Todos</MenuItem>
-              <MenuItem value="ativo">Ativas</MenuItem>
-              <MenuItem value="inativo">Inativas</MenuItem>
-            </Select>
-          </FormControl>
+      {/* Popover de Filtros - Renderização condicional para melhor performance */}
+      {Boolean(filterAnchorEl) && (
+        <Popover
+          open={true}
+          anchorEl={filterAnchorEl}
+          onClose={() => setFilterAnchorEl(null)}
+          anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'right',
+          }}
+          transformOrigin={{
+            vertical: 'top',
+            horizontal: 'right',
+          }}
+        >
+          <Box sx={{ p: 2, minWidth: 280 }}>
+            <Typography variant="h6" sx={{ mb: 2 }}>
+              Filtros
+            </Typography>
+            
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel>Status</InputLabel>
+              <Select
+                value={filters.status}
+                label="Status"
+                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+              >
+                <MenuItem value="todos">Todos</MenuItem>
+                <MenuItem value="ativo">Ativas</MenuItem>
+                <MenuItem value="inativo">Inativas</MenuItem>
+              </Select>
+            </FormControl>
 
-          <FormControl fullWidth sx={{ mb: 2 }}>
-            <InputLabel>Tipo</InputLabel>
-            <Select
-              value={filters.tipo}
-              label="Tipo"
-              onChange={(e) => setFilters({ ...filters, tipo: e.target.value })}
-            >
-              <MenuItem value="todos">Todos</MenuItem>
-              {Object.entries(tiposPreparacao).map(([value, label]) => (
-                <MenuItem key={value} value={value}>{label}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel>Tipo</InputLabel>
+              <Select
+                value={filters.tipo}
+                label="Tipo"
+                onChange={(e) => setFilters({ ...filters, tipo: e.target.value })}
+              >
+                <MenuItem value="todos">Todos</MenuItem>
+                {Object.entries(tiposPreparacao).map(([value, label]) => (
+                  <MenuItem key={value} value={value}>{label}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
 
-          <Divider sx={{ my: 2 }} />
+            <Divider sx={{ my: 2 }} />
 
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => {
-                setFilters({ status: 'todos', tipo: 'todos' });
-              }}
-            >
-              Limpar
-            </Button>
-            <Button
-              variant="contained"
-              size="small"
-              onClick={() => setFilterAnchorEl(null)}
-            >
-              Aplicar
-            </Button>
-          </Box>
-          
-          {/* Indicador de filtros ativos */}
-          {(filters.status !== 'todos' || filters.tipo !== 'todos') && (
-            <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
-              <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
-                Filtros ativos:
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                {filters.status !== 'todos' && (
-                  <Chip
-                    label={`Status: ${filters.status === 'ativo' ? 'Ativas' : 'Inativas'}`}
-                    size="small"
-                    onDelete={() => setFilters({ ...filters, status: 'todos' })}
-                  />
-                )}
-                {filters.tipo !== 'todos' && (
-                  <Chip
-                    label={`Tipo: ${tiposPreparacao[filters.tipo as keyof typeof tiposPreparacao]}`}
-                    size="small"
-                    onDelete={() => setFilters({ ...filters, tipo: 'todos' })}
-                  />
-                )}
-              </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => {
+                  setFilters({ status: 'todos', tipo: 'todos' });
+                }}
+              >
+                Limpar
+              </Button>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => setFilterAnchorEl(null)}
+              >
+                Aplicar
+              </Button>
             </Box>
-          )}
-        </Box>
-      </Popover>
+            
+            {/* Indicador de filtros ativos */}
+            {(filters.status !== 'todos' || filters.tipo !== 'todos') && (
+              <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+                <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                  Filtros ativos:
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                  {filters.status !== 'todos' && (
+                    <Chip
+                      label={`Status: ${filters.status === 'ativo' ? 'Ativas' : 'Inativas'}`}
+                      size="small"
+                      onDelete={() => setFilters({ ...filters, status: 'todos' })}
+                    />
+                  )}
+                  {filters.tipo !== 'todos' && (
+                    <Chip
+                      label={`Tipo: ${tiposPreparacao[filters.tipo as keyof typeof tiposPreparacao]}`}
+                      size="small"
+                      onDelete={() => setFilters({ ...filters, tipo: 'todos' })}
+                    />
+                  )}
+                </Box>
+              </Box>
+            )}
+          </Box>
+        </Popover>
+      )}
 
       {/* Modal de Criação/Edição */}
       <Dialog 

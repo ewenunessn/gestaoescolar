@@ -178,12 +178,18 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
 
   const validarProdutos = (dadosRaw: any[]): ProdutoImportacao[] => {
     return dadosRaw.map((linha, index) => {
+      // Normalizar tipo_processamento para lowercase
+      let tipoProcessamento = linha.tipo_processamento || '';
+      if (tipoProcessamento && typeof tipoProcessamento === 'string') {
+        tipoProcessamento = tipoProcessamento.trim().toLowerCase();
+      }
+      
       const produto: ProdutoImportacao = {
         nome: linha.nome || '',
         unidade: linha.unidade || 'UN',
         descricao: linha.descricao || '',
         categoria: linha.categoria || '',
-        tipo_processamento: linha.tipo_processamento || '',
+        tipo_processamento: tipoProcessamento,
         peso: linha.peso ? parseFloat(linha.peso) : undefined,
         fator_correcao: linha.fator_correcao ? parseFloat(linha.fator_correcao) : undefined,
         perecivel: linha.perecivel === 'true' || linha.perecivel === true || linha.perecivel === 1,
@@ -205,9 +211,9 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
         erros.push('Unidade é obrigatória');
       }
 
-      // Validar tipo de processamento
-      if (produto.tipo_processamento && !['in natura', 'minimamente processado', 'processado', 'ultraprocessado'].includes(produto.tipo_processamento)) {
-        erros.push('Tipo de processamento deve ser: in natura, minimamente processado, processado ou ultraprocessado');
+      // Validar tipo de processamento (já normalizado para lowercase)
+      if (produto.tipo_processamento && produto.tipo_processamento !== '' && !['in natura', 'minimamente processado', 'ingrediente culinário', 'processado', 'ultraprocessado'].includes(produto.tipo_processamento)) {
+        erros.push('Tipo de processamento deve ser: in natura, minimamente processado, ingrediente culinário, processado ou ultraprocessado');
       }
 
       // Validar peso (opcional, mas se fornecido deve ser > 0)
@@ -403,7 +409,7 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
                   <li><strong>unidade</strong>: Unidade de medida - UN, KG, L, etc (obrigatório)</li>
                   <li><strong>descricao</strong>: Descrição detalhada do produto (opcional)</li>
                   <li><strong>categoria</strong>: Categoria do produto (opcional)</li>
-                  <li><strong>tipo_processamento</strong>: in natura, minimamente processado, processado, ultraprocessado (opcional)</li>
+                  <li><strong>tipo_processamento</strong>: in natura, minimamente processado, ingrediente culinário, processado, ultraprocessado (opcional)</li>
                   <li><strong>perecivel</strong>: true ou false (padrão: false)</li>
                   <li><strong>ativo</strong>: true ou false (padrão: true)</li>
                 </ul>
