@@ -167,7 +167,7 @@ export async function listarItensFornecedor(req: Request, res: Response) {
         pi.observacoes,
         prod.id as produto_id,
         prod.nome as produto_nome,
-        COALESCE(prod.unidade, 'UN') as unidade,
+        COALESCE(um.sigla, prod.unidade_distribuicao, 'UN') as unidade,
         c.numero as contrato_numero,
         COALESCE(SUM(r.quantidade_recebida), 0) as quantidade_recebida,
         (pi.quantidade - COALESCE(SUM(r.quantidade_recebida), 0)) as saldo_pendente,
@@ -175,12 +175,13 @@ export async function listarItensFornecedor(req: Request, res: Response) {
       FROM pedido_itens pi
       JOIN contrato_produtos cp ON pi.contrato_produto_id = cp.id
       JOIN produtos prod ON cp.produto_id = prod.id
+      LEFT JOIN unidades_medida um ON prod.unidade_medida_id = um.id
       JOIN contratos c ON cp.contrato_id = c.id
       LEFT JOIN recebimentos r ON pi.id = r.pedido_item_id
       WHERE pi.pedido_id = $1 AND c.fornecedor_id = $2
       GROUP BY pi.id, pi.quantidade, pi.preco_unitario, pi.valor_total, 
                pi.data_entrega_prevista, pi.observacoes, prod.id, prod.nome, 
-               prod.unidade, c.numero
+               um.sigla, prod.unidade_distribuicao, c.numero
       ORDER BY pi.data_entrega_prevista ASC NULLS LAST, prod.nome
     `, [pedidoId, fornecedorId]);
 
