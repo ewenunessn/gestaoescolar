@@ -68,6 +68,10 @@ class EstoqueCentralController {
    */
   async registrarEntrada(req: Request, res: Response) {
     try {
+      console.log('📦 [ESTOQUE] Requisição de entrada recebida');
+      console.log('📦 [ESTOQUE] Body:', JSON.stringify(req.body, null, 2));
+      console.log('📦 [ESTOQUE] User:', (req as any).user);
+
       const {
         produto_id,
         quantidade,
@@ -83,6 +87,12 @@ class EstoqueCentralController {
 
       // Validações
       if (!produto_id || !quantidade || !lote || !data_validade) {
+        console.log('❌ [ESTOQUE] Validação falhou:', {
+          produto_id: !!produto_id,
+          quantidade: !!quantidade,
+          lote: !!lote,
+          data_validade: !!data_validade
+        });
         return res.status(400).json({
           error: 'Campos obrigatórios: produto_id, quantidade, lote, data_validade'
         });
@@ -91,10 +101,13 @@ class EstoqueCentralController {
       const quantidadeNum = parseFloat(quantidade);
       
       if (isNaN(quantidadeNum) || quantidadeNum <= 0) {
+        console.log('❌ [ESTOQUE] Quantidade inválida:', quantidade);
         return res.status(400).json({
           error: 'Quantidade deve ser maior que zero'
         });
       }
+
+      console.log('✅ [ESTOQUE] Validações OK, registrando entrada...');
 
       const movimentacao = await EstoqueCentralModel.registrarEntrada({
         produto_id: parseInt(produto_id),
@@ -111,9 +124,11 @@ class EstoqueCentralController {
         usuario_nome: (req as any).user?.nome
       });
 
+      console.log('✅ [ESTOQUE] Entrada registrada com sucesso:', movimentacao.id);
       res.status(201).json(movimentacao);
     } catch (error: any) {
-      console.error('Erro ao registrar entrada:', error);
+      console.error('❌ [ESTOQUE] Erro ao registrar entrada:', error.message);
+      console.error('❌ [ESTOQUE] Stack:', error.stack);
       res.status(500).json({ error: error.message });
     }
   }

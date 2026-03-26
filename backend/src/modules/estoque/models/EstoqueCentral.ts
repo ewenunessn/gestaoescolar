@@ -45,7 +45,10 @@ class EstoqueCentralModel {
     return await db.transaction(async (client) => {
       // Buscar unidade do produto
       const produtoResult = await client.query(
-        'SELECT unidade FROM produtos WHERE id = $1',
+        `SELECT COALESCE(um.codigo, p.unidade_distribuicao, 'UN') as unidade
+         FROM produtos p
+         LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
+         WHERE p.id = $1`,
         [dados.produto_id]
       );
 
@@ -191,7 +194,10 @@ class EstoqueCentralModel {
     return await db.transaction(async (client) => {
       // Buscar unidade do produto
       const produtoResult = await client.query(
-        'SELECT unidade FROM produtos WHERE id = $1',
+        `SELECT COALESCE(um.codigo, p.unidade_distribuicao, 'UN') as unidade
+         FROM produtos p
+         LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
+         WHERE p.id = $1`,
         [dados.produto_id]
       );
 
@@ -279,7 +285,10 @@ class EstoqueCentralModel {
     return await db.transaction(async (client) => {
       // Buscar unidade do produto
       const produtoResult = await client.query(
-        'SELECT unidade FROM produtos WHERE id = $1',
+        `SELECT COALESCE(um.codigo, p.unidade_distribuicao, 'UN') as unidade
+         FROM produtos p
+         LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
+         WHERE p.id = $1`,
         [dados.produto_id]
       );
 
