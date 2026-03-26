@@ -7,6 +7,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import theme from './theme/theme';
 import { ToastContainer as ReactToastifyContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import UpdateNotification from './components/UpdateNotification';
 
 interface AppProps {
   routerConfig?: {
@@ -25,6 +26,7 @@ export default function App({ routerConfig }: AppProps) {
         <PageTitleProvider>
           <ConfigProvider>
             <AppRouter routerConfig={routerConfig} />
+            <UpdateNotification />
             <ReactToastifyContainer
                 position="top-right"
                 autoClose={4000}

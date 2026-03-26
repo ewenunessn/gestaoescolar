@@ -432,9 +432,9 @@ export default function ComprovantesEntrega() {
 
   const formatarQuantidade = (valor: number): string => {
     if (Number.isInteger(valor)) {
-      return valor.toString();
+      return valor.toLocaleString('pt-BR');
     }
-    return valor.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 3 });
+    return valor.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
   };
 
   const excluirComprovante = async (id: number, numero: string) => {

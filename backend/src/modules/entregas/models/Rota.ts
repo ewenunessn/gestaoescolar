@@ -21,6 +21,7 @@ export interface RotaEscola {
   created_at: string;
   escola_nome?: string;
   escola_endereco?: string;
+  escola_municipio?: string;
 }
 
 export interface PlanejamentoEntrega {
@@ -306,7 +307,8 @@ class RotaModel {
       SELECT 
         re.*,
         e.nome as escola_nome,
-        e.endereco as escola_endereco
+        e.endereco as escola_endereco,
+        e.municipio as escola_municipio
       FROM rota_escolas re
       JOIN escolas e ON re.escola_id = e.id
       WHERE re.rota_id = $1
@@ -352,7 +354,8 @@ class RotaModel {
       SELECT 
         re.*,
         e.nome as escola_nome,
-        e.endereco as escola_endereco
+        e.endereco as escola_endereco,
+        e.municipio as escola_municipio
       FROM rota_escolas re
       JOIN escolas e ON re.escola_id = e.id
       WHERE re.id = $1

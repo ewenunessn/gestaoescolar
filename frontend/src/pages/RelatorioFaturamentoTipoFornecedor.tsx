@@ -25,7 +25,7 @@ import PageBreadcrumbs from '../components/PageBreadcrumbs';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import { relatorioTipoFornecedorModalidade } from '../services/faturamentos';
 import { formatarMoeda } from '../utils/dateUtils';
-import { toNum } from '../utils/formatters';
+import { toNum, formatarQuantidade } from '../utils/formatters';
 
 interface RelatorioItem {
   faturamento_id: number;
@@ -158,7 +158,7 @@ export default function RelatorioFaturamentoTipoFornecedor() {
                 </Grid>
                 <Grid item xs={12} sm={4}>
                   <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'secondary.light', borderRadius: 2 }}>
-                    <Typography variant="h4" color="secondary.contrastText">{totalGeral.quantidade_total.toFixed(0)}</Typography>
+                    <Typography variant="h4" color="secondary.contrastText">{formatarQuantidade(totalGeral.quantidade_total)}</Typography>
                     <Typography variant="body2" color="secondary.contrastText">Quantidade Total</Typography>
                   </Box>
                 </Grid>
@@ -195,7 +195,7 @@ export default function RelatorioFaturamentoTipoFornecedor() {
                         {formatarMoeda(totalTipo.valor_total)}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        {totalTipo.total_itens} itens • {totalTipo.quantidade_total.toFixed(0)} unidades
+                        {totalTipo.total_itens} itens • {formatarQuantidade(totalTipo.quantidade_total)} unidades
                       </Typography>
                     </Box>
                   </Box>
@@ -219,7 +219,7 @@ export default function RelatorioFaturamentoTipoFornecedor() {
                             <TableRow key={`${item.tipo_fornecedor}-${item.modalidade_id}`} hover>
                               <TableCell>{item.modalidade_nome}</TableCell>
                               <TableCell align="center">{item.total_itens}</TableCell>
-                              <TableCell align="center">{toNum(item.quantidade_total).toFixed(0)}</TableCell>
+                              <TableCell align="center">{formatarQuantidade(item.quantidade_total)}</TableCell>
                               <TableCell align="right">
                                 <Typography fontWeight="bold" color="success.main">
                                   {formatarMoeda(item.valor_total)}
@@ -238,7 +238,7 @@ export default function RelatorioFaturamentoTipoFornecedor() {
                         <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
                           <TableCell sx={{ fontWeight: 'bold' }}>TOTAL {TIPO_FORNECEDOR_LABELS[tipo]?.toUpperCase()}</TableCell>
                           <TableCell align="center" sx={{ fontWeight: 'bold' }}>{totalTipo.total_itens}</TableCell>
-                          <TableCell align="center" sx={{ fontWeight: 'bold' }}>{totalTipo.quantidade_total.toFixed(0)}</TableCell>
+                          <TableCell align="center" sx={{ fontWeight: 'bold' }}>{formatarQuantidade(totalTipo.quantidade_total)}</TableCell>
                           <TableCell align="right" sx={{ fontWeight: 'bold', color: 'success.main' }}>
                             {formatarMoeda(totalTipo.valor_total)}
                           </TableCell>

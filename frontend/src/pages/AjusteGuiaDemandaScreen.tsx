@@ -12,7 +12,7 @@ import {
   ContentCopy as CopyIcon, RestartAlt as ResetIcon,
 } from '@mui/icons-material';
 import { usePageTitle } from '../contexts/PageTitleContext';
-import { useToast } from '../hooks/useToast';
+import { formatarQuantidade } from '../utils/formatters';
 import { toNum } from '../utils/formatters';
 import api from '../services/api';
 
@@ -212,7 +212,7 @@ export default function AjusteGuiaDemandaScreen() {
   if (loading) return <Box sx={{ p: 4, display: 'flex', justifyContent: 'center' }}><CircularProgress /></Box>;
   if (erro) return <Box sx={{ p: 3 }}><Alert severity="error">{erro}</Alert></Box>;
 
-  const fmt = (v: number) => v % 1 === 0 ? v.toFixed(0) : v.toFixed(3);
+  const fmt = (v: number) => formatarQuantidade(v);
   const selOpen = Boolean(selAnchor);
 
   return (

@@ -13,7 +13,7 @@ import {
 } from '@mui/icons-material';
 import { usePageTitle } from '../contexts/PageTitleContext';
 import { useToast } from '../hooks/useToast';
-import { toNum } from '../utils/formatters';
+import { toNum, formatarQuantidade } from '../utils/formatters';
 import pedidosService from '../services/pedidos';
 import { listarProgramacoes, salvarProgramacoes, ProgramacaoEntrega } from '../services/programacaoEntrega';
 import { listarEscolas } from '../services/escolas';
@@ -271,8 +271,8 @@ export default function AjusteProgramacoesScreen() {
                   <TableCell key={ci} sx={{ bgcolor: '#e9ecef', textAlign: 'center', fontWeight: 700, fontSize: 11 }}>
                     {colConfigured(ci) ? (
                       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
-                        <span>{tot % 1 === 0 ? tot.toFixed(0) : tot.toFixed(1)} {colUnidade(ci)}</span>
-                        {d !== 0 && <Chip label={`${d > 0 ? '+' : ''}${d % 1 === 0 ? d.toFixed(0) : d.toFixed(1)}`} size="small" color={d > 0 ? 'success' : 'error'} sx={{ height: 16, fontSize: 9, '& .MuiChip-label': { px: 0.5 } }} />}
+                        <span>{formatarQuantidade(tot)} {colUnidade(ci)}</span>
+                        {d !== 0 && <Chip label={`${d > 0 ? '+' : ''}${formatarQuantidade(d)}`} size="small" color={d > 0 ? 'success' : 'error'} sx={{ height: 16, fontSize: 9, '& .MuiChip-label': { px: 0.5 } }} />}
                       </Box>
                     ) : <Typography variant="caption" color="text.disabled">—</Typography>}
                   </TableCell>
@@ -307,7 +307,7 @@ export default function AjusteProgramacoesScreen() {
                           <Box sx={{ width: 36, display: 'flex', justifyContent: 'center' }}>
                             {d !== 0 && (
                               <Chip
-                                label={`${d > 0 ? '+' : ''}${d % 1 === 0 ? d.toFixed(0) : d.toFixed(1)}`}
+                                label={`${d > 0 ? '+' : ''}${formatarQuantidade(d)}`}
                                 size="small"
                                 color={d > 0 ? 'success' : 'error'}
                                 sx={{ height: 14, fontSize: 8, '& .MuiChip-label': { px: 0.4 } }}
@@ -373,7 +373,7 @@ export default function AjusteProgramacoesScreen() {
                       primary={prog.data_entrega}
                       secondary={desabilitada
                         ? `Em uso na coluna ${usadaEm + 1}`
-                        : `${prog.escolas.length} escola(s) · Total: ${prog.escolas.reduce((s, e) => s + toNum(e.quantidade), 0).toFixed(0)} ${itens.find(i => i.id === selItemId)?.unidade ?? ''}`}
+                        : `${prog.escolas.length} escola(s) · Total: ${formatarQuantidade(prog.escolas.reduce((s, e) => s + toNum(e.quantidade), 0))} ${itens.find(i => i.id === selItemId)?.unidade ?? ''}`}
                       primaryTypographyProps={{ fontSize: 12 }}
                       secondaryTypographyProps={{ fontSize: 10, color: desabilitada ? 'error.main' : undefined }}
                     />
@@ -403,7 +403,7 @@ export default function AjusteProgramacoesScreen() {
         const totOrig = totalOrig(ci);
         const totPreview = previewTotal(ci);
         const unid = colUnidade(ci);
-        const fmt = (v: number) => v % 1 === 0 ? v.toFixed(0) : v.toFixed(1);
+        const fmt = (v: number) => formatarQuantidade(v);
         const diffPreview = totPreview - totAtual;
         return (
           <Dialog open={ajModal.open} onClose={() => setAjModal(null)} maxWidth="sm" fullWidth>

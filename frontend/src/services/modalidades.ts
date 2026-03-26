@@ -3,7 +3,6 @@ import { apiWithRetry } from "./api";
 export interface Modalidade {
   id: number;
   nome: string;
-  descricao?: string;
   codigo_financeiro?: string;
   valor_repasse: number;
   parcelas?: number;
@@ -16,7 +15,6 @@ export interface Modalidade {
 
 export interface ModalidadeInput {
   nome: string;
-  descricao?: string;
   codigo_financeiro?: string;
   valor_repasse?: number;
   parcelas?: number;

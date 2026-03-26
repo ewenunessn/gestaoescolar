@@ -3,7 +3,6 @@ import api from './api';
 export interface Modalidade {
   id: number;
   nome: string;
-  descricao?: string;
   codigo_financeiro?: string;
   ativo: boolean;
   created_at?: string;
@@ -12,7 +11,6 @@ export interface Modalidade {
 
 export interface CriarModalidadeData {
   nome: string;
-  descricao?: string;
   codigo_financeiro?: string;
   ativo: boolean;
 }

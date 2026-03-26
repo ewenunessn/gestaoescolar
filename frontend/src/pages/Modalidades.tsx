@@ -67,7 +67,6 @@ const ModalidadesPage = () => {
   const [modalidadeToDelete, setModalidadeToDelete] = useState<Modalidade | null>(null);
   const [formData, setFormData] = useState({ 
     nome: "", 
-    descricao: "",
     codigo_financeiro: "", 
     valor_repasse: 0,
     parcelas: 1,
@@ -259,7 +258,6 @@ const ModalidadesPage = () => {
       setEditingModalidade(modalidade);
       setFormData({
         nome: modalidade.nome,
-        descricao: modalidade.descricao || "",
         codigo_financeiro: modalidade.codigo_financeiro || "",
         valor_repasse: Number(modalidade.valor_repasse),
         parcelas: Number(modalidade.parcelas) || 1,
@@ -267,7 +265,7 @@ const ModalidadesPage = () => {
       });
     } else {
       setEditingModalidade(null);
-      setFormData({ nome: "", descricao: "", codigo_financeiro: "", valor_repasse: 0, parcelas: 1, ativo: true });
+      setFormData({ nome: "", codigo_financeiro: "", valor_repasse: 0, parcelas: 1, ativo: true });
     }
     setModalOpen(true);
   };
@@ -458,18 +456,6 @@ const ModalidadesPage = () => {
                     required 
                     fullWidth
                     placeholder="Ex: Ensino Fundamental, Ensino Médio"
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField 
-                    label="Descrição" 
-                    value={formData.descricao} 
-                    onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} 
-                    placeholder="Descrição da modalidade (opcional)"
-                    helperText="Descrição detalhada da modalidade de ensino"
-                    multiline
-                    rows={2}
-                    fullWidth
                   />
                 </Grid>
               </Grid>

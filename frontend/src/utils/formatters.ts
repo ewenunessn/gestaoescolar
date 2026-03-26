@@ -3,10 +3,18 @@
  */
 
 /**
- * Formata quantidade numérica para exibição
- * - Números inteiros: sem decimais (ex: 10)
- * - Números decimais: com vírgula e apenas decimais necessários (ex: 10,5 ou 10,25)
- * - Sem separador de milhar para números < 10000
+ * Formata quantidade numérica para exibição no padrão brasileiro
+ * - Números inteiros: sem decimais (ex: 50)
+ * - Números decimais: com vírgula e apenas decimais necessários (ex: 50,5 ou 50,25)
+ * - Com separador de milhar (ponto) para números >= 1000
+ * 
+ * Exemplos:
+ * 50 -> "50"
+ * 50.5 -> "50,5"
+ * 50.25 -> "50,25"
+ * 1000 -> "1.000"
+ * 1000.5 -> "1.000,5"
+ * 50000.75 -> "50.000,75"
  */
 export function formatarQuantidade(quantidade: any): string {
   try {
@@ -21,33 +29,16 @@ export function formatarQuantidade(quantidade: any): string {
     
     // Se for inteiro
     if (Number.isInteger(num)) {
-      // Números menores que 10000: sem separador
-      if (num < 10000) {
-        return num.toString();
-      }
-      // Números >= 10000: com separador de milhar
       return num.toLocaleString('pt-BR');
     }
     
-    // Se tiver decimais
-    const partes = num.toFixed(2).split('.');
-    const inteiro = parseInt(partes[0]);
-    const decimal = partes[1].replace(/0+$/, ''); // Remove zeros à direita
-    
-    // Se não tem decimal significativo, tratar como inteiro
-    if (!decimal || decimal === '00') {
-      if (inteiro < 10000) {
-        return inteiro.toString();
-      }
-      return inteiro.toLocaleString('pt-BR');
-    }
-    
-    // Tem decimais significativos
-    if (inteiro < 10000) {
-      return `${inteiro},${decimal}`;
-    }
-    
-    return `${inteiro.toLocaleString('pt-BR')},${decimal}`;
+    // Se tiver decimais, usar formatação brasileira
+    // minimumFractionDigits: 0 = não força decimais
+    // maximumFractionDigits: 2 = máximo 2 casas decimais
+    return num.toLocaleString('pt-BR', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    });
   } catch (error) {
     console.error('Erro ao formatar quantidade:', quantidade, error);
     return '0';

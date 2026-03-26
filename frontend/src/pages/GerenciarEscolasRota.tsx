@@ -48,6 +48,8 @@ import { rotaService } from '../modules/entregas/services/rotaService';
 import { escolaService } from '../services/escolaService';
 import { RotaEntrega, RotaEscola } from '../modules/entregas/types/rota';
 import PageBreadcrumbs from '../components/PageBreadcrumbs';
+import { DataTable } from '../components/DataTable';
+import PageHeader from '../components/PageHeader';
 
 // Componente para item arrastável da escola
 interface SortableEscolaItemProps {
@@ -79,23 +81,26 @@ const SortableEscolaItem: React.FC<SortableEscolaItemProps> = ({ escola, index, 
             ref={setNodeRef}
             style={style}
             sx={{
-                mb: 1,
+                display: 'grid',
+                gridTemplateColumns: '40px 60px 1fr 2fr 150px 60px',
+                gap: 2,
                 p: 2,
                 bgcolor: 'background.paper',
-                border: '1px solid',
+                borderBottom: '1px solid',
                 borderColor: isDragging ? 'primary.main' : 'divider',
-                borderRadius: 2,
-                display: 'flex',
                 alignItems: 'center',
                 transition: 'all 0.2s',
+                '&:last-child': {
+                    borderBottom: 'none'
+                },
                 '&:hover': {
-                    borderColor: 'text.secondary',
+                    bgcolor: 'action.hover',
                     '& .remove-btn': { opacity: 1, visibility: 'visible' },
                     '& .drag-handle': { color: 'text.primary' }
                 }
             }}
         >
-            {/* Drag Handle Area */}
+            {/* Drag Handle */}
             <Box
                 {...attributes}
                 {...listeners}
@@ -103,62 +108,66 @@ const SortableEscolaItem: React.FC<SortableEscolaItemProps> = ({ escola, index, 
                 sx={{
                     display: 'flex',
                     alignItems: 'center',
+                    justifyContent: 'center',
                     cursor: isDragging ? 'grabbing' : 'grab',
                     color: 'action.disabled',
-                    mr: 2,
                     transition: 'color 0.2s',
                 }}
             >
                 <DragIcon fontSize="small" />
             </Box>
 
-            {/* Index Number */}
+            {/* Ordem */}
             <Typography 
                 variant="body2" 
                 sx={{ 
                     fontWeight: 600, 
-                    color: 'text.secondary',
-                    width: 24,
-                    mr: 1,
+                    color: 'primary.main',
+                    textAlign: 'center',
                     userSelect: 'none'
                 }}
             >
-                {index + 1}.
+                {index + 1}
             </Typography>
 
-            {/* Content */}
-            <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                <Typography variant="body2" fontWeight="500" noWrap>
-                    {escola.escola_nome}
-                </Typography>
-                {escola.escola_endereco && (
-                    <Typography variant="caption" color="text.secondary" noWrap display="block">
-                        {escola.escola_endereco}
-                    </Typography>
-                )}
-            </Box>
+            {/* Nome da Escola */}
+            <Typography variant="body2" fontWeight="600" noWrap>
+                {escola.escola_nome}
+            </Typography>
 
-            {/* Actions */}
-            <IconButton
-                size="small"
-                className="remove-btn"
-                onClick={(e) => {
-                    e.stopPropagation();
-                    onRemove({ id: escola.escola_id });
-                }}
-                sx={{ 
-                    opacity: 0,
-                    visibility: 'hidden',
-                    transition: 'all 0.2s',
-                    color: 'text.secondary',
-                    '&:hover': {
-                        color: 'error.main',
-                        bgcolor: 'error.lighter'
-                    }
-                }}
-            >
-                <DeleteIcon fontSize="small" />
-            </IconButton>
+            {/* Endereço */}
+            <Typography variant="body2" color="text.secondary" noWrap>
+                {escola.escola_endereco || '-'}
+            </Typography>
+
+            {/* Município */}
+            <Typography variant="body2" color="text.secondary" noWrap>
+                {escola.escola_municipio || '-'}
+            </Typography>
+
+            {/* Ações */}
+            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                <IconButton
+                    size="small"
+                    className="remove-btn"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onRemove({ id: escola.escola_id });
+                    }}
+                    sx={{ 
+                        opacity: 0,
+                        visibility: 'hidden',
+                        transition: 'all 0.2s',
+                        color: 'text.secondary',
+                        '&:hover': {
+                            color: 'error.main',
+                            bgcolor: 'error.lighter'
+                        }
+                    }}
+                >
+                    <DeleteIcon fontSize="small" />
+                </IconButton>
+            </Box>
         </Box>
     );
 };
@@ -497,30 +506,13 @@ const GerenciarEscolasRota: React.FC = () => {
                     ]}
                 />
 
-                {/* Header */}
-                <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <Box>
-                        {rota && (
-                            <Box>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-                                    <Typography variant="h4" sx={{ fontWeight: 600, color: 'text.primary', letterSpacing: '-0.02em' }}>
-                                        {rota.nome}
-                                    </Typography>
-                                    {salvandoOperacao && (
-                                        <Chip 
-                                            size="small" 
-                                            label={salvandoOperacao} 
-                                            sx={{ bgcolor: 'transparent', border: '1px solid', borderColor: 'divider', color: 'text.secondary' }}
-                                            icon={<CircularProgress size={10} color="inherit" />} 
-                                        />
-                                    )}
-                                </Box>
-                                <Typography variant="body1" color="text.secondary">
-                                    {escolasRota.length} escolas na rota. Arraste para reordenar.
-                                </Typography>
-                            </Box>
-                        )}
-                    </Box>
+                <PageHeader 
+                    title={rota ? `Rota ${rota.nome}` : 'Gerenciar Escolas da Rota'}
+                    subtitle={`${escolasRota.length} ${escolasRota.length === 1 ? 'escola' : 'escolas'} na rota. Arraste para reordenar.`}
+                />
+
+                {/* Botão de Adicionar */}
+                <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-end' }}>
                     <Button
                         variant="contained"
                         startIcon={<AddIcon />}
@@ -535,56 +527,102 @@ const GerenciarEscolasRota: React.FC = () => {
                     >
                         Adicionar Escolas
                     </Button>
+                    {salvandoOperacao && (
+                        <Chip 
+                            size="small" 
+                            label={salvandoOperacao} 
+                            sx={{ ml: 2, bgcolor: 'transparent', border: '1px solid', borderColor: 'divider', color: 'text.secondary' }}
+                            icon={<CircularProgress size={10} color="inherit" />} 
+                        />
+                    )}
                 </Box>
 
-                {/* Lista de Escolas na Rota */}
-                <Box sx={{ maxWidth: '800px', mx: 'auto' }}>
-                    <DndContext
-                        sensors={sensors}
-                        collisionDetection={closestCenter}
-                        onDragEnd={handleDragEnd}
-                    >
-                        <SortableContext
-                            items={escolasRota.sort((a, b) => a.ordem - b.ordem).map(e => e.id)}
-                            strategy={verticalListSortingStrategy}
+                {/* Lista de Escolas na Rota com DataTable */}
+                <Box sx={{ maxWidth: '1200px', mx: 'auto' }}>
+                    {escolasRota.length > 0 ? (
+                        <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={handleDragEnd}
                         >
-                            {escolasRota.length > 0 ? (
-                                escolasRota
-                                    .sort((a, b) => a.ordem - b.ordem)
-                                    .map((escolaRota, index) => (
-                                        <SortableEscolaItem
-                                            key={escolaRota.id}
-                                            escola={escolaRota}
-                                            index={index}
-                                            onRemove={removerEscolaRota}
-                                        />
-                                    ))
-                            ) : (
-                                <Box 
-                                    textAlign="center" 
-                                    py={8} 
-                                    sx={{ 
-                                        border: '1px dashed', 
-                                        borderColor: 'divider', 
-                                        borderRadius: 2,
-                                        bgcolor: 'background.paper'
-                                    }}
-                                >
-                                    <Typography variant="body1" color="text.secondary" gutterBottom>
-                                        Nenhuma escola nesta rota.
-                                    </Typography>
-                                    <Button 
-                                        variant="outlined" 
-                                        startIcon={<AddIcon />}
-                                        onClick={() => setOpenDialog(true)}
-                                        sx={{ mt: 2, textTransform: 'none' }}
-                                    >
-                                        Adicionar Escolas
-                                    </Button>
+                            <SortableContext
+                                items={escolasRota.sort((a, b) => a.ordem - b.ordem).map(e => e.id)}
+                                strategy={verticalListSortingStrategy}
+                            >
+                                <Box sx={{ 
+                                    bgcolor: 'background.paper', 
+                                    borderRadius: 2, 
+                                    border: '1px solid', 
+                                    borderColor: 'divider',
+                                    overflow: 'hidden'
+                                }}>
+                                    {/* Cabeçalho da Tabela */}
+                                    <Box sx={{ 
+                                        display: 'grid',
+                                        gridTemplateColumns: '40px 60px 1fr 2fr 150px 60px',
+                                        gap: 2,
+                                        p: 2,
+                                        bgcolor: 'grey.50',
+                                        borderBottom: '2px solid',
+                                        borderColor: 'divider',
+                                        fontWeight: 600
+                                    }}>
+                                        <Box /> {/* Drag handle */}
+                                        <Typography variant="caption" fontWeight="600" color="text.secondary" textAlign="center">
+                                            Ordem
+                                        </Typography>
+                                        <Typography variant="caption" fontWeight="600" color="text.secondary">
+                                            Escola
+                                        </Typography>
+                                        <Typography variant="caption" fontWeight="600" color="text.secondary">
+                                            Endereço
+                                        </Typography>
+                                        <Typography variant="caption" fontWeight="600" color="text.secondary">
+                                            Município
+                                        </Typography>
+                                        <Typography variant="caption" fontWeight="600" color="text.secondary" textAlign="center">
+                                            Ações
+                                        </Typography>
+                                    </Box>
+
+                                    {/* Linhas da Tabela */}
+                                    {escolasRota
+                                        .sort((a, b) => a.ordem - b.ordem)
+                                        .map((escolaRota, index) => (
+                                            <SortableEscolaItem
+                                                key={escolaRota.id}
+                                                escola={escolaRota}
+                                                index={index}
+                                                onRemove={removerEscolaRota}
+                                            />
+                                        ))}
                                 </Box>
-                            )}
-                        </SortableContext>
-                    </DndContext>
+                            </SortableContext>
+                        </DndContext>
+                    ) : (
+                        <Box 
+                            textAlign="center" 
+                            py={8} 
+                            sx={{ 
+                                border: '1px dashed', 
+                                borderColor: 'divider', 
+                                borderRadius: 2,
+                                bgcolor: 'background.paper'
+                            }}
+                        >
+                            <Typography variant="body1" color="text.secondary" gutterBottom>
+                                Nenhuma escola nesta rota.
+                            </Typography>
+                            <Button 
+                                variant="outlined" 
+                                startIcon={<AddIcon />}
+                                onClick={() => setOpenDialog(true)}
+                                sx={{ mt: 2, textTransform: 'none' }}
+                            >
+                                Adicionar Escolas
+                            </Button>
+                        </Box>
+                    )}
                 </Box>
             </Container>
 

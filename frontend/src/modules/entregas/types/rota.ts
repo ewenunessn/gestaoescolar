@@ -18,6 +18,7 @@ export interface RotaEscola {
   created_at: string;
   escola_nome?: string;
   escola_endereco?: string;
+  escola_municipio?: string;
 }
 
 export interface PlanejamentoEntrega {

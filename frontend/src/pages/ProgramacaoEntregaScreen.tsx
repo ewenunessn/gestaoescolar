@@ -9,7 +9,7 @@ import {
   Add as AddIcon, Delete as DeleteIcon, Save as SaveIcon,
   ArrowBack as ArrowBackIcon,
 } from '@mui/icons-material';
-import { toNum } from '../utils/formatters';
+import { toNum, formatarQuantidade } from '../utils/formatters';
 import { listarEscolas } from '../services/escolas';
 import {
   listarProgramacoes,
@@ -168,7 +168,7 @@ export default function ProgramacaoEntregaScreen() {
               </Typography>
               <Typography variant="caption" color="text.secondary">
                 Quantidade total:{' '}
-                <strong>{toNum(totalGeral()).toFixed(3)} {unidade}</strong>
+                <strong>{formatarQuantidade(totalGeral())} {unidade}</strong>
                 {' '}(calculada automaticamente pela soma das escolas)
               </Typography>
             </Box>
@@ -216,7 +216,7 @@ export default function ProgramacaoEntregaScreen() {
                 sx={{ flex: 1, minWidth: 200 }}
               />
               <Chip
-                label={`${toNum(totalProgramacao(prog)).toFixed(3)} ${unidade}`}
+                label={`${formatarQuantidade(totalProgramacao(prog))} ${unidade}`}
                 color="primary"
                 size="small"
               />
@@ -287,7 +287,7 @@ export default function ProgramacaoEntregaScreen() {
       <Box sx={{ px: 2, py: 1, borderTop: '1px solid #e9ecef', bgcolor: '#f8f9fa', flexShrink: 0 }}>
         <Typography variant="body2">
           Total geral:{' '}
-          <strong>{toNum(totalGeral()).toFixed(3)} {unidade}</strong>
+          <strong>{formatarQuantidade(totalGeral())} {unidade}</strong>
           {' '}— este valor será salvo como quantidade do item no pedido.
         </Typography>
       </Box>

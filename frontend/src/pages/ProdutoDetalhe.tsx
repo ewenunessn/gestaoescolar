@@ -24,7 +24,7 @@ import {
 import { useAtualizarProduto } from '../hooks/queries/useProdutoQueries';
 import { useToast } from '../hooks/useToast';
 import PageBreadcrumbs from '../components/PageBreadcrumbs';
-import { toNum } from '../utils/formatters';
+import { toNum, formatarQuantidade } from '../utils/formatters';
 import { LoadingOverlay } from '../components/LoadingOverlay';
 import UnidadeMedidaSelect from '../components/UnidadeMedidaSelect';
 import { useUnidadesMedida } from '../hooks/queries/useUnidadesMedidaQueries';
@@ -623,8 +623,8 @@ export default function ProdutoDetalhe() {
                 <EditableField
                   label="Fator de Correção"
                   value={produto.fator_correcao 
-                    ? `${toNum(produto.fator_correcao).toFixed(3)}` 
-                    : '1.000'}
+                    ? formatarQuantidade(produto.fator_correcao)
+                    : '1'}
                   field="fator_correcao"
                   editingField={editingField}
                   formValue={form.fator_correcao}
@@ -640,8 +640,8 @@ export default function ProdutoDetalhe() {
                 <EditableField
                   label="Índice de Cocção"
                   value={produto.indice_coccao 
-                    ? `${toNum(produto.indice_coccao).toFixed(3)}` 
-                    : '1.000'}
+                    ? formatarQuantidade(produto.indice_coccao)
+                    : '1'}
                   field="indice_coccao"
                   editingField={editingField}
                   formValue={form.indice_coccao}

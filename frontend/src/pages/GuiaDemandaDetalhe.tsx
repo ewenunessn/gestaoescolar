@@ -21,6 +21,7 @@ import { guiaService } from '../services/guiaService';
 import { produtoService } from '../services/produtoService';
 import { useToast } from '../hooks/useToast';
 import api from '../services/api';
+import { formatarQuantidade } from '../utils/formatters';
 
 interface EscolaGuia {
   id: number;
@@ -334,17 +335,17 @@ const GuiaDemandaDetalhe: React.FC = () => {
                               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5 }}>
                                 {hasAjuste && (
                                   <Chip
-                                    label={`${diff > 0 ? '+' : ''}${diff.toFixed(3)}`}
+                                    label={`${diff > 0 ? '+' : ''}${formatarQuantidade(diff)}`}
                                     size="small"
                                     color={diff > 0 ? 'success' : 'error'}
                                     sx={{ height: 14, fontSize: 9, '& .MuiChip-label': { px: 0.5 } }}
                                   />
                                 )}
-                                <Box sx={{ minWidth: 60, textAlign: 'right' }}>{p.total.toFixed(3)}</Box>
+                                <Box sx={{ minWidth: 60, textAlign: 'right' }}>{formatarQuantidade(p.total)}</Box>
                               </Box>
                             </TableCell>
                             <TableCell align="right" sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>
-                              {p.total_demanda.toFixed(3)}
+                              {formatarQuantidade(p.total_demanda)}
                             </TableCell>
                             <TableCell align="center">
                               <Chip label={p.escolas.length} size="small" color="primary" />
@@ -500,7 +501,7 @@ const GuiaDemandaDetalhe: React.FC = () => {
                               <TableCell key={produto.id} align="right">
                                 {quantidade > 0 ? (
                                   <Chip 
-                                    label={quantidade.toFixed(3)} 
+                                    label={formatarQuantidade(quantidade)} 
                                     size="small" 
                                     color="primary"
                                     variant="outlined"
@@ -525,7 +526,7 @@ const GuiaDemandaDetalhe: React.FC = () => {
                           return (
                             <TableCell key={produto.id} align="right" sx={{ fontWeight: 700 }}>
                               <Chip 
-                                label={total.toFixed(3)} 
+                                label={formatarQuantidade(total)} 
                                 size="small" 
                                 color="success"
                               />
@@ -589,13 +590,13 @@ const GuiaDemandaDetalhe: React.FC = () => {
                     <TableCell align="right" sx={{ fontWeight: 600 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5 }}>
                         {hasAjuste && (
-                          <Chip label={`${diff > 0 ? '+' : ''}${diff.toFixed(3)}`} size="small" color={diff > 0 ? 'success' : 'error'} sx={{ height: 14, fontSize: 9, '& .MuiChip-label': { px: 0.5 } }} />
+                          <Chip label={`${diff > 0 ? '+' : ''}${formatarQuantidade(diff)}`} size="small" color={diff > 0 ? 'success' : 'error'} sx={{ height: 14, fontSize: 9, '& .MuiChip-label': { px: 0.5 } }} />
                         )}
-                        <Box sx={{ minWidth: 60, textAlign: 'right' }}>{Number(item.quantidade).toFixed(3)} {item.unidade}</Box>
+                        <Box sx={{ minWidth: 60, textAlign: 'right' }}>{formatarQuantidade(item.quantidade)} {item.unidade}</Box>
                       </Box>
                     </TableCell>
                     <TableCell align="right" sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>
-                      {dem.toFixed(3)} {item.unidade}
+                      {formatarQuantidade(dem)} {item.unidade}
                     </TableCell>
                     <TableCell align="center">
                       <Chip label={item.status} size="small" color={statusColor(item.status)} />
@@ -606,10 +607,10 @@ const GuiaDemandaDetalhe: React.FC = () => {
               <TableRow sx={{ bgcolor: 'action.hover' }}>
                 <TableCell sx={{ fontWeight: 700 }}>Total</TableCell>
                 <TableCell align="right" sx={{ fontWeight: 700 }}>
-                  {escolasDoProduto.reduce((s, i) => s + (Number(i.quantidade)||0), 0).toFixed(3)} {escolasDoProduto[0]?.unidade}
+                  {formatarQuantidade(escolasDoProduto.reduce((s, i) => s + (Number(i.quantidade)||0), 0))} {escolasDoProduto[0]?.unidade}
                 </TableCell>
                 <TableCell align="right" sx={{ fontWeight: 700, color: 'text.secondary' }}>
-                  {escolasDoProduto.reduce((s, i) => s + (Number(i.quantidade_demanda ?? i.quantidade)||0), 0).toFixed(3)} {escolasDoProduto[0]?.unidade}
+                  {formatarQuantidade(escolasDoProduto.reduce((s, i) => s + (Number(i.quantidade_demanda ?? i.quantidade)||0), 0))} {escolasDoProduto[0]?.unidade}
                 </TableCell>
                 <TableCell />
               </TableRow>
@@ -648,7 +649,7 @@ const GuiaDemandaDetalhe: React.FC = () => {
                       ? new Date(String(item.data_entrega).includes('T') ? item.data_entrega : item.data_entrega + 'T12:00:00').toLocaleDateString('pt-BR')
                       : '—'}
                   </TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 600 }}>{Number(item.quantidade).toFixed(3)} {item.unidade}</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 600 }}>{formatarQuantidade(item.quantidade)} {item.unidade}</TableCell>
                   <TableCell align="center">
                     <Chip label={item.status} size="small" color={statusColor(item.status)} />
                   </TableCell>
