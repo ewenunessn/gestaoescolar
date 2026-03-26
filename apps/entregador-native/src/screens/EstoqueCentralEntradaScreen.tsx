@@ -145,7 +145,7 @@ export default function EstoqueCentralEntradaScreen({ route, navigation }: any) 
     }
   };
 
-  const produtoSelecionado = produtos.find(p => p.id === parseInt(produtoId));
+  const produtoSelecionado = produtoInicial || produtos.find(p => p.id === parseInt(produtoId));
 
   return (
     <ScrollView style={styles.container}>
