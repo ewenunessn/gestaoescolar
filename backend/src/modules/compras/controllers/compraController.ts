@@ -598,31 +598,28 @@ export async function excluirCompra(req: Request, res: Response) {
     const status = pedidoResult.rows[0].status;
     const numero = pedidoResult.rows[0].numero;
 
-    // Verificar se há faturamento com consumo registrado
-    const faturamentoComConsumoResult = await client.query(`
-      SELECT f.id, f.numero, COUNT(fi.id) as itens_consumidos
-      FROM faturamentos f
-      JOIN faturamento_itens fi ON fi.faturamento_id = f.id
-      WHERE f.pedido_id = $1
-        AND fi.consumo_registrado = true
-      GROUP BY f.id, f.numero
-    `, [id]);
-
-    if (faturamentoComConsumoResult.rows.length > 0) {
-      const faturamento = faturamentoComConsumoResult.rows[0];
-      await client.query('ROLLBACK');
-      return res.status(400).json({
-        success: false,
-        message: `Não é possível excluir o pedido porque o faturamento ${faturamento.numero} possui ${faturamento.itens_consumidos} item(ns) com consumo registrado. ` +
-          `Por favor, reverta o consumo de todos os itens antes de excluir o pedido.`
-      });
-    }
-
     // Permitir excluir pedidos em qualquer status
     console.log(`⚠️ EXCLUSÃO DE PEDIDO: Pedido ${numero} (Status: ${status}) sendo excluído`);
 
-    // Excluir faturamentos sem consumo (se houver)
-    await client.query(`DELETE FROM faturamento_itens WHERE faturamento_id IN (SELECT id FROM faturamentos WHERE pedido_id = $1)`, [id]);
+    // Excluir faturamentos relacionados
+    // Primeiro, buscar os faturamentos_pedidos relacionados
+    const faturamentosPedidosResult = await client.query(`
+      SELECT id FROM faturamentos_pedidos WHERE pedido_id = $1
+    `, [id]);
+
+    // Deletar faturamentos_itens relacionados
+    if (faturamentosPedidosResult.rows.length > 0) {
+      const faturamentoPedidoIds = faturamentosPedidosResult.rows.map(r => r.id);
+      await client.query(`
+        DELETE FROM faturamentos_itens 
+        WHERE faturamento_pedido_id = ANY($1)
+      `, [faturamentoPedidoIds]);
+    }
+
+    // Deletar faturamentos_pedidos
+    await client.query(`DELETE FROM faturamentos_pedidos WHERE pedido_id = $1`, [id]);
+    
+    // Deletar faturamentos
     await client.query(`DELETE FROM faturamentos WHERE pedido_id = $1`, [id]);
 
     // Excluir itens do pedido

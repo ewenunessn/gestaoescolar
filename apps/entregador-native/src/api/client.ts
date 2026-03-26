@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Configure com seu IP local ou URL de produção
 // Para desenvolvimento, use seu IP local
 // export const API_URL = __DEV__ 
-//   ? 'http://192.168.18.12:3000/api' // ALTERE PARA SEU IP LOCAL
+//   ? 'http://192.168.1.111:3000/api' // IP local atualizado
 //   : 'https://gestaoescolar-backend.vercel.app/api';
 
 // Forçando produção (Vercel)
