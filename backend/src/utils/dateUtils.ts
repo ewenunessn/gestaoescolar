@@ -6,10 +6,10 @@
 /**
  * UTILITÁRIO CENTRAL: Cria um objeto Date a partir de uma string de data, evitando problemas de timezone
  * Esta função resolve o problema de datas que são interpretadas como UTC quando contêm 'T'
- * @param {string|null|undefined} dataStr - String de data (pode ser 'YYYY-MM-DD' ou 'YYYY-MM-DDTHH:mm:ss.sssZ')
- * @returns {Date|null} Objeto Date criado localmente, sem problemas de timezone
+ * @param dataStr - String de data (pode ser 'YYYY-MM-DD' ou 'YYYY-MM-DDTHH:mm:ss.sssZ')
+ * @returns Objeto Date criado localmente, sem problemas de timezone
  */
-function criarDataLocal(dataStr) {
+export function criarDataLocal(dataStr: string | null | undefined): Date | null {
   if (!dataStr) return null;
   
   try {
@@ -33,28 +33,28 @@ function criarDataLocal(dataStr) {
 
 /**
  * UTILITÁRIO CENTRAL: Converte Date para string no formato YYYY-MM-DD
- * @param {Date} date - Objeto Date
- * @returns {string} String no formato YYYY-MM-DD
+ * @param date - Objeto Date
+ * @returns String no formato YYYY-MM-DD
  */
-function dateParaString(date) {
+export function dateParaString(date: Date): string {
   if (!date || isNaN(date.getTime())) return '';
   return date.toISOString().split('T')[0];
 }
 
 /**
  * UTILITÁRIO CENTRAL: Obtém a data atual no formato YYYY-MM-DD
- * @returns {string} String da data atual no formato YYYY-MM-DD
+ * @returns String da data atual no formato YYYY-MM-DD
  */
-function obterDataAtual() {
+export function obterDataAtual(): string {
   return new Date().toISOString().split('T')[0];
 }
 
 /**
  * UTILITÁRIO CENTRAL: Formata uma data para exibição brasileira, evitando problemas de timezone
- * @param {string|null|undefined} dataStr - String de data
- * @returns {string} String formatada (dd/MM/yyyy) ou 'Data inválida' se inválida
+ * @param dataStr - String de data
+ * @returns String formatada (dd/MM/yyyy) ou 'Data inválida' se inválida
  */
-function formatarDataBrasileira(dataStr) {
+export function formatarDataBrasileira(dataStr: string | null | undefined): string {
   if (!dataStr) return '';
   
   const data = criarDataLocal(dataStr);
@@ -65,10 +65,10 @@ function formatarDataBrasileira(dataStr) {
 
 /**
  * UTILITÁRIO CENTRAL: Calcula dias até o vencimento
- * @param {string|null|undefined} dataVencimento - String de data de vencimento
- * @returns {number|null} Número de dias até o vencimento (negativo se vencido)
+ * @param dataVencimento - String de data de vencimento
+ * @returns Número de dias até o vencimento (negativo se vencido)
  */
-function calcularDiasParaVencimento(dataVencimento) {
+export function calcularDiasParaVencimento(dataVencimento: string | null | undefined): number | null {
   if (!dataVencimento) return null;
   
   const hoje = new Date();
@@ -82,10 +82,10 @@ function calcularDiasParaVencimento(dataVencimento) {
 
 /**
  * UTILITÁRIO CENTRAL: Converte objeto Date ou string para formato seguro para banco
- * @param {Date|string|null|undefined} data - Date ou string de data
- * @returns {string|undefined} String no formato YYYY-MM-DD ou undefined se inválida
+ * @param data - Date ou string de data
+ * @returns String no formato YYYY-MM-DD ou undefined se inválida
  */
-function converterParaFormatoBanco(data) {
+export function converterParaFormatoBanco(data: Date | string | null | undefined): string | undefined {
   if (!data) return undefined;
   
   if (data instanceof Date) {
@@ -94,12 +94,3 @@ function converterParaFormatoBanco(data) {
   
   return String(data);
 }
-
-module.exports = {
-  criarDataLocal,
-  dateParaString,
-  obterDataAtual,
-  formatarDataBrasileira,
-  calcularDiasParaVencimento,
-  converterParaFormatoBanco
-};
