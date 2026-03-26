@@ -152,6 +152,7 @@ export const listarProdutos = asyncHandler(async (req: Request, res: Response) =
       p.fator_correcao::text as fator_correcao,
       p.indice_coccao::text as indice_coccao,
       p.unidade_distribuicao,
+      COALESCE(um.codigo, p.unidade_distribuicao, 'UN') as unidade,
       p.peso::text as peso,
       CASE 
         WHEN EXISTS (
@@ -169,6 +170,7 @@ export const listarProdutos = asyncHandler(async (req: Request, res: Response) =
         ELSE false 
       END as tem_contrato
     FROM produtos p
+    LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
     ORDER BY p.nome
   `);
 
