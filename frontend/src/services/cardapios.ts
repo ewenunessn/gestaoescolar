@@ -65,3 +65,8 @@ export async function calcularCustoRefeicoes(cardapioId: number) {
   const { data } = await apiWithRetry.get(`/cardapios/${cardapioId}/custo-refeicoes`);
   return data.data || data; // Handle both new format {success, data} and old format
 }
+
+export async function calcularCustoCardapio(cardapioId: number) {
+  const { data } = await apiWithRetry.get(`/cardapios/${cardapioId}/custo`);
+  return data.data || data; // Handle both new format {success, data} and old format
+}

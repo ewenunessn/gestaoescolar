@@ -18,6 +18,7 @@ import {
   deletarCardapioRefeicao,
   calcularNecessidades,
   calcularCustoRefeicoes,
+  calcularCustoCardapio,
 } from "../services/cardapios";
 import { listarRefeicoes } from "../services/refeicoes";
 import { formatDateForInput } from "../utils/dateUtils";
@@ -80,6 +81,7 @@ import InfoIcon from "@mui/icons-material/Info";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import RemoveIcon from "@mui/icons-material/Remove";
 import SearchIcon from "@mui/icons-material/Search";
+import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import { listarModalidades } from "../services/modalidades";
 import { useSafeData } from "../hooks/useSafeData";
 import DownloadIcon from "@mui/icons-material/Download";
@@ -331,6 +333,9 @@ export default function CardapioDetalhe() {
   const [modalidades, setModalidades] = useState<any[]>([]);
   const [custosRefeicoes, setCustosRefeicoes] = useState<any[]>([]);
   const [modalDetalheCusto, setModalDetalheCusto] = useState<any>(null);
+  const [custoCardapio, setCustoCardapio] = useState<any>(null);
+  const [modalCustoCardapio, setModalCustoCardapio] = useState(false);
+  const [loadingCustoCardapio, setLoadingCustoCardapio] = useState(false);
   
   // Estados de filtros
   const [filtroDisponiveis, setFiltroDisponiveis] = useState("");
@@ -502,6 +507,23 @@ export default function CardapioDetalhe() {
     } catch (error) {
       console.error("Erro ao carregar custos das refeições:", error);
       setCustosRefeicoes([]); // Set empty array on error
+    }
+  }
+
+  async function fetchCustoCardapio() {
+    if (!id) return;
+    
+    setLoadingCustoCardapio(true);
+    try {
+      const custoData = await calcularCustoCardapio(parseInt(id));
+      console.log('Custo do cardápio:', custoData);
+      setCustoCardapio(custoData);
+      setModalCustoCardapio(true);
+    } catch (error) {
+      console.error("Erro ao calcular custo do cardápio:", error);
+      setErro("Erro ao calcular custo do cardápio");
+    } finally {
+      setLoadingCustoCardapio(false);
     }
   }
 
@@ -891,6 +913,15 @@ export default function CardapioDetalhe() {
                   
                   <Box sx={{ display: 'flex', gap: 1 }}>
                     <Button
+                      onClick={fetchCustoCardapio}
+                      startIcon={<AttachMoneyIcon />}
+                      variant="outlined"
+                      color="success"
+                      disabled={loadingCustoCardapio || refeicoesAdicionadas.length === 0}
+                    >
+                      {loadingCustoCardapio ? <CircularProgress size={20} /> : "Calcular Custo"}
+                    </Button>
+                    <Button
                       onClick={() => setEditando(true)}
                       startIcon={<EditIcon />}
                       variant="contained"
@@ -1123,6 +1154,169 @@ export default function CardapioDetalhe() {
             <Button onClick={excluirCardapio} color="delete" variant="contained">
               Excluir
             </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Modal de Custo do Cardápio */}
+        <Dialog 
+          open={modalCustoCardapio} 
+          onClose={() => setModalCustoCardapio(false)}
+          maxWidth="lg"
+          fullWidth
+        >
+          <DialogTitle>
+            <Typography variant="h6" component="div">
+              Custo Total do Cardápio - {cardapio?.nome}
+            </Typography>
+          </DialogTitle>
+          <DialogContent>
+            {custoCardapio && (
+              <Box>
+                {/* Resumo Geral */}
+                <Card sx={{ mb: 3, bgcolor: 'primary.light' }}>
+                  <CardContent>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} md={3}>
+                        <Typography variant="body2" color="primary.contrastText">
+                          Custo Total
+                        </Typography>
+                        <Typography variant="h5" color="primary.contrastText" fontWeight="bold">
+                          R$ {toNum(custoCardapio.resumo?.custo_total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12} md={3}>
+                        <Typography variant="body2" color="primary.contrastText">
+                          Total de Refeições
+                        </Typography>
+                        <Typography variant="h5" color="primary.contrastText" fontWeight="bold">
+                          {custoCardapio.resumo?.total_refeicoes || 0}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12} md={3}>
+                        <Typography variant="body2" color="primary.contrastText">
+                          Total de Dias
+                        </Typography>
+                        <Typography variant="h5" color="primary.contrastText" fontWeight="bold">
+                          {custoCardapio.resumo?.total_dias || 0}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12} md={3}>
+                        <Typography variant="body2" color="primary.contrastText">
+                          Total de Alunos
+                        </Typography>
+                        <Typography variant="h5" color="primary.contrastText" fontWeight="bold">
+                          {custoCardapio.resumo?.total_alunos || 0}
+                        </Typography>
+                      </Grid>
+                    </Grid>
+                  </CardContent>
+                </Card>
+
+                {/* Custo por Modalidade */}
+                {custoCardapio.por_modalidade && custoCardapio.por_modalidade.length > 0 && (
+                  <Box sx={{ mb: 3 }}>
+                    <Typography variant="h6" gutterBottom>
+                      Custo por Modalidade
+                    </Typography>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Modalidade</TableCell>
+                          <TableCell align="right">Total de Alunos</TableCell>
+                          <TableCell align="right">Custo por Aluno</TableCell>
+                          <TableCell align="right">Custo Total</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {custoCardapio.por_modalidade.map((modalidade, index) => (
+                          <TableRow key={index}>
+                            <TableCell>{modalidade.modalidade_nome}</TableCell>
+                            <TableCell align="right">{modalidade.total_alunos}</TableCell>
+                            <TableCell align="right">
+                              R$ {toNum(modalidade.custo_por_aluno).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </TableCell>
+                            <TableCell align="right">
+                              R$ {toNum(modalidade.custo_total).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </Box>
+                )}
+
+                {/* Custo por Dia */}
+                {custoCardapio.por_dia && custoCardapio.por_dia.length > 0 && (
+                  <Box sx={{ mb: 3 }}>
+                    <Typography variant="h6" gutterBottom>
+                      Custo por Dia
+                    </Typography>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Dia</TableCell>
+                          <TableCell align="right">Total de Refeições</TableCell>
+                          <TableCell align="right">Custo Total</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {custoCardapio.por_dia.map((dia, index) => (
+                          <TableRow key={index}>
+                            <TableCell>{dia.dia}</TableCell>
+                            <TableCell align="right">{dia.total_refeicoes}</TableCell>
+                            <TableCell align="right">
+                              R$ {toNum(dia.custo_total).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </Box>
+                )}
+
+                {/* Detalhamento */}
+                {custoCardapio.detalhamento && custoCardapio.detalhamento.length > 0 && (
+                  <Box>
+                    <Typography variant="h6" gutterBottom>
+                      Detalhamento por Refeição
+                    </Typography>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Dia</TableCell>
+                          <TableCell>Tipo</TableCell>
+                          <TableCell>Refeição</TableCell>
+                          <TableCell>Modalidade</TableCell>
+                          <TableCell align="right">Alunos</TableCell>
+                          <TableCell align="right">Custo per capita</TableCell>
+                          <TableCell align="right">Custo Total</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {custoCardapio.detalhamento.map((item, index) => (
+                          <TableRow key={index}>
+                            <TableCell>{item.dia}</TableCell>
+                            <TableCell>{item.tipo_refeicao}</TableCell>
+                            <TableCell>{item.refeicao_nome}</TableCell>
+                            <TableCell>{item.modalidade_nome}</TableCell>
+                            <TableCell align="right">{item.total_alunos}</TableCell>
+                            <TableCell align="right">
+                              R$ {toNum(item.custo_per_capita).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </TableCell>
+                            <TableCell align="right">
+                              R$ {toNum(item.custo_total).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </Box>
+                )}
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setModalCustoCardapio(false)}>Fechar</Button>
           </DialogActions>
         </Dialog>
 

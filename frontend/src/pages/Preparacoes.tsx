@@ -86,6 +86,7 @@ const PreparacoesPage: React.FC = () => {
     nome: '',
     descricao: '',
     tipo: 'almoco' as 'cafe_manha' | 'almoco' | 'lanche_tarde' | 'jantar' | 'ceia',
+    categoria: '',
     ativo: true,
   });
   
@@ -148,6 +149,27 @@ const PreparacoesPage: React.FC = () => {
             color="primary"
             variant="outlined"
           />
+        );
+      },
+    },
+    { 
+      id: 'valor_calorico',
+      header: 'Valor Calórico (Kcal)',
+      size: 150,
+      enableSorting: true,
+      accessorFn: (row) => (row as any).valor_calorico_total,
+      cell: ({ row }) => {
+        const valorCalorico = (row.original as any).valor_calorico_total;
+        return (
+          <Typography 
+            variant="body2" 
+            sx={{ 
+              fontWeight: 600, 
+              color: valorCalorico ? 'primary.main' : 'text.disabled' 
+            }}
+          >
+            {valorCalorico ? `${Number(valorCalorico).toFixed(2)} Kcal` : '-'}
+          </Typography>
         );
       },
     },
@@ -225,6 +247,7 @@ const PreparacoesPage: React.FC = () => {
         nome: preparacao.nome,
         descricao: preparacao.descricao || '',
         tipo: preparacao.tipo,
+        categoria: preparacao.categoria || '',
         ativo: preparacao.ativo,
       });
     } else {
@@ -233,6 +256,7 @@ const PreparacoesPage: React.FC = () => {
         nome: '',
         descricao: '',
         tipo: 'almoco',
+        categoria: '',
         ativo: true,
       });
     }
@@ -517,7 +541,7 @@ const PreparacoesPage: React.FC = () => {
                 Classificação
               </Typography>
               <Grid container spacing={2}>
-                <Grid item xs={12}>
+                <Grid item xs={12} sm={6}>
                   <FormControl fullWidth>
                     <InputLabel>Tipo de Preparação</InputLabel>
                     <Select
@@ -528,6 +552,24 @@ const PreparacoesPage: React.FC = () => {
                       {Object.entries(tiposPreparacao).map(([value, label]) => (
                         <MenuItem key={value} value={value}>{label}</MenuItem>
                       ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>Categoria</InputLabel>
+                    <Select
+                      value={formData.categoria || ''}
+                      label="Categoria"
+                      onChange={(e) => setFormData({ ...formData, categoria: e.target.value })}
+                    >
+                      <MenuItem value="">Nenhuma</MenuItem>
+                      <MenuItem value="Prato Principal">Prato Principal</MenuItem>
+                      <MenuItem value="Acompanhamento">Acompanhamento</MenuItem>
+                      <MenuItem value="Sobremesa">Sobremesa</MenuItem>
+                      <MenuItem value="Lanche">Lanche</MenuItem>
+                      <MenuItem value="Bebida">Bebida</MenuItem>
+                      <MenuItem value="Salada">Salada</MenuItem>
                     </Select>
                   </FormControl>
                 </Grid>

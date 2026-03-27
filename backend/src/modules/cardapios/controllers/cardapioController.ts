@@ -295,3 +295,203 @@ export async function removerRefeicaoDia(req: Request, res: Response) {
     res.status(500).json({ message: 'Erro ao remover refeição' });
   }
 }
+
+// Calcular custo do cardápio
+export async function calcularCustoCardapio(req: Request, res: Response) {
+  try {
+    const { cardapioId } = req.params;
+
+    // Buscar cardápio e suas modalidades
+    const cardapioResult = await query(`
+      SELECT 
+        cm.id,
+        cm.nome,
+        cm.mes,
+        cm.ano,
+        ARRAY_AGG(DISTINCT cjm.modalidade_id) FILTER (WHERE cjm.modalidade_id IS NOT NULL) as modalidades_ids
+      FROM cardapios_modalidade cm
+      LEFT JOIN cardapio_modalidades cjm ON cm.id = cjm.cardapio_id
+      WHERE cm.id = $1
+      GROUP BY cm.id
+    `, [cardapioId]);
+
+    if (cardapioResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Cardápio não encontrado' });
+    }
+
+    const cardapio = cardapioResult.rows[0];
+    const modalidadesIds = cardapio.modalidades_ids || [];
+
+    if (modalidadesIds.length === 0) {
+      return res.json({
+        custo_total: 0,
+        total_alunos: 0,
+        total_refeicoes: 0,
+        detalhes_por_refeicao: [],
+        detalhes_por_modalidade: []
+      });
+    }
+
+    // Buscar quantidade de alunos por modalidade
+    const alunosResult = await query(`
+      SELECT 
+        modalidade_id,
+        SUM(quantidade_alunos) as total_alunos
+      FROM escola_modalidades
+      WHERE modalidade_id = ANY($1::int[])
+      GROUP BY modalidade_id
+    `, [modalidadesIds]);
+
+    const alunosPorModalidade: Record<number, number> = {};
+    let totalAlunos = 0;
+    alunosResult.rows.forEach((row: any) => {
+      alunosPorModalidade[row.modalidade_id] = parseInt(row.total_alunos) || 0;
+      totalAlunos += parseInt(row.total_alunos) || 0;
+    });
+
+    // Buscar refeições do cardápio com produtos e custos por modalidade
+    const refeicoesResult = await query(`
+      SELECT 
+        crd.id as refeicao_dia_id,
+        crd.dia,
+        crd.tipo_refeicao,
+        crd.refeicao_id,
+        r.nome as refeicao_nome,
+        rp.id as refeicao_produto_id,
+        rp.produto_id,
+        p.nome as produto_nome,
+        rp.per_capita as per_capita_padrao,
+        rp.tipo_medida,
+        p.unidade_distribuicao,
+        COALESCE(p.fator_correcao, 1.0) as fator_correcao,
+        COALESCE(p.peso, 1000) as peso_embalagem,
+        cjm.modalidade_id,
+        COALESCE(rpm.per_capita_ajustado, rp.per_capita) as per_capita,
+        COALESCE(
+          (SELECT cp.preco_unitario 
+           FROM contrato_produtos cp
+           INNER JOIN contratos c ON cp.contrato_id = c.id
+           WHERE cp.produto_id = p.id 
+             AND c.ativo = true 
+             AND cp.ativo = true
+           ORDER BY c.data_inicio DESC
+           LIMIT 1
+          ), 0
+        ) as preco_unitario
+      FROM cardapio_refeicoes_dia crd
+      INNER JOIN refeicoes r ON crd.refeicao_id = r.id
+      INNER JOIN cardapio_modalidades cjm ON cjm.cardapio_id = crd.cardapio_modalidade_id
+      LEFT JOIN refeicao_produtos rp ON r.id = rp.refeicao_id
+      LEFT JOIN produtos p ON rp.produto_id = p.id
+      LEFT JOIN refeicao_produto_modalidade rpm 
+        ON rpm.refeicao_produto_id = rp.id 
+        AND rpm.modalidade_id = cjm.modalidade_id
+      WHERE crd.cardapio_modalidade_id = $1
+        AND crd.ativo = true
+      ORDER BY crd.dia, crd.tipo_refeicao, cjm.modalidade_id
+    `, [cardapioId]);
+
+    // Agrupar por refeição do dia e modalidade
+    const refeicoesMap = new Map<string, any>();
+    refeicoesResult.rows.forEach((row: any) => {
+      // Chave única: refeicao_dia_id + modalidade_id
+      const chave = `${row.refeicao_dia_id}_${row.modalidade_id}`;
+      
+      if (!refeicoesMap.has(chave)) {
+        refeicoesMap.set(chave, {
+          id: row.refeicao_dia_id,
+          dia: row.dia,
+          tipo_refeicao: row.tipo_refeicao,
+          refeicao_id: row.refeicao_id,
+          refeicao_nome: row.refeicao_nome,
+          modalidade_id: row.modalidade_id,
+          produtos: [],
+          custo_por_aluno: 0,
+          custo_total: 0
+        });
+      }
+
+      if (row.produto_id) {
+        const refeicao = refeicoesMap.get(chave);
+        const perCapita = parseFloat(row.per_capita) || 0;
+        const precoUnitario = parseFloat(row.preco_unitario) || 0;
+        const fatorCorrecao = parseFloat(row.fator_correcao) || 1.0;
+        const pesoEmbalagem = parseFloat(row.peso_embalagem) || 1000;
+        const tipoMedida = row.tipo_medida || 'gramas';
+        
+        // Calcular custo por aluno usando a mesma lógica do cálculo de preparação
+        // Per capita líquido × fator de correção = per capita bruto
+        const perCapitaBruto = perCapita * fatorCorrecao;
+        
+        let custoIngrediente = 0;
+        
+        if (tipoMedida === 'gramas' || tipoMedida === 'mililitros') {
+          // Calcular proporção da embalagem usada
+          const proporcaoEmbalagem = perCapitaBruto / pesoEmbalagem;
+          custoIngrediente = proporcaoEmbalagem * precoUnitario;
+        } else {
+          // Unidades - assumir que preco_unitario é por unidade
+          custoIngrediente = perCapitaBruto * precoUnitario;
+        }
+        
+        refeicao.produtos.push({
+          produto_id: row.produto_id,
+          produto_nome: row.produto_nome,
+          per_capita: perCapita,
+          per_capita_bruto: perCapitaBruto,
+          tipo_medida: tipoMedida,
+          fator_correcao: fatorCorrecao,
+          peso_embalagem: pesoEmbalagem,
+          preco_unitario: precoUnitario,
+          custo_por_aluno: custoIngrediente
+        });
+
+        refeicao.custo_por_aluno += custoIngrediente;
+      }
+    });
+
+    // Calcular custo total por modalidade
+    let custoTotal = 0;
+    const detalhesRefeicoes: any[] = [];
+    const custosPorModalidade = new Map<number, number>();
+
+    refeicoesMap.forEach((refeicao) => {
+      const modalidadeId = refeicao.modalidade_id;
+      const qtdAlunosModalidade = alunosPorModalidade[modalidadeId] || 0;
+      const custoRefeicao = refeicao.custo_por_aluno * qtdAlunosModalidade;
+      
+      refeicao.custo_total = custoRefeicao;
+      refeicao.quantidade_alunos = qtdAlunosModalidade;
+      custoTotal += custoRefeicao;
+      
+      // Acumular custo por modalidade
+      const custoAtualModalidade = custosPorModalidade.get(modalidadeId) || 0;
+      custosPorModalidade.set(modalidadeId, custoAtualModalidade + custoRefeicao);
+      
+      detalhesRefeicoes.push(refeicao);
+    });
+
+    // Detalhes por modalidade
+    const detalhesPorModalidade = modalidadesIds.map((modalidadeId: number) => {
+      const qtdAlunos = alunosPorModalidade[modalidadeId] || 0;
+      const custoModalidade = custosPorModalidade.get(modalidadeId) || 0;
+
+      return {
+        modalidade_id: modalidadeId,
+        quantidade_alunos: qtdAlunos,
+        custo_total: custoModalidade
+      };
+    });
+
+    res.json({
+      custo_total: custoTotal,
+      total_alunos: totalAlunos,
+      total_refeicoes: detalhesRefeicoes.length,
+      detalhes_por_refeicao: detalhesRefeicoes,
+      detalhes_por_modalidade: detalhesPorModalidade
+    });
+  } catch (error) {
+    console.error('❌ Erro ao calcular custo do cardápio:', error);
+    res.status(500).json({ message: 'Erro ao calcular custo do cardápio' });
+  }
+}

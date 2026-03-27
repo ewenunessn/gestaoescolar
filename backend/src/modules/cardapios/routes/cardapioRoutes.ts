@@ -9,7 +9,8 @@ import {
   removerCardapioModalidade,
   listarRefeicoesCardapio,
   adicionarRefeicaoDia,
-  removerRefeicaoDia
+  removerRefeicaoDia,
+  calcularCustoCardapio
 } from "../controllers/cardapioController";
 
 const router = Router();
@@ -28,5 +29,8 @@ router.put("/:id", requireEscrita('cardapios'), editarCardapioModalidade);
 router.delete("/:id", requireEscrita('cardapios'), removerCardapioModalidade);
 router.post("/:cardapioId/refeicoes", requireEscrita('cardapios'), adicionarRefeicaoDia);
 router.delete("/refeicoes/:id", requireEscrita('cardapios'), removerRefeicaoDia);
+
+// Rotas de CÁLCULO - Custo do cardápio
+router.get("/:cardapioId/custo", requireLeitura('cardapios'), calcularCustoCardapio);
 
 export default router;

@@ -14,7 +14,8 @@ import { useInstituicaoForPDF } from '../hooks/useInstituicao';
 import { createPDFHeader, createPDFFooter, getDefaultPDFStyles } from '../utils/pdfUtils';
 import {
   buscarCardapioModalidade, listarRefeicoesCardapio, adicionarRefeicaoDia,
-  removerRefeicaoDia, CardapioModalidade, RefeicaoDia, TIPOS_REFEICAO, MESES
+  removerRefeicaoDia, CardapioModalidade, RefeicaoDia, TIPOS_REFEICAO, MESES,
+  calcularCustoCardapio, CustoCardapio
 } from '../services/cardapiosModalidade';
 import { listarRefeicoes } from '../services/refeicoes';
 import { listarEventosPorMes, getLabelsEventos, getCoresEventos } from '../services/calendarioLetivo';
@@ -49,6 +50,8 @@ const CardapioCalendarioPage: React.FC = () => {
   const [refeicoes, setRefeicoes] = useState<RefeicaoDia[]>([]);
   const [refeicoesDisponiveis, setRefeicoesDisponiveis] = useState<any[]>([]);
   const [eventosCalendario, setEventosCalendario] = useState<any[]>([]);
+  const [custoCardapio, setCustoCardapio] = useState<CustoCardapio | null>(null);
+  const [loadingCusto, setLoadingCusto] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
   const [openListDialog, setOpenListDialog] = useState(false);
   const [openDetalhesDialog, setOpenDetalhesDialog] = useState(false);
@@ -84,6 +87,21 @@ const CardapioCalendarioPage: React.FC = () => {
     }
   }, [cardapio]);
 
+  const loadCusto = async () => {
+    if (!cardapioId) return;
+    
+    try {
+      setLoadingCusto(true);
+      const custo = await calcularCustoCardapio(parseInt(cardapioId));
+      setCustoCardapio(custo);
+    } catch (error) {
+      console.error('Erro ao carregar custo:', error);
+      setCustoCardapio(null);
+    } finally {
+      setLoadingCusto(false);
+    }
+  };
+
   const loadData = async () => {
     try {
       const [cardapioData, refeicoesData, refeicoesDisp] = await Promise.all([
@@ -94,6 +112,9 @@ const CardapioCalendarioPage: React.FC = () => {
       setCardapio(cardapioData);
       setRefeicoes(refeicoesData);
       setRefeicoesDisponiveis(refeicoesDisp);
+      
+      // Carregar custo do cardápio
+      loadCusto();
       
       // Carregar eventos do calendário letivo
       if (cardapioData) {
@@ -938,6 +959,87 @@ const CardapioCalendarioPage: React.FC = () => {
                 </Box>
               </Box>
             </Card>
+
+            {/* Card de custo do cardápio */}
+            {custoCardapio && (
+              <Card sx={{ p: 2, mb: 2, bgcolor: '#f0f7ff' }}>
+                <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <RestaurantIcon />
+                  Custo do Cardápio
+                </Typography>
+
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <Box>
+                    <Typography variant="body2" color="text.secondary">
+                      Custo Total Estimado
+                    </Typography>
+                    <Typography variant="h4" sx={{ fontWeight: 700, color: 'success.main' }}>
+                      {new Intl.NumberFormat('pt-BR', { 
+                        style: 'currency', 
+                        currency: 'BRL' 
+                      }).format(custoCardapio.custo_total)}
+                    </Typography>
+                  </Box>
+
+                  <Divider />
+
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">
+                        Total de Alunos
+                      </Typography>
+                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                        {custoCardapio.total_alunos}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">
+                        Custo por Aluno
+                      </Typography>
+                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                        {new Intl.NumberFormat('pt-BR', { 
+                          style: 'currency', 
+                          currency: 'BRL' 
+                        }).format(custoCardapio.total_alunos > 0 ? custoCardapio.custo_total / custoCardapio.total_alunos : 0)}
+                      </Typography>
+                    </Box>
+                  </Box>
+
+                  {custoCardapio.detalhes_por_modalidade.length > 0 && (
+                    <>
+                      <Divider />
+                      <Box>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                          Por modalidade
+                        </Typography>
+                        {custoCardapio.detalhes_por_modalidade.map((det) => (
+                          <Box key={det.modalidade_id} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                            <Typography variant="body2">
+                              {det.quantidade_alunos} alunos
+                            </Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                              {new Intl.NumberFormat('pt-BR', { 
+                                style: 'currency', 
+                                currency: 'BRL' 
+                              }).format(det.custo_total)}
+                            </Typography>
+                          </Box>
+                        ))}
+                      </Box>
+                    </>
+                  )}
+                </Box>
+              </Card>
+            )}
+
+            {loadingCusto && (
+              <Card sx={{ p: 2, mb: 2, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                <CircularProgress size={24} sx={{ mr: 2 }} />
+                <Typography variant="body2" color="text.secondary">
+                  Calculando custo...
+                </Typography>
+              </Card>
+            )}
 
             {/* Card de eventos do calendário letivo */}
             {eventosCalendario.length > 0 && (

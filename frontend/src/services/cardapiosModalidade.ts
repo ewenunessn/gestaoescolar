@@ -223,3 +223,50 @@ export async function removerRefeicaoDia(id: number): Promise<void> {
     throw error;
   }
 }
+
+export interface CustoCardapio {
+  custo_total: number;
+  total_alunos: number;
+  total_refeicoes: number;
+  detalhes_por_refeicao: Array<{
+    id: number;
+    dia: number;
+    tipo_refeicao: string;
+    refeicao_id: number;
+    refeicao_nome: string;
+    produtos: Array<{
+      produto_id: number;
+      produto_nome: string;
+      per_capita: number;
+      tipo_medida: string;
+      preco_unitario: number;
+      custo_por_aluno: number;
+    }>;
+    custo_por_aluno: number;
+    custo_total: number;
+  }>;
+  detalhes_por_modalidade: Array<{
+    modalidade_id: number;
+    quantidade_alunos: number;
+    custo_total: number;
+  }>;
+}
+
+export async function calcularCustoCardapio(cardapioId: number): Promise<CustoCardapio> {
+  try {
+    const response = await api.get(`/cardapios/${cardapioId}/custo`);
+    
+    if (response.data && !response.data.data) {
+      return response.data;
+    }
+    
+    if (response.data && response.data.data) {
+      return response.data.data;
+    }
+    
+    throw new Error('Resposta inválida da API');
+  } catch (error) {
+    console.error('Erro ao calcular custo do cardápio:', error);
+    throw error;
+  }
+}

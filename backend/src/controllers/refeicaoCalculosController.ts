@@ -28,6 +28,8 @@ interface IngredienteCusto {
   tipo_medida: string;
   fator_correcao: number;
   indice_coccao: number;
+  peso_embalagem: number;
+  unidade_distribuicao: string;
   preco_unitario: number | null;
 }
 
@@ -254,6 +256,8 @@ export const calcularCusto = async (req: Request, res: Response) => {
         rp.tipo_medida,
         COALESCE(p.fator_correcao, 1.0) as fator_correcao,
         COALESCE(p.indice_coccao, 1.0) as indice_coccao,
+        COALESCE(p.peso, 1000) as peso_embalagem,
+        p.unidade_distribuicao,
         cp.preco_unitario
       FROM refeicao_produtos rp
       INNER JOIN produtos p ON p.id = rp.produto_id
@@ -279,6 +283,8 @@ export const calcularCusto = async (req: Request, res: Response) => {
         rp.tipo_medida,
         COALESCE(p.fator_correcao, 1.0) as fator_correcao,
         COALESCE(p.indice_coccao, 1.0) as indice_coccao,
+        COALESCE(p.peso, 1000) as peso_embalagem,
+        p.unidade_distribuicao,
         cp.preco_unitario
       FROM refeicao_produtos rp
       INNER JOIN produtos p ON p.id = rp.produto_id
@@ -317,8 +323,10 @@ export const calcularCusto = async (req: Request, res: Response) => {
         ingredientesSemPreco.push(ing.produto_nome);
         detalhamento.push({
           produto: ing.produto_nome,
-          quantidade: ing.per_capita,
+          quantidade_liquida: ing.per_capita,
+          quantidade_bruta: ing.per_capita * toNum(ing.fator_correcao, 1.0),
           unidade: ing.tipo_medida,
+          fator_correcao: toNum(ing.fator_correcao, 1.0),
           preco_unitario: null,
           custo: null,
           aviso: 'Sem contrato ativo'
@@ -332,18 +340,21 @@ export const calcularCusto = async (req: Request, res: Response) => {
       // Apenas o Fator de Correção é aplicado (perda no pré-preparo)
       
       const fatorCorrecao = toNum(ing.fator_correcao, 1.0);
+      const pesoEmbalagem = toNum(ing.peso_embalagem, 1000); // Padrão 1kg se não informado
       
       // Calcular quanto precisa COMPRAR (antes de limpar/descascar)
       const perCapitaBruto = ing.per_capita * fatorCorrecao;
 
       // Calcular custo baseado no per capita BRUTO
-      // preco_unitario é por kg, per capita é em gramas ou unidades
+      // preco_unitario é por EMBALAGEM (ex: garrafa de 900ml, pacote de 1kg)
+      // Precisamos calcular a proporção da embalagem usada
       let custo = 0;
       
-      if (ing.tipo_medida === 'gramas') {
-        // Converter gramas para kg
-        const quantidadeKg = perCapitaBruto / 1000;
-        custo = quantidadeKg * ing.preco_unitario;
+      if (ing.tipo_medida === 'gramas' || ing.tipo_medida === 'mililitros') {
+        // Calcular quantas embalagens são necessárias (proporção exata, SEM arredondar)
+        // Exemplo: 1ml de óleo em garrafa de 900ml = 1/900 = 0.0011 garrafas
+        const proporcaoEmbalagem = perCapitaBruto / pesoEmbalagem;
+        custo = proporcaoEmbalagem * ing.preco_unitario;
       } else {
         // Unidades - assumir que preco_unitario é por unidade
         custo = perCapitaBruto * ing.preco_unitario;
@@ -357,6 +368,8 @@ export const calcularCusto = async (req: Request, res: Response) => {
         quantidade_bruta: perCapitaBruto,
         unidade: ing.tipo_medida,
         fator_correcao: fatorCorrecao,
+        peso_embalagem: pesoEmbalagem,
+        unidade_distribuicao: ing.unidade_distribuicao,
         preco_unitario: ing.preco_unitario,
         custo: Math.round(custo * 100) / 100
       });

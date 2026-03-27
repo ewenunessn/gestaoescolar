@@ -4,7 +4,42 @@ import db from "../../../database";
 
 export async function listarRefeicoes(req: Request, res: Response) {
   try {
+    // Query que considera per capita ajustado por modalidade (usa a primeira modalidade ativa como padrão)
     const result = await db.query(`
+      WITH primeira_modalidade AS (
+        SELECT id FROM modalidades WHERE ativo = true ORDER BY id LIMIT 1
+      ),
+      calculos_refeicoes AS (
+        SELECT 
+          r.id as refeicao_id,
+          ROUND(
+            COALESCE(
+              SUM(
+                CASE 
+                  WHEN pcn.energia_kcal IS NOT NULL THEN 
+                    -- Usar per capita ajustado por modalidade se existir, senão usar o padrão
+                    pcn.energia_kcal * (
+                      CASE 
+                        WHEN rp.tipo_medida = 'unidades' THEN 
+                          (COALESCE(rpm.per_capita_ajustado, rp.per_capita) * 100.0) / 100.0
+                        ELSE 
+                          COALESCE(rpm.per_capita_ajustado, rp.per_capita) / 100.0
+                      END
+                    )
+                  ELSE 0
+                END
+              ), 
+              0
+            ),
+            0
+          ) as valor_calorico_total
+        FROM refeicoes r
+        LEFT JOIN refeicao_produtos rp ON r.id = rp.refeicao_id
+        LEFT JOIN produto_composicao_nutricional pcn ON rp.produto_id = pcn.produto_id
+        LEFT JOIN refeicao_produto_modalidade rpm ON rpm.refeicao_produto_id = rp.id 
+          AND rpm.modalidade_id = (SELECT id FROM primeira_modalidade)
+        GROUP BY r.id
+      )
       SELECT 
         r.id,
         r.nome,
@@ -18,10 +53,10 @@ export async function listarRefeicoes(req: Request, res: Response) {
         r.custo_por_porcao,
         r.created_at,
         r.updated_at,
-        COUNT(rp.id) as total_produtos
+        (SELECT COUNT(DISTINCT rp.id) FROM refeicao_produtos rp WHERE rp.refeicao_id = r.id) as total_produtos,
+        COALESCE(cr.valor_calorico_total, 0) as valor_calorico_total
       FROM refeicoes r
-      LEFT JOIN refeicao_produtos rp ON r.id = rp.refeicao_id
-      GROUP BY r.id
+      LEFT JOIN calculos_refeicoes cr ON cr.refeicao_id = r.id
       ORDER BY r.nome
     `);
 
@@ -46,9 +81,22 @@ export async function buscarRefeicao(req: Request, res: Response) {
 
     const result = await db.query(`
       SELECT 
-        r.*
+        r.*,
+        COALESCE(
+          SUM(
+            CASE 
+              WHEN pcn.energia_kcal IS NOT NULL THEN 
+                (rp.per_capita / 100.0) * pcn.energia_kcal
+              ELSE 0
+            END
+          ), 
+          0
+        ) as valor_calorico_total
       FROM refeicoes r
+      LEFT JOIN refeicao_produtos rp ON r.id = rp.refeicao_id
+      LEFT JOIN produto_composicao_nutricional pcn ON rp.produto_id = pcn.produto_id
       WHERE r.id = $1
+      GROUP BY r.id
     `, [id]);
 
     if (result.rows.length === 0) {

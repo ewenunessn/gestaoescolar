@@ -405,6 +405,7 @@ const RefeicoesPage = () => {
                 <TableRow>
                   <TableCell align="left">Nome da Refeição</TableCell>
                   <TableCell align="center">Tipo</TableCell>
+                  <TableCell align="center">Valor Calórico (Kcal)</TableCell>
                   <TableCell align="center" width="180">Ações</TableCell>
                 </TableRow>
               </TableHead>
@@ -419,6 +420,13 @@ const RefeicoesPage = () => {
                     </TableCell>
                     <TableCell align="center">
                       <Typography variant="body2" color="text.secondary">{tiposRefeicao[refeicao.tipo]}</Typography>
+                    </TableCell>
+                    <TableCell align="center">
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: 'primary.main' }}>
+                        {(refeicao as any).valor_calorico_total 
+                          ? `${Number((refeicao as any).valor_calorico_total).toFixed(2)} Kcal`
+                          : '-'}
+                      </Typography>
                     </TableCell>
                     <TableCell align="center">
                         <Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => handleViewDetails(refeicao)} color="default"><Visibility fontSize="small" /></IconButton></Tooltip>
