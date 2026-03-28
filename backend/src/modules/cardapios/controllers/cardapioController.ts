@@ -367,17 +367,7 @@ export async function calcularCustoCardapio(req: Request, res: Response) {
         COALESCE(p.peso, 1000) as peso_embalagem,
         cjm.modalidade_id,
         COALESCE(rpm.per_capita_ajustado, rp.per_capita) as per_capita,
-        COALESCE(
-          (SELECT cp.preco_unitario 
-           FROM contrato_produtos cp
-           INNER JOIN contratos c ON cp.contrato_id = c.id
-           WHERE cp.produto_id = p.id 
-             AND c.ativo = true 
-             AND cp.ativo = true
-           ORDER BY c.data_inicio DESC
-           LIMIT 1
-          ), 0
-        ) as preco_unitario
+        COALESCE(cp_lat.preco_unitario, 0) as preco_unitario
       FROM cardapio_refeicoes_dia crd
       INNER JOIN refeicoes r ON crd.refeicao_id = r.id
       INNER JOIN cardapio_modalidades cjm ON cjm.cardapio_id = crd.cardapio_modalidade_id
@@ -386,6 +376,16 @@ export async function calcularCustoCardapio(req: Request, res: Response) {
       LEFT JOIN refeicao_produto_modalidade rpm 
         ON rpm.refeicao_produto_id = rp.id 
         AND rpm.modalidade_id = cjm.modalidade_id
+      LEFT JOIN LATERAL (
+        SELECT cp.preco_unitario
+        FROM contrato_produtos cp
+        INNER JOIN contratos c ON c.id = cp.contrato_id
+        WHERE cp.produto_id = p.id
+          AND c.ativo = true
+          AND cp.ativo = true
+        ORDER BY c.data_inicio DESC
+        LIMIT 1
+      ) cp_lat ON p.id IS NOT NULL
       WHERE crd.cardapio_modalidade_id = $1
         AND crd.ativo = true
       ORDER BY crd.dia, crd.tipo_refeicao, cjm.modalidade_id

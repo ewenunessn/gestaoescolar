@@ -21,6 +21,7 @@ import { listarRefeicoes } from '../services/refeicoes';
 import { listarEventosPorMes, getLabelsEventos, getCoresEventos } from '../services/calendarioLetivo';
 import { LoadingOverlay } from '../components/LoadingOverlay';
 import { DetalheDiaCardapioDialog } from '../components/DetalheDiaCardapioDialog';
+import CustoCardapioDetalheModal from '../components/CustoCardapioDetalheModal';
 import api from '../services/api';
 
 // Função para obter URL base da API
@@ -43,7 +44,7 @@ const CardapioCalendarioPage: React.FC = () => {
   const { cardapioId } = useParams<{ cardapioId: string }>();
   const navigate = useNavigate();
   const toast = useToast();
-  const { setPageTitle } = usePageTitle();
+  const { setPageTitle, setBackPath } = usePageTitle();
   const { fetchInstituicaoForPDF } = useInstituicaoForPDF();
 
   const [cardapio, setCardapio] = useState<CardapioModalidade | null>(null);
@@ -52,6 +53,7 @@ const CardapioCalendarioPage: React.FC = () => {
   const [eventosCalendario, setEventosCalendario] = useState<any[]>([]);
   const [custoCardapio, setCustoCardapio] = useState<CustoCardapio | null>(null);
   const [loadingCusto, setLoadingCusto] = useState(false);
+  const [modalCustoDetalhe, setModalCustoDetalhe] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
   const [openListDialog, setOpenListDialog] = useState(false);
   const [openDetalhesDialog, setOpenDetalhesDialog] = useState(false);
@@ -78,6 +80,7 @@ const CardapioCalendarioPage: React.FC = () => {
 
   useEffect(() => {
     if (cardapioId) loadData();
+    return () => setBackPath(null);
   }, [cardapioId]);
 
   useEffect(() => {
@@ -129,8 +132,10 @@ const CardapioCalendarioPage: React.FC = () => {
       
       // Definir título da página
       if (cardapioData) {
-        const mesNome = MESES[cardapioData.mes - 1];
-        setPageTitle(`Cardápio ${mesNome}/${cardapioData.ano} - ${cardapioData.modalidade_nome}`);
+        const mesNome = MESES[cardapioData.mes];
+        const subtitulo = (cardapioData as any).modalidades_nomes || cardapioData.modalidade_nome || cardapioData.nome;
+        setPageTitle(`Cardápio ${mesNome}/${cardapioData.ano} - ${subtitulo}`);
+        setBackPath('/cardapios');
       }
     } catch (err) {
       toast.error('Erro ao carregar cardápio');
@@ -889,15 +894,7 @@ const CardapioCalendarioPage: React.FC = () => {
       <PageContainer>
       {/* Header com botão voltar e ações */}
       <Box display="flex" alignItems="center" mb={3}>
-          <IconButton onClick={() => navigate('/cardapios')} sx={{ mr: 2 }}>
-            <ArrowBackIcon />
-          </IconButton>
-          <Box flex={1}>
-            <Typography variant="h5" sx={{ fontWeight: 600 }}>{cardapio?.nome}</Typography>
-            <Typography variant="body2" color="textSecondary">
-              {cardapio && `${MESES[cardapio.mes]} / ${cardapio.ano} - ${cardapio.modalidade_nome}`}
-            </Typography>
-          </Box>
+          <Box flex={1} />
           <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} color="primary">
             <PdfIcon />
           </IconButton>
@@ -963,10 +960,20 @@ const CardapioCalendarioPage: React.FC = () => {
             {/* Card de custo do cardápio */}
             {custoCardapio && (
               <Card sx={{ p: 2, mb: 2, bgcolor: '#f0f7ff' }}>
-                <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <RestaurantIcon />
-                  Custo do Cardápio
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                  <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <RestaurantIcon />
+                    Custo do Cardápio
+                  </Typography>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => setModalCustoDetalhe(true)}
+                    sx={{ fontSize: 11 }}
+                  >
+                    Ver detalhamento
+                  </Button>
+                </Box>
 
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <Box>
@@ -1368,6 +1375,14 @@ const CardapioCalendarioPage: React.FC = () => {
           'Processando...'
         }
       />
+
+      {custoCardapio && (
+        <CustoCardapioDetalheModal
+          open={modalCustoDetalhe}
+          onClose={() => setModalCustoDetalhe(false)}
+          custo={custoCardapio}
+        />
+      )}
     </>
   );
 };

@@ -32,6 +32,42 @@ interface ConversaoCompra {
   unidade_distribuicao?: string;
 }
 
+// ─── Helper: Batch INSERT para guia_produto_escola ───────────────────────────
+interface GuiaItemRow {
+  produto_id: number;
+  escola_id: number;
+  quantidade: number;
+  unidade: string;
+  data_entrega: string;
+}
+
+async function batchInsertGuiaItens(
+  client: { query: (sql: string, params?: any[]) => Promise<any> },
+  guia_id: number,
+  rows: GuiaItemRow[],
+  chunkSize = 500
+): Promise<number> {
+  if (rows.length === 0) return 0;
+  let total = 0;
+  for (let i = 0; i < rows.length; i += chunkSize) {
+    const chunk = rows.slice(i, i + chunkSize);
+    const values: any[] = [];
+    const placeholders = chunk.map((row, idx) => {
+      const base = idx * 6;
+      values.push(guia_id, row.produto_id, row.escola_id, row.quantidade, row.unidade, row.data_entrega);
+      return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 4}, $${base + 5}, $${base + 6}, 'pendente', NOW(), NOW())`;
+    });
+    await client.query(
+      `INSERT INTO guia_produto_escola
+         (guia_id, produto_id, escola_id, quantidade, quantidade_demanda, unidade, data_entrega, status, created_at, updated_at)
+       VALUES ${placeholders.join(', ')}`,
+      values
+    );
+    total += chunk.length;
+  }
+  return total;
+}
+
 // ─── Helper: Converter demanda para unidade de compra ────────────────────────
 function converterDemandaParaCompra(
   quantidade_demanda: number,
@@ -1274,31 +1310,21 @@ export const gerarGuiasDemanda = async (req: Request, res: Response) => {
       }
     }
 
-    // Inserir perecíveis (1 linha por período)
-    let totalItens = 0;
-    for (const item of pereciveisParaInserir) {
-      await client.query(`
-        INSERT INTO guia_produto_escola
-          (guia_id, produto_id, escola_id, quantidade, quantidade_demanda, unidade, data_entrega, status, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $4, $5, $6, 'pendente', NOW(), NOW())
-      `, [guia_id, item.produto_id, item.escola_id, item.quantidade, item.unidade, item.data_entrega]);
-      totalItens++;
-    }
-
-    // Inserir não perecíveis (1 linha por escola, quantidade somada)
+    // Montar rows de não perecíveis com conversão final
+    const naoPereciveisRows: GuiaItemRow[] = [];
     for (const item of naoPereciveisMap.values()) {
       const emb = (item as any)._embalagem as { peso_g: number; unidade: string } | undefined;
       const qtd = emb
         ? converterParaEmbalagem(item.quantidade, emb.peso_g)
         : Math.round(item.quantidade * 1000) / 1000;
       const unid = emb ? emb.unidade : item.unidade;
-      await client.query(`
-        INSERT INTO guia_produto_escola
-          (guia_id, produto_id, escola_id, quantidade, quantidade_demanda, unidade, data_entrega, status, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $4, $5, $6, 'pendente', NOW(), NOW())
-      `, [guia_id, item.produto_id, item.escola_id, qtd, unid, item.data_entrega]);
-      totalItens++;
+      naoPereciveisRows.push({ produto_id: item.produto_id, escola_id: item.escola_id, quantidade: qtd, unidade: unid, data_entrega: item.data_entrega });
     }
+
+    // Batch insert: perecíveis + não perecíveis em chunks de 500
+    const totalItens =
+      await batchInsertGuiaItens(client, guia_id, pereciveisParaInserir) +
+      await batchInsertGuiaItens(client, guia_id, naoPereciveisRows);
 
     await client.query('COMMIT');
 
@@ -1765,28 +1791,26 @@ export const gerarPedidoDaGuia = async (req: Request, res: Response) => {
         const programacao_id = progResult.rows[0].id;
 
         // Escolas com quantidades (proporcionais se houver divisão)
-        if (qtdContrato !== undefined) {
-          // Divisão: distribuir proporcionalmente entre escolas
-          const totalGrupo = grupo.escolas.reduce((s, e) => s + e.quantidade, 0);
-          for (const esc of grupo.escolas) {
-            if (esc.quantidade > 0) {
-              const qtdProporcional = (esc.quantidade / totalGrupo) * qtdContrato;
-              await client.query(`
-                INSERT INTO pedido_item_programacao_escolas (programacao_id, escola_id, quantidade)
-                VALUES ($1, $2, $3)
-              `, [programacao_id, esc.escola_id, Math.round(qtdProporcional * 1000) / 1000]);
-            }
-          }
-        } else {
-          // Sem divisão: usar quantidades originais
-          for (const esc of grupo.escolas) {
-            if (esc.quantidade > 0) {
-              await client.query(`
-                INSERT INTO pedido_item_programacao_escolas (programacao_id, escola_id, quantidade)
-                VALUES ($1, $2, $3)
-              `, [programacao_id, esc.escola_id, Math.round(esc.quantidade * 1000) / 1000]);
-            }
-          }
+        const totalGrupo = grupo.escolas.reduce((s, e) => s + e.quantidade, 0);
+        const escolasRows = grupo.escolas
+          .filter(esc => esc.quantidade > 0)
+          .map(esc => {
+            const qtd = qtdContrato !== undefined
+              ? Math.round((esc.quantidade / totalGrupo) * qtdContrato * 1000) / 1000
+              : Math.round(esc.quantidade * 1000) / 1000;
+            return { escola_id: esc.escola_id, quantidade: qtd };
+          });
+
+        if (escolasRows.length > 0) {
+          const values: any[] = [];
+          const placeholders = escolasRows.map((r, idx) => {
+            values.push(programacao_id, r.escola_id, r.quantidade);
+            return `($${idx * 3 + 1}, $${idx * 3 + 2}, $${idx * 3 + 3})`;
+          });
+          await client.query(
+            `INSERT INTO pedido_item_programacao_escolas (programacao_id, escola_id, quantidade) VALUES ${placeholders.join(', ')}`,
+            values
+          );
         }
       }
     }
@@ -2034,70 +2058,37 @@ async function processarGeracaoGuiasBackground(jobId: number) {
 
     await JobService.atualizarStatus(jobId, 'processando', { progresso: 60 });
 
-    // Inserir itens com progresso
-    let totalItens = 0;
-    const totalParaInserir = pereciveisParaInserir.length + naoPereciveisMap.size;
-    let itensInseridos = 0;
-    const tempoInicio = Date.now();
-
-    for (const item of pereciveisParaInserir) {
-      await client.query(`
-        INSERT INTO guia_produto_escola
-          (guia_id, produto_id, escola_id, quantidade, quantidade_demanda, unidade, data_entrega, status, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $4, $5, $6, 'pendente', NOW(), NOW())
-      `, [guia_id, item.produto_id, item.escola_id, item.quantidade, item.unidade, item.data_entrega]);
-      
-      totalItens++;
-      itensInseridos++;
-      
-      // Atualizar progresso (60% a 90%) com tempo estimado
-      if (itensInseridos % 10 === 0 || itensInseridos === totalParaInserir) {
-        const progressoItens = 60 + Math.floor((itensInseridos / totalParaInserir) * 30);
-        
-        // Calcular tempo estimado
-        const tempoDecorrido = (Date.now() - tempoInicio) / 1000; // segundos
-        const tempoMedioPorItem = itensInseridos > 0 ? tempoDecorrido / itensInseridos : 0;
-        const itensRestantes = totalParaInserir - itensInseridos;
-        const tempoEstimado = Math.ceil(itensRestantes * tempoMedioPorItem);
-        
-        await JobService.atualizarStatus(jobId, 'processando', { 
-          progresso: progressoItens,
-          itens_processados: itensInseridos,
-          tempo_estimado: tempoEstimado
-        });
-      }
-    }
-
+    // Montar rows de não perecíveis com conversão final
+    const naoPereciveisRowsBg: GuiaItemRow[] = [];
     for (const item of naoPereciveisMap.values()) {
       const emb = (item as any)._embalagem as { peso_g: number; unidade: string } | undefined;
       const qtd = emb ? converterParaEmbalagem(item.quantidade, emb.peso_g) : Math.round(item.quantidade * 1000) / 1000;
       const unid = emb ? emb.unidade : item.unidade;
-      
-      await client.query(`
-        INSERT INTO guia_produto_escola
-          (guia_id, produto_id, escola_id, quantidade, quantidade_demanda, unidade, data_entrega, status, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $4, $5, $6, 'pendente', NOW(), NOW())
-      `, [guia_id, item.produto_id, item.escola_id, qtd, unid, item.data_entrega]);
-      
-      totalItens++;
-      itensInseridos++;
-      
-      if (itensInseridos % 10 === 0 || itensInseridos === totalParaInserir) {
-        const progressoItens = 60 + Math.floor((itensInseridos / totalParaInserir) * 30);
-        
-        // Calcular tempo estimado
-        const tempoDecorrido = (Date.now() - tempoInicio) / 1000;
-        const tempoMedioPorItem = itensInseridos > 0 ? tempoDecorrido / itensInseridos : 0;
-        const itensRestantes = totalParaInserir - itensInseridos;
-        const tempoEstimado = Math.ceil(itensRestantes * tempoMedioPorItem);
-        
-        await JobService.atualizarStatus(jobId, 'processando', { 
-          progresso: progressoItens,
-          itens_processados: itensInseridos,
-          tempo_estimado: tempoEstimado
-        });
-      }
+      naoPereciveisRowsBg.push({ produto_id: item.produto_id, escola_id: item.escola_id, quantidade: qtd, unidade: unid, data_entrega: item.data_entrega });
     }
+
+    // Batch insert em chunks — atualiza progresso por chunk
+    const totalParaInserir = pereciveisParaInserir.length + naoPereciveisRowsBg.length;
+    const chunkSize = 500;
+    let itensInseridos = 0;
+
+    for (let i = 0; i < pereciveisParaInserir.length; i += chunkSize) {
+      const chunk = pereciveisParaInserir.slice(i, i + chunkSize);
+      await batchInsertGuiaItens(client, guia_id, chunk, chunkSize);
+      itensInseridos += chunk.length;
+      const progresso = 60 + Math.floor((itensInseridos / totalParaInserir) * 30);
+      await JobService.atualizarStatus(jobId, 'processando', { progresso, itens_processados: itensInseridos });
+    }
+
+    for (let i = 0; i < naoPereciveisRowsBg.length; i += chunkSize) {
+      const chunk = naoPereciveisRowsBg.slice(i, i + chunkSize);
+      await batchInsertGuiaItens(client, guia_id, chunk, chunkSize);
+      itensInseridos += chunk.length;
+      const progresso = 60 + Math.floor((itensInseridos / totalParaInserir) * 30);
+      await JobService.atualizarStatus(jobId, 'processando', { progresso, itens_processados: itensInseridos });
+    }
+
+    const totalItens = itensInseridos;
 
     await client.query('COMMIT');
     await JobService.atualizarStatus(jobId, 'concluido', {
@@ -2433,13 +2424,20 @@ async function processarGeracaoPedidoBackground(jobId: number) {
 
       const programacao_id = progResult.rows[0].id;
 
-      for (const esc of grupo.escolas) {
-        if (esc.quantidade > 0) {
-          await client.query(`
-            INSERT INTO pedido_item_programacao_escolas (programacao_id, escola_id, quantidade)
-            VALUES ($1, $2, $3)
-          `, [programacao_id, esc.escola_id, Math.round(esc.quantidade * 1000) / 1000]);
-        }
+      const escolasRowsBg = grupo.escolas
+        .filter((esc: any) => esc.quantidade > 0)
+        .map((esc: any) => ({ escola_id: esc.escola_id, quantidade: Math.round(esc.quantidade * 1000) / 1000 }));
+
+      if (escolasRowsBg.length > 0) {
+        const vals: any[] = [];
+        const ph = escolasRowsBg.map((r: any, idx: number) => {
+          vals.push(programacao_id, r.escola_id, r.quantidade);
+          return `($${idx * 3 + 1}, $${idx * 3 + 2}, $${idx * 3 + 3})`;
+        });
+        await client.query(
+          `INSERT INTO pedido_item_programacao_escolas (programacao_id, escola_id, quantidade) VALUES ${ph.join(', ')}`,
+          vals
+        );
       }
 
       gruposProcessados++;
