@@ -303,6 +303,7 @@ class GuiaModel {
           e.nome as escola_nome,
           STRING_AGG(re.nome, ', ') as escola_rota
         FROM guia_produto_escola gpe
+        JOIN guias g ON g.id = gpe.guia_id
         JOIN produtos p ON gpe.produto_id = p.id
         JOIN escolas e ON gpe.escola_id = e.id
         LEFT JOIN rota_escolas res ON e.id = res.escola_id

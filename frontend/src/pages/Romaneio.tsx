@@ -5,6 +5,7 @@ import StatusIndicator from '../components/StatusIndicator';
 import ViewTabs, { ViewTab } from '../components/ViewTabs';
 import { usePageTitle } from '../contexts/PageTitleContext';
 import { useRomaneio, useRotas, useAtualizarProdutoEscola } from '../hooks/queries/useRomaneioQueries';
+import { formatarQuantidade } from '../utils/formatters';
 // Atualizado em 2026-03-08 13:46 - Todas as referências a dataInicio/dataFim agora usam filters.dataInicio/filters.dataFim
 import {
   Box,
@@ -580,7 +581,7 @@ const Romaneio: React.FC = () => {
                 <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1 }}>Romaneio de Entrega</Typography>
                 <Box sx={{ borderBottom: '2px solid #000', pb: 1, mb: 2 }}>
                   <Typography variant="subtitle1">
-                    <strong>Período:</strong> {format(new Date(filters.dataInicio), 'dd/MM/yyyy')} a {format(new Date(filters.dataFim), 'dd/MM/yyyy')}
+                    <strong>Período:</strong> {format(new Date(filters.dataInicio + 'T12:00:00'), 'dd/MM/yyyy')} a {format(new Date(filters.dataFim + 'T12:00:00'), 'dd/MM/yyyy')}
                   </Typography>
                   <Typography variant="subtitle1">
                     <strong>Rota:</strong> {rotaIds.length === 0 ? 'Todas as Rotas' : 
@@ -658,9 +659,9 @@ const Romaneio: React.FC = () => {
                           {grupo.itens.map((item) => (
                             <TableRow key={item.id}>
                               <TableCell>{item.produto_nome}</TableCell>
-                              <TableCell align="right">{item.quantidade}</TableCell>
+                              <TableCell align="right">{formatarQuantidade(item.quantidade)}</TableCell>
                               <TableCell>{item.unidade}</TableCell>
-                              <TableCell>{format(new Date(item.data_entrega), 'dd/MM/yyyy')}</TableCell>
+                              <TableCell>{format(new Date(item.data_entrega + 'T12:00:00'), 'dd/MM/yyyy')}</TableCell>
                               <TableCell>
                                 <Chip 
                                   label={item.status || 'Pendente'} 
@@ -690,7 +691,7 @@ const Romaneio: React.FC = () => {
                 <Card key={grupoData.data} sx={{ mb: 3, breakInside: 'avoid' }}>
                   <CardContent>
                     <Typography variant="h6" gutterBottom sx={{ borderBottom: '1px solid #eee', pb: 1 }}>
-                      Data de Entrega: {format(new Date(grupoData.data), 'dd/MM/yyyy')}
+                      Data de Entrega: {format(new Date(grupoData.data + 'T12:00:00'), 'dd/MM/yyyy')}
                     </Typography>
                     
                     <TableContainer component={Paper} variant="outlined">
@@ -707,7 +708,7 @@ const Romaneio: React.FC = () => {
                           {grupoData.produtos.map((produto, idx) => (
                             <TableRow key={idx}>
                               <TableCell sx={{ fontWeight: 'bold' }}>{produto.produto_nome}</TableCell>
-                              <TableCell align="center" sx={{ fontWeight: 'bold' }}>{produto.quantidade_total}</TableCell>
+                              <TableCell align="center" sx={{ fontWeight: 'bold' }}>{formatarQuantidade(produto.quantidade_total)}</TableCell>
                               <TableCell align="center">{produto.unidade}</TableCell>
                               <TableCell align="center" sx={{ '@media print': { display: 'none' } }}>
                                 <Button
@@ -755,7 +756,7 @@ const Romaneio: React.FC = () => {
                   {selectedProduct.produto_nome}
                 </Typography>
                 <Typography variant="subtitle2" color="text.secondary">
-                  Data: {format(new Date(selectedProduct.data), 'dd/MM/yyyy')}
+                  Data: {format(new Date(selectedProduct.data + 'T12:00:00'), 'dd/MM/yyyy')}
                 </Typography>
               </Box>
               <IconButton
@@ -782,7 +783,7 @@ const Romaneio: React.FC = () => {
                     {selectedProduct.escolas.map((esc, index) => (
                       <TableRow key={index} hover>
                         <TableCell>{esc.nome}</TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 'bold' }}>{esc.quantidade}</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 'bold' }}>{formatarQuantidade(esc.quantidade)}</TableCell>
                         <TableCell align="center">
                           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <Chip
