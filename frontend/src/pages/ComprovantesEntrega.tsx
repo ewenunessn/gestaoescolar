@@ -41,6 +41,8 @@ import {
   FilterList as FilterIcon
 } from '@mui/icons-material';
 import api from '../services/api';
+import { buscarInstituicao, Instituicao } from '../services/instituicao';
+import { initPdfMake, buildPdfDoc, buildTable } from '../utils/pdfUtils';
 
 interface ComprovanteItem {
   id: number;
@@ -79,6 +81,7 @@ export default function ComprovantesEntrega() {
   const [escolas, setEscolas] = useState<Escola[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [instituicao, setInstituicao] = useState<Instituicao | null>(null);
   
   // Filtros
   const [filterAnchorEl, setFilterAnchorEl] = useState<HTMLElement | null>(null);
@@ -94,6 +97,7 @@ export default function ComprovantesEntrega() {
   }, [setPageTitle]);
 
   useEffect(() => {
+    buscarInstituicao().then(setInstituicao).catch(() => {});
     carregarEscolas();
     carregarComprovantes();
   }, []);
@@ -174,18 +178,7 @@ export default function ComprovantesEntrega() {
   const imprimirDireto = async (id: number) => {
     try {
       const response = await api.get(`/entregas/comprovantes/${id}`);
-      const comprovante = response.data;
-      
-      const printWindow = window.open('', '_blank');
-      if (!printWindow) return;
-      
-      const html = gerarHTMLImpressao(comprovante);
-      printWindow.document.write(html);
-      printWindow.document.close();
-      printWindow.focus();
-      setTimeout(() => {
-        printWindow.print();
-      }, 250);
+      await gerarPdfComprovante(response.data);
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Erro ao imprimir comprovante');
     }
@@ -193,241 +186,87 @@ export default function ComprovantesEntrega() {
 
   const imprimirComprovante = async () => {
     if (!comprovanteDetalhes) return;
-    
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-    
-    const html = gerarHTMLImpressao(comprovanteDetalhes);
-    printWindow.document.write(html);
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => {
-      printWindow.print();
-    }, 250);
+    await gerarPdfComprovante(comprovanteDetalhes);
   };
 
-  const gerarHTMLImpressao = (comprovante: Comprovante) => {
-    const dataFormatada = new Date(comprovante.data_entrega).toLocaleString('pt-BR');
-    
-    return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <title>Comprovante ${comprovante.numero_comprovante}</title>
-        <style>
-          body {
-            font-family: Arial, sans-serif;
-            padding: 15px;
-            max-width: 800px;
-            margin: 0 auto;
-            font-size: 12px;
-          }
-          .header {
-            text-align: center;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #333;
-            padding-bottom: 15px;
-          }
-          .header h1 {
-            margin: 0;
-            color: #1976d2;
-            font-size: 22px;
-          }
-          .header .subtitle {
-            margin: 3px 0 8px 0;
-            color: #666;
-            font-size: 11px;
-            font-style: italic;
-          }
-          .header h2 {
-            margin: 10px 0 3px 0;
-            color: #333;
-            font-size: 16px;
-          }
-          .header h3 {
-            margin: 3px 0;
-            color: #666;
-            font-size: 13px;
-            font-weight: normal;
-          }
-          .info-section {
-            margin-bottom: 15px;
-          }
-          .info-row {
-            display: flex;
-            margin-bottom: 6px;
-            font-size: 11px;
-          }
-          .info-label {
-            font-weight: bold;
-            width: 150px;
-          }
-          .info-value {
-            flex: 1;
-          }
-          table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 15px 0;
-            font-size: 11px;
-          }
-          th, td {
-            border: 1px solid #ddd;
-            padding: 6px 8px;
-            text-align: left;
-          }
-          th {
-            background-color: #1976d2;
-            color: white;
-            font-size: 11px;
-          }
-          tr:nth-child(even) {
-            background-color: #f9f9f9;
-          }
-          .signature-section {
-            margin-top: 40px;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-          }
-          .signature-box {
-            width: 45%;
-            text-align: center;
-          }
-          .signature-line {
-            border-top: 1px solid #333;
-            margin-top: 50px;
-            padding-top: 8px;
-            font-size: 11px;
-          }
-          .signature-digital {
-            text-align: center;
-            margin-bottom: 15px;
-          }
-          .signature-image {
-            max-width: 250px;
-            max-height: 100px;
-            border: 1px solid #ddd;
-            padding: 4px;
-            margin: 8px auto;
-            display: block;
-            background-color: #fff;
-          }
-          .signature-label {
-            font-size: 10px;
-            color: #666;
-            margin-top: 3px;
-          }
-          .footer {
-            margin-top: 30px;
-            text-align: center;
-            font-size: 10px;
-            color: #666;
-          }
-          @media print {
-            body {
-              padding: 10px;
-            }
-            .no-print {
-              display: none;
-            }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>NUTRILOG</h1>
-          <div class="subtitle">Sistema de Gestão e Logística de Alimentação Escolar</div>
-          <h2>COMPROVANTE DE ENTREGA</h2>
-          <h3>${comprovante.numero_comprovante}</h3>
-        </div>
-        
-        <div class="info-section">
-          <div class="info-row">
-            <div class="info-label">Escola:</div>
-            <div class="info-value">${comprovante.escola_nome}</div>
-          </div>
-          ${comprovante.escola_endereco ? `
-          <div class="info-row">
-            <div class="info-label">Endereço:</div>
-            <div class="info-value">${comprovante.escola_endereco}</div>
-          </div>
-          ` : ''}
-          <div class="info-row">
-            <div class="info-label">Data da Entrega:</div>
-            <div class="info-value">${dataFormatada}</div>
-          </div>
-          <div class="info-row">
-            <div class="info-label">Entregador:</div>
-            <div class="info-value">${comprovante.nome_quem_entregou}</div>
-          </div>
-          <div class="info-row">
-            <div class="info-label">Recebedor:</div>
-            <div class="info-value">${comprovante.nome_quem_recebeu}${comprovante.cargo_recebedor ? ` (${comprovante.cargo_recebedor})` : ''}</div>
-          </div>
-          ${comprovante.observacao ? `
-          <div class="info-row">
-            <div class="info-label">Observações:</div>
-            <div class="info-value">${comprovante.observacao}</div>
-          </div>
-          ` : ''}
-        </div>
-        
-        <h3>Itens Entregues</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Produto</th>
-              <th>Quantidade</th>
-              <th>Unidade</th>
-              ${comprovante.itens.some(i => i.lote) ? '<th>Lote</th>' : ''}
-            </tr>
-          </thead>
-          <tbody>
-            ${comprovante.itens.map(item => `
-              <tr>
-                <td>${item.produto_nome}</td>
-                <td style="text-align: right;">${formatarQuantidade(item.quantidade_entregue)}</td>
-                <td>${item.unidade}</td>
-                ${comprovante.itens.some(i => i.lote) ? `<td>${item.lote || '-'}</td>` : ''}
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-        
-        <div class="signature-section">
-          <div class="signature-box">
-            <div class="signature-line">
-              ${comprovante.nome_quem_entregou}<br>
-              <small>Entregador</small>
-            </div>
-          </div>
-          <div class="signature-box">
-            ${comprovante.assinatura_base64 ? `
-            <div class="signature-digital">
-              <img src="${comprovante.assinatura_base64}" class="signature-image" alt="Assinatura Digital" />
-              <div class="signature-label">Assinatura Digital</div>
-            </div>
-            ` : `
-            <div class="signature-line">
-              <br>
-            </div>
-            `}
-            <div style="margin-top: 10px;">
-              ${comprovante.nome_quem_recebeu}<br>
-              <small>Recebedor${comprovante.cargo_recebedor ? ` - ${comprovante.cargo_recebedor}` : ''}</small>
-            </div>
-          </div>
-        </div>
-        
-        <div class="footer">
-          Documento gerado em ${new Date().toLocaleString('pt-BR')}<br>
-          NUTRILOG - Sistema de Gestão e Logística de Alimentação Escolar
-        </div>
-      </body>
-      </html>
-    `;
+  const gerarPdfComprovante = async (comprovante: Comprovante) => {
+    const dataFormatada = new Date(comprovante.data_entrega + 'T12:00:00').toLocaleString('pt-BR');
+    const temLote = comprovante.itens.some(i => i.lote);
+
+    const infoRows: any[] = [
+      [{ text: 'Escola:', bold: true }, comprovante.escola_nome],
+      ...(comprovante.escola_endereco ? [[{ text: 'Endereço:', bold: true }, comprovante.escola_endereco]] : []),
+      [{ text: 'Data da Entrega:', bold: true }, dataFormatada],
+      [{ text: 'Entregador:', bold: true }, comprovante.nome_quem_entregou],
+      [{ text: 'Recebedor:', bold: true }, `${comprovante.nome_quem_recebeu}${comprovante.cargo_recebedor ? ` (${comprovante.cargo_recebedor})` : ''}`],
+      ...(comprovante.observacao ? [[{ text: 'Observações:', bold: true }, comprovante.observacao]] : []),
+    ];
+
+    const headers = ['Produto', 'Quantidade', 'Unidade', ...(temLote ? ['Lote'] : [])];
+    const rows = comprovante.itens.map(item => [
+      item.produto_nome,
+      formatarQuantidade(item.quantidade_entregue),
+      item.unidade,
+      ...(temLote ? [item.lote || '-'] : []),
+    ]);
+    const widths = temLote ? ['*', 70, 60, 70] : ['*', 80, 70];
+
+    const assinaturaBlock: any[] = comprovante.assinatura_base64
+      ? [
+          { text: 'Assinatura Digital do Recebedor', style: 'sectionTitle' },
+          { image: comprovante.assinatura_base64, width: 200, height: 80, alignment: 'center', margin: [0, 4, 0, 4] },
+        ]
+      : [];
+
+    const content: any[] = [
+      {
+        table: {
+          widths: [120, '*'],
+          body: infoRows.map(([label, value]) => [
+            { text: label, fontSize: 9, bold: true },
+            { text: value, fontSize: 9 },
+          ]),
+        },
+        layout: 'noBorders',
+        margin: [0, 0, 0, 10],
+      },
+      { text: `Itens Entregues (${comprovante.itens.length})`, style: 'sectionTitle' },
+      buildTable(headers, rows, widths),
+      ...assinaturaBlock,
+      {
+        columns: [
+          {
+            stack: [
+              { text: '\n\n\n', },
+              { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 180, y2: 0, lineWidth: 0.8 }] },
+              { text: comprovante.nome_quem_entregou, fontSize: 9, alignment: 'center', margin: [0, 4, 0, 0] },
+              { text: 'Entregador', fontSize: 8, color: '#666', alignment: 'center' },
+            ],
+            width: '*',
+          },
+          {
+            stack: [
+              { text: '\n\n\n' },
+              { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 180, y2: 0, lineWidth: 0.8 }] },
+              { text: comprovante.nome_quem_recebeu, fontSize: 9, alignment: 'center', margin: [0, 4, 0, 0] },
+              { text: `Recebedor${comprovante.cargo_recebedor ? ` — ${comprovante.cargo_recebedor}` : ''}`, fontSize: 8, color: '#666', alignment: 'center' },
+            ],
+            width: '*',
+          },
+        ],
+        margin: [0, 20, 0, 0],
+      },
+    ];
+
+    const pdfMake = await initPdfMake();
+    const doc = buildPdfDoc({
+      instituicao,
+      title: 'Comprovante de Entrega',
+      subtitle: comprovante.numero_comprovante,
+      content,
+      showSignature: false,
+    });
+    pdfMake.createPdf(doc).download(`comprovante-${comprovante.numero_comprovante}.pdf`);
   };
 
   const formatarQuantidade = (valor: number): string => {

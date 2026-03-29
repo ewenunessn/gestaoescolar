@@ -9,6 +9,8 @@ export interface Instituicao {
   logo_url?: string;
   secretario_nome?: string;
   secretario_cargo?: string;
+  departamento?: string;
+  pdf_templates?: Record<string, any>;
   ativo: boolean;
   created_at: Date;
   updated_at: Date;
@@ -24,4 +26,6 @@ export interface InstituicaoInput {
   logo_url?: string;
   secretario_nome?: string;
   secretario_cargo?: string;
+  departamento?: string;
+  pdf_templates?: Record<string, any>;
 }

@@ -3,7 +3,8 @@ import {
   Box, Button, Card, CardContent, Grid, TextField, Typography, Avatar,
   Alert, CircularProgress, Divider, IconButton, Tooltip
 } from '@mui/material';
-import { PhotoCamera as PhotoCameraIcon, Delete as DeleteIcon, Save as SaveIcon } from '@mui/icons-material';
+import { PhotoCamera as PhotoCameraIcon, Delete as DeleteIcon, Save as SaveIcon, PictureAsPdf as PdfIcon } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from '../hooks/useToast';
 import PageContainer from '../components/PageContainer';
 import {
@@ -17,6 +18,7 @@ import {
 
 const ConfiguracaoInstituicaoPage: React.FC = () => {
   const toast = useToast();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [instituicao, setInstituicao] = useState<Instituicao | null>(null);
@@ -31,7 +33,8 @@ const ConfiguracaoInstituicaoPage: React.FC = () => {
     email: '',
     site: '',
     secretario_nome: '',
-    secretario_cargo: 'Secretário(a) de Educação'
+    secretario_cargo: 'Secretário(a) de Educação',
+    departamento: '',
   });
 
   useEffect(() => {
@@ -51,7 +54,8 @@ const ConfiguracaoInstituicaoPage: React.FC = () => {
         email: data.email || '',
         site: data.site || '',
         secretario_nome: data.secretario_nome || '',
-        secretario_cargo: data.secretario_cargo || 'Secretário(a) de Educação'
+        secretario_cargo: data.secretario_cargo || 'Secretário(a) de Educação',
+        departamento: data.departamento || '',
       });
       
       if (data.logo_url) {
@@ -292,6 +296,17 @@ const ConfiguracaoInstituicaoPage: React.FC = () => {
                       placeholder="https://www.secretaria.gov.br"
                     />
                   </Grid>
+
+                  <Grid item xs={12}>
+                    <TextField
+                      label="Departamento / Setor"
+                      fullWidth
+                      value={formData.departamento}
+                      onChange={handleInputChange('departamento')}
+                      placeholder="Ex: Departamento de Alimentação Escolar"
+                      helperText="Aparece abaixo do nome da instituição nos documentos PDF"
+                    />
+                  </Grid>
                 </Grid>
               </CardContent>
             </Card>
@@ -335,7 +350,15 @@ const ConfiguracaoInstituicaoPage: React.FC = () => {
 
           {/* Botões de Ação */}
           <Grid item xs={12}>
-            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'space-between', alignItems: 'center' }}>
+              <Button
+                variant="outlined"
+                startIcon={<PdfIcon />}
+                onClick={() => navigate('/editor-templates-pdf')}
+                size="large"
+              >
+                Editor de Templates PDF
+              </Button>
               <Button
                 type="submit"
                 variant="contained"

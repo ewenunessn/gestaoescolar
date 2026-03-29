@@ -7,6 +7,10 @@ export interface EscolaEntrega {
   itens_entregues: number;
   percentual_entregue: number;
   data_entrega?: string;
+  rota_nome?: string;
+  rota_id?: number;
+  ordem_rota?: number;
+  total_alunos?: number;
 }
 
 export interface ItemEntrega {

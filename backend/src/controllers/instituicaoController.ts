@@ -86,7 +86,9 @@ const atualizarInstituicao = async (req: Request, res: Response) => {
       email,
       site,
       secretario_nome,
-      secretario_cargo
+      secretario_cargo,
+      departamento,
+      pdf_templates
     } = req.body;
 
     // Buscar instituição atual
@@ -107,7 +109,9 @@ const atualizarInstituicao = async (req: Request, res: Response) => {
       email,
       site,
       secretario_nome,
-      secretario_cargo: secretario_cargo || 'Secretário(a) de Educação'
+      secretario_cargo: secretario_cargo || 'Secretário(a) de Educação',
+      departamento,
+      pdf_templates: pdf_templates ? JSON.stringify(pdf_templates) : undefined,
     };
 
     // Se foi enviado um arquivo de logo
@@ -132,8 +136,9 @@ const atualizarInstituicao = async (req: Request, res: Response) => {
         UPDATE instituicoes 
         SET nome = $1, cnpj = $2, endereco = $3, telefone = $4, email = $5, 
             site = $6, secretario_nome = $7, secretario_cargo = $8, logo_url = COALESCE($9, logo_url),
+            departamento = $10, pdf_templates = COALESCE($11, pdf_templates),
             updated_at = CURRENT_TIMESTAMP
-        WHERE id = $10
+        WHERE id = $12
         RETURNING *
       `, [
         dadosAtualizacao.nome,
@@ -145,6 +150,8 @@ const atualizarInstituicao = async (req: Request, res: Response) => {
         dadosAtualizacao.secretario_nome,
         dadosAtualizacao.secretario_cargo,
         dadosAtualizacao.logo_url,
+        dadosAtualizacao.departamento,
+        dadosAtualizacao.pdf_templates,
         instituicao.id
       ]);
     } else {
@@ -228,9 +235,36 @@ const uploadLogoBase64 = async (req: Request, res: Response) => {
   }
 };
 
+// Salvar template PDF por nome (ex: 'guia_entrega', 'comprovante')
+const salvarTemplate = async (req: Request, res: Response) => {
+  try {
+    const { nome } = req.params;
+    const { template } = req.body;
+
+    if (!template) return res.status(400).json({ message: 'Template é obrigatório' });
+
+    const current = await db.query(`SELECT id, pdf_templates FROM instituicoes WHERE ativo = true ORDER BY id DESC LIMIT 1`);
+    if (!current.rows[0]) return res.status(404).json({ message: 'Instituição não encontrada' });
+
+    const templates = current.rows[0].pdf_templates || {};
+    templates[nome] = template;
+
+    await db.query(
+      `UPDATE instituicoes SET pdf_templates = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
+      [JSON.stringify(templates), current.rows[0].id]
+    );
+
+    res.json({ message: 'Template salvo com sucesso', nome, template });
+  } catch (error) {
+    console.error('Erro ao salvar template:', error);
+    res.status(500).json({ message: 'Erro interno', error: (error as Error).message });
+  }
+};
+
 export {
   buscarInstituicao,
   atualizarInstituicao,
   uploadLogoBase64,
+  salvarTemplate,
   upload
 };

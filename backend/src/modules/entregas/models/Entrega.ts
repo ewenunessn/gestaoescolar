@@ -93,7 +93,7 @@ class EntregaModel {
     }
 
     const result = await db.query(`
-      SELECT DISTINCT
+      SELECT
         e.id,
         e.nome,
         e.endereco,
@@ -101,18 +101,36 @@ class EntregaModel {
         COUNT(gpe.id) as total_itens,
         SUM(CASE WHEN gpe.entrega_confirmada = true THEN 1 ELSE 0 END) as itens_entregues,
         ROUND(
-          (SUM(CASE WHEN gpe.entrega_confirmada = true THEN 1 ELSE 0 END) * 100.0) / COUNT(gpe.id), 
+          (SUM(CASE WHEN gpe.entrega_confirmada = true THEN 1 ELSE 0 END) * 100.0) / COUNT(gpe.id),
           2
         ) as percentual_entregue,
         MIN(DATE(gpe.data_entrega)) as data_entrega,
-        COALESCE(re.ordem, 999) as ordem_rota
+        COALESCE(er.ordem, 999) as ordem_rota,
+        er.rota_nome,
+        er.rota_id,
+        COALESCE(alunos.total_alunos, 0) as total_alunos
       FROM escolas e
       INNER JOIN guia_produto_escola gpe ON e.id = gpe.escola_id
       INNER JOIN guias g ON gpe.guia_id = g.id
-      LEFT JOIN rota_escolas re ON e.id = re.escola_id ${rotaId ? `AND re.rota_id = ${rotaId}` : ''}
+      -- Rota principal da escola
+      LEFT JOIN LATERAL (
+        SELECT re.ordem, rot.nome as rota_nome, rot.id as rota_id
+        FROM rota_escolas re
+        INNER JOIN rotas_entrega rot ON rot.id = re.rota_id
+        WHERE re.escola_id = e.id
+          ${rotaId ? `AND re.rota_id = ${rotaId}` : ''}
+        ORDER BY re.ordem ASC
+        LIMIT 1
+      ) er ON true
+      -- Total de alunos somando todas as modalidades da escola
+      LEFT JOIN LATERAL (
+        SELECT SUM(em.quantidade_alunos) as total_alunos
+        FROM escola_modalidades em
+        WHERE em.escola_id = e.id
+      ) alunos ON true
       ${whereClause}
-      GROUP BY e.id, e.nome, e.endereco, e.telefone, re.ordem
-      ORDER BY COALESCE(re.ordem, 999), e.nome
+      GROUP BY e.id, e.nome, e.endereco, e.telefone, er.ordem, er.rota_nome, er.rota_id, alunos.total_alunos
+      ORDER BY COALESCE(er.ordem, 999), e.nome
     `, params);
     return result.rows;
   }

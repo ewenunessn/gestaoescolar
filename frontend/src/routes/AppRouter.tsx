@@ -90,6 +90,7 @@ const RelatorioFaturamentoTipoFornecedor = lazy(() => import("../pages/Relatorio
 const FaturamentoDetalhe = lazy(() => import("../pages/FaturamentoDetalhe"));
 const ComprovantesEntrega = lazy(() => import("../pages/ComprovantesEntrega"));
 const ConfiguracaoInstituicao = lazy(() => import("../pages/ConfiguracaoInstituicao"));
+const EditorTemplatesPDF = lazy(() => import("../pages/EditorTemplatesPDF"));
 const PlanejamentoCompras = lazy(() => import("../pages/PlanejamentoCompras"));
 const DashboardPNAE = lazy(() => import("../pages/DashboardPNAE"));
 const GerenciamentoUsuarios = lazy(() => import("../pages/GerenciamentoUsuarios"));
@@ -367,6 +368,11 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
             <Route
               path="/configuracao-instituicao"
               element={<LazyRoute><ConfiguracaoInstituicao /></LazyRoute>}
+            />
+            {/* Editor de Templates PDF */}
+            <Route
+              path="/editor-templates-pdf"
+              element={<LazyRoute><EditorTemplatesPDF /></LazyRoute>}
             />
             
             {/* Dashboard PNAE */}

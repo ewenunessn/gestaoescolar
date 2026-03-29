@@ -23,8 +23,16 @@ import {
 } from '@mui/icons-material';
 import { EscolaEntrega, EstatisticasEntregas } from '../types';
 import { entregaService } from '../services/entregaService';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { buscarInstituicao, Instituicao } from '../../../services/instituicao';
+import { formatarQuantidade } from '../../../utils/formatters';
+
+// Inicialização local do pdfmake (mesmo padrão do CardapioCalendario que funciona)
+const initPdfMakeLocal = async () => {
+  const pdfMake = (await import('pdfmake/build/pdfmake')).default;
+  const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default as any;
+  (pdfMake as any).vfs = pdfFonts.pdfMake?.vfs || pdfFonts;
+  return pdfMake;
+};
 
 interface EscolasEntregaListProps {
   onEscolaSelect: (escola: EscolaEntrega) => void;
@@ -44,8 +52,10 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({ onEscola
   const [error, setError] = useState<string | null>(null);
   const [filtro, setFiltro] = useState('');
   const [gerandoPdfId, setGerandoPdfId] = useState<number | null>(null);
+  const [instituicao, setInstituicao] = useState<Instituicao | null>(null);
 
   useEffect(() => {
+    buscarInstituicao().then(setInstituicao).catch(() => {});
     carregarDados();
   }, [filtros]);
 
@@ -121,66 +131,212 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({ onEscola
         filtros.somentePendentes
       );
 
-      const grupos = new Map<string, { label: string; itens: typeof itens }>();
-      itens.forEach((item) => {
-        const chave = item.data_entrega ? item.data_entrega.split('T')[0] : 'sem-data';
-        const label = item.data_entrega ? formatarDataPdf(item.data_entrega) : 'Sem data';
-        if (!grupos.has(chave)) {
-          grupos.set(chave, { label, itens: [] });
+      // Determinar mês/ano a partir dos itens ou filtro
+      const mesAno = (() => {
+        const item = itens[0];
+        if (item?.mes && item?.ano) {
+          const meses = ['JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
+          return `MÊS: ${meses[item.mes - 1]}  ${item.ano}`;
         }
-        grupos.get(chave)!.itens.push(item);
-      });
+        if (filtros.dataInicio) {
+          const d = new Date(filtros.dataInicio + 'T12:00:00');
+          const meses = ['JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
+          return `MÊS: ${meses[d.getMonth()]}  ${d.getFullYear()}`;
+        }
+        return '';
+      })();
 
-      const chavesOrdenadas = Array.from(grupos.keys()).sort((a, b) => {
-        if (a === 'sem-data') return 1;
-        if (b === 'sem-data') return -1;
-        return a.localeCompare(b);
-      });
+      // Ordenar itens por nome
+      const itensOrdenados = [...itens].sort((a, b) => a.produto_nome.localeCompare(b.produto_nome));
 
-      const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
-      doc.setFontSize(14);
-      doc.text('Itens para Entrega', 40, 40);
-      doc.setFontSize(11);
-      doc.text(`Escola: ${escola.nome}`, 40, 60);
-      if (filtros.guiaId) {
-        doc.text(`Guia: ${filtros.guiaId}`, 40, 78);
-      }
+      // Garantir mínimo de 25 linhas (linhas em branco para preenchimento)
+      const MIN_LINHAS = 25;
+      const linhasVazias = Math.max(0, MIN_LINHAS - itensOrdenados.length);
 
-      let startY = filtros.guiaId ? 92 : 78;
-      chavesOrdenadas.forEach((chave) => {
-        const grupo = grupos.get(chave);
-        if (!grupo) return;
-        doc.setFontSize(12);
-        doc.text(`Data: ${grupo.label}`, 40, startY + 16);
-        autoTable(doc, {
-          startY: startY + 24,
-          head: [[
-            'Número',
-            'Nome do item',
-            'Unidade',
-            'Quantidade',
-            'Data de recebimento',
-            'Assinatura'
+      // Corpo da tabela — estilo DataTable do sistema (cabeçalho grey.100, bordas sutis)
+      const tableBody: any[][] = [
+        // Cabeçalho
+        [
+          { text: 'ID',          bold: true, fontSize: 8, color: '#212121', fillColor: '#F5F5F5', alignment: 'center', margin: [4,5,4,5] },
+          { text: 'ITEM',        bold: true, fontSize: 8, color: '#212121', fillColor: '#F5F5F5', margin: [6,5,6,5] },
+          { text: 'UND. MEDIDA', bold: true, fontSize: 8, color: '#212121', fillColor: '#F5F5F5', alignment: 'center', margin: [4,5,4,5] },
+          { text: '1 ENTREGA',   bold: true, fontSize: 8, color: '#212121', fillColor: '#F5F5F5', alignment: 'center', margin: [4,5,4,5] },
+          { text: 'DATA',        bold: true, fontSize: 8, color: '#212121', fillColor: '#F5F5F5', alignment: 'center', margin: [4,5,4,5] },
+          { text: 'CONFIRMAÇÃO', bold: true, fontSize: 8, color: '#212121', fillColor: '#F5F5F5', alignment: 'center', margin: [4,5,4,5] },
+        ],
+        // Itens
+        ...itensOrdenados.map((item, idx) => [
+          { text: String(idx + 1).padStart(2, '0'), fontSize: 8, alignment: 'center', fillColor: '#FFFFFF', margin: [4,4,4,4] },
+          { text: item.produto_nome, fontSize: 8, fillColor: '#FFFFFF', margin: [6,4,6,4] },
+          { text: item.unidade || item.produto_unidade || '', bold: true, fontSize: 8, alignment: 'center', fillColor: '#FFFFFF', margin: [4,4,4,4] },
+          { text: formatarQuantidade(item.quantidade), fontSize: 8, alignment: 'center', fillColor: '#FFFFFF', margin: [4,4,4,4] },
+          { text: '', fontSize: 8, fillColor: '#FFFFFF', margin: [4,4,4,4] },
+          { text: '', fontSize: 8, fillColor: '#FFFFFF', margin: [4,4,4,4] },
+        ]),
+        // Linhas em branco
+        ...Array.from({ length: linhasVazias }, (_, i) => [
+          { text: String(itensOrdenados.length + i + 1).padStart(2, '0'), fontSize: 8, alignment: 'center', fillColor: '#FFFFFF', margin: [4,4,4,4] },
+          { text: '', fontSize: 8, fillColor: '#FFFFFF', margin: [6,4,6,4] },
+          { text: '', fontSize: 8, fillColor: '#FFFFFF', margin: [4,4,4,4] },
+          { text: '', fontSize: 8, fillColor: '#FFFFFF', margin: [4,4,4,4] },
+          { text: '', fontSize: 8, fillColor: '#FFFFFF', margin: [4,4,4,4] },
+          { text: '', fontSize: 8, fillColor: '#FFFFFF', margin: [4,4,4,4] },
+        ]),
+      ];
+
+      const tableLayout = {
+        hLineWidth: (i: number, node: any) => (i === 0 || i === 1 || i === node.table.body.length ? 0.8 : 0.4),
+        vLineWidth: () => 0.4,
+        hLineColor: (i: number, node: any) => (i === 0 || i === node.table.body.length ? '#BDBDBD' : '#E0E0E0'),
+        vLineColor: () => '#E0E0E0',
+        fillColor: () => null,
+      };
+
+      const logoUrl = instituicao?.logo_url ? (() => {
+        const url = instituicao.logo_url;
+        if (url.startsWith('data:')) return url;
+        if (url.startsWith('/')) return `${window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://gestaoescolar-backend.vercel.app'}${url}`;
+        return url;
+      })() : null;
+
+      const headerLeft: any = {
+        columns: [
+          ...(logoUrl ? [{ image: logoUrl, width: 50, height: 50, margin: [0, 0, 8, 0] }] : []),
+          {
+            stack: [
+              { text: instituicao?.nome?.toUpperCase() || 'SECRETARIA MUNICIPAL DE EDUCAÇÃO', fontSize: 11, bold: true },
+              { text: instituicao?.secretario_cargo?.toUpperCase() || 'DEPARTAMENTO DE ALIMENTAÇÃO ESCOLAR', fontSize: 8, color: '#555' },
+            ],
+            alignment: 'left',
+          },
+        ],
+        width: '*',
+      };
+
+      const rotaLabel = escola.rota_nome ? escola.rota_nome.toUpperCase() : (filtros.rotaId ? `ROTA ${filtros.rotaId}` : 'SEM ROTA');
+      const numLabel  = escola.ordem_rota && escola.ordem_rota !== 999
+        ? `Nº ${escola.ordem_rota}`
+        : (escola.rota_id ? `Nº ${escola.rota_id}` : '');
+
+      const headerRight: any = {
+        table: {
+          widths: ['*', 50],
+          body: [[
+            { text: rotaLabel, bold: true, fontSize: 9, alignment: 'center', margin: [6, 6, 6, 6] },
+            { text: numLabel,  bold: true, fontSize: 9, alignment: 'center', margin: [6, 6, 6, 6] },
           ]],
-          body: grupo.itens.map((item) => ([
-            String(item.id),
-            item.produto_nome,
-            item.unidade,
-            String(item.quantidade),
-            item.data_entrega ? formatarDataPdf(item.data_entrega) : '',
-            ''
-          ])),
-          styles: { fontSize: 9 },
-          headStyles: { fillColor: [25, 118, 210] }
-        });
-        // @ts-ignore
-        startY = (doc as any).lastAutoTable.finalY + 12;
-      });
+        },
+        layout: {
+          hLineWidth: () => 1,
+          vLineWidth: () => 1,
+          hLineColor: () => '#333333',
+          vLineColor: () => '#333333',
+        },
+        width: 160,
+      };
 
-      doc.save(`itens-entrega-${escola.nome}.pdf`);
+      const pdfMake = await initPdfMakeLocal();
+
+      const docDef: any = {
+        pageSize: 'A4',
+        pageOrientation: 'portrait',
+        pageMargins: [28, 28, 28, 36],
+        content: [
+          // Cabeçalho
+          {
+            columns: [headerLeft, headerRight],
+            columnGap: 8,
+            margin: [0, 0, 0, 4],
+          },
+          { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 539, y2: 0, lineWidth: 1, lineColor: '#cccccc' }], margin: [0, 4, 0, 10] },
+
+          // Nome da escola
+          { text: escola.nome.toUpperCase(), fontSize: 13, bold: true, margin: [0, 0, 0, 6] },
+
+          // Endereço | Total alunos | Mês
+          {
+            columns: [
+              { text: escola.endereco ? `Nº ${escola.endereco.toUpperCase()}` : '', fontSize: 8, width: '*' },
+              { text: `TOTAL DE ALUNOS:  ${escola.total_alunos ?? '—'}`, fontSize: 8, alignment: 'center', width: 160 },
+              { text: mesAno, fontSize: 8, alignment: 'right', width: 140 },
+            ],
+            margin: [0, 0, 0, 6],
+          },
+
+          // Tabela
+          {
+            table: {
+              headerRows: 1,
+              widths: [22, '*', 60, 50, 50, 70],
+              body: tableBody,
+            },
+            layout: tableLayout,
+          },
+        ],
+        footer: (currentPage: number, pageCount: number) => ({
+          columns: [
+            { text: instituicao?.nome || 'NutriLog', fontSize: 7, color: '#a0aec0', margin: [28, 0, 0, 0] },
+            { text: `Página ${currentPage} de ${pageCount} · Gerado em ${new Date().toLocaleDateString('pt-BR')}`, fontSize: 7, color: '#a0aec0', alignment: 'right', margin: [0, 0, 28, 0] },
+          ],
+        }),
+        defaultStyle: { font: 'Roboto' },
+      };
+
+      // Verificar se existe template personalizado salvo para guia_entrega
+      const templatePersonalizado = instituicao?.pdf_templates?.['guia_entrega'];
+
+      if (templatePersonalizado) {
+        // Usar @pdfme/generator com o template do editor visual
+        const { generate } = await import('@pdfme/generator');
+        const { text, image, line, rectangle, ellipse, table, barcodes } = await import('@pdfme/schemas');
+        const plugins = { text, image, line, rectangle, ellipse, table, ...barcodes };
+
+        // Montar inputs com as variáveis dinâmicas
+        const inputs = [{
+          inst_nome: instituicao?.nome || '',
+          inst_departamento: instituicao?.departamento || '',
+          inst_logo: instituicao?.logo_url || '',
+          inst_secretario: instituicao?.secretario_nome || '',
+          inst_cargo: instituicao?.secretario_cargo || '',
+          escola_nome: escola.nome,
+          escola_endereco: escola.endereco || '',
+          rota_nome: rotaLabel,
+          rota_numero: numLabel,
+          total_alunos: String(escola.total_alunos ?? ''),
+          mes_ano: mesAno,
+        }];
+
+        const pdf = await generate({ template: templatePersonalizado, inputs, plugins });
+        const blob = new Blob([pdf.buffer], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `guia-entrega-${escola.nome}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        // Fallback: layout padrão com pdfmake
+      await new Promise<void>((resolve, reject) => {
+        pdfMake.createPdf(docDef).getBlob((blob: Blob) => {
+          try {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `guia-entrega-${escola.nome}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            resolve();
+          } catch (e) {
+            reject(e);
+          }
+        });
+      });
+      }
     } catch (err) {
       console.error('Erro ao gerar PDF:', err);
-      setError('Erro ao gerar PDF');
+      setError(`Erro ao gerar PDF: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setGerandoPdfId(null);
     }
