@@ -9,7 +9,7 @@ import { ArrowBack as ArrowBackIcon, Delete as DeleteIcon, PictureAsPdf as PdfIc
 import { useToast } from '../hooks/useToast';
 import { usePageTitle } from '../contexts/PageTitleContext';
 import PageContainer from '../components/PageContainer';
-import CalendarioCardapio from '../components/CalendarioCardapio';
+import CalendarioSelector from '../components/CalendarioSelector';
 import { useInstituicaoForPDF } from '../hooks/useInstituicao';
 import { createPDFHeader, createPDFFooter, getDefaultPDFStyles } from '../utils/pdfUtils';
 import {
@@ -19,6 +19,7 @@ import {
 } from '../services/cardapiosModalidade';
 import { listarRefeicoes } from '../services/refeicoes';
 import { listarEventosPorMes, getLabelsEventos, getCoresEventos } from '../services/calendarioLetivo';
+import { listarModalidades, Modalidade } from '../services/modalidades';
 import { LoadingOverlay } from '../components/LoadingOverlay';
 import { DetalheDiaCardapioDialog } from '../components/DetalheDiaCardapioDialog';
 import CustoCardapioDetalheModal from '../components/CustoCardapioDetalheModal';
@@ -51,6 +52,7 @@ const CardapioCalendarioPage: React.FC = () => {
   const [refeicoes, setRefeicoes] = useState<RefeicaoDia[]>([]);
   const [refeicoesDisponiveis, setRefeicoesDisponiveis] = useState<any[]>([]);
   const [eventosCalendario, setEventosCalendario] = useState<any[]>([]);
+  const [modalidades, setModalidades] = useState<Modalidade[]>([]);
   const [custoCardapio, setCustoCardapio] = useState<CustoCardapio | null>(null);
   const [loadingCusto, setLoadingCusto] = useState(false);
   const [modalCustoDetalhe, setModalCustoDetalhe] = useState(false);
@@ -107,14 +109,16 @@ const CardapioCalendarioPage: React.FC = () => {
 
   const loadData = async () => {
     try {
-      const [cardapioData, refeicoesData, refeicoesDisp] = await Promise.all([
+      const [cardapioData, refeicoesData, refeicoesDisp, modalidadesData] = await Promise.all([
         buscarCardapioModalidade(parseInt(cardapioId!)),
         listarRefeicoesCardapio(parseInt(cardapioId!)),
-        listarRefeicoes()
+        listarRefeicoes(),
+        listarModalidades()
       ]);
       setCardapio(cardapioData);
       setRefeicoes(refeicoesData);
       setRefeicoesDisponiveis(refeicoesDisp);
+      setModalidades(modalidadesData);
       
       // Carregar custo do cardápio
       loadCusto();
@@ -859,6 +863,11 @@ const CardapioCalendarioPage: React.FC = () => {
     return dias[diaSemana];
   };
 
+  const getModalidadeNome = (modalidadeId: number) => {
+    const modalidade = modalidades.find(m => m.id === modalidadeId);
+    return modalidade?.nome || `Modalidade ${modalidadeId}`;
+  };
+
   const corTipoRefeicao: Record<string, string> = {
     cafe_manha: '#FFA726',
     lanche_manha: '#66BB6A',
@@ -875,7 +884,7 @@ const CardapioCalendarioPage: React.FC = () => {
     
     return {
       id: ref.id,
-      titulo: `${TIPOS_REFEICAO[ref.tipo_refeicao]}: ${ref.refeicao_nome}`,
+      titulo: ref.refeicao_nome,
       tipo_evento: 'refeicao',
       data_inicio: dataStr,
       data_fim: dataStr,
@@ -892,44 +901,36 @@ const CardapioCalendarioPage: React.FC = () => {
   return (
     <>
       <PageContainer>
-      {/* Header com botão voltar e ações */}
-      <Box display="flex" alignItems="center" mb={3}>
-          <Box flex={1} />
-          <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} color="primary">
-            <PdfIcon />
-          </IconButton>
-        </Box>
-
         <Grid container spacing={3}>
           {/* Coluna principal - Calendário */}
           <Grid item xs={12} lg={8}>
-            <Card sx={{ p: 3 }}>
-              <CalendarioCardapio
-                ano={ano}
-                mes={mes}
-                eventos={todosEventos}
-                onMesAnterior={handleMesAnterior}
-                onProximoMes={handleProximoMes}
-                onDiaClick={handleDiaClick}
-              />
-            </Card>
+            {/* Usar o seletor de calendário */}
+            <CalendarioSelector
+              ano={ano}
+              mes={mes}
+              eventos={todosEventos}
+              onMesAnterior={handleMesAnterior}
+              onProximoMes={handleProximoMes}
+              onDiaClick={handleDiaClick}
+              onPdfClick={(e) => setAnchorEl(e.currentTarget)}
+            />
           </Grid>
 
           {/* Coluna lateral - Informações */}
           <Grid item xs={12} lg={4}>
             {/* Card de resumo do cardápio */}
-            <Card sx={{ p: 2, mb: 2 }}>
-              <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                <CalendarIcon />
+            <Card sx={{ p: 1.5, mb: 2 }}>
+              <Typography variant="subtitle1" sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1, fontWeight: 600 }}>
+                <CalendarIcon fontSize="small" />
                 Resumo do Cardápio
               </Typography>
 
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <Box>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <Typography variant="body2" color="text.secondary">
                     Total de preparações
                   </Typography>
-                  <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main' }}>
+                  <Typography variant="h5" sx={{ fontWeight: 700, color: 'primary.main' }}>
                     {refeicoes.length}
                   </Typography>
                 </Box>
@@ -946,41 +947,43 @@ const CardapioCalendarioPage: React.FC = () => {
                       return acc;
                     }, {} as Record<string, number>)
                   ).map(([tipo, count]) => (
-                    <Box key={tipo} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                      <Typography variant="body2">
+                    <Box key={tipo} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.3 }}>
+                      <Typography variant="caption">
                         {TIPOS_REFEICAO[tipo]}
                       </Typography>
-                      <Chip label={count} size="small" sx={{ bgcolor: corTipoRefeicao[tipo], color: 'white' }} />
+                      <Chip label={count} size="small" sx={{ bgcolor: corTipoRefeicao[tipo], color: 'white', height: 18, fontSize: '0.7rem' }} />
                     </Box>
                   ))}
                 </Box>
               </Box>
             </Card>
 
+            {/* Preview do calendário - removido pois agora temos apenas um tipo */}
+
             {/* Card de custo do cardápio */}
             {custoCardapio && (
-              <Card sx={{ p: 2, mb: 2, bgcolor: '#f0f7ff' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                  <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <RestaurantIcon />
+              <Card sx={{ p: 1.5, mb: 2, bgcolor: '#f0f7ff' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+                  <Typography variant="subtitle1" sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 600 }}>
+                    <RestaurantIcon fontSize="small" />
                     Custo do Cardápio
                   </Typography>
                   <Button
                     size="small"
                     variant="outlined"
                     onClick={() => setModalCustoDetalhe(true)}
-                    sx={{ fontSize: 11 }}
+                    sx={{ fontSize: 10, py: 0.3, px: 1 }}
                   >
-                    Ver detalhamento
+                    Detalhes
                   </Button>
                 </Box>
 
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <Box>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <Typography variant="body2" color="text.secondary">
                       Custo Total Estimado
                     </Typography>
-                    <Typography variant="h4" sx={{ fontWeight: 700, color: 'success.main' }}>
+                    <Typography variant="h5" sx={{ fontWeight: 700, color: 'success.main' }}>
                       {new Intl.NumberFormat('pt-BR', { 
                         style: 'currency', 
                         currency: 'BRL' 
@@ -990,20 +993,20 @@ const CardapioCalendarioPage: React.FC = () => {
 
                   <Divider />
 
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
+                    <Box sx={{ textAlign: 'center', flex: 1 }}>
+                      <Typography variant="caption" color="text.secondary">
                         Total de Alunos
                       </Typography>
-                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600, display: 'block' }}>
                         {custoCardapio.total_alunos}
                       </Typography>
                     </Box>
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">
+                    <Box sx={{ textAlign: 'center', flex: 1 }}>
+                      <Typography variant="caption" color="text.secondary">
                         Custo por Aluno
                       </Typography>
-                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600, display: 'block' }}>
                         {new Intl.NumberFormat('pt-BR', { 
                           style: 'currency', 
                           currency: 'BRL' 
@@ -1020,11 +1023,11 @@ const CardapioCalendarioPage: React.FC = () => {
                           Por modalidade
                         </Typography>
                         {custoCardapio.detalhes_por_modalidade.map((det) => (
-                          <Box key={det.modalidade_id} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                            <Typography variant="body2">
-                              {det.quantidade_alunos} alunos
+                          <Box key={det.modalidade_id} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.3 }}>
+                            <Typography variant="caption">
+                              {getModalidadeNome(det.modalidade_id)} ({det.quantidade_alunos} alunos)
                             </Typography>
-                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            <Typography variant="caption" sx={{ fontWeight: 600 }}>
                               {new Intl.NumberFormat('pt-BR', { 
                                 style: 'currency', 
                                 currency: 'BRL' 

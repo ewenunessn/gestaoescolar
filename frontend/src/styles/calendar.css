@@ -1,0 +1,253 @@
+/* Estilos customizados para React Big Calendar */
+
+/* Container principal */
+.rbc-calendar {
+  font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
+  background: white;
+  border-radius: 8px;
+}
+
+/* Toolbar */
+.rbc-toolbar {
+  display: none !important; /* Usamos toolbar customizada */
+}
+
+/* Header do mês */
+.rbc-header {
+  background: #f5f5f5;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 8px 4px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #424242;
+  text-align: center;
+}
+
+/* Células de data */
+.rbc-date-cell {
+  padding: 4px 8px;
+  font-weight: 500;
+  color: #616161;
+}
+
+.rbc-date-cell.rbc-off-range {
+  color: #bdbdbd;
+}
+
+.rbc-date-cell.rbc-now {
+  background: rgba(25, 118, 210, 0.1);
+  color: #1976d2;
+  font-weight: 700;
+}
+
+/* Eventos */
+.rbc-event {
+  border-radius: 4px !important;
+  border: none !important;
+  padding: 2px 6px !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2) !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.rbc-event:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important;
+}
+
+.rbc-event.rbc-selected {
+  box-shadow: 0 0 0 2px #1976d2 !important;
+}
+
+/* Slots de tempo */
+.rbc-time-slot {
+  border-top: 1px solid #f0f0f0;
+}
+
+.rbc-timeslot-group {
+  border-bottom: 1px solid #e0e0e0;
+}
+
+/* Visualização de semana - OCULTAR HORÁRIOS */
+.rbc-time-header {
+  background: #fafafa;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.rbc-time-header-content {
+  border-left: 1px solid #e0e0e0;
+}
+
+.rbc-time-content {
+  border-top: 1px solid #e0e0e0;
+}
+
+/* OCULTAR coluna de horários na visualização semanal */
+.rbc-time-gutter {
+  display: none !important;
+}
+
+/* OCULTAR linhas de horário na visualização semanal */
+.rbc-time-view .rbc-time-slot {
+  display: none !important;
+}
+
+.rbc-time-view .rbc-timeslot-group {
+  display: none !important;
+}
+
+/* Ajustar layout da visualização semanal sem horários */
+.rbc-time-view .rbc-time-content {
+  margin-left: 0 !important;
+}
+
+.rbc-time-view .rbc-events-container {
+  margin-left: 0 !important;
+}
+
+/* Melhorar visualização semanal para cardápios */
+.rbc-time-view .rbc-day-slot {
+  min-height: 200px !important;
+}
+
+.rbc-time-view .rbc-events-container {
+  padding: 10px !important;
+}
+
+.rbc-time-view .rbc-event {
+  position: relative !important;
+  margin-bottom: 4px !important;
+  width: calc(100% - 8px) !important;
+  left: 4px !important;
+}
+
+/* Labels de tempo */
+.rbc-label {
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  color: #757575;
+  font-weight: 500;
+}
+
+/* Popup de eventos */
+.rbc-overlay {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  padding: 8px;
+  max-width: 300px;
+}
+
+.rbc-overlay-header {
+  background: #f5f5f5;
+  padding: 8px 12px;
+  margin: -8px -8px 8px -8px;
+  border-radius: 8px 8px 0 0;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #424242;
+}
+
+/* Botões de navegação */
+.rbc-btn-group {
+  display: flex;
+  gap: 4px;
+}
+
+.rbc-btn-group button {
+  background: #f5f5f5;
+  border: 1px solid #e0e0e0;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.rbc-btn-group button:hover {
+  background: #e0e0e0;
+}
+
+.rbc-btn-group button.rbc-active {
+  background: #1976d2;
+  color: white;
+  border-color: #1976d2;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .rbc-calendar {
+    font-size: 0.8rem;
+  }
+  
+  .rbc-event {
+    font-size: 10px !important;
+    padding: 1px 4px !important;
+  }
+  
+  .rbc-header {
+    padding: 6px 2px;
+    font-size: 0.75rem;
+  }
+  
+  .rbc-date-cell {
+    padding: 2px 4px;
+    font-size: 0.75rem;
+  }
+}
+
+/* Melhorias visuais */
+.rbc-month-view {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.rbc-month-row {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.rbc-month-row:last-child {
+  border-bottom: none;
+}
+
+.rbc-day-bg {
+  border-right: 1px solid #f0f0f0;
+}
+
+.rbc-day-bg:last-child {
+  border-right: none;
+}
+
+.rbc-day-bg.rbc-off-range-bg {
+  background: #fafafa;
+}
+
+.rbc-day-bg.rbc-today {
+  background: rgba(25, 118, 210, 0.05);
+}
+
+/* Animações suaves */
+.rbc-event-content {
+  transition: all 0.2s ease;
+}
+
+.rbc-show-more {
+  background: #f5f5f5 !important;
+  color: #1976d2 !important;
+  border: 1px solid #e0e0e0 !important;
+  border-radius: 4px !important;
+  font-size: 10px !important;
+  padding: 2px 6px !important;
+  margin-top: 2px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.rbc-show-more:hover {
+  background: #e3f2fd !important;
+  border-color: #1976d2 !important;
+}
