@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -31,7 +31,6 @@ import {
   Checkbox,
   Menu,
   MenuItem,
-  Button,
   Chip,
   Stack,
   Tooltip,
@@ -42,6 +41,23 @@ import ViewColumnIcon from '@mui/icons-material/ViewColumn';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
+
+// Hook para debounce
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
 
 interface DataTableAdvancedProps<TData> {
   data: TData[];
@@ -56,6 +72,7 @@ interface DataTableAdvancedProps<TData> {
   onExport?: (data: TData[]) => void;
   onSelectionChange?: (selectedRows: TData[]) => void;
   toolbarActions?: React.ReactNode;
+  rightToolbarActions?: React.ReactNode;
   onFilterClick?: (event: React.MouseEvent<HTMLElement>) => void;
   onImportExportClick?: (event: React.MouseEvent<HTMLElement>) => void;
   emptyMessage?: string;
@@ -74,6 +91,7 @@ export function DataTableAdvanced<TData>({
   onExport,
   onSelectionChange,
   toolbarActions,
+  rightToolbarActions,
   onFilterClick,
   onImportExportClick,
   emptyMessage = 'Nenhum registro encontrado',
@@ -81,6 +99,7 @@ export function DataTableAdvanced<TData>({
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
+  const [searchInput, setSearchInput] = useState(''); // Input local para debounce
   const [rowSelection, setRowSelection] = useState({});
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [pagination, setPagination] = useState({
@@ -89,6 +108,14 @@ export function DataTableAdvanced<TData>({
   });
   const [columnMenuAnchor, setColumnMenuAnchor] = useState<null | HTMLElement>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+
+  // Debounce do search input (300ms)
+  const debouncedSearchInput = useDebounce(searchInput, 300);
+
+  // Aplicar o filtro debounced
+  useEffect(() => {
+    setGlobalFilter(debouncedSearchInput);
+  }, [debouncedSearchInput]);
 
   const table = useReactTable({
     data,
@@ -164,12 +191,13 @@ export function DataTableAdvanced<TData>({
         </Box>
 
         <Stack direction="row" spacing={1} alignItems="center">
+          {rightToolbarActions}
           {searchOpen ? (
             <TextField
               size="small"
               placeholder={searchPlaceholder}
-              value={globalFilter ?? ''}
-              onChange={(e) => setGlobalFilter(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               autoFocus
               InputProps={{
                 startAdornment: (
@@ -182,6 +210,7 @@ export function DataTableAdvanced<TData>({
                     <IconButton
                       size="small"
                       onClick={() => {
+                        setSearchInput('');
                         setGlobalFilter('');
                         setSearchOpen(false);
                       }}

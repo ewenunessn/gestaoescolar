@@ -1,27 +1,29 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router';
 import {
-  Box, Card, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  TextField, Typography, IconButton, Chip, InputAdornment, CircularProgress,
-  Tooltip, Button, Dialog, DialogTitle, DialogContent, DialogActions,
-  FormControl, InputLabel, Select, MenuItem, LinearProgress,
+  Box, Typography, IconButton, Chip, Button, Dialog, DialogTitle, 
+  DialogContent, DialogActions, FormControl, InputLabel, Select, MenuItem, 
+  LinearProgress, TextField, Tooltip, CircularProgress, Table, TableBody,
+  TableCell, TableHead, TableRow,
 } from '@mui/material';
 import {
-  Search as SearchIcon, Clear as ClearIcon, Edit as EditIcon,
-  CalendarMonth as CalendarIcon, School as SchoolIcon, Add as AddIcon,
+  Clear as ClearIcon, Edit as EditIcon,
+  School as SchoolIcon, Add as AddIcon,
   Inventory as InventoryIcon, Visibility as VisibilityIcon, Tune as TuneIcon,
   ShoppingCart as ShoppingCartIcon,
 } from '@mui/icons-material';
+import { ColumnDef } from '@tanstack/react-table';
 import PageContainer from '../components/PageContainer';
-import PageBreadcrumbs from '../components/PageBreadcrumbs';
-import CompactPagination from '../components/CompactPagination';
+import { DataTableAdvanced } from '../components/DataTableAdvanced';
 import GerarPedidoDaGuiaDialog from '../components/GerarPedidoDaGuiaDialog';
 import ViewTabs from '../components/ViewTabs';
 import { guiaService } from '../services/guiaService';
 import { produtoService } from '../services/produtoService';
 import { useToast } from '../hooks/useToast';
+import { usePageTitle } from '../contexts/PageTitleContext';
 import api from '../services/api';
 import { formatarQuantidade } from '../utils/formatters';
+import { PerformanceMonitor } from '../utils/performanceMonitor';
 
 interface EscolaGuia {
   id: number;
@@ -52,13 +54,16 @@ const GuiaDemandaDetalhe: React.FC = () => {
   const navigate = useNavigate();
   const { guiaId } = useParams<{ guiaId: string }>();
   const toast = useToast();
+  const { setPageTitle, setBackPath } = usePageTitle();
 
   const [guia, setGuia] = useState<any>(null);
   const [escolas, setEscolas] = useState<EscolaGuia[]>([]);
   const [itens, setItens] = useState<ItemGuia[]>([]);
   const [loading, setLoading] = useState(false);
   const [tabAtiva, setTabAtiva] = useState(0);
-  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Lazy loading states for each tab
+  const [tabDataLoaded, setTabDataLoaded] = useState<Record<number, boolean>>({ 0: false, 1: false, 2: false });
 
   // Dialog: quantidades por escola de um produto
   const [dialogEscolasOpen, setDialogEscolasOpen] = useState(false);
@@ -79,14 +84,221 @@ const GuiaDemandaDetalhe: React.FC = () => {
   // Dialog gerar pedido
   const [dialogGerarPedido, setDialogGerarPedido] = useState(false);
 
-  // Paginação
-  const [pageItens, setPageItens] = useState(0);
-  const [pageEscolas, setPageEscolas] = useState(0);
-  const rowsPerPage = 25;
+  // Colunas para aba de produtos
+  const produtosColumns = useMemo<ColumnDef<any>[]>(() => [
+    {
+      accessorKey: 'produto_nome',
+      header: 'Produto',
+      size: 300,
+      enableSorting: true,
+    },
+    {
+      accessorKey: 'data_entrega',
+      header: 'Data',
+      size: 120,
+      enableSorting: true,
+      cell: ({ getValue }) => {
+        const data = getValue() as string | null;
+        return data 
+          ? new Date(data + 'T12:00:00').toLocaleDateString('pt-BR')
+          : '—';
+      },
+    },
+    {
+      accessorKey: 'unidade',
+      header: 'Unidade',
+      size: 80,
+      enableSorting: true,
+    },
+    {
+      accessorKey: 'total',
+      header: 'Qtd. Ajustada',
+      size: 120,
+      enableSorting: true,
+      cell: ({ row }) => {
+        const produto = row.original;
+        const diff = produto.total - produto.total_demanda;
+        const hasAjuste = Math.abs(diff) > 0.0005;
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5 }}>
+            {hasAjuste && (
+              <Chip
+                label={`${diff > 0 ? '+' : ''}${formatarQuantidade(diff)}`}
+                size="small"
+                color={diff > 0 ? 'success' : 'error'}
+                sx={{ height: 14, fontSize: 9, '& .MuiChip-label': { px: 0.5 } }}
+              />
+            )}
+            <Box sx={{ minWidth: 60, textAlign: 'right' }}>{formatarQuantidade(produto.total)}</Box>
+          </Box>
+        );
+      },
+    },
+    {
+      accessorKey: 'total_demanda',
+      header: 'Qtd. Demanda',
+      size: 120,
+      enableSorting: true,
+      cell: ({ getValue }) => (
+        <Box sx={{ color: 'text.secondary', fontSize: '0.8rem', textAlign: 'right' }}>
+          {formatarQuantidade(getValue() as number)}
+        </Box>
+      ),
+    },
+    {
+      accessorKey: 'escolas',
+      header: 'Escolas',
+      size: 80,
+      enableSorting: false,
+      cell: ({ getValue }) => (
+        <Chip label={(getValue() as any[]).length} size="small" color="primary" />
+      ),
+    },
+    {
+      id: 'actions',
+      header: 'Ações',
+      size: 80,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <Tooltip title="Ver quantidades por escola">
+          <IconButton 
+            size="small" 
+            color="primary"
+            onClick={(e) => {
+              e.stopPropagation();
+              const produto = row.original;
+              setProdutoSelecionado({ 
+                id: produto.produto_id, 
+                nome: produto.produto_nome, 
+                data_entrega: produto.data_entrega 
+              });
+              setDialogEscolasOpen(true);
+            }}
+          >
+            <VisibilityIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      ),
+    },
+  ], []);
+
+  // Colunas para aba de escolas
+  const escolasColumns = useMemo<ColumnDef<EscolaGuia>[]>(() => [
+    {
+      accessorKey: 'nome',
+      header: 'Escola',
+      size: 300,
+      enableSorting: true,
+    },
+    {
+      accessorKey: 'total_itens',
+      header: 'Total Itens',
+      size: 100,
+      enableSorting: true,
+      cell: ({ getValue }) => <Chip label={getValue() as number} size="small" />,
+    },
+    {
+      accessorKey: 'qtd_pendente',
+      header: 'Pendentes',
+      size: 100,
+      enableSorting: true,
+      cell: ({ getValue }) => <Chip label={Number(getValue()) || 0} size="small" />,
+    },
+    {
+      accessorKey: 'qtd_programada',
+      header: 'Programados',
+      size: 100,
+      enableSorting: true,
+      cell: ({ getValue }) => <Chip label={Number(getValue()) || 0} size="small" color="info" />,
+    },
+    {
+      accessorKey: 'qtd_entregue',
+      header: 'Entregues',
+      size: 100,
+      enableSorting: true,
+      cell: ({ getValue }) => <Chip label={Number(getValue()) || 0} size="small" color="success" />,
+    },
+    {
+      id: 'actions',
+      header: 'Ações',
+      size: 120,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <Box sx={{ display: 'flex', gap: 0.5 }}>
+          <Tooltip title="Ver itens desta escola">
+            <IconButton 
+              size="small" 
+              color="primary"
+              onClick={(e) => {
+                e.stopPropagation();
+                setEscolaSelecionada(row.original);
+                setDialogItensEscolaOpen(true);
+              }}
+            >
+              <VisibilityIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Gerenciar itens">
+            <IconButton 
+              size="small" 
+              color="default"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/guias-demanda/${guiaId}/escola/${row.original.id}`);
+              }}
+            >
+              <EditIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      ),
+    },
+  ], [navigate, guiaId]);
 
   useEffect(() => {
-    if (guiaId) { loadGuiaDetalhes(); loadProdutos(); }
+    if (guiaId) { 
+      loadGuiaDetalhes(); 
+      loadProdutos(); 
+      // Mark first tab as loaded
+      setTabDataLoaded(prev => ({ ...prev, 0: true }));
+    }
   }, [guiaId]);
+
+  // Lazy load tab data when switching tabs
+  useEffect(() => {
+    if (!tabDataLoaded[tabAtiva] && guia) {
+      loadTabData(tabAtiva);
+    }
+  }, [tabAtiva, guia, tabDataLoaded]);
+
+  const loadTabData = async (tabIndex: number) => {
+    if (tabDataLoaded[tabIndex]) return;
+    
+    try {
+      setLoading(true);
+      // Tab data is already loaded in loadGuiaDetalhes, just mark as loaded
+      setTabDataLoaded(prev => ({ ...prev, [tabIndex]: true }));
+    } catch (error) {
+      console.error(`Erro ao carregar dados da aba ${tabIndex}:`, error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    setBackPath('/guias-demanda');
+    return () => {
+      setBackPath(null);
+    };
+  }, [setBackPath]);
+
+  useEffect(() => {
+    if (guia) {
+      setPageTitle(`Guia de Demanda - ${getMesNome(guia.mes)}/${guia.ano}`);
+    } else {
+      setPageTitle('Guia de Demanda');
+    }
+  }, [guia, setPageTitle]);
 
   const loadProdutos = async () => {
     try { setProdutos(await produtoService.listar()); } catch {}
@@ -95,16 +307,27 @@ const GuiaDemandaDetalhe: React.FC = () => {
   const loadGuiaDetalhes = async () => {
     try {
       setLoading(true);
-      const guiaData = await guiaService.buscarGuia(Number(guiaId));
+      
+      const guiaData = await PerformanceMonitor.measureAsync('Buscar Guia', () =>
+        guiaService.buscarGuia(Number(guiaId))
+      );
       setGuia(guiaData);
+      
       if (guiaData?.mes && guiaData?.ano) {
         const [escolasData, itensData] = await Promise.all([
-          guiaService.listarStatusEscolas(guiaData.mes, guiaData.ano, Number(guiaId)),
-          guiaService.listarProdutosGuia(Number(guiaId)),
+          PerformanceMonitor.measureAsync('Listar Status Escolas', () =>
+            guiaService.listarStatusEscolas(guiaData.mes, guiaData.ano, Number(guiaId))
+          ),
+          PerformanceMonitor.measureAsync('Listar Produtos Guia', () =>
+            guiaService.listarProdutosGuia(Number(guiaId))
+          ),
         ]);
+        
         setEscolas(escolasData);
         const raw = itensData?.data ?? itensData ?? [];
         setItens(raw);
+        
+        PerformanceMonitor.logMemoryUsage('Após carregar dados');
       }
     } catch (error) {
       console.error('Erro ao carregar detalhes da guia:', error);
@@ -122,40 +345,65 @@ const GuiaDemandaDetalhe: React.FC = () => {
 
   // ── Aba Produtos: agrupar itens por (produto_id, data_entrega) ──────────────
   const produtosAgrupados = useMemo(() => {
-    const map = new Map<string, { produto_id: number; produto_nome: string; unidade: string; data_entrega: string | null; total: number; total_demanda: number; escolas: ItemGuia[] }>();
-    for (const item of itens) {
-      const dataKey = item.data_entrega ? String(item.data_entrega).split('T')[0] : '';
-      const key = `${item.produto_id}__${dataKey}`;
-      if (!map.has(key)) {
-        map.set(key, { produto_id: item.produto_id, produto_nome: item.produto_nome, unidade: item.unidade, data_entrega: dataKey || null, total: 0, total_demanda: 0, escolas: [] });
+    if (!itens.length) return [];
+    
+    return PerformanceMonitor.measure('Processar Produtos Agrupados', () => {
+      const map = new Map<string, { produto_id: number; produto_nome: string; unidade: string; data_entrega: string | null; total: number; total_demanda: number; escolas: ItemGuia[] }>();
+      
+      for (const item of itens) {
+        const dataKey = item.data_entrega ? String(item.data_entrega).split('T')[0] : '';
+        const key = `${item.produto_id}__${dataKey}`;
+        
+        if (!map.has(key)) {
+          map.set(key, { 
+            produto_id: item.produto_id, 
+            produto_nome: item.produto_nome, 
+            unidade: item.unidade, 
+            data_entrega: dataKey || null, 
+            total: 0, 
+            total_demanda: 0, 
+            escolas: [] 
+          });
+        }
+        
+        const g = map.get(key)!;
+        g.total += Number(item.quantidade) || 0;
+        g.total_demanda += Number(item.quantidade_demanda ?? item.quantidade) || 0;
+        g.escolas.push(item);
       }
-      const g = map.get(key)!;
-      g.total += Number(item.quantidade) || 0;
-      g.total_demanda += Number(item.quantidade_demanda ?? item.quantidade) || 0;
-      g.escolas.push(item);
-    }
-    return Array.from(map.values()).sort((a, b) => {
-      if (a.produto_nome < b.produto_nome) return -1;
-      if (a.produto_nome > b.produto_nome) return 1;
-      return (a.data_entrega ?? '').localeCompare(b.data_entrega ?? '');
+      
+      const result = Array.from(map.values()).sort((a, b) => {
+        if (a.produto_nome < b.produto_nome) return -1;
+        if (a.produto_nome > b.produto_nome) return 1;
+        return (a.data_entrega ?? '').localeCompare(b.data_entrega ?? '');
+      });
+      
+      console.log(`📊 ${result.length} produtos agrupados de ${itens.length} itens`);
+      return result;
     });
   }, [itens]);
 
-  const filteredProdutos = useMemo(() =>
-    produtosAgrupados.filter(p => p.produto_nome?.toLowerCase().includes(searchTerm.toLowerCase())),
-    [produtosAgrupados, searchTerm]);
-
   // ── Aba Escolas ──────────────────────────────────────────────────────────
-  const escolasComItens = useMemo(() =>
-    escolas.filter(e => {
-      const total = (Number(e.qtd_pendente)||0)+(Number(e.qtd_programada)||0)+(Number(e.qtd_parcial)||0)+(Number(e.qtd_entregue)||0)+(Number(e.qtd_cancelado)||0);
-      return total > 0;
-    }),
-    [escolas]);
-
-  const filteredEscolas = useMemo(() =>
-    escolasComItens.filter(e => e.nome?.toLowerCase().includes(searchTerm.toLowerCase())),
-    [escolasComItens, searchTerm]);
+  const escolasComItens = useMemo(() => {
+    if (!escolas.length || !itens.length) return [];
+    
+    return PerformanceMonitor.measure('Processar Escolas com Itens', () => {
+      const result = escolas.filter(e => {
+        const total = (Number(e.qtd_pendente)||0)+(Number(e.qtd_programada)||0)+(Number(e.qtd_parcial)||0)+(Number(e.qtd_entregue)||0)+(Number(e.qtd_cancelado)||0);
+        return total > 0;
+      }).map(escola => {
+        // Calcular total_itens baseado nos itens reais desta escola
+        const itensEscola = itens.filter(item => item.escola_id === escola.id);
+        return {
+          ...escola,
+          total_itens: itensEscola.length
+        };
+      });
+      
+      console.log(`📊 ${result.length} escolas processadas de ${escolas.length} total`);
+      return result;
+    });
+  }, [escolas, itens]);
 
   // Itens da escola selecionada no dialog
   const itensEscolaSelecionada = useMemo(() => {
@@ -176,26 +424,136 @@ const GuiaDemandaDetalhe: React.FC = () => {
 
   // Matriz consolidada: escolas x produtos
   const matrizConsolidada = useMemo(() => {
-    // Obter lista única de produtos
-    const produtosUnicos = Array.from(new Set(itens.map(i => i.produto_id)))
-      .map(pid => {
-        const item = itens.find(i => i.produto_id === pid);
-        return { id: pid, nome: item?.produto_nome || '', unidade: item?.unidade || 'Kg' };
-      })
-      .sort((a, b) => a.nome.localeCompare(b.nome));
+    if (!itens.length || !escolasComItens.length) return { produtos: [], matriz: [] };
+    
+    return PerformanceMonitor.measure('Processar Matriz Consolidada', () => {
+      // Obter lista única de produtos
+      const produtosUnicos = Array.from(new Set(itens.map(i => i.produto_id)))
+        .map(pid => {
+          const item = itens.find(i => i.produto_id === pid);
+          return { id: pid, nome: item?.produto_nome || '', unidade: item?.unidade || 'Kg' };
+        })
+        .sort((a, b) => a.nome.localeCompare(b.nome));
 
-    // Criar matriz
-    const matriz = escolasComItens.map(escola => {
-      const linha: any = { escola_id: escola.id, escola_nome: escola.nome };
-      produtosUnicos.forEach(produto => {
-        const item = itens.find(i => i.escola_id === escola.id && i.produto_id === produto.id);
-        linha[`produto_${produto.id}`] = item ? Number(item.quantidade) : 0;
+      // Criar matriz
+      const matriz = escolasComItens.map(escola => {
+        const linha: any = { escola_id: escola.id, escola_nome: escola.nome };
+        produtosUnicos.forEach(produto => {
+          const item = itens.find(i => i.escola_id === escola.id && i.produto_id === produto.id);
+          linha[`produto_${produto.id}`] = item ? Number(item.quantidade) : 0;
+        });
+        return linha;
       });
-      return linha;
+
+      console.log(`📊 Matriz ${escolasComItens.length}x${produtosUnicos.length} processada`);
+      return { produtos: produtosUnicos, matriz };
+    });
+  }, [itens, escolasComItens]);
+
+  // Colunas para aba consolidada
+  const consolidadaColumns = useMemo<ColumnDef<any>[]>(() => {
+    if (matrizConsolidada.produtos.length === 0) return [];
+    
+    const columns: ColumnDef<any>[] = [
+      {
+        accessorKey: 'escola_nome',
+        header: 'Escola',
+        size: 350,
+        enableSorting: true,
+        cell: ({ row, table }) => {
+          const index = table.getSortedRowModel().rows.findIndex(r => r.id === row.id);
+          return (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 300 }}>
+              <Chip 
+                label={index + 1} 
+                size="small" 
+                sx={{ 
+                  minWidth: 32, 
+                  height: 24, 
+                  fontWeight: 600,
+                  bgcolor: 'primary.main',
+                  color: 'white',
+                  flexShrink: 0
+                }} 
+              />
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  flex: 1
+                }}
+              >
+                {row.original.escola_nome}
+              </Typography>
+            </Box>
+          );
+        },
+      },
+    ];
+
+    // Adicionar colunas para cada produto
+    matrizConsolidada.produtos.forEach(produto => {
+      columns.push({
+        accessorKey: `produto_${produto.id}`,
+        header: produto.nome,
+        size: 120,
+        enableSorting: true,
+        cell: ({ getValue }) => {
+          const quantidade = getValue() as number;
+          return quantidade > 0 ? (
+            <Chip 
+              label={formatarQuantidade(quantidade)} 
+              size="small" 
+              color="primary"
+              variant="outlined"
+            />
+          ) : (
+            <Typography variant="body2" color="text.disabled">—</Typography>
+          );
+        },
+      });
     });
 
-    return { produtos: produtosUnicos, matriz };
-  }, [itens, escolasComItens]);
+    return columns;
+  }, [matrizConsolidada]);
+
+  // Toolbar actions para as tabelas
+  const toolbarActions = (
+    <Box sx={{ display: 'flex', gap: 1 }}>
+      <Button 
+        variant="contained" 
+        startIcon={<AddIcon />} 
+        size="small"
+        onClick={() => setOpenBatchDialog(true)}
+        sx={{ bgcolor: '#000000', '&:hover': { bgcolor: '#333333' } }}
+      >
+        Adicionar
+      </Button>
+      <Button 
+        variant="contained" 
+        startIcon={<ShoppingCartIcon />} 
+        size="small"
+        onClick={() => setDialogGerarPedido(true)}
+        sx={{ bgcolor: '#1d4ed8', '&:hover': { bgcolor: '#1e40af' } }}
+      >
+        Gerar Pedido
+      </Button>
+    </Box>
+  );
+
+  // Right toolbar actions (próximo ao search)
+  const rightToolbarActions = (
+    <Button 
+      variant="outlined" 
+      startIcon={<TuneIcon />} 
+      size="small"
+      onClick={() => navigate(`/guias-demanda/${guiaId}/ajuste`)}
+    >
+      Ajustar
+    </Button>
+  );
 
   const handleBatchSubmit = async () => {
     if (!batchForm.produtoId || !batchForm.data_entrega || !guia) return;
@@ -212,7 +570,7 @@ const GuiaDemandaDetalhe: React.FC = () => {
           mes_competencia: guia.mes, ano_competencia: guia.ano, status,
         });
       }
-      toast.success('Sucesso!', 'Quantidades adicionadas com sucesso!');
+      toast.success('Quantidades adicionadas com sucesso!');
       setOpenBatchDialog(false);
       setBatchQuantidades({}); setBatchStatus({});
       loadGuiaDetalhes();
@@ -223,321 +581,107 @@ const GuiaDemandaDetalhe: React.FC = () => {
     }
   };
 
-  if (loading) return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><CircularProgress /></Box>;
+  // ── Resumo otimizado ─────────────────────────────────────────────────────
+  const estatisticas = useMemo(() => {
+    return PerformanceMonitor.measure('Calcular Estatísticas', () => {
+      const stats = {
+        totalItens: itens.length,
+        totalEscolas: escolasComItens.length,
+        totalEntregues: itens.filter(i => i.status === 'entregue').length,
+        totalPendentes: itens.filter(i => i.status === 'pendente').length,
+      };
+      
+      console.log('📊 Estatísticas:', stats);
+      return stats;
+    });
+  }, [itens, escolasComItens]);
 
-  // ── Resumo ───────────────────────────────────────────────────────────────
-  const totalItens = itens.length;
-  const totalEscolas = escolasComItens.length;
-  const totalEntregues = itens.filter(i => i.status === 'entregue').length;
-  const totalPendentes = itens.filter(i => i.status === 'pendente').length;
+  // Early return AFTER all hooks are defined
+  if (loading) return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><CircularProgress /></Box>;
 
   return (
     <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
       <PageContainer fullHeight>
-        <PageBreadcrumbs items={[
-          { label: 'Guias de Demanda', path: '/guias-demanda', icon: <CalendarIcon fontSize="small" /> },
-          { label: guia ? `${getMesNome(guia.mes)}/${guia.ano}` : 'Detalhes' }
-        ]} />
-
-        {/* Cards de resumo */}
-        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-          {[
-            { label: 'Escolas', value: totalEscolas, color: 'primary.main' },
-            { label: 'Itens', value: totalItens },
-            { label: 'Entregues', value: totalEntregues, color: 'success.main' },
-            { label: 'Pendentes', value: totalPendentes, color: 'warning.main' },
-          ].map(c => (
-            <Card key={c.label} sx={{ p: 1.5, flex: 1 }}>
-              <Typography variant="caption" color="text.secondary">{c.label}</Typography>
-              <Typography variant="h5" sx={{ fontWeight: 600, color: c.color }}>{c.value}</Typography>
-            </Card>
-          ))}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Button variant="outlined" startIcon={<TuneIcon />} size="small"
-              onClick={() => navigate(`/guias-demanda/${guiaId}/ajuste`)}
-              sx={{ whiteSpace: 'nowrap' }}>
-              Ajuste Fino
-            </Button>
-            <Button variant="contained" startIcon={<AddIcon />} size="small"
-              onClick={() => setOpenBatchDialog(true)}
-              sx={{ bgcolor: '#059669', '&:hover': { bgcolor: '#047857' }, whiteSpace: 'nowrap' }}>
-              Adicionar em Lote
-            </Button>
-            <Button variant="contained" startIcon={<ShoppingCartIcon />} size="small"
-              onClick={() => setDialogGerarPedido(true)}
-              sx={{ bgcolor: '#1d4ed8', '&:hover': { bgcolor: '#1e40af' }, whiteSpace: 'nowrap' }}>
-              Gerar Pedido
-            </Button>
-          </Box>
-        </Box>
-
-        {/* Abas */}
-        <Box sx={{ mb: 1.5 }}>
+        {/* Abas e Estatísticas */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
           <ViewTabs
             value={tabAtiva}
-            onChange={(v) => { setTabAtiva(v); setSearchTerm(''); }}
+            onChange={(v) => setTabAtiva(v)}
             tabs={[
               { value: 0, label: 'Por Produto', icon: <InventoryIcon sx={{ fontSize: 16 }} /> },
               { value: 1, label: 'Por Escola', icon: <SchoolIcon sx={{ fontSize: 16 }} /> },
               { value: 2, label: 'Consolidada', icon: <TuneIcon sx={{ fontSize: 16 }} /> },
             ]}
           />
-        </Box>
-
-        {/* Busca */}
-        <Box sx={{ mb: 1.5 }}>
-          <TextField placeholder={tabAtiva === 0 ? 'Buscar produto...' : 'Buscar escola...'}
-            value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-            size="small" sx={{ width: 320 }}
-            InputProps={{
-              startAdornment: <InputAdornment position="start"><SearchIcon sx={{ color: 'text.secondary' }} /></InputAdornment>,
-              endAdornment: searchTerm && <InputAdornment position="end"><IconButton size="small" onClick={() => setSearchTerm('')}><ClearIcon fontSize="small" /></IconButton></InputAdornment>,
-            }} />
+          
+          {/* Estatísticas discretas */}
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+            {[
+              { label: 'Escolas', value: estatisticas.totalEscolas, color: 'text.secondary' },
+              { label: 'Itens', value: estatisticas.totalItens, color: 'text.secondary' },
+              { label: 'Entregues', value: estatisticas.totalEntregues, color: 'success.main' },
+              { label: 'Pendentes', value: estatisticas.totalPendentes, color: 'warning.main' },
+            ].map(c => (
+              <Box key={c.label} sx={{ textAlign: 'center', minWidth: 60 }}>
+                <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.7rem', display: 'block' }}>
+                  {c.label}
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600, color: c.color, fontSize: '0.9rem' }}>
+                  {c.value}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
         </Box>
 
         {/* ── Aba 0: Por Produto ── */}
         {tabAtiva === 0 && (
-          <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-            {filteredProdutos.length === 0 ? (
-              <Box textAlign="center" py={8}>
-                <InventoryIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-                <Typography variant="h6" color="text.secondary">Nenhum produto encontrado</Typography>
-              </Box>
-            ) : (
-              <>
-                <TableContainer sx={{ flex: 1, minHeight: 0 }}>
-                  <Table stickyHeader size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Produto</TableCell>
-                        <TableCell align="center">Data</TableCell>
-                        <TableCell align="center">Unidade</TableCell>
-                        <TableCell align="right">Qtd. Ajustada</TableCell>
-                        <TableCell align="right">Qtd. Demanda</TableCell>
-                        <TableCell align="center">Escolas</TableCell>
-                        <TableCell align="center">Ações</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {filteredProdutos.slice(pageItens * rowsPerPage, (pageItens + 1) * rowsPerPage).map(p => {
-                        const diff = p.total - p.total_demanda;
-                        const hasAjuste = Math.abs(diff) > 0.0005;
-                        return (
-                          <TableRow key={`${p.produto_id}__${p.data_entrega}`} hover>
-                            <TableCell sx={{ fontWeight: 500 }}>{p.produto_nome}</TableCell>
-                            <TableCell align="center">
-                              {p.data_entrega
-                                ? new Date(p.data_entrega + 'T12:00:00').toLocaleDateString('pt-BR')
-                                : '—'}
-                            </TableCell>
-                            <TableCell align="center">{p.unidade}</TableCell>
-                            <TableCell align="right" sx={{ fontWeight: 600 }}>
-                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5 }}>
-                                {hasAjuste && (
-                                  <Chip
-                                    label={`${diff > 0 ? '+' : ''}${formatarQuantidade(diff)}`}
-                                    size="small"
-                                    color={diff > 0 ? 'success' : 'error'}
-                                    sx={{ height: 14, fontSize: 9, '& .MuiChip-label': { px: 0.5 } }}
-                                  />
-                                )}
-                                <Box sx={{ minWidth: 60, textAlign: 'right' }}>{formatarQuantidade(p.total)}</Box>
-                              </Box>
-                            </TableCell>
-                            <TableCell align="right" sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>
-                              {formatarQuantidade(p.total_demanda)}
-                            </TableCell>
-                            <TableCell align="center">
-                              <Chip label={p.escolas.length} size="small" color="primary" />
-                            </TableCell>
-                            <TableCell align="center">
-                              <Tooltip title="Ver quantidades por escola">
-                                <IconButton size="small" color="primary"
-                                  onClick={() => { setProdutoSelecionado({ id: p.produto_id, nome: p.produto_nome, data_entrega: p.data_entrega }); setDialogEscolasOpen(true); }}>
-                                  <VisibilityIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-                <CompactPagination count={filteredProdutos.length} page={pageItens} rowsPerPage={rowsPerPage}
-                  onPageChange={(_, p) => setPageItens(p)}
-                  onRowsPerPageChange={e => { setPageItens(0); }} rowsPerPageOptions={[25]} />
-              </>
-            )}
+          <Box sx={{ flex: 1, minHeight: 0 }}>
+            <DataTableAdvanced
+              data={produtosAgrupados}
+              columns={produtosColumns}
+              loading={loading}
+              searchPlaceholder="Buscar produto..."
+              emptyMessage="Nenhum produto encontrado"
+              toolbarActions={toolbarActions}
+              rightToolbarActions={rightToolbarActions}
+            />
           </Box>
         )}
 
         {/* ── Aba 1: Por Escola ── */}
         {tabAtiva === 1 && (
-          <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-            {filteredEscolas.length === 0 ? (
-              <Box textAlign="center" py={8}>
-                <SchoolIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-                <Typography variant="h6" color="text.secondary">Nenhuma escola com itens</Typography>
-              </Box>
-            ) : (
-              <>
-                <TableContainer sx={{ flex: 1, minHeight: 0 }}>
-                  <Table stickyHeader size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Escola</TableCell>
-                        <TableCell align="center">Total Itens</TableCell>
-                        <TableCell align="center">Pendentes</TableCell>
-                        <TableCell align="center">Programados</TableCell>
-                        <TableCell align="center">Entregues</TableCell>
-                        <TableCell align="center">Ações</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {filteredEscolas.slice(pageEscolas * rowsPerPage, (pageEscolas + 1) * rowsPerPage).map(e => {
-                        const total = (Number(e.qtd_pendente)||0)+(Number(e.qtd_programada)||0)+(Number(e.qtd_parcial)||0)+(Number(e.qtd_entregue)||0)+(Number(e.qtd_cancelado)||0);
-                        return (
-                          <TableRow key={e.id} hover>
-                            <TableCell sx={{ fontWeight: 500 }}>{e.nome}</TableCell>
-                            <TableCell align="center"><Chip label={total} size="small" /></TableCell>
-                            <TableCell align="center"><Chip label={Number(e.qtd_pendente)||0} size="small" /></TableCell>
-                            <TableCell align="center"><Chip label={Number(e.qtd_programada)||0} size="small" color="info" /></TableCell>
-                            <TableCell align="center"><Chip label={Number(e.qtd_entregue)||0} size="small" color="success" /></TableCell>
-                            <TableCell align="center">
-                              <Tooltip title="Ver itens desta escola">
-                                <IconButton size="small" color="primary"
-                                  onClick={() => { setEscolaSelecionada(e); setDialogItensEscolaOpen(true); }}>
-                                  <VisibilityIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                              <Tooltip title="Gerenciar itens">
-                                <IconButton size="small" color="default"
-                                  onClick={() => navigate(`/guias-demanda/${guiaId}/escola/${e.id}`)}>
-                                  <EditIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-                <CompactPagination count={filteredEscolas.length} page={pageEscolas} rowsPerPage={rowsPerPage}
-                  onPageChange={(_, p) => setPageEscolas(p)}
-                  onRowsPerPageChange={e => { setPageEscolas(0); }} rowsPerPageOptions={[25]} />
-              </>
-            )}
+          <Box sx={{ flex: 1, minHeight: 0 }}>
+            <DataTableAdvanced
+              data={escolasComItens}
+              columns={escolasColumns}
+              loading={loading}
+              searchPlaceholder="Buscar escola..."
+              emptyMessage="Nenhuma escola com itens"
+              toolbarActions={toolbarActions}
+              rightToolbarActions={rightToolbarActions}
+            />
           </Box>
         )}
 
         {/* ── Aba 2: Consolidada ── */}
         {tabAtiva === 2 && (
-          <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <Box sx={{ flex: 1, minHeight: 0 }}>
             {matrizConsolidada.produtos.length === 0 ? (
               <Box textAlign="center" py={8}>
                 <TuneIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
                 <Typography variant="h6" color="text.secondary">Nenhum dado para consolidar</Typography>
               </Box>
             ) : (
-              <>
-                <Box sx={{ mb: 2, p: 2, bgcolor: 'info.lighter', borderRadius: 1 }}>
-                  <Typography variant="body2" color="info.dark">
-                    📊 Visão consolidada: cada linha representa uma escola e cada coluna um produto.
-                    Os valores mostram a quantidade total de cada produto por escola.
-                  </Typography>
-                </Box>
-                <TableContainer sx={{ flex: 1, minHeight: 0, overflowX: 'auto' }}>
-                  <Table stickyHeader size="small" sx={{ minWidth: 800 }}>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell sx={{ fontWeight: 700, minWidth: 200, position: 'sticky', left: 0, bgcolor: 'background.paper', zIndex: 3 }}>
-                          Escola
-                        </TableCell>
-                        {matrizConsolidada.produtos.map(produto => (
-                          <TableCell key={produto.id} align="right" sx={{ fontWeight: 700, minWidth: 120 }}>
-                            <Tooltip title={produto.nome}>
-                              <Box sx={{ 
-                                maxWidth: 120, 
-                                overflow: 'hidden', 
-                                textOverflow: 'ellipsis', 
-                                whiteSpace: 'nowrap' 
-                              }}>
-                                {produto.nome}
-                              </Box>
-                            </Tooltip>
-                            <Typography variant="caption" color="text.secondary" display="block">
-                              ({produto.unidade})
-                            </Typography>
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {matrizConsolidada.matriz
-                        .filter(linha => linha.escola_nome.toLowerCase().includes(searchTerm.toLowerCase()))
-                        .map((linha, index) => (
-                        <TableRow key={linha.escola_id} hover>
-                          <TableCell sx={{ fontWeight: 500, position: 'sticky', left: 0, bgcolor: 'background.paper', zIndex: 1 }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <Chip 
-                                label={index + 1} 
-                                size="small" 
-                                sx={{ 
-                                  minWidth: 32, 
-                                  height: 24, 
-                                  fontWeight: 600,
-                                  bgcolor: 'primary.main',
-                                  color: 'white'
-                                }} 
-                              />
-                              {linha.escola_nome}
-                            </Box>
-                          </TableCell>
-                          {matrizConsolidada.produtos.map(produto => {
-                            const quantidade = linha[`produto_${produto.id}`];
-                            return (
-                              <TableCell key={produto.id} align="right">
-                                {quantidade > 0 ? (
-                                  <Chip 
-                                    label={formatarQuantidade(quantidade)} 
-                                    size="small" 
-                                    color="primary"
-                                    variant="outlined"
-                                  />
-                                ) : (
-                                  <Typography variant="body2" color="text.disabled">—</Typography>
-                                )}
-                              </TableCell>
-                            );
-                          })}
-                        </TableRow>
-                      ))}
-                      {/* Linha de totais */}
-                      <TableRow sx={{ bgcolor: 'action.hover' }}>
-                        <TableCell sx={{ fontWeight: 700, position: 'sticky', left: 0, bgcolor: 'action.hover', zIndex: 1 }}>
-                          TOTAL
-                        </TableCell>
-                        {matrizConsolidada.produtos.map(produto => {
-                          const total = matrizConsolidada.matriz.reduce((sum, linha) => 
-                            sum + (linha[`produto_${produto.id}`] || 0), 0
-                          );
-                          return (
-                            <TableCell key={produto.id} align="right" sx={{ fontWeight: 700 }}>
-                              <Chip 
-                                label={formatarQuantidade(total)} 
-                                size="small" 
-                                color="success"
-                              />
-                            </TableCell>
-                          );
-                        })}
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </>
+              <DataTableAdvanced
+                data={matrizConsolidada.matriz}
+                columns={consolidadaColumns}
+                loading={loading}
+                searchPlaceholder="Buscar escola..."
+                emptyMessage="Nenhuma escola encontrada"
+                toolbarActions={toolbarActions}
+                rightToolbarActions={rightToolbarActions}
+              />
             )}
           </Box>
         )}
@@ -681,7 +825,7 @@ const GuiaDemandaDetalhe: React.FC = () => {
       {/* Modal Adicionar em Lote */}
       <Dialog open={openBatchDialog} onClose={() => !batchSaving && setOpenBatchDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontWeight: 600, fontSize: '1.25rem' }}>Adicionar Produto em Lote</span>
+          <span style={{ fontWeight: 600, fontSize: '1.25rem' }}>Adicionar Produto</span>
           <IconButton size="small" onClick={() => !batchSaving && setOpenBatchDialog(false)} disabled={batchSaving}>
             <ClearIcon fontSize="small" />
           </IconButton>
