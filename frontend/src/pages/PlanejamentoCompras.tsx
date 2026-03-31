@@ -243,40 +243,63 @@ export default function PlanejamentoCompras() {
       }
 
       if (jobResp?.job_id) {
-        // Modo assíncrono: polling do job
+        // Modo assíncrono: polling do job — mas com detecção de ambiente serverless
         const jobId = jobResp.job_id;
         let tentativas = 0;
         const MAX = 120; // 2 min com intervalo de 1s
-        await new Promise<void>((resolve, reject) => {
-          const interval = setInterval(async () => {
-            tentativas++;
-            try {
-              const job = await buscarStatusJob(jobId);
-              setJobProgresso({ progresso: job.progresso ?? 0, mensagem: job.status });
-              if (job.status === 'concluido') {
-                clearInterval(interval);
-                const res = job.resultado as GerarGuiasResponse;
-                setResultadoGuias(res);
-                if (res?.total_criadas > 0) {
-                  toast.success('Guias geradas', `${res.total_criadas} guia(s) criada(s) com sucesso`);
-                } else {
-                  toast.error('Nenhuma guia criada', res?.erros?.map(e => e.motivo).join('; ') || 'Verifique os erros');
-                }
-                resolve();
-              } else if (job.status === 'erro') {
-                clearInterval(interval);
-                reject(new Error(job.erro || 'Erro no processamento'));
-              } else if (tentativas >= MAX) {
-                clearInterval(interval);
-                reject(new Error('Tempo limite excedido'));
-              }
-            } catch (e) {
-              clearInterval(interval);
-              reject(e);
+
+        // Aguarda até 5s para ver se o job sai de 'pendente'
+        // Se não sair, é ambiente serverless (Vercel) — cai no síncrono
+        let jobSaiuDePendente = false;
+        for (let i = 0; i < 5; i++) {
+          await new Promise(r => setTimeout(r, 1000));
+          try {
+            const job = await buscarStatusJob(jobId);
+            if (job.status !== 'pendente') {
+              jobSaiuDePendente = true;
+              break;
             }
-          }, 1000);
-        });
-      } else {
+          } catch { break; }
+        }
+
+        if (!jobSaiuDePendente) {
+          // Ambiente serverless — usar síncrono
+          jobResp = null;
+        } else {
+          // Job está processando — continuar polling
+          await new Promise<void>((resolve, reject) => {
+            const interval = setInterval(async () => {
+              tentativas++;
+              try {
+                const job = await buscarStatusJob(jobId);
+                setJobProgresso({ progresso: job.progresso ?? 0, mensagem: job.status });
+                if (job.status === 'concluido') {
+                  clearInterval(interval);
+                  const res = job.resultado as GerarGuiasResponse;
+                  setResultadoGuias(res);
+                  if (res?.total_criadas > 0) {
+                    toast.success('Guias geradas', `${res.total_criadas} guia(s) criada(s) com sucesso`);
+                  } else {
+                    toast.error('Nenhuma guia criada', res?.erros?.map(e => e.motivo).join('; ') || 'Verifique os erros');
+                  }
+                  resolve();
+                } else if (job.status === 'erro') {
+                  clearInterval(interval);
+                  reject(new Error(job.erro || 'Erro no processamento'));
+                } else if (tentativas >= MAX) {
+                  clearInterval(interval);
+                  reject(new Error('Tempo limite excedido'));
+                }
+              } catch (e) {
+                clearInterval(interval);
+                reject(e);
+              }
+            }, 1000);
+          });
+        }
+      }
+
+      if (!jobResp?.job_id) {
         // Fallback síncrono (Vercel ou ambiente sem suporte a jobs)
         const res = await gerarGuiasDemanda(params.competencia, params.periodos, params.escola_ids);
         setResultadoGuias(res);
