@@ -283,3 +283,41 @@ export const dateUtils = {
     };
   }
 };
+
+/**
+ * Formata uma data ISO ou Date para o formato brasileiro (DD/MM/YYYY)
+ * 
+ * @param data - String ISO (YYYY-MM-DD) ou objeto Date
+ * @returns String formatada (DD/MM/YYYY)
+ * 
+ * @example
+ * formatarData('2026-04-01') // '01/04/2026'
+ * formatarData(new Date(2026, 3, 1)) // '01/04/2026'
+ */
+export function formatarData(data: string | Date): string {
+  if (!data) return '';
+  
+  const date = typeof data === 'string' ? new Date(data) : data;
+  const dia = String(date.getDate()).padStart(2, '0');
+  const mes = String(date.getMonth() + 1).padStart(2, '0');
+  const ano = date.getFullYear();
+  
+  return `${dia}/${mes}/${ano}`;
+}
+
+/**
+ * Formata um número para o formato de moeda brasileira (R$ X.XXX,XX)
+ * 
+ * @param valor - Valor numérico
+ * @returns String formatada como moeda
+ * 
+ * @example
+ * formatarMoeda(1234.56) // 'R$ 1.234,56'
+ * formatarMoeda(0) // 'R$ 0,00'
+ */
+export function formatarMoeda(valor: number): string {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  }).format(valor);
+}

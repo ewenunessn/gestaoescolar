@@ -281,7 +281,7 @@ const CardapioCalendarioPage: React.FC = () => {
       };
       
       const semanas = getCalendarioSemanasParaPDF();
-      const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
+      const diasSemana = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
       
       // Criar corpo da tabela do calendário
       const tableBody: any[] = [];
@@ -291,7 +291,8 @@ const CardapioCalendarioPage: React.FC = () => {
         diasSemana.map(dia => ({
           text: dia,
           style: 'tableHeader',
-          alignment: 'center'
+          alignment: 'center',
+          bold: true
         }))
       );
       
@@ -299,34 +300,45 @@ const CardapioCalendarioPage: React.FC = () => {
       semanas.forEach(semana => {
         const row = semana.map(dia => {
           if (dia === null) {
-            return { text: '', fillColor: '#e0e0e0' };
+            return { text: '', fillColor: '#f5f5f5' };
           }
           
           const refeicoesNoDia = getRefeicoesNoDia(dia);
-          const content: any[] = [
-            { text: dia.toString(), bold: true, fontSize: 11, margin: [0, 0, 0, 3] }
-          ];
+          const content: any[] = [];
           
+          // Número do dia
+          content.push({
+            text: dia.toString(),
+            bold: true,
+            fontSize: 12,
+            margin: [0, 0, 0, 4]
+          });
+          
+          // Refeições (máximo 3)
           refeicoesNoDia.slice(0, 3).forEach(ref => {
             content.push({
-              text: `${TIPOS_REFEICAO[ref.tipo_refeicao]}: ${ref.refeicao_nome}`,
-              fontSize: 7,
+              text: [
+                { text: `${TIPOS_REFEICAO[ref.tipo_refeicao]}: `, bold: true, fontSize: 7 },
+                { text: ref.refeicao_nome, fontSize: 7 }
+              ],
               margin: [0, 1, 0, 1]
             });
           });
           
+          // Indicador de mais refeições
           if (refeicoesNoDia.length > 3) {
             content.push({
               text: `+${refeicoesNoDia.length - 3} mais`,
-              fontSize: 7,
+              fontSize: 6,
               italics: true,
-              color: '#666'
+              color: '#888',
+              margin: [0, 2, 0, 0]
             });
           }
           
           return {
             stack: content,
-            margin: 3
+            margin: [4, 4, 4, 4]
           };
         });
         
@@ -369,31 +381,35 @@ const CardapioCalendarioPage: React.FC = () => {
       const docDefinition: any = {
         pageSize: 'A4',
         pageOrientation: 'landscape',
-        pageMargins: [20, 60, 20, 40],
+        pageMargins: [15, 60, 15, 30],
         header: {
           stack: headerContent,
-          margin: [20, 15, 20, 0]
+          margin: [15, 10, 15, 0]
         },
         content: [
           {
             table: {
               widths: Array(7).fill('*'),
-              heights: (row: number) => row === 0 ? 20 : 80,
+              heights: (row: number) => row === 0 ? 18 : 75,
               body: tableBody
             },
             layout: {
-              hLineWidth: () => 1,
-              vLineWidth: () => 1,
+              hLineWidth: () => 0.5,
+              vLineWidth: () => 0.5,
               hLineColor: () => '#cccccc',
-              vLineColor: () => '#cccccc'
+              vLineColor: () => '#cccccc',
+              paddingLeft: () => 3,
+              paddingRight: () => 3,
+              paddingTop: () => 3,
+              paddingBottom: () => 3
             }
           }
         ],
         styles: {
-          header: { fontSize: 16, bold: true },
-          subheader: { fontSize: 14, bold: true, margin: [0, 3, 0, 0] },
-          subheader2: { fontSize: 11, margin: [0, 3, 0, 0] },
-          tableHeader: { bold: true, fontSize: 9, fillColor: '#e3f2fd' }
+          header: { fontSize: 15, bold: true },
+          subheader: { fontSize: 13, bold: true, margin: [0, 2, 0, 0] },
+          subheader2: { fontSize: 10, margin: [0, 2, 0, 0] },
+          tableHeader: { bold: true, fontSize: 9, fillColor: '#e3f2fd', alignment: 'center' }
         }
       };
       
