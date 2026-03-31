@@ -141,8 +141,12 @@ app.use(balancedCompression);  // Compressão de respostas
 app.use(paginationMiddleware);  // Helpers de paginação
 app.use(validatePaginationParams);  // Validação de parâmetros
 
-// Rate limiting geral (exceto rotas específicas)
-app.use('/api', generalLimiter);
+// Rate limiting geral — excluir rotas de operações pesadas
+app.use('/api', (req, res, next) => {
+  // Não aplicar rate limit em rotas de geração (operações longas e legítimas)
+  if (req.path.startsWith('/planejamento-compras/gerar')) return next();
+  return generalLimiter(req, res, next);
+});
 
 // CORS já está configurado corretamente acima com as origens específicas
 // Removido middleware que forçava '*' e conflitava com credentials: true

@@ -109,11 +109,19 @@ export const rateLimit = (options: RateLimitOptions = {}) => {
  * Rate limiters pré-configurados
  */
 
-// Rate limiter geral - ajustado para desenvolvimento
+// Rate limiter geral — usa usuário autenticado como chave (não IP)
+// para evitar problemas com IPs compartilhados no Vercel
 export const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: process.env.NODE_ENV === 'development' ? 1000 : 100, // 1000 em dev, 100 em prod
-  message: 'Muitas requisições. Limite: 100 requisições a cada 15 minutos.'
+  max: process.env.NODE_ENV === 'development' ? 2000 : 1000,
+  message: 'Muitas requisições. Limite: 1000 requisições a cada 15 minutos.',
+  keyGenerator: (req: Request) => {
+    // Preferir usuário autenticado como chave
+    const user = (req as any).usuario || (req as any).user;
+    if (user?.id) return `user_${user.id}`;
+    // Fallback para IP
+    return req.ip || req.socket.remoteAddress || 'unknown';
+  }
 });
 
 // Rate limiter para login (5 tentativas/15min)
