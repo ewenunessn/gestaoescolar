@@ -321,3 +321,41 @@ export function formatarMoeda(valor: number): string {
     currency: 'BRL'
   }).format(valor);
 }
+
+/**
+ * Formata uma data para o formato de input HTML (YYYY-MM-DD)
+ * 
+ * @param data - String ISO, objeto Date, ou string no formato DD/MM/YYYY
+ * @returns String no formato YYYY-MM-DD para inputs HTML
+ * 
+ * @example
+ * formatDateForInput('2026-04-01') // '2026-04-01'
+ * formatDateForInput(new Date(2026, 3, 1)) // '2026-04-01'
+ * formatDateForInput('01/04/2026') // '2026-04-01'
+ */
+export function formatDateForInput(data: string | Date): string {
+  if (!data) return '';
+  
+  let date: Date;
+  
+  if (typeof data === 'string') {
+    // Se já está no formato ISO (YYYY-MM-DD)
+    if (data.match(/^\d{4}-\d{2}-\d{2}/)) {
+      return data.split('T')[0];
+    }
+    // Se está no formato brasileiro (DD/MM/YYYY)
+    if (data.match(/^\d{2}\/\d{2}\/\d{4}/)) {
+      const [dia, mes, ano] = data.split('/');
+      return `${ano}-${mes}-${dia}`;
+    }
+    date = new Date(data);
+  } else {
+    date = data;
+  }
+  
+  const ano = date.getFullYear();
+  const mes = String(date.getMonth() + 1).padStart(2, '0');
+  const dia = String(date.getDate()).padStart(2, '0');
+  
+  return `${ano}-${mes}-${dia}`;
+}
