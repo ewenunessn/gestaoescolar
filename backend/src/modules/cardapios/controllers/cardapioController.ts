@@ -272,7 +272,7 @@ export async function adicionarRefeicaoDia(req: Request, res: Response) {
   } catch (error: any) {
     console.error('❌ Erro ao adicionar refeição:', error);
     if (error.code === '23505') {
-      return res.status(400).json({ message: 'Já existe uma refeição deste tipo neste dia' });
+      return res.status(400).json({ message: 'Esta preparação já foi adicionada neste dia com este tipo' });
     }
     res.status(500).json({ message: 'Erro ao adicionar refeição' });
   }

@@ -541,10 +541,14 @@ const CardapioCalendarioPage: React.FC = () => {
         if (a.dia !== b.dia) return a.dia - b.dia;
         const ordem: Record<string, number> = {
           'cafe_manha': 1,
+          'lanche': 2,
+          'refeicao': 3,
+          'ceia': 4,
+          // Compatibilidade com valores antigos
           'lanche_manha': 2,
           'almoco': 3,
-          'lanche_tarde': 4,
-          'jantar': 5
+          'lanche_tarde': 2,
+          'jantar': 4
         };
         return (ordem[a.tipo_refeicao] || 99) - (ordem[b.tipo_refeicao] || 99);
       });
@@ -928,11 +932,15 @@ const CardapioCalendarioPage: React.FC = () => {
   };
 
   const corTipoRefeicao: Record<string, string> = {
+    refeicao: '#EF5350',
+    lanche: '#66BB6A',
     cafe_manha: '#FFA726',
-    lanche_manha: '#66BB6A',
+    ceia: '#AB47BC',
+    // Compatibilidade com valores antigos
     almoco: '#EF5350',
+    jantar: '#AB47BC',
+    lanche_manha: '#66BB6A',
     lanche_tarde: '#42A5F5',
-    jantar: '#AB47BC'
   };
 
   // Converter refeições para formato de eventos para o CalendarioMensal
