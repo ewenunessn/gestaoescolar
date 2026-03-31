@@ -4,23 +4,25 @@ import {
   Box, Typography, IconButton, Chip, Button, Dialog, DialogTitle, 
   DialogContent, DialogActions, FormControl, InputLabel, Select, MenuItem, 
   LinearProgress, TextField, Tooltip, CircularProgress, Table, TableBody,
-  TableCell, TableHead, TableRow,
+  TableCell, TableHead, TableRow, Checkbox,
 } from '@mui/material';
 import {
   Clear as ClearIcon, Edit as EditIcon,
   School as SchoolIcon, Add as AddIcon,
   Inventory as InventoryIcon, Visibility as VisibilityIcon, Tune as TuneIcon,
-  ShoppingCart as ShoppingCartIcon,
+  ShoppingCart as ShoppingCartIcon, Delete as DeleteIcon, CheckBox as CheckBoxIcon,
 } from '@mui/icons-material';
 import { ColumnDef } from '@tanstack/react-table';
 import PageContainer from '../components/PageContainer';
 import { DataTableAdvanced } from '../components/DataTableAdvanced';
 import GerarPedidoDaGuiaDialog from '../components/GerarPedidoDaGuiaDialog';
 import ViewTabs from '../components/ViewTabs';
+import UnidadeMedidaSelect from '../components/UnidadeMedidaSelect';
 import { guiaService } from '../services/guiaService';
 import { produtoService } from '../services/produtoService';
 import { useToast } from '../hooks/useToast';
 import { usePageTitle } from '../contexts/PageTitleContext';
+import { useUnidadesMedida } from '../hooks/queries/useUnidadesMedidaQueries';
 import api from '../services/api';
 import { formatarQuantidade } from '../utils/formatters';
 import { PerformanceMonitor } from '../utils/performanceMonitor';
@@ -68,6 +70,46 @@ const GuiaDemandaDetalhe: React.FC = () => {
   // Dialog: quantidades por escola de um produto
   const [dialogEscolasOpen, setDialogEscolasOpen] = useState(false);
   const [produtoSelecionado, setProdutoSelecionado] = useState<{ id: number; nome: string; data_entrega: string | null } | null>(null);
+  const [modoSelecao, setModoSelecao] = useState(false);
+  const [itensSelecionados, setItensSelecionados] = useState<Set<number>>(new Set());
+  const [excluindoItens, setExcluindoItens] = useState(false);
+  
+  // Dialog de edição
+  const [dialogEditarOpen, setDialogEditarOpen] = useState(false);
+  const [itemEditando, setItemEditando] = useState<ItemGuia | null>(null);
+  const [formEditar, setFormEditar] = useState({ unidadeCodigo: '', data_entrega: '' });
+  const [salvandoEdicao, setSalvandoEdicao] = useState(false);
+  
+  // Buscar unidades de medida
+  const { data: unidadesMedida } = useUnidadesMedida();
+
+  // Derivar o ID da unidade a partir do código — reage automaticamente quando unidadesMedida carrega
+  const unidadeIdSelecionada = useMemo(() => {
+    if (!unidadesMedida || !formEditar.unidadeCodigo) return null;
+    const codigo = formEditar.unidadeCodigo.toUpperCase().trim();
+    // Tenta match por código exato, depois por nome
+    return (
+      unidadesMedida.find(u => u.codigo.toUpperCase() === codigo)?.id ??
+      unidadesMedida.find(u => u.nome.toUpperCase() === codigo)?.id ??
+      null
+    );
+  }, [unidadesMedida, formEditar.unidadeCodigo]);
+
+  // Dialog de edição em lote (todas as escolas de um produto)
+  const [dialogEditarProdutoOpen, setDialogEditarProdutoOpen] = useState(false);
+  const [produtoEditando, setProdutoEditando] = useState<any | null>(null);
+  const [formEditarProduto, setFormEditarProduto] = useState({ unidadeCodigo: '', data_entrega: '' });
+  const [salvandoEdicaoProduto, setSalvandoEdicaoProduto] = useState(false);
+
+  const unidadeIdProdutoSelecionada = useMemo(() => {
+    if (!unidadesMedida || !formEditarProduto.unidadeCodigo) return null;
+    const codigo = formEditarProduto.unidadeCodigo.toUpperCase().trim();
+    return (
+      unidadesMedida.find(u => u.codigo.toUpperCase() === codigo)?.id ??
+      unidadesMedida.find(u => u.nome.toUpperCase() === codigo)?.id ??
+      null
+    );
+  }, [unidadesMedida, formEditarProduto.unidadeCodigo]);
 
   // Dialog: itens de uma escola
   const [dialogItensEscolaOpen, setDialogItensEscolaOpen] = useState(false);
@@ -157,27 +199,80 @@ const GuiaDemandaDetalhe: React.FC = () => {
     {
       id: 'actions',
       header: 'Ações',
-      size: 80,
+      size: 150,
       enableSorting: false,
       cell: ({ row }) => (
-        <Tooltip title="Ver quantidades por escola">
-          <IconButton 
-            size="small" 
-            color="primary"
-            onClick={(e) => {
-              e.stopPropagation();
-              const produto = row.original;
-              setProdutoSelecionado({ 
-                id: produto.produto_id, 
-                nome: produto.produto_nome, 
-                data_entrega: produto.data_entrega 
-              });
-              setDialogEscolasOpen(true);
-            }}
-          >
-            <VisibilityIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
+        <Box sx={{ display: 'flex', gap: 0.5 }}>
+          <Tooltip title="Ver quantidades por escola">
+            <IconButton 
+              size="small" 
+              color="primary"
+              onClick={(e) => {
+                e.stopPropagation();
+                const produto = row.original;
+                setProdutoSelecionado({ 
+                  id: produto.produto_id, 
+                  nome: produto.produto_nome, 
+                  data_entrega: produto.data_entrega 
+                });
+                setDialogEscolasOpen(true);
+              }}
+            >
+              <VisibilityIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Editar unidade e data em todas as escolas">
+            <IconButton 
+              size="small" 
+              color="default"
+              onClick={(e) => {
+                e.stopPropagation();
+                const produto = row.original;
+                handleAbrirEditarProduto(produto);
+              }}
+            >
+              <EditIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Excluir de todas as escolas">
+            <IconButton 
+              size="small" 
+              color="error"
+              onClick={async (e) => {
+                e.stopPropagation();
+                const produto = row.original;
+                if (window.confirm(`Deseja realmente excluir "${produto.produto_nome}" de todas as escolas?`)) {
+                  try {
+                    setLoading(true);
+                    // Excluir todos os itens deste produto (considerando data_entrega)
+                    const itensParaExcluir = itens.filter(i => {
+                      if (i.produto_id !== produto.produto_id) return false;
+                      if (produto.data_entrega === null) return !i.data_entrega;
+                      const dataItem = i.data_entrega ? String(i.data_entrega).split('T')[0] : null;
+                      return dataItem === produto.data_entrega;
+                    });
+                    
+                    await Promise.all(
+                      itensParaExcluir.map(item => 
+                        api.delete(`/guias/itens/${item.id}`)
+                      )
+                    );
+                    
+                    toast.success(`Produto excluído de ${itensParaExcluir.length} escola(s)`);
+                    loadGuiaDetalhes();
+                  } catch (error) {
+                    console.error('Erro ao excluir produto:', error);
+                    toast.error('Erro ao excluir produto');
+                  } finally {
+                    setLoading(false);
+                  }
+                }
+              }}
+            >
+              <ClearIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
       ),
     },
   ], []);
@@ -432,6 +527,153 @@ const GuiaDemandaDetalhe: React.FC = () => {
       return dataItem === produtoSelecionado.data_entrega;
     });
   }, [itens, produtoSelecionado]);
+
+  const handleToggleSelecao = (itemId: number) => {
+    const novoSet = new Set(itensSelecionados);
+    if (novoSet.has(itemId)) {
+      novoSet.delete(itemId);
+    } else {
+      novoSet.add(itemId);
+    }
+    setItensSelecionados(novoSet);
+  };
+
+  const handleSelecionarTodos = () => {
+    if (itensSelecionados.size === escolasDoProduto.length) {
+      setItensSelecionados(new Set());
+    } else {
+      setItensSelecionados(new Set(escolasDoProduto.map(i => i.id)));
+    }
+  };
+
+  const handleExcluirSelecionados = async () => {
+    if (itensSelecionados.size === 0) return;
+    
+    if (!window.confirm(`Deseja realmente excluir ${itensSelecionados.size} item(ns) selecionado(s)?`)) {
+      return;
+    }
+
+    try {
+      setExcluindoItens(true);
+      const itensParaExcluir = escolasDoProduto.filter(i => itensSelecionados.has(i.id));
+      
+      await Promise.all(
+        itensParaExcluir.map(item => 
+          api.delete(`/guias/itens/${item.id}`)
+        )
+      );
+      
+      toast.success(`${itensSelecionados.size} item(ns) excluído(s) com sucesso`);
+      setItensSelecionados(new Set());
+      setModoSelecao(false);
+      setDialogEscolasOpen(false);
+      loadGuiaDetalhes();
+    } catch (error) {
+      console.error('Erro ao excluir itens:', error);
+      toast.error('Erro ao excluir itens selecionados');
+    } finally {
+      setExcluindoItens(false);
+    }
+  };
+
+  const handleExcluirIndividual = async (item: ItemGuia) => {
+    if (!window.confirm(`Deseja realmente excluir "${item.produto_nome}" da escola "${item.escola_nome}"?`)) {
+      return;
+    }
+
+    try {
+      setExcluindoItens(true);
+      await api.delete(`/guias/itens/${item.id}`);
+      toast.success('Item excluído com sucesso');
+      loadGuiaDetalhes();
+    } catch (error) {
+      console.error('Erro ao excluir item:', error);
+      toast.error('Erro ao excluir item');
+    } finally {
+      setExcluindoItens(false);
+    }
+  };
+
+  const handleAbrirEditar = (item: ItemGuia) => {
+    setItemEditando(item);
+    setFormEditar({
+      unidadeCodigo: item.unidade,
+      data_entrega: item.data_entrega ? String(item.data_entrega).split('T')[0] : ''
+    });
+    setDialogEditarOpen(true);
+  };
+
+  const handleSalvarEdicao = async () => {
+    if (!itemEditando || !unidadeIdSelecionada) return;
+
+    try {
+      setSalvandoEdicao(true);
+      const unidade = unidadesMedida?.find(u => u.id === unidadeIdSelecionada);
+      await api.put(`/guias/escola/produtos/${itemEditando.id}`, {
+        unidade: unidade?.codigo ?? formEditar.unidadeCodigo,
+        data_entrega: formEditar.data_entrega
+      });
+      toast.success('Item atualizado com sucesso');
+      setDialogEditarOpen(false);
+      setItemEditando(null);
+      loadGuiaDetalhes();
+    } catch (error) {
+      console.error('Erro ao atualizar item:', error);
+      toast.error('Erro ao atualizar item');
+    } finally {
+      setSalvandoEdicao(false);
+    }
+  };
+
+  const handleFecharDialogEscolas = () => {
+    setDialogEscolasOpen(false);
+    setModoSelecao(false);
+    setItensSelecionados(new Set());
+  };
+
+  const handleAbrirEditarProduto = (produto: any) => {
+    setProdutoEditando(produto);
+    setFormEditarProduto({
+      unidadeCodigo: produto.unidade,
+      data_entrega: produto.data_entrega ?? ''
+    });
+    setDialogEditarProdutoOpen(true);
+  };
+
+  const handleSalvarEdicaoProduto = async () => {
+    if (!produtoEditando || !unidadeIdProdutoSelecionada) return;
+
+    const unidade = unidadesMedida?.find(u => u.id === unidadeIdProdutoSelecionada);
+    if (!unidade) return;
+
+    const itensParaEditar = itens.filter(i => {
+      if (i.produto_id !== produtoEditando.produto_id) return false;
+      if (produtoEditando.data_entrega === null) return !i.data_entrega;
+      const dataItem = i.data_entrega ? String(i.data_entrega).split('T')[0] : null;
+      return dataItem === produtoEditando.data_entrega;
+    });
+
+    try {
+      setSalvandoEdicaoProduto(true);
+      await Promise.all(
+        itensParaEditar.map(item =>
+          api.put(`/guias/escola/produtos/${item.id}`, {
+            unidade: unidade.codigo,
+            data_entrega: formEditarProduto.data_entrega
+          })
+        )
+      );
+      toast.success(`${itensParaEditar.length} item(ns) atualizado(s) com sucesso`);
+      setDialogEditarProdutoOpen(false);
+      setProdutoEditando(null);
+      loadGuiaDetalhes();
+    } catch (error) {
+      console.error('Erro ao atualizar itens:', error);
+      toast.error('Erro ao atualizar itens');
+    } finally {
+      setSalvandoEdicaoProduto(false);
+    }
+  };
 
   // Matriz consolidada: escolas x produtos
   const matrizConsolidada = useMemo(() => {
@@ -699,24 +941,76 @@ const GuiaDemandaDetalhe: React.FC = () => {
       </PageContainer>
 
       {/* Dialog: quantidades por escola de um produto */}
-      <Dialog open={dialogEscolasOpen} onClose={() => setDialogEscolasOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog open={dialogEscolasOpen} onClose={handleFecharDialogEscolas} maxWidth="sm" fullWidth>
         <DialogTitle>
-          <Box>
-            <span style={{ fontWeight: 600, fontSize: '1.25rem' }}>{produtoSelecionado?.nome}</span>
-            <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '4px' }}>
-              Quantidade por escola
-              {produtoSelecionado?.data_entrega && ` · ${new Date(produtoSelecionado.data_entrega + 'T12:00:00').toLocaleDateString('pt-BR')}`}
-            </div>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <Box>
+              <span style={{ fontWeight: 600, fontSize: '1.25rem' }}>{produtoSelecionado?.nome}</span>
+              <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '4px' }}>
+                Quantidade por escola
+                {produtoSelecionado?.data_entrega && ` · ${new Date(produtoSelecionado.data_entrega + 'T12:00:00').toLocaleDateString('pt-BR')}`}
+              </div>
+            </Box>
+            <Box sx={{ display: 'flex', gap: 0.5 }}>
+              {!modoSelecao ? (
+                <Tooltip title="Ativar seleção múltipla">
+                  <IconButton 
+                    size="small" 
+                    onClick={() => setModoSelecao(true)}
+                    disabled={excluindoItens}
+                  >
+                    <CheckBoxIcon />
+                  </IconButton>
+                </Tooltip>
+              ) : (
+                <>
+                  <Tooltip title="Cancelar seleção">
+                    <IconButton 
+                      size="small" 
+                      onClick={() => {
+                        setModoSelecao(false);
+                        setItensSelecionados(new Set());
+                      }}
+                      disabled={excluindoItens}
+                    >
+                      <ClearIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Excluir selecionados">
+                    <IconButton 
+                      size="small" 
+                      color="error"
+                      onClick={handleExcluirSelecionados}
+                      disabled={itensSelecionados.size === 0 || excluindoItens}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Tooltip>
+                </>
+              )}
+            </Box>
           </Box>
         </DialogTitle>
         <DialogContent sx={{ p: 0 }}>
+          {excluindoItens && <LinearProgress />}
           <Table size="small">
             <TableHead>
               <TableRow>
+                {modoSelecao && (
+                  <TableCell padding="checkbox">
+                    <Checkbox
+                      checked={itensSelecionados.size === escolasDoProduto.length && escolasDoProduto.length > 0}
+                      indeterminate={itensSelecionados.size > 0 && itensSelecionados.size < escolasDoProduto.length}
+                      onChange={handleSelecionarTodos}
+                      disabled={excluindoItens}
+                    />
+                  </TableCell>
+                )}
                 <TableCell>Escola</TableCell>
                 <TableCell align="right">Qtd. Ajustada</TableCell>
                 <TableCell align="right">Qtd. Demanda</TableCell>
                 <TableCell align="center">Status</TableCell>
+                {!modoSelecao && <TableCell align="center">Ações</TableCell>}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -725,7 +1019,16 @@ const GuiaDemandaDetalhe: React.FC = () => {
                 const diff = Number(item.quantidade) - dem;
                 const hasAjuste = Math.abs(diff) > 0.0005;
                 return (
-                  <TableRow key={item.id} hover>
+                  <TableRow key={item.id} hover selected={itensSelecionados.has(item.id)}>
+                    {modoSelecao && (
+                      <TableCell padding="checkbox">
+                        <Checkbox
+                          checked={itensSelecionados.has(item.id)}
+                          onChange={() => handleToggleSelecao(item.id)}
+                          disabled={excluindoItens}
+                        />
+                      </TableCell>
+                    )}
                     <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Chip 
@@ -756,10 +1059,37 @@ const GuiaDemandaDetalhe: React.FC = () => {
                     <TableCell align="center">
                       <Chip label={getStatusLabel(item.status)} size="small" color={statusColor(item.status)} />
                     </TableCell>
+                    {!modoSelecao && (
+                      <TableCell align="center">
+                        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
+                          <Tooltip title="Editar item">
+                            <IconButton 
+                              size="small" 
+                              color="primary"
+                              onClick={() => handleAbrirEditar(item)}
+                              disabled={excluindoItens}
+                            >
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Excluir item">
+                            <IconButton 
+                              size="small" 
+                              color="error"
+                              onClick={() => handleExcluirIndividual(item)}
+                              disabled={excluindoItens}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                      </TableCell>
+                    )}
                   </TableRow>
                 );
               })}
               <TableRow sx={{ bgcolor: 'action.hover' }}>
+                {modoSelecao && <TableCell />}
                 <TableCell sx={{ fontWeight: 700 }}>Total</TableCell>
                 <TableCell align="right" sx={{ fontWeight: 700 }}>
                   {formatarQuantidade(escolasDoProduto.reduce((s, i) => s + (Number(i.quantidade)||0), 0))} {escolasDoProduto[0]?.unidade}
@@ -768,12 +1098,18 @@ const GuiaDemandaDetalhe: React.FC = () => {
                   {formatarQuantidade(escolasDoProduto.reduce((s, i) => s + (Number(i.quantidade_demanda ?? i.quantidade)||0), 0))} {escolasDoProduto[0]?.unidade}
                 </TableCell>
                 <TableCell />
+                {!modoSelecao && <TableCell />}
               </TableRow>
             </TableBody>
           </Table>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialogEscolasOpen(false)}>Fechar</Button>
+          {modoSelecao && itensSelecionados.size > 0 && (
+            <Typography variant="caption" color="text.secondary" sx={{ mr: 'auto' }}>
+              {itensSelecionados.size} item(ns) selecionado(s)
+            </Typography>
+          )}
+          <Button onClick={handleFecharDialogEscolas} disabled={excluindoItens}>Fechar</Button>
         </DialogActions>
       </Dialog>
 
@@ -832,6 +1168,110 @@ const GuiaDemandaDetalhe: React.FC = () => {
         }}
         guiaIdInicial={guia?.id}
       />
+
+      {/* Dialog Editar Produto em todas as escolas */}
+      <Dialog open={dialogEditarProdutoOpen} onClose={() => !salvandoEdicaoProduto && setDialogEditarProdutoOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontWeight: 600, fontSize: '1.25rem' }}>Editar em Todas as Escolas</span>
+            <IconButton size="small" onClick={() => !salvandoEdicaoProduto && setDialogEditarProdutoOpen(false)} disabled={salvandoEdicaoProduto}>
+              <ClearIcon fontSize="small" />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+            {produtoEditando && (
+              <Typography variant="body2" color="text.secondary">
+                <strong>Produto:</strong> {produtoEditando.produto_nome}
+                {' · '}
+                <strong>{produtoEditando.escolas?.length ?? 0} escola(s)</strong>
+              </Typography>
+            )}
+            <UnidadeMedidaSelect
+              value={unidadeIdProdutoSelecionada}
+              onChange={(id) => {
+                const unidade = unidadesMedida?.find(u => u.id === id);
+                setFormEditarProduto(prev => ({ ...prev, unidadeCodigo: unidade?.codigo ?? '' }));
+              }}
+              label="Unidade de Medida"
+              size="small"
+              disabled={salvandoEdicaoProduto}
+              required
+            />
+            <TextField
+              label="Data de Entrega"
+              type="date"
+              value={formEditarProduto.data_entrega}
+              onChange={e => setFormEditarProduto(prev => ({ ...prev, data_entrega: e.target.value }))}
+              fullWidth
+              size="small"
+              InputLabelProps={{ shrink: true }}
+              disabled={salvandoEdicaoProduto}
+            />
+            {salvandoEdicaoProduto && <LinearProgress />}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDialogEditarProdutoOpen(false)} disabled={salvandoEdicaoProduto}>Cancelar</Button>
+          <Button onClick={handleSalvarEdicaoProduto} variant="contained" disabled={salvandoEdicaoProduto || !unidadeIdProdutoSelecionada}>Salvar</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog Editar Item */}
+      <Dialog open={dialogEditarOpen} onClose={() => !salvandoEdicao && setDialogEditarOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontWeight: 600, fontSize: '1.25rem' }}>Editar Item</span>
+            <IconButton size="small" onClick={() => !salvandoEdicao && setDialogEditarOpen(false)} disabled={salvandoEdicao}>
+              <ClearIcon fontSize="small" />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+            {itemEditando && (
+              <>
+                <Typography variant="body2" color="text.secondary">
+                  <strong>Produto:</strong> {itemEditando.produto_nome}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  <strong>Escola:</strong> {itemEditando.escola_nome}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  <strong>Quantidade:</strong> {formatarQuantidade(itemEditando.quantidade)}
+                </Typography>
+              </>
+            )}
+            <UnidadeMedidaSelect
+              value={unidadeIdSelecionada}
+              onChange={(id) => {
+                const unidade = unidadesMedida?.find(u => u.id === id);
+                setFormEditar(prev => ({ ...prev, unidadeCodigo: unidade?.codigo ?? '' }));
+              }}
+              label="Unidade de Medida"
+              size="small"
+              disabled={salvandoEdicao}
+              required
+            />
+            <TextField 
+              label="Data de Entrega" 
+              type="date" 
+              value={formEditar.data_entrega}
+              onChange={e => setFormEditar({ ...formEditar, data_entrega: e.target.value })}
+              fullWidth 
+              size="small" 
+              InputLabelProps={{ shrink: true }} 
+              disabled={salvandoEdicao}
+            />
+            {salvandoEdicao && <LinearProgress />}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDialogEditarOpen(false)} disabled={salvandoEdicao}>Cancelar</Button>
+          <Button onClick={handleSalvarEdicao} variant="contained" disabled={salvandoEdicao || !unidadeIdSelecionada}>Salvar</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Modal Adicionar em Lote */}
       <Dialog open={openBatchDialog} onClose={() => !batchSaving && setOpenBatchDialog(false)} maxWidth="sm" fullWidth>

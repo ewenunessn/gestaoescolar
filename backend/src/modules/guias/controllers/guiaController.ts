@@ -396,12 +396,15 @@ export const guiaController = {
         id: item.id,
         produto_nome: (item as any).produto_nome || 'Produto não identificado',
         quantidade: item.quantidade || 0,
-        unidade: (item as any).produto_unidade || 'un',
+        unidade: item.unidade || (item as any).produto_unidade || 'un',
+        quantidade_demanda: (item as any).quantidade_demanda || item.quantidade || 0,
         lote: item.lote || null,
         escola_nome: (item as any).escola_nome || 'Escola não identificada',
         escola_id: item.escola_id,
         produto_id: item.produto_id,
-        guia_id: item.guia_id
+        guia_id: item.guia_id,
+        status: item.status || 'pendente',
+        data_entrega: item.data_entrega || null,
       }));
 
       res.json({ success: true, data: itensFormatados });

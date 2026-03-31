@@ -58,6 +58,7 @@ export default function UnidadeMedidaSelect({
       value={unidadeSelecionada}
       onChange={(_, newValue) => onChange(newValue?.id || null)}
       options={unidades || []}
+      isOptionEqualToValue={(option, value) => option.id === value.id}
       groupBy={(option) => {
         const tipoLabels = {
           massa: 'Massa',
