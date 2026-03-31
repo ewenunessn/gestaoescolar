@@ -644,22 +644,6 @@ const CardapiosModalidadePage: React.FC = () => {
                     noOptionsText="Nenhuma modalidade encontrada"
                   />
                 </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    label="Nome do Cardápio"
-                    fullWidth
-                    required
-                    value={formData.nome}
-                    onChange={(e) => {
-                      setFormData({ ...formData, nome: e.target.value });
-                      if (erroCardapio) setErroCardapio("");
-                    }}
-                    onBlur={() => setTouched({ ...touched, nome: true })}
-                    error={touched.nome && !formData.nome}
-                    helperText={touched.nome && !formData.nome ? "Campo obrigatório" : ""}
-                    placeholder="Ex: Cardápio Março 2024"
-                  />
-                </Grid>
                 <Grid item xs={6}>
                   <FormControl
                     fullWidth
@@ -670,7 +654,21 @@ const CardapiosModalidadePage: React.FC = () => {
                     <Select
                       value={formData.mes}
                       onChange={(e) => {
-                        setFormData({ ...formData, mes: e.target.value });
+                        const novoMes = e.target.value;
+                        setFormData({ ...formData, mes: novoMes });
+                        
+                        // Atualizar nome automaticamente se não estiver em modo de edição
+                        if (!editMode && novoMes && formData.ano) {
+                          const mesNome = MESES[parseInt(novoMes)];
+                          const descricao = formData.observacao || '';
+                          const nomeBase = `Cardápio ${mesNome} ${formData.ano}`;
+                          setFormData(prev => ({
+                            ...prev,
+                            mes: novoMes,
+                            nome: descricao ? `${nomeBase} - ${descricao}` : nomeBase
+                          }));
+                        }
+                        
                         if (erroCardapio) setErroCardapio("");
                       }}
                       onBlur={() => setTouched({ ...touched, mes: true })}
@@ -692,7 +690,21 @@ const CardapiosModalidadePage: React.FC = () => {
                     required
                     value={formData.ano}
                     onChange={(e) => {
-                      setFormData({ ...formData, ano: e.target.value });
+                      const novoAno = e.target.value;
+                      setFormData({ ...formData, ano: novoAno });
+                      
+                      // Atualizar nome automaticamente se não estiver em modo de edição
+                      if (!editMode && formData.mes && novoAno) {
+                        const mesNome = MESES[parseInt(formData.mes)];
+                        const descricao = formData.observacao || '';
+                        const nomeBase = `Cardápio ${mesNome} ${novoAno}`;
+                        setFormData(prev => ({
+                          ...prev,
+                          ano: novoAno,
+                          nome: descricao ? `${nomeBase} - ${descricao}` : nomeBase
+                        }));
+                      }
+                      
                       if (erroCardapio) setErroCardapio("");
                     }}
                     onBlur={() => setTouched({ ...touched, ano: true })}
@@ -703,13 +715,45 @@ const CardapiosModalidadePage: React.FC = () => {
                 </Grid>
                 <Grid item xs={12}>
                   <TextField
-                    label="Observação"
+                    label="Descrição (Opcional)"
                     fullWidth
-                    multiline
-                    rows={3}
                     value={formData.observacao}
-                    onChange={(e) => setFormData({ ...formData, observacao: e.target.value })}
-                    placeholder="Observações gerais sobre o cardápio"
+                    onChange={(e) => {
+                      const descricao = e.target.value;
+                      setFormData({ ...formData, observacao: descricao });
+                      
+                      // Atualizar nome automaticamente se não estiver em modo de edição
+                      if (!editMode && formData.mes && formData.ano) {
+                        const mesNome = MESES[parseInt(formData.mes)];
+                        const nomeBase = `Cardápio ${mesNome} ${formData.ano}`;
+                        setFormData(prev => ({
+                          ...prev,
+                          observacao: descricao,
+                          nome: descricao ? `${nomeBase} - ${descricao}` : nomeBase
+                        }));
+                      }
+                    }}
+                    placeholder="Ex: Parcial, Integral, Especial..."
+                    helperText="Esta descrição será adicionada ao nome do cardápio"
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    label="Nome do Cardápio (Gerado Automaticamente)"
+                    fullWidth
+                    required
+                    value={formData.nome}
+                    onChange={(e) => {
+                      setFormData({ ...formData, nome: e.target.value });
+                      if (erroCardapio) setErroCardapio("");
+                    }}
+                    onBlur={() => setTouched({ ...touched, nome: true })}
+                    error={touched.nome && !formData.nome}
+                    helperText={touched.nome && !formData.nome ? "Campo obrigatório" : "Você pode editar manualmente se necessário"}
+                    disabled={!editMode}
+                    InputProps={{
+                      readOnly: !editMode,
+                    }}
                   />
                 </Grid>
               </Grid>

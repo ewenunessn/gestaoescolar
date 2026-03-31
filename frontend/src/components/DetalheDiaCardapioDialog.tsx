@@ -5,7 +5,8 @@ import {
 } from '@mui/material';
 import { Delete as DeleteIcon, Event as EventIcon, Restaurant as RestaurantIcon, AccessTime as TimeIcon, Place as PlaceIcon, ContentCopy as CopyIcon } from '@mui/icons-material';
 import { getLabelsEventos, getCoresEventos } from '../services/calendarioLetivo';
-import { TIPOS_REFEICAO, MESES } from '../services/cardapiosModalidade';
+import { TIPOS_REFEICAO } from '../services/cardapiosModalidade';
+import { dateUtils } from '../utils/dateUtils';
 
 interface DetalheDiaCardapioDialogProps {
   open: boolean;
@@ -54,10 +55,10 @@ export const DetalheDiaCardapioDialog: React.FC<DetalheDiaCardapioDialogProps> =
       <DialogTitle sx={{ pb: 1 }}>
         <Box>
           <Typography variant="h6" sx={{ fontWeight: 600 }}>
-            {diaSelecionado && cardapio && `${diaSelecionado} de ${MESES[cardapio.mes - 1]}`}
+            {diaSelecionado && cardapio && dateUtils.formatLong(cardapio.ano, cardapio.mes, diaSelecionado)}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            {diaSelecionado && cardapio && new Date(cardapio.ano, cardapio.mes - 1, diaSelecionado).toLocaleDateString('pt-BR', { weekday: 'long' })}
+            {diaSelecionado && cardapio && dateUtils.getDayOfWeekName(cardapio.ano, cardapio.mes, diaSelecionado)}
           </Typography>
         </Box>
       </DialogTitle>

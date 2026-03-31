@@ -14,7 +14,7 @@ import { useInstituicaoForPDF } from '../hooks/useInstituicao';
 import { createPDFHeader, createPDFFooter, getDefaultPDFStyles } from '../utils/pdfUtils';
 import {
   buscarCardapioModalidade, listarRefeicoesCardapio, adicionarRefeicaoDia,
-  removerRefeicaoDia, CardapioModalidade, RefeicaoDia, TIPOS_REFEICAO, MESES,
+  removerRefeicaoDia, CardapioModalidade, RefeicaoDia, TIPOS_REFEICAO,
   calcularCustoCardapio, CustoCardapio
 } from '../services/cardapiosModalidade';
 import { listarRefeicoes } from '../services/refeicoes';
@@ -24,6 +24,7 @@ import { LoadingOverlay } from '../components/LoadingOverlay';
 import { DetalheDiaCardapioDialog } from '../components/DetalheDiaCardapioDialog';
 import { ReplicarRefeicoesDialog } from '../components/ReplicarRefeicoesDialog';
 import CustoCardapioDetalheModal from '../components/CustoCardapioDetalheModal';
+import { dateUtils } from '../utils/dateUtils';
 import api from '../services/api';
 
 // Função para obter URL base da API
@@ -138,7 +139,7 @@ const CardapioCalendarioPage: React.FC = () => {
       
       // Definir título da página
       if (cardapioData) {
-        const mesNome = MESES[cardapioData.mes];
+        const mesNome = dateUtils.getMonthName(cardapioData.mes);
         const subtitulo = (cardapioData as any).modalidades_nomes || cardapioData.modalidade_nome || cardapioData.nome;
         setPageTitle(`Cardápio ${mesNome}/${cardapioData.ano} - ${subtitulo}`);
         setBackPath('/cardapios');
@@ -167,8 +168,16 @@ const CardapioCalendarioPage: React.FC = () => {
   };
 
   const handleDiaClick = (data: string) => {
-    const dia = parseInt(data.split('-')[2]);
-    setDiaSelecionado(dia);
+    // Extrair ano, mês e dia da string ISO
+    const { ano: anoClicado, mes: mesClicado, dia: diaClicado } = dateUtils.fromISOString(data);
+    
+    // Verificar se o dia clicado pertence ao mês do cardápio
+    if (!cardapio || mesClicado !== cardapio.mes || anoClicado !== cardapio.ano) {
+      toast.warning('Este dia não pertence ao mês do cardápio atual');
+      return;
+    }
+    
+    setDiaSelecionado(diaClicado);
     setOpenDetalhesDiaDialog(true);
   };
 
@@ -242,8 +251,8 @@ const CardapioCalendarioPage: React.FC = () => {
       
       // Gerar semanas do calendário para o PDF
       const getCalendarioSemanasParaPDF = () => {
-        const primeiroDia = new Date(cardapio.ano, cardapio.mes - 1, 1);
-        const ultimoDia = new Date(cardapio.ano, cardapio.mes, 0).getDate();
+        const primeiroDia = dateUtils.createDate(cardapio.ano, cardapio.mes, 1);
+        const ultimoDia = dateUtils.getDaysInMonth(cardapio.ano, cardapio.mes);
         const diaSemanaInicio = primeiroDia.getDay();
         
         const semanas: (number | null)[][] = [];
@@ -339,7 +348,7 @@ const CardapioCalendarioPage: React.FC = () => {
               stack: [
                 { text: instituicao.nome || 'Secretaria Municipal de Educação', style: 'header', alignment: 'center' },
                 { text: `Cardapio - ${cardapio.nome}`, style: 'subheader', alignment: 'center' },
-                { text: `${MESES[cardapio.mes]} / ${cardapio.ano} - ${cardapio.modalidade_nome}`, style: 'subheader2', alignment: 'center' }
+                { text: `${dateUtils.getMonthName(cardapio.mes)} / ${cardapio.ano} - ${cardapio.modalidade_nome}`, style: 'subheader2', alignment: 'center' }
               ],
               width: '*'
             },
@@ -352,7 +361,7 @@ const CardapioCalendarioPage: React.FC = () => {
           stack: [
             { text: instituicao?.nome || 'Secretaria Municipal de Educação', style: 'header', alignment: 'center' },
             { text: `Cardapio - ${cardapio.nome}`, style: 'subheader', alignment: 'center' },
-            { text: `${MESES[cardapio.mes]} / ${cardapio.ano} - ${cardapio.modalidade_nome}`, style: 'subheader2', alignment: 'center' }
+            { text: `${dateUtils.getMonthName(cardapio.mes)} / ${cardapio.ano} - ${cardapio.modalidade_nome}`, style: 'subheader2', alignment: 'center' }
           ]
         });
       }
@@ -474,7 +483,7 @@ const CardapioCalendarioPage: React.FC = () => {
               stack: [
                 { text: instituicao.nome || 'Secretaria Municipal de Educação', style: 'header', alignment: 'center' },
                 { text: `Relatorio de Frequencia - ${cardapio.nome}`, style: 'subheader', alignment: 'center' },
-                { text: `${MESES[cardapio.mes]} / ${cardapio.ano} - ${cardapio.modalidade_nome}`, style: 'subheader2', alignment: 'center' }
+                { text: `${dateUtils.getMonthName(cardapio.mes)} / ${cardapio.ano} - ${cardapio.modalidade_nome}`, style: 'subheader2', alignment: 'center' }
               ],
               width: '*'
             },
@@ -486,7 +495,7 @@ const CardapioCalendarioPage: React.FC = () => {
           stack: [
             { text: instituicao?.nome || 'Secretaria Municipal de Educação', style: 'header', alignment: 'center' },
             { text: `Relatorio de Frequencia - ${cardapio.nome}`, style: 'subheader', alignment: 'center' },
-            { text: `${MESES[cardapio.mes]} / ${cardapio.ano} - ${cardapio.modalidade_nome}`, style: 'subheader2', alignment: 'center' }
+            { text: `${dateUtils.getMonthName(cardapio.mes)} / ${cardapio.ano} - ${cardapio.modalidade_nome}`, style: 'subheader2', alignment: 'center' }
           ]
         });
       }
@@ -519,7 +528,7 @@ const CardapioCalendarioPage: React.FC = () => {
 
   const handleOpenPeriodoDialog = () => {
     if (!cardapio) return;
-    const ultimoDia = new Date(cardapio.ano, cardapio.mes, 0).getDate();
+    const ultimoDia = dateUtils.getDaysInMonth(cardapio.ano, cardapio.mes);
     setPeriodoForm({ diaInicio: 1, diaFim: ultimoDia });
     setOpenPeriodoDialog(true);
     setAnchorEl(null);
@@ -607,7 +616,7 @@ const CardapioCalendarioPage: React.FC = () => {
       ];
       
       Object.entries(refeicoesAgrupadas).sort(([a], [b]) => Number(a) - Number(b)).forEach(([dia, refs], diaIndex) => {
-        const diaSemana = new Date(cardapio.ano, cardapio.mes - 1, Number(dia)).toLocaleDateString('pt-BR', { weekday: 'short' });
+        const diaSemana = dateUtils.getDayOfWeekNameShort(cardapio.ano, cardapio.mes, Number(dia));
         const dataFormatada = `${String(dia).padStart(2, '0')}/${String(cardapio.mes).padStart(2, '0')}\n${diaSemana}`;
         const corDia = coresDias[diaIndex % coresDias.length];
         
@@ -719,7 +728,7 @@ const CardapioCalendarioPage: React.FC = () => {
                 { text: instituicao.nome || 'Secretaria Municipal de Educação', style: 'header', alignment: 'center' },
                 { text: `Cardapio Detalhado - ${cardapio.nome}`, style: 'subheader', alignment: 'center' },
                 { 
-                  text: `${MESES[cardapio.mes]}/${cardapio.ano} - ${cardapio.modalidade_nome} | Periodo: ${periodoForm.diaInicio} a ${periodoForm.diaFim}`, 
+                  text: `${dateUtils.getMonthName(cardapio.mes)}/${cardapio.ano} - ${cardapio.modalidade_nome} | Periodo: ${periodoForm.diaInicio} a ${periodoForm.diaFim}`, 
                   style: 'subheader2', 
                   alignment: 'center' 
                 }
@@ -735,7 +744,7 @@ const CardapioCalendarioPage: React.FC = () => {
             { text: instituicao?.nome || 'Secretaria Municipal de Educação', style: 'header', alignment: 'center' },
             { text: `Cardapio Detalhado - ${cardapio.nome}`, style: 'subheader', alignment: 'center' },
             { 
-              text: `${MESES[cardapio.mes]}/${cardapio.ano} - ${cardapio.modalidade_nome} | Periodo: ${periodoForm.diaInicio} a ${periodoForm.diaFim}`, 
+              text: `${dateUtils.getMonthName(cardapio.mes)}/${cardapio.ano} - ${cardapio.modalidade_nome} | Periodo: ${periodoForm.diaInicio} a ${periodoForm.diaFim}`, 
               style: 'subheader2', 
               alignment: 'center' 
             }
@@ -829,6 +838,18 @@ const CardapioCalendarioPage: React.FC = () => {
     try {
       if (!formData.refeicao_id || !formData.tipo_refeicao) {
         toast.error('Selecione a preparação e o tipo');
+        return;
+      }
+
+      // Validar se o dia é válido para o mês
+      if (!cardapio || !diaSelecionado) {
+        toast.error('Dia ou cardápio inválido');
+        return;
+      }
+
+      const diasNoMes = dateUtils.getDaysInMonth(cardapio.ano, cardapio.mes);
+      if (diaSelecionado < 1 || diaSelecionado > diasNoMes) {
+        toast.error(`Dia inválido. ${dateUtils.getMonthName(cardapio.mes)} tem apenas ${diasNoMes} dias.`);
         return;
       }
 
@@ -1171,7 +1192,9 @@ const CardapioCalendarioPage: React.FC = () => {
       </PageContainer>
 
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Adicionar Preparação - Dia {diaSelecionado}</DialogTitle>
+        <DialogTitle>
+          Adicionar Preparação - {diaSelecionado && cardapio && dateUtils.formatLong(cardapio.ano, cardapio.mes, diaSelecionado)}
+        </DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
             <FormControl fullWidth required>
@@ -1237,7 +1260,7 @@ const CardapioCalendarioPage: React.FC = () => {
                 fullWidth
                 inputProps={{ 
                   min: 1, 
-                  max: cardapio ? new Date(cardapio.ano, cardapio.mes, 0).getDate() : 31 
+                  max: cardapio ? dateUtils.getDaysInMonth(cardapio.ano, cardapio.mes) : 31 
                 }}
               />
               <TextField
@@ -1248,7 +1271,7 @@ const CardapioCalendarioPage: React.FC = () => {
                 fullWidth
                 inputProps={{ 
                   min: 1, 
-                  max: cardapio ? new Date(cardapio.ano, cardapio.mes, 0).getDate() : 31 
+                  max: cardapio ? dateUtils.getDaysInMonth(cardapio.ano, cardapio.mes) : 31 
                 }}
               />
             </Box>
@@ -1258,7 +1281,7 @@ const CardapioCalendarioPage: React.FC = () => {
                 Período selecionado:
               </Typography>
               <Typography variant="body2" color="textSecondary">
-                {periodoForm.diaInicio} a {periodoForm.diaFim} de {cardapio && MESES[cardapio.mes]} de {cardapio?.ano}
+                {periodoForm.diaInicio} a {periodoForm.diaFim} de {cardapio && dateUtils.getMonthName(cardapio.mes)} de {cardapio?.ano}
               </Typography>
             </Box>
           </Box>
@@ -1445,7 +1468,7 @@ const CardapioCalendarioPage: React.FC = () => {
         open={openReplicarDialog}
         onClose={() => setOpenReplicarDialog(false)}
         diaOrigem={diaSelecionado || 1}
-        mesAno={cardapio ? `${MESES[cardapio.mes]}/${cardapio.ano}` : ''}
+        mesAno={cardapio ? `${dateUtils.getMonthName(cardapio.mes)}/${cardapio.ano}` : ''}
         refeicoes={diaSelecionado ? getRefeicoesNoDia(diaSelecionado) : []}
         onReplicar={handleReplicarRefeicoes}
         corTipoRefeicao={corTipoRefeicao}

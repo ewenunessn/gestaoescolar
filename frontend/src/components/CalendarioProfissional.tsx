@@ -202,38 +202,27 @@ const CalendarioProfissional: React.FC<CalendarioProfissionalProps> = ({
     const isHoje = date.toDateString() === hoje.toDateString();
     const isFimDeSemana = date.getDay() === 0 || date.getDay() === 6;
     
+    // Verificar se o dia pertence ao mês atual do cardápio
+    const isOutroMes = date.getMonth() !== mes - 1 || date.getFullYear() !== ano;
+    
     return {
       style: {
         backgroundColor: isHoje 
           ? theme.palette.primary.light + '20'
           : isFimDeSemana 
             ? theme.palette.error.light + '10'
-            : 'transparent'
+            : 'transparent',
+        opacity: isOutroMes ? 0.3 : 1, // Dias de outros meses ficam escuros
+        pointerEvents: isOutroMes ? 'none' : 'auto', // Desabilita clique em dias de outros meses
+        color: isOutroMes ? theme.palette.text.disabled : 'inherit'
       }
     };
-  }, [theme]);
+  }, [theme, mes, ano]);
 
-  // Navegação personalizada
+  // Navegação personalizada - DESABILITADA (calendário travado no mês)
   const handleNavigate = (newDate: Date, view: View, action: string) => {
-    // Não atualizar o state interno, deixar as props controlarem
-    if (action === 'PREV') {
-      onMesAnterior();
-    } else if (action === 'NEXT') {
-      onProximoMes();
-    } else if (action === 'TODAY') {
-      // Para "Hoje", navegar para o mês atual
-      const hoje = new Date();
-      const anoAtual = hoje.getFullYear();
-      const mesAtual = hoje.getMonth() + 1;
-      
-      // Se já estamos no mês atual, não fazer nada
-      if (ano === anoAtual && mes === mesAtual) {
-        return;
-      }
-      
-      // Caso contrário, seria necessário implementar uma navegação para o mês atual
-      // Por enquanto, vamos manter no mês do cardápio
-    }
+    // Não permite navegação - calendário travado no mês do cardápio
+    return;
   };
 
   // Clique em evento
@@ -292,34 +281,7 @@ const CalendarioProfissional: React.FC<CalendarioProfissionalProps> = ({
         flexWrap: 'wrap',
         gap: 2
       }}>
-        {/* Navegação */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <IconButton 
-            onClick={() => onNavigate('PREV')} 
-            size="small"
-            sx={{ bgcolor: 'action.hover' }}
-          >
-            <ChevronLeft />
-          </IconButton>
-          <IconButton 
-            onClick={() => onNavigate('NEXT')} 
-            size="small"
-            sx={{ bgcolor: 'action.hover' }}
-          >
-            <ChevronRight />
-          </IconButton>
-          <Button
-            startIcon={<TodayIcon />}
-            onClick={() => onNavigate('TODAY')}
-            size="small"
-            variant="outlined"
-            sx={{ ml: 1 }}
-          >
-            Hoje
-          </Button>
-        </Box>
-
-        {/* Título */}
+        {/* Título centralizado - sem navegação */}
         <Typography 
           variant={isMobile ? "h6" : "h5"} 
           sx={{ 
@@ -332,7 +294,7 @@ const CalendarioProfissional: React.FC<CalendarioProfissionalProps> = ({
           {labelPersonalizado}
         </Typography>
 
-        {/* Controles de visualização - mais discretos */}
+        {/* Controles de visualização */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {/* Seletor de período discreto */}
           <Box sx={{ 

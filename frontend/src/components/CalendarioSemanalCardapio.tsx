@@ -284,20 +284,23 @@ const CalendarioSemanalCardapio: React.FC<CalendarioSemanalCardapioProps> = ({
                   minHeight: 80,
                   borderBottom: diaIndex < 6 ? '1px solid' : 'none',
                   borderColor: 'divider',
-                  cursor: 'pointer',
+                  cursor: isOutroMes ? 'not-allowed' : 'pointer',
                   transition: 'all 0.2s ease',
                   bgcolor: isHoje 
                     ? 'primary.50' 
                     : isFimDeSemana 
                       ? 'error.25' 
                       : 'background.paper',
-                  opacity: isOutroMes ? 0.6 : 1,
+                  opacity: isOutroMes ? 0.3 : 1,
+                  pointerEvents: isOutroMes ? 'none' : 'auto',
                   '&:hover': {
-                    bgcolor: isHoje 
-                      ? 'primary.100' 
-                      : isFimDeSemana 
-                        ? 'error.50' 
-                        : 'action.hover',
+                    bgcolor: isOutroMes 
+                      ? 'background.paper'
+                      : isHoje 
+                        ? 'primary.100' 
+                        : isFimDeSemana 
+                          ? 'error.50' 
+                          : 'action.hover',
                     transform: 'scale(1.01)'
                   }
                 }}
