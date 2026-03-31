@@ -155,8 +155,17 @@ const CalendarioProfissional: React.FC<CalendarioProfissionalProps> = ({
   // Converter eventos para formato do React Big Calendar
   const eventosFormatados = useMemo((): BigCalendarEvent[] => {
     return eventos.map(evento => {
-      const inicio = new Date(evento.data_inicio);
-      const fim = evento.data_fim ? new Date(evento.data_fim) : new Date(evento.data_inicio);
+      // Extrair ano, mês e dia da string sem considerar timezone
+      const [anoInicio, mesInicio, diaInicio] = evento.data_inicio.split('T')[0].split('-').map(Number);
+      const inicio = new Date(anoInicio, mesInicio - 1, diaInicio, 12, 0, 0); // Usar meio-dia para evitar problemas de timezone
+      
+      let fim: Date;
+      if (evento.data_fim) {
+        const [anoFim, mesFim, diaFim] = evento.data_fim.split('T')[0].split('-').map(Number);
+        fim = new Date(anoFim, mesFim - 1, diaFim, 12, 0, 0);
+      } else {
+        fim = new Date(anoInicio, mesInicio - 1, diaInicio, 12, 0, 0);
+      }
       
       return {
         id: evento.id,

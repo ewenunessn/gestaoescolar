@@ -22,6 +22,7 @@ import { listarEventosPorMes, getLabelsEventos, getCoresEventos } from '../servi
 import { listarModalidades, Modalidade } from '../services/modalidades';
 import { LoadingOverlay } from '../components/LoadingOverlay';
 import { DetalheDiaCardapioDialog } from '../components/DetalheDiaCardapioDialog';
+import { ReplicarRefeicoesDialog } from '../components/ReplicarRefeicoesDialog';
 import CustoCardapioDetalheModal from '../components/CustoCardapioDetalheModal';
 import api from '../services/api';
 
@@ -60,6 +61,7 @@ const CardapioCalendarioPage: React.FC = () => {
   const [openListDialog, setOpenListDialog] = useState(false);
   const [openDetalhesDialog, setOpenDetalhesDialog] = useState(false);
   const [openDetalhesDiaDialog, setOpenDetalhesDiaDialog] = useState(false);
+  const [openReplicarDialog, setOpenReplicarDialog] = useState(false);
   const [openPeriodoDialog, setOpenPeriodoDialog] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [ano, setAno] = useState(0);
@@ -858,6 +860,63 @@ const CardapioCalendarioPage: React.FC = () => {
     }
   };
 
+  const handleReplicarRefeicoes = async (diasDestino: Date[]) => {
+    if (!diaSelecionado || !cardapioId) {
+      return;
+    }
+
+    const refeicoesParaReplicar = getRefeicoesNoDia(diaSelecionado);
+    
+    if (refeicoesParaReplicar.length === 0) {
+      toast.error('Nenhuma refeição para replicar');
+      return;
+    }
+
+    setSalvando(true);
+    try {
+      let sucessos = 0;
+      let erros = 0;
+
+      for (const diaDestino of diasDestino) {
+        const dia = diaDestino.getDate();
+        
+        // Verificar se o dia está no mesmo mês/ano do cardápio
+        if (diaDestino.getMonth() + 1 !== cardapio?.mes || diaDestino.getFullYear() !== cardapio?.ano) {
+          continue;
+        }
+
+        // Replicar cada refeição do dia origem para o dia destino
+        for (const refeicao of refeicoesParaReplicar) {
+          try {
+            await adicionarRefeicaoDia(parseInt(cardapioId), {
+              refeicao_id: refeicao.refeicao_id,
+              dia: dia,
+              tipo_refeicao: refeicao.tipo_refeicao,
+              observacao: refeicao.observacao || ''
+            });
+            sucessos++;
+          } catch (err) {
+            console.error(`Erro ao replicar refeição para dia ${dia}:`, err);
+            erros++;
+          }
+        }
+      }
+
+      if (sucessos > 0) {
+        toast.success(`${sucessos} refeição(ões) replicada(s) com sucesso!`);
+        loadData();
+      }
+      if (erros > 0) {
+        toast.error(`${erros} erro(s) ao replicar refeições`);
+      }
+    } catch (err) {
+      console.error('Erro ao replicar:', err);
+      toast.error('Erro ao replicar refeições');
+    } finally {
+      setSalvando(false);
+    }
+  };
+
   const getDiaDaSemana = (diaSemana: number) => {
     const dias = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
     return dias[diaSemana];
@@ -1367,6 +1426,21 @@ const CardapioCalendarioPage: React.FC = () => {
           setOpenDetalhesDiaDialog(false);
           handleOpenDetalhes(refeicaoId);
         }}
+        onReplicarRefeicoes={() => {
+          setOpenDetalhesDiaDialog(false);
+          setOpenReplicarDialog(true);
+        }}
+      />
+
+      {/* Dialog de replicar refeições */}
+      <ReplicarRefeicoesDialog
+        open={openReplicarDialog}
+        onClose={() => setOpenReplicarDialog(false)}
+        diaOrigem={diaSelecionado || 1}
+        mesAno={cardapio ? `${MESES[cardapio.mes]}/${cardapio.ano}` : ''}
+        refeicoes={diaSelecionado ? getRefeicoesNoDia(diaSelecionado) : []}
+        onReplicar={handleReplicarRefeicoes}
+        corTipoRefeicao={corTipoRefeicao}
       />
 
       <LoadingOverlay 

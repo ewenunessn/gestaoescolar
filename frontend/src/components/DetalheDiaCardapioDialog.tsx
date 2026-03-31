@@ -3,7 +3,7 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, Chip, Button,
   IconButton, Card, CardContent, Divider
 } from '@mui/material';
-import { Delete as DeleteIcon, Event as EventIcon, Restaurant as RestaurantIcon, AccessTime as TimeIcon, Place as PlaceIcon } from '@mui/icons-material';
+import { Delete as DeleteIcon, Event as EventIcon, Restaurant as RestaurantIcon, AccessTime as TimeIcon, Place as PlaceIcon, ContentCopy as CopyIcon } from '@mui/icons-material';
 import { getLabelsEventos, getCoresEventos } from '../services/calendarioLetivo';
 import { TIPOS_REFEICAO, MESES } from '../services/cardapiosModalidade';
 
@@ -18,6 +18,7 @@ interface DetalheDiaCardapioDialogProps {
   onAdicionarRefeicao: () => void;
   onExcluirRefeicao: (id: number) => void;
   onVerDetalhes: (refeicaoId: number) => void;
+  onReplicarRefeicoes?: () => void;
 }
 
 export const DetalheDiaCardapioDialog: React.FC<DetalheDiaCardapioDialogProps> = ({
@@ -30,7 +31,8 @@ export const DetalheDiaCardapioDialog: React.FC<DetalheDiaCardapioDialogProps> =
   corTipoRefeicao,
   onAdicionarRefeicao,
   onExcluirRefeicao,
-  onVerDetalhes
+  onVerDetalhes,
+  onReplicarRefeicoes
 }) => {
   const labels = getLabelsEventos();
   const cores = getCoresEventos();
@@ -214,6 +216,15 @@ export const DetalheDiaCardapioDialog: React.FC<DetalheDiaCardapioDialogProps> =
         <Button onClick={onClose} sx={{ textTransform: 'none' }}>
           Fechar
         </Button>
+        {refeicoesDia.length > 0 && onReplicarRefeicoes && (
+          <Button
+            startIcon={<CopyIcon />}
+            onClick={onReplicarRefeicoes}
+            sx={{ textTransform: 'none' }}
+          >
+            Replicar em Outros Dias
+          </Button>
+        )}
         <Button 
           variant="contained" 
           onClick={onAdicionarRefeicao}
