@@ -1227,11 +1227,16 @@ export const gerarGuiasDemanda = async (req: Request, res: Response) => {
     } else {
       const meses = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
       const nomePadrao = `Guia ${meses[mes - 1]}/${ano}`;
+      
+      // Gerar código único para a guia
+      const codigoResult = await client.query(`SELECT gerar_codigo_guia($1, $2) as codigo`, [mes, ano]);
+      const codigo_guia = codigoResult.rows[0].codigo;
+      
       const guiaResult = await client.query(`
-        INSERT INTO guias (mes, ano, nome, competencia_mes_ano, observacao, status, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, 'aberta', NOW(), NOW())
+        INSERT INTO guias (mes, ano, nome, competencia_mes_ano, observacao, status, codigo_guia, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, 'aberta', $6, NOW(), NOW())
         RETURNING id
-      `, [mes, ano, nomePadrao, competencia, observacoes || null]);
+      `, [mes, ano, nomePadrao, competencia, observacoes || null, codigo_guia]);
       guia_id = guiaResult.rows[0].id;
     }
 
@@ -1974,11 +1979,16 @@ async function processarGeracaoGuiasBackground(jobId: number) {
     } else {
       const meses = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
       const nomePadrao = `Guia ${meses[mes - 1]}/${ano}`;
+      
+      // Gerar código único para a guia
+      const codigoResult = await client.query(`SELECT gerar_codigo_guia($1, $2) as codigo`, [mes, ano]);
+      const codigo_guia = codigoResult.rows[0].codigo;
+      
       const guiaResult = await client.query(`
-        INSERT INTO guias (mes, ano, nome, competencia_mes_ano, observacao, status, job_id, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, 'aberta', $6, NOW(), NOW())
+        INSERT INTO guias (mes, ano, nome, competencia_mes_ano, observacao, status, job_id, codigo_guia, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, 'aberta', $6, $7, NOW(), NOW())
         RETURNING id
-      `, [mes, ano, nomePadrao, competencia, observacoes || null, jobId]);
+      `, [mes, ano, nomePadrao, competencia, observacoes || null, jobId, codigo_guia]);
       guia_id = guiaResult.rows[0].id;
     }
 
