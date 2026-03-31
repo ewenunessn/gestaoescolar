@@ -77,6 +77,12 @@ dotenv.config();
 
 const app = express();
 const httpServer = createServer(app);
+
+// CORS deve ser o PRIMEIRO middleware — antes de qualquer rota
+app.use(cors(corsOptions));
+// Responder OPTIONS imediatamente para preflight
+app.options('*', cors(corsOptions));
+
 app.use(express.json({ limit: '10mb' }));
 
 async function ensureProdutoComposicaoNutricionalTable() {
@@ -176,8 +182,6 @@ const corsOptions = {
   preflightContinue: false,
   optionsSuccessStatus: 200
 };
-
-app.use(cors(corsOptions));
 
 // Middlewares de otimização
 app.use(balancedCompression);  // Compressão de respostas
