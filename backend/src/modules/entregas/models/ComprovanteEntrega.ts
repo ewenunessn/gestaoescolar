@@ -15,6 +15,8 @@ export interface ComprovanteEntregaRecord {
   precisao_gps?: number;
   total_itens: number;
   status: string;
+  itens_cancelados?: number;
+  observacao_cancelamento?: string;
   created_at: string;
   updated_at: string;
 }
@@ -22,11 +24,15 @@ export interface ComprovanteEntregaRecord {
 export interface ComprovanteItemRecord {
   id: number;
   comprovante_id: number;
-  historico_entrega_id: number;
+  historico_entrega_id: number | null;
   produto_nome: string;
   quantidade_entregue: number;
   unidade: string;
   lote?: string;
+  guia_demanda_id?: number;
+  mes_referencia?: number;
+  ano_referencia?: number;
+  data_entrega_original?: string;
   created_at: string;
 }
 
@@ -239,6 +245,39 @@ class ComprovanteEntregaModel {
     `, [escolaId]);
 
     return parseInt(result.rows[0].total);
+  }
+
+  /**
+   * Cancelar item de entrega de forma segura (mantém integridade do comprovante)
+   */
+  async cancelarItemEntrega(historicoEntregaId: number, motivo?: string, usuarioId?: number): Promise<boolean> {
+    try {
+      const result = await db.query(`
+        SELECT cancelar_item_entrega($1, $2, $3) as sucesso
+      `, [historicoEntregaId, motivo || null, usuarioId || null]);
+
+      return result.rows[0].sucesso;
+    } catch (error) {
+      console.error('Erro ao cancelar item de entrega:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Buscar histórico de cancelamentos de um comprovante
+   */
+  async buscarCancelamentos(comprovanteId: number): Promise<any[]> {
+    const result = await db.query(`
+      SELECT 
+        cc.*,
+        u.nome as usuario_nome
+      FROM comprovante_cancelamentos cc
+      LEFT JOIN usuarios u ON cc.usuario_id = u.id
+      WHERE cc.comprovante_id = $1
+      ORDER BY cc.data_cancelamento DESC
+    `, [comprovanteId]);
+
+    return result.rows;
   }
 }
 

@@ -78,6 +78,8 @@ export async function listarModalidadesPorEscola(req: Request, res: Response) {
   try {
     const { escola_id } = req.params;
     
+    console.log('🔍 Buscando modalidades para escola_id:', escola_id);
+    
     const modalidades = await db.all(`
       SELECT 
         em.id,
@@ -86,13 +88,14 @@ export async function listarModalidadesPorEscola(req: Request, res: Response) {
         em.quantidade_alunos,
         em.created_at,
         em.updated_at,
-        m.nome as modalidade_nome,
-        m.descricao as modalidade_descricao
+        m.nome as modalidade_nome
       FROM escola_modalidades em
       LEFT JOIN modalidades m ON em.modalidade_id = m.id
       WHERE em.escola_id = $1
       ORDER BY m.nome
     `, [escola_id]);
+
+    console.log('✅ Modalidades encontradas:', modalidades.length, modalidades);
 
     res.json({
       success: true,
@@ -101,6 +104,7 @@ export async function listarModalidadesPorEscola(req: Request, res: Response) {
     });
   } catch (error) {
     console.error("❌ Erro ao listar modalidades por escola:", error);
+    console.error("❌ Stack:", error instanceof Error ? error.stack : 'No stack');
     res.status(500).json({
       success: false,
       message: "Erro ao listar modalidades por escola",

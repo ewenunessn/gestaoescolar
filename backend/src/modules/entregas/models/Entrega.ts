@@ -164,11 +164,9 @@ class EntregaModel {
 
     if (somentePendentes) {
       whereClause += ` AND gpe.entrega_confirmada = false AND gpe.status = 'pendente'`;
-    } else {
-      // Por padrão, mostrar apenas itens prontos para entrega (pendente ou parcial)
-      // Excluir: programada (aguardando), cancelado, entregue (completo)
-      whereClause += ` AND gpe.status IN ('pendente', 'parcial')`;
     }
+    // Não aplicar filtro de status quando não for "somente pendentes"
+    // Isso permite mostrar todos os itens: pendentes, parciais e entregues
 
     const result = await db.query(`
       SELECT 
@@ -186,10 +184,18 @@ class EntregaModel {
         gpe.data_entrega,
         gpe.nome_quem_recebeu,
         gpe.nome_quem_entregou,
+        -- Campos de snapshot da escola
+        gpe.escola_nome,
+        gpe.escola_endereco,
+        gpe.escola_municipio,
+        gpe.escola_total_alunos,
+        gpe.escola_modalidades,
+        gpe.escola_snapshot_data,
         p.nome as produto_nome,
         gpe.unidade as produto_unidade,
         g.mes,
         g.ano,
+        g.codigo_guia,
         g.observacao as guia_observacao,
         COALESCE(gpe.quantidade_total_entregue, 0) as quantidade_ja_entregue,
         (gpe.quantidade - COALESCE(gpe.quantidade_total_entregue, 0)) as saldo_pendente,

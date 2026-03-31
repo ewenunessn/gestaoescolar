@@ -323,24 +323,51 @@ const CalendarioProfissional: React.FC<CalendarioProfissionalProps> = ({
           {labelPersonalizado}
         </Typography>
 
-        {/* Controles de visualização */}
+        {/* Controles de visualização - mais discretos */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <ButtonGroup size="small" variant="outlined">
-            <Button
+          {/* Seletor de período discreto */}
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            bgcolor: 'action.hover', 
+            borderRadius: 1, 
+            p: 0.3,
+            border: '1px solid',
+            borderColor: 'divider'
+          }}>
+            <IconButton
               onClick={() => onView(Views.MONTH)}
-              variant={view === Views.MONTH ? 'contained' : 'outlined'}
-              startIcon={<CalendarMonth />}
+              size="small"
+              sx={{ 
+                minWidth: 28,
+                height: 28,
+                bgcolor: view === Views.MONTH ? 'primary.main' : 'transparent',
+                color: view === Views.MONTH ? 'white' : 'text.secondary',
+                '&:hover': { 
+                  bgcolor: view === Views.MONTH ? 'primary.dark' : 'action.hover' 
+                },
+                borderRadius: 0.5
+              }}
             >
-              {isMobile ? '' : 'Mês'}
-            </Button>
-            <Button
+              <CalendarMonth fontSize="small" />
+            </IconButton>
+            <IconButton
               onClick={() => onView(Views.WEEK)}
-              variant={view === Views.WEEK ? 'contained' : 'outlined'}
-              startIcon={<ViewWeek />}
+              size="small"
+              sx={{ 
+                minWidth: 28,
+                height: 28,
+                bgcolor: view === Views.WEEK ? 'primary.main' : 'transparent',
+                color: view === Views.WEEK ? 'white' : 'text.secondary',
+                '&:hover': { 
+                  bgcolor: view === Views.WEEK ? 'primary.dark' : 'action.hover' 
+                },
+                borderRadius: 0.5
+              }}
             >
-              {isMobile ? '' : 'Semana'}
-            </Button>
-          </ButtonGroup>
+              <ViewWeek fontSize="small" />
+            </IconButton>
+          </Box>
 
           {onPdfClick && (
             <IconButton 

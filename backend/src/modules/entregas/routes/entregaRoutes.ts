@@ -38,7 +38,9 @@ router.delete('/historico/:id', requireEscrita('entregas'), HistoricoEntregaCont
 
 // Rotas de ESCRITA - Comprovantes
 router.post('/comprovantes', requireEscrita('entregas'), ComprovanteEntregaController.criar);
+router.post('/comprovantes/cancelar-item', requireEscrita('entregas'), ComprovanteEntregaController.cancelarItem);
 router.delete('/comprovantes/:id', requireEscrita('entregas'), ComprovanteEntregaController.cancelar);
 router.delete('/comprovantes/:id/excluir', requireEscrita('entregas'), ComprovanteEntregaController.excluir);
+router.get('/comprovantes/:id/cancelamentos', requireLeitura('entregas'), ComprovanteEntregaController.buscarCancelamentos);
 
 export default router;

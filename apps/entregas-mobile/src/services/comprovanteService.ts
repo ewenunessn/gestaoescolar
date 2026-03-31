@@ -99,6 +99,10 @@ class ComprovanteService {
       </div>
     ` : '';
 
+    // Gerar QR Code com API do Google Charts (funciona offline após primeiro carregamento)
+    const numeroComprovante = 'COMP-' + new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0') + '-' + String(Math.floor(Math.random() * 100000)).padStart(5, '0');
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(numeroComprovante)}`;
+
     return `
       <!DOCTYPE html>
       <html>
@@ -204,6 +208,12 @@ class ComprovanteService {
               margin-bottom: 10px;
               padding-top: 5px;
             }
+            .qrcode-section {
+              margin-top: 20px;
+              padding: 0;
+              background-color: transparent;
+              border-radius: 0;
+            }
           </style>
         </head>
         <body>
@@ -260,6 +270,16 @@ class ComprovanteService {
               <div class="assinatura-linha"></div>
               <p><strong>${dados.nomeQuemRecebeu}</strong></p>
               <p style="font-size: 12px; color: #666;">Recebedor</p>
+            </div>
+          </div>
+
+          <div class="qrcode-section">
+            <div style="display: flex; justify-content: flex-end; align-items: center; padding: 10px;">
+              <div style="text-align: right;">
+                <img src="${qrCodeUrl}" alt="QR Code" width="80" height="80" style="border: 1px solid #ddd; border-radius: 4px; padding: 5px; background-color: white;" />
+                <p style="font-size: 9px; color: #666; margin-top: 5px; margin-bottom: 2px;">${numeroComprovante}</p>
+                <p style="font-size: 7px; color: #999; margin: 0;">Validar comprovante</p>
+              </div>
             </div>
           </div>
 

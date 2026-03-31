@@ -368,6 +368,20 @@ class EntregaService {
     }
   }
 
+  // Cancelar item de entrega de forma segura (mantém integridade do comprovante)
+  async cancelarItemEntrega(historicoEntregaId: number, motivo?: string): Promise<{ message: string; sucesso: boolean }> {
+    try {
+      const response = await api.post('/entregas/comprovantes/cancelar-item', {
+        historico_entrega_id: historicoEntregaId,
+        motivo
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao cancelar item de entrega:', error);
+      throw error;
+    }
+  }
+
   // Listar planejamentos de entrega
   async listarPlanejamentos(guiaId?: number, rotaId?: number): Promise<PlanejamentoEntrega[]> {
     try {

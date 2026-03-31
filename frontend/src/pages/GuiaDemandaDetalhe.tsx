@@ -199,22 +199,22 @@ const GuiaDemandaDetalhe: React.FC = () => {
     },
     {
       accessorKey: 'qtd_pendente',
-      header: 'Pendentes',
-      size: 100,
+      header: 'Disponível p/ Entrega',
+      size: 140,
       enableSorting: true,
-      cell: ({ getValue }) => <Chip label={Number(getValue()) || 0} size="small" />,
+      cell: ({ getValue }) => <Chip label={Number(getValue()) || 0} size="small" color="warning" />,
     },
     {
       accessorKey: 'qtd_programada',
-      header: 'Programados',
-      size: 100,
+      header: 'Aguardando Estoque',
+      size: 140,
       enableSorting: true,
       cell: ({ getValue }) => <Chip label={Number(getValue()) || 0} size="small" color="info" />,
     },
     {
       accessorKey: 'qtd_entregue',
-      header: 'Entregues',
-      size: 100,
+      header: 'Já Entregues',
+      size: 120,
       enableSorting: true,
       cell: ({ getValue }) => <Chip label={Number(getValue()) || 0} size="small" color="success" />,
     },
@@ -341,7 +341,18 @@ const GuiaDemandaDetalhe: React.FC = () => {
     return m[mes - 1];
   };
 
-  const statusColor = (s: string): any => ({ pendente: 'default', programada: 'info', parcial: 'warning', entregue: 'success', cancelado: 'error' }[s] || 'default');
+  const statusColor = (s: string): any => ({ pendente: 'warning', programada: 'info', parcial: 'warning', entregue: 'success', cancelado: 'error' }[s] || 'default');
+
+  const getStatusLabel = (status: string) => {
+    const statusLabels: Record<string, string> = {
+      'pendente': 'Disponível p/ Entrega',
+      'programada': 'Aguardando Estoque',
+      'parcial': 'Entrega Parcial',
+      'entregue': 'Já Entregue',
+      'cancelado': 'Cancelado'
+    };
+    return statusLabels[status] || status;
+  };
 
   // ── Aba Produtos: agrupar itens por (produto_id, data_entrega) ──────────────
   const produtosAgrupados = useMemo(() => {
@@ -743,7 +754,7 @@ const GuiaDemandaDetalhe: React.FC = () => {
                       {formatarQuantidade(dem)} {item.unidade}
                     </TableCell>
                     <TableCell align="center">
-                      <Chip label={item.status} size="small" color={statusColor(item.status)} />
+                      <Chip label={getStatusLabel(item.status)} size="small" color={statusColor(item.status)} />
                     </TableCell>
                   </TableRow>
                 );
@@ -795,7 +806,7 @@ const GuiaDemandaDetalhe: React.FC = () => {
                   </TableCell>
                   <TableCell align="right" sx={{ fontWeight: 600 }}>{formatarQuantidade(item.quantidade)} {item.unidade}</TableCell>
                   <TableCell align="center">
-                    <Chip label={item.status} size="small" color={statusColor(item.status)} />
+                    <Chip label={getStatusLabel(item.status)} size="small" color={statusColor(item.status)} />
                   </TableCell>
                 </TableRow>
               ))}
@@ -860,8 +871,8 @@ const GuiaDemandaDetalhe: React.FC = () => {
                         <InputLabel>Status</InputLabel>
                         <Select value={batchStatus[e.id] || 'pendente'} label="Status" disabled={batchSaving}
                           onChange={ev => setBatchStatus({ ...batchStatus, [e.id]: ev.target.value as string })}>
-                          <MenuItem value="pendente">Pendente</MenuItem>
-                          <MenuItem value="programada">Programada</MenuItem>
+                          <MenuItem value="pendente">Disponível p/ Entrega</MenuItem>
+                          <MenuItem value="programada">Aguardando Estoque</MenuItem>
                         </Select>
                       </FormControl>
                     </Box>

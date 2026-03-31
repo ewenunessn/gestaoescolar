@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Container } from '@mui/material';
-import { LocalShipping as LocalShippingIcon } from '@mui/icons-material';
+import { Box } from '@mui/material';
 import { usePageTitle } from '../contexts/PageTitleContext';
 import { EscolasEntregaList } from '../modules/entregas/components/EscolasEntregaList';
 import { ItensEntregaList } from '../modules/entregas/components/ItensEntregaList';
-import { FiltrosEntrega } from '../modules/entregas/components/FiltrosEntrega';
 import { EscolaEntrega } from '../modules/entregas/types';
-import PageBreadcrumbs from '../components/PageBreadcrumbs';
+import PageContainer from '../components/PageContainer';
+import PageHeader from '../components/PageHeader';
 
 const Entregas: React.FC = () => {
-  const { setPageTitle } = usePageTitle();
+  const { setPageTitle, setBackPath } = usePageTitle();
   const [escolaSelecionada, setEscolaSelecionada] = useState<EscolaEntrega | null>(null);
   const [filtros, setFiltros] = useState<{
     guiaId?: number;
@@ -18,15 +17,24 @@ const Entregas: React.FC = () => {
     dataFim?: string;
     somentePendentes?: boolean;
   }>({
-    somentePendentes: true,
+    somentePendentes: false,
     dataFim: new Date().toISOString().split('T')[0]
   });
 
   // Definir título da página
   useEffect(() => {
-    setPageTitle('Entregas');
-    return () => setPageTitle('');
-  }, [setPageTitle]);
+    if (escolaSelecionada) {
+      setPageTitle(`Entregas - ${escolaSelecionada.nome}`);
+      setBackPath('/entregas');
+    } else {
+      setPageTitle('Entregas');
+      setBackPath('');
+    }
+    return () => {
+      setPageTitle('');
+      setBackPath('');
+    };
+  }, [setPageTitle, setBackPath, escolaSelecionada]);
 
   const handleEscolaSelect = (escola: EscolaEntrega) => {
     setEscolaSelecionada(escola);
@@ -49,33 +57,18 @@ const Entregas: React.FC = () => {
   };
 
   return (
-    <Container maxWidth="xl">
-      <Box py={3}>
-        <PageBreadcrumbs 
-          items={[
-            { label: 'Entregas', icon: <LocalShippingIcon fontSize="small" /> }
-          ]}
-          showBackButton={false}
-        />
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <PageContainer fullHeight>
+        <PageHeader title="Entregas" />
+        
         {!escolaSelecionada ? (
-          <>
-            <Typography variant="h4" component="h1" gutterBottom>
-              Módulo de Entregas
-            </Typography>
-            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-              Gerencie as entregas dos itens das guias para as escolas por rota
-            </Typography>
-            
-            <FiltrosEntrega 
-              onFiltroChange={handleFiltroChange}
-              filtroAtivo={filtros}
-            />
-            
+          <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
             <EscolasEntregaList 
               onEscolaSelect={handleEscolaSelect}
               filtros={filtros}
+              onFiltroChange={handleFiltroChange}
             />
-          </>
+          </Box>
         ) : (
           <ItensEntregaList 
             escola={escolaSelecionada} 
@@ -83,8 +76,8 @@ const Entregas: React.FC = () => {
             filtros={filtros}
           />
         )}
-      </Box>
-    </Container>
+      </PageContainer>
+    </Box>
   );
 };
 

@@ -1,15 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import CompactPagination from '../components/CompactPagination';
+import { useNavigate, useParams } from 'react-router';
 import {
   Box,
   Card,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TextField,
   Typography,
   IconButton,
@@ -28,37 +21,36 @@ import {
   MenuItem
 } from '@mui/material';
 import {
-  ArrowBack as ArrowBackIcon,
   Search as SearchIcon,
   Clear as ClearIcon,
   Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
-  CalendarMonth as CalendarIcon,
   Inventory as InventoryIcon
 } from '@mui/icons-material';
+import { ColumnDef } from '@tanstack/react-table';
 import PageContainer from '../components/PageContainer';
-import PageBreadcrumbs from '../components/PageBreadcrumbs';
+import { DataTableAdvanced } from '../components/DataTableAdvanced';
 import { guiaService, GuiaProdutoEscola } from '../services/guiaService';
 import { produtoService, Produto } from '../services/produtoService';
 import { useToast } from '../hooks/useToast';
+import { usePageTitle } from '../contexts/PageTitleContext';
+import { formatarQuantidade } from '../utils/formatters';
 import api from '../services/api';
 
 const GuiaDemandaEscolaItens: React.FC = () => {
   const navigate = useNavigate();
   const { guiaId, escolaId } = useParams<{ guiaId: string; escolaId: string }>();
   const toast = useToast();
+  const { setPageTitle, setBackPath } = usePageTitle();
   
   const [guia, setGuia] = useState<any>(null);
   const [escola, setEscola] = useState<any>(null);
   const [itens, setItens] = useState<GuiaProdutoEscola[]>([]);
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
   
-  // Paginação
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  // Paginação removida - será gerenciada pela DataTableAdvanced
   
   // Modal
   const [openModal, setOpenModal] = useState(false);
@@ -76,6 +68,23 @@ const GuiaDemandaEscolaItens: React.FC = () => {
       loadData();
     }
   }, [guiaId, escolaId]);
+
+  useEffect(() => {
+    setBackPath(`/guias-demanda/${guiaId}`);
+    return () => {
+      setBackPath(null);
+    };
+  }, [setBackPath, guiaId]);
+
+  useEffect(() => {
+    if (escola && guia) {
+      setPageTitle(`${escola.nome} - ${guia.nome}`);
+    } else if (escola) {
+      setPageTitle(escola.nome);
+    } else {
+      setPageTitle('Itens da Escola');
+    }
+  }, [escola, guia, setPageTitle]);
 
   const loadData = async () => {
     try {
@@ -145,7 +154,7 @@ const GuiaDemandaEscolaItens: React.FC = () => {
     try {
       if (editingItem) {
         await guiaService.atualizarProdutoEscola(editingItem.id, formData);
-        toast.success('Sucesso!', 'Item atualizado com sucesso!');
+        toast.success('Item atualizado com sucesso!');
       } else {
         await guiaService.adicionarProdutoEscola({
           produtoId: formData.produto_id,
@@ -157,43 +166,19 @@ const GuiaDemandaEscolaItens: React.FC = () => {
           mes_competencia: guia.mes,
           ano_competencia: guia.ano
         });
-        toast.success('Sucesso!', 'Item adicionado com sucesso!');
+        toast.success('Item adicionado com sucesso!');
       }
       setOpenModal(false);
       loadData();
     } catch (error) {
       console.error('Erro ao salvar item:', error);
-      toast.error('Erro ao salvar', 'Não foi possível salvar o item.');
+      toast.error('Não foi possível salvar o item.');
     }
   };
-
-  const handleDelete = async (id: number) => {
-    if (!confirm('Deseja realmente excluir este item?')) return;
-    
-    try {
-      await guiaService.removerItemGuia(id);
-      toast.success('Sucesso!', 'Item removido com sucesso!');
-      loadData();
-    } catch (error) {
-      console.error('Erro ao remover item:', error);
-      toast.error('Erro ao excluir', 'Não foi possível excluir o item.');
-    }
-  };
-
-  const filteredItens = useMemo(() => {
-    return itens.filter(item => 
-      item.produto_nome.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [itens, searchTerm]);
-
-  const paginatedItens = useMemo(() => {
-    const startIndex = page * rowsPerPage;
-    return filteredItens.slice(startIndex, startIndex + rowsPerPage);
-  }, [filteredItens, page, rowsPerPage]);
 
   const getStatusColor = (status: string) => {
     const statusMap: Record<string, 'default' | 'warning' | 'success' | 'error' | 'info'> = {
-      'pendente': 'default',
+      'pendente': 'warning',
       'programada': 'info',
       'parcial': 'warning',
       'entregue': 'success',
@@ -201,6 +186,147 @@ const GuiaDemandaEscolaItens: React.FC = () => {
     };
     return statusMap[status] || 'default';
   };
+
+  const getStatusLabel = (status: string) => {
+    const statusLabels: Record<string, string> = {
+      'pendente': 'Disponível p/ Entrega',
+      'programada': 'Aguardando Estoque',
+      'parcial': 'Entrega Parcial',
+      'entregue': 'Já Entregue',
+      'cancelado': 'Cancelado'
+    };
+    return statusLabels[status] || status;
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('Deseja realmente excluir este item?')) return;
+    
+    try {
+      await guiaService.removerItemGuia(id);
+      toast.success('Item removido com sucesso!');
+      loadData();
+    } catch (error) {
+      console.error('Erro ao remover item:', error);
+      toast.error('Não foi possível excluir o item.');
+    }
+  };
+
+  // Colunas para a DataTableAdvanced
+  const columns = useMemo<ColumnDef<GuiaProdutoEscola>[]>(() => [
+    {
+      accessorKey: 'produto_nome',
+      header: 'Produto',
+      size: 300,
+      enableSorting: true,
+      cell: ({ getValue }) => (
+        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+          {getValue() as string}
+        </Typography>
+      ),
+    },
+    {
+      accessorKey: 'quantidade',
+      header: 'Quantidade',
+      size: 120,
+      enableSorting: true,
+      cell: ({ getValue }) => (
+        <Typography variant="body2">{formatarQuantidade(getValue() as number)}</Typography>
+      ),
+    },
+    {
+      accessorKey: 'unidade',
+      header: 'Unidade',
+      size: 100,
+      enableSorting: true,
+      cell: ({ getValue }) => (
+        <Typography variant="body2">{getValue() as string}</Typography>
+      ),
+    },
+    {
+      accessorKey: 'data_programada',
+      header: 'Data Programada',
+      size: 140,
+      enableSorting: true,
+      cell: ({ row }) => {
+        const item = row.original;
+        const data = item.data_programada || item.data_entrega;
+        if (!data) return <Typography variant="body2">—</Typography>;
+        try {
+          return (
+            <Typography variant="body2">
+              {new Date(data).toLocaleDateString('pt-BR')}
+            </Typography>
+          );
+        } catch {
+          return <Typography variant="body2">—</Typography>;
+        }
+      },
+    },
+    {
+      accessorKey: 'status',
+      header: 'Status',
+      size: 160,
+      enableSorting: true,
+      cell: ({ getValue }) => (
+        <Chip 
+          label={getStatusLabel(getValue() as string)} 
+          size="small" 
+          color={getStatusColor(getValue() as string)}
+        />
+      ),
+    },
+    {
+      id: 'actions',
+      header: 'Ações',
+      size: 120,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
+          <Tooltip title="Editar">
+            <IconButton
+              size="small"
+              color="secondary"
+              onClick={() => handleOpenModal(row.original)}
+            >
+              <EditIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Excluir">
+            <IconButton
+              size="small"
+              color="error"
+              onClick={() => handleDelete(row.original.id)}
+            >
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      ),
+    },
+  ], []);
+
+  // Toolbar actions
+  const toolbarActions = (
+    <Button
+      variant="contained"
+      startIcon={<AddIcon />}
+      onClick={() => handleOpenModal()}
+      size="small"
+      sx={{ bgcolor: '#059669', '&:hover': { bgcolor: '#047857' } }}
+    >
+      Adicionar Item
+    </Button>
+  );
+
+  // Estatísticas para o header
+  const estatisticas = useMemo(() => {
+    return {
+      totalItens: itens.length,
+      disponivelEntrega: itens.filter(i => i.status === 'pendente').length,
+      aguardandoEstoque: itens.filter(i => i.status === 'programada').length,
+      jaEntregues: itens.filter(i => i.status === 'entregue').length,
+    };
+  }, [itens]);
 
   if (loading) {
     return (
@@ -213,98 +339,33 @@ const GuiaDemandaEscolaItens: React.FC = () => {
   return (
     <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
       <PageContainer fullHeight>
-        <PageBreadcrumbs
-          items={[
-            { label: 'Guias de Demanda', path: '/guias-demanda', icon: <CalendarIcon fontSize="small" /> },
-            { label: guia?.nome || 'Guia', path: `/guias-demanda/${guiaId}` },
-            { label: escola?.nome || 'Escola' }
-          ]}
-        />
-        
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-          <IconButton onClick={() => navigate(`/guias-demanda/${guiaId}`)} size="small">
-            <ArrowBackIcon />
-          </IconButton>
-          <Box sx={{ flex: 1 }}>
-            <Typography variant="h5" sx={{ fontWeight: 600 }}>
-              {escola?.nome}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {guia?.nome}
-            </Typography>
+        {/* Estatísticas discretas */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            Itens da Escola
+          </Typography>
+          
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+            {[
+              { label: 'Total de Produtos', value: estatisticas.totalItens, color: 'text.secondary' },
+              { label: 'Disponível p/ Entrega', value: estatisticas.disponivelEntrega, color: 'warning.main' },
+              { label: 'Aguardando Estoque', value: estatisticas.aguardandoEstoque, color: 'info.main' },
+              { label: 'Já Entregues', value: estatisticas.jaEntregues, color: 'success.main' },
+            ].map(c => (
+              <Box key={c.label} sx={{ textAlign: 'center', minWidth: 80 }}>
+                <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.7rem', display: 'block' }}>
+                  {c.label}
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600, color: c.color, fontSize: '0.9rem' }}>
+                  {c.value}
+                </Typography>
+              </Box>
+            ))}
           </Box>
         </Box>
 
-        {/* Barra de Pesquisa e Cards de Resumo na mesma linha */}
-        <Box sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'stretch' }}>
-          <Card sx={{ borderRadius: '12px', p: 2, flex: '0 0 300px' }}>
-            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-              <TextField
-                placeholder="Buscar produtos..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                size="small"
-                fullWidth
-                sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon sx={{ color: 'text.secondary' }} />
-                    </InputAdornment>
-                  ),
-                  endAdornment: searchTerm && (
-                    <InputAdornment position="end">
-                      <IconButton size="small" onClick={() => setSearchTerm('')}>
-                        <ClearIcon fontSize="small" />
-                      </IconButton>
-                    </InputAdornment>
-                  )
-                }}
-              />
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={() => handleOpenModal()}
-                size="small"
-                sx={{ bgcolor: '#059669', '&:hover': { bgcolor: '#047857' }, whiteSpace: 'nowrap' }}
-              >
-                Adicionar
-              </Button>
-            </Box>
-          </Card>
-          
-          <Card sx={{ p: 1.5, flex: 1, minWidth: '100px' }}>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', whiteSpace: 'nowrap' }}>Total de Itens</Typography>
-            <Typography variant="h5" sx={{ fontWeight: 600 }}>{itens.length}</Typography>
-          </Card>
-          <Card sx={{ p: 1.5, flex: 1, minWidth: '100px' }}>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', whiteSpace: 'nowrap' }}>Pendentes</Typography>
-            <Typography variant="h5" sx={{ fontWeight: 600, color: 'warning.main' }}>
-              {itens.filter(i => i.status === 'pendente').length}
-            </Typography>
-          </Card>
-          <Card sx={{ p: 1.5, flex: 1, minWidth: '100px' }}>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', whiteSpace: 'nowrap' }}>Programados</Typography>
-            <Typography variant="h5" sx={{ fontWeight: 600, color: 'info.main' }}>
-              {itens.filter(i => i.status === 'programada').length}
-            </Typography>
-          </Card>
-          <Card sx={{ p: 1.5, flex: 1, minWidth: '100px' }}>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', whiteSpace: 'nowrap' }}>Entregues</Typography>
-            <Typography variant="h5" sx={{ fontWeight: 600, color: 'success.main' }}>
-              {itens.filter(i => i.status === 'entregue').length}
-            </Typography>
-          </Card>
-        </Box>
-
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 2, px: 1 }}>
-          <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 500 }}>
-            Exibindo {filteredItens.length} {filteredItens.length === 1 ? 'item' : 'itens'}
-          </Typography>
-        </Box>
-
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          {filteredItens.length === 0 ? (
+          {itens.length === 0 ? (
             <Box textAlign="center" py={8}>
               <InventoryIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
               <Typography variant="h6" color="text.secondary">
@@ -312,92 +373,14 @@ const GuiaDemandaEscolaItens: React.FC = () => {
               </Typography>
             </Box>
           ) : (
-            <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', width: '100%', overflow: 'hidden' }}>
-              <TableContainer sx={{ flex: 1, minHeight: 0 }}>
-                <Table stickyHeader>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Produto</TableCell>
-                      <TableCell align="center">Quantidade</TableCell>
-                      <TableCell align="center">Unidade</TableCell>
-                      <TableCell align="center">Data Programada</TableCell>
-                      <TableCell align="center">Status</TableCell>
-                      <TableCell align="center">Ações</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {paginatedItens.map((item) => (
-                      <TableRow key={item.id} hover>
-                        <TableCell>
-                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                            {item.produto_nome}
-                          </Typography>
-                        </TableCell>
-                        <TableCell align="center">
-                          <Typography variant="body2">{item.quantidade}</Typography>
-                        </TableCell>
-                        <TableCell align="center">
-                          <Typography variant="body2">{item.unidade}</Typography>
-                        </TableCell>
-                        <TableCell align="center">
-                          <Typography variant="body2">
-                            {(() => {
-                              const data = item.data_programada || item.data_entrega;
-                              if (!data) return '-';
-                              try {
-                                return new Date(data).toLocaleDateString('pt-BR');
-                              } catch {
-                                return '-';
-                              }
-                            })()}
-                          </Typography>
-                        </TableCell>
-                        <TableCell align="center">
-                          <Chip 
-                            label={item.status} 
-                            size="small" 
-                            color={getStatusColor(item.status)}
-                          />
-                        </TableCell>
-                        <TableCell align="center">
-                          <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
-                            <Tooltip title="Editar">
-                              <IconButton
-                                size="small"
-                                color="secondary"
-                                onClick={() => handleOpenModal(item)}
-                              >
-                                <EditIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Excluir">
-                              <IconButton
-                                size="small"
-                                color="delete"
-                                onClick={() => handleDelete(item.id)}
-                              >
-                                <DeleteIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          </Box>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-              <CompactPagination
-                count={filteredItens.length}
-                page={page}
-                onPageChange={(e, newPage) => setPage(newPage)}
-                rowsPerPage={rowsPerPage}
-                onRowsPerPageChange={(e) => {
-                  setRowsPerPage(parseInt(e.target.value, 10));
-                  setPage(0);
-                }}
-                rowsPerPageOptions={[10, 25, 50]}
-              />
-            </Box>
+            <DataTableAdvanced
+              data={itens}
+              columns={columns}
+              loading={loading}
+              searchPlaceholder="Buscar produtos..."
+              emptyMessage="Nenhum produto encontrado"
+              toolbarActions={toolbarActions}
+            />
           )}
         </Box>
       </PageContainer>
@@ -437,10 +420,10 @@ const GuiaDemandaEscolaItens: React.FC = () => {
                 label="Status"
                 onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
               >
-                <MenuItem value="pendente">Pendente</MenuItem>
-                <MenuItem value="programada">Programada</MenuItem>
-                <MenuItem value="parcial">Parcial</MenuItem>
-                <MenuItem value="entregue">Entregue</MenuItem>
+                <MenuItem value="pendente">Disponível para Entrega</MenuItem>
+                <MenuItem value="programada">Aguardando Estoque</MenuItem>
+                <MenuItem value="parcial">Entrega Parcial</MenuItem>
+                <MenuItem value="entregue">Já Entregue</MenuItem>
                 <MenuItem value="cancelado">Cancelado</MenuItem>
               </Select>
             </FormControl>

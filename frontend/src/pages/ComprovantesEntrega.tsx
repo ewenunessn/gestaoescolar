@@ -6,6 +6,7 @@ import StatusIndicator from '../components/StatusIndicator';
 import PageHeader from '../components/PageHeader';
 import PageContainer from '../components/PageContainer';
 import { DataTableAdvanced } from '../components/DataTableAdvanced';
+import QRCode from 'qrcode';
 import {
   Box,
   Typography,
@@ -50,6 +51,10 @@ interface ComprovanteItem {
   quantidade_entregue: number;
   unidade: string;
   lote?: string;
+  guia_demanda_id?: number;
+  mes_referencia?: number;
+  ano_referencia?: number;
+  historico_entrega_id?: number | null;
 }
 
 interface Comprovante {
@@ -66,6 +71,8 @@ interface Comprovante {
   assinatura_base64?: string;
   total_itens: number;
   status: string;
+  itens_cancelados?: number;
+  observacao_cancelamento?: string;
   itens: ComprovanteItem[];
 }
 
@@ -190,8 +197,44 @@ export default function ComprovantesEntrega() {
   };
 
   const gerarPdfComprovante = async (comprovante: Comprovante) => {
-    const dataFormatada = new Date(comprovante.data_entrega + 'T12:00:00').toLocaleString('pt-BR');
+    // Parse date properly - handle both date-only and datetime formats
+    let dataFormatada: string;
+    try {
+      const date = new Date(comprovante.data_entrega);
+      if (isNaN(date.getTime())) {
+        // If invalid, try adding time
+        const dateWithTime = new Date(comprovante.data_entrega + 'T12:00:00');
+        dataFormatada = dateWithTime.toLocaleString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      } else {
+        dataFormatada = date.toLocaleString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      }
+    } catch (e) {
+      dataFormatada = 'Data não disponível';
+    }
     const temLote = comprovante.itens.some(i => i.lote);
+
+    // Gerar QR Code com o número do comprovante
+    const urlValidacao = `${window.location.origin}/validar-comprovante`;
+    const qrCodeDataUrl = await QRCode.toDataURL(comprovante.numero_comprovante, {
+      width: 150,
+      margin: 1,
+      color: {
+        dark: '#000000',
+        light: '#FFFFFF'
+      }
+    });
 
     const infoRows: any[] = [
       [{ text: 'Escola:', bold: true }, comprovante.escola_nome],
@@ -211,13 +254,6 @@ export default function ComprovantesEntrega() {
     ]);
     const widths = temLote ? ['*', 70, 60, 70] : ['*', 80, 70];
 
-    const assinaturaBlock: any[] = comprovante.assinatura_base64
-      ? [
-          { text: 'Assinatura Digital do Recebedor', style: 'sectionTitle' },
-          { image: comprovante.assinatura_base64, width: 200, height: 80, alignment: 'center', margin: [0, 4, 0, 4] },
-        ]
-      : [];
-
     const content: any[] = [
       {
         table: {
@@ -232,7 +268,6 @@ export default function ComprovantesEntrega() {
       },
       { text: `Itens Entregues (${comprovante.itens.length})`, style: 'sectionTitle' },
       buildTable(headers, rows, widths),
-      ...assinaturaBlock,
       {
         columns: [
           {
@@ -254,8 +289,25 @@ export default function ComprovantesEntrega() {
             width: '*',
           },
         ],
-        margin: [0, 20, 0, 0],
+        margin: [0, 20, 0, 20],
       },
+      {
+        columns: [
+          {
+            width: '*',
+            text: ''
+          },
+          {
+            stack: [
+              { image: qrCodeDataUrl, width: 80, height: 80, alignment: 'right' },
+              { text: comprovante.numero_comprovante, fontSize: 7, alignment: 'right', margin: [0, 3, 0, 0], color: '#666' },
+              { text: 'Validar em: ' + urlValidacao, fontSize: 6, alignment: 'right', color: '#999', margin: [0, 2, 0, 0] },
+            ],
+            width: 100,
+          }
+        ],
+        margin: [0, 10, 0, 0],
+      }
     ];
 
     const pdfMake = await initPdfMake();
@@ -423,9 +475,8 @@ export default function ComprovantesEntrega() {
           columns={columns}
           searchPlaceholder="Buscar comprovantes..."
           emptyMessage="Nenhum comprovante encontrado"
-          emptyIcon={<DescriptionIcon sx={{ fontSize: 48, opacity: 0.2 }} />}
           loading={loading}
-          actions={
+          toolbarActions={
             <Button
               variant="outlined"
               startIcon={<FilterIcon />}
@@ -532,6 +583,20 @@ export default function ComprovantesEntrega() {
                 </Box>
               </DialogTitle>
               <DialogContent dividers>
+                {/* Alerta de Cancelamentos */}
+                {comprovanteDetalhes.itens_cancelados && comprovanteDetalhes.itens_cancelados > 0 && (
+                  <Alert severity="warning" sx={{ mb: 2 }}>
+                    <Typography variant="subtitle2" fontWeight="bold">
+                      ⚠️ Este comprovante teve {comprovanteDetalhes.itens_cancelados} item(ns) cancelado(s)
+                    </Typography>
+                    {comprovanteDetalhes.observacao_cancelamento && (
+                      <Typography variant="body2" sx={{ mt: 1, whiteSpace: 'pre-line' }}>
+                        {comprovanteDetalhes.observacao_cancelamento}
+                      </Typography>
+                    )}
+                  </Alert>
+                )}
+
                 <Grid container spacing={2}>
                   <Grid item xs={12}>
                     <Typography variant="subtitle2" color="textSecondary">
@@ -620,7 +685,24 @@ export default function ComprovantesEntrega() {
                         <TableBody>
                           {comprovanteDetalhes.itens.map((item) => (
                             <TableRow key={item.id}>
-                              <TableCell>{item.produto_nome}</TableCell>
+                              <TableCell>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  {item.produto_nome}
+                                  {item.historico_entrega_id === null && (
+                                    <Chip 
+                                      label="Cancelado" 
+                                      size="small" 
+                                      color="warning"
+                                      sx={{ fontSize: '0.7rem' }}
+                                    />
+                                  )}
+                                </Box>
+                                {item.mes_referencia && item.ano_referencia && (
+                                  <Typography variant="caption" color="text.secondary">
+                                    Guia: {item.mes_referencia}/{item.ano_referencia}
+                                  </Typography>
+                                )}
+                              </TableCell>
                               <TableCell align="right">
                                 {formatarQuantidade(item.quantidade_entregue)}
                               </TableCell>

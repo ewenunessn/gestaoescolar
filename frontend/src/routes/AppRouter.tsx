@@ -101,6 +101,7 @@ const SolicitacoesAlimentos = lazy(() => import("../pages/SolicitacoesAlimentos"
 const SolicitacaoEscolaDetalhe = lazy(() => import("../pages/SolicitacaoEscolaDetalhe"));
 const PortalEscola = lazy(() => import("../pages/PortalEscola"));
 const DisparosNotificacao = lazy(() => import("../pages/DisparosNotificacao"));
+const ValidarComprovante = lazy(() => import("../pages/ValidarComprovante"));
 
 interface AppRouterProps {
   routerConfig?: {
@@ -150,6 +151,13 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
             
             {/* Formulário de Interesse */}
             <Route path="/interesse" element={<InterestForm />} />
+            
+            {/* Validação de Comprovante - Rota Pública */}
+            <Route path="/validar-comprovante" element={
+              <Suspense fallback={<PageLoader />}>
+                <ValidarComprovante />
+              </Suspense>
+            } />
             
             {/* Login administrativo */}
             <Route path="/login" element={

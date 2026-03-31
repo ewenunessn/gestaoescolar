@@ -184,6 +184,56 @@ class ComprovanteEntregaController {
   }
 
   /**
+   * Cancelar item de entrega de forma segura
+   * POST /api/comprovantes/cancelar-item
+   */
+  async cancelarItem(req: Request, res: Response) {
+    try {
+      const { historico_entrega_id, motivo } = req.body;
+      const usuario_id = (req as any).user?.id;
+
+      if (!historico_entrega_id) {
+        return res.status(400).json({ error: 'historico_entrega_id é obrigatório' });
+      }
+
+      const sucesso = await ComprovanteEntregaModel.cancelarItemEntrega(
+        historico_entrega_id,
+        motivo,
+        usuario_id
+      );
+
+      if (sucesso) {
+        res.json({ 
+          message: 'Item cancelado com sucesso',
+          observacao: 'O comprovante foi atualizado e o histórico de cancelamento foi registrado'
+        });
+      } else {
+        res.status(500).json({ error: 'Falha ao cancelar item' });
+      }
+    } catch (error: any) {
+      console.error('Erro ao cancelar item:', error);
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  /**
+   * Buscar histórico de cancelamentos
+   * GET /api/comprovantes/:id/cancelamentos
+   */
+  async buscarCancelamentos(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+
+      const cancelamentos = await ComprovanteEntregaModel.buscarCancelamentos(parseInt(id));
+
+      res.json(cancelamentos);
+    } catch (error: any) {
+      console.error('Erro ao buscar cancelamentos:', error);
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  /**
    * Excluir permanentemente um comprovante
    * DELETE /api/comprovantes/:id/excluir
    */

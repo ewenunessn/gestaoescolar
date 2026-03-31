@@ -23,8 +23,8 @@ import {
   Assignment as GuiaIcon
 } from '@mui/icons-material';
 import { guiaService } from '../../../services/guiaService';
-import { rotaService } from '../services/rotaService';
-import { RotaEntrega } from '../types/rota';
+import { entregaService } from '../services/entregaService';
+import { Rota } from '../types';
 
 interface FiltrosEntregaProps {
   onFiltroChange: (filtros: {
@@ -45,18 +45,13 @@ interface FiltrosEntregaProps {
 
 export const FiltrosEntrega: React.FC<FiltrosEntregaProps> = ({ onFiltroChange, filtroAtivo }) => {
   const [guias, setGuias] = useState<any[]>([]);
-  const [rotas, setRotas] = useState<RotaEntrega[]>([]);
-  const [rotasFiltradas, setRotasFiltradas] = useState<RotaEntrega[]>([]);
+  const [rotas, setRotas] = useState<Rota[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     carregarDadosIniciais();
   }, []);
-
-  useEffect(() => {
-    filtrarRotas();
-  }, [filtroAtivo.guiaId, rotas]);
 
   const carregarDadosIniciais = async () => {
     try {
@@ -66,7 +61,7 @@ export const FiltrosEntrega: React.FC<FiltrosEntregaProps> = ({ onFiltroChange, 
       // Carregar guias e rotas em paralelo
       const [guiasResponse, rotasData] = await Promise.all([
         guiaService.listarGuias(),
-        rotaService.listarRotas()
+        entregaService.listarRotas()
       ]);
 
       // Processar guias
@@ -87,27 +82,6 @@ export const FiltrosEntrega: React.FC<FiltrosEntregaProps> = ({ onFiltroChange, 
     }
   };
 
-  const filtrarRotas = async () => {
-    if (!filtroAtivo.guiaId) {
-      setRotasFiltradas(rotas);
-      return;
-    }
-
-    try {
-      // Buscar planejamentos para a guia selecionada
-      const planejamentos = await rotaService.listarPlanejamentos(filtroAtivo.guiaId);
-      const rotaIdsComPlanejamento = new Set(planejamentos.map(p => p.rota_id));
-      
-      // Filtrar rotas que possuem planejamento
-      const filtradas = rotas.filter(r => rotaIdsComPlanejamento.has(r.id));
-      setRotasFiltradas(filtradas);
-    } catch (err) {
-      console.error('Erro ao filtrar rotas:', err);
-      // Em caso de erro, mostra todas ou nenhuma? Melhor mostrar todas para não bloquear
-      setRotasFiltradas(rotas);
-    }
-  };
-
   const handleGuiaChange = (guiaId: number | '') => {
     const novoGuiaId = guiaId === '' ? undefined : guiaId;
     onFiltroChange({ ...filtroAtivo, guiaId: novoGuiaId, rotaId: undefined });
@@ -120,7 +94,7 @@ export const FiltrosEntrega: React.FC<FiltrosEntregaProps> = ({ onFiltroChange, 
 
   const limparFiltros = () => {
     const hoje = new Date().toISOString().split('T')[0];
-    onFiltroChange({ somentePendentes: true, dataFim: hoje, dataInicio: undefined });
+    onFiltroChange({ somentePendentes: false, dataFim: hoje, dataInicio: undefined });
   };
 
   const temFiltroAtivo = Boolean(
@@ -132,7 +106,7 @@ export const FiltrosEntrega: React.FC<FiltrosEntregaProps> = ({ onFiltroChange, 
   );
 
   const guiaSelecionada = guias.find(g => g.id === filtroAtivo.guiaId);
-  const rotaSelecionada = rotasFiltradas.find(r => r.id === filtroAtivo.rotaId);
+  const rotaSelecionada = rotas.find(r => r.id === filtroAtivo.rotaId);
 
   return (
     <Card sx={{ mb: 3 }}>
@@ -194,12 +168,12 @@ export const FiltrosEntrega: React.FC<FiltrosEntregaProps> = ({ onFiltroChange, 
                 value={filtroAtivo.rotaId || ''}
                 onChange={(e) => handleRotaChange(e.target.value as number | '')}
                 label="Rota de Entrega"
-                disabled={loading || rotasFiltradas.length === 0}
+                disabled={loading || rotas.length === 0}
               >
                 <MenuItem value="">
                   <em>Todas as rotas</em>
                 </MenuItem>
-                {rotasFiltradas.map((rota) => (
+                {rotas.map((rota) => (
                   <MenuItem key={rota.id} value={rota.id}>
                     <Box display="flex" alignItems="center" gap={1}>
                       <Box
@@ -212,12 +186,14 @@ export const FiltrosEntrega: React.FC<FiltrosEntregaProps> = ({ onFiltroChange, 
                       />
                       <RouteIcon fontSize="small" />
                       {rota.nome}
-                      <Chip
-                        label={`${rota.total_escolas} escolas`}
-                        size="small"
-                        variant="outlined"
-                        sx={{ ml: 1 }}
-                      />
+                      {rota.total_escolas && (
+                        <Chip
+                          label={`${rota.total_escolas} escolas`}
+                          size="small"
+                          variant="outlined"
+                          sx={{ ml: 1 }}
+                        />
+                      )}
                     </Box>
                   </MenuItem>
                 ))}
@@ -308,12 +284,6 @@ export const FiltrosEntrega: React.FC<FiltrosEntregaProps> = ({ onFiltroChange, 
             </Box>
           </Grid>
         </Grid>
-
-        {rotasFiltradas.length === 0 && filtroAtivo.guiaId && (
-          <Alert severity="info" sx={{ mt: 2 }}>
-            Nenhuma rota de entrega foi planejada para esta guia ainda.
-          </Alert>
-        )}
 
         {temFiltroAtivo && (
           <Box sx={{ mt: 2, p: 2, bgcolor: 'primary.50', borderRadius: 1 }}>

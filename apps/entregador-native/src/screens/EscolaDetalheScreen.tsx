@@ -707,10 +707,6 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
                       <Text style={styles.lote}>🏷️ Lote: {item.lote}</Text>
                     )}
 
-                    {item.observacao && (
-                      <Text style={styles.observacao}>💬 {item.observacao}</Text>
-                    )}
-
                     {/* Campo de quantidade quando selecionado */}
                     {abaAtiva === 'pendentes' && item.selecionado && (
                       <View style={styles.quantidadeInput} pointerEvents="box-none">
@@ -874,15 +870,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     marginTop: 4,
-  },
-  observacao: {
-    fontSize: 12,
-    color: '#666',
-    fontStyle: 'italic',
-    marginTop: 4,
-    padding: 8,
-    backgroundColor: '#f9fafb',
-    borderRadius: 4,
   },
   historico: {
     marginTop: 12,

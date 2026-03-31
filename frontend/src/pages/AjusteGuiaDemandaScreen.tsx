@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router';
 import {
   Box, Typography, IconButton, Button, Chip, CircularProgress, Alert,
   Table, TableHead, TableRow, TableCell, TableBody,
@@ -12,6 +12,7 @@ import {
   ContentCopy as CopyIcon, RestartAlt as ResetIcon,
 } from '@mui/icons-material';
 import { usePageTitle } from '../contexts/PageTitleContext';
+import { useToast } from '../hooks/useToast';
 import { formatarQuantidade } from '../utils/formatters';
 import { toNum } from '../utils/formatters';
 import api from '../services/api';
@@ -184,7 +185,7 @@ export default function AjusteGuiaDemandaScreen() {
   function replicar(from: number, to: number) {
     setQtds(prev => ({ ...prev, [to]: { ...(prev[from] ?? {}) } }));
     setRepModal(null); setRepTo('');
-    toast.success('Replicado!', 'Quantidades copiadas. Salve a coluna destino para confirmar.');
+    toast.success('Quantidades copiadas. Salve a coluna destino para confirmar.');
   }
 
   async function salvarCol(ci: number) {
@@ -200,10 +201,10 @@ export default function AjusteGuiaDemandaScreen() {
         quantidade: colQtds[esc.id] ?? esc.quantidade,
       }));
       await api.put(`/guias/${guiaId}/ajuste`, { ajustes });
-      toast.success('Salvo!', 'Ajuste salvo com sucesso.');
+      toast.success('Ajuste salvo com sucesso.');
       carregar();
     } catch {
-      toast.error('Erro', 'Não foi possível salvar o ajuste.');
+      toast.error('Não foi possível salvar o ajuste.');
     } finally {
       setSalvando(prev => ({ ...prev, [ci]: false }));
     }

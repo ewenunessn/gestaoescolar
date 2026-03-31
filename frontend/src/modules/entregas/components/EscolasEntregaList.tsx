@@ -1,38 +1,44 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box,
-  Card,
-  CardContent,
   Typography,
-  Grid,
+  IconButton,
+  Tooltip,
+  CircularProgress,
   LinearProgress,
   Chip,
-  Button,
-  Alert,
-  CircularProgress,
+  Popover,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
   TextField,
-  InputAdornment
+  FormControlLabel,
+  Switch,
+  Button,
+  Grid,
 } from '@mui/material';
+import JsBarcode from 'jsbarcode';
 import {
   School as SchoolIcon,
   LocalShipping as DeliveryIcon,
-  Search as SearchIcon,
   CheckCircle as CheckIcon,
   Pending as PendingIcon,
-  PictureAsPdf as PdfIcon
+  PictureAsPdf as PdfIcon,
+  Visibility as ViewIcon,
+  FilterList as FilterIcon,
+  Clear as ClearIcon,
+  Route as RouteIcon,
+  Assignment as GuiaIcon,
 } from '@mui/icons-material';
-import { EscolaEntrega, EstatisticasEntregas } from '../types';
+import { ColumnDef } from '@tanstack/react-table';
+import { EscolaEntrega, EstatisticasEntregas, Rota } from '../types';
 import { entregaService } from '../services/entregaService';
+import { guiaService } from '../../../services/guiaService';
 import { buscarInstituicao, Instituicao } from '../../../services/instituicao';
 import { formatarQuantidade } from '../../../utils/formatters';
-
-// Inicialização local do pdfmake (mesmo padrão do CardapioCalendario que funciona)
-const initPdfMakeLocal = async () => {
-  const pdfMake = (await import('pdfmake/build/pdfmake')).default;
-  const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default as any;
-  (pdfMake as any).vfs = pdfFonts.pdfMake?.vfs || pdfFonts;
-  return pdfMake;
-};
+import { DataTableAdvanced } from '../../../components/DataTableAdvanced';
+import { initPdfMake, buildPdfDoc, buildTable } from '../../../utils/pdfUtils';
 
 interface EscolasEntregaListProps {
   onEscolaSelect: (escola: EscolaEntrega) => void;
@@ -43,21 +49,55 @@ interface EscolasEntregaListProps {
     dataFim?: string;
     somentePendentes?: boolean;
   };
+  onFiltroChange: (filtros: {
+    guiaId?: number;
+    rotaId?: number;
+    dataInicio?: string;
+    dataFim?: string;
+    somentePendentes?: boolean;
+  }) => void;
 }
 
-export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({ onEscolaSelect, filtros }) => {
+export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({ 
+  onEscolaSelect, 
+  filtros,
+  onFiltroChange 
+}) => {
   const [escolas, setEscolas] = useState<EscolaEntrega[]>([]);
   const [estatisticas, setEstatisticas] = useState<EstatisticasEntregas | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filtro, setFiltro] = useState('');
   const [gerandoPdfId, setGerandoPdfId] = useState<number | null>(null);
   const [instituicao, setInstituicao] = useState<Instituicao | null>(null);
+  
+  // Estados para filtros
+  const [filterAnchorEl, setFilterAnchorEl] = useState<HTMLElement | null>(null);
+  const [guias, setGuias] = useState<any[]>([]);
+  const [rotas, setRotas] = useState<Rota[]>([]);
 
   useEffect(() => {
     buscarInstituicao().then(setInstituicao).catch(() => {});
+    carregarDadosIniciais();
     carregarDados();
   }, [filtros]);
+
+  const carregarDadosIniciais = async () => {
+    try {
+      const [guiasResponse, rotasData] = await Promise.all([
+        guiaService.listarGuias(),
+        entregaService.listarRotas()
+      ]);
+
+      const guiasData = guiasResponse?.data || guiasResponse;
+      const guiasAbertas = Array.isArray(guiasData) 
+        ? guiasData.filter((g: any) => g.status === 'aberta')
+        : [];
+      setGuias(guiasAbertas);
+      setRotas(rotasData);
+    } catch (err) {
+      console.error('Erro ao carregar dados iniciais:', err);
+    }
+  };
 
   const carregarDados = async () => {
     try {
@@ -93,10 +133,6 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({ onEscola
     }
   };
 
-  const escolasFiltradas = escolas.filter(escola =>
-    escola.nome.toLowerCase().includes(filtro.toLowerCase())
-  );
-
   const getStatusColor = (percentual: number) => {
     const valor = Number(percentual);
     if (Number.isNaN(valor)) return 'error';
@@ -111,17 +147,12 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({ onEscola
     if (!ano || !mes || !dia) return data;
     return `${dia}/${mes}/${ano}`;
   };
-
-  const formatarDataPdf = (data?: string) => {
-    if (!data) return 'Sem data';
-    const [ano, mes, dia] = data.split('T')[0].split('-');
-    if (!ano || !mes || !dia) return data;
-    return `${dia}/${mes}/${ano}`;
-  };
-
+  
   const gerarPdfEscola = async (escola: EscolaEntrega) => {
     try {
       setGerandoPdfId(escola.id);
+      
+      // Buscar itens da escola
       const itens = await entregaService.listarItensPorEscola(
         escola.id,
         filtros.guiaId,
@@ -130,6 +161,62 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({ onEscola
         filtros.dataFim,
         filtros.somentePendentes
       );
+
+      console.log('📦 Itens carregados para PDF:', itens.length, itens);
+
+      if (itens.length === 0) {
+        setError('Nenhum item encontrado para esta escola');
+        setGerandoPdfId(null);
+        return;
+      }
+
+      // Extrair modalidades do snapshot do primeiro item
+      // (todos os itens da mesma guia/escola têm o mesmo snapshot)
+      let modalidades = 'Não informado';
+      let nomeEscola = escola.nome;
+      let enderecoEscola = escola.endereco || '';
+      let totalAlunos = escola.total_alunos;
+      
+      const primeiroItem = itens[0];
+      if (primeiroItem.escola_modalidades && Array.isArray(primeiroItem.escola_modalidades)) {
+        modalidades = primeiroItem.escola_modalidades
+          .map((m: any) => m.modalidade_nome)
+          .join(', ');
+      }
+      
+      // Usar dados do snapshot se disponíveis
+      if (primeiroItem.escola_nome) {
+        nomeEscola = primeiroItem.escola_nome;
+      }
+      if (primeiroItem.escola_endereco) {
+        enderecoEscola = primeiroItem.escola_endereco;
+      }
+      if (primeiroItem.escola_total_alunos) {
+        totalAlunos = primeiroItem.escola_total_alunos;
+      }
+      
+      console.log('📚 Dados da escola (snapshot):', {
+        nome: nomeEscola,
+        endereco: enderecoEscola,
+        totalAlunos,
+        modalidades
+      });
+
+      // Gerar código de barras com o código da guia
+      const codigoGuia = primeiroItem.codigo_guia || `GUIA-${primeiroItem.ano}-${String(primeiroItem.mes).padStart(2, '0')}-${String(primeiroItem.guia_id).padStart(5, '0')}`;
+      
+      // Criar canvas temporário para gerar o código de barras
+      const canvas = document.createElement('canvas');
+      JsBarcode(canvas, codigoGuia, {
+        format: 'CODE128',
+        width: 1.5,
+        height: 30,
+        displayValue: false,
+        margin: 2,
+      });
+      const barcodeDataUrl = canvas.toDataURL('image/png');
+
+      console.log('🔖 Código da guia:', codigoGuia);
 
       // Determinar mês/ano a partir dos itens ou filtro
       const mesAno = (() => {
@@ -149,191 +236,176 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({ onEscola
       // Ordenar itens por nome
       const itensOrdenados = [...itens].sort((a, b) => a.produto_nome.localeCompare(b.produto_nome));
 
-      // Garantir mínimo de 25 linhas (linhas em branco para preenchimento)
-      const MIN_LINHAS = 25;
-      const linhasVazias = Math.max(0, MIN_LINHAS - itensOrdenados.length);
+      // Limitar a 25 itens por página
+      const ITENS_POR_PAGINA = 25;
+      const totalPaginas = Math.ceil(itensOrdenados.length / ITENS_POR_PAGINA);
 
-      // Corpo da tabela — estilo DataTable do sistema (cabeçalho grey.100, bordas sutis)
-      const tableBody: any[][] = [
-        // Cabeçalho
-        [
-          { text: 'ID',          bold: true, fontSize: 8, color: '#212121', fillColor: '#F5F5F5', alignment: 'center', margin: [4,5,4,5] },
-          { text: 'ITEM',        bold: true, fontSize: 8, color: '#212121', fillColor: '#F5F5F5', margin: [6,5,6,5] },
-          { text: 'UND. MEDIDA', bold: true, fontSize: 8, color: '#212121', fillColor: '#F5F5F5', alignment: 'center', margin: [4,5,4,5] },
-          { text: '1 ENTREGA',   bold: true, fontSize: 8, color: '#212121', fillColor: '#F5F5F5', alignment: 'center', margin: [4,5,4,5] },
-          { text: 'DATA',        bold: true, fontSize: 8, color: '#212121', fillColor: '#F5F5F5', alignment: 'center', margin: [4,5,4,5] },
-          { text: 'CONFIRMAÇÃO', bold: true, fontSize: 8, color: '#212121', fillColor: '#F5F5F5', alignment: 'center', margin: [4,5,4,5] },
-        ],
-        // Itens
-        ...itensOrdenados.map((item, idx) => [
-          { text: String(idx + 1).padStart(2, '0'), fontSize: 8, alignment: 'center', fillColor: '#FFFFFF', margin: [4,4,4,4] },
-          { text: item.produto_nome, fontSize: 8, fillColor: '#FFFFFF', margin: [6,4,6,4] },
-          { text: item.unidade || item.produto_unidade || '', bold: true, fontSize: 8, alignment: 'center', fillColor: '#FFFFFF', margin: [4,4,4,4] },
-          { text: formatarQuantidade(item.quantidade), fontSize: 8, alignment: 'center', fillColor: '#FFFFFF', margin: [4,4,4,4] },
-          { text: '', fontSize: 8, fillColor: '#FFFFFF', margin: [4,4,4,4] },
-          { text: '', fontSize: 8, fillColor: '#FFFFFF', margin: [4,4,4,4] },
-        ]),
-        // Linhas em branco
-        ...Array.from({ length: linhasVazias }, (_, i) => [
-          { text: String(itensOrdenados.length + i + 1).padStart(2, '0'), fontSize: 8, alignment: 'center', fillColor: '#FFFFFF', margin: [4,4,4,4] },
-          { text: '', fontSize: 8, fillColor: '#FFFFFF', margin: [6,4,6,4] },
-          { text: '', fontSize: 8, fillColor: '#FFFFFF', margin: [4,4,4,4] },
-          { text: '', fontSize: 8, fillColor: '#FFFFFF', margin: [4,4,4,4] },
-          { text: '', fontSize: 8, fillColor: '#FFFFFF', margin: [4,4,4,4] },
-          { text: '', fontSize: 8, fillColor: '#FFFFFF', margin: [4,4,4,4] },
-        ]),
-      ];
+      // Gerar páginas
+      const paginas = [];
+      for (let pagina = 0; pagina < totalPaginas; pagina++) {
+        const inicio = pagina * ITENS_POR_PAGINA;
+        const fim = Math.min(inicio + ITENS_POR_PAGINA, itensOrdenados.length);
+        const itensPagina = itensOrdenados.slice(inicio, fim);
+        const linhasVazias = ITENS_POR_PAGINA - itensPagina.length;
 
-      const tableLayout = {
-        hLineWidth: (i: number, node: any) => (i === 0 || i === 1 || i === node.table.body.length ? 0.8 : 0.4),
-        vLineWidth: () => 0.4,
-        hLineColor: (i: number, node: any) => (i === 0 || i === node.table.body.length ? '#BDBDBD' : '#E0E0E0'),
-        vLineColor: () => '#E0E0E0',
-        fillColor: () => null,
-      };
+        // Preparar dados da tabela para esta página
+        const headers = ['ID', 'ITEM', 'UND.', 'QTDE', 'DATA', 'RECEBEDOR'];
+        const rows = [
+          ...itensPagina.map((item, idx) => {
+            // Pegar a data e recebedor do histórico mais recente (se houver)
+            let dataEntregaFormatada = '';
+            let recebedor = '';
+            
+            if (item.historico_entregas && item.historico_entregas.length > 0) {
+              const ultimaEntrega = item.historico_entregas[item.historico_entregas.length - 1];
+              dataEntregaFormatada = formatarData(ultimaEntrega.data_entrega);
+              recebedor = ultimaEntrega.nome_quem_recebeu || '';
+            } else if (item.entrega_confirmada && item.data_entrega) {
+              // Fallback para campos diretos se não houver histórico
+              dataEntregaFormatada = formatarData(item.data_entrega);
+              recebedor = item.nome_quem_recebeu || '';
+            }
 
-      const logoUrl = instituicao?.logo_url ? (() => {
-        const url = instituicao.logo_url;
-        if (url.startsWith('data:')) return url;
-        if (url.startsWith('/')) return `${window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://gestaoescolar-backend.vercel.app'}${url}`;
-        return url;
-      })() : null;
+            return [
+              String(inicio + idx + 1).padStart(2, '0'),
+              item.produto_nome,
+              item.unidade || item.produto_unidade || '',
+              formatarQuantidade(item.quantidade),
+              dataEntregaFormatada,
+              recebedor,
+            ];
+          }),
+          ...Array.from({ length: linhasVazias }, (_, i) => [
+            String(inicio + itensPagina.length + i + 1).padStart(2, '0'),
+            '',
+            '',
+            '',
+            '',
+            '',
+          ]),
+        ];
+        const widths = ['auto', 180, 'auto', 'auto', 'auto', '*'];
 
-      const headerLeft: any = {
-        columns: [
-          ...(logoUrl ? [{ image: logoUrl, width: 50, height: 50, margin: [0, 0, 8, 0] }] : []),
-          {
-            stack: [
-              { text: instituicao?.nome?.toUpperCase() || 'SECRETARIA MUNICIPAL DE EDUCAÇÃO', fontSize: 11, bold: true },
-              { text: instituicao?.secretario_cargo?.toUpperCase() || 'DEPARTAMENTO DE ALIMENTAÇÃO ESCOLAR', fontSize: 8, color: '#555' },
-            ],
-            alignment: 'left',
-          },
-        ],
-        width: '*',
-      };
+        paginas.push({ headers, rows, widths, numero: pagina + 1 });
+      }
 
+      // Informações adicionais para o cabeçalho
       const rotaLabel = escola.rota_nome ? escola.rota_nome.toUpperCase() : (filtros.rotaId ? `ROTA ${filtros.rotaId}` : 'SEM ROTA');
-      const numLabel  = escola.ordem_rota && escola.ordem_rota !== 999
+      const numLabel = escola.ordem_rota && escola.ordem_rota !== 999
         ? `Nº ${escola.ordem_rota}`
         : (escola.rota_id ? `Nº ${escola.rota_id}` : '');
+      
+      const rotaCompleta = `${rotaLabel} ${numLabel}`;
 
-      const headerRight: any = {
-        table: {
-          widths: ['*', 50],
-          body: [[
-            { text: rotaLabel, bold: true, fontSize: 9, alignment: 'center', margin: [6, 6, 6, 6] },
-            { text: numLabel,  bold: true, fontSize: 9, alignment: 'center', margin: [6, 6, 6, 6] },
-          ]],
-        },
-        layout: {
-          hLineWidth: () => 1,
-          vLineWidth: () => 1,
-          hLineColor: () => '#333333',
-          vLineColor: () => '#333333',
-        },
-        width: 160,
-      };
+      // Dividir informações em duas colunas
+      const infoEsquerda = [
+        { label: 'Escola:', valor: nomeEscola.toUpperCase() },
+        ...(enderecoEscola ? [{ label: 'Endereço:', valor: enderecoEscola }] : []),
+      ];
 
-      const pdfMake = await initPdfMakeLocal();
+      const infoDireita = [
+        ...(totalAlunos ? [{ label: 'Total de Alunos:', valor: String(totalAlunos) }] : []),
+        { label: 'Modalidades:', valor: modalidades },
+      ];
 
-      const docDef: any = {
-        pageSize: 'A4',
-        pageOrientation: 'portrait',
-        pageMargins: [28, 28, 28, 36],
-        content: [
-          // Cabeçalho
-          {
-            columns: [headerLeft, headerRight],
-            columnGap: 8,
-            margin: [0, 0, 0, 4],
-          },
-          { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 539, y2: 0, lineWidth: 1, lineColor: '#cccccc' }], margin: [0, 4, 0, 10] },
+      // Contar itens entregues e pendentes
+      const itensEntregues = itensOrdenados.filter(item => {
+        if (item.historico_entregas && item.historico_entregas.length > 0) return true;
+        if (item.entrega_confirmada) return true;
+        return false;
+      }).length;
+      const itensPendentes = itensOrdenados.length - itensEntregues;
 
-          // Nome da escola
-          { text: escola.nome.toUpperCase(), fontSize: 13, bold: true, margin: [0, 0, 0, 6] },
+      // Gerar conteúdo para cada página
+      const allContent: any[] = [];
+      
+      paginas.forEach((pag, idx) => {
+        if (idx > 0) {
+          allContent.push({ text: '', pageBreak: 'before' });
+        }
 
-          // Endereço | Total alunos | Mês
+        allContent.push(
+          // Informações em duas colunas (escola, dados) - sem código de barras
           {
             columns: [
-              { text: escola.endereco ? `Nº ${escola.endereco.toUpperCase()}` : '', fontSize: 8, width: '*' },
-              { text: `TOTAL DE ALUNOS:  ${escola.total_alunos ?? '—'}`, fontSize: 8, alignment: 'center', width: 160 },
-              { text: mesAno, fontSize: 8, alignment: 'right', width: 140 },
+              {
+                stack: infoEsquerda.map(info => ({
+                  text: [
+                    { text: info.label + ' ', fontSize: 9, bold: true },
+                    { text: info.valor, fontSize: 9 }
+                  ],
+                  margin: [0, 0, 0, 3]
+                })),
+                width: '*',
+              },
+              {
+                stack: infoDireita.map(info => ({
+                  text: [
+                    { text: info.label + ' ', fontSize: 9, bold: true },
+                    { text: info.valor, fontSize: 9 }
+                  ],
+                  margin: [0, 0, 0, 3]
+                })),
+                width: '*',
+              }
             ],
-            margin: [0, 0, 0, 6],
+            columnGap: 15,
+            margin: [0, 0, 0, 8],
           },
-
-          // Tabela
+          buildTable(pag.headers, pag.rows, pag.widths, { compact: true }),
+          // Assinatura do recebedor centralizada
           {
-            table: {
-              headerRows: 1,
-              widths: [22, '*', 60, 50, 50, 70],
-              body: tableBody,
-            },
-            layout: tableLayout,
-          },
-        ],
-        footer: (currentPage: number, pageCount: number) => ({
-          columns: [
-            { text: instituicao?.nome || 'NutriLog', fontSize: 7, color: '#a0aec0', margin: [28, 0, 0, 0] },
-            { text: `Página ${currentPage} de ${pageCount} · Gerado em ${new Date().toLocaleDateString('pt-BR')}`, fontSize: 7, color: '#a0aec0', alignment: 'right', margin: [0, 0, 28, 0] },
-          ],
-        }),
-        defaultStyle: { font: 'Roboto' },
-      };
-
-      // Verificar se existe template personalizado salvo para guia_entrega
-      const templatePersonalizado = instituicao?.pdf_templates?.['guia_entrega'];
-
-      if (templatePersonalizado) {
-        // Usar @pdfme/generator com o template do editor visual
-        const { generate } = await import('@pdfme/generator');
-        const { text, image, line, rectangle, ellipse, table, barcodes } = await import('@pdfme/schemas');
-        const plugins = { text, image, line, rectangle, ellipse, table, ...barcodes };
-
-        // Montar inputs com as variáveis dinâmicas
-        const inputs = [{
-          inst_nome: instituicao?.nome || '',
-          inst_departamento: instituicao?.departamento || '',
-          inst_logo: instituicao?.logo_url || '',
-          inst_secretario: instituicao?.secretario_nome || '',
-          inst_cargo: instituicao?.secretario_cargo || '',
-          escola_nome: escola.nome,
-          escola_endereco: escola.endereco || '',
-          rota_nome: rotaLabel,
-          rota_numero: numLabel,
-          total_alunos: String(escola.total_alunos ?? ''),
-          mes_ano: mesAno,
-        }];
-
-        const pdf = await generate({ template: templatePersonalizado, inputs, plugins });
-        const blob = new Blob([pdf.buffer], { type: 'application/pdf' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `guia-entrega-${escola.nome}.pdf`;
-        a.click();
-        URL.revokeObjectURL(url);
-      } else {
-        // Fallback: layout padrão com pdfmake
-      await new Promise<void>((resolve, reject) => {
-        pdfMake.createPdf(docDef).getBlob((blob: Blob) => {
-          try {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `guia-entrega-${escola.nome}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
-            resolve();
-          } catch (e) {
-            reject(e);
+            stack: [
+              { canvas: [{ type: 'line', x1: 100, y1: 0, x2: 415, y2: 0, lineWidth: 0.8, lineColor: '#333' }], margin: [0, 40, 0, 6] },
+              { text: 'Assinatura do Recebedor', fontSize: 9, alignment: 'center' },
+            ],
+            margin: [0, 30, 0, 0],
           }
-        });
+        );
       });
-      }
+
+      const pdfMake = await initPdfMake();
+      const doc = buildPdfDoc({
+        instituicao,
+        title: rotaCompleta,
+        subtitle: mesAno,
+        content: allContent,
+        showSignature: false,
+        customFooter: (currentPage: number, pageCount: number) => {
+          const geradoEm = new Date().toLocaleDateString('pt-BR');
+          return {
+            stack: [
+              {
+                canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.4, lineColor: '#e2e8f0' }],
+                margin: [40, 0, 40, 4],
+              },
+              {
+                columns: [
+                  {
+                    stack: [
+                      { text: instituicao?.nome || 'Sistema de Gestão de Alimentação Escolar', fontSize: 7, color: '#a0aec0' },
+                      ...(instituicao?.endereco ? [{ text: instituicao.endereco, fontSize: 6, color: '#cbd5e0', margin: [0, 1, 0, 0] }] : []),
+                      { text: `Gerado em ${geradoEm} · Página ${currentPage} de ${pageCount}`, fontSize: 6, color: '#cbd5e0', margin: [0, 2, 0, 0] },
+                    ],
+                    alignment: 'left',
+                    width: '*'
+                  },
+                  {
+                    stack: [
+                      { image: barcodeDataUrl, width: 80, height: 30, alignment: 'right' },
+                      { text: codigoGuia, fontSize: 6, alignment: 'right', margin: [0, 2, 0, 0], color: '#666' },
+                    ],
+                    alignment: 'right',
+                    width: 100
+                  },
+                ],
+                margin: [40, 0, 40, 0],
+              },
+            ]
+          };
+        },
+      });
+      pdfMake.createPdf(doc).download(`guia-entrega-${nomeEscola}.pdf`);
     } catch (err) {
       console.error('Erro ao gerar PDF:', err);
       setError(`Erro ao gerar PDF: ${err instanceof Error ? err.message : String(err)}`);
@@ -342,206 +414,376 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({ onEscola
     }
   };
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
+  // Definir colunas da tabela
+  const columns: ColumnDef<EscolaEntrega>[] = [
+    {
+      accessorKey: 'nome',
+      header: 'Escola',
+      size: 300,
+      cell: ({ row }) => (
+        <Box>
+          <Typography variant="body2" fontWeight="medium">
+            {row.original.nome}
+          </Typography>
+          {row.original.endereco && (
+            <Typography variant="caption" color="text.secondary">
+              {row.original.endereco}
+            </Typography>
+          )}
+          {row.original.rota_nome && (
+            <Typography variant="caption" color="primary.main" display="block">
+              📍 {row.original.rota_nome}
+            </Typography>
+          )}
+        </Box>
+      ),
+    },
+    {
+      accessorKey: 'total_itens',
+      header: 'Total Itens',
+      size: 100,
+      meta: { align: 'center' },
+    },
+    {
+      accessorKey: 'itens_entregues',
+      header: 'Entregues',
+      size: 100,
+      meta: { align: 'center' },
+      cell: ({ getValue }) => (
+        <Chip
+          label={getValue() as number}
+          color="success"
+          size="small"
+          variant="outlined"
+        />
+      ),
+    },
+    {
+      id: 'itens_pendentes',
+      header: 'Pendentes',
+      size: 100,
+      meta: { align: 'center' },
+      accessorFn: (row) => row.total_itens - row.itens_entregues,
+      cell: ({ getValue }) => (
+        <Chip
+          label={getValue() as number}
+          color={(getValue() as number) > 0 ? 'warning' : 'success'}
+          size="small"
+          variant="outlined"
+        />
+      ),
+    },
+    {
+      accessorKey: 'percentual_entregue',
+      header: 'Progresso',
+      size: 150,
+      meta: { align: 'center' },
+      cell: ({ getValue }) => (
+        <Box sx={{ width: '100%' }}>
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
+            <Typography variant="caption">
+              {String(getValue())}%
+            </Typography>
+          </Box>
+          <LinearProgress
+            variant="determinate"
+            value={Number(getValue()) || 0}
+            color={getStatusColor(getValue() as number)}
+            sx={{ height: 6, borderRadius: 3 }}
+          />
+        </Box>
+      ),
+    },
+    {
+      accessorKey: 'data_entrega',
+      header: 'Data Entrega',
+      size: 120,
+      meta: { align: 'center' },
+      cell: ({ getValue }) => (
+        getValue() ? formatarData(getValue() as string) : '-'
+      ),
+    },
+    {
+      id: 'acoes',
+      header: 'Ações',
+      size: 150,
+      meta: { align: 'center' },
+      enableSorting: false,
+      cell: ({ row }) => (
+        <Box display="flex" gap={1}>
+          <Tooltip title="Ver itens para entrega">
+            <IconButton
+              size="small"
+              color="primary"
+              onClick={() => onEscolaSelect(row.original)}
+            >
+              <ViewIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Gerar PDF da guia">
+            <span>
+              <IconButton
+                size="small"
+                color="secondary"
+                onClick={() => gerarPdfEscola(row.original)}
+                disabled={gerandoPdfId === row.original.id}
+              >
+                {gerandoPdfId === row.original.id ? (
+                  <CircularProgress size={16} />
+                ) : (
+                  <PdfIcon />
+                )}
+              </IconButton>
+            </span>
+          </Tooltip>
+        </Box>
+      ),
+    },
+  ];
+
+  // Handlers de filtro
+  const handleFilterOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setFilterAnchorEl(event.currentTarget);
+  };
+
+  const handleFilterClose = () => {
+    setFilterAnchorEl(null);
+  };
+
+  const handleGuiaChange = (guiaId: number | '') => {
+    const novoGuiaId = guiaId === '' ? undefined : guiaId;
+    onFiltroChange({ ...filtros, guiaId: novoGuiaId, rotaId: undefined });
+  };
+
+  const handleRotaChange = (rotaId: number | '') => {
+    const novoRotaId = rotaId === '' ? undefined : rotaId;
+    onFiltroChange({ ...filtros, rotaId: novoRotaId });
+  };
+
+  const limparFiltros = () => {
+    const hoje = new Date().toISOString().split('T')[0];
+    onFiltroChange({ somentePendentes: false, dataFim: hoje, dataInicio: undefined });
+  };
+
+  const temFiltroAtivo = Boolean(
+    filtros.guiaId ||
+    filtros.rotaId ||
+    filtros.dataInicio ||
+    filtros.dataFim ||
+    filtros.somentePendentes
+  );
 
   return (
-    <Box>
-      {/* Estatísticas Gerais */}
-      {estatisticas && (
-        <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Box display="flex" alignItems="center" gap={1}>
-                  <SchoolIcon color="primary" />
-                  <Box>
-                    <Typography variant="h6">{estatisticas.total_escolas}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Escolas
-                    </Typography>
-                  </Box>
+    <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      {/* DataTable com estatísticas e filtros no toolbar */}
+      <DataTableAdvanced
+        data={escolas}
+        columns={columns}
+        loading={loading}
+        searchPlaceholder="Buscar por escola, endereço ou rota..."
+        emptyMessage="Nenhuma escola com itens para entrega encontrada"
+        onFilterClick={handleFilterOpen}
+        toolbarActions={
+          estatisticas && (
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+              {[
+                { label: 'Escolas', value: estatisticas.total_escolas, color: 'text.secondary' },
+                { label: 'Total Itens', value: estatisticas.total_itens, color: 'text.secondary' },
+                { label: 'Entregues', value: estatisticas.itens_entregues, color: 'success.main' },
+                { label: 'Pendentes', value: estatisticas.itens_pendentes, color: 'warning.main' },
+              ].map(stat => (
+                <Box key={stat.label} sx={{ textAlign: 'center', minWidth: 60 }}>
+                  <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.7rem', display: 'block' }}>
+                    {stat.label}
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: stat.color, fontSize: '0.9rem' }}>
+                    {stat.value}
+                  </Typography>
                 </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Box display="flex" alignItems="center" gap={1}>
-                  <DeliveryIcon color="primary" />
-                  <Box>
-                    <Typography variant="h6">{estatisticas.total_itens}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Total de Itens
-                    </Typography>
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Box display="flex" alignItems="center" gap={1}>
-                  <CheckIcon color="success" />
-                  <Box>
-                    <Typography variant="h6">{estatisticas.itens_entregues}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Entregues
-                    </Typography>
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Box display="flex" alignItems="center" gap={1}>
-                  <PendingIcon color="warning" />
-                  <Box>
-                    <Typography variant="h6">{estatisticas.itens_pendentes}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Pendentes
-                    </Typography>
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
-      )}
-
-      {/* Filtro */}
-      <TextField
-        fullWidth
-        placeholder="Buscar escola..."
-        value={filtro}
-        onChange={(e) => setFiltro(e.target.value)}
-        InputProps={{
-          startAdornment: (
-            <InputAdornment position="start">
-              <SearchIcon />
-            </InputAdornment>
-          ),
-        }}
-        sx={{ mb: 2 }}
+              ))}
+            </Box>
+          )
+        }
       />
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
+      {/* Popover de Filtros */}
+      <Popover
+        open={Boolean(filterAnchorEl)}
+        anchorEl={filterAnchorEl}
+        onClose={handleFilterClose}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+      >
+        <Box sx={{ p: 3, minWidth: 400 }}>
+          <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+            <Box display="flex" alignItems="center" gap={1}>
+              <FilterIcon color="primary" />
+              <Typography variant="h6">Filtros</Typography>
+            </Box>
+            {temFiltroAtivo && (
+              <Button
+                size="small"
+                startIcon={<ClearIcon />}
+                onClick={limparFiltros}
+                color="error"
+                variant="outlined"
+              >
+                Limpar
+              </Button>
+            )}
+          </Box>
 
-      {/* Lista de Escolas */}
-      <Grid container spacing={2}>
-        {escolasFiltradas.map((escola) => (
-          <Grid item xs={12} md={6} lg={4} key={escola.id}>
-            <Card 
-              sx={{ 
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                '&:hover': {
-                  transform: 'translateY(-2px)',
-                  boxShadow: 4
+          <Grid container spacing={2}>
+            <Grid item xs={12}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Guia de Demanda</InputLabel>
+                <Select
+                  value={filtros.guiaId || ''}
+                  onChange={(e) => handleGuiaChange(e.target.value as number | '')}
+                  label="Guia de Demanda"
+                >
+                  <MenuItem value="">
+                    <em>Todas as guias</em>
+                  </MenuItem>
+                  {guias.map((guia) => (
+                    <MenuItem key={guia.id} value={guia.id}>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <GuiaIcon fontSize="small" />
+                        {guia.mes}/{guia.ano}
+                        {guia.observacao && ` - ${guia.observacao}`}
+                      </Box>
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Rota de Entrega</InputLabel>
+                <Select
+                  value={filtros.rotaId || ''}
+                  onChange={(e) => handleRotaChange(e.target.value as number | '')}
+                  label="Rota de Entrega"
+                  disabled={rotas.length === 0}
+                >
+                  <MenuItem value="">
+                    <em>Todas as rotas</em>
+                  </MenuItem>
+                  {rotas.map((rota) => (
+                    <MenuItem key={rota.id} value={rota.id}>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <Box
+                          sx={{
+                            width: 12,
+                            height: 12,
+                            borderRadius: '50%',
+                            backgroundColor: rota.cor
+                          }}
+                        />
+                        <RouteIcon fontSize="small" />
+                        {rota.nome}
+                      </Box>
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12}>
+              <TextField
+                label="Data início"
+                type="date"
+                size="small"
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+                value={filtros.dataInicio || ''}
+                onChange={(e) => onFiltroChange({ ...filtros, dataInicio: e.target.value || undefined })}
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <TextField
+                label="Data fim"
+                type="date"
+                size="small"
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+                value={filtros.dataFim || ''}
+                onChange={(e) => onFiltroChange({ ...filtros, dataFim: e.target.value || undefined })}
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={Boolean(filtros.somentePendentes)}
+                    onChange={(e) => onFiltroChange({ ...filtros, somentePendentes: e.target.checked })}
+                  />
                 }
-              }}
-              onClick={() => onEscolaSelect(escola)}
-            >
-              <CardContent>
-                <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
-                  <Typography variant="h6" component="h3" sx={{ flexGrow: 1 }}>
-                    {escola.nome}
-                  </Typography>
-                  <Chip
-                    label={`${escola.percentual_entregue}%`}
-                    color={getStatusColor(escola.percentual_entregue)}
-                    size="small"
-                  />
+                label="Somente pendentes"
+              />
+            </Grid>
+
+            {/* Chips de filtros ativos */}
+            {temFiltroAtivo && (
+              <Grid item xs={12}>
+                <Box display="flex" flexWrap="wrap" gap={1} pt={1}>
+                  {filtros.guiaId && guias.find(g => g.id === filtros.guiaId) && (
+                    <Chip
+                      label={`Guia: ${guias.find(g => g.id === filtros.guiaId)?.mes}/${guias.find(g => g.id === filtros.guiaId)?.ano}`}
+                      color="primary"
+                      size="small"
+                      onDelete={() => handleGuiaChange('')}
+                    />
+                  )}
+                  {filtros.rotaId && rotas.find(r => r.id === filtros.rotaId) && (
+                    <Chip
+                      label={`Rota: ${rotas.find(r => r.id === filtros.rotaId)?.nome}`}
+                      size="small"
+                      onDelete={() => handleRotaChange('')}
+                      sx={{
+                        backgroundColor: rotas.find(r => r.id === filtros.rotaId)?.cor,
+                        color: 'white',
+                        '& .MuiChip-deleteIcon': { color: 'white' }
+                      }}
+                    />
+                  )}
+                  {filtros.dataInicio && (
+                    <Chip
+                      label={`De: ${filtros.dataInicio.split('-').reverse().join('/')}`}
+                      size="small"
+                      onDelete={() => onFiltroChange({ ...filtros, dataInicio: undefined })}
+                    />
+                  )}
+                  {filtros.dataFim && (
+                    <Chip
+                      label={`Até: ${filtros.dataFim.split('-').reverse().join('/')}`}
+                      size="small"
+                      onDelete={() => onFiltroChange({ ...filtros, dataFim: undefined })}
+                    />
+                  )}
+                  {filtros.somentePendentes && (
+                    <Chip
+                      label="Pendentes"
+                      color="warning"
+                      size="small"
+                      onDelete={() => onFiltroChange({ ...filtros, somentePendentes: false })}
+                    />
+                  )}
                 </Box>
-
-                {escola.endereco && (
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                    {escola.endereco}
-                  </Typography>
-                )}
-
-                {escola.telefone && (
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    📞 {escola.telefone}
-                  </Typography>
-                )}
-
-                {escola.data_entrega && (
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    Entrega: {formatarData(escola.data_entrega)}
-                  </Typography>
-                )}
-
-                <Box sx={{ mb: 2 }}>
-                  <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                    <Typography variant="body2">
-                      Progresso das Entregas
-                    </Typography>
-                    <Typography variant="body2">
-                      {escola.itens_entregues}/{escola.total_itens}
-                    </Typography>
-                  </Box>
-                  <LinearProgress
-                    variant="determinate"
-                    value={Number(escola.percentual_entregue) || 0}
-                    color={getStatusColor(escola.percentual_entregue)}
-                  />
-                </Box>
-
-                <Box display="flex" gap={1}>
-                  <Button
-                    variant="outlined"
-                    fullWidth
-                    startIcon={<DeliveryIcon />}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEscolaSelect(escola);
-                    }}
-                  >
-                    Ver Itens para Entrega
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    fullWidth
-                    startIcon={<PdfIcon />}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      gerarPdfEscola(escola);
-                    }}
-                    disabled={gerandoPdfId === escola.id}
-                  >
-                    {gerandoPdfId === escola.id ? 'Gerando...' : 'Gerar PDF'}
-                  </Button>
-                </Box>
-              </CardContent>
-            </Card>
+              </Grid>
+            )}
           </Grid>
-        ))}
-      </Grid>
-
-      {escolasFiltradas.length === 0 && !loading && (
-        <Box textAlign="center" py={4}>
-          <Typography variant="h6" color="text.secondary">
-            {filtro ? 'Nenhuma escola encontrada com esse filtro' : 'Nenhuma escola com itens para entrega'}
-          </Typography>
         </Box>
-      )}
+      </Popover>
     </Box>
   );
 };

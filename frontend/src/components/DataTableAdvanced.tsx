@@ -356,7 +356,7 @@ export function DataTableAdvanced<TData>({
                   key={row.id}
                   hover
                   selected={row.getIsSelected()}
-                  onClick={() => !enableRowSelection && onRowClick?.(row.original)}
+                  onClick={enableRowSelection ? undefined : () => onRowClick?.(row.original)}
                   sx={{
                     cursor: onRowClick && !enableRowSelection ? 'pointer' : 'default',
                     '&:hover': {
@@ -376,7 +376,16 @@ export function DataTableAdvanced<TData>({
                   {row.getVisibleCells().map((cell) => {
                     if (!cell.column.getIsVisible()) return null;
                     return (
-                      <TableCell key={cell.id}>
+                      <TableCell 
+                        key={cell.id}
+                        onClick={(e) => {
+                          // Prevent row selection when clicking on input fields
+                          const target = e.target as HTMLElement;
+                          if (target.tagName === 'INPUT' || target.closest('input')) {
+                            e.stopPropagation();
+                          }
+                        }}
+                      >
                         {flexRender(
                           cell.column.columnDef.cell,
                           cell.getContext()

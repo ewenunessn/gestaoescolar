@@ -58,6 +58,8 @@ export interface PdfDocOptions {
   showSignature?: boolean;
   /** Estilos adicionais que se somam ao padrão */
   extraStyles?: Record<string, any>;
+  /** Rodapé customizado (substitui o padrão) */
+  customFooter?: (currentPage: number, pageCount: number) => any;
 }
 
 // ─── Helpers internos ─────────────────────────────────────────────────────────
@@ -85,47 +87,58 @@ const processImageUrl = (logoUrl: string): string => {
 const buildHeader = (instituicao: Instituicao | null, title: string, subtitle?: string): any => {
   const nome = instituicao?.nome || 'Secretaria Municipal de Educação';
   const logoUrl = instituicao?.logo_url ? processImageUrl(instituicao.logo_url) : null;
-  const logoSize = 48;
+  const logoHeight = 48;
 
-  // Coluna esquerda: logo + dados da instituição
-  const logoBlock: any = logoUrl
-    ? { image: logoUrl, width: logoSize, height: logoSize, margin: [0, 0, 8, 0] }
-    : { text: '', width: 0 };
+  // Construir conteúdo da primeira célula (logo + linha vertical)
+  const logoCell: any = logoUrl
+    ? {
+        columns: [
+          { image: logoUrl, fit: [120, logoHeight] },
+          {
+            canvas: [{
+              type: 'line',
+              x1: 0,
+              y1: 0,
+              x2: 0,
+              y2: logoHeight,
+              lineWidth: 1.5,
+              lineColor: PDF_COLORS.headerBg,
+            }],
+            width: 1.5,
+            margin: [8, 0, 0, 0],
+          },
+        ],
+        columnGap: 0,
+      }
+    : { text: '' };
 
-  const instStack: any = {
+  // Segunda célula: informações da instituição
+  const instCell: any = {
     stack: [
       { text: nome, fontSize: 12, bold: true, color: PDF_COLORS.dark },
-      ...(instituicao?.endereco
-        ? [{ text: instituicao.endereco, fontSize: 8, color: PDF_COLORS.accent, margin: [0, 1, 0, 0] }]
-        : []),
-      ...(instituicao?.secretario_nome
-        ? [{ text: instituicao.secretario_nome, fontSize: 8, color: PDF_COLORS.accent, margin: [0, 1, 0, 0] }]
-        : []),
-      ...(instituicao?.secretario_cargo
-        ? [{ text: instituicao.secretario_cargo, fontSize: 8, color: PDF_COLORS.accent }]
+      ...(instituicao?.departamento
+        ? [{ text: instituicao.departamento, fontSize: 8, color: PDF_COLORS.accent, margin: [0, 1, 0, 0] }]
         : []),
     ],
-    width: '*',
+    margin: [12, 0, 0, 0],
   };
 
-  // Coluna direita: NutriLog + título do documento
-  const rightStack: any = {
+  // Terceira célula: rota e período
+  const rightCell: any = {
     stack: [
-      { text: 'NutriLog', fontSize: 14, bold: true, color: PDF_COLORS.headerBg, alignment: 'right' },
-      { text: title, fontSize: 10, bold: true, alignment: 'right', margin: [0, 4, 0, 0] },
+      { text: title, fontSize: 14, bold: true, color: PDF_COLORS.headerBg, alignment: 'right' },
+      { text: 'Guia de Entrega', fontSize: 10, bold: true, alignment: 'right', margin: [0, 4, 0, 0] },
       ...(subtitle ? [{ text: subtitle, fontSize: 9, color: PDF_COLORS.accent, alignment: 'right' }] : []),
     ],
-    width: 160,
   };
 
   return [
     {
-      columns: [
-        logoBlock,
-        instStack,
-        rightStack,
-      ],
-      columnGap: 8,
+      table: {
+        widths: [logoUrl ? 130 : 0, '*', 160],
+        body: [[logoCell, instCell, rightCell]],
+      },
+      layout: 'noBorders',
       margin: [0, 0, 0, 8],
     },
     {
@@ -146,6 +159,7 @@ const buildFooter = (
   totalPages: number
 ) => (currentPage: number, pageCount: number): any => {
   const nome = instituicao?.nome || 'Sistema de Gestão de Alimentação Escolar';
+  const endereco = instituicao?.endereco || '';
   const geradoEm = new Date().toLocaleDateString('pt-BR');
 
   const footerItems: any[] = [
@@ -155,7 +169,13 @@ const buildFooter = (
     },
     {
       columns: [
-        { text: nome, fontSize: 7, color: '#a0aec0', alignment: 'left' },
+        {
+          stack: [
+            { text: nome, fontSize: 7, color: '#a0aec0' },
+            ...(endereco ? [{ text: endereco, fontSize: 6, color: '#cbd5e0', margin: [0, 1, 0, 0] }] : []),
+          ],
+          alignment: 'left'
+        },
         { text: `Gerado em ${geradoEm} · Página ${currentPage} de ${pageCount}`, fontSize: 7, color: '#a0aec0', alignment: 'right' },
       ],
       margin: [40, 0, 40, 0],
@@ -170,7 +190,7 @@ const buildFooter = (
           stack: [
             { text: '_'.repeat(40), alignment: 'center', margin: [0, 16, 0, 4] },
             { text: instituicao.secretario_nome, alignment: 'center', bold: true, fontSize: 9 },
-            { text: instituicao.secretario_cargo || 'Secretário(a) de Educação', alignment: 'center', fontSize: 8 },
+            { text: instituicao.departamento || 'Secretaria Municipal de Educação', alignment: 'center', fontSize: 8 },
           ],
           width: 200,
         },
@@ -229,6 +249,7 @@ export const buildPdfDoc = ({
   orientation = 'portrait',
   showSignature = false,
   extraStyles = {},
+  customFooter,
 }: PdfDocOptions): any => ({
   pageOrientation: orientation,
   pageMargins: [40, 40, 40, 60],
@@ -236,7 +257,7 @@ export const buildPdfDoc = ({
     ...buildHeader(instituicao, title, subtitle),
     ...content,
   ],
-  footer: buildFooter(instituicao, showSignature, 0),
+  footer: customFooter || buildFooter(instituicao, showSignature, 0),
   styles: { ...getDefaultPDFStyles(), ...extraStyles },
   defaultStyle: { fontSize: 10, font: 'Roboto' },
 });
@@ -244,41 +265,52 @@ export const buildPdfDoc = ({
 // ─── Helpers de tabela padrão ─────────────────────────────────────────────────
 
 /** Cria um layout de tabela no estilo DataTable do sistema (cabeçalho cinza claro, bordas sutis) */
-export const buildTable = (headers: string[], rows: any[][], widths?: (string | number)[]): any => ({
-  table: {
-    headerRows: 1,
-    widths: widths || headers.map(() => '*'),
-    body: [
-      // Cabeçalho: fundo grey.100 (#F5F5F5), texto bold, sem cor de destaque
-      headers.map(h => ({
-        text: h,
-        bold: true,
-        fontSize: 8,
-        color: '#212121',
-        fillColor: '#F5F5F5',
-        margin: [6, 5, 6, 5],
-      })),
-      // Linhas de dados: fundo branco, sem alternância (igual ao DataTable)
-      ...rows.map(row =>
-        row.map(cell => ({
-          text: String(cell ?? ''),
+export const buildTable = (
+  headers: string[], 
+  rows: any[][], 
+  widths?: (string | number)[],
+  options?: { compact?: boolean }
+): any => {
+  const compact = options?.compact || false;
+  const headerMargin = compact ? [4, 3, 4, 3] : [6, 5, 6, 5];
+  const cellMargin = compact ? [4, 2, 4, 2] : [6, 4, 6, 4];
+
+  return {
+    table: {
+      headerRows: 1,
+      widths: widths || headers.map(() => '*'),
+      body: [
+        // Cabeçalho: fundo grey.100 (#F5F5F5), texto bold, sem cor de destaque
+        headers.map(h => ({
+          text: h,
+          bold: true,
           fontSize: 8,
           color: '#212121',
-          fillColor: '#FFFFFF',
-          margin: [6, 4, 6, 4],
-        }))
-      ),
-    ],
-  },
-  layout: {
-    hLineWidth: (i: number, node: any) => (i === 0 || i === 1 || i === node.table.body.length ? 0.8 : 0.4),
-    vLineWidth: () => 0.4,
-    hLineColor: (i: number, node: any) => (i === 0 || i === node.table.body.length ? '#BDBDBD' : '#E0E0E0'),
-    vLineColor: () => '#E0E0E0',
-    fillColor: () => null,
-  },
-  margin: [0, 4, 0, 8],
-});
+          fillColor: '#F5F5F5',
+          margin: headerMargin,
+        })),
+        // Linhas de dados: fundo branco, sem alternância (igual ao DataTable)
+        ...rows.map(row =>
+          row.map(cell => ({
+            text: String(cell ?? ''),
+            fontSize: 8,
+            color: '#212121',
+            fillColor: '#FFFFFF',
+            margin: cellMargin,
+          }))
+        ),
+      ],
+    },
+    layout: {
+      hLineWidth: (i: number, node: any) => (i === 0 || i === 1 || i === node.table.body.length ? 0.8 : 0.4),
+      vLineWidth: () => 0.4,
+      hLineColor: (i: number, node: any) => (i === 0 || i === node.table.body.length ? '#BDBDBD' : '#E0E0E0'),
+      vLineColor: () => '#E0E0E0',
+      fillColor: () => null,
+    },
+    margin: [0, 4, 0, 8],
+  };
+};
 
 // ─── Legado: funções antigas mantidas para compatibilidade ───────────────────
 // Os módulos que já usam createPDFHeader/createPDFFooter continuam funcionando.
@@ -292,12 +324,12 @@ interface PDFHeaderOptions {
 }
 
 export const createPDFHeader = (options: PDFHeaderOptions) => {
-  const { instituicao, title, subtitle, subtitle2, logoSize = { width: 50, height: 50 } } = options;
+  const { instituicao, title, subtitle, subtitle2, logoSize = { width: 120, height: 50 } } = options;
   const headerContent: any[] = [];
   if (instituicao?.logo_url) {
     headerContent.push({
       columns: [
-        { image: processImageUrl(instituicao.logo_url), width: logoSize.width, height: logoSize.height },
+        { image: processImageUrl(instituicao.logo_url), fit: [logoSize.width, logoSize.height] },
         {
           stack: [
             { text: instituicao.nome || 'Secretaria Municipal de Educação', style: 'header', alignment: 'center' },
@@ -346,7 +378,7 @@ export const createPDFFooter = (options: PDFFooterOptions) => {
             stack: [
               { text: '_'.repeat(40), alignment: 'center', margin: [0, 20, 0, 5] },
               { text: instituicao.secretario_nome, alignment: 'center', bold: true, fontSize: 10 },
-              { text: instituicao.secretario_cargo || 'Secretário(a) de Educação', alignment: 'center', fontSize: 9 },
+              { text: instituicao.departamento || 'Secretaria Municipal de Educação', alignment: 'center', fontSize: 9 },
             ],
             width: 200,
           },
