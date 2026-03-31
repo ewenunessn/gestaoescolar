@@ -44,9 +44,13 @@ const DIAS_SEMANA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta'
 const DIAS_SEMANA_CURTO = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 const TIPOS_REFEICAO_ICONS: Record<string, React.ReactElement> = {
+  'refeicao': <LunchIcon />,
+  'lanche': <SnackIcon />,
   'cafe_manha': <CafeIcon />,
-  'lanche_manha': <SnackIcon />,
+  'ceia': <DinnerIcon />,
+  // Compatibilidade com valores antigos
   'almoco': <LunchIcon />,
+  'lanche_manha': <SnackIcon />,
   'lanche_tarde': <SnackIcon />,
   'jantar': <DinnerIcon />
 };
@@ -136,16 +140,12 @@ const CalendarioSemanalCardapio: React.FC<CalendarioSemanalCardapioProps> = ({
     const tituloLower = titulo.toLowerCase();
     if (tituloLower.includes('café') || tituloLower.includes('breakfast')) {
       return TIPOS_REFEICAO_ICONS['cafe_manha'];
-    } else if (tituloLower.includes('lanche manhã') || tituloLower.includes('colação')) {
-      return TIPOS_REFEICAO_ICONS['lanche_manha'];
-    } else if (tituloLower.includes('almoço') || tituloLower.includes('lunch')) {
-      return TIPOS_REFEICAO_ICONS['almoco'];
-    } else if (tituloLower.includes('lanche tarde') || tituloLower.includes('merenda')) {
-      return TIPOS_REFEICAO_ICONS['lanche_tarde'];
-    } else if (tituloLower.includes('jantar') || tituloLower.includes('dinner')) {
-      return TIPOS_REFEICAO_ICONS['jantar'];
+    } else if (tituloLower.includes('lanche') || tituloLower.includes('merenda') || tituloLower.includes('colação')) {
+      return TIPOS_REFEICAO_ICONS['lanche'];
+    } else if (tituloLower.includes('ceia')) {
+      return TIPOS_REFEICAO_ICONS['ceia'];
     }
-    return <RestaurantIcon />;
+    return TIPOS_REFEICAO_ICONS['refeicao'];
   };
 
   // Navegação entre semanas

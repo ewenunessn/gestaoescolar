@@ -35,11 +35,10 @@ export interface RefeicaoDia {
 }
 
 export const TIPOS_REFEICAO: Record<string, string> = {
+  refeicao: 'Refeição',
+  lanche: 'Lanche',
   cafe_manha: 'Café da Manhã',
-  lanche_manha: 'Lanche da Manhã',
-  almoco: 'Almoço',
-  lanche_tarde: 'Lanche da Tarde',
-  jantar: 'Jantar'
+  ceia: 'Ceia',
 };
 
 export const MESES: Record<number, string> = {

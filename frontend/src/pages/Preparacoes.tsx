@@ -85,7 +85,7 @@ const PreparacoesPage: React.FC = () => {
   const [formData, setFormData] = useState({
     nome: '',
     descricao: '',
-    tipo: 'almoco' as 'cafe_manha' | 'almoco' | 'lanche_tarde' | 'jantar' | 'ceia',
+    tipo: 'refeicao' as 'refeicao' | 'lanche' | 'cafe_manha' | 'ceia',
     categoria: '',
     ativo: true,
   });
@@ -238,6 +238,16 @@ const PreparacoesPage: React.FC = () => {
   ], [navigate]);
 
   // Funções de modais
+  const mapearTipoLegado = (tipo: string): 'refeicao' | 'lanche' | 'cafe_manha' | 'ceia' => {
+    const mapa: Record<string, 'refeicao' | 'lanche' | 'cafe_manha' | 'ceia'> = {
+      almoco: 'refeicao', jantar: 'refeicao',
+      lanche_manha: 'lanche', lanche_tarde: 'lanche',
+      cafe_manha: 'cafe_manha', ceia: 'ceia',
+      refeicao: 'refeicao', lanche: 'lanche',
+    };
+    return mapa[tipo] ?? 'refeicao';
+  };
+
   const openModal = (preparacao: Refeicao | null = null) => {
     setErroPreparacao('');
     setTouched({});
@@ -246,7 +256,7 @@ const PreparacoesPage: React.FC = () => {
       setFormData({
         nome: preparacao.nome,
         descricao: preparacao.descricao || '',
-        tipo: preparacao.tipo,
+        tipo: mapearTipoLegado(preparacao.tipo),
         categoria: preparacao.categoria || '',
         ativo: preparacao.ativo,
       });
@@ -255,7 +265,7 @@ const PreparacoesPage: React.FC = () => {
       setFormData({
         nome: '',
         descricao: '',
-        tipo: 'almoco',
+        tipo: 'refeicao',
         categoria: '',
         ativo: true,
       });
