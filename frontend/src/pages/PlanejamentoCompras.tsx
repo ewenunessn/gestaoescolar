@@ -15,6 +15,7 @@ import {
   TextField,
   Autocomplete,
   CircularProgress,
+  LinearProgress,
   Tabs,
   Tab,
   Table,
@@ -58,6 +59,8 @@ interface Escola {
 import {
   calcularDemandaPorCompetencia,
   gerarGuiasDemanda,
+  iniciarGeracaoGuiasAsync,
+  buscarStatusJob,
   gerarPedidosPorPeriodo,
   gerarPedidoDaGuia,
   CalculoDemandaResponse,
@@ -213,6 +216,8 @@ export default function PlanejamentoCompras() {
     }
   }
 
+  const [jobProgresso, setJobProgresso] = useState<{ progresso: number; mensagem?: string } | null>(null);
+
   async function handleGerarGuias() {
     if (!competencia || periodos.length === 0) {
       toast.warning('Atenção', 'Defina a competência e ao menos um período');
@@ -220,24 +225,74 @@ export default function PlanejamentoCompras() {
     }
     setGerandoGuias(true);
     setResultadoGuias(null);
+    setJobProgresso(null);
+
+    const params = {
+      competencia,
+      periodos,
+      escola_ids: escolasSelecionadas.length > 0 ? escolasSelecionadas.map(e => e.id) : undefined,
+    };
+
     try {
-      const res = await gerarGuiasDemanda(
-        competencia,
-        periodos,
-        escolasSelecionadas.length > 0 ? escolasSelecionadas.map(e => e.id) : undefined
-      );
-      setResultadoGuias(res);
-      if (res.total_criadas > 0) {
-        toast.success('Guias geradas', `${res.total_criadas} guia(s) de demanda criada(s) com sucesso`);
+      // Tenta modo assíncrono primeiro
+      let jobResp: any = null;
+      try {
+        jobResp = await iniciarGeracaoGuiasAsync(params.competencia, params.periodos, params.escola_ids);
+      } catch {
+        jobResp = null;
+      }
+
+      if (jobResp?.job_id) {
+        // Modo assíncrono: polling do job
+        const jobId = jobResp.job_id;
+        let tentativas = 0;
+        const MAX = 120; // 2 min com intervalo de 1s
+        await new Promise<void>((resolve, reject) => {
+          const interval = setInterval(async () => {
+            tentativas++;
+            try {
+              const job = await buscarStatusJob(jobId);
+              setJobProgresso({ progresso: job.progresso ?? 0, mensagem: job.status });
+              if (job.status === 'concluido') {
+                clearInterval(interval);
+                const res = job.resultado as GerarGuiasResponse;
+                setResultadoGuias(res);
+                if (res?.total_criadas > 0) {
+                  toast.success('Guias geradas', `${res.total_criadas} guia(s) criada(s) com sucesso`);
+                } else {
+                  toast.error('Nenhuma guia criada', res?.erros?.map(e => e.motivo).join('; ') || 'Verifique os erros');
+                }
+                resolve();
+              } else if (job.status === 'erro') {
+                clearInterval(interval);
+                reject(new Error(job.erro || 'Erro no processamento'));
+              } else if (tentativas >= MAX) {
+                clearInterval(interval);
+                reject(new Error('Tempo limite excedido'));
+              }
+            } catch (e) {
+              clearInterval(interval);
+              reject(e);
+            }
+          }, 1000);
+        });
       } else {
-        const motivos = res.erros?.map((e) => e.motivo).join('; ') || 'Verifique os erros abaixo';
-        toast.error('Nenhuma guia criada', motivos);
+        // Fallback síncrono (Vercel ou ambiente sem suporte a jobs)
+        const res = await gerarGuiasDemanda(params.competencia, params.periodos, params.escola_ids);
+        setResultadoGuias(res);
+        if (res.total_criadas > 0) {
+          toast.success('Guias geradas', `${res.total_criadas} guia(s) de demanda criada(s) com sucesso`);
+        } else {
+          const motivos = res.erros?.map((e) => e.motivo).join('; ') || 'Verifique os erros abaixo';
+          toast.error('Nenhuma guia criada', motivos);
+        }
       }
     } catch (error: any) {
-      const msg = error.response?.data?.error || 'Não foi possível gerar as guias';
+      const msg = error.response?.data?.error || error.message || 'Não foi possível gerar as guias';
       toast.error('Erro', msg);
     } finally {
       setGerandoGuias(false);
+      setJobProgresso(null);
     }
   }
 
@@ -733,6 +788,21 @@ export default function PlanejamentoCompras() {
                     {gerandoGuias ? 'Gerando...' : `Gerar Guia${periodos.length !== 1 ? 's' : ''} de Demanda (${periodos.length} período${periodos.length !== 1 ? 's' : ''})`}
                   </Button>
                 </Box>
+
+                {gerandoGuias && jobProgresso && (
+                  <Box sx={{ mt: 1.5 }}>
+                    <LinearProgress variant="determinate" value={jobProgresso.progresso} sx={{ mb: 0.5 }} />
+                    <Typography variant="caption" color="text.secondary">
+                      Processando em background... {jobProgresso.progresso}%
+                    </Typography>
+                  </Box>
+                )}
+                {gerandoGuias && !jobProgresso && (
+                  <Box sx={{ mt: 1.5 }}>
+                    <LinearProgress />
+                    <Typography variant="caption" color="text.secondary">Gerando guias...</Typography>
+                  </Box>
+                )}
 
                 {/* Resultado da geração de guias */}
                 {resultadoGuias && (

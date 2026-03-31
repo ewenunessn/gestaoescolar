@@ -39,6 +39,7 @@ import { buscarInstituicao, Instituicao } from '../../../services/instituicao';
 import { formatarQuantidade } from '../../../utils/formatters';
 import { DataTableAdvanced } from '../../../components/DataTableAdvanced';
 import { initPdfMake, buildPdfDoc, buildTable } from '../../../utils/pdfUtils';
+import api from '../../../services/api';
 
 interface EscolasEntregaListProps {
   onEscolaSelect: (escola: EscolaEntrega) => void;
@@ -386,16 +387,16 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({
           return {
             stack: [
               {
-                canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.4, lineColor: '#e2e8f0' }],
+                canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.4, lineColor: '#9ca3af' }],
                 margin: [40, 0, 40, 4],
               },
               {
                 columns: [
                   {
                     stack: [
-                      { text: instituicao?.nome || 'Sistema de Gestão de Alimentação Escolar', fontSize: 7, color: '#a0aec0' },
-                      ...(instituicao?.endereco ? [{ text: instituicao.endereco, fontSize: 6, color: '#cbd5e0', margin: [0, 1, 0, 0] }] : []),
-                      { text: `Gerado em ${geradoEm} · Página ${currentPage} de ${pageCount}`, fontSize: 6, color: '#cbd5e0', margin: [0, 2, 0, 0] },
+                      { text: instituicao?.nome || 'Sistema de Gestão de Alimentação Escolar', fontSize: 7, color: '#374151' },
+                      ...(instituicao?.endereco ? [{ text: instituicao.endereco, fontSize: 6, color: '#374151', margin: [0, 1, 0, 0] }] : []),
+                      { text: `Gerado em ${geradoEm} · Página ${currentPage} de ${pageCount}`, fontSize: 6, color: '#374151', margin: [0, 2, 0, 0] },
                     ],
                     alignment: 'left',
                     width: '*'
@@ -403,7 +404,7 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({
                   {
                     stack: [
                       { image: barcodeDataUrl, width: 100, height: 38, alignment: 'right' },
-                      { text: codigoGuia, fontSize: 6, alignment: 'right', margin: [0, 2, 0, 0], color: '#666' },
+                      { text: codigoGuia, fontSize: 6, alignment: 'right', margin: [0, 2, 0, 0], color: '#374151' },
                     ],
                     alignment: 'right',
                     width: 100
