@@ -75,6 +75,21 @@ const db = process.env.VERCEL === '1' ? require("./database-vercel") : require("
 
 dotenv.config();
 
+const corsOptions = {
+  origin: '*',
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "X-Requested-With",
+    "Accept",
+    "Origin",
+  ],
+  maxAge: 86400,
+  preflightContinue: false,
+  optionsSuccessStatus: 200
+};
+
 const app = express();
 const httpServer = createServer(app);
 
@@ -120,21 +135,6 @@ async function ensureProdutoComposicaoNutricionalTable() {
     `);
   }
 }
-
-const corsOptions = {
-  origin: '*',
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-  allowedHeaders: [
-    "Content-Type",
-    "Authorization",
-    "X-Requested-With",
-    "Accept",
-    "Origin",
-  ],
-  maxAge: 86400,
-  preflightContinue: false,
-  optionsSuccessStatus: 200
-};
 
 // Middlewares de otimização
 app.use(balancedCompression);  // Compressão de respostas

@@ -122,7 +122,7 @@ api.interceptors.response.use(
       const isBackendRunning = await checkBackendHealth();
       if (!isBackendRunning) {
         throw new Error(
-          `Servidor backend não está respondendo. Verifique se está rodando em http://localhost:3000`
+          `Não foi possível conectar ao servidor. Verifique sua conexão com a internet.`
         );
       }
       throw new Error(
