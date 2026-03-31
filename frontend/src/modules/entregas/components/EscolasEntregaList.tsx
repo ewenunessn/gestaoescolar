@@ -172,7 +172,7 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({
 
       // Extrair modalidades do snapshot do primeiro item
       // (todos os itens da mesma guia/escola têm o mesmo snapshot)
-      let modalidades = 'Não informado';
+      let modalidades = '';
       let nomeEscola = escola.nome;
       let enderecoEscola = escola.endereco || '';
       let totalAlunos = escola.total_alunos;
@@ -183,6 +183,16 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({
           .map((m: any) => m.modalidade_nome)
           .join(', ');
       }
+      
+      // Fallback: buscar modalidades diretamente da escola se snapshot não tiver
+      if (!modalidades) {
+        try {
+          const escolaResp = await api.get(`/escolas/${escola.id}`);
+          modalidades = escolaResp.data?.modalidades || '';
+        } catch {}
+      }
+      
+      if (!modalidades) modalidades = 'Não informado';
       
       // Usar dados do snapshot se disponíveis
       if (primeiroItem.escola_nome) {
@@ -209,10 +219,10 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({
       const canvas = document.createElement('canvas');
       JsBarcode(canvas, codigoGuia, {
         format: 'CODE128',
-        width: 1.5,
-        height: 30,
+        width: 2,
+        height: 40,
         displayValue: false,
-        margin: 2,
+        margin: 4,
       });
       const barcodeDataUrl = canvas.toDataURL('image/png');
 
@@ -392,7 +402,7 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({
                   },
                   {
                     stack: [
-                      { image: barcodeDataUrl, width: 80, height: 30, alignment: 'right' },
+                      { image: barcodeDataUrl, width: 100, height: 38, alignment: 'right' },
                       { text: codigoGuia, fontSize: 6, alignment: 'right', margin: [0, 2, 0, 0], color: '#666' },
                     ],
                     alignment: 'right',

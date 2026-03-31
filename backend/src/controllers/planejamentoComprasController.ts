@@ -48,27 +48,54 @@ async function batchInsertGuiaItens(
   chunkSize = 500
 ): Promise<number> {
   if (rows.length === 0) return 0;
+
+  // Buscar snapshots de todas as escolas envolvidas de uma vez
+  const escolaIds = [...new Set(rows.map(r => r.escola_id))];
+  const snapshotResult = await client.query(`
+    SELECT
+      e.id as escola_id,
+      e.nome as escola_nome,
+      e.endereco as escola_endereco,
+      e.municipio as escola_municipio,
+      COALESCE((SELECT SUM(em.quantidade_alunos) FROM escola_modalidades em WHERE em.escola_id = e.id), 0) as escola_total_alunos,
+      (
+        SELECT COALESCE(jsonb_agg(jsonb_build_object('modalidade_id', em.modalidade_id, 'modalidade_nome', m.nome, 'quantidade_alunos', em.quantidade_alunos) ORDER BY m.nome), '[]'::jsonb)
+        FROM escola_modalidades em LEFT JOIN modalidades m ON em.modalidade_id = m.id WHERE em.escola_id = e.id
+      ) as escola_modalidades
+    FROM escolas e WHERE e.id = ANY($1)
+  `, [escolaIds]);
+
+  const snapshotMap = new Map<number, any>();
+  for (const row of snapshotResult.rows) {
+    snapshotMap.set(row.escola_id, row);
+  }
+
   let total = 0;
   for (let i = 0; i < rows.length; i += chunkSize) {
     const chunk = rows.slice(i, i + chunkSize);
     const values: any[] = [];
     const placeholders = chunk.map((row, idx) => {
-      const base = idx * 6;
-      values.push(guia_id, row.produto_id, row.escola_id, row.quantidade, row.unidade, row.data_entrega);
-      return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 4}, $${base + 5}, $${base + 6}, 'pendente', NOW(), NOW())`;
+      const snap = snapshotMap.get(row.escola_id);
+      const base = idx * 11;
+      values.push(
+        guia_id, row.produto_id, row.escola_id, row.quantidade, row.unidade, row.data_entrega,
+        snap?.escola_nome || null, snap?.escola_endereco || null, snap?.escola_municipio || null,
+        snap?.escola_total_alunos || null,
+        snap?.escola_modalidades ? JSON.stringify(snap.escola_modalidades) : null,
+      );
+      return `($${base+1},$${base+2},$${base+3},$${base+4},$${base+4},$${base+5},$${base+6},'pendente',NOW(),NOW(),$${base+7},$${base+8},$${base+9},$${base+10},$${base+11},NOW())`;
     });
     await client.query(
       `INSERT INTO guia_produto_escola
-         (guia_id, produto_id, escola_id, quantidade, quantidade_demanda, unidade, data_entrega, status, created_at, updated_at)
-       VALUES ${placeholders.join(', ')}`,
+         (guia_id,produto_id,escola_id,quantidade,quantidade_demanda,unidade,data_entrega,status,created_at,updated_at,
+          escola_nome,escola_endereco,escola_municipio,escola_total_alunos,escola_modalidades,escola_snapshot_data)
+       VALUES ${placeholders.join(',')}`,
       values
     );
     total += chunk.length;
   }
   return total;
 }
-
-// ─── Helper: Converter demanda para unidade de compra ────────────────────────
 function converterDemandaParaCompra(
   quantidade_demanda: number,
   produto: {

@@ -466,12 +466,43 @@ class GuiaModel {
   }
 
   async adicionarProdutoGuia(data: CreateGuiaProdutoEscolaData): Promise<GuiaProdutoEscola> {
+    // Buscar snapshot da escola
+    const escolaSnapshot = await db.get(`
+      SELECT 
+        e.nome as escola_nome,
+        e.endereco as escola_endereco,
+        e.municipio as escola_municipio,
+        COALESCE((
+          SELECT SUM(em.quantidade_alunos)
+          FROM escola_modalidades em
+          WHERE em.escola_id = e.id
+        ), 0) as escola_total_alunos,
+        (
+          SELECT COALESCE(
+            jsonb_agg(
+              jsonb_build_object(
+                'modalidade_id', em.modalidade_id,
+                'modalidade_nome', m.nome,
+                'quantidade_alunos', em.quantidade_alunos
+              ) ORDER BY m.nome
+            ),
+            '[]'::jsonb
+          )
+          FROM escola_modalidades em
+          LEFT JOIN modalidades m ON em.modalidade_id = m.id
+          WHERE em.escola_id = e.id
+        ) as escola_modalidades
+      FROM escolas e
+      WHERE e.id = $1
+    `, [data.escola_id]);
+
     const result = await db.run(`
       INSERT INTO guia_produto_escola (
         guia_id, produto_id, escola_id, quantidade, unidade, 
-        lote, observacao, para_entrega, status, data_entrega
+        lote, observacao, para_entrega, status, data_entrega,
+        escola_nome, escola_endereco, escola_municipio, escola_total_alunos, escola_modalidades, escola_snapshot_data
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, CURRENT_TIMESTAMP)
       RETURNING *
     `, [
       data.guia_id,
@@ -483,7 +514,12 @@ class GuiaModel {
       data.observacao || null,
       data.para_entrega !== undefined ? data.para_entrega : true,
       data.status || 'pendente',
-      data.data_entrega || null
+      data.data_entrega || null,
+      escolaSnapshot?.escola_nome || null,
+      escolaSnapshot?.escola_endereco || null,
+      escolaSnapshot?.escola_municipio || null,
+      escolaSnapshot?.escola_total_alunos || null,
+      escolaSnapshot?.escola_modalidades ? JSON.stringify(escolaSnapshot.escola_modalidades) : null,
     ]);
 
     return await this.buscarProdutoGuia(result.lastID);
