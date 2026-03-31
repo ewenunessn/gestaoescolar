@@ -121,52 +121,8 @@ async function ensureProdutoComposicaoNutricionalTable() {
   }
 }
 
-// Configuração CORS usando config.json
 const corsOptions = {
-  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    // Permitir requisições sem origin (mobile apps, Postman, etc.)
-    if (!origin) {
-      return callback(null, true);
-    }
-    
-    // Em desenvolvimento, permitir qualquer origem (sem logs para evitar poluição)
-    if (process.env.NODE_ENV === 'development') {
-      return callback(null, true);
-    }
-    
-    // Sempre permitir domínios Vercel
-    if (origin.includes('.vercel.app')) {
-      console.log('✅ CORS: Permitido (Vercel)');
-      return callback(null, true);
-    }
-    
-    // Em produção, verificar lista de origens permitidas
-    const allowedOrigins = config.backend.cors.origin;
-    if (Array.isArray(allowedOrigins)) {
-      const isAllowed = allowedOrigins.some(allowedOrigin => {
-        if (allowedOrigin.includes('*')) {
-          // Suporte para wildcards como *.vercel.app
-          const pattern = allowedOrigin.replace(/\*/g, '.*').replace(/\./g, '\\.');
-          return new RegExp(`^${pattern}$`).test(origin);
-        }
-        return allowedOrigin === origin;
-      });
-      
-      if (isAllowed) {
-        console.log('✅ CORS: Permitido (lista)');
-      } else {
-        console.log('❌ CORS: Bloqueado - Origin não está na lista permitida');
-        console.log('   Origens permitidas:', allowedOrigins);
-      }
-      
-      return callback(null, isAllowed);
-    }
-    
-    const allowed = allowedOrigins === true || allowedOrigins === origin;
-    console.log(allowed ? '✅ CORS: Permitido' : '❌ CORS: Bloqueado');
-    return callback(null, allowed);
-  },
-  credentials: config.backend.cors.credentials,
+  origin: '*',
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   allowedHeaders: [
     "Content-Type",
@@ -174,11 +130,8 @@ const corsOptions = {
     "X-Requested-With",
     "Accept",
     "Origin",
-    "Access-Control-Request-Method",
-    "Access-Control-Request-Headers"
   ],
-  exposedHeaders: ["Content-Length", "X-Foo", "X-Bar"],
-  maxAge: 86400, // 24 horas
+  maxAge: 86400,
   preflightContinue: false,
   optionsSuccessStatus: 200
 };

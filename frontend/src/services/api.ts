@@ -57,7 +57,6 @@ const getMessage = (data: unknown, fallback: string) => {
 const api = axios.create({
   baseURL: apiConfig.baseURL,
   timeout: apiConfig.timeout,
-  withCredentials: true, // Para suportar cookies/sessões
   headers: {
     'Content-Type': 'application/json',
   }
