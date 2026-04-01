@@ -141,7 +141,7 @@ const CardapioCalendarioPage: React.FC = () => {
       if (cardapioData) {
         const mesNome = dateUtils.getMonthName(cardapioData.mes);
         const subtitulo = (cardapioData as any).modalidades_nomes || cardapioData.modalidade_nome || cardapioData.nome;
-        setPageTitle(`Cardápio ${mesNome}/${cardapioData.ano} - ${subtitulo}`);
+        setPageTitle(cardapioData.nome || `Cardápio ${mesNome}/${cardapioData.ano}`);
         setBackPath('/cardapios');
       }
     } catch (err) {

@@ -31,6 +31,7 @@ import {
   Tooltip,
   useMediaQuery,
   useTheme,
+  Chip,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
@@ -199,7 +200,16 @@ export const DataTable = memo(function DataTable<TData>({
           width: isMobile ? '100%' : 'auto',
         }}>
           {title && !isMobile && (
-            <Typography variant="h6" component="div">
+            <Typography 
+              variant="h6" 
+              component="div"
+              sx={{
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                maxWidth: '300px',
+              }}
+            >
               {title}
             </Typography>
           )}
@@ -207,7 +217,7 @@ export const DataTable = memo(function DataTable<TData>({
             <Button
               variant="contained"
               onClick={onCreateClick}
-              startIcon={!isMobile && <AddIcon />}
+              startIcon={<AddIcon />}
               size={isMobile ? 'small' : 'medium'}
               fullWidth={isMobile}
               sx={{
@@ -218,7 +228,7 @@ export const DataTable = memo(function DataTable<TData>({
                 },
               }}
             >
-              {isMobile ? <AddIcon /> : createButtonLabel}
+              {createButtonLabel}
             </Button>
           )}
         </Box>
@@ -380,13 +390,13 @@ export const DataTable = memo(function DataTable<TData>({
           </Table>
         </TableContainer>
       ) : (
-        /* View Mobile - Cards */
+        /* View Mobile - Cards Compactos */
         <Box
           sx={{
             flex: 1,
             overflow: 'auto',
             WebkitOverflowScrolling: 'touch',
-            p: 2,
+            p: 1.5,
           }}
         >
           {loading ? (
@@ -400,47 +410,224 @@ export const DataTable = memo(function DataTable<TData>({
               </Typography>
             </Box>
           ) : (
-            rows.map((row) => (
-              <Paper
-                key={row.id}
-                onClick={() => onRowClick?.(row.original)}
-                sx={{
-                  mb: 2,
-                  p: 2,
-                  cursor: onRowClick ? 'pointer' : 'default',
-                  '&:hover': {
-                    backgroundColor: onRowClick ? 'action.hover' : 'inherit',
-                  },
-                }}
-              >
-                {row.getVisibleCells().map((cell: any, index: number) => {
-                  const header = table.getHeaderGroups()[0].headers[index];
-                  return (
-                    <Box
-                      key={cell.id}
-                      sx={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        py: 0.5,
-                        borderBottom: index < row.getVisibleCells().length - 1 ? '1px solid' : 'none',
-                        borderColor: 'divider',
-                      }}
-                    >
-                      <Typography
-                        variant="caption"
-                        sx={{ fontWeight: 600, color: 'text.secondary', mr: 2 }}
-                      >
-                        {flexRender(header.column.columnDef.header, header.getContext())}
-                      </Typography>
-                      <Box sx={{ textAlign: 'right' }}>
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+            rows.map((row) => {
+              const cells = row.getVisibleCells();
+              const nomeCell = cells.find((c: any) => c.column.id === 'nome');
+              const numeroCell = cells.find((c: any) => c.column.id === 'numero');
+              const guiaNomeCell = cells.find((c: any) => c.column.id === 'guia_nome');
+              const tipoCell = cells.find((c: any) => c.column.id === 'tipo');
+              const statusCell = cells.find((c: any) => c.column.id === 'ativo' || c.column.id === 'status' || c.column.id === 'guia_status');
+              const valorCaloricoCell = cells.find((c: any) => c.column.id === 'valor_calorico');
+              const totalAlunosCell = cells.find((c: any) => c.column.id === 'total_alunos');
+              const modalidadesCell = cells.find((c: any) => c.column.id === 'modalidades');
+              const valorRepasseCell = cells.find((c: any) => c.column.id === 'valor_repasse');
+              const parcelasCell = cells.find((c: any) => c.column.id === 'parcelas');
+              const totalAnualCell = cells.find((c: any) => c.column.id === 'total_anual');
+              const unidadeCell = cells.find((c: any) => c.column.id === 'unidade_distribuicao');
+              const composicaoCell = cells.find((c: any) => c.column.id === 'tem_composicao_nutricional');
+              const contratoCell = cells.find((c: any) => c.column.id === 'tem_contrato');
+              const fornecedorCell = cells.find((c: any) => c.column.id === 'fornecedor_id');
+              const vigenciaCell = cells.find((c: any) => c.column.id === 'vigencia');
+              const valorTotalCell = cells.find((c: any) => c.column.id === 'valor_total_contrato');
+              const competenciaCell = cells.find((c: any) => c.column.id === 'competencia');
+              const totalEscolasCell = cells.find((c: any) => c.column.id === 'total_escolas');
+              const totalItensCell = cells.find((c: any) => c.column.id === 'total_itens');
+              const actionsCell = cells.find((c: any) => c.column.id === 'actions');
+              
+              return (
+                <Paper
+                  key={row.id}
+                  onClick={() => onRowClick?.(row.original)}
+                  elevation={0}
+                  sx={{
+                    mb: 1,
+                    p: 1.5,
+                    cursor: onRowClick ? 'pointer' : 'default',
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderRadius: 1.5,
+                    transition: 'all 0.15s',
+                    '&:hover': {
+                      backgroundColor: onRowClick ? 'action.hover' : 'inherit',
+                      borderColor: onRowClick ? 'primary.main' : 'divider',
+                    },
+                    '&:active': {
+                      transform: onRowClick ? 'scale(0.99)' : 'none',
+                    },
+                  }}
+                >
+                  {/* Linha principal: Status + Nome/Número + Ações */}
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, flex: 1, mr: 1 }}>
+                      {statusCell && !numeroCell && !guiaNomeCell && (
+                        <Box sx={{ flexShrink: 0, mt: 0.5 }}>
+                          {flexRender(statusCell.column.columnDef.cell, statusCell.getContext())}
+                        </Box>
+                      )}
+                      <Box sx={{ flex: 1 }}>
+                        {/* Para Contratos: mostrar número ao invés de nome */}
+                        {numeroCell ? (
+                          <>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                                {numeroCell.getValue()}
+                              </Typography>
+                              {statusCell && (
+                                <Box sx={{ 
+                                  display: 'inline-flex',
+                                  '& .MuiChip-root': {
+                                    height: '18px',
+                                    fontSize: '0.65rem',
+                                    fontWeight: 500,
+                                  }
+                                }}>
+                                  {flexRender(statusCell.column.columnDef.cell, statusCell.getContext())}
+                                </Box>
+                              )}
+                            </Box>
+                            {/* Fornecedor */}
+                            {fornecedorCell && (
+                              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5, fontSize: '0.75rem' }}>
+                                {flexRender(fornecedorCell.column.columnDef.cell, fornecedorCell.getContext())}
+                              </Typography>
+                            )}
+                            {/* Vigência + Valor */}
+                            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5, fontSize: '0.75rem' }}>
+                              {row.original.data_inicio && row.original.data_fim && (
+                                <>
+                                  {new Date(row.original.data_inicio).toLocaleDateString('pt-BR')} a {new Date(row.original.data_fim).toLocaleDateString('pt-BR')}
+                                </>
+                              )}
+                              {row.original.valor_total_contrato && (
+                                <>
+                                  {' - '}
+                                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(row.original.valor_total_contrato))}
+                                </>
+                              )}
+                            </Typography>
+                          </>
+                        ) : (
+                          <>
+                            <Box sx={{ 
+                              fontSize: '0.875rem', 
+                              fontWeight: 600, 
+                              lineHeight: 1.3,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}>
+                              {/* Para Guias de Demanda: mostrar guia_nome */}
+                              {guiaNomeCell ? (
+                                flexRender(guiaNomeCell.column.columnDef.cell, guiaNomeCell.getContext())
+                              ) : (
+                                nomeCell && flexRender(nomeCell.column.columnDef.cell, nomeCell.getContext())
+                              )}
+                            </Box>
+                            {/* Subtítulo: Competência + Escolas + Itens + Status para Guias de Demanda */}
+                            {guiaNomeCell && (competenciaCell || totalEscolasCell || totalItensCell || statusCell) && (
+                              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5, fontSize: '0.75rem' }}>
+                                {competenciaCell && (
+                                  <>{flexRender(competenciaCell.column.columnDef.cell, competenciaCell.getContext())}</>
+                                )}
+                                {competenciaCell && (totalEscolasCell || totalItensCell) && ' - '}
+                                {totalEscolasCell && totalEscolasCell.getValue() && (
+                                  <>{totalEscolasCell.getValue()} escolas</>
+                                )}
+                                {totalEscolasCell && totalEscolasCell.getValue() && totalItensCell && totalItensCell.getValue() && ', '}
+                                {totalItensCell && totalItensCell.getValue() && (
+                                  <>{totalItensCell.getValue()} itens</>
+                                )}
+                                {(competenciaCell || totalEscolasCell || totalItensCell) && statusCell && ' - '}
+                                {statusCell && (
+                                  <>{flexRender(statusCell.column.columnDef.cell, statusCell.getContext())}</>
+                                )}
+                              </Typography>
+                            )}
+                            {/* Subtítulo: Competência + Modalidades para Cardápios */}
+                            {!guiaNomeCell && competenciaCell && (
+                              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5, fontSize: '0.75rem' }}>
+                                {row.original.mes && row.original.ano && (
+                                  <>
+                                    {row.original.mes}/{row.original.ano}
+                                    {(row.original as any).modalidades_nomes && (
+                                      <> - {(row.original as any).modalidades_nomes}</>
+                                    )}
+                                  </>
+                                )}
+                              </Typography>
+                            )}
+                            {/* Subtítulo para outras páginas */}
+                            {!guiaNomeCell && !competenciaCell && (totalAlunosCell || modalidadesCell || valorRepasseCell || parcelasCell || totalAnualCell || unidadeCell || composicaoCell || contratoCell) && (
+                              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5, fontSize: '0.75rem' }}>
+                                {/* Para Escolas */}
+                                {totalAlunosCell && totalAlunosCell.getValue() && (
+                                  <>{Number(totalAlunosCell.getValue()).toLocaleString('pt-BR')} alunos</>
+                                )}
+                                {totalAlunosCell && totalAlunosCell.getValue() && modalidadesCell && modalidadesCell.getValue() && ' - '}
+                                {modalidadesCell && modalidadesCell.getValue() && (
+                                  <>{modalidadesCell.getValue()}</>
+                                )}
+                                {/* Para Modalidades */}
+                                {valorRepasseCell && valorRepasseCell.getValue() && (
+                                  <>
+                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(valorRepasseCell.getValue()))}
+                                  </>
+                                )}
+                                {valorRepasseCell && valorRepasseCell.getValue() && parcelasCell && ' × '}
+                                {parcelasCell && parcelasCell.getValue() && (
+                                  <>{parcelasCell.getValue()}x</>
+                                )}
+                                {(valorRepasseCell && valorRepasseCell.getValue() || parcelasCell && parcelasCell.getValue()) && totalAnualCell && ' = '}
+                                {totalAnualCell && row.original.valor_repasse && (
+                                  <>
+                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                                      Number(row.original.valor_repasse) * (Number(row.original.parcelas) || 1)
+                                    )}
+                                  </>
+                                )}
+                                {/* Para Produtos */}
+                                {unidadeCell && unidadeCell.getValue() && (
+                                  <>{unidadeCell.getValue()}</>
+                                )}
+                                {unidadeCell && unidadeCell.getValue() && (composicaoCell || contratoCell) && ' - '}
+                                {composicaoCell && composicaoCell.getValue() && (
+                                  <>Composição</>
+                                )}
+                                {composicaoCell && composicaoCell.getValue() && contratoCell && contratoCell.getValue() && ', '}
+                                {contratoCell && contratoCell.getValue() && (
+                                  <>Contrato</>
+                                )}
+                              </Typography>
+                            )}
+                          </>
+                        )}
                       </Box>
                     </Box>
-                  );
-                })}
-              </Paper>
-            ))
+                    {actionsCell && (
+                      <Box onClick={(e) => e.stopPropagation()}>
+                        {flexRender(actionsCell.column.columnDef.cell, actionsCell.getContext())}
+                      </Box>
+                    )}
+                  </Box>
+                  
+                  {/* Linha secundária: Tipo + Valor Calórico (para Preparações) */}
+                  {(tipoCell || valorCaloricoCell) && (
+                    <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', ml: 3, flexWrap: 'wrap' }}>
+                      {tipoCell && (
+                        <Box>
+                          {flexRender(tipoCell.column.columnDef.cell, tipoCell.getContext())}
+                        </Box>
+                      )}
+                      {valorCaloricoCell && (
+                        <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.75rem' }}>
+                          {flexRender(valorCaloricoCell.column.columnDef.cell, valorCaloricoCell.getContext())}
+                        </Typography>
+                      )}
+                    </Box>
+                  )}
+                </Paper>
+              );
+            })
           )}
         </Box>
       )}

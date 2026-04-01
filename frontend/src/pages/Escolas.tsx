@@ -209,6 +209,13 @@ const EscolasPage = () => {
       },
     },
     { 
+      accessorKey: 'modalidades', 
+      header: 'Modalidades',
+      size: 200,
+      enableSorting: true,
+      cell: ({ getValue }) => getValue() || '-',
+    },
+    { 
       accessorKey: 'municipio', 
       header: 'Município',
       size: 150,
