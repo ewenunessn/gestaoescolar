@@ -1,0 +1,29 @@
+/* Estilos para o calendário de seleção de dias do PDF */
+.dia-selecionado {
+  background-color: #1976d2 !important;
+  color: white !important;
+  font-weight: bold;
+}
+
+.dia-selecionado:hover {
+  background-color: #1565c0 !important;
+}
+
+.react-calendar {
+  border: none !important;
+  font-family: inherit;
+}
+
+.react-calendar__tile {
+  padding: 10px;
+  border-radius: 4px;
+}
+
+.react-calendar__tile:enabled:hover {
+  background-color: #e3f2fd;
+}
+
+.react-calendar__tile--active {
+  background-color: #1976d2 !important;
+  color: white !important;
+}

@@ -6,6 +6,9 @@ import {
   CircularProgress, Divider, Alert
 } from '@mui/material';
 import { ArrowBack as ArrowBackIcon, Delete as DeleteIcon, PictureAsPdf as PdfIcon, MoreVert as MoreIcon, Event as EventIcon, CalendarMonth as CalendarIcon, RestaurantMenu as RestaurantIcon } from '@mui/icons-material';
+import Calendar from 'react-calendar';
+import 'react-calendar/dist/Calendar.css';
+import '../styles/calendar-pdf.css';
 import { useToast } from '../hooks/useToast';
 import { usePageTitle } from '../contexts/PageTitleContext';
 import PageContainer from '../components/PageContainer';
@@ -64,6 +67,8 @@ const CardapioCalendarioPage: React.FC = () => {
   const [openDetalhesDiaDialog, setOpenDetalhesDiaDialog] = useState(false);
   const [openReplicarDialog, setOpenReplicarDialog] = useState(false);
   const [openPeriodoDialog, setOpenPeriodoDialog] = useState(false);
+  const [openPDFTabelaDialog, setOpenPDFTabelaDialog] = useState(false);
+  const [diasSelecionadosCalendario, setDiasSelecionadosCalendario] = useState<Date[]>([]);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [ano, setAno] = useState(0);
   const [mes, setMes] = useState(0);
@@ -849,6 +854,150 @@ const CardapioCalendarioPage: React.FC = () => {
     }
   };
 
+  const gerarPDFTabela = async () => {
+    if (diasSelecionadosCalendario.length === 0) {
+      toast.error('Selecione pelo menos um dia');
+      return;
+    }
+    
+    if (diasSelecionadosCalendario.length > 6) {
+      toast.error('Selecione no máximo 6 dias');
+      return;
+    }
+    
+    try {
+      const pdfMake = await initPdfMake();
+      const instituicao = await fetchInstituicaoForPDF();
+      
+      // Extrair apenas os dias das datas selecionadas e ordenar
+      const diasOrdenados = diasSelecionadosCalendario
+        .map(date => date.getDate())
+        .sort((a, b) => a - b);
+      
+      // Tipos de refeição
+      const tiposRefeicao = [
+        { key: 'cafe_manha', label: 'Café da Manhã' },
+        { key: 'lanche', label: 'Lanche Manhã' },
+        { key: 'refeicao', label: 'Almoço' },
+        { key: 'lanche_tarde', label: 'Lanche Tarde' },
+        { key: 'jantar', label: 'Jantar' },
+        { key: 'ceia', label: 'Ceia' }
+      ];
+      
+      // Montar cabeçalho da tabela
+      const headerRow = [
+        { text: 'Refeição', style: 'tableHeader', fillColor: '#e3f2fd' },
+        ...diasOrdenados.map(dia => ({
+          text: `${dia}/${cardapio?.mes}`,
+          style: 'tableHeader',
+          fillColor: '#e3f2fd'
+        }))
+      ];
+      
+      // Montar linhas da tabela
+      const tableBody = [headerRow];
+      
+      for (const tipo of tiposRefeicao) {
+        const row: any[] = [
+          { text: tipo.label, style: 'tipoRefeicao', fillColor: '#f5f5f5' }
+        ];
+        
+        for (const dia of diasOrdenados) {
+          // Buscar refeições deste tipo neste dia
+          const refeicoesNoDia = refeicoes.filter(r => 
+            r.dia === dia && r.tipo_refeicao === tipo.key
+          );
+          
+          const preparacoes = refeicoesNoDia
+            .map(r => r.refeicao_nome)
+            .join('\n');
+          
+          row.push({
+            text: preparacoes || '-',
+            style: 'tableCell'
+          });
+        }
+        
+        tableBody.push(row);
+      }
+      
+      const docDefinition: any = {
+        pageSize: 'A4',
+        pageOrientation: diasOrdenados.length > 3 ? 'landscape' : 'portrait',
+        pageMargins: [40, 60, 40, 60],
+        header: createPDFHeader(instituicao),
+        footer: createPDFFooter(),
+        content: [
+          {
+            text: `Cardápio - ${dateUtils.getMonthName(cardapio?.mes)}/${cardapio?.ano}`,
+            style: 'title',
+            margin: [0, 0, 0, 10]
+          },
+          {
+            text: cardapio?.nome || '',
+            style: 'subtitle',
+            margin: [0, 0, 0, 20]
+          },
+          {
+            table: {
+              headerRows: 1,
+              widths: ['auto', ...Array(diasOrdenados.length).fill('*')],
+              body: tableBody
+            },
+            layout: {
+              hLineWidth: () => 0.5,
+              vLineWidth: () => 0.5,
+              hLineColor: () => '#cccccc',
+              vLineColor: () => '#cccccc',
+              paddingLeft: () => 8,
+              paddingRight: () => 8,
+              paddingTop: () => 6,
+              paddingBottom: () => 6
+            }
+          }
+        ],
+        styles: {
+          ...getDefaultPDFStyles(),
+          title: {
+            fontSize: 16,
+            bold: true,
+            alignment: 'center'
+          },
+          subtitle: {
+            fontSize: 12,
+            alignment: 'center',
+            color: '#666666'
+          },
+          tableHeader: {
+            bold: true,
+            fontSize: 10,
+            alignment: 'center'
+          },
+          tipoRefeicao: {
+            bold: true,
+            fontSize: 9
+          },
+          tableCell: {
+            fontSize: 8,
+            alignment: 'left'
+          }
+        }
+      };
+      
+      pdfMake.createPdf(docDefinition).download(
+        `cardapio-tabela-${cardapio?.mes}-${cardapio?.ano}.pdf`
+      );
+      
+      toast.success('PDF gerado com sucesso!');
+      setOpenPDFTabelaDialog(false);
+      setDiasSelecionadosCalendario([]);
+      
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      toast.error('Erro ao gerar PDF');
+    }
+  };
+
   const handleSubmit = async () => {
     setSalvando(true);
     try {
@@ -1204,6 +1353,10 @@ const CardapioCalendarioPage: React.FC = () => {
             <PdfIcon sx={{ mr: 1 }} fontSize="small" />
             Relatório Detalhado
           </MenuItem>
+          <MenuItem onClick={() => { setOpenPDFTabelaDialog(true); setAnchorEl(null); }}>
+            <PdfIcon sx={{ mr: 1 }} fontSize="small" />
+            Gerar PDF Tabela
+          </MenuItem>
         </Menu>
       </PageContainer>
 
@@ -1489,6 +1642,96 @@ const CardapioCalendarioPage: React.FC = () => {
         onReplicar={handleReplicarRefeicoes}
         corTipoRefeicao={corTipoRefeicao}
       />
+
+      {/* Dialog de seleção de dias com Calendar para PDF Tabela */}
+      <Dialog 
+        open={openPDFTabelaDialog} 
+        onClose={() => { 
+          setOpenPDFTabelaDialog(false); 
+          setDiasSelecionadosCalendario([]); 
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Gerar PDF em Formato de Tabela</DialogTitle>
+        <DialogContent>
+          <Alert severity="info" sx={{ mb: 3 }}>
+            Clique nos dias para selecionar (máximo 6 dias). As linhas serão os tipos de refeição e as colunas os dias.
+          </Alert>
+          
+          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+            <Calendar
+              value={diasSelecionadosCalendario}
+              onChange={(value: any) => {
+                if (Array.isArray(value)) {
+                  if (value.length <= 6) {
+                    setDiasSelecionadosCalendario(value);
+                  } else {
+                    toast.error('Máximo de 6 dias');
+                  }
+                }
+              }}
+              selectRange={false}
+              allowPartialRange={false}
+              returnValue="range"
+              view="month"
+              activeStartDate={cardapio ? new Date(cardapio.ano, cardapio.mes - 1, 1) : new Date()}
+              minDate={cardapio ? new Date(cardapio.ano, cardapio.mes - 1, 1) : undefined}
+              maxDate={cardapio ? new Date(cardapio.ano, cardapio.mes - 1, dateUtils.getDaysInMonth(cardapio.ano, cardapio.mes)) : undefined}
+              locale="pt-BR"
+              tileClassName={({ date }) => {
+                const isDiaSelecionado = diasSelecionadosCalendario.some(
+                  d => d.getDate() === date.getDate() && 
+                       d.getMonth() === date.getMonth() && 
+                       d.getFullYear() === date.getFullYear()
+                );
+                return isDiaSelecionado ? 'dia-selecionado' : '';
+              }}
+            />
+          </Box>
+          
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center' }}>
+            Dias selecionados: {diasSelecionadosCalendario.length}/6
+          </Typography>
+          
+          {diasSelecionadosCalendario.length > 0 && (
+            <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'center' }}>
+              {diasSelecionadosCalendario
+                .map(d => d.getDate())
+                .sort((a, b) => a - b)
+                .map(dia => (
+                  <Chip
+                    key={dia}
+                    label={`Dia ${dia}`}
+                    onDelete={() => {
+                      setDiasSelecionadosCalendario(
+                        diasSelecionadosCalendario.filter(d => d.getDate() !== dia)
+                      );
+                    }}
+                    color="primary"
+                    size="small"
+                  />
+                ))}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => { 
+            setOpenPDFTabelaDialog(false); 
+            setDiasSelecionadosCalendario([]); 
+          }}>
+            Cancelar
+          </Button>
+          <Button 
+            onClick={gerarPDFTabela}
+            variant="contained"
+            disabled={diasSelecionadosCalendario.length === 0 || diasSelecionadosCalendario.length > 6}
+            startIcon={<PdfIcon />}
+          >
+            Gerar PDF
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <LoadingOverlay 
         open={salvando || excluindo || loadingDetalhes}
