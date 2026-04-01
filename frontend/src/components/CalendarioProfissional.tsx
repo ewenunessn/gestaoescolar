@@ -200,7 +200,9 @@ const CalendarioProfissional: React.FC<CalendarioProfissionalProps> = ({
   const dayPropGetter = useCallback((date: Date) => {
     const hoje = new Date();
     const isHoje = date.toDateString() === hoje.toDateString();
-    const isFimDeSemana = date.getDay() === 0 || date.getDay() === 6;
+    const isDomingo = date.getDay() === 0;
+    const isSabado = date.getDay() === 6;
+    const isFimDeSemana = isDomingo || isSabado;
     
     // Verificar se o dia pertence ao mês atual do cardápio
     const isOutroMes = date.getMonth() !== mes - 1 || date.getFullYear() !== ano;
@@ -210,11 +212,12 @@ const CalendarioProfissional: React.FC<CalendarioProfissionalProps> = ({
         backgroundColor: isHoje 
           ? theme.palette.primary.light + '20'
           : isFimDeSemana 
-            ? theme.palette.error.light + '10'
+            ? theme.palette.error.light + '30'  // Vermelho para fim de semana
             : 'transparent',
-        opacity: isOutroMes ? 0.3 : 1, // Dias de outros meses ficam escuros
-        pointerEvents: isOutroMes ? 'none' : 'auto', // Desabilita clique em dias de outros meses
-        color: isOutroMes ? theme.palette.text.disabled : 'inherit'
+        opacity: isOutroMes ? 0.3 : isDomingo ? 0.5 : 1, // Domingo com opacidade reduzida
+        pointerEvents: isOutroMes || isDomingo ? 'none' : 'auto', // Desabilita clique apenas em domingos e dias de outros meses
+        color: isOutroMes ? theme.palette.text.disabled : isFimDeSemana ? theme.palette.error.main : 'inherit',
+        cursor: isDomingo ? 'not-allowed' : 'pointer'
       }
     };
   }, [theme, mes, ano]);
@@ -235,6 +238,11 @@ const CalendarioProfissional: React.FC<CalendarioProfissionalProps> = ({
   // Clique em slot vazio
   const handleSelectSlot = ({ start }: { start: Date }) => {
     if (readonly) return;
+    
+    // Bloquear domingo (getDay() === 0)
+    if (start.getDay() === 0) {
+      return;
+    }
     
     const dataStr = start.toISOString().split('T')[0];
     onDiaClick(dataStr);

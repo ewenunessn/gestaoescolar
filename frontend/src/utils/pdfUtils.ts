@@ -84,16 +84,30 @@ const processImageUrl = (logoUrl: string): string => {
 
 // ─── Cabeçalho padrão (bloco pdfmake) ────────────────────────────────────────
 
-const buildHeader = (instituicao: Instituicao | null, title: string, subtitle?: string): any => {
+const buildHeader = (
+  instituicao: Instituicao | null, 
+  title: string, 
+  subtitle?: string,
+  orientation: 'portrait' | 'landscape' = 'portrait'
+): any => {
   const nome = instituicao?.nome || 'Secretaria Municipal de Educação';
   const logoUrl = instituicao?.logo_url ? processImageUrl(instituicao.logo_url) : null;
-  const logoHeight = 48;
+  
+  // Ajustar tamanhos para modo paisagem
+  const isLandscape = orientation === 'landscape';
+  const logoHeight = isLandscape ? 35 : 48;
+  const logoWidth = isLandscape ? 90 : 120;
+  const titleFontSize = isLandscape ? 12 : 14;
+  const subtitleFontSize = isLandscape ? 8 : 10;
+  const instFontSize = isLandscape ? 10 : 12;
+  const deptFontSize = isLandscape ? 7 : 8;
+  const lineWidth = isLandscape ? 755 : 515; // A4 landscape width - margins
 
   // Construir conteúdo da primeira célula (logo + linha vertical)
   const logoCell: any = logoUrl
     ? {
         columns: [
-          { image: logoUrl, fit: [120, logoHeight] },
+          { image: logoUrl, fit: [logoWidth, logoHeight] },
           {
             canvas: [{
               type: 'line',
@@ -115,9 +129,9 @@ const buildHeader = (instituicao: Instituicao | null, title: string, subtitle?: 
   // Segunda célula: informações da instituição
   const instCell: any = {
     stack: [
-      { text: nome, fontSize: 12, bold: true, color: PDF_COLORS.dark },
+      { text: nome, fontSize: instFontSize, bold: true, color: PDF_COLORS.dark },
       ...(instituicao?.departamento
-        ? [{ text: instituicao.departamento, fontSize: 8, color: PDF_COLORS.accent, margin: [0, 1, 0, 0] }]
+        ? [{ text: instituicao.departamento, fontSize: deptFontSize, color: PDF_COLORS.accent, margin: [0, 1, 0, 0] }]
         : []),
     ],
     margin: [12, 0, 0, 0],
@@ -126,28 +140,27 @@ const buildHeader = (instituicao: Instituicao | null, title: string, subtitle?: 
   // Terceira célula: rota e período
   const rightCell: any = {
     stack: [
-      { text: title, fontSize: 14, bold: true, color: PDF_COLORS.headerBg, alignment: 'right' },
-      { text: 'Guia de Entrega', fontSize: 10, bold: true, alignment: 'right', margin: [0, 4, 0, 0] },
-      ...(subtitle ? [{ text: subtitle, fontSize: 9, color: PDF_COLORS.accent, alignment: 'right' }] : []),
+      { text: title, fontSize: titleFontSize, bold: true, color: PDF_COLORS.headerBg, alignment: 'right' },
+      ...(subtitle ? [{ text: subtitle, fontSize: subtitleFontSize, color: PDF_COLORS.accent, alignment: 'right', margin: [0, 2, 0, 0] }] : []),
     ],
   };
 
   return [
     {
       table: {
-        widths: [logoUrl ? 130 : 0, '*', 160],
+        widths: [logoUrl ? (isLandscape ? 100 : 130) : 0, '*', isLandscape ? 200 : 160],
         body: [[logoCell, instCell, rightCell]],
       },
       layout: 'noBorders',
-      margin: [0, 0, 0, 8],
+      margin: [0, 0, 0, isLandscape ? 4 : 8],
     },
     {
       canvas: [{
-        type: 'line', x1: 0, y1: 0, x2: 515, y2: 0,
+        type: 'line', x1: 0, y1: 0, x2: lineWidth, y2: 0,
         lineWidth: 1.5, lineColor: PDF_COLORS.headerBg,
       }],
     },
-    { text: '', margin: [0, 6, 0, 0] },
+    { text: '', margin: [0, isLandscape ? 3 : 6, 0, 0] },
   ];
 };
 
@@ -252,9 +265,9 @@ export const buildPdfDoc = ({
   customFooter,
 }: PdfDocOptions): any => ({
   pageOrientation: orientation,
-  pageMargins: [40, 40, 40, 60],
+  pageMargins: [40, orientation === 'landscape' ? 30 : 40, 40, 60],
   content: [
-    ...buildHeader(instituicao, title, subtitle),
+    ...buildHeader(instituicao, title, subtitle, orientation),
     ...content,
   ],
   footer: customFooter || buildFooter(instituicao, showSignature, 0),

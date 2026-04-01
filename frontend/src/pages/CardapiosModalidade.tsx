@@ -186,30 +186,6 @@ const CardapiosModalidadePage: React.FC = () => {
         </Box>
       ),
     },
-
-    {
-      id: 'nutricionista',
-      header: 'Nutricionista',
-      size: 200,
-      enableSorting: false,
-      cell: ({ row }) => {
-        const cardapio = row.original as any;
-        return cardapio.nutricionista_nome ? (
-          <Box>
-            <Typography variant="body2" sx={{ fontWeight: 500 }}>
-              {cardapio.nutricionista_nome}
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              CRN-{cardapio.nutricionista_crn_regiao} {cardapio.nutricionista_crn}
-            </Typography>
-          </Box>
-        ) : (
-          <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-            Não atribuído
-          </Typography>
-        );
-      },
-    },
     {
       accessorKey: 'total_refeicoes',
       header: 'Preparações',

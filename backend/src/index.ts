@@ -28,6 +28,7 @@ import contratoProdutoRoutes from "./modules/contratos/routes/contratoProdutoRou
 import refeicaoRoutes from "./modules/cardapios/routes/refeicaoRoutes";
 import refeicaoProdutoRoutes from "./modules/cardapios/routes/refeicaoProdutoRoutes";
 import cardapioRoutes from "./modules/cardapios/routes/cardapioRoutes";
+import tipoRefeicaoRoutes from "./modules/cardapios/routes/tipoRefeicaoRoutes";
 import produtoRoutes from "./modules/produtos/routes/produtoRoutes";
 import produtoModalidadeRoutes from "./modules/estoque/routes/produtoModalidadeRoutes";
 
@@ -233,6 +234,7 @@ app.use("/api/refeicao-produtos", refeicaoProdutoRoutes);
 app.use("/api/refeicao-produto-modalidade", require("./routes/refeicaoProdutoModalidadeRoutes").default);
 app.use("/api", require("./routes/refeicaoCalculosRoutes").default); // Cálculos automáticos
 app.use("/api/cardapios", cardapioRoutes);
+app.use("/api/tipos-refeicao", tipoRefeicaoRoutes);
 app.use("/api/nutricionistas", nutricionistaRoutes);
 // app.use("/api/demandas", demandaRoutes); // REMOVIDO - rota duplicada, usar demandasRoutes
 app.use("/api/produtos", longCache, produtoRoutes);

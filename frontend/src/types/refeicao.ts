@@ -2,7 +2,6 @@ export interface Refeicao {
   id: number;
   nome: string;
   descricao?: string;
-  tipo: 'cafe_manha' | 'almoco' | 'lanche_tarde' | 'jantar' | 'ceia';
   ativo: boolean;
   created_at: string;
   updated_at: string;
@@ -18,7 +17,7 @@ export interface Refeicao {
 export interface CriarRefeicaoRequest {
   nome: string;
   descricao?: string;
-  tipo: 'cafe_manha' | 'almoco' | 'lanche_tarde' | 'jantar' | 'ceia';
+  categoria?: string;
   ativo?: boolean;
 }
 
@@ -26,7 +25,7 @@ export interface AtualizarRefeicaoRequest {
   id: number;
   nome?: string;
   descricao?: string;
-  tipo?: 'cafe_manha' | 'almoco' | 'lanche_tarde' | 'jantar' | 'ceia';
+  categoria?: string;
   ativo?: boolean;
 }
 

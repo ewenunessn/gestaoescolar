@@ -44,7 +44,6 @@ export async function listarRefeicoes(req: Request, res: Response) {
         r.id,
         r.nome,
         r.descricao,
-        r.tipo,
         r.categoria,
         r.ativo,
         r.tempo_preparo_minutos,
@@ -125,7 +124,6 @@ export async function criarRefeicao(req: Request, res: Response) {
     const {
       nome,
       descricao,
-      tipo,
       categoria,
       modo_preparo,
       tempo_preparo_minutos,
@@ -144,15 +142,15 @@ export async function criarRefeicao(req: Request, res: Response) {
 
     const result = await db.query(`
       INSERT INTO refeicoes (
-        nome, descricao, tipo, categoria, modo_preparo, tempo_preparo_minutos,
+        nome, descricao, categoria, modo_preparo, tempo_preparo_minutos,
         rendimento_porcoes, utensílios, calorias_por_porcao, proteinas_g,
         carboidratos_g, lipidios_g, fibras_g, sodio_mg, custo_por_porcao,
         observacoes_tecnicas, ativo, created_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, CURRENT_TIMESTAMP)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, CURRENT_TIMESTAMP)
       RETURNING *
     `, [
-      nome, descricao, tipo, categoria, modo_preparo, tempo_preparo_minutos,
+      nome, descricao, categoria, modo_preparo, tempo_preparo_minutos,
       rendimento_porcoes, utensílios, calorias_por_porcao, proteinas_g,
       carboidratos_g, lipidios_g, fibras_g, sodio_mg, custo_por_porcao,
       observacoes_tecnicas, ativo
@@ -179,7 +177,6 @@ export async function editarRefeicao(req: Request, res: Response) {
     const {
       nome,
       descricao,
-      tipo,
       categoria,
       modo_preparo,
       tempo_preparo_minutos,
@@ -200,26 +197,25 @@ export async function editarRefeicao(req: Request, res: Response) {
       UPDATE refeicoes SET
         nome = COALESCE($1, nome),
         descricao = COALESCE($2, descricao),
-        tipo = COALESCE($3, tipo),
-        categoria = COALESCE($4, categoria),
-        modo_preparo = $5,
-        tempo_preparo_minutos = $6,
-        rendimento_porcoes = $7,
-        utensílios = $8,
-        calorias_por_porcao = $9,
-        proteinas_g = $10,
-        carboidratos_g = $11,
-        lipidios_g = $12,
-        fibras_g = $13,
-        sodio_mg = $14,
-        custo_por_porcao = $15,
-        observacoes_tecnicas = $16,
-        ativo = COALESCE($17, ativo),
+        categoria = COALESCE($3, categoria),
+        modo_preparo = $4,
+        tempo_preparo_minutos = $5,
+        rendimento_porcoes = $6,
+        utensílios = $7,
+        calorias_por_porcao = $8,
+        proteinas_g = $9,
+        carboidratos_g = $10,
+        lipidios_g = $11,
+        fibras_g = $12,
+        sodio_mg = $13,
+        custo_por_porcao = $14,
+        observacoes_tecnicas = $15,
+        ativo = COALESCE($16, ativo),
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $18
+      WHERE id = $17
       RETURNING *
     `, [
-      nome, descricao, tipo, categoria, modo_preparo, tempo_preparo_minutos,
+      nome, descricao, categoria, modo_preparo, tempo_preparo_minutos,
       rendimento_porcoes, utensílios, calorias_por_porcao, proteinas_g,
       carboidratos_g, lipidios_g, fibras_g, sodio_mg, custo_por_porcao,
       observacoes_tecnicas, ativo, id
@@ -345,17 +341,16 @@ export async function duplicarRefeicao(req: Request, res: Response) {
     // Criar nova refeição com os dados da original
     const novaRefeicao = await client.query(`
       INSERT INTO refeicoes (
-        nome, descricao, tipo, categoria, modo_preparo, tempo_preparo_minutos,
+        nome, descricao, categoria, modo_preparo, tempo_preparo_minutos,
         rendimento_porcoes, utensílios, calorias_por_porcao, proteinas_g,
         carboidratos_g, lipidios_g, fibras_g, sodio_mg, custo_por_porcao,
         observacoes_tecnicas, ativo, created_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, CURRENT_TIMESTAMP)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, CURRENT_TIMESTAMP)
       RETURNING *
     `, [
       nome.trim(),
       original.descricao,
-      original.tipo,
       original.categoria,
       original.modo_preparo,
       original.tempo_preparo_minutos,

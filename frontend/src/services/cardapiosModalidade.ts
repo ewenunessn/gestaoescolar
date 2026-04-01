@@ -34,11 +34,48 @@ export interface RefeicaoDia {
   updated_at: string;
 }
 
-export const TIPOS_REFEICAO: Record<string, string> = {
+// Tipos de refeição padrão (fallback)
+export const TIPOS_REFEICAO_PADRAO: Record<string, string> = {
   refeicao: 'Refeição',
   lanche: 'Lanche',
   cafe_manha: 'Café da Manhã',
   ceia: 'Ceia',
+};
+
+// Manter compatibilidade - será substituído dinamicamente
+export let TIPOS_REFEICAO: Record<string, string> = { ...TIPOS_REFEICAO_PADRAO };
+
+// Função para carregar tipos de refeição dinâmicos
+export const carregarTiposRefeicao = async (): Promise<Record<string, string>> => {
+  try {
+    const response = await api.get('/tipos-refeicao', { params: { ativo: true } });
+    const tipos = response.data;
+    
+    const mapa: Record<string, string> = {};
+    tipos.forEach((tipo: any) => {
+      mapa[tipo.chave] = tipo.nome;
+    });
+    
+    // Atualizar a variável global
+    TIPOS_REFEICAO = mapa;
+    
+    return mapa;
+  } catch (err) {
+    console.error('Erro ao carregar tipos de refeição, usando padrão:', err);
+    return TIPOS_REFEICAO_PADRAO;
+  }
+};
+
+// Função para obter horário de um tipo de refeição
+export const obterHorarioTipoRefeicao = async (chave: string): Promise<string> => {
+  try {
+    const response = await api.get('/tipos-refeicao', { params: { ativo: true } });
+    const tipos = response.data;
+    const tipo = tipos.find((t: any) => t.chave === chave);
+    return tipo ? tipo.horario.substring(0, 5) : '';
+  } catch (err) {
+    return '';
+  }
 };
 
 export const MESES: Record<number, string> = {

@@ -162,10 +162,11 @@ const CalendarioSemanalCardapio: React.FC<CalendarioSemanalCardapioProps> = ({
     setSemanaAtual(0);
   }, [ano, mes]);
 
-  // Semana atual para exibir
+  // Semana atual para exibir (apenas dias úteis - Segunda a Sábado)
   const semanaParaExibir = semanasDoMes[semanaAtual];
+  const diasUteis = semanaParaExibir ? semanaParaExibir.filter(dia => dia.getDay() >= 1 && dia.getDay() <= 6) : [];
   
-  if (!semanaParaExibir) {
+  if (!semanaParaExibir || diasUteis.length === 0) {
     return (
       <Box sx={{ textAlign: 'center', py: 4 }}>
         <Typography color="text.secondary">
@@ -174,6 +175,14 @@ const CalendarioSemanalCardapio: React.FC<CalendarioSemanalCardapioProps> = ({
       </Box>
     );
   }
+
+  // Tipos de refeição na ordem cronológica
+  const tiposRefeicao = [
+    { key: 'cafe_manha', label: 'Café da Manhã', icon: <CafeIcon /> },
+    { key: 'lanche', label: 'Lanche', icon: <SnackIcon /> },
+    { key: 'refeicao', label: 'Refeição', icon: <LunchIcon /> },
+    { key: 'ceia', label: 'Ceia', icon: <DinnerIcon /> }
+  ];
 
   return (
     <Box>
@@ -211,24 +220,24 @@ const CalendarioSemanalCardapio: React.FC<CalendarioSemanalCardapioProps> = ({
             <ChevronLeft />
           </IconButton>
 
-          {/* Informações da semana - mais compactas */}
+          {/* Informações da semana */}
           <Box sx={{ textAlign: 'center', flex: 1, px: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2, mb: 0.5 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'text.primary' }}>
                 Semana {semanaAtual + 1}/{semanasDoMes.length}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                {semanaParaExibir[0].getDate()}-{semanaParaExibir[6].getDate()}/{mes.toString().padStart(2, '0')}/{ano}
+                {diasUteis[0].getDate()}-{diasUteis[diasUteis.length - 1].getDate()}/{mes.toString().padStart(2, '0')}/{ano}
               </Typography>
               <Chip 
-                label={`${semanaParaExibir.reduce((total, dia) => total + getEventosRefeicao(formatarData(dia)).length, 0)} refeições`}
+                label={`${diasUteis.reduce((total, dia) => total + getEventosRefeicao(formatarData(dia)).length, 0)} refeições`}
                 size="small"
                 variant="outlined"
                 sx={{ fontSize: '0.7rem', height: 20 }}
               />
             </Box>
             
-            {/* Indicadores de semana - mais discretos */}
+            {/* Indicadores de semana */}
             <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.3 }}>
               {Array.from({ length: semanasDoMes.length }, (_, index) => (
                 <Box
@@ -266,167 +275,197 @@ const CalendarioSemanalCardapio: React.FC<CalendarioSemanalCardapioProps> = ({
           </IconButton>
         </Box>
 
-        {/* Layout em linhas - cada linha é um dia da semana */}
-        <Box>
-          {semanaParaExibir.map((dia, diaIndex) => {
-            const dataStr = formatarData(dia);
-            const isHoje = isDiaHoje(dia);
-            const isOutroMes = isDiaOutroMes(dia);
-            const isFimDeSemana = dia.getDay() === 0 || dia.getDay() === 6;
-            const eventosRefeicao = getEventosRefeicao(dataStr);
+        {/* Tabela: Linhas = Tipos de Refeição, Colunas = Dias da Semana */}
+        <Box sx={{ overflowX: 'auto' }}>
+          <Box sx={{ display: 'table', width: '100%', minWidth: 800 }}>
+            {/* Cabeçalho da tabela - Dias da semana */}
+            <Box sx={{ 
+              display: 'table-row',
+              bgcolor: 'grey.100',
+              fontWeight: 600
+            }}>
+              {/* Primeira coluna - Tipo de Preparação */}
+              <Box sx={{ 
+                display: 'table-cell',
+                p: 2,
+                borderRight: '1px solid',
+                borderBottom: '2px solid',
+                borderColor: 'divider',
+                bgcolor: 'primary.50',
+                width: 150,
+                verticalAlign: 'middle'
+              }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'primary.main' }}>
+                  Tipo de Preparação
+                </Typography>
+              </Box>
 
-            return (
-              <Box
-                key={diaIndex}
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  minHeight: 80,
-                  borderBottom: diaIndex < 6 ? '1px solid' : 'none',
-                  borderColor: 'divider',
-                  cursor: isOutroMes ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.2s ease',
-                  bgcolor: isHoje 
-                    ? 'primary.50' 
-                    : isFimDeSemana 
-                      ? 'error.25' 
-                      : 'background.paper',
-                  opacity: isOutroMes ? 0.3 : 1,
-                  pointerEvents: isOutroMes ? 'none' : 'auto',
-                  '&:hover': {
-                    bgcolor: isOutroMes 
-                      ? 'background.paper'
-                      : isHoje 
-                        ? 'primary.100' 
-                        : isFimDeSemana 
-                          ? 'error.50' 
-                          : 'action.hover',
-                    transform: 'scale(1.01)'
-                  }
-                }}
-                onClick={() => onDiaClick(dataStr)}
-              >
-                {/* Coluna do dia da semana */}
-                <Box sx={{ 
-                  width: { xs: 80, sm: 120 }, 
-                  p: 2, 
-                  borderRight: '1px solid', 
-                  borderColor: 'divider',
-                  textAlign: 'center'
-                }}>
-                  <Typography 
-                    variant="caption" 
-                    color={isFimDeSemana ? 'error.main' : 'text.secondary'}
-                    sx={{ display: 'block', fontWeight: 600, mb: 0.5 }}
-                  >
-                    {DIAS_SEMANA[dia.getDay()]}
-                  </Typography>
-                  <Typography
-                    variant="h5"
-                    sx={{
-                      fontWeight: isHoje ? 700 : 500,
-                      color: isHoje 
-                        ? 'primary.main' 
-                        : isFimDeSemana 
-                          ? 'error.main' 
-                          : 'text.primary'
+              {/* Colunas dos dias úteis (Segunda a Sábado) */}
+              {diasUteis.map((dia, index) => {
+                const dataStr = formatarData(dia);
+                const isHoje = isDiaHoje(dia);
+                
+                return (
+                  <Box 
+                    key={index}
+                    sx={{ 
+                      display: 'table-cell',
+                      p: 1.5,
+                      borderRight: index < diasUteis.length - 1 ? '1px solid' : 'none',
+                      borderBottom: '2px solid',
+                      borderColor: 'divider',
+                      textAlign: 'center',
+                      bgcolor: isHoje ? 'primary.100' : 'grey.50',
+                      minWidth: 120,
+                      verticalAlign: 'middle'
                     }}
                   >
-                    {dia.getDate()}
-                  </Typography>
-                </Box>
-
-                {/* Coluna das refeições */}
-                <Box sx={{ 
-                  flex: 1, 
-                  p: 2,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1,
-                  flexWrap: 'wrap'
-                }}>
-                  {eventosRefeicao.length === 0 ? (
                     <Typography 
-                      variant="body2" 
-                      color="text.disabled"
-                      sx={{ fontStyle: 'italic' }}
+                      variant="caption" 
+                      sx={{ 
+                        display: 'block', 
+                        fontWeight: 600, 
+                        mb: 0.5,
+                        color: isHoje ? 'primary.main' : 'text.secondary'
+                      }}
                     >
-                      {isFimDeSemana ? 'Fim de semana' : 'Nenhuma refeição cadastrada'}
+                      {DIAS_SEMANA[dia.getDay()]}
                     </Typography>
-                  ) : (
-                    eventosRefeicao.map((refeicao, refIndex) => {
-                      const nomeRefeicao = refeicao.titulo.includes(':') 
-                        ? refeicao.titulo.split(':')[1].trim() 
-                        : refeicao.titulo;
-                      
-                      return (
-                        <Chip
-                          key={refIndex}
-                          icon={getIconeRefeicao(refeicao.titulo)}
-                          label={nomeRefeicao}
-                          size="small"
-                          sx={{
-                            bgcolor: refeicao.cor,
-                            color: 'white',
-                            fontSize: '0.75rem',
-                            height: 32,
-                            '& .MuiChip-label': {
-                              px: 1
-                            },
-                            '& .MuiChip-icon': {
-                              color: 'white',
-                              marginLeft: 1
-                            },
-                            boxShadow: 1,
-                            cursor: 'pointer',
-                            '&:hover': {
-                              transform: 'scale(1.05)',
-                              boxShadow: 2
-                            }
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (onEventoClick) {
-                              onEventoClick(refeicao);
-                            }
-                          }}
-                        />
-                      );
-                    })
-                  )}
+                    <Typography
+                      variant="h6"
+                      sx={{
+                        fontWeight: isHoje ? 700 : 600,
+                        color: isHoje ? 'primary.main' : 'text.primary'
+                      }}
+                    >
+                      {dia.getDate()}
+                    </Typography>
+                  </Box>
+                );
+              })}
+            </Box>
+
+            {/* Linhas da tabela - Uma para cada tipo de refeição */}
+            {tiposRefeicao.map((tipoRefeicao, tipoIndex) => (
+              <Box 
+                key={tipoRefeicao.key}
+                sx={{ 
+                  display: 'table-row',
+                  '&:hover': {
+                    bgcolor: 'action.hover'
+                  }
+                }}
+              >
+                {/* Primeira coluna - Nome do tipo */}
+                <Box sx={{ 
+                  display: 'table-cell',
+                  p: 2,
+                  borderRight: '1px solid',
+                  borderBottom: tipoIndex < tiposRefeicao.length - 1 ? '1px solid' : 'none',
+                  borderColor: 'divider',
+                  bgcolor: 'grey.50',
+                  verticalAlign: 'top'
+                }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box sx={{ color: 'primary.main', display: 'flex' }}>
+                      {tipoRefeicao.icon}
+                    </Box>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {tipoRefeicao.label}
+                    </Typography>
+                  </Box>
                 </Box>
 
-                {/* Coluna de ações */}
-                <Box sx={{ 
-                  width: 60, 
-                  p: 1,
-                  display: 'flex',
-                  justifyContent: 'center'
-                }}>
-                  {!readonly && (
-                    <Tooltip title="Adicionar refeição">
-                      <IconButton
-                        size="small"
-                        sx={{ 
-                          bgcolor: 'action.hover',
-                          '&:hover': { 
-                            bgcolor: 'primary.main', 
-                            color: 'white' 
-                          }
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDiaClick(dataStr);
-                        }}
-                      >
-                        <AddIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  )}
-                </Box>
+                {/* Colunas dos dias - Preparações deste tipo */}
+                {diasUteis.map((dia, diaIndex) => {
+                  const dataStr = formatarData(dia);
+                  const isHoje = isDiaHoje(dia);
+                  const isOutroMes = isDiaOutroMes(dia);
+                  const eventosRefeicao = getEventosRefeicao(dataStr);
+                  
+                  // Filtrar apenas refeições deste tipo
+                  const refeicoesDoTipo = eventosRefeicao.filter(
+                    ref => ref._refeicao?.tipo_refeicao === tipoRefeicao.key
+                  );
+
+                  return (
+                    <Box 
+                      key={diaIndex}
+                      sx={{ 
+                        display: 'table-cell',
+                        p: 1.5,
+                        borderRight: diaIndex < diasUteis.length - 1 ? '1px solid' : 'none',
+                        borderBottom: tipoIndex < tiposRefeicao.length - 1 ? '1px solid' : 'none',
+                        borderColor: 'divider',
+                        bgcolor: isHoje ? 'primary.50' : 'background.paper',
+                        opacity: isOutroMes ? 0.3 : 1,
+                        cursor: 'pointer',
+                        verticalAlign: 'top',
+                        '&:hover': {
+                          bgcolor: isHoje ? 'primary.100' : 'action.hover'
+                        }
+                      }}
+                      onClick={() => onDiaClick(dataStr)}
+                    >
+                      {refeicoesDoTipo.length === 0 ? (
+                        <Typography 
+                          variant="caption" 
+                          color="text.disabled"
+                          sx={{ fontStyle: 'italic', display: 'block', textAlign: 'center' }}
+                        >
+                          -
+                        </Typography>
+                      ) : (
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                          {refeicoesDoTipo.map((refeicao, refIndex) => {
+                            const nomeRefeicao = refeicao.titulo.includes(':') 
+                              ? refeicao.titulo.split(':')[1].trim() 
+                              : refeicao.titulo;
+                            
+                            return (
+                              <Chip
+                                key={refIndex}
+                                label={nomeRefeicao}
+                                size="small"
+                                sx={{
+                                  bgcolor: refeicao.cor,
+                                  color: 'white',
+                                  fontSize: '0.7rem',
+                                  height: 24,
+                                  width: '100%',
+                                  justifyContent: 'flex-start',
+                                  '& .MuiChip-label': {
+                                    px: 1,
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    display: 'block'
+                                  },
+                                  boxShadow: 1,
+                                  cursor: 'pointer',
+                                  '&:hover': {
+                                    transform: 'scale(1.05)',
+                                    boxShadow: 2,
+                                    zIndex: 1
+                                  }
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (onEventoClick) {
+                                    onEventoClick(refeicao);
+                                  }
+                                }}
+                              />
+                            );
+                          })}
+                        </Box>
+                      )}
+                    </Box>
+                  );
+                })}
               </Box>
-            );
-          })}
+            ))}
+          </Box>
         </Box>
       </Paper>
     </Box>

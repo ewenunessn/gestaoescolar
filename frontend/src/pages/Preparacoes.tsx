@@ -48,7 +48,6 @@ import { LoadingOverlay } from '../components/LoadingOverlay';
 import { DataTable } from '../components/DataTable';
 import { ColumnDef } from '@tanstack/react-table';
 import { Refeicao } from '../types/refeicao';
-import { TIPOS_REFEICAO } from '../services/cardapiosModalidade';
 
 const PreparacoesPage: React.FC = () => {
   const navigate = useNavigate();
@@ -71,7 +70,6 @@ const PreparacoesPage: React.FC = () => {
   const [filterAnchorEl, setFilterAnchorEl] = useState<HTMLElement | null>(null);
   const [filters, setFilters] = useState({
     status: 'todos',
-    tipo: 'todos',
   });
 
   // Estados de modais
@@ -85,7 +83,6 @@ const PreparacoesPage: React.FC = () => {
   const [formData, setFormData] = useState({
     nome: '',
     descricao: '',
-    tipo: 'refeicao' as 'refeicao' | 'lanche' | 'cafe_manha' | 'ceia',
     categoria: '',
     ativo: true,
   });
@@ -94,20 +91,12 @@ const PreparacoesPage: React.FC = () => {
   const [erroPreparacao, setErroPreparacao] = useState('');
   const [touched, setTouched] = useState<any>({});
 
-  // Usar tipos de refeição padronizados do cardápio
-  const tiposPreparacao = TIPOS_REFEICAO;
-
   // Filtrar preparações
   const preparacoesFiltradas = useMemo(() => {
     return preparacoes.filter(p => {
       // Filtro de status
       if (filters.status === 'ativo' && !p.ativo) return false;
       if (filters.status === 'inativo' && p.ativo) return false;
-
-      // Filtro de tipo
-      if (filters.tipo !== 'todos' && p.tipo !== filters.tipo) {
-        return false;
-      }
 
       return true;
     }).sort((a, b) => a.nome.localeCompare(b.nome));
@@ -136,19 +125,21 @@ const PreparacoesPage: React.FC = () => {
       ),
     },
     { 
-      accessorKey: 'tipo', 
-      header: 'Tipo',
+      accessorKey: 'categoria', 
+      header: 'Categoria',
       size: 180,
       enableSorting: true,
       cell: ({ getValue }) => {
         const value = getValue() as string;
-        return (
+        return value ? (
           <Chip 
-            label={tiposPreparacao[value as keyof typeof tiposPreparacao] || value} 
+            label={value} 
             size="small"
             color="primary"
             variant="outlined"
           />
+        ) : (
+          <Typography variant="body2" color="text.disabled">-</Typography>
         );
       },
     },
@@ -238,16 +229,6 @@ const PreparacoesPage: React.FC = () => {
   ], [navigate]);
 
   // Funções de modais
-  const mapearTipoLegado = (tipo: string): 'refeicao' | 'lanche' | 'cafe_manha' | 'ceia' => {
-    const mapa: Record<string, 'refeicao' | 'lanche' | 'cafe_manha' | 'ceia'> = {
-      almoco: 'refeicao', jantar: 'refeicao',
-      lanche_manha: 'lanche', lanche_tarde: 'lanche',
-      cafe_manha: 'cafe_manha', ceia: 'ceia',
-      refeicao: 'refeicao', lanche: 'lanche',
-    };
-    return mapa[tipo] ?? 'refeicao';
-  };
-
   const openModal = (preparacao: Refeicao | null = null) => {
     setErroPreparacao('');
     setTouched({});
@@ -256,7 +237,6 @@ const PreparacoesPage: React.FC = () => {
       setFormData({
         nome: preparacao.nome,
         descricao: preparacao.descricao || '',
-        tipo: mapearTipoLegado(preparacao.tipo),
         categoria: preparacao.categoria || '',
         ativo: preparacao.ativo,
       });
@@ -265,7 +245,6 @@ const PreparacoesPage: React.FC = () => {
       setFormData({
         nome: '',
         descricao: '',
-        tipo: 'refeicao',
         categoria: '',
         ativo: true,
       });
@@ -419,20 +398,6 @@ const PreparacoesPage: React.FC = () => {
               </Select>
             </FormControl>
 
-            <FormControl fullWidth sx={{ mb: 2 }}>
-              <InputLabel>Tipo</InputLabel>
-              <Select
-                value={filters.tipo}
-                label="Tipo"
-                onChange={(e) => setFilters({ ...filters, tipo: e.target.value })}
-              >
-                <MenuItem value="todos">Todos</MenuItem>
-                {Object.entries(tiposPreparacao).map(([value, label]) => (
-                  <MenuItem key={value} value={value}>{label}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
             <Divider sx={{ my: 2 }} />
 
             <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
@@ -440,7 +405,7 @@ const PreparacoesPage: React.FC = () => {
                 variant="outlined"
                 size="small"
                 onClick={() => {
-                  setFilters({ status: 'todos', tipo: 'todos' });
+                  setFilters({ status: 'todos' });
                 }}
               >
                 Limpar
@@ -455,7 +420,7 @@ const PreparacoesPage: React.FC = () => {
             </Box>
             
             {/* Indicador de filtros ativos */}
-            {(filters.status !== 'todos' || filters.tipo !== 'todos') && (
+            {filters.status !== 'todos' && (
               <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
                 <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
                   Filtros ativos:
@@ -466,13 +431,6 @@ const PreparacoesPage: React.FC = () => {
                       label={`Status: ${filters.status === 'ativo' ? 'Ativas' : 'Inativas'}`}
                       size="small"
                       onDelete={() => setFilters({ ...filters, status: 'todos' })}
-                    />
-                  )}
-                  {filters.tipo !== 'todos' && (
-                    <Chip
-                      label={`Tipo: ${tiposPreparacao[filters.tipo as keyof typeof tiposPreparacao]}`}
-                      size="small"
-                      onDelete={() => setFilters({ ...filters, tipo: 'todos' })}
                     />
                   )}
                 </Box>
@@ -551,21 +509,7 @@ const PreparacoesPage: React.FC = () => {
                 Classificação
               </Typography>
               <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <InputLabel>Tipo de Preparação</InputLabel>
-                    <Select
-                      value={formData.tipo}
-                      label="Tipo de Preparação"
-                      onChange={(e) => setFormData({ ...formData, tipo: e.target.value as any })}
-                    >
-                      {Object.entries(tiposPreparacao).map(([value, label]) => (
-                        <MenuItem key={value} value={value}>{label}</MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12} sm={6}>
+                <Grid item xs={12}>
                   <FormControl fullWidth>
                     <InputLabel>Categoria</InputLabel>
                     <Select

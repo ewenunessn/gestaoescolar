@@ -9,7 +9,7 @@ import {
   MenuBook, Business, Assignment, LocalShipping, Logout, ListAlt, RequestPage,
   Print, Settings, Description, Agriculture, Calculate, ArrowBack as ArrowBackIcon,
   ExpandLess, ExpandMore, Apps as AppsIcon, AdminPanelSettings, CalendarToday, HomeWork,
-  NotificationsActive,
+  NotificationsActive, Schedule,
 } from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
 import { logout } from "../services/auth";
@@ -68,6 +68,7 @@ const getMenuConfig = (_cfg: any) => [
     items: [
       { text: "Preparações", icon: <Restaurant fontSize="small" />, path: "/preparacoes" },
       { text: "Cardápios",   icon: <MenuBook fontSize="small" />,   path: "/cardapios" },
+      { text: "Tipos de Refeição", icon: <Schedule fontSize="small" />, path: "/tipos-refeicao" },
     ],
   },
   {
