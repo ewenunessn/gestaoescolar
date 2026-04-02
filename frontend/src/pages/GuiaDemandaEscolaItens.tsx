@@ -39,6 +39,35 @@ import { usePageTitle } from '../contexts/PageTitleContext';
 import { formatarQuantidade } from '../utils/formatters';
 import api from '../services/api';
 
+// Função para converter siglas de unidades em nomes completos
+const getUnidadeCompleta = (sigla: string): string => {
+  const unidades: Record<string, string> = {
+    'KG': 'Quilograma',
+    'G': 'Grama',
+    'L': 'Litro',
+    'ML': 'Mililitro',
+    'UN': 'Unidade',
+    'CX': 'Caixa',
+    'PCT': 'Pacote',
+    'FD': 'Fardo',
+    'SC': 'Saco',
+    'DZ': 'Dúzia',
+    'LT': 'Lata',
+    'BD': 'Bandeja',
+    'MÇ': 'Maço',
+    'PC': 'Peça',
+    'FR': 'Frasco',
+    'GL': 'Galão',
+    'TB': 'Tubo',
+    'RL': 'Rolo',
+    'PT': 'Pote',
+    'BL': 'Balde',
+    'GF': 'Garrafa'
+  };
+  
+  return unidades[sigla.toUpperCase()] || sigla;
+};
+
 const GuiaDemandaEscolaItens: React.FC = () => {
   const navigate = useNavigate();
   const { guiaId, escolaId } = useParams<{ guiaId: string; escolaId: string }>();
@@ -204,12 +233,18 @@ const GuiaDemandaEscolaItens: React.FC = () => {
         }
         
         // Dados que o backend espera (camelCase!)
-        const dadosParaEnviar = {
+        const dadosParaEnviar: any = {
           produtoId: Number(formData.produto_id),
           escolaId: Number(escolaIdNum),
           quantidade: Number(formData.quantidade),
-          unidade: String(produtoSelecionado.unidade || 'UN')
+          unidade: String(produtoSelecionado.unidade || 'UN'),
+          status: formData.status
         };
+        
+        // Adicionar data programada se foi preenchida
+        if (formData.data_programada) {
+          dadosParaEnviar.dataProgramada = formData.data_programada;
+        }
         
         console.log('📦 Dados do formulário:', formData);
         console.log('📦 Produto selecionado:', produtoSelecionado);
@@ -307,7 +342,7 @@ const GuiaDemandaEscolaItens: React.FC = () => {
       size: 100,
       enableSorting: true,
       cell: ({ getValue }) => (
-        <Typography variant="body2">{getValue() as string}</Typography>
+        <Typography variant="body2">{getUnidadeCompleta(getValue() as string)}</Typography>
       ),
     },
     {

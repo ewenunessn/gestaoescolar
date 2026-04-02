@@ -180,7 +180,9 @@ export const guiaController = {
         unidade: req.body.unidade || 'un',
         lote: req.body.lote,
         observacao: req.body.observacao,
-        para_entrega: req.body.para_entrega !== undefined ? req.body.para_entrega : true
+        para_entrega: req.body.para_entrega !== undefined ? req.body.para_entrega : true,
+        status: req.body.status || 'pendente',
+        data_entrega: req.body.dataProgramada || null
       });
 
       const guiaProdutoCompleto = await GuiaModel.buscarProdutoGuia(guiaProduto.id);

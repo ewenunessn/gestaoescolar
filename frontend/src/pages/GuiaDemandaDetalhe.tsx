@@ -782,7 +782,7 @@ const GuiaDemandaDetalhe: React.FC = () => {
         onClick={() => setOpenBatchDialog(true)}
         sx={{ bgcolor: '#000000', '&:hover': { bgcolor: '#333333' } }}
       >
-        Adicionar
+        Adicionar para Múltiplas Escolas
       </Button>
       <Button 
         variant="contained" 
@@ -1276,7 +1276,12 @@ const GuiaDemandaDetalhe: React.FC = () => {
       {/* Modal Adicionar em Lote */}
       <Dialog open={openBatchDialog} onClose={() => !batchSaving && setOpenBatchDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontWeight: 600, fontSize: '1.25rem' }}>Adicionar Produto</span>
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>Adicionar Produto para Múltiplas Escolas</Typography>
+            <Typography variant="caption" color="text.secondary">
+              Selecione um produto e defina as quantidades para cada escola
+            </Typography>
+          </Box>
           <IconButton size="small" onClick={() => !batchSaving && setOpenBatchDialog(false)} disabled={batchSaving}>
             <ClearIcon fontSize="small" />
           </IconButton>
