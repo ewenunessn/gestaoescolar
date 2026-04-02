@@ -17,6 +17,7 @@ import {
   Switch,
   Button,
   Grid,
+  Checkbox,
 } from '@mui/material';
 import JsBarcode from 'jsbarcode';
 import {
@@ -30,6 +31,7 @@ import {
   Clear as ClearIcon,
   Route as RouteIcon,
   Assignment as GuiaIcon,
+  CheckBox as CheckBoxIcon,
 } from '@mui/icons-material';
 import { ColumnDef } from '@tanstack/react-table';
 import { EscolaEntrega, EstatisticasEntregas, Rota } from '../types';
@@ -69,6 +71,9 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [gerandoPdfId, setGerandoPdfId] = useState<number | null>(null);
+  const [gerandoPdfMultiplo, setGerandoPdfMultiplo] = useState(false);
+  const [escolasSelecionadas, setEscolasSelecionadas] = useState<Set<number>>(new Set());
+  const [modoSelecao, setModoSelecao] = useState(false);
   const [instituicao, setInstituicao] = useState<Instituicao | null>(null);
   
   // Estados para filtros
@@ -425,8 +430,405 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({
     }
   };
 
+  // Gerar PDF de múltiplas escolas - cada escola com seu próprio cabeçalho e rodapé
+  const gerarPdfMultiplasEscolas = async () => {
+    if (escolasSelecionadas.size === 0) {
+      setError('Selecione ao menos uma escola');
+      return;
+    }
+
+    try {
+      setGerandoPdfMultiplo(true);
+      const escolasParaPdf = escolas.filter(e => escolasSelecionadas.has(e.id));
+      
+      console.log(`📦 Gerando PDF para ${escolasParaPdf.length} escolas`);
+      
+      const pdfMake = await initPdfMake();
+      const todasEscolas: any[] = [];
+      const paginasPorEscola: number[] = []; // Rastrear quantas páginas cada escola tem
+
+      // Para cada escola, gerar EXATAMENTE como na individual
+      for (let escolaIdx = 0; escolaIdx < escolasParaPdf.length; escolaIdx++) {
+        const escola = escolasParaPdf[escolaIdx];
+        
+        console.log(`📋 Processando escola ${escolaIdx + 1}/${escolasParaPdf.length}: ${escola.nome}`);
+        
+        // Buscar itens da escola
+        const itens = await entregaService.listarItensPorEscola(
+          escola.id,
+          filtros.guiaId,
+          undefined,
+          filtros.dataInicio,
+          filtros.dataFim,
+          filtros.somentePendentes
+        );
+
+        console.log(`  ✓ ${itens.length} itens encontrados`);
+
+        if (itens.length === 0) continue;
+
+        // CÓDIGO IDÊNTICO À FUNÇÃO INDIVIDUAL
+        let modalidades = '';
+        let nomeEscola = escola.nome;
+        let enderecoEscola = escola.endereco || '';
+        let totalAlunos = escola.total_alunos;
+        
+        const primeiroItem = itens[0];
+        if (primeiroItem.escola_modalidades && Array.isArray(primeiroItem.escola_modalidades)) {
+          modalidades = primeiroItem.escola_modalidades
+            .map((m: any) => m.modalidade_nome)
+            .join(', ');
+        }
+        
+        if (!modalidades) {
+          try {
+            const escolaResp = await api.get(`/escolas/${escola.id}`);
+            modalidades = escolaResp.data?.modalidades || '';
+          } catch {}
+        }
+        
+        if (!modalidades) modalidades = 'Não informado';
+        
+        if (primeiroItem.escola_nome) nomeEscola = primeiroItem.escola_nome;
+        if (primeiroItem.escola_endereco) enderecoEscola = primeiroItem.escola_endereco;
+        if (primeiroItem.escola_total_alunos) totalAlunos = primeiroItem.escola_total_alunos;
+
+        // Gerar código de barras
+        const codigoGuia = primeiroItem.codigo_guia || `GUIA-${primeiroItem.ano}-${String(primeiroItem.mes).padStart(2, '0')}-${String(primeiroItem.guia_id).padStart(5, '0')}`;
+        const canvas = document.createElement('canvas');
+        JsBarcode(canvas, codigoGuia, {
+          format: 'CODE128',
+          width: 2,
+          height: 40,
+          displayValue: false,
+          margin: 4,
+        });
+        const barcodeDataUrl = canvas.toDataURL('image/png');
+
+        // Determinar mês/ano
+        const mesAno = (() => {
+          const item = itens[0];
+          if (item?.mes && item?.ano) {
+            const meses = ['JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
+            return `MÊS: ${meses[item.mes - 1]}  ${item.ano}`;
+          }
+          if (filtros.dataInicio) {
+            const d = new Date(filtros.dataInicio + 'T12:00:00');
+            const meses = ['JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
+            return `MÊS: ${meses[d.getMonth()]}  ${d.getFullYear()}`;
+          }
+          return '';
+        })();
+
+        // Ordenar itens
+        const itensOrdenados = [...itens].sort((a, b) => a.produto_nome.localeCompare(b.produto_nome));
+        const ITENS_POR_PAGINA = 25;
+        const totalPaginas = Math.ceil(itensOrdenados.length / ITENS_POR_PAGINA);
+
+        // Informações adicionais
+        const rotaLabel = escola.rota_nome ? escola.rota_nome.toUpperCase() : (filtros.rotaId ? `ROTA ${filtros.rotaId}` : 'SEM ROTA');
+        const numLabel = escola.ordem_rota && escola.ordem_rota !== 999
+          ? `Nº ${escola.ordem_rota}`
+          : (escola.rota_id ? `Nº ${escola.rota_id}` : '');
+        
+        const rotaCompleta = `${rotaLabel} ${numLabel}`;
+
+        const infoEsquerda = [
+          { label: 'Escola:', valor: nomeEscola.toUpperCase() },
+          ...(enderecoEscola ? [{ label: 'Endereço:', valor: enderecoEscola }] : []),
+        ];
+
+        const infoDireita = [
+          ...(totalAlunos ? [{ label: 'Total de Alunos:', valor: String(totalAlunos) }] : []),
+          { label: 'Modalidades:', valor: modalidades },
+        ];
+
+        // Gerar páginas
+        const paginas = [];
+        for (let pagina = 0; pagina < totalPaginas; pagina++) {
+          const inicio = pagina * ITENS_POR_PAGINA;
+          const fim = Math.min(inicio + ITENS_POR_PAGINA, itensOrdenados.length);
+          const itensPagina = itensOrdenados.slice(inicio, fim);
+          const linhasVazias = ITENS_POR_PAGINA - itensPagina.length;
+
+          const headers = ['ID', 'ITEM', 'UND.', 'QTDE', 'DATA', 'RECEBEDOR'];
+          const rows = [
+            ...itensPagina.map((item, idx) => {
+              let dataEntregaFormatada = '';
+              let recebedor = '';
+              
+              if (item.historico_entregas && item.historico_entregas.length > 0) {
+                const ultimaEntrega = item.historico_entregas[item.historico_entregas.length - 1];
+                dataEntregaFormatada = formatarData(ultimaEntrega.data_entrega);
+                recebedor = ultimaEntrega.nome_quem_recebeu || '';
+              } else if (item.entrega_confirmada && item.data_entrega) {
+                dataEntregaFormatada = formatarData(item.data_entrega);
+                recebedor = item.nome_quem_recebeu || '';
+              }
+
+              return [
+                String(inicio + idx + 1).padStart(2, '0'),
+                item.produto_nome,
+                item.unidade || item.produto_unidade || '',
+                formatarQuantidade(item.quantidade),
+                dataEntregaFormatada,
+                recebedor,
+              ];
+            }),
+            ...Array.from({ length: linhasVazias }, (_, i) => [
+              String(inicio + itensPagina.length + i + 1).padStart(2, '0'),
+              '', '', '', '', '',
+            ]),
+          ];
+          const widths = ['auto', 180, 'auto', 'auto', 'auto', '*'];
+
+          paginas.push({ headers, rows, widths });
+        }
+
+        // Gerar conteúdo para cada página
+        const allContent: any[] = [];
+        
+        paginas.forEach((pag, idx) => {
+          if (idx > 0) {
+            allContent.push({ text: '', pageBreak: 'before' });
+          }
+
+          // Adicionar cabeçalho IGUAL ao buildHeader (mas sem usar buildPdfDoc)
+          const logoUrl = instituicao?.logo_url ? (instituicao.logo_url.startsWith('data:') ? instituicao.logo_url : 
+            (instituicao.logo_url.startsWith('/') ? `${window.location.protocol}//${window.location.hostname}:3000${instituicao.logo_url}` : instituicao.logo_url)) : null;
+          
+          const logoCell: any = logoUrl
+            ? {
+                columns: [
+                  { image: logoUrl, fit: [120, 48] },
+                  {
+                    canvas: [{
+                      type: 'line',
+                      x1: 0,
+                      y1: 0,
+                      x2: 0,
+                      y2: 48,
+                      lineWidth: 1.5,
+                      lineColor: '#2d3748',
+                    }],
+                    width: 1.5,
+                    margin: [8, 0, 0, 0],
+                  },
+                ],
+                columnGap: 0,
+              }
+            : { text: '' };
+
+          const instCell: any = {
+            stack: [
+              { text: instituicao?.nome || 'Sistema de Gestão', fontSize: 14, bold: true, color: '#1a202c' },
+              ...(instituicao?.departamento
+                ? [{ text: instituicao.departamento, fontSize: 10, color: '#4a5568', margin: [0, 1, 0, 0] }]
+                : []),
+            ],
+            margin: [12, 0, 0, 0],
+          };
+
+          const rightCell: any = {
+            stack: [
+              { text: rotaCompleta, fontSize: 16, bold: true, color: '#2d3748', alignment: 'right' },
+              ...(mesAno ? [{ text: mesAno, fontSize: 12, color: '#4a5568', alignment: 'right', margin: [0, 2, 0, 0] }] : []),
+            ],
+          };
+
+          allContent.push(
+            // Cabeçalho (IGUAL ao buildHeader)
+            {
+              table: {
+                widths: [logoUrl ? 130 : 0, '*', 160],
+                body: [[logoCell, instCell, rightCell]],
+              },
+              layout: 'noBorders',
+              margin: [0, 0, 0, 8],
+            },
+            {
+              canvas: [{
+                type: 'line', x1: 0, y1: 0, x2: 515, y2: 0,
+                lineWidth: 1.5, lineColor: '#2d3748',
+              }],
+            },
+            { text: '', margin: [0, 6, 0, 0] },
+            // Informações em duas colunas
+            {
+              columns: [
+                {
+                  stack: infoEsquerda.map(info => ({
+                    text: [
+                      { text: info.label + ' ', fontSize: 9, bold: true },
+                      { text: info.valor, fontSize: 9 }
+                    ],
+                    margin: [0, 0, 0, 3]
+                  })),
+                  width: '*',
+                },
+                {
+                  stack: infoDireita.map(info => ({
+                    text: [
+                      { text: info.label + ' ', fontSize: 9, bold: true },
+                      { text: info.valor, fontSize: 9 }
+                    ],
+                    margin: [0, 0, 0, 3]
+                  })),
+                  width: '*',
+                }
+              ],
+              columnGap: 15,
+              margin: [0, 0, 0, 8],
+            },
+            buildTable(pag.headers, pag.rows, pag.widths, { compact: true }),
+            // Assinatura
+            {
+              stack: [
+                { canvas: [{ type: 'line', x1: 100, y1: 0, x2: 415, y2: 0, lineWidth: 0.8, lineColor: '#333' }], margin: [0, 40, 0, 6] },
+                { text: 'Assinatura do Recebedor', fontSize: 9, alignment: 'center' },
+              ],
+              margin: [0, 30, 0, 0],
+            }
+          );
+        });
+
+        // Guardar dados desta escola
+        todasEscolas.push({
+          content: allContent,
+          barcodeDataUrl,
+          codigoGuia,
+          numPaginas: totalPaginas,
+        });
+        
+        paginasPorEscola.push(totalPaginas);
+      }
+
+      if (todasEscolas.length === 0) {
+        console.log('❌ Nenhuma escola processada');
+        setError('Nenhum item encontrado para as escolas selecionadas');
+        setGerandoPdfMultiplo(false);
+        return;
+      }
+
+      console.log(`✅ Total de escolas processadas: ${todasEscolas.length}`);
+
+      // Concatenar conteúdo de todas as escolas
+      const allContent: any[] = [];
+      todasEscolas.forEach((escolaData, idx) => {
+        if (idx > 0) {
+          allContent.push({ text: '', pageBreak: 'before' });
+        }
+        allContent.push(...escolaData.content);
+      });
+
+      // Criar documento com rodapé dinâmico por escola
+      const doc = {
+        pageSize: 'A4',
+        pageMargins: [40, 40, 40, 60],
+        content: allContent,
+        footer: (currentPage: number, pageCount: number) => {
+          const geradoEm = new Date().toLocaleDateString('pt-BR');
+          
+          // Descobrir qual escola corresponde à página atual
+          let paginaAcumulada = 0;
+          let escolaAtual = todasEscolas[0];
+          
+          for (let i = 0; i < paginasPorEscola.length; i++) {
+            if (currentPage <= paginaAcumulada + paginasPorEscola[i]) {
+              escolaAtual = todasEscolas[i];
+              break;
+            }
+            paginaAcumulada += paginasPorEscola[i];
+          }
+          
+          return {
+            stack: [
+              {
+                canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.4, lineColor: '#9ca3af' }],
+                margin: [40, 0, 40, 4],
+              },
+              {
+                columns: [
+                  {
+                    stack: [
+                      { text: instituicao?.nome || 'Sistema de Gestão de Alimentação Escolar', fontSize: 7, color: '#374151' },
+                      ...(instituicao?.endereco ? [{ text: instituicao.endereco, fontSize: 6, color: '#374151', margin: [0, 1, 0, 0] }] : []),
+                      { text: `Gerado em ${geradoEm} · Página ${currentPage} de ${pageCount}`, fontSize: 6, color: '#374151', margin: [0, 2, 0, 0] },
+                    ],
+                    alignment: 'left',
+                    width: '*'
+                  },
+                  {
+                    stack: [
+                      { image: escolaAtual.barcodeDataUrl, width: 100, height: 38, alignment: 'right' },
+                      { text: escolaAtual.codigoGuia, fontSize: 6, alignment: 'right', margin: [0, 2, 0, 0], color: '#374151' },
+                    ],
+                    alignment: 'right',
+                    width: 100
+                  },
+                ],
+                margin: [40, 0, 40, 0],
+              },
+            ]
+          };
+        },
+      };
+
+      console.log('🎯 Gerando PDF...');
+      pdfMake.createPdf(doc).download(`guias-entrega-multiplas.pdf`);
+      console.log('✅ PDF gerado com sucesso!');
+      
+      // Limpar seleção
+      setEscolasSelecionadas(new Set());
+      setModoSelecao(false);
+    } catch (err) {
+      console.error('❌ Erro ao gerar PDF múltiplo:', err);
+      setError(`Erro ao gerar PDF: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setGerandoPdfMultiplo(false);
+    }
+  };
+
+  // Handlers de seleção
+  const toggleSelecaoEscola = (escolaId: number) => {
+    const novaSelecao = new Set(escolasSelecionadas);
+    if (novaSelecao.has(escolaId)) {
+      novaSelecao.delete(escolaId);
+    } else {
+      novaSelecao.add(escolaId);
+    }
+    setEscolasSelecionadas(novaSelecao);
+  };
+
+  const selecionarTodas = () => {
+    setEscolasSelecionadas(new Set(escolas.map(e => e.id)));
+  };
+
+  const limparSelecao = () => {
+    setEscolasSelecionadas(new Set());
+  };
+
   // Definir colunas da tabela
   const columns: ColumnDef<EscolaEntrega>[] = [
+    // Coluna de checkbox quando em modo seleção
+    ...(modoSelecao ? [{
+      id: 'selecao',
+      header: () => (
+        <Checkbox
+          checked={escolasSelecionadas.size === escolas.length && escolas.length > 0}
+          indeterminate={escolasSelecionadas.size > 0 && escolasSelecionadas.size < escolas.length}
+          onChange={(e) => e.target.checked ? selecionarTodas() : limparSelecao()}
+        />
+      ),
+      size: 50,
+      meta: { align: 'center' },
+      cell: ({ row }) => (
+        <Checkbox
+          checked={escolasSelecionadas.has(row.original.id)}
+          onChange={() => toggleSelecaoEscola(row.original.id)}
+        />
+      ),
+    }] as ColumnDef<EscolaEntrega>[] : []),
     {
       accessorKey: 'nome',
       header: 'Escola',
@@ -595,25 +997,65 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({
         emptyMessage="Nenhuma escola com itens para entrega encontrada"
         onFilterClick={handleFilterOpen}
         toolbarActions={
-          estatisticas && (
-            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-              {[
-                { label: 'Escolas', value: estatisticas.total_escolas, color: 'text.secondary' },
-                { label: 'Total Itens', value: estatisticas.total_itens, color: 'text.secondary' },
-                { label: 'Entregues', value: estatisticas.itens_entregues, color: 'success.main' },
-                { label: 'Pendentes', value: estatisticas.itens_pendentes, color: 'warning.main' },
-              ].map(stat => (
-                <Box key={stat.label} sx={{ textAlign: 'center', minWidth: 60 }}>
-                  <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.7rem', display: 'block' }}>
-                    {stat.label}
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 600, color: stat.color, fontSize: '0.9rem' }}>
-                    {stat.value}
-                  </Typography>
-                </Box>
-              ))}
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+            {/* Botões de ação */}
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              {!modoSelecao ? (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<CheckBoxIcon />}
+                  onClick={() => setModoSelecao(true)}
+                >
+                  Selecionar Múltiplas
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    startIcon={gerandoPdfMultiplo ? <CircularProgress size={16} /> : <PdfIcon />}
+                    onClick={gerarPdfMultiplasEscolas}
+                    disabled={gerandoPdfMultiplo || escolasSelecionadas.size === 0}
+                    color="secondary"
+                  >
+                    {gerandoPdfMultiplo ? 'Gerando...' : `Gerar PDF (${escolasSelecionadas.size})`}
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => {
+                      setModoSelecao(false);
+                      setEscolasSelecionadas(new Set());
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                </>
+              )}
             </Box>
-          )
+
+            {/* Estatísticas */}
+            {estatisticas && (
+              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', ml: 2, pl: 2, borderLeft: '1px solid #e0e0e0' }}>
+                {[
+                  { label: 'Escolas', value: estatisticas.total_escolas, color: 'text.secondary' },
+                  { label: 'Total Itens', value: estatisticas.total_itens, color: 'text.secondary' },
+                  { label: 'Entregues', value: estatisticas.itens_entregues, color: 'success.main' },
+                  { label: 'Pendentes', value: estatisticas.itens_pendentes, color: 'warning.main' },
+                ].map(stat => (
+                  <Box key={stat.label} sx={{ textAlign: 'center', minWidth: 60 }}>
+                    <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.7rem', display: 'block' }}>
+                      {stat.label}
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600, color: stat.color, fontSize: '0.9rem' }}>
+                      {stat.value}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+            )}
+          </Box>
         }
       />
 
