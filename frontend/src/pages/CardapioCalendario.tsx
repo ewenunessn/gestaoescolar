@@ -1092,7 +1092,13 @@ const CardapioCalendarioPage: React.FC = () => {
                     Total de preparações
                   </Typography>
                   <Typography variant="h5" sx={{ fontWeight: 700, color: 'primary.main' }}>
-                    {refeicoes.length}
+                    {(() => {
+                      // Contar refeições únicas: mesmo dia + mesmo tipo = 1 refeição
+                      const refeicoesUnicas = new Set(
+                        refeicoes.map(r => `${r.dia}-${r.tipo_refeicao}`)
+                      );
+                      return refeicoesUnicas.size;
+                    })()}
                   </Typography>
                 </Box>
 
@@ -1102,19 +1108,26 @@ const CardapioCalendarioPage: React.FC = () => {
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                     Por tipo de preparação
                   </Typography>
-                  {Object.entries(
-                    refeicoes.reduce((acc, r) => {
-                      acc[r.tipo_refeicao] = (acc[r.tipo_refeicao] || 0) + 1;
-                      return acc;
-                    }, {} as Record<string, number>)
-                  ).map(([tipo, count]) => (
-                    <Box key={tipo} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.3 }}>
-                      <Typography variant="caption">
-                        {TIPOS_REFEICAO[tipo]}
-                      </Typography>
-                      <Chip label={count} size="small" sx={{ bgcolor: corTipoRefeicao[tipo], color: 'white', height: 18, fontSize: '0.7rem' }} />
-                    </Box>
-                  ))}
+                  {(() => {
+                    // Agrupar por tipo, contando apenas combinações únicas de dia + tipo
+                    const porTipo: Record<string, Set<number>> = {};
+                    
+                    refeicoes.forEach(r => {
+                      if (!porTipo[r.tipo_refeicao]) {
+                        porTipo[r.tipo_refeicao] = new Set();
+                      }
+                      porTipo[r.tipo_refeicao].add(r.dia);
+                    });
+                    
+                    return Object.entries(porTipo).map(([tipo, dias]) => (
+                      <Box key={tipo} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.3 }}>
+                        <Typography variant="caption">
+                          {TIPOS_REFEICAO[tipo]}
+                        </Typography>
+                        <Chip label={dias.size} size="small" sx={{ bgcolor: corTipoRefeicao[tipo], color: 'white', height: 18, fontSize: '0.7rem' }} />
+                      </Box>
+                    ));
+                  })()}
                 </Box>
               </Box>
             </Card>
@@ -1238,8 +1251,7 @@ const CardapioCalendarioPage: React.FC = () => {
                                       '#2e7d32',
                                       '#e0e0e0'
                                     ],
-                                    borderColor: '#fff',
-                                    borderWidth: 3,
+                                    borderWidth: 0,
                                   }]
                                 }}
                                 options={{

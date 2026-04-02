@@ -29,7 +29,11 @@ export async function listarCardapiosModalidade(req: Request, res: Response) {
         n.crn as nutricionista_crn,
         n.crn_regiao as nutricionista_crn_regiao,
         p.ano as periodo_ano,
-        COUNT(DISTINCT crd.id) as total_refeicoes,
+        (
+          SELECT COUNT(DISTINCT (crd2.dia, crd2.tipo_refeicao))
+          FROM cardapio_refeicoes_dia crd2
+          WHERE crd2.cardapio_modalidade_id = cm.id
+        ) as total_refeicoes,
         COUNT(DISTINCT crd.dia) as total_dias,
         ARRAY_AGG(DISTINCT cjm.modalidade_id) FILTER (WHERE cjm.modalidade_id IS NOT NULL) as modalidades_ids,
         STRING_AGG(DISTINCT m.nome, ', ' ORDER BY m.nome) FILTER (WHERE m.nome IS NOT NULL) as modalidades_nomes
@@ -460,6 +464,9 @@ export async function calcularCustoCardapio(req: Request, res: Response) {
     let custoTotal = 0;
     const detalhesRefeicoes: any[] = [];
     const custosPorModalidade = new Map<number, number>();
+    
+    // Contar refeições únicas (mesmo dia + mesmo tipo = 1 refeição)
+    const refeicoesUnicas = new Set<string>();
 
     refeicoesMap.forEach((refeicao) => {
       const modalidadeId = refeicao.modalidade_id;
@@ -481,6 +488,9 @@ export async function calcularCustoCardapio(req: Request, res: Response) {
         const custoAtualTipo = custosPorTipoFornecedor.get(tipoFornecedor) || 0;
         custosPorTipoFornecedor.set(tipoFornecedor, custoAtualTipo + custoProduto);
       });
+      
+      // Contar refeições únicas: dia + tipo_refeicao
+      refeicoesUnicas.add(`${refeicao.dia}-${refeicao.tipo_refeicao}`);
       
       detalhesRefeicoes.push(refeicao);
     });
@@ -507,7 +517,7 @@ export async function calcularCustoCardapio(req: Request, res: Response) {
     res.json({
       custo_total: custoTotal,
       total_alunos: totalAlunos,
-      total_refeicoes: detalhesRefeicoes.length,
+      total_refeicoes: refeicoesUnicas.size,
       detalhes_por_refeicao: detalhesRefeicoes,
       detalhes_por_modalidade: detalhesPorModalidade,
       detalhes_por_tipo_fornecedor: detalhesPorTipoFornecedor
