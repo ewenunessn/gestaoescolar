@@ -250,6 +250,15 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
       return;
     }
 
+    // Validar que os IDs são números válidos
+    const produtoId = parseInt(selectedProduto);
+    const escolaId = parseInt(selectedEscola);
+    
+    if (isNaN(produtoId) || isNaN(escolaId)) {
+      toast.error('Produto ou escola inválidos');
+      return;
+    }
+
     // Gerar lote automático se não foi informado
     let loteParaUsar = lote;
     if (!loteParaUsar || loteParaUsar.trim() === '') {
@@ -262,8 +271,8 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
     // Se há item existente e não foi confirmada a atualização, verificar primeiro
     if (!atualizarExistente && loteParaUsar && selectedProduto && selectedEscola) {
       const podeAdicionar = await verificarItemExistente(
-        parseInt(selectedProduto),
-        parseInt(selectedEscola),
+        produtoId,
+        escolaId,
         loteParaUsar
       );
       if (!podeAdicionar) return;

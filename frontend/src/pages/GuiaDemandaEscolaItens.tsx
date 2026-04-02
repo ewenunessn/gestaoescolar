@@ -18,7 +18,8 @@ import {
   FormControl,
   InputLabel,
   Select,
-  MenuItem
+  MenuItem,
+  Autocomplete
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -59,14 +60,25 @@ const GuiaDemandaEscolaItens: React.FC = () => {
     produto_id: 0,
     quantidade: 0,
     status: 'pendente' as 'pendente' | 'programada' | 'parcial' | 'entregue' | 'cancelado',
-    data_programada: '',
-    observacao: ''
+    data_programada: ''
   });
 
   useEffect(() => {
-    if (guiaId && escolaId) {
-      loadData();
+    console.log('📍 Params:', { guiaId, escolaId });
+    
+    if (!guiaId) {
+      toast.error('ID da guia não encontrado na URL');
+      navigate('/guias-demanda');
+      return;
     }
+    
+    if (!escolaId) {
+      toast.error('ID da escola não encontrado na URL');
+      navigate(`/guias-demanda/${guiaId}`);
+      return;
+    }
+    
+    loadData();
   }, [guiaId, escolaId]);
 
   useEffect(() => {
@@ -74,7 +86,8 @@ const GuiaDemandaEscolaItens: React.FC = () => {
     return () => {
       setBackPath(null);
     };
-  }, [setBackPath, guiaId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [guiaId]);
 
   useEffect(() => {
     if (escola && guia) {
@@ -84,7 +97,8 @@ const GuiaDemandaEscolaItens: React.FC = () => {
     } else {
       setPageTitle('Itens da Escola');
     }
-  }, [escola, guia, setPageTitle]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [escola, guia]);
 
   const loadData = async () => {
     try {
@@ -120,7 +134,6 @@ const GuiaDemandaEscolaItens: React.FC = () => {
     if (item) {
       setEditingItem(item);
       
-      // Extrair data programada do campo correto
       let dataProgramada = '';
       if (item.data_programada) {
         dataProgramada = item.data_programada.split('T')[0];
@@ -132,8 +145,7 @@ const GuiaDemandaEscolaItens: React.FC = () => {
         produto_id: item.produto_id || item.produtoId || 0,
         quantidade: item.quantidade,
         status: item.status as any,
-        data_programada: dataProgramada,
-        observacao: item.observacao || ''
+        data_programada: dataProgramada
       });
     } else {
       setEditingItem(null);
@@ -141,38 +153,94 @@ const GuiaDemandaEscolaItens: React.FC = () => {
         produto_id: 0,
         quantidade: 0,
         status: 'pendente',
-        data_programada: '',
-        observacao: ''
+        data_programada: ''
       });
     }
     setOpenModal(true);
   };
 
   const handleSave = async () => {
-    if (!guia) return;
+    console.log('🚀 handleSave chamado');
+    console.log('🚀 editingItem:', editingItem);
+    console.log('🚀 formData:', formData);
+    console.log('🚀 guia:', guia);
+    console.log('🚀 escolaId:', escolaId);
+    
+    if (!guia || !escolaId) {
+      toast.error('Dados da guia ou escola não encontrados');
+      return;
+    }
+    
+    const escolaIdNum = Number(escolaId);
+    if (isNaN(escolaIdNum)) {
+      toast.error('ID da escola inválido');
+      return;
+    }
     
     try {
       if (editingItem) {
-        await guiaService.atualizarProdutoEscola(editingItem.id, formData);
+        console.log('📝 Editando item existente');
+        await guiaService.atualizarProdutoEscola(editingItem.id, {
+          quantidade: formData.quantidade
+        });
         toast.success('Item atualizado com sucesso!');
       } else {
-        await guiaService.adicionarProdutoEscola({
-          produtoId: formData.produto_id,
-          escolaId: Number(escolaId),
-          quantidade: formData.quantidade,
-          status: formData.status,
-          data_entrega: formData.data_programada,
-          observacao: formData.observacao,
-          mes_competencia: guia.mes,
-          ano_competencia: guia.ano
-        });
+        console.log('➕ Adicionando novo item');
+        const produtoSelecionado = produtos.find(p => p.id === formData.produto_id);
+        if (!produtoSelecionado) {
+          toast.error('Produto não encontrado');
+          return;
+        }
+        
+        // Validar campos antes de enviar
+        if (!formData.produto_id || formData.produto_id === 0) {
+          toast.error('Selecione um produto');
+          return;
+        }
+        
+        if (!formData.quantidade || formData.quantidade <= 0) {
+          toast.error('Informe uma quantidade válida');
+          return;
+        }
+        
+        // Dados que o backend espera (camelCase!)
+        const dadosParaEnviar = {
+          produtoId: Number(formData.produto_id),
+          escolaId: Number(escolaIdNum),
+          quantidade: Number(formData.quantidade),
+          unidade: String(produtoSelecionado.unidade || 'UN')
+        };
+        
+        console.log('📦 Dados do formulário:', formData);
+        console.log('📦 Produto selecionado:', produtoSelecionado);
+        console.log('📦 Enviando para API:', dadosParaEnviar);
+        console.log('📦 URL:', `/guias/${guiaId}/produtos`);
+        
+        const response = await api.post(`/guias/${guiaId}/produtos`, dadosParaEnviar);
+        console.log('✅ Resposta da API:', response.data);
         toast.success('Item adicionado com sucesso!');
       }
       setOpenModal(false);
       loadData();
-    } catch (error) {
-      console.error('Erro ao salvar item:', error);
-      toast.error('Não foi possível salvar o item.');
+    } catch (error: any) {
+      console.error('❌ Erro completo:', error);
+      console.error('❌ Resposta do servidor:', error.response);
+      console.error('❌ Dados do erro:', error.response?.data);
+      
+      const mensagemErro = error.response?.data?.error || 
+                          error.response?.data?.message || 
+                          error.message || 
+                          'Não foi possível salvar o item.';
+      
+      toast.error(mensagemErro);
+      
+      // Se o backend retornou detalhes, mostrar no console
+      if (error.response?.data?.campos_recebidos) {
+        console.error('❌ Campos recebidos pelo backend:', error.response.data.campos_recebidos);
+      }
+      if (error.response?.data?.body_completo) {
+        console.error('❌ Body completo recebido pelo backend:', error.response.data.body_completo);
+      }
     }
   };
 
@@ -390,20 +458,24 @@ const GuiaDemandaEscolaItens: React.FC = () => {
         <DialogTitle>{editingItem ? 'Editar Item' : 'Adicionar Item'}</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
-            <FormControl fullWidth>
-              <InputLabel>Produto</InputLabel>
-              <Select
-                value={formData.produto_id || ''}
-                label="Produto"
-                onChange={(e) => setFormData({ ...formData, produto_id: Number(e.target.value) })}
-              >
-                {produtos.map((produto) => (
-                  <MenuItem key={produto.id} value={produto.id}>
-                    {produto.nome}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <Autocomplete
+              options={produtos}
+              getOptionLabel={(option) => option.nome}
+              value={produtos.find(p => p.id === formData.produto_id) || null}
+              onChange={(event, newValue) => {
+                setFormData({ ...formData, produto_id: newValue ? newValue.id : 0 });
+              }}
+              disabled={!!editingItem}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Produto"
+                  placeholder="Digite para buscar..."
+                />
+              )}
+              noOptionsText="Nenhum produto encontrado"
+              fullWidth
+            />
             
             <TextField
               label="Quantidade"
@@ -411,22 +483,22 @@ const GuiaDemandaEscolaItens: React.FC = () => {
               value={formData.quantidade}
               onChange={(e) => setFormData({ ...formData, quantidade: Number(e.target.value) })}
               fullWidth
+              inputProps={{ min: 0, step: 0.01 }}
             />
             
-            <FormControl fullWidth>
-              <InputLabel>Status</InputLabel>
-              <Select
-                value={formData.status}
-                label="Status"
-                onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-              >
-                <MenuItem value="pendente">Disponível para Entrega</MenuItem>
-                <MenuItem value="programada">Aguardando Estoque</MenuItem>
-                <MenuItem value="parcial">Entrega Parcial</MenuItem>
-                <MenuItem value="entregue">Já Entregue</MenuItem>
-                <MenuItem value="cancelado">Cancelado</MenuItem>
-              </Select>
-            </FormControl>
+            <TextField
+              select
+              label="Status"
+              value={formData.status}
+              onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+              fullWidth
+            >
+              <MenuItem value="pendente">Disponível para Entrega</MenuItem>
+              <MenuItem value="programada">Aguardando Estoque</MenuItem>
+              <MenuItem value="parcial">Entrega Parcial</MenuItem>
+              <MenuItem value="entregue">Já Entregue</MenuItem>
+              <MenuItem value="cancelado">Cancelado</MenuItem>
+            </TextField>
             
             <TextField
               label="Data Programada"
@@ -436,20 +508,11 @@ const GuiaDemandaEscolaItens: React.FC = () => {
               fullWidth
               InputLabelProps={{ shrink: true }}
             />
-            
-            <TextField
-              label="Observação"
-              value={formData.observacao}
-              onChange={(e) => setFormData({ ...formData, observacao: e.target.value })}
-              fullWidth
-              multiline
-              rows={3}
-            />
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenModal(false)}>Cancelar</Button>
-          <Button onClick={handleSave} variant="contained">
+          <Button onClick={handleSave} variant="contained" disabled={!formData.produto_id || formData.quantidade <= 0}>
             Salvar
           </Button>
         </DialogActions>

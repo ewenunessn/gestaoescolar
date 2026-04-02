@@ -263,6 +263,7 @@ const baseTheme = {
       styleOverrides: {
         root: {
           fontSize: '0.8125rem',
+          height: '45px',
         },
         input: {
           paddingTop: '5px !important',

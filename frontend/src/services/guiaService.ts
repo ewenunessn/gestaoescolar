@@ -150,7 +150,12 @@ export const guiaService = {
 
   // Adicionar produto para escola
   async adicionarProdutoEscola(data: Record<string, unknown>) {
-    const response = await api.post(`/guias/produtos`, data);
+    const { guia_id, ...rest } = data;
+    if (!guia_id) {
+      throw new Error('guia_id é obrigatório');
+    }
+    console.log('🔧 guiaService.adicionarProdutoEscola - Dados enviados:', rest);
+    const response = await api.post(`/guias/${guia_id}/produtos`, rest);
     return response.data;
   },
 

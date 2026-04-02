@@ -140,6 +140,25 @@ export const guiaController = {
       console.log('🔍 [GuiaController] adicionarProdutoGuia');
 
       const { guiaId } = req.params;
+      
+      // Validar parâmetros obrigatórios
+      const produtoId = parseInt(req.body.produtoId);
+      const escolaId = parseInt(req.body.escolaId);
+      
+      if (isNaN(produtoId)) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'ID do produto inválido' 
+        });
+      }
+      
+      if (isNaN(escolaId)) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'ID da escola inválido' 
+        });
+      }
+      
       const guia = await GuiaModel.buscarGuia(parseInt(guiaId));
       
       if (!guia) {
@@ -155,8 +174,8 @@ export const guiaController = {
 
       const guiaProduto = await GuiaModel.adicionarProdutoGuia({
         guia_id: parseInt(guiaId),
-        produto_id: parseInt(req.body.produtoId),
-        escola_id: parseInt(req.body.escolaId),
+        produto_id: produtoId,
+        escola_id: escolaId,
         quantidade: req.body.quantidade,
         unidade: req.body.unidade || 'un',
         lote: req.body.lote,
