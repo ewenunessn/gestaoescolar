@@ -11,6 +11,28 @@ import { CustoCardapio } from '../services/cardapiosModalidade';
 const fmt = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
+// Mapeamento de tipos de fornecedor para labels amigáveis
+const TIPO_FORNECEDOR_LABELS: Record<string, string> = {
+  'CONVENCIONAL': 'Convencional',
+  'AGRICULTURA_FAMILIAR': 'Agricultura Familiar',
+  'COOPERATIVA_AF': 'Cooperativa AF',
+  'ASSOCIACAO_AF': 'Associação AF',
+  'empresa': 'Empresa',
+  'cooperativa': 'Cooperativa',
+  'individual': 'Individual'
+};
+
+// Cores para cada tipo de fornecedor
+const TIPO_FORNECEDOR_COLORS: Record<string, string> = {
+  'CONVENCIONAL': '#1976d2',
+  'AGRICULTURA_FAMILIAR': '#2e7d32',
+  'COOPERATIVA_AF': '#388e3c',
+  'ASSOCIACAO_AF': '#43a047',
+  'empresa': '#1976d2',
+  'cooperativa': '#388e3c',
+  'individual': '#f57c00'
+};
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -43,6 +65,7 @@ function ProdutosRefeicaoModal({ open, onClose, refeicao }: ProdutosModalProps) 
             <TableHead>
               <TableRow sx={{ bgcolor: 'grey.50' }}>
                 <TableCell><strong>Produto</strong></TableCell>
+                <TableCell><strong>Tipo Fornecedor</strong></TableCell>
                 <TableCell align="right"><strong>Custo/Aluno</strong></TableCell>
               </TableRow>
             </TableHead>
@@ -52,6 +75,18 @@ function ProdutosRefeicaoModal({ open, onClose, refeicao }: ProdutosModalProps) 
                   <TableRow key={idx} hover>
                     <TableCell>
                       <Typography variant="body2">{p.produto_nome}</Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Chip 
+                        label={TIPO_FORNECEDOR_LABELS[p.tipo_fornecedor] || p.tipo_fornecedor || 'N/A'} 
+                        size="small"
+                        sx={{ 
+                          bgcolor: TIPO_FORNECEDOR_COLORS[p.tipo_fornecedor] || '#999',
+                          color: 'white',
+                          fontWeight: 600,
+                          fontSize: '0.7rem'
+                        }}
+                      />
                     </TableCell>
                     <TableCell align="right">
                       <Typography 
@@ -66,7 +101,7 @@ function ProdutosRefeicaoModal({ open, onClose, refeicao }: ProdutosModalProps) 
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={2} align="center">
+                  <TableCell colSpan={3} align="center">
                     <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
                       Nenhum produto cadastrado
                     </Typography>
@@ -191,6 +226,81 @@ export default function CustoCardapioDetalheModal({ open, onClose, custo }: Prop
               </Box>
             ))}
           </Box>
+
+          {/* Custo por Tipo de Fornecedor */}
+          {custo.detalhes_por_tipo_fornecedor && custo.detalhes_por_tipo_fornecedor.length > 0 && (
+            <>
+              <Divider sx={{ mb: 2 }} />
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 2, color: 'primary.main' }}>
+                  Distribuição por Tipo de Fornecedor
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                  {custo.detalhes_por_tipo_fornecedor
+                    .sort((a, b) => b.valor_total - a.valor_total)
+                    .map((tipo) => (
+                    <Box 
+                      key={tipo.tipo_fornecedor} 
+                      sx={{ 
+                        flex: '1 1 calc(33.333% - 16px)',
+                        minWidth: '200px',
+                        p: 2, 
+                        bgcolor: '#f8f9fa', 
+                        borderRadius: 1, 
+                        border: '2px solid',
+                        borderColor: TIPO_FORNECEDOR_COLORS[tipo.tipo_fornecedor] || '#e9ecef',
+                        transition: 'all 0.2s',
+                        '&:hover': {
+                          transform: 'translateY(-2px)',
+                          boxShadow: 2
+                        }
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        <Box 
+                          sx={{ 
+                            width: 12, 
+                            height: 12, 
+                            borderRadius: '50%', 
+                            bgcolor: TIPO_FORNECEDOR_COLORS[tipo.tipo_fornecedor] || '#999'
+                          }} 
+                        />
+                        <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                          {TIPO_FORNECEDOR_LABELS[tipo.tipo_fornecedor] || tipo.tipo_fornecedor}
+                        </Typography>
+                      </Box>
+                      <Typography variant="h6" fontWeight={700} color={TIPO_FORNECEDOR_COLORS[tipo.tipo_fornecedor] || '#999'}>
+                        {fmt(tipo.valor_total)}
+                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+                        <Box 
+                          sx={{ 
+                            flex: 1, 
+                            height: 6, 
+                            bgcolor: '#e0e0e0', 
+                            borderRadius: 1,
+                            overflow: 'hidden'
+                          }}
+                        >
+                          <Box 
+                            sx={{ 
+                              height: '100%', 
+                              width: `${tipo.percentual}%`, 
+                              bgcolor: TIPO_FORNECEDOR_COLORS[tipo.tipo_fornecedor] || '#999',
+                              transition: 'width 0.3s'
+                            }} 
+                          />
+                        </Box>
+                        <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                          {tipo.percentual.toFixed(1)}%
+                        </Typography>
+                      </Box>
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            </>
+          )}
 
           <Divider sx={{ mb: 2 }} />
 

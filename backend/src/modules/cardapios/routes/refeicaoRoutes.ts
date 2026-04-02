@@ -6,7 +6,8 @@ import {
   editarRefeicao, 
   removerRefeicao, 
   toggleAtivoRefeicao,
-  duplicarRefeicao
+  duplicarRefeicao,
+  buscarFichaTecnica
 } from "../controllers/refeicaoController";
 import {
   listarRefeicaoProdutos,
@@ -19,7 +20,10 @@ import { requireLeitura, requireEscrita } from "../../../middleware/permissionMi
 
 const router = Router();
 
-// Todas as rotas requerem autenticação
+// Rota pública para ficha técnica (sem autenticação)
+router.get("/:id/ficha-tecnica", buscarFichaTecnica);
+
+// Todas as outras rotas requerem autenticação
 router.use(authenticateToken);
 
 // Rotas de LEITURA - Refeições

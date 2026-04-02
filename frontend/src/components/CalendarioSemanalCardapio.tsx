@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -19,6 +19,7 @@ import {
   ChevronLeft,
   ChevronRight
 } from '@mui/icons-material';
+import { carregarTiposRefeicao } from '../services/cardapiosModalidade';
 
 interface EventoCalendario {
   id: number;
@@ -68,6 +69,34 @@ const CalendarioSemanalCardapio: React.FC<CalendarioSemanalCardapioProps> = ({
   
   // Estado para controlar qual semana está sendo exibida
   const [semanaAtual, setSemanaAtual] = useState(0);
+  
+  // Estado para tipos de refeição dinâmicos
+  const [tiposRefeicaoDinamicos, setTiposRefeicaoDinamicos] = useState<Array<{key: string, label: string, icon: React.ReactElement}>>([]);
+
+  // Carregar tipos de refeição do banco
+  useEffect(() => {
+    const carregarTipos = async () => {
+      try {
+        const tipos = await carregarTiposRefeicao();
+        const tiposFormatados = Object.entries(tipos).map(([key, label]) => ({
+          key,
+          label,
+          icon: TIPOS_REFEICAO_ICONS[key] || <RestaurantIcon />
+        }));
+        setTiposRefeicaoDinamicos(tiposFormatados);
+      } catch (err) {
+        console.error('Erro ao carregar tipos de refeição:', err);
+        // Fallback para tipos padrão
+        setTiposRefeicaoDinamicos([
+          { key: 'cafe_manha', label: 'Café da Manhã', icon: <CafeIcon /> },
+          { key: 'lanche', label: 'Lanche', icon: <SnackIcon /> },
+          { key: 'refeicao', label: 'Refeição', icon: <LunchIcon /> },
+          { key: 'ceia', label: 'Ceia', icon: <DinnerIcon /> }
+        ]);
+      }
+    };
+    carregarTipos();
+  }, []);
 
   // Gerar semanas do mês
   const semanasDoMes = useMemo(() => {
@@ -176,13 +205,19 @@ const CalendarioSemanalCardapio: React.FC<CalendarioSemanalCardapioProps> = ({
     );
   }
 
-  // Tipos de refeição na ordem cronológica
-  const tiposRefeicao = [
-    { key: 'cafe_manha', label: 'Café da Manhã', icon: <CafeIcon /> },
-    { key: 'lanche', label: 'Lanche', icon: <SnackIcon /> },
-    { key: 'refeicao', label: 'Refeição', icon: <LunchIcon /> },
-    { key: 'ceia', label: 'Ceia', icon: <DinnerIcon /> }
-  ];
+  // Usar tipos dinâmicos carregados do banco
+  const tiposRefeicao = tiposRefeicaoDinamicos;
+  
+  // Mostrar loading enquanto carrega tipos
+  if (tiposRefeicao.length === 0) {
+    return (
+      <Box sx={{ textAlign: 'center', py: 4 }}>
+        <Typography color="text.secondary">
+          Carregando tipos de refeição...
+        </Typography>
+      </Box>
+    );
+  }
 
   return (
     <Box>

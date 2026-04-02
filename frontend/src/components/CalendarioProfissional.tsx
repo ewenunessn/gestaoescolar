@@ -24,7 +24,12 @@ import {
   FormControl,
   InputLabel,
   Select,
-  SelectChangeEvent
+  SelectChangeEvent,
+  Popover,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText
 } from '@mui/material';
 import {
   ChevronLeft,
@@ -100,6 +105,10 @@ interface CalendarioProfissionalProps {
   onEditarEvento?: (evento: EventoCalendario) => void;
   onExcluirEvento?: (evento: EventoCalendario) => void;
   onPdfClick?: (e: React.MouseEvent<HTMLElement>) => void;
+  onExportarCalendario?: () => void;
+  onExportarFrequencia?: () => void;
+  onRelatorioDetalhado?: () => void;
+  onGerarPDFTabela?: () => void;
   readonly?: boolean;
 }
 
@@ -124,6 +133,10 @@ const CalendarioProfissional: React.FC<CalendarioProfissionalProps> = ({
   onEditarEvento,
   onExcluirEvento,
   onPdfClick,
+  onExportarCalendario,
+  onExportarFrequencia,
+  onRelatorioDetalhado,
+  onGerarPDFTabela,
   readonly = false
 }) => {
   const theme = useTheme();
@@ -139,6 +152,7 @@ const CalendarioProfissional: React.FC<CalendarioProfissionalProps> = ({
   } | null>(null);
   const [dialogNovoEvento, setDialogNovoEvento] = useState(false);
   const [novoEventoData, setNovoEventoData] = useState<Date | null>(null);
+  const [anchorElPdf, setAnchorElPdf] = useState<null | HTMLElement>(null);
 
   // Sincronizar data do calendário com as props ano/mes
   React.useEffect(() => {
@@ -348,14 +362,131 @@ const CalendarioProfissional: React.FC<CalendarioProfissionalProps> = ({
             </IconButton>
           </Box>
 
-          {onPdfClick && (
-            <IconButton 
-              onClick={onPdfClick} 
-              color="primary"
-              sx={{ ml: 1 }}
-            >
-              <PrintIcon />
-            </IconButton>
+          {(onExportarCalendario || onExportarFrequencia || onRelatorioDetalhado || onGerarPDFTabela) && (
+            <Box sx={{ position: 'relative', display: 'inline-block' }}>
+              <IconButton 
+                id="pdf-menu-button"
+                onClick={(e) => {
+                  setAnchorElPdf(anchorElPdf ? null : e.currentTarget);
+                }} 
+                color="primary"
+                sx={{ ml: 1 }}
+                title="Opções de PDF"
+              >
+                <PrintIcon />
+              </IconButton>
+              
+              {Boolean(anchorElPdf) && (
+                <Paper
+                  elevation={8}
+                  sx={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    mt: 1,
+                    minWidth: 220,
+                    zIndex: 1300,
+                    borderRadius: 1,
+                    boxShadow: '0px 5px 15px rgba(0,0,0,0.2)',
+                  }}
+                  onMouseLeave={() => setAnchorElPdf(null)}
+                >
+                  <List sx={{ py: 0 }}>
+                    {onExportarCalendario && (
+                      <ListItem 
+                        button 
+                        onClick={() => { 
+                          onExportarCalendario(); 
+                          setAnchorElPdf(null); 
+                        }}
+                        sx={{ 
+                          py: 1.5, 
+                          px: 2,
+                          '&:hover': { bgcolor: 'action.hover' }
+                        }}
+                      >
+                        <ListItemIcon sx={{ minWidth: 36 }}>
+                          <PrintIcon fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText primary="Exportar Calendário" />
+                      </ListItem>
+                    )}
+                    {onExportarFrequencia && (
+                      <ListItem 
+                        button 
+                        onClick={() => { 
+                          onExportarFrequencia(); 
+                          setAnchorElPdf(null); 
+                        }}
+                        sx={{ 
+                          py: 1.5, 
+                          px: 2,
+                          '&:hover': { bgcolor: 'action.hover' }
+                        }}
+                      >
+                        <ListItemIcon sx={{ minWidth: 36 }}>
+                          <PrintIcon fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText primary="Exportar Frequência" />
+                      </ListItem>
+                    )}
+                    {onRelatorioDetalhado && (
+                      <ListItem 
+                        button 
+                        onClick={() => { 
+                          onRelatorioDetalhado(); 
+                          setAnchorElPdf(null); 
+                        }}
+                        sx={{ 
+                          py: 1.5, 
+                          px: 2,
+                          '&:hover': { bgcolor: 'action.hover' }
+                        }}
+                      >
+                        <ListItemIcon sx={{ minWidth: 36 }}>
+                          <PrintIcon fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText primary="Relatório Detalhado" />
+                      </ListItem>
+                    )}
+                    {onGerarPDFTabela && (
+                      <ListItem 
+                        button 
+                        onClick={() => { 
+                          onGerarPDFTabela(); 
+                          setAnchorElPdf(null); 
+                        }}
+                        sx={{ 
+                          py: 1.5, 
+                          px: 2,
+                          '&:hover': { bgcolor: 'action.hover' }
+                        }}
+                      >
+                        <ListItemIcon sx={{ minWidth: 36 }}>
+                          <PrintIcon fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText primary="Gerar PDF Tabela" />
+                      </ListItem>
+                    )}
+                  </List>
+                </Paper>
+              )}
+              
+              {/* Backdrop para fechar ao clicar fora */}
+              {Boolean(anchorElPdf) && (
+                <Box
+                  sx={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    zIndex: 1299,
+                  }}
+                  onClick={() => setAnchorElPdf(null)}
+                />
+              )}
+            </Box>
           )}
         </Box>
       </Box>

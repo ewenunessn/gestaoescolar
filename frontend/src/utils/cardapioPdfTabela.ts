@@ -3,6 +3,7 @@ import { listarTiposRefeicao, formatarHorario } from '../services/tiposRefeicao'
 import { dateUtils } from './dateUtils';
 import { buildPdfDoc } from './pdfUtils';
 import { initPdfMake } from './cardapioPdfGenerators';
+import QRCode from 'qrcode';
 
 interface GerarPDFTabelaParams {
   diasSelecionadosCalendario: Date[];
@@ -22,7 +23,7 @@ export const gerarPDFTabela = async ({
   }
 
   if (diasSelecionadosCalendario.length > 6) {
-    throw new Error('Selecione no máximo 6 dias');
+    throw new Error('Selecione no máximo 6 dias no total');
   }
 
   const pdfMake = await initPdfMake();
@@ -151,6 +152,60 @@ export const gerarPDFTabela = async ({
     ? `${modalidades} - ${cardapio?.ano} - ${dateUtils.getMonthName(cardapio?.mes)?.toUpperCase()}`
     : `${cardapio?.ano} - ${dateUtils.getMonthName(cardapio?.mes)?.toUpperCase()}`;
 
+  // Coletar IDs das refeições incluídas no PDF
+  const refeicoesIds = new Set<number>();
+  datasOrdenadas.forEach(data => {
+    const dia = data.getDate();
+    const refeicoesNoDia = refeicoes.filter(r => r.dia === dia);
+    refeicoesNoDia.forEach(r => {
+      console.log(`Dia ${dia}: Refeição ID ${r.refeicao_id} - ${r.refeicao_nome}`);
+      refeicoesIds.add(r.refeicao_id);
+    });
+  });
+
+  console.log('IDs únicos de refeições:', Array.from(refeicoesIds));
+
+  // Gerar dados para o QR code
+  const qrData = {
+    cardapioId: cardapio?.id,
+    refeicoesIds: Array.from(refeicoesIds),
+    mes: cardapio?.mes,
+    ano: cardapio?.ano,
+    dias: datasOrdenadas.map(d => d.getDate())
+  };
+
+  console.log('Dados do QR Code:', qrData);
+
+  // Gerar URL completa
+  const qrUrl = `${window.location.origin}/cardapio-publico?data=${encodeURIComponent(JSON.stringify(qrData))}`;
+  console.log('URL do QR Code:', qrUrl);
+  console.log('URL decodificada:', decodeURIComponent(qrUrl));
+  console.log('Tamanho da URL:', qrUrl.length);
+
+  // Gerar QR code como data URL
+  let qrCodeDataUrl: string | null = null;
+  try {
+    qrCodeDataUrl = await QRCode.toDataURL(qrUrl, {
+      width: 150,
+      margin: 1,
+      color: {
+        dark: '#000000',
+        light: '#FFFFFF'
+      }
+    });
+    console.log('QR Code gerado com sucesso!');
+    console.log('QR Code URL (primeiros 100 chars):', qrCodeDataUrl?.substring(0, 100));
+  } catch (qrError) {
+    console.error('Erro ao gerar QR Code:', qrError);
+    throw new Error('Falha ao gerar QR Code: ' + (qrError as Error).message);
+  }
+
+  // Verificar se o QR code foi gerado corretamente
+  if (!qrCodeDataUrl || !qrCodeDataUrl.startsWith('data:image')) {
+    console.error('QR Code inválido ou não gerado');
+    throw new Error('Falha ao gerar QR Code');
+  }
+
   // Rodapé customizado com nutricionista e aviso
   const customFooter = (currentPage: number, pageCount: number) => {
     const nutricionista = cardapio?.nutricionista_nome;
@@ -175,17 +230,21 @@ export const gerarPDFTabela = async ({
             {
               stack: [
                 ...(nutricionista ? [
-                  { text: 'Nutricionista Responsável:', fontSize: 7, bold: true, color: '#666666' },
-                  { text: nutricionista, fontSize: 8, color: '#333333', margin: [0, 2, 0, 0] },
-                  ...(crn ? [{ text: `CRN: ${crn}`, fontSize: 7, color: '#666666', margin: [0, 1, 0, 0] }] : [])
+                  { 
+                    text: [
+                      { text: 'Nutricionista Responsável: ', fontSize: 11, bold: true, color: '#666666' },
+                      { text: nutricionista, fontSize: 11, color: '#333333' }
+                    ]
+                  },
+                  ...(crn ? [{ text: `CRN: ${crn}`, fontSize: 10, color: '#666666', margin: [0, 2, 0, 0] }] : [])
                 ] : [])
               ],
               width: '*'
             },
             {
               stack: [
-                { text: '* Cardápio sujeito a alterações', fontSize: 7, italics: true, color: '#999999', alignment: 'right' },
-                { text: `Página ${currentPage} de ${pageCount}`, fontSize: 7, color: '#999999', alignment: 'right', margin: [0, 4, 0, 0] }
+                { text: '* Cardápio sujeito a alterações', fontSize: 10, italics: true, color: '#999999', alignment: 'right' },
+                { text: `Página ${currentPage} de ${pageCount}`, fontSize: 10, color: '#999999', alignment: 'right', margin: [0, 4, 0, 0] }
               ],
               width: 200
             }
@@ -196,28 +255,69 @@ export const gerarPDFTabela = async ({
     };
   };
 
+  console.log('Montando PDF com QR Code...');
+  console.log('QR Code Data URL válido:', !!qrCodeDataUrl);
+
+  // Criar conteúdo do QR Code
+  const qrCodeContent = qrCodeDataUrl ? {
+    columns: [
+      { text: '', width: '*' },
+      {
+        stack: [
+          {
+            image: qrCodeDataUrl,
+            width: 100,
+            height: 100,
+            alignment: 'right'
+          },
+          {
+            text: 'Escaneie para ver as fichas técnicas',
+            fontSize: 8,
+            alignment: 'right',
+            margin: [0, 4, 0, 0],
+            color: '#666666'
+          }
+        ],
+        width: 120,
+        alignment: 'right'
+      }
+    ],
+    margin: [0, 15, 0, 0]
+  } : null;
+
+  console.log('QR Code Content criado:', !!qrCodeContent);
+
+  // Montar array de conteúdo
+  const pdfContent: any[] = [tableContent];
+  if (qrCodeContent) {
+    console.log('Adicionando QR Code ao PDF...');
+    pdfContent.push(qrCodeContent);
+  } else {
+    console.warn('QR Code não foi adicionado ao PDF!');
+  }
+
   const doc = buildPdfDoc({
     instituicao,
     title: cardapio?.nome?.toUpperCase() || 'CARDÁPIO',
     subtitle: subtitulo,
-    content: [tableContent],
+    content: pdfContent,
     orientation: 'landscape',
     showSignature: false,
     customFooter,
     extraStyles: {
       tableHeader: {
         bold: true,
-        fontSize: 10,
+        fontSize: 12,
         alignment: 'center',
         color: 'white'
       },
       tipoRefeicao: {
         bold: true,
-        fontSize: 10,
+        fontSize: 11,
         alignment: 'center'
       },
       tableCell: {
-        fontSize: 8,
+        fontSize: 10,
         alignment: 'center'
       }
     }

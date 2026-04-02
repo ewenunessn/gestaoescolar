@@ -367,7 +367,8 @@ export async function calcularCustoCardapio(req: Request, res: Response) {
         COALESCE(p.peso, 1000) as peso_embalagem,
         cjm.modalidade_id,
         COALESCE(rpm.per_capita_ajustado, rp.per_capita) as per_capita,
-        COALESCE(cp_lat.preco_unitario, 0) as preco_unitario
+        COALESCE(cp_lat.preco_unitario, 0) as preco_unitario,
+        COALESCE(cp_lat.tipo_fornecedor, 'CONVENCIONAL') as tipo_fornecedor
       FROM cardapio_refeicoes_dia crd
       INNER JOIN refeicoes r ON crd.refeicao_id = r.id
       INNER JOIN cardapio_modalidades cjm ON cjm.cardapio_id = crd.cardapio_modalidade_id
@@ -377,9 +378,10 @@ export async function calcularCustoCardapio(req: Request, res: Response) {
         ON rpm.refeicao_produto_id = rp.id 
         AND rpm.modalidade_id = cjm.modalidade_id
       LEFT JOIN LATERAL (
-        SELECT cp.preco_unitario
+        SELECT cp.preco_unitario, f.tipo_fornecedor
         FROM contrato_produtos cp
         INNER JOIN contratos c ON c.id = cp.contrato_id
+        INNER JOIN fornecedores f ON c.fornecedor_id = f.id
         WHERE cp.produto_id = p.id
           AND c.ativo = true
           AND cp.ativo = true
@@ -393,6 +395,8 @@ export async function calcularCustoCardapio(req: Request, res: Response) {
 
     // Agrupar por refeição do dia e modalidade
     const refeicoesMap = new Map<string, any>();
+    const custosPorTipoFornecedor = new Map<string, number>();
+    
     refeicoesResult.rows.forEach((row: any) => {
       // Chave única: refeicao_dia_id + modalidade_id
       const chave = `${row.refeicao_dia_id}_${row.modalidade_id}`;
@@ -418,6 +422,7 @@ export async function calcularCustoCardapio(req: Request, res: Response) {
         const fatorCorrecao = parseFloat(row.fator_correcao) || 1.0;
         const pesoEmbalagem = parseFloat(row.peso_embalagem) || 1000;
         const tipoMedida = row.tipo_medida || 'gramas';
+        const tipoFornecedor = row.tipo_fornecedor || 'CONVENCIONAL';
         
         // Calcular custo por aluno usando a mesma lógica do cálculo de preparação
         // Per capita líquido × fator de correção = per capita bruto
@@ -443,7 +448,8 @@ export async function calcularCustoCardapio(req: Request, res: Response) {
           fator_correcao: fatorCorrecao,
           peso_embalagem: pesoEmbalagem,
           preco_unitario: precoUnitario,
-          custo_por_aluno: custoIngrediente
+          custo_por_aluno: custoIngrediente,
+          tipo_fornecedor: tipoFornecedor
         });
 
         refeicao.custo_por_aluno += custoIngrediente;
@@ -468,6 +474,14 @@ export async function calcularCustoCardapio(req: Request, res: Response) {
       const custoAtualModalidade = custosPorModalidade.get(modalidadeId) || 0;
       custosPorModalidade.set(modalidadeId, custoAtualModalidade + custoRefeicao);
       
+      // Acumular custo por tipo de fornecedor
+      refeicao.produtos.forEach((produto: any) => {
+        const tipoFornecedor = produto.tipo_fornecedor || 'CONVENCIONAL';
+        const custoProduto = produto.custo_por_aluno * qtdAlunosModalidade;
+        const custoAtualTipo = custosPorTipoFornecedor.get(tipoFornecedor) || 0;
+        custosPorTipoFornecedor.set(tipoFornecedor, custoAtualTipo + custoProduto);
+      });
+      
       detalhesRefeicoes.push(refeicao);
     });
 
@@ -483,12 +497,20 @@ export async function calcularCustoCardapio(req: Request, res: Response) {
       };
     });
 
+    // Detalhes por tipo de fornecedor
+    const detalhesPorTipoFornecedor = Array.from(custosPorTipoFornecedor.entries()).map(([tipo, valor]) => ({
+      tipo_fornecedor: tipo,
+      valor_total: valor,
+      percentual: custoTotal > 0 ? (valor / custoTotal) * 100 : 0
+    }));
+
     res.json({
       custo_total: custoTotal,
       total_alunos: totalAlunos,
       total_refeicoes: detalhesRefeicoes.length,
       detalhes_por_refeicao: detalhesRefeicoes,
-      detalhes_por_modalidade: detalhesPorModalidade
+      detalhes_por_modalidade: detalhesPorModalidade,
+      detalhes_por_tipo_fornecedor: detalhesPorTipoFornecedor
     });
   } catch (error) {
     console.error('❌ Erro ao calcular custo do cardápio:', error);

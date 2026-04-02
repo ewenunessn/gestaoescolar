@@ -23,6 +23,10 @@ interface CalendarioSelectorProps {
   onProximoMes: () => void;
   onDiaClick: (data: string) => void;
   onPdfClick?: (e: React.MouseEvent<HTMLElement>) => void;
+  onExportarCalendario?: () => void;
+  onExportarFrequencia?: () => void;
+  onRelatorioDetalhado?: () => void;
+  onGerarPDFTabela?: () => void;
 }
 
 const CalendarioSelector: React.FC<CalendarioSelectorProps> = (props) => {

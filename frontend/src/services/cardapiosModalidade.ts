@@ -277,6 +277,7 @@ export interface CustoCardapio {
       tipo_medida: string;
       preco_unitario: number;
       custo_por_aluno: number;
+      tipo_fornecedor?: string;
     }>;
     custo_por_aluno: number;
     custo_total: number;
@@ -285,6 +286,11 @@ export interface CustoCardapio {
     modalidade_id: number;
     quantidade_alunos: number;
     custo_total: number;
+  }>;
+  detalhes_por_tipo_fornecedor?: Array<{
+    tipo_fornecedor: string;
+    valor_total: number;
+    percentual: number;
   }>;
 }
 

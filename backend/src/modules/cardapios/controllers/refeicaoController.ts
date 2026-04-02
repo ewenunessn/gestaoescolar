@@ -424,3 +424,60 @@ export async function duplicarRefeicao(req: Request, res: Response) {
     client.release();
   }
 }
+
+// Buscar ficha técnica da refeição (pública - sem autenticação)
+export const buscarFichaTecnica = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    // Buscar refeição
+    const refeicao = await db.query(
+      'SELECT * FROM refeicoes WHERE id = $1',
+      [id]
+    );
+
+    if (refeicao.rows.length === 0) {
+      return res.status(404).json({ error: 'Refeição não encontrada' });
+    }
+
+    // Buscar produtos da refeição com custos
+    const produtos = await db.query(`
+      SELECT 
+        rp.id,
+        rp.produto_id,
+        p.nome as produto_nome,
+        rp.per_capita as quantidade,
+        CASE 
+          WHEN rp.tipo_medida = 'gramas' THEN 'g'
+          WHEN rp.tipo_medida = 'unidades' THEN 'un'
+          ELSE p.unidade_medida
+        END as unidade_medida,
+        COALESCE(cp.preco_unitario, 0) as custo_unitario,
+        COALESCE(cp.preco_unitario * (rp.per_capita / 100.0), 0) as custo_total
+      FROM refeicao_produtos rp
+      JOIN produtos p ON p.id = rp.produto_id
+      LEFT JOIN LATERAL (
+        SELECT preco_unitario
+        FROM contrato_produtos
+        WHERE produto_id = rp.produto_id
+        AND ativo = true
+        ORDER BY id DESC
+        LIMIT 1
+      ) cp ON true
+      WHERE rp.refeicao_id = $1
+      ORDER BY p.nome
+    `, [id]);
+
+    // Calcular custo total
+    const custoTotal = produtos.rows.reduce((sum, p) => sum + parseFloat(p.custo_total || 0), 0);
+
+    res.json({
+      refeicao: refeicao.rows[0],
+      produtos: produtos.rows,
+      custo_total: custoTotal
+    });
+  } catch (error) {
+    console.error('Erro ao buscar ficha técnica:', error);
+    res.status(500).json({ error: 'Erro ao buscar ficha técnica' });
+  }
+};

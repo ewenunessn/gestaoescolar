@@ -15,6 +15,7 @@ import PageContainer from '../components/PageContainer';
 import CalendarioSelector from '../components/CalendarioSelector';
 import { useInstituicaoForPDF } from '../hooks/useInstituicao';
 import { createPDFHeader, createPDFFooter, getDefaultPDFStyles, buildPdfDoc } from '../utils/pdfUtils';
+import { gerarPDFTabela as gerarPDFTabelaUtil } from '../utils/cardapioPdfTabela';
 import {
   buscarCardapioModalidade, listarRefeicoesCardapio, adicionarRefeicaoDia,
   removerRefeicaoDia, CardapioModalidade, RefeicaoDia, TIPOS_REFEICAO,
@@ -27,8 +28,13 @@ import { LoadingOverlay } from '../components/LoadingOverlay';
 import { DetalheDiaCardapioDialog } from '../components/DetalheDiaCardapioDialog';
 import { ReplicarRefeicoesDialog } from '../components/ReplicarRefeicoesDialog';
 import CustoCardapioDetalheModal from '../components/CustoCardapioDetalheModal';
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+import { Doughnut } from 'react-chartjs-2';
 import { dateUtils } from '../utils/dateUtils';
 import api from '../services/api';
+
+// Registrar componentes do Chart.js
+ChartJS.register(ArcElement, Tooltip, Legend);
 
 // Função para obter URL base da API
 const getApiBaseUrl = () => {
@@ -69,7 +75,6 @@ const CardapioCalendarioPage: React.FC = () => {
   const [openPeriodoDialog, setOpenPeriodoDialog] = useState(false);
   const [openPDFTabelaDialog, setOpenPDFTabelaDialog] = useState(false);
   const [diasSelecionadosCalendario, setDiasSelecionadosCalendario] = useState<Date[]>([]);
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [ano, setAno] = useState(0);
   const [mes, setMes] = useState(0);
   const [diaSelecionado, setDiaSelecionado] = useState<number | null>(null);
@@ -428,7 +433,6 @@ const CardapioCalendarioPage: React.FC = () => {
       
       pdfMake.createPdf(docDefinition).download(`cardapio-${cardapio.mes}-${cardapio.ano}.pdf`);
       toast.success('PDF do calendário gerado!');
-      setAnchorEl(null);
     } catch (err) {
       toast.error('Erro ao gerar PDF do calendário');
       console.error(err);
@@ -548,7 +552,6 @@ const CardapioCalendarioPage: React.FC = () => {
       
       pdfMake.createPdf(docDefinition).download(`frequencia-cardapio-${cardapio.mes}-${cardapio.ano}.pdf`);
       toast.success('PDF de frequência gerado!');
-      setAnchorEl(null);
     } catch (err) {
       toast.error('Erro ao gerar PDF de frequência');
       console.error(err);
@@ -560,7 +563,6 @@ const CardapioCalendarioPage: React.FC = () => {
     const ultimoDia = dateUtils.getDaysInMonth(cardapio.ano, cardapio.mes);
     setPeriodoForm({ diaInicio: 1, diaFim: ultimoDia });
     setOpenPeriodoDialog(true);
-    setAnchorEl(null);
   };
 
   const exportarRelatorioDetalhado = async () => {
@@ -863,237 +865,22 @@ const CardapioCalendarioPage: React.FC = () => {
   };
 
   const gerarPDFTabela = async () => {
-      if (diasSelecionadosCalendario.length === 0) {
-        toast.error('Selecione pelo menos um dia');
-        return;
-      }
-
-      if (diasSelecionadosCalendario.length > 6) {
-        toast.error('Selecione no máximo 6 dias');
-        return;
-      }
-
-      try {
-        const pdfMake = await initPdfMake();
-        const instituicao = await fetchInstituicaoForPDF();
-
-        // Carregar tipos de refeição dinâmicos
-        const tiposRefeicaoResponse = await api.get('/tipos-refeicao', { params: { ativo: true } });
-        const tiposRefeicaoData = tiposRefeicaoResponse.data;
-        
-        const tiposRefeicaoMap: Record<string, string> = {};
-        const tiposHorariosMap: Record<string, string> = {};
-        
-        tiposRefeicaoData.forEach((tipo: any) => {
-          tiposRefeicaoMap[tipo.chave] = tipo.nome.toUpperCase();
-          tiposHorariosMap[tipo.chave] = tipo.horario.substring(0, 5) + 'H';
-        });
-
-        // Ordenar datas selecionadas
-        const datasOrdenadas = diasSelecionadosCalendario.sort((a, b) => a.getTime() - b.getTime());
-
-        // Descobrir quais tipos de refeição existem nos dias selecionados
-        const tiposExistentes = new Set<string>();
-        datasOrdenadas.forEach(data => {
-          const dia = data.getDate();
-          const refeicoesNoDia = refeicoes.filter(r => r.dia === dia);
-          refeicoesNoDia.forEach(r => {
-            if (tiposRefeicaoMap[r.tipo_refeicao]) {
-              tiposExistentes.add(r.tipo_refeicao);
-            }
-          });
-        });
-
-        // Ordenar tipos pela ordem definida no banco
-        const tiposOrdenados = tiposRefeicaoData
-          .filter((tipo: any) => tiposExistentes.has(tipo.chave))
-          .sort((a: any, b: any) => a.ordem - b.ordem)
-          .map((tipo: any) => tipo.chave);
-
-        if (tiposOrdenados.length === 0) {
-          toast.error('Nenhuma refeição encontrada nos dias selecionados');
-          return;
-        }
-
-        // Montar cabeçalho da tabela com dias da semana
-        const diasSemana = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-        const headerRow = [
-          { 
-            text: 'TIPO DE REFEIÇÃO',
-            fillColor: '#556B2F',
-            color: '#ffffff',
-            bold: true,
-            fontSize: 10,
-            alignment: 'center',
-            margin: [10, 12, 10, 12]
-          },
-          ...datasOrdenadas.map(data => ({
-            text: [
-              { text: `${diasSemana[data.getDay()].toUpperCase()}\n`, bold: true },
-              { text: `${String(data.getDate()).padStart(2, '0')}/${String(data.getMonth() + 1).padStart(2, '0')}`, bold: true }
-            ],
-            fillColor: '#556B2F',
-            color: '#ffffff',
-            alignment: 'center',
-            fontSize: 10,
-            margin: [10, 12, 10, 12]
-          }))
-        ];
-
-        // Montar linhas da tabela - uma para cada tipo de refeição
-        const tableBody = [headerRow];
-
-        for (const tipoKey of tiposOrdenados) {
-          const row: any[] = [
-            { 
-              text: `${tiposRefeicaoMap[tipoKey]}\n${tiposHorariosMap[tipoKey]}`,
-              fillColor: '#E8F5E9',
-              bold: true,
-              fontSize: 10,
-              alignment: 'center',
-              color: '#2E2E2E',
-              margin: [10, 12, 10, 12],
-              valign: 'middle'
-            }
-          ];
-
-          for (const data of datasOrdenadas) {
-            const dia = data.getDate();
-
-            // Buscar refeições deste tipo neste dia
-            const refeicoesNoDia = refeicoes.filter(r => 
-              r.dia === dia && r.tipo_refeicao === tipoKey
-            );
-
-            const preparacoes = refeicoesNoDia
-              .map(r => r.refeicao_nome.toUpperCase())
-              .join('\n\n');
-
-            row.push({
-              text: preparacoes || '',
-              fillColor: '#F5F5F5',
-              alignment: 'center',
-              fontSize: 8,
-              color: '#2E2E2E',
-              bold: false,
-              margin: [10, 10, 10, 10],
-              valign: 'middle'
-            });
-          }
-
-          tableBody.push(row);
-        }
-
-        // Montar conteúdo da tabela
-        const tableContent = {
-          table: {
-            headerRows: 1,
-            widths: [100, ...Array(datasOrdenadas.length).fill('*')],
-            body: tableBody
-          },
-          layout: {
-            hLineWidth: () => 3,
-            vLineWidth: () => 3,
-            hLineColor: () => '#ffffff',
-            vLineColor: () => '#ffffff',
-            paddingLeft: () => 0,
-            paddingRight: () => 0,
-            paddingTop: () => 0,
-            paddingBottom: () => 0
-          }
-        };
-
-        // Usar buildPdfDoc para manter padrão do sistema
-        const modalidades = (cardapio as any)?.modalidades_nomes || cardapio?.modalidade_nome || '';
-        const subtitulo = modalidades 
-          ? `${modalidades} - ${cardapio?.ano} - ${dateUtils.getMonthName(cardapio?.mes)?.toUpperCase()}`
-          : `${cardapio?.ano} - ${dateUtils.getMonthName(cardapio?.mes)?.toUpperCase()}`;
-        
-        // Rodapé customizado com nutricionista e aviso
-        const customFooter = (currentPage: number, pageCount: number) => {
-          const nutricionista = cardapio?.nutricionista_nome;
-          const crn = cardapio?.nutricionista_crn;
-          
-          return {
-            stack: [
-              {
-                canvas: [{
-                  type: 'line',
-                  x1: 0,
-                  y1: 0,
-                  x2: 755,
-                  y2: 0,
-                  lineWidth: 0.5,
-                  lineColor: '#cccccc'
-                }],
-                margin: [40, 0, 40, 8]
-              },
-              {
-                columns: [
-                  {
-                    stack: [
-                      ...(nutricionista ? [
-                        { text: 'Nutricionista Responsável:', fontSize: 7, bold: true, color: '#666666' },
-                        { text: nutricionista, fontSize: 8, color: '#333333', margin: [0, 2, 0, 0] },
-                        ...(crn ? [{ text: `CRN: ${crn}`, fontSize: 7, color: '#666666', margin: [0, 1, 0, 0] }] : [])
-                      ] : [])
-                    ],
-                    width: '*'
-                  },
-                  {
-                    stack: [
-                      { text: '* Cardápio sujeito a alterações', fontSize: 7, italics: true, color: '#999999', alignment: 'right' },
-                      { text: `Página ${currentPage} de ${pageCount}`, fontSize: 7, color: '#999999', alignment: 'right', margin: [0, 4, 0, 0] }
-                    ],
-                    width: 200
-                  }
-                ],
-                margin: [40, 0, 40, 0]
-              }
-            ]
-          };
-        };
-        
-        const doc = buildPdfDoc({
-          instituicao,
-          title: cardapio?.nome?.toUpperCase() || 'CARDÁPIO',
-          subtitle: subtitulo,
-          content: [tableContent],
-          orientation: 'landscape',
-          showSignature: false,
-          customFooter,
-          extraStyles: {
-            tableHeader: {
-              bold: true,
-              fontSize: 10,
-              alignment: 'center',
-              color: 'white'
-            },
-            tipoRefeicao: {
-              bold: true,
-              fontSize: 10,
-              alignment: 'center'
-            },
-            tableCell: {
-              fontSize: 8,
-              alignment: 'center'
-            }
-          }
-        });
-
-        pdfMake.createPdf(doc).download(
-          `cardapio-${dateUtils.getMonthName(cardapio?.mes)}-${cardapio?.ano}.pdf`
-        );
-
-        toast.success('PDF gerado com sucesso!');
-        setOpenPDFTabelaDialog(false);
-        setDiasSelecionadosCalendario([]);
-
-      } catch (error) {
-        console.error('Erro ao gerar PDF:', error);
-        toast.error('Erro ao gerar PDF');
-      }
-    };
+    try {
+      await gerarPDFTabelaUtil({
+        diasSelecionadosCalendario,
+        cardapio,
+        refeicoes,
+        fetchInstituicaoForPDF
+      });
+      
+      toast.success('PDF gerado com sucesso!');
+      setOpenPDFTabelaDialog(false);
+      setDiasSelecionadosCalendario([]);
+    } catch (error: any) {
+      console.error('Erro ao gerar PDF:', error);
+      toast.error(error.message || 'Erro ao gerar PDF');
+    }
+  };
 
   const handleSubmit = async () => {
     setSalvando(true);
@@ -1214,6 +1001,27 @@ const CardapioCalendarioPage: React.FC = () => {
     return modalidade?.nome || `Modalidade ${modalidadeId}`;
   };
 
+  // Mapeamento de tipos de fornecedor para labels e cores
+  const TIPO_FORNECEDOR_LABELS: Record<string, string> = {
+    'CONVENCIONAL': 'Convencional',
+    'AGRICULTURA_FAMILIAR': 'Agricultura Familiar',
+    'COOPERATIVA_AF': 'Cooperativa AF',
+    'ASSOCIACAO_AF': 'Associação AF',
+    'empresa': 'Empresa',
+    'cooperativa': 'Cooperativa',
+    'individual': 'Individual'
+  };
+
+  const TIPO_FORNECEDOR_COLORS: Record<string, string> = {
+    'CONVENCIONAL': '#1976d2',
+    'AGRICULTURA_FAMILIAR': '#2e7d32',
+    'COOPERATIVA_AF': '#388e3c',
+    'ASSOCIACAO_AF': '#43a047',
+    'empresa': '#1976d2',
+    'cooperativa': '#388e3c',
+    'individual': '#f57c00'
+  };
+
   const corTipoRefeicao: Record<string, string> = {
     refeicao: '#EF5350',
     lanche: '#66BB6A',
@@ -1262,7 +1070,10 @@ const CardapioCalendarioPage: React.FC = () => {
               onMesAnterior={handleMesAnterior}
               onProximoMes={handleProximoMes}
               onDiaClick={handleDiaClick}
-              onPdfClick={(e) => setAnchorEl(e.currentTarget)}
+              onExportarCalendario={exportarCalendarioPDF}
+              onExportarFrequencia={exportarFrequenciaPDF}
+              onRelatorioDetalhado={handleOpenPeriodoDialog}
+              onGerarPDFTabela={() => setOpenPDFTabelaDialog(true)}
             />
           </Grid>
 
@@ -1388,6 +1199,123 @@ const CardapioCalendarioPage: React.FC = () => {
                       </Box>
                     </>
                   )}
+
+                  {/* Gráfico de Rosca - Agricultura Familiar */}
+                  {custoCardapio.detalhes_por_tipo_fornecedor && custoCardapio.detalhes_por_tipo_fornecedor.length > 0 && (() => {
+                    // Calcular percentual de Agricultura Familiar
+                    const tiposAF = ['AGRICULTURA_FAMILIAR', 'COOPERATIVA_AF', 'ASSOCIACAO_AF'];
+                    const valorAF = custoCardapio.detalhes_por_tipo_fornecedor
+                      .filter(tipo => tiposAF.includes(tipo.tipo_fornecedor))
+                      .reduce((sum, tipo) => sum + tipo.valor_total, 0);
+                    
+                    const percentualAF = custoCardapio.custo_total > 0 
+                      ? (valorAF / custoCardapio.custo_total) * 100 
+                      : 0;
+                    
+                    const percentualOutros = 100 - percentualAF;
+
+                    return (
+                      <>
+                        <Divider />
+                        <Box>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, fontWeight: 600 }}>
+                            Agricultura Familiar
+                          </Typography>
+                          <Box sx={{ 
+                            display: 'flex', 
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: 1.5
+                          }}>
+                            {/* Gráfico de Rosca com percentual no centro */}
+                            <Box sx={{ position: 'relative', width: 150, height: 150 }}>
+                              <Doughnut
+                                data={{
+                                  labels: ['Agricultura Familiar', 'Outros'],
+                                  datasets: [{
+                                    data: [percentualAF, percentualOutros],
+                                    backgroundColor: [
+                                      '#2e7d32',
+                                      '#e0e0e0'
+                                    ],
+                                    borderColor: '#fff',
+                                    borderWidth: 3,
+                                  }]
+                                }}
+                                options={{
+                                  responsive: true,
+                                  maintainAspectRatio: true,
+                                  cutout: '70%',
+                                  plugins: {
+                                    legend: {
+                                      display: false
+                                    },
+                                    tooltip: {
+                                      callbacks: {
+                                        label: function(context) {
+                                          const label = context.label || '';
+                                          const value = context.parsed || 0;
+                                          return `${label}: ${value.toFixed(1)}%`;
+                                        }
+                                      }
+                                    }
+                                  }
+                                }}
+                              />
+                              {/* Percentual no centro */}
+                              <Box
+                                sx={{
+                                  position: 'absolute',
+                                  top: '50%',
+                                  left: '50%',
+                                  transform: 'translate(-50%, -50%)',
+                                  textAlign: 'center'
+                                }}
+                              >
+                                <Typography 
+                                  variant="h4" 
+                                  sx={{ 
+                                    fontWeight: 700,
+                                    color: '#2e7d32',
+                                    lineHeight: 1
+                                  }}
+                                >
+                                  {percentualAF.toFixed(1)}%
+                                </Typography>
+                                <Typography 
+                                  variant="caption" 
+                                  sx={{ 
+                                    color: 'text.secondary',
+                                    fontSize: '0.65rem'
+                                  }}
+                                >
+                                  de AF
+                                </Typography>
+                              </Box>
+                            </Box>
+
+                            {/* Valor total de AF */}
+                            <Box sx={{ width: '100%', textAlign: 'center' }}>
+                              <Typography 
+                                variant="caption" 
+                                sx={{ 
+                                  display: 'block',
+                                  color: 'text.secondary',
+                                  fontWeight: 600,
+                                  fontSize: '0.75rem'
+                                }}
+                              >
+                                {new Intl.NumberFormat('pt-BR', { 
+                                  style: 'currency', 
+                                  currency: 'BRL' 
+                                }).format(valorAF)}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        </Box>
+                      </>
+                    );
+                  })()}
                 </Box>
               </Card>
             )}
@@ -1431,30 +1359,6 @@ const CardapioCalendarioPage: React.FC = () => {
             )}
           </Grid>
         </Grid>
-
-        {/* Menu de ações */}
-        <Menu
-          anchorEl={anchorEl}
-          open={Boolean(anchorEl)}
-          onClose={() => setAnchorEl(null)}
-        >
-          <MenuItem onClick={exportarCalendarioPDF}>
-            <PdfIcon sx={{ mr: 1 }} fontSize="small" />
-            Exportar Calendário
-          </MenuItem>
-          <MenuItem onClick={exportarFrequenciaPDF}>
-            <PdfIcon sx={{ mr: 1 }} fontSize="small" />
-            Exportar Frequência
-          </MenuItem>
-          <MenuItem onClick={handleOpenPeriodoDialog}>
-            <PdfIcon sx={{ mr: 1 }} fontSize="small" />
-            Relatório Detalhado
-          </MenuItem>
-          <MenuItem onClick={() => { setOpenPDFTabelaDialog(true); setAnchorEl(null); }}>
-            <PdfIcon sx={{ mr: 1 }} fontSize="small" />
-            Gerar PDF Tabela
-          </MenuItem>
-        </Menu>
       </PageContainer>
 
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
@@ -1752,42 +1656,63 @@ const CardapioCalendarioPage: React.FC = () => {
       >
         <DialogTitle>Gerar PDF em Formato de Tabela</DialogTitle>
         <DialogContent>
-          <Alert severity="info" sx={{ mb: 3 }}>
-            Clique nos dias para selecionar (máximo 6 dias). As linhas serão os tipos de refeição e as colunas os dias.
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Arraste para selecionar um período de dias. Você pode selecionar múltiplos períodos, mas o total não pode ultrapassar 6 dias. As linhas serão os tipos de refeição e as colunas os dias.
           </Alert>
+          
+          <Box sx={{ mb: 3, p: 2, bgcolor: '#f5f5f5', borderRadius: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="body2" color="text.secondary">
+              Dias selecionados:
+            </Typography>
+            <Chip 
+              label={`${diasSelecionadosCalendario.length} / 6`}
+              color={diasSelecionadosCalendario.length >= 6 ? 'error' : 'primary'}
+              size="small"
+            />
+          </Box>
           
           <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
             <Calendar
-              value={diasSelecionadosCalendario}
+              value={null}
               onChange={(value: any) => {
-                // Quando clica em um dia, adiciona ou remove da lista
-                if (value instanceof Date) {
-                  const jaExiste = diasSelecionadosCalendario.some(
-                    d => d.getDate() === value.getDate() && 
-                         d.getMonth() === value.getMonth() && 
-                         d.getFullYear() === value.getFullYear()
-                  );
-                  
-                  if (jaExiste) {
-                    // Remove o dia
-                    setDiasSelecionadosCalendario(
-                      diasSelecionadosCalendario.filter(
-                        d => !(d.getDate() === value.getDate() && 
-                               d.getMonth() === value.getMonth() && 
-                               d.getFullYear() === value.getFullYear())
+                if (Array.isArray(value) && value.length === 2) {
+                  // Range selecionado - expandir para incluir todos os dias
+                  const [inicio, fim] = value;
+                  if (inicio && fim) {
+                    const diasNoRange: Date[] = [];
+                    const dataAtual = new Date(inicio);
+                    const dataFim = new Date(fim);
+                    
+                    // Incluir todos os dias do range (inclusive início e fim)
+                    while (dataAtual <= dataFim) {
+                      diasNoRange.push(new Date(dataAtual));
+                      dataAtual.setDate(dataAtual.getDate() + 1);
+                    }
+                    
+                    // Mesclar com dias já selecionados (permitir múltiplos períodos)
+                    const diasExistentes = [...diasSelecionadosCalendario];
+                    const novosDias = diasNoRange.filter(novodia => 
+                      !diasExistentes.some(d => 
+                        d.getDate() === novodia.getDate() && 
+                        d.getMonth() === novodia.getMonth() && 
+                        d.getFullYear() === novodia.getFullYear()
                       )
                     );
-                  } else {
-                    // Adiciona o dia se não ultrapassar o limite
-                    if (diasSelecionadosCalendario.length < 6) {
-                      setDiasSelecionadosCalendario([...diasSelecionadosCalendario, value]);
-                    } else {
-                      toast.error('Máximo de 6 dias');
+                    
+                    const diasMesclados = [...diasExistentes, ...novosDias];
+                    
+                    // Validar o total de dias
+                    if (diasMesclados.length > 6) {
+                      toast.error(`Total de dias selecionados seria ${diasMesclados.length}. Máximo permitido: 6 dias`);
+                      return;
                     }
+                    
+                    setDiasSelecionadosCalendario(diasMesclados);
                   }
                 }
               }}
-              selectRange={false}
+              selectRange={true}
+              allowPartialRange={false}
               view="month"
               activeStartDate={cardapio ? new Date(cardapio.ano, cardapio.mes - 1, 1) : new Date()}
               minDate={cardapio ? new Date(cardapio.ano, cardapio.mes - 1, 1) : undefined}
@@ -1829,6 +1754,12 @@ const CardapioCalendarioPage: React.FC = () => {
           )}
         </DialogContent>
         <DialogActions>
+          <Button 
+            onClick={() => setDiasSelecionadosCalendario([])}
+            color="warning"
+          >
+            Limpar Seleção
+          </Button>
           <Button onClick={() => { 
             setOpenPDFTabelaDialog(false); 
             setDiasSelecionadosCalendario([]); 

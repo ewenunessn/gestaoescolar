@@ -97,10 +97,10 @@ const buildHeader = (
   const isLandscape = orientation === 'landscape';
   const logoHeight = isLandscape ? 35 : 48;
   const logoWidth = isLandscape ? 90 : 120;
-  const titleFontSize = isLandscape ? 12 : 14;
-  const subtitleFontSize = isLandscape ? 8 : 10;
-  const instFontSize = isLandscape ? 10 : 12;
-  const deptFontSize = isLandscape ? 7 : 8;
+  const titleFontSize = isLandscape ? 14 : 16;
+  const subtitleFontSize = isLandscape ? 11 : 12;
+  const instFontSize = isLandscape ? 12 : 14;
+  const deptFontSize = isLandscape ? 9 : 10;
   const lineWidth = isLandscape ? 755 : 515; // A4 landscape width - margins
 
   // Construir conteúdo da primeira célula (logo + linha vertical)

@@ -9,6 +9,7 @@ import Login from "../pages/Login";
 import LoginWrapper from "../components/LoginWrapper";
 import Registro from "../pages/Registro";
 import Dashboard from "../pages/Dashboard";
+import CardapioPublico from "../pages/CardapioPublico";
 import LandingPage from "../pages/LandingPage";
 import InterestForm from "../pages/InterestForm";
 
@@ -172,6 +173,13 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
               <PublicRoute>
                 <Registro />
               </PublicRoute>
+            } />
+            
+            {/* Cardápio Público - Acesso via QR Code */}
+            <Route path="/cardapio-publico" element={
+              <Suspense fallback={<div>Carregando...</div>}>
+                <CardapioPublico />
+              </Suspense>
             } />
             
             <Route
