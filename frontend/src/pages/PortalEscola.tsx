@@ -34,13 +34,21 @@ export default function PortalEscola() {
   const [produtos, setProdutos] = useState<Produto[]>([]);
   // itens do formulário de nova solicitação
   const [novaObs, setNovaObs] = useState('');
-  const [novaItens, setNovaItens] = useState<NovoItemData[]>([{ nome_produto: '', quantidade: 1, unidade: 'kg' }]);
+  const [novaItens, setNovaItens] = useState<NovoItemData[]>([{ nome_produto: '', quantidade: 1, unidade: 'kg', produto_id: undefined }]);
   const [salvandoSol, setSalvandoSol] = useState(false);
   const toast = useToast();
 
   useEffect(() => {
     carregarDados();
-    listarProdutos().then(setProdutos).catch(() => {});
+    listarProdutos()
+      .then(prods => {
+        console.log('📦 Produtos carregados:', prods.length);
+        setProdutos(prods);
+      })
+      .catch(err => {
+        console.error('❌ Erro ao carregar produtos:', err);
+        toast.error('Erro ao carregar lista de produtos');
+      });
   }, []);
 
   useEffect(() => {
@@ -72,7 +80,7 @@ export default function PortalEscola() {
       toast.success('Solicitação enviada');
       setNovaOpen(false);
       setNovaObs('');
-      setNovaItens([{ nome_produto: '', quantidade: 1, unidade: 'kg' }]);
+      setNovaItens([{ nome_produto: '', quantidade: 1, unidade: 'kg', produto_id: undefined }]);
       carregarSolicitacoes();
     } catch {
       toast.error('Erro ao enviar solicitação');
@@ -585,8 +593,10 @@ export default function PortalEscola() {
               inputValue={item.nome_produto}
               size="small"
               sx={{ flex: 2 }}
+              freeSolo
+              noOptionsText={produtos.length === 0 ? "Carregando produtos..." : "Nenhum produto encontrado"}
               renderInput={params => (
-                <TextField {...params} label="Produto" autoFocus={idx === 0} />
+                <TextField {...params} label="Produto" autoFocus={idx === 0} placeholder="Digite o nome do produto" />
               )}
             />
             <TextField
@@ -618,7 +628,7 @@ export default function PortalEscola() {
         <Button
           size="small"
           startIcon={<AddIcon />}
-          onClick={() => setNovaItens(prev => [...prev, { nome_produto: '', quantidade: 1, unidade: 'kg' }])}
+          onClick={() => setNovaItens(prev => [...prev, { nome_produto: '', quantidade: 1, unidade: 'kg', produto_id: undefined }])}
           sx={{ alignSelf: 'flex-start' }}
         >
           Adicionar item
