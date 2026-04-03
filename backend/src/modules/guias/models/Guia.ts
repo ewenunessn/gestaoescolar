@@ -295,6 +295,7 @@ class GuiaModel {
     try {
       console.log('🔍 [GuiaModel] Listando romaneio com filtros:', filtros);
       
+      // Query otimizada: usa subquery para rotas ao invés de JOIN + GROUP BY
       let query = `
         SELECT 
           gpe.id,
@@ -305,13 +306,15 @@ class GuiaModel {
           gpe.status,
           p.nome as produto_nome,
           e.nome as escola_nome,
-          STRING_AGG(re.nome, ', ') as escola_rota
+          (
+            SELECT STRING_AGG(re.nome, ', ')
+            FROM rota_escolas res
+            JOIN rotas_entrega re ON res.rota_id = re.id
+            WHERE res.escola_id = e.id
+          ) as escola_rota
         FROM guia_produto_escola gpe
-        JOIN guias g ON g.id = gpe.guia_id
         JOIN produtos p ON gpe.produto_id = p.id
         JOIN escolas e ON gpe.escola_id = e.id
-        LEFT JOIN rota_escolas res ON e.id = res.escola_id
-        LEFT JOIN rotas_entrega re ON res.rota_id = re.id
         WHERE 1=1
       `;
       
@@ -337,7 +340,10 @@ class GuiaModel {
       }
 
       if (filtros.rotaId) {
-        query += ` AND re.id = $${paramCount}`;
+        query += ` AND EXISTS (
+          SELECT 1 FROM rota_escolas res 
+          WHERE res.escola_id = e.id AND res.rota_id = $${paramCount}
+        )`;
         params.push(filtros.rotaId);
         paramCount++;
       }
@@ -351,7 +357,9 @@ class GuiaModel {
         query += ` AND (gpe.status != 'cancelado' OR gpe.status IS NULL)`;
       }
 
-      query += ` GROUP BY gpe.id, gpe.data_entrega, gpe.quantidade, gpe.unidade, gpe.observacao, gpe.status, p.nome, e.nome`;
+      // Filtrar apenas itens com data de entrega definida
+      query += ` AND gpe.data_entrega IS NOT NULL`;
+
       query += ` ORDER BY gpe.data_entrega, e.nome, p.nome`;
 
       const result = await db.all(query, params);

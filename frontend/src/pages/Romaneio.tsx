@@ -1,34 +1,24 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import PageContainer from '../components/PageContainer';
 import TableFilter, { FilterField } from '../components/TableFilter';
 import StatusIndicator from '../components/StatusIndicator';
-import ViewTabs, { ViewTab } from '../components/ViewTabs';
 import { usePageTitle } from '../contexts/PageTitleContext';
 import { useRomaneio, useRotas, useAtualizarProdutoEscola } from '../hooks/queries/useRomaneioQueries';
 import { formatarQuantidade } from '../utils/formatters';
+import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
+import { ptBR as dataGridPtBR } from '@mui/x-data-grid/locales';
 // Atualizado em 2026-03-08 13:46 - Todas as referências a dataInicio/dataFim agora usam filters.dataInicio/filters.dataFim
 import {
   Box,
   Typography,
   Card,
   CardContent,
-  Grid,
   TextField,
   Button,
-  Select,
-  MenuItem,
   FormControl,
   InputLabel,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Divider,
-  Chip,
-  Container,
+  Select,
+  MenuItem,
   CircularProgress,
   Alert,
   Dialog,
@@ -41,7 +31,9 @@ import {
   ListItemIcon,
   Checkbox,
   OutlinedInput,
-  InputAdornment
+  InputAdornment,
+  Divider,
+  Chip
 } from '@mui/material';
 import {
   Print as PrintIcon,
@@ -78,14 +70,21 @@ interface ItemRomaneio {
   escola_rota?: string;
 }
 
-interface RomaneioPorEscola {
-  escola: string;
-  rota?: string;
-  itens: ItemRomaneio[];
-}
-
 const Romaneio: React.FC = () => {
   const { setPageTitle } = usePageTitle();
+  
+  // Helper function para formatar datas com segurança
+  const formatarDataSegura = (data: string | null | undefined, fallback: string = '—'): string => {
+    if (!data || data.trim() === '') return fallback;
+    try {
+      const dataObj = new Date(data + 'T12:00:00');
+      if (isNaN(dataObj.getTime())) return fallback;
+      return format(dataObj, 'dd/MM/yyyy');
+    } catch (e) {
+      console.warn('Erro ao formatar data:', data, e);
+      return fallback;
+    }
+  };
   
   // Filtros - NOVO SISTEMA
   const [filterOpen, setFilterOpen] = useState(false);
@@ -120,7 +119,6 @@ const Romaneio: React.FC = () => {
     setPageTitle('Romaneio de Entrega');
     return () => setPageTitle('');
   }, [setPageTitle]);
-  const [agrupamento, setAgrupamento] = useState<'produto' | 'escola'>('produto');
 
   // Estado para o modal de detalhes
   const [modalOpen, setModalOpen] = useState(false);
@@ -237,25 +235,7 @@ const Romaneio: React.FC = () => {
     });
   }, [itens, filters]);
 
-  // Agrupar itens por escola
-  const dadosAgrupadosEscola = useMemo(() => {
-    const grupos: Record<string, RomaneioPorEscola> = {};
-    
-    filteredItens.forEach(item => {
-      if (!grupos[item.escola_nome]) {
-        grupos[item.escola_nome] = {
-          escola: item.escola_nome,
-          rota: item.escola_rota,
-          itens: []
-        };
-      }
-      grupos[item.escola_nome].itens.push(item);
-    });
-
-    return Object.values(grupos).sort((a, b) => a.escola.localeCompare(b.escola));
-  }, [filteredItens]);
-
-  // Agrupar itens por data e produto
+  // Agrupar itens por data e produto (otimizado)
   const dadosAgrupadosProduto = useMemo(() => {
     const grupos: Record<string, {
       data: string;
@@ -268,7 +248,18 @@ const Romaneio: React.FC = () => {
     }> = {};
 
     filteredItens.forEach(item => {
+      // Validar se data_entrega existe e é válida
+      if (!item.data_entrega) {
+        return; // Pular itens sem data
+      }
+      
       const data = item.data_entrega.split('T')[0];
+      
+      // Validar se a data é válida
+      const dataTest = new Date(data + 'T12:00:00');
+      if (isNaN(dataTest.getTime())) {
+        return; // Pular itens com data inválida
+      }
       
       if (!grupos[data]) {
         grupos[data] = {
@@ -289,8 +280,9 @@ const Romaneio: React.FC = () => {
         };
       }
 
-      grupos[data].produtos[chaveProduto].quantidade_total += Number(item.quantidade);
-      grupos[data].produtos[chaveProduto].escolas.push({
+      const produto = grupos[data].produtos[chaveProduto];
+      produto.quantidade_total += Number(item.quantidade);
+      produto.escolas.push({
         id: item.id,
         nome: item.escola_nome,
         quantidade: Number(item.quantidade),
@@ -299,15 +291,14 @@ const Romaneio: React.FC = () => {
       });
     });
 
-    // Converter para array e ordenar
+    // Converter para array e ordenar (otimizado)
     return Object.values(grupos)
       .sort((a, b) => a.data.localeCompare(b.data))
       .map(grupo => ({
-        ...grupo,
+        data: grupo.data,
         produtos: Object.values(grupo.produtos).sort((a, b) => {
           const nomeCompare = a.produto_nome.localeCompare(b.produto_nome);
-          if (nomeCompare !== 0) return nomeCompare;
-          return a.unidade.localeCompare(b.unidade);
+          return nomeCompare !== 0 ? nomeCompare : a.unidade.localeCompare(b.unidade);
         })
       }));
   }, [filteredItens]);
@@ -328,6 +319,83 @@ const Romaneio: React.FC = () => {
     ];
   }, [filteredItens]);
 
+  // Transformar dados para o DataGrid (memoizado para evitar recálculos)
+  const dataGridRows = useMemo(() => {
+    const rows: any[] = [];
+    dadosAgrupadosProduto.forEach((grupoData) => {
+      grupoData.produtos.forEach((produto) => {
+        rows.push({
+          id: `${grupoData.data}-${produto.produto_nome}-${produto.unidade}`,
+          data_entrega: grupoData.data,
+          data_entrega_formatada: formatarDataSegura(grupoData.data, 'Sem data'),
+          produto_nome: produto.produto_nome,
+          quantidade_total: produto.quantidade_total,
+          quantidade_formatada: formatarQuantidade(produto.quantidade_total),
+          unidade: produto.unidade,
+          num_escolas: produto.escolas.length,
+          escolas: produto.escolas,
+        });
+      });
+    });
+    return rows;
+  }, [dadosAgrupadosProduto]);
+
+  // Definir colunas do DataGrid (memoizado para evitar recriação)
+  const columns: GridColDef[] = useMemo(() => [
+    {
+      field: 'data_entrega_formatada',
+      headerName: 'Data de Entrega',
+      width: 150,
+    },
+    {
+      field: 'produto_nome',
+      headerName: 'Produto',
+      flex: 1,
+      minWidth: 200,
+    },
+    {
+      field: 'quantidade_formatada',
+      headerName: 'Quantidade Total',
+      width: 150,
+      align: 'center',
+      headerAlign: 'center',
+    },
+    {
+      field: 'unidade',
+      headerName: 'Unidade',
+      width: 120,
+      align: 'center',
+      headerAlign: 'center',
+    },
+    {
+      field: 'num_escolas',
+      headerName: 'Nº Escolas',
+      width: 120,
+      align: 'center',
+      headerAlign: 'center',
+    },
+    {
+      field: 'actions',
+      headerName: 'Ações',
+      width: 150,
+      align: 'center',
+      headerAlign: 'center',
+      sortable: false,
+      filterable: false,
+      disableExport: true,
+      renderCell: (params) => (
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<VisibilityIcon />}
+          onClick={() => handleOpenDetails(params.row.produto_nome, params.row.data_entrega, params.row.escolas)}
+        >
+          Detalhes
+        </Button>
+      ),
+    },
+  ], []);
+
   const handleApplyFilters = (newFilters: Record<string, any>) => {
     setFilters(prev => ({
       ...prev,
@@ -335,14 +403,14 @@ const Romaneio: React.FC = () => {
     }));
   };
 
-  const handleOpenDetails = (produto: string, data: string, escolas: { id: number; nome: string; quantidade: number; status: string; rota?: string }[]) => {
+  const handleOpenDetails = useCallback((produto: string, data: string, escolas: { id: number; nome: string; quantidade: number; status: string; rota?: string }[]) => {
     setSelectedProduct({
       produto_nome: produto,
       data: data,
       escolas: escolas
     });
     setModalOpen(true);
-  };
+  }, []);
 
   const getStatusItemIcon = (status: string) => {
     switch (status) {
@@ -377,24 +445,24 @@ const Romaneio: React.FC = () => {
     }
   };
 
-  const handleOpenStatusMenu = (event: React.MouseEvent<HTMLElement>, item: any) => {
+  const handleOpenStatusMenu = useCallback((event: React.MouseEvent<HTMLElement>, item: any) => {
     setStatusMenuAnchor(event.currentTarget);
     setItemStatusEditing(item);
-  };
+  }, []);
 
-  const handleCloseStatusMenu = () => {
+  const handleCloseStatusMenu = useCallback(() => {
     setStatusMenuAnchor(null);
     setItemStatusEditing(null);
-  };
+  }, []);
 
-  const handleChangeStatus = async (newStatus: string) => {
+  const handleChangeStatus = useCallback(async (newStatus: string) => {
     if (!itemStatusEditing) return;
 
     try {
       const itemId = itemStatusEditing.id;
       
       if (!itemId) {
-        toast.toast.error('Item sem identificador para atualização');
+        toast.error('Item sem identificador para atualização');
         return;
       }
 
@@ -403,7 +471,7 @@ const Romaneio: React.FC = () => {
         data: { status: newStatus }
       });
       
-      toast.toast.success(`Status atualizado para ${getStatusItemLabel(newStatus)}`);
+      toast.success(`Status atualizado para ${getStatusItemLabel(newStatus)}`);
       
       // Atualizar lista localmente
       if (selectedProduct) {
@@ -414,17 +482,17 @@ const Romaneio: React.FC = () => {
       }
       
     } catch (err: any) {
-      console.toast.error('Erro ao atualizar status:', err);
-      toast.toast.error('Erro ao atualizar status do item');
+      console.error('Erro ao atualizar status:', err);
+      toast.error('Erro ao atualizar status do item');
     } finally {
       handleCloseStatusMenu();
     }
-  };
+  }, [itemStatusEditing, selectedProduct, atualizarProdutoEscolaMutation, toast, handleCloseStatusMenu]);
 
-  const handleCloseDetails = () => {
+  const handleCloseDetails = useCallback(() => {
     setModalOpen(false);
     setSelectedProduct(null);
-  };
+  }, []);
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
@@ -553,20 +621,27 @@ const Romaneio: React.FC = () => {
             ))}
           </Box>
         </Box>
-
-        <Box sx={{ mb: 2 }}>
-          <ViewTabs
-            value={agrupamento}
-            onChange={setAgrupamento}
-            tabs={[
-              { value: 'produto', label: 'Consolidado' },
-              { value: 'escola', label: 'Por Escola' },
-            ]}
-          />
-        </Box>
       </Box>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
+      {/* Aviso sobre itens sem data */}
+      {!loading && filteredItens.length === 0 && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          <Typography variant="subtitle2" gutterBottom>
+            Nenhum item com data de entrega programada
+          </Typography>
+          <Typography variant="body2">
+            O Romaneio mostra apenas produtos que possuem data de entrega definida. 
+            Para adicionar produtos ao romaneio:
+          </Typography>
+          <Box component="ul" sx={{ mt: 1, mb: 0, pl: 2 }}>
+            <li>Acesse "Guia de Demanda" no menu</li>
+            <li>Selecione uma guia e clique em "Itens"</li>
+            <li>Ao adicionar produtos, defina a "Data Programada"</li>
+          </Box>
+        </Alert>
+      )}
 
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
@@ -581,7 +656,10 @@ const Romaneio: React.FC = () => {
                 <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1 }}>Romaneio de Entrega</Typography>
                 <Box sx={{ borderBottom: '2px solid #000', pb: 1, mb: 2 }}>
                   <Typography variant="subtitle1">
-                    <strong>Período:</strong> {format(new Date(filters.dataInicio + 'T12:00:00'), 'dd/MM/yyyy')} a {format(new Date(filters.dataFim + 'T12:00:00'), 'dd/MM/yyyy')}
+                    <strong>Período:</strong> {filters.dataInicio && filters.dataFim 
+                      ? `${formatarDataSegura(filters.dataInicio)} a ${formatarDataSegura(filters.dataFim)}`
+                      : 'Não definido'
+                    }
                   </Typography>
                   <Typography variant="subtitle1">
                     <strong>Rota:</strong> {rotaIds.length === 0 ? 'Todas as Rotas' : 
@@ -618,125 +696,90 @@ const Romaneio: React.FC = () => {
             {`
               @page { size: auto; margin: 10mm; }
               body { background-color: white !important; -webkit-print-color-adjust: exact; }
-              .MuiCard-root { box-shadow: none !important; border: none !important; margin: 0 !important; }
-              .MuiPaper-root { box-shadow: none !important; }
-              .MuiTableCell-root { border-bottom: 1px solid #ddd !important; padding: 8px !important; }
-              .MuiTableHead-root .MuiTableCell-root { background-color: #f5f5f5 !important; font-weight: bold !important; -webkit-print-color-adjust: exact; }
+              .MuiDataGrid-root { box-shadow: none !important; }
+              .MuiDataGrid-cell { border-bottom: 1px solid #ddd !important; padding: 8px !important; }
+              .MuiDataGrid-columnHeaders { background-color: #f5f5f5 !important; font-weight: bold !important; -webkit-print-color-adjust: exact; }
               /* Esconder elementos de UI que possam ter vazado */
-              button, input, select, .MuiIconButton-root { display: none !important; }
+              button, input, select, .MuiIconButton-root, .MuiDataGrid-toolbarContainer { display: none !important; }
             `}
           </style>
 
-          {agrupamento === 'escola' ? (
-            dadosAgrupadosEscola.length === 0 ? (
-              <Alert severity="info">Nenhum item encontrado para os filtros selecionados.</Alert>
-            ) : (
-              dadosAgrupadosEscola.map((grupo) => (
-                <Card key={grupo.escola} sx={{ mb: 3, breakInside: 'avoid' }}>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                      <Typography variant="h6">
-                        {grupo.escola}
-                      </Typography>
-                      {grupo.rota && (
-                        <Chip label={`Rota: ${grupo.rota}`} size="small" color="primary" variant="outlined" />
-                      )}
-                    </Box>
-                    
-                    <TableContainer component={Paper} variant="outlined">
-                      <Table size="small">
-                        <TableHead>
-                          <TableRow>
-                            <TableCell>Produto</TableCell>
-                            <TableCell align="right">Qtd</TableCell>
-                            <TableCell>Unid</TableCell>
-                            <TableCell>Data Entrega</TableCell>
-                            <TableCell>Status</TableCell>
-                            <TableCell>Obs</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {grupo.itens.map((item) => (
-                            <TableRow key={item.id}>
-                              <TableCell>{item.produto_nome}</TableCell>
-                              <TableCell align="right">{formatarQuantidade(item.quantidade)}</TableCell>
-                              <TableCell>{item.unidade}</TableCell>
-                              <TableCell>{format(new Date(item.data_entrega + 'T12:00:00'), 'dd/MM/yyyy')}</TableCell>
-                              <TableCell>
-                                <Chip 
-                                  label={item.status || 'Pendente'} 
-                                  size="small" 
-                                  color={
-                                    item.status === 'entregue' ? 'success' : 
-                                    item.status === 'em_rota' ? 'warning' : 'default'
-                                  } 
-                                />
-                              </TableCell>
-                              <TableCell>{item.observacao}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </CardContent>
-                </Card>
-              ))
-            )
+          {/* DataGrid */}
+          {dataGridRows.length === 0 ? (
+            <Alert severity="info">
+              Nenhum item encontrado para os filtros selecionados.
+              {filteredItens.length === 0 && (
+                <Box sx={{ mt: 1 }}>
+                  <Typography variant="body2">
+                    Dica: Certifique-se de que os produtos nas guias de demanda possuem data de entrega programada.
+                  </Typography>
+                </Box>
+              )}
+            </Alert>
           ) : (
-            // Visualização por Produto (Consolidado)
-            dadosAgrupadosProduto.length === 0 ? (
-              <Alert severity="info">Nenhum item encontrado para os filtros selecionados.</Alert>
-            ) : (
-              dadosAgrupadosProduto.map((grupoData) => (
-                <Card key={grupoData.data} sx={{ mb: 3, breakInside: 'avoid' }}>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom sx={{ borderBottom: '1px solid #eee', pb: 1 }}>
-                      Data de Entrega: {format(new Date(grupoData.data + 'T12:00:00'), 'dd/MM/yyyy')}
-                    </Typography>
-                    
-                    <TableContainer component={Paper} variant="outlined">
-                      <Table size="small">
-                        <TableHead>
-                          <TableRow>
-                            <TableCell>Produto</TableCell>
-                            <TableCell align="center">Quantidade Total</TableCell>
-                            <TableCell align="center">Unidade</TableCell>
-                            <TableCell align="center" sx={{ '@media print': { display: 'none' } }}>Escolas</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {grupoData.produtos.map((produto, idx) => (
-                            <TableRow key={idx}>
-                              <TableCell sx={{ fontWeight: 'bold' }}>{produto.produto_nome}</TableCell>
-                              <TableCell align="center" sx={{ fontWeight: 'bold' }}>{formatarQuantidade(produto.quantidade_total)}</TableCell>
-                              <TableCell align="center">{produto.unidade}</TableCell>
-                              <TableCell align="center" sx={{ '@media print': { display: 'none' } }}>
-                                <Button
-                                  variant="outlined"
-                                  size="small"
-                                  startIcon={<VisibilityIcon />}
-                                  onClick={() => handleOpenDetails(produto.produto_nome, grupoData.data, produto.escolas)}
-                                >
-                                  Ver Detalhes ({produto.escolas.length})
-                                </Button>
-                                {/* Versão para impressão - lista simples */}
-                                <Box sx={{ display: 'none', '@media print': { display: 'block', mt: 1 } }}>
-                                  {produto.escolas.map((esc, i) => (
-                                    <Typography key={i} variant="caption" display="block" sx={{ fontSize: '0.8rem' }}>
-                                      {esc.nome} {esc.rota ? `(${esc.rota})` : ''}
-                                    </Typography>
-                                  ))}
-                                </Box>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </CardContent>
-                </Card>
-              ))
-            )
+            <Box sx={{ height: 'calc(100vh - 400px)', minHeight: 400, width: '100%' }}>
+              <DataGrid
+                rows={dataGridRows}
+                columns={columns}
+                initialState={{
+                  pagination: {
+                    paginationModel: { pageSize: 50, page: 0 },
+                  },
+                  sorting: {
+                    sortModel: [{ field: 'data_entrega_formatada', sort: 'asc' }],
+                  },
+                }}
+                pageSizeOptions={[25, 50, 100]}
+                disableRowSelectionOnClick
+                disableColumnMenu
+                density="compact"
+                localeText={dataGridPtBR.components.MuiDataGrid.defaultProps.localeText}
+                slots={{
+                  toolbar: GridToolbar,
+                }}
+                slotProps={{
+                  toolbar: {
+                    showQuickFilter: true,
+                    quickFilterProps: { debounceMs: 500 },
+                    printOptions: { disableToolbarButton: false },
+                    csvOptions: { 
+                      fileName: `romaneio-${new Date().toISOString().split('T')[0]}`,
+                      delimiter: ';',
+                      utf8WithBom: true,
+                    },
+                  },
+                }}
+                sx={{
+                  '& .MuiDataGrid-cell': {
+                    borderBottom: '1px solid #f0f0f0',
+                  },
+                  '& .MuiDataGrid-columnHeaders': {
+                    backgroundColor: '#f5f5f5',
+                    fontWeight: 'bold',
+                  },
+                  '& .MuiDataGrid-virtualScroller': {
+                    // Virtualização ativada para performance
+                    overflowY: 'auto !important',
+                  },
+                  '@media print': {
+                    '& .MuiDataGrid-toolbarContainer': {
+                      display: 'none',
+                    },
+                  },
+                }}
+                // Otimizações de performance com virtualização
+                rowHeight={52}
+                columnHeaderHeight={56}
+                hideFooterSelectedRowCount
+                // Virtualização ATIVADA (padrão do MUI DataGrid)
+                // Renderiza apenas as linhas visíveis + buffer
+                rowBuffer={10}
+                columnBuffer={2}
+                // Threshold para começar a renderizar novas linhas
+                rowThreshold={3}
+                columnThreshold={3}
+              />
+            </Box>
           )}
         </Box>
       )}
@@ -756,7 +799,7 @@ const Romaneio: React.FC = () => {
                   {selectedProduct.produto_nome}
                 </Typography>
                 <Typography variant="subtitle2" color="text.secondary">
-                  Data: {format(new Date(selectedProduct.data + 'T12:00:00'), 'dd/MM/yyyy')}
+                  Data: {formatarDataSegura(selectedProduct.data, 'Sem data')}
                 </Typography>
               </Box>
               <IconButton
@@ -769,47 +812,72 @@ const Romaneio: React.FC = () => {
                 <CloseIcon />
               </IconButton>
             </DialogTitle>
-            <DialogContent dividers>
-              <TableContainer>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Escola</TableCell>
-                      <TableCell align="right">Quantidade</TableCell>
-                      <TableCell align="center">Status</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {selectedProduct.escolas.map((esc, index) => (
-                      <TableRow key={index} hover>
-                        <TableCell>{esc.nome}</TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 'bold' }}>{formatarQuantidade(esc.quantidade)}</TableCell>
-                        <TableCell align="center">
-                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Chip
-                              icon={getStatusItemIcon(esc.status || 'pendente')}
-                              label={getStatusItemLabel(esc.status || 'pendente')}
-                              size="small"
-                              color={getStatusItemColor(esc.status || 'pendente') as any}
-                              variant={esc.status === 'pendente' || !esc.status ? 'outlined' : 'filled'}
-                              sx={{ fontWeight: 'bold' }}
-                            />
-                            <IconButton 
-                              size="small" 
-                              onClick={(e) => handleOpenStatusMenu(e, esc)}
-                              sx={{ ml: 1 }}
-                              color="primary"
-                              title="Alterar Status"
-                            >
-                              <EditIcon fontSize="small" />
-                            </IconButton>
-                          </Box>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+            <DialogContent dividers sx={{ p: 0, height: '60vh' }}>
+              <DataGrid
+                rows={selectedProduct.escolas.map((esc, idx) => ({ ...esc, rowId: idx }))}
+                getRowId={(row) => row.rowId}
+                columns={[
+                  {
+                    field: 'nome',
+                    headerName: 'Escola',
+                    flex: 1,
+                    minWidth: 200,
+                  },
+                  {
+                    field: 'quantidade',
+                    headerName: 'Quantidade',
+                    width: 120,
+                    align: 'right',
+                    headerAlign: 'right',
+                    valueFormatter: (value) => formatarQuantidade(value),
+                  },
+                  {
+                    field: 'status',
+                    headerName: 'Status',
+                    width: 200,
+                    align: 'center',
+                    headerAlign: 'center',
+                    renderCell: (params) => (
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+                        <Chip
+                          icon={getStatusItemIcon(params.value || 'pendente')}
+                          label={getStatusItemLabel(params.value || 'pendente')}
+                          size="small"
+                          color={getStatusItemColor(params.value || 'pendente') as any}
+                          variant={params.value === 'pendente' || !params.value ? 'outlined' : 'filled'}
+                          sx={{ fontWeight: 'bold' }}
+                        />
+                        <IconButton 
+                          size="small" 
+                          onClick={(e) => handleOpenStatusMenu(e, params.row)}
+                          color="primary"
+                          title="Alterar Status"
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    ),
+                  },
+                ]}
+                density="compact"
+                disableRowSelectionOnClick
+                disableColumnMenu
+                hideFooter={selectedProduct.escolas.length <= 10}
+                localeText={dataGridPtBR.components.MuiDataGrid.defaultProps.localeText}
+                sx={{
+                  border: 'none',
+                  '& .MuiDataGrid-cell': {
+                    borderBottom: '1px solid #f0f0f0',
+                  },
+                  '& .MuiDataGrid-columnHeaders': {
+                    backgroundColor: '#f5f5f5',
+                    borderBottom: '2px solid #e0e0e0',
+                  },
+                }}
+                // Virtualização para muitas escolas
+                rowHeight={52}
+                columnHeaderHeight={48}
+              />
             </DialogContent>
             <DialogActions>
               <Button onClick={handleCloseDetails}>Fechar</Button>
@@ -915,7 +983,10 @@ const Romaneio: React.FC = () => {
                 <strong>Rota:</strong> {rotaIds.length === 0 ? 'Todas' : 
                   rotaIds.length === rotas.length ? 'Todas' :
                   rotas.filter(r => rotaIds.includes(r.id)).map(r => r.nome).join(', ')}<br/>
-                <strong>Período:</strong> {format(new Date(filters.dataInicio), 'dd/MM/yyyy')} até {format(new Date(filters.dataFim), 'dd/MM/yyyy')}
+                <strong>Período:</strong> {filters.dataInicio && filters.dataFim
+                  ? `${formatarDataSegura(filters.dataInicio)} até ${formatarDataSegura(filters.dataFim)}`
+                  : 'Não definido'
+                }
               </Typography>
             </Box>
 
