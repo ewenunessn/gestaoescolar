@@ -11,7 +11,7 @@ import { generalLimiter, loginLimiter } from './middleware/rateLimiter';
 import { mediumCache, longCache } from './middleware/cache';
 import { paginationMiddleware, validatePaginationParams } from './middleware/pagination';
 import { balancedCompression } from './middleware/compression';
-import monitoringRoutes from './routes/monitoringRoutes';
+import monitoringRoutes from './modules/sistema/routes/monitoringRoutes';
 
 // Importar rotas organizadas por módulos
 import userRoutes from "./modules/usuarios/routes/userRoutes";
@@ -44,19 +44,19 @@ import compraRoutes from "./modules/compras/routes/compraRoutes";
 import faturamentoRoutes from "./modules/faturamentos/routes/faturamentoRoutes";
 import demandasRoutes from "./modules/demandas/routes/demandaRoutes";
 import recebimentoRoutes from "./modules/recebimentos/routes/recebimentoRoutes";
-import instituicaoRoutes from "./routes/instituicao";
-import pnaeRoutes from "./routes/pnaeRoutes";
-import nutricionistaRoutes from "./routes/nutricionistaRoutes";
-import planejamentoComprasRoutes from "./routes/planejamentoComprasRoutes";
-import periodosRoutes from "./routes/periodosRoutes";
-import escolaPortalRoutes from "./routes/escolaPortalRoutes";
-import calendarioLetivoRoutes from "./routes/calendarioLetivoRoutes";
-import tacoRoutes from "./routes/tacoRoutes";
-import gruposIngredientesRoutes from "./routes/gruposIngredientesRoutes";
-import solicitacoesAlimentosRoutes from "./routes/solicitacoesAlimentosRoutes";
-import dashboardRoutes from "./routes/dashboardRoutes";
-import notificacoesRoutes from "./routes/notificacoesRoutes";
-import disparosNotificacaoRoutes from "./routes/disparosNotificacaoRoutes";
+import instituicaoRoutes from "./modules/sistema/routes/instituicao";
+import pnaeRoutes from "./modules/sistema/routes/pnaeRoutes";
+import nutricionistaRoutes from "./modules/nutricao/routes/nutricionistaRoutes";
+import planejamentoComprasRoutes from "./modules/compras/routes/planejamentoComprasRoutes";
+import periodosRoutes from "./modules/sistema/routes/periodosRoutes";
+import escolaPortalRoutes from "./modules/escolas/routes/escolaPortalRoutes";
+import calendarioLetivoRoutes from "./modules/sistema/routes/calendarioLetivoRoutes";
+import tacoRoutes from "./modules/nutricao/routes/tacoRoutes";
+import gruposIngredientesRoutes from "./modules/nutricao/routes/gruposIngredientesRoutes";
+import solicitacoesAlimentosRoutes from "./modules/solicitacoes/routes/solicitacoesAlimentosRoutes";
+import dashboardRoutes from "./modules/sistema/routes/dashboardRoutes";
+import notificacoesRoutes from "./modules/sistema/routes/notificacoesRoutes";
+import disparosNotificacaoRoutes from "./modules/sistema/routes/disparosNotificacaoRoutes";
 import unidadeMedidaRoutes from "./modules/unidades/routes/unidadeMedidaRoutes";
 
 import { createServer } from 'http';
@@ -218,7 +218,7 @@ app.get("/api/test-db", async (req, res) => {
 // Registrar rotas essenciais
 app.use("/api/usuarios", userRoutes);
 app.use("/api/auth", userRoutes); // compatibilidade para login
-app.use("/api/permissoes", require("./routes/permissoesRoutes").default);
+app.use("/api/permissoes", require("./modules/sistema/routes/permissoesRoutes").default);
 app.use("/api/admin", adminUsuariosRoutes);
 
 // Registrar rotas essenciais
@@ -231,8 +231,8 @@ app.use("/api/contrato-produtos", contratoProdutoRoutes);
 
 app.use("/api/refeicoes", refeicaoRoutes);
 app.use("/api/refeicao-produtos", refeicaoProdutoRoutes);
-app.use("/api/refeicao-produto-modalidade", require("./routes/refeicaoProdutoModalidadeRoutes").default);
-app.use("/api", require("./routes/refeicaoCalculosRoutes").default); // Cálculos automáticos
+app.use("/api/refeicao-produto-modalidade", require("./modules/nutricao/routes/refeicaoProdutoModalidadeRoutes").default);
+app.use("/api", require("./modules/nutricao/routes/refeicaoCalculosRoutes").default); // Cálculos automáticos
 app.use("/api/cardapios", cardapioRoutes);
 app.use("/api/tipos-refeicao", tipoRefeicaoRoutes);
 app.use("/api/nutricionistas", nutricionistaRoutes);
@@ -317,14 +317,6 @@ app.get("/", (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
-
-// Importar middlewares
-import { errorHandler, notFoundHandler } from './middleware/errorHandler';
-import { generalLimiter, loginLimiter } from './middleware/rateLimiter';
-import { mediumCache } from './middleware/cache';
-import { paginationMiddleware, validatePaginationParams } from './middleware/pagination';
-import { balancedCompression } from './middleware/compression';
-import monitoringRoutes from './routes/monitoringRoutes';
 
 // Middleware para rotas não encontradas (404)
 app.use(notFoundHandler);

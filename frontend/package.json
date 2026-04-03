@@ -13,7 +13,8 @@
     "lint": "eslint . --ext .ts,.tsx",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "pre-deploy": "node ../scripts/pre-deploy-check.js"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

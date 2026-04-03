@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Card,
@@ -15,16 +15,16 @@ import {
   TextField,
   FormControlLabel,
   Switch
-} from '@mui/material';
+} from "@mui/material";
 import {
   FilterList as FilterIcon,
   Clear as ClearIcon,
   Route as RouteIcon,
   Assignment as GuiaIcon
-} from '@mui/icons-material';
-import { guiaService } from '../../../services/guiaService';
-import { entregaService } from '../services/entregaService';
-import { Rota } from '../types';
+} from "@mui/icons-material";
+import { guiaService } from "../../../services/guiaService";
+import { entregaService } from "../services/entregaService";
+import { Rota } from "../types";
 
 interface FiltrosEntregaProps {
   onFiltroChange: (filtros: {

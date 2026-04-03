@@ -1,5 +1,5 @@
-import api from '../../../services/api';
-import { EscolaEntrega, ItemEntrega, ConfirmarEntregaData, EstatisticasEntregas, Rota } from '../types';
+import api from "../../../services/api";
+import { EscolaEntrega, ItemEntrega, ConfirmarEntregaData, EstatisticasEntregas, Rota } from "../types";
 
 export const entregaService = {
   // Listar rotas disponíveis (compatível com app)

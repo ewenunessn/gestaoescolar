@@ -15,7 +15,8 @@
     "sync-neon": "node run-neon-migrations.js",
     "sync-neon-full": "node sync-to-neon.js",
     "create-admin": "node create-system-admin.js",
-    "create-institution": "node create-example-institution.js"
+    "create-institution": "node create-example-institution.js",
+    "pre-deploy": "node ../scripts/pre-deploy-check.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.587.0",

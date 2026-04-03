@@ -1,0 +1,1004 @@
+import { useState, useEffect, useRef, useCallback } from "react";
+import {
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  FormControl,
+  Grid,
+  InputLabel,
+  MenuItem,
+  Paper,
+  Select,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+  Alert,
+  IconButton,
+  InputAdornment,
+  Autocomplete,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Tooltip
+} from "@mui/material";
+import {
+  Add as AddIcon,
+  Visibility as VisibilityIcon,
+  FilterList as FilterListIcon,
+  Search as SearchIcon,
+  Save as SaveIcon,
+  Cancel as CancelIcon,
+  Assignment as AssignmentIcon,
+  ArrowUpward as ArrowUpwardIcon,
+  ArrowDownward as ArrowDownwardIcon
+} from "@mui/icons-material";
+import CompactPagination from "../../../components/CompactPagination";
+import demandasService from "../../../services/demandas";
+import { listarEscolas } from "../../../services/escolas";
+import { Demanda, STATUS_DEMANDA } from "../../../types/demanda";
+import { formatarData } from "../../../utils/dateUtils";
+import { DemandaDetalhesModal, LoadingScreen } from "../components";
+import StatusIndicator from "../../../components/StatusIndicator";
+import PageHeader from "../../../components/PageHeader";
+import PageContainer from "../../../components/PageContainer";
+
+
+export default function DemandasLista() {
+  const [demandas, setDemandas] = useState<Demanda[]>([]);
+  const [demandasOriginais, setDemandasOriginais] = useState<Demanda[]>([]);
+  const [escolas, setEscolas] = useState<any[]>([]);
+  const [solicitantes, setSolicitantes] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState('');
+
+  // Filtros
+  const [filtroSolicitante, setFiltroSolicitante] = useState('');
+  const [filtroObjeto, setFiltroObjeto] = useState('');
+  const [filtroStatus, setFiltroStatus] = useState('');
+  const [filtroDataInicio, setFiltroDataInicio] = useState('');
+  const [filtroDataFim, setFiltroDataFim] = useState('');
+
+  // Modais
+  const [modalDetalhes, setModalDetalhes] = useState(false);
+  const [demandaSelecionada, setDemandaSelecionada] = useState<number | undefined>();
+  const [modalExcluir, setModalExcluir] = useState(false);
+  const [excluindo, setExcluindo] = useState(false);
+
+  // Formulário inline
+  const [modoEdicao, setModoEdicao] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+  const [modalCamposAdicionais, setModalCamposAdicionais] = useState(false);
+  const [formData, setFormData] = useState({
+    escola_solicitante: '',
+    numero_oficio: '',
+    data_solicitacao: new Date().toISOString().split('T')[0],
+    objeto: '',
+    descricao_itens: '',
+    observacoes: ''
+  });
+
+  // Navegação por teclado
+  const [linhaSelecionada, setLinhaSelecionada] = useState<number>(-1);
+
+  // Paginação
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [demandasPaginadas, setDemandasPaginadas] = useState<Demanda[]>([]);
+
+  // Controle de visibilidade dos filtros
+  const [mostrarFiltros, setMostrarFiltros] = useState(false);
+
+  // Ordenação
+  const [orderBy, setOrderBy] = useState<string>('');
+  const [order, setOrder] = useState<'asc' | 'desc'>('asc');
+
+  useEffect(() => {
+    carregarDados();
+  }, []);
+
+  // Atalhos de teclado
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignorar se estiver digitando em um campo
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      // Ctrl + A: Adicionar nova demanda
+      if (e.ctrlKey && e.key === 'a') {
+        e.preventDefault();
+        handleNovaDemanda();
+        return;
+      }
+
+      // Ctrl + F: Focar no filtro de solicitante
+      if (e.ctrlKey && e.key === 'f') {
+        e.preventDefault();
+        filtroSolicitanteRef.current?.focus();
+        return;
+      }
+
+      // Ctrl + L: Limpar filtros
+      if (e.ctrlKey && e.key === 'l') {
+        e.preventDefault();
+        limparFiltros();
+        return;
+      }
+
+      // ESC: Fechar modal ou cancelar edição
+      if (e.key === 'Escape') {
+        if (modalDetalhes) {
+          setModalDetalhes(false);
+        } else if (modalExcluir) {
+          setModalExcluir(false);
+        } else if (modoEdicao) {
+          handleCancelarEdicao();
+        } else if (modalCamposAdicionais) {
+          setModalCamposAdicionais(false);
+        }
+        return;
+      }
+
+      // Navegação com setas (apenas se não estiver em modo edição)
+      if (!modoEdicao && !modalDetalhes && !modalCamposAdicionais) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          setLinhaSelecionada(prev => Math.min(prev + 1, demandasPaginadas.length - 1));
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          setLinhaSelecionada(prev => Math.max(prev - 1, 0));
+        } else if (e.key === 'Enter' && linhaSelecionada >= 0) {
+          e.preventDefault();
+          handleVisualizarDemanda(demandasPaginadas[linhaSelecionada].id);
+        }
+      }
+
+      // Atalhos para demanda selecionada
+      if (linhaSelecionada >= 0 && demandasPaginadas[linhaSelecionada] && !modoEdicao) {
+        const demandaSelecionadaAtual = demandasPaginadas[linhaSelecionada];
+
+        // Ctrl + E: Enviar para SEMAD (apenas se pendente)
+        if (e.ctrlKey && e.key === 'e' && demandaSelecionadaAtual.status === 'pendente') {
+          e.preventDefault();
+          handleVisualizarDemanda(demandaSelecionadaAtual.id);
+          // O modal de detalhes terá a ação de enviar
+        }
+
+        // Ctrl + R: Recusar (apenas se pendente)
+        if (e.ctrlKey && e.key === 'r' && demandaSelecionadaAtual.status === 'pendente') {
+          e.preventDefault();
+          handleVisualizarDemanda(demandaSelecionadaAtual.id);
+          // O modal de detalhes terá a ação de recusar
+        }
+
+        // Ctrl + Delete: Excluir demanda
+        if (e.ctrlKey && e.key === 'Delete') {
+          e.preventDefault();
+          setDemandaSelecionada(demandaSelecionadaAtual.id);
+          setModalExcluir(true);
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [demandasPaginadas, linhaSelecionada, modoEdicao, modalDetalhes, modalCamposAdicionais, modalExcluir]);
+
+  const carregarDados = async () => {
+    try {
+      setLoading(true);
+      const [demandasData, escolasData, solicitantesData] = await Promise.all([
+        demandasService.listar(),
+        listarEscolas(),
+        demandasService.listarSolicitantes()
+      ]);
+      setDemandasOriginais(demandasData);
+      setDemandas(demandasData);
+      setEscolas(escolasData);
+      setSolicitantes(solicitantesData);
+    } catch (error: any) {
+      console.error('Erro ao carregar dados:', error);
+      setErro('Erro ao carregar dados');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Função de ordenação
+  const ordenarDemandas = useCallback((demandasParaOrdenar: Demanda[]) => {
+    if (!orderBy) return demandasParaOrdenar;
+
+    return [...demandasParaOrdenar].sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      switch (orderBy) {
+        case 'escola_nome':
+          aValue = a.escola_nome.toLowerCase();
+          bValue = b.escola_nome.toLowerCase();
+          break;
+        case 'data_solicitacao':
+          aValue = new Date(a.data_solicitacao);
+          bValue = new Date(b.data_solicitacao);
+          break;
+        case 'data_semead':
+          aValue = a.data_semead ? new Date(a.data_semead) : new Date(0);
+          bValue = b.data_semead ? new Date(b.data_semead) : new Date(0);
+          break;
+        case 'data_resposta_semead':
+          aValue = a.data_resposta_semead ? new Date(a.data_resposta_semead) : new Date(0);
+          bValue = b.data_resposta_semead ? new Date(b.data_resposta_semead) : new Date(0);
+          break;
+        case 'status':
+          // Ordenar por prioridade de status
+          const statusOrder = { 'pendente': 1, 'enviado_semead': 2, 'atendido': 3, 'nao_atendido': 4 };
+          aValue = statusOrder[a.status as keyof typeof statusOrder] || 5;
+          bValue = statusOrder[b.status as keyof typeof statusOrder] || 5;
+          break;
+        case 'numero_oficio':
+          aValue = a.numero_oficio.toLowerCase();
+          bValue = b.numero_oficio.toLowerCase();
+          break;
+        default:
+          return 0;
+      }
+
+      if (aValue < bValue) {
+        return order === 'asc' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return order === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
+  }, [orderBy, order]);
+
+  // Filtro local em tempo real
+  const filtrarDemandas = useCallback(() => {
+    let demandasFiltradas = [...demandasOriginais];
+
+    // Filtro por solicitante
+    if (filtroSolicitante) {
+      demandasFiltradas = demandasFiltradas.filter(demanda =>
+        demanda.escola_nome.toLowerCase().includes(filtroSolicitante.toLowerCase())
+      );
+    }
+
+    // Filtro por objeto
+    if (filtroObjeto) {
+      demandasFiltradas = demandasFiltradas.filter(demanda =>
+        demanda.objeto.toLowerCase().includes(filtroObjeto.toLowerCase())
+      );
+    }
+
+    // Filtro por status
+    if (filtroStatus) {
+      demandasFiltradas = demandasFiltradas.filter(demanda =>
+        demanda.status === filtroStatus
+      );
+    }
+
+    // Filtro por data início
+    if (filtroDataInicio) {
+      demandasFiltradas = demandasFiltradas.filter(demanda =>
+        new Date(demanda.data_solicitacao) >= new Date(filtroDataInicio)
+      );
+    }
+
+    // Filtro por data fim
+    if (filtroDataFim) {
+      demandasFiltradas = demandasFiltradas.filter(demanda =>
+        new Date(demanda.data_solicitacao) <= new Date(filtroDataFim)
+      );
+    }
+
+    // Aplicar ordenação
+    demandasFiltradas = ordenarDemandas(demandasFiltradas);
+
+    setDemandas(demandasFiltradas);
+    // Reset página e linha selecionada quando filtros mudarem
+    setPage(0);
+    setLinhaSelecionada(-1);
+  }, [demandasOriginais, filtroSolicitante, filtroObjeto, filtroStatus, filtroDataInicio, filtroDataFim, ordenarDemandas]);
+
+  // Calcular paginação
+  const calcularPaginacao = useCallback(() => {
+    const inicio = page * rowsPerPage;
+    const fim = inicio + rowsPerPage;
+    const demandasDaPagina = demandas.slice(inicio, fim);
+    setDemandasPaginadas(demandasDaPagina);
+  }, [demandas, page, rowsPerPage]);
+
+  // Aplicar filtros sempre que os filtros mudarem
+  useEffect(() => {
+    if (demandasOriginais.length > 0) {
+      filtrarDemandas();
+    }
+  }, [filtrarDemandas, demandasOriginais]);
+
+  // Calcular paginação sempre que demandas ou página mudarem
+  useEffect(() => {
+    calcularPaginacao();
+  }, [calcularPaginacao]);
+
+
+
+  const limparFiltros = () => {
+    setFiltroSolicitante('');
+    setFiltroObjeto('');
+    setFiltroStatus('');
+    setFiltroDataInicio('');
+    setFiltroDataFim('');
+    setDemandas(demandasOriginais);
+    setPage(0);
+  };
+
+  const handleChangePage = (_: unknown, newPage: number) => {
+    setPage(newPage);
+    setLinhaSelecionada(-1); // Reset seleção ao mudar página
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+    setLinhaSelecionada(-1);
+  };
+
+  const handleNovaDemanda = () => {
+    setFormData({
+      escola_solicitante: '',
+      numero_oficio: '',
+      data_solicitacao: new Date().toISOString().split('T')[0],
+      objeto: '',
+      descricao_itens: '',
+      observacoes: ''
+    });
+    setModoEdicao(true);
+  };
+
+  const handleCancelarEdicao = () => {
+    setModoEdicao(false);
+    setFormData({
+      escola_solicitante: '',
+      numero_oficio: '',
+      data_solicitacao: new Date().toISOString().split('T')[0],
+      objeto: '',
+      descricao_itens: '',
+      observacoes: ''
+    });
+  };
+
+  const handleSalvarDemanda = async () => {
+    // Se não tem descrição, abrir modal para campos adicionais
+    if (!formData.descricao_itens.trim()) {
+      setModalCamposAdicionais(true);
+      return;
+    }
+
+    try {
+      setSalvando(true);
+
+      // Encontrar a escola selecionada ou usar o texto digitado
+      const escolaSelecionada = escolas.find(escola => escola.nome === formData.escola_solicitante);
+
+      const dados = {
+        escola_id: escolaSelecionada?.id || null,
+        escola_nome: formData.escola_solicitante,
+        numero_oficio: formData.numero_oficio,
+        data_solicitacao: formData.data_solicitacao,
+        objeto: formData.objeto,
+        descricao_itens: formData.descricao_itens,
+        observacoes: formData.observacoes
+      };
+
+      await demandasService.criar(dados);
+      setModoEdicao(false);
+      setModalCamposAdicionais(false);
+      await carregarDados();
+    } catch (error: any) {
+      console.error('Erro ao salvar:', error);
+      setErro(error.response?.data?.message || 'Erro ao salvar demanda');
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const handleSalvarComCamposAdicionais = async () => {
+    setModalCamposAdicionais(false);
+    await handleSalvarDemanda();
+  };
+
+  const handleChangeForm = (field: string, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent, nextFieldRef?: React.RefObject<HTMLInputElement>) => {
+    if (e.key === 'Tab' && nextFieldRef?.current) {
+      e.preventDefault();
+      nextFieldRef.current.focus();
+    }
+    if (e.key === 'Escape') {
+      handleCancelarEdicao();
+    }
+  };
+
+  const handleVisualizarDemanda = (id: number) => {
+    setDemandaSelecionada(id);
+    setModalDetalhes(true);
+  };
+
+  const handleExcluirDemanda = async () => {
+    if (!demandaSelecionada) return;
+
+    try {
+      setExcluindo(true);
+      await demandasService.excluir(demandaSelecionada);
+      setModalExcluir(false);
+      await carregarDados();
+      setLinhaSelecionada(-1); // Reset seleção
+    } catch (error: any) {
+      console.error('Erro ao excluir:', error);
+      setErro(error.response?.data?.message || 'Erro ao excluir demanda');
+    } finally {
+      setExcluindo(false);
+    }
+  };
+
+  const handleRequestSort = (property: string) => {
+    const isAsc = orderBy === property && order === 'asc';
+    setOrder(isAsc ? 'desc' : 'asc');
+    setOrderBy(property);
+  };
+
+
+
+
+
+  // Refs para navegação com Tab
+  const numeroOficioRef = useRef<HTMLInputElement>(null);
+  const dataSolicitacaoRef = useRef<HTMLInputElement>(null);
+  const objetoRef = useRef<HTMLInputElement>(null);
+  const filtroSolicitanteRef = useRef<HTMLInputElement>(null);
+
+  const getStatusChip = (status: string) => {
+    const statusInfo = STATUS_DEMANDA[status as keyof typeof STATUS_DEMANDA];
+    return (
+      <Chip
+        label={statusInfo?.label || status}
+        color={statusInfo?.color as any || 'default"}
+        size="small"
+      />
+    );
+  };
+
+  const getSortIcon = (column: string) => {
+    if (orderBy !== column) {
+      return <ArrowUpwardIcon sx={{ fontSize: 14, opacity: 0.3, ml: 0.5 }} />;
+    }
+    return order === 'asc' ? 
+      <ArrowUpwardIcon sx={{ fontSize: 14, ml: 0.5 }} /> : 
+      <ArrowDownwardIcon sx={{ fontSize: 14, ml: 0.5 }} />;
+  };
+
+  if (loading) {
+    return <LoadingScreen message="Carregando demandas..." />;
+  }
+
+  return (
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
+      {erro && (
+        <Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}>
+          <Alert severity="error" onClose={() => setErro('')}>
+            {erro}
+          </Alert>
+        </Box>
+      )}
+
+      <PageContainer fullHeight>
+        <PageHeader 
+          title="Gerenciamento de Demandas"
+        />
+        
+        <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', p: 3, mb: 3 }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 3 }}>
+            <Autocomplete
+              freeSolo
+              size="small"
+              options={solicitantes}
+              value={filtroSolicitante}
+              onChange={(_, newValue) => setFiltroSolicitante(newValue || '')}
+              onInputChange={(_, newInputValue) => setFiltroSolicitante(newInputValue)}
+              sx={{ flex: 1, minWidth: '200px' }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  inputRef={filtroSolicitanteRef}
+                  placeholder="Buscar por solicitante..."
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                  InputProps={{
+                    ...params.InputProps,
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon sx={{ color: 'text.secondary' }} />
+                      </InputAdornment>
+                    )
+                  }}
+                />
+              )}
+            />
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button 
+                variant={mostrarFiltros ? "contained" : "outlined"}
+                startIcon={<FilterListIcon />} 
+                onClick={() => setMostrarFiltros(!mostrarFiltros)}
+              >
+                Filtros
+              </Button>
+              <Button
+                variant="contained" color="add"
+                startIcon={<AddIcon />}
+                onClick={handleNovaDemanda}
+              >
+                Nova Demanda
+              </Button>
+            </Box>
+          </Box>
+          
+          {/* Filtros Avançados - Mostrar apenas quando ativado */}
+          {mostrarFiltros && (
+            <Box sx={{ mb: 3 }}>
+              <Grid container spacing={2} alignItems="center">
+                <Grid item xs={12} md={3}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Buscar no Objeto"
+                    value={filtroObjeto}
+                    onChange={(e) => setFiltroObjeto(e.target.value)}
+                    placeholder="Palavras-chave..."
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={2}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Status</InputLabel>
+                    <Select
+                      value={filtroStatus}
+                      onChange={(e) => setFiltroStatus(e.target.value)}
+                      label="Status"
+                    >
+                      <MenuItem value="">Todos</MenuItem>
+                      <MenuItem value="pendente">Pendente</MenuItem>
+                      <MenuItem value="enviado_semead">Enviado à SEMAD</MenuItem>
+                      <MenuItem value="atendido">Atendido</MenuItem>
+                      <MenuItem value="nao_atendido">Não Atendido</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12} md={2}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    type="date"
+                    label="Data Início"
+                    value={filtroDataInicio}
+                    onChange={(e) => setFiltroDataInicio(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={2}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    type="date"
+                    label="Data Fim"
+                    value={filtroDataFim}
+                    onChange={(e) => setFiltroDataFim(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={3}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={limparFiltros}
+                    fullWidth
+                  >
+                    Limpar Filtros
+                  </Button>
+                </Grid>
+              </Grid>
+            </Box>
+          )}
+
+
+        </Card>
+
+        {loading ? (
+          <Card>
+            <CardContent sx={{ textAlign: 'center', py: 6 }}>
+              <Typography>Carregando...</Typography>
+            </CardContent>
+          </Card>
+        ) : demandasPaginadas.length === 0 && !modoEdicao ? (
+          <Card>
+            <CardContent sx={{ textAlign: 'center', py: 6 }}>
+              <AssignmentIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
+              <Typography variant="h6" sx={{ color: 'text.secondary' }}>
+                Nenhuma demanda encontrada
+              </Typography>
+            </CardContent>
+          </Card>
+        ) : (
+          <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: '12px' }}>
+            <TableContainer>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell 
+                sx={{ width: '22%', cursor: 'pointer', userSelect: 'none' }}
+                onClick={() => handleRequestSort('escola_nome')}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  Escola Solicitante
+                  {getSortIcon('escola_nome')}
+                </Box>
+              </TableCell>
+              <TableCell 
+                align="center" 
+                sx={{ width: '12%', cursor: 'pointer', userSelect: 'none' }}
+                onClick={() => handleRequestSort('numero_oficio')}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  Ofício
+                  {getSortIcon('numero_oficio')}
+                </Box>
+              </TableCell>
+              <TableCell 
+                align="center" 
+                sx={{ width: '12%', cursor: 'pointer', userSelect: 'none' }}
+                onClick={() => handleRequestSort('data_solicitacao')}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  Solicitação
+                  {getSortIcon('data_solicitacao')}
+                </Box>
+              </TableCell>
+              <TableCell sx={{ width: '30%' }}>
+                Objeto da Demanda
+              </TableCell>
+              <TableCell 
+                align="center" 
+                sx={{ width: '12%', cursor: 'pointer', userSelect: 'none' }}
+                onClick={() => handleRequestSort('data_semead')}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  Envio SEMAD
+                  {getSortIcon('data_semead')}
+                </Box>
+              </TableCell>
+              <TableCell 
+                align="center" 
+                sx={{ width: '12%', cursor: 'pointer', userSelect: 'none' }}
+                onClick={() => handleRequestSort('data_resposta_semead')}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  Resposta SEMAD
+                  {getSortIcon('data_resposta_semead')}
+                </Box>
+              </TableCell>
+              <TableCell align="center" sx={{ width: '8%' }}>
+                Ações
+              </TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {/* Linha de formulário para nova demanda */}
+            {modoEdicao && (
+              <TableRow sx={{ bgcolor: 'rgba(25, 118, 210, 0.04)' }}>
+                <TableCell sx={{ py: 1, width: '22%' }}>
+                  <Autocomplete
+                    freeSolo
+                    size="small"
+                    options={escolas.map(escola => escola.nome)}
+                    value={formData.escola_solicitante}
+                    onChange={(_, newValue) => handleChangeForm('escola_solicitante', newValue || '')}
+                    onInputChange={(_, newInputValue) => handleChangeForm('escola_solicitante', newInputValue)}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        placeholder="Escola solicitante"
+                        variant="outlined"
+                        size="small"
+                        onKeyDown={(e) => handleKeyDown(e, numeroOficioRef)}
+                        autoFocus
+                      />
+                    )}
+                  />
+                </TableCell>
+                <TableCell sx={{ py: 1 }}>
+                  <TextField
+                    inputRef={numeroOficioRef}
+                    size="small"
+                    placeholder="Nº Ofício"
+                    value={formData.numero_oficio}
+                    onChange={(e) => handleChangeForm('numero_oficio', e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(e, dataSolicitacaoRef)}
+                    fullWidth
+                  />
+                </TableCell>
+                <TableCell sx={{ py: 1 }}>
+                  <TextField
+                    inputRef={dataSolicitacaoRef}
+                    size="small"
+                    type="date"
+                    value={formData.data_solicitacao}
+                    onChange={(e) => handleChangeForm('data_solicitacao', e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(e, objetoRef)}
+                    fullWidth
+                  />
+                </TableCell>
+                <TableCell sx={{ py: 1 }}>
+                  <TextField
+                    inputRef={objetoRef}
+                    size="small"
+                    placeholder="Objeto da solicitação"
+                    value={formData.objeto}
+                    onChange={(e) => handleChangeForm('objeto', e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSalvarDemanda();
+                      }
+                    }}
+                    multiline
+                    maxRows={3}
+                    fullWidth
+                  />
+                </TableCell>
+                <TableCell sx={{ py: 1 }}>
+                  <Typography variant="body2" color="text.secondary" align="center">
+                    -
+                  </Typography>
+                </TableCell>
+                <TableCell sx={{ py: 1 }}>
+                  <Typography variant="body2" color="text.secondary" align="center">
+                    -
+                  </Typography>
+                </TableCell>
+                <TableCell sx={{ py: 1 }}>
+                  <Typography variant="body2" color="text.secondary" align="center">
+                    -
+                  </Typography>
+                </TableCell>
+                <TableCell align="center" sx={{ py: 1 }}>
+                  <IconButton
+                    size="small"
+                    color="primary"
+                    onClick={handleSalvarDemanda}
+                    disabled={salvando || !formData.escola_solicitante || !formData.numero_oficio || !formData.objeto}
+                    title="Salvar"
+                  >
+                    <SaveIcon fontSize="small" />
+                  </IconButton>
+                  <IconButton
+                    size="small"
+                    color="delete"
+                    onClick={handleCancelarEdicao}
+                    disabled={salvando}
+                    title="Cancelar"
+                  >
+                    <CancelIcon fontSize="small" />
+                  </IconButton>
+                </TableCell>
+              </TableRow>
+            )}
+
+            {demandasPaginadas.length === 0 && !modoEdicao ? (
+              <TableRow>
+                <TableCell colSpan={7} align="center">
+                  <Typography variant="body2" color="text.secondary" sx={{ py: 3 }}>
+                    Nenhuma demanda encontrada
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            ) : (
+              demandasPaginadas.map((demanda, index) => (
+                <TableRow
+                  key={demanda.id}
+                  hover
+                  sx={{
+                    backgroundColor: linhaSelecionada === index ? 'rgba(25, 118, 210, 0.08)' : 'inherit',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => setLinhaSelecionada(index)}
+                >
+                  <TableCell sx={{ width: '22%' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <StatusIndicator status={demanda.status} size="small" />
+                      <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>{demanda.escola_nome}</Typography>
+                    </Box>
+                  </TableCell>
+                  <TableCell align="center" sx={{ width: '12%' }}>
+                    <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>{demanda.numero_oficio}</Typography>
+                  </TableCell>
+                  <TableCell align="center" sx={{ width: '12%' }}>
+                    <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>{formatarData(demanda.data_solicitacao)}</Typography>
+                  </TableCell>
+                  <TableCell sx={{ width: '30%' }}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontSize: '0.875rem',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        maxWidth: '100%'
+                      }}
+                      title={demanda.objeto}
+                    >
+                      {demanda.objeto}
+                    </Typography>
+                  </TableCell>
+                  <TableCell align="center" sx={{ width: '12%' }}>
+                    {demanda.data_semead ? (
+                      <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>{formatarData(demanda.data_semead)}</Typography>
+                    ) : (
+                      <Chip label="Pendente" size="small" color="warning" sx={{ fontSize: '0.7rem' }} />
+                    )}
+                  </TableCell>
+                  <TableCell align="center" sx={{ width: '12%' }}>
+                    {demanda.data_resposta_semead ? (
+                      <Tooltip title={demanda.dias_solicitacao !== null ? `Prazo: ${demanda.dias_solicitacao} dias` : 'Prazo não calculado'}>
+                        <Typography variant="body2" sx={{ fontSize: '0.875rem', cursor: 'help' }}>
+                          {formatarData(demanda.data_resposta_semead)}
+                        </Typography>
+                      </Tooltip>
+                    ) : demanda.data_semead ? (
+                      <Tooltip title={demanda.dias_solicitacao !== null ? `Aguardando resposta (${demanda.dias_solicitacao} dias até agora)` : 'Aguardando resposta'}>
+                        <Chip label="Aguardando" size="small" color="info" sx={{ fontSize: '0.7rem', cursor: 'help' }} />
+                      </Tooltip>
+                    ) : (
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>-</Typography>
+                    )}
+                  </TableCell>
+                  <TableCell align="center">
+                    <IconButton
+                      size="small"
+                      onClick={() => handleVisualizarDemanda(demanda.id)}
+                      title="Visualizar"
+                    >
+                      <VisibilityIcon fontSize="small" />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+            <CompactPagination
+              count={demandas.length}
+              page={page}
+              onPageChange={handleChangePage}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              rowsPerPageOptions={[5, 10, 25, 50]}
+            />
+        </Paper>
+        )}
+      </PageContainer>
+
+      {/* Modais fora do PageContainer */}
+      {/* Modal de Detalhes */}
+      <DemandaDetalhesModal
+        open={modalDetalhes}
+        onClose={() => setModalDetalhes(false)}
+        onRefresh={carregarDados}
+        demandaId={demandaSelecionada}
+      />
+
+      {/* Modal de Confirmação de Exclusão */}
+      <Dialog
+        open={modalExcluir}
+        onClose={() => setModalExcluir(false)}
+        maxWidth="sm"
+        fullWidth
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !excluindo) {
+            e.preventDefault();
+            e.stopPropagation();
+            handleExcluirDemanda();
+          }
+        }}
+      >
+        <DialogTitle>Excluir Demanda</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            Tem certeza que deseja excluir esta demanda? Esta ação não pode ser desfeita.
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+            Pressione Enter para confirmar ou Esc para cancelar
+          </Typography>
+          {demandaSelecionada && demandasPaginadas.find(d => d.id === demandaSelecionada) && (
+            <Box sx={{ mt: 2, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
+              <Typography variant="body2" fontWeight="bold">
+                {demandasPaginadas.find(d => d.id === demandaSelecionada)?.escola_nome}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Ofício: {demandasPaginadas.find(d => d.id === demandaSelecionada)?.numero_oficio}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Objeto: {demandasPaginadas.find(d => d.id === demandaSelecionada)?.objeto}
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setModalExcluir(false)} disabled={excluindo}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleExcluirDemanda}
+            variant="contained" color="delete"
+            disabled={excluindo}
+          >
+            {excluindo ? 'Excluindo...' : 'Confirmar Exclusão (Enter)'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Modal para campos adicionais */}
+      <Dialog open={modalCamposAdicionais} onClose={() => setModalCamposAdicionais(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Campos Adicionais</DialogTitle>
+        <DialogContent>
+          <TextField
+            fullWidth
+            required
+            multiline
+            rows={4}
+            label="Descrição de Itens"
+            value={formData.descricao_itens}
+            onChange={(e) => handleChangeForm('descricao_itens', e.target.value)}
+            placeholder="Ex: Aquisição de Fogão Industrial 6 (seis) bocas"
+            sx={{ mt: 2, mb: 2 }}
+          />
+          <TextField
+            fullWidth
+            multiline
+            rows={3}
+            label="Observações"
+            value={formData.observacoes}
+            onChange={(e) => handleChangeForm('observacoes', e.target.value)}
+            placeholder="Informações adicionais (opcional)"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setModalCamposAdicionais(false)} disabled={salvando}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleSalvarComCamposAdicionais}
+            variant="contained"
+            disabled={salvando || !formData.descricao_itens.trim()}
+            startIcon={<SaveIcon />}
+          >
+            {salvando ? 'Salvando...' : 'Salvar Demanda'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
+}

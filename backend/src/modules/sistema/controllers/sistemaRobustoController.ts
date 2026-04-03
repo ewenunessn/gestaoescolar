@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { Pool } from 'pg';
-import { SistemaRobusto } from '../utils/sistemaRobusto';
-import SistemaRobustoManager from '../utils/sistemaRobustoManager';
+import { SistemaRobusto } from '../../../utils/sistemaRobusto';
+import SistemaRobustoManager from '../../../utils/sistemaRobustoManager';
 
 // Criar instância do sistema robusto manager
 const sistemaRobusto = new SistemaRobustoManager();

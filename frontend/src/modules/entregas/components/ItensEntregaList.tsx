@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Box,
   Button,
@@ -21,18 +21,18 @@ import {
   Typography,
   Paper,
   LinearProgress
-} from '@mui/material';
+} from "@mui/material";
 import {
   LocalShipping as DeliveryIcon,
   CheckCircle as CheckIcon,
   Cancel as CancelIcon,
   LocationOn as LocationIcon
-} from '@mui/icons-material';
-import { ColumnDef } from '@tanstack/react-table';
-import { EscolaEntrega, ItemEntrega, ConfirmarEntregaData } from '../types';
-import { entregaService } from '../services/entregaService';
-import { SignaturePad } from '../../../components/SignaturePad';
-import { DataTableAdvanced } from '../../../components/DataTableAdvanced';
+} from "@mui/icons-material";
+import { ColumnDef } from "@tanstack/react-table";
+import { EscolaEntrega, ItemEntrega, ConfirmarEntregaData } from "../types";
+import { entregaService } from "../services/entregaService";
+import { SignaturePad } from "../../../components/SignaturePad";
+import { DataTableAdvanced } from "../../../components/DataTableAdvanced";
 
 interface ItemSelecionado extends ItemEntrega {
   selecionado: boolean;
@@ -494,9 +494,14 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
   // Tela de revisão
   if (etapa === 'revisao') {
     return (
-      <Box>
+      <Box sx={{ 
+        height: '100vh', 
+        display: 'flex', 
+        flexDirection: 'column',
+        overflow: 'hidden'
+      }}>
 
-        <Stepper activeStep={1} sx={{ mb: 3 }}>
+        <Stepper activeStep={1} sx={{ mb: 3, flexShrink: 0 }}>
           <Step completed>
             <StepLabel>Seleção de Itens</StepLabel>
           </Step>
@@ -509,15 +514,21 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
         </Stepper>
 
         {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
+          <Alert severity="error" sx={{ mb: 2, flexShrink: 0 }}>
             {error}
           </Alert>
         )}
 
-        <Paper sx={{ p: 3, mb: 3 }}>
-          <Typography variant="h6" gutterBottom>
-            Resumo da Entrega ({itensSelecionados.length} itens)
-          </Typography>
+        <Box sx={{ 
+          flex: 1, 
+          overflowY: 'auto', 
+          overflowX: 'hidden',
+          pb: 2
+        }}>
+          <Paper sx={{ p: 3, mb: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Resumo da Entrega ({itensSelecionados.length} itens)
+            </Typography>
           
           <DataTableAdvanced
             data={itensSelecionados}
@@ -601,18 +612,25 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
                 <Paper
                   variant="outlined"
                   sx={{
-                    p: 2,
+                    p: 1,
                     mb: 2,
                     border: '2px solid',
                     borderColor: 'success.main',
-                    bgcolor: 'success.50'
+                    bgcolor: 'success.50',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    maxHeight: '150px',
+                    overflow: 'hidden'
                   }}
                 >
                   <img
                     src={assinatura}
                     alt="Assinatura"
                     style={{
-                      width: '100%',
+                      maxWidth: '300px',
+                      maxHeight: '120px',
+                      width: 'auto',
                       height: 'auto',
                       display: 'block'
                     }}
@@ -642,8 +660,16 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
             )}
           </Box>
         </Paper>
+        </Box>
 
-        <Box display="flex" gap={2}>
+        <Box display="flex" gap={2} sx={{ 
+          flexShrink: 0, 
+          pt: 2, 
+          pb: 2,
+          borderTop: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'background.paper'
+        }}>
           <Button
             variant="outlined"
             onClick={() => setEtapa('selecao')}

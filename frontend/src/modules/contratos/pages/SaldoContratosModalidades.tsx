@@ -1,0 +1,1615 @@
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { ColumnDef } from "@tanstack/react-table";
+import StatusIndicator from "../../../components/StatusIndicator";
+import PageContainer from "../../../components/PageContainer";
+import PageHeader from "../../../components/PageHeader";
+import { DataTableAdvanced } from "../../../components/DataTableAdvanced";
+import TableFilter, { FilterField } from "../../../components/TableFilter";
+import CompactPagination from "../../../components/CompactPagination";
+import {
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Chip,
+  TextField,
+  Grid,
+  Button,
+  CircularProgress,
+  Alert,
+  Tooltip,
+  IconButton,
+  InputAdornment,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Paper,
+  Popover,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Menu
+} from "@mui/material";
+import { 
+  Search as SearchIcon, 
+  Download as DownloadIcon, 
+  FilterList as FilterIcon, 
+  Restaurant as RestaurantIcon, 
+  History as HistoryIcon,
+  Clear as ClearIcon,
+  MoreVert
+} from "@mui/icons-material";
+import { Edit as EditIcon, Save as SaveIcon, Cancel as CancelIcon } from "@mui/icons-material";
+import { useToast } from "../../../hooks/useToast";
+import saldoContratosModalidadesService, {
+  SaldoContratoModalidadeItem,
+  ModalidadeOption,
+  ProdutoContratoOption,
+  SaldoContratosModalidadesFilters
+} from "../../../services/saldoContratosModalidadesService";
+import {
+  useSaldosModalidades,
+  useModalidades,
+  useProdutosContratos,
+  useCadastrarSaldoModalidade,
+  useRegistrarConsumo,
+  useExcluirConsumo,
+  useHistoricoConsumo
+} from "../../../hooks/queries/useSaldoContratosQueries";
+import { LoadingOverlay } from "../../../components/LoadingOverlay";
+
+
+
+// Componente para gerenciar cada modalidade individualmente
+interface ModalidadeRowProps {
+  modalidade: any;
+  produtoSelecionado: any;
+  todasModalidades: any[];
+  onEditarQuantidadeInicial: (modalidade: any) => void;
+  onRegistrarConsumo?: (modalidade: any) => void;
+  onVerHistorico?: (modalidade: any) => void;
+  formatarNumero: (valor: number) => string;
+}
+
+const ModalidadeRow: React.FC<ModalidadeRowProps> = ({
+  modalidade,
+  produtoSelecionado,
+  todasModalidades,
+  onEditarQuantidadeInicial,
+  onRegistrarConsumo,
+  onVerHistorico,
+  formatarNumero
+}) => {
+  return (
+    <TableRow hover>
+      <TableCell>
+        <Box>
+          <Typography variant="body2" fontWeight="bold">
+            {modalidade.nome}
+          </Typography>
+          {modalidade.codigo_financeiro && (
+            <Typography variant="caption" color="text.secondary">
+              Código: {modalidade.codigo_financeiro}
+            </Typography>
+          )}
+        </Box>
+      </TableCell>
+      <TableCell align="right">
+        <Typography variant="body2" fontWeight={modalidade.cadastrada ? 'bold' : 'normal'}>
+          {formatarNumero(modalidade.quantidade_inicial)}
+        </Typography>
+      </TableCell>
+      <TableCell align="right">
+        <Typography variant="body2">
+          {formatarNumero(modalidade.quantidade_consumida)}
+        </Typography>
+      </TableCell>
+      <TableCell align="right">
+        <Typography
+          variant="body2"
+          fontWeight="bold"
+          color={modalidade.quantidade_disponivel > 0 ? 'primary' : 'text.secondary'}
+        >
+          {formatarNumero(modalidade.quantidade_disponivel)}
+        </Typography>
+      </TableCell>
+      <TableCell align="center">
+        <Box display="flex" justifyContent="center" gap={0.5}>
+          <Tooltip title="Editar Quantidade Inicial">
+            <IconButton
+              size="small"
+              onClick={() => onEditarQuantidadeInicial(modalidade)}
+              sx={{ color: '#059669' }}
+            >
+              <EditIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          {modalidade.cadastrada && modalidade.quantidade_disponivel > 0 && onRegistrarConsumo && (
+            <Tooltip title="Registrar Consumo">
+              <IconButton
+                size="small"
+                onClick={() => onRegistrarConsumo(modalidade)}
+                color="primary"
+              >
+                <RestaurantIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+          {modalidade.cadastrada && onVerHistorico && (
+            <Tooltip title="Ver Histórico">
+              <IconButton
+                size="small"
+                onClick={() => onVerHistorico(modalidade)}
+                color="info"
+              >
+                <HistoryIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+        </Box>
+      </TableCell>
+    </TableRow>
+  );
+};
+
+const SaldoContratosModalidades: React.FC = () => {
+  const { success, error: toastError } = useToast();
+  const timeoutRef = React.useRef<number | null>(null);
+
+  // Estados para diálogos
+  const [dialogGerenciarModalidades, setDialogGerenciarModalidades] = useState(false);
+  const [dialogQuantidadeInicial, setDialogQuantidadeInicial] = useState(false);
+  const [dialogConsumoAberto, setDialogConsumoAberto] = useState(false);
+  const [dialogHistoricoOpen, setDialogHistoricoOpen] = useState(false);
+  const [produtoSelecionado, setProdutoSelecionado] = useState<any>(null);
+  const [itemSelecionado, setItemSelecionado] = useState<SaldoContratoModalidadeItem | null>(null);
+  const [modalidadeSelecionada, setModalidadeSelecionada] = useState<any>(null);
+
+  // Estados para gerenciar modalidades
+  const [modalidadesProduto, setModalidadesProduto] = useState<any[]>([]);
+  const [carregandoModalidades, setCarregandoModalidades] = useState(false);
+
+  // Estados para quantidade inicial
+  const [quantidadeInicial, setQuantidadeInicial] = useState('');
+
+  // Estados para consumo
+  const [quantidadeConsumo, setQuantidadeConsumo] = useState('');
+  const [dataConsumo, setDataConsumo] = useState('');
+  const [observacaoConsumo, setObservacaoConsumo] = useState('');
+
+  // Estados para histórico - agora usa React Query
+
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(25);
+
+  // Estados de filtros - NOVO SISTEMA
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filterAnchorEl, setFilterAnchorEl] = useState<HTMLElement | null>(null);
+  const [filters, setFilters] = useState<Record<string, any>>({});
+  const [importExportMenuAnchor, setImportExportMenuAnchor] = useState<HTMLElement | null>(null);
+
+  // Filtros para API
+  const [filtros, setFiltros] = useState<SaldoContratosModalidadesFilters>({
+    page: 1,
+    limit: 25
+  });
+
+  // React Query hooks
+  const { data: responseData, isLoading: loading, refetch: carregarDados } = useSaldosModalidades({
+    ...filtros,
+    page: page + 1,
+    limit: rowsPerPage
+  });
+  const { data: modalidades = [] } = useModalidades();
+  const { data: produtosContratos = [] } = useProdutosContratos();
+  const cadastrarSaldoMutation = useCadastrarSaldoModalidade();
+  const registrarConsumoMutation = useRegistrarConsumo();
+  const excluirConsumoMutation = useExcluirConsumo();
+  
+  // Hook para histórico (só carrega quando itemSelecionado existe)
+  const { data: historicoData, isLoading: carregandoHistorico } = useHistoricoConsumo(
+    itemSelecionado?.id || 0,
+    !!itemSelecionado && dialogHistoricoOpen
+  );
+  
+  // Extrair dados da resposta
+  const dados = responseData?.data || [];
+  const total = responseData?.pagination?.total || 0;
+  const historicoConsumo = historicoData?.data?.historico || [];
+
+  // Definir campos de filtro
+  const filterFields: FilterField[] = useMemo(() => [
+    {
+      type: 'select',
+      label: 'Status do Produto',
+      key: 'status',
+      options: [
+        { value: 'DISPONIVEL', label: 'Disponível' },
+        { value: 'BAIXO_ESTOQUE', label: 'Baixo Estoque' },
+        { value: 'ESGOTADO', label: 'Esgotado' },
+      ],
+    },
+  ], []);
+
+  // Estados para navegação por teclado
+  const [linhaSelecionada, setLinhaSelecionada] = useState<number>(-1);
+  const [modalidadeEditandoIndex, setModalidadeEditandoIndex] = useState<number>(-1);
+  const quantidadeInputRefs = React.useRef<{ [key: number]: HTMLInputElement | null }>({});
+
+  // Estados para seleção de contrato
+  const [dialogSelecionarContrato, setDialogSelecionarContrato] = useState(false);
+  const [contratosDisponiveis, setContratosDisponiveis] = useState<any[]>([]);
+  const [contratoSelecionadoIndex, setContratoSelecionadoIndex] = useState<number>(0);
+
+  // Scroll para linha selecionada
+  useEffect(() => {
+    if (linhaSelecionada >= 0) {
+      const row = document.querySelector(`[data-row-index="${linhaSelecionada}"]`);
+      if (row) {
+        row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+  }, [linhaSelecionada]);
+
+  // Scroll para contrato selecionado no dialog
+  useEffect(() => {
+    if (dialogSelecionarContrato && contratoSelecionadoIndex >= 0) {
+      const card = document.querySelector(`[data-contrato-index="${contratoSelecionadoIndex}"]`);
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+  }, [contratoSelecionadoIndex, dialogSelecionarContrato]);
+
+  // Atalhos de teclado
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Se estiver em um input de texto, permitir navegação normal
+      const target = e.target as HTMLElement;
+      const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+
+      // Ctrl+F - Focar no campo de pesquisa
+      if (e.ctrlKey && e.key === 'f') {
+        e.preventDefault();
+        const produtoInput = document.querySelector('input[placeholder*="Digite o nome do produto"]') as HTMLInputElement;
+        if (produtoInput) {
+          produtoInput.focus();
+          produtoInput.select();
+        }
+        return;
+      }
+
+      // Ctrl+K - Limpar filtros
+      if (e.ctrlKey && e.key === 'k') {
+        e.preventDefault();
+        setFilters({});
+        setFiltros({ page: 1, limit: rowsPerPage });
+        setPage(0);
+        setLinhaSelecionada(-1);
+        return;
+      }
+
+      // Ctrl+R - Atualizar dados (apenas se não estiver no modal de gerenciar)
+      if (e.ctrlKey && e.key === 'r' && !dialogGerenciarModalidades) {
+        e.preventDefault();
+        carregarDados();
+        return;
+      }
+
+      // Ctrl+E - Editar primeira modalidade (no modal de gerenciar)
+      if (e.ctrlKey && e.key === 'e' && dialogGerenciarModalidades && !dialogQuantidadeInicial) {
+        e.preventDefault();
+        if (modalidadesProduto.length > 0) {
+          abrirDialogQuantidadeInicial(modalidadesProduto[0]);
+          setModalidadeEditandoIndex(0);
+        }
+        return;
+      }
+
+      // Ctrl+R - Registrar consumo na primeira modalidade (no modal de gerenciar)
+      if (e.ctrlKey && e.key === 'r' && dialogGerenciarModalidades && !dialogConsumoAberto) {
+        e.preventDefault();
+        const primeiraModalidadeComSaldo = modalidadesProduto.find(m => m.cadastrada && m.quantidade_disponivel > 0);
+        if (primeiraModalidadeComSaldo) {
+          abrirConsumoModalidade(primeiraModalidadeComSaldo);
+        }
+        return;
+      }
+
+      // Navegação na tabela principal (quando não há modal aberto)
+      if (!dialogGerenciarModalidades && !dialogQuantidadeInicial && !dialogConsumoAberto && !dialogHistoricoOpen && !dialogSelecionarContrato) {
+        const produtosAgrupados = agruparPorProduto(dados);
+
+        // Seta para baixo - permitir mesmo em input de pesquisa
+        if (e.key === 'ArrowDown' && !e.ctrlKey && !e.altKey) {
+          // Se estiver no input de pesquisa, permitir navegação
+          if (isInputField && target.getAttribute('placeholder')?.includes('Digite o nome do produto')) {
+            e.preventDefault();
+            if (linhaSelecionada < 0) {
+              setLinhaSelecionada(0);
+            } else {
+              setLinhaSelecionada(prev => Math.min(prev + 1, produtosAgrupados.length - 1));
+            }
+          } else if (!isInputField) {
+            e.preventDefault();
+            if (linhaSelecionada < 0) {
+              setLinhaSelecionada(0);
+            } else {
+              setLinhaSelecionada(prev => Math.min(prev + 1, produtosAgrupados.length - 1));
+            }
+          }
+          return;
+        }
+
+        // Seta para cima - permitir mesmo em input de pesquisa
+        if (e.key === 'ArrowUp' && !e.ctrlKey && !e.altKey) {
+          // Se estiver no input de pesquisa, permitir navegação
+          if (isInputField && target.getAttribute('placeholder')?.includes('Digite o nome do produto')) {
+            e.preventDefault();
+            setLinhaSelecionada(prev => Math.max(prev - 1, 0));
+          } else if (!isInputField) {
+            e.preventDefault();
+            setLinhaSelecionada(prev => Math.max(prev - 1, 0));
+          }
+          return;
+        }
+
+        // Enter - Abrir modal de gerenciar modalidades ou seleção de contrato
+        if (e.key === 'Enter' && linhaSelecionada >= 0 && !isInputField) {
+          e.preventDefault();
+          const produtoSelecionadoItem = produtosAgrupados[linhaSelecionada];
+          if (produtoSelecionadoItem) {
+            if (produtoSelecionadoItem.contratos.length > 1) {
+              abrirDialogSelecionarContrato(produtoSelecionadoItem);
+            } else {
+              abrirDialogGerenciarModalidades(produtoSelecionadoItem.contratos[0]);
+            }
+          }
+          return;
+        }
+      }
+
+      // Tab no modal de edição de quantidade - ir para próxima modalidade
+      if (e.key === 'Tab' && dialogQuantidadeInicial && !e.shiftKey) {
+        e.preventDefault();
+        salvarEProximaModalidade();
+        return;
+      }
+
+      // Enter no modal de edição - salvar e fechar
+      if (e.key === 'Enter' && dialogQuantidadeInicial) {
+        e.preventDefault();
+        salvarQuantidadeInicial();
+        return;
+      }
+
+      // Escape - Fechar modais
+      if (e.key === 'Escape') {
+        if (dialogQuantidadeInicial) {
+          fecharDialogQuantidadeInicial();
+        } else if (dialogConsumoAberto) {
+          fecharDialogConsumo();
+        } else if (dialogGerenciarModalidades) {
+          fecharDialogGerenciarModalidades();
+        }
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [filters, dados, linhaSelecionada, dialogGerenciarModalidades, dialogQuantidadeInicial, dialogConsumoAberto, dialogHistoricoOpen, modalidadesProduto, modalidadeEditandoIndex]);
+
+  // Funções para gerenciar modalidades
+  const abrirDialogSelecionarContrato = (produto: any) => {
+    setContratosDisponiveis(produto.contratos);
+    setContratoSelecionadoIndex(0);
+    setDialogSelecionarContrato(true);
+  };
+
+  const selecionarContrato = (contrato: any) => {
+    setDialogSelecionarContrato(false);
+    abrirDialogGerenciarModalidades(contrato);
+  };
+
+  const abrirDialogGerenciarModalidades = async (produto: any) => {
+    setError(null);
+    setDialogGerenciarModalidades(true);
+    setCarregandoModalidades(true);
+
+    try {
+      // Buscar dados atualizados do servidor para este produto
+      const response = await saldoContratosModalidadesService.listarSaldosModalidades({
+        page: 1,
+        limit: 100
+      });
+
+      // Filtrar apenas as modalidades deste produto específico
+      const modalidadesAtualizadas = response.data.filter(
+        (item: any) => item.contrato_produto_id === produto.contrato_produto_id
+      );
+
+      // SEMPRE usar os dados do servidor se disponíveis
+      if (modalidadesAtualizadas.length > 0) {
+        const primeiraModalidade = modalidadesAtualizadas[0];
+        const produtoAtualizado = {
+          contrato_produto_id: produto.contrato_produto_id,
+          produto_nome: primeiraModalidade.produto_nome,
+          contrato_numero: primeiraModalidade.contrato_numero,
+          fornecedor_nome: primeiraModalidade.fornecedor_nome,
+          unidade: primeiraModalidade.unidade,
+          quantidade_contrato: primeiraModalidade.quantidade_contrato || produto.quantidade_contrato,
+          preco_unitario: primeiraModalidade.preco_unitario
+        };
+        setProdutoSelecionado(produtoAtualizado);
+      } else {
+        // Se não encontrou modalidades, usar o produto original
+        setProdutoSelecionado(produto);
+      }
+
+      // Carregar todas as modalidades disponíveis
+      const todasModalidades = await saldoContratosModalidadesService.listarModalidades();
+
+      // Criar array com todas as modalidades com dados atualizados do servidor
+      const modalidadesComStatus = todasModalidades.map(modalidade => {
+        const modalidadeExistente = modalidadesAtualizadas.find(
+          (m: any) => m.modalidade_id === modalidade.id
+        );
+        return {
+          ...modalidade,
+          quantidade_inicial: modalidadeExistente ? modalidadeExistente.quantidade_inicial : 0,
+          quantidade_consumida: modalidadeExistente ? modalidadeExistente.quantidade_consumida : 0,
+          quantidade_disponivel: modalidadeExistente ? modalidadeExistente.quantidade_disponivel : 0,
+          cadastrada: modalidadeExistente && modalidadeExistente.id != null,
+          id_saldo: modalidadeExistente ? modalidadeExistente.id : null
+        };
+      });
+
+      setModalidadesProduto(modalidadesComStatus);
+    } catch (error) {
+      console.error('Erro ao carregar modalidades:', error);
+      setModalidadesProduto([]);
+      // Mesmo com erro, tentar usar o produto original
+      setProdutoSelecionado(produto);
+    } finally {
+      setCarregandoModalidades(false);
+    }
+  };
+
+  const fecharDialogGerenciarModalidades = () => {
+    setDialogGerenciarModalidades(false);
+    setProdutoSelecionado(null);
+    setModalidadesProduto([]);
+  };
+
+  // Função para calcular totais em tempo real
+  const calcularTotaisAtuais = () => {
+    if (!produtoSelecionado) {
+      return { totalDistribuido: 0, disponivelDistribuir: 0 };
+    }
+
+    // Garantir que estamos usando o valor correto da quantidade contratada
+    const quantidadeContrato = parseFloat(produtoSelecionado.quantidade_contrato as any) || 0;
+
+    // Se modalidadesProduto ainda não foi carregado, usar os dados originais
+    if (!modalidadesProduto || modalidadesProduto.length === 0) {
+      const totalDistribuido = produtoSelecionado.total_inicial || 0;
+      const totalConsumido = produtoSelecionado.total_consumido || 0;
+      const disponivelDistribuir = quantidadeContrato - totalDistribuido;
+      const totalDisponivel = totalDistribuido - totalConsumido;
+      return { totalDistribuido, disponivelDistribuir, totalDisponivel };
+    }
+
+    // Calcular com base nas modalidades atuais
+    const totalDistribuido = modalidadesProduto.reduce((sum, m) => {
+      const valor = parseFloat(m.quantidade_inicial as any) || 0;
+      return sum + valor;
+    }, 0);
+
+    const totalConsumido = modalidadesProduto.reduce((sum, m) => {
+      const valor = parseFloat(m.quantidade_consumida as any) || 0;
+      return sum + valor;
+    }, 0);
+
+    const disponivelDistribuir = quantidadeContrato - totalDistribuido;
+    const totalDisponivel = totalDistribuido - totalConsumido;
+
+    return { totalDistribuido, disponivelDistribuir, totalDisponivel };
+  };
+
+  const abrirDialogQuantidadeInicial = (modalidade: any) => {
+    setModalidadeSelecionada(modalidade);
+    setQuantidadeInicial(modalidade.quantidade_inicial.toString());
+    setError(null);
+    setDialogQuantidadeInicial(true);
+
+    // Focar no input após um pequeno delay
+    setTimeout(() => {
+      const input = document.querySelector('input[type="number"]') as HTMLInputElement;
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    }, 100);
+  };
+
+  const fecharDialogQuantidadeInicial = () => {
+    setDialogQuantidadeInicial(false);
+    setModalidadeSelecionada(null);
+    setQuantidadeInicial('');
+  };
+
+  const salvarQuantidadeInicial = async () => {
+    if (!produtoSelecionado || !modalidadeSelecionada) return;
+
+    const novaQuantidade = parseFloat(quantidadeInicial);
+
+    if (isNaN(novaQuantidade) || novaQuantidade < 0) {
+      setError('Quantidade deve ser um número válido e não negativo');
+      return;
+    }
+
+    // Validar se a quantidade inicial não é menor que o consumo já registrado
+    const quantidadeConsumida = parseFloat(modalidadeSelecionada.quantidade_consumida as any) || 0;
+    if (novaQuantidade < quantidadeConsumida) {
+      setError(
+        `A quantidade inicial (${formatarNumero(novaQuantidade)}) não pode ser menor que o consumo já registrado (${formatarNumero(quantidadeConsumida)}).\n\n` +
+        `Mínimo permitido: ${formatarNumero(quantidadeConsumida)}`
+      );
+      return;
+    }
+
+    // Validar se a soma total não excede a quantidade contratada
+    const outrasModalidades = modalidadesProduto.filter((m: any) => m.id !== modalidadeSelecionada.id);
+    const somaOutras = outrasModalidades.reduce((sum: number, m: any) => {
+      const valor = parseFloat(m.quantidade_inicial) || 0;
+      return sum + valor;
+    }, 0);
+    const somaTotal = somaOutras + novaQuantidade;
+    const quantidadeContratada = parseFloat(produtoSelecionado.quantidade_contrato) || 0;
+    const disponivelParaDistribuir = quantidadeContratada - somaOutras;
+
+    if (somaTotal > quantidadeContratada) {
+      setError(
+        `A soma das modalidades (${formatarNumero(somaTotal)}) não pode exceder a quantidade contratada (${formatarNumero(quantidadeContratada)}).\n\n` +
+        `Disponível para distribuir: ${formatarNumero(disponivelParaDistribuir)}\n` +
+        `Máximo permitido: ${formatarNumero(disponivelParaDistribuir)}`
+      );
+      return;
+    }
+
+    try {
+      await cadastrarSaldoMutation.mutateAsync({
+        contrato_produto_id: produtoSelecionado.contrato_produto_id,
+        modalidade_id: modalidadeSelecionada.id,
+        quantidade_inicial: novaQuantidade
+      });
+
+      success('Quantidade inicial atualizada com sucesso!');
+
+      // Atualizar o estado local das modalidades imediatamente
+      setModalidadesProduto(prev =>
+        prev.map(m =>
+          m.id === modalidadeSelecionada.id
+            ? { ...m, quantidade_inicial: novaQuantidade, quantidade_disponivel: novaQuantidade - (m.quantidade_consumida || 0) }
+            : m
+        )
+      );
+
+      fecharDialogQuantidadeInicial();
+
+    } catch (error: any) {
+      console.error('Erro ao salvar quantidade inicial:', error);
+      setError(error.response?.data?.message || 'Erro ao salvar quantidade inicial');
+    }
+  };
+
+  const salvarEProximaModalidade = async () => {
+    if (!produtoSelecionado || !modalidadeSelecionada) {
+      return;
+    }
+
+    const novaQuantidade = parseFloat(quantidadeInicial);
+
+    if (isNaN(novaQuantidade) || novaQuantidade < 0) {
+      setError('Quantidade deve ser um número válido e não negativo');
+      return;
+    }
+
+    // Validar se a quantidade inicial não é menor que o consumo já registrado
+    const quantidadeConsumida = parseFloat(modalidadeSelecionada.quantidade_consumida as any) || 0;
+    if (novaQuantidade < quantidadeConsumida) {
+      setError(
+        `A quantidade inicial (${formatarNumero(novaQuantidade)}) não pode ser menor que o consumo já registrado (${formatarNumero(quantidadeConsumida)}).\n\n` +
+        `Mínimo permitido: ${formatarNumero(quantidadeConsumida)}`
+      );
+      return;
+    }
+
+    // Validar se a soma total não excede a quantidade contratada
+    const outrasModalidades = modalidadesProduto.filter((m: any) => m.id !== modalidadeSelecionada.id);
+    const somaOutras = outrasModalidades.reduce((sum: number, m: any) => {
+      const valor = parseFloat(m.quantidade_inicial) || 0;
+      return sum + valor;
+    }, 0);
+    const somaTotal = somaOutras + novaQuantidade;
+    const quantidadeContratada = parseFloat(produtoSelecionado.quantidade_contrato) || 0;
+
+    if (somaTotal > quantidadeContratada) {
+      setError(`A soma das modalidades não pode exceder a quantidade contratada`);
+      return;
+    }
+
+    try {
+      await cadastrarSaldoMutation.mutateAsync({
+        contrato_produto_id: produtoSelecionado.contrato_produto_id,
+        modalidade_id: modalidadeSelecionada.id,
+        quantidade_inicial: novaQuantidade
+      });
+
+      // Atualizar o estado local das modalidades imediatamente
+      setModalidadesProduto(prev =>
+        prev.map(m =>
+          m.id === modalidadeSelecionada.id
+            ? { ...m, quantidade_inicial: novaQuantidade, quantidade_disponivel: novaQuantidade - (m.quantidade_consumida || 0), cadastrada: true }
+            : m
+        )
+      );
+
+      // Ir para próxima modalidade
+      const proximoIndex = modalidadeEditandoIndex + 1;
+      if (proximoIndex < modalidadesProduto.length) {
+        const proximaModalidade = modalidadesProduto[proximoIndex];
+        setModalidadeSelecionada(proximaModalidade);
+        setQuantidadeInicial(proximaModalidade.quantidade_inicial.toString());
+        setModalidadeEditandoIndex(proximoIndex);
+        setError(null);
+
+        // Focar no input após um pequeno delay
+        setTimeout(() => {
+          const input = document.querySelector('input[type="number"]') as HTMLInputElement;
+          if (input) {
+            input.focus();
+            input.select();
+          }
+        }, 100);
+      } else {
+        // Última modalidade, fechar
+        fecharDialogQuantidadeInicial();
+        success('Todas as quantidades foram atualizadas!');
+      }
+
+    } catch (error: any) {
+      console.error('Erro ao salvar quantidade inicial:', error);
+      setError(error.response?.data?.message || 'Erro ao salvar quantidade inicial');
+    }
+  };
+
+  const abrirConsumoModalidade = (modalidade: any) => {
+    // Converter modalidade para o formato esperado pelo diálogo de consumo
+    const itemParaConsumo = {
+      id: modalidade.id_saldo,
+      modalidade_id: modalidade.id,
+      modalidade_nome: modalidade.nome,
+      produto_nome: produtoSelecionado.produto_nome,
+      contrato_numero: produtoSelecionado.contrato_numero,
+      quantidade_inicial: modalidade.quantidade_inicial,
+      quantidade_consumida: modalidade.quantidade_consumida,
+      quantidade_disponivel: modalidade.quantidade_disponivel,
+      unidade: produtoSelecionado.unidade
+    };
+    abrirDialogConsumo(itemParaConsumo as any);
+  };
+
+  const abrirHistoricoModalidade = async (modalidade: any) => {
+    // Converter modalidade para o formato esperado pelo diálogo de histórico
+    const itemParaHistorico = {
+      id: modalidade.id_saldo,
+      modalidade_id: modalidade.id,
+      modalidade_nome: modalidade.nome,
+      produto_nome: produtoSelecionado.produto_nome,
+      contrato_numero: produtoSelecionado.contrato_numero,
+      unidade: produtoSelecionado.unidade
+    };
+    await abrirDialogHistorico(itemParaHistorico as any);
+  };
+
+  const excluirConsumo = async (consumoId: number) => {
+    if (!itemSelecionado) return;
+
+    if (!window.confirm('Tem certeza que deseja excluir este registro de consumo?')) {
+      return;
+    }
+
+    try {
+      await excluirConsumoMutation.mutateAsync({
+        saldoId: itemSelecionado.id,
+        consumoId: consumoId
+      });
+      
+      success('Consumo excluído com sucesso!');
+
+      // Recarregar histórico
+      await abrirDialogHistorico(itemSelecionado);
+
+      // Se o modal de gerenciar modalidades estiver aberto, recarregar também
+      if (dialogGerenciarModalidades && produtoSelecionado) {
+        await abrirDialogGerenciarModalidades(produtoSelecionado);
+      }
+    } catch (error: any) {
+      console.error('Erro ao excluir consumo:', error);
+      toastError(error.response?.data?.message || 'Erro ao excluir consumo');
+    }
+  };
+
+  // Funções para registro de consumo
+  const abrirDialogConsumo = (item: SaldoContratoModalidadeItem) => {
+    setItemSelecionado(item);
+    setQuantidadeConsumo('');
+    // Definir data padrão como hoje
+    const hoje = new Date().toISOString().split('T')[0];
+    setDataConsumo(hoje);
+    setObservacaoConsumo('');
+    setError(null);
+    setDialogConsumoAberto(true);
+
+    // Focar no input de quantidade após um pequeno delay
+    setTimeout(() => {
+      const input = document.querySelector('input[name="quantidade-consumo"]') as HTMLInputElement;
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    }, 100);
+  };
+
+  const fecharDialogConsumo = () => {
+    setDialogConsumoAberto(false);
+    setItemSelecionado(null);
+    setQuantidadeConsumo('');
+    setDataConsumo('');
+    setObservacaoConsumo('');
+  };
+
+  const registrarConsumo = async () => {
+    if (!itemSelecionado || !quantidadeConsumo || parseFloat(quantidadeConsumo) <= 0) {
+      return;
+    }
+
+    const quantidade = parseFloat(quantidadeConsumo);
+    if (quantidade > itemSelecionado.quantidade_disponivel) {
+      setError(`Quantidade indisponível. Saldo atual: ${itemSelecionado.quantidade_disponivel}`);
+      return;
+    }
+
+    try {
+      await registrarConsumoMutation.mutateAsync({
+        id: itemSelecionado.id,
+        quantidade: quantidade,
+        observacao: observacaoConsumo || undefined,
+        dataConsumo: dataConsumo || undefined
+      });
+
+      success('Consumo registrado com sucesso!');
+      fecharDialogConsumo();
+
+      // Se o modal de gerenciar modalidades estiver aberto, recarregar também
+      if (dialogGerenciarModalidades && produtoSelecionado) {
+        await abrirDialogGerenciarModalidades(produtoSelecionado);
+      }
+    } catch (error: any) {
+      console.error('Erro ao registrar consumo:', error);
+      setError(error.response?.data?.message || 'Erro ao registrar consumo');
+    }
+  };
+
+  // Funções para histórico
+  const abrirDialogHistorico = async (item: SaldoContratoModalidadeItem) => {
+    setItemSelecionado(item);
+    setError(null);
+    setDialogHistoricoOpen(true);
+    // O histórico será carregado automaticamente pelo hook useHistoricoConsumo
+  };
+
+  const fecharDialogHistorico = () => {
+    setDialogHistoricoOpen(false);
+    setItemSelecionado(null);
+  };
+
+  // Agrupar dados por produto (somando todos os contratos)
+  const agruparPorProduto = (itens: SaldoContratoModalidadeItem[]) => {
+    const grupos: { [key: string]: any } = {};
+
+    itens.forEach(item => {
+      const chave = item.produto_nome; // Agrupar por nome do produto
+
+      if (!grupos[chave]) {
+        grupos[chave] = {
+          produto_nome: item.produto_nome,
+          unidade: item.unidade,
+          contratos: [],
+          total_inicial: 0,
+          total_consumido: 0,
+          total_disponivel: 0,
+          quantidade_contrato_total: 0
+        };
+      }
+
+      // Verificar se já existe este contrato_produto_id
+      const contratoExistente = grupos[chave].contratos.find((c: any) => c.contrato_produto_id === item.contrato_produto_id);
+
+      if (!contratoExistente) {
+        // Calcular totais para este contrato_produto_id
+        const modalidadesDoContrato = itens.filter(i => i.contrato_produto_id === item.contrato_produto_id);
+        const totalInicial = modalidadesDoContrato.reduce((sum, m) => sum + (parseFloat(m.quantidade_inicial as any) || 0), 0);
+        const totalConsumido = modalidadesDoContrato.reduce((sum, m) => sum + (parseFloat(m.quantidade_consumida as any) || 0), 0);
+        const totalDisponivel = modalidadesDoContrato.reduce((sum, m) => sum + (parseFloat(m.quantidade_disponivel as any) || 0), 0);
+
+        grupos[chave].contratos.push({
+          contrato_produto_id: item.contrato_produto_id,
+          contrato_numero: item.contrato_numero,
+          fornecedor_nome: item.fornecedor_nome,
+          preco_unitario: item.preco_unitario,
+          quantidade_contrato: item.quantidade_contrato,
+          total_inicial: totalInicial,
+          total_consumido: totalConsumido,
+          total_disponivel: totalDisponivel,
+          modalidades: modalidadesDoContrato
+        });
+
+        grupos[chave].total_inicial += totalInicial;
+        grupos[chave].total_consumido += totalConsumido;
+        grupos[chave].total_disponivel += totalDisponivel;
+        grupos[chave].quantidade_contrato_total += parseFloat(item.quantidade_contrato as any) || 0;
+      }
+    });
+
+    return Object.values(grupos).map((grupo: any) => ({
+      ...grupo,
+      status: grupo.total_disponivel <= 0 ? 'ESGOTADO' :
+        grupo.total_disponivel <= (grupo.total_inicial * 0.1) ? 'BAIXO_ESTOQUE' : 'DISPONIVEL'
+    }));
+  };
+
+  // Aplicar apenas filtro de busca local (status já vem filtrado do servidor)
+  const produtosAgrupados = useMemo(() => {
+    return agruparPorProduto(dados);
+  }, [dados]);
+
+  // Definir colunas do DataTable
+  const columns = useMemo<ColumnDef<any>[]>(() => [
+    {
+      accessorKey: 'produto_nome',
+      header: 'Produto',
+      size: 300,
+      enableSorting: true,
+      cell: ({ row }) => {
+        const produto = row.original;
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <StatusIndicator 
+              status={produto.status === 'ESGOTADO' ? 'error' : produto.status === 'BAIXO_ESTOQUE' ? 'warning' : 'success'} 
+              size="small" 
+            />
+            <Box>
+              <Typography variant="body2" fontWeight="bold">
+                {produto.produto_nome}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {produto.contratos.length} contrato(s)
+              </Typography>
+            </Box>
+          </Box>
+        );
+      },
+    },
+    {
+      accessorKey: 'unidade',
+      header: 'Unidade',
+      size: 100,
+      align: 'center',
+      enableSorting: true,
+    },
+    {
+      accessorKey: 'total_inicial',
+      header: 'Total Inicial',
+      size: 130,
+      align: 'right',
+      enableSorting: true,
+      cell: ({ getValue }) => formatarNumero(getValue() as number),
+    },
+    {
+      accessorKey: 'total_consumido',
+      header: 'Total Consumido',
+      size: 150,
+      align: 'right',
+      enableSorting: true,
+      cell: ({ getValue }) => formatarNumero(getValue() as number),
+    },
+    {
+      accessorKey: 'total_disponivel',
+      header: 'Total Disponível',
+      size: 150,
+      align: 'right',
+      enableSorting: true,
+      cell: ({ getValue }) => (
+        <Typography variant="body2" fontWeight="bold" color="primary">
+          {formatarNumero(getValue() as number)}
+        </Typography>
+      ),
+    },
+    {
+      id: 'actions',
+      header: 'Ações',
+      size: 180,
+      align: 'center',
+      cell: ({ row }) => {
+        const produto = row.original;
+        return (
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (produto.contratos.length > 1) {
+                abrirDialogSelecionarContrato(produto);
+              } else {
+                abrirDialogGerenciarModalidades(produto.contratos[0]);
+              }
+            }}
+            sx={{ fontSize: '0.75rem' }}
+          >
+            Gerenciar Modalidades
+          </Button>
+        );
+      },
+    },
+  ], []);
+
+  const handleChangePage = (event: unknown, newPage: number) => {
+    setPage(newPage);
+    setFiltros({ ...filtros, page: newPage + 1 });
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newRowsPerPage = parseInt(event.target.value, 10);
+    setRowsPerPage(newRowsPerPage);
+    setPage(0);
+    setFiltros({ ...filtros, page: 1, limit: newRowsPerPage });
+  };
+
+  const exportarCSV = async () => {
+    try {
+      const blob = await saldoContratosModalidadesService.exportarCSV(filtros);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `saldos_contratos_modalidades_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Erro ao exportar CSV:', err);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'DISPONIVEL':
+        return 'success';
+      case 'BAIXO_ESTOQUE':
+        return 'warning';
+      case 'ESGOTADO':
+        return 'error';
+      default:
+        return 'default';
+    }
+  };
+
+  const formatarNumero = (valor: number) => {
+    // Tratar valores inválidos
+    if (valor === null || valor === undefined || isNaN(valor)) {
+      return '0,00';
+    }
+    return new Intl.NumberFormat('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(valor);
+  };
+
+  const formatarMoeda = (valor: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(valor);
+  };
+
+  const formatarData = (data: string) => {
+    return new Date(data).toLocaleDateString('pt-BR');
+  };
+
+  if (loading && dados.length === 0) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <PageContainer fullHeight>
+        <PageHeader title="Saldo Contratos por Modalidade" />
+
+        {/* Legenda de Status */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 2, px: 1 }}>
+          <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 500 }}>
+            Exibindo {produtosAgrupados.length} {produtosAgrupados.length === 1 ? 'produto' : 'produtos'}
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            {(() => {
+              const statusLegend = [
+                { status: 'success', label: 'DISPONÍVEL', count: produtosAgrupados.filter(p => p.status === 'DISPONIVEL').length },
+                { status: 'warning', label: 'BAIXO ESTOQUE', count: produtosAgrupados.filter(p => p.status === 'BAIXO_ESTOQUE').length },
+                { status: 'error', label: 'ESGOTADO', count: produtosAgrupados.filter(p => p.status === 'ESGOTADO').length }
+              ];
+              return statusLegend.map((item) => (
+                <Box key={item.status} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <StatusIndicator status={item.status} size="small" />
+                  <Typography variant="body2" sx={{ color: '#495057', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    {item.label}
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#6c757d', fontWeight: 600 }}>
+                    {item.count}
+                  </Typography>
+                </Box>
+              ));
+            })()}
+          </Box>
+        </Box>
+
+        {/* DataTableAdvanced */}
+        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <DataTableAdvanced
+            data={produtosAgrupados}
+            columns={columns}
+            loading={loading}
+            onRowClick={(produto: any) => {
+              if (produto.contratos.length > 1) {
+                abrirDialogSelecionarContrato(produto);
+              } else {
+                abrirDialogGerenciarModalidades(produto.contratos[0]);
+              }
+            }}
+            searchPlaceholder="Buscar produtos..."
+            onFilterClick={(e) => setFilterAnchorEl(e.currentTarget)}
+            onImportExportClick={(e) => setImportExportMenuAnchor(e.currentTarget)}
+            emptyMessage="Nenhum produto encontrado"
+          />
+        </Box>
+
+        {/* Popover de Filtros */}
+        <Popover
+          open={Boolean(filterAnchorEl)}
+          anchorEl={filterAnchorEl}
+          onClose={() => setFilterAnchorEl(null)}
+          anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'right',
+          }}
+          transformOrigin={{
+            vertical: 'top',
+            horizontal: 'right',
+          }}
+        >
+          <Box sx={{ p: 2, minWidth: 250 }}>
+            <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600 }}>
+              Filtros
+            </Typography>
+
+            <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+              <InputLabel>Status do Produto</InputLabel>
+              <Select
+                value={filters.status || ''}
+                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                label="Status do Produto"
+              >
+                <MenuItem value="">Todos</MenuItem>
+                <MenuItem value="DISPONIVEL">Disponível</MenuItem>
+                <MenuItem value="BAIXO_ESTOQUE">Baixo Estoque</MenuItem>
+                <MenuItem value="ESGOTADO">Esgotado</MenuItem>
+              </Select>
+            </FormControl>
+
+            <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+              <Button
+                size="small"
+                onClick={() => {
+                  setFilters({});
+                  setFilterAnchorEl(null);
+                }}
+              >
+                Limpar
+              </Button>
+              <Button
+                size="small"
+                variant="contained"
+                onClick={() => setFilterAnchorEl(null)}
+              >
+                Aplicar
+              </Button>
+            </Box>
+          </Box>
+        </Popover>
+      </PageContainer>
+
+      {/* Modais fora do PageContainer */}
+
+      {/* Menu Importar/Exportar */}
+      <Menu
+        anchorEl={importExportMenuAnchor}
+        open={Boolean(importExportMenuAnchor)}
+        onClose={() => setImportExportMenuAnchor(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <MenuItem onClick={() => { setImportExportMenuAnchor(null); exportarCSV(); }} disabled={loading}>
+          <DownloadIcon sx={{ mr: 1, fontSize: 18 }} />
+          Exportar CSV
+        </MenuItem>
+      </Menu>
+      
+      {/* Modal de Seleção de Contrato */}
+        <Dialog
+          open={dialogSelecionarContrato}
+          onClose={() => setDialogSelecionarContrato(false)}
+          maxWidth="sm"
+          fullWidth
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              setContratoSelecionadoIndex(prev => Math.min(prev + 1, contratosDisponiveis.length - 1));
+            } else if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              setContratoSelecionadoIndex(prev => Math.max(prev - 1, 0));
+            } else if (e.key === 'Enter') {
+              e.preventDefault();
+              if (contratosDisponiveis[contratoSelecionadoIndex]) {
+                selecionarContrato(contratosDisponiveis[contratoSelecionadoIndex]);
+              }
+            } else if (e.key === 'Escape') {
+              setDialogSelecionarContrato(false);
+            }
+          }}
+        >
+          <DialogTitle>Selecione o Contrato</DialogTitle>
+          <DialogContent>
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="body2" color="text.secondary">
+                Este produto está em múltiplos contratos. Selecione qual deseja gerenciar:
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
+                <Chip label="↑↓ Navegar" size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
+                <Chip label="Enter Selecionar" size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
+                <Chip label="Esc Cancelar" size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
+              </Box>
+            </Box>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {contratosDisponiveis.map((contrato, index) => (
+                <Card
+                  key={contrato.contrato_produto_id}
+                  data-contrato-index={index}
+                  sx={{
+                    cursor: 'pointer',
+                    bgcolor: contratoSelecionadoIndex === index ? '#e3f2fd' : 'inherit',
+                    '&:hover': { bgcolor: contratoSelecionadoIndex === index ? '#bbdefb' : 'action.hover' },
+                    border: '2px solid',
+                    borderColor: contratoSelecionadoIndex === index ? 'primary.main' : 'divider',
+                    transition: 'all 0.2s'
+                  }}
+                  onClick={() => {
+                    setContratoSelecionadoIndex(index);
+                    selecionarContrato(contrato);
+                  }}
+                >
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      Contrato {contrato.contrato_numero}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      <strong>Fornecedor:</strong> {contrato.fornecedor_nome}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      <strong>Quantidade:</strong> {formatarNumero(contrato.quantidade_contrato)} {contratosDisponiveis[0]?.modalidades[0]?.unidade || ''}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      <strong>Preço Unitário:</strong> {formatarMoeda(contrato.preco_unitario)}
+                    </Typography>
+                    <Box sx={{ mt: 1, display: 'flex', gap: 2 }}>
+                      <Chip label={`Inicial: ${formatarNumero(contrato.total_inicial)}`} size="small" color="primary" variant="outlined" />
+                      <Chip label={`Consumido: ${formatarNumero(contrato.total_consumido)}`} size="small" color="warning" variant="outlined" />
+                      <Chip label={`Disponível: ${formatarNumero(contrato.total_disponivel)}`} size="small" color="success" variant="outlined" />
+                    </Box>
+                  </CardContent>
+                </Card>
+              ))}
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button size="small" onClick={() => setDialogSelecionarContrato(false)}>Cancelar</Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Modal de Gerenciar Modalidades */}
+        <Dialog open={dialogGerenciarModalidades} onClose={fecharDialogGerenciarModalidades} maxWidth="md" fullWidth>
+          <DialogTitle>
+            Gerenciar Modalidades
+            {produtoSelecionado && (
+              <Typography variant="subtitle1" color="text.secondary">
+                {produtoSelecionado.contrato_numero} - {produtoSelecionado.produto_nome}
+              </Typography>
+            )}
+          </DialogTitle>
+          <DialogContent>
+            {produtoSelecionado && (
+              <Box sx={{ pt: 2 }}>
+                <Box sx={{ mb: 3, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
+                  <Typography variant="body2" color="text.secondary">Informações do Produto</Typography>
+                  <Typography variant="body1">
+                    <strong>Quantidade Contratada:</strong> {formatarNumero(produtoSelecionado.quantidade_contrato)} {produtoSelecionado.unidade}
+                  </Typography>
+                  <Typography variant="body1">
+                    <strong>Total Distribuído:</strong> {formatarNumero(calcularTotaisAtuais().totalDistribuido)} {produtoSelecionado.unidade}
+                  </Typography>
+                  <Typography
+                    variant="body1"
+                    sx={{
+                      color: calcularTotaisAtuais().disponivelDistribuir < 0 ? 'error.main' : 'text.primary',
+                      fontWeight: calcularTotaisAtuais().disponivelDistribuir < 0 ? 'bold' : 'normal'
+                    }}
+                  >
+                    <strong>Disponível para Distribuir:</strong> {formatarNumero(calcularTotaisAtuais().disponivelDistribuir)} {produtoSelecionado.unidade}
+                  </Typography>
+                  <Typography
+                    variant="body1"
+                    sx={{
+                      color: 'primary.main',
+                      fontWeight: 'bold',
+                      mt: 1
+                    }}
+                  >
+                    <strong>Total Disponível para Consumo:</strong> {formatarNumero(calcularTotaisAtuais().totalDisponivel)} {produtoSelecionado.unidade}
+                  </Typography>
+                </Box>
+
+                {carregandoModalidades ? (
+                  <Box display="flex" justifyContent="center" alignItems="center" py={4}>
+                    <CircularProgress />
+                  </Box>
+                ) : (
+                  <TableContainer component={Paper} variant="outlined">
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Modalidade</TableCell>
+                          <TableCell align="right">Quantidade Inicial</TableCell>
+                          <TableCell align="right">Consumido</TableCell>
+                          <TableCell align="right">Disponível</TableCell>
+                          <TableCell align="center">Ações</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {modalidadesProduto.map((modalidade) => (
+                          <ModalidadeRow
+                            key={modalidade.id}
+                            modalidade={modalidade}
+                            produtoSelecionado={produtoSelecionado}
+                            todasModalidades={modalidadesProduto}
+                            onEditarQuantidadeInicial={abrirDialogQuantidadeInicial}
+                            onRegistrarConsumo={abrirConsumoModalidade}
+                            onVerHistorico={abrirHistoricoModalidade}
+                            formatarNumero={formatarNumero}
+                          />
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button size="small" onClick={fecharDialogGerenciarModalidades}>
+              Fechar
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Modal de Quantidade Inicial */}
+        <Dialog
+          open={dialogQuantidadeInicial}
+          onClose={fecharDialogQuantidadeInicial}
+          maxWidth="sm"
+          fullWidth
+          onKeyDown={(e) => {
+            if (e.key === 'Tab' && !e.shiftKey) {
+              e.preventDefault();
+              e.stopPropagation();
+              salvarEProximaModalidade();
+            } else if (e.key === 'Enter') {
+              e.preventDefault();
+              e.stopPropagation();
+              salvarQuantidadeInicial();
+            }
+          }}
+        >
+          <DialogTitle sx={{ bgcolor: 'success.main', color: 'success.contrastText' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+              <EditIcon />
+              Editar Quantidade Inicial
+            </Box>
+            {modalidadeSelecionada && (
+              <Box component="span" sx={{ fontWeight: 'bold', fontSize: '1.25rem', display: 'block' }}>
+                Modalidade: {modalidadeSelecionada.nome}
+              </Box>
+            )}
+          </DialogTitle>
+          <DialogContent>
+            {modalidadeSelecionada && produtoSelecionado && (
+              <Box sx={{ pt: 2 }}>
+                <Alert severity="info" sx={{ mb: 3 }}>
+                  Define a quantidade inicial disponível para esta modalidade. Esta é a quantidade que será distribuída do contrato.
+                </Alert>
+
+                <Box sx={{ mb: 3, p: 2, bgcolor: 'primary.light', borderRadius: 1, border: 2, borderColor: 'primary.main' }}>
+                  <Typography variant="body2" gutterBottom>
+                    <strong>Produto:</strong> {produtoSelecionado.produto_nome || produtoSelecionado.nome || 'N/A'}
+                  </Typography>
+                  <Typography variant="body2" gutterBottom>
+                    <strong>Contrato:</strong> {produtoSelecionado.contrato_numero || 'N/A'}
+                  </Typography>
+                  <Typography variant="body2" gutterBottom>
+                    <strong>Quantidade Contratada:</strong> {formatarNumero(produtoSelecionado.quantidade_contrato)} {produtoSelecionado.unidade}
+                  </Typography>
+                  <Typography variant="body2" gutterBottom>
+                    <strong>Já Distribuído (outras modalidades):</strong> {formatarNumero(calcularTotaisAtuais().totalDistribuido - (modalidadeSelecionada.quantidade_inicial || 0))} {produtoSelecionado.unidade}
+                  </Typography>
+                  <Typography variant="body2" gutterBottom>
+                    <strong>Quantidade Atual desta Modalidade:</strong> {formatarNumero(modalidadeSelecionada.quantidade_inicial || 0)} {produtoSelecionado.unidade}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: calcularTotaisAtuais().disponivelDistribuir < 0 ? 'error.main' : 'success.main',
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    <strong>Disponível para Redistribuir:</strong> {(() => {
+                      const totais = calcularTotaisAtuais();
+                      const quantidadeAtual = parseFloat(modalidadeSelecionada.quantidade_inicial as any) || 0;
+                      const disponivel = totais.disponivelDistribuir + quantidadeAtual;
+                      return formatarNumero(disponivel);
+                    })()} {produtoSelecionado.unidade}
+                  </Typography>
+                </Box>
+
+                <TextField
+                  fullWidth
+                  label="Quantidade Inicial"
+                  type="number"
+                  value={quantidadeInicial}
+                  onChange={(e) => setQuantidadeInicial(e.target.value)}
+                  inputProps={{
+                    min: 0,
+                    step: 0.01
+                  }}
+                  helperText={`Defina a quantidade inicial para ${modalidadeSelecionada.nome}`}
+                  autoFocus
+                />
+
+                {error && (
+                  <Alert severity="error" sx={{ mt: 2, whiteSpace: 'pre-line' }}>
+                    {error}
+                  </Alert>
+                )}
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button size="small" onClick={fecharDialogQuantidadeInicial} disabled={cadastrarSaldoMutation.isPending}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={salvarQuantidadeInicial}
+              variant="contained"
+              disabled={cadastrarSaldoMutation.isPending || !quantidadeInicial || parseFloat(quantidadeInicial) < 0}
+              color="add"
+              startIcon={cadastrarSaldoMutation.isPending ? <CircularProgress size={16} /> : <SaveIcon />}
+            >
+              {cadastrarSaldoMutation.isPending ? 'Salvando...' : 'Salvar Quantidade'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Modal de Registro de Consumo */}
+        <Dialog open={dialogConsumoAberto} onClose={fecharDialogConsumo} maxWidth="sm" fullWidth>
+          <DialogTitle sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', display: 'flex', alignItems: 'center', gap: 1 }}>
+            <RestaurantIcon />
+            Registrar Consumo
+          </DialogTitle>
+          <DialogContent>
+            {itemSelecionado && (
+              <Box sx={{ pt: 2 }}>
+                <Typography variant="body2" gutterBottom>
+                  <strong>Contrato:</strong> {itemSelecionado.contrato_numero}
+                </Typography>
+                <Typography variant="body2" gutterBottom>
+                  <strong>Produto:</strong> {itemSelecionado.produto_nome}
+                </Typography>
+                <Typography variant="body2" gutterBottom>
+                  <strong>Modalidade:</strong> {itemSelecionado.modalidade_nome}
+                </Typography>
+                <Typography variant="body2" gutterBottom>
+                  <strong>Fornecedor:</strong> {itemSelecionado.fornecedor_nome}
+                </Typography>
+                <Typography variant="body2" gutterBottom sx={{ mb: 3 }}>
+                  <strong>Saldo Disponível:</strong> {formatarNumero(itemSelecionado.quantidade_disponivel)} {itemSelecionado.unidade}
+                </Typography>
+
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      name="quantidade-consumo"
+                      label="Quantidade a Consumir"
+                      type="number"
+                      value={quantidadeConsumo}
+                      onChange={(e) => setQuantidadeConsumo(e.target.value)}
+                      inputProps={{
+                        min: 0,
+                        max: itemSelecionado.quantidade_disponivel,
+                        step: 0.01
+                      }}
+                      helperText={`Máximo: ${formatarNumero(itemSelecionado.quantidade_disponivel)} ${itemSelecionado.unidade}`}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      label="Data do Consumo"
+                      type="date"
+                      value={dataConsumo}
+                      onChange={(e) => setDataConsumo(e.target.value)}
+                      InputLabelProps={{
+                        shrink: true,
+                      }}
+                      helperText="Para registros retroativos"
+                    />
+                  </Grid>
+                </Grid>
+
+                <TextField
+                  fullWidth
+                  label="Observação (opcional)"
+                  multiline
+                  rows={2}
+                  value={observacaoConsumo}
+                  onChange={(e) => setObservacaoConsumo(e.target.value)}
+                  placeholder="Descreva o motivo do consumo..."
+                  sx={{ mt: 2 }}
+                />
+
+                {error && (
+                  <Alert severity="error" sx={{ mt: 2 }}>
+                    {error}
+                  </Alert>
+                )}
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button size="small" onClick={fecharDialogConsumo} disabled={registrarConsumoMutation.isPending}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={registrarConsumo}
+              variant="contained"
+              disabled={registrarConsumoMutation.isPending || !quantidadeConsumo || parseFloat(quantidadeConsumo) <= 0}
+              startIcon={registrarConsumoMutation.isPending ? <CircularProgress size={16} /> : <RestaurantIcon />}
+            >
+              {registrarConsumoMutation.isPending ? 'Registrando...' : 'Registrar Consumo'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Modal de Histórico de Consumos */}
+        <Dialog open={dialogHistoricoOpen} onClose={fecharDialogHistorico} maxWidth="md" fullWidth>
+          <DialogTitle>
+            <Box display="flex" alignItems="center" gap={1}>
+              <HistoryIcon color="primary" />
+              Histórico de Consumos - {itemSelecionado?.produto_nome} ({itemSelecionado?.modalidade_nome})
+            </Box>
+          </DialogTitle>
+          <DialogContent>
+            <Box sx={{ mt: 2 }}>
+              {carregandoHistorico ? (
+                <Box display="flex" justifyContent="center" alignItems="center" py={4}>
+                  <CircularProgress />
+                </Box>
+              ) : historicoConsumo.length === 0 ? (
+                <Typography variant="body2" color="text.secondary" align="center">
+                  Nenhum consumo registrado para este item.
+                </Typography>
+              ) : (
+                <TableContainer component={Paper} variant="outlined">
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+                        <TableCell>Data</TableCell>
+                        <TableCell align="right">Quantidade</TableCell>
+                        <TableCell>Responsável</TableCell>
+                        <TableCell>Observação</TableCell>
+                        <TableCell align="center">Ações</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {historicoConsumo.map((consumo, index) => (
+                        <TableRow key={index}>
+                          <TableCell>{formatarData(consumo.data_consumo)}</TableCell>
+                          <TableCell align="right">{formatarNumero(consumo.quantidade)} {itemSelecionado?.unidade}</TableCell>
+                          <TableCell>{consumo.responsavel_nome || 'Não informado'}</TableCell>
+                          <TableCell>{consumo.observacao || '-'}</TableCell>
+                          <TableCell align="center">
+                            <Tooltip title="Excluir Consumo">
+                              <IconButton
+                                size="small"
+                                color="delete"
+                                onClick={() => excluirConsumo(consumo.id)}
+                              >
+                                <CancelIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button size="small" onClick={fecharDialogHistorico}>
+              Fechar
+            </Button>
+          </DialogActions>
+        </Dialog>
+        
+        {/* Loading Overlays */}
+        <LoadingOverlay 
+          open={cadastrarSaldoMutation.isPending}
+          message="Salvando quantidade inicial..."
+        />
+        <LoadingOverlay 
+          open={registrarConsumoMutation.isPending}
+          message="Registrando consumo..."
+        />
+        <LoadingOverlay 
+          open={excluirConsumoMutation.isPending}
+          message="Excluindo consumo..."
+        />
+    </Box>
+  );
+};
+
+export default SaldoContratosModalidades;

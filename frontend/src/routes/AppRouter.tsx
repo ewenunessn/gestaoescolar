@@ -4,14 +4,16 @@ import { isAuthenticated } from "../services/auth";
 import LayoutModerno from "../components/LayoutModerno";
 import { EscolasProvider } from "../contexts/EscolasContext";
 
-// Componentes críticos carregados imediatamente
+// Componentes críticos carregados imediatamente (páginas públicas)
 import Login from "../pages/Login";
 import LoginWrapper from "../components/LoginWrapper";
 import Registro from "../pages/Registro";
-import Dashboard from "../pages/Dashboard";
-import CardapioPublico from "../pages/CardapioPublico";
 import LandingPage from "../pages/LandingPage";
 import InterestForm from "../pages/InterestForm";
+
+// Módulos - carregados imediatamente
+import Dashboard from "../modules/sistema/pages/Dashboard";
+import CardapioPublico from "../modules/cardapios/pages/CardapioPublico";
 
 // Componente de loading
 const PageLoader = () => (
@@ -44,66 +46,99 @@ function RootRedirect() {
   return <Navigate to="/dashboard" replace />;
 }
 
-// Lazy loading para páginas menos críticas
-const Escolas = lazy(() => import("../pages/Escolas"));
-const Modalidades = lazy(() => import("../pages/Modalidades"));
-const Produtos = lazy(() => import("../pages/Produtos"));
-const ProdutoDetalhe = lazy(() => import("../pages/ProdutoDetalhe"));
-const EscolaDetalhes = lazy(() => import("../pages/EscolaDetalhes"));
-const PreparacaoDetalhe = lazy(() => import("../pages/PreparacaoDetalhe"));
-const Preparacoes = lazy(() => import("../pages/Preparacoes"));
-const Cardapios = lazy(() => import("../pages/CardapiosModalidade"));
-const CardapioCalendario = lazy(() => import("../pages/CardapioCalendario"));
-const TiposRefeicao = lazy(() => import("../pages/TiposRefeicao"));
-const Nutricionistas = lazy(() => import("../pages/Nutricionistas"));
-const Fornecedores = lazy(() => import("../pages/Fornecedores"));
-const FornecedorDetalhe = lazy(() => import("../pages/FornecedorDetalhe"));
-const ItensFornecedor = lazy(() => import("../pages/ItensFornecedor"));
-const Contratos = lazy(() => import("../pages/Contratos"));
-const DemandasLista = lazy(() => import("../pages/DemandasLista"));
-const GerarFaturamento = lazy(() => import("../pages/GerarFaturamento"));
-const NovoContrato = lazy(() => import("../pages/NovoContrato"));
-const ContratoDetalhe = lazy(() => import("../pages/ContratoDetalhe"));
-const EstoqueCentral = lazy(() => import("../pages/EstoqueCentral"));
-const EstoqueLotes = lazy(() => import("../pages/EstoqueLotes"));
-const EstoqueMovimentacoes = lazy(() => import("../pages/EstoqueMovimentacoes"));
-const EstoqueAlertas = lazy(() => import("../pages/EstoqueAlertas"));
-const EstoqueEscolar = lazy(() => import("../pages/EstoqueEscolar"));
-const EstoqueEscolaPortal = lazy(() => import("../pages/EstoqueEscolaPortal"));
-const SaldoContratosModalidades = lazy(() => import("../pages/SaldoContratosModalidades"));
-const GerenciarAlunosModalidades = lazy(() => import("../pages/GerenciarAlunosModalidades"));
+// Lazy loading - Módulo: escolas
+const Escolas = lazy(() => import("../modules/escolas/pages/Escolas"));
+const EscolaDetalhes = lazy(() => import("../modules/escolas/pages/EscolaDetalhes"));
+const GerenciarAlunosModalidades = lazy(() => import("../modules/escolas/pages/GerenciarAlunosModalidades"));
+const GerenciarEscolasRota = lazy(() => import("../modules/escolas/pages/GerenciarEscolasRota"));
+const PortalEscola = lazy(() => import("../modules/escolas/pages/PortalEscola"));
+
+// Lazy loading - Módulo: sistema
+const Modalidades = lazy(() => import("../modules/sistema/pages/Modalidades"));
+const ConfiguracaoInstituicao = lazy(() => import("../modules/sistema/pages/ConfiguracaoInstituicao"));
+const GerenciamentoUsuarios = lazy(() => import("../modules/sistema/pages/GerenciamentoUsuarios"));
+const GerenciamentoPeriodos = lazy(() => import("../modules/sistema/pages/GerenciamentoPeriodos"));
+const DashboardPNAE = lazy(() => import("../modules/sistema/pages/DashboardPNAE"));
+const EditorTemplatesPDF = lazy(() => import("../modules/sistema/pages/EditorTemplatesPDF"));
+const CalendarioLetivo = lazy(() => import("../modules/sistema/pages/CalendarioLetivo"));
+const DisparosNotificacao = lazy(() => import("../modules/sistema/pages/DisparosNotificacao"));
+const DocumentacaoSistema = lazy(() => import("../modules/sistema/pages/DocumentacaoSistema"));
+
+// Lazy loading - Módulo: produtos
+const Produtos = lazy(() => import("../modules/produtos/pages/Produtos"));
+const ProdutoDetalhe = lazy(() => import("../modules/produtos/pages/ProdutoDetalhe"));
+
+// Lazy loading - Módulo: nutricao
+const Preparacoes = lazy(() => import("../modules/nutricao/pages/Preparacoes"));
+const PreparacaoDetalhe = lazy(() => import("../modules/nutricao/pages/PreparacaoDetalhe"));
+const TiposRefeicao = lazy(() => import("../modules/nutricao/pages/TiposRefeicao"));
+const Nutricionistas = lazy(() => import("../modules/nutricao/pages/Nutricionistas"));
+const GruposIngredientes = lazy(() => import("../modules/nutricao/pages/GruposIngredientes"));
+const Refeicoes = lazy(() => import("../modules/nutricao/pages/Refeicoes"));
+
+// Lazy loading - Módulo: cardapios
+const Cardapios = lazy(() => import("../modules/cardapios/pages/CardapiosModalidade"));
+const CardapioCalendario = lazy(() => import("../modules/cardapios/pages/CardapioCalendario"));
+const CardapioDetalhe = lazy(() => import("../modules/cardapios/pages/CardapioDetalhe"));
+
+// Lazy loading - Módulo: fornecedores
+const Fornecedores = lazy(() => import("../modules/fornecedores/pages/Fornecedores"));
+const FornecedorDetalhe = lazy(() => import("../modules/fornecedores/pages/FornecedorDetalhe"));
+const ItensFornecedor = lazy(() => import("../modules/fornecedores/pages/ItensFornecedor"));
+
+// Lazy loading - Módulo: contratos
+const Contratos = lazy(() => import("../modules/contratos/pages/Contratos"));
+const NovoContrato = lazy(() => import("../modules/contratos/pages/NovoContrato"));
+const ContratoDetalhe = lazy(() => import("../modules/contratos/pages/ContratoDetalhe"));
+const SaldoContratosModalidades = lazy(() => import("../modules/contratos/pages/SaldoContratosModalidades"));
+
+// Lazy loading - Módulo: estoque
+const EstoqueCentral = lazy(() => import("../modules/estoque/pages/EstoqueCentral"));
+const EstoqueLotes = lazy(() => import("../modules/estoque/pages/EstoqueLotes"));
+const EstoqueMovimentacoes = lazy(() => import("../modules/estoque/pages/EstoqueMovimentacoes"));
+const EstoqueAlertas = lazy(() => import("../modules/estoque/pages/EstoqueAlertas"));
+const EstoqueEscolar = lazy(() => import("../modules/estoque/pages/EstoqueEscolar"));
+const EstoqueEscolaPortal = lazy(() => import("../modules/estoque/pages/EstoqueEscolaPortal"));
+
+// Lazy loading - Módulo: demandas
+const DemandasLista = lazy(() => import("../modules/demandas/pages/DemandasLista"));
+const GuiasDemandaLista = lazy(() => import("../modules/demandas/pages/GuiasDemandaLista"));
+const GuiaDemandaDetalhe = lazy(() => import("../modules/demandas/pages/GuiaDemandaDetalhe"));
+const GuiaDemandaEscolaItens = lazy(() => import("../modules/demandas/pages/GuiaDemandaEscolaItens"));
+const AjusteGuiaDemandaScreen = lazy(() => import("../modules/programacao/pages/AjusteGuiaDemandaScreen"));
+
+// Lazy loading - Módulo: entregas
+const Romaneio = lazy(() => import("../modules/entregas/pages/Romaneio"));
+const Entregas = lazy(() => import("../modules/entregas/pages/Entregas"));
+const ComprovantesEntrega = lazy(() => import("../modules/entregas/pages/ComprovantesEntrega"));
+const ValidarComprovante = lazy(() => import("../modules/entregas/pages/ValidarComprovante"));
+
+// Lazy loading - Módulo: rotas
+const GestaoRotas = lazy(() => import("../modules/rotas/pages/GestaoRotas"));
+
+// Lazy loading - Módulo: compras
+const Compras = lazy(() => import("../modules/compras/pages/Compras"));
+const CompraForm = lazy(() => import("../modules/compras/pages/CompraForm"));
+const CompraDetalhe = lazy(() => import("../modules/compras/pages/CompraDetalhe"));
+const PlanejamentoCompras = lazy(() => import("../modules/compras/pages/PlanejamentoCompras"));
+
+// Lazy loading - Módulo: programacao
+const ProgramacaoEntregaScreen = lazy(() => import("../modules/programacao/pages/ProgramacaoEntregaScreen"));
+const AjusteProgramacoesScreen = lazy(() => import("../modules/programacao/pages/AjusteProgramacoesScreen"));
+
+// Lazy loading - Módulo: faturamento
+const FaturamentosCompra = lazy(() => import("../modules/faturamento/pages/FaturamentosCompra"));
+const FaturamentoModalidades = lazy(() => import("../modules/faturamento/pages/FaturamentoModalidades"));
+const RelatorioFaturamentoTipoFornecedor = lazy(() => import("../modules/faturamento/pages/RelatorioFaturamentoTipoFornecedor"));
+const FaturamentoDetalhe = lazy(() => import("../modules/faturamento/pages/FaturamentoDetalhe"));
+const GerarFaturamento = lazy(() => import("../modules/faturamento/pages/GerarFaturamento"));
+
+// Lazy loading - Módulo: solicitacoes
+const SolicitacoesAlimentos = lazy(() => import("../modules/solicitacoes/pages/SolicitacoesAlimentos"));
+const SolicitacaoEscolaDetalhe = lazy(() => import("../modules/solicitacoes/pages/SolicitacaoEscolaDetalhe"));
+
+// Componentes auxiliares
 const DashboardConsistencia = lazy(() => import("../components/DashboardConsistencia"));
-const GuiasDemandaLista = lazy(() => import("../pages/GuiasDemandaLista"));
-const GuiaDemandaDetalhe = lazy(() => import("../pages/GuiaDemandaDetalhe"));
-const GuiaDemandaEscolaItens = lazy(() => import("../pages/GuiaDemandaEscolaItens"));
-const AjusteGuiaDemandaScreen = lazy(() => import("../pages/AjusteGuiaDemandaScreen"));
-const Romaneio = lazy(() => import("../pages/Romaneio"));
-const Entregas = lazy(() => import("../pages/Entregas"));
-const GestaoRotas = lazy(() => import("../pages/GestaoRotas"));
-const GerenciarEscolasRota = lazy(() => import("../pages/GerenciarEscolasRota"));
-const Compras = lazy(() => import("../pages/Compras"));
-const CompraForm = lazy(() => import("../pages/CompraForm"));
-const CompraDetalhe = lazy(() => import("../pages/CompraDetalhe"));
-const ProgramacaoEntregaScreen = lazy(() => import("../pages/ProgramacaoEntregaScreen"));
-const AjusteProgramacoesScreen = lazy(() => import("../pages/AjusteProgramacoesScreen"));
-const FaturamentosCompra = lazy(() => import("../pages/FaturamentosCompra"));
-const FaturamentoModalidades = lazy(() => import("../pages/FaturamentoModalidades"));
-const RelatorioFaturamentoTipoFornecedor = lazy(() => import("../pages/RelatorioFaturamentoTipoFornecedor"));
-const FaturamentoDetalhe = lazy(() => import("../pages/FaturamentoDetalhe"));
-const ComprovantesEntrega = lazy(() => import("../pages/ComprovantesEntrega"));
-const ConfiguracaoInstituicao = lazy(() => import("../pages/ConfiguracaoInstituicao"));
-const EditorTemplatesPDF = lazy(() => import("../pages/EditorTemplatesPDF"));
-const PlanejamentoCompras = lazy(() => import("../pages/PlanejamentoCompras"));
-const DashboardPNAE = lazy(() => import("../pages/DashboardPNAE"));
-const GerenciamentoUsuarios = lazy(() => import("../pages/GerenciamentoUsuarios"));
-const GerenciamentoPeriodos = lazy(() => import("../pages/GerenciamentoPeriodos"));
-const GruposIngredientes = lazy(() => import("../pages/GruposIngredientes"));
-const CalendarioLetivo = lazy(() => import("../pages/CalendarioLetivo"));
-const SolicitacoesAlimentos = lazy(() => import("../pages/SolicitacoesAlimentos"));
-const SolicitacaoEscolaDetalhe = lazy(() => import("../pages/SolicitacaoEscolaDetalhe"));
-const PortalEscola = lazy(() => import("../pages/PortalEscola"));
-const DisparosNotificacao = lazy(() => import("../pages/DisparosNotificacao"));
-const ValidarComprovante = lazy(() => import("../pages/ValidarComprovante"));
 
 interface AppRouterProps {
   routerConfig?: {

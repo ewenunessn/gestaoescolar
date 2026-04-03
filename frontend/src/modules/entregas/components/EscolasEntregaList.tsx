@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -18,8 +18,8 @@ import {
   Button,
   Grid,
   Checkbox,
-} from '@mui/material';
-import JsBarcode from 'jsbarcode';
+} from "@mui/material";
+import JsBarcode from "jsbarcode";
 import {
   School as SchoolIcon,
   LocalShipping as DeliveryIcon,
@@ -32,16 +32,16 @@ import {
   Route as RouteIcon,
   Assignment as GuiaIcon,
   CheckBox as CheckBoxIcon,
-} from '@mui/icons-material';
-import { ColumnDef } from '@tanstack/react-table';
-import { EscolaEntrega, EstatisticasEntregas, Rota } from '../types';
-import { entregaService } from '../services/entregaService';
-import { guiaService } from '../../../services/guiaService';
-import { buscarInstituicao, Instituicao } from '../../../services/instituicao';
-import { formatarQuantidade } from '../../../utils/formatters';
-import { DataTableAdvanced } from '../../../components/DataTableAdvanced';
-import { initPdfMake, buildPdfDoc, buildTable } from '../../../utils/pdfUtils';
-import api from '../../../services/api';
+} from "@mui/icons-material";
+import { ColumnDef } from "@tanstack/react-table";
+import { EscolaEntrega, EstatisticasEntregas, Rota } from "../types";
+import { entregaService } from "../services/entregaService";
+import { guiaService } from "../../../services/guiaService";
+import { buscarInstituicao, Instituicao } from "../../../services/instituicao";
+import { formatarQuantidade } from "../../../utils/formatters";
+import { DataTableAdvanced } from "../../../components/DataTableAdvanced";
+import { initPdfMake, buildPdfDoc, buildTable } from "../../../utils/pdfUtils";
+import api from "../../../services/api";
 
 interface EscolasEntregaListProps {
   onEscolaSelect: (escola: EscolaEntrega) => void;
