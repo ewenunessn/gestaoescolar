@@ -8,6 +8,7 @@
     "start": "tsx src/index.ts",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
+    "vercel-build": "npm run build",
     "test": "jest",
     "configure-db": "node scripts/configure-neon.js",
     "init-neon": "node scripts/init-neon-schema.js",
