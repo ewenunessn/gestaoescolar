@@ -113,7 +113,7 @@ export default function ItensFornecedor() {
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh" }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
         <CircularProgress size={60} />
       </Box>
     );

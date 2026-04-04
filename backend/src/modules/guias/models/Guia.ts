@@ -198,16 +198,16 @@ class GuiaModel {
 
   async criarGuia(data: CreateGuiaData): Promise<Guia> {
     // Gerar código único para a guia
-    const codigoResult = await db.run(`SELECT gerar_codigo_guia($1, $2) as codigo`, [data.mes, data.ano]);
-    const codigo_guia = codigoResult.codigo;
+    const codigoResult = await db.query(`SELECT gerar_codigo_guia($1, $2) as codigo`, [data.mes, data.ano]);
+    const codigo_guia = codigoResult.rows[0]?.codigo;
     
-    const result = await db.run(`
+    const result = await db.query(`
       INSERT INTO guias (mes, ano, nome, observacao, status, codigo_guia, created_at, updated_at)
       VALUES ($1, $2, $3, $4, 'aberta', $5, NOW(), NOW())
       RETURNING *
     `, [data.mes, data.ano, data.nome || null, data.observacao || null, codigo_guia]);
 
-    return await this.buscarGuia(result.lastID);
+    return result.rows[0];
   }
 
   async listarStatusEscolas(mes: number, ano: number, guiaId?: number): Promise<any[]> {

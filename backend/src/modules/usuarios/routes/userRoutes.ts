@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { register, login, getUsers, getProfile, checkSystemStatus } from "../controllers/userController";
 import { debugLogin } from "../controllers/debugLoginController";
-import { devAuthMiddleware as authMiddleware } from "../../../middlewares";
+import { devAuthMiddleware as authMiddleware } from "../../../middleware/devAuthMiddleware";
 
 const router = Router();
 

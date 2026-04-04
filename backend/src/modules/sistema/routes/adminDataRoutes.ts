@@ -2,7 +2,7 @@ import { Router } from 'express';
 import {
   getSystemStats
 } from '../controllers/adminDataController';
-import { authenticateSystemAdmin } from '../middlewares/systemAdminAuth';
+import { authenticateSystemAdmin } from '../../../middleware/systemAdminAuth';
 
 const router = Router();
 

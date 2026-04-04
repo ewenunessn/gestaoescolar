@@ -115,7 +115,7 @@ export default function PortalEscola() {
       setCardapios(cardapiosRes.data.data || []);
     } catch (error: any) {
       console.error('Erro ao carregar dados:', error);
-      setErro(error.response?.data?.message || 'Erro ao carregar dados da escola");
+      setErro(error.response?.data?.message || 'Erro ao carregar dados da escola');
     } finally {
       setLoading(false);
     }

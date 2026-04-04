@@ -408,7 +408,7 @@ export default function PlanejamentoCompras() {
     } catch (error: any) {
       console.error('Erro ao calcular demanda:', error);
       const mensagem = error.response?.data?.detalhes || error.response?.data?.error || 'Não foi possível calcular a demanda';
-      toast.error('Erro", mensagem);
+      toast.error('Erro', mensagem);
     } finally {
       setCalculando(false);
     }

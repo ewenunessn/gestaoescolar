@@ -200,7 +200,8 @@ const Romaneio: React.FC = () => {
       
       setQrCodeUrl(qrUrl);
     } catch (error) {
-      console.toast.error('Erro ao gerar QR Code:', error);
+      console.error('Erro ao gerar QR Code:', error);
+      toast.error('Erro ao gerar QR Code');
     }
   };
 

@@ -60,7 +60,6 @@ import disparosNotificacaoRoutes from "./modules/sistema/routes/disparosNotifica
 import unidadeMedidaRoutes from "./modules/unidades/routes/unidadeMedidaRoutes";
 
 import { createServer } from 'http';
-import { initializeRedisCache } from "./config/redis";
 import { initRedis } from "./config/redis";
 import { createGuiaTables, createEssentialTables } from "./modules/guias/models/Guia";
 

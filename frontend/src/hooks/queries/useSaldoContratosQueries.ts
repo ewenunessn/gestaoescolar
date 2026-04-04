@@ -16,6 +16,9 @@ export const useSaldosModalidades = (filtros: SaldoContratosModalidadesFilters =
   return useQuery({
     queryKey: SALDO_CONTRATOS_QUERY_KEY(filtros),
     queryFn: () => saldoContratosModalidadesService.listarSaldosModalidades(filtros),
+    staleTime: 0, // Sempre considerar dados como stale
+    cacheTime: 0, // Não manter cache
+    refetchOnMount: true, // Sempre refetch ao montar
   });
 };
 

@@ -76,7 +76,7 @@ export const cacheMiddleware = (options: CacheOptions = {}) => {
 
     // Interceptar resposta para cachear
     const originalJson = res.json.bind(res);
-    res.json = async function(data: any) {
+    (res.json as any) = async function(data: any) {
       // Apenas cachear respostas bem-sucedidas
       if (res.statusCode >= 200 && res.statusCode < 300) {
         try {
@@ -188,12 +188,12 @@ export const getCacheStats = async () => {
   });
 
   // Adicionar estatísticas do Redis
-  const redisKeys = await redisKeys('cache:*');
+  const allRedisKeys = await redisKeys('cache:*');
 
   return {
-    total: cache.size + redisKeys.length,
+    total: cache.size + allRedisKeys.length,
     memory: cache.size,
-    redis: redisKeys.length,
+    redis: allRedisKeys.length,
     active,
     expired,
     sizeBytes: totalSize,
@@ -209,7 +209,7 @@ export const invalidateCacheOnWrite = (pattern: string | RegExp) => {
     // Apenas para operações de escrita
     if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
       const originalJson = res.json.bind(res);
-      res.json = async function(data: any) {
+      (res.json as any) = async function(data: any) {
         // Invalidar cache após resposta bem-sucedida
         if (res.statusCode >= 200 && res.statusCode < 300) {
           await invalidateCache(pattern);

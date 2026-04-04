@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Box,
   Container,
@@ -24,7 +24,8 @@ import {
   QrCodeScanner as QrIcon,
   CheckCircle as ValidIcon,
   Cancel as InvalidIcon,
-  Search as SearchIcon
+  Search as SearchIcon,
+  CameraAlt as CameraIcon
 } from "@mui/icons-material";
 import api from "../../../services/api";
 
@@ -57,9 +58,44 @@ export default function ValidarComprovante() {
   const [loading, setLoading] = useState(false);
   const [comprovante, setComprovante] = useState<ComprovanteValidado | null>(null);
   const [erro, setErro] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const barcodeBuffer = useRef<string>('');
+  const lastKeyTime = useRef<number>(0);
 
-  const validarComprovante = async () => {
-    if (!codigo.trim()) {
+  // Detectar leitura de código de barras
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      const currentTime = Date.now();
+      const timeDiff = currentTime - lastKeyTime.current;
+
+      // Se o tempo entre teclas for muito curto (< 50ms), é provável que seja um leitor de código de barras
+      if (timeDiff < 50 && e.key !== 'Enter') {
+        barcodeBuffer.current += e.key;
+      } else if (e.key === 'Enter' && barcodeBuffer.current.length > 5) {
+        // Se Enter foi pressionado e há um código no buffer
+        e.preventDefault();
+        setCodigo(barcodeBuffer.current.toUpperCase());
+        // Validar automaticamente após 100ms
+        setTimeout(() => {
+          validarComprovante(barcodeBuffer.current.toUpperCase());
+        }, 100);
+        barcodeBuffer.current = '';
+      } else if (timeDiff >= 50) {
+        // Resetar buffer se o tempo entre teclas for normal (digitação manual)
+        barcodeBuffer.current = e.key === 'Enter' ? '' : e.key;
+      }
+
+      lastKeyTime.current = currentTime;
+    };
+
+    window.addEventListener('keypress', handleKeyPress);
+    return () => window.removeEventListener('keypress', handleKeyPress);
+  }, []);
+
+  const validarComprovante = async (codigoParam?: string) => {
+    const codigoParaValidar = codigoParam || codigo;
+    
+    if (!codigoParaValidar.trim()) {
       setErro('Digite o código do comprovante');
       return;
     }
@@ -69,7 +105,7 @@ export default function ValidarComprovante() {
       setErro('');
       setComprovante(null);
 
-      const response = await api.get(`/entregas/comprovantes/numero/${codigo.trim()}`);
+      const response = await api.get(`/entregas/comprovantes/numero/${codigoParaValidar.trim()}`);
       setComprovante(response.data);
     } catch (err: any) {
       if (err.response?.status === 404) {
@@ -100,7 +136,7 @@ export default function ValidarComprovante() {
     <Box
       sx={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         py: 4
       }}
     >
@@ -117,13 +153,20 @@ export default function ValidarComprovante() {
           <Typography variant="h4" gutterBottom fontWeight="bold">
             Validar Comprovante de Entrega
           </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-            Digite ou escaneie o código do comprovante para verificar sua autenticidade
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+            Digite ou escaneie o código de barras do comprovante
           </Typography>
+          <Alert severity="info" sx={{ mb: 4, textAlign: 'left' }}>
+            <Typography variant="body2">
+              <strong>Dica:</strong> Use um leitor de código de barras para validação rápida. 
+              O código será detectado e validado automaticamente.
+            </Typography>
+          </Alert>
 
           <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
             <TextField
               fullWidth
+              inputRef={inputRef}
               label="Código do Comprovante"
               placeholder="COMP-2026-03-00001"
               value={codigo}
@@ -131,11 +174,12 @@ export default function ValidarComprovante() {
               onKeyPress={handleKeyPress}
               disabled={loading}
               autoFocus
+              helperText="Digite manualmente ou use um leitor de código de barras"
             />
             <Button
               variant="contained"
               size="large"
-              onClick={validarComprovante}
+              onClick={() => validarComprovante()}
               disabled={loading || !codigo.trim()}
               startIcon={loading ? <CircularProgress size={20} /> : <SearchIcon />}
               sx={{ minWidth: 140 }}

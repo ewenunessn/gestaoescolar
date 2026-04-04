@@ -32,7 +32,7 @@ export const listarAjustes = async (req: Request, res: Response) => {
 
 // Salvar/atualizar ajustes em lote
 export const salvarAjustes = async (req: Request, res: Response) => {
-  const client = await pool.connect();
+  const client = await db.pool.connect();
   
   try {
     const { refeicaoProdutoId } = req.params;

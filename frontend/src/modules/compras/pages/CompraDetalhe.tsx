@@ -80,7 +80,7 @@ export default function PedidoDetalhe() {
       const C_SUB    = '#4a5568';
       const C_STRIPE = '#f7f8fa';
       const C_BORDER = '#e2e8f0';
-      const C_TOTAL  = '#1a202c";
+      const C_TOTAL  = '#1a202c';
 
       const competencia = pedido.competencia_mes_ano ?? formatarData(pedido.data_pedido);
       const docNumero   = pedido.numero;

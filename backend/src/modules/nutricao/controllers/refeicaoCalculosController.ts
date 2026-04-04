@@ -417,7 +417,7 @@ export const aplicarCalculosAutomaticos = async (req: Request, res: Response) =>
 
   try {
     // Calcular valores nutricionais
-    const nutricionalReq = { params: { id }, body: { rendimento_porcoes } } as Request;
+    const nutricionalReq = { params: { id }, body: { rendimento_porcoes } } as unknown as Request;
     const nutricionalRes = {
       json: (data: any) => data,
       status: (code: number) => ({ json: (data: any) => ({ status: code, ...data }) })
@@ -426,7 +426,7 @@ export const aplicarCalculosAutomaticos = async (req: Request, res: Response) =>
     const valoresNutricionais: any = await calcularValoresNutricionais(nutricionalReq, nutricionalRes);
 
     // Calcular custo
-    const custoReq = { params: { id }, body: { rendimento_porcoes } } as Request;
+    const custoReq = { params: { id }, body: { rendimento_porcoes } } as unknown as Request;
     const custoRes = {
       json: (data: any) => data,
       status: (code: number) => ({ json: (data: any) => ({ status: code, ...data }) })

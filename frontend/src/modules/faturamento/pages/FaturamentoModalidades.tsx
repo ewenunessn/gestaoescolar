@@ -531,7 +531,7 @@ export default function FaturamentoModalidades() {
     setFaturamentos(novosFaturamentos);
     setDialogAutomaticoAberto(false);
     setSucesso('Itens alocados automaticamente com sucesso!');
-    setTimeout(() => setSucesso('"), 3000);
+    setTimeout(() => setSucesso(''), 3000);
   };
 
   const toggleItemAutomatico = (itemId: number) => {

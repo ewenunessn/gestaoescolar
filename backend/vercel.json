@@ -1,19 +1,21 @@
 {
   "version": 2,
+  "buildCommand": "npm run build",
   "builds": [
     {
-      "src": "src/index.ts",
+      "src": "api/index.js",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "src/index.ts"
+      "dest": "api/index.js"
     }
   ],
   "env": {
-    "NODE_ENV": "production"
+    "NODE_ENV": "production",
+    "VERCEL": "1"
   },
   "regions": ["gru1"]
 }

@@ -10,9 +10,8 @@ module.exports = async (req, res) => {
       DATABASE_URL: process.env.DATABASE_URL ? '✅ Configurado' : '❌ Ausente'
     });
 
-    // Importa dinamicamente o app com TypeScript support
-    require('tsx/cjs');
-    const appModule = require('../src/index.ts');
+    // Importa o app compilado do dist
+    const appModule = require('../dist/index.js');
     const app = appModule.default || appModule;
 
     // Executa o app (Express vai cuidar do CORS)
@@ -22,7 +21,7 @@ module.exports = async (req, res) => {
     res.status(500).json({
       error: 'Internal Server Error',
       message: error.message,
-      stack: error.stack,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
       timestamp: new Date().toISOString()
     });
   }

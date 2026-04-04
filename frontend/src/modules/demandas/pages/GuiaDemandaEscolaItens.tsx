@@ -318,7 +318,7 @@ const GuiaDemandaEscolaItens: React.FC = () => {
   const columns = useMemo<ColumnDef<GuiaProdutoEscola>[]>(() => [
     {
       accessorKey: 'produto_nome',
-      header: 'Produto",
+      header: 'Produto',
       size: 300,
       enableSorting: true,
       cell: ({ getValue }) => (

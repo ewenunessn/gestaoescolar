@@ -210,7 +210,7 @@ export default function AjusteGuiaDemandaScreen() {
     }
   }
 
-  if (loading) return <Box sx={{ p: 4, display: 'flex', justifyContent: 'center" }}><CircularProgress /></Box>;
+  if (loading) return <Box sx={{ p: 4, display: 'flex', justifyContent: 'center' }}><CircularProgress /></Box>;
   if (erro) return <Box sx={{ p: 3 }}><Alert severity="error">{erro}</Alert></Box>;
 
   const fmt = (v: number) => formatarQuantidade(v);

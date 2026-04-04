@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import systemAdminAuthController from '../controllers/systemAdminAuthController';
-import { authenticateSystemAdmin } from '../middlewares/systemAdminAuth';
+import { authenticateSystemAdmin } from '../../../middleware/systemAdminAuth';
 
 const router = Router();
 

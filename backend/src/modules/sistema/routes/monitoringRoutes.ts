@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { getCacheStats, invalidateCache } from '../../../middleware/cache';
 import { getRateLimitStats, clearRateLimitStore } from '../../../middleware/rateLimiter';
 import { getRedisStats } from '../../../config/redis';
+import db from "../../../database";
 
 const router = Router();
 
@@ -10,8 +11,6 @@ const router = Router();
  * Health check detalhado
  */
 router.get('/health', async (req, res) => {
-  import db from "../../../database";
-  
   try {
     const dbConnected = await db.testConnection();
     const dbResult = await db.query('SELECT NOW() as current_time, version()');
@@ -128,8 +127,6 @@ router.post('/rate-limit/clear', (req, res) => {
  * Métricas de performance
  */
 router.get('/performance', async (req, res) => {
-  import db from "../../../database";
-  
   try {
     const start = Date.now();
     await db.query('SELECT 1');

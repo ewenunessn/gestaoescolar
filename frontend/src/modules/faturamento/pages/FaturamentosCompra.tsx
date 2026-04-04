@@ -151,7 +151,7 @@ export default function FaturamentosPedido() {
       carregarDados();
     } catch (error) {
       console.error('Erro ao excluir faturamento:', error);
-      setErro('Erro ao excluir faturamento");
+      setErro('Erro ao excluir faturamento');
     }
   };
 

@@ -47,7 +47,7 @@ async function addPesoToProdutos() {
     console.error('❌ Erro ao executar migração:', error);
     throw error;
   } finally {
-    await db.end();
+    // Conexão gerenciada pelo pool
   }
 }
 

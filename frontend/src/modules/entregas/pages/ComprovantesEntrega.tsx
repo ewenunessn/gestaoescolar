@@ -6,7 +6,7 @@ import StatusIndicator from "../../../components/StatusIndicator";
 import PageHeader from "../../../components/PageHeader";
 import PageContainer from "../../../components/PageContainer";
 import { DataTableAdvanced } from "../../../components/DataTableAdvanced";
-import QRCode from "qrcode";
+import JsBarcode from "jsbarcode";
 import {
   Box,
   Typography,
@@ -104,7 +104,18 @@ export default function ComprovantesEntrega() {
   }, [setPageTitle]);
 
   useEffect(() => {
-    buscarInstituicao().then(setInstituicao).catch(() => {});
+    buscarInstituicao()
+      .then(inst => {
+        setInstituicao(inst);
+        console.log('📋 Instituição carregada:', {
+          nome: inst.nome,
+          temLogo: !!inst.logo_url,
+          logoUrl: inst.logo_url
+        });
+      })
+      .catch(err => {
+        console.error('❌ Erro ao carregar instituição:', err);
+      });
     carregarEscolas();
     carregarComprovantes();
   }, []);
@@ -197,6 +208,13 @@ export default function ComprovantesEntrega() {
   };
 
   const gerarPdfComprovante = async (comprovante: Comprovante) => {
+    // Verificar se a instituição tem logo
+    if (!instituicao?.logo_url) {
+      console.warn('⚠️ Instituição sem logo cadastrada');
+    } else {
+      console.log('✅ Logo da instituição:', instituicao.logo_url);
+    }
+
     // Parse date properly - handle both date-only and datetime formats
     let dataFormatada: string;
     try {
@@ -225,16 +243,17 @@ export default function ComprovantesEntrega() {
     }
     const temLote = comprovante.itens.some(i => i.lote);
 
-    // Gerar QR Code com o número do comprovante
-    const urlValidacao = `${window.location.origin}/validar-comprovante`;
-    const qrCodeDataUrl = await QRCode.toDataURL(comprovante.numero_comprovante, {
-      width: 150,
-      margin: 1,
-      color: {
-        dark: '#000000',
-        light: '#FFFFFF'
-      }
+    // Gerar código de barras com o número do comprovante
+    const canvas = document.createElement('canvas');
+    JsBarcode(canvas, comprovante.numero_comprovante, {
+      format: 'CODE128',
+      width: 2,
+      height: 80,
+      displayValue: true,
+      fontSize: 14,
+      margin: 10
     });
+    const barcodeDataUrl = canvas.toDataURL('image/png');
 
     const infoRows: any[] = [
       [{ text: 'Escola:', bold: true }, comprovante.escola_nome],
@@ -268,46 +287,6 @@ export default function ComprovantesEntrega() {
       },
       { text: `Itens Entregues (${comprovante.itens.length})`, style: 'sectionTitle' },
       buildTable(headers, rows, widths),
-      {
-        columns: [
-          {
-            stack: [
-              { text: '\n\n\n', },
-              { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 180, y2: 0, lineWidth: 0.8 }] },
-              { text: comprovante.nome_quem_entregou, fontSize: 9, alignment: 'center', margin: [0, 4, 0, 0] },
-              { text: 'Entregador', fontSize: 8, color: '#666', alignment: 'center' },
-            ],
-            width: '*',
-          },
-          {
-            stack: [
-              { text: '\n\n\n' },
-              { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 180, y2: 0, lineWidth: 0.8 }] },
-              { text: comprovante.nome_quem_recebeu, fontSize: 9, alignment: 'center', margin: [0, 4, 0, 0] },
-              { text: `Recebedor${comprovante.cargo_recebedor ? ` — ${comprovante.cargo_recebedor}` : ''}`, fontSize: 8, color: '#666', alignment: 'center' },
-            ],
-            width: '*',
-          },
-        ],
-        margin: [0, 20, 0, 20],
-      },
-      {
-        columns: [
-          {
-            width: '*',
-            text: ''
-          },
-          {
-            stack: [
-              { image: qrCodeDataUrl, width: 80, height: 80, alignment: 'right' },
-              { text: comprovante.numero_comprovante, fontSize: 7, alignment: 'right', margin: [0, 3, 0, 0], color: '#666' },
-              { text: 'Validar em: ' + urlValidacao, fontSize: 6, alignment: 'right', color: '#999', margin: [0, 2, 0, 0] },
-            ],
-            width: 100,
-          }
-        ],
-        margin: [0, 10, 0, 0],
-      }
     ];
 
     const pdfMake = await initPdfMake();
@@ -318,6 +297,33 @@ export default function ComprovantesEntrega() {
       content,
       showSignature: false,
     });
+
+    // Salvar o footer original
+    const originalFooter = doc.footer;
+
+    // Adicionar código de barras acima do rodapé
+    doc.footer = (currentPage: number, pageCount: number) => {
+      const originalFooterContent = typeof originalFooter === 'function' 
+        ? originalFooter(currentPage, pageCount) 
+        : originalFooter;
+
+      return [
+        {
+          columns: [
+            { width: '*', text: '' },
+            {
+              image: barcodeDataUrl,
+              width: 200,
+              alignment: 'right',
+              margin: [0, 0, 40, 0]
+            }
+          ],
+          margin: [40, 0, 0, 5]
+        },
+        originalFooterContent
+      ];
+    };
+
     pdfMake.createPdf(doc).download(`comprovante-${comprovante.numero_comprovante}.pdf`);
   };
 

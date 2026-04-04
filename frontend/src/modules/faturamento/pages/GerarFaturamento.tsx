@@ -137,7 +137,7 @@ function GerarFaturamento() {
 
         } catch (error: any) {
             console.error('Erro ao gerar faturamento:', error);
-            setErro(error.response?.data?.message || 'Erro ao gerar faturamento");
+            setErro(error.response?.data?.message || 'Erro ao gerar faturamento');
             setEtapaAtual(2); // Voltar para a etapa de confirmação
         } finally {
             setLoading(false);

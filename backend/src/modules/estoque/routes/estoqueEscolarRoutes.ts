@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { devAuthMiddleware as authMiddleware } from "../../../middlewares";
+import { devAuthMiddleware as authMiddleware } from "../../../middleware/devAuthMiddleware";
 import {
   listarEstoqueEscola,
   debugEstoqueEscola,

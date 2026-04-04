@@ -45,7 +45,8 @@ import demandasService from "../../../services/demandas";
 import { listarEscolas } from "../../../services/escolas";
 import { Demanda, STATUS_DEMANDA } from "../../../types/demanda";
 import { formatarData } from "../../../utils/dateUtils";
-import { DemandaDetalhesModal, LoadingScreen } from "../components";
+import DemandaDetalhesModal from "../../../components/DemandaDetalhesModal";
+import LoadingScreen from "../../../components/LoadingScreen";
 import StatusIndicator from "../../../components/StatusIndicator";
 import PageHeader from "../../../components/PageHeader";
 import PageContainer from "../../../components/PageContainer";
@@ -473,7 +474,7 @@ export default function DemandasLista() {
     return (
       <Chip
         label={statusInfo?.label || status}
-        color={statusInfo?.color as any || 'default"}
+        color={statusInfo?.color as any || 'default'}
         size="small"
       />
     );

@@ -189,7 +189,7 @@ const SaldoContratosModalidades: React.FC = () => {
 
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(25);
+  const [rowsPerPage, setRowsPerPage] = useState(100);
 
   // Estados de filtros - NOVO SISTEMA
   const [filterOpen, setFilterOpen] = useState(false);
@@ -197,15 +197,8 @@ const SaldoContratosModalidades: React.FC = () => {
   const [filters, setFilters] = useState<Record<string, any>>({});
   const [importExportMenuAnchor, setImportExportMenuAnchor] = useState<HTMLElement | null>(null);
 
-  // Filtros para API
-  const [filtros, setFiltros] = useState<SaldoContratosModalidadesFilters>({
-    page: 1,
-    limit: 25
-  });
-
   // React Query hooks
   const { data: responseData, isLoading: loading, refetch: carregarDados } = useSaldosModalidades({
-    ...filtros,
     page: page + 1,
     limit: rowsPerPage
   });
@@ -292,7 +285,6 @@ const SaldoContratosModalidades: React.FC = () => {
       if (e.ctrlKey && e.key === 'k') {
         e.preventDefault();
         setFilters({});
-        setFiltros({ page: 1, limit: rowsPerPage });
         setPage(0);
         setLinhaSelecionada(-1);
         return;
@@ -977,14 +969,12 @@ const SaldoContratosModalidades: React.FC = () => {
 
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);
-    setFiltros({ ...filtros, page: newPage + 1 });
   };
 
   const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
     const newRowsPerPage = parseInt(event.target.value, 10);
     setRowsPerPage(newRowsPerPage);
     setPage(0);
-    setFiltros({ ...filtros, page: 1, limit: newRowsPerPage });
   };
 
   const exportarCSV = async () => {

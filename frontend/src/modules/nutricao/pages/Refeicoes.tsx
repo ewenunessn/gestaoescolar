@@ -303,7 +303,7 @@ const RefeicoesPage = () => {
   };
 
   return (
-    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden" }}>
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
       <PageContainer fullHeight>
         <PageHeader 
           title="Refeições"

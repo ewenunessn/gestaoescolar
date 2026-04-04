@@ -55,7 +55,7 @@ export default function GruposIngredientes() {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center", mb: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Stack direction="row" alignItems="center" spacing={1}>
           <GroupWorkIcon color="primary" />
           <Typography variant="h6" fontWeight={600}>Grupos de Ingredientes</Typography>

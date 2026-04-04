@@ -1,3 +1,5 @@
+import db from "../../../database";
+
 // Modelo de Produto para o módulo estoque
 export interface Produto {
   id: number;
@@ -9,8 +11,6 @@ export interface Produto {
 
 // Função para buscar produto por ID
 export async function getProdutoById(id: number): Promise<Produto | null> {
-  import db from "../../../database";
-  
   try {
     const result = await db.query(
       'SELECT id, nome, categoria, ativo FROM produtos WHERE id = $1',

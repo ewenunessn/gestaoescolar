@@ -110,7 +110,7 @@ export default function RelatorioFaturamentoTipoFornecedor() {
     <Box sx={{ p: 3 }}>
       <PageBreadcrumbs 
         items={[
-          { label: 'Compras', path: '/compras", icon: <ShoppingCartIcon fontSize="small" /> },
+          { label: 'Compras', path: '/compras', icon: <ShoppingCartIcon fontSize="small" /> },
           { label: `Compra ${dados[0]?.pedido_numero || ''}`, path: `/compras/${id}` },
           { label: 'Faturamentos', path: `/compras/${id}/faturamentos` },
           { label: `Faturamento #${faturamentoId}`, path: `/compras/${id}/faturamento/${faturamentoId}` },

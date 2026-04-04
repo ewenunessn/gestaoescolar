@@ -57,7 +57,7 @@ const InputCell = React.memo(({
 
   return (
     <TableCell align="center">
-      <Tooltip title={isSaving ? "Salvando...' : 'Digite a quantidade de alunos'}>
+      <Tooltip title={isSaving ? 'Salvando...' : 'Digite a quantidade de alunos'}>
         <TextField
           type="number"
           size="small"

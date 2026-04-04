@@ -453,7 +453,7 @@ export default function FaturamentoDetalhe() {
       
     } catch (error: any) {
       console.error('Erro ao reverter consumo do item:', error);
-      setErro(error.response?.data?.message || error.message || 'Erro ao reverter consumo do item");
+      setErro(error.response?.data?.message || error.message || 'Erro ao reverter consumo do item');
     } finally {
       setProcessando(false);
     }
