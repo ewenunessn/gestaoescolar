@@ -10,19 +10,19 @@ import {
   standardizarComposicaoNutricional
 } from "../controllers/produtoController";
 import { authenticateToken } from "../../../middleware/authMiddleware";
-import { requireLeitura, requireEscrita } from "../../../middleware/permissionMiddleware";
+import { requireEscrita } from "../../../middleware/permissionMiddleware";
 
 const router = Router();
 
 // Todas as rotas requerem autenticação
 router.use(authenticateToken);
 
-// Rotas de LEITURA
-router.get("/", requireLeitura('produtos'), listarProdutos);
-router.get("/:id", requireLeitura('produtos'), buscarProduto);
-router.get("/:id/composicao-nutricional", requireLeitura('produtos'), buscarComposicaoNutricional);
+// Rotas de LEITURA - Qualquer usuário autenticado pode acessar
+router.get("/", listarProdutos);
+router.get("/:id", buscarProduto);
+router.get("/:id/composicao-nutricional", buscarComposicaoNutricional);
 
-// Rotas de ESCRITA
+// Rotas de ESCRITA - Requerem permissão de escrita
 router.post("/", requireEscrita('produtos'), criarProduto);
 router.put("/:id", requireEscrita('produtos'), editarProduto);
 router.put("/:id/composicao-nutricional", requireEscrita('produtos'), salvarComposicaoNutricional);

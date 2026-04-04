@@ -8,17 +8,17 @@ import {
   verificarRelacionamentosFornecedor
 } from "../controllers/fornecedorController";
 import { authenticateToken } from "../../../middleware/authMiddleware";
-import { requireLeitura, requireEscrita } from "../../../middleware/permissionMiddleware";
+import { requireEscrita } from "../../../middleware/permissionMiddleware";
 
 const router = Router();
 
 // Todas as rotas requerem autenticação
 router.use(authenticateToken);
 
-// Rotas de LEITURA
-router.get("/", requireLeitura('fornecedores'), listarFornecedores);
-router.get("/:id/relacionamentos", requireLeitura('fornecedores'), verificarRelacionamentosFornecedor);
-router.get("/:id", requireLeitura('fornecedores'), buscarFornecedor);
+// Rotas de LEITURA - Qualquer usuário autenticado pode acessar
+router.get("/", listarFornecedores);
+router.get("/:id/relacionamentos", verificarRelacionamentosFornecedor);
+router.get("/:id", buscarFornecedor);
 
 // Rotas de ESCRITA
 router.post("/", requireEscrita('fornecedores'), criarFornecedor);

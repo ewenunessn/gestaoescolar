@@ -154,7 +154,7 @@ export const getCardapiosSemana = asyncHandler(async (req: Request, res: Respons
         json_build_object(
           'id', r.id,
           'nome', r.nome,
-          'tipo', crd.tipo_refeicao
+          'tipo_refeicao', crd.tipo_refeicao
         ) ORDER BY crd.tipo_refeicao, r.nome
       ) FILTER (WHERE r.id IS NOT NULL) as refeicoes
     FROM cardapios_modalidade cm
@@ -177,3 +177,93 @@ export const getCardapiosSemana = asyncHandler(async (req: Request, res: Respons
   res.json({ success: true, data: result.rows });
 });
 
+
+export const getComprovantesEscola = asyncHandler(async (req: Request, res: Response) => {
+  const user = (req as any).user;
+  
+  if (!user.escola_id) {
+    throw new ValidationError('Usuário não está associado a uma escola');
+  }
+
+  const limit = parseInt(req.query.limit as string) || 50;
+  const offset = parseInt(req.query.offset as string) || 0;
+
+  // Buscar comprovantes da escola
+  const result = await db.query(`
+    SELECT 
+      ce.id,
+      ce.numero_comprovante,
+      ce.data_entrega,
+      ce.nome_quem_entregou,
+      ce.nome_quem_recebeu,
+      ce.observacao,
+      ce.status,
+      ce.created_at,
+      COUNT(DISTINCT ci.id) as total_itens,
+      SUM(ci.quantidade_entregue) as total_quantidade
+    FROM comprovantes_entrega ce
+    LEFT JOIN comprovante_itens ci ON ce.id = ci.comprovante_id
+    WHERE ce.escola_id = $1
+    GROUP BY ce.id
+    ORDER BY ce.data_entrega DESC, ce.created_at DESC
+    LIMIT $2 OFFSET $3
+  `, [user.escola_id, limit, offset]);
+
+  // Contar total
+  const countResult = await db.query(`
+    SELECT COUNT(*) as total
+    FROM comprovantes_entrega
+    WHERE escola_id = $1
+  `, [user.escola_id]);
+
+  res.json({
+    success: true,
+    data: result.rows,
+    total: parseInt(countResult.rows[0].total),
+    limit,
+    offset
+  });
+});
+
+export const getComprovanteDetalhes = asyncHandler(async (req: Request, res: Response) => {
+  const user = (req as any).user;
+  const { id } = req.params;
+  
+  if (!user.escola_id) {
+    throw new ValidationError('Usuário não está associado a uma escola');
+  }
+
+  // Buscar comprovante
+  const comprovante = await db.query(`
+    SELECT 
+      ce.*,
+      e.nome as escola_nome,
+      e.endereco as escola_endereco
+    FROM comprovantes_entrega ce
+    INNER JOIN escolas e ON ce.escola_id = e.id
+    WHERE ce.id = $1 AND ce.escola_id = $2
+  `, [id, user.escola_id]);
+
+  if (comprovante.rows.length === 0) {
+    throw new ValidationError('Comprovante não encontrado');
+  }
+
+  // Buscar itens do comprovante
+  const itens = await db.query(`
+    SELECT 
+      ci.*,
+      ci.produto_nome,
+      ci.unidade
+    FROM comprovante_itens ci
+    WHERE ci.comprovante_id = $1
+    ORDER BY ci.produto_nome
+  `, [id]);
+
+  res.json({
+    success: true,
+    data: {
+      ...comprovante.rows[0],
+      itens: itens.rows
+    }
+  });
+});

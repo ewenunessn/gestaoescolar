@@ -28,4 +28,8 @@ router.get('/guias/:guiaId/itens', escolaPortalController.getItensGuiaEscola);
 // Cardápios da semana atual
 router.get('/cardapios-semana', escolaPortalController.getCardapiosSemana);
 
+// Comprovantes de entrega da escola
+router.get('/comprovantes', escolaPortalController.getComprovantesEscola);
+router.get('/comprovantes/:id', escolaPortalController.getComprovanteDetalhes);
+
 export default router;
