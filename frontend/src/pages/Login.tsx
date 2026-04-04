@@ -1,5 +1,4 @@
-import React, { startTransition } from "react";
-import { useState, useEffect } from "react";
+import React, { startTransition, useState, useEffect } from "react";
 import {
   Box,
   Button,
@@ -9,8 +8,9 @@ import {
   InputAdornment,
   CircularProgress,
   IconButton,
+  Fade,
 } from "@mui/material";
-import { Visibility, VisibilityOff } from "@mui/icons-material";
+import { Visibility, VisibilityOff, LoginOutlined } from "@mui/icons-material";
 import { login } from "../services/auth";
 import { useNavigate, useLocation } from "react-router-dom";
 
@@ -38,45 +38,28 @@ export default function Login() {
     try {
       const response = await login(email, senha);
       localStorage.setItem("token", response.token);
+      
+      const payload = JSON.parse(atob(response.token.split(".")[1]));
+      const userData = {
+        id: payload.id,
+        nome: response.nome,
+        email: response.email || email,
+        tipo: response.tipo,
+        perfil: response.tipo,
+        institution_id: payload.institution_id || response.institution_id,
+        escola_id: payload.escola_id || response.escola_id,
+        tipo_secretaria: payload.tipo_secretaria || response.tipo_secretaria || 'educacao',
+        isSystemAdmin: payload.isSystemAdmin || response.isSystemAdmin || false,
+      };
+      
+      localStorage.setItem("user", JSON.stringify(userData));
       localStorage.setItem("perfil", response.tipo);
       localStorage.setItem("nome", response.nome);
-      try {
-        const payload = JSON.parse(atob(response.token.split(".")[1]));
-        const userData = {
-          id: payload.id,
-          nome: response.nome,
-          email: response.email || email,
-          tipo: response.tipo,
-          perfil: response.tipo,
-          institution_id: payload.institution_id || response.institution_id,
-          escola_id: payload.escola_id || response.escola_id,
-          tipo_secretaria: payload.tipo_secretaria || response.tipo_secretaria || 'educacao',
-          isSystemAdmin: payload.isSystemAdmin || response.isSystemAdmin || false,
-        };
-        localStorage.setItem("user", JSON.stringify(userData));
-        
-        // Redirecionar: usuário com escola_id e não admin vai para portal-escola
-        const isEscolaUser = !!(userData.escola_id && userData.tipo !== 'admin' && !payload.isSystemAdmin);
-        const redirectPath = isEscolaUser ? '/portal-escola' : '/dashboard';
-        startTransition(() => navigate(redirectPath));
-      } catch {
-        const userData = {
-          id: response.id || 1,
-          nome: response.nome,
-          email: response.email || email,
-          tipo: response.tipo,
-          perfil: response.tipo,
-          institution_id: response.institution_id,
-          escola_id: response.escola_id,
-          tipo_secretaria: response.tipo_secretaria || 'educacao',
-        };
-        localStorage.setItem("user", JSON.stringify(userData));
-        
-        // Redirecionar: usuário com escola_id e não admin vai para portal-escola
-        const isEscolaUserFallback = !!(userData.escola_id && userData.tipo !== 'admin');
-        const redirectPath = isEscolaUserFallback ? '/portal-escola' : '/dashboard';
-        startTransition(() => navigate(redirectPath));
-      }
+
+      const isEscolaUser = !!(userData.escola_id && userData.tipo !== 'admin' && !payload.isSystemAdmin);
+      const redirectPath = isEscolaUser ? '/portal-escola' : '/dashboard';
+      
+      startTransition(() => navigate(redirectPath));
     } catch (err: any) {
       setErro(err.message || "E-mail ou senha incorretos");
     } finally {
@@ -86,124 +69,142 @@ export default function Login() {
 
   const fieldSx = {
     "& .MuiOutlinedInput-root": {
-      borderRadius: "10px",
-      bgcolor: "#f8fafc",
+      borderRadius: "12px",
+      transition: "all 0.2s ease-in-out",
+      bgcolor: "#ffffff",
       "& fieldset": { borderColor: "#e2e8f0" },
-      "&:hover fieldset": { borderColor: "#2563eb" },
-      "&.Mui-focused fieldset": { borderColor: "#2563eb", borderWidth: 1.5 },
+      "&:hover fieldset": { borderColor: "#3b82f6" },
+      "&.Mui-focused fieldset": { borderColor: "#3b82f6", borderWidth: 2 },
     },
-    "& .MuiInputBase-input": { fontSize: "0.9rem", py: 1.4 },
+    "& .MuiInputBase-input": { fontSize: "0.95rem", py: 1.6 },
   };
 
   return (
     <Box
       sx={{
         minHeight: "100vh",
-        bgcolor: "#1a1d29",
+        // Gradiente moderno no fundo
+        background: "radial-gradient(circle at top left, #1e293b 0%, #0f172a 100%)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         p: 2,
       }}
     >
-      {/* Card branco */}
-      <Box
-        sx={{
-          bgcolor: "#fff",
-          borderRadius: "24px",
-          p: { xs: 3, sm: 4 },
-          width: "100%",
-          maxWidth: 420,
-          boxShadow: "0 24px 64px rgba(0,0,0,0.25)",
-        }}
-      >
-        {/* Título */}
-        <Typography
-          variant="h5"
-          sx={{ fontWeight: 700, color: "#0f172a", textAlign: "center", mb: 0.75 }}
+      <Fade in={true} timeout={800}>
+        <Box
+          sx={{
+            bgcolor: "rgba(255, 255, 255, 0.98)",
+            borderRadius: "28px",
+            p: { xs: 4, sm: 6 },
+            width: "100%",
+            maxWidth: 440,
+            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+            textAlign: "center",
+          }}
         >
-          Bem-vindo de volta
-        </Typography>
-        <Typography
-          variant="body2"
-          sx={{ color: "#94a3b8", textAlign: "center", mb: 3, fontSize: "0.85rem" }}
-        >
-          Faça login para acessar o NutriLog
-        </Typography>
+          {/* Logo ou Ícone */}
+          <Box
+            sx={{
+              width: 56,
+              height: 56,
+              bgcolor: "#eff6ff",
+              borderRadius: "16px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              mx: "auto",
+              mb: 3,
+              color: "#3b82f6",
+            }}
+          >
+            <LoginOutlined sx={{ fontSize: 32 }} />
+          </Box>
 
-        {successMessage && <Alert severity="success" sx={{ mb: 2, borderRadius: 2 }}>{successMessage}</Alert>}
-        {erro && <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>{erro}</Alert>}
+          <Typography variant="h4" sx={{ fontWeight: 800, color: "#1e293b", mb: 1, letterSpacing: "-0.02em" }}>
+            NutriLog
+          </Typography>
+          <Typography variant="body1" sx={{ color: "#64748b", mb: 4 }}>
+            Acesse sua conta para continuar
+          </Typography>
 
-        <form onSubmit={handleSubmit}>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            {/* E-mail */}
-            <Box>
-              <Typography variant="caption" sx={{ fontWeight: 600, color: "#475569", mb: 0.5, display: "block" }}>
-                E-mail
-              </Typography>
-              <TextField
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                fullWidth
-                placeholder="Digite seu e-mail"
-                required
-                size="small"
-                sx={fieldSx}
-              />
-            </Box>
+          {successMessage && <Alert severity="success" sx={{ mb: 3, borderRadius: "12px" }}>{successMessage}</Alert>}
+          {erro && <Alert severity="error" sx={{ mb: 3, borderRadius: "12px" }}>{erro}</Alert>}
 
-            {/* Senha */}
-            <Box>
-              <Typography variant="caption" sx={{ fontWeight: 600, color: "#475569", mb: 0.5, display: "block" }}>
-                Senha
-              </Typography>
-              <TextField
-                type={showPassword ? "text" : "password"}
-                value={senha}
-                onChange={e => setSenha(e.target.value)}
-                fullWidth
-                placeholder="Digite sua senha"
-                required
-                size="small"
-                sx={fieldSx}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton size="small" onClick={() => setShowPassword(p => !p)} edge="end" sx={{ color: "#94a3b8" }}>
-                        {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            </Box>
+          <form onSubmit={handleSubmit}>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+              <Box sx={{ textAlign: "left" }}>
+                <Typography variant="caption" sx={{ fontWeight: 700, color: "#475569", ml: 1, mb: 0.5, display: "block", textTransform: "uppercase", fontSize: "0.7rem" }}>
+                  E-mail institucional
+                </Typography>
+                <TextField
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  fullWidth
+                  placeholder="exemplo@email.com"
+                  required
+                  sx={fieldSx}
+                />
+              </Box>
 
-            {/* Botão Entrar */}
-            <Box sx={{ mt: 1 }}>
+              <Box sx={{ textAlign: "left" }}>
+                <Typography variant="caption" sx={{ fontWeight: 700, color: "#475569", ml: 1, mb: 0.5, display: "block", textTransform: "uppercase", fontSize: "0.7rem" }}>
+                  Senha
+                </Typography>
+                <TextField
+                  type={showPassword ? "text" : "password"}
+                  value={senha}
+                  onChange={e => setSenha(e.target.value)}
+                  fullWidth
+                  placeholder="••••••••"
+                  required
+                  sx={fieldSx}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton onClick={() => setShowPassword(p => !p)} edge="end" sx={{ color: "#94a3b8" }}>
+                          {showPassword ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Box>
+
               <Button
                 type="submit"
                 variant="contained"
                 fullWidth
                 disabled={loading}
                 sx={{
-                  py: 1.25,
-                  borderRadius: "10px",
-                  bgcolor: "#0f172a",
-                  fontWeight: 600,
-                  fontSize: "0.9rem",
+                  mt: 1,
+                  py: 1.8,
+                  borderRadius: "14px",
+                  bgcolor: "#2563eb",
+                  fontWeight: 700,
+                  fontSize: "1rem",
                   textTransform: "none",
-                  boxShadow: "none",
-                  "&:hover": { bgcolor: "#1e293b", boxShadow: "none" },
-                  "&:disabled": { bgcolor: "#cbd5e1" },
+                  boxShadow: "0 4px 6px -1px rgba(37, 99, 235, 0.2)",
+                  transition: "all 0.2s",
+                  "&:hover": { 
+                    bgcolor: "#1d4ed8", 
+                    boxShadow: "0 10px 15px -3px rgba(37, 99, 235, 0.3)",
+                    transform: "translateY(-1px)"
+                  },
+                  "&:active": { transform: "translateY(0)" }
                 }}
               >
-                {loading ? <CircularProgress size={20} color="inherit" /> : "Entrar"}
+                {loading ? <CircularProgress size={24} color="inherit" /> : "Entrar na plataforma"}
               </Button>
             </Box>
-          </Box>
-        </form>
-      </Box>
+          </form>
+          
+          <Typography variant="caption" sx={{ color: "#94a3b8", display: "block", mt: 4 }}>
+            © {new Date().getFullYear()} NutriLog - Sistema de Gestão Nutricional
+          </Typography>
+        </Box>
+      </Fade>
     </Box>
   );
 }
