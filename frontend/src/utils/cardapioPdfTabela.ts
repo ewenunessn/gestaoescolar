@@ -210,6 +210,13 @@ export const gerarPDFTabela = async ({
   const customFooter = (currentPage: number, pageCount: number) => {
     const nutricionista = cardapio?.nutricionista_nome;
     const crn = cardapio?.nutricionista_crn;
+    const dataHoraImpressao = new Date().toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
     
     return {
       stack: [
@@ -237,7 +244,13 @@ export const gerarPDFTabela = async ({
                     ]
                   },
                   ...(crn ? [{ text: `CRN: ${crn}`, fontSize: 10, color: '#666666', margin: [0, 2, 0, 0] }] : [])
-                ] : [])
+                ] : []),
+                { 
+                  text: `Impresso em: ${dataHoraImpressao}`, 
+                  fontSize: 9, 
+                  color: '#999999', 
+                  margin: [0, 4, 0, 0] 
+                }
               ],
               width: '*'
             },

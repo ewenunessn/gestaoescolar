@@ -80,7 +80,11 @@ export const listarMinhasSolicitacoes = asyncHandler(async (req: Request, res: R
     }
   }
 
-  const data = sols.rows.map((s: any) => ({ ...s, itens: itensMap[s.id] || [] }));
+  const data = sols.rows.map((s: any) => ({ 
+    ...s, 
+    itens: itensMap[s.id] || [],
+    total_itens: (itensMap[s.id] || []).length
+  }));
   res.json({ success: true, data });
 });
 

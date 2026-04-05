@@ -27,6 +27,7 @@ export interface Solicitacao {
   created_at: string;
   updated_at: string;
   itens: SolicitacaoItem[];
+  total_itens?: number;
 }
 
 export interface NovoItemData {

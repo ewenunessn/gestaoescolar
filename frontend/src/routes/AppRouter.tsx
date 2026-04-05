@@ -51,7 +51,13 @@ const Escolas = lazy(() => import("../modules/escolas/pages/Escolas"));
 const EscolaDetalhes = lazy(() => import("../modules/escolas/pages/EscolaDetalhes"));
 const GerenciarAlunosModalidades = lazy(() => import("../modules/escolas/pages/GerenciarAlunosModalidades"));
 const GerenciarEscolasRota = lazy(() => import("../modules/escolas/pages/GerenciarEscolasRota"));
-const PortalEscola = lazy(() => import("../modules/escolas/pages/PortalEscola"));
+
+// Lazy loading - Módulo: portal-escola (separado do módulo escolas)
+const PortalEscolaHome = lazy(() => import("../modules/portal-escola/pages/PortalEscolaHome"));
+const CardapioPage = lazy(() => import("../modules/portal-escola/pages/CardapioPage"));
+const SolicitacoesPage = lazy(() => import("../modules/portal-escola/pages/SolicitacoesPage"));
+const ComprovantesPage = lazy(() => import("../modules/portal-escola/pages/ComprovantesPage"));
+const AlunosPage = lazy(() => import("../modules/portal-escola/pages/AlunosPage"));
 
 // Lazy loading - Módulo: sistema
 const Modalidades = lazy(() => import("../modules/sistema/pages/Modalidades"));
@@ -454,10 +460,26 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
               element={<LazyRoute><GruposIngredientes /></LazyRoute>}
             />
 
-            {/* Portal da Escola (secretaria de escola) */}
+            {/* Portal da Escola (secretaria de escola) - Módulo separado */}
             <Route
               path="/portal-escola"
-              element={<LazyRoute><PortalEscola /></LazyRoute>}
+              element={<LazyRoute><PortalEscolaHome /></LazyRoute>}
+            />
+            <Route
+              path="/portal-escola/cardapio"
+              element={<LazyRoute><CardapioPage /></LazyRoute>}
+            />
+            <Route
+              path="/portal-escola/solicitacoes"
+              element={<LazyRoute><SolicitacoesPage /></LazyRoute>}
+            />
+            <Route
+              path="/portal-escola/comprovantes"
+              element={<LazyRoute><ComprovantesPage /></LazyRoute>}
+            />
+            <Route
+              path="/portal-escola/alunos"
+              element={<LazyRoute><AlunosPage /></LazyRoute>}
             />
 
             {/* Solicitações de Alimentos (módulo principal) */}

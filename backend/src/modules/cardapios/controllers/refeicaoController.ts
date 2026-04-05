@@ -440,22 +440,29 @@ export const buscarFichaTecnica = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Refeição não encontrada' });
     }
 
-    // Buscar produtos da refeição com custos
+    // Buscar produtos da refeição com dados nutricionais
     const produtos = await db.query(`
       SELECT 
         rp.id,
         rp.produto_id,
         p.nome as produto_nome,
-        rp.per_capita as quantidade,
-        CASE 
-          WHEN rp.tipo_medida = 'gramas' THEN 'g'
-          WHEN rp.tipo_medida = 'unidades' THEN 'un'
-          ELSE p.unidade_medida
-        END as unidade_medida,
+        rp.per_capita,
+        rp.tipo_medida,
+        COALESCE(p.unidade_distribuicao, 'un') as unidade,
+        COALESCE(p.fator_correcao, 1.0) as fator_correcao,
         COALESCE(cp.preco_unitario, 0) as custo_unitario,
-        COALESCE(cp.preco_unitario * (rp.per_capita / 100.0), 0) as custo_total
+        COALESCE(cp.preco_unitario * (rp.per_capita / 1000.0), 0) as custo_total,
+        pcn.proteina_g as proteinas_100g,
+        pcn.lipideos_g as lipidios_100g,
+        pcn.carboidratos_g as carboidratos_100g,
+        pcn.calcio_mg as calcio_100g,
+        pcn.ferro_mg as ferro_100g,
+        pcn.vitamina_a_mcg as vitamina_a_100g,
+        pcn.vitamina_c_mg as vitamina_c_100g,
+        pcn.sodio_mg as sodio_100g
       FROM refeicao_produtos rp
       JOIN produtos p ON p.id = rp.produto_id
+      LEFT JOIN produto_composicao_nutricional pcn ON pcn.produto_id = p.id
       LEFT JOIN LATERAL (
         SELECT preco_unitario
         FROM contrato_produtos
@@ -468,16 +475,49 @@ export const buscarFichaTecnica = async (req: Request, res: Response) => {
       ORDER BY p.nome
     `, [id]);
 
+    // Processar produtos com cálculos nutricionais
+    const produtosProcessados = produtos.rows.map(ing => {
+      // Per capita cadastrado é LÍQUIDO (consumo)
+      let quantidadeGramasLiquido = parseFloat(ing.per_capita) || 0;
+      if (ing.tipo_medida === 'unidades') {
+        quantidadeGramasLiquido = quantidadeGramasLiquido * 100; // Assumir 100g por unidade
+      }
+
+      // Calcular proporção usando quantidade LÍQUIDA (quantidade / 100g)
+      const proporcao = quantidadeGramasLiquido / 100;
+
+      // Calcular per capita BRUTO (compra) = líquido * fator
+      const fatorCorrecao = parseFloat(ing.fator_correcao) || 1.0;
+      const perCapitaBruto = (parseFloat(ing.per_capita) || 0) * fatorCorrecao;
+
+      return {
+        ...ing,
+        per_capita_liquido: parseFloat(ing.per_capita) || 0,
+        per_capita_bruto: perCapitaBruto,
+        fator_correcao: fatorCorrecao,
+        // Valores calculados para o per capita LÍQUIDO
+        proteinas_porcao: ing.proteinas_100g ? Math.round(parseFloat(ing.proteinas_100g) * proporcao * 100) / 100 : 0,
+        lipidios_porcao: ing.lipidios_100g ? Math.round(parseFloat(ing.lipidios_100g) * proporcao * 100) / 100 : 0,
+        carboidratos_porcao: ing.carboidratos_100g ? Math.round(parseFloat(ing.carboidratos_100g) * proporcao * 100) / 100 : 0,
+        calcio_porcao: ing.calcio_100g ? Math.round(parseFloat(ing.calcio_100g) * proporcao * 100) / 100 : 0,
+        ferro_porcao: ing.ferro_100g ? Math.round(parseFloat(ing.ferro_100g) * proporcao * 100) / 100 : 0,
+        vitamina_a_porcao: ing.vitamina_a_100g ? Math.round(parseFloat(ing.vitamina_a_100g) * proporcao * 100) / 100 : 0,
+        vitamina_c_porcao: ing.vitamina_c_100g ? Math.round(parseFloat(ing.vitamina_c_100g) * proporcao * 100) / 100 : 0,
+        sodio_porcao: ing.sodio_100g ? Math.round(parseFloat(ing.sodio_100g) * proporcao * 100) / 100 : 0
+      };
+    });
+
     // Calcular custo total
-    const custoTotal = produtos.rows.reduce((sum, p) => sum + parseFloat(p.custo_total || 0), 0);
+    const custoTotal = produtosProcessados.reduce((sum, p) => sum + parseFloat(p.custo_total || 0), 0);
 
     res.json({
       refeicao: refeicao.rows[0],
-      produtos: produtos.rows,
+      produtos: produtosProcessados,
       custo_total: custoTotal
     });
   } catch (error) {
     console.error('Erro ao buscar ficha técnica:', error);
+    console.error('Stack:', (error as Error).stack);
     res.status(500).json({ error: 'Erro ao buscar ficha técnica' });
   }
 };
