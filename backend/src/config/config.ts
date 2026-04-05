@@ -20,17 +20,23 @@ export const config = {
     name: process.env.DB_NAME || 'alimentacao_escolar',
     user: process.env.DB_USER || 'postgres',
     password: process.env.DB_PASSWORD || '',
-    ssl: isProduction ? { rejectUnauthorized: false } : false
+    ssl: isProduction ? true : false
   },
 
   // Configurações de segurança
-  jwtSecret: process.env.JWT_SECRET || "sua_chave_jwt_super_secreta_minimo_32_caracteres",
+  jwtSecret: process.env.JWT_SECRET || (() => {
+    if (!process.env.JWT_SECRET) {
+      console.error('❌ JWT_SECRET não configurado nas variáveis de ambiente!');
+      throw new Error('JWT_SECRET is required. Generate one with: openssl rand -base64 32');
+    }
+    return '';
+  })(),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "7d", // Aumentado para 7 dias
 
   // Configurações do backend (para compatibilidade com index.ts)
   backend: {
     cors: {
-      origin: isVercel 
+      origin: isVercel
         ? [
             "https://gestaoescolar-frontend.vercel.app",
             "https://gestaoescolar-frontend-painel.vercel.app",
@@ -40,6 +46,7 @@ export const config = {
           ]
         : process.env.CORS_ORIGIN?.split(',') || [
             "http://localhost:5173",
+            "http://192.168.1.2:5173",
             "http://192.168.18.12:5173"
           ],
       credentials: true

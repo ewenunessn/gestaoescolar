@@ -41,42 +41,25 @@ export const compressionMiddleware = (options: CompressionOptions = {}) => {
 
       // Não comprimir se for muito pequeno
       if (size < threshold) {
-        res.setHeader('X-Compression', 'none');
         return originalJson(data);
       }
 
       // Comprimir com gzip se suportado
       if (acceptsEncoding(req, 'gzip')) {
         const compressed = zlib.gzipSync(jsonString, { level });
-        const compressedSize = compressed.length;
-        const ratio = ((1 - compressedSize / size) * 100).toFixed(1);
-
         res.setHeader('Content-Encoding', 'gzip');
         res.setHeader('Content-Type', 'application/json');
-        res.setHeader('X-Compression', 'gzip');
-        res.setHeader('X-Compressed-Size', compressedSize.toString());
-        res.setHeader('X-Compression-Ratio', `${ratio}%`);
-        
         return res.send(compressed);
       }
 
       // Comprimir com deflate se suportado
       if (acceptsEncoding(req, 'deflate')) {
         const compressed = zlib.deflateSync(jsonString, { level });
-        const compressedSize = compressed.length;
-        const ratio = ((1 - compressedSize / size) * 100).toFixed(1);
-
         res.setHeader('Content-Encoding', 'deflate');
         res.setHeader('Content-Type', 'application/json');
-        res.setHeader('X-Compression', 'deflate');
-        res.setHeader('X-Compressed-Size', compressedSize.toString());
-        res.setHeader('X-Compression-Ratio', `${ratio}%`);
-        
         return res.send(compressed);
       }
 
-      // Sem compressão
-      res.setHeader('X-Compression', 'none');
       return originalJson(data);
     };
 

@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { 
+import { authenticateToken } from "../../../middleware/authMiddleware";
+import {
   gerarDemandaMensal,
   gerarDemandaMultiplosCardapios,
   listarCardapiosDisponiveis,
@@ -9,19 +10,15 @@ import {
 
 const router = Router();
 
-// Gerar demanda mensal (método original)
-router.post("/gerar", gerarDemandaMensal);
+// Gerar demanda (método original + múltiplos)
+router.post("/gerar", authenticateToken, gerarDemandaMensal);
+router.post("/gerar-multiplos", authenticateToken, gerarDemandaMultiplosCardapios);
 
-// Gerar demanda com múltiplos cardápios
-router.post("/gerar-multiplos", gerarDemandaMultiplosCardapios);
+// Exportar demanda
+router.post("/exportar", authenticateToken, exportarDemandaMensal);
+router.post("/exportar-excel", authenticateToken, exportarDemandaExcel);
 
-// Listar cardápios disponíveis para seleção
+// Leitura pública
 router.get("/cardapios-disponiveis", listarCardapiosDisponiveis);
-
-// Exportar demanda mensal
-router.post("/exportar", exportarDemandaMensal);
-
-// Exportar demanda para Excel
-router.post("/exportar-excel", exportarDemandaExcel);
 
 export default router;

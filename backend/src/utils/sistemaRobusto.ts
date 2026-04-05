@@ -148,9 +148,15 @@ export class SistemaRobusto {
 
   private async verificarTabelaIntegridade(tabela: string): Promise<VerificacaoIntegridade> {
     const problemas: string[] = [];
-    
+
+    // Validar nome da tabela contra allowlist para prevenir SQL injection
+    const tabelasPermitidas = ['usuarios', 'produtos', 'escolas', 'fornecedores', 'contratos', 'estoque', 'estoque_escolas'];
+    if (!tabelasPermitidas.includes(tabela)) {
+      throw new Error(`Tabela inesperada: ${tabela}. Tabelas permitidas: ${tabelasPermitidas.join(', ')}`);
+    }
+
     // Contar total de registros
-    const totalQuery = `SELECT COUNT(*) as total FROM ${tabela}`;
+    const totalQuery = `SELECT COUNT(*) as total FROM "${tabela}"`;
     const totalResult = await this.pool.query(totalQuery);
     const totalRegistros = parseInt(totalResult.rows[0].total);
 
@@ -318,11 +324,16 @@ export class SistemaRobusto {
   }
 
   async limparBackupsAntigos(diasParaManter: number = 30): Promise<number> {
+    // Validar para prevenir SQL injection
+    if (!Number.isInteger(diasParaManter) || diasParaManter < 1 || diasParaManter > 3650) {
+      throw new Error('diasParaManter deve ser um inteiro entre 1 e 3650');
+    }
+
     // Buscar backups antigos
     const backupsAntigos = await this.pool.query(`
-      SELECT nome_arquivo FROM backups 
-      WHERE data_backup < CURRENT_DATE - INTERVAL '${diasParaManter} days'
-    `);
+      SELECT nome_arquivo FROM backups
+      WHERE data_backup < CURRENT_DATE - ($1 || ' days')::interval
+    `, [diasParaManter]);
 
     let removidos = 0;
 
@@ -341,9 +352,9 @@ export class SistemaRobusto {
 
     // Remover registros do banco
     await this.pool.query(`
-      DELETE FROM backups 
-      WHERE data_backup < CURRENT_DATE - INTERVAL '${diasParaManter} days'
-    `);
+      DELETE FROM backups
+      WHERE data_backup < CURRENT_DATE - ($1 || ' days')::interval
+    `, [diasParaManter]);
 
     return removidos;
   }

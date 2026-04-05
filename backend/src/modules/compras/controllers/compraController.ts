@@ -221,45 +221,44 @@ export async function criarCompra(req: Request, res: Response) {
 
     const status_inicial = salvar_como_rascunho ? 'pendente' : 'pendente';
 
-    // Calcular valor total apenas se houver itens
+    // Validar e calcular valor total em batch (evita N+1 queries)
     let valor_total = 0;
+    const contratoProdutosMap = new Map<number, any>();
     if (temItens) {
-      for (const item of itens) {
+      const cpIds = [...new Set((itens as any[]).map((i: any) => Number(i.contrato_produto_id)).filter(id => !isNaN(id)))];
+      if (cpIds.length > 0) {
         const cpResult = await client.query(`
-          SELECT cp.*, p.nome as produto_nome, c.status as contrato_status
+          SELECT cp.id, cp.preco_unitario, cp.produto_id, p.nome as produto_nome, c.status as contrato_status
           FROM contrato_produtos cp
           JOIN produtos p ON cp.produto_id = p.id
           JOIN contratos c ON cp.contrato_id = c.id
-          WHERE cp.id = $1 AND cp.ativo = true
-        `, [item.contrato_produto_id]);
-
-        if (cpResult.rows.length === 0) {
-          await client.query('ROLLBACK');
-          return res.status(400).json({
-            success: false,
-            message: `Produto não encontrado ou inativo`
-          });
+          WHERE cp.id = ANY($1::int[]) AND cp.ativo = true
+        `, [cpIds]);
+        for (const row of cpResult.rows) {
+          contratoProdutosMap.set(Number(row.id), row);
         }
-
-        const contratoProduto = cpResult.rows[0];
-
-        if (contratoProduto.contrato_status !== 'ativo') {
+      }
+      for (const item of itens) {
+        const cpId = Number(item.contrato_produto_id);
+        if (isNaN(cpId)) {
           await client.query('ROLLBACK');
-          return res.status(400).json({
-            success: false,
-            message: `O contrato do produto ${contratoProduto.produto_nome} não está ativo`
-          });
+          return res.status(400).json({ success: false, message: `contrato_produto_id inválido` });
         }
-
-        if (item.quantidade <= 0) {
+        const cp = contratoProdutosMap.get(cpId);
+        if (!cp) {
           await client.query('ROLLBACK');
-          return res.status(400).json({
-            success: false,
-            message: `Quantidade inválida para o produto ${contratoProduto.produto_nome}`
-          });
+          return res.status(400).json({ success: false, message: `Produto contrato_produto_id=${cpId} não encontrado ou inativo` });
         }
-
-        valor_total += item.quantidade * contratoProduto.preco_unitario;
+        if (cp.contrato_status !== 'ativo') {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ success: false, message: `Contrato do produto ${cp.produto_nome} não está ativo` });
+        }
+        const qtd = Number(item.quantidade);
+        if (isNaN(qtd) || qtd <= 0) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ success: false, message: `Quantidade inválida para ${cp.produto_nome}` });
+        }
+        valor_total += qtd * cp.preco_unitario;
       }
     }
 
@@ -273,27 +272,31 @@ export async function criarCompra(req: Request, res: Response) {
 
     const compra_id = compraResult.rows[0].id;
 
-    // Inserir itens apenas se houver
-    if (temItens) {
-      for (const item of itens) {
-        const cpResult = await client.query(`
-          SELECT preco_unitario, produto_id
-          FROM contrato_produtos
-          WHERE id = $1
-        `, [item.contrato_produto_id]);
+    // Inserir itens apenas se houver (usar dados já obtidos da validação acima)
+    if (temItens && (itens as any[]).length > 0) {
+      const values = (itens as any[]).map((item: any) => {
+        const cp = contratoProdutosMap.get(Number(item.contrato_produto_id))!;
+        const qtd = Number(item.quantidade || 0);
+        return [
+          compra_id, item.contrato_produto_id, cp.produto_id, qtd,
+          cp.preco_unitario, qtd * cp.preco_unitario,
+          item.data_entrega_prevista || null, item.observacoes || null
+        ];
+      });
 
-        const preco_unitario = cpResult.rows[0].preco_unitario;
-        const produto_id = cpResult.rows[0].produto_id;
-        const valor_item = item.quantidade * preco_unitario;
+      const placeholders = values.map((_, i) => {
+        const base = i * 8 + 1;
+        return `($${base}, $${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7})`;
+      }).join(', ');
 
-        await client.query(`
-          INSERT INTO pedido_itens (
-            pedido_id, contrato_produto_id, produto_id, quantidade,
-            preco_unitario, valor_total, data_entrega_prevista, observacoes
-          )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-        `, [compra_id, item.contrato_produto_id, produto_id, item.quantidade, preco_unitario, valor_item, item.data_entrega_prevista, item.observacoes]);
-      }
+      const params = values.flat();
+
+      await client.query(`
+        INSERT INTO pedido_itens (
+          pedido_id, contrato_produto_id, produto_id, quantidade,
+          preco_unitario, valor_total, data_entrega_prevista, observacoes
+        ) VALUES ${placeholders}
+      `, params);
     }
 
     await client.query('COMMIT');
@@ -396,70 +399,102 @@ export async function atualizarCompra(req: Request, res: Response) {
         await client.query(`DELETE FROM pedido_itens WHERE id = $1`, [itemRemover.id]);
       }
 
-      // Adicionar ou atualizar itens e calcular valor total
-      let valor_total = 0;
-      for (const item of itens) {
+      // Validar contrato_produtos em batch (evita N+1)
+      const cpIds = [...new Set((itens as any[]).map((i: any) => Number(i.contrato_produto_id)).filter(Boolean))];
+      const cpMap = new Map<number, any>();
+      if (cpIds.length > 0) {
         const cpResult = await client.query(`
-          SELECT cp.*, p.nome as produto_nome, c.status as contrato_status
+          SELECT cp.id, cp.preco_unitario, cp.produto_id, p.nome as produto_nome, c.status as contrato_status
           FROM contrato_produtos cp
           JOIN produtos p ON cp.produto_id = p.id
           JOIN contratos c ON cp.contrato_id = c.id
-          WHERE cp.id = $1 AND cp.ativo = true
-        `, [item.contrato_produto_id]);
+          WHERE cp.id = ANY($1::int[]) AND cp.ativo = true
+        `, [cpIds]);
+        for (const row of cpResult.rows) {
+          cpMap.set(Number(row.id), row);
+        }
+      }
 
-        if (cpResult.rows.length === 0) {
+      let valor_total = 0;
+      const newItems: any[] = [];
+      const updateItems: any[] = [];
+
+      for (const item of itens) {
+        const cpId = Number(item.contrato_produto_id);
+        const cp = cpMap.get(cpId);
+        if (!cp) {
           await client.query('ROLLBACK');
-          return res.status(400).json({
-            success: false,
-            message: `Produto não encontrado ou inativo`
-          });
+          return res.status(400).json({ success: false, message: `Produto contrato_produto_id=${cpId} não encontrado ou inativo` });
+        }
+        if (cp.contrato_status !== 'ativo') {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ success: false, message: `Contrato do produto ${cp.produto_nome} não está ativo` });
+        }
+        const qtd = Number(item.quantidade);
+        if (isNaN(qtd) || qtd <= 0) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ success: false, message: `Quantidade inválida para ${cp.produto_nome}` });
         }
 
-        const contratoProduto = cpResult.rows[0];
-
-        if (contratoProduto.contrato_status !== 'ativo') {
-          await client.query('ROLLBACK');
-          return res.status(400).json({
-            success: false,
-            message: `O contrato do produto ${contratoProduto.produto_nome} não está ativo`
-          });
-        }
-
-        if (item.quantidade <= 0) {
-          await client.query('ROLLBACK');
-          return res.status(400).json({
-            success: false,
-            message: `Quantidade inválida para o produto ${contratoProduto.produto_nome}`
-          });
-        }
-
-        const preco_unitario = contratoProduto.preco_unitario;
-        const produto_id = contratoProduto.produto_id;
-        const valor_item = item.quantidade * preco_unitario;
+        const valor_item = qtd * cp.preco_unitario;
         valor_total += valor_item;
 
-        // Verificar se o item já existe (tem ID e está no banco)
+        const itemData = {
+          pedido_id: id,
+          contrato_produto_id: item.contrato_produto_id,
+          produto_id: cp.produto_id,
+          quantidade: qtd,
+          preco_unitario: cp.preco_unitario,
+          valor_total: valor_item,
+          data_entrega_prevista: item.data_entrega_prevista || null,
+          observacoes: item.observacoes || null
+        };
+
         if (item.id && idsExistentes.has(item.id)) {
-          // Atualizar item existente (mantém o ID)
-          await client.query(`
-            UPDATE pedido_itens SET
-              quantidade = $1,
-              preco_unitario = $2,
-              valor_total = $3,
-              data_entrega_prevista = $4,
-              observacoes = $5
-            WHERE id = $6
-          `, [item.quantidade, preco_unitario, valor_item, item.data_entrega_prevista, item.observacoes, item.id]);
+          updateItems.push({ ...itemData, item_id: item.id });
         } else {
-          // Inserir novo item
-          await client.query(`
-            INSERT INTO pedido_itens (
-              pedido_id, contrato_produto_id, produto_id, quantidade,
-              preco_unitario, valor_total, data_entrega_prevista, observacoes
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-          `, [id, item.contrato_produto_id, produto_id, item.quantidade, preco_unitario, valor_item, item.data_entrega_prevista, item.observacoes]);
+          newItems.push(itemData);
         }
+      }
+
+      // Bulk UPDATE para itens existentes
+      if (updateItems.length > 0) {
+        const updatePlaceholders = updateItems.map((_, i) => {
+          const base = i * 6 + 1;
+          return `($${base}, $${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5})`;
+        }).join(', ');
+        const updateParams = updateItems.flatMap(it => [
+          it.quantidade, it.preco_unitario, it.valor_total,
+          it.data_entrega_prevista, it.observacoes, it.item_id
+        ]);
+        await client.query(`
+          UPDATE pedido_itens SET
+            quantidade = T.quantidade,
+            preco_unitario = T.preco_unitario,
+            valor_total = T.valor_total,
+            data_entrega_prevista = T.data_entrega_prevista,
+            observacoes = T.observacoes
+          FROM (VALUES ${updatePlaceholders}) AS T(quantidade, preco_unitario, valor_total, data_entrega_prevista, observacoes, id)
+          WHERE pedido_itens.id = T.id
+        `, updateParams);
+      }
+
+      // Bulk INSERT para novos itens
+      if (newItems.length > 0) {
+        const insertPlaceholders = newItems.map((_, i) => {
+          const base = i * 8 + 1;
+          return `($${base}, $${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7})`;
+        }).join(', ');
+        const insertParams = newItems.flatMap(it => [
+          it.pedido_id, it.contrato_produto_id, it.produto_id, it.quantidade,
+          it.preco_unitario, it.valor_total, it.data_entrega_prevista, it.observacoes
+        ]);
+        await client.query(`
+          INSERT INTO pedido_itens (
+            pedido_id, contrato_produto_id, produto_id, quantidade,
+            preco_unitario, valor_total, data_entrega_prevista, observacoes
+          ) VALUES ${insertPlaceholders}
+        `, insertParams);
       }
 
       // Adicionar valor_total ao update

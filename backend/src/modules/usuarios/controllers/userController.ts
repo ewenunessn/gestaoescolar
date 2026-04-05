@@ -66,39 +66,23 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
 
 // Login de usuário
 export const login = asyncHandler(async (req: Request, res: Response) => {
-  console.log("🔐 Tentativa de login:", { email: req.body.email });
-
   const { email, senha } = req.body;
 
   // Validar campos obrigatórios
   validateRequired(req.body, ['email', 'senha']);
 
-  console.log("🔍 Buscando usuário no banco...");
   const user = await findUserByEmail(email);
 
   if (!user) {
-    console.log("❌ Usuário não encontrado:", email);
     throw new AuthenticationError('Usuário ou senha inválidos');
   }
 
-  console.log("✅ Usuário encontrado, verificando senha...");
   const match = await bcrypt.compare(senha, user.senha);
 
   if (!match) {
-    console.log("❌ Senha incorreta para:", email);
     throw new AuthenticationError('Usuário ou senha inválidos');
   }
 
-  console.log("✅ Senha correta, gerando token...");
-  console.log("🔐 [LOGIN] NODE_ENV:", process.env.NODE_ENV);
-  console.log("🔐 [LOGIN] JWT_SECRET configurado:", config.jwtSecret ? 'Sim' : 'Não');
-  console.log("🔐 [LOGIN] Dados do usuário do banco:", {
-    id: user.id,
-    tipo: user.tipo,
-    escola_id: user.escola_id,
-    tipo_secretaria: user.tipo_secretaria
-  });
-  
   // Verificar se é administrador do sistema (tipo 'admin')
   const isSystemAdmin = user.tipo === 'admin';
 
@@ -112,23 +96,14 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     tipo_secretaria: user.tipo_secretaria || 'educacao',
     isSystemAdmin
   };
-  
-  console.log("🔐 [LOGIN] Payload do token:", tokenPayload);
 
   const token = jwt.sign(tokenPayload, config.jwtSecret as string, { expiresIn: config.jwtExpiresIn as any });
-  
-  if (!token) {
-    throw new Error("Falha ao gerar token");
-  }
 
-  console.log("🔐 [LOGIN] Token gerado:", token.substring(0, 20) + '...');
-  console.log("✅ Login realizado com sucesso para:", email);
-  
-  res.json({ 
+  res.json({
     success: true,
     data: {
-      token, 
-      tipo: user.tipo, 
+      token,
+      tipo: user.tipo,
       nome: user.nome,
       escola_id: user.escola_id,
       tipo_secretaria: user.tipo_secretaria || 'educacao',

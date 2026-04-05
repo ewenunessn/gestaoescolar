@@ -1,6 +1,7 @@
 import { Router } from "express";
-import { 
-  listarContratoProdutos, 
+import { authenticateToken } from "../../../middleware/authMiddleware";
+import {
+  listarContratoProdutos,
   listarProdutosPorContrato,
   listarProdutosPorFornecedor,
   buscarContratoProduto,
@@ -23,13 +24,9 @@ router.get("/fornecedor/:fornecedor_id", listarProdutosPorFornecedor);
 // Buscar contrato-produto por ID
 router.get("/:id", buscarContratoProduto);
 
-// Criar novo contrato-produto
-router.post("/", criarContratoProduto);
-
-// Editar contrato-produto
-router.put("/:id", editarContratoProduto);
-
-// Remover contrato-produto
-router.delete("/:id", removerContratoProduto);
+// Criar/editar/remover contrato-produto
+router.post("/", authenticateToken, criarContratoProduto);
+router.put("/:id", authenticateToken, editarContratoProduto);
+router.delete("/:id", authenticateToken, removerContratoProduto);
 
 export default router;

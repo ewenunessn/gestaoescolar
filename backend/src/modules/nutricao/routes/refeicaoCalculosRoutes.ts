@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { authenticateToken } from '../../../middleware/authMiddleware';
 import {
   calcularValoresNutricionais,
   calcularCusto,
@@ -8,16 +9,12 @@ import { buscarIngredientesDetalhados } from '../controllers/refeicaoIngrediente
 
 const router = Router();
 
-// Calcular valores nutricionais de uma refeição
-router.post('/refeicoes/:id/calcular-nutricional', calcularValoresNutricionais);
+// Calcular valores nutricionais/custo (protegido — operações pesadas)
+router.post('/refeicoes/:id/calcular-nutricional', authenticateToken, calcularValoresNutricionais);
+router.post('/refeicoes/:id/calcular-custo', authenticateToken, calcularCusto);
+router.post('/refeicoes/:id/aplicar-calculos', authenticateToken, aplicarCalculosAutomaticos);
 
-// Calcular custo de uma refeição
-router.post('/refeicoes/:id/calcular-custo', calcularCusto);
-
-// Aplicar cálculos automáticos (nutricional + custo) e salvar na refeição
-router.post('/refeicoes/:id/aplicar-calculos', aplicarCalculosAutomaticos);
-
-// Buscar ingredientes com composição nutricional detalhada (para PDF)
+// Leitura pública
 router.get('/refeicoes/:id/ingredientes-detalhados', buscarIngredientesDetalhados);
 
 export default router;

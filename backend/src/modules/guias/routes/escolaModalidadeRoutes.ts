@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { authenticateToken } from "../../../middleware/authMiddleware";
 import {
   listarEscolaModalidades,
   buscarEscolaModalidade,
@@ -13,8 +14,8 @@ const router = Router();
 router.get("/", listarEscolaModalidades);
 router.get("/escola/:escola_id", listarModalidadesPorEscola);
 router.get("/:id", buscarEscolaModalidade);
-router.post("/", criarEscolaModalidade);
-router.put("/:id", atualizarEscolaModalidade);
-router.delete("/:id", deletarEscolaModalidade);
+router.post("/", authenticateToken, criarEscolaModalidade);
+router.put("/:id", authenticateToken, atualizarEscolaModalidade);
+router.delete("/:id", authenticateToken, deletarEscolaModalidade);
 
 export default router;

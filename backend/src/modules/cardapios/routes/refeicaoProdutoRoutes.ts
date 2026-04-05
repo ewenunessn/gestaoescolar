@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { authenticateToken } from "../../../middleware/authMiddleware";
 import {
   listarRefeicaoProdutos,
   adicionarRefeicaoProduto,
@@ -8,8 +9,8 @@ import {
 const router = Router();
 
 router.get("/:refeicaoId/produtos", listarRefeicaoProdutos);
-router.post("/:refeicaoId/produtos", adicionarRefeicaoProduto);
-router.put("/produtos/:id", editarRefeicaoProduto);
-router.delete("/produtos/:id", removerRefeicaoProduto);
+router.post("/:refeicaoId/produtos", authenticateToken, adicionarRefeicaoProduto);
+router.put("/produtos/:id", authenticateToken, editarRefeicaoProduto);
+router.delete("/produtos/:id", authenticateToken, removerRefeicaoProduto);
 
 export default router;

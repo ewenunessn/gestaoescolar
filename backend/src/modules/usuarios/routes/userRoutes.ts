@@ -1,6 +1,5 @@
 import { Router } from "express";
 import { register, login, getUsers, getProfile, checkSystemStatus } from "../controllers/userController";
-import { debugLogin } from "../controllers/debugLoginController";
 import { devAuthMiddleware as authMiddleware } from "../../../middleware/devAuthMiddleware";
 
 const router = Router();
@@ -9,22 +8,9 @@ const router = Router();
 router.get("/system-status", checkSystemStatus);
 router.post("/register", register);
 router.post("/login", login);
-router.post("/debug-login", debugLogin);
 
 // Rotas protegidas
 router.get("/me", authMiddleware, getProfile);
-router.get("/", getUsers); // Listar usuários
-
-// Rota de debug temporária
-router.get("/debug-jwt", (req, res) => {
-  const { config } = require("../../../config/config");
-  res.json({
-    nodeEnv: process.env.NODE_ENV,
-    jwtSecretFromEnv: process.env.JWT_SECRET,
-    jwtSecretFromConfig: config.jwtSecret,
-    vercelEnv: process.env.VERCEL,
-    allEnvKeys: Object.keys(process.env).filter(key => key.includes('JWT'))
-  });
-});
+router.get("/", getUsers);
 
 export default router;

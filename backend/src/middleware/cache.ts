@@ -11,6 +11,8 @@ interface CacheEntry {
   expiresAt: number;
 }
 
+const MAX_CACHE_ENTRIES = 5000;
+
 const cache = new Map<string, CacheEntry>();
 
 // Limpar cache expirado a cada 5 minutos
@@ -79,6 +81,13 @@ export const cacheMiddleware = (options: CacheOptions = {}) => {
     (res.json as any) = async function(data: any) {
       // Apenas cachear respostas bem-sucedidas
       if (res.statusCode >= 200 && res.statusCode < 300) {
+        // Evitar crescimento ilimitado do cache em memória
+        if (cache.size >= MAX_CACHE_ENTRIES) {
+          // Remover a entrada mais antiga (primeira do Map)
+          const firstKey = cache.keys().next().value;
+          if (firstKey) cache.delete(firstKey);
+        }
+        cache.set(key, { data, timestamp: now, expiresAt: now + ttl * 1000 });
         try {
           await redisSet(key, JSON.stringify({
             content: data,

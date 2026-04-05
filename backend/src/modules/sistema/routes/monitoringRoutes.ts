@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { authenticateToken } from '../../../middleware/authMiddleware';
 import { getCacheStats, invalidateCache } from '../../../middleware/cache';
 import { getRateLimitStats, clearRateLimitStore } from '../../../middleware/rateLimiter';
 import { getRedisStats } from '../../../config/redis';
@@ -77,21 +78,12 @@ router.get('/stats', async (req, res) => {
 
 /**
  * POST /api/monitoring/cache/clear
- * Limpar cache (requer autenticação em produção)
+ * Limpar cache (requer autenticação)
  */
-router.post('/cache/clear', async (req, res) => {
-  if (process.env.NODE_ENV === 'production') {
-    return res.status(403).json({
-      success: false,
-      error: 'ForbiddenError',
-      message: 'Operação não permitida em produção',
-      statusCode: 403
-    });
-  }
-
+router.post('/cache/clear', authenticateToken, async (req, res) => {
   const pattern = req.body.pattern;
   const cleared = await invalidateCache(pattern);
-  
+
   res.json({
     success: true,
     message: 'Cache limpo com sucesso',
@@ -102,20 +94,11 @@ router.post('/cache/clear', async (req, res) => {
 
 /**
  * POST /api/monitoring/rate-limit/clear
- * Limpar rate limit (requer autenticação em produção)
+ * Limpar rate limit (requer autenticação)
  */
-router.post('/rate-limit/clear', (req, res) => {
-  if (process.env.NODE_ENV === 'production') {
-    return res.status(403).json({
-      success: false,
-      error: 'ForbiddenError',
-      message: 'Operação não permitida em produção',
-      statusCode: 403
-    });
-  }
-
+router.post('/rate-limit/clear', authenticateToken, (req, res) => {
   clearRateLimitStore();
-  
+
   res.json({
     success: true,
     message: 'Rate limit limpo com sucesso'

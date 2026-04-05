@@ -3,7 +3,7 @@ import path from "path";
 import fs from "fs";
 import dotenv from "dotenv";
 import cors from "cors";
-import { config } from "./config";
+import { config } from "./config/config";
 
 // Importar middlewares
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
@@ -75,8 +75,15 @@ const db = process.env.VERCEL === '1' ? require("./database-vercel") : require("
 
 dotenv.config();
 
+// Normalizar CORS origins — remover entradas não-string para segurança
+const rawOrigin = config.backend.cors.origin;
+const allowedOrigins = Array.isArray(rawOrigin)
+  ? rawOrigin.filter((o): o is string => typeof o === 'string')
+  : [String(rawOrigin)];
+
 const corsOptions = {
-  origin: '*',
+  origin: allowedOrigins,
+  credentials: config.backend.cors.credentials,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   allowedHeaders: [
     "Content-Type",
@@ -173,13 +180,7 @@ app.get("/health", async (req, res) => {
       dbConnection: "connected",
       timestamp: new Date().toISOString(),
       apiUrl,
-      environment: process.env.NODE_ENV || 'development',
-      debug: {
-        nodeEnv: process.env.NODE_ENV,
-        jwtSecretFromEnv: process.env.JWT_SECRET ? 'Configurado' : 'Não configurado',
-        vercelEnv: process.env.VERCEL,
-        jwtEnvKeys: Object.keys(process.env).filter(key => key.includes('JWT'))
-      }
+      environment: process.env.NODE_ENV || 'development'
     });
   } catch (error) {
     res.status(500).json({
@@ -437,44 +438,19 @@ if (process.env.VERCEL !== '1') {
   iniciarServidor();
 }
 
-if (process.env.VERCEL === '1' || process.env.VERCEL === 'true') {
-  (async () => {
+// Inicialização de schema essencial para Vercel (unificado em um único lugar)
+if (process.env.VERCEL === '1') {
+  (async function initVercelSchema() {
     try {
       await createEssentialTables();
-    } catch (e) {
-      console.error('⚠️ Falha ao criar tabelas essenciais (Vercel):', e);
-    }
-
-    try {
       await createGuiaTables();
-    } catch (e) {
-      console.error('⚠️ Falha ao criar tabelas de guias (Vercel):', e);
-    }
-
-    try {
       await ensureProdutoComposicaoNutricionalTable();
+      console.log('✅ Schema essencial garantido (Vercel)');
     } catch (e) {
-      console.error('⚠️ Falha ao garantir tabela produto_composicao_nutricional (Vercel):', e);
+      console.error('⚠️ Falha ao inicializar schema (Vercel):', e);
     }
   })();
 }
 
-// Exportar app para Vercel (deve vir depois da configuração)
+// Exportar app para Vercel e outros consumidores
 export default app;
-
-// Para compatibilidade CommonJS
-module.exports = app;
-
-// Inicialização de schema essencial em ambiente Vercel (cold start)
-(async function safeInitSchemaForVercel() {
-  if (process.env.VERCEL === '1') {
-    try {
-      await createEssentialTables();
-      await createGuiaTables();
-      await ensureProdutoComposicaoNutricionalTable();
-      console.log('✅ Schema essencial de guias/escolas garantido (Vercel)');
-    } catch (e) {
-      console.error('⚠️ Falha ao inicializar schema essencial (Vercel):', e);
-    }
-  }
-})();

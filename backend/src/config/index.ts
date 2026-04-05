@@ -79,10 +79,10 @@ function loadConfig(): Config {
       host: (jsonConfig as any)?.backend?.host || process.env.HOST || 'localhost',
       port: (jsonConfig as any)?.backend?.port || parseInt(process.env.PORT || '3000'),
       cors: {
-        origin: (jsonConfig as any)?.backend?.cors?.origin || (environment === 'development' ? true : [
+        origin: (jsonConfig as any)?.backend?.cors?.origin || [
           'http://localhost:5173',
           'http://127.0.0.1:5173'
-        ]),
+        ],
         credentials: (jsonConfig as any)?.backend?.cors?.credentials ?? true
       }
     },
@@ -91,11 +91,17 @@ function loadConfig(): Config {
       port: (jsonConfig as any)?.database?.port || parseInt(process.env.DB_PORT || '5432'),
       name: (jsonConfig as any)?.database?.name || process.env.DB_NAME || 'alimentacao_escolar',
       user: (jsonConfig as any)?.database?.user || process.env.DB_USER || 'postgres',
-      password: process.env.DB_PASSWORD || 'admin123', // Senha sempre do .env por segurança
+      password: process.env.DB_PASSWORD, // Deve ser configurada em variável de ambiente
       ssl: (jsonConfig as any)?.database?.ssl ?? (process.env.DB_SSL === 'true')
     },
     jwt: {
-      secret: process.env.JWT_SECRET || 'seu-jwt-secret-super-seguro',
+      secret: process.env.JWT_SECRET || (() => {
+        if (!process.env.JWT_SECRET) {
+          console.error('❌ JWT_SECRET não configurado nas variáveis de ambiente!');
+          throw new Error('JWT_SECRET is required. Generate one with: openssl rand -base64 32');
+        }
+        return '';
+      })(),
       expiresIn: process.env.JWT_EXPIRES_IN || '24h'
     },
     uploads: {
@@ -108,15 +114,6 @@ function loadConfig(): Config {
   console.log('🔧 Configuração do servidor:');
   console.log(`   Host: ${config.backend.host}:${config.backend.port}`);
   console.log(`   Database: ${config.database.host}:${config.database.port}/${config.database.name}`);
-  
-  // Tratar CORS origins que pode ser array ou boolean
-  const corsOrigins = Array.isArray(config.backend.cors.origin) 
-    ? config.backend.cors.origin.join(', ')
-    : config.backend.cors.origin === true 
-      ? 'Qualquer origem (desenvolvimento)'
-      : String(config.backend.cors.origin);
-  
-  console.log(`   CORS Origins: ${corsOrigins}`);
   console.log(`   Environment: ${environment}`);
 
   return config;

@@ -48,7 +48,7 @@ if (process.env.NEON_DATABASE_URL || process.env.DATABASE_URL || process.env.POS
         console.log('✅ Usando NEON/VERCEL (com SSL)');
         pool = new Pool({
             connectionString,
-            ssl: { rejectUnauthorized: false },
+            ssl: true,
             client_encoding: 'UTF8',
             max: 5,                      // Neon tem limite de conexões
             idleTimeoutMillis: 10000,    // Fecha idle antes do Neon matar (~5min)

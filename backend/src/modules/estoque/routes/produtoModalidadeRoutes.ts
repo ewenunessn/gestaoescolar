@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { authenticateToken } from "../../../middleware/authMiddleware";
 import {
   listarProdutoModalidades,
   buscarProdutoModalidade,
@@ -15,13 +16,9 @@ router.get("/", listarProdutoModalidades);
 // Buscar associação produto-modalidade por ID
 router.get("/:id", buscarProdutoModalidade);
 
-// Criar nova associação produto-modalidade
-router.post("/", criarProdutoModalidade);
-
-// Editar associação produto-modalidade
-router.put("/:id", editarProdutoModalidade);
-
-// Remover associação produto-modalidade
-router.delete("/:id", removerProdutoModalidade);
+// Criar/editar/remover associação produto-modalidade
+router.post("/", authenticateToken, criarProdutoModalidade);
+router.put("/:id", authenticateToken, editarProdutoModalidade);
+router.delete("/:id", authenticateToken, removerProdutoModalidade);
 
 export default router;

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { authenticateToken } from "../../../middleware/authMiddleware";
 import {
   listarSaldosModalidades,
   cadastrarSaldoModalidade,
@@ -15,16 +16,16 @@ const router = Router();
 router.get('/', listarSaldosModalidades);
 
 // Cadastrar/atualizar saldo por modalidade
-router.post('/', cadastrarSaldoModalidade);
+router.post('/', authenticateToken, cadastrarSaldoModalidade);
 
 // Registrar consumo de modalidade
-router.post('/:id/consumir', registrarConsumoModalidade);
+router.post('/:id/consumir', authenticateToken, registrarConsumoModalidade);
 
 // Buscar histórico de consumo de modalidade
 router.get('/:id/historico', buscarHistoricoConsumoModalidade);
 
 // Excluir consumo do histórico
-router.delete('/:id/consumo/:consumoId', excluirConsumoModalidade);
+router.delete('/:id/consumo/:consumoId', authenticateToken, excluirConsumoModalidade);
 
 // Listar modalidades disponíveis
 router.get('/modalidades', listarModalidades);

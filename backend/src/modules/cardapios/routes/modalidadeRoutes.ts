@@ -1,9 +1,10 @@
 import { Router } from "express";
-import { 
-  listarModalidades, 
-  buscarModalidade, 
-  criarModalidade, 
-  editarModalidade, 
+import { authenticateToken } from "../../../middleware/authMiddleware";
+import {
+  listarModalidades,
+  buscarModalidade,
+  criarModalidade,
+  editarModalidade,
   removerModalidade,
   desativarModalidade,
   reativarModalidade
@@ -17,18 +18,18 @@ router.get("/", listarModalidades);
 router.get("/:id", buscarModalidade);
 
 // Criar nova modalidade
-router.post("/", criarModalidade);
+router.post("/", authenticateToken, criarModalidade);
 
 // Editar modalidade
-router.put("/:id", editarModalidade);
+router.put("/:id", authenticateToken, editarModalidade);
 
 // Remover modalidade
-router.delete("/:id", removerModalidade);
+router.delete("/:id", authenticateToken, removerModalidade);
 
 // Desativar modalidade (soft delete)
-router.patch("/:id/desativar", desativarModalidade);
+router.patch("/:id/desativar", authenticateToken, desativarModalidade);
 
 // Reativar modalidade
-router.patch("/:id/reativar", reativarModalidade);
+router.patch("/:id/reativar", authenticateToken, reativarModalidade);
 
 export default router;
