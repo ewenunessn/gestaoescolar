@@ -43,12 +43,9 @@ const baseTheme = {
     fontFamily: [
       'Roboto',
       '"Google Sans"',
-      '"Product Sans"',
-      '-apple-system',
+      "-apple-system",
       'BlinkMacSystemFont',
       '"Segoe UI"',
-      '"Helvetica Neue"',
-      'Arial',
       'sans-serif',
     ].join(','),
     fontSize: 13,
@@ -84,7 +81,7 @@ const baseTheme = {
     },
   },
   shape: {
-    borderRadius: 8,
+    borderRadius: 6,
   },
   components: {
     MuiButton: {

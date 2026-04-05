@@ -31,7 +31,6 @@ export const useCurrentUser = () => {
       const savedUser = localStorage.getItem('user');
       if (savedUser) {
         const userData = JSON.parse(savedUser);
-        console.log('🚀 [INIT] Usuário carregado do localStorage:', userData);
         return userData;
       }
       
@@ -49,7 +48,6 @@ export const useCurrentUser = () => {
           tipo_secretaria: tokenPayload.tipo_secretaria,
           institution_id: tokenPayload.institution_id,
         };
-        console.log('🚀 [INIT] Usuário extraído do token:', userData);
         return userData;
       }
     } catch (err) {
@@ -99,11 +97,6 @@ export const useCurrentUser = () => {
   useEffect(() => {
     // Só buscar do servidor se temos token
     const token = getToken();
-    console.log('🔄 [useCurrentUser] useEffect executado:', {
-      hasToken: !!token,
-      userFromInit: user?.nome
-    });
-    
     if (token) {
       fetchUser();
     } else {

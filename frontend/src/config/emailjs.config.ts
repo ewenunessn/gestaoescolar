@@ -22,10 +22,10 @@
 */
 
 export const emailjsConfig = {
-  serviceId: 'service_jmqcb2n', // Substitua pelo seu Service ID
-  templateId: 'template_g1cv8nf',   // Substitua pelo seu Template ID
-  publicKey: 'Q6o-dcQJlJUeGK23r',       // Substitua pela sua Public Key
-  destinationEmail: 'ewertonbarruja@gmail.com' // Email que receberá as mensagens
+  serviceId: import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_placeholder',
+  templateId: import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'template_placeholder',
+  publicKey: import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'pk_placeholder',
+  destinationEmail: import.meta.env.VITE_DESTINATION_EMAIL || 'contato@exemplo.com'
 };
 
 /*

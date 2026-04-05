@@ -269,7 +269,7 @@ export const exportarFrequenciaPDF = async ({
     headerContent.push({
       columns: [
         {
-          image: instituicao.logo_url.startsWith('data:') ? instituicao.logo_url : `https://gestaoescolar-backend.vercel.app${instituicao.logo_url}`,
+          image: instituicao.logo_url.startsWith('data:') ? instituicao.logo_url : `${getApiBaseUrl()}${instituicao.logo_url}`,
           width: 50,
           height: 50
         },

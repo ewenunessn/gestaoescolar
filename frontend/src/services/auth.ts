@@ -1,18 +1,14 @@
 /// <reference types="vite/client" />
 import { apiWithRetry } from "./api";
-import { config } from "../config/config";
 
 export async function login(email: string, password: string) {
   try {
-    console.log("🔐 Tentando login...");
     const loginData: any = {
       email,
       senha: password,
     };
     
     const { data } = await apiWithRetry.post("/auth/login", loginData);
-    console.log("✅ Login realizado com sucesso");
-    
     const result = data.data || data;
     
     return result;
@@ -32,9 +28,7 @@ export async function register(user: {
   departamento?: string;
 }) {
   try {
-    console.log("👤 Tentando registro...");
     const { data } = await apiWithRetry.post("/auth/register", user);
-    console.log("✅ Registro realizado com sucesso");
     return data.data || data; // Handle both new format {success, data} and old format
   } catch (err) {
     console.error("❌ Registro falhou:", err);
@@ -48,7 +42,6 @@ export function isAuthenticated(): boolean {
 }
 
 export function logout() {
-  console.log("🚪 Fazendo logout...");
   localStorage.removeItem("token");
   localStorage.removeItem("user");
   localStorage.removeItem("perfil");
@@ -73,7 +66,6 @@ export async function validateToken(): Promise<boolean> {
     await apiWithRetry.get("/usuarios/me");
     return true;
   } catch (error) {
-    console.log("❌ Token inválido ou expirado");
     logout();
     return false;
   }

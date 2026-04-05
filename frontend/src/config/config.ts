@@ -50,21 +50,9 @@ export const validateConfig = () => {
   }
 
   if (errors.length > 0) {
-    console.error("❌ Erros de configuração:", errors);
-    console.log("💡 Dica: Crie um arquivo .env na raiz do frontend com:");
-    console.log("   VITE_API_URL=http://localhost:3000/api");
-    console.log("   VITE_HEALTH_URL=http://localhost:3000/health");
+    console.error("Configuration errors:", errors);
   }
 
   return errors.length === 0;
 };
 
-// Log da configuração em desenvolvimento
-if (config.isDevelopment) {
-  console.log("🔧 Configuração do Frontend:", {
-    apiUrl: config.apiUrl,
-    healthUrl: config.healthUrl,
-    appName: config.appName,
-    environment: config.isDevelopment ? "development" : "production",
-  });
-}

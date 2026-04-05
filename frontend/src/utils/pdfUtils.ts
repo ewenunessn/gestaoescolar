@@ -66,9 +66,11 @@ export interface PdfDocOptions {
 
 const getApiBaseUrl = () => {
   if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-    if (hostname === 'localhost' || hostname === '127.0.0.1') return 'http://localhost:3000';
-    return 'https://gestaoescolar-backend.vercel.app';
+    const v = import.meta.env.VITE_API_URL;
+    if (v) return v.replace(/\/api$/, '');
+    return import.meta.env.PROD
+      ? 'https://gestaoescolar-backend.vercel.app'
+      : 'http://localhost:3000';
   }
   return 'http://localhost:3000';
 };

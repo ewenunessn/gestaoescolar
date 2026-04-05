@@ -93,7 +93,6 @@ export function EscolasProvider({ children }: { children: React.ReactNode }) {
       const token = localStorage.getItem('token');
       if (!token || token === 'null' || token === 'undefined' || token.length < 10) {
         // Não tentar carregar se não houver token válido
-        console.log('Token inválido ou ausente, não carregando escolas');
         return;
       }
 

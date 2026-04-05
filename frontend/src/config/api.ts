@@ -107,9 +107,3 @@ export const environmentInfo = {
   userAgent: navigator.userAgent
 };
 
-// Log da configuração no console (apenas em desenvolvimento)
-if (apiConfig.debug) {
-  console.group('🔧 API Configuration');
-  console.table(environmentInfo);
-  console.groupEnd();
-}

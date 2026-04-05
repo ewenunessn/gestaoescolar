@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://192.168.18.12:3000";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "/api";
 
 // Interface RelatorioConsistencia removida - módulo de relatórios descontinuado
 
