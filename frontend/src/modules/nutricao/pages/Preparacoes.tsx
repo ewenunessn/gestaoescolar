@@ -36,6 +36,7 @@ import {
   Visibility as VisibilityIcon,
   ContentCopy as ContentCopyIcon,
   GroupWork as GroupWorkIcon,
+  Add as AddIcon,
 } from "@mui/icons-material";
 import { 
   useRefeicoes, 
@@ -49,6 +50,7 @@ import { DataTable } from "../../../components/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
 import { Refeicao } from "../../../types/refeicao";
 
+// Página de gerenciamento de preparações
 const PreparacoesPage: React.FC = () => {
   const navigate = useNavigate();
   const toast = useToast();
@@ -332,9 +334,23 @@ const PreparacoesPage: React.FC = () => {
   };
 
   return (
-    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <PageContainer fullHeight>
-        <PageHeader title="Preparações" />
+        <PageHeader
+          title="Preparações"
+          totalCount={preparacoesFiltradas.length}
+          breadcrumbs={[
+            { label: 'Dashboard', path: '/dashboard' },
+            { label: 'Cardápios' },
+            { label: 'Preparações' },
+          ]}
+          action={
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => openModal()}
+              sx={{ bgcolor: '#22c55e', '&:hover': { bgcolor: '#16a34a' }, borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
+              Nova Preparação
+            </Button>
+          }
+        />
 
         {/* DataTable com altura fixa para scroll */}
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
@@ -344,8 +360,6 @@ const PreparacoesPage: React.FC = () => {
             loading={loading}
             onRowClick={handleRowClick}
             searchPlaceholder="Buscar preparações..."
-            onCreateClick={() => openModal()}
-            createButtonLabel="Nova Preparação"
             onFilterClick={(e) => setFilterAnchorEl(e.currentTarget)}
             initialPageSize={50}
             toolbarExtra={

@@ -853,8 +853,17 @@ const GuiaDemandaDetalhe: React.FC = () => {
   if (loading) return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><CircularProgress /></Box>;
 
   return (
-    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden' }}>
       <PageContainer fullHeight>
+        <PageHeader
+          title={`Guia de Demanda - ${getMesNome(guia.mes)}/${guia.ano}`}
+          breadcrumbs={[
+            { label: 'Dashboard', path: '/dashboard' },
+            { label: 'Guias de Demanda', path: '/guias-demanda' },
+            { label: `${getMesNome(guia.mes)}/${guia.ano}` },
+          ]}
+        />
+
         {/* Abas e Estatísticas */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
           <ViewTabs
@@ -891,6 +900,7 @@ const GuiaDemandaDetalhe: React.FC = () => {
         {tabAtiva === 0 && (
           <Box sx={{ flex: 1, minHeight: 0 }}>
             <DataTableAdvanced
+              title="Por Produto"
               data={produtosAgrupados}
               columns={produtosColumns}
               loading={loading}
@@ -906,6 +916,7 @@ const GuiaDemandaDetalhe: React.FC = () => {
         {tabAtiva === 1 && (
           <Box sx={{ flex: 1, minHeight: 0 }}>
             <DataTableAdvanced
+              title="Por Escola"
               data={escolasComItens}
               columns={escolasColumns}
               loading={loading}
@@ -927,6 +938,7 @@ const GuiaDemandaDetalhe: React.FC = () => {
               </Box>
             ) : (
               <DataTableAdvanced
+                title="Matriz Consolidada"
                 data={matrizConsolidada.matriz}
                 columns={consolidadaColumns}
                 loading={loading}

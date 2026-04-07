@@ -281,14 +281,28 @@ const ContratosPage: React.FC = () => {
     <Box
       sx={{
         height: 'calc(100vh - 56px)',
-        bgcolor: '#ffffff',
+        bgcolor: 'background.default',
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
       }}
     >
       <PageContainer fullHeight>
-        <PageHeader title="Contratos" />
+        <PageHeader
+          title="Contratos"
+          totalCount={contratosFiltrados.length}
+          breadcrumbs={[
+            { label: 'Dashboard', path: '/dashboard' },
+            { label: 'Cadastros' },
+            { label: 'Contratos' },
+          ]}
+          action={
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/contratos/novo')}
+              size="small" sx={{ bgcolor: '#22c55e', '&:hover': { bgcolor: '#16a34a' }, borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
+              Novo Contrato
+            </Button>
+          }
+        />
 
         {/* DataTable com altura fixa para scroll */}
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
@@ -298,8 +312,6 @@ const ContratosPage: React.FC = () => {
             loading={loading}
             onRowClick={handleRowClick}
             searchPlaceholder="Buscar por número, fornecedor ou produto..."
-            onCreateClick={() => navigate('/contratos/novo')}
-            createButtonLabel="Novo Contrato"
             onFilterClick={(e) => setFilterAnchorEl(e.currentTarget)}
             initialColumnVisibility={initialColumnVisibility}
             initialPageSize={50}

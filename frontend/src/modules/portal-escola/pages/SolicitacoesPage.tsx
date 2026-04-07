@@ -293,29 +293,35 @@ export default function SolicitacoesPage() {
   }
 
   return (
-    <PageContainer>
-      <PageHeader
-        title="Solicitações de Alimentos"
-        subtitle="Gerencie suas solicitações de alimentos"
-      />
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <PageContainer fullHeight>
+        <PageHeader
+          title="Solicitações de Alimentos"
+          subtitle="Gerencie suas solicitações de alimentos"
+          breadcrumbs={[{ label: 'Dashboard', path: '/dashboard' }, { label: 'Portal Escola' }, { label: 'Solicitações' }]}
+        />
 
-      <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-        <Button
-          startIcon={<ArrowBackIcon />}
-          onClick={() => navigate('/portal-escola')}
-        >
-          Voltar ao Portal
-        </Button>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setNovaOpen(true)}
-        >
-          Nova Solicitação
-        </Button>
-      </Box>
+        <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+          <Button
+            startIcon={<ArrowBackIcon />}
+            onClick={() => navigate('/portal-escola')}
+          >
+            Voltar ao Portal
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setNovaOpen(true)}
+          >
+            Nova Solicitação
+          </Button>
+        </Box>
 
-      <DataTable columns={columns} data={solicitacoes} />
+        {/* DataTable com altura fixa para scroll */}
+        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <DataTable title="Solicitações" columns={columns} data={solicitacoes} />
+        </Box>
+      </PageContainer>
 
       {/* Dialog Nova Solicitação */}
       <Dialog open={novaOpen} onClose={() => setNovaOpen(false)} maxWidth="md" fullWidth>
@@ -517,6 +523,6 @@ export default function SolicitacoesPage() {
           <Button onClick={() => setDetalhesOpen(false)}>Fechar</Button>
         </DialogActions>
       </Dialog>
-    </PageContainer>
+    </Box>
   );
 }

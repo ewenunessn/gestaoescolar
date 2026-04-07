@@ -7,7 +7,7 @@ import {
 import {
   Menu as MenuIcon, Dashboard, School, Category, Inventory, Restaurant,
   MenuBook, Business, Assignment, LocalShipping, Logout, ListAlt, RequestPage,
-  Print, Settings, Description, Agriculture, Calculate, ArrowBack as ArrowBackIcon,
+  Print, Settings, Description, Agriculture, Calculate,
   ExpandLess, ExpandMore, Apps as AppsIcon, AdminPanelSettings, CalendarToday, HomeWork,
   NotificationsActive, Schedule,
 } from "@mui/icons-material";
@@ -16,16 +16,26 @@ import { logout } from "../services/auth";
 import { useConfigContext } from "../context/ConfigContext";
 import { useConfigChangeIndicator } from "../hooks/useConfigChangeIndicator";
 import { useUserRole } from "../hooks/useUserRole";
-import { usePageTitle } from "../contexts/PageTitleContext";
 import { SeletorPeriodo } from './SeletorPeriodo';
 import { NotificacoesProvider } from '../contexts/NotificacoesContext';
 import { NotificacoesEscolaProvider } from '../contexts/NotificacoesEscolaContext';
 import NotificacoesMenu from './NotificacoesMenu';
 import NotificacoesEscolaMenu from './NotificacoesEscolaMenu';
-import JobsMenu from './JobsMenu';
 
 const drawerWidth = 220;
 const collapsedDrawerWidth = 64;
+
+// GitHub Dark tokens
+const SIDEBAR_BG = "#0d1117";
+const CANVAS = "#161b22";
+const BORDER = "#21262d";
+const BORDER_MD = "#30363d";
+const TEXT = "#e6edf3";
+const MUTED = "#8b949e";
+const SUB = "#6e7681";
+const GREEN = "#2ea043";
+const GREEN_DIM = "rgba(46,160,67,0.12)";
+const RED = "#f85149";
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   "Principal":     <Dashboard fontSize="small" />,
@@ -43,6 +53,7 @@ const MENU_ESCOLA = [
     category: "Portal Escola",
     items: [
       { text: "Minha Escola", icon: <HomeWork fontSize="small" />, path: "/portal-escola" },
+      { text: "Solicitações", icon: <RequestPage fontSize="small" />, path: "/portal-escola/solicitacoes" },
     ],
   },
 ];
@@ -95,6 +106,7 @@ const getMenuConfig = (_cfg: any) => [
     items: [
       { text: "Estoque Central", icon: <Inventory fontSize="small" />, path: "/estoque-central" },
       { text: "Estoque Escolar", icon: <School fontSize="small" />,    path: "/estoque-escolar" },
+      { text: "Solicitações Recebidas", icon: <RequestPage fontSize="small" />, path: "/solicitacoes-alimentos" },
     ],
   },
   {
@@ -109,50 +121,56 @@ const getMenuConfig = (_cfg: any) => [
   },
 ];
 
+// ─── SubItem (sem ícones visíveis) ───
 const SubItem: React.FC<{
   item: any; isActive: boolean; onClick: (path: string) => void; collapsed: boolean;
 }> = ({ item, isActive, onClick, collapsed }) => {
-  const theme = useTheme();
   const btn = (
     <ListItemButton
       onClick={() => onClick(item.path)}
       sx={{
-        pl: collapsed ? 0 : 3.5, pr: 1, py: 0.6, mx: collapsed ? 0.5 : 1, borderRadius: 1,
+        pl: collapsed ? 0 : 1.5, pr: 1, py: 0.5, mx: 0.75, my: 0.2,
+        borderRadius: "4px", minWidth: 28, minHeight: 28,
         justifyContent: collapsed ? "center" : "flex-start",
-        bgcolor: isActive ? "rgba(255,255,255,0.15)" : "transparent",
-        color: isActive ? "#fff" : "rgba(255,255,255,0.65)",
-        borderLeft: isActive && !collapsed
-          ? `3px solid ${(theme.palette as any).sidebarSelection ?? "#4ade80"}`
-          : "3px solid transparent",
-        "&:hover": { bgcolor: "rgba(255,255,255,0.1)", color: "#fff" },
-        transition: "all 0.15s", minHeight: 34,
+        bgcolor: isActive ? GREEN_DIM : "transparent",
+        color: isActive ? GREEN : "rgba(255,255,255,0.55)",
+        transition: "all 0.15s ease",
+        "&:hover": { bgcolor: "rgba(255,255,255,0.05)", color: TEXT },
       }}
     >
-      <ListItemIcon sx={{ color: "inherit", minWidth: collapsed ? 0 : 26, justifyContent: "center" }}>
-        {item.icon}
-      </ListItemIcon>
+      {isActive && !collapsed && (
+        <Box sx={{ width: 4, height: 4, borderRadius: "50%", bgcolor: GREEN, flexShrink: 0, mr: 1.5, mt: 0.5 }} />
+      )}
       {!collapsed && (
         <ListItemText
           primary={item.text}
-          primaryTypographyProps={{ fontSize: "0.78rem", fontWeight: isActive ? 600 : 400 }}
+          primaryTypographyProps={{
+            fontSize: "0.76rem",
+            fontWeight: isActive ? 500 : 400,
+            color: "inherit",
+            lineHeight: 1.2,
+          }}
+          sx={{ ml: 0 }}
         />
       )}
     </ListItemButton>
   );
   if (collapsed) {
     return (
-      <ListItem disablePadding sx={{ mb: 0.25 }}>
+      <ListItem disablePadding sx={{ mb: 0.2 }}>
         <Tooltip title={item.text} placement="right" arrow>{btn}</Tooltip>
       </ListItem>
     );
   }
-  return <ListItem disablePadding sx={{ mb: 0.1 }}>{btn}</ListItem>;
+  return <ListItem disablePadding sx={{ mb: 0 }}>{btn}</ListItem>;
 };
 
+// ─── CategoryGroup ───
 const CategoryGroup: React.FC<{
   category: string; items: any[]; location: string;
   onNavigate: (path: string) => void; collapsed: boolean; defaultOpen?: boolean;
-}> = ({ category, items, location, onNavigate, collapsed, defaultOpen = false }) => {
+  isFirst?: boolean;
+}> = ({ category, items, location, onNavigate, collapsed, defaultOpen = false, isFirst }) => {
   const hasActive = items.some(i => location === i.path || (i.path !== "/" && location.startsWith(i.path)));
   const [open, setOpen] = useState(defaultOpen || hasActive);
 
@@ -162,35 +180,57 @@ const CategoryGroup: React.FC<{
 
   if (collapsed) {
     return (
-      <Box sx={{ mb: 0.5 }}>
+      <Box sx={{
+        borderTop: isFirst ? "none" : `1px solid ${BORDER}`,
+        pt: isFirst ? 0 : 0.75,
+        mt: isFirst ? 0 : 0,
+        mx: 0.25,
+      }}>
         <Tooltip
           title={
             <Box>
-              <Typography variant="caption" sx={{ fontWeight: 700, display: "block", mb: 0.5, opacity: 0.7 }}>
+              <Typography variant="caption" sx={{ fontWeight: 500, display: "block", mb: 0.5, color: SUB, fontSize: "0.65rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>
                 {category}
               </Typography>
-              {items.map(i => (
-                <Box key={i.path} onClick={() => onNavigate(i.path)} sx={{
-                  display: "flex", alignItems: "center", gap: 1, py: 0.4, px: 0.5,
-                  cursor: "pointer", borderRadius: 0.5,
-                  "&:hover": { bgcolor: "rgba(255,255,255,0.15)" },
-                  color: location === i.path || (i.path !== "/" && location.startsWith(i.path)) ? "#4ade80" : "inherit",
-                }}>
-                  {i.icon}
-                  <Typography variant="caption">{i.text}</Typography>
-                </Box>
-              ))}
+              {items.map(i => {
+                const active = location === i.path || (i.path !== "/" && location.startsWith(i.path));
+                return (
+                  <Box key={i.path} onClick={() => onNavigate(i.path)} sx={{
+                    display: "flex", alignItems: "center", gap: 0.75, py: 0.3, px: 0.5,
+                    cursor: "pointer", borderRadius: "4px",
+                    "&:hover": { bgcolor: "rgba(255,255,255,0.08)" },
+                    color: active ? GREEN : "rgba(255,255,255,0.55)",
+                  }}>
+                    {i.icon}
+                    <Typography variant="caption" sx={{ fontSize: "0.7rem" }}>{i.text}</Typography>
+                  </Box>
+                );
+              })}
             </Box>
           }
           placement="right" arrow
-          componentsProps={{ tooltip: { sx: { bgcolor: "#1e293b", p: 1.5, maxWidth: 200 } } }}
+          componentsProps={{
+            tooltip: {
+              sx: {
+                bgcolor: CANVAS, p: 1, maxWidth: 180,
+                border: `1px solid ${BORDER_MD}`, borderRadius: "6px",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+              },
+            },
+            arrow: { sx: { color: CANVAS } },
+          }}
         >
           <ListItemButton sx={{
-            justifyContent: "center", mx: 0.5, py: 1, borderRadius: 1,
-            color: hasActive ? "#fff" : "rgba(255,255,255,0.55)",
-            bgcolor: hasActive ? "rgba(255,255,255,0.12)" : "transparent",
-            "&:hover": { bgcolor: "rgba(255,255,255,0.1)", color: "#fff" },
+            justifyContent: "center", mx: 0.25, px: 1, py: 1, minWidth: 30, borderRadius: "4px",
+            color: hasActive ? TEXT : "rgba(255,255,255,0.35)",
+            bgcolor: hasActive ? "rgba(255,255,255,0.06)" : "transparent",
+            "&:hover": { bgcolor: "rgba(255,255,255,0.05)", color: TEXT },
+            transition: "all 0.15s ease",
+            position: "relative",
           }}>
+            {hasActive && (
+              <Box sx={{ position: "absolute", left: 5, top: "50%", transform: "translateY(-50%)", width: 3, height: 3, borderRadius: "50%", bgcolor: GREEN }} />
+            )}
             <ListItemIcon sx={{ color: "inherit", minWidth: 0, justifyContent: "center" }}>{icon}</ListItemIcon>
           </ListItemButton>
         </Tooltip>
@@ -199,23 +239,30 @@ const CategoryGroup: React.FC<{
   }
 
   return (
-    <Box sx={{ mb: 0.25 }}>
+    <Box sx={{
+      borderTop: isFirst ? "none" : `1px solid ${BORDER}`,
+      pt: isFirst ? 0 : 0.5,
+      mt: isFirst ? 0 : 0,
+    }}>
       <ListItemButton onClick={() => setOpen(o => !o)} sx={{
-        px: 2, py: 0.75, mx: 0.5, borderRadius: 1,
-        color: hasActive ? "#fff" : "rgba(255,255,255,0.55)",
-        bgcolor: hasActive && !open ? "rgba(255,255,255,0.08)" : "transparent",
-        "&:hover": { bgcolor: "rgba(255,255,255,0.08)", color: "#fff" },
-        transition: "all 0.15s",
+        px: 1.5, py: 0.55, mx: 0.75, borderRadius: "4px",
+        color: hasActive ? TEXT : "rgba(255,255,255,0.35)",
+        bgcolor: "transparent",
+        "&:hover": { bgcolor: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.7)" },
+        transition: "all 0.15s ease",
+        minHeight: 32,
       }}>
         <ListItemIcon sx={{ color: "inherit", minWidth: 28, justifyContent: "center" }}>{icon}</ListItemIcon>
         <ListItemText primary={category} primaryTypographyProps={{
-          fontSize: "0.75rem", fontWeight: 600, textTransform: "uppercase",
-          letterSpacing: "0.5px", color: "inherit",
+          fontSize: "0.7rem", fontWeight: 500,
+          color: "inherit",
+          textTransform: "uppercase",
+          letterSpacing: "0.4px",
         }} />
-        {open ? <ExpandLess sx={{ fontSize: 16, opacity: 0.7 }} /> : <ExpandMore sx={{ fontSize: 16, opacity: 0.7 }} />}
+        {open ? <ExpandLess sx={{ fontSize: 14, opacity: 0.5 }} /> : <ExpandMore sx={{ fontSize: 14, opacity: 0.5 }} />}
       </ListItemButton>
       <Collapse in={open} timeout={180} unmountOnExit>
-        <List dense disablePadding sx={{ pb: 0.5 }}>
+        <List dense disablePadding sx={{ pb: 0.25 }}>
           {items.map(item => {
             const isActive = location === item.path || (item.path !== "/" && location.startsWith(item.path));
             return <SubItem key={item.path} item={item} isActive={isActive} onClick={onNavigate} collapsed={false} />;
@@ -226,6 +273,7 @@ const CategoryGroup: React.FC<{
   );
 };
 
+// ─── Layout Principal ───
 const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => {
@@ -240,7 +288,6 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
   const { configModuloSaldo, loading: loadingConfig, onConfigChanged } = useConfigContext();
   const { hasRecentChange, showChangeIndicator } = useConfigChangeIndicator();
   const { user, loading: loadingUser, isAdmin, isEscolaUser } = useUserRole();
-  const { pageTitle, backPath } = usePageTitle();
 
   useEffect(() => { if (onConfigChanged) onConfigChanged(showChangeIndicator); }, [onConfigChanged, showChangeIndicator]);
 
@@ -260,32 +307,64 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
     if (isMobile) setMobileOpen(false);
   }, [navigate, isMobile]);
 
+  // Determine first group name for separator logic
+  const firstCategory = menuConfig.length > 0 ? menuConfig[0].category : "";
+
   const drawer = (
-    <Box sx={{ height: "100%", display: "flex", flexDirection: "column", bgcolor: "background.sidebar" }}>
+    <Box sx={{
+      height: "100%", display: "flex", flexDirection: "column",
+      bgcolor: SIDEBAR_BG,
+    }}>
+      {/* ── Brand Header ── */}
       <Box sx={{
-        p: collapsed ? 1 : 2, borderBottom: "1px solid rgba(255,255,255,0.1)", flexShrink: 0,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        bgcolor: "rgba(0,0,0,0.2)", minHeight: 56,
+        px: collapsed ? 1.5 : 2, py: collapsed ? 2 : 2.5,
+        borderBottom: `1px solid ${BORDER}`,
+        flexShrink: 0,
+        display: "flex", alignItems: "center",
+        justifyContent: collapsed ? "center" : "flex-start",
+        bgcolor: SIDEBAR_BG,
+        minHeight: 60,
       }}>
-        <Typography variant="h6" sx={{ fontWeight: 700, color: "white", fontSize: collapsed ? "0.85rem" : "1.1rem" }}>
+        <Box sx={{
+          width: 8, height: 8, borderRadius: "50%", bgcolor: GREEN,
+          flexShrink: 0,
+          mr: collapsed ? 0 : 1.5,
+          display: collapsed ? "none" : "flex",
+          boxShadow: `0 0 8px ${GREEN}`,
+        }} />
+        <Typography variant="h6" sx={{
+          fontWeight: 700,
+          color: TEXT,
+          fontSize: collapsed ? "0.85rem" : "0.95rem",
+          letterSpacing: collapsed ? "2px" : "0.5px",
+          textAlign: "center",
+        }}>
           {collapsed ? "NL" : "NutriLog"}
         </Typography>
       </Box>
 
+      {/* ── Config update indicator ── */}
       {hasRecentChange && !loadingConfig && (
-        <Box sx={{ mx: 1, mt: 1, p: 1, bgcolor: "success.main", color: "success.contrastText", borderRadius: 1, fontSize: "0.75rem", textAlign: "center" }}>
+        <Box sx={{
+          mx: 1, mt: 1.5, py: 0.5, px: 1,
+          borderRadius: "4px", fontSize: "0.7rem", textAlign: "center",
+          bgcolor: GREEN_DIM, color: GREEN,
+          fontWeight: 500,
+        }}>
           ✓ Menu atualizado!
         </Box>
       )}
 
+      {/* ── Menu Items ── */}
       <Box sx={{
-        flexGrow: 1, overflow: "auto", py: 1, minHeight: 0,
-        "&::-webkit-scrollbar": { width: "4px" },
-        "&::-webkit-scrollbar-thumb": { background: "rgba(255,255,255,0.2)", borderRadius: "2px" },
+        flexGrow: 1, overflow: "auto", py: 0.5, minHeight: 0,
+        "&::-webkit-scrollbar": { width: "5px" },
+        "&::-webkit-scrollbar-thumb": { background: BORDER_MD, borderRadius: "3px" },
+        "&::-webkit-scrollbar-track": { background: SIDEBAR_BG },
       }}>
         {loadingConfig ? (
           <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
-            <CircularProgress size={24} sx={{ color: "rgba(255,255,255,0.7)" }} />
+            <CircularProgress size={24} sx={{ color: MUTED }} />
           </Box>
         ) : (
           <List dense disablePadding>
@@ -298,25 +377,45 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
                 onNavigate={handleNavigation}
                 collapsed={collapsed}
                 defaultOpen={category === "Principal" || category === "Portal Escola"}
+                isFirst={category === firstCategory}
               />
             ))}
           </List>
         )}
       </Box>
 
-      <Box sx={{ p: 1, borderTop: "1px solid rgba(255,255,255,0.1)", flexShrink: 0 }}>
+      {/* ── Footer ── */}
+      <Box sx={{
+        flexShrink: 0,
+        borderTop: `1px solid ${BORDER}`,
+        bgcolor: "rgba(0,0,0,0.12)",
+        py: 0.75, px: 1,
+      }}>
         <IconButton onClick={handleCollapseToggle} size="small" sx={{
-          display: { xs: "none", md: "flex" }, width: "100%", borderRadius: 1,
-          color: "rgba(255,255,255,0.7)", justifyContent: "center", py: 0.75,
-          "&:hover": { bgcolor: "rgba(255,255,255,0.1)", color: "#fff" },
+          display: { xs: "none", md: "flex" }, width: "100%",
+          borderRadius: "4px", py: 0.75, minHeight: 32,
+          color: "rgba(255,255,255,0.45)",
+          justifyContent: "flex-start", px: 1,
+          "&:hover": { bgcolor: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.7)" },
+          transition: "all 0.15s ease",
         }}>
-          <MenuIcon fontSize="small" />
+          <MenuIcon sx={{ fontSize: 16, mr: 1 }} />
+          {!collapsed && (
+            <Typography sx={{ fontSize: "0.72rem", letterSpacing: "0.3px" }}>
+              Recolher menu
+            </Typography>
+          )}
         </IconButton>
         {!collapsed && (
-          <Button onClick={handleLogout} size="small" startIcon={<Logout fontSize="small" />} sx={{
-            mt: 0.5, width: "100%", textTransform: "none", fontSize: "0.8rem",
-            color: "rgba(255,255,255,0.7)", justifyContent: "flex-start", minHeight: 32, px: 1.5,
-            "&:hover": { bgcolor: "rgba(255,255,255,0.1)", color: "#fff" },
+          <Button onClick={handleLogout} size="small" startIcon={
+            <Logout sx={{ fontSize: 16, color: RED }} />
+          } sx={{
+            mt: 0.25, width: "100%", textTransform: "none",
+            fontSize: "0.72rem", minHeight: 30, px: 1,
+            borderRadius: "4px", justifyContent: "flex-start",
+            color: "rgba(255,255,255,0.45)", letterSpacing: "0.3px",
+            "&:hover": { bgcolor: "rgba(248,81,73,0.08)", color: RED },
+            transition: "all 0.15s ease",
           }}>
             Sair
           </Button>
@@ -330,62 +429,24 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
       <Box component="nav" sx={{ width: { md: collapsed ? collapsedDrawerWidth : drawerWidth }, flexShrink: { md: 0 }, transition: "width 0.25s ease" }}>
         <Drawer variant="temporary" open={mobileOpen} onClose={handleDrawerToggle}
           ModalProps={{ keepMounted: true }}
-          sx={{ display: { xs: "block", md: "none" }, "& .MuiDrawer-paper": { width: drawerWidth, bgcolor: "background.sidebar" } }}>
+          sx={{ display: { xs: "block", md: "none" }, "& .MuiDrawer-paper": { width: drawerWidth, bgcolor: SIDEBAR_BG } }}>
           {drawer}
         </Drawer>
         <Drawer variant="permanent" open
           sx={{ display: { xs: "none", md: "block" }, "& .MuiDrawer-paper": {
             width: collapsed ? collapsedDrawerWidth : drawerWidth,
-            borderRight: "1px solid", borderColor: "divider", bgcolor: "background.sidebar",
+            borderRight: `1px solid ${BORDER}`, bgcolor: SIDEBAR_BG,
             transition: "width 0.25s ease", overflowX: "hidden",
-          }}}>
+          } }}>
           {drawer}
         </Drawer>
-      </Box>
-
-      <Box component="header" sx={{
-        position: "fixed", top: 0,
-        left: { xs: 0, md: collapsed ? collapsedDrawerWidth : drawerWidth },
-        right: 0, height: 56, bgcolor: "background.paper",
-        borderBottom: "1px solid", borderColor: "divider",
-        display: "flex", alignItems: "center", px: 2, zIndex: 1200,
-        transition: "left 0.25s ease",
-      }}>
-        <IconButton onClick={handleDrawerToggle} sx={{ display: { xs: "block", md: "none" }, color: "text.secondary", mr: 1.5 }}>
-          <MenuIcon />
-        </IconButton>
-        <Box sx={{ display: "flex", alignItems: "center", flex: 1, gap: 1 }}>
-          {backPath && (
-            <IconButton size="small" onClick={() => backPath === "__back__" ? navigate(-1) : navigate(backPath)} sx={{ color: "text.secondary" }}>
-              <ArrowBackIcon fontSize="small" />
-            </IconButton>
-          )}
-          {pageTitle && (
-            <Typography variant="h6" sx={{ fontWeight: 600, color: "text.primary" }}>{pageTitle}</Typography>
-          )}
-        </Box>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-          {!isEscolaUser && (
-            <Box sx={{ display: { xs: "none", sm: "flex" } }}>
-              <SeletorPeriodo />
-            </Box>
-          )}
-          <JobsMenu />
-          {isEscolaUser ? <NotificacoesEscolaMenu /> : <NotificacoesMenu />}
-          {loadingUser ? <CircularProgress size={16} /> : user ? (
-            <>
-              <Typography variant="body2" color="text.secondary" sx={{ display: { xs: "none", sm: "block" } }}>Logado como:</Typography>
-              <Typography variant="body2" fontWeight="medium" color="text.primary">{user.nome}</Typography>
-            </>
-          ) : null}
-        </Box>
       </Box>
 
       <Box component="main" sx={{
         flexGrow: 1,
         width: { md: `calc(100% - ${collapsed ? collapsedDrawerWidth : drawerWidth}px)` },
         minHeight: "100vh", bgcolor: "background.default",
-        transition: "width 0.25s ease", pt: "56px",
+        transition: "width 0.25s ease",
       }}>
         {children}
       </Box>

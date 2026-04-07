@@ -316,13 +316,18 @@ const ModalidadesPage = () => {
   };
   
   return (
-    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <PageContainer fullHeight>
-        <PageHeader title="Modalidades" />
+        <PageHeader
+          title="Modalidades"
+          totalCount={modalidades.length}
+          breadcrumbs={[{ label: 'Dashboard', path: '/dashboard' }, { label: 'Cadastros' }, { label: 'Modalidades' }]}
+        />
 
         {/* DataTable com altura fixa para scroll */}
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <DataTable
+            title="Modalidades"
             data={modalidadesFiltradas}
             columns={columns}
             loading={loading}

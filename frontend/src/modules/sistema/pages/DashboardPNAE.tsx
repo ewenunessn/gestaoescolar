@@ -297,28 +297,6 @@ const DashboardPNAE = () => {
   return (
     <PageContainer>
       <AnimStyles />
-
-      {/* Navy header bar */}
-      <Box
-        sx={{
-          mx: '-20px',
-          mt: '-12px',
-          mb: 3,
-          px: '28px',
-          py: 2.5,
-          background: `linear-gradient(135deg, ${NAVY}, #1e293b)`,
-          position: 'relative',
-        }}
-      >
-        <Box sx={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${GREEN}44, transparent)` }} />
-        <Typography sx={{ fontWeight: 800, fontSize: '1.55rem', color: '#fff', mb: 0.3, letterSpacing: '-0.5px' }}>
-          Dashboard PNAE
-        </Typography>
-        <Typography sx={{ fontSize: '0.82rem', color: '#94a3b8' }}>
-          Conformidade Lei 11.947/2009 — Ano {ano}
-        </Typography>
-      </Box>
-
       {/* Alert Banner */}
       {!atendeRequisito ? (
         <Alert

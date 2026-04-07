@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { createColumnHelper } from "@tanstack/react-table";
 import { DataTableAdvanced } from "../../../components/DataTableAdvanced";
+import PageHeader from "../../../components/PageHeader";
 import AdicionarIngredienteDialog from "../../../components/AdicionarIngredienteDialog";
 import AdicionarGrupoIngredientesDialog from "../../../components/AdicionarGrupoIngredientesDialog";
 import EditarIngredienteDialog from "../../../components/EditarIngredienteDialog";
@@ -673,17 +674,24 @@ export default function PreparacaoDetalhe() {
     <>
     <Box sx={{ 
       height: '100vh',
-      bgcolor: '#ffffff', 
+      bgcolor: 'background.default', 
       display: 'flex', 
       flexDirection: 'column', 
       overflow: 'hidden' 
     }}>
-      <Box sx={{ flex: 0, px: isMobile ? 1 : 2, pt: 1.5 }}>
-        <PageBreadcrumbs 
-          items={[
-            { label: 'Preparações', path: '/preparacoes', icon: <RestaurantIcon fontSize="small" /> },
-            { label: preparacao?.nome || 'Detalhes da Preparação' }
+      <Box sx={{ px: isMobile ? 1 : 2, pt: 1.5 }}>
+        <PageHeader
+          title={preparacao?.nome || 'Detalhes da Preparação'}
+          breadcrumbs={[
+            { label: 'Dashboard', path: '/dashboard' },
+            { label: 'Preparações', path: '/preparacoes' },
+            { label: preparacao?.nome || '' },
           ]}
+          action={
+            <IconButton size="small" onClick={() => setShowEdicaoRapida(true)}>
+              <EditIcon fontSize="small" />
+            </IconButton>
+          }
         />
 
         {/* Tabs + Ações na mesma linha */}
@@ -744,6 +752,7 @@ export default function PreparacaoDetalhe() {
             <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
               <Box sx={{ flex: 1, minHeight: isMobile ? 400 : 0 }}>
                 <DataTableAdvanced<preparacaoProduto>
+                  title="Ingredientes"
                   data={associacoes as preparacaoProduto[]}
                   columns={columns}
                   enableColumnVisibility={false}

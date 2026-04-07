@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import PageContainer from "../../../components/PageContainer";
+import PageHeader from "../../../components/PageHeader";
 import { useToast } from "../../../hooks/useToast";
 import { usePageTitle } from "../../../contexts/PageTitleContext";
 import {
@@ -11,6 +12,10 @@ import {
     TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions,
     Paper, Grid, Stack, CardContent, Menu
 } from "@mui/material";
+
+// ── Design tokens ──────────────────────────────────────────────
+const GREEN = "#22c55e";
+const NAVY = "#0f172a";
 import {
     Edit as EditIcon,
     Save as SaveIcon,
@@ -78,7 +83,7 @@ const InfoItem = ({ icon, label, value }: {
     <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
         {icon}
         <Box>
-            <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: "0.7rem", lineHeight: 1.2 }}>{label}</Typography>
+            <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: "0.7rem", lineHeight: 1.2, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{label}</Typography>
             <Typography variant="body2" fontWeight={500} sx={{ fontSize: '0.8125rem' }}>{value || 'Não informado'}</Typography>
         </Box>
     </Stack>
@@ -100,16 +105,18 @@ const EscolaInfoCard = ({ isEditing, formData, setFormData, associacoes, totalAl
     <Grid container spacing={2} sx={{ mb: 2 }}>
         {/* Card de Informações da Escola */}
         <Grid item xs={12} md={6}>
-            <Card sx={{ p: 1.5, borderRadius: '8px', height: '100%' }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-                    <Typography variant="subtitle1" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'primary.main', fontSize: '0.95rem', fontWeight: 600 }}>
-                        <SchoolIcon fontSize="small" />
-                        Informações da Escola
-                    </Typography>
+            <Card sx={{ p: 1.5, borderRadius: '6px', height: '100%', borderColor: '#e5e7eb', borderWidth: 1, borderStyle: 'solid' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Box sx={{ width: 16, height: 3, borderRadius: 2, bgcolor: GREEN }} />
+                        <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: GREEN }}>
+                            Informações da Escola
+                        </Typography>
+                    </Box>
                     {isEditing && (
                         <Box sx={{ display: 'flex', gap: 1 }}>
                             <Button onClick={onCancel} variant="outlined" disabled={salvando} size="small" sx={{ minHeight: 28, fontSize: '0.75rem' }}>Cancelar</Button>
-                            <Button onClick={onSave} variant="contained" color="add" disabled={salvando} size="small" sx={{ minHeight: 28, fontSize: '0.75rem' }}>
+                            <Button onClick={onSave} variant="contained" disabled={salvando} size="small" sx={{ minHeight: 28, fontSize: '0.75rem', bgcolor: GREEN, '&:hover': { bgcolor: '#16a34a' }, borderRadius: '4px', textTransform: 'none' }}>
                                 {salvando ? 'Salvando...' : 'Salvar'}
                             </Button>
                         </Box>
@@ -148,13 +155,15 @@ const EscolaInfoCard = ({ isEditing, formData, setFormData, associacoes, totalAl
 
         {/* Card de Modalidades */}
         <Grid item xs={12} md={6}>
-            <Card sx={{ p: 1.5, borderRadius: '8px', height: '100%' }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-                    <Typography variant="subtitle1" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'primary.main', fontSize: '0.95rem', fontWeight: 600 }}>
-                        <PeopleIcon fontSize="small" />
-                        Modalidades
-                    </Typography>
-                    <Button variant="contained" startIcon={<AddIcon fontSize="small" />} onClick={() => openModalidadeModal()} color="add" size="small" sx={{ minHeight: 28, fontSize: '0.75rem' }}>
+            <Card sx={{ p: 1.5, borderRadius: '6px', height: '100%', borderColor: '#e5e7eb', borderWidth: 1, borderStyle: 'solid' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Box sx={{ width: 16, height: 3, borderRadius: 2, bgcolor: '#a855f7' }} />
+                        <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: '#a855f7' }}>
+                            Modalidades
+                        </Typography>
+                    </Box>
+                    <Button variant="contained" startIcon={<AddIcon fontSize="small" />} onClick={() => openModalidadeModal()} size="small" sx={{ minHeight: 28, fontSize: '0.75rem', borderRadius: '4px', textTransform: 'none', bgcolor: GREEN, '&:hover': { bgcolor: '#16a34a' } }}>
                         Adicionar
                     </Button>
                 </Box>
@@ -359,26 +368,23 @@ const EscolaDetalhesPage = () => {
     if (error && !escola) return <PageContainer><Card><CardContent sx={{ textAlign: 'center', p: 4 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={loadData}>Tentar Novamente</Button></CardContent></Card></PageContainer>;
 
     return (
-        <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-            <PageContainer>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-                    <PageBreadcrumbs
-                        items={[
-                            { label: 'Escolas', path: '/escolas', icon: <SchoolIcon fontSize="small" /> },
-                            { label: escola?.nome || 'Detalhes da Escola' }
-                        ]}
-                    />
-                    {!isEditing && (
-                        <IconButton 
-                            size="small" 
-                            onClick={(e) => setMenuAnchorEl(e.currentTarget)}
-                            sx={{ ml: 2 }}
-                        >
+        <PageContainer>
+            <PageHeader
+                title={escola?.nome || 'Detalhes da Escola'}
+                subtitle="Informações e modalidades da escola"
+                breadcrumbs={[
+                    { label: 'Dashboard', path: '/dashboard' },
+                    { label: 'Escolas', path: '/escolas' },
+                    { label: escola?.nome || 'Detalhes' },
+                ]}
+                action={
+                    !isEditing && (
+                        <IconButton onClick={(e) => setMenuAnchorEl(e.currentTarget)}>
                             <MoreVertIcon />
                         </IconButton>
-                    )}
-                </Box>
-
+                    )
+                }
+            />
                 <EscolaInfoCard
                     isEditing={isEditing}
                     formData={formData}
@@ -392,7 +398,6 @@ const EscolaDetalhesPage = () => {
                     onCancel={handleCancelEdit}
                     salvando={isSaving}
                 />
-            </PageContainer>
 
             {/* Menu de ações */}
             <Menu
@@ -457,7 +462,7 @@ const EscolaDetalhesPage = () => {
                     'Processando...'
                 }
             />
-        </Box>
+        </PageContainer>
     );
 };
 

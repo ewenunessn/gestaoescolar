@@ -424,14 +424,16 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
       enableSorting: false,
       cell: ({ row }) => (
         <Tooltip title="Cancelar entrega">
-          <IconButton
-            size="small"
-            color="error"
-            onClick={() => cancelarEntrega(row.original)}
-            disabled={processando}
-          >
-            <CancelIcon />
-          </IconButton>
+          <span>
+            <IconButton
+              size="small"
+              color="error"
+              onClick={() => cancelarEntrega(row.original)}
+              disabled={processando}
+            >
+              <CancelIcon />
+            </IconButton>
+          </span>
         </Tooltip>
       ),
     },
@@ -531,6 +533,7 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
             </Typography>
           
           <DataTableAdvanced
+            title="Resumo da Entrega"
             data={itensSelecionados}
             columns={[
               {
@@ -745,6 +748,7 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
       {abaAtiva === 'pendentes' ? (
         <>
           <DataTableAdvanced
+            title="Itens Pendentes"
             data={itensFiltrados}
             columns={colunasPendentes}
             loading={loading}
@@ -767,6 +771,7 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
         </>
       ) : (
         <DataTableAdvanced
+          title="Itens Entregues"
           data={itensFiltrados}
           columns={colunasEntregues}
           loading={loading}

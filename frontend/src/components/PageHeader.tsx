@@ -1,14 +1,5 @@
 import { Box, Typography, Chip } from '@mui/material';
-import StatusIndicator from './StatusIndicator';
-import { useEffect } from 'react';
-import { usePageTitle } from '../contexts/PageTitleContext';
 import PageBreadcrumbs from './PageBreadcrumbs';
-
-interface StatusLegendItem {
-  status: string;
-  label: string;
-  count: number;
-}
 
 interface BreadcrumbItem {
   label: string;
@@ -19,68 +10,65 @@ interface BreadcrumbItem {
 interface PageHeaderProps {
   title: string;
   totalCount?: number;
-  statusLegend?: StatusLegendItem[];
   subtitle?: string;
   breadcrumbs?: BreadcrumbItem[];
-  onBack?: () => void;
+  action?: React.ReactNode;
+  children?: React.ReactNode;
 }
 
-export default function PageHeader({ 
-  title, 
-  totalCount, 
-  statusLegend, 
+export default function PageHeader({
+  title,
+  totalCount,
   subtitle,
   breadcrumbs,
-  onBack 
+  action,
+  children,
 }: PageHeaderProps) {
-  const { setPageTitle } = usePageTitle();
-
-  useEffect(() => {
-    setPageTitle(title);
-    return () => setPageTitle('');
-  }, [title, setPageTitle]);
-
   return (
     <Box sx={{ mb: 2 }}>
       {breadcrumbs && breadcrumbs.length > 0 && (
-        <PageBreadcrumbs items={breadcrumbs} onBack={onBack} />
+        <PageBreadcrumbs items={breadcrumbs} />
       )}
-      
-      {(subtitle || totalCount !== undefined) && (
-        <Typography variant="body2" sx={{ 
-          color: 'text.secondary', 
-          mb: 1.5,
-          fontSize: '0.875rem'
-        }}>
+
+      <Box sx={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 1,
+        mt: breadcrumbs ? 0.75 : 0,
+        mb: 0.25,
+      }}>
+        <Typography
+          variant="h4"
+          sx={{
+            fontSize: '1.375rem',
+            fontWeight: 700,
+            letterSpacing: '-0.02em',
+            lineHeight: 1.3,
+          }}
+        >
+          {title}
+        </Typography>
+
+        {action && <Box sx={{ flexShrink: 0 }}>{action}</Box>}
+      </Box>
+
+      {(totalCount !== undefined || subtitle) && (
+        <Typography
+          variant="body2"
+          sx={{
+            color: 'text.secondary',
+            fontSize: '0.8125rem',
+            mt: 0.25,
+            mb: 0.5,
+          }}
+        >
           {subtitle || `Exibindo ${totalCount} resultado${totalCount !== 1 ? 's' : ''}`}
         </Typography>
       )}
 
-      {statusLegend && statusLegend.length > 0 && (
-        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
-          {statusLegend.map((item, index) => (
-            <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <StatusIndicator status={item.status} size="small" />
-              <Typography variant="caption" sx={{ 
-                color: 'text.secondary',
-                textTransform: 'uppercase',
-                fontSize: '0.7rem',
-                fontWeight: 500,
-                letterSpacing: '0.3px'
-              }}>
-                {item.label}
-              </Typography>
-              <Typography variant="caption" sx={{ 
-                color: 'text.primary',
-                fontWeight: 600,
-                fontSize: '0.7rem'
-              }}>
-                {item.count}
-              </Typography>
-            </Box>
-          ))}
-        </Box>
-      )}
+      {children && <Box sx={{ mt: 1 }}>{children}</Box>}
     </Box>
   );
 }

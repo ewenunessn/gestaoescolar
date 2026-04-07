@@ -254,27 +254,27 @@ const PedidosPage = () => {
     <Box
       sx={{
         height: 'calc(100vh - 56px)',
-        bgcolor: '#ffffff',
+        bgcolor: 'background.default',
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
       }}
     >
       <PageContainer fullHeight>
-        <PageHeader title="Compras" />
-
-        {/* Botão Gerar Pedido da Guia */}
-        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
-          <Button
-            variant="contained"
-            startIcon={<ShoppingCart />}
-            onClick={() => setDialogGerarDaGuia(true)}
-            size="small"
-            sx={{ bgcolor: '#1d4ed8', '&:hover': { bgcolor: '#1e40af' } }}
-          >
-            Gerar Pedido da Guia
-          </Button>
-        </Box>
+        <PageHeader
+          title="Pedidos de Compra"
+          totalCount={pedidosFiltrados.length}
+          breadcrumbs={[
+            { label: 'Dashboard', path: '/dashboard' },
+            { label: 'Compras' },
+          ]}
+          action={
+            <Button variant="contained" startIcon={<ShoppingCart />} onClick={() => setDialogGerarDaGuia(true)}
+              size="small" sx={{ bgcolor: '#1d4ed8', '&:hover': { bgcolor: '#1e40af' }, borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
+              Gerar Pedido da Guia
+            </Button>
+          }
+        />
 
         {/* DataTable com altura fixa para scroll */}
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>

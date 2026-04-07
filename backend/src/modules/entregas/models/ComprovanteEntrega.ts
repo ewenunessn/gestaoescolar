@@ -252,11 +252,36 @@ class ComprovanteEntregaModel {
    */
   async cancelarItemEntrega(historicoEntregaId: number, motivo?: string, usuarioId?: number): Promise<boolean> {
     try {
-      const result = await db.query(`
-        SELECT cancelar_item_entrega($1, $2, $3) as sucesso
-      `, [historicoEntregaId, motivo || null, usuarioId || null]);
+      // Buscar o comprovante e item relacionado
+      const item = await db.query(`
+        SELECT ci.id as item_id, ci.comprovante_id
+        FROM comprovante_itens ci
+        WHERE ci.historico_entrega_id = $1
+      `, [historicoEntregaId]);
 
-      return result.rows[0].sucesso;
+      if (item.rows.length === 0) {
+        throw new Error('Item de entrega não encontrado');
+      }
+
+      const { comprovante_id, item_id } = item.rows[0];
+
+      // Atualizar status na guia_produto_escola para 'cancelado'
+      await db.run(`
+        UPDATE guia_produto_escola
+        SET status = 'cancelado',
+            updated_at = NOW()
+        WHERE id = $1
+      `, [historicoEntregaId]);
+
+      // Registrar no histórico de cancelamentos
+      if (usuarioId) {
+        await db.run(`
+          INSERT INTO comprovante_cancelamentos (comprovante_id, usuario_id, motivo)
+          VALUES ($1, $2, $3)
+        `, [comprovante_id, usuarioId, motivo || null]);
+      }
+
+      return true;
     } catch (error) {
       console.error('Erro ao cancelar item de entrega:', error);
       throw error;

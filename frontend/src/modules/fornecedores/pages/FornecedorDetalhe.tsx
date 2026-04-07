@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import PageContainer from "../../../components/PageContainer";
+import PageHeader from "../../../components/PageHeader";
 import CompactPagination from "../../../components/CompactPagination";
-import { usePageTitle } from "../../../contexts/PageTitleContext";
 import {
   Box, Typography, Card, CardContent, Grid, Button, Chip, Alert,
   CircularProgress, Table, TableBody, TableCell, TableContainer,
@@ -186,23 +186,21 @@ export default function FornecedorDetalhe() {
   if (!fornecedor) return <Alert severity="error">Fornecedor não encontrado</Alert>;
 
   return (
-    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden' }}>
       <PageContainer fullHeight>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-          <PageBreadcrumbs 
-            items={[
-              { label: 'Fornecedores', path: '/fornecedores', icon: <BusinessIcon fontSize="small" /> },
-              { label: fornecedor?.nome || 'Detalhes do Fornecedor' }
-            ]}
-          />
-          <IconButton 
-            size="small" 
-            onClick={(e) => setMenuAnchorEl(e.currentTarget)}
-            sx={{ ml: 2 }}
-          >
-            <MoreVertIcon />
-          </IconButton>
-        </Box>
+        <PageHeader
+          title={fornecedor?.nome || 'Detalhes do Fornecedor'}
+          breadcrumbs={[
+            { label: 'Dashboard', path: '/dashboard' },
+            { label: 'Fornecedores', path: '/fornecedores' },
+            { label: fornecedor?.nome || 'Detalhes' },
+          ]}
+          action={
+            <IconButton onClick={(e) => setMenuAnchorEl(e.currentTarget)}>
+              <MoreVertIcon />
+            </IconButton>
+          }
+        />
 
         <Card sx={{ borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', mb: 2 }}>
           <CardContent sx={{ p: 1.5 }}>

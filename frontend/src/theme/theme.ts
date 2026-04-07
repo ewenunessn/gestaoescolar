@@ -1,11 +1,62 @@
 import { createTheme, Theme } from '@mui/material/styles';
 
-// Estendendo a interface do tema para incluir a cor do sidebar
+// ──────────────────────────────────────────────────────────────
+// DESIGN TOKENS — GitHub Dark Mode
+//
+// Background:    #0d1117  (page canvas)
+// Canvas inset:  #161b22  (panels, cards, sidebar)
+// Borders:       #21262d  →  #30363d
+// Text primary:  #e6edf3
+// Text muted:    #8b949e
+// Subtle:        #6e7681
+// Green accent:  #238636 / #2ea043
+// Blue:          #58a6ff
+// ──────────────────────────────────────────────────────────────
+
+const GH = {
+  bg:       '#0d1117',
+  canvas:   '#161b22',
+  canvasSub:'#0d1117',
+  border:   '#21262d',
+  borderMd: '#30363d',
+  text:     '#e6edf3',
+  muted:    '#8b949e',
+  sub:      '#6e7681',
+  green:    '#238636',
+  greenLt:  '#2ea043',
+  greenDim: 'rgba(35,134,54,0.15)',
+  blue:     '#58a6ff',
+  blueDim:  'rgba(56,139,253,0.15)',
+  red:      '#f85149',
+  redDim:   'rgba(248,81,73,0.15)',
+  orange:   '#d29922',
+  orangeDim:'rgba(210,153,34,0.15)',
+  purple:   '#bc8cff',
+  yellow:   '#e3b341',
+};
+
+const NAVY   = GH.bg;
+const GREEN  = GH.greenLt;
+
+// Compat aliases para refs antigas de SLATE → dark mapping
+const SLATE: Record<number, string> = {
+  50:  GH.canvas,
+  100: '#1c2129',
+  200: GH.border,
+  300: GH.borderMd,
+  400: GH.sub,
+  500: GH.muted,
+  600: '#6e7681',
+  700: '#535c66',
+  800: GH.text,
+  900: '#ffffff',
+};
+
+// Estendendo a interface do tema
 declare module '@mui/material/styles' {
   interface TypeBackground {
     sidebar: string;
   }
-
   interface Palette {
     sidebarSelection: string;
     tableHover: string;
@@ -13,7 +64,6 @@ declare module '@mui/material/styles' {
     delete: PaletteColor;
     edit: PaletteColor;
   }
-
   interface PaletteOptions {
     sidebarSelection?: string;
     tableHover?: string;
@@ -41,44 +91,25 @@ declare module '@mui/material/IconButton' {
 const baseTheme = {
   typography: {
     fontFamily: [
-      'Roboto',
-      '"Google Sans"',
-      "-apple-system",
+      '-apple-system',
       'BlinkMacSystemFont',
       '"Segoe UI"',
+      'Helvetica',
+      'Arial',
       'sans-serif',
+      '"Apple Color Emoji"',
+      '"Segoe UI Emoji"',
     ].join(','),
-    fontSize: 13,
-    h1: {
-      fontSize: '2rem',
-    },
-    h2: {
-      fontSize: '1.75rem',
-    },
-    h3: {
-      fontSize: '1.5rem',
-    },
-    h4: {
-      fontSize: '1.25rem',
-      fontWeight: 700,
-      letterSpacing: '-0.025em',
-    },
-    h5: {
-      fontSize: '1.1rem',
-    },
-    h6: {
-      fontSize: '1rem',
-      fontWeight: 600,
-    },
-    body1: {
-      fontSize: '0.875rem',
-    },
-    body2: {
-      fontSize: '0.8125rem',
-    },
-    button: {
-      fontSize: '0.8125rem',
-    },
+    fontSize: 14,
+    h1:   { fontSize: '2rem', fontWeight: 600 },
+    h2:   { fontSize: '1.5rem', fontWeight: 600 },
+    h3:   { fontSize: '1.25rem', fontWeight: 600 },
+    h4:   { fontSize: '1rem', fontWeight: 600 },
+    h5:   { fontSize: '0.875rem', fontWeight: 600 },
+    h6:   { fontSize: '0.8125rem', fontWeight: 600 },
+    body1: { fontSize: '0.875rem' },
+    body2: { fontSize: '0.8125rem' },
+    button: { fontSize: '0.8125rem' },
   },
   shape: {
     borderRadius: 6,
@@ -90,8 +121,8 @@ const baseTheme = {
         disableElevation: true,
       },
       styleOverrides: {
-        root: ({ theme, ownerState }) => ({
-          textTransform: 'none' as const,
+        root: ({ theme, ownerState }: { theme: any; ownerState: any }) => ({
+          textTransform: 'none',
           borderRadius: '6px',
           fontWeight: 500,
           fontSize: '0.8125rem',
@@ -100,42 +131,42 @@ const baseTheme = {
           paddingBottom: '4px',
           paddingLeft: '12px',
           paddingRight: '12px',
-          minHeight: '30px',
+          minHeight: '32px',
           ...(ownerState.size === 'medium' && {
             paddingTop: '5px',
             paddingBottom: '5px',
             paddingLeft: '14px',
             paddingRight: '14px',
-            minHeight: '34px',
+            minHeight: '36px',
           }),
           ...(ownerState.variant === 'contained' && ownerState.color === 'primary' && {
             backgroundColor: theme.palette.primary.main,
-            color: theme.palette.primary.contrastText,
-            '&:hover': { backgroundColor: theme.palette.primary.dark },
+            color: '#fff',
+            '&:hover': { backgroundColor: '#26a641' },
           }),
           ...(ownerState.variant === 'contained' && ownerState.color === 'success' && {
-            backgroundColor: theme.palette.success.main,
-            color: theme.palette.success.contrastText,
-            '&:hover': { backgroundColor: theme.palette.success.dark },
+            backgroundColor: GH.green,
+            color: '#fff',
+            '&:hover': { backgroundColor: GH.greenLt },
           }),
           ...(ownerState.variant === 'contained' && ownerState.color === 'error' && {
             backgroundColor: theme.palette.error.main,
-            color: theme.palette.error.contrastText,
+            color: '#fff',
             '&:hover': { backgroundColor: theme.palette.error.dark },
           }),
           ...(ownerState.variant === 'outlined' && {
-            borderColor: theme.palette.divider,
-            color: theme.palette.text.primary,
+            borderColor: GH.borderMd,
+            color: GH.text,
             '&:hover': {
-              borderColor: theme.palette.primary.main,
-              backgroundColor: theme.palette.action.hover,
+              borderColor: GH.muted,
+              backgroundColor: 'rgba(255,255,255,0.04)',
             },
           }),
           ...(ownerState.variant === 'text' && {
-            color: theme.palette.text.secondary,
+            color: GH.muted,
             '&:hover': {
-              backgroundColor: theme.palette.action.hover,
-              color: theme.palette.text.primary,
+              backgroundColor: 'rgba(255,255,255,0.04)',
+              color: GH.text,
             },
           }),
         }),
@@ -144,9 +175,10 @@ const baseTheme = {
     MuiCard: {
       styleOverrides: {
         root: () => ({
-          borderRadius: '12px',
+          borderRadius: '6px',
           boxShadow: 'none',
-          border: '1px solid #e2e8f0',
+          border: `1px solid ${GH.border}`,
+          backgroundColor: GH.canvas,
         }),
       },
     },
@@ -155,16 +187,16 @@ const baseTheme = {
         root: () => ({
           backgroundImage: 'none',
           boxShadow: 'none',
-          border: '1px solid #e2e8f0',
+          backgroundColor: GH.canvas,
         }),
       },
     },
     MuiIconButton: {
       styleOverrides: {
-        root: ({ theme }) => ({
+        root: ({ theme }: { theme: any }) => ({
           color: theme.palette.text.secondary,
           '&:hover': {
-            backgroundColor: theme.palette.action.hover,
+            backgroundColor: 'rgba(255,255,255,0.06)',
             color: theme.palette.text.primary,
           },
         }),
@@ -175,42 +207,39 @@ const baseTheme = {
         size: 'small',
       },
       styleOverrides: {
-        root: ({ theme, ownerState }) => ({
-          borderRadius: '4px',
-          fontSize: '0.75rem',
+        root: ({ ownerState }: { ownerState: any }) => ({
+          borderRadius: '16px',
+          fontSize: '0.7rem',
           fontWeight: 500,
           height: '22px',
           ...(ownerState.color === 'default' && ownerState.variant !== 'outlined' && {
-            backgroundColor: '#e9ecef',
-            color: '#495057',
-          }),
-          ...(ownerState.color === 'primary' && {
-            backgroundColor: theme.palette.primary.main,
-            color: theme.palette.primary.contrastText,
+            backgroundColor: 'rgba(255,255,255,0.06)',
+            color: GH.muted,
           }),
           ...(ownerState.color === 'success' && {
-            backgroundColor: '#d1fae5',
-            color: '#065f46',
-            '& .MuiChip-label': {
-              color: '#065f46',
-            },
+            backgroundColor: GH.greenDim,
+            color: GH.greenLt,
+            '& .MuiChip-deleteIcon': { color: GH.green, opacity: 0.6 },
           }),
           ...(ownerState.color === 'warning' && {
-            backgroundColor: '#fef3c7',
-            color: '#92400e',
+            backgroundColor: GH.orangeDim,
+            color: GH.orange,
+            '& .MuiChip-deleteIcon': { color: GH.orange, opacity: 0.6 },
           }),
           ...(ownerState.color === 'error' && {
-            backgroundColor: '#fee2e2',
-            color: '#991b1b',
+            backgroundColor: GH.redDim,
+            color: GH.red,
+            '& .MuiChip-deleteIcon': { color: GH.red, opacity: 0.6 },
           }),
           ...(ownerState.color === 'info' && {
-            backgroundColor: '#dbeafe',
-            color: '#1e40af',
+            backgroundColor: GH.blueDim,
+            color: GH.blue,
+            '& .MuiChip-deleteIcon': { color: GH.blue, opacity: 0.6 },
           }),
           ...(ownerState.variant === 'outlined' && {
-            borderColor: theme.palette.divider,
-            color: theme.palette.text.primary,
+            borderColor: GH.borderMd,
             backgroundColor: 'transparent',
+            color: GH.muted,
           }),
         }),
         label: {
@@ -228,9 +257,27 @@ const baseTheme = {
           '& .MuiOutlinedInput-root': {
             borderRadius: '6px',
             fontSize: '0.8125rem',
+            backgroundColor: GH.bg,
+            color: GH.text,
+            '& fieldset': {
+              borderColor: GH.borderMd,
+            },
+            '&:hover fieldset': {
+              borderColor: GH.muted,
+            },
+            '&.Mui-focused fieldset': {
+              borderColor: GH.blue,
+            },
           },
           '& .MuiInputLabel-root': {
             fontSize: '0.8125rem',
+            color: GH.muted,
+            '&.Mui-focused': {
+              color: GH.text,
+            },
+          },
+          '& .MuiInputBase-input::placeholder': {
+            color: GH.sub,
           },
         },
       },
@@ -243,6 +290,8 @@ const baseTheme = {
         root: {
           borderRadius: '6px',
           fontSize: '0.8125rem',
+          backgroundColor: GH.bg,
+          color: GH.text,
         },
         select: {
           paddingTop: '5px',
@@ -260,12 +309,16 @@ const baseTheme = {
       styleOverrides: {
         root: {
           fontSize: '0.8125rem',
-          height: '45px',
+          height: '36px',
+          color: GH.text,
         },
         input: {
           paddingTop: '5px !important',
           paddingBottom: '5px !important',
           fontSize: '0.8125rem',
+          '&::placeholder': {
+            color: GH.sub,
+          },
         },
       },
     },
@@ -273,6 +326,7 @@ const baseTheme = {
       styleOverrides: {
         root: {
           fontSize: '0.8125rem',
+          color: GH.muted,
         },
       },
     },
@@ -287,8 +341,25 @@ const baseTheme = {
         },
         option: {
           fontSize: '0.8125rem',
-          paddingTop: '4px !important',
-          paddingBottom: '4px !important',
+          paddingTop: '5px !important',
+          paddingBottom: '5px !important',
+          '&:hover': {
+            backgroundColor: 'rgba(255,255,255,0.06)',
+          },
+          '&.Mui-focused': {
+            backgroundColor: 'rgba(255,255,255,0.06)',
+          },
+        },
+        paper: {
+          backgroundColor: GH.canvas,
+          border: `1px solid ${GH.borderMd}`,
+        },
+      },
+    },
+    MuiDialogContentText: {
+      styleOverrides: {
+        root: {
+          color: GH.muted,
         },
       },
     },
@@ -298,7 +369,7 @@ const baseTheme = {
           borderRadius: 0,
           border: 'none',
           boxShadow: 'none',
-          backgroundColor: '#ffffff',
+          backgroundColor: GH.canvas,
           overflow: 'auto',
           '@media print': {
             maxHeight: 'none',
@@ -313,11 +384,6 @@ const baseTheme = {
         root: () => ({
           borderCollapse: 'separate',
           borderSpacing: 0,
-          '& .MuiTableCell-root': {
-            borderLeft: 'none',
-            borderRight: 'none',
-            borderTop: 'none',
-          },
         }),
       },
     },
@@ -328,23 +394,17 @@ const baseTheme = {
           top: 0,
           zIndex: 10,
           '& .MuiTableCell-root': {
-            backgroundColor: '#f5f5f5',
-            color: '#495057',
-            fontWeight: 600,
-            fontSize: '0.7rem',
+            backgroundColor: GH.bg,
+            color: GH.muted,
+            fontWeight: 500,
+            fontSize: '0.6875rem',
             textTransform: 'uppercase',
-            letterSpacing: '0.4px',
-            paddingTop: '5px',
-            paddingBottom: '5px',
-            paddingLeft: '10px',
-            paddingRight: '10px',
-            borderBottom: '1px solid #dee2e6',
-            borderLeft: 'none',
-            borderRight: 'none',
-            borderTop: 'none',
-            position: 'sticky',
-            top: 0,
-            zIndex: 10,
+            letterSpacing: '0.05em',
+            paddingTop: '6px',
+            paddingBottom: '6px',
+            paddingLeft: '12px',
+            paddingRight: '12px',
+            borderBottom: `1px solid ${GH.border}`,
           },
         }),
       },
@@ -353,25 +413,24 @@ const baseTheme = {
       styleOverrides: {
         root: () => ({
           '& .MuiTableRow-root': {
-            backgroundColor: '#ffffff',
+            backgroundColor: 'transparent',
             '&:hover': {
-              backgroundColor: '#f8f9fa',
+              backgroundColor: 'rgba(255,255,255,0.02)',
             },
             '&:last-child .MuiTableCell-root': {
               borderBottom: 0,
             },
           },
           '& .MuiTableCell-root': {
-            paddingTop: '5px',
-            paddingBottom: '5px',
-            paddingLeft: '10px',
-            paddingRight: '10px',
+            paddingTop: '8px',
+            paddingBottom: '8px',
+            paddingLeft: '12px',
+            paddingRight: '12px',
             fontSize: '0.8125rem',
-            color: '#212529',
-            borderBottom: '1px solid #f1f3f5',
-            borderLeft: 'none',
-            borderRight: 'none',
-            borderTop: 'none',
+            color: GH.text,
+            borderBottom: `1px solid ${GH.border}`,
+            backgroundColor: 'transparent',
+            lineHeight: 1.5,
           },
         }),
       },
@@ -379,8 +438,9 @@ const baseTheme = {
     MuiTableRow: {
       styleOverrides: {
         root: () => ({
+          transition: 'background-color 0.12s ease',
           '&:hover': {
-            backgroundColor: '#f8f9fa !important',
+            backgroundColor: 'rgba(255,255,255,0.02) !important',
           },
         }),
       },
@@ -388,31 +448,61 @@ const baseTheme = {
     MuiTableCell: {
       styleOverrides: {
         root: () => ({
-          borderLeft: 'none !important',
-          borderRight: 'none !important',
-          borderTop: 'none !important',
+          borderBottomWidth: '1px',
         }),
+        sizeSmall: {
+          padding: '8px 12px',
+        },
       },
     },
     MuiDialog: {
       styleOverrides: {
         paper: () => ({
           boxShadow: 'none',
-          border: '1px solid #e2e8f0',
+          border: `1px solid ${GH.borderMd}`,
+          backgroundColor: GH.canvas,
         }),
         root: {
           '& .MuiBackdrop-root': {
             backdropFilter: 'blur(4px)',
-            backgroundColor: 'rgba(0, 0, 0, 0.3)',
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
           },
         },
+      },
+    },
+    MuiDialogTitle: {
+      styleOverrides: {
+        root: () => ({
+          color: GH.text,
+        }),
+      },
+    },
+    MuiDialogContent: {
+      styleOverrides: {
+        root: () => ({
+          color: GH.muted,
+        }),
       },
     },
     MuiMenu: {
       styleOverrides: {
         paper: () => ({
           boxShadow: 'none',
-          border: '1px solid #e2e8f0',
+          border: `1px solid ${GH.borderMd}`,
+          backgroundColor: GH.canvas,
+        }),
+        list: {
+          backgroundColor: GH.canvas,
+        },
+      },
+    },
+    MuiMenuItem: {
+      styleOverrides: {
+        root: () => ({
+          color: GH.text,
+          '&:hover': {
+            backgroundColor: 'rgba(255,255,255,0.06)',
+          },
         }),
       },
     },
@@ -420,7 +510,8 @@ const baseTheme = {
       styleOverrides: {
         paper: () => ({
           boxShadow: 'none',
-          border: '1px solid #e2e8f0',
+          border: `1px solid ${GH.borderMd}`,
+          backgroundColor: GH.canvas,
         }),
       },
     },
@@ -428,15 +519,15 @@ const baseTheme = {
       styleOverrides: {
         root: () => ({
           boxShadow: 'none',
-          borderBottom: '1px solid #e2e8f0',
+          borderBottom: `1px solid ${GH.border}`,
         }),
       },
     },
     MuiDrawer: {
       styleOverrides: {
-        paper: ({ theme }) => ({
+        paper: ({ theme }: { theme: any }) => ({
           boxShadow: 'none',
-          borderRight: '1px solid #e2e8f0',
+          borderRight: `1px solid ${GH.border}`,
           backgroundColor: `${theme.palette.background.sidebar} !important`,
         }),
       },
@@ -445,12 +536,8 @@ const baseTheme = {
       styleOverrides: {
         root: {
           boxShadow: 'none',
-          '&:hover': {
-            boxShadow: 'none',
-          },
-          '&:active': {
-            boxShadow: 'none',
-          },
+          '&:hover': { boxShadow: 'none' },
+          '&:active': { boxShadow: 'none' },
         },
       },
     },
@@ -458,9 +545,7 @@ const baseTheme = {
       styleOverrides: {
         fab: {
           boxShadow: 'none',
-          '&:hover': {
-            boxShadow: 'none',
-          },
+          '&:hover': { boxShadow: 'none' },
         },
       },
     },
@@ -468,10 +553,17 @@ const baseTheme = {
       styleOverrides: {
         root: () => ({
           boxShadow: 'none',
-          border: '1px solid #e2e8f0',
-          '&:before': {
-            display: 'none',
-          },
+          border: `1px solid ${GH.border}`,
+          '&:before': { display: 'none' },
+          backgroundColor: GH.canvas,
+        }),
+      },
+    },
+    MuiAccordionSummary: {
+      styleOverrides: {
+        root: () => ({
+          backgroundColor: 'transparent',
+          color: GH.text,
         }),
       },
     },
@@ -484,9 +576,7 @@ const baseTheme = {
             borderRadius: '2px 2px 0 0',
           },
         },
-        flexContainer: {
-          gap: 0,
-        },
+        flexContainer: { gap: 0 },
       },
     },
     MuiTab: {
@@ -497,13 +587,11 @@ const baseTheme = {
           paddingBottom: 6,
           paddingLeft: 14,
           paddingRight: 14,
-          textTransform: 'none' as const,
+          textTransform: 'none',
           fontSize: '0.8125rem',
           fontWeight: 500,
-          color: '#64748b',
-          '&.Mui-selected': {
-            fontWeight: 600,
-          },
+          color: GH.muted,
+          '&.Mui-selected': { fontWeight: 600, color: GH.text },
           '& .MuiTab-iconWrapper': {
             fontSize: '1rem',
             marginBottom: '0 !important',
@@ -512,165 +600,193 @@ const baseTheme = {
         },
       },
     },
+    MuiTooltip: {
+      styleOverrides: {
+        tooltip: {
+          backgroundColor: '#1f2428',
+          color: GH.text,
+          fontSize: '0.75rem',
+          borderRadius: '6px',
+          padding: '5px 10px',
+          border: `1px solid ${GH.borderMd}`,
+        },
+      },
+    },
+    MuiSwitch: {
+      styleOverrides: {
+        root: ({ ownerState }: { ownerState: any }) => ({
+          '& .MuiSwitch-thumb': {
+            backgroundColor: '#767c82',
+          },
+          ...(ownerState.checked && {
+            '& .MuiSwitch-thumb': {
+              backgroundColor: GH.green,
+            },
+            '& .MuiSwitch-track': {
+              opacity: 0.5,
+            },
+          }),
+        }),
+        track: {
+          backgroundColor: GH.sub,
+          opacity: 0.35,
+        },
+      },
+    },
+    MuiTablePagination: {
+      styleOverrides: {
+        toolbar: {
+          minHeight: '44px',
+          paddingLeft: 12,
+          paddingRight: 12,
+        },
+        selectLabel: {
+          fontSize: '0.6875rem',
+          color: GH.muted,
+        },
+        displayedRows: {
+          fontSize: '0.6875rem',
+          color: GH.muted,
+        },
+        select: {
+          fontSize: '0.6875rem',
+          color: GH.text,
+        },
+      },
+    },
+    MuiSkeleton: {
+      styleOverrides: {
+        root: {
+          backgroundColor: 'rgba(255,255,255,0.06)',
+        },
+      },
+    },
   },
 };
 
-export const lightTheme: Theme = createTheme({
+// ──────────────────────────────────────────────────────────────
+// DARK THEME — GitHub style
+// ──────────────────────────────────────────────────────────────
+export const darkTheme: Theme = createTheme({
   ...baseTheme,
   palette: {
-    mode: 'light',
+    mode: 'dark',
     primary: {
-      main: '#000000',
-      light: '#333333',
-      dark: '#000000',
+      main: GH.green,
+      light: GH.greenLt,
+      dark: '#1a7e2b',
       contrastText: '#ffffff',
     },
     secondary: {
-      main: '#64748b',
-      light: '#94a3b8',
-      dark: '#475569',
-      contrastText: '#ffffff',
+      main: GH.blue,
+      light: '#79c0ff',
+      dark: '#388bfd',
+      contrastText: '#0d1117',
     },
     background: {
-      default: '#EFEFEF',
-      paper: '#ffffff',
-      sidebar: '#1a1d29',
+      default: GH.bg,
+      paper: GH.canvas,
+      sidebar: '#0d1117',
     },
     text: {
-      primary: '#1e293b',
-      secondary: '#64748b',
+      primary: GH.text,
+      secondary: GH.muted,
     },
-    divider: '#e2e8f0',
+    divider: GH.border,
     action: {
-      hover: 'rgba(0, 0, 0, 0.04)',
-      selected: 'rgba(0, 0, 0, 0.08)',
+      hover: 'rgba(255, 255, 255, 0.04)',
+      selected: 'rgba(255, 255, 255, 0.06)',
     },
     success: {
-      main: '#10b981',
-      light: '#34d399',
-      dark: '#059669',
+      main: GH.greenLt,
+      light: '#4ae168',
+      dark: GH.green,
       contrastText: '#ffffff',
     },
     warning: {
-      main: '#f59e0b',
-      light: '#fbbf24',
-      dark: '#d97706',
-      contrastText: '#ffffff',
+      main: GH.orange,
+      light: GH.yellow,
+      dark: '#bb8009',
+      contrastText: '#0d1117',
     },
     error: {
-      main: '#ef4444',
-      light: '#f87171',
-      dark: '#dc2626',
+      main: GH.red,
+      light: '#ff9492',
+      dark: '#da3633',
       contrastText: '#ffffff',
     },
     info: {
-      main: '#3b82f6',
-      light: '#60a5fa',
-      dark: '#2563eb',
-      contrastText: '#ffffff',
+      main: GH.blue,
+      light: '#79c0ff',
+      dark: '#388bfd',
+      contrastText: '#0d1117',
     },
-    sidebarSelection: '#38b6ff',
-    tableHover: '#fff7f0ff',
+    sidebarSelection: GH.greenLt,
+    tableHover: 'rgba(255,255,255,0.02)',
     add: {
-      main: '#38b6ff',
-      light: '#6eceff',
-      dark: '#1fa3f0',
+      main: GH.greenLt,
+      light: '#4ae168',
+      dark: GH.green,
       contrastText: '#ffffff',
     },
     delete: {
-      main: '#e05252',
-      light: '#e87878',
-      dark: '#c93c3c',
+      main: GH.red,
+      light: '#ff9492',
+      dark: '#da3633',
       contrastText: '#ffffff',
     },
     edit: {
-      main: '#e8834a',
-      light: '#eda070',
-      dark: '#d06a32',
-      contrastText: '#ffffff',
+      main: GH.blue,
+      light: '#79c0ff',
+      dark: '#388bfd',
+      contrastText: '#0d1117',
     },
   },
-  shadows: [
-    'none',
-    'none',
-    'none',
-    'none',
-    'none',
-    'none',
-    'none',
-    'none',
-    'none',
-    'none',
-    'none',
-    'none',
-    'none',
-    'none',
-    'none',
-    'none',
-    'none',
-    'none',
-    'none',
-    'none',
-    'none',
-    'none',
-    'none',
-    'none',
-    'none',
-  ],
   components: {
     ...baseTheme.components,
     MuiCssBaseline: {
-      styleOverrides: (theme) => ({
-        '*': {
-          boxShadow: 'none !important',
-        },
-        '*:before': {
-          boxShadow: 'none !important',
-        },
-        '*:after': {
-          boxShadow: 'none !important',
-        },
-        // Estilos específicos para sidebar
-        '.MuiDrawer-paper': {
-          backgroundColor: `${theme.palette.background.sidebar} !important`,
-        },
-        '[data-testid="sidebar"], .sidebar, .menu-lateral': {
-          backgroundColor: `${theme.palette.background.sidebar} !important`,
-        },
-        // Estilos específicos para hover das tabelas
-        '.MuiTableRow-root:hover': {
-          backgroundColor: `${theme.palette.tableHover} !important`,
-        },
-        '.MuiTable-root .MuiTableRow-root:hover': {
-          backgroundColor: `${theme.palette.tableHover} !important`,
-        },
-        // Estilos padronizados para cards de filtro
-        '.filter-card': {
-          borderRadius: '12px !important',
-          padding: '16px !important',
-          marginBottom: '24px !important',
-          boxShadow: 'none !important',
-        },
-        '.filter-search': {
-          '& .MuiOutlinedInput-root': {
-            borderRadius: '8px !important',
+      styleOverrides: () => ({
+        '*': { boxShadow: 'none !important' },
+        '*:before': { boxShadow: 'none !important' },
+        '*:after': { boxShadow: 'none !important' },
+        'body': {
+          backgroundColor: GH.bg,
+          color: GH.text,
+          scrollbarColor: `${GH.borderMd} ${GH.bg}`,
+          '&::-webkit-scrollbar': { width: '8px', height: '8px' },
+          '&::-webkit-scrollbar-track': { backgroundColor: GH.bg },
+          '&::-webkit-scrollbar-thumb': {
+            backgroundColor: GH.borderMd,
+            borderRadius: '4px',
+          },
+          '&::-webkit-scrollbar-thumb:hover': {
+            backgroundColor: GH.sub,
           },
         },
-        '.filter-content': {
-          backgroundColor: theme.palette.background.paper,
-          borderRadius: '12px !important',
-          padding: '16px !important',
+        '.MuiDrawer-paper': {
+          backgroundColor: `${GH.bg} !important`,
+        },
+        '[data-testid="sidebar"], .sidebar, .menu-lateral': {
+          backgroundColor: `${GH.bg} !important`,
+        },
+        '.MuiTableRow-root:hover': {
+          backgroundColor: `rgba(255,255,255,0.02) !important`,
+        },
+        '.MuiTable-root .MuiTableRow-root:hover': {
+          backgroundColor: `rgba(255,255,255,0.02) !important`,
+        },
+        '::-webkit-input-placeholder': {
+          color: GH.sub,
         },
       }),
     },
   },
 });
 
-// Função utilitária para obter o logo
-export const getLogo = () => {
-  return '/logo.png';
-};
+// ──────────────────────────────────────────────────────────────
+// EXPORT
+// ──────────────────────────────────────────────────────────────
+export const getLogo = () => '/logo.png';
 
-// Tema único claro
-const theme = lightTheme;
+const theme = darkTheme;
 export default theme;

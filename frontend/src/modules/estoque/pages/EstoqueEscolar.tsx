@@ -224,7 +224,10 @@ const EstoqueEscolar: React.FC = () => {
 
   return (
     <PageContainer>
-      <PageHeader title="Estoque Escolar" />
+      <PageHeader
+        title="Estoque Escolar"
+        breadcrumbs={[{ label: 'Dashboard', path: '/dashboard' }, { label: 'Estoque' }, { label: 'Estoque Escolar' }]}
+      />
 
       <Card sx={{ p: 3, mb: 3 }}>
         <Grid container spacing={2} alignItems="center">

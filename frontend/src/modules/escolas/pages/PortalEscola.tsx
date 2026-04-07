@@ -1,12 +1,16 @@
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { 
-  Box, Card, Typography, Grid, Chip, CircularProgress, Alert, Tabs, Tab, 
-  Paper, Button, TextField, IconButton, Tooltip, Dialog, DialogTitle, 
-  DialogContent, DialogActions, Autocomplete, Table, TableBody, TableCell, 
-  TableContainer, TableHead, TableRow 
+import {
+  Box, Card, Typography, Grid, Chip, CircularProgress, Alert, Tabs, Tab,
+  Paper, Button, TextField, IconButton, Tooltip, Dialog, DialogTitle,
+  DialogContent, DialogActions, Autocomplete, Table, TableBody, TableCell,
+  TableContainer, TableHead, TableRow
 } from "@mui/material";
+
+// ── Design tokens ──────────────────────────────────────────────
+const GREEN = "#22c55e";
+const NAVY = "#0f172a";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "../../../components/DataTable";
 import { 
@@ -17,7 +21,6 @@ import {
   Visibility as VisibilityIcon, Print as PrintIcon 
 } from "@mui/icons-material";
 import PageContainer from "../../../components/PageContainer";
-import PageHeader from "../../../components/PageHeader";
 import ViewTabs from "../../../components/ViewTabs";
 import api from "../../../services/api";
 import { useToast } from "../../../hooks/useToast";
@@ -333,44 +336,52 @@ export default function PortalEscola() {
   const renderDashboard = () => (
     <Grid container spacing={2}>
       <Grid item xs={12} md={8}>
-        <Card sx={{ p: 3, borderRadius: '12px', height: '100%' }}>
-          <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-            <SchoolIcon /> Informações da Escola
-          </Typography>
+        <Card sx={{ p: 3, borderRadius: '6px', borderColor: '#e5e7eb', borderWidth: 1, borderStyle: 'solid', height: '100%' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+            <Box sx={{ width: 16, height: 3, borderRadius: 2, bgcolor: GREEN }} />
+            <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: GREEN }}>
+              Informações da Escola
+            </Typography>
+          </Box>
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
-              <Typography variant="body2" color="text.secondary">Nome</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '0.7rem' }}>Nome</Typography>
               <Typography variant="body1" sx={{ fontWeight: 600 }}>{escola?.nome}</Typography>
             </Grid>
             <Grid item xs={12} md={6}>
-              <Typography variant="body2" color="text.secondary">Código</Typography>
-              <Typography variant="body1">{escola?.codigo || '—'}</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '0.7rem' }}>Código</Typography>
+              <Typography variant="body1" sx={{ fontFamily: '"Fira Code", "Roboto Mono", monospace', fontSize: '0.9rem' }}>{escola?.codigo || '—'}</Typography>
             </Grid>
             <Grid item xs={12} md={6}>
-              <Typography variant="body2" color="text.secondary">Endereço</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '0.7rem' }}>Endereço</Typography>
               <Typography variant="body1">{escola?.endereco || '—'}</Typography>
             </Grid>
             <Grid item xs={12} md={6}>
-              <Typography variant="body2" color="text.secondary">Status</Typography>
-              <Chip label={escola?.ativo ? 'Ativa' : 'Inativa'} color={escola?.ativo ? 'success' : 'default'} size="small" />
+              <Typography variant="body2" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '0.7rem' }}>Status</Typography>
+              <Chip label={escola?.ativo ? 'Ativa' : 'Inativa'} color={escola?.ativo ? 'success' : 'default'} size="small" sx={{ borderRadius: '3px', fontWeight: 500 }} />
             </Grid>
           </Grid>
         </Card>
       </Grid>
 
       <Grid item xs={12} md={4}>
-        <Card sx={{ p: 3, borderRadius: '12px', height: '100%' }}>
-          <Typography variant="h6" sx={{ mb: 2 }}>Alunos por Modalidade</Typography>
-          <Box sx={{ mb: 2, p: 2, bgcolor: 'primary.lighter', borderRadius: '8px' }}>
-            <Typography variant="body2" color="text.secondary">Total de Alunos</Typography>
-            <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main' }}>{totalAlunos}</Typography>
+        <Card sx={{ p: 3, borderRadius: '6px', borderColor: '#e5e7eb', borderWidth: 1, borderStyle: 'solid', height: '100%' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+            <Box sx={{ width: 16, height: 3, borderRadius: 2, bgcolor: '#2563eb' }} />
+            <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: '#2563eb' }}>
+              Alunos por Modalidade
+            </Typography>
+          </Box>
+          <Box sx={{ mb: 2, p: 2, bgcolor: '#f0fdf4', borderRadius: '6px', border: `1px solid ${GREEN}22` }}>
+            <Typography variant="body2" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '0.7rem' }}>Total de Alunos</Typography>
+            <Typography variant="h4" sx={{ fontFamily: '"Fira Code", "Roboto Mono", monospace', fontWeight: 700, color: GREEN }}>{totalAlunos}</Typography>
           </Box>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
             {modalidades.length > 0 ? (
               modalidades.map((mod) => (
-                <Box key={mod.id} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 1.5, bgcolor: 'grey.50', borderRadius: '8px' }}>
+                <Box key={mod.id} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 1.5, bgcolor: '#f8fafc', borderRadius: '6px', border: '1px solid #e5e7eb' }}>
                   <Typography variant="body2" sx={{ fontWeight: 500 }}>{mod.nome}</Typography>
-                  <Chip label={mod.quantidade_alunos} size="small" sx={{ fontWeight: 600 }} />
+                  <Chip label={mod.quantidade_alunos} size="small" sx={{ fontWeight: 600, borderRadius: '3px', fontFamily: '"Fira Code", "Roboto Mono", monospace' }} />
                 </Box>
               ))
             ) : (
@@ -382,11 +393,13 @@ export default function PortalEscola() {
 
       {/* Cardápio do Dia */}
       <Grid item xs={12}>
-        <Card sx={{ p: 3, borderRadius: '12px' }}>
-          <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-            <RestaurantIcon sx={{ color: 'primary.main' }} />
-            Cardápio de Hoje
-          </Typography>
+        <Card sx={{ p: 3, borderRadius: '6px', borderColor: '#e5e7eb', borderWidth: 1, borderStyle: 'solid' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+            <Box sx={{ width: 16, height: 3, borderRadius: 2, bgcolor: '#f59e0b' }} />
+            <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: '#f59e0b' }}>
+              Cardápio de Hoje
+            </Typography>
+          </Box>
           
           {(() => {
             const hoje = new Date();
@@ -438,10 +451,10 @@ export default function PortalEscola() {
 
                   return (
                     <Grid item xs={12} sm={6} md={4} key={tipo}>
-                      <Card sx={{ p: 2, bgcolor: 'primary.lighter', borderRadius: '8px', height: '100%' }}>
+                      <Card sx={{ p: 2, bgcolor: '#fafafa', borderRadius: '6px', border: '1px solid #e5e7eb', height: '100%' }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
-                          <RestaurantIcon sx={{ color: 'primary.main' }} />
-                          <Typography variant="subtitle2" sx={{ fontWeight: 600, color: 'primary.main' }}>
+                          <RestaurantIcon sx={{ fontSize: 18, color: '#64748b' }} />
+                          <Typography sx={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>
                             {label}
                           </Typography>
                         </Box>
@@ -452,10 +465,13 @@ export default function PortalEscola() {
                               label={ref.nome}
                               size="small"
                               sx={{
-                                bgcolor: 'white',
+                                bgcolor: '#161b22',
                                 fontSize: '0.75rem',
                                 height: 24,
+                                borderRadius: '3px',
+                                fontWeight: 500,
                                 justifyContent: 'flex-start',
+                                border: '1px solid #30363d',
                                 '& .MuiChip-label': {
                                   px: 1.5
                                 }
@@ -475,16 +491,18 @@ export default function PortalEscola() {
 
       {/* Botão para Estoque da Escola */}
       <Grid item xs={12}>
-        <Card sx={{ p: 3, borderRadius: '12px' }}>
+        <Card sx={{ p: 3, borderRadius: '6px', borderColor: '#e5e7eb', borderWidth: 1, borderStyle: 'solid' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <WarehouseIcon sx={{ fontSize: 40, color: 'primary.main' }} />
+              <Box sx={{ width: 48, height: 48, borderRadius: '6px', bgcolor: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <WarehouseIcon sx={{ fontSize: 28, color: GREEN }} />
+              </Box>
               <Box>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>Estoque da Escola</Typography>
+                <Typography sx={{ fontWeight: 700, fontSize: '1rem' }}>Estoque da Escola</Typography>
                 <Typography variant="body2" color="text.secondary">Gerencie o estoque de produtos da sua escola</Typography>
               </Box>
             </Box>
-            <Button variant="contained" size="large" startIcon={<WarehouseIcon />} onClick={() => navigate('/estoque-escola-portal')}>
+            <Button variant="contained" size="large" startIcon={<WarehouseIcon />} onClick={() => navigate('/estoque-escola-portal')} sx={{ borderRadius: '4px', textTransform: 'none', bgcolor: GREEN, '&:hover': { bgcolor: '#16a34a' }, fontWeight: 600 }}>
               Acessar Estoque
             </Button>
           </Box>
@@ -505,10 +523,12 @@ export default function PortalEscola() {
     return (
       <Grid container spacing={2}>
         <Grid item xs={12}>
-          <Card sx={{ p: 3, borderRadius: '12px' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
-              <RestaurantIcon sx={{ color: 'primary.main' }} />
-              <Typography variant="h6">Cardápio da Semana</Typography>
+          <Card sx={{ p: 3, borderRadius: '6px', borderColor: '#e5e7eb', borderWidth: 1, borderStyle: 'solid' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+              <Box sx={{ width: 16, height: 3, borderRadius: 2, bgcolor: '#f59e0b' }} />
+              <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: '#f59e0b' }}>
+                Cardápio da Semana
+              </Typography>
             </Box>
             {cardapios.length > 0 ? (
               <>
@@ -533,22 +553,22 @@ export default function PortalEscola() {
   const renderSolicitacoes = () => (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setNovaOpen(true)}>Nova Solicitação</Button>
+        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setNovaOpen(true)} sx={{ borderRadius: '4px', textTransform: 'none', bgcolor: GREEN, '&:hover': { bgcolor: '#16a34a' }, fontWeight: 600 }}>Nova Solicitação</Button>
       </Box>
 
       {loadingSol ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
       ) : solicitacoes.length === 0 ? (
-        <Alert severity="info">Nenhuma solicitação enviada ainda.</Alert>
+        <Alert severity="info" sx={{ borderRadius: '6px' }}>Nenhuma solicitação enviada ainda.</Alert>
       ) : (
-        <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '8px' }}>
+        <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '6px' }}>
           <Table size="small">
             <TableHead>
-              <TableRow sx={{ bgcolor: 'grey.50' }}>
-                <TableCell sx={{ fontWeight: 600 }}>Data</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Itens</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Observação</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
+              <TableRow sx={{ bgcolor: '#f8fafc' }}>
+                <TableCell sx={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.5px', color: '#64748b' }}>Data</TableCell>
+                <TableCell sx={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.5px', color: '#64748b' }}>Itens</TableCell>
+                <TableCell sx={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.5px', color: '#64748b' }}>Observação</TableCell>
+                <TableCell sx={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.5px', color: '#64748b' }}>Status</TableCell>
                 <TableCell />
               </TableRow>
             </TableHead>
@@ -557,10 +577,10 @@ export default function PortalEscola() {
                 const isPendente = s.status === 'pendente';
                 const statusColor = isPendente ? 'warning' : s.status === 'concluida' ? 'success' : s.status === 'parcial' ? 'info' : 'error';
                 const statusLabel = isPendente ? 'Pendente' : s.status === 'concluida' ? 'Concluída' : s.status === 'parcial' ? 'Parcial' : 'Cancelada';
-                
+
                 return (
                   <TableRow key={s.id} hover>
-                    <TableCell>{new Date(s.created_at).toLocaleDateString('pt-BR')}</TableCell>
+                    <TableCell sx={{ fontFamily: '"Fira Code", "Roboto Mono", monospace', fontSize: '0.8rem' }}>{new Date(s.created_at).toLocaleDateString('pt-BR')}</TableCell>
                     <TableCell>
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
                         {s.itens.map(item => (
@@ -569,7 +589,7 @@ export default function PortalEscola() {
                               label={item.status === 'pendente' ? 'Pend.' : item.status === 'aceito' ? 'Aceito' : 'Recusado'}
                               color={item.status === 'pendente' ? 'warning' : item.status === 'aceito' ? 'success' : 'error'}
                               size="small"
-                              sx={{ fontSize: '0.6rem', height: 16 }}
+                              sx={{ fontSize: '0.6rem', height: 16, borderRadius: '3px' }}
                             />
                             {item.nome_produto} — {item.quantidade} {item.unidade}
                             {item.justificativa_recusa && <Typography component="span" variant="caption" color="error.main"> ({item.justificativa_recusa})</Typography>}
@@ -578,7 +598,7 @@ export default function PortalEscola() {
                       </Box>
                     </TableCell>
                     <TableCell sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>{s.observacao || '—'}</TableCell>
-                    <TableCell><Chip label={statusLabel} color={statusColor} size="small" /></TableCell>
+                    <TableCell><Chip label={statusLabel} color={statusColor} size="small" sx={{ borderRadius: '3px', fontWeight: 500 }} /></TableCell>
                     <TableCell>
                       {isPendente && (
                         <Tooltip title="Cancelar">
@@ -601,10 +621,12 @@ export default function PortalEscola() {
   const renderComprovantes = () => (
     <Grid container spacing={2}>
       <Grid item xs={12}>
-        <Card sx={{ p: 3, borderRadius: '12px' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
-            <DescriptionIcon sx={{ color: 'primary.main' }} />
-            <Typography variant="h6">Comprovantes de Entrega</Typography>
+        <Card sx={{ p: 3, borderRadius: '6px', borderColor: '#e5e7eb', borderWidth: 1, borderStyle: 'solid' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+            <Box sx={{ width: 16, height: 3, borderRadius: 2, bgcolor: '#2563eb' }} />
+            <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: '#2563eb' }}>
+              Comprovantes de Entrega
+            </Typography>
           </Box>
           {loadingComp ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
@@ -612,6 +634,7 @@ export default function PortalEscola() {
             <Alert severity="info">Nenhum comprovante de entrega registrado ainda.</Alert>
           ) : (
             <DataTable
+              title="Comprovantes"
               data={comprovantes}
               columns={comprovantesColumns}
               loading={loadingComp}
@@ -784,9 +807,13 @@ export default function PortalEscola() {
   return (
     <>
     <PageContainer>
-      <PageHeader 
-        title={escola?.nome || 'Portal da Escola'} 
+      <PageHeader
+        title={escola?.nome || 'Portal da Escola'}
         subtitle="Informações e gestão da sua escola"
+        breadcrumbs={[
+          { label: 'Dashboard', path: '/dashboard' },
+          { label: 'Portal Escola' },
+        ]}
       />
 
       <Box sx={{ mb: 3 }}>

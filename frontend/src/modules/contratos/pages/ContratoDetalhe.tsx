@@ -554,7 +554,7 @@ export default function ContratoDetalhe() {
   );
 
   return (
-    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden' }}>
       {successMessage && (
         <Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}>
           <Alert severity="success" onClose={() => setSuccessMessage(null)}>{successMessage}</Alert>
@@ -562,26 +562,19 @@ export default function ContratoDetalhe() {
       )}
       
       <PageContainer fullHeight>
-        <PageHeader 
+        <PageHeader
           title={contrato ? `Contrato ${contrato.numero}` : 'Contrato'}
+          breadcrumbs={[
+            { label: 'Dashboard', path: '/dashboard' },
+            { label: 'Contratos', path: '/contratos' },
+            { label: contrato ? `Contrato ${contrato.numero}` : 'Carregando...' },
+          ]}
+          action={
+            <IconButton onClick={(e) => setMenuAnchorEl(e.currentTarget)}>
+              <MoreVert />
+            </IconButton>
+          }
         />
-        
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-          <PageBreadcrumbs 
-            items={[
-              { label: 'Contratos', path: '/contratos', icon: <DescriptionIcon fontSize="small" /> },
-              { label: contrato ? `Contrato ${contrato.numero}` : 'Carregando...' }
-            ]}
-            onBack={handleVoltar}
-          />
-          <IconButton 
-            size="small" 
-            onClick={(e) => setMenuAnchorEl(e.currentTarget)}
-            sx={{ ml: 2 }}
-          >
-            <MoreVert />
-          </IconButton>
-        </Box>
         
         {erro && <Alert severity="error" onClose={() => setErro("")} sx={{ mb: 2 }}>{erro}</Alert>}
 

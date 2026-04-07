@@ -50,6 +50,10 @@ import PageContainer from "../../../components/PageContainer";
 import FiltrosEscolas from "../../../components/FiltrosEscolas";
 import * as XLSX from "xlsx";
 
+// ── Design tokens ──────────────────────────────────────────────
+const GREEN = "#22c55e";
+const NAVY = "#0f172a";
+
 // Interfaces
 interface EscolaLocal {
   id: number;
@@ -399,9 +403,23 @@ const EscolasPage = () => {
   };
 
   return (
-    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <PageContainer fullHeight>
-        <PageHeader title="Escolas" />
+        <PageHeader
+          title="Escolas"
+          totalCount={escolasFiltradas.length}
+          breadcrumbs={[
+            { label: 'Dashboard', path: '/dashboard' },
+            { label: 'Cadastros' },
+            { label: 'Escolas' },
+          ]}
+          action={
+            <Button variant="contained" startIcon={<AddIcon />} onClick={openModal}
+              sx={{ bgcolor: '#22c55e', '&:hover': { bgcolor: '#16a34a' }, borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
+              Nova Escola
+            </Button>
+          }
+        />
 
         {errosImportacao.length > 0 && (
           <Alert severity="warning" onClose={() => setErrosImportacao([])}>
@@ -418,8 +436,6 @@ const EscolasPage = () => {
             loading={loading}
             onRowClick={handleRowClick}
             searchPlaceholder="Buscar escolas..."
-            onCreateClick={openModal}
-            createButtonLabel="Nova Escola"
             onFilterClick={handleFilterOpen}
             onImportExportClick={handleImportExportOpen}
             initialPageSize={50}

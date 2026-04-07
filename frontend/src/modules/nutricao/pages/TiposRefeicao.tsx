@@ -1,19 +1,19 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
-  Box, Button, Card, Dialog, DialogTitle, DialogContent, DialogActions,
-  FormControl, IconButton, InputLabel, MenuItem, Select, TextField, Typography,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
-  Chip, Switch, FormControlLabel
+  Box, Button, Chip, Dialog, DialogTitle, DialogContent, DialogActions,
+  FormControlLabel, IconButton, Switch, TextField, Tooltip,
 } from "@mui/material";
 import {
-  Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
-  Schedule as ScheduleIcon
+  CheckCircle as CheckCircleIcon,
+  Cancel as CancelIcon,
 } from "@mui/icons-material";
-import { useToast } from "../../../hooks/useToast";
-import { usePageTitle } from "../../../contexts/PageTitleContext";
+import { ColumnDef } from "@tanstack/react-table";
+import { DataTable } from "../../../components/DataTable";
 import PageContainer from "../../../components/PageContainer";
+import PageHeader from "../../../components/PageHeader";
+import { useToast } from "../../../hooks/useToast";
 import {
   listarTiposRefeicao,
   criarTipoRefeicao,
@@ -25,7 +25,6 @@ import {
 
 const TiposRefeicaoPage: React.FC = () => {
   const toast = useToast();
-  const { setPageTitle } = usePageTitle();
 
   const [tipos, setTipos] = useState<TipoRefeicao[]>([]);
   const [loading, setLoading] = useState(false);
@@ -40,7 +39,6 @@ const TiposRefeicaoPage: React.FC = () => {
   });
 
   useEffect(() => {
-    setPageTitle('Tipos de Refeição');
     loadTipos();
   }, []);
 
@@ -62,7 +60,7 @@ const TiposRefeicaoPage: React.FC = () => {
       setFormData({
         nome: tipo.nome,
         chave: tipo.chave,
-        horario: tipo.horario.substring(0, 5), // HH:MM
+        horario: tipo.horario.substring(0, 5),
         ordem: tipo.ordem,
         ativo: tipo.ativo
       });
@@ -98,7 +96,6 @@ const TiposRefeicaoPage: React.FC = () => {
         return;
       }
 
-      // Validar formato do horário
       if (!/^\d{2}:\d{2}$/.test(formData.horario)) {
         toast.error('Horário inválido. Use o formato HH:MM');
         return;
@@ -143,16 +140,6 @@ const TiposRefeicaoPage: React.FC = () => {
     }
   };
 
-  const handleToggleAtivo = async (tipo: TipoRefeicao) => {
-    try {
-      await atualizarTipoRefeicao(tipo.id, { ativo: !tipo.ativo });
-      toast.success(`Tipo de refeição ${!tipo.ativo ? 'ativado' : 'desativado'}!`);
-      loadTipos();
-    } catch (err) {
-      toast.error('Erro ao atualizar status');
-    }
-  };
-
   const gerarChave = (nome: string) => {
     return nome
       .toLowerCase()
@@ -163,85 +150,96 @@ const TiposRefeicaoPage: React.FC = () => {
       .replace(/^_|_$/g, '');
   };
 
-  return (
-    <PageContainer>
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h5">Tipos de Refeição</Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => handleOpenDialog()}
-        >
-          Novo Tipo
-        </Button>
-      </Box>
+  const columns: ColumnDef<TipoRefeicao>[] = useMemo(() => [
+    {
+      accessorKey: 'nome',
+      header: 'Nome',
+      size: 200,
+    },
+    {
+      accessorKey: 'chave',
+      header: 'Chave',
+      size: 150,
+      cell: ({ getValue }) => (
+        <Chip label={getValue() as string} size="small" variant="outlined" />
+      ),
+    },
+    {
+      accessorKey: 'horario',
+      header: 'Horário',
+      size: 100,
+      cell: ({ getValue }) => formatarHorario(getValue() as string),
+    },
+    {
+      accessorKey: 'ordem',
+      header: 'Ordem',
+      size: 80,
+    },
+    {
+      accessorKey: 'ativo',
+      header: 'Status',
+      size: 100,
+      cell: ({ getValue, row }) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }} onClick={(e) => e.stopPropagation()}>
+          {getValue() ? (
+            <Chip label="Ativo" size="small" color="success" variant="outlined" icon={<CheckCircleIcon fontSize="small" />} />
+          ) : (
+            <Chip label="Inativo" size="small" color="error" variant="outlined" icon={<CancelIcon fontSize="small" />} />
+          )}
+        </Box>
+      ),
+    },
+    {
+      id: 'actions',
+      header: 'Ações',
+      size: 100,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <Box sx={{ display: 'flex', gap: 0.5 }} onClick={(e) => e.stopPropagation()}>
+          <Tooltip title="Editar">
+            <IconButton
+              size="small"
+              onClick={() => handleOpenDialog(row.original)}
+              color="primary"
+            >
+              <EditIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Excluir">
+            <IconButton
+              size="small"
+              onClick={() => handleDelete(row.original.id)}
+              color="error"
+            >
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      ),
+    },
+  ], []);
 
-      <Card>
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Nome</TableCell>
-                <TableCell>Chave</TableCell>
-                <TableCell>Horário</TableCell>
-                <TableCell align="center">Ordem</TableCell>
-                <TableCell align="center">Status</TableCell>
-                <TableCell align="right">Ações</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {tipos.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} align="center">
-                    <Typography variant="body2" color="textSecondary">
-                      Nenhum tipo de refeição cadastrado
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                tipos.map((tipo) => (
-                  <TableRow key={tipo.id}>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <ScheduleIcon fontSize="small" color="action" />
-                        {tipo.nome}
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Chip label={tipo.chave} size="small" variant="outlined" />
-                    </TableCell>
-                    <TableCell>{formatarHorario(tipo.horario)}</TableCell>
-                    <TableCell align="center">{tipo.ordem}</TableCell>
-                    <TableCell align="center">
-                      <Switch
-                        checked={tipo.ativo}
-                        onChange={() => handleToggleAtivo(tipo)}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <IconButton
-                        size="small"
-                        onClick={() => handleOpenDialog(tipo)}
-                        color="primary"
-                      >
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        onClick={() => handleDelete(tipo.id)}
-                        color="error"
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Card>
+  return (
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <PageContainer fullHeight>
+        <PageHeader
+          title="Tipos de Refeição"
+          totalCount={tipos.length}
+          breadcrumbs={[{ label: 'Dashboard', path: '/dashboard' }, { label: 'Cardápios' }, { label: 'Tipos de Refeição' }]}
+        />
+
+        {/* DataTable com altura fixa para scroll */}
+        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <DataTable
+            title="Tipos de Refeição"
+            data={tipos}
+            columns={columns}
+            loading={loading}
+            onCreateClick={() => handleOpenDialog()}
+            createButtonLabel="Novo Tipo"
+          />
+        </Box>
+      </PageContainer>
 
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
         <DialogTitle>
@@ -256,8 +254,8 @@ const TiposRefeicaoPage: React.FC = () => {
               value={formData.nome}
               onChange={(e) => {
                 const nome = e.target.value;
-                setFormData({ 
-                  ...formData, 
+                setFormData({
+                  ...formData,
                   nome,
                   chave: formData.chave || gerarChave(nome)
                 });
@@ -315,7 +313,7 @@ const TiposRefeicaoPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-    </PageContainer>
+    </Box>
   );
 };
 

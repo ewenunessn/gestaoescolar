@@ -47,7 +47,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { rotaService } from "../../entregas/services/rotaService";
 import { escolaService } from "../../../services/escolaService";
 import { RotaEntrega, RotaEscola } from "../../entregas/types/rota";
-import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
 import { DataTable } from "../../../components/DataTable";
 import PageHeader from "../../../components/PageHeader";
 
@@ -499,16 +498,15 @@ const GerenciarEscolasRota: React.FC = () => {
             )}
 
             <Container maxWidth="lg" sx={{ py: 4 }}>
-                <PageBreadcrumbs 
-                    items={[
-                        { label: 'Gestão de Rotas', path: '/gestao-rotas' },
-                        { label: 'Gerenciar Escolas' }
-                    ]}
-                />
-
-                <PageHeader 
+                <PageHeader
                     title={rota ? `Rota ${rota.nome}` : 'Gerenciar Escolas da Rota'}
                     subtitle={`${escolasRota.length} ${escolasRota.length === 1 ? 'escola' : 'escolas'} na rota. Arraste para reordenar.`}
+                    breadcrumbs={[
+                        { label: 'Dashboard', path: '/dashboard' },
+                        { label: 'Entregas', path: '/entregas' },
+                        { label: 'Gestão de Rotas', path: '/gestao-rotas' },
+                        { label: rota ? `Rota ${rota.nome}` : 'Gerenciar Escolas' },
+                    ]}
                 />
 
                 {/* Botão de Adicionar */}

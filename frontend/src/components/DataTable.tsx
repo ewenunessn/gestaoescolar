@@ -23,10 +23,10 @@ import {
   TextField,
   InputAdornment,
   IconButton,
-  Toolbar,
   Typography,
   CircularProgress,
   TableSortLabel,
+  Stack,
   Button,
   Tooltip,
   useMediaQuery,
@@ -38,6 +38,16 @@ import ClearIcon from '@mui/icons-material/Clear';
 import AddIcon from '@mui/icons-material/Add';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
+
+// ── GitHub Dark Mode tokens ───────────────────────────────────
+const GREEN = '#2ea043';
+const SIDEBAR_BG = '#0d1117';
+const CANVAS = '#161b22';
+const BORDER = '#21262d';
+const BORDER_MD = '#30363d';
+const TEXT = '#e6edf3';
+const MUTED = '#8b949e';
+const SUB = '#6e7681';
 
 interface DataTableProps<TData> {
   data: TData[];
@@ -53,16 +63,16 @@ interface DataTableProps<TData> {
   toolbarExtra?: React.ReactNode;
   initialColumnVisibility?: Record<string, boolean>;
   initialPageSize?: number;
-  autoCalculatePageSize?: boolean; // Mantido para compatibilidade
+  autoCalculatePageSize?: boolean;
 }
 
-// Componente de linha memoizado para evitar re-renders desnecessários
-const TableRowMemo = memo(function TableRowMemo<TData>({ 
-  row, 
+// ── Row (memoized) ──
+const TableRowMemo = memo(function TableRowMemo<TData>({
+  row,
   onRowClick,
   isMobile = false,
-}: { 
-  row: any; 
+}: {
+  row: any;
   onRowClick?: (row: TData) => void;
   isMobile?: boolean;
 }) {
@@ -76,18 +86,24 @@ const TableRowMemo = memo(function TableRowMemo<TData>({
       onClick={handleClick}
       sx={{
         cursor: onRowClick ? 'pointer' : 'default',
+        transition: 'background-color 0.12s ease',
         '&:hover': {
-          backgroundColor: onRowClick ? 'action.hover' : 'inherit',
+          backgroundColor: onRowClick ? 'rgba(255,255,255,0.02)' : 'inherit',
         },
       }}
     >
       {row.getVisibleCells().map((cell: any) => (
-        <TableCell 
+        <TableCell
           key={cell.id}
-          sx={{ 
-            width: cell.column.getSize(),
-            fontSize: isMobile ? '0.75rem' : '0.875rem',
-            padding: isMobile ? '8px 4px' : '16px',
+          sx={{
+            width: cell.column.cardSize?.() ?? cell.column.getSize(),
+            fontSize: isMobile ? '0.75rem' : '0.8125rem',
+            padding: isMobile ? '8px 4px' : '8px 12px',
+            borderBottom: `1px solid ${BORDER}`,
+            borderColor: BORDER,
+            color: TEXT,
+            bgcolor: 'transparent',
+            lineHeight: 1.5,
           }}
         >
           {flexRender(
@@ -118,7 +134,7 @@ export const DataTable = memo(function DataTable<TData>({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
-  
+
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
@@ -163,151 +179,171 @@ export const DataTable = memo(function DataTable<TData>({
   }, []);
 
   const rows = table.getRowModel().rows;
+  const filteredCount = table.getFilteredRowModel().rows.length;
 
   return (
-    <Paper 
-      sx={{ 
-        width: '100%', 
-        display: 'flex', 
-        flexDirection: 'column', 
+    <Paper
+      sx={{
+        width: '100%',
+        display: 'flex',
+        flexDirection: 'column',
         height: '100%',
-        borderRadius: 2,
+        borderRadius: '6px',
         overflow: 'hidden',
+        border: `1px solid ${BORDER}`,
+        backgroundColor: CANVAS,
+        backgroundImage: 'none',
         boxShadow: 'none',
-        border: '1px solid',
-        borderColor: 'divider',
-        // Otimização: usar will-change para preparar o browser
-        willChange: 'transform',
       }}
     >
-      {/* Toolbar */}
-      <Toolbar sx={{ 
-        gap: 1, 
-        minHeight: isMobile ? '56px !important' : '64px !important',
-        justifyContent: 'space-between',
-        flexShrink: 0,
-        borderBottom: '1px solid',
-        borderBottomColor: 'divider',
-        flexDirection: isMobile ? 'column' : 'row',
-        alignItems: isMobile ? 'stretch' : 'center',
-        py: isMobile ? 1 : 0,
+      {/* ── Toolbar ── */}
+      <Box sx={{
+        px: 2, py: 1.25,
+        borderBottom: `1px solid ${BORDER}`,
+        backgroundColor: CANVAS,
       }}>
-        <Box sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: 1,
-          justifyContent: isMobile ? 'space-between' : 'flex-start',
-          width: isMobile ? '100%' : 'auto',
+        <Box sx={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          flexWrap: 'wrap', gap: 1.5,
         }}>
-          {title && !isMobile && (
-            <Typography 
-              variant="h6" 
-              component="div"
-              sx={{
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                maxWidth: '300px',
-              }}
-            >
-              {title}
-            </Typography>
-          )}
-          {onCreateClick && (
-            <Button
-              variant="contained"
-              onClick={onCreateClick}
-              startIcon={<AddIcon />}
-              size={isMobile ? 'small' : 'medium'}
-              fullWidth={isMobile}
-              sx={{
-                backgroundColor: '#000',
-                color: '#fff',
-                '&:hover': {
-                  backgroundColor: '#333',
-                },
-              }}
-            >
-              {createButtonLabel}
-            </Button>
-          )}
-        </Box>
-        
-        <Box sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: 1,
-          justifyContent: isMobile ? 'space-between' : 'flex-end',
-          width: isMobile ? '100%' : 'auto',
-        }}>
-          {onImportExportClick && (
-            <Tooltip title="Importar/Exportar">
-              <IconButton onClick={onImportExportClick}>
-                <MoreVertIcon />
-              </IconButton>
-            </Tooltip>
-          )}
-          
-          {toolbarExtra}
+          {title ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+              <Box sx={{
+                width: 3, height: 18, borderRadius: '2px',
+                bgcolor: GREEN,
+              }} />
+              <Typography sx={{
+                fontSize: '0.8125rem', fontWeight: 600,
+                color: TEXT,
+                letterSpacing: '-0.01em',
+              }}>
+                {title}
+              </Typography>
+              <Typography sx={{
+                fontSize: '0.6875rem', color: SUB,
+                ml: 0.5, fontWeight: 400,
+              }}>
+                {filteredCount} {filteredCount === 1 ? 'registro' : 'registros'}
+              </Typography>
+            </Box>
+          ) : <Box />}
 
-          {onFilterClick && (
-            <Tooltip title="Filtros">
-              <IconButton onClick={onFilterClick}>
-                <FilterListIcon />
-              </IconButton>
-            </Tooltip>
-          )}
-          
-          {searchOpen ? (
-            <TextField
-              size="small"
-              placeholder={searchPlaceholder}
-              value={globalFilter ?? ''}
-              onChange={(e) => setGlobalFilter(e.target.value)}
-              autoFocus
-              fullWidth={isMobile}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon />
-                  </InputAdornment>
-                ),
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton size="small" onClick={handleSearchClear}>
-                      <ClearIcon fontSize="small" />
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-              sx={{ width: isMobile ? '100%' : 250 }}
-            />
-          ) : (
-            <Tooltip title="Buscar">
-              <IconButton onClick={handleSearchToggle}>
-                <SearchIcon />
-              </IconButton>
-            </Tooltip>
-          )}
-        </Box>
-      </Toolbar>
+          <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'center', flexWrap: 'wrap' }}>
+            {onCreateClick && (
+              <Button
+                variant="contained"
+                onClick={onCreateClick}
+                startIcon={<AddIcon sx={{ fontSize: 16 }} />}
+                size="small"
+                sx={{
+                  bgcolor: GREEN,
+                  color: '#fff',
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  borderRadius: '6px',
+                  fontSize: '0.75rem',
+                  px: 2,
+                  letterSpacing: '-0.01em',
+                  '&:hover': { bgcolor: '#26a641' },
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                {createButtonLabel}
+              </Button>
+            )}
 
-      {/* Tabela com scroll otimizado - Desktop */}
+            {searchOpen ? (
+              <TextField
+                size="small"
+                placeholder={searchPlaceholder}
+                value={globalFilter ?? ''}
+                onChange={(e) => setGlobalFilter(e.target.value)}
+                autoFocus
+                sx={{
+                  width: 240,
+                  '& .MuiOutlinedInput-root': {
+                    bgcolor: SIDEBAR_BG,
+                    borderRadius: '6px',
+                    fontSize: '0.75rem',
+                    height: 32,
+                    '& fieldset': {
+                      borderColor: BORDER_MD,
+                    },
+                    '&:hover fieldset': {
+                      borderColor: MUTED,
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: GREEN,
+                    },
+                  },
+                  '& .MuiInputBase-input': {
+                    color: TEXT,
+                    '&::placeholder': { color: SUB, opacity: 1 },
+                    padding: '0 10px',
+                  },
+                }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start" sx={{ ml: 0.5 }}>
+                      <SearchIcon sx={{ color: MUTED, fontSize: 15 }} />
+                    </InputAdornment>
+                  ),
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton size="small" onClick={handleSearchClear} sx={{ color: MUTED, p: 0.25 }}>
+                        <ClearIcon sx={{ fontSize: 14 }} />
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            ) : (
+              <Tooltip title="Buscar">
+                <IconButton onClick={handleSearchToggle} size="small" sx={{ color: MUTED }}>
+                  <SearchIcon sx={{ fontSize: 17 }} />
+                </IconButton>
+              </Tooltip>
+            )}
+
+            {onFilterClick && (
+              <Tooltip title="Filtros">
+                <IconButton size="small" onClick={onFilterClick} sx={{ color: MUTED }}>
+                  <FilterListIcon sx={{ fontSize: 17 }} />
+                </IconButton>
+              </Tooltip>
+            )}
+
+            {onImportExportClick && (
+              <Tooltip title="Importar/Exportar">
+                <IconButton onClick={onImportExportClick} size="small" sx={{ color: MUTED }}>
+                  <MoreVertIcon sx={{ fontSize: 17 }} />
+                </IconButton>
+              </Tooltip>
+            )}
+
+            {toolbarExtra}
+          </Box>
+        </Box>
+      </Box>
+
+      {/* ── Table ── */}
       {!isMobile ? (
-        <TableContainer 
-          sx={{ 
-            flex: 1, 
+        <TableContainer
+          sx={{
+            flex: 1,
             overflow: 'auto',
-            WebkitOverflowScrolling: 'touch',
-            transform: 'translateZ(0)',
-            willChange: 'scroll-position',
+            '&::-webkit-scrollbar': { width: '6px', height: '6px' },
+            '&::-webkit-scrollbar-thumb': { background: BORDER_MD, borderRadius: '3px' },
+            '&::-webkit-scrollbar-track': { background: 'transparent' },
           }}
         >
-          <Table 
+          <Table
             stickyHeader
-            sx={{ 
+            size="small"
+            sx={{
+              borderCollapse: 'separate',
+              borderSpacing: 0,
               minWidth: 650,
-              tableLayout: 'auto',
             }}
           >
             <TableHead>
@@ -317,12 +353,20 @@ export const DataTable = memo(function DataTable<TData>({
                     <TableCell
                       key={header.id}
                       sx={{
-                        fontWeight: 600,
-                        backgroundColor: 'grey.100',
+                        fontWeight: 500,
+                        backgroundColor: SIDEBAR_BG,
+                        color: MUTED,
+                        fontSize: '0.6875rem',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        borderBottom: `1px solid ${BORDER}`,
+                        borderRight: `1px solid ${BORDER}`,
                         width: header.getSize(),
                         position: 'sticky',
                         top: 0,
-                        zIndex: 1,
+                        zIndex: 2,
+                        padding: '6px 12px',
+                        '&:last-child': { borderRight: 'none' },
                       }}
                     >
                       {header.isPlaceholder ? null : (
@@ -344,7 +388,14 @@ export const DataTable = memo(function DataTable<TData>({
                               direction={
                                 header.column.getIsSorted() === 'asc' ? 'asc' : 'desc'
                               }
-                              sx={{ ml: 0.5 }}
+                              sx={{
+                                ml: 0.5,
+                                '&.Mui-active': { color: TEXT },
+                                '& .MuiTableSortLabel-icon': {
+                                  fill: 'currentColor',
+                                  opacity: 0.4,
+                                },
+                              }}
                             />
                           )}
                         </Box>
@@ -357,31 +408,25 @@ export const DataTable = memo(function DataTable<TData>({
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    align="center"
-                    sx={{ py: 8 }}
-                  >
-                    <CircularProgress />
+                  <TableCell colSpan={columns.length} align="center" sx={{ py: 8 }}>
+                    <CircularProgress sx={{ color: MUTED }} size={24} />
                   </TableCell>
                 </TableRow>
               ) : rows.length === 0 ? (
                 <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    align="center"
-                    sx={{ py: 8 }}
-                  >
-                    <Typography color="text.secondary">
-                      Nenhum registro encontrado
-                    </Typography>
+                  <TableCell colSpan={columns.length} align="center" sx={{ py: 8 }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                      <Typography sx={{ color: MUTED, fontSize: '0.8125rem' }}>
+                        Nenhum registro encontrado
+                      </Typography>
+                    </Box>
                   </TableCell>
                 </TableRow>
               ) : (
                 rows.map((row) => (
-                  <TableRowMemo 
-                    key={row.id} 
-                    row={row} 
+                  <TableRowMemo
+                    key={row.id}
+                    row={row}
                     onRowClick={onRowClick}
                   />
                 ))
@@ -390,22 +435,15 @@ export const DataTable = memo(function DataTable<TData>({
           </Table>
         </TableContainer>
       ) : (
-        /* View Mobile - Cards Compactos */
-        <Box
-          sx={{
-            flex: 1,
-            overflow: 'auto',
-            WebkitOverflowScrolling: 'touch',
-            p: 1.5,
-          }}
-        >
+        /* ── Mobile Cards ── */
+        <Box sx={{ flex: 1, overflow: 'auto', p: 1 }}>
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-              <CircularProgress />
+              <CircularProgress sx={{ color: MUTED }} size={24} />
             </Box>
           ) : rows.length === 0 ? (
             <Box sx={{ textAlign: 'center', py: 8 }}>
-              <Typography color="text.secondary">
+              <Typography sx={{ color: MUTED, fontSize: '0.8125rem' }}>
                 Nenhum registro encontrado
               </Typography>
             </Box>
@@ -433,66 +471,58 @@ export const DataTable = memo(function DataTable<TData>({
               const totalEscolasCell = cells.find((c: any) => c.column.id === 'total_escolas');
               const totalItensCell = cells.find((c: any) => c.column.id === 'total_itens');
               const actionsCell = cells.find((c: any) => c.column.id === 'actions');
-              
+
               return (
                 <Paper
                   key={row.id}
                   onClick={() => onRowClick?.(row.original)}
                   elevation={0}
                   sx={{
-                    mb: 1,
-                    p: 1.5,
+                    mb: 0.75,
+                    p: 1.25,
                     cursor: onRowClick ? 'pointer' : 'default',
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    borderRadius: 1.5,
-                    transition: 'all 0.15s',
+                    border: `1px solid ${BORDER}`,
+                    borderRadius: '6px',
+                    backgroundColor: CANVAS,
+                    transition: 'all 0.15s ease',
                     '&:hover': {
-                      backgroundColor: onRowClick ? 'action.hover' : 'inherit',
-                      borderColor: onRowClick ? 'primary.main' : 'divider',
+                      backgroundColor: 'rgba(255,255,255,0.02)',
+                      borderColor: BORDER_MD,
                     },
                     '&:active': {
                       transform: onRowClick ? 'scale(0.99)' : 'none',
                     },
                   }}
                 >
-                  {/* Linha principal: Status + Nome/Número + Ações */}
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
                     <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, flex: 1, mr: 1 }}>
                       {statusCell && !numeroCell && !guiaNomeCell && (
-                        <Box sx={{ flexShrink: 0, mt: 0.5 }}>
+                        <Box sx={{ flexShrink: 0, mt: 0.25 }}>
                           {flexRender(statusCell.column.columnDef.cell, statusCell.getContext())}
                         </Box>
                       )}
                       <Box sx={{ flex: 1 }}>
-                        {/* Para Contratos: mostrar número ao invés de nome */}
                         {numeroCell ? (
                           <>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                              <Typography sx={{ fontWeight: 600, fontSize: '0.8125rem', color: TEXT }}>
                                 {numeroCell.getValue()}
                               </Typography>
                               {statusCell && (
-                                <Box sx={{ 
+                                <Box sx={{
                                   display: 'inline-flex',
-                                  '& .MuiChip-root': {
-                                    height: '18px',
-                                    fontSize: '0.65rem',
-                                    fontWeight: 500,
-                                  }
+                                  '& .MuiChip-root': { height: '18px', fontSize: '0.65rem', fontWeight: 500 }
                                 }}>
                                   {flexRender(statusCell.column.columnDef.cell, statusCell.getContext())}
                                 </Box>
                               )}
                             </Box>
-                            {/* Fornecedor */}
                             {fornecedorCell && (
-                              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5, fontSize: '0.75rem' }}>
+                              <Typography sx={{ color: MUTED, display: 'block', mt: 0.5, fontSize: '0.75rem' }}>
                                 {flexRender(fornecedorCell.column.columnDef.cell, fornecedorCell.getContext())}
                               </Typography>
                             )}
-                            {/* Vigência + Valor */}
-                            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5, fontSize: '0.75rem' }}>
+                            <Typography sx={{ color: MUTED, display: 'block', mt: 0.25, fontSize: '0.7rem' }}>
                               {row.original.data_inicio && row.original.data_fim && (
                                 <>
                                   {new Date(row.original.data_inicio).toLocaleDateString('pt-BR')} a {new Date(row.original.data_fim).toLocaleDateString('pt-BR')}
@@ -508,95 +538,48 @@ export const DataTable = memo(function DataTable<TData>({
                           </>
                         ) : (
                           <>
-                            <Box sx={{ 
-                              fontSize: '0.875rem', 
-                              fontWeight: 600, 
-                              lineHeight: 1.3,
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
+                            <Box sx={{
+                              fontSize: '0.8125rem', fontWeight: 600, lineHeight: 1.3,
+                              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                              color: TEXT,
                             }}>
-                              {/* Para Guias de Demanda: mostrar guia_nome */}
-                              {guiaNomeCell ? (
-                                flexRender(guiaNomeCell.column.columnDef.cell, guiaNomeCell.getContext())
-                              ) : (
-                                nomeCell && flexRender(nomeCell.column.columnDef.cell, nomeCell.getContext())
-                              )}
+                              {guiaNomeCell
+                                ? flexRender(guiaNomeCell.column.columnDef.cell, guiaNomeCell.getContext())
+                                : nomeCell && flexRender(nomeCell.column.columnDef.cell, nomeCell.getContext())}
                             </Box>
-                            {/* Subtítulo: Competência + Escolas + Itens + Status para Guias de Demanda */}
                             {guiaNomeCell && (competenciaCell || totalEscolasCell || totalItensCell || statusCell) && (
-                              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5, fontSize: '0.75rem' }}>
-                                {competenciaCell && (
-                                  <>{flexRender(competenciaCell.column.columnDef.cell, competenciaCell.getContext())}</>
-                                )}
+                              <Typography sx={{ color: MUTED, display: 'block', mt: 0.25, fontSize: '0.7rem' }}>
+                                {competenciaCell && <>{flexRender(competenciaCell.column.columnDef.cell, competenciaCell.getContext())}</>}
                                 {competenciaCell && (totalEscolasCell || totalItensCell) && ' - '}
-                                {totalEscolasCell && totalEscolasCell.getValue() && (
-                                  <>{totalEscolasCell.getValue()} escolas</>
-                                )}
+                                {totalEscolasCell && totalEscolasCell.getValue() && <>{totalEscolasCell.getValue()} escolas</>}
                                 {totalEscolasCell && totalEscolasCell.getValue() && totalItensCell && totalItensCell.getValue() && ', '}
-                                {totalItensCell && totalItensCell.getValue() && (
-                                  <>{totalItensCell.getValue()} itens</>
-                                )}
+                                {totalItensCell && totalItensCell.getValue() && <>{totalItensCell.getValue()} itens</>}
                                 {(competenciaCell || totalEscolasCell || totalItensCell) && statusCell && ' - '}
-                                {statusCell && (
-                                  <>{flexRender(statusCell.column.columnDef.cell, statusCell.getContext())}</>
-                                )}
+                                {statusCell && <>{flexRender(statusCell.column.columnDef.cell, statusCell.getContext())}</>}
                               </Typography>
                             )}
-                            {/* Subtítulo: Competência + Modalidades para Cardápios */}
                             {!guiaNomeCell && competenciaCell && (
-                              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5, fontSize: '0.75rem' }}>
+                              <Typography sx={{ color: MUTED, display: 'block', mt: 0.25, fontSize: '0.7rem' }}>
                                 {row.original.mes && row.original.ano && (
-                                  <>
-                                    {row.original.mes}/{row.original.ano}
-                                    {(row.original as any).modalidades_nomes && (
-                                      <> - {(row.original as any).modalidades_nomes}</>
-                                    )}
-                                  </>
+                                  <>{row.original.mes}/{row.original.ano}{(row.original as any).modalidades_nomes && <> - {(row.original as any).modalidades_nomes}</>}</>
                                 )}
                               </Typography>
                             )}
-                            {/* Subtítulo para outras páginas */}
                             {!guiaNomeCell && !competenciaCell && (totalAlunosCell || modalidadesCell || valorRepasseCell || parcelasCell || totalAnualCell || unidadeCell || composicaoCell || contratoCell) && (
-                              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5, fontSize: '0.75rem' }}>
-                                {/* Para Escolas */}
-                                {totalAlunosCell && totalAlunosCell.getValue() && (
-                                  <>{Number(totalAlunosCell.getValue()).toLocaleString('pt-BR')} alunos</>
-                                )}
+                              <Typography sx={{ color: MUTED, display: 'block', mt: 0.25, fontSize: '0.7rem' }}>
+                                {totalAlunosCell && totalAlunosCell.getValue() && <>{Number(totalAlunosCell.getValue()).toLocaleString('pt-BR')} alunos</>}
                                 {totalAlunosCell && totalAlunosCell.getValue() && modalidadesCell && modalidadesCell.getValue() && ' - '}
-                                {modalidadesCell && modalidadesCell.getValue() && (
-                                  <>{modalidadesCell.getValue()}</>
-                                )}
-                                {/* Para Modalidades */}
-                                {valorRepasseCell && valorRepasseCell.getValue() && (
-                                  <>
-                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(valorRepasseCell.getValue()))}
-                                  </>
-                                )}
+                                {modalidadesCell && modalidadesCell.getValue() && <>{modalidadesCell.getValue()}</>}
+                                {valorRepasseCell && valorRepasseCell.getValue() && <>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(valorRepasseCell.getValue()))}</>}
                                 {valorRepasseCell && valorRepasseCell.getValue() && parcelasCell && ' × '}
-                                {parcelasCell && parcelasCell.getValue() && (
-                                  <>{parcelasCell.getValue()}x</>
-                                )}
+                                {parcelasCell && parcelasCell.getValue() && <>{parcelasCell.getValue()}x</>}
                                 {(valorRepasseCell && valorRepasseCell.getValue() || parcelasCell && parcelasCell.getValue()) && totalAnualCell && ' = '}
-                                {totalAnualCell && row.original.valor_repasse && (
-                                  <>
-                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
-                                      Number(row.original.valor_repasse) * (Number(row.original.parcelas) || 1)
-                                    )}
-                                  </>
-                                )}
-                                {/* Para Produtos */}
-                                {unidadeCell && unidadeCell.getValue() && (
-                                  <>{unidadeCell.getValue()}</>
-                                )}
+                                {totalAnualCell && row.original.valor_repasse && <>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(row.original.valor_repasse) * (Number(row.original.parcelas) || 1))}</>}
+                                {unidadeCell && unidadeCell.getValue() && <>{unidadeCell.getValue()}</>}
                                 {unidadeCell && unidadeCell.getValue() && (composicaoCell || contratoCell) && ' - '}
-                                {composicaoCell && composicaoCell.getValue() && (
-                                  <>Composição</>
-                                )}
+                                {composicaoCell && composicaoCell.getValue() && <>Composição</>}
                                 {composicaoCell && composicaoCell.getValue() && contratoCell && contratoCell.getValue() && ', '}
-                                {contratoCell && contratoCell.getValue() && (
-                                  <>Contrato</>
-                                )}
+                                {contratoCell && contratoCell.getValue() && <>Contrato</>}
                               </Typography>
                             )}
                           </>
@@ -609,17 +592,11 @@ export const DataTable = memo(function DataTable<TData>({
                       </Box>
                     )}
                   </Box>
-                  
-                  {/* Linha secundária: Tipo + Valor Calórico (para Preparações) */}
                   {(tipoCell || valorCaloricoCell) && (
                     <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', ml: 3, flexWrap: 'wrap' }}>
-                      {tipoCell && (
-                        <Box>
-                          {flexRender(tipoCell.column.columnDef.cell, tipoCell.getContext())}
-                        </Box>
-                      )}
+                      {tipoCell && <Box>{flexRender(tipoCell.column.columnDef.cell, tipoCell.getContext())}</Box>}
                       {valorCaloricoCell && (
-                        <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.75rem' }}>
+                        <Typography sx={{ color: MUTED, fontSize: '0.7rem' }}>
                           {flexRender(valorCaloricoCell.column.columnDef.cell, valorCaloricoCell.getContext())}
                         </Typography>
                       )}
@@ -632,33 +609,46 @@ export const DataTable = memo(function DataTable<TData>({
         </Box>
       )}
 
-      {/* Paginação */}
+      {/* ── Pagination ── */}
       <TablePagination
         component="div"
-        count={table.getFilteredRowModel().rows.length}
+        count={filteredCount}
         page={pagination.pageIndex}
         onPageChange={(_, page) => setPagination((prev) => ({ ...prev, pageIndex: page }))}
         rowsPerPage={pagination.pageSize}
         onRowsPerPageChange={(e) =>
-          setPagination((prev) => ({
-            ...prev,
-            pageSize: parseInt(e.target.value, 10),
-            pageIndex: 0,
-          }))
+          setPagination((prev) => ({ ...prev, pageSize: parseInt(e.target.value, 10), pageIndex: 0 }))
         }
         rowsPerPageOptions={isMobile ? [10, 25] : [10, 25, 50, 100]}
-        labelRowsPerPage={isMobile ? 'Linhas:' : 'Linhas por página:'}
+        labelRowsPerPage={isMobile ? 'Linhas:' : 'Linhas:'}
         labelDisplayedRows={({ from, to, count }) =>
-          isMobile ? `${from}-${to}/${count}` : `${from}-${to} de ${count !== -1 ? count : `mais de ${to}`}`
+          isMobile ? `${from}-${to}/${count}` : `${from}–${to} de ${count !== -1 ? count : `mais de ${to}`}`
         }
         sx={{
+          borderTop: `1px solid ${BORDER}`,
+          backgroundColor: CANVAS,
           '.MuiTablePagination-toolbar': {
-            minHeight: isMobile ? '48px' : '52px',
-            paddingLeft: isMobile ? 1 : 2,
-            paddingRight: isMobile ? 0.5 : 2,
+            minHeight: 44,
+            paddingLeft: 2,
+            paddingRight: 2,
           },
           '.MuiTablePagination-selectLabel, .MuiTablePagination-displayedRows': {
-            fontSize: isMobile ? '0.75rem' : '0.875rem',
+            fontSize: '0.6875rem',
+            color: MUTED,
+            paddingTop: 0,
+            paddingBottom: 0,
+          },
+          '.MuiSelect-select, .MuiInputBase-root': {
+            fontSize: '0.6875rem',
+            color: TEXT,
+          },
+          '.MuiSvgIcon-root': {
+            fontSize: '1rem',
+            color: MUTED,
+          },
+          '.MuiIconButton-root': {
+            color: MUTED,
+            '&:hover': { color: TEXT },
           },
         }}
       />

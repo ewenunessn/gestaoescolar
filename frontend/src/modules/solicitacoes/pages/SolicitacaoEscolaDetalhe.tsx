@@ -207,7 +207,11 @@ export default function SolicitacaoEscolaDetalhe() {
             Voltar
           </Button>
         </Box>
-        <PageHeader title={escolaNome} subtitle="Solicitações de alimentos" />
+        <PageHeader
+          title={escolaNome}
+          subtitle="Solicitações de alimentos"
+          breadcrumbs={[{ label: 'Dashboard', path: '/dashboard' }, { label: 'Solicitações', path: '/solicitacoes-alimentos' }, { label: escolaNome }]}
+        />
 
         <Tabs value={aba} onChange={(_, v) => setAba(v)} sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}>
           <Tab label={`Pendentes (${pendentes.length})`} />

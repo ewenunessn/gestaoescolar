@@ -370,34 +370,31 @@ const GuiasDemandaLista: React.FC = () => {
     <Box
       sx={{
         height: 'calc(100vh - 56px)',
-        bgcolor: '#ffffff',
+        bgcolor: 'background.default',
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
       }}
     >
       <PageContainer fullHeight>
-        <PageBreadcrumbs
-          items={[
-            { label: 'Guias de Demanda', icon: <CalendarIcon fontSize="small" /> }
+        <PageHeader
+          title="Guias de Demanda"
+          breadcrumbs={[
+            { label: 'Dashboard', path: '/dashboard' },
+            { label: 'Guias de Demanda' },
           ]}
+          action={
+            <Button variant="contained" startIcon={<TableChartIcon />} onClick={() => setOpenGerarGuia(true)}
+              size="small" sx={{ bgcolor: '#1d4ed8', '&:hover': { bgcolor: '#1e40af' }, borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
+              Gerar Guia de Demanda
+            </Button>
+          }
         />
-        <PageHeader title="Guias de Demanda" />
 
         {/* DataTable com altura fixa para scroll */}
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
-            <Button
-              variant="contained"
-              startIcon={<TableChartIcon />}
-              onClick={() => setOpenGerarGuia(true)}
-              size="small"
-              sx={{ bgcolor: '#1d4ed8', '&:hover': { bgcolor: '#1e40af' } }}
-            >
-              Gerar Guia de Demanda
-            </Button>
-          </Box>
           <DataTable
+            title="Guias de Demanda"
             data={competenciasFiltradas}
             columns={columns}
             loading={loading}

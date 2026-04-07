@@ -78,7 +78,12 @@ const TableRowMemo = memo(function TableRowMemo<TData>({
       {row.getVisibleCells().map((cell: any) => (
         <TableCell 
           key={cell.id}
-          sx={{ width: cell.column.getSize() }}
+          sx={{ 
+            width: cell.column.getSize(),
+            borderBottom: '1px solid',
+            borderColor: 'divider',
+            bgcolor: 'background.paper'
+          }}
         >
           {flexRender(
             cell.column.columnDef.cell,
@@ -159,9 +164,11 @@ export const DataTableOptimized = memo(function DataTableOptimized<TData>({
         height: '100%',
         borderRadius: 2,
         overflow: 'hidden',
-        boxShadow: 'none',
+        boxShadow: 1,
         border: '1px solid',
         borderColor: 'divider',
+        bgcolor: 'transparent',
+        backgroundImage: 'none',
         // Otimização: usar will-change para preparar o browser
         willChange: 'transform',
       }}
@@ -174,6 +181,8 @@ export const DataTableOptimized = memo(function DataTableOptimized<TData>({
         flexShrink: 0,
         borderBottom: '1px solid',
         borderBottomColor: 'divider',
+        bgcolor: 'transparent',
+        background: 'transparent',
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {title && (

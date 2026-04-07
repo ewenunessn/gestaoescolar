@@ -272,7 +272,7 @@ const GestaoRotas: React.FC = () => {
     ], [navigate]);
 
     return (
-        <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
             {successMessage && (
                 <Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}>
                     <Alert severity="success" onClose={() => setSuccessMessage(null)}>
@@ -294,7 +294,10 @@ const GestaoRotas: React.FC = () => {
                         { label: 'Gestão de Rotas', icon: <RouteIcon fontSize="small" /> }
                     ]}
                 />
-                <PageHeader title="Gestão de Rotas de Entrega" />
+                <PageHeader
+                  title="Gestão de Rotas de Entrega"
+                  breadcrumbs={[{ label: 'Dashboard', path: '/dashboard' }, { label: 'Entregas' }, { label: 'Gestão de Rotas' }]}
+                />
 
                 {/* Legenda de Status */}
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 2, px: 1 }}>
@@ -330,6 +333,7 @@ const GestaoRotas: React.FC = () => {
                     </Box>
                 ) : (
                     <DataTableAdvanced
+                        title="Rotas"
                         data={filteredRotas}
                         columns={columns}
                         searchPlaceholder="Buscar rotas..."

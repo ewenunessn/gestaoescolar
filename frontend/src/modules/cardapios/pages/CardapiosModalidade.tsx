@@ -402,14 +402,27 @@ const CardapiosModalidadePage: React.FC = () => {
     <Box
       sx={{
         height: 'calc(100vh - 56px)',
-        bgcolor: '#ffffff',
+        bgcolor: 'background.default',
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
       }}
     >
       <PageContainer fullHeight>
-        <PageHeader title="Cardápios" />
+        <PageHeader
+          title="Cardápios"
+          totalCount={cardapiosFiltrados.length}
+          breadcrumbs={[
+            { label: 'Dashboard', path: '/dashboard' },
+            { label: 'Cardápios' },
+          ]}
+          action={
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpenDialog()}
+              sx={{ bgcolor: '#22c55e', '&:hover': { bgcolor: '#16a34a' }, borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
+              Novo Cardápio
+            </Button>
+          }
+        />
 
         {/* DataTable com altura fixa para scroll */}
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
@@ -419,8 +432,6 @@ const CardapiosModalidadePage: React.FC = () => {
             loading={loading}
             onRowClick={handleRowClick}
             searchPlaceholder="Buscar cardápios..."
-            onCreateClick={() => handleOpenDialog()}
-            createButtonLabel="Novo Cardápio"
             onFilterClick={(e) => setFilterAnchorEl(e.currentTarget)}
           />
         </Box>

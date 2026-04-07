@@ -375,9 +375,23 @@ const FornecedoresPage: React.FC = () => {
   };
 
   return (
-    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <PageContainer fullHeight>
-        <PageHeader title="Fornecedores" />
+        <PageHeader
+          title="Fornecedores"
+          totalCount={fornecedoresFiltrados.length}
+          breadcrumbs={[
+            { label: 'Dashboard', path: '/dashboard' },
+            { label: 'Cadastros' },
+            { label: 'Fornecedores' },
+          ]}
+          action={
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => openModal()}
+              sx={{ bgcolor: '#22c55e', '&:hover': { bgcolor: '#16a34a' }, borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
+              Novo Fornecedor
+            </Button>
+          }
+        />
 
         {/* DataTable com altura fixa para scroll */}
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
@@ -387,8 +401,6 @@ const FornecedoresPage: React.FC = () => {
             loading={loading}
             onRowClick={handleRowClick}
             searchPlaceholder="Buscar por nome ou CNPJ..."
-            onCreateClick={() => openModal()}
-            createButtonLabel="Novo Fornecedor"
             onFilterClick={(e) => setFilterAnchorEl(e.currentTarget)}
             onImportExportClick={(e) => setImportExportMenuAnchor(e.currentTarget)}
             initialPageSize={50}

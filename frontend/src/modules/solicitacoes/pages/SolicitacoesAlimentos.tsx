@@ -1,17 +1,26 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
-  Box, Tabs, Tab, CircularProgress, Typography, List, ListItemButton,
-  ListItemText, ListItemSecondaryAction, Chip, TextField, InputAdornment,
+  Box, Chip, Tabs, Tab,
 } from "@mui/material";
-import { Search as SearchIcon } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import PageContainer from "../../../components/PageContainer";
 import PageHeader from "../../../components/PageHeader";
 import { useToast } from "../../../hooks/useToast";
 import { listarTodasSolicitacoes, Solicitacao } from "../../../services/solicitacoesAlimentos";
 import { useQuery } from "@tanstack/react-query";
+import { DataTable } from "../../../components/DataTable";
+import { ColumnDef } from "@tanstack/react-table";
 
-function agruparPorEscola(rows: Solicitacao[]) {
+interface EscolaAgrupada {
+  escola_id: number;
+  escola_nome: string;
+  total_solicitacoes: number;
+  pendentes: number;
+  ultima_solicitacao: string;
+  status: 'pendente' | 'concluida';
+}
+
+function agruparPorEscola(rows: Solicitacao[]): EscolaAgrupada[] {
   const map = new Map<number, { escola_id: number; escola_nome: string; solicitacoes: Solicitacao[] }>();
   for (const s of rows) {
     if (!map.has(s.escola_id)) {
@@ -19,18 +28,28 @@ function agruparPorEscola(rows: Solicitacao[]) {
     }
     map.get(s.escola_id)!.solicitacoes.push(s);
   }
-  return Array.from(map.values());
-}
-
-function temPendencia(solicitacoes: Solicitacao[]) {
-  return solicitacoes.some(s => s.status === 'pendente' || s.status === 'parcial');
+  
+  return Array.from(map.values()).map(g => {
+    const pendentes = g.solicitacoes.filter(s => s.status === 'pendente' || s.status === 'parcial');
+    const maisAntiga = g.solicitacoes.length > 0
+      ? g.solicitacoes.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+      : null;
+    
+    return {
+      escola_id: g.escola_id,
+      escola_nome: g.escola_nome,
+      total_solicitacoes: g.solicitacoes.length,
+      pendentes: pendentes.length,
+      ultima_solicitacao: maisAntiga ? maisAntiga.created_at : '',
+      status: pendentes.length > 0 ? 'pendente' : 'concluida',
+    };
+  });
 }
 
 export default function SolicitacoesAlimentos() {
   const toast = useToast();
   const navigate = useNavigate();
   const [aba, setAba] = useState(0);
-  const [busca, setBusca] = useState('');
 
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ['solicitacoes-alimentos'],
@@ -38,88 +57,101 @@ export default function SolicitacoesAlimentos() {
     onError: () => toast.error('Erro ao carregar solicitações'),
   } as any);
 
-  const grupos = agruparPorEscola(rows as Solicitacao[]);
-  const comPendencia = grupos.filter(g => temPendencia(g.solicitacoes));
-  const semPendencia = grupos.filter(g => !temPendencia(g.solicitacoes));
+  const escolas = useMemo(() => agruparPorEscola(rows as Solicitacao[]), [rows]);
+  
+  const escolasFiltradas = useMemo(() => {
+    if (aba === 0) {
+      return escolas.filter(e => e.status === 'pendente').sort((a, b) => 
+        new Date(a.ultima_solicitacao).getTime() - new Date(b.ultima_solicitacao).getTime()
+      );
+    }
+    return escolas.filter(e => e.status === 'concluida');
+  }, [escolas, aba]);
 
-  const lista = (aba === 0 ? comPendencia : semPendencia).filter(g =>
-    !busca || g.escola_nome.toLowerCase().includes(busca.toLowerCase())
-  );
+  const columns: ColumnDef<EscolaAgrupada>[] = useMemo(() => [
+    {
+      accessorKey: 'escola_nome',
+      header: 'Escola',
+      size: 300,
+    },
+    {
+      accessorKey: 'total_solicitacoes',
+      header: 'Total',
+      size: 100,
+      cell: ({ getValue }) => getValue() as number,
+    },
+    {
+      accessorKey: 'pendentes',
+      header: 'Pendentes',
+      size: 120,
+      cell: ({ getValue }) => {
+        const pendentes = getValue() as number;
+        if (pendentes === 0) return '-';
+        return (
+          <Chip
+            label={`${pendentes} pendente${pendentes > 1 ? 's' : ''}`}
+            color="warning"
+            size="small"
+          />
+        );
+      },
+    },
+    {
+      accessorKey: 'ultima_solicitacao',
+      header: 'Última Solicitação',
+      size: 150,
+      cell: ({ getValue }) => {
+        const data = getValue() as string;
+        if (!data) return '-';
+        return new Date(data).toLocaleDateString('pt-BR');
+      },
+    },
+    {
+      accessorKey: 'status',
+      header: 'Status',
+      size: 120,
+      cell: ({ getValue }) => {
+        const status = getValue() as string;
+        return (
+          <Chip
+            label={status === 'pendente' ? 'Pendente' : 'Concluída'}
+            color={status === 'pendente' ? 'warning' : 'success'}
+            size="small"
+          />
+        );
+      },
+    },
+  ], []);
 
-  // Ordena pendentes por data da solicitação mais antiga pendente
-  if (aba === 0) {
-    lista.sort((a, b) => {
-      const dataA = a.solicitacoes.filter(s => s.status === 'pendente' || s.status === 'parcial')
-        .map(s => new Date(s.created_at).getTime()).sort()[0] ?? 0;
-      const dataB = b.solicitacoes.filter(s => s.status === 'pendente' || s.status === 'parcial')
-        .map(s => new Date(s.created_at).getTime()).sort()[0] ?? 0;
-      return dataA - dataB;
-    });
-  }
+  const comPendencia = escolas.filter(e => e.status === 'pendente');
+  const semPendencia = escolas.filter(e => e.status === 'concluida');
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: "background.default" }}>
-      <PageContainer>
-        <PageHeader title="Solicitações de Alimentos" subtitle="Solicitações enviadas pelas escolas" />
-
-        <Box sx={{ display: 'flex', gap: 1.5, mb: 2 }}>
-          <TextField
-            size="small"
-            placeholder="Buscar escola..."
-            value={busca}
-            onChange={e => setBusca(e.target.value)}
-            InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }}
-            sx={{ width: 260 }}
-          />
-        </Box>
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <PageContainer fullHeight>
+        <PageHeader
+          title="Solicitações de Alimentos"
+          subtitle="Solicitações enviadas pelas escolas"
+          breadcrumbs={[{ label: 'Dashboard', path: '/dashboard' }, { label: 'Solicitações' }]}
+        />
 
         <Tabs value={aba} onChange={(_, v) => setAba(v)} sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}>
           <Tab label={`Pendentes (${comPendencia.length})`} />
           <Tab label={`Concluídas (${semPendencia.length})`} />
         </Tabs>
 
-        {isLoading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>
-        ) : lista.length === 0 ? (
-          <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
-            Nenhuma escola encontrada
-          </Typography>
-        ) : (
-          <List disablePadding>
-            {lista.map(g => {
-              const pendentes = g.solicitacoes.filter(s => s.status === 'pendente' || s.status === 'parcial');
-              const maisAntiga = pendentes.length > 0
-                ? pendentes.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0]
-                : g.solicitacoes[0];
-              return (
-                <ListItemButton
-                  key={g.escola_id}
-                  divider
-                  onClick={() => navigate(`/solicitacoes-alimentos/${g.escola_id}`)}
-                  sx={{ borderRadius: 1, mb: 0.5 }}
-                >
-                  <ListItemText
-                    primary={g.escola_nome}
-                    secondary={
-                      maisAntiga
-                        ? `Última solicitação: ${new Date(maisAntiga.created_at).toLocaleDateString('pt-BR')}`
-                        : undefined
-                    }
-                  />
-                  <ListItemSecondaryAction>
-                    {pendentes.length > 0 && (
-                      <Chip
-                        label={`${pendentes.length} pendente${pendentes.length > 1 ? 's' : ''}`}
-                        color="warning"
-                        size="small"
-                      />
-                    )}
-                  </ListItemSecondaryAction>
-                </ListItemButton>
-              );
-            })}
-          </List>
-        )}
+        {/* DataTable com altura fixa para scroll */}
+        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <DataTable
+            title={aba === 0 ? "Escolas com Pendências" : "Escolas Concluídas"}
+            data={escolasFiltradas}
+            columns={columns}
+            loading={isLoading}
+            onRowClick={(row) => navigate(`/solicitacoes-alimentos/${row.escola_id}`)}
+            searchPlaceholder="Buscar escola..."
+            initialPageSize={50}
+          />
+        </Box>
       </PageContainer>
     </Box>
   );

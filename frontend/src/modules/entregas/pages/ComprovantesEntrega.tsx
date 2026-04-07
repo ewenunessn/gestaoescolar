@@ -450,9 +450,17 @@ export default function ComprovantesEntrega() {
   }), [comprovantes]);
 
   return (
-    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <PageContainer fullHeight>
-        <PageHeader title="Comprovantes de Entrega" />
+        <PageHeader
+          title="Comprovantes de Entrega"
+          totalCount={estatisticas.total}
+          breadcrumbs={[
+            { label: 'Dashboard', path: '/dashboard' },
+            { label: 'Entregas', path: '/entregas' },
+            { label: 'Comprovantes' },
+          ]}
+        />
 
         {/* Estatísticas */}
         <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
@@ -477,6 +485,7 @@ export default function ComprovantesEntrega() {
         )}
 
         <DataTableAdvanced
+          title="Comprovantes de Entrega"
           data={comprovantes}
           columns={columns}
           searchPlaceholder="Buscar comprovantes..."

@@ -990,6 +990,7 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({
     <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
       {/* DataTable com estatísticas e filtros no toolbar */}
       <DataTableAdvanced
+        title="Escolas para Entrega"
         data={escolas}
         columns={columns}
         loading={loading}

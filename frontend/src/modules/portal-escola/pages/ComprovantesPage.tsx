@@ -253,21 +253,27 @@ export default function ComprovantesPage() {
   }
 
   return (
-    <PageContainer>
-      <PageHeader
-        title="Comprovantes de Entrega"
-        subtitle="Visualize os comprovantes de entrega da sua escola"
-      />
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <PageContainer fullHeight>
+        <PageHeader
+          title="Comprovantes de Entrega"
+          subtitle="Visualize os comprovantes de entrega da sua escola"
+          breadcrumbs={[{ label: 'Dashboard', path: '/dashboard' }, { label: 'Portal Escola' }, { label: 'Comprovantes' }]}
+        />
 
-      <Button
-        startIcon={<ArrowBackIcon />}
-        onClick={() => navigate('/portal-escola')}
-        sx={{ mb: 3 }}
-      >
-        Voltar ao Portal
-      </Button>
+        <Button
+          startIcon={<ArrowBackIcon />}
+          onClick={() => navigate('/portal-escola')}
+          sx={{ mb: 3 }}
+        >
+          Voltar ao Portal
+        </Button>
 
-      <DataTable columns={columns} data={comprovantes} />
+        {/* DataTable com altura fixa para scroll */}
+        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <DataTable title="Comprovantes" columns={columns} data={comprovantes} />
+        </Box>
+      </PageContainer>
 
       {/* Dialog Detalhes */}
       <Dialog open={detalhesOpen} onClose={() => setDetalhesOpen(false)} maxWidth="md" fullWidth>
@@ -318,6 +324,6 @@ export default function ComprovantesPage() {
           </Button>
         </DialogActions>
       </Dialog>
-    </PageContainer>
+    </Box>
   );
 }

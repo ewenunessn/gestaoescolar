@@ -201,10 +201,11 @@ const EstoqueCentralPage: React.FC = () => {
   }), [posicoes, alertas]);
 
   return (
-    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden' }}>
       <PageContainer fullHeight>
-          <PageHeader 
+          <PageHeader
             title="Estoque Central"
+            breadcrumbs={[{ label: 'Dashboard', path: '/dashboard' }, { label: 'Estoque' }, { label: 'Estoque Central' }]}
           />
 
         <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', p: 3, mb: 3 }}>

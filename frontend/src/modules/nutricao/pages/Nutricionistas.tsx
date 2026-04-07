@@ -280,9 +280,23 @@ const NutricionistasPage = () => {
   }
 
   return (
-    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <PageContainer fullHeight>
-        <PageHeader title="Nutricionistas" />
+        <PageHeader
+          title="Nutricionistas"
+          totalCount={nutricionistasFiltrados.length}
+          breadcrumbs={[
+            { label: 'Dashboard', path: '/dashboard' },
+            { label: 'Cadastros' },
+            { label: 'Nutricionistas' },
+          ]}
+          action={
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => openModal()}
+              sx={{ bgcolor: '#22c55e', '&:hover': { bgcolor: '#16a34a' }, borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
+              Novo Nutricionista
+            </Button>
+          }
+        />
 
         {/* DataTable com altura fixa para scroll */}
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
@@ -292,8 +306,6 @@ const NutricionistasPage = () => {
             loading={loading}
             onRowClick={handleRowClick}
             searchPlaceholder="Buscar nutricionistas..."
-            onCreateClick={() => openModal()}
-            createButtonLabel="Novo Nutricionista"
             onFilterClick={(e) => setFilterAnchorEl(e.currentTarget)}
             initialPageSize={50}
           />

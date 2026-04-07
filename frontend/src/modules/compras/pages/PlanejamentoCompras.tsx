@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { usePageTitle } from "../../../contexts/PageTitleContext";
 import { useToast } from "../../../hooks/useToast";
 import CalculoDetalhadoModal from "../../../components/CalculoDetalhadoModal";
 import SeletorPeriodoCalendario from "../../../components/SeletorPeriodoCalendario";
@@ -48,7 +47,7 @@ import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { ptBR } from "date-fns/locale";
 import PageContainer from "../../../components/PageContainer";
-import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
+import PageHeader from "../../../components/PageHeader";
 import { listarEscolas } from "../../../services/escolas";
 
 interface Escola {
@@ -71,7 +70,6 @@ import {
 import { guiaService } from "../../../services/guiaService";
 
 export default function PlanejamentoCompras() {
-  const { setPageTitle } = usePageTitle();
   const toast = useToast();
   const navigate = useNavigate();
 
@@ -108,9 +106,8 @@ export default function PlanejamentoCompras() {
   const [resultadoPedidoGuia, setResultadoPedidoGuia] = useState<GerarPedidoDaGuiaResponse | null>(null);
 
   useEffect(() => {
-    setPageTitle('Planejamento de Compras');
     carregarDados();
-  }, [setPageTitle]);
+  }, []);
 
   async function carregarDados() {
     setLoading(true);
@@ -427,11 +424,9 @@ export default function PlanejamentoCompras() {
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ptBR}>
       <PageContainer>
-        <PageBreadcrumbs
-          items={[
-            { label: 'Compras', path: '/compras' },
-            { label: 'Planejamento de Compras' }
-          ]}
+        <PageHeader
+          title="Planejamento de Compras"
+          breadcrumbs={[{ label: 'Dashboard', path: '/dashboard' }, { label: 'Compras' }, { label: 'Planejamento' }]}
         />
 
         <Grid container spacing={2}>

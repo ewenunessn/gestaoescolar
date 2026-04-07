@@ -116,6 +116,7 @@ export default function CardapioPage() {
       <PageHeader
         title="Cardápio Semanal"
         subtitle="Visualize o cardápio da semana"
+        breadcrumbs={[{ label: 'Dashboard', path: '/dashboard' }, { label: 'Portal Escola' }, { label: 'Cardápio' }]}
       />
 
       <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>

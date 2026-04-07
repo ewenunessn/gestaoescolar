@@ -494,7 +494,7 @@ export default function DemandasLista() {
   }
 
   return (
-    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden' }}>
       {erro && (
         <Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}>
           <Alert severity="error" onClose={() => setErro('')}>
@@ -504,8 +504,12 @@ export default function DemandasLista() {
       )}
 
       <PageContainer fullHeight>
-        <PageHeader 
+        <PageHeader
           title="Gerenciamento de Demandas"
+          breadcrumbs={[
+            { label: 'Dashboard', path: '/dashboard' },
+            { label: 'Demandas' },
+          ]}
         />
         
         <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', p: 3, mb: 3 }}>

@@ -355,23 +355,17 @@ export default function PedidoDetalhe() {
   const ehConcluido = pedido.status === 'concluido';
 
   return (
-    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden' }}>
       <PageContainer fullHeight>
-        {/* Cabeçalho */}
-        <Box sx={{ px: 2, py: 1, bgcolor: 'white', borderBottom: '1px solid #e9ecef' }}>
-
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 0.5 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                Compra {pedido.numero}
-              </Typography>
-              <Chip label={statusInfo?.label || pedido.status} color={statusInfo?.color as any || 'default'} />
-              <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'primary.main' }}>
-                {formatarMoeda(pedido.valor_total)}
-              </Typography>
-            </Box>
-
-            <Box sx={{ display: 'flex', gap: 1 }}>
+        <PageHeader
+          title={`Compra ${pedido.numero}`}
+          breadcrumbs={[
+            { label: 'Dashboard', path: '/dashboard' },
+            { label: 'Compras', path: '/compras' },
+            { label: `Compra ${pedido.numero}` },
+          ]}
+          action={
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
               <FormControl sx={{ minWidth: 120 }}>
                 <InputLabel>Status</InputLabel>
                 <Select value={pedido.status} label="Status"
@@ -405,22 +399,14 @@ export default function PedidoDetalhe() {
                 Excluir
               </Button>
             </Box>
-          </Box>
+          }
+        />
 
-          <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-            {pedido.numero} · {formatarData(pedido.data_pedido)} · {pedido.usuario_criacao_nome}
-            {pedido.usuario_aprovacao_nome && ` · Aprovado: ${pedido.usuario_aprovacao_nome}`}
-            {' · '}{new Set(pedido.itens.map(i => i.fornecedor_nome)).size} fornecedor(es)
-            {' · '}{pedido.itens.length} {pedido.itens.length === 1 ? 'item' : 'itens'}
-          </Typography>
-
-          {pedido.observacoes && (
-            <Alert severity="info" sx={{ mt: 0.75, py: 0.25, '& .MuiAlert-message': { py: 0.25 } }}>
-              <Typography variant="caption">{pedido.observacoes}</Typography>
-            </Alert>
-          )}
-          {erro && <Alert severity="error" sx={{ mt: 0.75 }} onClose={() => setErro('')}>{erro}</Alert>}
-        </Box>
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+          {pedido.numero} · {formatarData(pedido.data_pedido)} · {pedido.usuario_criacao_nome}
+          {pedido.usuario_aprovacao_nome && ` · Aprovado: ${pedido.usuario_aprovacao_nome}`}
+        </Typography>
+        {erro && <Alert severity="error" sx={{ mt: 0.75 }} onClose={() => setErro('')}>{erro}</Alert>}
 
         {/* Tabela */}
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1, mt: 1.5 }}>

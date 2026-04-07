@@ -251,9 +251,10 @@ export default function EstoqueEscolaPortal() {
 
   return (
     <PageContainer>
-      <PageHeader 
-        title="Estoque da Escola" 
+      <PageHeader
+        title="Estoque da Escola"
         subtitle={escola?.nome || ''}
+        breadcrumbs={[{ label: 'Dashboard', path: '/dashboard' }, { label: 'Portal Escola' }, { label: 'Estoque' }]}
       />
 
       <Card sx={{ p: 3, mb: 3 }}>

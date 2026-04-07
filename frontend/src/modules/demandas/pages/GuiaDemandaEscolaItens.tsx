@@ -440,7 +440,7 @@ const GuiaDemandaEscolaItens: React.FC = () => {
   }
 
   return (
-    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden' }}>
       <PageContainer fullHeight>
         {/* Estatísticas discretas */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -477,6 +477,7 @@ const GuiaDemandaEscolaItens: React.FC = () => {
             </Box>
           ) : (
             <DataTableAdvanced
+              title="Itens da Demanda"
               data={itens}
               columns={columns}
               loading={loading}

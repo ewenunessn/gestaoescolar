@@ -2,16 +2,15 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import PageContainer from "../../../components/PageContainer";
-import {
-  Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, TextField, CircularProgress, Alert, IconButton,
-  Card, Tooltip, InputAdornment
-} from "@mui/material";
-import { Search as SearchIcon, Category as CategoryIcon } from "@mui/icons-material";
-import CompactPagination from "../../../components/CompactPagination";
+import PageHeader from "../../../components/PageHeader";
+import { Search as SearchIcon } from "@mui/icons-material";
 import { listarEscolas, listarEscolaModalidades, adicionarEscolaModalidade, editarEscolaModalidade, removerEscolaModalidade } from "../../../services/escolas";
 import { listarModalidades } from "../../../services/modalidades";
 import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
+
+// ── Design tokens ──────────────────────────────────────────────
+const GREEN = "#22c55e";
+const NAVY = "#0f172a";
 
 interface Escola {
   id: number;
@@ -232,21 +231,17 @@ const GerenciarAlunosModalidades: React.FC = () => {
   }
 
   return (
-    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: '#ffffff', overflow: 'hidden' }}>
+    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden' }}>
       <PageContainer fullHeight>
-        <PageBreadcrumbs 
-          items={[
-            { label: 'Modalidades', path: '/modalidades', icon: <CategoryIcon fontSize="small" /> },
-            { label: 'Gerenciar Alunos por Modalidade' }
+        <PageHeader
+          title="Gerenciar Alunos por Modalidade"
+          subtitle="Gerencie a quantidade de alunos por modalidade em cada escola"
+          breadcrumbs={[
+            { label: 'Dashboard', path: '/dashboard' },
+            { label: 'Escolas', path: '/escolas' },
+            { label: 'Alunos e Modalidades' },
           ]}
         />
-        {/* Header */}
-        <Typography variant="h4" sx={{ fontWeight: 700, mb: 2 }}>
-          Gerenciar Alunos por Modalidade
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Digite a quantidade de alunos de cada modalidade em cada escola. O salvamento é automático.
-        </Typography>
 
         {error && (
           <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 3 }}>
@@ -275,17 +270,17 @@ const GerenciarAlunosModalidades: React.FC = () => {
           />
         </Box>
 
-        {/* Tabela */}
-        <Card sx={{ borderRadius: '12px', overflow: 'hidden' }}>
+        {/* Table card */}
+        <Card sx={{ borderRadius: '6px', overflow: 'hidden', border: '1px solid #e5e7eb' }}>
           <TableContainer sx={{ maxHeight: 'calc(100vh - 250px)' }}>
             <Table>
               <TableHead>
-                <TableRow>
-                  <TableCell sx={{ minWidth: 200, position: 'sticky', left: 0, zIndex: 3, bgcolor: 'grey.100' }}>
+                <TableRow sx={{ bgcolor: '#f8fafc' }}>
+                  <TableCell sx={{ minWidth: 200, position: 'sticky', left: 0, zIndex: 3, bgcolor: '#f8fafc', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.5px', color: '#64748b' }}>
                     Escola
                   </TableCell>
                   {modalidades.map((modalidade) => (
-                    <TableCell key={modalidade.id} align="center" sx={{ minWidth: 150 }}>
+                    <TableCell key={modalidade.id} align="center" sx={{ minWidth: 150, fontWeight: 700, textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.5px', color: '#64748b' }}>
                       {modalidade.nome}
                     </TableCell>
                   ))}

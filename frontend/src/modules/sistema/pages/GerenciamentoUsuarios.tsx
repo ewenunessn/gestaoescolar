@@ -20,13 +20,15 @@ import {
 import api from "../../../services/api";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+const NAVY = "#0f172a";
+const GREEN = "#22c55e";
 
 const NIVEL_COLORS: Record<number, "default" | "info" | "warning" | "success"> = {
   0: "default", 1: "info", 2: "warning", 3: "success",
 };
 
 function NivelChip({ nivel, nome }: { nivel: number; nome: string }) {
-  return <Chip label={nome} color={NIVEL_COLORS[nivel] ?? "default"} size="small" />;
+  return <Chip label={nome} color={NIVEL_COLORS[nivel] ?? "default"} size="small" sx={{ borderRadius: '3px', fontWeight: 500 }} />;
 }
 
 // ─── Dialog: Usuário ─────────────────────────────────────────────────────────
@@ -74,7 +76,7 @@ function UsuarioDialog({ open, usuario, funcoes, escolas, onClose, onSave }: Usu
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>{usuario ? "Editar Usuário" : "Novo Usuário"}</DialogTitle>
       <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 2 }}>
-        {erro && <Alert severity="error">{erro}</Alert>}
+        {erro && <Alert severity="error" sx={{ borderRadius: '6px' }}>{erro}</Alert>}
         <TextField label="Nome" value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} fullWidth required />
         <TextField label="E-mail" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} fullWidth required />
         <TextField
@@ -108,9 +110,9 @@ function UsuarioDialog({ open, usuario, funcoes, escolas, onClose, onSave }: Usu
         </FormControl>
         <FormControl fullWidth>
           <InputLabel>Tipo de Secretaria</InputLabel>
-          <Select 
-            value={form.tipo_secretaria} 
-            label="Tipo de Secretaria" 
+          <Select
+            value={form.tipo_secretaria}
+            label="Tipo de Secretaria"
             onChange={e => setForm(f => ({ ...f, tipo_secretaria: e.target.value as 'educacao' | 'escola', escola_id: e.target.value === 'educacao' ? '' : f.escola_id }))}
           >
             <MenuItem value="educacao">Secretaria de Educação</MenuItem>
@@ -160,7 +162,6 @@ interface FuncaoDialogProps {
 function FuncaoDialog({ open, funcao, modulos, niveis, onClose, onSave }: FuncaoDialogProps) {
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
-  // mapa modulo_id -> nivel_permissao_id
   const [perms, setPerms] = useState<Record<number, number>>({});
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState("");
@@ -200,7 +201,7 @@ function FuncaoDialog({ open, funcao, modulos, niveis, onClose, onSave }: Funcao
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>{funcao ? "Editar Função" : "Nova Função"}</DialogTitle>
       <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 2 }}>
-        {erro && <Alert severity="error">{erro}</Alert>}
+        {erro && <Alert severity="error" sx={{ borderRadius: '6px' }}>{erro}</Alert>}
         <TextField label="Nome da Função" value={nome} onChange={e => setNome(e.target.value)} fullWidth required />
         <TextField label="Descrição" value={descricao} onChange={e => setDescricao(e.target.value)} fullWidth multiline rows={2} />
         <Divider />
@@ -258,13 +259,11 @@ export default function GerenciamentoUsuarios() {
   const [escolas, setEscolas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState("");
-  
-  // Estados de loading para operações
+
   const [salvandoUsuario, setSalvandoUsuario] = useState(false);
   const [salvandoFuncao, setSalvandoFuncao] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
 
-  // Dialogs
   const [usuarioDialog, setUsuarioDialog] = useState<{ open: boolean; usuario?: Usuario | null }>({ open: false });
   const [funcaoDialog, setFuncaoDialog] = useState<{ open: boolean; funcao?: Funcao | null }>({ open: false });
   const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; tipo: "usuario" | "funcao"; id: number; nome: string } | null>(null);
@@ -274,9 +273,9 @@ export default function GerenciamentoUsuarios() {
     setErro("");
     try {
       const [u, f, m, n, esc] = await Promise.all([
-        getUsuarios(), 
-        getFuncoes(), 
-        getModulos(), 
+        getUsuarios(),
+        getFuncoes(),
+        getModulos(),
         getNiveis(),
         api.get('/escolas').then(res => res.data.data || res.data)
       ]);
@@ -297,29 +296,19 @@ export default function GerenciamentoUsuarios() {
   const handleSaveUsuario = async (data: any) => {
     setSalvandoUsuario(true);
     try {
-      if (usuarioDialog.usuario) {
-        await atualizarUsuario(usuarioDialog.usuario.id, data);
-      } else {
-        await criarUsuario(data);
-      }
+      if (usuarioDialog.usuario) await atualizarUsuario(usuarioDialog.usuario.id, data);
+      else await criarUsuario(data);
       await carregar();
-    } finally {
-      setSalvandoUsuario(false);
-    }
+    } finally { setSalvandoUsuario(false); }
   };
 
   const handleSaveFuncao = async (data: any) => {
     setSalvandoFuncao(true);
     try {
-      if (funcaoDialog.funcao) {
-        await atualizarFuncao(funcaoDialog.funcao.id, data);
-      } else {
-        await criarFuncao(data);
-      }
+      if (funcaoDialog.funcao) await atualizarFuncao(funcaoDialog.funcao.id, data);
+      else await criarFuncao(data);
       await carregar();
-    } finally {
-      setSalvandoFuncao(false);
-    }
+    } finally { setSalvandoFuncao(false); }
   };
 
   const handleDelete = async () => {
@@ -333,86 +322,137 @@ export default function GerenciamentoUsuarios() {
     } catch (e: any) {
       setErro(e?.response?.data?.message || "Erro ao excluir");
       setConfirmDelete(null);
-    } finally {
-      setExcluindo(false);
-    }
+    } finally { setExcluindo(false); }
   };
 
+  const GreenButton = ({ startIcon, onClick, label }: { startIcon: React.ReactNode; onClick: () => void; label: string }) => (
+    <Button
+      variant="contained"
+      startIcon={startIcon}
+      onClick={onClick}
+      sx={{
+        borderRadius: '4px',
+        textTransform: 'none',
+        fontWeight: 600,
+        bgcolor: GREEN,
+        '&:hover': { bgcolor: '#16a34a' },
+        fontSize: '0.82rem',
+      }}
+    >
+      {label}
+    </Button>
+  );
+
+  const SectionBar = ({ color, label }: { color: string; label: string }) => (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+      <Box sx={{ width: 16, height: 3, borderRadius: 2, bgcolor: color }} />
+      <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color }}>
+        {label}
+      </Typography>
+    </Box>
+  );
+
   return (
-    <Box sx={{ p: 3 }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 3 }}>
-          <AdminPanelSettings color="primary" />
-          <Typography variant="h5" fontWeight={700}>Gerenciamento de Usuários</Typography>
+    <>
+      {/* Navy header bar */}
+      <Box
+        sx={{
+          mx: '-20px',
+          mt: '-12px',
+          mb: 3,
+          px: '28px',
+          py: 2.5,
+          background: `linear-gradient(135deg, ${NAVY}, #1e293b)`,
+          position: 'relative',
+        }}
+      >
+        <Box sx={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${GREEN}44, transparent)` }} />
+        <Typography sx={{ fontWeight: 800, fontSize: '1.55rem', color: '#fff', display: 'flex', alignItems: 'center', gap: 1.2, letterSpacing: '-0.5px' }}>
+          <AdminPanelSettings sx={{ color: GREEN }} />
+          Gerenciamento de Usuários
+        </Typography>
+        <Typography sx={{ fontSize: '0.82rem', color: '#94a3b8' }}>
+          Gerencie usuários, funções e permissões do sistema
+        </Typography>
+      </Box>
+
+      {erro && <Alert severity="error" sx={{ mb: 2, borderRadius: '6px' }} onClose={() => setErro("")}>{erro}</Alert>}
+
+      <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 3 }}>
+        <Tab icon={<People fontSize="small" />} iconPosition="start" label="Usuários" />
+        <Tab icon={<Lock fontSize="small" />} iconPosition="start" label="Funções e Permissões" />
+      </Tabs>
+
+      {loading ? (
+        <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
+          <CircularProgress />
         </Box>
+      ) : (
+        <>
+          {/* ── Aba Usuários ── */}
+          {tab === 0 && (
+            <Box>
+              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+                <SectionBar color={GREEN} label="Usuários cadastrados" />
+                <GreenButton startIcon={<Add />} onClick={() => setUsuarioDialog({ open: true, usuario: null })} label="Novo Usuário" />
+              </Box>
 
-        {erro && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setErro("")}>{erro}</Alert>}
-
-        <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 3, borderBottom: 1, borderColor: "divider" }}>
-          <Tab icon={<People fontSize="small" />} iconPosition="start" label="Usuários" />
-          <Tab icon={<Lock fontSize="small" />} iconPosition="start" label="Funções e Permissões" />
-        </Tabs>
-
-        {loading ? (
-          <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
-            <CircularProgress />
-          </Box>
-        ) : (
-          <>
-            {/* ── Aba Usuários ── */}
-            {tab === 0 && (
-              <Box>
-                <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
-                  <Button variant="contained" startIcon={<Add />} onClick={() => setUsuarioDialog({ open: true, usuario: null })}>
-                    Novo Usuário
-                  </Button>
-                </Box>
-                <TableContainer component={Paper} variant="outlined">
-                  <Table>
-                    <TableHead>
-                      <TableRow sx={{ bgcolor: "grey.50" }}>
-                        <TableCell>Nome</TableCell>
-                        <TableCell>E-mail</TableCell>
-                        <TableCell>Tipo</TableCell>
-                        <TableCell>Função</TableCell>
-                        <TableCell>Escola</TableCell>
-                        <TableCell>Status</TableCell>
-                        <TableCell align="right">Ações</TableCell>
+              <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '6px', overflow: 'hidden' }}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Nome</TableCell>
+                      <TableCell>E-mail</TableCell>
+                      <TableCell>Tipo</TableCell>
+                      <TableCell>Função</TableCell>
+                      <TableCell>Escola</TableCell>
+                      <TableCell>Status</TableCell>
+                      <TableCell align="right">Ações</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {usuarios.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={7} align="center" sx={{ py: 4, color: "text.secondary" }}>
+                          Nenhum usuário cadastrado
+                        </TableCell>
                       </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {usuarios.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={6} align="center" sx={{ py: 4, color: "text.secondary" }}>
-                            Nenhum usuário cadastrado
-                          </TableCell>
-                        </TableRow>
-                      )}
-                      {usuarios.map(u => (
-                        <TableRow key={u.id} hover>
-                          <TableCell>{u.nome}</TableCell>
-                          <TableCell>{u.email}</TableCell>
-                          <TableCell>
-                            <Chip
-                              label={u.tipo === "admin" ? "Administrador" : "Usuário"}
-                              color={u.tipo === "admin" ? "error" : "default"}
-                              size="small"
-                            />
-                          </TableCell>
-                          <TableCell>{u.funcao_nome ?? <Typography variant="body2" color="text.secondary">—</Typography>}</TableCell>
-                          <TableCell>
-                            {u.escola_nome ? (
-                              <Chip label={u.escola_nome} size="small" color="primary" variant="outlined" />
-                            ) : (
-                              <Typography variant="body2" color="text.secondary">—</Typography>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Chip label={u.ativo ? "Ativo" : "Inativo"} color={u.ativo ? "success" : "default"} size="small" />
-                          </TableCell>
-                          <TableCell align="right">
+                    )}
+                    {usuarios.map(u => (
+                      <TableRow key={u.id}>
+                        <TableCell sx={{ fontWeight: 500 }}>{u.nome}</TableCell>
+                        <TableCell>{u.email}</TableCell>
+                        <TableCell>
+                          <Chip
+                            label={u.tipo === "admin" ? "Administrador" : "Usuário"}
+                            color={u.tipo === "admin" ? "error" : "default"}
+                            size="small"
+                            sx={{ borderRadius: '3px', fontWeight: 500 }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          {u.funcao_nome ?? <Typography variant="body2" color="text.secondary">—</Typography>}
+                        </TableCell>
+                        <TableCell>
+                          {u.escola_nome ? (
+                            <Chip label={u.escola_nome} size="small" color="primary" variant="outlined" sx={{ borderRadius: '3px', fontWeight: 500 }} />
+                          ) : (
+                            <Typography variant="body2" color="text.secondary">—</Typography>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label={u.ativo ? "Ativo" : "Inativo"}
+                            color={u.ativo ? "success" : "default"}
+                            size="small"
+                            sx={{ borderRadius: '3px', fontWeight: 500 }}
+                          />
+                        </TableCell>
+                        <TableCell align="right">
+                          <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
                             <Tooltip title="Editar">
-                              <IconButton 
-                                size="small" 
+                              <IconButton
+                                size="small"
                                 onClick={() => setUsuarioDialog({ open: true, usuario: u })}
                                 disabled={salvandoUsuario || excluindo}
                               >
@@ -420,89 +460,94 @@ export default function GerenciamentoUsuarios() {
                               </IconButton>
                             </Tooltip>
                             <Tooltip title="Excluir">
-                              <IconButton 
-                                size="small" 
-                                color="error" 
-                                onClick={() => setConfirmDelete({ open: true, tipo: "usuario", id: u.id, nome: u.nome })}
-                                disabled={salvandoUsuario || excluindo}
-                              >
-                                <Delete fontSize="small" />
-                              </IconButton>
+                              <span>
+                                <IconButton
+                                  size="small"
+                                  color="error"
+                                  onClick={() => setConfirmDelete({ open: true, tipo: "usuario", id: u.id, nome: u.nome })}
+                                  disabled={salvandoUsuario || excluindo}
+                                >
+                                  <Delete fontSize="small" />
+                                </IconButton>
+                              </span>
                             </Tooltip>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </Box>
-            )}
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Box>
+          )}
 
-            {/* ── Aba Funções ── */}
-            {tab === 1 && (
-              <Box>
-                <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
-                  <Button variant="contained" startIcon={<Add />} onClick={() => setFuncaoDialog({ open: true, funcao: null })}>
-                    Nova Função
-                  </Button>
-                </Box>
-                <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                  {funcoes.length === 0 && (
-                    <Paper variant="outlined" sx={{ p: 4, textAlign: "center", color: "text.secondary" }}>
-                      Nenhuma função cadastrada
-                    </Paper>
-                  )}
-                  {funcoes.map(f => (
-                    <Paper key={f.id} variant="outlined" sx={{ p: 2 }}>
-                      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
-                        <Box>
-                          <Typography fontWeight={600}>{f.nome}</Typography>
-                          {f.descricao && <Typography variant="body2" color="text.secondary">{f.descricao}</Typography>}
-                        </Box>
-                        <Box>
-                          <Tooltip title="Editar">
-                            <IconButton 
-                              size="small" 
-                              onClick={() => setFuncaoDialog({ open: true, funcao: f })}
-                              disabled={salvandoFuncao || excluindo}
-                            >
-                              <Edit fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Excluir">
-                            <IconButton 
-                              size="small" 
-                              color="error" 
+          {/* ── Aba Funções ── */}
+          {tab === 1 && (
+            <Box>
+              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+                <SectionBar color="#6366f1" label="Funções e permissões" />
+                <GreenButton startIcon={<Add />} onClick={() => setFuncaoDialog({ open: true, funcao: null })} label="Nova Função" />
+              </Box>
+
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                {funcoes.length === 0 && (
+                  <Paper variant="outlined" sx={{ p: 4, textAlign: "center", color: "text.secondary", borderRadius: '6px' }}>
+                    Nenhuma função cadastrada
+                  </Paper>
+                )}
+                {funcoes.map(f => (
+                  <Paper key={f.id} variant="outlined" sx={{ p: 2.5, borderRadius: '6px', transition: 'border-color 0.2s', '&:hover': { borderColor: '#6366f1' } }}>
+                    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1.5 }}>
+                      <Box>
+                        <Typography fontWeight={600}>{f.nome}</Typography>
+                        {f.descricao && <Typography variant="body2" color="text.secondary">{f.descricao}</Typography>}
+                      </Box>
+                      <Box sx={{ display: 'flex', gap: 0.5 }}>
+                        <Tooltip title="Editar">
+                          <IconButton
+                            size="small"
+                            onClick={() => setFuncaoDialog({ open: true, funcao: f })}
+                            disabled={salvandoFuncao || excluindo}
+                          >
+                            <Edit fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Excluir">
+                          <span>
+                            <IconButton
+                              size="small"
+                              color="error"
                               onClick={() => setConfirmDelete({ open: true, tipo: "funcao", id: f.id, nome: f.nome })}
                               disabled={salvandoFuncao || excluindo}
                             >
                               <Delete fontSize="small" />
                             </IconButton>
-                          </Tooltip>
-                        </Box>
+                          </span>
+                        </Tooltip>
                       </Box>
-                      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-                        {f.permissoes.length === 0
-                          ? (<Typography variant="caption" color="text.secondary">Sem permissões definidas</Typography>)
-                          : f.permissoes.map(p => (
-                            <Chip
-                              key={p.modulo_id}
-                              label={`${p.modulo_nome}: ${p.nivel_nome}`}
-                              color={NIVEL_COLORS[p.nivel] ?? "default"}
-                              size="small"
-                              variant="outlined"
-                            />
-                          ))
-                        }
-                      </Box>
-                    </Paper>
-                  ))}
-                </Box>
+                    </Box>
+                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                      {f.permissoes.length === 0
+                        ? <Typography variant="caption" color="text.secondary">Sem permissões definidas</Typography>
+                        : f.permissoes.map(p => (
+                          <Chip
+                            key={p.modulo_id}
+                            label={`${p.modulo_nome}: ${p.nivel_nome}`}
+                            color={NIVEL_COLORS[p.nivel] ?? "default"}
+                            size="small"
+                            variant="outlined"
+                            sx={{ borderRadius: '3px', fontWeight: 500 }}
+                          />
+                        ))
+                      }
+                    </Box>
+                  </Paper>
+                ))}
               </Box>
-            )}
-          </>
-        )
-        }
+            </Box>
+          )}
+        </>
+      )}
 
       {/* Dialogs */}
       <UsuarioDialog
@@ -536,7 +581,7 @@ export default function GerenciamentoUsuarios() {
         </DialogActions>
       </Dialog>
 
-      <LoadingOverlay 
+      <LoadingOverlay
         open={salvandoUsuario || salvandoFuncao || excluindo}
         message={
           salvandoUsuario ? 'Salvando usuário...' :
@@ -545,6 +590,6 @@ export default function GerenciamentoUsuarios() {
           'Processando...'
         }
       />
-    </Box>
+    </>
   );
 }

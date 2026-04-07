@@ -404,6 +404,25 @@ class GuiaModel {
   }
 
   async deletarGuia(id: number): Promise<boolean> {
+    // Deletar comprovantes relacionados (via FK chain: guia_produto_escola -> historico_entrega -> comprovante_itens)
+    await db.run(`
+      DELETE FROM comprovante_itens
+      WHERE historico_entrega_id IN (
+        SELECT id FROM historico_entrega WHERE guia_id = $1
+      )
+    `, [id]);
+
+    // Deletar histórico de entrega
+    await db.run(`
+      DELETE FROM historico_entrega WHERE guia_id = $1
+    `, [id]);
+
+    // Deletar todos os itens da guia
+    await db.run(`
+      DELETE FROM guia_produto_escola WHERE guia_id = $1
+    `, [id]);
+
+    // Deletar a guia
     const result = await db.run(`
       DELETE FROM guias WHERE id = $1
     `, [id]);

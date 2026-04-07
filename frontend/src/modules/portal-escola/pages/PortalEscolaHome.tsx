@@ -162,6 +162,10 @@ export default function PortalEscolaHome() {
       <PageHeader
         title={`Portal da Escola - ${escola?.nome || ''}`}
         subtitle="Acesse as funcionalidades disponíveis para sua escola"
+        breadcrumbs={[
+          { label: 'Dashboard', path: '/dashboard' },
+          { label: 'Portal Escola' },
+        ]}
       />
 
       {renderCardSection(
