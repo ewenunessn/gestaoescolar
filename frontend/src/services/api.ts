@@ -135,12 +135,18 @@ api.interceptors.response.use(
       const { status, data } = error.response;
       switch (status) {
         case 401:
-          localStorage.removeItem("token");
           // Verificar se estamos na página de login para diferenciar entre credenciais inválidas e sessão expirada
           if (window.location.pathname.includes('/login')) {
+            // Erro de credenciais inválidas durante o login - não limpar token ainda
             throw new Error("Credenciais inválidas. Verifique seu email e senha.");
           } else {
-            // Não mostrar erro, apenas redirecionar silenciosamente
+            // Sessão expirada - limpar token e redirecionar
+            localStorage.removeItem("token");
+            localStorage.removeItem("user");
+            localStorage.removeItem("perfil");
+            localStorage.removeItem("nome");
+            
+            // Redirecionar apenas se não estamos já na página de login
             if (!window.location.pathname.includes('/login')) {
               window.location.href = "/login";
             }

@@ -13,8 +13,6 @@ import {
   Grid,
   IconButton,
   Tooltip,
-  Tabs,
-  Tab,
   Stepper,
   Step,
   StepLabel,
@@ -31,6 +29,7 @@ import {
 import { ColumnDef } from "@tanstack/react-table";
 import { EscolaEntrega, ItemEntrega, ConfirmarEntregaData } from "../types";
 import { entregaService } from "../services/entregaService";
+import ViewTabs from "../../../components/ViewTabs";
 import { SignaturePad } from "../../../components/SignaturePad";
 import { DataTableAdvanced } from "../../../components/DataTableAdvanced";
 
@@ -734,16 +733,20 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
         </Alert>
       )}
 
-      <Tabs value={abaAtiva} onChange={handleAbaChange} sx={{ mb: 2 }}>
-        <Tab 
-          value="pendentes" 
-          label={`📦 Pendentes (${itens.filter(i => !i.entrega_confirmada || (i.saldo_pendente && i.saldo_pendente > 0)).length})`} 
-        />
-        <Tab 
-          value="entregues" 
-          label={`✓ Entregues (${itens.filter(i => i.historico_entregas?.length).length})`} 
-        />
-      </Tabs>
+      <ViewTabs
+        value={abaAtiva}
+        onChange={handleAbaChange}
+        tabs={[
+          {
+            value: "pendentes",
+            label: `Pendentes (${itens.filter(i => !i.entrega_confirmada || (i.saldo_pendente && i.saldo_pendente > 0)).length})`,
+          },
+          {
+            value: "entregues",
+            label: `Entregues (${itens.filter(i => i.historico_entregas?.length).length})`,
+          },
+        ]}
+      />
 
       {abaAtiva === 'pendentes' ? (
         <>

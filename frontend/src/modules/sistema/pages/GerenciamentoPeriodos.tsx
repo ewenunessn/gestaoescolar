@@ -35,6 +35,7 @@ import {
   Visibility as VisibilityIcon,
 } from "@mui/icons-material";
 import PageContainer from "../../../components/PageContainer";
+import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
 import { SafeButtonWithOverlay } from "../../../components/SafeButtonWithOverlay";
 import { LoadingOverlay } from "../../../components/LoadingOverlay";
 import {
@@ -185,6 +186,13 @@ const GerenciamentoPeriodos = () => {
 
   return (
     <PageContainer>
+      <PageBreadcrumbs
+        breadcrumbs={[
+          { label: 'Dashboard', path: '/dashboard' },
+          { label: 'Sistema', path: '/sistema' },
+          { label: 'Gerenciamento de Períodos' },
+        ]}
+      />
       {/* Navy header bar */}
       <Box
         sx={{

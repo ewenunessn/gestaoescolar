@@ -1,23 +1,11 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
+import { Box, Typography, Chip } from '@mui/material';
 import {
-  Box,
-  Typography,
-  Paper,
-  Chip,
-  IconButton,
-  Tooltip,
-  useTheme,
-  useMediaQuery
-} from '@mui/material';
-import {
-  Add as AddIcon,
-  Restaurant as RestaurantIcon,
   LocalCafe as CafeIcon,
   LunchDining as LunchIcon,
   RestaurantMenu as DinnerIcon,
   Cookie as SnackIcon,
-  ChevronLeft,
-  ChevronRight
+  Restaurant as RestaurantIcon,
 } from '@mui/icons-material';
 import { carregarTiposRefeicao } from '../services/cardapiosModalidade';
 
@@ -32,7 +20,7 @@ interface EventoCalendario {
   _refeicao?: any;
 }
 
-interface CalendarioSemanalCardapioProps {
+interface Props {
   ano: number;
   mes: number;
   eventos: EventoCalendario[];
@@ -41,470 +29,319 @@ interface CalendarioSemanalCardapioProps {
   readonly?: boolean;
 }
 
-const DIAS_SEMANA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-const DIAS_SEMANA_CURTO = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-
-const TIPOS_REFEICAO_ICONS: Record<string, React.ReactElement> = {
-  'refeicao': <LunchIcon />,
-  'lanche': <SnackIcon />,
-  'cafe_manha': <CafeIcon />,
-  'ceia': <DinnerIcon />,
-  // Compatibilidade com valores antigos
-  'almoco': <LunchIcon />,
-  'lanche_manha': <SnackIcon />,
-  'lanche_tarde': <SnackIcon />,
-  'jantar': <DinnerIcon />
+const ICO: Record<string, React.ReactElement> = {
+  refeicao: <LunchIcon fontSize="small" />,
+  lanche: <SnackIcon fontSize="small" />,
+  cafe_manha: <CafeIcon fontSize="small" />,
+  ceia: <DinnerIcon fontSize="small" />,
+  almoco: <LunchIcon fontSize="small" />,
+  lanche_manha: <SnackIcon fontSize="small" />,
+  lanche_tarde: <SnackIcon fontSize="small" />,
+  jantar: <DinnerIcon fontSize="small" />,
 };
 
-const CalendarioSemanalCardapio: React.FC<CalendarioSemanalCardapioProps> = ({
-  ano,
-  mes,
-  eventos,
-  onDiaClick,
-  onEventoClick,
-  readonly = false
-}) => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  
-  // Estado para controlar qual semana está sendo exibida
-  const [semanaAtual, setSemanaAtual] = useState(0);
-  
-  // Estado para tipos de refeição dinâmicos
-  const [tiposRefeicaoDinamicos, setTiposRefeicaoDinamicos] = useState<Array<{key: string, label: string, icon: React.ReactElement}>>([]);
+const ABV = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
+const MES = [
+  'Janeiro','Fevereiro','Marco','Abril','Maio','Junho',
+  'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro',
+];
 
-  // Carregar tipos de refeição do banco
+export default function CalendarioSemanalCardapio({
+  ano, mes, eventos, onDiaClick, onEventoClick,
+}: Props) {
+  const [sem, setSem] = useState(0);
+  const [tipos, setTipos] = useState<{ k: string; l: string; icon: React.ReactElement }[]>([]);
+
+  // Carregar tipos
   useEffect(() => {
-    const carregarTipos = async () => {
+    (async () => {
       try {
-        const tipos = await carregarTiposRefeicao();
-        const tiposFormatados = Object.entries(tipos).map(([key, label]) => ({
-          key,
-          label,
-          icon: TIPOS_REFEICAO_ICONS[key] || <RestaurantIcon />
+        const r = await carregarTiposRefeicao();
+        const f = Object.entries(r).map(([k, l]) => ({
+          k, l, icon: ICO[k] || <RestaurantIcon fontSize="small" />,
         }));
-        setTiposRefeicaoDinamicos(tiposFormatados);
-      } catch (err) {
-        console.error('Erro ao carregar tipos de refeição:', err);
-        // Fallback para tipos padrão
-        setTiposRefeicaoDinamicos([
-          { key: 'cafe_manha', label: 'Café da Manhã', icon: <CafeIcon /> },
-          { key: 'lanche', label: 'Lanche', icon: <SnackIcon /> },
-          { key: 'refeicao', label: 'Refeição', icon: <LunchIcon /> },
-          { key: 'ceia', label: 'Ceia', icon: <DinnerIcon /> }
+        setTipos(f);
+      } catch {
+        setTipos([
+          { k: 'cafe_manha', l: 'Cafe da Manha', icon: <CafeIcon fontSize="small" /> },
+          { k: 'lanche', l: 'Lanche', icon: <SnackIcon fontSize="small" /> },
+          { k: 'refeicao', l: 'Refeicao', icon: <LunchIcon fontSize="small" /> },
+          { k: 'ceia', l: 'Ceia', icon: <DinnerIcon fontSize="small" /> },
         ]);
       }
-    };
-    carregarTipos();
+    })();
   }, []);
 
-  // Gerar semanas do mês
-  const semanasDoMes = useMemo(() => {
-    const primeiroDia = new Date(ano, mes - 1, 1);
-    const ultimoDia = new Date(ano, mes, 0);
-    const semanas: Date[][] = [];
-    
-    // Encontrar o primeiro domingo da primeira semana
-    let inicioSemana = new Date(primeiroDia);
-    inicioSemana.setDate(inicioSemana.getDate() - inicioSemana.getDay());
-    
-    while (inicioSemana <= ultimoDia) {
-      const semana: Date[] = [];
-      for (let i = 0; i < 7; i++) {
-        const dia = new Date(inicioSemana);
-        dia.setDate(dia.getDate() + i);
-        semana.push(dia);
+  // Gerar semanas (SEG-SAB)
+  const semanas = useMemo(() => {
+    const primeiro = new Date(ano, mes - 1, 1);
+    const ultimo = new Date(ano, mes, 0);
+    const out: Date[][] = [];
+
+    // Encontrar a segunda-feira da primeira semana
+    let ini = new Date(primeiro);
+    const dow = ini.getDay();
+    ini.setDate(ini.getDate() - (dow === 0 ? 6 : dow - 1));
+
+    while (ini <= ultimo) {
+      const s: Date[] = [];
+      for (let i = 0; i < 6; i++) {
+        const d = new Date(ini);
+        d.setDate(d.getDate() + i);
+        s.push(d);
       }
-      semanas.push(semana);
-      inicioSemana.setDate(inicioSemana.getDate() + 7);
+      out.push(s);
+      ini.setDate(ini.getDate() + 7);
     }
-    
-    return semanas;
+
+    // Remove trailing week if all dates past last day
+    while (out.length > 1 && out[out.length - 1][0] > ultimo) out.pop();
+
+    return out;
   }, [ano, mes]);
 
-  // Agrupar eventos por data
-  const eventosPorData = useMemo(() => {
-    return eventos.reduce((acc, evento) => {
-      const dataInicio = evento.data_inicio.split('T')[0];
-      if (!acc[dataInicio]) acc[dataInicio] = [];
-      acc[dataInicio].push(evento);
-      
-      // Se evento tem data_fim, adicionar em todos os dias do intervalo
-      if (evento.data_fim) {
-        const inicio = new Date(evento.data_inicio);
-        const fim = new Date(evento.data_fim);
-        for (let d = new Date(inicio); d <= fim; d.setDate(d.getDate() + 1)) {
-          const dataStr = d.toISOString().split('T')[0];
-          if (!acc[dataStr]) acc[dataStr] = [];
-          if (!acc[dataStr].find(e => e.id === evento.id)) {
-            acc[dataStr].push(evento);
-          }
+  // Eventos por data
+  const porData = useMemo(() => {
+    const m: Record<string, EventoCalendario[]> = {};
+    for (const e of eventos) {
+      const ds = e.data_inicio.split('T')[0];
+      if (!m[ds]) m[ds] = [];
+      m[ds].push(e);
+      if (e.data_fim) {
+        const ini = new Date(e.data_inicio);
+        const fim = new Date(e.data_fim);
+        for (let c = new Date(ini); c <= fim; c.setDate(c.getDate() + 1)) {
+          const cs = c.toISOString().split('T')[0];
+          if (!m[cs]) m[cs] = [];
+          if (!m[cs].find(x => x.id === e.id)) m[cs].push(e);
         }
       }
-      return acc;
-    }, {} as Record<string, EventoCalendario[]>);
+    }
+    return m;
   }, [eventos]);
 
-  const hoje = new Date();
-  const hojeStr = hoje.toISOString().split('T')[0];
+  const hojeStr = new Date().toISOString().split('T')[0];
+  const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-  const formatarData = (data: Date) => {
-    return data.toISOString().split('T')[0];
+  const nav = (dir: 'ant' | 'prox') => {
+    if (dir === 'ant') setSem((s) => Math.max(0, s - 1));
+    else setSem((s) => Math.min(semanas.length - 1, s + 1));
   };
 
-  const isDiaHoje = (data: Date) => {
-    return formatarData(data) === hojeStr;
-  };
+  useEffect(() => { setSem(0); }, [ano, mes]);
 
-  const isDiaOutroMes = (data: Date) => {
-    return data.getMonth() !== mes - 1;
-  };
+  const wk = semanas[sem];
+  const dias = wk ? wk.filter((d) => d.getMonth() === mes - 1) : [];
+  if (!wk || dias.length === 0 || tipos.length === 0) return null;
 
-  const getEventosRefeicao = (data: string) => {
-    const eventosNoDia = eventosPorData[data] || [];
-    return eventosNoDia.filter(e => e.tipo_evento === 'refeicao');
-  };
-
-  const getIconeRefeicao = (titulo: string) => {
-    const tituloLower = titulo.toLowerCase();
-    if (tituloLower.includes('café') || tituloLower.includes('breakfast')) {
-      return TIPOS_REFEICAO_ICONS['cafe_manha'];
-    } else if (tituloLower.includes('lanche') || tituloLower.includes('merenda') || tituloLower.includes('colação')) {
-      return TIPOS_REFEICAO_ICONS['lanche'];
-    } else if (tituloLower.includes('ceia')) {
-      return TIPOS_REFEICAO_ICONS['ceia'];
-    }
-    return TIPOS_REFEICAO_ICONS['refeicao'];
-  };
-
-  // Navegação entre semanas
-  const navegarSemana = (direcao: 'anterior' | 'proxima') => {
-    if (direcao === 'anterior') {
-      setSemanaAtual(Math.max(0, semanaAtual - 1));
-    } else {
-      setSemanaAtual(Math.min(semanasDoMes.length - 1, semanaAtual + 1));
-    }
-  };
-
-  // Resetar semana atual quando mudar o mês
-  React.useEffect(() => {
-    setSemanaAtual(0);
-  }, [ano, mes]);
-
-  // Semana atual para exibir (apenas dias úteis - Segunda a Sábado)
-  const semanaParaExibir = semanasDoMes[semanaAtual];
-  const diasUteis = semanaParaExibir ? semanaParaExibir.filter(dia => dia.getDay() >= 1 && dia.getDay() <= 6) : [];
-  
-  if (!semanaParaExibir || diasUteis.length === 0) {
-    return (
-      <Box sx={{ textAlign: 'center', py: 4 }}>
-        <Typography color="text.secondary">
-          Nenhuma semana disponível para este período
-        </Typography>
-      </Box>
-    );
-  }
-
-  // Usar tipos dinâmicos carregados do banco
-  const tiposRefeicao = tiposRefeicaoDinamicos;
-  
-  // Mostrar loading enquanto carrega tipos
-  if (tiposRefeicao.length === 0) {
-    return (
-      <Box sx={{ textAlign: 'center', py: 4 }}>
-        <Typography color="text.secondary">
-          Carregando tipos de refeição...
-        </Typography>
-      </Box>
-    );
-  }
+  const nRef = dias.reduce(
+    (n, d) => n + (porData[fmt(d)] || []).filter((e) => e.tipo_evento === 'refeicao').length, 0
+  );
 
   return (
-    <Box>
-      <Paper 
-        elevation={1} 
-        sx={{ 
-          borderRadius: 2, 
-          overflow: 'hidden',
-          border: '1px solid',
-          borderColor: 'divider'
-        }}
-      >
-        {/* Cabeçalho da semana com navegação */}
-        <Box sx={{ 
-          bgcolor: 'grey.50', 
-          p: 1.5, 
-          borderBottom: '1px solid', 
-          borderColor: 'divider',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          minHeight: 60
-        }}>
-          {/* Navegação anterior */}
-          <IconButton
-            onClick={() => navegarSemana('anterior')}
-            disabled={semanaAtual === 0}
-            size="small"
-            sx={{ 
-              bgcolor: 'background.paper',
-              '&:hover': { bgcolor: 'primary.main', color: 'white' },
-              '&:disabled': { opacity: 0.3 }
+    <Box sx={{
+      borderRadius: 2.5,
+      overflow: 'hidden',
+      border: '1px solid',
+      borderColor: 'divider',
+      bgcolor: 'background.paper',
+    }}>
+      {/* ═══ NAV BAR ═══ */}
+      <Box sx={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        px: 2.5,
+        py: 1.2,
+        borderBottom: '1px solid',
+        borderColor: 'divider',
+        bgcolor: 'action.hover',
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          {/* Prev */}
+          <Box
+            onClick={() => sem > 0 && nav('ant')}
+            sx={{
+              width: 30, height: 30, borderRadius: 1,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: sem === 0 ? 'default' : 'pointer',
+              opacity: sem === 0 ? 0.25 : 1,
+              color: 'text.secondary',
+              '&:hover': sem > 0 ? { bgcolor: 'action.selected', color: 'text.primary' } : {},
             }}
           >
-            <ChevronLeft />
-          </IconButton>
-
-          {/* Informações da semana */}
-          <Box sx={{ textAlign: 'center', flex: 1, px: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2, mb: 0.5 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'text.primary' }}>
-                Semana {semanaAtual + 1}/{semanasDoMes.length}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {diasUteis[0].getDate()}-{diasUteis[diasUteis.length - 1].getDate()}/{mes.toString().padStart(2, '0')}/{ano}
-              </Typography>
-              <Chip 
-                label={`${diasUteis.reduce((total, dia) => total + getEventosRefeicao(formatarData(dia)).length, 0)} refeições`}
-                size="small"
-                variant="outlined"
-                sx={{ fontSize: '0.7rem', height: 20 }}
-              />
-            </Box>
-            
-            {/* Indicadores de semana */}
-            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.3 }}>
-              {Array.from({ length: semanasDoMes.length }, (_, index) => (
-                <Box
-                  key={index}
-                  sx={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: '50%',
-                    bgcolor: index === semanaAtual ? 'primary.main' : 'action.disabled',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    '&:hover': {
-                      transform: 'scale(1.3)',
-                      bgcolor: index === semanaAtual ? 'primary.dark' : 'action.hover'
-                    }
-                  }}
-                  onClick={() => setSemanaAtual(index)}
-                />
-              ))}
-            </Box>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
           </Box>
 
-          {/* Navegação próxima */}
-          <IconButton
-            onClick={() => navegarSemana('proxima')}
-            disabled={semanaAtual === semanasDoMes.length - 1}
-            size="small"
-            sx={{ 
-              bgcolor: 'background.paper',
-              '&:hover': { bgcolor: 'primary.main', color: 'white' },
-              '&:disabled': { opacity: 0.3 }
+          <Box sx={{ textAlign: 'center' }}>
+            <Typography sx={{ fontWeight: 700, fontSize: '0.88rem', lineHeight: 1.2 }}>
+              {dias[0].getDate()} - {dias[dias.length - 1].getDate()} de {MES[mes - 1]?.slice(0, 3)} {ano}
+            </Typography>
+            <Chip
+              label={`${nRef} refeico${nRef !== 1 ? 'es' : 'es'}`}
+              size="small"
+              variant="outlined"
+              sx={{ height: 16, fontSize: '0.58rem', color: 'text.secondary', borderColor: 'divider', mt: 0.3 }}
+            />
+          </Box>
+
+          {/* Next */}
+          <Box
+            onClick={() => sem < semanas.length - 1 && nav('prox')}
+            sx={{
+              width: 30, height: 30, borderRadius: 1,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: sem === semanas.length - 1 ? 'default' : 'pointer',
+              opacity: sem === semanas.length - 1 ? 0.25 : 1,
+              color: 'text.secondary',
+              '&:hover': sem < semanas.length - 1 ? { bgcolor: 'action.selected', color: 'text.primary' } : {},
             }}
           >
-            <ChevronRight />
-          </IconButton>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </Box>
         </Box>
 
-        {/* Tabela: Linhas = Tipos de Refeição, Colunas = Dias da Semana */}
-        <Box sx={{ overflowX: 'auto' }}>
-          <Box sx={{ display: 'table', width: '100%', minWidth: 800 }}>
-            {/* Cabeçalho da tabela - Dias da semana */}
-            <Box sx={{ 
-              display: 'table-row',
-              bgcolor: 'grey.100',
-              fontWeight: 600
-            }}>
-              {/* Primeira coluna - Tipo de Preparação */}
-              <Box sx={{ 
-                display: 'table-cell',
-                p: 2,
-                borderRight: '1px solid',
-                borderBottom: '2px solid',
-                borderColor: 'divider',
-                bgcolor: 'primary.50',
-                width: 150,
-                verticalAlign: 'middle'
-              }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'primary.main' }}>
-                  Tipo de Preparação
-                </Typography>
-              </Box>
+        {/* Week dots */}
+        <Box sx={{ display: 'flex', gap: 0.4, alignItems: 'center' }}>
+          {semanas.map((_, i) => (
+            <Box
+              key={i}
+              onClick={() => setSem(i)}
+              sx={{
+                width: i === sem ? 18 : 5,
+                height: 5,
+                borderRadius: 3,
+                bgcolor: i === sem ? 'primary.main' : 'rgba(255,255,255,0.1)',
+                transition: 'all 0.2s ease',
+                cursor: 'pointer',
+              }}
+            />
+          ))}
+        </Box>
+      </Box>
 
-              {/* Colunas dos dias úteis (Segunda a Sábado) */}
-              {diasUteis.map((dia, index) => {
-                const dataStr = formatarData(dia);
-                const isHoje = isDiaHoje(dia);
-                
+      {/* ═══ TABLE ═══ */}
+      <Box sx={{ overflowX: 'auto' }}>
+        <Box
+          component="table"
+          sx={{
+            width: '100%',
+            borderCollapse: 'separate',
+            borderSpacing: '2px',
+            minWidth: 600,
+          }}
+        >
+          <thead>
+            <tr>
+              <th style={{
+                padding: '10px 12px',
+                textAlign: 'left',
+                verticalAlign: 'bottom',
+                minWidth: 120,
+              }}>
+                <Typography sx={{ fontWeight: 700, fontSize: '0.6rem', color: 'text.secondary', letterSpacing: '.08em' }}>
+                  PREPARACAO
+                </Typography>
+              </th>
+              {dias.map((d, i) => {
+                const h = fmt(d) === hojeStr;
                 return (
-                  <Box 
-                    key={index}
-                    sx={{ 
-                      display: 'table-cell',
-                      p: 1.5,
-                      borderRight: index < diasUteis.length - 1 ? '1px solid' : 'none',
-                      borderBottom: '2px solid',
-                      borderColor: 'divider',
-                      textAlign: 'center',
-                      bgcolor: isHoje ? 'primary.100' : 'grey.50',
-                      minWidth: 120,
-                      verticalAlign: 'middle'
-                    }}
-                  >
-                    <Typography 
-                      variant="caption" 
-                      sx={{ 
-                        display: 'block', 
-                        fontWeight: 600, 
-                        mb: 0.5,
-                        color: isHoje ? 'primary.main' : 'text.secondary'
-                      }}
-                    >
-                      {DIAS_SEMANA[dia.getDay()]}
+                  <th key={i} style={{ padding: '10px 6px', textAlign: 'center', verticalAlign: 'bottom' }}>
+                    <Typography sx={{ fontWeight: 700, fontSize: '0.58rem', color: 'text.secondary', letterSpacing: '.08em', display: 'block' }}>
+                      {ABV[d.getDay() === 0 ? 6 : d.getDay() - 1]}
                     </Typography>
-                    <Typography
-                      variant="h6"
-                      sx={{
-                        fontWeight: isHoje ? 700 : 600,
-                        color: isHoje ? 'primary.main' : 'text.primary'
-                      }}
-                    >
-                      {dia.getDate()}
+                    <Typography sx={{ fontWeight: h ? 800 : 600, fontSize: h ? '1.05rem' : '0.92rem', color: h ? 'primary.main' : 'text.primary' }}>
+                      {d.getDate()}
                     </Typography>
-                  </Box>
+                  </th>
                 );
               })}
-            </Box>
+            </tr>
+          </thead>
 
-            {/* Linhas da tabela - Uma para cada tipo de refeição */}
-            {tiposRefeicao.map((tipoRefeicao, tipoIndex) => (
-              <Box 
-                key={tipoRefeicao.key}
-                sx={{ 
-                  display: 'table-row',
-                  '&:hover': {
-                    bgcolor: 'action.hover'
-                  }
-                }}
-              >
-                {/* Primeira coluna - Nome do tipo */}
-                <Box sx={{ 
-                  display: 'table-cell',
-                  p: 2,
-                  borderRight: '1px solid',
-                  borderBottom: tipoIndex < tiposRefeicao.length - 1 ? '1px solid' : 'none',
-                  borderColor: 'divider',
-                  bgcolor: 'grey.50',
-                  verticalAlign: 'top'
-                }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Box sx={{ color: 'primary.main', display: 'flex' }}>
-                      {tipoRefeicao.icon}
+          <tbody>
+            {tipos.map((tp) => {
+              // Count total items in this row for the week
+              const countSem = dias.reduce((n, d) => {
+                const e = (porData[fmt(d)] || []).filter(
+                  (ev) => ev.tipo_evento === 'refeicao' && ev._refeicao?.tipo_refeicao === tp.k
+                );
+                return n + e.length;
+              }, 0);
+              // Skip row if no meals this week
+              if (countSem === 0) return null;
+
+              return (
+                <tr key={tp.k} style={{ verticalAlign: 'top' }}>
+                  <td style={{ padding: '10px 12px', verticalAlign: 'top' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Box sx={{ color: 'primary.main', display: 'flex', '& svg': { fontSize: 16 } }}>
+                        {tp.icon}
+                      </Box>
+                      <Typography sx={{ fontWeight: 600, fontSize: '0.74rem' }}>
+                        {tp.l}
+                      </Typography>
                     </Box>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {tipoRefeicao.label}
-                    </Typography>
-                  </Box>
-                </Box>
-
-                {/* Colunas dos dias - Preparações deste tipo */}
-                {diasUteis.map((dia, diaIndex) => {
-                  const dataStr = formatarData(dia);
-                  const isHoje = isDiaHoje(dia);
-                  const isOutroMes = isDiaOutroMes(dia);
-                  const eventosRefeicao = getEventosRefeicao(dataStr);
-                  
-                  // Filtrar apenas refeições deste tipo
-                  const refeicoesDoTipo = eventosRefeicao.filter(
-                    ref => ref._refeicao?.tipo_refeicao === tipoRefeicao.key
-                  );
-
-                  return (
-                    <Box 
-                      key={diaIndex}
-                      sx={{ 
-                        display: 'table-cell',
-                        p: 1.5,
-                        borderRight: diaIndex < diasUteis.length - 1 ? '1px solid' : 'none',
-                        borderBottom: tipoIndex < tiposRefeicao.length - 1 ? '1px solid' : 'none',
-                        borderColor: 'divider',
-                        bgcolor: isHoje ? 'primary.50' : 'background.paper',
-                        opacity: isOutroMes ? 0.3 : 1,
-                        cursor: 'pointer',
-                        verticalAlign: 'top',
-                        '&:hover': {
-                          bgcolor: isHoje ? 'primary.100' : 'action.hover'
-                        }
-                      }}
-                      onClick={() => onDiaClick(dataStr)}
-                    >
-                      {refeicoesDoTipo.length === 0 ? (
-                        <Typography 
-                          variant="caption" 
-                          color="text.disabled"
-                          sx={{ fontStyle: 'italic', display: 'block', textAlign: 'center' }}
-                        >
-                          -
-                        </Typography>
-                      ) : (
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                          {refeicoesDoTipo.map((refeicao, refIndex) => {
-                            const nomeRefeicao = refeicao.titulo.includes(':') 
-                              ? refeicao.titulo.split(':')[1].trim() 
-                              : refeicao.titulo;
-                            
-                            return (
-                              <Chip
-                                key={refIndex}
-                                label={nomeRefeicao}
-                                size="small"
-                                sx={{
-                                  bgcolor: refeicao.cor,
-                                  color: 'white',
-                                  fontSize: '0.7rem',
-                                  height: 24,
-                                  width: '100%',
-                                  justifyContent: 'flex-start',
-                                  '& .MuiChip-label': {
-                                    px: 1,
-                                    whiteSpace: 'nowrap',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    display: 'block'
-                                  },
-                                  boxShadow: 1,
-                                  cursor: 'pointer',
-                                  '&:hover': {
-                                    transform: 'scale(1.05)',
-                                    boxShadow: 2,
-                                    zIndex: 1
-                                  }
-                                }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (onEventoClick) {
-                                    onEventoClick(refeicao);
-                                  }
-                                }}
-                              />
-                            );
-                          })}
-                        </Box>
-                      )}
-                    </Box>
-                  );
-                })}
-              </Box>
-            ))}
-          </Box>
+                  </td>
+                  {dias.map((d, di) => {
+                    const evts = (porData[fmt(d)] || []).filter(
+                      (e) => e.tipo_evento === 'refeicao' && e._refeicao?.tipo_refeicao === tp.k
+                    );
+                    return (
+                      <td
+                        key={di}
+                        onClick={() => onDiaClick(fmt(d))}
+                        style={{
+                          padding: '8px',
+                          textAlign: 'center',
+                          verticalAlign: 'top',
+                          cursor: 'pointer',
+                          transition: 'background 0.12s ease',
+                        }}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)'; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = ''; }}
+                      >
+                        {evts.length === 0 ? (
+                          <Typography sx={{ color: 'text.disabled', fontSize: '.7rem', fontStyle: 'italic' }}>
+                            &mdash;
+                          </Typography>
+                        ) : (
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.35 }}>
+                            {evts.map((e, ei) => {
+                              const nome = e.titulo.includes(':') ? e.titulo.split(':')[1].trim() : e.titulo;
+                              return (
+                                <Chip
+                                  key={ei}
+                                  label={nome}
+                                  size="small"
+                                  onClick={(ev) => { ev.stopPropagation(); onEventoClick?.(e); }}
+                                  sx={{
+                                    bgcolor: e.cor,
+                                    color: '#fff',
+                                    fontSize: '0.62rem',
+                                    height: 22,
+                                    borderRadius: 1,
+                                    width: '100%',
+                                    justifyContent: 'flex-start',
+                                    '& .MuiChip-label': { px: 1 },
+                                    boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                                    transition: 'all 0.12s ease',
+                                    '&:hover': { transform: 'scale(1.02)', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' },
+                                  }}
+                                />
+                              );
+                            })}
+                          </Box>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
         </Box>
-      </Paper>
+      </Box>
     </Box>
   );
-};
-
-export default CalendarioSemanalCardapio;
+}

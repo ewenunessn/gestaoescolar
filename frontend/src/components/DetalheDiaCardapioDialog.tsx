@@ -3,129 +3,100 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, Chip, Button,
   IconButton, Card, CardContent, Divider
 } from '@mui/material';
-import { Delete as DeleteIcon, Event as EventIcon, Restaurant as RestaurantIcon, AccessTime as TimeIcon, Place as PlaceIcon, ContentCopy as CopyIcon } from '@mui/icons-material';
+import { Delete as DeleteIcon, Event as EventIcon, Restaurant as RestaurantIcon, AccessTime as TimeIcon, Place as PlaceIcon, ContentCopy as CopyIcon, ArrowBack } from '@mui/icons-material';
 import { getLabelsEventos, getCoresEventos } from '../services/calendarioLetivo';
 import { TIPOS_REFEICAO } from '../services/cardapiosModalidade';
 import { dateUtils } from '../utils/dateUtils';
 
 interface DetalheDiaCardapioDialogProps {
-  open: boolean;
-  onClose: () => void;
-  diaSelecionado: number | null;
-  cardapio: any;
-  refeicoesDia: any[];
-  eventosDia: any[];
-  corTipoRefeicao: any;
-  onAdicionarRefeicao: () => void;
-  onExcluirRefeicao: (id: number) => void;
-  onVerDetalhes: (refeicaoId: number) => void;
-  onReplicarRefeicoes?: () => void;
+  open: boolean; onClose: () => void; diaSelecionado: number | null;
+  cardapio: any; refeicoesDia: any[]; eventosDia: any[]; corTipoRefeicao: any;
+  onAdicionarRefeicao: () => void; onExcluirRefeicao: (id: number) => void;
+  onVerDetalhes: (refeicaoId: number) => void; onReplicarRefeicoes?: () => void;
 }
 
 export const DetalheDiaCardapioDialog: React.FC<DetalheDiaCardapioDialogProps> = ({
-  open,
-  onClose,
-  diaSelecionado,
-  cardapio,
-  refeicoesDia,
-  eventosDia,
-  corTipoRefeicao,
-  onAdicionarRefeicao,
-  onExcluirRefeicao,
-  onVerDetalhes,
-  onReplicarRefeicoes
+  open, onClose, diaSelecionado, cardapio, refeicoesDia, eventosDia,
+  corTipoRefeicao, onAdicionarRefeicao, onExcluirRefeicao, onVerDetalhes, onReplicarRefeicoes
 }) => {
   const labels = getLabelsEventos();
   const cores = getCoresEventos();
 
   return (
-    <Dialog 
-      open={open} 
-      onClose={onClose} 
-      maxWidth="md" 
-      fullWidth
-      PaperProps={{ 
-        sx: { 
-          borderRadius: 2,
-          minHeight: '500px'
-        } 
-      }}
+    <Dialog
+      open={open} onClose={onClose} maxWidth="sm" fullWidth
+      PaperProps={{ sx: { borderRadius: 3, overflow: 'hidden' } }}
     >
-      {/* Cabeçalho */}
-      <DialogTitle sx={{ pb: 1 }}>
-        <Box>
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-            {diaSelecionado && cardapio && dateUtils.formatLong(cardapio.ano, cardapio.mes, diaSelecionado)}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {diaSelecionado && cardapio && dateUtils.getDayOfWeekName(cardapio.ano, cardapio.mes, diaSelecionado)}
-          </Typography>
-        </Box>
-      </DialogTitle>
+      {/* ── HEADER ── */}
+      <Box sx={{
+        px: 3, pt: 2.5, pb: 1.5,
+        background: 'linear-gradient(135deg, rgba(255,255,255,0.04) 0%, transparent 100%)',
+        borderBottom: '1px solid', borderColor: 'divider'
+      }}>
+        <Typography variant="h6" sx={{ fontWeight: 800, fontSize: '1.2rem', letterSpacing: '-0.02em' }}>
+          {diaSelecionado && cardapio && dateUtils.formatLong(cardapio.ano, cardapio.mes, diaSelecionado)}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.2, fontWeight: 500 }}>
+          {diaSelecionado && cardapio && dateUtils.getDayOfWeekName(cardapio.ano, cardapio.mes, diaSelecionado)}
+          {refeicoesDia.length > 0 && (
+            <Chip
+              label={`${refeicoesDia.length} refeio${refeicoesDia.length > 1 ? 'es' : ''}`}
+              size="small"
+              sx={{ ml: 1.5, height: 18, fontSize: '0.6rem', fontWeight: 700, bgcolor: 'primary.main', color: 'primary.contrastText' }}
+            />
+          )}
+        </Typography>
+      </Box>
 
+      {/* ── CONTENT ── */}
       <DialogContent sx={{ px: 3, py: 2 }}>
-        {/* Seção de Refeições */}
-        <Box sx={{ mb: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-            <RestaurantIcon sx={{ color: 'primary.main' }} />
-            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-              Refeições do Dia
+
+        {/* Refeições */}
+        <Box sx={{ mb: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, mb: 1.5 }}>
+            <Box sx={{ width: 28, height: 28, borderRadius: 1.5, bgcolor: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <RestaurantIcon sx={{ fontSize: 16, color: '#fff' }} />
+            </Box>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>
+              Refeições
             </Typography>
           </Box>
 
           {refeicoesDia.length === 0 ? (
-            <Card variant="outlined" sx={{ bgcolor: '#fafafa', textAlign: 'center', py: 3 }}>
-              <Typography variant="body2" color="text.secondary">
-                Nenhuma preparação cadastrada
-              </Typography>
-            </Card>
+            <Box sx={{ py: 4, textAlign: 'center', borderRadius: 2, border: '1px dashed', borderColor: 'divider' }}>
+              <Typography variant="body2" color="text.secondary">Nenhuma preparacao neste dia</Typography>
+            </Box>
           ) : (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               {refeicoesDia.map((ref) => (
-                <Card 
+                <Card
                   key={ref.id}
                   variant="outlined"
-                  sx={{ 
+                  sx={{
                     borderLeft: `4px solid ${corTipoRefeicao[ref.tipo_refeicao] || '#ccc'}`,
-                    '&:hover': { boxShadow: 2 },
-                    transition: 'box-shadow 0.2s'
+                    transition: 'box-shadow 0.15s ease',
+                    '&:hover': { boxShadow: '0 4px 16px rgba(0,0,0,0.15)' },
                   }}
                 >
-                  <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
+                  <CardContent sx={{ py: 1.2, px: 2, '&:last-child': { py: 1.2 } }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <Box sx={{ flex: 1 }}>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                      <Box sx={{ flex: 1, cursor: 'pointer' }} onClick={() => onVerDetalhes(ref.refeicao_id)}>
+                        <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.5 }}>
                           {ref.refeicao_nome}
                         </Typography>
                         <Chip
                           label={TIPOS_REFEICAO[ref.tipo_refeicao]}
                           size="small"
-                          sx={{
-                            bgcolor: corTipoRefeicao[ref.tipo_refeicao] || '#ccc',
-                            color: 'white',
-                            height: 20,
-                            fontSize: '0.7rem',
-                            fontWeight: 600
-                          }}
+                          sx={{ bgcolor: corTipoRefeicao[ref.tipo_refeicao] || '#ccc', color: '#fff', height: 18, fontSize: '0.6rem', fontWeight: 700 }}
                         />
                         {ref.observacao && (
-                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, fontStyle: 'italic' }}>
                             {ref.observacao}
                           </Typography>
                         )}
-                        <Button
-                          size="small"
-                          onClick={() => onVerDetalhes(ref.refeicao_id)}
-                          sx={{ mt: 1, fontSize: '0.75rem', textTransform: 'none' }}
-                        >
-                          Ver Detalhes Completos
-                        </Button>
                       </Box>
-                      <IconButton
-                        size="small"
-                        onClick={() => onExcluirRefeicao(ref.id)}
-                        sx={{ color: 'error.main' }}
-                      >
+                      <IconButton size="small" onClick={() => onExcluirRefeicao(ref.id)}
+                        sx={{ color: 'error.main', opacity: 0.6, '&:hover': { opacity: 1 } }}>
                         <DeleteIcon fontSize="small" />
                       </IconButton>
                     </Box>
@@ -136,102 +107,62 @@ export const DetalheDiaCardapioDialog: React.FC<DetalheDiaCardapioDialogProps> =
           )}
         </Box>
 
-        <Divider sx={{ my: 2 }} />
-
-        {/* Seção de Eventos */}
-        <Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-            <EventIcon sx={{ color: 'secondary.main' }} />
-            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-              Eventos do Dia
-            </Typography>
-          </Box>
-
-          {eventosDia.length === 0 ? (
-            <Card variant="outlined" sx={{ bgcolor: '#fafafa', textAlign: 'center', py: 3 }}>
-              <Typography variant="body2" color="text.secondary">
-                Não existem eventos
-              </Typography>
-            </Card>
-          ) : (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-              {eventosDia.map((evento) => (
-                <Card 
-                  key={evento.id}
-                  variant="outlined"
-                  sx={{ 
-                    borderLeft: `4px solid ${evento.cor || cores[evento.tipo_evento] || '#ccc'}`,
-                    '&:hover': { boxShadow: 2 },
-                    transition: 'box-shadow 0.2s'
-                  }}
-                >
-                  <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                      {evento.titulo}
-                    </Typography>
-                    <Chip
-                      label={labels[evento.tipo_evento as keyof typeof labels] || evento.tipo_evento}
-                      size="small"
-                      sx={{
-                        bgcolor: evento.cor || cores[evento.tipo_evento] || '#ccc',
-                        color: 'white',
-                        height: 20,
-                        fontSize: '0.7rem',
-                        fontWeight: 600,
-                        mb: evento.descricao || evento.local || evento.hora_inicio ? 1 : 0
-                      }}
-                    />
-                    {evento.descricao && (
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                        {evento.descricao}
-                      </Typography>
-                    )}
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3 }}>
+        {/* Eventos */}
+        {eventosDia.length > 0 && (
+          <>
+            <Divider sx={{ my: 2 }} />
+            <Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, mb: 1.5 }}>
+                <Box sx={{ width: 28, height: 28, borderRadius: 1.5, bgcolor: 'secondary.main', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <EventIcon sx={{ fontSize: 16, color: '#fff' }} />
+                </Box>
+                <Typography variant="subtitle1" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>Eventos</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                {eventosDia.map((evento) => (
+                  <Card key={evento.id} variant="outlined"
+                    sx={{ borderLeft: `4px solid ${evento.cor || cores[evento.tipo_evento] || '#ccc'}` }}>
+                    <CardContent sx={{ py: 1.2, px: 2, '&:last-child': { py: 1.2 } }}>
+                      <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.5 }}>{evento.titulo}</Typography>
+                      <Chip label={labels[evento.tipo_evento as keyof typeof labels] || evento.tipo_evento}
+                        size="small" sx={{ bgcolor: evento.cor || cores[evento.tipo_evento] || '#ccc', color: '#fff', height: 18, fontSize: '0.6rem', fontWeight: 700 }} />
                       {evento.local && (
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
                           <PlaceIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-                          <Typography variant="caption" color="text.secondary">
-                            {evento.local}
-                          </Typography>
+                          <Typography variant="caption" color="text.secondary">{evento.local}</Typography>
                         </Box>
                       )}
                       {evento.hora_inicio && (
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.3 }}>
                           <TimeIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
                           <Typography variant="caption" color="text.secondary">
                             {evento.hora_inicio} {evento.hora_fim && `- ${evento.hora_fim}`}
                           </Typography>
                         </Box>
                       )}
-                    </Box>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                ))}
+              </Box>
             </Box>
-          )}
-        </Box>
+          </>
+        )}
       </DialogContent>
 
-      {/* Rodapé */}
-      <DialogActions sx={{ px: 3, py: 2, bgcolor: '#fafafa' }}>
-        <Button onClick={onClose} sx={{ textTransform: 'none' }}>
-          Fechar
+      {/* ── FOOTER ── */}
+      <DialogActions sx={{ px: 3, py: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+        <Button onClick={onClose} sx={{ textTransform: 'none', color: 'text.secondary' }} startIcon={<ArrowBack fontSize="small" />}>
+          Voltar
         </Button>
+        <Box sx={{ flex: 1 }} />
         {refeicoesDia.length > 0 && onReplicarRefeicoes && (
-          <Button
-            startIcon={<CopyIcon />}
-            onClick={onReplicarRefeicoes}
-            sx={{ textTransform: 'none' }}
-          >
-            Replicar em Outros Dias
+          <Button onClick={onReplicarRefeicoes}
+            sx={{ textTransform: 'none' }} startIcon={<CopyIcon fontSize="small" />}>
+            Replicar
           </Button>
         )}
-        <Button 
-          variant="contained" 
-          onClick={onAdicionarRefeicao}
-          sx={{ textTransform: 'none' }}
-        >
-          Adicionar Preparação
+        <Button variant="contained" onClick={onAdicionarRefeicao}>
+          Adicionar
         </Button>
       </DialogActions>
     </Dialog>

@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from "react";
 import {
-  Box, Chip, Tabs, Tab,
+  Box, Chip,
 } from "@mui/material";
+import ViewTabs from "../../../components/ViewTabs";
 import { useNavigate } from "react-router-dom";
 import PageContainer from "../../../components/PageContainer";
 import PageHeader from "../../../components/PageHeader";
@@ -135,10 +136,16 @@ export default function SolicitacoesAlimentos() {
           breadcrumbs={[{ label: 'Dashboard', path: '/dashboard' }, { label: 'Solicitações' }]}
         />
 
-        <Tabs value={aba} onChange={(_, v) => setAba(v)} sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}>
-          <Tab label={`Pendentes (${comPendencia.length})`} />
-          <Tab label={`Concluídas (${semPendencia.length})`} />
-        </Tabs>
+        <Box sx={{ mb: 2 }}>
+          <ViewTabs
+            value={aba}
+            onChange={setAba}
+            tabs={[
+              { value: 0, label: 'Pendentes', badge: comPendencia.length },
+              { value: 1, label: 'Concluídas', badge: semPendencia.length },
+            ]}
+          />
+        </Box>
 
         {/* DataTable com altura fixa para scroll */}
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>

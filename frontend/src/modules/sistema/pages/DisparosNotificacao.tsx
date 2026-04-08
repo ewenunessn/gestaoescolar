@@ -15,6 +15,7 @@ import {
   listarDisparos, criarDisparo,
 } from "../../../services/disparosNotificacao";
 import api from "../../../services/api";
+import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
 
 // ── Design tokens ──────────────────────────────────────────────
 const GREEN = "#22c55e";
@@ -172,6 +173,13 @@ export default function DisparosNotificacao() {
 
   return (
     <>
+      <PageBreadcrumbs
+        breadcrumbs={[
+          { label: 'Dashboard', path: '/dashboard' },
+          { label: 'Sistema', path: '/sistema' },
+          { label: 'Disparos de Notificação' },
+        ]}
+      />
       {/* Navy header bar */}
       <Box
         sx={{

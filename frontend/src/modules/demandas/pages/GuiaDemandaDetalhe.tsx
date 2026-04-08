@@ -14,6 +14,7 @@ import {
 } from "@mui/icons-material";
 import { ColumnDef } from "@tanstack/react-table";
 import PageContainer from "../../../components/PageContainer";
+import PageHeader from "../../../components/PageHeader";
 import { DataTableAdvanced } from "../../../components/DataTableAdvanced";
 import GerarPedidoDaGuiaDialog from "../../../components/GerarPedidoDaGuiaDialog";
 import ViewTabs from "../../../components/ViewTabs";
@@ -851,6 +852,14 @@ const GuiaDemandaDetalhe: React.FC = () => {
 
   // Early return AFTER all hooks are defined
   if (loading) return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><CircularProgress /></Box>;
+
+  if (!guia) {
+    return (
+      <Box sx={{ height: 'calc(100vh - 56px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden' }}>

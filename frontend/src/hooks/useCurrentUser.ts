@@ -83,12 +83,11 @@ export const useCurrentUser = () => {
       
       setUser(userData);
     } catch (err: any) {
-      console.error('Erro ao buscar dados do usuário:', err);
+      console.error('⚠️ Erro ao buscar dados do usuário:', err);
       setError('Erro ao carregar dados do usuário');
-      // Não limpar o user do estado se já temos dados do localStorage
-      if (!user) {
-        setUser(null);
-      }
+      // IMPORTANTE: Não limpar o user se já temos dados do localStorage
+      // Isso evita logout forçado se houver problema temporário de rede
+      console.log('ℹ️ Mantendo dados do usuário do localStorage');
     } finally {
       setLoading(false);
     }
@@ -98,7 +97,11 @@ export const useCurrentUser = () => {
     // Só buscar do servidor se temos token
     const token = getToken();
     if (token) {
-      fetchUser();
+      // Pequeno delay para garantir que o localStorage foi sincronizado após login
+      const timer = setTimeout(() => {
+        fetchUser();
+      }, 100);
+      return () => clearTimeout(timer);
     } else {
       setLoading(false);
     }

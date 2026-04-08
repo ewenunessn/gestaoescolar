@@ -7,6 +7,7 @@ import { PhotoCamera as PhotoCameraIcon, Delete as DeleteIcon, Save as SaveIcon,
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../../../hooks/useToast";
 import PageContainer from "../../../components/PageContainer";
+import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
 import {
   buscarInstituicao,
   atualizarInstituicao,
@@ -131,6 +132,13 @@ const ConfiguracaoInstituicaoPage: React.FC = () => {
 
   return (
     <PageContainer>
+      <PageBreadcrumbs
+        breadcrumbs={[
+          { label: 'Dashboard', path: '/dashboard' },
+          { label: 'Sistema', path: '/sistema' },
+          { label: 'Configurações da Instituição' },
+        ]}
+      />
       {/* Navy header bar */}
       <Box
         sx={{

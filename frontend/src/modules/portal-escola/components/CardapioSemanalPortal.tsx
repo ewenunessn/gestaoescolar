@@ -17,7 +17,8 @@ import {
   TableRow,
   CircularProgress,
   Alert,
-  IconButton
+  IconButton,
+  Avatar
 } from '@mui/material';
 import {
   Restaurant as RestaurantIcon,
@@ -241,13 +242,13 @@ const CardapioSemanalPortal: React.FC<CardapioSemanalPortalProps> = ({ cardapios
 
   return (
     <>
-      <Paper 
-        elevation={1} 
-        sx={{ 
-          borderRadius: 2, 
+      <Paper
+        elevation={1}
+        sx={{
+          borderRadius: 2,
           overflow: 'hidden',
-          border: '1px solid',
-          borderColor: 'divider'
+          border: '1px solid #30363d',
+          bgcolor: '#161b22'
         }}
       >
       {/* Tabela: Linhas = Tipos de Refeição, Colunas = Dias da Semana */}
@@ -473,7 +474,16 @@ const CardapioSemanalPortal: React.FC<CardapioSemanalPortalProps> = ({ cardapios
                 <Typography variant="h6" sx={{ mb: 2 }}>
                   Ingredientes
                 </Typography>
-                <TableContainer component={Paper} variant="outlined" sx={{ mb: 2, overflowX: 'auto' }}>
+                <TableContainer
+          component={Paper}
+          variant="outlined"
+          sx={{
+            mb: 2,
+            overflowX: 'auto',
+            border: '1px solid #30363d',
+            bgcolor: '#161b22'
+          }}
+        >
                   <Table size="small">
                     <TableHead>
                       <TableRow>
@@ -576,7 +586,14 @@ const CardapioSemanalPortal: React.FC<CardapioSemanalPortalProps> = ({ cardapios
                     <Typography variant="h6" sx={{ mb: 1 }}>
                       Modo de Preparo
                     </Typography>
-                    <Paper variant="outlined" sx={{ p: 2, bgcolor: 'grey.50' }}>
+                    <Paper
+                    variant="outlined"
+                    sx={{
+                      p: 2,
+                      bgcolor: '#0d1117',
+                      border: '1px solid #30363d'
+                    }}
+                  >
                       <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
                         {fichaTecnica.refeicao.modo_preparo}
                       </Typography>

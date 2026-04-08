@@ -305,8 +305,13 @@ const RefeicoesPage = () => {
   return (
     <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden' }}>
       <PageContainer fullHeight>
-        <PageHeader 
+        <PageHeader
           title="Refeições"
+          breadcrumbs={[
+            { label: 'Dashboard', path: '/dashboard' },
+            { label: 'Nutrição', path: '/nutricao' },
+            { label: 'Refeições' },
+          ]}
         />
         
         <Card sx={{ borderRadius: '12px', p: 2, mb: 2 }}>

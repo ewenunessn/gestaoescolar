@@ -59,14 +59,13 @@ export default function Login() {
       localStorage.setItem("perfil", response.tipo);
       localStorage.setItem("nome", response.nome);
 
-      // Aguardar um pouco para garantir que o localStorage foi atualizado
-      await new Promise(resolve => setTimeout(resolve, 100));
-
+      // Determinar rota de redirecionamento
       const isEscolaUser = !!(userData.escola_id && userData.tipo !== 'admin' && !payload.isSystemAdmin);
       const redirectPath = isEscolaUser ? '/portal-escola' : '/dashboard';
       
-      // Redirecionar diretamente sem startTransition
-      window.location.href = redirectPath;
+      // Usar navigate do React Router ao invés de window.location
+      // Isso evita reload completo e mantém o estado do React
+      navigate(redirectPath, { replace: true });
     } catch (err: any) {
       setErro(err.message || "E-mail ou senha incorretos");
     } finally {

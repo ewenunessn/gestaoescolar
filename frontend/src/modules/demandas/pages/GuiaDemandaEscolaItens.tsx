@@ -31,6 +31,7 @@ import {
 } from "@mui/icons-material";
 import { ColumnDef } from "@tanstack/react-table";
 import PageContainer from "../../../components/PageContainer";
+import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
 import { DataTableAdvanced } from "../../../components/DataTableAdvanced";
 import { guiaService, GuiaProdutoEscola } from "../../../services/guiaService";
 import { produtoService, Produto } from "../../../services/produtoService";
@@ -442,6 +443,12 @@ const GuiaDemandaEscolaItens: React.FC = () => {
   return (
     <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden' }}>
       <PageContainer fullHeight>
+        <PageBreadcrumbs items={[
+          { label: 'Dashboard', path: '/dashboard' },
+          { label: 'Demandas', path: '/demandas' },
+          { label: 'Guias', path: '/guias-demanda' },
+          { label: escola?.nome || 'Escola' },
+        ]} />
         {/* Estatísticas discretas */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Typography variant="h6" sx={{ fontWeight: 600 }}>

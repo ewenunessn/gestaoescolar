@@ -13,6 +13,7 @@ import { listarProdutos } from "../../../services/produtos";
 import GerenciarGrupoDialog from "../../../components/GerenciarGrupoDialog";
 import { useToast } from "../../../hooks/useToast";
 import { usePageTitle } from "../../../contexts/PageTitleContext";
+import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
 
 export default function GruposIngredientes() {
   const [grupos, setGrupos] = useState<Grupo[]>([]);
@@ -55,6 +56,13 @@ export default function GruposIngredientes() {
 
   return (
     <Box sx={{ p: 3 }}>
+      <PageBreadcrumbs
+        breadcrumbs={[
+          { label: 'Dashboard', path: '/dashboard' },
+          { label: 'Nutrição', path: '/nutricao' },
+          { label: 'Grupos de Ingredientes' },
+        ]}
+      />
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Stack direction="row" alignItems="center" spacing={1}>
           <GroupWorkIcon color="primary" />

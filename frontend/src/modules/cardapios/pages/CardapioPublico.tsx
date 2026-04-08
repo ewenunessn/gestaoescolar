@@ -18,16 +18,23 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Button
+  Button,
+  Stack,
+  Avatar
 } from "@mui/material";
 import {
   Restaurant as RestaurantIcon,
   Download as DownloadIcon,
   Close as CloseIcon,
-  Print as PrintIcon
+  Print as PrintIcon,
+  CalendarToday as CalendarIcon,
+  Info as InfoIcon,
+  Receipt as ReceiptIcon,
+  Refresh as RefreshIcon
 } from "@mui/icons-material";
 import api from "../../../services/api";
 import { initPdfMake } from "../../../utils/cardapioPdfGenerators";
+import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
 
 interface Refeicao {
   id: number;
@@ -51,6 +58,7 @@ const CardapioPublico: React.FC = () => {
   const [loadingFicha, setLoadingFicha] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
+  const [expandedRefeicao, setExpandedRefeicao] = useState<number | null>(null);
 
   useEffect(() => {
     const dataParam = searchParams.get('data');
@@ -232,9 +240,9 @@ const CardapioPublico: React.FC = () => {
 
   if (loading) {
     return (
-      <Container maxWidth="md" sx={{ py: 8, textAlign: 'center' }}>
-        <CircularProgress />
-        <Typography sx={{ mt: 2 }}>Carregando cardápio...</Typography>
+      <Container maxWidth="md" sx={{ py: 12, textAlign: 'center' }}>
+        <CircularProgress size={48} />
+        <Typography sx={{ mt: 3, color: 'text.secondary' }}>Carregando cardápio...</Typography>
       </Container>
     );
   }
@@ -242,126 +250,265 @@ const CardapioPublico: React.FC = () => {
   if (error) {
     return (
       <Container maxWidth="md" sx={{ py: 8 }}>
-        <Alert severity="error">{error}</Alert>
+        <Alert severity="error" sx={{ borderRadius: 6 }}>
+          {error}
+        </Alert>
       </Container>
     );
   }
 
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
-      <Paper elevation={3} sx={{ p: 4 }}>
+    <Container maxWidth="md" sx={{ py: 6 }}>
+      <PageBreadcrumbs items={[
+        { label: 'Dashboard', path: '/dashboard' },
+        { label: 'Cardápios', path: '/cardapios' },
+        { label: 'Cardápio Público' },
+      ]} />
+
+      <Paper sx={{ p: 4, mb: 4 }}>
         <Box sx={{ textAlign: 'center', mb: 4 }}>
-          <RestaurantIcon sx={{ fontSize: 60, color: 'primary.main', mb: 2 }} />
-          <Typography variant="h4" gutterBottom>
+          <Avatar
+            sx={{
+              width: 80,
+              height: 80,
+              mx: 'auto',
+              mb: 3,
+              bgcolor: 'primary.main',
+              '&:hover': { bgcolor: 'primary.dark' }
+            }}
+          >
+            <RestaurantIcon sx={{ fontSize: 40 }} />
+          </Avatar>
+          <Typography variant="h4" gutterBottom sx={{ fontWeight: 600 }}>
             Cardápio Escolar
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            Clique em uma preparação para ver a ficha técnica
+            Explore as preparações e visualize as fichas técnicas
           </Typography>
         </Box>
 
-        <Divider sx={{ mb: 3 }} />
+        <Divider sx={{ mb: 4 }} />
 
         {/* Debug info */}
         {process.env.NODE_ENV === 'development' && refeicoes.length > 0 && (
-          <Alert severity="info" sx={{ mb: 2 }}>
-            Debug: {refeicoes.length} refeições carregadas. 
+          <Alert severity="info" sx={{ mb: 3, borderRadius: 6 }}>
+            Debug: {refeicoes.length} refeições carregadas.
             IDs: {refeicoes.map(r => r.id || 'undefined').join(', ')}
           </Alert>
         )}
 
-        <List>
+        <List disablePadding>
           {refeicoes.map((refeicao, index) => (
-            <React.Fragment key={`refeicao-fragment-${refeicao.id}-${index}`}>
-              <ListItem disablePadding>
+            <React.Fragment key={`refeicao-${refeicao.id}-${index}`}>
+              <ListItem disablePadding sx={{ mb: 2 }}>
                 <ListItemButton
                   onClick={() => handleRefeicaoClick(refeicao.id)}
                   disabled={!refeicao.id}
                   sx={{
-                    borderRadius: 1,
-                    mb: 1,
+                    borderRadius: 2,
+                    p: 2,
                     '&:hover': {
-                      bgcolor: 'primary.50'
+                      bgcolor: 'primary.10',
+                      transform: 'translateX(4px)',
+                      transition: 'all 0.2s ease'
                     }
                   }}
                 >
-                  <ListItemText
-                    primary={
-                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', width: '100%' }}>
+                    <Box sx={{ mr: 3 }}>
+                      <Avatar
+                        sx={{
+                          width: 48,
+                          height: 48,
+                          bgcolor: 'primary.20',
+                          '&:hover': { bgcolor: 'primary.30' }
+                        }}
+                      >
+                        <ReceiptIcon sx={{ fontSize: 24, color: 'primary.main' }} />
+                      </Avatar>
+                    </Box>
+
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
                         {refeicao.nome}
                         {!refeicao.id && ' (ID inválido)'}
                       </Typography>
-                    }
-                    secondary={refeicao.descricao}
-                  />
-                  <Chip
-                    label="Ver Ficha Técnica"
-                    color="primary"
-                    size="small"
-                    sx={{ ml: 2 }}
-                  />
+                      {refeicao.descricao && (
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                          {refeicao.descricao}
+                        </Typography>
+                      )}
+                      {refeicao.tipo_refeicao && (
+                        <Chip
+                          label={refeicao.tipo_refeicao}
+                          size="small"
+                          color="info"
+                          variant="outlined"
+                          sx={{ mt: 0.5 }}
+                        />
+                      )}
+                    </Box>
+
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <Chip
+                        label="Ver Ficha Técnica"
+                        color="primary"
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRefeicaoClick(refeicao.id);
+                        }}
+                        sx={{
+                          ml: 2,
+                          '&:hover': { bgcolor: 'primary.dark' }
+                        }}
+                      />
+                    </Box>
+                  </Box>
                 </ListItemButton>
               </ListItem>
-              {index < refeicoes.length - 1 && <Divider key={`divider-${refeicao.id}-${index}`} />}
+              {index < refeicoes.length - 1 && <Divider />}
             </React.Fragment>
           ))}
         </List>
+
+        {refeicoes.length === 0 && (
+          <Box sx={{ textAlign: 'center', py: 6 }}>
+            <InfoIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
+            <Typography variant="h6" color="text.secondary">
+              Nenhuma refeição encontrada
+            </Typography>
+            <Typography variant="body2" color="text.disabled" sx={{ mt: 1 }}>
+              Verifique o QR Code e tente novamente
+            </Typography>
+          </Box>
+        )}
+      </Paper>
+
+      {/* Card informativo */}
+      <Paper sx={{ p: 3, mb: 4, borderRadius: 2 }}>
+        <Stack direction="row" alignItems="center" spacing={2}>
+          <Avatar sx={{ width: 40, height: 40, bgcolor: 'info.main' }}>
+            <CalendarIcon />
+          </Avatar>
+          <Box>
+            <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+              Dica
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              As fichas técnicas contêm informações detalhadas sobre ingredientes, quantidades e valores nutricionais
+            </Typography>
+          </Box>
+        </Stack>
       </Paper>
 
       {/* Dialog para visualizar PDF */}
       <Dialog
         open={openDialog}
         onClose={() => setOpenDialog(false)}
-        maxWidth="lg"
+        maxWidth="xl"
         fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            maxHeight: '90vh'
+          }
+        }}
       >
-        <DialogTitle>
+        <DialogTitle sx={{ pb: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Typography variant="h6">
-              {fichaTecnica?.refeicao.nome}
-            </Typography>
-            <IconButton onClick={() => setOpenDialog(false)}>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Avatar sx={{ width: 40, height: 40, mr: 2, bgcolor: 'primary.main' }}>
+                <ReceiptIcon />
+              </Avatar>
+              <Box>
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                  {fichaTecnica?.refeicao.nome}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Ficha Técnica de Preparação
+                </Typography>
+              </Box>
+            </Box>
+            <IconButton onClick={() => setOpenDialog(false)} sx={{ color: 'text.secondary' }}>
               <CloseIcon />
             </IconButton>
           </Box>
         </DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ pt: 0 }}>
           {loadingFicha ? (
-            <Box sx={{ textAlign: 'center', py: 4 }}>
-              <CircularProgress />
-              <Typography sx={{ mt: 2 }}>Gerando ficha técnica...</Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 8 }}>
+              <CircularProgress size={48} />
+              <Typography sx={{ mt: 3, color: 'text.secondary' }}>Gerando ficha técnica...</Typography>
             </Box>
           ) : pdfUrl ? (
-            <Box sx={{ width: '100%', height: '70vh' }}>
+            <Box sx={{ width: '100%', height: '75vh' }}>
+              <Box sx={{ position: 'absolute', top: 8, right: 8, zIndex: 10 }}>
+                <Chip
+                  label="PDF Gerado"
+                  color="success"
+                  size="small"
+                  icon={<DownloadIcon fontSize="small" />}
+                />
+              </Box>
               <iframe
                 src={pdfUrl}
-                style={{ width: '100%', height: '100%', border: 'none' }}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  border: 'none',
+                  borderRadius: 2
+                }}
                 title="Ficha Técnica PDF"
               />
             </Box>
           ) : (
-            <Alert severity="error">Erro ao carregar PDF</Alert>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 8 }}>
+              <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
+                Erro ao carregar PDF
+              </Alert>
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  if (fichaTecnica?.refeicao.id) {
+                    handleRefeicaoClick(fichaTecnica.refeicao.id);
+                  }
+                }}
+                startIcon={<RefreshIcon />}
+              >
+                Tentar novamente
+              </Button>
+            </Box>
           )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>
+        <DialogActions sx={{ p: 3, pt: 2 }}>
+          <Button
+            onClick={() => setOpenDialog(false)}
+            variant="outlined"
+            sx={{ borderRadius: 6 }}
+          >
             Fechar
           </Button>
-          <Button
-            onClick={handlePrintPDF}
-            startIcon={<PrintIcon />}
-            disabled={!pdfUrl}
-          >
-            Imprimir
-          </Button>
-          <Button
-            onClick={handleDownloadPDF}
-            variant="contained"
-            startIcon={<DownloadIcon />}
-            disabled={!pdfUrl}
-          >
-            Baixar PDF
-          </Button>
+          <Box sx={{ display: 'flex', gap: 1, ml: 'auto' }}>
+            <Button
+              onClick={handlePrintPDF}
+              startIcon={<PrintIcon />}
+              disabled={!pdfUrl}
+              variant="outlined"
+              sx={{ borderRadius: 6 }}
+            >
+              Imprimir
+            </Button>
+            <Button
+              onClick={handleDownloadPDF}
+              variant="contained"
+              startIcon={<DownloadIcon />}
+              disabled={!pdfUrl}
+              sx={{ borderRadius: 6 }}
+            >
+              Baixar PDF
+            </Button>
+          </Box>
         </DialogActions>
       </Dialog>
     </Container>

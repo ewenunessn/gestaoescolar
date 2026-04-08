@@ -242,6 +242,11 @@ export default function CalendarioLetivo() {
       <PageHeader
         title="Calendário Letivo"
         subtitle={`Ano ${ano}`}
+        breadcrumbs={[
+          { label: 'Dashboard', path: '/dashboard' },
+          { label: 'Sistema', path: '/sistema' },
+          { label: 'Calendário Letivo' },
+        ]}
       />
 
       <Grid container spacing={3}>

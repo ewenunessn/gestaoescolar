@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import {
-  Box, Tabs, Tab, CircularProgress, Typography, Paper, Table, TableHead,
+  Box, CircularProgress, Typography, Paper, Table, TableHead,
   TableRow, TableCell, TableBody, Chip, IconButton, Tooltip, Button,
   Collapse, Dialog, DialogTitle, DialogContent, DialogActions, TextField,
 } from "@mui/material";
@@ -12,6 +12,7 @@ import {
   DoneAll as DoneAllIcon,
   ArrowBack as ArrowBackIcon,
 } from "@mui/icons-material";
+import ViewTabs from "../../../components/ViewTabs";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import PageContainer from "../../../components/PageContainer";
@@ -213,10 +214,16 @@ export default function SolicitacaoEscolaDetalhe() {
           breadcrumbs={[{ label: 'Dashboard', path: '/dashboard' }, { label: 'Solicitações', path: '/solicitacoes-alimentos' }, { label: escolaNome }]}
         />
 
-        <Tabs value={aba} onChange={(_, v) => setAba(v)} sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}>
-          <Tab label={`Pendentes (${pendentes.length})`} />
-          <Tab label={`Histórico (${historico.length})`} />
-        </Tabs>
+        <Box sx={{ mb: 2 }}>
+          <ViewTabs
+            value={aba}
+            onChange={setAba}
+            tabs={[
+              { value: 0, label: 'Pendentes', badge: pendentes.length },
+              { value: 1, label: 'Histórico', badge: historico.length },
+            ]}
+          />
+        </Box>
 
         {isLoading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>

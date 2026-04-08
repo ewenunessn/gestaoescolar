@@ -33,6 +33,7 @@ import {
 import pedidosService from "../../../services/pedidos";
 import { ContratoProduto, PedidoDetalhado } from "../../../types/pedido";
 import { formatarMoeda, formatarData } from "../../../utils/dateUtils";
+import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
 
 const formatarNumero = (numero: number): string => {
     const numeroFormatado = parseFloat(numero.toString());
@@ -508,8 +509,16 @@ export default function CompraForm() {
 
     return (
         <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', bgcolor: 'white' }}>
+            {/* Breadcrumbs */}
+            <Box sx={{ px: 3, pt: 2, pb: 0 }}>
+                <PageBreadcrumbs items={[
+                    { label: 'Dashboard', path: '/dashboard' },
+                    { label: 'Compras', path: '/compras' },
+                    { label: isEdit ? `Compra #${id}` : 'Nova Compra' },
+                ]} />
+            </Box>
             {/* Cabeçalho */}
-            <Box sx={{ 
+            <Box sx={{
                 flexShrink: 0, 
                 px: 3, 
                 py: 2.5, 

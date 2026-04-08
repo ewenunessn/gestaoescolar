@@ -15,8 +15,6 @@ import {
   Autocomplete,
   CircularProgress,
   LinearProgress,
-  Tabs,
-  Tab,
   Table,
   TableBody,
   TableCell,
@@ -42,6 +40,7 @@ import {
   Add as AddIcon,
   Delete as DeleteIcon,
 } from "@mui/icons-material";
+import ViewTabs from "../../../components/ViewTabs";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
@@ -521,11 +520,17 @@ export default function PlanejamentoCompras() {
                   {new Date(resultado.periodo.data_fim).toLocaleDateString('pt-BR')}
                 </Alert>
 
-                <Tabs value={tabAtiva} onChange={(e, newValue) => setTabAtiva(newValue)} sx={{ mb: 2 }}>
-                  <Tab label="Por Escola" icon={<SchoolIcon />} iconPosition="start" />
-                  <Tab label="Por Produto" icon={<InventoryIcon />} iconPosition="start" />
-                  <Tab label="Consolidado" icon={<TableChartIcon />} iconPosition="start" />
-                </Tabs>
+                <Box sx={{ mb: 2 }}>
+                  <ViewTabs
+                    value={tabAtiva}
+                    onChange={setTabAtiva}
+                    tabs={[
+                      { value: 0, label: 'Por Escola', icon: <SchoolIcon sx={{ fontSize: 16 }} /> },
+                      { value: 1, label: 'Por Produto', icon: <InventoryIcon sx={{ fontSize: 16 }} /> },
+                      { value: 2, label: 'Consolidado', icon: <TableChartIcon sx={{ fontSize: 16 }} /> },
+                    ]}
+                  />
+                </Box>
 
                 {/* Tab 0: Por Escola */}
                 {tabAtiva === 0 && (

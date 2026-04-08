@@ -12,6 +12,7 @@ import '../../../styles/calendar-pdf.css';
 import { useToast } from "../../../hooks/useToast";
 import { usePageTitle } from "../../../contexts/PageTitleContext";
 import PageContainer from "../../../components/PageContainer";
+import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
 import CalendarioSelector from "../../../components/CalendarioSelector";
 import { useInstituicaoForPDF } from "../../../hooks/useInstituicao";
 import { createPDFHeader, createPDFFooter, getDefaultPDFStyles, buildPdfDoc } from "../../../utils/pdfUtils";
@@ -1059,6 +1060,11 @@ const CardapioCalendarioPage: React.FC = () => {
   return (
     <>
       <PageContainer>
+        <PageBreadcrumbs items={[
+          { label: 'Dashboard', path: '/dashboard' },
+          { label: 'Cardápios', path: '/cardapios' },
+          { label: cardapio?.nome || 'Calendário' },
+        ]} />
         <Grid container spacing={3}>
           {/* Coluna principal - Calendário */}
           <Grid item xs={12} lg={9}>

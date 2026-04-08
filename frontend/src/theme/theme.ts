@@ -1,4 +1,4 @@
-import { createTheme, Theme } from '@mui/material/styles';
+import { createTheme, Theme, PaletteColor, PaletteColorOptions } from '@mui/material/styles';
 
 // ──────────────────────────────────────────────────────────────
 // DESIGN TOKENS — GitHub Dark Mode
@@ -331,9 +331,6 @@ const baseTheme = {
       },
     },
     MuiAutocomplete: {
-      defaultProps: {
-        size: 'small',
-      },
       styleOverrides: {
         inputRoot: {
           fontSize: '0.8125rem',
@@ -667,7 +664,7 @@ const baseTheme = {
 // ──────────────────────────────────────────────────────────────
 // DARK THEME — GitHub style
 // ──────────────────────────────────────────────────────────────
-export const darkTheme: Theme = createTheme({
+export const darkTheme = createTheme({
   ...baseTheme,
   palette: {
     mode: 'dark',
@@ -743,7 +740,7 @@ export const darkTheme: Theme = createTheme({
     },
   },
   components: {
-    ...baseTheme.components,
+    ...baseTheme.components as any,
     MuiCssBaseline: {
       styleOverrides: () => ({
         '*': { boxShadow: 'none !important' },

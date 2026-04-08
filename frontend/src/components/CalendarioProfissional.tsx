@@ -1,86 +1,23 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { Calendar, dateFnsLocalizer, View, Views } from 'react-big-calendar';
-import { format, parse, startOfWeek, getDay } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import {
   Box,
   Typography,
   IconButton,
-  Button,
-  ButtonGroup,
-  Paper,
   Chip,
-  Tooltip,
-  useTheme,
-  useMediaQuery,
-  Toolbar,
-  Menu,
-  MenuItem,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  SelectChangeEvent,
-  Popover,
   List,
   ListItem,
   ListItemIcon,
-  ListItemText
+  ListItemText,
+  Paper,
 } from '@mui/material';
 import {
-  ChevronLeft,
-  ChevronRight,
-  Today as TodayIcon,
+  Print as PrintIcon,
   CalendarMonth,
   ViewWeek,
-  Add as AddIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  MoreVert as MoreIcon,
-  Print as PrintIcon,
-  FileDownload as ExportIcon
 } from '@mui/icons-material';
 
-// Importar estilos do React Big Calendar
-import 'react-big-calendar/lib/css/react-big-calendar.css';
-import '../styles/calendar.css';
-
-// Importar nossa visualização semanal customizada
+import CalendarioMensal from './CalendarioMensal';
 import CalendarioSemanalCardapio from './CalendarioSemanalCardapio';
-
-// Configurar localização para português brasileiro
-const locales = {
-  'pt-BR': ptBR,
-};
-
-const localizer = dateFnsLocalizer({
-  format,
-  parse,
-  startOfWeek,
-  getDay,
-  locales,
-});
-
-// Mensagens em português
-const messages = {
-  allDay: 'Dia inteiro',
-  previous: 'Anterior',
-  next: 'Próximo',
-  today: 'Hoje',
-  month: 'Mês',
-  week: 'Semana',
-  day: 'Dia',
-  agenda: 'Agenda',
-  date: 'Data',
-  time: 'Hora',
-  event: 'Evento',
-  noEventsInRange: 'Não há eventos neste período.',
-  showMore: (total: number) => `+ Ver mais (${total})`
-};
 
 interface EventoCalendario {
   id: number;
@@ -101,10 +38,6 @@ interface CalendarioProfissionalProps {
   onProximoMes: () => void;
   onDiaClick: (data: string) => void;
   onEventoClick?: (evento: EventoCalendario) => void;
-  onNovoEvento?: (data: Date) => void;
-  onEditarEvento?: (evento: EventoCalendario) => void;
-  onExcluirEvento?: (evento: EventoCalendario) => void;
-  onPdfClick?: (e: React.MouseEvent<HTMLElement>) => void;
   onExportarCalendario?: () => void;
   onExportarFrequencia?: () => void;
   onRelatorioDetalhado?: () => void;
@@ -112,589 +45,227 @@ interface CalendarioProfissionalProps {
   readonly?: boolean;
 }
 
-interface BigCalendarEvent {
-  id: number;
-  title: string;
-  start: Date;
-  end: Date;
-  resource: EventoCalendario;
-  allDay?: boolean;
-}
+type ViewType = 'month' | 'week';
 
 const CalendarioProfissional: React.FC<CalendarioProfissionalProps> = ({
-  ano,
-  mes,
-  eventos,
-  onMesAnterior,
-  onProximoMes,
-  onDiaClick,
-  onEventoClick,
-  onNovoEvento,
-  onEditarEvento,
-  onExcluirEvento,
-  onPdfClick,
-  onExportarCalendario,
-  onExportarFrequencia,
-  onRelatorioDetalhado,
-  onGerarPDFTabela,
-  readonly = false
+  ano, mes, eventos, onMesAnterior, onProximoMes, onDiaClick,
+  onEventoClick, onExportarCalendario, onExportarFrequencia,
+  onRelatorioDetalhado, onGerarPDFTabela, readonly = false,
 }) => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  
-  const [view, setView] = useState<View>(Views.MONTH);
-  const [date, setDate] = useState(new Date(ano, mes - 1, 1));
-  const [selectedEvent, setSelectedEvent] = useState<EventoCalendario | null>(null);
-  const [contextMenu, setContextMenu] = useState<{
-    mouseX: number;
-    mouseY: number;
-    evento?: EventoCalendario;
-  } | null>(null);
-  const [dialogNovoEvento, setDialogNovoEvento] = useState(false);
-  const [novoEventoData, setNovoEventoData] = useState<Date | null>(null);
+  const [view, setView] = useState<ViewType>('month');
   const [anchorElPdf, setAnchorElPdf] = useState<null | HTMLElement>(null);
 
-  // Sincronizar data do calendário com as props ano/mes
-  React.useEffect(() => {
-    setDate(new Date(ano, mes - 1, 1));
+  const totalRef = useMemo(
+    () => eventos.filter(e => e.tipo_evento === 'refeicao').length,
+    [eventos]
+  );
+
+  const monthLabel = useMemo(() => {
+    const m = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    return `${m[mes - 1]} ${ano}`;
   }, [ano, mes]);
 
-  // Garantir que apenas views válidas sejam usadas
-  React.useEffect(() => {
-    if (view !== Views.MONTH && view !== Views.WEEK) {
-      setView(Views.MONTH);
-    }
-  }, [view]);
+  const MES = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
-  // Converter eventos para formato do React Big Calendar
-  const eventosFormatados = useMemo((): BigCalendarEvent[] => {
-    return eventos.map(evento => {
-      // Extrair ano, mês e dia da string sem considerar timezone
-      const [anoInicio, mesInicio, diaInicio] = evento.data_inicio.split('T')[0].split('-').map(Number);
-      const inicio = new Date(anoInicio, mesInicio - 1, diaInicio, 12, 0, 0); // Usar meio-dia para evitar problemas de timezone
-      
-      let fim: Date;
-      if (evento.data_fim) {
-        const [anoFim, mesFim, diaFim] = evento.data_fim.split('T')[0].split('-').map(Number);
-        fim = new Date(anoFim, mesFim - 1, diaFim, 12, 0, 0);
-      } else {
-        fim = new Date(anoInicio, mesInicio - 1, diaInicio, 12, 0, 0);
-      }
-      
-      return {
-        id: evento.id,
-        title: evento.titulo,
-        start: inicio,
-        end: fim,
-        resource: evento,
-        allDay: true // Sempre tratar como evento de dia inteiro para cardápios
-      };
-    });
+  // Unique event types for legend
+  const tiposLegend = useMemo(() => {
+    const seen = new Set<string>();
+    const labels: Record<string, string> = {
+      refeicao: 'Refeicoes',
+      feriado: 'Feriados',
+      evento_escolar: 'Eventos Escolares',
+      reuniao: 'Reunioes',
+      formacao: 'Formacoes',
+    };
+    return eventos
+      .filter(e => !seen.has(e.tipo_evento) && (seen.add(e.tipo_evento), true))
+      .map(e => ({ tipo: e.tipo_evento, cor: e.cor, label: labels[e.tipo_evento] || e.tipo_evento }));
   }, [eventos]);
 
-  // Estilos customizados para eventos
-  const eventStyleGetter = useCallback((event: BigCalendarEvent) => {
-    const evento = event.resource;
-    return {
-      style: {
-        backgroundColor: evento.cor,
-        borderRadius: '4px',
-        opacity: 0.9,
-        color: 'white',
-        border: 'none',
-        fontSize: '12px',
-        fontWeight: 500,
-        padding: '2px 6px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
-      }
-    };
-  }, []);
-
-  // Estilos para slots de data
-  const dayPropGetter = useCallback((date: Date) => {
-    const hoje = new Date();
-    const isHoje = date.toDateString() === hoje.toDateString();
-    const isDomingo = date.getDay() === 0;
-    const isSabado = date.getDay() === 6;
-    const isFimDeSemana = isDomingo || isSabado;
-    
-    // Verificar se o dia pertence ao mês atual do cardápio
-    const isOutroMes = date.getMonth() !== mes - 1 || date.getFullYear() !== ano;
-    
-    return {
-      style: {
-        backgroundColor: isHoje 
-          ? theme.palette.primary.light + '20'
-          : isFimDeSemana 
-            ? theme.palette.error.light + '30'  // Vermelho para fim de semana
-            : 'transparent',
-        opacity: isOutroMes ? 0.3 : isDomingo ? 0.5 : 1, // Domingo com opacidade reduzida
-        pointerEvents: isOutroMes || isDomingo ? 'none' : 'auto', // Desabilita clique apenas em domingos e dias de outros meses
-        color: isOutroMes ? theme.palette.text.disabled : isFimDeSemana ? theme.palette.error.main : 'inherit',
-        cursor: isDomingo ? 'not-allowed' : 'pointer'
-      }
-    };
-  }, [theme, mes, ano]);
-
-  // Navegação personalizada - DESABILITADA (calendário travado no mês)
-  const handleNavigate = (newDate: Date, view: View, action: string) => {
-    // Não permite navegação - calendário travado no mês do cardápio
-    return;
-  };
-
-  // Clique em evento
-  const handleSelectEvent = (event: BigCalendarEvent) => {
-    if (onEventoClick) {
-      onEventoClick(event.resource);
-    }
-  };
-
-  // Clique em slot vazio
-  const handleSelectSlot = ({ start }: { start: Date }) => {
-    if (readonly) return;
-    
-    // Bloquear domingo (getDay() === 0)
-    if (start.getDay() === 0) {
-      return;
-    }
-    
-    const dataStr = start.toISOString().split('T')[0];
-    onDiaClick(dataStr);
-    
-    if (onNovoEvento) {
-      setNovoEventoData(start);
-      setDialogNovoEvento(true);
-    }
-  };
-
-  // Menu de contexto
-  const handleEventContextMenu = (event: BigCalendarEvent, e: React.MouseEvent) => {
-    if (readonly) return;
-    
-    e.preventDefault();
-    setContextMenu({
-      mouseX: e.clientX - 2,
-      mouseY: e.clientY - 4,
-      evento: event.resource
-    });
-  };
-
-  const handleCloseContextMenu = () => {
-    setContextMenu(null);
-  };
-
-  // Toolbar customizada
-  const CustomToolbar = ({ label, onNavigate, onView }: any) => {
-    // Criar label personalizado baseado nas props ano/mes
-    const labelPersonalizado = useMemo(() => {
-      const meses = [
-        'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-      ];
-      return `${meses[mes - 1]} ${ano}`;
-    }, [ano, mes]);
-
-    return (
-      <Box sx={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'space-between', 
-        mb: 2,
-        flexWrap: 'wrap',
-        gap: 2
-      }}>
-        {/* Título centralizado - sem navegação */}
-        <Typography 
-          variant={isMobile ? "h6" : "h5"} 
-          sx={{ 
-            fontWeight: 600, 
-            color: 'text.primary',
-            textAlign: 'center',
-            flex: 1
-          }}
-        >
-          {labelPersonalizado}
-        </Typography>
-
-        {/* Controles de visualização */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          {/* Seletor de período discreto */}
-          <Box sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            bgcolor: 'action.hover', 
-            borderRadius: 1, 
-            p: 0.3,
-            border: '1px solid',
-            borderColor: 'divider'
-          }}>
-            <IconButton
-              onClick={() => onView(Views.MONTH)}
-              size="small"
-              sx={{ 
-                minWidth: 28,
-                height: 28,
-                bgcolor: view === Views.MONTH ? 'primary.main' : 'transparent',
-                color: view === Views.MONTH ? 'white' : 'text.secondary',
-                '&:hover': { 
-                  bgcolor: view === Views.MONTH ? 'primary.dark' : 'action.hover' 
-                },
-                borderRadius: 0.5
-              }}
-            >
-              <CalendarMonth fontSize="small" />
-            </IconButton>
-            <IconButton
-              onClick={() => onView(Views.WEEK)}
-              size="small"
-              sx={{ 
-                minWidth: 28,
-                height: 28,
-                bgcolor: view === Views.WEEK ? 'primary.main' : 'transparent',
-                color: view === Views.WEEK ? 'white' : 'text.secondary',
-                '&:hover': { 
-                  bgcolor: view === Views.WEEK ? 'primary.dark' : 'action.hover' 
-                },
-                borderRadius: 0.5
-              }}
-            >
-              <ViewWeek fontSize="small" />
-            </IconButton>
-          </Box>
-
-          {(onExportarCalendario || onExportarFrequencia || onRelatorioDetalhado || onGerarPDFTabela) && (
-            <Box sx={{ position: 'relative', display: 'inline-block' }}>
-              <IconButton 
-                id="pdf-menu-button"
-                onClick={(e) => {
-                  setAnchorElPdf(anchorElPdf ? null : e.currentTarget);
-                }} 
-                color="primary"
-                sx={{ ml: 1 }}
-                title="Opções de PDF"
-              >
-                <PrintIcon />
-              </IconButton>
-              
-              {Boolean(anchorElPdf) && (
-                <Paper
-                  elevation={8}
-                  sx={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    mt: 1,
-                    minWidth: 220,
-                    zIndex: 1300,
-                    borderRadius: 1,
-                    boxShadow: '0px 5px 15px rgba(0,0,0,0.2)',
-                  }}
-                  onMouseLeave={() => setAnchorElPdf(null)}
-                >
-                  <List sx={{ py: 0 }}>
-                    {onExportarCalendario && (
-                      <ListItem 
-                        button 
-                        onClick={() => { 
-                          onExportarCalendario(); 
-                          setAnchorElPdf(null); 
-                        }}
-                        sx={{ 
-                          py: 1.5, 
-                          px: 2,
-                          '&:hover': { bgcolor: 'action.hover' }
-                        }}
-                      >
-                        <ListItemIcon sx={{ minWidth: 36 }}>
-                          <PrintIcon fontSize="small" />
-                        </ListItemIcon>
-                        <ListItemText primary="Exportar Calendário" />
-                      </ListItem>
-                    )}
-                    {onExportarFrequencia && (
-                      <ListItem 
-                        button 
-                        onClick={() => { 
-                          onExportarFrequencia(); 
-                          setAnchorElPdf(null); 
-                        }}
-                        sx={{ 
-                          py: 1.5, 
-                          px: 2,
-                          '&:hover': { bgcolor: 'action.hover' }
-                        }}
-                      >
-                        <ListItemIcon sx={{ minWidth: 36 }}>
-                          <PrintIcon fontSize="small" />
-                        </ListItemIcon>
-                        <ListItemText primary="Exportar Frequência" />
-                      </ListItem>
-                    )}
-                    {onRelatorioDetalhado && (
-                      <ListItem 
-                        button 
-                        onClick={() => { 
-                          onRelatorioDetalhado(); 
-                          setAnchorElPdf(null); 
-                        }}
-                        sx={{ 
-                          py: 1.5, 
-                          px: 2,
-                          '&:hover': { bgcolor: 'action.hover' }
-                        }}
-                      >
-                        <ListItemIcon sx={{ minWidth: 36 }}>
-                          <PrintIcon fontSize="small" />
-                        </ListItemIcon>
-                        <ListItemText primary="Relatório Detalhado" />
-                      </ListItem>
-                    )}
-                    {onGerarPDFTabela && (
-                      <ListItem 
-                        button 
-                        onClick={() => { 
-                          onGerarPDFTabela(); 
-                          setAnchorElPdf(null); 
-                        }}
-                        sx={{ 
-                          py: 1.5, 
-                          px: 2,
-                          '&:hover': { bgcolor: 'action.hover' }
-                        }}
-                      >
-                        <ListItemIcon sx={{ minWidth: 36 }}>
-                          <PrintIcon fontSize="small" />
-                        </ListItemIcon>
-                        <ListItemText primary="Gerar PDF Tabela" />
-                      </ListItem>
-                    )}
-                  </List>
-                </Paper>
-              )}
-              
-              {/* Backdrop para fechar ao clicar fora */}
-              {Boolean(anchorElPdf) && (
-                <Box
-                  sx={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    zIndex: 1299,
-                  }}
-                  onClick={() => setAnchorElPdf(null)}
-                />
-              )}
-            </Box>
-          )}
-        </Box>
-      </Box>
-    );
-  };
-
   return (
-    <Box>
-      <Paper elevation={1} sx={{ p: 2, borderRadius: 2 }}>
-        {/* Renderizar visualização customizada para semana */}
-        {view === Views.WEEK ? (
-          <Box>
-            {/* Toolbar customizada para visualização semanal */}
-            <CustomToolbar 
-              label="" 
-              onNavigate={(action: string) => {
-                if (action === 'PREV') onMesAnterior();
-                else if (action === 'NEXT') onProximoMes();
-              }}
-              onView={setView}
-            />
-            
-            {/* Nossa visualização semanal customizada */}
-            <CalendarioSemanalCardapio
-              ano={ano}
-              mes={mes}
-              eventos={eventos}
-              onDiaClick={onDiaClick}
-              onEventoClick={onEventoClick}
-              readonly={readonly}
-            />
-          </Box>
-        ) : (
-          <Box sx={{ height: isMobile ? 400 : 600 }}>
-            <Calendar
-              localizer={localizer}
-              events={eventosFormatados}
-              startAccessor="start"
-              endAccessor="end"
-              titleAccessor="title"
-              allDayAccessor="allDay"
-              resourceAccessor="resource"
-              view={view}
-              onView={setView}
-              date={date}
-              onNavigate={handleNavigate}
-              onSelectEvent={handleSelectEvent}
-              onSelectSlot={handleSelectSlot}
-              selectable={!readonly}
-              popup
-              popupOffset={30}
-              eventPropGetter={eventStyleGetter}
-              dayPropGetter={dayPropGetter}
-              messages={messages}
-              culture="pt-BR"
-              showMultiDayTimes={false}
-              step={60}
-              timeslots={1}
-              components={{
-                toolbar: CustomToolbar
-              }}
-              formats={{
-                monthHeaderFormat: 'MMMM yyyy',
-                dayHeaderFormat: 'EEEE dd/MM',
-                dayRangeHeaderFormat: ({ start, end }) => 
-                  `${format(start, 'dd MMM', { locale: ptBR })} - ${format(end, 'dd MMM yyyy', { locale: ptBR })}`
-              }}
-              style={{
-                height: '100%',
-                fontFamily: theme.typography.fontFamily
-              }}
-            />
-          </Box>
-        )}
-
-        {/* Legenda de tipos de evento */}
-        <Box sx={{ 
-          display: 'flex', 
-          flexWrap: 'wrap', 
-          gap: 1, 
-          mt: 2, 
-          pt: 2, 
-          borderTop: '1px solid', 
-          borderColor: 'divider' 
-        }}>
-          <Typography variant="caption" color="text.secondary" sx={{ mr: 2 }}>
-            Legenda:
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {/* ═══ TOOLBAR ═══ */}
+      <Box sx={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 1.5,
+      }}>
+        {/* Month label + badge */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Typography sx={{ fontWeight: 800, fontSize: '1.1rem', letterSpacing: '-0.02em' }}>
+            {monthLabel}
           </Typography>
-          {Array.from(new Set(eventos.map(e => e.tipo_evento))).map(tipo => {
-            const evento = eventos.find(e => e.tipo_evento === tipo);
-            const labels: Record<string, string> = {
-              'refeicao': 'Refeições',
-              'feriado': 'Feriados',
-              'evento_escolar': 'Eventos Escolares',
-              'reuniao': 'Reuniões',
-              'formacao': 'Formações'
-            };
-            
-            return (
-              <Chip
-                key={tipo}
-                label={labels[tipo] || tipo}
-                size="small"
-                sx={{
-                  bgcolor: evento?.cor,
-                  color: 'white',
-                  fontSize: '0.7rem'
-                }}
-              />
-            );
-          })}
+          <Chip
+            label={`${totalRef} refeic${totalRef !== 1 ? 'oes' : 'ao'}`}
+            size="small"
+            sx={{
+              height: 22,
+              fontSize: '0.65rem',
+              fontWeight: 700,
+              bgcolor: 'primary.main',
+              color: 'primary.contrastText',
+            }}
+          />
         </Box>
-      </Paper>
 
-      {/* Menu de contexto */}
-      <Menu
-        open={contextMenu !== null}
-        onClose={handleCloseContextMenu}
-        anchorReference="anchorPosition"
-        anchorPosition={
-          contextMenu !== null
-            ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
-            : undefined
-        }
-      >
-        <MenuItem 
-          onClick={() => {
-            if (contextMenu?.evento && onEditarEvento) {
-              onEditarEvento(contextMenu.evento);
-            }
-            handleCloseContextMenu();
-          }}
-        >
-          <EditIcon sx={{ mr: 1 }} fontSize="small" />
-          Editar
-        </MenuItem>
-        <MenuItem 
-          onClick={() => {
-            if (contextMenu?.evento && onExcluirEvento) {
-              onExcluirEvento(contextMenu.evento);
-            }
-            handleCloseContextMenu();
-          }}
-        >
-          <DeleteIcon sx={{ mr: 1 }} fontSize="small" />
-          Excluir
-        </MenuItem>
-      </Menu>
-
-      {/* Dialog para novo evento */}
-      <Dialog 
-        open={dialogNovoEvento} 
-        onClose={() => setDialogNovoEvento(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>Novo Evento</DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <TextField
-              label="Título do Evento"
-              fullWidth
-              variant="outlined"
-            />
-            <TextField
-              label="Data"
-              type="date"
-              fullWidth
-              variant="outlined"
-              value={novoEventoData ? novoEventoData.toISOString().split('T')[0] : ''}
-              InputLabelProps={{ shrink: true }}
-            />
-            <FormControl fullWidth>
-              <InputLabel>Tipo de Evento</InputLabel>
-              <Select label="Tipo de Evento">
-                <MenuItem value="refeicao">Refeição</MenuItem>
-                <MenuItem value="evento_escolar">Evento Escolar</MenuItem>
-                <MenuItem value="reuniao">Reunião</MenuItem>
-                <MenuItem value="formacao">Formação</MenuItem>
-                <MenuItem value="feriado">Feriado</MenuItem>
-              </Select>
-            </FormControl>
-            <TextField
-              label="Descrição"
-              fullWidth
-              multiline
-              rows={3}
-              variant="outlined"
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDialogNovoEvento(false)}>
-            Cancelar
-          </Button>
-          <Button 
-            variant="contained"
-            onClick={() => {
-              if (onNovoEvento && novoEventoData) {
-                onNovoEvento(novoEventoData);
-              }
-              setDialogNovoEvento(false);
+        {/* View toggles */}
+        <Box sx={{
+          display: 'flex',
+          alignItems: 'center',
+          bgcolor: 'action.hover',
+          borderRadius: 1.5,
+          p: 0.25,
+          border: '1px solid',
+          borderColor: 'divider',
+        }}>
+          <IconButton
+            onClick={() => setView('month')}
+            size="small"
+            sx={{
+              width: 32,
+              height: 32,
+              bgcolor: view === 'month' ? 'primary.main' : 'transparent',
+              color: view === 'month' ? '#fff' : 'text.secondary',
+              '&:hover': { bgcolor: view === 'month' ? 'primary.dark' : 'action.selected' },
+              borderRadius: 1,
             }}
           >
-            Criar Evento
-          </Button>
-        </DialogActions>
-      </Dialog>
+            <CalendarMonth fontSize="small" />
+          </IconButton>
+          <IconButton
+            onClick={() => setView('week')}
+            size="small"
+            sx={{
+              width: 32,
+              height: 32,
+              bgcolor: view === 'week' ? 'primary.main' : 'transparent',
+              color: view === 'week' ? '#fff' : 'text.secondary',
+              '&:hover': { bgcolor: view === 'week' ? 'primary.dark' : 'action.selected' },
+              borderRadius: 1,
+            }}
+          >
+            <ViewWeek fontSize="small" />
+          </IconButton>
+        </Box>
+
+        {/* PDF menu */}
+        {(onExportarCalendario || onExportarFrequencia || onRelatorioDetalhado || onGerarPDFTabela) && (
+          <Box sx={{ position: 'relative', display: 'inline-block' }}>
+            <IconButton
+              onClick={() => setAnchorElPdf(anchorElPdf ? null : (anchorElPdf as any))}
+              size="small"
+              sx={{
+                width: 32,
+                height: 32,
+                color: 'text.secondary',
+                '&:hover': { color: 'primary.main' },
+              }}
+              title="Exportar PDF"
+            >
+              <PrintIcon fontSize="small" />
+            </IconButton>
+            {Boolean(anchorElPdf) && (
+              <Paper
+                sx={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: 0,
+                  mt: 1,
+                  minWidth: 210,
+                  zIndex: 1300,
+                  borderRadius: 1.5,
+                  boxShadow: '0 8px 30px rgba(0,0,0,0.35)',
+                }}
+                onMouseLeave={() => setAnchorElPdf(null)}
+              >
+                <List sx={{ py: 0 }}>
+                  {[
+                    { fn: onExportarCalendario, label: 'Exportar Calendario' },
+                    { fn: onExportarFrequencia, label: 'Exportar Frequencia' },
+                    { fn: onRelatorioDetalhado, label: 'Relatorio Detalhado' },
+                    { fn: onGerarPDFTabela, label: 'Gerar PDF Tabela' },
+                  ]
+                    .filter(x => x.fn)
+                    .map((item, i) => (
+                      <ListItem
+                        key={i}
+                        onClick={() => { item.fn?.(); setAnchorElPdf(null); }}
+                        sx={{
+                          py: 1.2,
+                          px: 2,
+                          cursor: 'pointer',
+                          '&:hover': { bgcolor: 'action.hover' },
+                        }}
+                      >
+                        <ListItemIcon>
+                          <PrintIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={item.label}
+                          primaryTypographyProps={{ fontSize: '0.82rem', fontWeight: 500 }}
+                        />
+                      </ListItem>
+                    ))}
+                </List>
+              </Paper>
+            )}
+            {Boolean(anchorElPdf) && (
+              <Box
+                sx={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1299 }}
+                onClick={() => setAnchorElPdf(null)}
+              />
+            )}
+          </Box>
+        )}
+      </Box>
+
+      {/* ═══ CALENDAR VIEW ═══ */}
+      {view === 'week' ? (
+        <CalendarioSemanalCardapio
+          ano={ano}
+          mes={mes}
+          eventos={eventos}
+          onDiaClick={onDiaClick}
+          onEventoClick={onEventoClick}
+          readonly={readonly}
+        />
+      ) : (
+        <CalendarioMensal
+          ano={ano}
+          mes={mes}
+          eventos={eventos}
+          onDiaClick={onDiaClick}
+          onEventoClick={onEventoClick}
+          onMesAnterior={onMesAnterior}
+          onProximoMes={onProximoMes}
+          readonly={readonly}
+        />
+      )}
+
+      {/* ═══ LEGEND ═══ */}
+      {tiposLegend.length > 0 && (
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, pt: 1 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ mr: 1, fontWeight: 600, fontSize: '0.7rem' }}>
+            Legenda:
+          </Typography>
+          {tiposLegend.map(tipo => (
+            <Chip
+              key={tipo.tipo}
+              label={tipo.label}
+              size="small"
+              sx={{
+                bgcolor: tipo.cor,
+                color: '#fff',
+                fontSize: '0.68rem',
+                fontWeight: 600,
+                height: 22,
+              }}
+            />
+          ))}
+        </Box>
+      )}
     </Box>
   );
 };

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
-  Box, Tab, Tabs, Typography, Button, Table, TableBody, TableCell,
+  Box, Typography, Button, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Paper, IconButton, Chip,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField,
   FormControl, InputLabel, Select, MenuItem, Switch, FormControlLabel,
@@ -10,7 +10,9 @@ import {
   Add, Edit, Delete, People, AdminPanelSettings, Visibility,
   VisibilityOff, Lock,
 } from "@mui/icons-material";
+import ViewTabs from "../../../components/ViewTabs";
 import { LoadingOverlay } from "../../../components/LoadingOverlay";
+import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
 import {
   getUsuarios, criarUsuario, atualizarUsuario, excluirUsuario,
   getFuncoes, criarFuncao, atualizarFuncao, excluirFuncao,
@@ -354,6 +356,13 @@ export default function GerenciamentoUsuarios() {
 
   return (
     <>
+      <PageBreadcrumbs
+        breadcrumbs={[
+          { label: 'Dashboard', path: '/dashboard' },
+          { label: 'Sistema', path: '/sistema' },
+          { label: 'Gerenciamento de Usuários' },
+        ]}
+      />
       {/* Navy header bar */}
       <Box
         sx={{
@@ -378,10 +387,14 @@ export default function GerenciamentoUsuarios() {
 
       {erro && <Alert severity="error" sx={{ mb: 2, borderRadius: '6px' }} onClose={() => setErro("")}>{erro}</Alert>}
 
-      <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 3 }}>
-        <Tab icon={<People fontSize="small" />} iconPosition="start" label="Usuários" />
-        <Tab icon={<Lock fontSize="small" />} iconPosition="start" label="Funções e Permissões" />
-      </Tabs>
+      <ViewTabs
+        value={tab}
+        onChange={(_, v) => setTab(v)}
+        tabs={[
+          { value: 0, label: "Usuários", icon: <People fontSize="small" /> },
+          { value: 1, label: "Funções e Permissões", icon: <Lock fontSize="small" /> },
+        ]}
+      />
 
       {loading ? (
         <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>

@@ -37,6 +37,7 @@ import faturamentoService from "../../../services/faturamento";
 import type { ContratoCalculado } from "../../../types/faturamento";
 import { formatarMoeda, formatarData } from "../../../utils/dateUtils";
 import { exportarContratoParaExcel } from "../../../utils/exportarFaturamentoExcel";
+import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
 
 export default function FaturamentoDetalhe() {
   const { pedidoId } = useParams<{ pedidoId: string }>();
@@ -491,6 +492,13 @@ export default function FaturamentoDetalhe() {
 
   return (
     <Box sx={{ p: 3 }}>
+      <PageBreadcrumbs
+        breadcrumbs={[
+          { label: 'Dashboard', path: '/dashboard' },
+          { label: 'Faturamento', path: '/faturamento' },
+          { label: `Pedido ${previa?.pedido?.numero || 'Detalhes'}` },
+        ]}
+      />
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
         <IconButton onClick={() => navigate(`/compras/${pedidoId}`)} sx={{ mr: 2 }}>
           <ArrowBackIcon />
