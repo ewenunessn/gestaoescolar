@@ -37,6 +37,12 @@ export const query = async (text: string, params?: any[]) => {
   }
 };
 
+// Função para obter uma única linha (compatibilidade)
+export const get = async (text: string, params?: any[]) => {
+  const result = await query(text, params);
+  return result.rows[0];
+};
+
 // Função para obter cliente
 export const getClient = async () => {
   return await pool.connect();
@@ -49,6 +55,7 @@ export const closePool = async () => {
 
 export default {
   query,
+  get,
   testConnection,
   getClient,
   closePool
