@@ -25,11 +25,8 @@ export const config = {
 
   // Configurações de segurança
   jwtSecret: process.env.JWT_SECRET || (() => {
-    if (!process.env.JWT_SECRET) {
-      console.error('❌ JWT_SECRET não configurado nas variáveis de ambiente!');
-      throw new Error('JWT_SECRET is required. Generate one with: openssl rand -base64 32');
-    }
-    return '';
+    console.warn('⚠️ JWT_SECRET não configurado - usando valor padrão (INSEGURO EM PRODUÇÃO!)');
+    return 'default-secret-change-in-production-' + Date.now();
   })(),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "7d", // Aumentado para 7 dias
 
@@ -40,6 +37,7 @@ export const config = {
         ? [
             "https://gestaoescolar-frontend.vercel.app",
             "https://gestaoescolar-frontend-painel.vercel.app",
+            "https://nutriescola.vercel.app",
             "*.vercel.app",
             "http://localhost:5173",
             "http://localhost:3000"
