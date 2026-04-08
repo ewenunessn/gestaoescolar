@@ -1,5 +1,31 @@
 // Vercel serverless function - Load Express app
 module.exports = async (req, res) => {
+  // Configurar CORS IMEDIATAMENTE antes de qualquer processamento
+  const allowedOrigins = [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'https://nutriescola.vercel.app'
+  ];
+  
+  const origin = req.headers.origin;
+  
+  // Se a origem está na lista permitida, adiciona os headers CORS
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
+  
+  // Headers CORS para todos os requests
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  res.setHeader('Access-Control-Max-Age', '86400');
+  
+  // Responder OPTIONS (preflight) imediatamente
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
   try {
     console.log('🚀 Inicializando aplicação no Vercel...');
     console.log('📊 Origin:', req.headers.origin);
