@@ -37,9 +37,12 @@ export default function Login() {
     setLoading(true);
     try {
       const response = await login(email, senha);
-      localStorage.setItem("token", response.token);
       
-      const payload = JSON.parse(atob(response.token.split(".")[1]));
+      // Salvar token IMEDIATAMENTE
+      const token = response.token;
+      localStorage.setItem("token", token);
+      
+      const payload = JSON.parse(atob(token.split(".")[1]));
       const userData = {
         id: payload.id,
         nome: response.nome,
@@ -56,10 +59,14 @@ export default function Login() {
       localStorage.setItem("perfil", response.tipo);
       localStorage.setItem("nome", response.nome);
 
+      // Aguardar um pouco para garantir que o localStorage foi atualizado
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       const isEscolaUser = !!(userData.escola_id && userData.tipo !== 'admin' && !payload.isSystemAdmin);
       const redirectPath = isEscolaUser ? '/portal-escola' : '/dashboard';
       
-      startTransition(() => navigate(redirectPath));
+      // Redirecionar diretamente sem startTransition
+      window.location.href = redirectPath;
     } catch (err: any) {
       setErro(err.message || "E-mail ou senha incorretos");
     } finally {
