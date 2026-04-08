@@ -45,10 +45,18 @@ if (process.env.NEON_DATABASE_URL || process.env.DATABASE_URL || process.env.POS
             connectionTimeoutMillis: 5000,
         });
     } else {
-        console.log('✅ Usando NEON/VERCEL (com SSL)');
+        console.log('✅ Usando NEON/VERCEL (com SSL verify-full)');
+        
+        // Adicionar sslmode=verify-full à connection string se não estiver presente
+        let finalConnectionString = connectionString;
+        if (!connectionString.includes('sslmode=')) {
+            const separator = connectionString.includes('?') ? '&' : '?';
+            finalConnectionString = `${connectionString}${separator}sslmode=verify-full`;
+        }
+        
         pool = new Pool({
-            connectionString,
-            ssl: true,
+            connectionString: finalConnectionString,
+            ssl: { rejectUnauthorized: true },  // Equivalente a verify-full
             client_encoding: 'UTF8',
             max: 5,                      // Neon tem limite de conexões
             idleTimeoutMillis: 10000,    // Fecha idle antes do Neon matar (~5min)
