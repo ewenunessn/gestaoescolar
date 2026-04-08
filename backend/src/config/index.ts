@@ -79,9 +79,11 @@ function loadConfig(): Config {
       host: (jsonConfig as any)?.backend?.host || process.env.HOST || 'localhost',
       port: (jsonConfig as any)?.backend?.port || parseInt(process.env.PORT || '3000'),
       cors: {
-        origin: (jsonConfig as any)?.backend?.cors?.origin || [
+        origin: (jsonConfig as any)?.backend?.cors?.origin || 
+          process.env.CORS_ORIGIN?.split(',') || [
           'http://localhost:5173',
-          'http://127.0.0.1:5173'
+          'http://127.0.0.1:5173',
+          'https://nutriescola.vercel.app'
         ],
         credentials: (jsonConfig as any)?.backend?.cors?.credentials ?? true
       }
