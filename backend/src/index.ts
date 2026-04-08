@@ -211,6 +211,23 @@ app.get("/api/test-db", async (req, res) => {
   }
 });
 
+// Endpoint temporário para debug de usuários
+app.get("/api/debug/users", async (req, res) => {
+  try {
+    const result = await db.query('SELECT id, nome, email, tipo, ativo FROM usuarios LIMIT 5');
+    res.json({
+      success: true,
+      count: result.rows.length,
+      users: result.rows
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
 
 
 
