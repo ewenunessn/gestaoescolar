@@ -98,11 +98,8 @@ function loadConfig(): Config {
     },
     jwt: {
       secret: process.env.JWT_SECRET || (() => {
-        if (!process.env.JWT_SECRET) {
-          console.error('❌ JWT_SECRET não configurado nas variáveis de ambiente!');
-          throw new Error('JWT_SECRET is required. Generate one with: openssl rand -base64 32');
-        }
-        return '';
+        console.warn('⚠️ JWT_SECRET não configurado - usando valor padrão (INSEGURO EM PRODUÇÃO!)');
+        return 'default-secret-change-in-production';
       })(),
       expiresIn: process.env.JWT_EXPIRES_IN || '24h'
     },
