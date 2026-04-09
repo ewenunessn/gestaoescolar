@@ -3,7 +3,10 @@ module.exports = async (req, res) => {
   // Configurar CORS IMEDIATAMENTE antes de qualquer processamento
   const allowedOrigins = [
     'http://localhost:5173',
+    'http://localhost:3000',
     'http://127.0.0.1:5173',
+    'https://gestaoescolar-frontend.vercel.app',
+    'https://gestaoescolar-frontend-painel.vercel.app',
     'https://nutriescola.vercel.app',
     'https://nutrilog-sistema.vercel.app'
   ];
