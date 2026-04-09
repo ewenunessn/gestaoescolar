@@ -17,7 +17,9 @@ router.get('/health', (req: Request, res: Response) => {
       jwtSecret: config.jwtSecret.startsWith('TEMPORARY-INSECURE-SECRET-') 
         ? '❌ NOT CONFIGURED - USING TEMPORARY SECRET' 
         : '✅ configured',
-      cors: config.backend.cors.origin.length > 0 ? 'configured' : 'not configured'
+      cors: Array.isArray(config.backend.cors.origin) 
+        ? (config.backend.cors.origin.length > 0 ? 'configured' : 'not configured')
+        : 'configured'
     }
   };
 
