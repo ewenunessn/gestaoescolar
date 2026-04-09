@@ -147,25 +147,53 @@ api.interceptors.response.use(
           console.error('🚫 [API] URL:', originalRequest.url);
           console.error('🚫 [API] Pathname atual:', window.location.pathname);
           
-          // Verificar se estamos na página de login para diferenciar entre credenciais inválidas e sessão expirada
+          // TEMPORÁRIO: Não redirecionar automaticamente para permitir debug
+          // Apenas logar o erro e deixar o usuário ver os logs
           if (window.location.pathname.includes('/login')) {
-            // Erro de credenciais inválidas durante o login - não limpar token ainda
             console.error('🚫 [API] Credenciais inválidas na página de login');
             throw new Error("Credenciais inválidas. Verifique seu email e senha.");
           } else {
-            // Sessão expirada - limpar token e redirecionar
-            console.error('🚫 [API] Sessão expirada - limpando dados e redirecionando');
-            localStorage.removeItem("token");
-            localStorage.removeItem("user");
-            localStorage.removeItem("perfil");
-            localStorage.removeItem("nome");
+            console.error('🚫 [API] Sessão expirada - MAS NÃO VAI REDIRECIONAR AINDA');
+            console.error('🚫 [API] VERIFIQUE OS LOGS ACIMA PARA ENTENDER O PROBLEMA');
+            console.error('🚫 [API] Token no localStorage:', localStorage.getItem('token') ? 'EXISTE' : 'AUSENTE');
             
-            // Redirecionar apenas se não estamos já na página de login
-            if (!window.location.pathname.includes('/login')) {
-              console.error('🚫 [API] Redirecionando para /login');
-              window.location.href = "/login";
-            }
-            throw new Error("Sessão expirada. Faça login novamente.");
+            // Mostrar alerta visual
+            const alertDiv = document.createElement('div');
+            alertDiv.style.cssText = `
+              position: fixed;
+              top: 20px;
+              left: 50%;
+              transform: translateX(-50%);
+              background: #ff4444;
+              color: white;
+              padding: 20px;
+              border-radius: 8px;
+              z-index: 999999;
+              font-size: 16px;
+              font-weight: bold;
+              box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            `;
+            alertDiv.innerHTML = `
+              ⚠️ ERRO 401 DETECTADO!<br>
+              Verifique o console (F12) para ver os logs.<br>
+              Redirecionando em 5 segundos...
+            `;
+            document.body.appendChild(alertDiv);
+            
+            // Aguardar 5 segundos antes de limpar e redirecionar
+            setTimeout(() => {
+              console.error('🚫 [API] Agora sim, limpando dados e redirecionando...');
+              localStorage.removeItem("token");
+              localStorage.removeItem("user");
+              localStorage.removeItem("perfil");
+              localStorage.removeItem("nome");
+              
+              if (!window.location.pathname.includes('/login')) {
+                window.location.href = "/login";
+              }
+            }, 5000); // 5 segundos de delay
+            
+            throw new Error("Sessão expirada. Redirecionando em 5 segundos...");
           }
         case 403:
           const forbiddenMessage = getMessage(data, "Acesso negado. Você não tem permissão para esta ação.");
