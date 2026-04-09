@@ -1209,8 +1209,8 @@ const SaldoContratosModalidades: React.FC = () => {
                   data-contrato-index={index}
                   sx={{
                     cursor: 'pointer',
-                    bgcolor: contratoSelecionadoIndex === index ? '#e3f2fd' : 'inherit',
-                    '&:hover': { bgcolor: contratoSelecionadoIndex === index ? '#bbdefb' : 'action.hover' },
+                    bgcolor: contratoSelecionadoIndex === index ? 'action.selected' : 'background.paper',
+                    '&:hover': { bgcolor: contratoSelecionadoIndex === index ? 'action.selected' : 'action.hover' },
                     border: '2px solid',
                     borderColor: contratoSelecionadoIndex === index ? 'primary.main' : 'divider',
                     transition: 'all 0.2s'

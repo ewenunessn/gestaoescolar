@@ -282,12 +282,12 @@ export default function GerarPedidoDaGuiaDialog({ open, onClose, onSuccess, guia
                 </Typography>
               </Alert>
 
-              <Box sx={{ maxHeight: 300, overflowY: 'auto', p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+              <Box sx={{ maxHeight: 300, overflowY: 'auto', p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
                 <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
                   Produtos que serão ignorados:
                 </Typography>
                 {produtosSemContrato.map((produto, idx) => (
-                  <Box key={idx} sx={{ mb: 1, p: 1, bgcolor: 'white', borderRadius: 1 }}>
+                  <Box key={idx} sx={{ mb: 1, p: 1, bgcolor: 'background.paper', borderRadius: 1 }}>
                     <Typography variant="body2" sx={{ fontWeight: 500 }}>
                       {produto.produto_nome}
                     </Typography>
@@ -333,7 +333,7 @@ export default function GerarPedidoDaGuiaDialog({ open, onClose, onSuccess, guia
               </FormControl>
 
               {guiaSelecionada && (
-                <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                <Box sx={{ p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
                   <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
                     Detalhes da Guia
                   </Typography>

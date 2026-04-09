@@ -284,7 +284,7 @@ export default function ProgramacaoEntregaScreen() {
       </Box>
 
       {/* Footer com total */}
-      <Box sx={{ px: 2, py: 1, borderTop: '1px solid #e9ecef', bgcolor: '#f8f9fa', flexShrink: 0 }}>
+      <Box sx={{ px: 2, py: 1, borderTop: '1px solid', borderColor: 'divider', bgcolor: 'action.hover', flexShrink: 0 }}>
         <Typography variant="body2">
           Total geral:{' '}
           <strong>{formatarQuantidade(totalGeral())} {unidade}</strong>

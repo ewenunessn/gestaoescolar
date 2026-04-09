@@ -176,7 +176,7 @@ const ImportacaoEscolas: React.FC<ImportacaoEscolasProps> = ({ open, onClose, on
       <DialogTitle sx={{ fontWeight: 600, borderBottom: '1px solid #e5e7eb' }}>
         Importação em Lote - Escolas
       </DialogTitle>
-      <DialogContent sx={{ p: 3, bgcolor: '#f9fafb' }}>
+      <DialogContent sx={{ p: 3, bgcolor: 'background.default' }}>
         <Stepper activeStep={activeStep} sx={{ mb: 3 }}>
           {steps.map(label => <Step key={label}><StepLabel>{label}</StepLabel></Step>)}
         </Stepper>

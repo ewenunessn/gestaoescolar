@@ -220,7 +220,7 @@ export default function CustoCardapioDetalheModal({ open, onClose, custo }: Prop
               </Box>
             ))}
             {custo.detalhes_por_modalidade.map((m) => (
-              <Box key={m.modalidade_id} sx={{ flex: 1, p: 2, bgcolor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
+              <Box key={m.modalidade_id} sx={{ flex: 1, p: 2, bgcolor: 'action.hover', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
                 <Typography variant="caption" color="text.secondary">{m.quantidade_alunos} alunos</Typography>
                 <Typography variant="h5" fontWeight={700}>{fmt(m.custo_total)}</Typography>
               </Box>

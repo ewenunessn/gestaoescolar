@@ -226,7 +226,7 @@ export default function AjusteProgramacoesScreen() {
   const selOpen = Boolean(selAnchor);
 
   return (
-    <Box sx={{ height: 'calc(100vh - 56px)', display: 'flex', flexDirection: 'column', bgcolor: '#f8f9fa' }}>
+    <Box sx={{ height: 'calc(100vh - 56px)', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
 
       {/* ── Tabela ── */}
       <Box sx={{ flex: 1, overflow: 'auto' }}>
@@ -234,11 +234,11 @@ export default function AjusteProgramacoesScreen() {
           <TableHead>
             {/* Linha cabeçalho colunas */}
             <TableRow>
-              <TableCell sx={{ width: ESC_W, bgcolor: '#f1f3f5', fontWeight: 700, position: 'sticky', left: 0, zIndex: 4, borderRight: '2px solid #dee2e6' }}>
+              <TableCell sx={{ width: ESC_W, bgcolor: 'action.hover', fontWeight: 700, position: 'sticky', left: 0, zIndex: 4, borderRight: '2px solid', borderColor: 'divider' }}>
                 Escola
               </TableCell>
               {Array.from({ length: MAX_COLS }, (_, ci) => (
-                <TableCell key={ci} sx={{ width: COL_W, bgcolor: colConfigured(ci) ? '#e8f4fd' : '#f8f9fa', p: 0.75, verticalAlign: 'top' }}>
+                <TableCell key={ci} sx={{ width: COL_W, bgcolor: colConfigured(ci) ? 'action.selected' : 'action.hover', p: 0.75, verticalAlign: 'top' }}>
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                     <Button
                       size="small" fullWidth
@@ -261,14 +261,14 @@ export default function AjusteProgramacoesScreen() {
             </TableRow>
             {/* Linha totais */}
             <TableRow>
-              <TableCell sx={{ bgcolor: '#e9ecef', fontWeight: 700, fontSize: 11, position: 'sticky', left: 0, zIndex: 4, borderRight: '2px solid #dee2e6' }}>
+              <TableCell sx={{ bgcolor: 'action.hover', fontWeight: 700, fontSize: 11, position: 'sticky', left: 0, zIndex: 4, borderRight: '2px solid', borderColor: 'divider' }}>
                 Total geral
               </TableCell>
               {Array.from({ length: MAX_COLS }, (_, ci) => {
                 const tot = totalCol(ci);
                 const d = tot - totalOrig(ci);
                 return (
-                  <TableCell key={ci} sx={{ bgcolor: '#e9ecef', textAlign: 'center', fontWeight: 700, fontSize: 11 }}>
+                  <TableCell key={ci} sx={{ bgcolor: 'action.hover', textAlign: 'center', fontWeight: 700, fontSize: 11 }}>
                     {colConfigured(ci) ? (
                       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
                         <span>{formatarQuantidade(tot)} {colUnidade(ci)}</span>
@@ -282,8 +282,8 @@ export default function AjusteProgramacoesScreen() {
           </TableHead>
           <TableBody>
             {escolas.map((escola, ri) => (
-              <TableRow key={escola.id} sx={{ bgcolor: ri % 2 === 0 ? 'white' : '#fafbfc', '&:hover': { bgcolor: '#f0f7ff' } }}>
-                <TableCell sx={{ position: 'sticky', left: 0, bgcolor: ri % 2 === 0 ? 'white' : '#fafbfc', zIndex: 2, borderRight: '2px solid #dee2e6', fontSize: 12, fontWeight: 500 }}>
+              <TableRow key={escola.id} sx={{ bgcolor: ri % 2 === 0 ? 'background.paper' : 'action.hover', '&:hover': { bgcolor: 'action.selected' } }}>
+                <TableCell sx={{ position: 'sticky', left: 0, bgcolor: 'inherit', zIndex: 2, borderRight: '2px solid', borderColor: 'divider', fontSize: 12, fontWeight: 500 }}>
                   {escola.nome}
                 </TableCell>
                 {Array.from({ length: MAX_COLS }, (_, ci) => {
@@ -338,7 +338,7 @@ export default function AjusteProgramacoesScreen() {
       >
         {selStep === 'item' ? (
           <>
-            <Box sx={{ px: 2, py: 1, bgcolor: '#f8f9fa', borderBottom: '1px solid #e9ecef' }}>
+            <Box sx={{ px: 2, py: 1, bgcolor: 'action.hover', borderBottom: '1px solid', borderColor: 'divider' }}>
               <Typography variant="caption" fontWeight={700} color="text.secondary">SELECIONAR ITEM DO PEDIDO</Typography>
             </Box>
             <List dense disablePadding>
@@ -356,7 +356,7 @@ export default function AjusteProgramacoesScreen() {
           </>
         ) : (
           <>
-            <Box sx={{ px: 2, py: 1, bgcolor: '#f8f9fa', borderBottom: '1px solid #e9ecef', display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ px: 2, py: 1, bgcolor: 'action.hover', borderBottom: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 1 }}>
               <IconButton size="small" onClick={() => setSelStep('item')}><ArrowBackIcon sx={{ fontSize: 14 }} /></IconButton>
               <Typography variant="caption" fontWeight={700} color="text.secondary">SELECIONAR PROGRAMAÇÃO</Typography>
             </Box>
@@ -413,17 +413,17 @@ export default function AjusteProgramacoesScreen() {
 
                 {/* Resumo antes/depois */}
                 <Box sx={{ display: 'flex', gap: 1 }}>
-                  <Box sx={{ flex: 1, p: 1.5, bgcolor: '#f8f9fa', borderRadius: 1, textAlign: 'center', border: '1px solid #e9ecef' }}>
+                  <Box sx={{ flex: 1, p: 1.5, bgcolor: 'action.hover', borderRadius: 1, textAlign: 'center', border: '1px solid', borderColor: 'divider' }}>
                     <Typography variant="caption" color="text.secondary" display="block">Original salvo</Typography>
                     <Typography variant="subtitle2" fontWeight={700}>{fmt(totOrig)} {unid}</Typography>
                   </Box>
-                  <Box sx={{ flex: 1, p: 1.5, bgcolor: '#f8f9fa', borderRadius: 1, textAlign: 'center', border: '1px solid #e9ecef' }}>
+                  <Box sx={{ flex: 1, p: 1.5, bgcolor: 'action.hover', borderRadius: 1, textAlign: 'center', border: '1px solid', borderColor: 'divider' }}>
                     <Typography variant="caption" color="text.secondary" display="block">Atual (editado)</Typography>
                     <Typography variant="subtitle2" fontWeight={700} color={totAtual !== totOrig ? 'warning.main' : 'text.primary'}>
                       {fmt(totAtual)} {unid}
                     </Typography>
                   </Box>
-                  <Box sx={{ flex: 1, p: 1.5, bgcolor: '#e8f4fd', borderRadius: 1, textAlign: 'center', border: '1px solid #bee3f8' }}>
+                  <Box sx={{ flex: 1, p: 1.5, bgcolor: 'action.selected', borderRadius: 1, textAlign: 'center', border: '1px solid', borderColor: 'primary.main' }}>
                     <Typography variant="caption" color="text.secondary" display="block">Após ajuste</Typography>
                     <Typography variant="subtitle2" fontWeight={700} color="primary.main">{fmt(totPreview)} {unid}</Typography>
                     {diffPreview !== 0 && (

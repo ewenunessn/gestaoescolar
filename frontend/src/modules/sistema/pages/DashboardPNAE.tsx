@@ -106,11 +106,12 @@ const MetricCard: React.FC<MetricCardProps> = ({ label, value, caption, icon, ac
     sx={{
       height: '100%',
       borderRadius: '6px',
-      border: '1px solid #e5e7eb',
-      bgcolor: '#fff',
+      border: '1px solid',
+      borderColor: 'divider',
+      bgcolor: 'background.paper',
       transition: 'all 0.2s',
       overflow: 'visible',
-      '&:hover': { boxShadow: '0 1px 3px rgba(0,0,0,0.08)', borderColor: '#d1d5db' },
+      '&:hover': { boxShadow: '0 1px 3px rgba(0,0,0,0.08)', borderColor: 'action.selected' },
     }}
   >
     <CardContent sx={{ p: 3 }}>
@@ -147,7 +148,7 @@ const MetricCard: React.FC<MetricCardProps> = ({ label, value, caption, icon, ac
       </Typography>
 
       {caption && (
-        <Typography sx={{ fontSize: '0.75rem', color: '#94a3b8' }}>{caption}</Typography>
+        <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>{caption}</Typography>
       )}
 
       {progressProps && (
@@ -158,7 +159,7 @@ const MetricCard: React.FC<MetricCardProps> = ({ label, value, caption, icon, ac
             sx={{
               height: 4,
               borderRadius: 2,
-              bgcolor: '#f1f5f9',
+              bgcolor: 'action.hover',
               '& .MuiLinearProgress-bar': { bgcolor: accent, borderRadius: 2 },
             }}
           />
@@ -342,14 +343,14 @@ const DashboardPNAE = () => {
 
       {/* Section label */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-        <Box sx={{ width: 16, height: 3, borderRadius: 2, bgcolor: GREEN }} />
+        <Box sx={{ width: 16, height: 3, borderRadius: 2, bgcolor: 'success.main' }} />
         <Typography
           sx={{
             fontSize: '0.7rem',
             fontWeight: 700,
             textTransform: 'uppercase',
             letterSpacing: '1px',
-            color: GREEN,
+            color: 'success.main',
           }}
         >
           Métricas Financeiras
@@ -380,7 +381,7 @@ const DashboardPNAE = () => {
             }}
             progressCaption={
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.6, fontSize: '0.72rem' }}>
-                <Typography sx={{ color: '#94a3b8' }}>Meta: {percentual_minimo_obrigatorio}%</Typography>
+                <Typography sx={{ color: 'text.secondary' }}>Meta: {percentual_minimo_obrigatorio}%</Typography>
                 <Typography sx={{ color: atendeRequisito ? GREEN_DARK : '#dc2626', fontWeight: 600 }}>{atendeRequisito ? 'Atende' : 'Não atende'}</Typography>
               </Box>
             }
@@ -414,12 +415,12 @@ const DashboardPNAE = () => {
       <Grid container spacing={2} sx={{ mb: 3 }}>
         {/* Resumo Financeiro */}
         <Grid item xs={12} md={8}>
-          <Card className="pnae-qb-sec" sx={{ height: '100%', borderRadius: '6px', border: '1px solid #e5e7eb', bgcolor: '#fff' }}>
+          <Card className="pnae-qb-sec" sx={{ height: '100%', borderRadius: '6px', border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
             <CardContent sx={{ p: 3 }}>
               {/* Section bar */}
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
-                <Box sx={{ width: 16, height: 3, borderRadius: 2, bgcolor: '#2563eb' }} />
-                <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: '#2563eb' }}>
+                <Box sx={{ width: 16, height: 3, borderRadius: 2, bgcolor: 'info.main' }} />
+                <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'info.main' }}>
                   Resumo Financeiro
                 </Typography>
               </Box>
@@ -431,9 +432,10 @@ const DashboardPNAE = () => {
                     sx={{
                       textAlign: 'center',
                       p: 2.5,
-                      bgcolor: '#fafbfc',
+                      bgcolor: 'action.hover',
                       borderRadius: '4px',
-                      border: '1px solid #f1f5f9',
+                      border: '1px solid',
+                      borderColor: 'divider',
                       transition: 'border-color 0.15s',
                       '&:hover': { borderColor: '#d1d5db' },
                     }}
@@ -444,7 +446,7 @@ const DashboardPNAE = () => {
                         fontWeight: 700,
                         textTransform: 'uppercase',
                         letterSpacing: '0.8px',
-                        color: '#64748b',
+                        color: 'text.secondary',
                         mb: 0.8,
                       }}
                     >
@@ -455,13 +457,13 @@ const DashboardPNAE = () => {
                         fontFamily: '"Fira Code", "Roboto Mono", monospace',
                         fontSize: '1.3rem',
                         fontWeight: 700,
-                        color: NAVY,
+                        color: 'text.primary',
                         lineHeight: 1.15,
                       }}
                     >
                       {brl(num(agricultura_familiar.valor_total) || 0)}
                     </Typography>
-                    <Typography sx={{ fontSize: '0.72rem', color: '#94a3b8', mt: 0.3 }}>
+                    <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', mt: 0.3 }}>
                       {String(parseInt(String(agricultura_familiar.total_pedidos)) || 0)} pedidos
                     </Typography>
                   </Box>
@@ -472,9 +474,10 @@ const DashboardPNAE = () => {
                     sx={{
                       textAlign: 'center',
                       p: 2.5,
-                      bgcolor: '#f7fef9',
+                      bgcolor: 'success.light',
                       borderRadius: '4px',
-                      border: '1px solid #dcfce7',
+                      border: '1px solid',
+                      borderColor: 'success.main',
                       transition: 'border-color 0.15s',
                       '&:hover': { borderColor: '#86efac' },
                     }}
@@ -485,7 +488,7 @@ const DashboardPNAE = () => {
                         fontWeight: 700,
                         textTransform: 'uppercase',
                         letterSpacing: '0.8px',
-                        color: GREEN,
+                        color: 'success.dark',
                         mb: 0.8,
                       }}
                     >
@@ -496,13 +499,13 @@ const DashboardPNAE = () => {
                         fontFamily: '"Fira Code", "Roboto Mono", monospace',
                         fontSize: '1.3rem',
                         fontWeight: 700,
-                        color: GREEN_DARK,
+                        color: 'success.dark',
                         lineHeight: 1.15,
                       }}
                     >
                       {brl(valorAF)}
                     </Typography>
-                    <Typography sx={{ fontSize: '0.72rem', color: '#15803d', fontWeight: 500, mt: 0.3 }}>
+                    <Typography sx={{ fontSize: '0.72rem', color: 'success.dark', fontWeight: 500, mt: 0.3 }}>
                       {percentualAF.toFixed(1)}% do FNDE
                     </Typography>
                   </Box>
@@ -513,9 +516,10 @@ const DashboardPNAE = () => {
                     sx={{
                       textAlign: 'center',
                       p: 2.5,
-                      bgcolor: '#eff6ff',
+                      bgcolor: 'info.light',
                       borderRadius: '4px',
-                      border: '1px solid #dbeafe',
+                      border: '1px solid',
+                      borderColor: 'info.main',
                       transition: 'border-color 0.15s',
                       '&:hover': { borderColor: '#93c5fd' },
                     }}
@@ -526,7 +530,7 @@ const DashboardPNAE = () => {
                         fontWeight: 700,
                         textTransform: 'uppercase',
                         letterSpacing: '0.8px',
-                        color: '#2563eb',
+                        color: 'info.dark',
                         mb: 0.8,
                       }}
                     >
@@ -537,7 +541,7 @@ const DashboardPNAE = () => {
                         fontFamily: '"Fira Code", "Roboto Mono", monospace',
                         fontSize: '1.3rem',
                         fontWeight: 700,
-                        color: '#2563eb',
+                        color: 'info.dark',
                         lineHeight: 1.15,
                       }}
                     >
@@ -563,35 +567,35 @@ const DashboardPNAE = () => {
 
         {/* Legislação */}
         <Grid item xs={12} md={4}>
-          <Card className="pnae-qb-sec" sx={{ height: '100%', borderRadius: '6px', border: '1px solid #e5e7eb', bgcolor: '#fafbfc' }}>
+          <Card className="pnae-qb-sec" sx={{ height: '100%', borderRadius: '6px', border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
             <CardContent sx={{ p: 3 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
-                <Box sx={{ width: 16, height: 3, borderRadius: 2, bgcolor: '#64748b' }} />
-                <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: '#64748b' }}>
+                <Box sx={{ width: 16, height: 3, borderRadius: 2, bgcolor: 'text.secondary' }} />
+                <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'text.secondary' }}>
                   Legislação
                 </Typography>
               </Box>
 
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                <Box sx={{ p: 2, bgcolor: '#fff', borderRadius: '4px 4px 0 0', border: '1px solid #e5e7eb', borderBottom: 'none' }}>
-                  <Typography sx={{ fontSize: '0.68rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                <Box sx={{ p: 2, bgcolor: 'background.paper', borderRadius: '4px 4px 0 0', border: '1px solid', borderColor: 'divider', borderBottom: 'none' }}>
+                  <Typography sx={{ fontSize: '0.68rem', fontWeight: 600, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                     Lei 11.947/2009
                   </Typography>
-                  <Typography sx={{ fontSize: '0.82rem', color: '#475569', mt: 0.2 }}>Institui o PNAE</Typography>
+                  <Typography sx={{ fontSize: '0.82rem', color: 'text.primary', mt: 0.2 }}>Institui o PNAE</Typography>
                 </Box>
-                <Box sx={{ p: 2, bgcolor: '#fff', border: '1px solid #e5e7eb', borderBottom: 'none' }}>
-                  <Typography sx={{ fontSize: '0.68rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                <Box sx={{ p: 2, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', borderBottom: 'none' }}>
+                  <Typography sx={{ fontSize: '0.68rem', fontWeight: 600, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                     Lei 15.226/2025
                   </Typography>
-                  <Typography sx={{ fontSize: '0.82rem', color: '#475569', mt: 0.2 }}>Aumenta para 45% (vigente 2026)</Typography>
+                  <Typography sx={{ fontSize: '0.82rem', color: 'text.primary', mt: 0.2 }}>Aumenta para 45% (vigente 2026)</Typography>
                 </Box>
                 <Box
                   sx={{
-                    p: 2, bgcolor: '#fff', borderRadius: '0 0 4px 4px', border: '1px solid #e5e7eb',
+                    p: 2, bgcolor: 'background.paper', borderRadius: '0 0 4px 4px', border: '1px solid', borderColor: 'divider',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   }}
                 >
-                  <Typography sx={{ fontSize: '0.68rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                  <Typography sx={{ fontSize: '0.68rem', fontWeight: 600, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                     Obrigatório
                   </Typography>
                   <Typography
@@ -599,7 +603,7 @@ const DashboardPNAE = () => {
                       fontFamily: '"Fira Code", "Roboto Mono", monospace',
                       fontSize: '1.35rem',
                       fontWeight: 700,
-                      color: '#2563eb',
+                      color: 'info.main',
                     }}
                   >
                     {percentual_minimo_obrigatorio}%
@@ -612,16 +616,16 @@ const DashboardPNAE = () => {
       </Grid>
 
       {/* Chart */}
-      <Card className="pnae-qb-sec" sx={{ borderRadius: '6px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
+      <Card className="pnae-qb-sec" sx={{ borderRadius: '6px', border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}>
         <CardContent sx={{ p: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-            <Box sx={{ width: 16, height: 3, borderRadius: 2, bgcolor: GREEN_DARK }} />
-            <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: GREEN_DARK }}>
+            <Box sx={{ width: 16, height: 3, borderRadius: 2, bgcolor: 'success.dark' }} />
+            <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'success.dark' }}>
               Evolução Acumulada — Agricultura Familiar
             </Typography>
           </Box>
 
-          <Typography sx={{ fontSize: '0.78rem', color: '#94a3b8', mb: 2 }}>
+          <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary', mb: 2 }}>
             Percentual acumulado no ano sobre o valor total recebido do FNDE
           </Typography>
           <Box sx={{ height: 320 }}>

@@ -1142,7 +1142,7 @@ const CardapioCalendarioPage: React.FC = () => {
 
             {/* Card de custo do cardápio */}
             {custoCardapio && (
-              <Card sx={{ p: 1.5, mb: 2, bgcolor: '#f0f7ff' }}>
+              <Card sx={{ p: 1.5, mb: 2, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
                   <Typography variant="subtitle1" sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 600 }}>
                     <RestaurantIcon fontSize="small" />

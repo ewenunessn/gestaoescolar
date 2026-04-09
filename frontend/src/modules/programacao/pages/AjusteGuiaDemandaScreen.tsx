@@ -217,9 +217,9 @@ export default function AjusteGuiaDemandaScreen() {
   const selOpen = Boolean(selAnchor);
 
   return (
-    <Box sx={{ height: 'calc(100vh - 56px)', display: 'flex', flexDirection: 'column', bgcolor: '#f8f9fa' }}>
+    <Box sx={{ height: 'calc(100vh - 56px)', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
       {/* Header */}
-      <Box sx={{ px: 2, py: 1, bgcolor: 'white', borderBottom: '1px solid #e9ecef', display: 'flex', alignItems: 'center', gap: 1 }}>
+      <Box sx={{ px: 2, py: 1, bgcolor: 'background.paper', borderBottom: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 1 }}>
         <IconButton size="small" onClick={() => navigate(backPath)}><ArrowBackIcon /></IconButton>
         <Typography variant="subtitle1" fontWeight={700}>
           Ajuste de Demanda — {guia ? `${['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][guia.mes - 1]}/${guia.ano}` : ''}
@@ -234,11 +234,11 @@ export default function AjusteGuiaDemandaScreen() {
         <Table stickyHeader size="small" sx={{ tableLayout: 'fixed', minWidth: ESC_W + MAX_COLS * COL_W }}>
           <TableHead>
             <TableRow>
-              <TableCell sx={{ width: ESC_W, bgcolor: '#f1f3f5', fontWeight: 700, position: 'sticky', left: 0, zIndex: 4, borderRight: '2px solid #dee2e6' }}>
+              <TableCell sx={{ width: ESC_W, bgcolor: 'action.hover', fontWeight: 700, position: 'sticky', left: 0, zIndex: 4, borderRight: '2px solid', borderColor: 'divider' }}>
                 Escola
               </TableCell>
               {Array.from({ length: MAX_COLS }, (_, ci) => (
-                <TableCell key={ci} sx={{ width: COL_W, bgcolor: colConfigured(ci) ? '#e8f4fd' : '#f8f9fa', p: 0.75, verticalAlign: 'top' }}>
+                <TableCell key={ci} sx={{ width: COL_W, bgcolor: colConfigured(ci) ? 'action.selected' : 'action.hover', p: 0.75, verticalAlign: 'top' }}>
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                     <Button size="small" fullWidth
                       variant={colConfigured(ci) ? 'contained' : 'outlined'}
@@ -260,11 +260,11 @@ export default function AjusteGuiaDemandaScreen() {
             </TableRow>
             {/* Linha totais */}
             <TableRow>
-              <TableCell sx={{ bgcolor: '#e9ecef', fontWeight: 700, fontSize: 11, position: 'sticky', left: 0, zIndex: 4, borderRight: '2px solid #dee2e6' }}>Total</TableCell>
+              <TableCell sx={{ bgcolor: 'action.hover', fontWeight: 700, fontSize: 11, position: 'sticky', left: 0, zIndex: 4, borderRight: '2px solid', borderColor: 'divider' }}>Total</TableCell>
               {Array.from({ length: MAX_COLS }, (_, ci) => {
                 const tot = totalCol(ci); const dem = totalDemanda(ci); const d = tot - dem;
                 return (
-                  <TableCell key={ci} sx={{ bgcolor: '#e9ecef', textAlign: 'center', fontWeight: 700, fontSize: 11 }}>
+                  <TableCell key={ci} sx={{ bgcolor: 'action.hover', textAlign: 'center', fontWeight: 700, fontSize: 11 }}>
                     {colConfigured(ci) ? (
                       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5, flexWrap: 'wrap' }}>
                         <span>{fmt(tot)} {colUnidade(ci)}</span>
@@ -279,8 +279,8 @@ export default function AjusteGuiaDemandaScreen() {
           </TableHead>
           <TableBody>
             {escolas.map((escola, ri) => (
-              <TableRow key={escola.id} sx={{ bgcolor: ri % 2 === 0 ? 'white' : '#fafbfc', '&:hover': { bgcolor: '#f0f7ff' } }}>
-                <TableCell sx={{ position: 'sticky', left: 0, bgcolor: ri % 2 === 0 ? 'white' : '#fafbfc', zIndex: 2, borderRight: '2px solid #dee2e6', fontSize: 12, fontWeight: 500 }}>
+              <TableRow key={escola.id} sx={{ bgcolor: ri % 2 === 0 ? 'background.paper' : 'action.hover', '&:hover': { bgcolor: 'action.selected' } }}>
+                <TableCell sx={{ position: 'sticky', left: 0, bgcolor: 'inherit', zIndex: 2, borderRight: '2px solid', borderColor: 'divider', fontSize: 12, fontWeight: 500 }}>
                   {escola.nome}
                 </TableCell>
                 {Array.from({ length: MAX_COLS }, (_, ci) => {
@@ -314,7 +314,7 @@ export default function AjusteGuiaDemandaScreen() {
         anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
         transformOrigin={{ vertical: 'top', horizontal: 'left' }}
         PaperProps={{ sx: { width: 320, maxHeight: 420 } }}>
-        <Box sx={{ px: 2, py: 1, bgcolor: '#f8f9fa', borderBottom: '1px solid #e9ecef' }}>
+        <Box sx={{ px: 2, py: 1, bgcolor: 'action.hover', borderBottom: '1px solid', borderColor: 'divider' }}>
           <Typography variant="caption" fontWeight={700} color="text.secondary">SELECIONAR PRODUTO / PERÍODO</Typography>
         </Box>
         <List dense disablePadding>
@@ -350,7 +350,7 @@ export default function AjusteGuiaDemandaScreen() {
                     { label: 'Atual (editado)', val: totAtual, color: totAtual !== totDem ? 'warning.main' : undefined },
                     { label: 'Após ajuste', val: totPrev, color: 'primary.main', diff: diffPrev },
                   ].map(({ label, val, color, diff }) => (
-                    <Box key={label} sx={{ flex: 1, p: 1.5, bgcolor: label === 'Após ajuste' ? '#e8f4fd' : '#f8f9fa', borderRadius: 1, textAlign: 'center', border: '1px solid #e9ecef' }}>
+                    <Box key={label} sx={{ flex: 1, p: 1.5, bgcolor: label === 'Após ajuste' ? 'action.selected' : 'action.hover', borderRadius: 1, textAlign: 'center', border: '1px solid', borderColor: 'divider' }}>
                       <Typography variant="caption" color="text.secondary" display="block">{label}</Typography>
                       <Typography variant="subtitle2" fontWeight={700} color={color}>{fmt(val)} {unid}</Typography>
                       {diff !== undefined && diff !== 0 && <Chip label={`${diff > 0 ? '+' : ''}${fmt(diff)}`} size="small" color={diff >= 0 ? 'success' : 'error'} sx={{ height: 16, fontSize: 9, mt: 0.25, '& .MuiChip-label': { px: 0.5 } }} />}

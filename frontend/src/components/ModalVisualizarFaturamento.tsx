@@ -120,7 +120,7 @@ export default function ModalVisualizarFaturamento({
         {faturamento && !loading && (
           <Box>
             {/* Informações do Faturamento */}
-            <Box sx={{ mb: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+            <Box sx={{ mb: 3, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
               <Typography variant="h6" gutterBottom>
                 {faturamento.numero}
               </Typography>
@@ -215,7 +215,7 @@ export default function ModalVisualizarFaturamento({
             </TableContainer>
 
             {faturamento.observacoes && (
-              <Box sx={{ mt: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+              <Box sx={{ mt: 3, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
                 <Typography variant="subtitle2" gutterBottom>
                   Observações:
                 </Typography>

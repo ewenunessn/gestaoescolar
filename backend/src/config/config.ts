@@ -43,10 +43,15 @@ export const config = {
             "https://gestaoescolar-frontend-painel.vercel.app",
             "https://nutriescola.vercel.app",
             "https://nutrilog-sistema.vercel.app",
+            "*.vercel.app",
             "http://localhost:5173",
             "http://localhost:3000"
           ]
-        : true, // Aceita qualquer origem em desenvolvimento
+        : process.env.CORS_ORIGIN?.split(',') || [
+            "http://localhost:5173",
+            "http://192.168.1.2:5173",
+            "http://192.168.18.12:5173"
+          ],
       credentials: true
     }
   },

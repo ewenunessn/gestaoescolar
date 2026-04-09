@@ -9,11 +9,18 @@ interface BreadcrumbItem {
 }
 
 interface PageBreadcrumbsProps {
-  items: BreadcrumbItem[];
+  items?: BreadcrumbItem[];
+  breadcrumbs?: BreadcrumbItem[]; // Alias para compatibilidade
 }
 
-export default function PageBreadcrumbs({ items }: PageBreadcrumbsProps) {
+export default function PageBreadcrumbs({ items, breadcrumbs }: PageBreadcrumbsProps) {
   const navigate = useNavigate();
+
+  const breadcrumbItems = items || breadcrumbs;
+
+  if (!breadcrumbItems || breadcrumbItems.length === 0) {
+    return null;
+  }
 
   return (
     <Box sx={{ mb: 0.25 }}>
@@ -21,8 +28,8 @@ export default function PageBreadcrumbs({ items }: PageBreadcrumbsProps) {
         aria-label="breadcrumb"
         sx={{ fontSize: '0.75rem' }}
       >
-        {items.map((item, index) => {
-          const isLast = index === items.length - 1;
+        {breadcrumbItems.map((item, index) => {
+          const isLast = index === breadcrumbItems.length - 1;
 
           if (isLast || !item.path) {
             return (

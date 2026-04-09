@@ -68,7 +68,7 @@ export default function DetalhamentoCustoModal({
         <TableContainer component={Paper} variant="outlined">
           <Table size="small">
             <TableHead>
-              <TableRow sx={{ bgcolor: 'grey.100' }}>
+              <TableRow sx={{ bgcolor: 'action.hover' }}>
                 <TableCell><strong>Produto</strong></TableCell>
                 <TableCell align="right"><strong>Qtd Líquida</strong></TableCell>
                 <TableCell align="right"><strong>FC</strong></TableCell>
@@ -148,7 +148,7 @@ export default function DetalhamentoCustoModal({
         <Divider sx={{ my: 2 }} />
 
         {/* Resumo */}
-        <Box display="flex" justifyContent="space-between" alignItems="center" p={2} bgcolor="grey.50" borderRadius={1}>
+        <Box display="flex" justifyContent="space-between" alignItems="center" p={2} bgcolor="action.hover" borderRadius={1}>
           <Box>
             <Typography variant="body2" color="text.secondary">Custo Total</Typography>
             <Typography variant="h5" fontWeight={600} color="success.main">
@@ -164,7 +164,7 @@ export default function DetalhamentoCustoModal({
         </Box>
 
         {/* Legenda */}
-        <Box mt={2} p={2} bgcolor="info.lighter" borderRadius={1}>
+        <Box mt={2} p={2} bgcolor="info.light" borderRadius={1}>
           <Typography variant="caption" fontWeight={600} display="block" gutterBottom>
             📊 Como o custo é calculado:
           </Typography>

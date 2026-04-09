@@ -240,7 +240,7 @@ export default function SelecionarContratosDialog({ open, onClose, produtos, onC
           const isValido = Math.abs(diferenca) < 0.01;
 
           return (
-            <Card key={produto.produto_id} sx={{ mb: 2, border: isValido ? '1px solid' : '2px solid', borderColor: isValido ? 'grey.300' : 'warning.main' }}>
+            <Card key={produto.produto_id} sx={{ mb: 2, border: isValido ? '1px solid' : '2px solid', borderColor: isValido ? 'divider' : 'warning.main' }}>
               <CardContent>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 1.5 }}>
                   <Box>
@@ -269,7 +269,7 @@ export default function SelecionarContratosDialog({ open, onClose, produtos, onC
                     const maxPossivelNeste = Math.min(maxPermitido, saldoContrato);
 
                     return (
-                      <Box key={idx} sx={{ p: 1.5, bgcolor: 'grey.50', borderRadius: 1, border: '1px solid', borderColor: 'grey.200' }}>
+                      <Box key={idx} sx={{ p: 1.5, bgcolor: 'action.hover', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
                         <Box sx={{ display: 'flex', gap: 1, alignItems: 'start' }}>
                           <FormControl size="small" sx={{ flex: 1 }}>
                             <InputLabel>Contrato</InputLabel>
@@ -339,7 +339,7 @@ export default function SelecionarContratosDialog({ open, onClose, produtos, onC
 
                 {emDivisao && (
                   <>
-                    <Box sx={{ mt: 1.5, p: 1, bgcolor: Math.abs(diferenca) < 0.01 ? 'success.50' : 'warning.50', borderRadius: 1 }}>
+                    <Box sx={{ mt: 1.5, p: 1, bgcolor: Math.abs(diferenca) < 0.01 ? 'success.light' : 'warning.light', borderRadius: 1 }}>
                       <Typography variant="caption" sx={{ fontWeight: 600 }}>
                         Total alocado: {totalAlocado.toFixed(2)} / {produto.quantidade_necessaria.toFixed(2)} {produto.unidade}
                       </Typography>
@@ -398,7 +398,7 @@ export default function SelecionarContratosDialog({ open, onClose, produtos, onC
         })}
 
         {/* Resumo Final */}
-        <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
+        <Box sx={{ mt: 2, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
           <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>Resumo da Seleção</Typography>
           {produtos.map(produto => {
             const contratosDoP = contratosSelecionados.get(produto.produto_id) || [];

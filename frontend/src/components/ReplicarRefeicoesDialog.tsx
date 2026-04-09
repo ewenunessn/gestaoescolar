@@ -305,7 +305,7 @@ export const ReplicarRefeicoesDialog: React.FC<ReplicarRefeicoesDialogProps> = (
         </Box>
       </DialogContent>
 
-      <DialogActions sx={{ px: 3, py: 2, bgcolor: '#fafafa' }}>
+      <DialogActions sx={{ px: 3, py: 2, bgcolor: 'action.hover' }}>
         <Button onClick={handleClose} disabled={loading} sx={{ textTransform: 'none' }}>
           Cancelar
         </Button>
