@@ -33,7 +33,8 @@ module.exports = async (req, res) => {
       NODE_ENV: process.env.NODE_ENV,
       VERCEL: process.env.VERCEL,
       POSTGRES_URL: process.env.POSTGRES_URL ? '✅ Configurado' : '❌ Ausente',
-      DATABASE_URL: process.env.DATABASE_URL ? '✅ Configurado' : '❌ Ausente'
+      DATABASE_URL: process.env.DATABASE_URL ? '✅ Configurado' : '❌ Ausente',
+      JWT_SECRET: process.env.JWT_SECRET ? `✅ Configurado (${process.env.JWT_SECRET.substring(0, 10)}...)` : '❌ AUSENTE'
     });
 
     // Importa o app compilado do dist
