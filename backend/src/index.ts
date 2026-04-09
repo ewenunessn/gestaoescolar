@@ -58,6 +58,7 @@ import dashboardRoutes from "./modules/sistema/routes/dashboardRoutes";
 import notificacoesRoutes from "./modules/sistema/routes/notificacoesRoutes";
 import disparosNotificacaoRoutes from "./modules/sistema/routes/disparosNotificacaoRoutes";
 import unidadeMedidaRoutes from "./modules/unidades/routes/unidadeMedidaRoutes";
+import debugEnvRoutes from "./routes/debug-env";
 
 import { createServer } from 'http';
 import { initRedis } from "./config/redis";
@@ -280,6 +281,7 @@ app.use("/api/solicitacoes-alimentos", solicitacoesAlimentosRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/notificacoes", notificacoesRoutes);
 app.use("/api/disparos-notificacao", disparosNotificacaoRoutes);
+app.use("/api", debugEnvRoutes); // Debug endpoint
 
 
 // Rotas de gás removidas
