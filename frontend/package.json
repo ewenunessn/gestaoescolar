@@ -29,6 +29,7 @@
     "@mui/system": "^7.3.9",
     "@mui/x-data-grid": "^8.9.2",
     "@mui/x-date-pickers": "^8.9.0",
+    "@mui/x-internals": "^9.0.0",
     "@pdfme/common": "^5.5.10",
     "@pdfme/generator": "^5.5.10",
     "@pdfme/schemas": "^5.5.10",

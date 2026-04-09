@@ -25,8 +25,12 @@ export const config = {
 
   // Configurações de segurança
   jwtSecret: process.env.JWT_SECRET || (() => {
-    console.warn('⚠️ JWT_SECRET não configurado - usando valor padrão (INSEGURO EM PRODUÇÃO!)');
-    return 'default-secret-change-in-production-' + Date.now();
+    console.error('❌❌❌ ERRO CRÍTICO: JWT_SECRET NÃO CONFIGURADO! ❌❌❌');
+    console.error('❌ Isso causará tokens inválidos a cada restart do servidor!');
+    console.error('❌ Configure JWT_SECRET nas variáveis de ambiente do Vercel!');
+    console.error('❌ Acesse: https://vercel.com/dashboard → Settings → Environment Variables');
+    console.error('❌ Gerando secret temporário - TODOS OS TOKENS SERÃO INVÁLIDOS NO PRÓXIMO RESTART!');
+    return 'TEMPORARY-INSECURE-SECRET-' + Date.now();
   })(),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "7d", // Aumentado para 7 dias
 

@@ -34,6 +34,7 @@ import {
   Info as InfoIcon,
   FileDownload as FileDownloadIcon,
   FileUpload as FileUploadIcon,
+  Add as AddIcon,
 } from "@mui/icons-material";
 import { 
   useFornecedores, 
