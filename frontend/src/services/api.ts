@@ -64,10 +64,9 @@ const api = axios.create({
 
 // Interceptor de requisição
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
+  console.log('🔍 [API DEBUG] Interceptor executado para:', config.url);
   
-  // SEMPRE logar em produção temporariamente para debug
-  console.log('🔍 [API DEBUG] URL:', config.url);
+  const token = localStorage.getItem("token");
   console.log('🔍 [API DEBUG] Token no localStorage:', token ? `${token.substring(0, 30)}...` : 'AUSENTE');
   
   // Só adiciona o header Authorization se há um token válido
@@ -76,8 +75,15 @@ api.interceptors.request.use((config) => {
     config.headers = config.headers || {};
     config.headers["Authorization"] = `Bearer ${token}`;
     console.log('✅ [API DEBUG] Token adicionado ao header Authorization');
+    console.log('✅ [API DEBUG] Header completo:', config.headers["Authorization"].substring(0, 50) + '...');
   } else {
     console.log('⚠️ [API DEBUG] Token NÃO adicionado - inválido ou ausente');
+    console.log('⚠️ [API DEBUG] Motivo:', {
+      tokenExists: !!token,
+      isNull: token === 'null',
+      isUndefined: token === 'undefined',
+      length: token?.length
+    });
   }
 
   // Log em desenvolvimento
