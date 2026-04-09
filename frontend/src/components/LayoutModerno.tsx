@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from "react";
 import {
   Box, Drawer, List, Typography, IconButton, ListItem, ListItemButton,
   ListItemIcon, ListItemText, Collapse, Tooltip, useTheme, useMediaQuery,
-  Button, CircularProgress,
+  Button, CircularProgress, AppBar, Toolbar,
 } from "@mui/material";
 import {
   Menu as MenuIcon, Dashboard, School, Category, Inventory, Restaurant,
@@ -426,6 +426,32 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
 
   return (
     <Box sx={{ display: "flex", minHeight: "100vh" }}>
+      {/* AppBar com botão hambúrguer para mobile */}
+      <AppBar
+        position="fixed"
+        sx={{
+          display: { xs: "block", md: "none" },
+          bgcolor: SIDEBAR_BG,
+          borderBottom: `1px solid ${BORDER}`,
+          boxShadow: "none",
+        }}
+      >
+        <Toolbar>
+          <IconButton
+            color="inherit"
+            aria-label="abrir menu"
+            edge="start"
+            onClick={handleDrawerToggle}
+            sx={{ mr: 2 }}
+          >
+            <MenuIcon />
+          </IconButton>
+          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, color: TEXT }}>
+            NutriEscola
+          </Typography>
+        </Toolbar>
+      </AppBar>
+
       <Box component="nav" sx={{ width: { md: collapsed ? collapsedDrawerWidth : drawerWidth }, flexShrink: { md: 0 }, transition: "width 0.25s ease" }}>
         <Drawer variant="temporary" open={mobileOpen} onClose={handleDrawerToggle}
           ModalProps={{ keepMounted: true }}
@@ -447,6 +473,7 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
         width: { md: `calc(100% - ${collapsed ? collapsedDrawerWidth : drawerWidth}px)` },
         minHeight: "100vh", bgcolor: "background.default",
         transition: "width 0.25s ease",
+        mt: { xs: "56px", md: 0 }, // Margem top no mobile para não ficar atrás do AppBar
       }}>
         {children}
       </Box>
