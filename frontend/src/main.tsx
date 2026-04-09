@@ -3,6 +3,9 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import "./styles/transitions.css";
 
+// Monitor de localStorage para debug (TEMPORÁRIO - remover após resolver problema)
+import "./utils/localStorageMonitor";
+
 // Configuração para compatibilidade com React Router v7
 const router = {
   future: {

@@ -31,18 +31,33 @@ const PageLoader = () => (
 
 // Redireciona para a rota inicial correta conforme tipo de usuário
 function RootRedirect() {
-  if (!isAuthenticated()) return <Navigate to="/login" replace />;
+  console.log('🔀 [RootRedirect] Verificando autenticação...');
+  
+  if (!isAuthenticated()) {
+    console.log('🔀 [RootRedirect] Não autenticado - redirecionando para /login');
+    return <Navigate to="/login" replace />;
+  }
 
   // Detectar se é usuário de escola pelo token JWT (sem chamada de API)
   try {
     const token = localStorage.getItem('token');
+    console.log('🔀 [RootRedirect] Token encontrado:', token ? 'SIM' : 'NÃO');
+    
     if (token) {
       const payload = JSON.parse(atob(token.split('.')[1]));
       const isEscolaUser = !!(payload.escola_id && payload.tipo !== 'admin' && !payload.isSystemAdmin);
-      if (isEscolaUser) return <Navigate to="/portal-escola" replace />;
+      console.log('🔀 [RootRedirect] É usuário de escola?', isEscolaUser);
+      
+      if (isEscolaUser) {
+        console.log('🔀 [RootRedirect] Redirecionando para /portal-escola');
+        return <Navigate to="/portal-escola" replace />;
+      }
     }
-  } catch { /* fallback para dashboard */ }
+  } catch (e) {
+    console.error('🔀 [RootRedirect] Erro ao decodificar token:', e);
+  }
 
+  console.log('🔀 [RootRedirect] Redirecionando para /dashboard');
   return <Navigate to="/dashboard" replace />;
 }
 

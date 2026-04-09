@@ -1,6 +1,7 @@
 import AppRouter from "./routes/AppRouter";
 import { ConfigProvider } from "./context/ConfigContext";
 import { PageTitleProvider } from "./contexts/PageTitleContext";
+import { AuthProvider } from "./contexts/AuthContext";
 import { QueryProvider } from "./providers/QueryProvider";
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -20,29 +21,31 @@ interface AppProps {
 
 export default function App({ routerConfig }: AppProps) {
   return (
-    <QueryProvider>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <PageTitleProvider>
-          <ConfigProvider>
-            <AppRouter routerConfig={routerConfig} />
-            <UpdateNotification />
-            <ReactToastifyContainer
-                position="top-right"
-                autoClose={4000}
-                hideProgressBar={false}
-                newestOnTop={false}
-                closeOnClick
-                rtl={false}
-                pauseOnFocusLoss
-                draggable
-                pauseOnHover
-                theme="light"
-                style={{ zIndex: 9999 }}
-              />
-          </ConfigProvider>
-        </PageTitleProvider>
-      </ThemeProvider>
-    </QueryProvider>
+    <AuthProvider>
+      <QueryProvider>
+        <ThemeProvider theme={theme}>
+          <CssBaseline />
+          <PageTitleProvider>
+            <ConfigProvider>
+              <AppRouter routerConfig={routerConfig} />
+              <UpdateNotification />
+              <ReactToastifyContainer
+                  position="top-right"
+                  autoClose={4000}
+                  hideProgressBar={false}
+                  newestOnTop={false}
+                  closeOnClick
+                  rtl={false}
+                  pauseOnFocusLoss
+                  draggable
+                  pauseOnHover
+                  theme="light"
+                  style={{ zIndex: 9999 }}
+                />
+            </ConfigProvider>
+          </PageTitleProvider>
+        </ThemeProvider>
+      </QueryProvider>
+    </AuthProvider>
   );
 }

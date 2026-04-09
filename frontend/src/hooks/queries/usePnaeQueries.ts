@@ -1,5 +1,5 @@
 // React Query hooks para PNAE
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tantml/react-query';
 import {
   getDashboardPNAE,
   getRelatorioAgriculturaFamiliar,
@@ -10,18 +10,17 @@ import {
   criarValorPerCapita,
   atualizarValorPerCapita,
 } from '../../services/pnae';
+import { useAuth } from '../../contexts/AuthContext';
 
 // Dashboard
 export const useDashboardPNAE = () => {
-  // Só executar se houver token válido
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  const hasValidToken = token && token !== 'null' && token !== 'undefined' && token.length > 10;
+  const { isReady, hasToken } = useAuth();
   
   return useQuery({
     queryKey: ['pnae', 'dashboard'],
     queryFn: getDashboardPNAE,
     staleTime: 5 * 60 * 1000, // 5 minutos
-    enabled: hasValidToken, // Só executar se tiver token válido
+    enabled: isReady && hasToken, // Só executar quando auth estiver pronto E tiver token
   });
 };
 

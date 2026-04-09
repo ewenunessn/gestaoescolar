@@ -75,6 +75,10 @@ export default function Login() {
         token: localStorage.getItem('token') ? `${localStorage.getItem('token')?.substring(0, 30)}...` : 'AUSENTE',
         user: localStorage.getItem('user') ? 'EXISTE' : 'AUSENTE'
       });
+      
+      // Disparar evento customizado para notificar outros componentes
+      window.dispatchEvent(new Event('auth-changed'));
+      console.log('📢 [LOGIN] Evento auth-changed disparado');
 
       // Determinar rota de redirecionamento
       const isEscolaUser = !!(userData.escola_id && userData.tipo !== 'admin' && !payload.isSystemAdmin);
