@@ -37,6 +37,10 @@ export default function Login() {
     setLoading(true);
     
     console.log('🔐 [LOGIN] Iniciando processo de login...');
+    console.log('🔐 [LOGIN] localStorage antes do login:', {
+      token: localStorage.getItem('token') ? 'EXISTE' : 'AUSENTE',
+      user: localStorage.getItem('user') ? 'EXISTE' : 'AUSENTE'
+    });
     
     try {
       const response = await login(email, senha);
@@ -46,6 +50,7 @@ export default function Login() {
       const token = response.token;
       localStorage.setItem("token", token);
       console.log('💾 [LOGIN] Token salvo no localStorage');
+      console.log('💾 [LOGIN] Token (primeiros 50 chars):', token.substring(0, 50));
       
       const payload = JSON.parse(atob(token.split(".")[1]));
       const userData = {
@@ -64,6 +69,12 @@ export default function Login() {
       localStorage.setItem("perfil", response.tipo);
       localStorage.setItem("nome", response.nome);
       console.log('💾 [LOGIN] Dados do usuário salvos:', { tipo: userData.tipo, escola_id: userData.escola_id });
+      
+      // Verificar se realmente foi salvo
+      console.log('🔍 [LOGIN] Verificando localStorage após salvar:', {
+        token: localStorage.getItem('token') ? `${localStorage.getItem('token')?.substring(0, 30)}...` : 'AUSENTE',
+        user: localStorage.getItem('user') ? 'EXISTE' : 'AUSENTE'
+      });
 
       // Determinar rota de redirecionamento
       const isEscolaUser = !!(userData.escola_id && userData.tipo !== 'admin' && !payload.isSystemAdmin);

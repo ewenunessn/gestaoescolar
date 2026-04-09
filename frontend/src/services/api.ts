@@ -65,17 +65,19 @@ const api = axios.create({
 // Interceptor de requisição
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
+  
+  // SEMPRE logar em produção temporariamente para debug
+  console.log('🔍 [API DEBUG] URL:', config.url);
+  console.log('🔍 [API DEBUG] Token no localStorage:', token ? `${token.substring(0, 30)}...` : 'AUSENTE');
+  
   // Só adiciona o header Authorization se há um token válido
   // Em desenvolvimento, permite acesso sem token
   if (token && token !== 'null' && token !== 'undefined' && token.length > 10) {
     config.headers = config.headers || {};
     config.headers["Authorization"] = `Bearer ${token}`;
-    
-    if (apiConfig.debug) {
-      console.log('🔑 [API] Token adicionado à requisição:', config.url);
-    }
-  } else if (apiConfig.debug) {
-    console.log('⚠️ [API] Requisição sem token:', config.url);
+    console.log('✅ [API DEBUG] Token adicionado ao header Authorization');
+  } else {
+    console.log('⚠️ [API DEBUG] Token NÃO adicionado - inválido ou ausente');
   }
 
   // Log em desenvolvimento
