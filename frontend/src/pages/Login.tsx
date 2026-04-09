@@ -85,6 +85,11 @@ export default function Login() {
       const redirectPath = isEscolaUser ? '/portal-escola' : '/dashboard';
       console.log('🔀 [LOGIN] Redirecionando para:', redirectPath);
       
+      // CRÍTICO: Aguardar mais tempo para garantir que tudo está sincronizado
+      // Isso é especialmente importante na Vercel onde o código minificado é mais rápido
+      await new Promise(resolve => setTimeout(resolve, 1000)); // 1 segundo de delay
+      console.log('⏰ [LOGIN] Delay completado, redirecionando agora...');
+      
       // Usar navigate do React Router ao invés de window.location
       // Isso evita reload completo e mantém o estado do React
       navigate(redirectPath, { replace: true });
