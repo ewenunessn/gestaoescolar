@@ -35,12 +35,17 @@ export default function Login() {
     e.preventDefault();
     setErro("");
     setLoading(true);
+    
+    console.log('🔐 [LOGIN] Iniciando processo de login...');
+    
     try {
       const response = await login(email, senha);
+      console.log('✅ [LOGIN] Resposta recebida do servidor');
       
       // Salvar token IMEDIATAMENTE
       const token = response.token;
       localStorage.setItem("token", token);
+      console.log('💾 [LOGIN] Token salvo no localStorage');
       
       const payload = JSON.parse(atob(token.split(".")[1]));
       const userData = {
@@ -58,15 +63,18 @@ export default function Login() {
       localStorage.setItem("user", JSON.stringify(userData));
       localStorage.setItem("perfil", response.tipo);
       localStorage.setItem("nome", response.nome);
+      console.log('💾 [LOGIN] Dados do usuário salvos:', { tipo: userData.tipo, escola_id: userData.escola_id });
 
       // Determinar rota de redirecionamento
       const isEscolaUser = !!(userData.escola_id && userData.tipo !== 'admin' && !payload.isSystemAdmin);
       const redirectPath = isEscolaUser ? '/portal-escola' : '/dashboard';
+      console.log('🔀 [LOGIN] Redirecionando para:', redirectPath);
       
       // Usar navigate do React Router ao invés de window.location
       // Isso evita reload completo e mantém o estado do React
       navigate(redirectPath, { replace: true });
     } catch (err: any) {
+      console.error('❌ [LOGIN] Erro:', err);
       setErro(err.message || "E-mail ou senha incorretos");
     } finally {
       setLoading(false);

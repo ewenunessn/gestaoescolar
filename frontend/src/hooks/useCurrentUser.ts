@@ -97,12 +97,15 @@ export const useCurrentUser = () => {
     // Só buscar do servidor se temos token
     const token = getToken();
     if (token) {
+      console.log('👤 [useCurrentUser] Token encontrado, aguardando sincronização...');
       // Pequeno delay para garantir que o localStorage foi sincronizado após login
       const timer = setTimeout(() => {
+        console.log('👤 [useCurrentUser] Buscando dados do usuário do servidor...');
         fetchUser();
-      }, 100);
+      }, 200); // Aumentado de 100ms para 200ms
       return () => clearTimeout(timer);
     } else {
+      console.log('👤 [useCurrentUser] Nenhum token encontrado');
       setLoading(false);
     }
   }, []);

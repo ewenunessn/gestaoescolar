@@ -70,6 +70,12 @@ api.interceptors.request.use((config) => {
   if (token && token !== 'null' && token !== 'undefined' && token.length > 10) {
     config.headers = config.headers || {};
     config.headers["Authorization"] = `Bearer ${token}`;
+    
+    if (apiConfig.debug) {
+      console.log('🔑 [API] Token adicionado à requisição:', config.url);
+    }
+  } else if (apiConfig.debug) {
+    console.log('⚠️ [API] Requisição sem token:', config.url);
   }
 
   // Log em desenvolvimento
@@ -135,12 +141,18 @@ api.interceptors.response.use(
       const { status, data } = error.response;
       switch (status) {
         case 401:
+          console.error('🚫 [API] Erro 401 - Não autorizado');
+          console.error('🚫 [API] URL:', originalRequest.url);
+          console.error('🚫 [API] Pathname atual:', window.location.pathname);
+          
           // Verificar se estamos na página de login para diferenciar entre credenciais inválidas e sessão expirada
           if (window.location.pathname.includes('/login')) {
             // Erro de credenciais inválidas durante o login - não limpar token ainda
+            console.error('🚫 [API] Credenciais inválidas na página de login');
             throw new Error("Credenciais inválidas. Verifique seu email e senha.");
           } else {
             // Sessão expirada - limpar token e redirecionar
+            console.error('🚫 [API] Sessão expirada - limpando dados e redirecionando');
             localStorage.removeItem("token");
             localStorage.removeItem("user");
             localStorage.removeItem("perfil");
@@ -148,6 +160,7 @@ api.interceptors.response.use(
             
             // Redirecionar apenas se não estamos já na página de login
             if (!window.location.pathname.includes('/login')) {
+              console.error('🚫 [API] Redirecionando para /login');
               window.location.href = "/login";
             }
             throw new Error("Sessão expirada. Faça login novamente.");

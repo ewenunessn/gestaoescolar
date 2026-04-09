@@ -1,0 +1,7 @@
+v1.0.1 - Fix login redirect issue
+Build: 2026-04-08T23:59:00Z
+Changes:
+- Fixed login redirect using React Router navigate instead of window.location
+- Added debug logs to track authentication flow
+- Improved error handling in API interceptor
+- Increased delay in useCurrentUser to ensure localStorage sync
