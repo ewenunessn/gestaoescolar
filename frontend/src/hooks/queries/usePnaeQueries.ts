@@ -13,10 +13,15 @@ import {
 
 // Dashboard
 export const useDashboardPNAE = () => {
+  // Só executar se houver token válido
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const hasValidToken = token && token !== 'null' && token !== 'undefined' && token.length > 10;
+  
   return useQuery({
     queryKey: ['pnae', 'dashboard'],
     queryFn: getDashboardPNAE,
     staleTime: 5 * 60 * 1000, // 5 minutos
+    enabled: hasValidToken, // Só executar se tiver token válido
   });
 };
 

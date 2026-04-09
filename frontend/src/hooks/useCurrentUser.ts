@@ -94,18 +94,24 @@ export const useCurrentUser = () => {
   };
 
   useEffect(() => {
-    // Só buscar do servidor se temos token
+    // Só buscar do servidor se temos token E não estamos na página de login
     const token = getToken();
-    if (token) {
+    const isLoginPage = window.location.pathname.includes('/login');
+    
+    if (token && !isLoginPage) {
       console.log('👤 [useCurrentUser] Token encontrado, aguardando sincronização...');
-      // Pequeno delay para garantir que o localStorage foi sincronizado após login
+      // Delay maior para garantir que o localStorage foi sincronizado após login
       const timer = setTimeout(() => {
         console.log('👤 [useCurrentUser] Buscando dados do usuário do servidor...');
         fetchUser();
-      }, 200); // Aumentado de 100ms para 200ms
+      }, 500); // Aumentado de 200ms para 500ms
       return () => clearTimeout(timer);
     } else {
-      console.log('👤 [useCurrentUser] Nenhum token encontrado');
+      if (isLoginPage) {
+        console.log('👤 [useCurrentUser] Na página de login - não buscar dados');
+      } else {
+        console.log('👤 [useCurrentUser] Nenhum token encontrado');
+      }
       setLoading(false);
     }
   }, []);

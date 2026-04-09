@@ -196,7 +196,22 @@ const Dashboard = () => {
   useEffect(() => {
     const h = new Date().getHours();
     setGreeting(h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite");
-    api.get("/dashboard/stats").then((r) => setStats(r.data.data)).catch(() => {});
+    
+    // Verificar se há token antes de fazer requisições
+    const token = localStorage.getItem('token');
+    if (token && token !== 'null' && token !== 'undefined') {
+      console.log('📊 [Dashboard] Token encontrado, carregando stats...');
+      api.get("/dashboard/stats")
+        .then((r) => {
+          console.log('✅ [Dashboard] Stats carregadas com sucesso');
+          setStats(r.data.data);
+        })
+        .catch((err) => {
+          console.error('❌ [Dashboard] Erro ao carregar stats:', err);
+        });
+    } else {
+      console.log('⚠️ [Dashboard] Sem token, não carregar stats');
+    }
   }, []);
 
   const today = new Date().toLocaleDateString("pt-BR", {
