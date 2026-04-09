@@ -14,8 +14,7 @@
   ],
   "env": {
     "NODE_ENV": "production",
-    "VERCEL": "1",
-    "JWT_SECRET": "0af3++BeU5woHy0VyjpNKgOHPPkUCDkmeIt0NhYhZVatE3t+xtkTIoEGLIrpKE5OSjKgfmO4FY2L3qRs/+KEBw=="
+    "VERCEL": "1"
   },
   "regions": ["gru1"]
 }
