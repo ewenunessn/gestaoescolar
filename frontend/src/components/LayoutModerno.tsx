@@ -307,6 +307,9 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
     if (isMobile) setMobileOpen(false);
   }, [navigate, isMobile]);
 
+  // Determine first group name for separator logic
+  const firstCategory = menuConfig.length > 0 ? menuConfig[0].category : "";
+
   // Drawer para mobile (sempre expandido, com botão sair visível)
   const mobileDrawer = (
     <Box sx={{
@@ -405,9 +408,6 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
       </Box>
     </Box>
   );
-
-  // Determine first group name for separator logic
-  const firstCategory = menuConfig.length > 0 ? menuConfig[0].category : "";
 
   const drawer = (
     <Box sx={{
