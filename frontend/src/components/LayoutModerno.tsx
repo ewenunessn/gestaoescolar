@@ -307,6 +307,105 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
     if (isMobile) setMobileOpen(false);
   }, [navigate, isMobile]);
 
+  // Drawer para mobile (sempre expandido, com botão sair visível)
+  const mobileDrawer = (
+    <Box sx={{
+      height: "100%", display: "flex", flexDirection: "column",
+      bgcolor: SIDEBAR_BG,
+    }}>
+      {/* ── Brand Header ── */}
+      <Box sx={{
+        px: 2, py: 2.5,
+        borderBottom: `1px solid ${BORDER}`,
+        flexShrink: 0,
+        display: "flex", alignItems: "center",
+        justifyContent: "flex-start",
+        bgcolor: SIDEBAR_BG,
+        minHeight: 60,
+      }}>
+        <Box sx={{
+          width: 8, height: 8, borderRadius: "50%", bgcolor: GREEN,
+          flexShrink: 0,
+          mr: 1.5,
+          boxShadow: `0 0 8px ${GREEN}`,
+        }} />
+        <Typography variant="h6" sx={{
+          fontWeight: 700,
+          color: TEXT,
+          fontSize: "0.95rem",
+          letterSpacing: "0.5px",
+        }}>
+          NutriLog
+        </Typography>
+      </Box>
+
+      {/* ── Config update indicator ── */}
+      {hasRecentChange && !loadingConfig && (
+        <Box sx={{
+          mx: 1, mt: 1.5, py: 0.5, px: 1,
+          borderRadius: "4px", fontSize: "0.7rem", textAlign: "center",
+          bgcolor: GREEN_DIM, color: GREEN,
+          fontWeight: 500,
+        }}>
+          ✓ Menu atualizado!
+        </Box>
+      )}
+
+      {/* ── Menu Items ── */}
+      <Box sx={{
+        flexGrow: 1, overflow: "auto", py: 0.5, minHeight: 0,
+        "&::-webkit-scrollbar": { width: "5px" },
+        "&::-webkit-scrollbar-thumb": { background: BORDER_MD, borderRadius: "3px" },
+        "&::-webkit-scrollbar-track": { background: SIDEBAR_BG },
+      }}>
+        {loadingConfig ? (
+          <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+            <CircularProgress size={24} sx={{ color: MUTED }} />
+          </Box>
+        ) : (
+          <List dense disablePadding>
+            {menuConfig.map(({ category, items }) => (
+              <CategoryGroup
+                key={category}
+                category={category}
+                items={items.filter((i: any) => !i.adminOnly || isAdmin)}
+                location={location.pathname}
+                onNavigate={(path) => {
+                  handleNavigation(path);
+                  handleDrawerToggle(); // Fecha o drawer após navegar
+                }}
+                collapsed={false} // Sempre expandido no mobile
+                defaultOpen={category === "Principal" || category === "Portal Escola"}
+                isFirst={category === firstCategory}
+              />
+            ))}
+          </List>
+        )}
+      </Box>
+
+      {/* ── Footer com botão Sair ── */}
+      <Box sx={{
+        flexShrink: 0,
+        borderTop: `1px solid ${BORDER}`,
+        bgcolor: "rgba(0,0,0,0.12)",
+        py: 0.75, px: 1,
+      }}>
+        <Button onClick={handleLogout} size="small" startIcon={
+          <Logout sx={{ fontSize: 16, color: RED }} />
+        } sx={{
+          width: "100%", textTransform: "none",
+          fontSize: "0.72rem", minHeight: 30, px: 1,
+          borderRadius: "4px", justifyContent: "flex-start",
+          color: "rgba(255,255,255,0.45)", letterSpacing: "0.3px",
+          "&:hover": { bgcolor: "rgba(248,81,73,0.08)", color: RED },
+          transition: "all 0.15s ease",
+        }}>
+          Sair
+        </Button>
+      </Box>
+    </Box>
+  );
+
   // Determine first group name for separator logic
   const firstCategory = menuConfig.length > 0 ? menuConfig[0].category : "";
 
@@ -456,7 +555,7 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
         <Drawer variant="temporary" open={mobileOpen} onClose={handleDrawerToggle}
           ModalProps={{ keepMounted: true }}
           sx={{ display: { xs: "block", md: "none" }, "& .MuiDrawer-paper": { width: drawerWidth, bgcolor: SIDEBAR_BG } }}>
-          {drawer}
+          {mobileDrawer}
         </Drawer>
         <Drawer variant="permanent" open
           sx={{ display: { xs: "none", md: "block" }, "& .MuiDrawer-paper": {
