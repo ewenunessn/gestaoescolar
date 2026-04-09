@@ -42,6 +42,7 @@ export const config = {
             "https://gestaoescolar-frontend.vercel.app",
             "https://gestaoescolar-frontend-painel.vercel.app",
             "https://nutriescola.vercel.app",
+            "https://nutrilog-sistema.vercel.app",
             "*.vercel.app",
             "http://localhost:5173",
             "http://localhost:3000"
