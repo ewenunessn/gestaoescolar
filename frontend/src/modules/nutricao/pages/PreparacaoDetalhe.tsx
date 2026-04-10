@@ -1054,7 +1054,7 @@ export default function PreparacaoDetalhe() {
                       )}
                       {!loadingNutricional && valoresNutricionais?.aviso && (
                         <Typography variant="caption" color="warning.main" sx={{ display: 'block', mb: 1 }}>
-                          ?? {valoresNutricionais.aviso}
+                          ⚠️ {valoresNutricionais.aviso}
                         </Typography>
                       )}
                     </Grid>

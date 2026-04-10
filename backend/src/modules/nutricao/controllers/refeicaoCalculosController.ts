@@ -253,7 +253,7 @@ export const calcularValoresNutricionais = async (req: Request, res: Response) =
       alertas,
       ingredientes_sem_info: Array.from(ingredientesSemInfo),
       aviso: ingredientesSemInfo.size > 0 
-        ? `${ingredientesSemInfo.size} ingrediente(s) sem informação nutricional cadastrada`
+        ? `${ingredientesSemInfo.size} ingrediente(s) sem informação nutricional cadastrada. Complete os dados nutricionais para cálculo preciso.`
         : null
     });
 
