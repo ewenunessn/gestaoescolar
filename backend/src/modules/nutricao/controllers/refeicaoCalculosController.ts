@@ -9,6 +9,7 @@ interface IngredienteNutricional {
   tipo_medida: string;
   fator_correcao: number;
   indice_coccao: number;
+  peso_unitario: number | null;
   calorias_100g: number | null;
   proteinas_100g: number | null;
   carboidratos_100g: number | null;
@@ -48,6 +49,7 @@ export const calcularValoresNutricionais = async (req: Request, res: Response) =
         rp.tipo_medida,
         COALESCE(p.fator_correcao, 1.0) as fator_correcao,
         COALESCE(p.indice_coccao, 1.0) as indice_coccao,
+        p.peso as peso_unitario,
         pcn.energia_kcal as calorias_100g,
         pcn.proteina_g as proteinas_100g,
         pcn.carboidratos_g as carboidratos_100g,
@@ -72,6 +74,7 @@ export const calcularValoresNutricionais = async (req: Request, res: Response) =
         rp.tipo_medida,
         COALESCE(p.fator_correcao, 1.0) as fator_correcao,
         COALESCE(p.indice_coccao, 1.0) as indice_coccao,
+        p.peso as peso_unitario,
         pcn.energia_kcal as calorias_100g,
         pcn.proteina_g as proteinas_100g,
         pcn.carboidratos_g as carboidratos_100g,
@@ -114,11 +117,18 @@ export const calcularValoresNutricionais = async (req: Request, res: Response) =
     let ingredientesSemInfo: string[] = [];
 
     ingredientes.forEach(ing => {
-      // Per capita cadastrado é LÍQUIDO (consumo)
+      // Per capita cadastrado depende do tipo_medida:
+      // - Se 'gramas': per_capita já está em gramas
+      // - Se 'unidades': per_capita é a QUANTIDADE de unidades, precisa multiplicar pelo peso
       let quantidadeGramasLiquido = ing.per_capita;
+      
       if (ing.tipo_medida === 'unidades') {
-        // Assumir 100g por unidade (pode ser ajustado)
-        quantidadeGramasLiquido = ing.per_capita * 100;
+        // Multiplicar quantidade de unidades pelo peso unitário
+        const pesoUnitario = ing.peso_unitario || 100;
+        quantidadeGramasLiquido = ing.per_capita * pesoUnitario;
+        console.log(`🥚 [${ing.produto_nome}] ${ing.per_capita} unidade(s) × ${pesoUnitario}g = ${quantidadeGramasLiquido}g`);
+      } else {
+        console.log(`📊 [${ing.produto_nome}] ${ing.per_capita}g (já em gramas)`);
       }
 
       // Calcular proporção usando quantidade LÍQUIDA (quantidade / 100g)

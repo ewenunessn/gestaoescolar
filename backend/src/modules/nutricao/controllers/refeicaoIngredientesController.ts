@@ -43,6 +43,7 @@ export const buscarIngredientesDetalhados = async (req: Request, res: Response) 
         COALESCE(rpm.per_capita_ajustado, rp.per_capita) as per_capita,
         rp.tipo_medida,
         COALESCE(p.fator_correcao, 1.0) as fator_correcao,
+        p.peso as peso_unitario,
         pcn.proteina_g as proteinas_100g,
         pcn.lipideos_g as lipidios_100g,
         pcn.carboidratos_g as carboidratos_100g,
@@ -64,6 +65,7 @@ export const buscarIngredientesDetalhados = async (req: Request, res: Response) 
         rp.per_capita,
         rp.tipo_medida,
         COALESCE(p.fator_correcao, 1.0) as fator_correcao,
+        p.peso as peso_unitario,
         pcn.proteina_g as proteinas_100g,
         pcn.lipideos_g as lipidios_100g,
         pcn.carboidratos_g as carboidratos_100g,
@@ -88,25 +90,41 @@ export const buscarIngredientesDetalhados = async (req: Request, res: Response) 
     }
 
     const ingredientes: IngredienteDetalhado[] = result.rows.map(ing => {
-      // Per capita cadastrado é LÍQUIDO (consumo)
+      console.log(`\n🔍 Processando ingrediente: ${ing.produto_nome}`);
+      console.log(`   - per_capita (banco): ${ing.per_capita}`);
+      console.log(`   - tipo_medida: ${ing.tipo_medida}`);
+      console.log(`   - peso_unitario (produto): ${ing.peso_unitario}`);
+      console.log(`   - fator_correcao: ${ing.fator_correcao}`);
+      
+      // Per capita cadastrado depende do tipo_medida:
+      // - Se 'gramas' ou 'mililitros': per_capita já está em gramas/ml
+      // - Se 'unidades': per_capita é a QUANTIDADE de unidades, precisa multiplicar pelo peso
       let quantidadeGramasLiquido = ing.per_capita;
+      
       if (ing.tipo_medida === 'unidades') {
-        quantidadeGramasLiquido = ing.per_capita * 100; // Assumir 100g por unidade
+        // Usar peso unitário do produto cadastrado, ou 100g como fallback
+        const pesoUnitario = ing.peso_unitario || 100;
+        quantidadeGramasLiquido = ing.per_capita * pesoUnitario;
+        console.log(`   ✅ Cálculo: ${ing.per_capita} unidade(s) × ${pesoUnitario}g = ${quantidadeGramasLiquido}g`);
+      } else {
+        console.log(`   ✅ Já em gramas: ${ing.per_capita}g`);
       }
 
       // Calcular proporção usando quantidade LÍQUIDA (quantidade / 100g)
       const proporcao = quantidadeGramasLiquido / 100;
+      console.log(`   - proporção (para cálculo nutricional): ${proporcao}`);
 
-      // Calcular per capita BRUTO (compra) = líquido * fator
+      // Calcular per capita BRUTO (compra) = líquido em gramas * fator de correção
       const fatorCorrecao = toNum(ing.fator_correcao, 1.0);
-      const perCapitaBruto = ing.per_capita * fatorCorrecao;
+      const perCapitaBruto = quantidadeGramasLiquido * fatorCorrecao;
+      console.log(`   - per_capita_bruto: ${quantidadeGramasLiquido}g × ${fatorCorrecao} = ${perCapitaBruto}g\n`);
 
       return {
         produto_id: ing.produto_id,
         produto_nome: ing.produto_nome,
-        per_capita: ing.per_capita, // LÍQUIDO (consumo)
-        per_capita_liquido: ing.per_capita, // Explícito
-        per_capita_bruto: perCapitaBruto, // BRUTO (compra)
+        per_capita: quantidadeGramasLiquido, // LÍQUIDO em gramas (já convertido se for unidades)
+        per_capita_liquido: quantidadeGramasLiquido, // Explícito
+        per_capita_bruto: perCapitaBruto, // BRUTO (compra) em gramas
         tipo_medida: ing.tipo_medida,
         fator_correcao: fatorCorrecao,
         proteinas_100g: ing.proteinas_100g,
