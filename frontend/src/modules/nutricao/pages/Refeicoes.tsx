@@ -52,6 +52,7 @@ import { useNavigate } from "react-router-dom";
 import { Refeicao } from "../../../types/refeicao";
 import { LoadingOverlay } from "../../../components/LoadingOverlay";
 import { TIPOS_REFEICAO } from "../../../services/cardapiosModalidade";
+import { formatarCalorias } from "../../../utils/formatters";
 import { 
   useRefeicoes, 
   useCriarRefeicao, 
@@ -432,7 +433,7 @@ const RefeicoesPage = () => {
                     <TableCell align="center">
                       <Typography variant="body2" sx={{ fontWeight: 600, color: 'primary.main' }}>
                         {(refeicao as any).valor_calorico_total 
-                          ? `${Number((refeicao as any).valor_calorico_total).toFixed(2)} Kcal`
+                          ? `${formatarCalorias((refeicao as any).valor_calorico_total)} Kcal`
                           : '-'}
                       </Typography>
                     </TableCell>

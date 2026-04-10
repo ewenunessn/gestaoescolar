@@ -31,6 +31,7 @@ import {
 import { carregarTiposRefeicao } from '../../../services/cardapiosModalidade';
 import api from '../../../services/api';
 import { gerarPDFFichaTecnica } from '../../../utils/fichaTecnicaPdf';
+import { formatarCalorias } from '../../../utils/formatters';
 
 interface CardapioItem {
   id: number;
@@ -516,7 +517,7 @@ const CardapioSemanalPortal: React.FC<CardapioSemanalPortalProps> = ({ cardapios
                                    produto.per_capita ? Number(produto.per_capita).toFixed(1) : '-'}
                                 </TableCell>
                                 <TableCell align="center">
-                                  {kcal > 0 ? kcal.toFixed(0) : '-'}
+                                  {kcal > 0 ? formatarCalorias(kcal) : '-'}
                                 </TableCell>
                                 <TableCell align="center">
                                   {produto.proteinas_porcao ? Number(produto.proteinas_porcao).toFixed(1) : '-'}
@@ -546,10 +547,10 @@ const CardapioSemanalPortal: React.FC<CardapioSemanalPortalProps> = ({ cardapios
                               {fichaTecnica.produtos.reduce((s: number, p: any) => s + (Number(p.per_capita_bruto || p.per_capita) || 0), 0).toFixed(1)}
                             </TableCell>
                             <TableCell align="center" sx={{ fontWeight: 700, color: 'white' }}>
-                              {fichaTecnica.produtos.reduce((s: number, p: any) => {
+                              {formatarCalorias(fichaTecnica.produtos.reduce((s: number, p: any) => {
                                 const kcal = (p.proteinas_porcao || 0) * 4 + (p.carboidratos_porcao || 0) * 4 + (p.lipidios_porcao || 0) * 9;
                                 return s + kcal;
-                              }, 0).toFixed(0)}
+                              }, 0))}
                             </TableCell>
                             <TableCell align="center" sx={{ fontWeight: 700, color: 'white' }}>
                               {fichaTecnica.produtos.reduce((s: number, p: any) => s + (Number(p.proteinas_porcao) || 0), 0).toFixed(1)}

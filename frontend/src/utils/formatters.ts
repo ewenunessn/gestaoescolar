@@ -125,3 +125,42 @@ export function toFixed(v: any, decimals = 2, defaultValue = '0'): string {
   if (isNaN(n)) return defaultValue;
   return n.toFixed(decimals);
 }
+
+/**
+ * Formata calorias (Kcal) para exibição
+ * - Números inteiros: sem decimais (ex: 230 Kcal)
+ * - Números decimais: com vírgula e apenas decimais necessários (ex: 230,5 Kcal)
+ * - Remove .00 desnecessários
+ * 
+ * Exemplos:
+ * 230.00 -> "230"
+ * 230.50 -> "230,5"
+ * 230.25 -> "230,25"
+ * 0 -> "0"
+ */
+export function formatarCalorias(calorias: any): string {
+  try {
+    // Verificações de segurança
+    if (calorias === null || calorias === undefined) return '0';
+    if (typeof calorias === 'string' && calorias.trim() === '') return '0';
+    
+    // Converter para número
+    const num = Number(calorias);
+    
+    if (isNaN(num) || !isFinite(num)) return '0';
+    
+    // Se for inteiro ou terminar em .00
+    if (Number.isInteger(num) || num === Math.floor(num)) {
+      return Math.floor(num).toLocaleString('pt-BR');
+    }
+    
+    // Se tiver decimais significativos, usar formatação brasileira
+    return num.toLocaleString('pt-BR', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    });
+  } catch (error) {
+    console.error('Erro ao formatar calorias:', calorias, error);
+    return '0';
+  }
+}

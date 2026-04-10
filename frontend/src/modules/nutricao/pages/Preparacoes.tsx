@@ -49,6 +49,7 @@ import { LoadingOverlay } from "../../../components/LoadingOverlay";
 import { DataTable } from "../../../components/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
 import { Refeicao } from "../../../types/refeicao";
+import { formatarCalorias } from "../../../utils/formatters";
 
 // Página de gerenciamento de preparações
 const PreparacoesPage: React.FC = () => {
@@ -161,7 +162,7 @@ const PreparacoesPage: React.FC = () => {
               color: valorCalorico ? 'primary.main' : 'text.disabled' 
             }}
           >
-            {valorCalorico ? `${Number(valorCalorico).toFixed(2)} Kcal` : '-'}
+            {valorCalorico ? `${formatarCalorias(valorCalorico)} Kcal` : '-'}
           </Typography>
         );
       },
