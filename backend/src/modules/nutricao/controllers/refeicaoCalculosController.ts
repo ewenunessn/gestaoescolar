@@ -2,13 +2,26 @@ import { Request, Response } from 'express';
 import db from '../../../database';
 import { toNum } from '../../../utils/typeHelpers';
 
+// Helper para converter per_capita para gramas
+const getQuantidadeLiquida = (ing: {
+  per_capita: number;
+  tipo_medida: string;
+  peso_unitario: number | null;
+}) => {
+  if (ing.tipo_medida === 'unidades') {
+    const peso = toNum(ing.peso_unitario, 100);
+    const perCapita = toNum(ing.per_capita, 0);
+    return perCapita * peso;
+  }
+  return toNum(ing.per_capita, 0);
+};
+
 interface IngredienteNutricional {
   produto_id: number;
   produto_nome: string;
   per_capita: number;
   tipo_medida: string;
   fator_correcao: number;
-  indice_coccao: number;
   peso_unitario: number | null;
   calorias_100g: number | null;
   proteinas_100g: number | null;
@@ -28,19 +41,38 @@ interface IngredienteCusto {
   per_capita: number;
   tipo_medida: string;
   fator_correcao: number;
-  indice_coccao: number;
+  peso_unitario: number | null;
   peso_embalagem: number;
   unidade_distribuicao: string;
   preco_unitario: number | null;
 }
+
+type DetalhamentoCusto = {
+  produto: string;
+  quantidade_liquida: number;
+  quantidade_bruta: number;
+  unidade: string;
+  fator_correcao: number;
+  peso_embalagem?: number;
+  unidade_distribuicao?: string;
+  preco_unitario: number | null;
+  custo: number | null;
+  aviso?: string;
+};
 
 // Calcular valores nutricionais da refeição baseado nos ingredientes
 export const calcularValoresNutricionais = async (req: Request, res: Response) => {
   const { id } = req.params; // refeicao_id
   const { rendimento_porcoes, modalidade_id } = req.body; // número de porções e modalidade opcional
 
+  console.log(`[NUTRICIONAL] Calculando para refeição ${id}, rendimento: ${rendimento_porcoes}, modalidade: ${modalidade_id}`);
+
   try {
+    // Validar entrada
+    const porcoes = Math.max(1, Number(rendimento_porcoes) || 1);
     // Query que busca per capita ajustado por modalidade se modalidade_id for fornecido
+    // NOTA: per_capita sempre representa alimento PRONTO (cozido/preparado)
+    // Por isso NÃO usamos indice_coccao - apenas fator_correcao (perda no pré-preparo)
     const query = modalidade_id ? `
       SELECT 
         rp.produto_id,
@@ -48,7 +80,6 @@ export const calcularValoresNutricionais = async (req: Request, res: Response) =
         COALESCE(rpm.per_capita_ajustado, rp.per_capita) as per_capita,
         rp.tipo_medida,
         COALESCE(p.fator_correcao, 1.0) as fator_correcao,
-        COALESCE(p.indice_coccao, 1.0) as indice_coccao,
         p.peso as peso_unitario,
         pcn.energia_kcal as calorias_100g,
         pcn.proteina_g as proteinas_100g,
@@ -73,7 +104,6 @@ export const calcularValoresNutricionais = async (req: Request, res: Response) =
         rp.per_capita,
         rp.tipo_medida,
         COALESCE(p.fator_correcao, 1.0) as fator_correcao,
-        COALESCE(p.indice_coccao, 1.0) as indice_coccao,
         p.peso as peso_unitario,
         pcn.energia_kcal as calorias_100g,
         pcn.proteina_g as proteinas_100g,
@@ -103,93 +133,73 @@ export const calcularValoresNutricionais = async (req: Request, res: Response) =
       });
     }
 
-    // Calcular totais (soma de todos os ingredientes)
-    let totalCalorias = 0;
-    let totalProteinas = 0;
-    let totalCarboidratos = 0;
-    let totalLipidios = 0;
-    let totalFibras = 0;
-    let totalSodio = 0;
-    let totalCalcio = 0;
-    let totalFerro = 0;
-    let totalVitaminaA = 0;
-    let totalVitaminaC = 0;
-    let ingredientesSemInfo: string[] = [];
+    // Helper para arredondar valores
+    const round2 = (n: number) => Math.round(n * 100) / 100;
 
-    ingredientes.forEach(ing => {
+    // Calcular totais (soma de todos os ingredientes)
+    const totais = {
+      calorias: 0,
+      proteinas: 0,
+      carboidratos: 0,
+      lipidios: 0,
+      fibras: 0,
+      sodio: 0,
+      calcio: 0,
+      ferro: 0,
+      vitamina_a: 0,
+      vitamina_c: 0
+    };
+    
+    const camposMap = {
+      calorias: 'calorias_100g',
+      proteinas: 'proteinas_100g',
+      carboidratos: 'carboidratos_100g',
+      lipidios: 'lipidios_100g',
+      fibras: 'fibras_100g',
+      sodio: 'sodio_100g',
+      calcio: 'calcio_100g',
+      ferro: 'ferro_100g',
+      vitamina_a: 'vitamina_a_100g',
+      vitamina_c: 'vitamina_c_100g'
+    } as const;
+    
+    const camposEntries = Object.entries(camposMap);
+    const ingredientesSemInfo = new Set<string>();
+
+    for (const ing of ingredientes) {
       // Per capita cadastrado depende do tipo_medida:
-      // - Se 'gramas': per_capita já está em gramas
+      // - Se 'gramas' ou 'mililitros': per_capita já está em gramas/ml
       // - Se 'unidades': per_capita é a QUANTIDADE de unidades, precisa multiplicar pelo peso
-      let quantidadeGramasLiquido = ing.per_capita;
-      
-      if (ing.tipo_medida === 'unidades') {
-        // Multiplicar quantidade de unidades pelo peso unitário
-        const pesoUnitario = ing.peso_unitario || 100;
-        quantidadeGramasLiquido = ing.per_capita * pesoUnitario;
-        console.log(`🥚 [${ing.produto_nome}] ${ing.per_capita} unidade(s) × ${pesoUnitario}g = ${quantidadeGramasLiquido}g`);
-      } else {
-        console.log(`📊 [${ing.produto_nome}] ${ing.per_capita}g (já em gramas)`);
-      }
+      const quantidadeGramasLiquido = getQuantidadeLiquida(ing);
 
       // Calcular proporção usando quantidade LÍQUIDA (quantidade / 100g)
-      const proporcao = quantidadeGramasLiquido / 100;
+      // Evitar divisão por zero
+      const proporcao = quantidadeGramasLiquido ? quantidadeGramasLiquido / 100 : 0;
 
-      // Somar valores nutricionais
-      if (ing.calorias_100g !== null) {
-        totalCalorias += ing.calorias_100g * proporcao;
-      } else {
-        ingredientesSemInfo.push(ing.produto_nome);
+      // Somar valores nutricionais usando mapeamento dinâmico
+      for (const [key, campo] of camposEntries) {
+        const valor = ing[campo as keyof IngredienteNutricional];
+        
+        if (valor != null) {
+          totais[key as keyof typeof totais] += Number(valor) * proporcao;
+        } else if (key === 'calorias') {
+          // Só adiciona uma vez se não tiver calorias
+          ingredientesSemInfo.add(ing.produto_nome);
+        }
       }
-
-      if (ing.proteinas_100g !== null) {
-        totalProteinas += ing.proteinas_100g * proporcao;
-      }
-
-      if (ing.carboidratos_100g !== null) {
-        totalCarboidratos += ing.carboidratos_100g * proporcao;
-      }
-
-      if (ing.lipidios_100g !== null) {
-        totalLipidios += ing.lipidios_100g * proporcao;
-      }
-
-      if (ing.fibras_100g !== null) {
-        totalFibras += ing.fibras_100g * proporcao;
-      }
-
-      if (ing.sodio_100g !== null) {
-        totalSodio += ing.sodio_100g * proporcao;
-      }
-
-      if (ing.calcio_100g !== null) {
-        totalCalcio += ing.calcio_100g * proporcao;
-      }
-
-      if (ing.ferro_100g !== null) {
-        totalFerro += ing.ferro_100g * proporcao;
-      }
-
-      if (ing.vitamina_a_100g !== null) {
-        totalVitaminaA += ing.vitamina_a_100g * proporcao;
-      }
-
-      if (ing.vitamina_c_100g !== null) {
-        totalVitaminaC += ing.vitamina_c_100g * proporcao;
-      }
-    });
+    }
 
     // Calcular por porção (se rendimento foi informado)
-    const porcoes = rendimento_porcoes || 1;
-    const caloriasPorPorcao = totalCalorias / porcoes;
-    const proteinasPorPorcao = totalProteinas / porcoes;
-    const carboidratosPorPorcao = totalCarboidratos / porcoes;
-    const lipidiosPorPorcao = totalLipidios / porcoes;
-    const fibrasPorPorcao = totalFibras / porcoes;
-    const sodioPorPorcao = totalSodio / porcoes;
-    const calcioPorPorcao = totalCalcio / porcoes;
-    const ferroPorPorcao = totalFerro / porcoes;
-    const vitaminaAPorPorcao = totalVitaminaA / porcoes;
-    const vitaminaCPorPorcao = totalVitaminaC / porcoes;
+    const caloriasPorPorcao = totais.calorias / porcoes;
+    const proteinasPorPorcao = totais.proteinas / porcoes;
+    const carboidratosPorPorcao = totais.carboidratos / porcoes;
+    const lipidiosPorPorcao = totais.lipidios / porcoes;
+    const fibrasPorPorcao = totais.fibras / porcoes;
+    const sodioPorPorcao = totais.sodio / porcoes;
+    const calcioPorPorcao = totais.calcio / porcoes;
+    const ferroPorPorcao = totais.ferro / porcoes;
+    const vitaminaAPorPorcao = totais.vitamina_a / porcoes;
+    const vitaminaCPorPorcao = totais.vitamina_c / porcoes;
 
     // Alertas nutricionais (valores de referência para refeição principal)
     const alertas = [];
@@ -212,36 +222,38 @@ export const calcularValoresNutricionais = async (req: Request, res: Response) =
       alertas.push({ tipo: 'info', mensagem: 'Fibras abaixo do ideal (mínimo 3g por refeição)' });
     }
 
+    console.log(`[NUTRICIONAL] Cálculo concluído - Total: ${totais.calorias.toFixed(1)} kcal, Por porção: ${caloriasPorPorcao.toFixed(1)} kcal`);
+
     return res.json({
       total: {
-        calorias: Math.round(totalCalorias * 100) / 100,
-        proteinas: Math.round(totalProteinas * 100) / 100,
-        carboidratos: Math.round(totalCarboidratos * 100) / 100,
-        lipidios: Math.round(totalLipidios * 100) / 100,
-        fibras: Math.round(totalFibras * 100) / 100,
-        sodio: Math.round(totalSodio * 100) / 100,
-        calcio: Math.round(totalCalcio * 100) / 100,
-        ferro: Math.round(totalFerro * 100) / 100,
-        vitamina_a: Math.round(totalVitaminaA * 100) / 100,
-        vitamina_c: Math.round(totalVitaminaC * 100) / 100
+        calorias: round2(totais.calorias),
+        proteinas: round2(totais.proteinas),
+        carboidratos: round2(totais.carboidratos),
+        lipidios: round2(totais.lipidios),
+        fibras: round2(totais.fibras),
+        sodio: round2(totais.sodio),
+        calcio: round2(totais.calcio),
+        ferro: round2(totais.ferro),
+        vitamina_a: round2(totais.vitamina_a),
+        vitamina_c: round2(totais.vitamina_c)
       },
       por_porcao: {
-        calorias: Math.round(caloriasPorPorcao * 100) / 100,
-        proteinas: Math.round(proteinasPorPorcao * 100) / 100,
-        carboidratos: Math.round(carboidratosPorPorcao * 100) / 100,
-        lipidios: Math.round(lipidiosPorPorcao * 100) / 100,
-        fibras: Math.round(fibrasPorPorcao * 100) / 100,
-        sodio: Math.round(sodioPorPorcao * 100) / 100,
-        calcio: Math.round(calcioPorPorcao * 100) / 100,
-        ferro: Math.round(ferroPorPorcao * 100) / 100,
-        vitamina_a: Math.round(vitaminaAPorPorcao * 100) / 100,
-        vitamina_c: Math.round(vitaminaCPorPorcao * 100) / 100
+        calorias: round2(caloriasPorPorcao),
+        proteinas: round2(proteinasPorPorcao),
+        carboidratos: round2(carboidratosPorPorcao),
+        lipidios: round2(lipidiosPorPorcao),
+        fibras: round2(fibrasPorPorcao),
+        sodio: round2(sodioPorPorcao),
+        calcio: round2(calcioPorPorcao),
+        ferro: round2(ferroPorPorcao),
+        vitamina_a: round2(vitaminaAPorPorcao),
+        vitamina_c: round2(vitaminaCPorPorcao)
       },
       rendimento_porcoes: porcoes,
       alertas,
-      ingredientes_sem_info: ingredientesSemInfo,
-      aviso: ingredientesSemInfo.length > 0 
-        ? `${ingredientesSemInfo.length} ingrediente(s) sem informação nutricional cadastrada`
+      ingredientes_sem_info: Array.from(ingredientesSemInfo),
+      aviso: ingredientesSemInfo.size > 0 
+        ? `${ingredientesSemInfo.size} ingrediente(s) sem informação nutricional cadastrada`
         : null
     });
 
@@ -257,7 +269,11 @@ export const calcularCusto = async (req: Request, res: Response) => {
   const { rendimento_porcoes, modalidade_id } = req.body;
 
   try {
+    // Validar entrada
+    const porcoes = Math.max(1, Number(rendimento_porcoes) || 1);
     // Query que busca per capita ajustado por modalidade se modalidade_id for fornecido
+    // NOTA: per_capita sempre representa alimento PRONTO (cozido/preparado)
+    // Por isso NÃO usamos indice_coccao aqui - apenas fator_correcao (perda no pré-preparo)
     const query = modalidade_id ? `
       SELECT 
         rp.produto_id,
@@ -265,7 +281,7 @@ export const calcularCusto = async (req: Request, res: Response) => {
         COALESCE(rpm.per_capita_ajustado, rp.per_capita) as per_capita,
         rp.tipo_medida,
         COALESCE(p.fator_correcao, 1.0) as fator_correcao,
-        COALESCE(p.indice_coccao, 1.0) as indice_coccao,
+        p.peso as peso_unitario,
         COALESCE(p.peso, 1000) as peso_embalagem,
         p.unidade_distribuicao,
         cp.preco_unitario
@@ -292,7 +308,7 @@ export const calcularCusto = async (req: Request, res: Response) => {
         rp.per_capita,
         rp.tipo_medida,
         COALESCE(p.fator_correcao, 1.0) as fator_correcao,
-        COALESCE(p.indice_coccao, 1.0) as indice_coccao,
+        p.peso as peso_unitario,
         COALESCE(p.peso, 1000) as peso_embalagem,
         p.unidade_distribuicao,
         cp.preco_unitario
@@ -324,68 +340,86 @@ export const calcularCusto = async (req: Request, res: Response) => {
       });
     }
 
-    let custoTotal = 0;
-    let ingredientesSemPreco: string[] = [];
-    const detalhamento: any[] = [];
+    // Helper para arredondar valores
+    const round2 = (n: number) => Math.round(n * 100) / 100;
 
-    ingredientes.forEach(ing => {
+    let custoTotal = 0;
+    const ingredientesSemPreco = new Set<string>();
+    const ingredientesComErro = new Set<string>();
+    const detalhamento: DetalhamentoCusto[] = [];
+
+    for (const ing of ingredientes) {
       if (ing.preco_unitario === null) {
-        ingredientesSemPreco.push(ing.produto_nome);
+        ingredientesSemPreco.add(ing.produto_nome);
+        
+        const quantidadeGramasLiquido = getQuantidadeLiquida(ing);
+        
         detalhamento.push({
           produto: ing.produto_nome,
-          quantidade_liquida: ing.per_capita,
-          quantidade_bruta: ing.per_capita * toNum(ing.fator_correcao, 1.0),
+          quantidade_liquida: quantidadeGramasLiquido,
+          quantidade_bruta: quantidadeGramasLiquido * toNum(ing.fator_correcao, 1.0),
           unidade: ing.tipo_medida,
           fator_correcao: toNum(ing.fator_correcao, 1.0),
           preco_unitario: null,
           custo: null,
           aviso: 'Sem contrato ativo'
         });
-        return;
+        continue;
       }
 
-      // Per capita cadastrado é LÍQUIDO (consumo final - cozido)
-      // Para calcular custo, precisamos do BRUTO (compra)
-      // NOTA: Índice de cocção NÃO é aplicado (per capita já considera produto final)
-      // Apenas o Fator de Correção é aplicado (perda no pré-preparo)
+      // Converter per_capita para gramas se for unidades
+      // IMPORTANTE: usar peso_unitario (peso de 1 unidade), não peso_embalagem
+      // Exemplo: 1 ovo = 50g (peso_unitario), mas caixa pode ter 30 ovos = 1500g (peso_embalagem)
+      const quantidadeGramasLiquido = getQuantidadeLiquida(ing);
       
+      // Per capita cadastrado é LÍQUIDO (consumo final - já preparado/cozido)
+      // Para calcular custo, precisamos do BRUTO (compra - antes de limpar/descascar)
+      // Aplicar Fator de Correção (perda no pré-preparo: cascas, aparas, etc)
       const fatorCorrecao = toNum(ing.fator_correcao, 1.0);
-      const pesoEmbalagem = toNum(ing.peso_embalagem, 1000); // Padrão 1kg se não informado
+      const perCapitaBruto = quantidadeGramasLiquido * fatorCorrecao;
       
-      // Calcular quanto precisa COMPRAR (antes de limpar/descascar)
-      const perCapitaBruto = ing.per_capita * fatorCorrecao;
-
       // Calcular custo baseado no per capita BRUTO
       // preco_unitario é por EMBALAGEM (ex: garrafa de 900ml, pacote de 1kg)
-      // Precisamos calcular a proporção da embalagem usada
-      let custo = 0;
+      const pesoEmbalagem = toNum(ing.peso_embalagem, 1000);
       
-      if (ing.tipo_medida === 'gramas' || ing.tipo_medida === 'mililitros') {
-        // Calcular quantas embalagens são necessárias (proporção exata, SEM arredondar)
-        // Exemplo: 1ml de óleo em garrafa de 900ml = 1/900 = 0.0011 garrafas
-        const proporcaoEmbalagem = perCapitaBruto / pesoEmbalagem;
-        custo = proporcaoEmbalagem * ing.preco_unitario;
-      } else {
-        // Unidades - assumir que preco_unitario é por unidade
-        custo = perCapitaBruto * ing.preco_unitario;
+      // Validar peso da embalagem para evitar divisão por zero
+      if (pesoEmbalagem <= 0) {
+        ingredientesComErro.add(ing.produto_nome);
+        detalhamento.push({
+          produto: ing.produto_nome,
+          quantidade_liquida: quantidadeGramasLiquido,
+          quantidade_bruta: perCapitaBruto,
+          unidade: ing.tipo_medida,
+          fator_correcao: fatorCorrecao,
+          preco_unitario: ing.preco_unitario,
+          custo: null,
+          aviso: 'Peso da embalagem inválido'
+        });
+        continue;
       }
+      
+      // Sempre calcular pela proporção da embalagem
+      // Exemplo: 50g de ovo em embalagem de 50g = 1 embalagem
+      // Exemplo: 1ml de óleo em garrafa de 900ml = 1/900 embalagens
+      const proporcaoEmbalagem = perCapitaBruto / pesoEmbalagem;
+      const custo = proporcaoEmbalagem * ing.preco_unitario;
 
       custoTotal += custo;
 
       detalhamento.push({
         produto: ing.produto_nome,
-        quantidade_liquida: ing.per_capita,
+        quantidade_liquida: quantidadeGramasLiquido,
         quantidade_bruta: perCapitaBruto,
         unidade: ing.tipo_medida,
         fator_correcao: fatorCorrecao,
         peso_embalagem: pesoEmbalagem,
         unidade_distribuicao: ing.unidade_distribuicao,
         preco_unitario: ing.preco_unitario,
-        custo: Math.round(custo * 100) / 100
+        custo: round2(custo)
       });
-    });
+    }
 
-    const porcoes = rendimento_porcoes || 1;
+    // Garantir que porções seja sempre >= 1
     const custoPorPorcao = custoTotal / porcoes;
 
     // Alertas de custo
@@ -395,22 +429,30 @@ export const calcularCusto = async (req: Request, res: Response) => {
       alertas.push({ tipo: 'warning', mensagem: 'Custo por porção elevado (acima de R$ 5,00)' });
     }
 
-    if (ingredientesSemPreco.length > 0) {
+    if (ingredientesSemPreco.size > 0) {
       alertas.push({ 
         tipo: 'error', 
-        mensagem: `${ingredientesSemPreco.length} ingrediente(s) sem contrato ativo` 
+        mensagem: `${ingredientesSemPreco.size} ingrediente(s) sem contrato ativo` 
+      });
+    }
+
+    if (ingredientesComErro.size > 0) {
+      alertas.push({ 
+        tipo: 'error', 
+        mensagem: `${ingredientesComErro.size} ingrediente(s) com peso de embalagem inválido` 
       });
     }
 
     return res.json({
-      custo_total: Math.round(custoTotal * 100) / 100,
-      custo_por_porcao: Math.round(custoPorPorcao * 100) / 100,
+      custo_total: round2(custoTotal),
+      custo_por_porcao: round2(custoPorPorcao),
       rendimento_porcoes: porcoes,
       detalhamento,
-      ingredientes_sem_preco: ingredientesSemPreco,
+      ingredientes_sem_preco: Array.from(ingredientesSemPreco),
+      ingredientes_com_erro: Array.from(ingredientesComErro),
       alertas,
-      aviso: ingredientesSemPreco.length > 0
-        ? `${ingredientesSemPreco.length} ingrediente(s) sem contrato ativo cadastrado`
+      aviso: ingredientesSemPreco.size > 0 || ingredientesComErro.size > 0
+        ? `${ingredientesSemPreco.size} sem contrato, ${ingredientesComErro.size} com erro de cadastro`
         : null
     });
 

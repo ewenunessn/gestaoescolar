@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 import { useToast } from "../../../hooks/useToast";
 import PageContainer from "../../../components/PageContainer";
 import PageHeader from "../../../components/PageHeader";

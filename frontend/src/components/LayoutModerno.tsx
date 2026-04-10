@@ -548,6 +548,7 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, color: TEXT }}>
             NutriEscola
           </Typography>
+          <NotificacoesMenu sx={{ mr: 2 }} />
         </Toolbar>
       </AppBar>
 

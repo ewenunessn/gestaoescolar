@@ -31,7 +31,9 @@ import {
     Visibility,
     Shield,
     DonutLarge,
+    Notifications as BellIcon,
 } from '@mui/icons-material';
+import NotificacoesMenu from './NotificacoesMenu';
 import { consistenciaService } from '../services/consistenciaService';
 import { toNum } from '../utils/formatters';
 
@@ -282,24 +284,27 @@ const DashboardConsistencia: React.FC = () => {
                     }}
                 >
                     <Box sx={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${GREEN}44, transparent)` }} />
-                    <Box>
-                        <Typography
-                            sx={{
-                                fontWeight: 800,
-                                fontSize: '1.55rem',
-                                color: '#fff',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 1.2,
-                                letterSpacing: '-0.5px',
-                            }}
-                        >
-                            <Shield sx={{ color: GREEN, fontSize: 26 }} />
-                            Dashboard de Consistência
-                        </Typography>
-                        <Typography sx={{ fontSize: '0.82rem', color: '#94a3b8', mt: 0.2 }}>
-                            Monitoramento e verificação de integridade dos pedidos
-                        </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Box>
+                            <Typography
+                                sx={{
+                                    fontWeight: 800,
+                                    fontSize: '1.55rem',
+                                    color: '#fff',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 1.2,
+                                    letterSpacing: '-0.5px',
+                                }}
+                            >
+                                <Shield sx={{ color: GREEN, fontSize: 26 }} />
+                                Dashboard de Consistência
+                            </Typography>
+                            <Typography sx={{ fontSize: '0.82rem', color: '#94a3b8', mt: 0.2 }}>
+                                Monitoramento e verificação de integridade dos pedidos
+                            </Typography>
+                        </Box>
+                        <NotificacoesMenu sx={{ mr: 1 }} />
                     </Box>
                     <Button
                         variant="contained"

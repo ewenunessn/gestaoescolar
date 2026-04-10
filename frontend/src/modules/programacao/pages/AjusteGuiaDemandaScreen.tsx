@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   Box, Typography, IconButton, Button, Chip, CircularProgress, Alert,
   Table, TableHead, TableRow, TableCell, TableBody,

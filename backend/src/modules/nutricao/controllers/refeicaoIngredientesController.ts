@@ -6,7 +6,10 @@ interface IngredienteDetalhado {
   produto_id: number;
   produto_nome: string;
   per_capita: number;
+  per_capita_liquido: number;
+  per_capita_bruto: number;
   tipo_medida: string;
+  fator_correcao: number;
   // Valores por 100g do produto
   proteinas_100g: number | null;
   lipidios_100g: number | null;
@@ -84,18 +87,14 @@ export const buscarIngredientesDetalhados = async (req: Request, res: Response) 
     const params = modalidade_id ? [id, modalidade_id] : [id];
     const result = await db.pool.query(query, params);
 
-    console.log('📊 Ingredientes encontrados:', result.rows.length);
-    if (result.rows.length > 0) {
-      console.log('Primeiro ingrediente:', result.rows[0]);
-    }
+    // Helper para arredondar valores nutricionais
+    const round2 = (n: number) => Math.round(n * 100) / 100;
+    
+    // Helper para calcular valores nutricionais por porção
+    const calcNutricional = (valor: number | null, proporcao: number) => 
+      valor ? round2(valor * proporcao) : 0;
 
     const ingredientes: IngredienteDetalhado[] = result.rows.map(ing => {
-      console.log(`\n🔍 Processando ingrediente: ${ing.produto_nome}`);
-      console.log(`   - per_capita (banco): ${ing.per_capita}`);
-      console.log(`   - tipo_medida: ${ing.tipo_medida}`);
-      console.log(`   - peso_unitario (produto): ${ing.peso_unitario}`);
-      console.log(`   - fator_correcao: ${ing.fator_correcao}`);
-      
       // Per capita cadastrado depende do tipo_medida:
       // - Se 'gramas' ou 'mililitros': per_capita já está em gramas/ml
       // - Se 'unidades': per_capita é a QUANTIDADE de unidades, precisa multiplicar pelo peso
@@ -105,19 +104,15 @@ export const buscarIngredientesDetalhados = async (req: Request, res: Response) 
         // Usar peso unitário do produto cadastrado, ou 100g como fallback
         const pesoUnitario = ing.peso_unitario || 100;
         quantidadeGramasLiquido = ing.per_capita * pesoUnitario;
-        console.log(`   ✅ Cálculo: ${ing.per_capita} unidade(s) × ${pesoUnitario}g = ${quantidadeGramasLiquido}g`);
-      } else {
-        console.log(`   ✅ Já em gramas: ${ing.per_capita}g`);
       }
 
       // Calcular proporção usando quantidade LÍQUIDA (quantidade / 100g)
-      const proporcao = quantidadeGramasLiquido / 100;
-      console.log(`   - proporção (para cálculo nutricional): ${proporcao}`);
+      // Evitar divisão por zero
+      const proporcao = quantidadeGramasLiquido ? quantidadeGramasLiquido / 100 : 0;
 
       // Calcular per capita BRUTO (compra) = líquido em gramas * fator de correção
       const fatorCorrecao = toNum(ing.fator_correcao, 1.0);
       const perCapitaBruto = quantidadeGramasLiquido * fatorCorrecao;
-      console.log(`   - per_capita_bruto: ${quantidadeGramasLiquido}g × ${fatorCorrecao} = ${perCapitaBruto}g\n`);
 
       return {
         produto_id: ing.produto_id,
@@ -135,15 +130,15 @@ export const buscarIngredientesDetalhados = async (req: Request, res: Response) 
         vitamina_a_100g: ing.vitamina_a_100g,
         vitamina_c_100g: ing.vitamina_c_100g,
         sodio_100g: ing.sodio_100g,
-        // Valores calculados para o per capita LÍQUIDO
-        proteinas_porcao: ing.proteinas_100g ? Math.round(ing.proteinas_100g * proporcao * 100) / 100 : 0,
-        lipidios_porcao: ing.lipidios_100g ? Math.round(ing.lipidios_100g * proporcao * 100) / 100 : 0,
-        carboidratos_porcao: ing.carboidratos_100g ? Math.round(ing.carboidratos_100g * proporcao * 100) / 100 : 0,
-        calcio_porcao: ing.calcio_100g ? Math.round(ing.calcio_100g * proporcao * 100) / 100 : 0,
-        ferro_porcao: ing.ferro_100g ? Math.round(ing.ferro_100g * proporcao * 100) / 100 : 0,
-        vitamina_a_porcao: ing.vitamina_a_100g ? Math.round(ing.vitamina_a_100g * proporcao * 100) / 100 : 0,
-        vitamina_c_porcao: ing.vitamina_c_100g ? Math.round(ing.vitamina_c_100g * proporcao * 100) / 100 : 0,
-        sodio_porcao: ing.sodio_100g ? Math.round(ing.sodio_100g * proporcao * 100) / 100 : 0
+        // Valores calculados para o per capita LÍQUIDO usando helper
+        proteinas_porcao: calcNutricional(ing.proteinas_100g, proporcao),
+        lipidios_porcao: calcNutricional(ing.lipidios_100g, proporcao),
+        carboidratos_porcao: calcNutricional(ing.carboidratos_100g, proporcao),
+        calcio_porcao: calcNutricional(ing.calcio_100g, proporcao),
+        ferro_porcao: calcNutricional(ing.ferro_100g, proporcao),
+        vitamina_a_porcao: calcNutricional(ing.vitamina_a_100g, proporcao),
+        vitamina_c_porcao: calcNutricional(ing.vitamina_c_100g, proporcao),
+        sodio_porcao: calcNutricional(ing.sodio_100g, proporcao)
       };
     });
 

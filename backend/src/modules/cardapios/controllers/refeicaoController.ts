@@ -21,7 +21,7 @@ export async function listarRefeicoes(req: Request, res: Response) {
                     pcn.energia_kcal * (
                       CASE 
                         WHEN rp.tipo_medida = 'unidades' THEN 
-                          (COALESCE(rpm.per_capita_ajustado, rp.per_capita) * 100.0) / 100.0
+                          (COALESCE(rpm.per_capita_ajustado, rp.per_capita) * COALESCE(p.peso, 100.0)) / 100.0
                         ELSE 
                           COALESCE(rpm.per_capita_ajustado, rp.per_capita) / 100.0
                       END
@@ -35,6 +35,7 @@ export async function listarRefeicoes(req: Request, res: Response) {
           ) as valor_calorico_total
         FROM refeicoes r
         LEFT JOIN refeicao_produtos rp ON r.id = rp.refeicao_id
+        LEFT JOIN produtos p ON p.id = rp.produto_id
         LEFT JOIN produto_composicao_nutricional pcn ON rp.produto_id = pcn.produto_id
         LEFT JOIN refeicao_produto_modalidade rpm ON rpm.refeicao_produto_id = rp.id 
           AND rpm.modalidade_id = (SELECT id FROM primeira_modalidade)
@@ -85,7 +86,14 @@ export async function buscarRefeicao(req: Request, res: Response) {
           SUM(
             CASE 
               WHEN pcn.energia_kcal IS NOT NULL THEN 
-                (rp.per_capita / 100.0) * pcn.energia_kcal
+                pcn.energia_kcal * (
+                  CASE 
+                    WHEN rp.tipo_medida = 'unidades' THEN 
+                      (rp.per_capita * COALESCE(p.peso, 100.0)) / 100.0
+                    ELSE 
+                      rp.per_capita / 100.0
+                  END
+                )
               ELSE 0
             END
           ), 
@@ -93,6 +101,7 @@ export async function buscarRefeicao(req: Request, res: Response) {
         ) as valor_calorico_total
       FROM refeicoes r
       LEFT JOIN refeicao_produtos rp ON r.id = rp.refeicao_id
+      LEFT JOIN produtos p ON p.id = rp.produto_id
       LEFT JOIN produto_composicao_nutricional pcn ON rp.produto_id = pcn.produto_id
       WHERE r.id = $1
       GROUP BY r.id

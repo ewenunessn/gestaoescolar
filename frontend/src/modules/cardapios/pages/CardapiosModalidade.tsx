@@ -31,7 +31,7 @@ import {
   Clear as ClearIcon,
 } from "@mui/icons-material";
 import { ColumnDef } from "@tanstack/react-table";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 import { useToast } from "../../../hooks/useToast";
 import { CardapioModalidade, MESES } from "../../../services/cardapiosModalidade";
 import { listarModalidades } from "../../../services/modalidadeService";
