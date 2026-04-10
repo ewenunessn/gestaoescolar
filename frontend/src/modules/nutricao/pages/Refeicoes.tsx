@@ -238,11 +238,14 @@ const RefeicoesPage = () => {
       if (editingRefeicao) {
         await editarRefeicaoMutation.mutateAsync({ id: editingRefeicao.id, data: formData });
         toast.success('Sucesso!', 'Refeição atualizada com sucesso!');
+        closeModal();
       } else {
-        await criarRefeicaoMutation.mutateAsync(formData);
+        const novaRefeicao = await criarRefeicaoMutation.mutateAsync(formData);
         toast.success('Sucesso!', 'Refeição criada com sucesso!');
+        closeModal();
+        // Navegar para a refeição criada
+        navigate(`/refeicoes/${novaRefeicao.id}`);
       }
-      closeModal();
     } catch (err: any) {
       setError('Erro ao salvar refeição. Verifique os dados e tente novamente.');
     }

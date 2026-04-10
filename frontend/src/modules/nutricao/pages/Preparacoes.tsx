@@ -272,11 +272,14 @@ const PreparacoesPage: React.FC = () => {
       if (editingPreparacao) {
         await editarPreparacaoMutation.mutateAsync({ id: editingPreparacao.id, data: formData });
         toast.success('Preparação atualizada com sucesso!');
+        closeModal();
       } else {
-        await criarPreparacaoMutation.mutateAsync(formData);
+        const novaPreparacao = await criarPreparacaoMutation.mutateAsync(formData);
         toast.success('Preparação criada com sucesso!');
+        closeModal();
+        // Navegar para a preparação criada
+        navigate(`/preparacoes/${novaPreparacao.id}`);
       }
-      closeModal();
     } catch (err: any) {
       console.error('Erro ao salvar preparação:', err);
       setErroPreparacao(err.message || 'Erro ao salvar preparação.');
