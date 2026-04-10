@@ -154,7 +154,7 @@ const CalendarioProfissional: React.FC<CalendarioProfissionalProps> = ({
         {(onExportarCalendario || onExportarFrequencia || onRelatorioDetalhado || onGerarPDFTabela) && (
           <Box sx={{ position: 'relative', display: 'inline-block' }}>
             <IconButton
-              onClick={() => setAnchorElPdf(anchorElPdf ? null : (anchorElPdf as any))}
+              onClick={(e) => setAnchorElPdf(anchorElPdf ? null : e.currentTarget)}
               size="small"
               sx={{
                 width: 32,
