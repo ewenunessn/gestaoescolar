@@ -1,12 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { 
-  listarRefeicoes, 
-  criarRefeicao, 
-  editarRefeicao, 
-  deletarRefeicao,
-  duplicarRefeicao,
-  Refeicao 
-} from '../../services/refeicoes';
+import { refeicaoService, refeicaoServiceExtended, CriarRefeicaoRequest, AtualizarRefeicaoRequest } from '../../services/refeicoes';
+import { Refeicao } from '../../types/refeicao';
 
 // Query key
 export const REFEICOES_QUERY_KEY = ['refeicoes'];
@@ -15,16 +9,16 @@ export const REFEICOES_QUERY_KEY = ['refeicoes'];
 export const useRefeicoes = () => {
   return useQuery({
     queryKey: REFEICOES_QUERY_KEY,
-    queryFn: listarRefeicoes,
+    queryFn: refeicaoService.listar,
   });
 };
 
 // Hook para criar refeição
 export const useCriarRefeicao = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: (data: Omit<Refeicao, 'id'>) => criarRefeicao(data),
+    mutationFn: (data: CriarRefeicaoRequest) => refeicaoService.criar(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: REFEICOES_QUERY_KEY });
     },
@@ -34,10 +28,10 @@ export const useCriarRefeicao = () => {
 // Hook para editar refeição
 export const useEditarRefeicao = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<Refeicao> }) => 
-      editarRefeicao(id, data),
+    mutationFn: ({ id, data }: { id: number; data: AtualizarRefeicaoRequest }) =>
+      refeicaoService.atualizar(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: REFEICOES_QUERY_KEY });
     },
@@ -47,9 +41,9 @@ export const useEditarRefeicao = () => {
 // Hook para deletar refeição
 export const useDeletarRefeicao = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: (id: number) => deletarRefeicao(id),
+    mutationFn: (id: number) => refeicaoService.remover(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: REFEICOES_QUERY_KEY });
     },
@@ -59,10 +53,10 @@ export const useDeletarRefeicao = () => {
 // Hook para duplicar refeição
 export const useDuplicarRefeicao = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ id, nome }: { id: number; nome: string }) => 
-      duplicarRefeicao(id, nome),
+    mutationFn: ({ id, nome }: { id: number; nome: string }) =>
+      refeicaoServiceExtended.duplicarRefeicao(id, nome),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: REFEICOES_QUERY_KEY });
     },

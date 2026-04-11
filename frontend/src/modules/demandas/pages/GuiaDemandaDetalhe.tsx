@@ -11,10 +11,12 @@ import {
   School as SchoolIcon, Add as AddIcon,
   Inventory as InventoryIcon, Visibility as VisibilityIcon, Tune as TuneIcon,
   ShoppingCart as ShoppingCartIcon, Delete as DeleteIcon, CheckBox as CheckBoxIcon,
+  ArrowBack as ArrowBackIcon,
 } from "@mui/icons-material";
 import { ColumnDef } from "@tanstack/react-table";
 import PageContainer from "../../../components/PageContainer";
 import PageHeader from "../../../components/PageHeader";
+import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
 import { DataTableAdvanced } from "../../../components/DataTableAdvanced";
 import GerarPedidoDaGuiaDialog from "../../../components/GerarPedidoDaGuiaDialog";
 import ViewTabs from "../../../components/ViewTabs";
@@ -397,7 +399,11 @@ const GuiaDemandaDetalhe: React.FC = () => {
   }, [guia, setPageTitle]);
 
   const loadProdutos = async () => {
-    try { setProdutos(await produtoService.listar()); } catch {}
+    try {
+      setProdutos(await produtoService.listar());
+    } catch (error) {
+      console.error('Erro ao carregar produtos:', error);
+    }
   };
 
   const loadGuiaDetalhes = async () => {
@@ -864,13 +870,22 @@ const GuiaDemandaDetalhe: React.FC = () => {
   return (
     <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden' }}>
       <PageContainer fullHeight>
+        {/* Seta + Breadcrumbs na mesma linha */}
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+          <IconButton size="small" onClick={() => navigate('/guias-demanda')} sx={{ mr: 0.5, p: 0.5 }}>
+            <ArrowBackIcon fontSize="small" />
+          </IconButton>
+          <PageBreadcrumbs
+            items={[
+              { label: 'Dashboard', path: '/dashboard' },
+              { label: 'Guias de Demanda', path: '/guias-demanda' },
+              { label: `${getMesNome(guia.mes)}/${guia.ano}` },
+            ]}
+          />
+        </Box>
+
         <PageHeader
           title={`Guia de Demanda - ${getMesNome(guia.mes)}/${guia.ano}`}
-          breadcrumbs={[
-            { label: 'Dashboard', path: '/dashboard' },
-            { label: 'Guias de Demanda', path: '/guias-demanda' },
-            { label: `${getMesNome(guia.mes)}/${guia.ano}` },
-          ]}
         />
 
         {/* Abas e Estatísticas */}

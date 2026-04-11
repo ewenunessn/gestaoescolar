@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
+import path from "path";
 
 export default defineConfig(({ mode }) => {
   // Carregar variáveis de ambiente baseadas no modo
@@ -33,7 +34,9 @@ export default defineConfig(({ mode }) => {
         'crypto': false,
         'stream': false,
         'util': false,
-        'events': false
+        'events': false,
+        // Path aliases
+        '@shared': path.resolve(__dirname, '../shared')
       },
       dedupe: ['react', 'react-dom']
     },

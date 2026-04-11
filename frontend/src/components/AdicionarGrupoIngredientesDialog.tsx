@@ -9,7 +9,7 @@ import GroupWorkIcon from '@mui/icons-material/GroupWork';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { listarGrupos, excluirGrupo, Grupo } from '../services/gruposIngredientes';
+import { grupoService, Grupo } from '../services/gruposIngredientes';
 import GerenciarGrupoDialog from './GerenciarGrupoDialog';
 
 interface Props {
@@ -37,13 +37,13 @@ export default function AdicionarGrupoIngredientesDialog({ open, onClose, onSele
 
   async function carregar() {
     setLoading(true);
-    try { setGrupos(await listarGrupos()); }
+    try { setGrupos(await grupoService.listar()); }
     finally { setLoading(false); }
   }
 
   async function handleExcluir(g: Grupo) {
     if (!confirm(`Excluir o grupo "${g.nome}"?`)) return;
-    await excluirGrupo(g.id);
+    await grupoService.remover(g.id);
     carregar();
   }
 

@@ -40,7 +40,7 @@ import {
   getTipoMovimentacaoLabel,
   type MovimentacaoEstoque
 } from "../../../services/estoqueCentralService";
-import { buscarProduto } from "../../../services/produtos";
+import { produtoService } from "../../../services/produtos";
 import { useToast } from "../../../hooks/useToast";
 
 const EstoqueMovimentacoes: React.FC = () => {
@@ -68,7 +68,7 @@ const EstoqueMovimentacoes: React.FC = () => {
       
       const [movimentacoesData, produtoData] = await Promise.all([
         getMovimentacoesProduto(produtoIdNum, 100), // Últimas 100 movimentações
-        buscarProduto(produtoIdNum)
+        produtoService.buscarPorId(produtoIdNum)
       ]);
       
       setMovimentacoes(movimentacoesData);

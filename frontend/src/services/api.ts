@@ -64,26 +64,12 @@ const api = axios.create({
 
 // Interceptor de requisição
 api.interceptors.request.use((config) => {
-  console.log('🔍 [API DEBUG] Interceptor executado para:', config.url);
-  
   const token = localStorage.getItem("token");
-  console.log('🔍 [API DEBUG] Token no localStorage:', token ? `${token.substring(0, 30)}...` : 'AUSENTE');
-  
+
   // Só adiciona o header Authorization se há um token válido
-  // Em desenvolvimento, permite acesso sem token
   if (token && token !== 'null' && token !== 'undefined' && token.length > 10) {
     config.headers = config.headers || {};
     config.headers["Authorization"] = `Bearer ${token}`;
-    console.log('✅ [API DEBUG] Token adicionado ao header Authorization');
-    console.log('✅ [API DEBUG] Header completo:', config.headers["Authorization"].substring(0, 50) + '...');
-  } else {
-    console.log('⚠️ [API DEBUG] Token NÃO adicionado - inválido ou ausente');
-    console.log('⚠️ [API DEBUG] Motivo:', {
-      tokenExists: !!token,
-      isNull: token === 'null',
-      isUndefined: token === 'undefined',
-      length: token?.length
-    });
   }
 
   // Log em desenvolvimento
@@ -91,6 +77,7 @@ api.interceptors.request.use((config) => {
     apiLog(`📡 ${config.method?.toUpperCase()} ${config.url}`, {
       data: config.data,
       params: config.params,
+      hasToken: !!token
     });
   }
 
@@ -149,58 +136,16 @@ api.interceptors.response.use(
       const { status, data } = error.response;
       switch (status) {
         case 401:
-          console.error('🚫 [API] Erro 401 - Não autorizado');
-          console.error('🚫 [API] URL:', originalRequest.url);
-          console.error('🚫 [API] Pathname atual:', window.location.pathname);
-          
-          // TEMPORÁRIO: Não redirecionar automaticamente para permitir debug
-          // Apenas logar o erro e deixar o usuário ver os logs
-          if (window.location.pathname.includes('/login')) {
-            console.error('🚫 [API] Credenciais inválidas na página de login');
-            throw new Error("Credenciais inválidas. Verifique seu email e senha.");
-          } else {
-            console.error('🚫 [API] Sessão expirada - MAS NÃO VAI REDIRECIONAR AINDA');
-            console.error('🚫 [API] VERIFIQUE OS LOGS ACIMA PARA ENTENDER O PROBLEMA');
-            console.error('🚫 [API] Token no localStorage:', localStorage.getItem('token') ? 'EXISTE' : 'AUSENTE');
-            
-            // Mostrar alerta visual
-            const alertDiv = document.createElement('div');
-            alertDiv.style.cssText = `
-              position: fixed;
-              top: 20px;
-              left: 50%;
-              transform: translateX(-50%);
-              background: #ff4444;
-              color: white;
-              padding: 20px;
-              border-radius: 8px;
-              z-index: 999999;
-              font-size: 16px;
-              font-weight: bold;
-              box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            `;
-            alertDiv.innerHTML = `
-              ⚠️ ERRO 401 DETECTADO!<br>
-              Verifique o console (F12) para ver os logs.<br>
-              Redirecionando em 5 segundos...
-            `;
-            document.body.appendChild(alertDiv);
-            
-            // Aguardar 5 segundos antes de limpar e redirecionar
-            setTimeout(() => {
-              console.error('🚫 [API] Agora sim, limpando dados e redirecionando...');
-              localStorage.removeItem("token");
-              localStorage.removeItem("user");
-              localStorage.removeItem("perfil");
-              localStorage.removeItem("nome");
-              
-              if (!window.location.pathname.includes('/login')) {
-                window.location.href = "/login";
-              }
-            }, 5000); // 5 segundos de delay
-            
-            throw new Error("Sessão expirada. Redirecionando em 5 segundos...");
+          // Limpar dados da sessão e redirecionar para login
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          localStorage.removeItem("perfil");
+          localStorage.removeItem("nome");
+
+          if (!window.location.pathname.includes('/login')) {
+            window.location.href = "/login";
           }
+          throw new Error("Sessão expirada. Faça login novamente.");
         case 403:
           const forbiddenMessage = getMessage(data, "Acesso negado. Você não tem permissão para esta ação.");
           throw new Error(forbiddenMessage);

@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import {
-  Dialog, DialogTitle, DialogContent, DialogActions,
   Button, TextField, Box, Typography, IconButton,
   List, ListItem, ListItemText, ListItemSecondaryAction,
   Autocomplete, Divider, Chip, Select, MenuItem, FormControl, InputLabel,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
-import { Grupo, GrupoItem, salvarItensGrupo, criarGrupo, atualizarGrupo } from '../services/gruposIngredientes';
+import { grupoServiceExtended, Grupo, GrupoItem } from '../services/gruposIngredientes';
+import { BaseDialog, FormDialog } from './BaseDialog';
 
 interface Produto { id: number; nome: string; }
 
@@ -68,12 +68,12 @@ export default function GerenciarGrupoDialog({ open, onClose, onSaved, grupo, pr
     try {
       let grupoId = grupo?.id;
       if (grupoId) {
-        await atualizarGrupo(grupoId, nome, descricao);
+        await grupoServiceExtended.atualizar(grupoId, { nome, descricao });
       } else {
-        const novo = await criarGrupo(nome, descricao);
+        const novo = await grupoServiceExtended.criar({ nome, descricao });
         grupoId = novo.id;
       }
-      await salvarItensGrupo(grupoId!, itens.map(i => ({
+      await grupoServiceExtended.salvarItensGrupo(grupoId!, itens.map(i => ({
         produto_id: i.produto_id,
         per_capita: Number(i.per_capita),
         tipo_medida: i.tipo_medida,
@@ -99,86 +99,78 @@ export default function GerenciarGrupoDialog({ open, onClose, onSaved, grupo, pr
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle component="div">
-        <Typography variant="subtitle1" fontWeight={600}>
-          {grupo ? 'Editar Grupo' : 'Novo Grupo de Ingredientes'}
+    <FormDialog
+      open={open}
+      onClose={onClose}
+      title={grupo ? 'Editar Grupo' : 'Novo Grupo de Ingredientes'}
+      onSave={handleSave}
+      loading={saving}
+      disableSave={!nome.trim()}
+    >
+      <TextField label="Nome do grupo" value={nome} onChange={e => setNome(e.target.value)} required size="small" fullWidth />
+      <TextField label="Descrição (opcional)" value={descricao} onChange={e => setDescricao(e.target.value)} size="small" fullWidth />
+
+      <Divider><Typography variant="caption">Ingredientes do grupo</Typography></Divider>
+
+      {/* Adicionar item */}
+      <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+        <Autocomplete
+          options={produtosDisponiveis}
+          getOptionLabel={o => o.nome}
+          value={produtoSel}
+          onChange={(_, v) => setProdutoSel(v)}
+          size="small"
+          sx={{ flex: 1 }}
+          renderInput={params => <TextField {...params} label="Produto" />}
+        />
+        <TextField
+          label="Per capita"
+          type="number"
+          value={perCapita}
+          onChange={e => setPerCapita(e.target.value)}
+          size="small"
+          sx={{ width: 100 }}
+          inputProps={{ min: 0, step: 0.1 }}
+        />
+        <FormControl size="small" sx={{ width: 100 }}>
+          <InputLabel>Unidade</InputLabel>
+          <Select
+            value={tipoMedida}
+            onChange={e => setTipoMedida(e.target.value)}
+            label="Unidade"
+          >
+            <MenuItem value="gramas">g</MenuItem>
+            <MenuItem value="unidade">un</MenuItem>
+            <MenuItem value="mililitros">ml</MenuItem>
+          </Select>
+        </FormControl>
+        <IconButton onClick={adicionarItem} disabled={!produtoSel || !perCapita} color="primary" sx={{ mt: 0.5 }}>
+          <AddIcon />
+        </IconButton>
+      </Box>
+
+      {/* Lista de itens */}
+      {itens.length === 0 ? (
+        <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center', py: 1 }}>
+          Nenhum ingrediente adicionado
         </Typography>
-      </DialogTitle>
-      <DialogContent>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-          <TextField label="Nome do grupo" value={nome} onChange={e => setNome(e.target.value)} required size="small" fullWidth />
-          <TextField label="Descrição (opcional)" value={descricao} onChange={e => setDescricao(e.target.value)} size="small" fullWidth />
-
-          <Divider><Typography variant="caption">Ingredientes do grupo</Typography></Divider>
-
-          {/* Adicionar item */}
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-            <Autocomplete
-              options={produtosDisponiveis}
-              getOptionLabel={o => o.nome}
-              value={produtoSel}
-              onChange={(_, v) => setProdutoSel(v)}
-              size="small"
-              sx={{ flex: 1 }}
-              renderInput={params => <TextField {...params} label="Produto" />}
-            />
-            <TextField
-              label="Per capita"
-              type="number"
-              value={perCapita}
-              onChange={e => setPerCapita(e.target.value)}
-              size="small"
-              sx={{ width: 100 }}
-              inputProps={{ min: 0, step: 0.1 }}
-            />
-            <FormControl size="small" sx={{ width: 100 }}>
-              <InputLabel>Unidade</InputLabel>
-              <Select
-                value={tipoMedida}
-                onChange={e => setTipoMedida(e.target.value)}
-                label="Unidade"
-              >
-                <MenuItem value="gramas">g</MenuItem>
-                <MenuItem value="unidade">un</MenuItem>
-                <MenuItem value="mililitros">ml</MenuItem>
-              </Select>
-            </FormControl>
-            <IconButton onClick={adicionarItem} disabled={!produtoSel || !perCapita} color="primary" sx={{ mt: 0.5 }}>
-              <AddIcon />
-            </IconButton>
-          </Box>
-
-          {/* Lista de itens */}
-          {itens.length === 0 ? (
-            <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center', py: 1 }}>
-              Nenhum ingrediente adicionado
-            </Typography>
-          ) : (
-            <List dense disablePadding>
-              {itens.map(item => (
-                <ListItem key={item.produto_id} disableGutters sx={{ borderBottom: '1px solid', borderColor: 'divider' }}>
-                  <ListItemText
-                    primary={item.produto_nome}
-                    secondary={`${item.per_capita}${getUnidadeLabel(item.tipo_medida)} per capita`}
-                  />
-                  <ListItemSecondaryAction>
-                    <IconButton size="small" onClick={() => removerItem(item.produto_id)}>
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </ListItemSecondaryAction>
-                </ListItem>
-              ))}
-            </List>
-          )}
-        </Box>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} size="small">Cancelar</Button>
-        <Button onClick={handleSave} variant="contained" size="small" disabled={saving || !nome.trim()}>
-          {saving ? 'Salvando...' : 'Salvar'}
-        </Button>
-      </DialogActions>
-    </Dialog>
+      ) : (
+        <List dense disablePadding>
+          {itens.map(item => (
+            <ListItem key={item.produto_id} disableGutters sx={{ borderBottom: '1px solid', borderColor: 'divider' }}>
+              <ListItemText
+                primary={item.produto_nome}
+                secondary={`${item.per_capita}${getUnidadeLabel(item.tipo_medida)} per capita`}
+              />
+              <ListItemSecondaryAction>
+                <IconButton size="small" onClick={() => removerItem(item.produto_id)}>
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              </ListItemSecondaryAction>
+            </ListItem>
+          ))}
+        </List>
+      )}
+    </FormDialog>
   );
 }

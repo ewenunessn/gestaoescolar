@@ -45,7 +45,7 @@ import {
   calcularDiasParaVencimento,
   type EstoqueLote
 } from "../../../services/estoqueCentralService";
-import { buscarProduto } from "../../../services/produtos";
+import { produtoService } from "../../../services/produtos";
 import { useToast } from "../../../hooks/useToast";
 
 const EstoqueLotes: React.FC = () => {
@@ -81,7 +81,7 @@ const EstoqueLotes: React.FC = () => {
 
       const [lotesData, produtoData] = await Promise.all([
         getLotesProduto(produtoIdNum, apenasAtivos),
-        buscarProduto(produtoIdNum)
+        produtoService.buscarPorId(produtoIdNum)
       ]);
 
       setLotes(lotesData);

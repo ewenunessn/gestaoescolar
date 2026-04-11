@@ -2,8 +2,9 @@ import React, { useState } from "react";
 import {
   Box, CircularProgress, Typography, Paper, Table, TableHead,
   TableRow, TableCell, TableBody, Chip, IconButton, Tooltip, Button,
-  Collapse, Dialog, DialogTitle, DialogContent, DialogActions, TextField,
+  Collapse, TextField,
 } from "@mui/material";
+import { FormDialog, ConfirmDialog } from "../../../components/BaseDialog";
 import {
   CheckCircle as CheckCircleIcon,
   Cancel as CancelIcon,
@@ -260,37 +261,34 @@ export default function SolicitacaoEscolaDetalhe() {
       </PageContainer>
 
       {/* Dialog recusa */}
-      <Dialog open={recusaOpen} onClose={() => setRecusaOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Recusar Item</DialogTitle>
-        <DialogContent>
-          <TextField
-            label="Justificativa"
-            value={justificativa}
-            onChange={e => setJustificativa(e.target.value)}
-            fullWidth multiline rows={3} autoFocus sx={{ mt: 1 }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setRecusaOpen(false)}>Cancelar</Button>
-          <Button variant="contained" color="error" onClick={handleRecusar} disabled={saving}>
-            {saving ? 'Recusando...' : 'Recusar'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <FormDialog
+        open={recusaOpen}
+        onClose={() => setRecusaOpen(false)}
+        title="Recusar Item"
+        onSave={handleRecusar}
+        loading={saving}
+        saveLabel={saving ? 'Recusando...' : 'Recusar'}
+        saveColor="error"
+      >
+        <TextField
+          label="Justificativa"
+          value={justificativa}
+          onChange={e => setJustificativa(e.target.value)}
+          fullWidth multiline rows={3} autoFocus
+        />
+      </FormDialog>
 
       {/* Dialog aprovar tudo */}
-      <Dialog open={!!aprovarId} onClose={() => setAprovarId(null)} maxWidth="xs" fullWidth>
-        <DialogTitle>Confirmar aprovação</DialogTitle>
-        <DialogContent>
-          <Typography>Aprovar todos os itens pendentes desta solicitação?</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setAprovarId(null)}>Cancelar</Button>
-          <Button variant="contained" color="success" onClick={handleAprovarTudo} disabled={saving}>
-            {saving ? 'Aprovando...' : 'Aprovar tudo'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <ConfirmDialog
+        open={!!aprovarId}
+        onClose={() => setAprovarId(null)}
+        onConfirm={handleAprovarTudo}
+        title="Confirmar aprovação"
+        message="Aprovar todos os itens pendentes desta solicitação?"
+        loading={saving}
+        severity="success"
+        confirmLabel="Aprovar tudo"
+      />
     </Box>
   );
 }

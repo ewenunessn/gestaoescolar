@@ -42,8 +42,6 @@ export function isAuthenticated(): boolean {
 }
 
 export function logout() {
-  console.log('🚪 [AUTH] logout() chamado');
-  console.trace('Stack trace do logout:');
   localStorage.removeItem("token");
   localStorage.removeItem("user");
   localStorage.removeItem("perfil");

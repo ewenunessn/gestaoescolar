@@ -5,10 +5,11 @@ import {
   TableHead, TableRow, Paper, CircularProgress, Alert, Chip, TextField, InputAdornment
 } from "@mui/material";
 import { Search as SearchIcon, Business as BusinessIcon, Inventory as InventoryIcon } from "@mui/icons-material";
-import { buscarFornecedor } from "../../../services/fornecedores";
+import { fornecedorService } from "../../../services/fornecedores";
 import api from "../../../services/api";
 import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
 import PageContainer from "../../../components/PageContainer";
+import { usePageTitle } from "../../../contexts/PageTitleContext";
 
 interface ItemContrato {
   id: number;
@@ -47,7 +48,7 @@ export default function ItensFornecedor() {
     try {
       setLoading(true);
       const [fornecedorData, itensData] = await Promise.all([
-        buscarFornecedor(Number(id)),
+        fornecedorService.buscarPorId(Number(id)),
         listarItensFornecedor(Number(id))
       ]);
       setFornecedor(fornecedorData);

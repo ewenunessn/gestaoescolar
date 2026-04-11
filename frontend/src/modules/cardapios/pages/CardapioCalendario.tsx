@@ -24,7 +24,8 @@ import {
 } from "../../../services/cardapiosModalidade";
 import { listarRefeicoes } from "../../../services/refeicoes";
 import { listarEventosPorMes, getLabelsEventos, getCoresEventos } from "../../../services/calendarioLetivo";
-import { listarModalidades, Modalidade } from "../../../services/modalidades";
+import { modalidadeService, Modalidade } from "../../../services/modalidades";
+import { refeicaoService } from "../../../services/refeicoes";
 import { LoadingOverlay } from "../../../components/LoadingOverlay";
 import { DetalheDiaCardapioDialog } from "../../../components/DetalheDiaCardapioDialog";
 import { ReplicarRefeicoesDialog } from "../../../components/ReplicarRefeicoesDialog";
@@ -126,8 +127,8 @@ const CardapioCalendarioPage: React.FC = () => {
       const [cardapioData, refeicoesData, refeicoesDisp, modalidadesData] = await Promise.all([
         buscarCardapioModalidade(parseInt(cardapioId!)),
         listarRefeicoesCardapio(parseInt(cardapioId!)),
-        listarRefeicoes(),
-        listarModalidades(),
+        refeicaoService.listar(),
+        modalidadeService.listar(),
         carregarTiposRefeicao() // Carregar tipos de refeição dinâmicos
       ]);
       setCardapio(cardapioData);

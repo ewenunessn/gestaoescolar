@@ -1,11 +1,15 @@
 /**
  * Utilitários para trabalhar com datas no formato do cardápio.
- * 
+ *
  * IMPORTANTE: O sistema usa meses 1-12 (Janeiro = 1), mas JavaScript Date usa 0-11.
  * Sempre use estas funções para evitar erros de conversão.
- * 
+ *
  * @module dateUtils
  */
+
+// Re-export general formatters from formatters.ts to avoid duplication
+export { formatarData, formatarDataHora, formatarMoeda } from './formatters';
+export { formatDateForInput } from './formatters';
 
 export const MESES: Record<number, string> = {
   1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril',
@@ -283,79 +287,3 @@ export const dateUtils = {
     };
   }
 };
-
-/**
- * Formata uma data ISO ou Date para o formato brasileiro (DD/MM/YYYY)
- * 
- * @param data - String ISO (YYYY-MM-DD) ou objeto Date
- * @returns String formatada (DD/MM/YYYY)
- * 
- * @example
- * formatarData('2026-04-01') // '01/04/2026'
- * formatarData(new Date(2026, 3, 1)) // '01/04/2026'
- */
-export function formatarData(data: string | Date): string {
-  if (!data) return '';
-  
-  const date = typeof data === 'string' ? new Date(data) : data;
-  const dia = String(date.getDate()).padStart(2, '0');
-  const mes = String(date.getMonth() + 1).padStart(2, '0');
-  const ano = date.getFullYear();
-  
-  return `${dia}/${mes}/${ano}`;
-}
-
-/**
- * Formata um número para o formato de moeda brasileira (R$ X.XXX,XX)
- * 
- * @param valor - Valor numérico
- * @returns String formatada como moeda
- * 
- * @example
- * formatarMoeda(1234.56) // 'R$ 1.234,56'
- * formatarMoeda(0) // 'R$ 0,00'
- */
-export function formatarMoeda(valor: number): string {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL'
-  }).format(valor);
-}
-
-/**
- * Formata uma data para o formato de input HTML (YYYY-MM-DD)
- * 
- * @param data - String ISO, objeto Date, ou string no formato DD/MM/YYYY
- * @returns String no formato YYYY-MM-DD para inputs HTML
- * 
- * @example
- * formatDateForInput('2026-04-01') // '2026-04-01'
- * formatDateForInput(new Date(2026, 3, 1)) // '2026-04-01'
- * formatDateForInput('01/04/2026') // '2026-04-01'
- */
-export function formatDateForInput(data: string | Date): string {
-  if (!data) return '';
-  
-  let date: Date;
-  
-  if (typeof data === 'string') {
-    // Se já está no formato ISO (YYYY-MM-DD)
-    if (data.match(/^\d{4}-\d{2}-\d{2}/)) {
-      return data.split('T')[0];
-    }
-    // Se está no formato brasileiro (DD/MM/YYYY)
-    if (data.match(/^\d{2}\/\d{2}\/\d{4}/)) {
-      const [dia, mes, ano] = data.split('/');
-      return `${ano}-${mes}-${dia}`;
-    }
-    date = new Date(data);
-  } else {
-    date = data;
-  }
-  
-  const ano = date.getFullYear();
-  const mes = String(date.getMonth() + 1).padStart(2, '0');
-  const dia = String(date.getDate()).padStart(2, '0');
-  
-  return `${ano}-${mes}-${dia}`;
-}

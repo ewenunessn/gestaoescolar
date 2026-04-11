@@ -58,6 +58,7 @@ import {
   LocalDining as LocalDiningIcon,
   PictureAsPdf as PdfIcon,
   MoreVert as MoreVertIcon,
+  ArrowBack as ArrowBackIcon,
 } from "@mui/icons-material";
 import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
 import ViewTabs from "../../../components/ViewTabs";
@@ -680,13 +681,22 @@ export default function PreparacaoDetalhe() {
       overflow: 'hidden' 
     }}>
       <Box sx={{ px: isMobile ? 1 : 2, pt: 1.5 }}>
+        {/* Seta + Breadcrumbs na mesma linha */}
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+          <IconButton size="small" onClick={() => navigate('/preparacoes')} sx={{ mr: 0.5, p: 0.5 }}>
+            <ArrowBackIcon fontSize="small" />
+          </IconButton>
+          <PageBreadcrumbs
+            items={[
+              { label: 'Dashboard', path: '/dashboard' },
+              { label: 'Preparações', path: '/preparacoes' },
+              { label: preparacao?.nome || '' },
+            ]}
+          />
+        </Box>
+
         <PageHeader
           title={preparacao?.nome || 'Detalhes da Preparação'}
-          breadcrumbs={[
-            { label: 'Dashboard', path: '/dashboard' },
-            { label: 'Preparações', path: '/preparacoes' },
-            { label: preparacao?.nome || '' },
-          ]}
           action={
             <IconButton size="small" onClick={() => setShowEdicaoRapida(true)}>
               <EditIcon fontSize="small" />

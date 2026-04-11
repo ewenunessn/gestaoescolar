@@ -25,9 +25,10 @@ import {
   Inventory as InventoryIcon,
   MoreVert as MoreVertIcon,
 } from "@mui/icons-material";
-import { buscarFornecedor } from "../../../services/fornecedores";
+import { fornecedorService } from "../../../services/fornecedores";
 import { listarContratos } from "../../../services/contratos";
 import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
+import { usePageTitle } from "../../../contexts/PageTitleContext";
 
 // --- Interfaces ---
 interface Fornecedor {
@@ -108,7 +109,7 @@ export default function FornecedorDetalhe() {
     setError(null);
     try {
       const [fornecedorData, todosContratos] = await Promise.all([
-        buscarFornecedor(Number(id)),
+        fornecedorService.buscarPorId(Number(id)),
         listarContratos()
       ]);
       setFornecedor(fornecedorData);
@@ -181,20 +182,29 @@ export default function FornecedorDetalhe() {
   const handleEditarFornecedor = useCallback(() => navigate(`/fornecedores?edit=${id}`), [navigate, id]);
   const handleVerItens = useCallback(() => navigate(`/fornecedores/${id}/itens`), [navigate, id]);
 
-  if (loading) return <Box sx={{ display: "flex", justifyContent: "center", alignItems: 'center', minHeight: '80vh' }}><CircularProgress size={60} /></Box>;
-  if (error) return <PageContainer><Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={carregarDados}>Tentar Novamente</Button></CardContent></Card></PageContainer>;
-  if (!fornecedor) return <Alert severity="error">Fornecedor não encontrado</Alert>;
+  if (loading) return <Box sx={{ display: "flex", justifyContent: "center", alignItems: 'center', minHeight: '80vh', bgcolor: 'background.default' }}><CircularProgress size={60} /></Box>;
+  if (error) return <Box sx={{ bgcolor: 'background.default', minHeight: '100vh' }}><PageContainer><Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={carregarDados}>Tentar Novamente</Button></CardContent></Card></PageContainer></Box>;
+  if (!fornecedor) return <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', p: 3 }}><Alert severity="error">Fornecedor não encontrado</Alert></Box>;
 
   return (
     <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden' }}>
-      <PageContainer fullHeight>
+      <PageContainer fullHeight sx={{ bgcolor: 'background.default' }}>
+        {/* Seta + Breadcrumbs na mesma linha */}
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+          <IconButton size="small" onClick={() => navigate('/fornecedores')} sx={{ mr: 0.5, p: 0.5 }}>
+            <ArrowBackIcon fontSize="small" />
+          </IconButton>
+          <PageBreadcrumbs
+            items={[
+              { label: 'Dashboard', path: '/dashboard' },
+              { label: 'Fornecedores', path: '/fornecedores' },
+              { label: fornecedor?.nome || 'Detalhes' },
+            ]}
+          />
+        </Box>
+
         <PageHeader
           title={fornecedor?.nome || 'Detalhes do Fornecedor'}
-          breadcrumbs={[
-            { label: 'Dashboard', path: '/dashboard' },
-            { label: 'Fornecedores', path: '/fornecedores' },
-            { label: fornecedor?.nome || 'Detalhes' },
-          ]}
           action={
             <IconButton onClick={(e) => setMenuAnchorEl(e.currentTarget)}>
               <MoreVertIcon />

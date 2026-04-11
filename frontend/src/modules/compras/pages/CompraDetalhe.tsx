@@ -12,13 +12,15 @@ import Checkbox from "@mui/material/Checkbox";
 import {
   Cancel as CancelIcon, Edit as EditIcon, Receipt as ReceiptIcon,
   CalendarMonth as CalendarIcon, MergeType as MergeIcon, Tune as TuneIcon,
-  PictureAsPdf as PdfIcon,
+  PictureAsPdf as PdfIcon, ArrowBack as ArrowBackIcon,
 } from "@mui/icons-material";
 import { listarProgramacoes } from "../../../services/programacaoEntrega";
 import pedidosService from "../../../services/pedidos";
 import faturamentoService from "../../../services/faturamento";
 import { apiWithRetry } from "../../../services/api";
 import CompactPagination from "../../../components/CompactPagination";
+import PageHeader from "../../../components/PageHeader";
+import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
 import { PedidoDetalhado, STATUS_PEDIDO } from "../../../types/pedido";
 import PageContainer from "../../../components/PageContainer";
 import { formatarMoeda, formatarData } from "../../../utils/dateUtils";
@@ -347,8 +349,8 @@ export default function PedidoDetalhe() {
     } finally { setProcessando(false); }
   };
 
-  if (loading) return <Box sx={{ p: 3 }}><Typography>Carregando...</Typography></Box>;
-  if (!pedido) return <Box sx={{ p: 3 }}><Alert severity="error">Pedido não encontrado</Alert></Box>;
+  if (loading) return <Box sx={{ p: 3, bgcolor: 'background.default', minHeight: '100vh' }}><Typography>Carregando...</Typography></Box>;
+  if (!pedido) return <Box sx={{ p: 3, bgcolor: 'background.default', minHeight: '100vh' }}><Alert severity="error">Pedido não encontrado</Alert></Box>;
 
   const statusInfo = STATUS_PEDIDO[pedido.status as keyof typeof STATUS_PEDIDO];
   const ehCancelado = pedido.status === 'cancelado';
@@ -356,14 +358,23 @@ export default function PedidoDetalhe() {
 
   return (
     <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden' }}>
-      <PageContainer fullHeight>
+      <PageContainer fullHeight sx={{ bgcolor: 'background.default' }}>
+        {/* Seta + Breadcrumbs na mesma linha */}
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+          <IconButton size="small" onClick={() => navigate('/compras')} sx={{ mr: 0.5, p: 0.5 }}>
+            <ArrowBackIcon fontSize="small" />
+          </IconButton>
+          <PageBreadcrumbs
+            items={[
+              { label: 'Dashboard', path: '/dashboard' },
+              { label: 'Compras', path: '/compras' },
+              { label: `Compra ${pedido.numero}` },
+            ]}
+          />
+        </Box>
+
         <PageHeader
           title={`Compra ${pedido.numero}`}
-          breadcrumbs={[
-            { label: 'Dashboard', path: '/dashboard' },
-            { label: 'Compras', path: '/compras' },
-            { label: `Compra ${pedido.numero}` },
-          ]}
           action={
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
               <FormControl sx={{ minWidth: 120 }}>

@@ -28,7 +28,7 @@ import {
 import { ColumnDef } from "@tanstack/react-table";
 import { useNavigate } from "react-router-dom";
 import { listarContratos, removerContrato } from "../../../services/contratos";
-import { listarFornecedores } from "../../../services/fornecedores";
+import { fornecedorService } from "../../../services/fornecedores";
 import { useToast } from "../../../hooks/useToast";
 import { DataTable } from "../../../components/DataTable";
 import PageHeader from "../../../components/PageHeader";
@@ -82,7 +82,7 @@ const ContratosPage: React.FC = () => {
       setLoading(true);
       const [contratosData, fornecedoresData] = await Promise.all([
         listarContratos(),
-        listarFornecedores(),
+        fornecedorService.listar(),
       ]);
       setContratos(Array.isArray(contratosData) ? contratosData : []);
       setFornecedores(Array.isArray(fornecedoresData) ? fornecedoresData : []);

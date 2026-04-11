@@ -24,7 +24,7 @@ import {
   ExpandLess as ExpandLessIcon,
   Tune as TuneIcon,
 } from '@mui/icons-material';
-import { listarModalidades, Modalidade } from '../services/modalidades';
+import { modalidadeService, Modalidade } from '../services/modalidades';
 import { toNum } from '../utils/formatters';
 
 interface Produto {
@@ -86,7 +86,7 @@ export default function AdicionarIngredienteDialog({
   async function carregarModalidades() {
     setLoading(true);
     try {
-      const mods = await listarModalidades();
+      const mods = await modalidadeService.listar();
       const ativas = mods.filter(m => m.ativo);
       setModalidades(ativas);
       

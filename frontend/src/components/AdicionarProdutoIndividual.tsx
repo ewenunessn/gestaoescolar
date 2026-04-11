@@ -24,8 +24,8 @@ import {
 } from '@mui/icons-material';
 import { useToast } from '../hooks/useToast';
 import { guiaService, Guia, AddProdutoGuiaData } from '../services/guiaService';
-import { listarProdutos } from '../services/produtos';
-import { escolaService } from '../services/escolaService';
+import { produtoService } from '../services/produtos';
+import { listarEscolas } from '../services/escolas';
 import { listarEstoqueEscola, EstoqueEscolarItem } from '../services/estoqueEscolarService';
 import { InputAdornment } from '@mui/material';
 
@@ -105,8 +105,8 @@ const AdicionarProdutoIndividual: React.FC<AdicionarProdutoIndividualProps> = ({
     try {
       setLoading(true);
       const [escolasData, produtosData] = await Promise.all([
-        escolaService.listarEscolas(),
-        listarProdutos()
+        listarEscolas(),
+        produtoService.listar()
       ]);
 
       setEscolas(Array.isArray(escolasData) ? escolasData : []);

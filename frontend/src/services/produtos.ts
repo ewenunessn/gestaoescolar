@@ -1,68 +1,37 @@
-import { apiWithRetry } from "./api";
-import { 
-  Produto, 
-  CriarProdutoRequest, 
+import { createCrudService, extractResponseData } from './createCrudService';
+import { apiWithRetry } from './api';
+import {
+  Produto,
+  CriarProdutoRequest,
   AtualizarProdutoRequest,
   ComposicaoNutricional,
   ImportarProdutoRequest,
   ImportarProdutosResponse
 } from '../types/produto';
 
-export async function listarProdutos(): Promise<Produto[]> {
-  // Adicionar timestamp para evitar cache do navegador
-  const timestamp = Date.now();
-  const { data } = await apiWithRetry.get(`/produtos?_t=${timestamp}`);
-  return data.data || []; // Return the actual array from the response
-}
-
-export async function buscarProduto(id: number): Promise<Produto | null> {
-  const { data } = await apiWithRetry.get(`/produtos/${id}`);
-  return data.data || null; // Return the actual data from the response
-}
+// CRUD básico via factory
+export const produtoService = createCrudService<Produto, CriarProdutoRequest, AtualizarProdutoRequest>('produtos');
 
 // Alias para compatibilidade
-export const getProdutoById = buscarProduto;
-
-export async function criarProduto(produto: CriarProdutoRequest): Promise<Produto> {
-  const { data } = await apiWithRetry.post("/produtos", produto);
-  return data.data || data; // Return the actual data from the response
-}
-
-export async function editarProduto(id: number, produto: AtualizarProdutoRequest): Promise<Produto> {
-  const { data } = await apiWithRetry.put(`/produtos/${id}`, produto);
-  return data.data || data; // Return the actual data from the response
-}
-
-export async function removerProduto(id: number): Promise<void> {
-  await apiWithRetry.delete(`/produtos/${id}`);
-}
-
-// Alias para manter compatibilidade com código existente
-export async function deletarProduto(id: number): Promise<void> {
-  await apiWithRetry.delete(`/produtos/${id}`);
-}
+export const getProdutoById = produtoService.buscarPorId;
+export const deletarProduto = produtoService.remover;
 
 // Importar produtos em lote
 export async function importarProdutosLote(produtos: ImportarProdutoRequest[]): Promise<ImportarProdutosResponse> {
-  const { data } = await apiWithRetry.post("/produtos/importar-lote", { produtos });
-  return data.data || data; // Handle both new format {success, data} and old format
+  const { data } = await apiWithRetry.post('/produtos/importar-lote', { produtos });
+  return extractResponseData<ImportarProdutosResponse>(data);
 }
 
-
-
+// Operações de composição nutricional
 export async function buscarComposicaoNutricional(produtoId: number): Promise<ComposicaoNutricional | null> {
-  const { data } = await apiWithRetry.get(
-    `/produtos/${produtoId}/composicao-nutricional`
-  );
-  return data.data; // Return the actual data from the response
+  const { data } = await apiWithRetry.get(`/produtos/${produtoId}/composicao-nutricional`);
+  return extractResponseData<ComposicaoNutricional>(data, null);
 }
 
 export async function salvarComposicaoNutricional(
   produtoId: number,
   composicao: Partial<ComposicaoNutricional>
 ): Promise<ComposicaoNutricional> {
-  const { data } = await apiWithRetry.put(`/produtos/${produtoId}/composicao-nutricional`, {
-    ...composicao,
-  });
-  return data.data || data; // Return the actual data from the response
+  const { data } = await apiWithRetry.put(`/produtos/${produtoId}/composicao-nutricional`, composicao);
+  return extractResponseData<ComposicaoNutricional>(data);
 }

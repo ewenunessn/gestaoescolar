@@ -13,13 +13,8 @@ import {
   TableRow,
   Chip,
   IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   TextField,
   Alert,
-  CircularProgress,
   Tooltip,
   FormControlLabel,
   Switch,
@@ -38,6 +33,7 @@ import PageContainer from "../../../components/PageContainer";
 import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
 import { SafeButtonWithOverlay } from "../../../components/SafeButtonWithOverlay";
 import { LoadingOverlay } from "../../../components/LoadingOverlay";
+import { FormDialog } from "../../../components/BaseDialog";
 import {
   usePeriodos,
   useCriarPeriodo,
@@ -384,25 +380,20 @@ const GerenciamentoPeriodos = () => {
       </Card>
 
       {/* Dialog */}
-      <Dialog open={dialogOpen} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          {editando ? 'Editar Período' : 'Novo Período'}
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
-            <TextField label="Ano" type="number" value={formData.ano} onChange={(e) => setFormData({ ...formData, ano: parseInt(e.target.value) })} disabled={!!editando} fullWidth />
-            <TextField label="Descrição" value={formData.descricao} onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} fullWidth />
-            <TextField label="Data Início" type="date" value={formData.data_inicio} onChange={(e) => setFormData({ ...formData, data_inicio: e.target.value })} InputLabelProps={{ shrink: true }} fullWidth />
-            <TextField label="Data Fim" type="date" value={formData.data_fim} onChange={(e) => setFormData({ ...formData, data_fim: e.target.value })} InputLabelProps={{ shrink: true }} fullWidth />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancelar</Button>
-          <Button onClick={handleSubmit} variant="contained" disabled={criarPeriodoMutation.isPending || atualizarPeriodoMutation.isPending}>
-            {editando ? 'Atualizar' : 'Criar'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <FormDialog
+        open={dialogOpen}
+        onClose={handleCloseDialog}
+        title={editando ? 'Editar Período' : 'Novo Período'}
+        onSave={handleSubmit}
+        loading={criarPeriodoMutation.isPending || atualizarPeriodoMutation.isPending}
+      >
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <TextField label="Ano" type="number" value={formData.ano} onChange={(e) => setFormData({ ...formData, ano: parseInt(e.target.value) })} disabled={!!editando} fullWidth />
+          <TextField label="Descrição" value={formData.descricao} onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} fullWidth />
+          <TextField label="Data Início" type="date" value={formData.data_inicio} onChange={(e) => setFormData({ ...formData, data_inicio: e.target.value })} InputLabelProps={{ shrink: true }} fullWidth />
+          <TextField label="Data Fim" type="date" value={formData.data_fim} onChange={(e) => setFormData({ ...formData, data_fim: e.target.value })} InputLabelProps={{ shrink: true }} fullWidth />
+        </Box>
+      </FormDialog>
 
       <LoadingOverlay
         open={

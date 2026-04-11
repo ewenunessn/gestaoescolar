@@ -1,3 +1,4 @@
+import { createCrudService, extractResponseData } from './createCrudService';
 import { apiWithRetry } from './api';
 
 export interface GrupoItem {
@@ -17,29 +18,21 @@ export interface Grupo {
   itens: GrupoItem[];
 }
 
-export async function listarGrupos(): Promise<Grupo[]> {
-  const { data } = await apiWithRetry.get('/grupos-ingredientes');
-  return data.data || [];
-}
+export type GrupoCreate = Pick<Grupo, 'nome'> & { descricao?: string };
+export type GrupoUpdate = Partial<GrupoCreate>;
 
-export async function criarGrupo(nome: string, descricao?: string): Promise<Grupo> {
-  const { data } = await apiWithRetry.post('/grupos-ingredientes', { nome, descricao });
-  return data.data;
-}
+// CRUD básico via factory
+export const grupoService = createCrudService<Grupo, GrupoCreate, GrupoUpdate>('grupos-ingredientes');
 
-export async function atualizarGrupo(id: number, nome: string, descricao?: string): Promise<Grupo> {
-  const { data } = await apiWithRetry.put(`/grupos-ingredientes/${id}`, { nome, descricao });
-  return data.data;
-}
+// Operações específicas
+export const grupoServiceExtended = {
+  ...grupoService,
 
-export async function excluirGrupo(id: number): Promise<void> {
-  await apiWithRetry.delete(`/grupos-ingredientes/${id}`);
-}
-
-export async function salvarItensGrupo(
-  id: number,
-  itens: Array<{ produto_id: number; per_capita: number; tipo_medida: string }>
-): Promise<GrupoItem[]> {
-  const { data } = await apiWithRetry.put(`/grupos-ingredientes/${id}/itens`, { itens });
-  return data.data;
-}
+  salvarItensGrupo: async (
+    id: number,
+    itens: Array<{ produto_id: number; per_capita: number; tipo_medida: string }>
+  ): Promise<GrupoItem[]> => {
+    const { data } = await apiWithRetry.put(`/grupos-ingredientes/${id}/itens`, { itens });
+    return extractResponseData<GrupoItem[]>(data);
+  },
+};

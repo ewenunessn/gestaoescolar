@@ -33,12 +33,13 @@ import {
     LocationOn as LocationOnIcon,
     VpnKey as VpnKeyIcon,
     MoreVert as MoreVertIcon,
+    ArrowBack as ArrowBackIcon,
 } from "@mui/icons-material";
 import {
     buscarEscola, editarEscola, deletarEscola, listarEscolaModalidades,
     adicionarEscolaModalidade, editarEscolaModalidade, removerEscolaModalidade,
 } from "../../../services/escolas";
-import { listarModalidades } from "../../../services/modalidades";
+import { modalidadeService } from "../../../services/modalidades";
 import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
 import { LoadingOverlay } from "../../../components/LoadingOverlay";
 // Interfaces
@@ -273,7 +274,7 @@ const EscolaDetalhesPage = () => {
         try {
             const [escolaData, modalidadesData, associacoesData] = await Promise.all([
                 buscarEscola(Number(id)),
-                listarModalidades(),
+                modalidadeService.listar(),
                 listarEscolaModalidades(),
             ]);
             setEscola(escolaData);
@@ -364,27 +365,37 @@ const EscolaDetalhesPage = () => {
 
     const totalAlunos = useMemo(() => associacoes.reduce((total, assoc) => total + assoc.quantidade_alunos, 0), [associacoes]);
 
-    if (loading) return <Box sx={{ display: "flex", justifyContent: "center", alignItems: 'center', minHeight: '80vh' }}><CircularProgress size={60} /></Box>;
-    if (error && !escola) return <PageContainer><Card><CardContent sx={{ textAlign: 'center', p: 4 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={loadData}>Tentar Novamente</Button></CardContent></Card></PageContainer>;
+    if (loading) return <Box sx={{ display: "flex", justifyContent: "center", alignItems: 'center', minHeight: '80vh', bgcolor: 'background.default' }}><CircularProgress size={60} /></Box>;
+    if (error && !escola) return <Box sx={{ bgcolor: 'background.default', minHeight: '100vh' }}><PageContainer><Card><CardContent sx={{ textAlign: 'center', p: 4 }}><Alert severity="error" sx={{ mb: 2 }}>{error}</Alert><Button variant="contained" onClick={loadData}>Tentar Novamente</Button></CardContent></Card></PageContainer></Box>;
 
     return (
-        <PageContainer>
-            <PageHeader
-                title={escola?.nome || 'Detalhes da Escola'}
-                subtitle="Informações e modalidades da escola"
-                breadcrumbs={[
-                    { label: 'Dashboard', path: '/dashboard' },
-                    { label: 'Escolas', path: '/escolas' },
-                    { label: escola?.nome || 'Detalhes' },
-                ]}
-                action={
-                    !isEditing && (
-                        <IconButton onClick={(e) => setMenuAnchorEl(e.currentTarget)}>
-                            <MoreVertIcon />
-                        </IconButton>
-                    )
-                }
-            />
+        <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden' }}>
+            <PageContainer fullHeight>
+                {/* Seta + Breadcrumbs na mesma linha */}
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+                    <IconButton size="small" onClick={() => navigate('/escolas')} sx={{ mr: 0.5, p: 0.5 }}>
+                        <ArrowBackIcon fontSize="small" />
+                    </IconButton>
+                    <PageBreadcrumbs
+                        items={[
+                            { label: 'Dashboard', path: '/dashboard' },
+                            { label: 'Escolas', path: '/escolas' },
+                            { label: escola?.nome || 'Detalhes' },
+                        ]}
+                    />
+                </Box>
+
+                <PageHeader
+                    title={escola?.nome || 'Detalhes da Escola'}
+                    subtitle="Informações e modalidades da escola"
+                    action={
+                        !isEditing && (
+                            <IconButton onClick={(e) => setMenuAnchorEl(e.currentTarget)}>
+                                <MoreVertIcon />
+                            </IconButton>
+                        )
+                    }
+                />
                 <EscolaInfoCard
                     isEditing={isEditing}
                     formData={formData}
@@ -463,6 +474,7 @@ const EscolaDetalhesPage = () => {
                 }
             />
         </PageContainer>
+    </Box>
     );
 };
 

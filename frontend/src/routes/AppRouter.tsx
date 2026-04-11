@@ -31,33 +31,26 @@ const PageLoader = () => (
 
 // Redireciona para a rota inicial correta conforme tipo de usuário
 function RootRedirect() {
-  console.log('🔀 [RootRedirect] Verificando autenticação...');
-  
   if (!isAuthenticated()) {
-    console.log('🔀 [RootRedirect] Não autenticado - redirecionando para /login');
     return <Navigate to="/login" replace />;
   }
 
   // Detectar se é usuário de escola pelo token JWT (sem chamada de API)
   try {
     const token = localStorage.getItem('token');
-    console.log('🔀 [RootRedirect] Token encontrado:', token ? 'SIM' : 'NÃO');
-    
+
     if (token) {
       const payload = JSON.parse(atob(token.split('.')[1]));
       const isEscolaUser = !!(payload.escola_id && payload.tipo !== 'admin' && !payload.isSystemAdmin);
-      console.log('🔀 [RootRedirect] É usuário de escola?', isEscolaUser);
-      
+
       if (isEscolaUser) {
-        console.log('🔀 [RootRedirect] Redirecionando para /portal-escola');
         return <Navigate to="/portal-escola" replace />;
       }
     }
   } catch (e) {
-    console.error('🔀 [RootRedirect] Erro ao decodificar token:', e);
+    console.error('Erro ao decodificar token:', e);
   }
 
-  console.log('🔀 [RootRedirect] Redirecionando para /dashboard');
   return <Navigate to="/dashboard" replace />;
 }
 
@@ -425,15 +418,6 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
               path="/estoque-moderno/alertas"
               element={<LazyRoute><EstoqueAlertas /></LazyRoute>}
             />
-
-
-
-            {/* Outras rotas protegidas podem ser adicionadas aqui, sempre dentro do LayoutModerno */}
-            {/* Outras rotas protegidas podem ser adicionadas aqui, sempre dentro do LayoutModerno */}
-
-
-
-
 
             {/* Dashboard de Consistência */}
             <Route

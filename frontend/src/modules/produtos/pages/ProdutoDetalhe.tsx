@@ -11,14 +11,14 @@ import {
 } from "@mui/material";
 import {
   Edit as EditIcon, Delete as DeleteIcon, Save as SaveIcon,
-  Cancel as CancelIcon, Inventory as InventoryIcon, Science as ScienceIcon, 
+  Cancel as CancelIcon, Inventory as InventoryIcon, Science as ScienceIcon,
   Fingerprint as FingerprintIcon, Notes as NotesIcon,
-  AutoAwesome as AutoAwesomeIcon,
+  AutoAwesome as AutoAwesomeIcon, ArrowBack as ArrowBackIcon,
 } from "@mui/icons-material";
 import BuscarTacoDialog from "../../../components/BuscarTacoDialog";
 import { mapearTacoParaComposicao, TacoAlimento } from "../../../services/taco";
 import {
-  buscarProduto, deletarProduto,
+  produtoService, deletarProduto,
   buscarComposicaoNutricional, salvarComposicaoNutricional,
 } from "../../../services/produtos";
 import { useAtualizarProduto } from "../../../hooks/queries/useProdutoQueries";
@@ -327,7 +327,7 @@ export default function ProdutoDetalhe() {
     if (!id) return;
     setLoading(true);
     try {
-      const prod = await buscarProduto(Number(id));
+      const prod = await produtoService.buscarPorId(Number(id));
       setProduto(prod); 
       // Garantir que o formulário seja inicializado com todos os dados do produto
       setForm({
@@ -477,8 +477,12 @@ export default function ProdutoDetalhe() {
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       <PageContainer>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-          <PageBreadcrumbs 
+        {/* Seta + Breadcrumbs na mesma linha */}
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+          <IconButton size="small" onClick={() => navigate('/produtos')} sx={{ mr: 0.5, p: 0.5 }}>
+            <ArrowBackIcon fontSize="small" />
+          </IconButton>
+          <PageBreadcrumbs
             items={[
               { label: 'Produtos', path: '/produtos', icon: <InventoryIcon fontSize="small" /> },
               { label: produto?.nome || 'Detalhes do Produto' }

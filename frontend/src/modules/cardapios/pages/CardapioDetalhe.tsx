@@ -8,19 +8,10 @@ import {
 } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  buscarCardapio,
-  criarCardapio,
-  editarCardapio,
-  deletarCardapio,
-  listarCardapioRefeicoes,
-  adicionarCardapioRefeicao,
-  atualizarCardapioRefeicao,
-  deletarCardapioRefeicao,
-  calcularNecessidades,
-  calcularCustoRefeicoes,
-  calcularCustoCardapio,
+  cardapioService,
+  cardapioServiceExtended,
 } from "../../../services/cardapios";
-import { listarRefeicoes } from "../../../services/refeicoes";
+import { refeicaoService } from "../../../services/refeicoes";
 import { formatDateForInput } from "../../../utils/dateUtils";
 import { toNum } from "../../../utils/formatters";
 import {
@@ -82,7 +73,7 @@ import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import RemoveIcon from "@mui/icons-material/Remove";
 import SearchIcon from "@mui/icons-material/Search";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
-import { listarModalidades } from "../../../services/modalidades";
+import { modalidadeService } from "../../../services/modalidades";
 import { useSafeData } from "../../../hooks/useSafeData";
 import DownloadIcon from "@mui/icons-material/Download";
 import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
@@ -396,7 +387,7 @@ export default function CardapioDetalhe() {
   useEffect(() => {
     async function fetchModalidades() {
       try {
-        const modalidadesData = await listarModalidades();
+        const modalidadesData = await modalidadeService.listar();
         setModalidades(modalidadesData);
       } catch (error) {
         console.error("Erro ao carregar modalidades:", error);
@@ -443,7 +434,7 @@ export default function CardapioDetalhe() {
   useEffect(() => {
     async function fetchRefeicoes() {
       try {
-        const refeicoesData = await listarRefeicoes();
+        const refeicoesData = await refeicaoService.listar();
         setRefeicoesDisponiveis(refeicoesData.filter(r => r.ativo));
       } catch (error) {
         console.error("Erro ao carregar refeições:", error);
@@ -459,8 +450,8 @@ export default function CardapioDetalhe() {
     try {
       const idNum = parseInt(id);
       const [cardapioData, refeicoesCardapioData] = await Promise.all([
-        buscarCardapio(idNum),
-        listarCardapioRefeicoes(idNum)
+        cardapioService.buscarPorId(idNum),
+        cardapioServiceExtended.listarRefeicoes(idNum)
       ]);
       
       if (!cardapioData) {
@@ -499,7 +490,7 @@ export default function CardapioDetalhe() {
 
   async function fetchCustosRefeicoes(cardapioId: number) {
     try {
-      const response = await calcularCustoRefeicoes(cardapioId);
+      const response = await cardapioServiceExtended.calcularCustoRefeicoes(cardapioId);
       // A API retorna { data: { refeicoes: [...] } }
       const custosData = response?.refeicoes || [];
       console.log('Custos recebidos da API:', custosData);
@@ -515,7 +506,7 @@ export default function CardapioDetalhe() {
     
     setLoadingCustoCardapio(true);
     try {
-      const custoData = await calcularCustoCardapio(parseInt(id));
+      const custoData = await cardapioServiceExtended.calcularCustoCardapio(parseInt(id));
       console.log('Custo do cardápio:', custoData);
       setCustoCardapio(custoData);
       setModalCustoCardapio(true);
@@ -556,7 +547,7 @@ export default function CardapioDetalhe() {
       };
 
       if (isNovo) {
-        const novoCardapio = await criarCardapio(dadosParaEnviar);
+        const novoCardapio = await cardapioService.criar(dadosParaEnviar);
         console.log('Novo cardápio criado:', novoCardapio);
         console.log('ID do cardápio:', novoCardapio?.id);
         console.log('Tipo do ID:', typeof novoCardapio?.id);
@@ -572,7 +563,7 @@ export default function CardapioDetalhe() {
           setErro("Cardápio criado mas houve erro na navegação");
         }
       } else {
-        const cardapioAtualizado = await editarCardapio(parseInt(id!), dadosParaEnviar);
+        const cardapioAtualizado = await cardapioService.atualizar(parseInt(id!), dadosParaEnviar);
         setCardapio(cardapioAtualizado);
         setEditando(false);
         queryClient.invalidateQueries({ queryKey: ['cardapios'] });
@@ -593,7 +584,7 @@ export default function CardapioDetalhe() {
 
   const excluirCardapio = async () => {
     try {
-      await deletarCardapio(parseInt(id!));
+      await cardapioService.remover(parseInt(id!));
       navigate("/cardapios");
     } catch (error) {
       console.error("Erro ao excluir:", error);
@@ -629,7 +620,7 @@ export default function CardapioDetalhe() {
       console.log('Adicionando preparação - dados:', dadosParaEnviar);
       console.log('Cardápio atual:', cardapio);
       
-      const novaAssociacao = await adicionarCardapioRefeicao(dadosParaEnviar);
+      const novaAssociacao = await cardapioServiceExtended.adicionarRefeicao(dadosParaEnviar);
       
       // Buscar dados da preparação
       const refeicao = refeicoesDisponiveis.find(r => r.id === refeicaoId);
@@ -667,7 +658,7 @@ export default function CardapioDetalhe() {
         setErro("ID do cardápio não encontrado");
         return;
       }
-      await deletarCardapioRefeicao(parseInt(id), associacaoId);
+      await cardapioServiceExtended.deletarRefeicao(parseInt(id), associacaoId);
       setRefeicoesAdicionadas(prev => prev.filter(r => r.id !== associacaoId));
     } catch (error) {
       console.error("Erro ao remover preparação:", error);
@@ -683,7 +674,7 @@ export default function CardapioDetalhe() {
         throw new Error("Associação não encontrada");
       }
 
-      await atualizarCardapioRefeicao(associacaoId, {
+      await cardapioServiceExtended.atualizarRefeicao(associacaoId, {
         modalidade_id: associacaoAtual.modalidade_id,
         frequencia_mensal: novaFrequencia
       });
@@ -781,12 +772,18 @@ export default function CardapioDetalhe() {
         onDragEnd={handleDragEnd}
       >
         <PageContainer>
-          <PageBreadcrumbs 
-            items={[
-              { label: 'Cardápios', path: '/cardapios', icon: <RestaurantIcon fontSize="small" /> },
-              { label: isNovo ? 'Novo Cardápio' : (cardapio?.nome || 'Detalhes do Cardápio') }
-            ]}
-          />
+          {/* Seta + Breadcrumbs na mesma linha */}
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+            <IconButton size="small" onClick={() => navigate('/cardapios')} sx={{ mr: 0.5, p: 0.5 }}>
+              <ArrowBackIcon fontSize="small" />
+            </IconButton>
+            <PageBreadcrumbs
+              items={[
+                { label: 'Cardápios', path: '/cardapios', icon: <RestaurantIcon fontSize="small" /> },
+                { label: isNovo ? 'Novo Cardápio' : (cardapio?.nome || 'Detalhes do Cardápio') }
+              ]}
+            />
+          </Box>
 
           {/* Card de Informações do Cardápio */}
         <Card sx={{ mb: 4, borderRadius: 3, boxShadow: 3 }}>

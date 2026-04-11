@@ -1,14 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  listarNutricionistas,
-  buscarNutricionista,
-  criarNutricionista,
-  editarNutricionista,
-  removerNutricionista,
-  desativarNutricionista,
-  Nutricionista,
-  NutricionistaInput
-} from '../../services/nutricionistas';
+import { nutricionistaService, nutricionistaServiceExtended, NutricionistaCreate } from '../../services/nutricionistas';
 
 // Query keys
 export const nutricionistaKeys = {
@@ -23,14 +14,17 @@ export const nutricionistaKeys = {
 export function useNutricionistas(ativo?: boolean) {
   return useQuery({
     queryKey: nutricionistaKeys.list(ativo),
-    queryFn: () => listarNutricionistas(ativo),
+    queryFn: () =>
+      ativo !== undefined
+        ? nutricionistaServiceExtended.listarPorAtivo(ativo)
+        : nutricionistaService.listar(),
   });
 }
 
 export function useNutricionista(id: number) {
   return useQuery({
     queryKey: nutricionistaKeys.detail(id),
-    queryFn: () => buscarNutricionista(id),
+    queryFn: () => nutricionistaService.buscarPorId(id),
     enabled: !!id,
   });
 }
@@ -38,9 +32,9 @@ export function useNutricionista(id: number) {
 // Mutations
 export function useCreateNutricionista() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: (data: NutricionistaInput) => criarNutricionista(data),
+    mutationFn: (data: NutricionistaCreate) => nutricionistaService.criar(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: nutricionistaKeys.lists() });
     },
@@ -49,10 +43,10 @@ export function useCreateNutricionista() {
 
 export function useUpdateNutricionista() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<NutricionistaInput> }) =>
-      editarNutricionista(id, data),
+    mutationFn: ({ id, data }: { id: number; data: Partial<NutricionistaCreate> }) =>
+      nutricionistaService.atualizar(id, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: nutricionistaKeys.lists() });
       queryClient.invalidateQueries({ queryKey: nutricionistaKeys.detail(variables.id) });
@@ -62,9 +56,9 @@ export function useUpdateNutricionista() {
 
 export function useDeleteNutricionista() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: (id: number) => removerNutricionista(id),
+    mutationFn: (id: number) => nutricionistaService.remover(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: nutricionistaKeys.lists() });
     },
@@ -73,9 +67,9 @@ export function useDeleteNutricionista() {
 
 export function useDesativarNutricionista() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: (id: number) => desativarNutricionista(id),
+    mutationFn: nutricionistaServiceExtended.desativarNutricionista,
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: nutricionistaKeys.lists() });
       queryClient.invalidateQueries({ queryKey: nutricionistaKeys.detail(id) });

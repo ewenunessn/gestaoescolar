@@ -195,7 +195,10 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({
         try {
           const escolaResp = await api.get(`/escolas/${escola.id}`);
           modalidades = escolaResp.data?.modalidades || '';
-        } catch {}
+        } catch (error) {
+          console.error('Erro ao buscar modalidades da escola:', error);
+          modalidades = 'Não informado';
+        }
       }
       
       if (!modalidades) modalidades = 'Não informado';
@@ -484,7 +487,10 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({
           try {
             const escolaResp = await api.get(`/escolas/${escola.id}`);
             modalidades = escolaResp.data?.modalidades || '';
-          } catch {}
+          } catch (error) {
+            console.error('Erro ao buscar modalidades da escola:', error);
+            modalidades = 'Não informado';
+          }
         }
         
         if (!modalidades) modalidades = 'Não informado';

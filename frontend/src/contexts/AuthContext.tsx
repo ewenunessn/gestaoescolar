@@ -23,7 +23,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const token = getToken();
       setHasToken(!!token);
       setIsReady(true);
-      console.log('🔐 [AuthContext] Pronto - Token:', token ? 'PRESENTE' : 'AUSENTE');
     }, 100);
 
     return () => clearTimeout(timer);
@@ -34,11 +33,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const handleStorageChange = () => {
       const token = getToken();
       setHasToken(!!token);
-      console.log('🔐 [AuthContext] localStorage mudou - Token:', token ? 'PRESENTE' : 'AUSENTE');
     };
 
     window.addEventListener('storage', handleStorageChange);
-    
+
     // Também escutar mudanças customizadas (para mesma aba)
     window.addEventListener('auth-changed', handleStorageChange);
 

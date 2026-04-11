@@ -4,30 +4,24 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys, cacheConfig, invalidateQueries } from '../../lib/queryClient';
-import { 
-  listarFornecedores, 
-  buscarFornecedor, 
-  criarFornecedor, 
-  editarFornecedor, 
-  removerFornecedor 
-} from '../../services/fornecedores';
+import { fornecedorService, FornecedorCreate } from '../../services/fornecedores';
 
 // ============================================================================
 // QUERIES
 // ============================================================================
 
-export function useFornecedores(filters?: { 
-  search?: string; 
+export function useFornecedores(filters?: {
+  search?: string;
   ativo?: boolean;
   cidade?: string;
 }) {
   return useQuery({
     queryKey: queryKeys.fornecedores.list(filters),
-    queryFn: listarFornecedores,
-    staleTime: 0, // Sempre considerar dados como desatualizados
-    gcTime: 5 * 60 * 1000, // Manter em cache por 5 minutos
-    refetchOnMount: true, // Sempre refetch ao montar
-    refetchOnWindowFocus: true, // Refetch ao focar na janela
+    queryFn: fornecedorService.listar,
+    staleTime: 0,
+    gcTime: 5 * 60 * 1000,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
     select: (data: any[]) => {
       let filteredData = [...data];
       
@@ -62,7 +56,7 @@ export function useFornecedores(filters?: {
 export function useFornecedor(id: number, enabled = true) {
   return useQuery({
     queryKey: queryKeys.fornecedores.detail(id),
-    queryFn: () => buscarFornecedor(id),
+    queryFn: () => fornecedorService.buscarPorId(id),
     enabled: enabled && !!id,
     ...cacheConfig.static,
   });
@@ -72,7 +66,7 @@ export function useCidadesFornecedores() {
   return useQuery({
     queryKey: [...queryKeys.fornecedores.all, 'cidades'],
     queryFn: async () => {
-      const fornecedores = await listarFornecedores();
+      const fornecedores = await fornecedorService.listar();
       return [...new Set(fornecedores.map(f => f.cidade).filter(Boolean))].sort();
     },
     ...cacheConfig.static,
@@ -85,17 +79,13 @@ export function useCidadesFornecedores() {
 
 export function useCriarFornecedor() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: criarFornecedor,
+    mutationFn: (data: FornecedorCreate) => fornecedorService.criar(data),
     onSuccess: (newFornecedor) => {
-      // Remover TODOS os caches de fornecedores
       queryClient.removeQueries({ queryKey: queryKeys.fornecedores.lists() });
-      
-      // Invalidar para forçar refetch
       queryClient.invalidateQueries({ queryKey: queryKeys.fornecedores.all });
-      
-      // Adicionar fornecedor ao cache de detalhes
+
       if (newFornecedor?.id) {
         queryClient.setQueryData(queryKeys.fornecedores.detail(newFornecedor.id), newFornecedor);
       }
@@ -105,18 +95,13 @@ export function useCriarFornecedor() {
 
 export function useAtualizarFornecedor() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: any }) => 
-      editarFornecedor(id, data),
+    mutationFn: ({ id, data }: { id: number; data: any }) =>
+      fornecedorService.atualizar(id, data),
     onSuccess: (updatedFornecedor, { id }) => {
-      // Atualizar fornecedor no cache de detalhes
       queryClient.setQueryData(queryKeys.fornecedores.detail(id), updatedFornecedor);
-      
-      // Remover TODOS os caches de listas
       queryClient.removeQueries({ queryKey: queryKeys.fornecedores.lists() });
-      
-      // Invalidar para forçar refetch
       queryClient.invalidateQueries({ queryKey: queryKeys.fornecedores.all });
     },
   });
@@ -124,17 +109,12 @@ export function useAtualizarFornecedor() {
 
 export function useExcluirFornecedor() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: removerFornecedor,
+    mutationFn: (id: number) => fornecedorService.remover(id),
     onSuccess: (_, id) => {
-      // Remover fornecedor do cache de detalhes
       queryClient.removeQueries({ queryKey: queryKeys.fornecedores.detail(id) });
-      
-      // Remover TODOS os caches de listas
       queryClient.removeQueries({ queryKey: queryKeys.fornecedores.lists() });
-      
-      // Invalidar para forçar refetch
       queryClient.invalidateQueries({ queryKey: queryKeys.fornecedores.all });
     },
   });

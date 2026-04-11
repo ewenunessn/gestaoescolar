@@ -38,6 +38,7 @@ import { Modalidade } from "../../../services/modalidades";
 import { useModalidades, useCreateModalidade, useUpdateModalidade, useDeleteModalidade } from "../../../hooks/queries/useModalidadeQueries";
 import { LoadingOverlay } from "../../../components/LoadingOverlay";
 import { DataTable } from "../../../components/DataTable";
+import { FormDialog, ConfirmDialog } from "../../../components/BaseDialog";
 import { ColumnDef } from "@tanstack/react-table";
 
 const ModalidadesPage = () => {
@@ -436,147 +437,119 @@ const ModalidadesPage = () => {
       </Popover>
 
       {/* Modal de Criação/Edição */}
-      <Dialog open={modalOpen} onClose={closeModal} maxWidth="md" fullWidth>
-        <DialogTitle sx={{ pb: 1 }}>
-          <Typography variant="h5" component="div" sx={{ fontWeight: 600 }}>
-            {editingModalidade ? 'Editar Modalidade' : 'Nova Modalidade'}
+      <FormDialog
+        open={modalOpen}
+        onClose={closeModal}
+        title={editingModalidade ? 'Editar Modalidade' : 'Nova Modalidade'}
+        onSave={handleSave}
+        loading={createModalidadeMutation.isPending || updateModalidadeMutation.isPending}
+        disableSave={!formData.nome.trim()}
+        maxWidth="md"
+      >
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          Preencha os dados da modalidade de ensino
+        </Typography>
+
+        {/* Informações Básicas */}
+        <Box>
+          <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: 'primary.main' }}>
+            Informações Básicas
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            Preencha os dados da modalidade de ensino
-          </Typography>
-        </DialogTitle>
-        <DialogContent dividers>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 2 }}>
-            {/* Informações Básicas */}
-            <Box>
-              <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: 'primary.main' }}>
-                Informações Básicas
-              </Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <TextField 
-                    label="Nome da Modalidade" 
-                    value={formData.nome} 
-                    onChange={(e) => setFormData({ ...formData, nome: e.target.value })} 
-                    required 
-                    fullWidth
-                    placeholder="Ex: Ensino Fundamental, Ensino Médio"
-                  />
-                </Grid>
-              </Grid>
-            </Box>
-
-            <Divider />
-
-            {/* Dados Financeiros */}
-            <Box>
-              <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: 'primary.main' }}>
-                Dados Financeiros
-              </Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <TextField 
-                    label="Código Financeiro" 
-                    value={formData.codigo_financeiro} 
-                    onChange={(e) => setFormData({ ...formData, codigo_financeiro: e.target.value })} 
-                    placeholder="Ex: 2.036, 1.025, FIN-001"
-                    helperText="Código usado no sistema financeiro (opcional)"
-                    fullWidth
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField 
-                    label="Valor do Repasse (R$)" 
-                    type="number" 
-                    value={formData.valor_repasse} 
-                    onChange={(e) => setFormData({ ...formData, valor_repasse: parseFloat(e.target.value) || 0 })} 
-                    inputProps={{ step: "0.01", min: "0" }}
-                    helperText="Valor de cada parcela do repasse"
-                    fullWidth
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField 
-                    label="Número de Parcelas" 
-                    type="number" 
-                    value={formData.parcelas} 
-                    onChange={(e) => setFormData({ ...formData, parcelas: parseInt(e.target.value) || 1 })} 
-                    inputProps={{ step: "1", min: "1" }}
-                    helperText={`Total anual: ${formatCurrency(Number(formData.valor_repasse) * Number(formData.parcelas))}`}
-                    fullWidth
-                  />
-                </Grid>
-              </Grid>
-            </Box>
-
-            <Divider />
-
-            {/* Status */}
-            <Box>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={formData.ativo}
-                    onChange={(e) => setFormData({ ...formData, ativo: e.target.checked })}
-                    color="primary"
-                  />
-                }
-                label={
-                  <Box>
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                      Modalidade Ativa
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Modalidades ativas aparecem no sistema e podem receber alunos
-                    </Typography>
-                  </Box>
-                }
+          <Grid container spacing={2}>
+            <Grid item xs={12}>
+              <TextField
+                label="Nome da Modalalidade"
+                value={formData.nome}
+                onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+                required
+                fullWidth
+                placeholder="Ex: Ensino Fundamental, Ensino Médio"
               />
-            </Box>
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button 
-            onClick={closeModal} 
-            variant="outlined" 
-            disabled={createModalidadeMutation.isPending || updateModalidadeMutation.isPending}
-          >
-            Cancelar
-          </Button>
-          <Button 
-            onClick={handleSave} 
-            variant="contained" 
-            disabled={createModalidadeMutation.isPending || updateModalidadeMutation.isPending || !formData.nome.trim()}
-            startIcon={(createModalidadeMutation.isPending || updateModalidadeMutation.isPending) ? <CircularProgress size={20} /> : null}
-          >
-            {(createModalidadeMutation.isPending || updateModalidadeMutation.isPending) ? 'Salvando...' : (editingModalidade ? 'Salvar Alterações' : 'Criar Modalidade')}
-          </Button>
-        </DialogActions>
-      </Dialog>
-      
-      {/* Modal de Confirmação de Exclusão */}
-      <Dialog open={deleteModalOpen} onClose={closeDeleteModal} maxWidth="xs" fullWidth>
-        <DialogTitle>Confirmar Exclusão</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Tem certeza que deseja excluir a modalidade "{modalidadeToDelete?.nome}"?
+            </Grid>
+          </Grid>
+        </Box>
+
+        <Divider />
+
+        {/* Dados Financeiros */}
+        <Box>
+          <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: 'primary.main' }}>
+            Dados Financeiros
           </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={closeDeleteModal} disabled={deleteModalidadeMutation.isPending}>
-            Cancelar
-          </Button>
-          <Button 
-            onClick={handleDelete} 
-            color="error" 
-            variant="contained"
-            disabled={deleteModalidadeMutation.isPending}
-          >
-            Excluir
-          </Button>
-        </DialogActions>
-      </Dialog>
-      
+          <Grid container spacing={2}>
+            <Grid item xs={12}>
+              <TextField
+                label="Código Financeiro"
+                value={formData.codigo_financeiro}
+                onChange={(e) => setFormData({ ...formData, codigo_financeiro: e.target.value })}
+                placeholder="Ex: 2.036, 1.025, FIN-001"
+                helperText="Código usado no sistema financeiro (opcional)"
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Valor do Repasse (R$)"
+                type="number"
+                value={formData.valor_repasse}
+                onChange={(e) => setFormData({ ...formData, valor_repasse: parseFloat(e.target.value) || 0 })}
+                inputProps={{ step: "0.01", min: "0" }}
+                helperText="Valor de cada parcela do repasse"
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Número de Parcelas"
+                type="number"
+                value={formData.parcelas}
+                onChange={(e) => setFormData({ ...formData, parcelas: parseInt(e.target.value) || 1 })}
+                inputProps={{ step: "1", min: "1" }}
+                helperText={`Total anual: ${formatCurrency(Number(formData.valor_repasse) * Number(formData.parcelas))}`}
+                fullWidth
+              />
+            </Grid>
+          </Grid>
+        </Box>
+
+        <Divider />
+
+        {/* Status */}
+        <Box>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={formData.ativo}
+                onChange={(e) => setFormData({ ...formData, ativo: e.target.checked })}
+                color="primary"
+              />
+            }
+            label={
+              <Box>
+                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                  Modalidade Ativa
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Modalidades ativas aparecem no sistema e podem receber alunos
+                </Typography>
+              </Box>
+            }
+          />
+        </Box>
+      </FormDialog>
+
+      {/* Modal de Confirmação de Exclusão */}
+      <ConfirmDialog
+        open={deleteModalOpen}
+        onClose={closeDeleteModal}
+        onConfirm={handleDelete}
+        title="Confirmar Exclusão"
+        message={`Tem certeza que deseja excluir a modalidade "${modalidadeToDelete?.nome}"?`}
+        loading={deleteModalidadeMutation.isPending}
+        severity="error"
+        confirmLabel="Excluir"
+      />
+
       {/* Menu de Importar/Exportar */}
       <Menu 
         anchorEl={importExportMenuAnchor} 

@@ -45,7 +45,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { useParams, useNavigate } from "react-router-dom";
 import { rotaService } from "../../entregas/services/rotaService";
-import { escolaService } from "../../../services/escolaService";
+import { listarEscolas } from "../../../services/escolas";
 import { RotaEntrega, RotaEscola } from "../../entregas/types/rota";
 import { DataTable } from "../../../components/DataTable";
 import PageHeader from "../../../components/PageHeader";
@@ -207,7 +207,7 @@ const GerenciarEscolasRota: React.FC = () => {
 
             const [rotaData, escolasData, escolasRotaData] = await Promise.all([
                 rotaService.obterRota(parseInt(rotaId)),
-                escolaService.listarEscolas(),
+                listarEscolas(),
                 rotaService.listarEscolasRota(parseInt(rotaId))
             ]);
 

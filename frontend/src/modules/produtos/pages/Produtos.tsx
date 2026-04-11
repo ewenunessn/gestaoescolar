@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import PageHeader from "../../../components/PageHeader";
 import PageContainer from "../../../components/PageContainer";
-import { deletarProduto } from "../../../services/produtos";
+import { produtoService } from "../../../services/produtos";
 import api from "../../../services/api";
 import { 
   useProdutos, 
@@ -347,7 +347,7 @@ const ProdutosPage = () => {
   const handleDelete = async () => {
     if (!produtoToDelete) return;
     try {
-      await deletarProduto(produtoToDelete.id);
+      await produtoService.remover(produtoToDelete.id);
       toast.success('Produto excluído com sucesso!');
       closeDeleteModal();
       refetch();

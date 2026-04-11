@@ -1,9 +1,5 @@
 import { useState, useEffect } from 'react';
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Button,
   Grid,
   TextField,
@@ -12,6 +8,7 @@ import {
   Autocomplete
 } from '@mui/material';
 import { Close as CloseIcon, Save as SaveIcon } from '@mui/icons-material';
+import { FormDialog } from './BaseDialog';
 import demandasService from '../services/demandas';
 import { listarEscolas } from '../services/escolas';
 
@@ -151,138 +148,110 @@ export default function DemandaFormModal({ open, onClose, onSuccess, demandaId }
   };
 
   return (
-    <Dialog 
-      open={open} 
-      onClose={handleClose} 
-      maxWidth="md" 
-      fullWidth
-      PaperProps={{
-        sx: { minHeight: '600px' }
-      }}
+    <FormDialog
+      open={open}
+      onClose={handleClose}
+      title={demandaId ? 'Editar Demanda' : 'Nova Demanda'}
+      onSave={handleSubmit}
+      loading={loading}
+      saveLabel="Salvar"
+      maxWidth="md"
     >
-      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        {demandaId ? 'Editar Demanda' : 'Nova Demanda'}
-        <IconButton onClick={handleClose} disabled={loading}>
-          <CloseIcon />
-        </IconButton>
-      </DialogTitle>
+      {erro && (
+        <Alert severity="error" onClose={() => setErro('')}>
+          {erro}
+        </Alert>
+      )}
 
-      <form onSubmit={handleSubmit}>
-        <DialogContent>
-          {erro && (
-            <Alert severity="error" sx={{ mb: 3 }} onClose={() => setErro('')}>
-              {erro}
-            </Alert>
-          )}
-
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
-              <Autocomplete
-                freeSolo
-                options={escolas.map(escola => escola.nome)}
-                value={formData.escola_solicitante}
-                onChange={(_, newValue) => {
-                  handleChange('escola_solicitante', newValue || '');
-                }}
-                onInputChange={(_, newInputValue) => {
-                  handleChange('escola_solicitante', newInputValue);
-                }}
-                disabled={loading}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Escola Solicitante"
-                    required
-                    placeholder="Digite ou selecione uma escola"
-                    helperText="Você pode digitar qualquer nome ou selecionar uma escola da lista"
-                  />
-                )}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                required
-                label="Número do Ofício"
-                value={formData.numero_oficio}
-                onChange={(e) => handleChange('numero_oficio', e.target.value)}
-                placeholder="Ex: 002/2025"
-                disabled={loading}
-              />
-            </Grid>
-
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                required
-                type="date"
-                label="Data Solicitação à SEMED"
-                value={formData.data_solicitacao}
-                onChange={(e) => handleChange('data_solicitacao', e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                disabled={loading}
-              />
-            </Grid>
-
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                required
-                label="Objeto"
-                value={formData.objeto}
-                onChange={(e) => handleChange('objeto', e.target.value)}
-                placeholder="Ex: Aquisição de móveis e eletrodomésticos"
-                disabled={loading}
-              />
-            </Grid>
-
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                required
-                multiline
-                rows={4}
-                label="Descrição de Itens"
-                value={formData.descricao_itens}
-                onChange={(e) => handleChange('descricao_itens', e.target.value)}
-                placeholder="Ex: Aquisição de Fogão Industrial 6 (seis) bocas"
-                disabled={loading}
-              />
-            </Grid>
-
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                multiline
-                rows={3}
-                label="Observações"
-                value={formData.observacoes}
-                onChange={(e) => handleChange('observacoes', e.target.value)}
-                placeholder="Informações adicionais (opcional)"
-                disabled={loading}
-              />
-            </Grid>
-          </Grid>
-        </DialogContent>
-
-        <DialogActions sx={{ p: 3 }}>
-          <Button
-            onClick={handleClose}
+      <Grid container spacing={3}>
+        <Grid item xs={12} md={6}>
+          <Autocomplete
+            freeSolo
+            options={escolas.map(escola => escola.nome)}
+            value={formData.escola_solicitante}
+            onChange={(_, newValue) => {
+              handleChange('escola_solicitante', newValue || '');
+            }}
+            onInputChange={(_, newInputValue) => {
+              handleChange('escola_solicitante', newInputValue);
+            }}
             disabled={loading}
-          >
-            Cancelar
-          </Button>
-          <Button
-            type="submit"
-            variant="contained"
-            startIcon={<SaveIcon />}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Escola Solicitante"
+                required
+                placeholder="Digite ou selecione uma escola"
+                helperText="Você pode digitar qualquer nome ou selecionar uma escola da lista"
+              />
+            )}
+          />
+        </Grid>
+
+        <Grid item xs={12} md={6}>
+          <TextField
+            fullWidth
+            required
+            label="Número do Ofício"
+            value={formData.numero_oficio}
+            onChange={(e) => handleChange('numero_oficio', e.target.value)}
+            placeholder="Ex: 002/2025"
             disabled={loading}
-          >
-            {loading ? 'Salvando...' : 'Salvar'}
-          </Button>
-        </DialogActions>
-      </form>
-    </Dialog>
+          />
+        </Grid>
+
+        <Grid item xs={12}>
+          <TextField
+            fullWidth
+            required
+            type="date"
+            label="Data Solicitação à SEMED"
+            value={formData.data_solicitacao}
+            onChange={(e) => handleChange('data_solicitacao', e.target.value)}
+            InputLabelProps={{ shrink: true }}
+            disabled={loading}
+          />
+        </Grid>
+
+        <Grid item xs={12}>
+          <TextField
+            fullWidth
+            required
+            label="Objeto"
+            value={formData.objeto}
+            onChange={(e) => handleChange('objeto', e.target.value)}
+            placeholder="Ex: Aquisição de móveis e eletrodomésticos"
+            disabled={loading}
+          />
+        </Grid>
+
+        <Grid item xs={12}>
+          <TextField
+            fullWidth
+            required
+            multiline
+            rows={4}
+            label="Descrição de Itens"
+            value={formData.descricao_itens}
+            onChange={(e) => handleChange('descricao_itens', e.target.value)}
+            placeholder="Ex: Aquisição de Fogão Industrial 6 (seis) bocas"
+            disabled={loading}
+          />
+        </Grid>
+
+        <Grid item xs={12}>
+          <TextField
+            fullWidth
+            multiline
+            rows={3}
+            label="Observações"
+            value={formData.observacoes}
+            onChange={(e) => handleChange('observacoes', e.target.value)}
+            placeholder="Informações adicionais (opcional)"
+            disabled={loading}
+          />
+        </Grid>
+      </Grid>
+    </FormDialog>
   );
 }

@@ -1,72 +1,62 @@
-import { apiWithRetry } from "./api";
+import { createCrudService, extractResponseData } from './createCrudService';
+import { apiWithRetry } from './api';
 
-export async function listarCardapios() {
-  const { data } = await apiWithRetry.get("/cardapios");
-  return data.data || []; // Return the actual array from the response
+export interface Cardapio {
+  id: number;
+  nome: string;
+  mes: number;
+  ano: number;
+  observacao?: string;
+  ativo?: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
-export async function buscarCardapio(id: number) {
-  const { data } = await apiWithRetry.get(`/cardapios/${id}`);
-  return data.data || null; // Return the actual data from the response
-}
+export type CardapioCreate = Pick<Cardapio, 'nome' | 'mes' | 'ano'> & { observacao?: string };
+export type CardapioUpdate = Partial<CardapioCreate>;
 
-export async function criarCardapio(cardapio: any) {
-  const { data } = await apiWithRetry.post("/cardapios", cardapio);
-  return data.data || data; // Handle both new format {success, data} and old format
-}
+// CRUD básico via factory
+export const cardapioService = createCrudService<Cardapio, CardapioCreate, CardapioUpdate>('cardapios');
 
-export async function editarCardapio(id: number, cardapio: any) {
-  const { data } = await apiWithRetry.put(`/cardapios/${id}`, cardapio);
-  return data.data || data; // Handle both new format {success, data} and old format
-}
+// Operações específicas de cardápio
+export const cardapioServiceExtended = {
+  ...cardapioService,
 
-export async function deletarCardapio(id: number) {
-  await apiWithRetry.delete(`/cardapios/${id}`);
-}
+  listarRefeicoes: async (cardapioId: number) => {
+    const { data } = await apiWithRetry.get(`/cardapios/${cardapioId}/refeicoes`);
+    return extractResponseData(data, []);
+  },
 
-export async function listarCardapioRefeicoes(cardapioId: number) {
-  const { data } = await apiWithRetry.get(`/cardapios/${cardapioId}/refeicoes`);
-  return data.data || []; // Return the actual array from the response
-}
+  adicionarRefeicao: async (cardapioRefeicao: any) => {
+    if (!cardapioRefeicao.cardapio_id) throw new Error('cardapio_id é obrigatório');
+    const { data } = await apiWithRetry.post(
+      `/cardapios/${cardapioRefeicao.cardapio_id}/refeicoes`,
+      cardapioRefeicao
+    );
+    return extractResponseData(data);
+  },
 
-export async function adicionarCardapioRefeicao(cardapioRefeicao: any) {
-  if (!cardapioRefeicao.cardapio_id)
-    throw new Error("cardapio_id é obrigatório");
-  const { data } = await apiWithRetry.post(
-    `/cardapios/${cardapioRefeicao.cardapio_id}/refeicoes`,
-    cardapioRefeicao
-  );
-  return data.data || data; // Handle both new format {success, data} and old format
-}
+  atualizarRefeicao: async (id: number, cardapioRefeicao: any) => {
+    const { data } = await apiWithRetry.put(`/cardapios/refeicoes/${id}`, cardapioRefeicao);
+    return extractResponseData(data);
+  },
 
-export async function atualizarCardapioRefeicao(
-  id: number,
-  cardapioRefeicao: any
-) {
-  const { data } = await apiWithRetry.put(
-    `/cardapios/refeicoes/${id}`,
-    cardapioRefeicao
-  );
-  return data.data || data; // Handle both new format {success, data} and old format
-}
+  deletarRefeicao: async (cardapioId: number, refeicaoId: number) => {
+    await apiWithRetry.delete(`/cardapios/${cardapioId}/refeicoes/${refeicaoId}`);
+  },
 
-export async function deletarCardapioRefeicao(cardapioId: number, refeicaoId: number) {
-  await apiWithRetry.delete(`/cardapios/${cardapioId}/refeicoes/${refeicaoId}`);
-}
+  calcularNecessidades: async (cardapioId: number) => {
+    const { data } = await apiWithRetry.get(`/cardapios/${cardapioId}/necessidades`);
+    return extractResponseData(data);
+  },
 
-export async function calcularNecessidades(cardapioId: number) {
-  const { data } = await apiWithRetry.get(
-    `/cardapios/${cardapioId}/necessidades`
-  );
-  return data.data || data; // Handle both new format {success, data} and old format
-}
+  calcularCustoRefeicoes: async (cardapioId: number) => {
+    const { data } = await apiWithRetry.get(`/cardapios/${cardapioId}/custo-refeicoes`);
+    return extractResponseData(data);
+  },
 
-export async function calcularCustoRefeicoes(cardapioId: number) {
-  const { data } = await apiWithRetry.get(`/cardapios/${cardapioId}/custo-refeicoes`);
-  return data.data || data; // Handle both new format {success, data} and old format
-}
-
-export async function calcularCustoCardapio(cardapioId: number) {
-  const { data } = await apiWithRetry.get(`/cardapios/${cardapioId}/custo`);
-  return data.data || data; // Handle both new format {success, data} and old format
-}
+  calcularCustoCardapio: async (cardapioId: number) => {
+    const { data } = await apiWithRetry.get(`/cardapios/${cardapioId}/custo`);
+    return extractResponseData(data);
+  },
+};

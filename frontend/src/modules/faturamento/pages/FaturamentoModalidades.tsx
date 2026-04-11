@@ -45,7 +45,7 @@ import {
 import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import pedidosService from "../../../services/pedidos";
-import { listarModalidades } from "../../../services/modalidades";
+import { modalidadeService } from "../../../services/modalidades";
 import { criarFaturamento, atualizarFaturamento, ItemFaturamento as ItemFaturamentoAPI, listarFaturamentosPedido } from "../../../services/faturamentos";
 import { PedidoDetalhado } from "../../../types/pedido";
 import { formatarMoeda } from "../../../utils/dateUtils";
@@ -112,7 +112,7 @@ export default function FaturamentoModalidades() {
       setLoading(true);
       const [pedidoData, modalidadesData] = await Promise.all([
         pedidosService.buscarPorId(Number(id)),
-        listarModalidades()
+        modalidadeService.listar()
       ]);
       
       setPedido(pedidoData);

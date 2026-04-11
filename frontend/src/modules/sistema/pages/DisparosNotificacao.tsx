@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import {
-  Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
-  FormControl, FormControlLabel, FormLabel, IconButton, InputLabel,
+  Box, Button, Chip, FormControl, FormControlLabel, FormLabel, IconButton, InputLabel,
   MenuItem, Radio, RadioGroup, Select, Stack, TextField, Tooltip,
   Typography, Alert, CircularProgress, Paper,
 } from "@mui/material";
+import { FormDialog } from "../../../components/BaseDialog";
 import {
   Add as AddIcon, Send as SendIcon,
   CheckCircle, Error as ErrorIcon, HourglassEmpty, Refresh,
@@ -84,67 +84,62 @@ function FormDialog({ open, onClose, onSaved, escolas, modalidades }: FormDialog
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ fontWeight: 700 }}>Novo Disparo de Notificação</DialogTitle>
-      <DialogContent dividers>
-        <Stack spacing={2.5} sx={{ pt: 1 }}>
-          <TextField label="Título" value={form.titulo} onChange={e => set('titulo', e.target.value)} fullWidth required size="small" inputProps={{ maxLength: 200 }} />
-          <TextField label="Mensagem" value={form.mensagem} onChange={e => set('mensagem', e.target.value)} fullWidth required multiline rows={3} size="small" />
-          <TextField label="Link (opcional)" value={form.link} onChange={e => set('link', e.target.value)} fullWidth size="small" placeholder="Ex: /portal-escola" />
+    <FormDialog
+      open={open}
+      onClose={onClose}
+      title="Novo Disparo de Notificação"
+      onSave={handleSubmit}
+      loading={saving}
+      saveLabel={saving ? 'Enviando…' : 'Enviar agora'}
+    >
+      <Stack spacing={2.5}>
+        <TextField label="Título" value={form.titulo} onChange={e => set('titulo', e.target.value)} fullWidth required size="small" inputProps={{ maxLength: 200 }} />
+        <TextField label="Mensagem" value={form.mensagem} onChange={e => set('mensagem', e.target.value)} fullWidth required multiline rows={3} size="small" />
+        <TextField label="Link (opcional)" value={form.link} onChange={e => set('link', e.target.value)} fullWidth size="small" placeholder="Ex: /portal-escola" />
 
+        <FormControl size="small" fullWidth>
+          <InputLabel>Tipo</InputLabel>
+          <Select value={form.tipo} label="Tipo" onChange={e => set('tipo', e.target.value as TipoNotificacao)}>
+            <MenuItem value="info">ℹ️ Informação</MenuItem>
+            <MenuItem value="aviso">⚠️ Aviso</MenuItem>
+            <MenuItem value="sucesso">✅ Sucesso</MenuItem>
+            <MenuItem value="erro">❌ Erro</MenuItem>
+          </Select>
+        </FormControl>
+
+        <FormControl>
+          <FormLabel sx={{ fontSize: '0.85rem', fontWeight: 600, mb: 0.5 }}>Destinatários</FormLabel>
+          <RadioGroup row value={form.alvo} onChange={e => set('alvo', e.target.value as AlvoDisparo)}>
+            <FormControlLabel value="todas" control={<Radio size="small" />} label="Todas as escolas" />
+            <FormControlLabel value="modalidade" control={<Radio size="small" />} label="Por modalidade" />
+            <FormControlLabel value="selecao" control={<Radio size="small" />} label="Seleção manual" />
+          </RadioGroup>
+        </FormControl>
+
+        {form.alvo === 'modalidade' && (
           <FormControl size="small" fullWidth>
-            <InputLabel>Tipo</InputLabel>
-            <Select value={form.tipo} label="Tipo" onChange={e => set('tipo', e.target.value as TipoNotificacao)}>
-              <MenuItem value="info">ℹ️ Informação</MenuItem>
-              <MenuItem value="aviso">⚠️ Aviso</MenuItem>
-              <MenuItem value="sucesso">✅ Sucesso</MenuItem>
-              <MenuItem value="erro">❌ Erro</MenuItem>
+            <InputLabel>Modalidade</InputLabel>
+            <Select value={form.modalidade_id || ''} label="Modalidade" onChange={e => set('modalidade_id', Number(e.target.value))}>
+              {modalidades.map(m => <MenuItem key={m.id} value={m.id}>{m.nome}</MenuItem>)}
             </Select>
           </FormControl>
+        )}
 
-          <FormControl>
-            <FormLabel sx={{ fontSize: '0.85rem', fontWeight: 600, mb: 0.5 }}>Destinatários</FormLabel>
-            <RadioGroup row value={form.alvo} onChange={e => set('alvo', e.target.value as AlvoDisparo)}>
-              <FormControlLabel value="todas" control={<Radio size="small" />} label="Todas as escolas" />
-              <FormControlLabel value="modalidade" control={<Radio size="small" />} label="Por modalidade" />
-              <FormControlLabel value="selecao" control={<Radio size="small" />} label="Seleção manual" />
-            </RadioGroup>
+        {form.alvo === 'selecao' && (
+          <FormControl size="small" fullWidth>
+            <InputLabel>Escolas</InputLabel>
+            <Select
+              multiple value={escolasSel}
+              label="Escolas"
+              onChange={e => setEscolasSel(e.target.value as number[])}
+              renderValue={sel => `${sel.length} escola(s) selecionada(s)`}
+            >
+              {escolas.map(e => <MenuItem key={e.id} value={e.id}>{e.nome}</MenuItem>)}
+            </Select>
           </FormControl>
-
-          {form.alvo === 'modalidade' && (
-            <FormControl size="small" fullWidth>
-              <InputLabel>Modalidade</InputLabel>
-              <Select value={form.modalidade_id || ''} label="Modalidade" onChange={e => set('modalidade_id', Number(e.target.value))}>
-                {modalidades.map(m => <MenuItem key={m.id} value={m.id}>{m.nome}</MenuItem>)}
-              </Select>
-            </FormControl>
-          )}
-
-          {form.alvo === 'selecao' && (
-            <FormControl size="small" fullWidth>
-              <InputLabel>Escolas</InputLabel>
-              <Select
-                multiple value={escolasSel}
-                label="Escolas"
-                onChange={e => setEscolasSel(e.target.value as number[])}
-                renderValue={sel => `${sel.length} escola(s) selecionada(s)`}
-              >
-                {escolas.map(e => <MenuItem key={e.id} value={e.id}>{e.nome}</MenuItem>)}
-              </Select>
-            </FormControl>
-          )}
-        </Stack>
-      </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={onClose} disabled={saving}>Cancelar</Button>
-        <Button
-          variant="contained" onClick={handleSubmit} disabled={saving}
-          startIcon={saving ? <CircularProgress size={16} /> : <SendIcon />}
-        >
-          {saving ? 'Enviando…' : 'Enviar agora'}
-        </Button>
-      </DialogActions>
-    </Dialog>
+        )}
+      </Stack>
+    </FormDialog>
   );
 }
 

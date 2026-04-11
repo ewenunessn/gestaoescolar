@@ -1,9 +1,5 @@
 import { useState, useEffect } from 'react';
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Button,
   TextField,
   FormControl,
@@ -21,8 +17,9 @@ import {
 import {
   Tune as TuneIcon,
 } from '@mui/icons-material';
-import { listarModalidades, Modalidade } from '../services/modalidades';
+import { modalidadeService, Modalidade } from '../services/modalidades';
 import { toNum } from '../utils/formatters';
+import { FormDialog } from './BaseDialog';
 
 interface PerCapitaPorModalidade {
   modalidade_id: number;
@@ -82,7 +79,7 @@ export default function EditarIngredienteDialog({
   async function carregarModalidades() {
     setLoading(true);
     try {
-      const mods = await listarModalidades();
+      const mods = await modalidadeService.listar();
       const ativas = mods.filter(m => m.ativo);
       setModalidades(ativas);
       
@@ -161,141 +158,134 @@ export default function EditarIngredienteDialog({
   }
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
-      <DialogTitle>
-        <Box display="flex" alignItems="center" justifyContent="space-between">
-          <Box>
-            <Typography variant="h6">Editar Ingrediente</Typography>
-            <Typography variant="body2" color="text.secondary">{produtoNome}</Typography>
-          </Box>
-          <IconButton
-            onClick={() => setModoAvancado(!modoAvancado)}
-            color={modoAvancado ? 'primary' : 'default'}
-            title={modoAvancado ? 'Modo Simples' : 'Modo Avançado (por modalidade)'}
-          >
-            <TuneIcon />
-          </IconButton>
-        </Box>
-      </DialogTitle>
+    <FormDialog
+      open={open}
+      onClose={handleClose}
+      title="Editar Ingrediente"
+      onSave={handleConfirm}
+      loading={false}
+      disableSave={modalidades.length === 0}
+      maxWidth="md"
+    >
+      <Box sx={{ mb: 2 }}>
+        <Typography variant="body2" color="text.secondary">{produtoNome}</Typography>
+      </Box>
 
-      <DialogContent>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-          {/* Tipo de Medida */}
-          <FormControl fullWidth>
-            <InputLabel>Unidade de Medida</InputLabel>
-            <Select
-              value={tipoMedida}
-              onChange={(e) => setTipoMedida(e.target.value as 'gramas' | 'mililitros' | 'unidades')}
-              label="Unidade de Medida"
-            >
-              <MenuItem value="gramas">Gramas (g)</MenuItem>
-              <MenuItem value="mililitros">Mililitros (ml)</MenuItem>
-              <MenuItem value="unidades">Unidades (un)</MenuItem>
-            </Select>
-          </FormControl>
-
-          {/* Modo Simples: Per Capita Geral */}
-          <Collapse in={!modoAvancado}>
-            <Box>
-              <TextField
-                label="Per Capita Líquido (consumo)"
-                type="number"
-                fullWidth
-                value={perCapitaGeral}
-                onChange={(e) => handlePerCapitaGeralChange(e.target.value)}
-                InputProps={{
-                  inputProps: {
-                    min: 0,
-                    max: tipoMedida === 'unidades' ? 100 : 1000,
-                    step: tipoMedida === 'unidades' ? 1 : 0.1,
-                  },
-                  endAdornment: <Typography variant="body2" color="text.secondary">{tipoMedida === 'gramas' ? 'g' : tipoMedida === 'mililitros' ? 'ml' : 'un'}</Typography>
-                }}
-                helperText="Este valor será aplicado para todas as modalidades"
-              />
-              
-              {/* Mostrar Per Capita Bruto */}
-              {produtoFatorCorrecao && produtoFatorCorrecao > 1.0 && parseFloat(perCapitaGeral) > 0 && (
-                <Alert severity="info" sx={{ mt: 2 }}>
-                  <Box>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      Per Capita Bruto (compra):
-                    </Typography>
-                    <Typography variant="h6" color="primary">
-                      {(toNum(perCapitaGeral) * toNum(produtoFatorCorrecao)).toFixed(1)}{tipoMedida === 'gramas' ? 'g' : tipoMedida === 'mililitros' ? 'ml' : 'un'}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Fator de correção: {toNum(produtoFatorCorrecao).toFixed(3)}
-                    </Typography>
-                  </Box>
-                </Alert>
-              )}
-            </Box>
-          </Collapse>
-
-          {/* Modo Avançado: Per Capita por Modalidade */}
-          <Collapse in={modoAvancado}>
-            <Box>
-              <Alert severity="info" sx={{ mb: 2 }}>
-                <Typography variant="body2">
-                  Defina o per capita específico para cada modalidade de ensino
-                </Typography>
-              </Alert>
-
-              <Divider sx={{ mb: 2 }}>
-                <Typography variant="caption" color="text.secondary">
-                  Per Capita por Modalidade
-                </Typography>
-              </Divider>
-
-              <Grid container spacing={2}>
-                {modalidades.map((mod) => (
-                  <Grid item xs={12} sm={6} key={mod.id}>
-                    <TextField
-                      label={`${mod.nome} - Per Capita Líquido`}
-                      type="number"
-                      fullWidth
-                      size="small"
-                      value={perCapitaPorModalidade[mod.id] || ''}
-                      onChange={(e) => {
-                        setPerCapitaPorModalidade({
-                          ...perCapitaPorModalidade,
-                          [mod.id]: e.target.value,
-                        });
-                      }}
-                      InputProps={{
-                        inputProps: {
-                          min: 0,
-                          max: tipoMedida === 'unidades' ? 100 : 1000,
-                          step: tipoMedida === 'unidades' ? 1 : 0.1,
-                        },
-                        endAdornment: <Typography variant="body2" color="text.secondary">{tipoMedida === 'gramas' ? 'g' : tipoMedida === 'mililitros' ? 'ml' : 'un'}</Typography>
-                      }}
-                    />
-                    {/* Mostrar Per Capita Bruto */}
-                    {produtoFatorCorrecao && produtoFatorCorrecao > 1.0 && parseFloat(perCapitaPorModalidade[mod.id] || '0') > 0 && (
-                      <Typography variant="caption" color="primary" sx={{ display: 'block', mt: 0.5, ml: 1 }}>
-                        Bruto: {(toNum(perCapitaPorModalidade[mod.id]) * toNum(produtoFatorCorrecao, 1)).toFixed(1)}{tipoMedida === 'gramas' ? 'g' : tipoMedida === 'mililitros' ? 'ml' : 'un'}
-                      </Typography>
-                    )}
-                  </Grid>
-                ))}
-              </Grid>
-            </Box>
-          </Collapse>
-        </Box>
-      </DialogContent>
-
-      <DialogActions>
-        <Button onClick={handleClose}>Cancelar</Button>
-        <Button
-          onClick={handleConfirm}
-          variant="contained"
-          disabled={modalidades.length === 0}
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+        <IconButton
+          onClick={() => setModoAvancado(!modoAvancado)}
+          color={modoAvancado ? 'primary' : 'default'}
+          title={modoAvancado ? 'Modo Simples' : 'Modo Avançado (por modalidade)'}
         >
-          Salvar
-        </Button>
-      </DialogActions>
-    </Dialog>
+          <TuneIcon />
+        </IconButton>
+      </Box>
+
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {/* Tipo de Medida */}
+        <FormControl fullWidth>
+          <InputLabel>Unidade de Medida</InputLabel>
+          <Select
+            value={tipoMedida}
+            onChange={(e) => setTipoMedida(e.target.value as 'gramas' | 'mililitros' | 'unidades')}
+            label="Unidade de Medida"
+          >
+            <MenuItem value="gramas">Gramas (g)</MenuItem>
+            <MenuItem value="mililitros">Mililitros (ml)</MenuItem>
+            <MenuItem value="unidades">Unidades (un)</MenuItem>
+          </Select>
+        </FormControl>
+
+        {/* Modo Simples: Per Capita Geral */}
+        <Collapse in={!modoAvancado}>
+          <Box>
+            <TextField
+              label="Per Capita Líquido (consumo)"
+              type="number"
+              fullWidth
+              value={perCapitaGeral}
+              onChange={(e) => handlePerCapitaGeralChange(e.target.value)}
+              InputProps={{
+                inputProps: {
+                  min: 0,
+                  max: tipoMedida === 'unidades' ? 100 : 1000,
+                  step: tipoMedida === 'unidades' ? 1 : 0.1,
+                },
+                endAdornment: <Typography variant="body2" color="text.secondary">{tipoMedida === 'gramas' ? 'g' : tipoMedida === 'mililitros' ? 'ml' : 'un'}</Typography>
+              }}
+              helperText="Este valor será aplicado para todas as modalidades"
+            />
+
+            {/* Mostrar Per Capita Bruto */}
+            {produtoFatorCorrecao && produtoFatorCorrecao > 1.0 && parseFloat(perCapitaGeral) > 0 && (
+              <Alert severity="info" sx={{ mt: 2 }}>
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    Per Capita Bruto (compra):
+                  </Typography>
+                  <Typography variant="h6" color="primary">
+                    {(toNum(perCapitaGeral) * toNum(produtoFatorCorrecao)).toFixed(1)}{tipoMedida === 'gramas' ? 'g' : tipoMedida === 'mililitros' ? 'ml' : 'un'}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Fator de correção: {toNum(produtoFatorCorrecao).toFixed(3)}
+                  </Typography>
+                </Box>
+              </Alert>
+            )}
+          </Box>
+        </Collapse>
+
+        {/* Modo Avançado: Per Capita por Modalidade */}
+        <Collapse in={modoAvancado}>
+          <Box>
+            <Alert severity="info" sx={{ mb: 2 }}>
+              <Typography variant="body2">
+                Defina o per capita específico para cada modalidade de ensino
+              </Typography>
+            </Alert>
+
+            <Divider sx={{ mb: 2 }}>
+              <Typography variant="caption" color="text.secondary">
+                Per Capita por Modalidade
+              </Typography>
+            </Divider>
+
+            <Grid container spacing={2}>
+              {modalidades.map((mod) => (
+                <Grid item xs={12} sm={6} key={mod.id}>
+                  <TextField
+                    label={`${mod.nome} - Per Capita Líquido`}
+                    type="number"
+                    fullWidth
+                    size="small"
+                    value={perCapitaPorModalidade[mod.id] || ''}
+                    onChange={(e) => {
+                      setPerCapitaPorModalidade({
+                        ...perCapitaPorModalidade,
+                        [mod.id]: e.target.value,
+                      });
+                    }}
+                    InputProps={{
+                      inputProps: {
+                        min: 0,
+                        max: tipoMedida === 'unidades' ? 100 : 1000,
+                        step: tipoMedida === 'unidades' ? 1 : 0.1,
+                      },
+                      endAdornment: <Typography variant="body2" color="text.secondary">{tipoMedida === 'gramas' ? 'g' : tipoMedida === 'mililitros' ? 'ml' : 'un'}</Typography>
+                    }}
+                  />
+                  {/* Mostrar Per Capita Bruto */}
+                  {produtoFatorCorrecao && produtoFatorCorrecao > 1.0 && parseFloat(perCapitaPorModalidade[mod.id] || '0') > 0 && (
+                    <Typography variant="caption" color="primary" sx={{ display: 'block', mt: 0.5, ml: 1 }}>
+                      Bruto: {(toNum(perCapitaPorModalidade[mod.id]) * toNum(produtoFatorCorrecao, 1)).toFixed(1)}{tipoMedida === 'gramas' ? 'g' : tipoMedida === 'mililitros' ? 'ml' : 'un'}
+                    </Typography>
+                  )}
+                </Grid>
+              ))}
+            </Grid>
+          </Box>
+        </Collapse>
+      </Box>
+    </FormDialog>
   );
 }

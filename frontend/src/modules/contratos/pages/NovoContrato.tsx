@@ -17,7 +17,7 @@ import {
   CircularProgress,
 } from "@mui/material";
 import { ArrowBack, Save, Business as BusinessIcon, Description as DescriptionIcon } from "@mui/icons-material";
-import { listarFornecedores, buscarFornecedor } from "../../../services/fornecedores";
+import { fornecedorService } from "../../../services/fornecedores";
 import { criarContrato } from "../../../services/contratos";
 import { useToast } from "../../../hooks/useToast";
 import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
@@ -58,13 +58,13 @@ export default function NovoContrato() {
       setLoading(true);
       
       // Carregar lista de fornecedores
-      const fornecedoresData = await listarFornecedores();
+      const fornecedoresData = await fornecedorService.listar();
       const fornecedoresAtivos = fornecedoresData.filter((f: Fornecedor) => f.ativo);
       setFornecedores(fornecedoresAtivos);
 
       // Se veio com fornecedor pré-selecionado
       if (fornecedorIdParam) {
-        const fornecedorData = await buscarFornecedor(Number(fornecedorIdParam));
+        const fornecedorData = await fornecedorService.buscarPorId(Number(fornecedorIdParam));
         setFornecedorSelecionado(fornecedorData);
         setFormData(prev => ({
           ...prev,
@@ -93,7 +93,7 @@ export default function NovoContrato() {
 
     if (fornecedorId) {
       try {
-        const fornecedorData = await buscarFornecedor(Number(fornecedorId));
+        const fornecedorData = await fornecedorService.buscarPorId(Number(fornecedorId));
         setFornecedorSelecionado(fornecedorData);
       } catch (error) {
         console.error("Erro ao buscar fornecedor:", error);

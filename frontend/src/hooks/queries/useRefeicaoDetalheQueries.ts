@@ -1,15 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  buscarRefeicao,
-  editarRefeicao,
-  deletarRefeicao,
-  listarProdutosDaRefeicao,
-  adicionarProdutoNaRefeicao,
-  editarProdutoNaRefeicao,
-  removerProdutoDaRefeicao,
-} from '../../services/refeicoes';
-import { listarProdutos } from '../../services/produtos';
-import { listarModalidades } from '../../services/modalidades';
+import { refeicaoService, refeicaoServiceExtended } from '../../services/refeicoes';
+import { produtoService } from '../../services/produtos';
+import { modalidadeService } from '../../services/modalidades';
 
 // Query keys
 export const REFEICAO_DETALHE_QUERY_KEY = (id: number) => ['refeicao', id];
@@ -21,7 +13,7 @@ export const MODALIDADES_QUERY_KEY = ['modalidades'];
 export const useRefeicao = (id: number) => {
   return useQuery({
     queryKey: REFEICAO_DETALHE_QUERY_KEY(id),
-    queryFn: () => buscarRefeicao(id),
+    queryFn: () => refeicaoService.buscarPorId(id),
     enabled: !!id,
   });
 };
@@ -30,7 +22,7 @@ export const useRefeicao = (id: number) => {
 export const useProdutosDaRefeicao = (refeicaoId: number) => {
   return useQuery({
     queryKey: REFEICAO_PRODUTOS_QUERY_KEY(refeicaoId),
-    queryFn: () => listarProdutosDaRefeicao(refeicaoId),
+    queryFn: () => refeicaoServiceExtended.listarProdutos(refeicaoId),
     enabled: !!refeicaoId,
   });
 };
@@ -39,7 +31,7 @@ export const useProdutosDaRefeicao = (refeicaoId: number) => {
 export const useProdutos = () => {
   return useQuery({
     queryKey: PRODUTOS_QUERY_KEY,
-    queryFn: listarProdutos,
+    queryFn: produtoService.listar,
   });
 };
 
@@ -47,7 +39,7 @@ export const useProdutos = () => {
 export const useModalidades = () => {
   return useQuery({
     queryKey: MODALIDADES_QUERY_KEY,
-    queryFn: listarModalidades,
+    queryFn: modalidadeService.listar,
   });
 };
 
@@ -56,7 +48,7 @@ export const useEditarRefeicao = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: any }) => editarRefeicao(id, data),
+    mutationFn: ({ id, data }: { id: number; data: any }) => refeicaoService.atualizar(id, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: REFEICAO_DETALHE_QUERY_KEY(variables.id) });
       queryClient.invalidateQueries({ queryKey: ['refeicoes'] });
@@ -69,7 +61,7 @@ export const useDeletarRefeicao = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: number) => deletarRefeicao(id),
+    mutationFn: (id: number) => refeicaoService.remover(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['refeicoes'] });
     },
@@ -93,7 +85,13 @@ export const useAdicionarProdutoNaRefeicao = () => {
       perCapita: number;
       tipoMedida: 'gramas' | 'unidades';
       perCapitaPorModalidade?: Array<{ modalidade_id: number; per_capita: number }>;
-    }) => adicionarProdutoNaRefeicao(refeicaoId, produtoId, perCapita, tipoMedida, perCapitaPorModalidade),
+    }) => refeicaoServiceExtended.adicionarProduto({
+      refeicao_id: refeicaoId,
+      produto_id: produtoId,
+      per_capita: perCapita,
+      tipo_medida: tipoMedida,
+      per_capita_por_modalidade: perCapitaPorModalidade,
+    }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: REFEICAO_PRODUTOS_QUERY_KEY(variables.refeicaoId) });
       queryClient.invalidateQueries({ queryKey: ['valores-nutricionais', variables.refeicaoId] });
@@ -119,7 +117,11 @@ export const useEditarProdutoNaRefeicao = () => {
       perCapita: number;
       tipoMedida?: 'gramas' | 'unidades';
       perCapitaPorModalidade?: Array<{ modalidade_id: number; per_capita: number }>;
-    }) => editarProdutoNaRefeicao(id, perCapita, tipoMedida, perCapitaPorModalidade),
+    }) => refeicaoServiceExtended.editarProduto(id, {
+      per_capita: perCapita,
+      tipo_medida: tipoMedida,
+      per_capita_por_modalidade: perCapitaPorModalidade,
+    }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: REFEICAO_PRODUTOS_QUERY_KEY(variables.refeicaoId) });
       queryClient.invalidateQueries({ queryKey: ['valores-nutricionais', variables.refeicaoId] });
@@ -133,7 +135,7 @@ export const useRemoverProdutoDaRefeicao = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, refeicaoId }: { id: number; refeicaoId: number }) => removerProdutoDaRefeicao(id),
+    mutationFn: ({ id, refeicaoId }: { id: number; refeicaoId: number }) => refeicaoServiceExtended.removerProduto(id),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: REFEICAO_PRODUTOS_QUERY_KEY(variables.refeicaoId) });
       queryClient.invalidateQueries({ queryKey: ['valores-nutricionais', variables.refeicaoId] });

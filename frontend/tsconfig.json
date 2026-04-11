@@ -10,17 +10,24 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "strict": false,
-    "noImplicitAny": false,
-    "strictNullChecks": false,
+    "strict": true,
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
-    "moduleResolution": "Node",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
     "baseUrl": "src",
+    "paths": {
+      "@shared/*": ["../../shared/*"]
+    },
+    "types": [
+      "node",
+      "react",
+      "react-dom",
+      "testing-library__jest-dom"
+    ],
     "typeRoots": [
       "./node_modules/@types",
       "./src/types"
@@ -28,7 +35,6 @@
   },
   "include": [
     "src",
-    "src/types",
     "src/vite-env.d.ts"
   ],
   "exclude": [

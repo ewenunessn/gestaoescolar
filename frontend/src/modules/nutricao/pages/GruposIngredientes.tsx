@@ -8,8 +8,8 @@ import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import GroupWorkIcon from "@mui/icons-material/GroupWork";
-import { listarGrupos, excluirGrupo, Grupo } from "../../../services/gruposIngredientes";
-import { listarProdutos } from "../../../services/produtos";
+import { grupoService, Grupo } from "../../../services/gruposIngredientes";
+import { produtoService } from "../../../services/produtos";
 import GerenciarGrupoDialog from "../../../components/GerenciarGrupoDialog";
 import { useToast } from "../../../hooks/useToast";
 import { usePageTitle } from "../../../contexts/PageTitleContext";
@@ -32,12 +32,12 @@ export default function GruposIngredientes() {
 
   useEffect(() => {
     carregar();
-    listarProdutos().then(setProdutos);
+    produtoService.listar().then(setProdutos);
   }, []);
 
   async function carregar() {
     try {
-      setGrupos(await listarGrupos());
+      setGrupos(await grupoService.listar());
     } catch {
       toast.error('Erro ao carregar grupos');
     }
@@ -45,7 +45,7 @@ export default function GruposIngredientes() {
 
   async function handleExcluir(grupo: Grupo) {
     try {
-      await excluirGrupo(grupo.id);
+      await grupoService.remover(grupo.id);
       toast.success('Grupo excluído');
       carregar();
     } catch {

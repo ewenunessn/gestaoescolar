@@ -131,7 +131,7 @@ export function toFixed(v: any, decimals = 2, defaultValue = '0'): string {
  * - Números inteiros: sem decimais (ex: 230 Kcal)
  * - Números decimais: com vírgula e apenas decimais necessários (ex: 230,5 Kcal)
  * - Remove .00 desnecessários
- * 
+ *
  * Exemplos:
  * 230.00 -> "230"
  * 230.50 -> "230,5"
@@ -143,17 +143,17 @@ export function formatarCalorias(calorias: any): string {
     // Verificações de segurança
     if (calorias === null || calorias === undefined) return '0';
     if (typeof calorias === 'string' && calorias.trim() === '') return '0';
-    
+
     // Converter para número
     const num = Number(calorias);
-    
+
     if (isNaN(num) || !isFinite(num)) return '0';
-    
+
     // Se for inteiro ou terminar em .00
     if (Number.isInteger(num) || num === Math.floor(num)) {
       return Math.floor(num).toLocaleString('pt-BR');
     }
-    
+
     // Se tiver decimais significativos, usar formatação brasileira
     return num.toLocaleString('pt-BR', {
       minimumFractionDigits: 0,
@@ -163,4 +163,42 @@ export function formatarCalorias(calorias: any): string {
     console.error('Erro ao formatar calorias:', calorias, error);
     return '0';
   }
+}
+
+/**
+ * Formata uma data para o formato de input HTML (YYYY-MM-DD)
+ *
+ * @param data - String ISO, objeto Date, ou string no formato DD/MM/YYYY
+ * @returns String no formato YYYY-MM-DD para inputs HTML
+ *
+ * @example
+ * formatDateForInput('2026-04-01') // '2026-04-01'
+ * formatDateForInput(new Date(2026, 3, 1)) // '2026-04-01'
+ * formatDateForInput('01/04/2026') // '2026-04-01'
+ */
+export function formatDateForInput(data: string | Date): string {
+  if (!data) return '';
+
+  let date: Date;
+
+  if (typeof data === 'string') {
+    // Se já está no formato ISO (YYYY-MM-DD)
+    if (data.match(/^\d{4}-\d{2}-\d{2}/)) {
+      return data.split('T')[0];
+    }
+    // Se está no formato brasileiro (DD/MM/YYYY)
+    if (data.match(/^\d{2}\/\d{2}\/\d{4}/)) {
+      const [dia, mes, ano] = data.split('/');
+      return `${ano}-${mes}-${dia}`;
+    }
+    date = new Date(data);
+  } else {
+    date = data;
+  }
+
+  const ano = date.getFullYear();
+  const mes = String(date.getMonth() + 1).padStart(2, '0');
+  const dia = String(date.getDate()).padStart(2, '0');
+
+  return `${ano}-${mes}-${dia}`;
 }

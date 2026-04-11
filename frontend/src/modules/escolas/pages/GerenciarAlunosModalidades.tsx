@@ -5,7 +5,7 @@ import PageContainer from "../../../components/PageContainer";
 import PageHeader from "../../../components/PageHeader";
 import { Search as SearchIcon } from "@mui/icons-material";
 import { listarEscolas, listarEscolaModalidades, adicionarEscolaModalidade, editarEscolaModalidade, removerEscolaModalidade } from "../../../services/escolas";
-import { listarModalidades } from "../../../services/modalidades";
+import { modalidadeService } from "../../../services/modalidades";
 import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
 
 // ── Design tokens ──────────────────────────────────────────────
@@ -92,7 +92,7 @@ const GerenciarAlunosModalidades: React.FC = () => {
       setLoading(true);
       const [escolasData, modalidadesData, escolaModalidadesData] = await Promise.all([
         listarEscolas(),
-        listarModalidades(),
+        modalidadeService.listar(),
         listarEscolaModalidades()
       ]);
       

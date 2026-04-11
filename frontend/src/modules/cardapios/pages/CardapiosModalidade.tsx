@@ -34,7 +34,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../../../hooks/useToast";
 import { CardapioModalidade, MESES } from "../../../services/cardapiosModalidade";
-import { listarModalidades } from "../../../services/modalidadeService";
+import { modalidadeService } from "../../../services/modalidadeService";
 import { useNutricionistaQueries } from "../../../hooks/queries/useNutricionistaQueries";
 import {
   useCardapiosModalidade,
@@ -103,7 +103,7 @@ const CardapiosModalidadePage: React.FC = () => {
 
   const loadModalidades = async () => {
     try {
-      const modalidadesData = await listarModalidades();
+      const modalidadesData = await modalidadeService.listar();
       setModalidades(modalidadesData);
     } catch (err: any) {
       console.error('Erro ao carregar modalidades:', err);

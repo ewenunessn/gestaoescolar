@@ -13,9 +13,10 @@ import {
   editarContratoProduto,
   removerContratoProduto,
 } from "../../../services/contratos";
-import { listarFornecedores } from "../../../services/fornecedores";
-import { listarProdutos } from "../../../services/produtos";
+import { fornecedorService } from "../../../services/fornecedores";
+import { produtoService } from "../../../services/produtos";
 import { formatDateForInput } from "../../../utils/dateUtils";
+import { usePageTitle } from "../../../contexts/PageTitleContext";
 
 import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
@@ -265,8 +266,8 @@ export default function ContratoDetalhe() {
     try {
       const [contratoData, fornecedoresData, produtosData, produtosContratoData] = await Promise.all([
         buscarContrato(Number(id)),
-        listarFornecedores(),
-        listarProdutos(),
+        fornecedorService.listar(),
+        produtoService.listar(),
         listarContratoProdutos(Number(id))
       ]);
 
@@ -562,13 +563,22 @@ export default function ContratoDetalhe() {
       )}
       
       <PageContainer fullHeight>
+        {/* Seta + Breadcrumbs na mesma linha */}
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+          <IconButton size="small" onClick={handleVoltar} sx={{ mr: 0.5, p: 0.5 }}>
+            <ArrowBackIcon fontSize="small" />
+          </IconButton>
+          <PageBreadcrumbs
+            items={[
+              { label: 'Dashboard', path: '/dashboard' },
+              { label: 'Contratos', path: '/contratos' },
+              { label: contrato ? `Contrato ${contrato.numero}` : 'Carregando...' },
+            ]}
+          />
+        </Box>
+
         <PageHeader
           title={contrato ? `Contrato ${contrato.numero}` : 'Contrato'}
-          breadcrumbs={[
-            { label: 'Dashboard', path: '/dashboard' },
-            { label: 'Contratos', path: '/contratos' },
-            { label: contrato ? `Contrato ${contrato.numero}` : 'Carregando...' },
-          ]}
           action={
             <IconButton onClick={(e) => setMenuAnchorEl(e.currentTarget)}>
               <MoreVert />

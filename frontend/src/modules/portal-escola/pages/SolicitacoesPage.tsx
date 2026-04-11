@@ -19,7 +19,7 @@ import {
   listarMinhasSolicitacoes, criarSolicitacao, cancelarSolicitacao,
   Solicitacao, NovoItemData,
 } from "../../../services/solicitacoesAlimentos";
-import { listarProdutos, Produto } from "../../../services/produtoService";
+import { produtoService, Produto } from "../../../services/produtoService";
 
 export default function SolicitacoesPage() {
   const navigate = useNavigate();
@@ -68,7 +68,7 @@ export default function SolicitacoesPage() {
 
   useEffect(() => {
     carregarSolicitacoes();
-    listarProdutos()
+    produtoService.listar()
       .then(prods => setProdutos(prods))
       .catch(err => {
         console.error('❌ Erro ao carregar produtos:', err);

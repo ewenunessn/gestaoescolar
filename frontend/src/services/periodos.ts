@@ -1,3 +1,4 @@
+import { createCrudService, extractResponseData } from './createCrudService';
 import api from './api';
 
 export interface Periodo {
@@ -16,59 +17,38 @@ export interface Periodo {
   total_cardapios?: number;
 }
 
-export const listarPeriodos = async (): Promise<Periodo[]> => {
-  const response = await api.get('/periodos');
-  return response.data.data;
-};
+export type PeriodoCreate = Pick<Periodo, 'ano' | 'data_inicio' | 'data_fim'> & { descricao?: string };
+export type PeriodoUpdate = Pick<Periodo, 'data_inicio' | 'data_fim' | 'ocultar_dados'> & { descricao?: string };
 
-export const obterPeriodoAtivo = async (): Promise<Periodo> => {
-  const response = await api.get('/periodos/ativo');
-  return response.data.data;
-};
+// CRUD básico via factory
+export const periodoService = createCrudService<Periodo, PeriodoCreate, PeriodoUpdate>('periodos');
 
-export const criarPeriodo = async (data: {
-  ano: number;
-  descricao?: string;
-  data_inicio: string;
-  data_fim: string;
-}): Promise<Periodo> => {
-  const response = await api.post('/periodos', data);
-  return response.data.data;
-};
+// Operações específicas do período
+export const periodoServiceExtended = {
+  ...periodoService,
 
-export const atualizarPeriodo = async (
-  id: number,
-  data: {
-    descricao?: string;
-    data_inicio?: string;
-    data_fim?: string;
-    ocultar_dados?: boolean;
-  }
-): Promise<Periodo> => {
-  const response = await api.put(`/periodos/${id}`, data);
-  return response.data.data;
-};
+  obterPeriodoAtivo: async (): Promise<Periodo> => {
+    const { data } = await api.get('/periodos/ativo');
+    return extractResponseData<Periodo>(data);
+  },
 
-export const ativarPeriodo = async (id: number): Promise<Periodo> => {
-  const response = await api.patch(`/periodos/${id}/ativar`);
-  return response.data.data;
-};
+  ativarPeriodo: async (id: number): Promise<Periodo> => {
+    const { data } = await api.patch(`/periodos/${id}/ativar`);
+    return extractResponseData<Periodo>(data);
+  },
 
-export const fecharPeriodo = async (id: number): Promise<Periodo> => {
-  const response = await api.patch(`/periodos/${id}/fechar`);
-  return response.data.data;
-};
+  fecharPeriodo: async (id: number): Promise<Periodo> => {
+    const { data } = await api.patch(`/periodos/${id}/fechar`);
+    return extractResponseData<Periodo>(data);
+  },
 
-export const reabrirPeriodo = async (id: number): Promise<Periodo> => {
-  const response = await api.patch(`/periodos/${id}/reabrir`);
-  return response.data.data;
-};
+  reabrirPeriodo: async (id: number): Promise<Periodo> => {
+    const { data } = await api.patch(`/periodos/${id}/reabrir`);
+    return extractResponseData<Periodo>(data);
+  },
 
-export const deletarPeriodo = async (id: number): Promise<void> => {
-  await api.delete(`/periodos/${id}`);
-};
-
-export const selecionarPeriodo = async (periodoId: number): Promise<Periodo> => {
-  const response = await api.post('/periodos/selecionar', { periodoId });
-  return response.data.data;
+  selecionarPeriodo: async (periodoId: number): Promise<Periodo> => {
+    const { data } = await api.post('/periodos/selecionar', { periodoId });
+    return extractResponseData<Periodo>(data);
+  },
 };

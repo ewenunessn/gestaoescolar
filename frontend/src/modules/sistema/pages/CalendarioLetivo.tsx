@@ -14,10 +14,6 @@ import {
   IconButton,
   Menu,
   MenuItem,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   TextField
 } from "@mui/material";
 import {
@@ -33,6 +29,7 @@ import PageContainer from "../../../components/PageContainer";
 import PageHeader from "../../../components/PageHeader";
 import CalendarioMensal from "../../../components/CalendarioMensal";
 import CriarEditarEventoDialog from "../../../components/CriarEditarEventoDialog";
+import { ConfirmDialog } from "../../../components/BaseDialog";
 import { useToast } from "../../../hooks/useToast";
 import { usePeriodoAtivo } from "../../../hooks/queries/usePeriodosQueries";
 import {
@@ -482,41 +479,37 @@ export default function CalendarioLetivo() {
         dataInicial={diaSelecionado || undefined}
       />
       {/* Dialog de confirmação de exclusão */}
-      <Dialog
+      <ConfirmDialog
         open={confirmDeleteOpen}
         onClose={() => setConfirmDeleteOpen(false)}
-      >
-        <DialogTitle>Confirmar Exclusão</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Tem certeza que deseja excluir o evento "{eventoParaExcluir?.titulo}"?
-          </Typography>
-          {eventoParaExcluir && (
-            <Box sx={{ mt: 2 }}>
-              <Chip
-                label={labels[eventoParaExcluir.tipo_evento as keyof typeof labels]}
-                size="small"
-                sx={{ mr: 1 }}
-              />
-              <Typography variant="caption" color="text.secondary">
-                {(() => {
-                  const dataInicio = eventoParaExcluir.data_inicio.split('T')[0];
-                  const [ano, mes, dia] = dataInicio.split('-').map(Number);
-                  return new Date(ano, mes - 1, dia).toLocaleDateString('pt-BR');
-                })()}
-              </Typography>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setConfirmDeleteOpen(false)}>
-            Cancelar
-          </Button>
-          <Button onClick={handleExcluirEvento} color="error" variant="contained">
-            Excluir
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onConfirm={handleExcluirEvento}
+        title="Confirmar Exclusão"
+        severity="error"
+        confirmLabel="Excluir"
+        message={
+          <Box>
+            <Typography>
+              Tem certeza que deseja excluir o evento "{eventoParaExcluir?.titulo}"?
+            </Typography>
+            {eventoParaExcluir && (
+              <Box sx={{ mt: 2 }}>
+                <Chip
+                  label={labels[eventoParaExcluir.tipo_evento as keyof typeof labels]}
+                  size="small"
+                  sx={{ mr: 1 }}
+                />
+                <Typography variant="caption" color="text.secondary">
+                  {(() => {
+                    const dataInicio = eventoParaExcluir.data_inicio.split('T')[0];
+                    const [ano, mes, dia] = dataInicio.split('-').map(Number);
+                    return new Date(ano, mes - 1, dia).toLocaleDateString('pt-BR');
+                  })()}
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        }
+      />
     </PageContainer>
   );
 }

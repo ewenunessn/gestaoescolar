@@ -3,7 +3,6 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions,
   Button,
   Card,
   CardContent,
@@ -28,6 +27,7 @@ import demandasService from '../services/demandas';
 import { Demanda, STATUS_DEMANDA } from '../types/demanda';
 import { formatarData } from '../utils/dateUtils';
 import DemandaFormModal from './DemandaFormModal';
+import { FormDialog, ConfirmDialog } from './BaseDialog';
 
 interface DemandaDetalhesModalProps {
   open: boolean;
@@ -558,243 +558,124 @@ export default function DemandaDetalhesModal({
       </Dialog>
 
       {/* Diálogo: Registrar Envio à SEMAD */}
-      <Dialog
+      <FormDialog
         open={dialogEnviar}
         onClose={() => setDialogEnviar(false)}
-        maxWidth="sm"
-        fullWidth
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && !processando && dataEnvio) {
-            e.preventDefault();
-            handleEnviarSemead();
-          }
-        }}
+        title="Registrar Envio à SEMAD"
+        onSave={handleEnviarSemead}
+        loading={processando}
+        disableSave={!dataEnvio}
+        saveLabel={processando ? 'Registrando...' : 'Confirmar Envio (Enter)'}
       >
-        <DialogTitle>Registrar Envio à SEMAD</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Informe a data em que a demanda foi enviada à SEMEAD:
-          </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: 'block' }}>
-            Pressione Enter para confirmar
-          </Typography>
-          <TextField
-            fullWidth
-            type="date"
-            label="Data de Envio"
-            value={dataEnvio}
-            onChange={(e) => setDataEnvio(e.target.value)}
-            InputLabelProps={{ shrink: true }}
-            sx={{ mt: 2 }}
-            autoFocus
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !processando && dataEnvio) {
-                e.preventDefault();
-                handleEnviarSemead();
-              }
-            }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDialogEnviar(false)} disabled={processando}>
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleEnviarSemead}
-            variant="contained"
-            disabled={processando || !dataEnvio}
-          >
-            {processando ? 'Registrando...' : 'Confirmar Envio (Enter)'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Informe a data em que a demanda foi enviada à SEMEAD:
+        </Typography>
+        <TextField
+          fullWidth
+          type="date"
+          label="Data de Envio"
+          value={dataEnvio}
+          onChange={(e) => setDataEnvio(e.target.value)}
+          InputLabelProps={{ shrink: true }}
+          autoFocus
+        />
+      </FormDialog>
 
       {/* Diálogo: Recusar Imediatamente */}
-      <Dialog
+      <FormDialog
         open={dialogRecusar}
         onClose={() => setDialogRecusar(false)}
-        maxWidth="sm"
-        fullWidth
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && e.ctrlKey && !processando && motivoRecusa.trim()) {
-            e.preventDefault();
-            handleRecusarImediata();
-          }
-        }}
+        title="Recusar Demanda"
+        onSave={handleRecusarImediata}
+        loading={processando}
+        disableSave={!motivoRecusa.trim()}
+        saveLabel={processando ? 'Registrando...' : 'Confirmar Recusa (Ctrl+Enter)'}
+        saveColor="error"
       >
-        <DialogTitle>Recusar Demanda</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Informe o motivo da recusa imediata:
-          </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: 'block' }}>
-            Pressione Ctrl+Enter para confirmar
-          </Typography>
-          <TextField
-            fullWidth
-            multiline
-            rows={4}
-            label="Motivo da Recusa"
-            value={motivoRecusa}
-            onChange={(e) => setMotivoRecusa(e.target.value)}
-            placeholder="Ex: Fora do escopo, sem orçamento disponível, etc."
-            sx={{ mt: 2 }}
-            autoFocus
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && e.ctrlKey && !processando && motivoRecusa.trim()) {
-                e.preventDefault();
-                handleRecusarImediata();
-              }
-            }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDialogRecusar(false)} disabled={processando}>
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleRecusarImediata}
-            variant="contained" color="delete"
-            disabled={processando || !motivoRecusa.trim()}
-          >
-            {processando ? 'Registrando...' : 'Confirmar Recusa (Ctrl+Enter)'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Informe o motivo da recusa imediata:
+        </Typography>
+        <TextField
+          fullWidth
+          multiline
+          rows={4}
+          label="Motivo da Recusa"
+          value={motivoRecusa}
+          onChange={(e) => setMotivoRecusa(e.target.value)}
+          placeholder="Ex: Fora do escopo, sem orçamento disponível, etc."
+          autoFocus
+        />
+      </FormDialog>
 
       {/* Diálogo: Registrar Atendimento */}
-      <Dialog
+      <FormDialog
         open={dialogAtender}
         onClose={() => setDialogAtender(false)}
-        maxWidth="sm"
-        fullWidth
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && e.ctrlKey && !processando && dataResposta) {
-            e.preventDefault();
-            handleAtender();
-          }
-        }}
+        title="Registrar Atendimento"
+        onSave={handleAtender}
+        loading={processando}
+        disableSave={!dataResposta}
+        saveLabel={processando ? 'Registrando...' : 'Confirmar Atendimento (Ctrl+Enter)'}
+        saveColor="primary"
       >
-        <DialogTitle>Registrar Atendimento</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            A SEMAD atendeu a demanda. Informe os detalhes:
-          </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: 'block' }}>
-            Pressione Ctrl+Enter para confirmar
-          </Typography>
-          <TextField
-            fullWidth
-            type="date"
-            label="Data da Resposta"
-            value={dataResposta}
-            onChange={(e) => setDataResposta(e.target.value)}
-            InputLabelProps={{ shrink: true }}
-            sx={{ mt: 2, mb: 2 }}
-            autoFocus
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && e.ctrlKey && !processando && dataResposta) {
-                e.preventDefault();
-                handleAtender();
-              }
-            }}
-          />
-          <TextField
-            fullWidth
-            multiline
-            rows={4}
-            label="Observações (opcional)"
-            value={observacoes}
-            onChange={(e) => setObservacoes(e.target.value)}
-            placeholder="Ex: Itens entregues conforme solicitado"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && e.ctrlKey && !processando && dataResposta) {
-                e.preventDefault();
-                handleAtender();
-              }
-            }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDialogAtender(false)} disabled={processando}>
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleAtender}
-            variant="contained" color="add"
-            disabled={processando || !dataResposta}
-          >
-            {processando ? 'Registrando...' : 'Confirmar Atendimento (Ctrl+Enter)'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          A SEMAD atendeu a demanda. Informe os detalhes:
+        </Typography>
+        <TextField
+          fullWidth
+          type="date"
+          label="Data da Resposta"
+          value={dataResposta}
+          onChange={(e) => setDataResposta(e.target.value)}
+          InputLabelProps={{ shrink: true }}
+          sx={{ mb: 2 }}
+          autoFocus
+        />
+        <TextField
+          fullWidth
+          multiline
+          rows={4}
+          label="Observações (opcional)"
+          value={observacoes}
+          onChange={(e) => setObservacoes(e.target.value)}
+          placeholder="Ex: Itens entregues conforme solicitado"
+        />
+      </FormDialog>
 
       {/* Diálogo: Registrar Não Atendimento */}
-      <Dialog
+      <FormDialog
         open={dialogNaoAtender}
         onClose={() => setDialogNaoAtender(false)}
-        maxWidth="sm"
-        fullWidth
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && e.ctrlKey && !processando && dataResposta) {
-            e.preventDefault();
-            handleNaoAtender();
-          }
-        }}
+        title="Registrar Não Atendimento"
+        onSave={handleNaoAtender}
+        loading={processando}
+        disableSave={!dataResposta}
+        saveLabel={processando ? 'Registrando...' : 'Confirmar Não Atendimento (Ctrl+Enter)'}
+        saveColor="error"
       >
-        <DialogTitle>Registrar Não Atendimento</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            A SEMAD não atendeu a demanda. Informe os detalhes:
-          </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: 'block' }}>
-            Pressione Ctrl+Enter para confirmar
-          </Typography>
-          <TextField
-            fullWidth
-            type="date"
-            label="Data da Resposta"
-            value={dataResposta}
-            onChange={(e) => setDataResposta(e.target.value)}
-            InputLabelProps={{ shrink: true }}
-            sx={{ mt: 2, mb: 2 }}
-            autoFocus
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && e.ctrlKey && !processando && dataResposta) {
-                e.preventDefault();
-                handleNaoAtender();
-              }
-            }}
-          />
-          <TextField
-            fullWidth
-            multiline
-            rows={4}
-            label="Motivo (opcional)"
-            value={observacoes}
-            onChange={(e) => setObservacoes(e.target.value)}
-            placeholder="Ex: Sem disponibilidade orçamentária"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && e.ctrlKey && !processando && dataResposta) {
-                e.preventDefault();
-                handleNaoAtender();
-              }
-            }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDialogNaoAtender(false)} disabled={processando}>
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleNaoAtender}
-            variant="contained" color="delete"
-            disabled={processando || !dataResposta}
-          >
-            {processando ? 'Registrando...' : 'Confirmar Não Atendimento (Ctrl+Enter)'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          A SEMAD não atendeu a demanda. Informe os detalhes:
+        </Typography>
+        <TextField
+          fullWidth
+          type="date"
+          label="Data da Resposta"
+          value={dataResposta}
+          onChange={(e) => setDataResposta(e.target.value)}
+          InputLabelProps={{ shrink: true }}
+          sx={{ mb: 2 }}
+          autoFocus
+        />
+        <TextField
+          fullWidth
+          multiline
+          rows={4}
+          label="Motivo (opcional)"
+          value={observacoes}
+          onChange={(e) => setObservacoes(e.target.value)}
+          placeholder="Ex: Sem disponibilidade orçamentária"
+        />
+      </FormDialog>
 
       {/* Modal de Edição */}
       <DemandaFormModal
@@ -805,41 +686,16 @@ export default function DemandaDetalhesModal({
       />
 
       {/* Diálogo: Excluir */}
-      <Dialog 
-        open={dialogExcluir} 
-        onClose={() => setDialogExcluir(false)} 
-        maxWidth="sm" 
-        fullWidth
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && !processando) {
-            e.preventDefault();
-            e.stopPropagation();
-            handleExcluir();
-          }
-        }}
-      >
-        <DialogTitle>Excluir Demanda</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary">
-            Tem certeza que deseja excluir esta demanda? Esta ação não pode ser desfeita.
-          </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-            Pressione Enter para confirmar ou Esc para cancelar
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDialogExcluir(false)} disabled={processando}>
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleExcluir}
-            variant="contained" color="delete"
-            disabled={processando}
-          >
-            {processando ? 'Excluindo...' : 'Confirmar Exclusão (Enter)'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <ConfirmDialog
+        open={dialogExcluir}
+        onClose={() => setDialogExcluir(false)}
+        onConfirm={handleExcluir}
+        title="Excluir Demanda"
+        message="Tem certeza que deseja excluir esta demanda? Esta ação não pode ser desfeita."
+        loading={processando}
+        severity="error"
+        confirmLabel={processando ? 'Excluindo...' : 'Confirmar Exclusão (Enter)'}
+      />
     </>
   );
 }

@@ -4,15 +4,8 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys, cacheConfig, invalidateQueries } from '../../lib/queryClient';
+import { produtoService, CriarProdutoRequest, AtualizarProdutoRequest } from '../../services/produtos';
 import { Produto, ProdutoCreate, ProdutoUpdate } from '../../../../shared/types';
-
-import { 
-  listarProdutos, 
-  buscarProduto, 
-  criarProduto, 
-  editarProduto, 
-  removerProduto 
-} from '../../services/produtos';
 
 // ============================================================================
 // QUERIES
@@ -21,30 +14,30 @@ import {
 export function useProdutos(filters?: { search?: string; categoria?: string; ativo?: boolean }) {
   return useQuery({
     queryKey: queryKeys.produtos.list(filters),
-    queryFn: listarProdutos,
-    staleTime: 0, // Sempre considerar dados como desatualizados
-    gcTime: 5 * 60 * 1000, // Manter em cache por 5 minutos
-    refetchOnMount: true, // Sempre refetch ao montar
-    refetchOnWindowFocus: true, // Refetch ao focar na janela
+    queryFn: produtoService.listar,
+    staleTime: 0,
+    gcTime: 5 * 60 * 1000,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
     select: (data: Produto[]) => {
       let filteredData = [...data];
-      
+
       if (filters?.search) {
         const searchLower = filters.search.toLowerCase();
-        filteredData = filteredData.filter(produto => 
+        filteredData = filteredData.filter(produto =>
           produto.nome.toLowerCase().includes(searchLower) ||
           produto.categoria.toLowerCase().includes(searchLower)
         );
       }
-      
+
       if (filters?.categoria) {
         filteredData = filteredData.filter(produto => produto.categoria === filters.categoria);
       }
-      
+
       if (filters?.ativo !== undefined) {
         filteredData = filteredData.filter(produto => produto.ativo === filters.ativo);
       }
-      
+
       return filteredData;
     },
   });
@@ -53,7 +46,7 @@ export function useProdutos(filters?: { search?: string; categoria?: string; ati
 export function useProduto(id: number, enabled = true) {
   return useQuery({
     queryKey: queryKeys.produtos.detail(id),
-    queryFn: () => buscarProduto(id),
+    queryFn: () => produtoService.buscarPorId(id),
     enabled: enabled && !!id,
     ...cacheConfig.static,
   });
@@ -63,7 +56,7 @@ export function useCategoriasProdutos() {
   return useQuery({
     queryKey: queryKeys.produtos.categorias(),
     queryFn: async () => {
-      const produtos = await listarProdutos();
+      const produtos = await produtoService.listar();
       return [...new Set(produtos.map(p => p.categoria).filter(Boolean))].sort();
     },
     ...cacheConfig.static,
@@ -76,17 +69,13 @@ export function useCategoriasProdutos() {
 
 export function useCriarProduto() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: criarProduto,
+    mutationFn: (data: CriarProdutoRequest) => produtoService.criar(data),
     onSuccess: (newProduto) => {
-      // Remover TODOS os caches de produtos
       queryClient.removeQueries({ queryKey: queryKeys.produtos.lists() });
-      
-      // Invalidar para forçar refetch
       queryClient.invalidateQueries({ queryKey: queryKeys.produtos.all });
-      
-      // Adicionar produto ao cache de detalhes
+
       if (newProduto?.id) {
         queryClient.setQueryData(queryKeys.produtos.detail(newProduto.id), newProduto);
       }
@@ -96,18 +85,13 @@ export function useCriarProduto() {
 
 export function useAtualizarProduto() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: any }) => 
-      editarProduto(id, data),
+    mutationFn: ({ id, data }: { id: number; data: AtualizarProdutoRequest }) =>
+      produtoService.atualizar(id, data),
     onSuccess: (updatedProduto, { id }) => {
-      // Atualizar produto no cache de detalhes
       queryClient.setQueryData(queryKeys.produtos.detail(id), updatedProduto);
-      
-      // Remover TODOS os caches de listas
       queryClient.removeQueries({ queryKey: queryKeys.produtos.lists() });
-      
-      // Invalidar para forçar refetch
       queryClient.invalidateQueries({ queryKey: queryKeys.produtos.all });
     },
   });
@@ -115,17 +99,12 @@ export function useAtualizarProduto() {
 
 export function useExcluirProduto() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: removerProduto,
+    mutationFn: (id: number) => produtoService.remover(id),
     onSuccess: (_, id) => {
-      // Remover produto do cache de detalhes
       queryClient.removeQueries({ queryKey: queryKeys.produtos.detail(id) });
-      
-      // Remover TODOS os caches de listas
       queryClient.removeQueries({ queryKey: queryKeys.produtos.lists() });
-      
-      // Invalidar para forçar refetch
       queryClient.invalidateQueries({ queryKey: queryKeys.produtos.all });
     },
   });
