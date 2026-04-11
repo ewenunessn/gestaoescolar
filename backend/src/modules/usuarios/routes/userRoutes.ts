@@ -1,12 +1,11 @@
 import { Router } from "express";
-import { register, login, getUsers, getProfile, checkSystemStatus } from "../controllers/userController";
+import { login, getUsers, getProfile, checkSystemStatus } from "../controllers/userController";
 import { devAuthMiddleware as authMiddleware } from "../../../middleware/devAuthMiddleware";
 
 const router = Router();
 
 // Rotas públicas
 router.get("/system-status", checkSystemStatus);
-router.post("/register", register);
 router.post("/login", login);
 
 // Rotas protegidas

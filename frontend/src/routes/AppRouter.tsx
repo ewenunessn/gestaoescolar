@@ -7,7 +7,6 @@ import { EscolasProvider } from "../contexts/EscolasContext";
 // Componentes críticos carregados imediatamente (páginas públicas)
 import Login from "../pages/Login";
 import LoginWrapper from "../components/LoginWrapper";
-import Registro from "../pages/Registro";
 import LandingPage from "../pages/LandingPage";
 import InterestForm from "../pages/InterestForm";
 
@@ -218,12 +217,7 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
                 </LoginWrapper>
               </PublicRoute>
             } />
-            <Route path="/registro" element={
-              <PublicRoute>
-                <Registro />
-              </PublicRoute>
-            } />
-            
+
             {/* Cardápio Público - Acesso via QR Code */}
             <Route path="/cardapio-publico" element={
               <Suspense fallback={<div>Carregando...</div>}>

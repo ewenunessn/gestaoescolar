@@ -18,24 +18,6 @@ export async function login(email: string, password: string) {
   }
 }
 
-export async function register(user: {
-  nome: string;
-  email: string;
-  senha: string;
-  perfil: string;
-  telefone?: string;
-  cargo?: string;
-  departamento?: string;
-}) {
-  try {
-    const { data } = await apiWithRetry.post("/auth/register", user);
-    return data.data || data; // Handle both new format {success, data} and old format
-  } catch (err) {
-    console.error("❌ Registro falhou:", err);
-    throw err;
-  }
-}
-
 export function isAuthenticated(): boolean {
   const token = localStorage.getItem("token");
   return !!token;
