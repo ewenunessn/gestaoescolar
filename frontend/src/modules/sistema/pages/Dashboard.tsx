@@ -85,6 +85,9 @@ const StatItem: React.FC<StatItemProps> = ({ label, value, detail, icon, accent 
       borderRadius: "6px",
       bgcolor: GH.canvas,
       transition: "border-color 0.2s ease",
+      height: "100%",
+      display: "flex",
+      flexDirection: "column",
       "&:hover": {
         borderColor: GH.borderMd,
       },
@@ -111,6 +114,7 @@ const StatItem: React.FC<StatItemProps> = ({ label, value, detail, icon, accent 
           justifyContent: "center",
           bgcolor: accentBg,
           color: accent,
+          flexShrink: 0,
         }}
       >
         {icon}
@@ -134,6 +138,7 @@ const StatItem: React.FC<StatItemProps> = ({ label, value, detail, icon, accent 
           fontSize: "0.75rem",
           color: GH.sub,
           fontWeight: 400,
+          mt: "auto",
         }}
       >
         {detail}
@@ -222,7 +227,7 @@ const Dashboard = () => {
   });
 
   const pct = (v: string | number) => `${Number(v).toFixed(1)}%`;
-  const pnaeAtende = pnae?.alertas?.atende_30_porcento ?? false;
+  const pnaeAtende = pnae?.alertas?.atende_45_porcento ?? (parseFloat(pnae?.agricultura_familiar?.percentual_af ?? 0) >= 45);
   const pnaePercent = pnae ? pct(pnae.agricultura_familiar?.percentual_af ?? 0) : "—";
   const solicitacoesAtendidas = stats?.solicitacoes.atendidas ?? 0;
   const solicitacoesTotal = stats?.solicitacoes.total ?? 0;
@@ -297,6 +302,9 @@ const Dashboard = () => {
                 borderRadius: "6px",
                 bgcolor: GH.canvas,
                 transition: "border-color 0.2s ease",
+                height: "100%",
+                display: "flex",
+                flexDirection: "column",
                 "&:hover": { borderColor: GH.borderMd },
               }}
             >
@@ -310,6 +318,7 @@ const Dashboard = () => {
                     display: "flex", alignItems: "center", justifyContent: "center",
                     bgcolor: pnaeAtende ? GH.greenDim : GH.orangeDim,
                     color: pnaeAtende ? GH.greenLt : GH.orange,
+                    flexShrink: 0,
                   }}
                 >
                   {loadingPnae ? (
@@ -338,7 +347,7 @@ const Dashboard = () => {
               <Box sx={{ mt: 1.5 }}>
                 <LinearProgress
                   variant="determinate"
-                  value={Math.min(parseFloat(pnaePercent) / 30 * 100, 100)}
+                  value={Math.min(parseFloat(pnaePercent) / 45 * 100, 100)}
                   sx={{
                     height: 4,
                     borderRadius: 2,
@@ -350,8 +359,8 @@ const Dashboard = () => {
                   }}
                 />
               </Box>
-              <Typography sx={{ fontSize: "0.65rem", color: GH.sub, mt: 0.5 }}>
-                Mínimo requerido: 30%
+              <Typography sx={{ fontSize: "0.65rem", color: GH.sub, mt: "auto" }}>
+                Mínimo requerido: 45%
               </Typography>
             </Box>
           </Grid>
@@ -456,7 +465,7 @@ const Dashboard = () => {
                     <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 0.5 }}>
                       <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: pnaeAtende ? GH.greenLt : GH.red }} />
                       <Typography sx={{ fontSize: "0.75rem", color: GH.muted }}>
-                        Mín: 30%
+                        Mín: 45%
                       </Typography>
                     </Box>
                     <Typography
@@ -474,7 +483,7 @@ const Dashboard = () => {
                 {/* Progress bar */}
                 <LinearProgress
                   variant="determinate"
-                  value={Math.min(parseFloat(pnaePercent) / 30 * 100, 100)}
+                  value={Math.min(parseFloat(pnaePercent) / 45 * 100, 100)}
                   sx={{
                     height: 8,
                     borderRadius: 4,

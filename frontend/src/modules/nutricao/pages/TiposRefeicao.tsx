@@ -14,6 +14,7 @@ import { DataTable } from "../../../components/DataTable";
 import PageContainer from "../../../components/PageContainer";
 import PageHeader from "../../../components/PageHeader";
 import { useToast } from "../../../hooks/useToast";
+import { ConfirmDialog } from "../../../components/BaseDialog";
 import {
   listarTiposRefeicao,
   criarTipoRefeicao,
@@ -29,6 +30,7 @@ const TiposRefeicaoPage: React.FC = () => {
   const [tipos, setTipos] = useState<TipoRefeicao[]>([]);
   const [loading, setLoading] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [editando, setEditando] = useState<TipoRefeicao | null>(null);
   const [formData, setFormData] = useState({
     nome: '',
@@ -127,13 +129,10 @@ const TiposRefeicaoPage: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Deseja realmente excluir este tipo de refeição?')) {
-      return;
-    }
-
     try {
       await deletarTipoRefeicao(id);
       toast.success('Tipo de refeição excluído!');
+      setConfirmDelete(null);
       loadTipos();
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Erro ao excluir tipo de refeição');
@@ -208,7 +207,7 @@ const TiposRefeicaoPage: React.FC = () => {
           <Tooltip title="Excluir">
             <IconButton
               size="small"
-              onClick={() => handleDelete(row.original.id)}
+              onClick={() => setConfirmDelete(row.original.id)}
               color="error"
             >
               <DeleteIcon fontSize="small" />
@@ -313,6 +312,16 @@ const TiposRefeicaoPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={() => confirmDelete !== null && handleDelete(confirmDelete)}
+        title="Excluir Tipo de Refeição"
+        message="Tem certeza que deseja excluir este tipo de refeição? Esta ação não pode ser desfeita."
+        confirmLabel="Excluir"
+        severity="error"
+      />
     </Box>
   );
 };

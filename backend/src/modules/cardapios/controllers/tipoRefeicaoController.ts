@@ -124,28 +124,28 @@ export const atualizarTipoRefeicao = async (req: Request, res: Response) => {
 export const deletarTipoRefeicao = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    
+
     // Verificar se está sendo usado em algum cardápio
     const emUso = await db.query(
-      'SELECT COUNT(*) as count FROM cardapio_modalidade_refeicoes WHERE tipo_refeicao = (SELECT chave FROM tipos_refeicao WHERE id = $1)',
+      'SELECT COUNT(*) as count FROM cardapio_refeicoes_dia WHERE tipo_refeicao = (SELECT chave FROM tipos_refeicao WHERE id = $1)',
       [id]
     );
-    
+
     if (parseInt(emUso.rows[0].count) > 0) {
-      return res.status(400).json({ 
-        error: 'Não é possível excluir este tipo de refeição pois está sendo usado em cardápios' 
+      return res.status(400).json({
+        error: 'Não é possível excluir este tipo de refeição pois está sendo usado em cardápios'
       });
     }
-    
+
     const result = await db.query(
       'DELETE FROM tipos_refeicao WHERE id = $1 RETURNING *',
       [id]
     );
-    
+
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Tipo de refeição não encontrado' });
     }
-    
+
     res.json({ message: 'Tipo de refeição excluído com sucesso' });
   } catch (err) {
     console.error('Erro ao deletar tipo de refeição:', err);
