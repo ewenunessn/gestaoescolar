@@ -255,7 +255,7 @@ app.use("/api/cardapios", cardapioRoutes);
 app.use("/api/tipos-refeicao", tipoRefeicaoRoutes);
 app.use("/api/nutricionistas", nutricionistaRoutes);
 // app.use("/api/demandas", demandaRoutes); // REMOVIDO - rota duplicada, usar demandasRoutes
-app.use("/api/produtos", longCache, produtoRoutes);
+app.use("/api/produtos", produtoRoutes);
 app.use("/api/produto-modalidades", produtoModalidadeRoutes);
 app.use("/api/unidades-medida", longCache, unidadeMedidaRoutes);
 app.use("/api/estoque-central", estoqueCentralRoutes);

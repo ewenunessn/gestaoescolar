@@ -73,7 +73,6 @@ export function useCriarProduto() {
   return useMutation({
     mutationFn: (data: CriarProdutoRequest) => produtoService.criar(data),
     onSuccess: (newProduto) => {
-      queryClient.removeQueries({ queryKey: queryKeys.produtos.lists() });
       queryClient.invalidateQueries({ queryKey: queryKeys.produtos.all });
 
       if (newProduto?.id) {
@@ -91,7 +90,6 @@ export function useAtualizarProduto() {
       produtoService.atualizar(id, data),
     onSuccess: (updatedProduto, { id }) => {
       queryClient.setQueryData(queryKeys.produtos.detail(id), updatedProduto);
-      queryClient.removeQueries({ queryKey: queryKeys.produtos.lists() });
       queryClient.invalidateQueries({ queryKey: queryKeys.produtos.all });
     },
   });
@@ -104,7 +102,6 @@ export function useExcluirProduto() {
     mutationFn: (id: number) => produtoService.remover(id),
     onSuccess: (_, id) => {
       queryClient.removeQueries({ queryKey: queryKeys.produtos.detail(id) });
-      queryClient.removeQueries({ queryKey: queryKeys.produtos.lists() });
       queryClient.invalidateQueries({ queryKey: queryKeys.produtos.all });
     },
   });

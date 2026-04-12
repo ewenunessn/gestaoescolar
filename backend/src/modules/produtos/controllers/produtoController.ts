@@ -341,6 +341,11 @@ export const editarProduto = asyncHandler(async (req: Request, res: Response) =>
   const indiceCoccaoNormalizado = indice_coccao !== undefined ? num(indice_coccao) || 1.0 : undefined;
   const pesoNormalizado = peso !== undefined ? num(peso) : undefined;
 
+  console.log('📝 [editarProduto] Params:', {
+    id, nomeNormalizado, descricao, tipo_processamento, categoria,
+    fatorCorrecaoNormalizado, pesoNormalizado
+  });
+
   const result = await db.query(`
     UPDATE produtos SET
       nome = COALESCE($1, nome),

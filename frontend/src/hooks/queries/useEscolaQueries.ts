@@ -81,17 +81,12 @@ export function useEscolasAtivas() {
 
 export function useCriarEscola() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: criarEscola,
     onSuccess: (newEscola) => {
-      // Remover TODOS os caches de escolas
-      queryClient.removeQueries({ queryKey: queryKeys.escolas.lists() });
-      
-      // Invalidar para forçar refetch
       queryClient.invalidateQueries({ queryKey: queryKeys.escolas.all });
-      
-      // Adicionar escola ao cache de detalhes
+
       if (newEscola?.id) {
         queryClient.setQueryData(queryKeys.escolas.detail(newEscola.id), newEscola);
       }
@@ -101,21 +96,13 @@ export function useCriarEscola() {
 
 export function useAtualizarEscola() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: any }) => 
+    mutationFn: ({ id, data }: { id: number; data: any }) =>
       editarEscola(id, data),
     onSuccess: (updatedEscola, { id }) => {
-      // Atualizar escola no cache de detalhes
       queryClient.setQueryData(queryKeys.escolas.detail(id), updatedEscola);
-      
-      // Remover TODOS os caches de listas
-      queryClient.removeQueries({ queryKey: queryKeys.escolas.lists() });
-      
-      // Invalidar para forçar refetch
       queryClient.invalidateQueries({ queryKey: queryKeys.escolas.all });
-      
-      // Invalidar modalidades (pois o total de alunos pode ter mudado)
       invalidateQueries.modalidades();
     },
   });
@@ -123,17 +110,11 @@ export function useAtualizarEscola() {
 
 export function useExcluirEscola() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: removerEscola,
     onSuccess: (_, id) => {
-      // Remover escola do cache de detalhes
       queryClient.removeQueries({ queryKey: queryKeys.escolas.detail(id) });
-      
-      // Remover TODOS os caches de listas
-      queryClient.removeQueries({ queryKey: queryKeys.escolas.lists() });
-      
-      // Invalidar para forçar refetch
       queryClient.invalidateQueries({ queryKey: queryKeys.escolas.all });
     },
   });

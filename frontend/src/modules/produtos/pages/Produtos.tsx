@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from "react";
+import React, { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import PageHeader from "../../../components/PageHeader";
 import PageContainer from "../../../components/PageContainer";
 import { produtoService } from "../../../services/produtos";
@@ -145,10 +145,14 @@ const ProdutosPage = () => {
     const state = location.state as { successMessage?: string } | undefined;
     if (state?.successMessage) {
       toast.success(state.successMessage);
-      refetch();
       navigate(location.pathname, { replace: true });
     }
-  }, [location.pathname, location.state, navigate, refetch, toast]);
+  }, [location.state, navigate, toast]);
+
+  // Refetch ao navegar de volta (location.key muda a cada navegação)
+  useEffect(() => {
+    refetch();
+  }, [location.key, refetch]);
 
   // Filtrar produtos
   const produtosFiltrados = useMemo(() => {

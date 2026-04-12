@@ -386,9 +386,29 @@ export default function ProdutoDetalhe() {
         unidade_medida_id: form.unidade_medida_id !== undefined ? form.unidade_medida_id : produto.unidade_medida_id,
         peso: form.peso !== undefined ? (form.peso ? Number(form.peso) : null) : produto.peso,
       };
-      
+
+      console.log('📤 Enviando para o backend:', dataToSend.nome);
+
       const atualizado = await atualizarProdutoMutation.mutateAsync({ id: Number(id), data: dataToSend });
+
+      // Usar dados retornados pelo próprio backend (já atualizados)
       setProduto(atualizado);
+      setForm((prev: any) => ({
+        ...prev,
+        nome: atualizado.nome || '',
+        descricao: atualizado.descricao || '',
+        categoria: atualizado.categoria || '',
+        tipo_processamento: atualizado.tipo_processamento || '',
+        validade_minima: atualizado.validade_minima || '',
+        imagem_url: atualizado.imagem_url || '',
+        perecivel: atualizado.perecivel || false,
+        ativo: atualizado.ativo !== undefined ? atualizado.ativo : true,
+        estoque_minimo: atualizado.estoque_minimo || 0,
+        fator_correcao: atualizado.fator_correcao || 1.0,
+        indice_coccao: atualizado.indice_coccao || 1.0,
+        unidade_distribuicao: atualizado.unidade_distribuicao || '',
+        peso: atualizado.peso || '',
+      }));
       setEditingField(null);
       toast.success('Campo atualizado com sucesso!');
     } catch (err: any) { 

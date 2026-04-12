@@ -83,7 +83,6 @@ export function useCriarFornecedor() {
   return useMutation({
     mutationFn: (data: FornecedorCreate) => fornecedorService.criar(data),
     onSuccess: (newFornecedor) => {
-      queryClient.removeQueries({ queryKey: queryKeys.fornecedores.lists() });
       queryClient.invalidateQueries({ queryKey: queryKeys.fornecedores.all });
 
       if (newFornecedor?.id) {
@@ -101,7 +100,6 @@ export function useAtualizarFornecedor() {
       fornecedorService.atualizar(id, data),
     onSuccess: (updatedFornecedor, { id }) => {
       queryClient.setQueryData(queryKeys.fornecedores.detail(id), updatedFornecedor);
-      queryClient.removeQueries({ queryKey: queryKeys.fornecedores.lists() });
       queryClient.invalidateQueries({ queryKey: queryKeys.fornecedores.all });
     },
   });
@@ -114,7 +112,6 @@ export function useExcluirFornecedor() {
     mutationFn: (id: number) => fornecedorService.remover(id),
     onSuccess: (_, id) => {
       queryClient.removeQueries({ queryKey: queryKeys.fornecedores.detail(id) });
-      queryClient.removeQueries({ queryKey: queryKeys.fornecedores.lists() });
       queryClient.invalidateQueries({ queryKey: queryKeys.fornecedores.all });
     },
   });
