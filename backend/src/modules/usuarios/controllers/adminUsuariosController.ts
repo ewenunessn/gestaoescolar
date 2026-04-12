@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import db from "../../../database";
 import { asyncHandler, NotFoundError, ConflictError, ValidationError } from "../../../utils/errorHandler";
+import { limparCachePermissoes } from "../../../middleware/permissionMiddleware";
 
 // ─── Inicialização das tabelas ────────────────────────────────────────────────
 
@@ -129,6 +130,11 @@ export const atualizarUsuario = asyncHandler(async (req: Request, res: Response)
     RETURNING id, nome, email, tipo, funcao_id, ativo, escola_id, tipo_secretaria, updated_at
   `, values);
 
+  // Se funcao_id ou tipo mudou, limpar cache de permissões
+  if (funcao_id !== undefined || tipo !== undefined) {
+    limparCachePermissoes(parseInt(id));
+  }
+
   res.json({ success: true, data: result.rows[0], message: 'Usuário atualizado com sucesso' });
 });
 
@@ -241,6 +247,12 @@ export const atualizarFuncao = asyncHandler(async (req: Request, res: Response) 
           `, [id, perm.modulo_id, perm.nivel_permissao_id]);
         }
       }
+
+      // Limpar cache de todos os usuários que usam essa função
+      const usuariosResult = await client.query('SELECT id FROM usuarios WHERE funcao_id = $1', [id]);
+      for (const row of usuariosResult.rows) {
+        limparCachePermissoes(parseInt(row.id));
+      }
     }
 
     await client.query('COMMIT');
@@ -278,4 +290,292 @@ export const listarModulos = asyncHandler(async (req: Request, res: Response) =>
 export const listarNiveis = asyncHandler(async (req: Request, res: Response) => {
   const result = await db.query(`SELECT * FROM niveis_permissao ORDER BY nivel`);
   res.json({ success: true, data: result.rows });
+});
+
+// ─── Permissões Diretas do Usuário ───────────────────────────────────────────
+
+export const getPermissoesUsuario = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  // Buscar permissões diretas
+  const diretas = await db.query(`
+    SELECT up.modulo_id, m.nome as modulo_nome, m.slug as modulo_slug,
+           up.nivel_permissao_id, np.nome as nivel_nome, np.slug as nivel_slug, np.nivel
+    FROM usuario_permissoes up
+    JOIN modulos m ON up.modulo_id = m.id
+    JOIN niveis_permissao np ON up.nivel_permissao_id = np.id
+    WHERE up.usuario_id = $1
+    ORDER BY m.ordem
+  `, [id]);
+
+  // Buscar permissões via função
+  const viaFuncao = await db.query(`
+    SELECT fp.modulo_id, m.nome as modulo_nome, m.slug as modulo_slug,
+           fp.nivel_permissao_id, np.nome as nivel_nome, np.slug as nivel_slug, np.nivel,
+           f.nome as funcao_nome
+    FROM usuarios u
+    LEFT JOIN funcoes f ON u.funcao_id = f.id
+    LEFT JOIN funcao_permissoes fp ON f.id = fp.funcao_id
+    LEFT JOIN modulos m ON fp.modulo_id = m.id
+    LEFT JOIN niveis_permissao np ON fp.nivel_permissao_id = np.id
+    WHERE u.id = $1
+    ORDER BY m.ordem
+  `, [id]);
+
+  res.json({
+    success: true,
+    data: {
+      permissoes_diretas: diretas.rows,
+      permissoes_funcao: viaFuncao.rows.filter((r: any) => r.modulo_id !== null)
+    }
+  });
+});
+
+export const setPermissoesUsuario = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { permissoes } = req.body; // Array de { modulo_id, nivel_permissao_id }
+
+  const existe = await db.query('SELECT id FROM usuarios WHERE id = $1', [id]);
+  if (existe.rows.length === 0) throw new NotFoundError('Usuário', id);
+
+  const client = await db.pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Deletar permissões diretas existentes
+    await client.query('DELETE FROM usuario_permissoes WHERE usuario_id = $1', [id]);
+
+    // Inserir novas permissões
+    for (const perm of (permissoes || [])) {
+      if (perm.nivel_permissao_id && perm.modulo_id) {
+        await client.query(`
+          INSERT INTO usuario_permissoes (usuario_id, modulo_id, nivel_permissao_id)
+          VALUES ($1, $2, $3)
+          ON CONFLICT (usuario_id, modulo_id) DO UPDATE SET nivel_permissao_id = $3
+        `, [id, perm.modulo_id, perm.nivel_permissao_id]);
+      }
+    }
+
+    await client.query('COMMIT');
+
+    // Limpar cache de permissões do usuário
+    limparCachePermissoes(parseInt(id));
+
+    res.json({ success: true, message: 'Permissões atualizadas com sucesso' });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
+});
+
+// ─── Verificação de Conflitos ────────────────────────────────────────────────
+
+export const verificarConflitos = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  // Dados do usuário
+  const userResult = await db.query(`
+    SELECT u.id, u.nome, u.email, u.tipo, u.escola_id, u.funcao_id,
+           e.nome as escola_nome, f.nome as funcao_nome
+    FROM usuarios u
+    LEFT JOIN escolas e ON u.escola_id = e.id
+    LEFT JOIN funcoes f ON u.funcao_id = f.id
+    WHERE u.id = $1
+  `, [id]);
+
+  if (userResult.rows.length === 0) throw new NotFoundError('Usuário', id);
+
+  const usuario = userResult.rows[0];
+  const conflitos: any[] = [];
+
+  // Buscar todas as permissões (diretas + via função)
+  const permsResult = await db.query(`
+    SELECT modulo_id, m.slug as modulo_slug, m.nome as modulo_nome,
+           np.nivel, np.nome as nivel_nome, 'direta' as origem
+    FROM usuario_permissoes up
+    JOIN modulos m ON up.modulo_id = m.id
+    JOIN niveis_permissao np ON up.nivel_permissao_id = np.id
+    WHERE up.usuario_id = $1
+
+    UNION ALL
+
+    SELECT fp.modulo_id, m.slug as modulo_slug, m.nome as modulo_nome,
+           np.nivel, np.nome as nivel_nome, 'funcao' as origem
+    FROM usuarios u
+    LEFT JOIN funcoes f ON u.funcao_id = f.id
+    LEFT JOIN funcao_permissoes fp ON f.id = fp.funcao_id
+    LEFT JOIN modulos m ON fp.modulo_id = m.id
+    LEFT JOIN niveis_permissao np ON fp.nivel_permissao_id = np.id
+    WHERE u.id = $1 AND fp.modulo_id IS NOT NULL
+  `, [id]);
+
+  // Criar mapa de permissões (direta tem prioridade sobre função)
+  const permMap = new Map<string, { nivel: number; origem: string }>();
+  for (const perm of permsResult.rows) {
+    const slug = perm.modulo_slug;
+    if (!permMap.has(slug) || perm.origem === 'direta') {
+      permMap.set(slug, { nivel: perm.nivel, origem: perm.origem });
+    }
+  }
+
+  // Regra 1: Usuário vinculado a escola precisa de leitura em 'escolas'
+  if (usuario.escola_id) {
+    const escolasPerm = permMap.get('escolas');
+    if (!escolasPerm || escolasPerm.nivel < 1) {
+      conflitos.push({
+        tipo: 'MISSING_PERMISSION',
+        severidade: 'error',
+        modulo: 'escolas',
+        modulo_nome: 'Escolas',
+        mensagem: `Usuário vinculado à escola "${usuario.escola_nome}" mas não tem permissão de leitura em Escolas`,
+        sugestedao: 'Adicionar permissão "Leitura" no módulo Escolas'
+      });
+    }
+  }
+
+  // Regra 2: Nutricionista precisa de leitura em 'preparacoes' e 'cardapios'
+  const usuarioPerfil = usuario.funcao_nome?.toLowerCase() || '';
+  if (usuarioPerfil.includes('nutricionista') || usuario.tipo === 'nutricionista') {
+    for (const [modulo, nome] of [['preparacoes', 'Preparações'], ['cardapios', 'Cardápios'], ['produtos', 'Produtos']]) {
+      const perm = permMap.get(modulo);
+      if (!perm || perm.nivel < 1) {
+        conflitos.push({
+          tipo: 'MISSING_PERMISSION',
+          severidade: 'warning',
+          modulo,
+          modulo_nome: nome,
+          mensagem: `Perfil "Nutricionista" requer acesso a ${nome}`,
+          sugestedao: `Adicionar permissão "Leitura" no módulo ${nome}`
+        });
+      }
+    }
+  }
+
+  // Regra 3: Almoxarife precisa de leitura em 'estoque' e 'produtos'
+  if (usuarioPerfil.includes('almoxarife')) {
+    for (const [modulo, nome] of [['estoque', 'Estoque'], ['produtos', 'Produtos']]) {
+      const perm = permMap.get(modulo);
+      if (!perm || perm.nivel < 1) {
+        conflitos.push({
+          tipo: 'MISSING_PERMISSION',
+          severidade: 'warning',
+          modulo,
+          modulo_nome: nome,
+          mensagem: `Perfil "Almoxarife" requer acesso a ${nome}`,
+          sugestedao: `Adicionar permissão "Leitura" no módulo ${nome}`
+        });
+      }
+    }
+  }
+
+  // Regra 4: Se tem permissão de escrita em 'pedidos', precisa de leitura em 'fornecedores' e 'contratos'
+  const pedidosPerm = permMap.get('pedidos');
+  if (pedidosPerm && pedidosPerm.nivel >= 2) {
+    for (const [modulo, nome] of [['fornecedores', 'Fornecedores'], ['contratos', 'Contratos']]) {
+      const perm = permMap.get(modulo);
+      if (!perm || perm.nivel < 1) {
+        conflitos.push({
+          tipo: 'DEPENDENCY_PERMISSION',
+          severidade: 'warning',
+          modulo,
+          modulo_nome: nome,
+          mensagem: `Permissão de escrita em Pedidos requer leitura em ${nome}`,
+          sugestedao: `Adicionar permissão "Leitura" no módulo ${nome}`
+        });
+      }
+    }
+  }
+
+  // Regra 5: Se tem permissão de escrita em 'faturamento', precisa de leitura em 'pedidos'
+  const faturamentoPerm = permMap.get('faturamento');
+  if (faturamentoPerm && faturamentoPerm.nivel >= 2) {
+    const pedidosP = permMap.get('pedidos');
+    if (!pedidosP || pedidosP.nivel < 1) {
+      conflitos.push({
+        tipo: 'DEPENDENCY_PERMISSION',
+        severidade: 'warning',
+        modulo: 'pedidos',
+        modulo_nome: 'Pedidos',
+        mensagem: 'Permissão de escrita em Faturamento requer leitura em Pedidos',
+        sugestedao: 'Adicionar permissão "Leitura" no módulo Pedidos'
+      });
+    }
+  }
+
+  // Regra 6: Se tem permissão em 'demandas', precisa de leitura em 'escolas'
+  const demandasPerm = permMap.get('demandas');
+  if (demandasPerm && demandasPerm.nivel >= 1) {
+    const escolasP = permMap.get('escolas');
+    if (!escolasP || escolasP.nivel < 1) {
+      conflitos.push({
+        tipo: 'DEPENDENCY_PERMISSION',
+        severidade: 'warning',
+        modulo: 'escolas',
+        modulo_nome: 'Escolas',
+        mensagem: 'Acesso a Demandas requer leitura em Escolas',
+        sugestedao: 'Adicionar permissão "Leitura" no módulo Escolas'
+      });
+    }
+  }
+
+  // Regra 7: Se tem permissão em 'cardapios', precisa de leitura em 'produtos'
+  const cardapiosPerm = permMap.get('cardapios');
+  if (cardapiosPerm && cardapiosPerm.nivel >= 1) {
+    const produtosP = permMap.get('produtos');
+    if (!produtosP || produtosP.nivel < 1) {
+      conflitos.push({
+        tipo: 'DEPENDENCY_PERMISSION',
+        severidade: 'warning',
+        modulo: 'produtos',
+        modulo_nome: 'Produtos',
+        mensagem: 'Acesso a Cardápios requer leitura em Produtos',
+        sugestedao: 'Adicionar permissão "Leitura" no módulo Produtos'
+      });
+    }
+  }
+
+  // Regra 8: Admin não pode ter permissão 'nenhum' em módulos críticos
+  if (usuario.tipo === 'admin') {
+    const modulosCriticos = ['dashboard', 'escolas', 'produtos'];
+    for (const modulo of modulosCriticos) {
+      const perm = permMap.get(modulo);
+      if (perm && perm.nivel === 0) {
+        conflitos.push({
+          tipo: 'ADMIN_RESTRICTION',
+          severidade: 'info',
+          modulo,
+          modulo_nome: modulo,
+          mensagem: `Administrador com acesso negado a ${modulo} — permissão será ignorada`,
+          sugestedao: 'Administradores têm acesso total por padrão'
+        });
+      }
+    }
+  }
+
+  res.json({
+    success: true,
+    data: {
+      usuario: {
+        id: usuario.id,
+        nome: usuario.nome,
+        email: usuario.email,
+        tipo: usuario.tipo,
+        escola_id: usuario.escola_id,
+        escola_nome: usuario.escola_nome,
+        funcao_id: usuario.funcao_id,
+        funcao_nome: usuario.funcao_nome
+      },
+      permissoes_efetivas: Array.from(permMap.entries()).map(([slug, data]) => ({
+        modulo_slug: slug,
+        nivel: data.nivel,
+        origem: data.origem
+      })),
+      conflitos,
+      total_conflitos: conflitos.length,
+      erros: conflitos.filter(c => c.severidade === 'error').length,
+      avisos: conflitos.filter(c => c.severidade === 'warning').length
+    }
+  });
 });

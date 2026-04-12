@@ -16,6 +16,7 @@ import { logout } from "../services/auth";
 import { useConfigContext } from "../context/ConfigContext";
 import { useConfigChangeIndicator } from "../hooks/useConfigChangeIndicator";
 import { useUserRole } from "../hooks/useUserRole";
+import { useUserPermissions } from "../hooks/useUserPermissions";
 import { SeletorPeriodo } from './SeletorPeriodo';
 import { NotificacoesProvider } from '../contexts/NotificacoesContext';
 import { NotificacoesEscolaProvider } from '../contexts/NotificacoesEscolaContext';
@@ -288,10 +289,59 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
   const { configModuloSaldo, loading: loadingConfig, onConfigChanged } = useConfigContext();
   const { hasRecentChange, showChangeIndicator } = useConfigChangeIndicator();
   const { user, loading: loadingUser, isAdmin, isEscolaUser } = useUserRole();
+  const { hasLeitura, loading: loadingPerms } = useUserPermissions();
 
   useEffect(() => { if (onConfigChanged) onConfigChanged(showChangeIndicator); }, [onConfigChanged, showChangeIndicator]);
 
-  const menuConfig = isEscolaUser ? MENU_ESCOLA : getMenuConfig(configModuloSaldo);
+  // Mapa de módulo → slug de permissão
+  const MODULO_SLUGS: Record<string, string> = {
+    'Dashboard': 'dashboard',
+    'Escolas': 'escolas',
+    'Modalidades': 'modalidades',
+    'Produtos': 'produtos',
+    'Nutricionistas': 'nutricionistas',
+    'Fornecedores': 'fornecedores',
+    'Contratos': 'contratos',
+    'Preparações': 'preparacoes',
+    'Cardápios': 'cardapios',
+    'Tipos de Refeição': 'tipos_refeicao',
+    'Planejamento': 'planejamento_compras',
+    'Guias de Demanda': 'demandas',
+    'Pedidos': 'pedidos',
+    'Saldo Contratos': 'saldo_contratos',
+    'Dashboard PNAE': 'pnae',
+    'Gestão de Rotas': 'rotas',
+    'Romaneio': 'romaneio',
+    'Entregas': 'entregas',
+    'Comprovantes': 'comprovantes',
+    'Estoque Central': 'estoque',
+    'Estoque Escolar': 'estoque',
+    'Solicitações Recebidas': 'solicitacoes',
+    'Instituição': 'configuracoes',
+    'Calendário Letivo': 'calendario',
+    'Períodos': 'periodos',
+    'Usuários': 'usuarios',
+    'Disparos': 'notificacoes',
+  };
+
+  // Filtrar menu por permissões
+  const menuConfig = isEscolaUser ? MENU_ESCOLA : (() => {
+    const base = getMenuConfig(configModuloSaldo);
+    return base.map(cat => ({
+      ...cat,
+      items: cat.items.filter((item: any) => {
+        // adminOnly: manter filtro existente
+        if (item.adminOnly && !isAdmin) return false;
+        // Se não tem slug mapeado, mostrar (fallback)
+        const slug = MODULO_SLUGS[item.text];
+        if (!slug) return true;
+        // Admin sempre vê tudo
+        if (isAdmin) return true;
+        // Verificar permissão de leitura
+        return hasLeitura(slug);
+      }),
+    })).filter(cat => cat.items.length > 0); // remover categorias vazios
+  })();
 
   const handleDrawerToggle = useCallback(() => setMobileOpen(p => !p), []);
   const handleCollapseToggle = useCallback(() => {

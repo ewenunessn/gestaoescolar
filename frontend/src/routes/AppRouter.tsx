@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { isAuthenticated } from "../services/auth";
 import LayoutModerno from "../components/LayoutModerno";
+import PermissionGuard from "../components/PermissionGuard";
 import { EscolasProvider } from "../contexts/EscolasContext";
 
 // Componentes críticos carregados imediatamente (páginas públicas)
@@ -170,12 +171,18 @@ function PublicRoute({ children }: { children: JSX.Element }) {
   return !isAuthenticated() ? children : <Navigate to="/dashboard" replace />;
 }
 
-function LazyRoute({ children }: { children: JSX.Element }) {
+function LazyRoute({ children, moduloSlug }: { children: JSX.Element; moduloSlug?: string }) {
   return (
     <PrivateRoute>
       <LayoutModerno>
         <Suspense fallback={<PageLoader />}>
-          {children}
+          {moduloSlug ? (
+            <PermissionGuard moduloSlug={moduloSlug}>
+              {children}
+            </PermissionGuard>
+          ) : (
+            children
+          )}
         </Suspense>
       </LayoutModerno>
     </PrivateRoute>
@@ -247,254 +254,254 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
             />
             <Route
               path="/escolas"
-              element={<LazyRoute><Escolas /></LazyRoute>}
+              element={<LazyRoute moduloSlug="escolas"><Escolas /></LazyRoute>}
             />
             <Route
               path="/escolas/:id"
-              element={<LazyRoute><EscolaDetalhes /></LazyRoute>}
+              element={<LazyRoute moduloSlug="escolas"><EscolaDetalhes /></LazyRoute>}
             />
 
             <Route
               path="/modalidades"
-              element={<LazyRoute><Modalidades /></LazyRoute>}
+              element={<LazyRoute moduloSlug="modalidades"><Modalidades /></LazyRoute>}
             />
             <Route
               path="/modalidades/gerenciar-alunos"
-              element={<LazyRoute><GerenciarAlunosModalidades /></LazyRoute>}
+              element={<LazyRoute moduloSlug="modalidades"><GerenciarAlunosModalidades /></LazyRoute>}
             />
             <Route
               path="/produtos"
-              element={<LazyRoute><Produtos /></LazyRoute>}
+              element={<LazyRoute moduloSlug="produtos"><Produtos /></LazyRoute>}
             />
             <Route
               path="/produtos/:id"
-              element={<LazyRoute><ProdutoDetalhe /></LazyRoute>}
+              element={<LazyRoute moduloSlug="produtos"><ProdutoDetalhe /></LazyRoute>}
             />
             <Route
               path="/preparacoes"
-              element={<LazyRoute><Preparacoes /></LazyRoute>}
-            /> 
+              element={<LazyRoute moduloSlug="preparacoes"><Preparacoes /></LazyRoute>}
+            />
             <Route
               path="/preparacoes/:id"
-              element={<LazyRoute><PreparacaoDetalhe /></LazyRoute>}
+              element={<LazyRoute moduloSlug="preparacoes"><PreparacaoDetalhe /></LazyRoute>}
             />
             <Route
               path="/cardapios"
-              element={<LazyRoute><Cardapios /></LazyRoute>}
+              element={<LazyRoute moduloSlug="cardapios"><Cardapios /></LazyRoute>}
             />
             <Route
               path="/cardapios/:cardapioId/calendario"
-              element={<LazyRoute><CardapioCalendario /></LazyRoute>}
+              element={<LazyRoute moduloSlug="cardapios"><CardapioCalendario /></LazyRoute>}
             />
             <Route
               path="/tipos-refeicao"
-              element={<LazyRoute><TiposRefeicao /></LazyRoute>}
+              element={<LazyRoute moduloSlug="tipos_refeicao"><TiposRefeicao /></LazyRoute>}
             />
             <Route
               path="/nutricionistas"
-              element={<LazyRoute><Nutricionistas /></LazyRoute>}
+              element={<LazyRoute moduloSlug="nutricionistas"><Nutricionistas /></LazyRoute>}
             />
 
             <Route
               path="/guias-demanda"
-              element={<LazyRoute><GuiasDemandaLista /></LazyRoute>}
+              element={<LazyRoute moduloSlug="demandas"><GuiasDemandaLista /></LazyRoute>}
             />
             <Route
               path="/guias-demanda/:guiaId"
-              element={<LazyRoute><GuiaDemandaDetalhe /></LazyRoute>}
+              element={<LazyRoute moduloSlug="demandas"><GuiaDemandaDetalhe /></LazyRoute>}
             />
             <Route
               path="/guias-demanda/:guiaId/escola/:escolaId"
-              element={<LazyRoute><GuiaDemandaEscolaItens /></LazyRoute>}
+              element={<LazyRoute moduloSlug="demandas"><GuiaDemandaEscolaItens /></LazyRoute>}
             />
             <Route
               path="/guias-demanda/:guiaId/ajuste"
-              element={<LazyRoute><AjusteGuiaDemandaScreen /></LazyRoute>}
+              element={<LazyRoute moduloSlug="demandas"><AjusteGuiaDemandaScreen /></LazyRoute>}
             />
             <Route
               path="/romaneio"
-              element={<LazyRoute><Romaneio /></LazyRoute>}
+              element={<LazyRoute moduloSlug="romaneio"><Romaneio /></LazyRoute>}
             />
             <Route
               path="/guias-demanda-old/:id"
-              element={<LazyRoute><GuiaDemandaDetalhe /></LazyRoute>}
+              element={<LazyRoute moduloSlug="demandas"><GuiaDemandaDetalhe /></LazyRoute>}
             />
             <Route
               path="/entregas"
-              element={<LazyRoute><Entregas /></LazyRoute>}
+              element={<LazyRoute moduloSlug="entregas"><Entregas /></LazyRoute>}
             />
             <Route
               path="/comprovantes-entrega"
-              element={<LazyRoute><ComprovantesEntrega /></LazyRoute>}
+              element={<LazyRoute moduloSlug="comprovantes"><ComprovantesEntrega /></LazyRoute>}
             />
 
             <Route
               path="/gestao-rotas"
-              element={<LazyRoute><GestaoRotas /></LazyRoute>}
+              element={<LazyRoute moduloSlug="rotas"><GestaoRotas /></LazyRoute>}
             />
             <Route
               path="/gestao-rotas/:rotaId/escolas"
-              element={<LazyRoute><GerenciarEscolasRota /></LazyRoute>}
+              element={<LazyRoute moduloSlug="rotas"><GerenciarEscolasRota /></LazyRoute>}
             />
 
             <Route
               path="/fornecedores"
-              element={<LazyRoute><Fornecedores /></LazyRoute>}
+              element={<LazyRoute moduloSlug="fornecedores"><Fornecedores /></LazyRoute>}
             />
             <Route
               path="/fornecedores/:id"
-              element={<LazyRoute><FornecedorDetalhe /></LazyRoute>}
+              element={<LazyRoute moduloSlug="fornecedores"><FornecedorDetalhe /></LazyRoute>}
             />
             <Route
               path="/fornecedores/:id/itens"
-              element={<LazyRoute><ItensFornecedor /></LazyRoute>}
+              element={<LazyRoute moduloSlug="fornecedores"><ItensFornecedor /></LazyRoute>}
             />
             <Route
               path="/contratos"
-              element={<LazyRoute><Contratos /></LazyRoute>}
+              element={<LazyRoute moduloSlug="contratos"><Contratos /></LazyRoute>}
             />
             <Route
               path="/contratos/novo"
-              element={<LazyRoute><NovoContrato /></LazyRoute>}
+              element={<LazyRoute moduloSlug="contratos"><NovoContrato /></LazyRoute>}
             />
             <Route
               path="/contratos/:id"
-              element={<LazyRoute><ContratoDetalhe /></LazyRoute>}
+              element={<LazyRoute moduloSlug="contratos"><ContratoDetalhe /></LazyRoute>}
             />
             <Route
               path="/saldos-contratos-modalidades"
-              element={<LazyRoute><SaldoContratosModalidades /></LazyRoute>}
+              element={<LazyRoute moduloSlug="saldo_contratos"><SaldoContratosModalidades /></LazyRoute>}
             />
 
             {/* Rotas de Compras */}
-            <Route path="/compras" element={<LazyRoute><Compras /></LazyRoute>} />
-            <Route path="/compras/planejamento" element={<LazyRoute><PlanejamentoCompras /></LazyRoute>} />
-            <Route path="/compras/novo" element={<LazyRoute><CompraForm /></LazyRoute>} />
-            <Route path="/compras/:id/editar" element={<LazyRoute><CompraForm /></LazyRoute>} />
-            <Route path="/compras/:id" element={<LazyRoute><CompraDetalhe /></LazyRoute>} />
-            <Route path="/compras/:id/item/:itemId/programacao" element={<LazyRoute><ProgramacaoEntregaScreen /></LazyRoute>} />
-            <Route path="/compras/:id/programacoes-ajuste" element={<LazyRoute><AjusteProgramacoesScreen /></LazyRoute>} />
-            <Route path="/compras/:id/faturamentos" element={<LazyRoute><FaturamentosCompra /></LazyRoute>} />
-            <Route path="/compras/:id/faturamento/:faturamentoId/relatorio-tipo" element={<LazyRoute><RelatorioFaturamentoTipoFornecedor /></LazyRoute>} />
-            <Route path="/compras/:id/faturamento/:faturamentoId" element={<LazyRoute><FaturamentoModalidades /></LazyRoute>} />
-            <Route path="/compras/:pedidoId/faturamento" element={<LazyRoute><GerarFaturamento /></LazyRoute>} />
-            <Route path="/compras/:pedidoId/faturamento/visualizar" element={<LazyRoute><FaturamentoDetalhe /></LazyRoute>} />
+            <Route path="/compras" element={<LazyRoute moduloSlug="pedidos"><Compras /></LazyRoute>} />
+            <Route path="/compras/planejamento" element={<LazyRoute moduloSlug="planejamento_compras"><PlanejamentoCompras /></LazyRoute>} />
+            <Route path="/compras/novo" element={<LazyRoute moduloSlug="pedidos"><CompraForm /></LazyRoute>} />
+            <Route path="/compras/:id/editar" element={<LazyRoute moduloSlug="pedidos"><CompraForm /></LazyRoute>} />
+            <Route path="/compras/:id" element={<LazyRoute moduloSlug="pedidos"><CompraDetalhe /></LazyRoute>} />
+            <Route path="/compras/:id/item/:itemId/programacao" element={<LazyRoute moduloSlug="pedidos"><ProgramacaoEntregaScreen /></LazyRoute>} />
+            <Route path="/compras/:id/programacoes-ajuste" element={<LazyRoute moduloSlug="pedidos"><AjusteProgramacoesScreen /></LazyRoute>} />
+            <Route path="/compras/:id/faturamentos" element={<LazyRoute moduloSlug="faturamento"><FaturamentosCompra /></LazyRoute>} />
+            <Route path="/compras/:id/faturamento/:faturamentoId/relatorio-tipo" element={<LazyRoute moduloSlug="faturamento"><RelatorioFaturamentoTipoFornecedor /></LazyRoute>} />
+            <Route path="/compras/:id/faturamento/:faturamentoId" element={<LazyRoute moduloSlug="faturamento"><FaturamentoModalidades /></LazyRoute>} />
+            <Route path="/compras/:pedidoId/faturamento" element={<LazyRoute moduloSlug="faturamento"><GerarFaturamento /></LazyRoute>} />
+            <Route path="/compras/:pedidoId/faturamento/visualizar" element={<LazyRoute moduloSlug="faturamento"><FaturamentoDetalhe /></LazyRoute>} />
 
 
             {/* Rotas de Demandas */}
             <Route
               path="/demandas"
-              element={<LazyRoute><DemandasLista /></LazyRoute>}
+              element={<LazyRoute moduloSlug="demandas"><DemandasLista /></LazyRoute>}
             />
 
             {/* Rotas do Estoque Central */}
             <Route
               path="/estoque-central"
-              element={<LazyRoute><EstoqueCentral /></LazyRoute>}
+              element={<LazyRoute moduloSlug="estoque"><EstoqueCentral /></LazyRoute>}
             />
             <Route
               path="/estoque-escolar"
-              element={<LazyRoute><EstoqueEscolar /></LazyRoute>}
+              element={<LazyRoute moduloSlug="estoque"><EstoqueEscolar /></LazyRoute>}
             />
             <Route
               path="/estoque-escola-portal"
-              element={<LazyRoute><EstoqueEscolaPortal /></LazyRoute>}
+              element={<LazyRoute moduloSlug="estoque"><EstoqueEscolaPortal /></LazyRoute>}
             />
             <Route
               path="/estoque-moderno/produtos/:produto_id/lotes"
-              element={<LazyRoute><EstoqueLotes /></LazyRoute>}
+              element={<LazyRoute moduloSlug="estoque"><EstoqueLotes /></LazyRoute>}
             />
             <Route
               path="/estoque-moderno/produtos/:produto_id/movimentacoes"
-              element={<LazyRoute><EstoqueMovimentacoes /></LazyRoute>}
+              element={<LazyRoute moduloSlug="estoque"><EstoqueMovimentacoes /></LazyRoute>}
             />
             <Route
               path="/estoque-moderno/alertas"
-              element={<LazyRoute><EstoqueAlertas /></LazyRoute>}
+              element={<LazyRoute moduloSlug="estoque"><EstoqueAlertas /></LazyRoute>}
             />
 
             {/* Dashboard de Consistência */}
             <Route
               path="/consistencia"
-              element={<LazyRoute><DashboardConsistencia /></LazyRoute>}
+              element={<LazyRoute moduloSlug="dashboard"><DashboardConsistencia /></LazyRoute>}
             />
 
             {/* Configurações da Instituição */}
             <Route
               path="/configuracao-instituicao"
-              element={<LazyRoute><ConfiguracaoInstituicao /></LazyRoute>}
+              element={<LazyRoute moduloSlug="configuracoes"><ConfiguracaoInstituicao /></LazyRoute>}
             />
             {/* Editor de Templates PDF */}
             <Route
               path="/editor-templates-pdf"
-              element={<LazyRoute><EditorTemplatesPDF /></LazyRoute>}
+              element={<LazyRoute moduloSlug="configuracoes"><EditorTemplatesPDF /></LazyRoute>}
             />
             
             {/* Dashboard PNAE */}
             <Route
               path="/pnae/dashboard"
-              element={<LazyRoute><DashboardPNAE /></LazyRoute>}
+              element={<LazyRoute moduloSlug="pnae"><DashboardPNAE /></LazyRoute>}
             />
 
             {/* Gerenciamento de Usuários (admin) */}
             <Route
               path="/gerenciamento-usuarios"
-              element={<LazyRoute><GerenciamentoUsuarios /></LazyRoute>}
+              element={<LazyRoute moduloSlug="usuarios"><GerenciamentoUsuarios /></LazyRoute>}
             />
 
             {/* Gerenciamento de Períodos (admin) */}
             <Route
               path="/periodos"
-              element={<LazyRoute><GerenciamentoPeriodos /></LazyRoute>}
+              element={<LazyRoute moduloSlug="periodos"><GerenciamentoPeriodos /></LazyRoute>}
             />
             {/* Grupos de Ingredientes */}
             <Route
               path="/grupos-ingredientes"
-              element={<LazyRoute><GruposIngredientes /></LazyRoute>}
+              element={<LazyRoute moduloSlug="preparacoes"><GruposIngredientes /></LazyRoute>}
             />
 
             {/* Portal da Escola (secretaria de escola) - Módulo separado */}
             <Route
               path="/portal-escola"
-              element={<LazyRoute><PortalEscolaHome /></LazyRoute>}
+              element={<LazyRoute moduloSlug="dashboard"><PortalEscolaHome /></LazyRoute>}
             />
             <Route
               path="/portal-escola/cardapio"
-              element={<LazyRoute><CardapioPage /></LazyRoute>}
+              element={<LazyRoute moduloSlug="dashboard"><CardapioPage /></LazyRoute>}
             />
             <Route
               path="/portal-escola/solicitacoes"
-              element={<LazyRoute><SolicitacoesPage /></LazyRoute>}
+              element={<LazyRoute moduloSlug="dashboard"><SolicitacoesPage /></LazyRoute>}
             />
             <Route
               path="/portal-escola/comprovantes"
-              element={<LazyRoute><ComprovantesPage /></LazyRoute>}
+              element={<LazyRoute moduloSlug="dashboard"><ComprovantesPage /></LazyRoute>}
             />
             <Route
               path="/portal-escola/alunos"
-              element={<LazyRoute><AlunosPage /></LazyRoute>}
+              element={<LazyRoute moduloSlug="dashboard"><AlunosPage /></LazyRoute>}
             />
 
             {/* Solicitações de Alimentos (módulo principal) */}
             <Route
               path="/solicitacoes-alimentos"
-              element={<LazyRoute><SolicitacoesAlimentos /></LazyRoute>}
+              element={<LazyRoute moduloSlug="solicitacoes"><SolicitacoesAlimentos /></LazyRoute>}
             />
             <Route
               path="/solicitacoes-alimentos/:escolaId"
-              element={<LazyRoute><SolicitacaoEscolaDetalhe /></LazyRoute>}
+              element={<LazyRoute moduloSlug="solicitacoes"><SolicitacaoEscolaDetalhe /></LazyRoute>}
             />
 
             {/* Calendário Letivo */}
             <Route
               path="/calendario-letivo"
-              element={<LazyRoute><CalendarioLetivo /></LazyRoute>}
+              element={<LazyRoute moduloSlug="calendario"><CalendarioLetivo /></LazyRoute>}
             />
 
             {/* Disparos de Notificação */}
             <Route
               path="/disparos-notificacao"
-              element={<LazyRoute><DisparosNotificacao /></LazyRoute>}
+              element={<LazyRoute moduloSlug="notificacoes"><DisparosNotificacao /></LazyRoute>}
             />
 
             

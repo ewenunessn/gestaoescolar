@@ -64,7 +64,7 @@ const quickLinks = [
   { label: "Cardápios", path: "/cardapios", icon: <MenuBookIcon sx={{ fontSize: 16 }} /> },
   { label: "Estoque Central", path: "/estoque-central", icon: <StorageIcon sx={{ fontSize: 16 }} /> },
   { label: "Pedidos", path: "/compras", icon: <ReceiptIcon sx={{ fontSize: 16 }} /> },
-  { label: "Rotas", path: "/rotas", icon: <RouteIcon sx={{ fontSize: 16 }} /> },
+  { label: "Rotas", path: "/gestao-rotas", icon: <RouteIcon sx={{ fontSize: 16 }} /> },
 ];
 
 // ── Stat Card ───────────────────────────────────────────────────

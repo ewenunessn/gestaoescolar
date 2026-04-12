@@ -4,20 +4,24 @@ import {
   TableContainer, TableHead, TableRow, Paper, IconButton, Chip,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField,
   FormControl, InputLabel, Select, MenuItem, Switch, FormControlLabel,
-  Alert, CircularProgress, Tooltip, Divider,
+  Alert, CircularProgress, Tooltip, Divider, Tabs, Tab,
 } from "@mui/material";
 import {
   Add, Edit, Delete, People, AdminPanelSettings, Visibility,
-  VisibilityOff, Lock,
+  VisibilityOff, Lock, Warning as WarningIcon, Error as ErrorIcon,
+  Info as InfoIcon, CheckCircle as CheckCircleIcon,
 } from "@mui/icons-material";
 import ViewTabs from "../../../components/ViewTabs";
 import { LoadingOverlay } from "../../../components/LoadingOverlay";
 import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
+import { ConfirmDialog } from "../../../components/BaseDialog";
 import {
   getUsuarios, criarUsuario, atualizarUsuario, excluirUsuario,
   getFuncoes, criarFuncao, atualizarFuncao, excluirFuncao,
   getModulos, getNiveis,
+  getPermissoesUsuario, setPermissoesUsuario, verificarConflitos,
   Usuario, Funcao, Modulo, NivelPermissao,
+  PermissaoUsuario, ConflitoPermissao,
 } from "../../../services/adminUsuarios";
 import api from "../../../services/api";
 
@@ -29,32 +33,67 @@ const NIVEL_COLORS: Record<number, "default" | "info" | "warning" | "success"> =
   0: "default", 1: "info", 2: "warning", 3: "success",
 };
 
+const SEVERITY_COLORS: Record<string, "error" | "warning" | "info"> = {
+  error: "error", warning: "warning", info: "info",
+};
+
+const SEVERITY_ICONS: Record<string, React.ReactNode> = {
+  error: <ErrorIcon fontSize="small" />,
+  warning: <WarningIcon fontSize="small" />,
+  info: <InfoIcon fontSize="small" />,
+};
+
 function NivelChip({ nivel, nome }: { nivel: number; nome: string }) {
   return <Chip label={nome} color={NIVEL_COLORS[nivel] ?? "default"} size="small" sx={{ borderRadius: '3px', fontWeight: 500 }} />;
 }
 
-// ─── Dialog: Usuário ─────────────────────────────────────────────────────────
+// ─── Dialog: Usuário (com abas de dados e permissões) ────────────────────────
 
 interface UsuarioDialogProps {
   open: boolean;
   usuario?: Usuario | null;
   funcoes: Funcao[];
   escolas: any[];
+  modulos: Modulo[];
+  niveis: NivelPermissao[];
   onClose: () => void;
   onSave: (data: any) => Promise<void>;
 }
 
-function UsuarioDialog({ open, usuario, funcoes, escolas, onClose, onSave }: UsuarioDialogProps) {
+function UsuarioDialog({ open, usuario, funcoes, escolas, modulos, niveis, onClose, onSave }: UsuarioDialogProps) {
+  const [innerTab, setInnerTab] = useState(0);
   const [form, setForm] = useState({ nome: "", email: "", senha: "", tipo: "usuario", funcao_id: "", ativo: true, tipo_secretaria: "educacao", escola_id: "" });
+  const [perms, setPerms] = useState<Record<number, number>>({});
+  const [conflitos, setConflitos] = useState<ConflitoPermissao[]>([]);
   const [showSenha, setShowSenha] = useState(false);
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState("");
+  const [loadingConflitos, setLoadingConflitos] = useState(false);
+
+  const nivelNenhum = niveis.find(n => n.nivel === 0);
 
   useEffect(() => {
-    if (usuario) {
+    if (usuario && open) {
       setForm({ nome: usuario.nome, email: usuario.email, senha: "", tipo: usuario.tipo, funcao_id: String(usuario.funcao_id ?? ""), ativo: usuario.ativo, tipo_secretaria: usuario.tipo_secretaria || "educacao", escola_id: String(usuario.escola_id ?? "") });
-    } else {
+      setPerms({});
+      setConflitos([]);
+      setInnerTab(0);
+      // Carregar permissões diretas
+      getPermissoesUsuario(usuario.id).then(data => {
+        const map: Record<number, number> = {};
+        data.permissoes_diretas.forEach(p => { map[p.modulo_id] = p.nivel_permissao_id; });
+        setPerms(map);
+      }).catch(() => {});
+      // Carregar conflitos
+      setLoadingConflitos(true);
+      verificarConflitos(usuario.id).then(data => {
+        setConflitos(data.conflitos);
+      }).catch(() => {}).finally(() => setLoadingConflitos(false));
+    } else if (!usuario && open) {
       setForm({ nome: "", email: "", senha: "", tipo: "usuario", funcao_id: "", ativo: true, tipo_secretaria: "educacao", escola_id: "" });
+      setPerms({});
+      setConflitos([]);
+      setInnerTab(0);
     }
     setErro("");
   }, [usuario, open]);
@@ -65,7 +104,15 @@ function UsuarioDialog({ open, usuario, funcoes, escolas, onClose, onSave }: Usu
     try {
       const payload: any = { ...form, funcao_id: form.funcao_id ? Number(form.funcao_id) : null };
       if (!payload.senha) delete payload.senha;
-      await onSave(payload);
+      // Se estiver na aba de permissões, salvar permissões diretas
+      if (innerTab === 1 && usuario) {
+        const permissoes = Object.entries(perms)
+          .filter(([, nid]) => nid && nid !== nivelNenhum?.id)
+          .map(([mid, nid]) => ({ modulo_id: Number(mid), nivel_permissao_id: nid }));
+        await setPermissoesUsuario(usuario.id, permissoes);
+      } else {
+        await onSave(payload);
+      }
       onClose();
     } catch (e: any) {
       setErro(e?.response?.data?.message || e.message || "Erro ao salvar");
@@ -75,75 +122,166 @@ function UsuarioDialog({ open, usuario, funcoes, escolas, onClose, onSave }: Usu
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>{usuario ? "Editar Usuário" : "Novo Usuário"}</DialogTitle>
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      <DialogTitle sx={{ pb: 0 }}>
+        {usuario ? "Editar Usuário" : "Novo Usuário"}
+      </DialogTitle>
+      <Tabs value={innerTab} onChange={(_, v) => setInnerTab(v)} sx={{ px: 3, borderBottom: 1, borderColor: 'divider' }}>
+        <Tab label="Dados" />
+        <Tab label="Permissões Diretas" disabled={!usuario} />
+      </Tabs>
       <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 2 }}>
         {erro && <Alert severity="error" sx={{ borderRadius: '6px' }}>{erro}</Alert>}
-        <TextField label="Nome" value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} fullWidth required />
-        <TextField label="E-mail" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} fullWidth required />
-        <TextField
-          label={usuario ? "Nova senha (deixe em branco para manter)" : "Senha"}
-          type={showSenha ? "text" : "password"}
-          value={form.senha}
-          onChange={e => setForm(f => ({ ...f, senha: e.target.value }))}
-          fullWidth
-          required={!usuario}
-          InputProps={{
-            endAdornment: (
-              <IconButton onClick={() => setShowSenha(s => !s)} edge="end">
-                {showSenha ? <VisibilityOff /> : <Visibility />}
-              </IconButton>
-            ),
-          }}
-        />
-        <FormControl fullWidth>
-          <InputLabel>Tipo</InputLabel>
-          <Select value={form.tipo} label="Tipo" onChange={e => setForm(f => ({ ...f, tipo: e.target.value }))}>
-            <MenuItem value="usuario">Usuário</MenuItem>
-            <MenuItem value="admin">Administrador</MenuItem>
-          </Select>
-        </FormControl>
-        <FormControl fullWidth>
-          <InputLabel>Função</InputLabel>
-          <Select value={form.funcao_id} label="Função" onChange={e => setForm(f => ({ ...f, funcao_id: e.target.value }))}>
-            <MenuItem value=""><em>Nenhuma</em></MenuItem>
-            {funcoes.map(f => <MenuItem key={f.id} value={String(f.id)}>{f.nome}</MenuItem>)}
-          </Select>
-        </FormControl>
-        <FormControl fullWidth>
-          <InputLabel>Tipo de Secretaria</InputLabel>
-          <Select
-            value={form.tipo_secretaria}
-            label="Tipo de Secretaria"
-            onChange={e => setForm(f => ({ ...f, tipo_secretaria: e.target.value as 'educacao' | 'escola', escola_id: e.target.value === 'educacao' ? '' : f.escola_id }))}
-          >
-            <MenuItem value="educacao">Secretaria de Educação</MenuItem>
-            <MenuItem value="escola">Secretaria de Escola</MenuItem>
-          </Select>
-        </FormControl>
-        {form.tipo_secretaria === 'escola' && (
-          <FormControl fullWidth>
-            <InputLabel>Escola</InputLabel>
-            <Select
-              value={form.escola_id}
-              label="Escola"
-              onChange={e => setForm(f => ({ ...f, escola_id: e.target.value }))}
-              required
-            >
-              <MenuItem value=""><em>Selecione uma escola</em></MenuItem>
-              {(escolas || []).map(e => <MenuItem key={e.id} value={String(e.id)}>{e.nome}</MenuItem>)}
-            </Select>
-          </FormControl>
+
+        {/* ── Aba Dados ── */}
+        {innerTab === 0 && (
+          <>
+            <TextField label="Nome" value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} fullWidth required />
+            <TextField label="E-mail" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} fullWidth required />
+            <TextField
+              label={usuario ? "Nova senha (deixe em branco para manter)" : "Senha"}
+              type={showSenha ? "text" : "password"}
+              value={form.senha}
+              onChange={e => setForm(f => ({ ...f, senha: e.target.value }))}
+              fullWidth
+              required={!usuario}
+              InputProps={{
+                endAdornment: (
+                  <IconButton onClick={() => setShowSenha(s => !s)} edge="end">
+                    {showSenha ? <VisibilityOff /> : <Visibility />}
+                  </IconButton>
+                ),
+              }}
+            />
+            <FormControl fullWidth>
+              <InputLabel>Tipo</InputLabel>
+              <Select value={form.tipo} label="Tipo" onChange={e => setForm(f => ({ ...f, tipo: e.target.value }))}>
+                <MenuItem value="usuario">Usuário</MenuItem>
+                <MenuItem value="admin">Administrador</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl fullWidth>
+              <InputLabel>Função</InputLabel>
+              <Select value={form.funcao_id} label="Função" onChange={e => setForm(f => ({ ...f, funcao_id: e.target.value }))}>
+                <MenuItem value=""><em>Nenhuma</em></MenuItem>
+                {funcoes.map(f => <MenuItem key={f.id} value={String(f.id)}>{f.nome}</MenuItem>)}
+              </Select>
+            </FormControl>
+            <FormControl fullWidth>
+              <InputLabel>Tipo de Secretaria</InputLabel>
+              <Select
+                value={form.tipo_secretaria}
+                label="Tipo de Secretaria"
+                onChange={e => setForm(f => ({ ...f, tipo_secretaria: e.target.value as 'educacao' | 'escola', escola_id: e.target.value === 'educacao' ? '' : f.escola_id }))}
+              >
+                <MenuItem value="educacao">Secretaria de Educação</MenuItem>
+                <MenuItem value="escola">Secretaria de Escola</MenuItem>
+              </Select>
+            </FormControl>
+            {form.tipo_secretaria === 'escola' && (
+              <FormControl fullWidth>
+                <InputLabel>Escola</InputLabel>
+                <Select
+                  value={form.escola_id}
+                  label="Escola"
+                  onChange={e => setForm(f => ({ ...f, escola_id: e.target.value }))}
+                  required
+                >
+                  <MenuItem value=""><em>Selecione uma escola</em></MenuItem>
+                  {(escolas || []).map(e => <MenuItem key={e.id} value={String(e.id)}>{e.nome}</MenuItem>)}
+                </Select>
+              </FormControl>
+            )}
+            <FormControlLabel
+              control={<Switch checked={form.ativo} onChange={e => setForm(f => ({ ...f, ativo: e.target.checked }))} />}
+              label="Usuário ativo"
+            />
+          </>
         )}
-        <FormControlLabel
-          control={<Switch checked={form.ativo} onChange={e => setForm(f => ({ ...f, ativo: e.target.checked }))} />}
-          label="Usuário ativo"
-        />
+
+        {/* ── Aba Permissões Diretas ── */}
+        {innerTab === 1 && usuario && (
+          <>
+            <Alert severity="info" sx={{ borderRadius: '6px' }}>
+              Permissões diretas têm prioridade sobre permissões da função.
+              {form.funcao_id && (
+                <> Função atual: <strong>{funcoes.find(f => f.id === Number(form.funcao_id))?.nome || 'Nenhuma'}</strong></>
+              )}
+            </Alert>
+
+            {/* Conflitos */}
+            {conflitos.length > 0 && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                {conflitos.map((c, i) => (
+                  <Alert key={i} severity={SEVERITY_COLORS[c.severidade]} icon={SEVERITY_ICONS[c.severidade]} sx={{ borderRadius: '6px' }}>
+                    <Typography variant="body2" fontWeight={600}>{c.mensagem}</Typography>
+                    <Typography variant="caption">{c.sugestedao}</Typography>
+                  </Alert>
+                ))}
+              </Box>
+            )}
+            {loadingConflitos && <CircularProgress size={20} />}
+
+            <Divider />
+            <Typography variant="subtitle2" color="text.secondary">Permissões por módulo</Typography>
+            <TableContainer component={Paper} variant="outlined">
+              <Table size="small">
+                <TableHead>
+                  <TableRow sx={{ bgcolor: "grey.50" }}>
+                    <TableCell>Módulo</TableCell>
+                    <TableCell>Nível Direto</TableCell>
+                    <TableCell>Nível via Função</TableCell>
+                    <TableCell>Efetivo</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {modulos.map(m => {
+                    const nivelDireto = perms[m.id];
+                    const nivelFuncao = usuario.funcao_id
+                      ? funcoes.find(f => f.id === usuario.funcao_id)?.permissoes.find(p => p.modulo_id === m.id)?.nivel_permissao_id
+                      : undefined;
+                    const efetivo = nivelDireto || nivelFuncao || nivelNenhum?.id;
+                    const diretoNome = niveis.find(n => n.id === nivelDireto)?.nome || '—';
+                    const funcaoNome = niveis.find(n => n.id === nivelFuncao)?.nome || '—';
+                    const efetivoNome = niveis.find(n => n.id === efetivo)?.nome || 'Nenhum';
+                    const efetivoNivel = niveis.find(n => n.id === efetivo)?.nivel ?? 0;
+
+                    return (
+                      <TableRow key={m.id}>
+                        <TableCell>{m.nome}</TableCell>
+                        <TableCell>
+                          <FormControl size="small" sx={{ minWidth: 150 }}>
+                            <Select
+                              value={perms[m.id] ?? (nivelNenhum?.id ?? "")}
+                              onChange={e => setPerms(p => ({ ...p, [m.id]: Number(e.target.value) }))}
+                            >
+                              {niveis.map(n => (
+                                <MenuItem key={n.id} value={n.id}>
+                                  <NivelChip nivel={n.nivel} nome={n.nome} />
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        </TableCell>
+                        <TableCell>
+                          <Chip label={funcaoNome} size="small" variant="outlined" sx={{ borderRadius: '3px' }} />
+                        </TableCell>
+                        <TableCell>
+                          <Chip label={efetivoNome} color={NIVEL_COLORS[efetivoNivel] ?? "default"} size="small" sx={{ borderRadius: '3px', fontWeight: 600 }} />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </>
+        )}
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose} disabled={loading}>Cancelar</Button>
         <Button onClick={handleSave} variant="contained" disabled={loading}>
-          {loading ? <CircularProgress size={20} /> : "Salvar"}
+          {loading ? <CircularProgress size={20} /> : (innerTab === 1 ? "Salvar Permissões" : "Salvar")}
         </Button>
       </DialogActions>
     </Dialog>
@@ -268,7 +406,7 @@ export default function GerenciamentoUsuarios() {
 
   const [usuarioDialog, setUsuarioDialog] = useState<{ open: boolean; usuario?: Usuario | null }>({ open: false });
   const [funcaoDialog, setFuncaoDialog] = useState<{ open: boolean; funcao?: Funcao | null }>({ open: false });
-  const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; tipo: "usuario" | "funcao"; id: number; nome: string } | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ tipo: "usuario" | "funcao"; id: number; nome: string } | null>(null);
 
   const carregar = async () => {
     setLoading(true);
@@ -301,6 +439,8 @@ export default function GerenciamentoUsuarios() {
       if (usuarioDialog.usuario) await atualizarUsuario(usuarioDialog.usuario.id, data);
       else await criarUsuario(data);
       await carregar();
+    } catch (e: any) {
+      setErro(e?.response?.data?.message || "Erro ao salvar");
     } finally { setSalvandoUsuario(false); }
   };
 
@@ -310,6 +450,8 @@ export default function GerenciamentoUsuarios() {
       if (funcaoDialog.funcao) await atualizarFuncao(funcaoDialog.funcao.id, data);
       else await criarFuncao(data);
       await carregar();
+    } catch (e: any) {
+      setErro(e?.response?.data?.message || "Erro ao salvar");
     } finally { setSalvandoFuncao(false); }
   };
 
@@ -389,7 +531,7 @@ export default function GerenciamentoUsuarios() {
 
       <ViewTabs
         value={tab}
-        onChange={(_, v) => setTab(v)}
+        onChange={(v) => setTab(v)}
         tabs={[
           { value: 0, label: "Usuários", icon: <People fontSize="small" /> },
           { value: 1, label: "Funções e Permissões", icon: <Lock fontSize="small" /> },
@@ -477,7 +619,7 @@ export default function GerenciamentoUsuarios() {
                                 <IconButton
                                   size="small"
                                   color="error"
-                                  onClick={() => setConfirmDelete({ open: true, tipo: "usuario", id: u.id, nome: u.nome })}
+                                  onClick={() => setConfirmDelete({ tipo: "usuario", id: u.id, nome: u.nome })}
                                   disabled={salvandoUsuario || excluindo}
                                 >
                                   <Delete fontSize="small" />
@@ -530,7 +672,7 @@ export default function GerenciamentoUsuarios() {
                             <IconButton
                               size="small"
                               color="error"
-                              onClick={() => setConfirmDelete({ open: true, tipo: "funcao", id: f.id, nome: f.nome })}
+                              onClick={() => setConfirmDelete({ tipo: "funcao", id: f.id, nome: f.nome })}
                               disabled={salvandoFuncao || excluindo}
                             >
                               <Delete fontSize="small" />
@@ -568,6 +710,8 @@ export default function GerenciamentoUsuarios() {
         usuario={usuarioDialog.usuario}
         funcoes={funcoes}
         escolas={escolas}
+        modulos={modulos}
+        niveis={niveis}
         onClose={() => setUsuarioDialog({ open: false })}
         onSave={handleSaveUsuario}
       />
@@ -581,26 +725,22 @@ export default function GerenciamentoUsuarios() {
       />
 
       {/* Confirm Delete */}
-      <Dialog open={!!confirmDelete?.open} onClose={() => setConfirmDelete(null)} maxWidth="xs" fullWidth>
-        <DialogTitle>Confirmar exclusão</DialogTitle>
-        <DialogContent>
-          <Typography>Deseja excluir <strong>{confirmDelete?.nome}</strong>? Esta ação não pode ser desfeita.</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setConfirmDelete(null)} disabled={excluindo}>Cancelar</Button>
-          <Button onClick={handleDelete} color="error" variant="contained" disabled={excluindo}>
-            {excluindo ? <CircularProgress size={20} /> : 'Excluir'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={handleDelete}
+        title="Confirmar Exclusão"
+        message={`Deseja excluir "${confirmDelete?.nome}"? Esta ação não pode ser desfeita.`}
+        confirmLabel="Excluir"
+        severity="error"
+        loading={excluindo}
+      />
 
       <LoadingOverlay
-        open={salvandoUsuario || salvandoFuncao || excluindo}
+        open={salvandoUsuario || salvandoFuncao}
         message={
           salvandoUsuario ? 'Salvando usuário...' :
-          salvandoFuncao ? 'Salvando função...' :
-          excluindo ? 'Excluindo...' :
-          'Processando...'
+          salvandoFuncao ? 'Salvando função...' : ''
         }
       />
     </>

@@ -52,11 +52,11 @@ async function buscarPermissaoUsuario(
       const funcaoResult = await db.query(`
         SELECT np.nivel
         FROM usuarios u
-        JOIN funcoes_usuarios fu ON u.funcao_id = fu.id
-        JOIN funcao_permissoes fp ON fu.id = fp.funcao_id
+        JOIN funcoes f ON u.funcao_id = f.id
+        JOIN funcao_permissoes fp ON f.id = fp.funcao_id
         JOIN modulos m ON fp.modulo_id = m.id
         JOIN niveis_permissao np ON fp.nivel_permissao_id = np.id
-        WHERE u.id = $1 AND m.slug = $2 AND fu.ativo = true
+        WHERE u.id = $1 AND m.slug = $2 AND f.ativo = true
       `, [usuarioId, moduloSlug]);
 
       if (funcaoResult.rows.length > 0) {

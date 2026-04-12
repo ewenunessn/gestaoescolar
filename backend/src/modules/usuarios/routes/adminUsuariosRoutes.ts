@@ -5,6 +5,8 @@ import {
   listarUsuarios, criarUsuario, atualizarUsuario, excluirUsuario,
   listarFuncoes, criarFuncao, atualizarFuncao, excluirFuncao,
   listarModulos, listarNiveis,
+  getPermissoesUsuario, setPermissoesUsuario,
+  verificarConflitos,
 } from "../controllers/adminUsuariosController";
 
 const router = Router();
@@ -17,6 +19,13 @@ router.get("/usuarios", listarUsuarios);
 router.post("/usuarios", criarUsuario);
 router.put("/usuarios/:id", atualizarUsuario);
 router.delete("/usuarios/:id", excluirUsuario);
+
+// Permissões diretas do usuário
+router.get("/usuarios/:id/permissoes", getPermissoesUsuario);
+router.put("/usuarios/:id/permissoes", setPermissoesUsuario);
+
+// Verificação de conflitos
+router.get("/usuarios/:id/conflitos", verificarConflitos);
 
 // Funções (roles)
 router.get("/funcoes", listarFuncoes);

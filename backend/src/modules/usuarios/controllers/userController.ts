@@ -156,13 +156,52 @@ export const checkSystemStatus = asyncHandler(async (req: Request, res: Response
   // Verificar se existem usuários
   const usersCount = await db.query(`SELECT COUNT(*) as count FROM usuarios`);
   const hasUsers = parseInt(usersCount.rows[0].count) > 0;
-  
+
   res.json({
     success: true,
     data: {
       initialized: hasUsers,
       hasUsers,
       needsSetup: !hasUsers
+    }
+  });
+});
+
+// Permissões do usuário atual (qualquer usuário pode ver as próprias)
+export const getMePermissoes = asyncHandler(async (req: Request, res: Response) => {
+  const authReq = req as any;
+  const userId = authReq.user.id;
+
+  // Buscar permissões diretas
+  const diretas = await db.query(`
+    SELECT up.modulo_id, m.nome as modulo_nome, m.slug as modulo_slug,
+           up.nivel_permissao_id, np.nome as nivel_nome, np.slug as nivel_slug, np.nivel
+    FROM usuario_permissoes up
+    JOIN modulos m ON up.modulo_id = m.id
+    JOIN niveis_permissao np ON up.nivel_permissao_id = np.id
+    WHERE up.usuario_id = $1
+    ORDER BY m.ordem
+  `, [userId]);
+
+  // Buscar permissões via função
+  const viaFuncao = await db.query(`
+    SELECT fp.modulo_id, m.nome as modulo_nome, m.slug as modulo_slug,
+           fp.nivel_permissao_id, np.nome as nivel_nome, np.slug as nivel_slug, np.nivel,
+           f.nome as funcao_nome
+    FROM usuarios u
+    LEFT JOIN funcoes f ON u.funcao_id = f.id
+    LEFT JOIN funcao_permissoes fp ON f.id = fp.funcao_id
+    LEFT JOIN modulos m ON fp.modulo_id = m.id
+    LEFT JOIN niveis_permissao np ON fp.nivel_permissao_id = np.id
+    WHERE u.id = $1 AND fp.modulo_id IS NOT NULL
+    ORDER BY m.ordem
+  `, [userId]);
+
+  res.json({
+    success: true,
+    data: {
+      permissoes_diretas: diretas.rows,
+      permissoes_funcao: viaFuncao.rows
     }
   });
 });
