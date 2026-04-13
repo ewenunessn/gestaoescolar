@@ -375,7 +375,7 @@ export const editarProduto = asyncHandler(async (req: Request, res: Response) =>
   });
 
   // Invalidar cache
-  cacheService.invalidateEntity('produtos', id);
+  cacheService.invalidateEntity('produtos', Number(id));
 });
 
 export const removerProduto = asyncHandler(async (req: Request, res: Response) => {
@@ -394,7 +394,7 @@ export const removerProduto = asyncHandler(async (req: Request, res: Response) =
   }
 
   res.json({ success: true, message: "Produto removido com sucesso" });
-  cacheService.invalidateEntity('produtos', id);
+  cacheService.invalidateEntity('produtos', Number(id));
 });
 
 export const buscarComposicaoNutricional = asyncHandler(async (req: Request, res: Response) => {

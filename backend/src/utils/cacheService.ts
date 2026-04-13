@@ -45,7 +45,7 @@ class CacheService {
     return entry.data as T;
   }
 
-  async set<T>(key: string, data: T, ttlSeconds: number = CacheService.TTL.single): Promise<void> {
+  async set<T>(key: string, data: T, ttlSeconds: number = 60): Promise<void> {
     if (this.store.size >= this.maxSize) {
       // Evict oldest
       const firstKey = this.store.keys().next().value;
