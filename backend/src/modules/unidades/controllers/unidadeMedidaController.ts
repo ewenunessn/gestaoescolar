@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as unidadeService from '../../../services/unidadesMedidaService';
+import { cacheService } from '../../../utils/cacheService';
 
 /**
  * Listar todas as unidades de medida
@@ -8,14 +9,19 @@ import * as unidadeService from '../../../services/unidadesMedidaService';
  */
 export async function listarUnidades(req: Request, res: Response) {
   try {
+    const cached = await cacheService.get('unidades_medida:list:all');
+    if (cached) return res.json(cached);
+
     const { tipo } = req.query;
     const unidades = await unidadeService.listarUnidadesMedida(tipo as string);
-    
-    res.json({
+
+    const response = {
       success: true,
       data: unidades,
       total: unidades.length
-    });
+    };
+    await cacheService.set('unidades_medida:list:all', response, cacheService.TTL.static);
+    res.json(response);
   } catch (error) {
     console.error('❌ Erro ao listar unidades:', error);
     res.status(500).json({
@@ -34,21 +40,27 @@ export async function buscarUnidade(req: Request, res: Response) {
   try {
     const { identificador } = req.params;
     const id = parseInt(identificador);
+
+    const cached = await cacheService.get(`unidades_medida:${identificador}`);
+    if (cached) return res.json(cached);
+
     const unidade = await unidadeService.buscarUnidadeMedida(
       isNaN(id) ? identificador : id
     );
-    
+
     if (!unidade) {
       return res.status(404).json({
         success: false,
         message: 'Unidade de medida não encontrada'
       });
     }
-    
-    res.json({
+
+    const response = {
       success: true,
       data: unidade
-    });
+    };
+    await cacheService.set(`unidades_medida:${identificador}`, response, cacheService.TTL.static);
+    res.json(response);
   } catch (error) {
     console.error('❌ Erro ao buscar unidade:', error);
     res.status(500).json({

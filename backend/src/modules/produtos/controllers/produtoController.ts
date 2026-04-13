@@ -8,6 +8,7 @@ import {
   NotFoundError,
   handleDatabaseError
 } from "../../../utils/errorHandler";
+import { cacheService } from "../../../utils/cacheService";
 
 async function ensureProdutoComposicaoTable() {
   const exists = await db.get(
@@ -135,8 +136,14 @@ export const standardizarComposicaoNutricional = asyncHandler(async (req: Reques
 });
 
 export const listarProdutos = asyncHandler(async (req: Request, res: Response) => {
+  const cacheKey = 'produtos:list:all';
+  const cached = await cacheService.get(cacheKey);
+  if (cached) {
+    return res.json(cached);
+  }
+
   const result = await db.query(`
-    SELECT 
+    SELECT
       p.id,
       p.nome,
       p.descricao,
@@ -154,73 +161,57 @@ export const listarProdutos = asyncHandler(async (req: Request, res: Response) =
       p.unidade_distribuicao,
       COALESCE(um.codigo, p.unidade_distribuicao, 'UN') as unidade,
       p.peso::text as peso,
-      CASE 
+      CASE
         WHEN EXISTS (
-          SELECT 1 FROM produto_composicao_nutricional pcn 
+          SELECT 1 FROM produto_composicao_nutricional pcn
           WHERE pcn.produto_id = p.id
-        ) THEN true 
-        ELSE false 
+        ) THEN true
+        ELSE false
       END as tem_composicao_nutricional,
-      CASE 
+      CASE
         WHEN EXISTS (
-          SELECT 1 FROM contrato_produtos cp 
+          SELECT 1 FROM contrato_produtos cp
           INNER JOIN contratos c ON cp.contrato_id = c.id
           WHERE cp.produto_id = p.id AND cp.ativo = true AND c.ativo = true
-        ) THEN true 
-        ELSE false 
+        ) THEN true
+        ELSE false
       END as tem_contrato
     FROM produtos p
     LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
     ORDER BY p.nome
   `);
 
-  res.json({
-    success: true,
-    data: result.rows,
-    total: result.rows.length
-  });
+  const response = { success: true, data: result.rows, total: result.rows.length };
+  await cacheService.set(cacheKey, response, cacheService.TTL.list);
+  res.json(response);
 });
 
 export const buscarProduto = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-
-  console.log(`🔍 [buscarProduto] Iniciando busca do produto ID: ${id}`);
+  const cacheKey = `produtos:${id}`;
+  const cached = await cacheService.get(cacheKey);
+  if (cached) {
+    return res.json(cached);
+  }
 
   const result = await db.query(`
-    SELECT 
-      p.id,
-      p.nome,
-      p.descricao,
-      p.tipo_processamento,
-      p.categoria,
-      p.validade_minima,
-      p.imagem_url,
-      p.perecivel,
-      p.ativo,
-      p.created_at,
-      p.updated_at,
-      p.estoque_minimo,
+    SELECT
+      p.id, p.nome, p.descricao, p.tipo_processamento, p.categoria,
+      p.validade_minima, p.imagem_url, p.perecivel, p.ativo,
+      p.created_at, p.updated_at, p.estoque_minimo,
       p.fator_correcao::text as fator_correcao,
       p.indice_coccao::text as indice_coccao,
-      p.unidade_distribuicao,
-      p.peso::text as peso
-    FROM produtos p 
-    WHERE p.id = $1
+      p.unidade_distribuicao, p.peso::text as peso
+    FROM produtos p WHERE p.id = $1
   `, [id]);
-
-  console.log(`✅ [buscarProduto] Query executada. Rows: ${result.rows.length}`);
 
   if (result.rows.length === 0) {
     throw new NotFoundError('Produto', id);
   }
 
-  const produto = result.rows[0];
-  console.log(`📦 [buscarProduto] Produto: ${produto.nome}`);
-
-  res.json({
-    success: true,
-    data: produto
-  });
+  const response = { success: true, data: result.rows[0] };
+  await cacheService.set(cacheKey, response, cacheService.TTL.single);
+  res.json(response);
 });
 
 export const criarProduto = asyncHandler(async (req: Request, res: Response) => {
@@ -285,6 +276,8 @@ export const criarProduto = asyncHandler(async (req: Request, res: Response) => 
       message: "Produto criado com sucesso",
       data: result.rows[0]
     });
+    // Invalidar cache
+    cacheService.invalidateEntity('produtos');
   } catch (error) {
     handleDatabaseError(error);
   }
@@ -380,6 +373,9 @@ export const editarProduto = asyncHandler(async (req: Request, res: Response) =>
     message: "Produto atualizado com sucesso",
     data: result.rows[0]
   });
+
+  // Invalidar cache
+  cacheService.invalidateEntity('produtos', id);
 });
 
 export const removerProduto = asyncHandler(async (req: Request, res: Response) => {
@@ -398,6 +394,7 @@ export const removerProduto = asyncHandler(async (req: Request, res: Response) =
   }
 
   res.json({ success: true, message: "Produto removido com sucesso" });
+  cacheService.invalidateEntity('produtos', id);
 });
 
 export const buscarComposicaoNutricional = asyncHandler(async (req: Request, res: Response) => {

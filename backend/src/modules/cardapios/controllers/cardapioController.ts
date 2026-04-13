@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import db from '../../../database';
+import { cacheService } from '../../../utils/cacheService';
 import { obterPeriodoUsuario } from '../../../utils/periodoHelper';
 
 const query = db.query.bind(db);
@@ -8,6 +9,10 @@ const query = db.query.bind(db);
 export async function listarCardapiosModalidade(req: Request, res: Response) {
   try {
     const { modalidade_id, mes, ano, ativo } = req.query;
+    const cacheKey = `cardapios:list:${modalidade_id || 'all'}:${mes || 'all'}:${ano || 'all'}:${ativo || 'all'}`;
+    const cached = await cacheService.get(cacheKey);
+    if (cached) return res.json(cached);
+
     const userId = (req as any).user?.id;
     const periodoId = await obterPeriodoUsuario(userId);
 
@@ -78,7 +83,9 @@ export async function listarCardapiosModalidade(req: Request, res: Response) {
     sql += ` ORDER BY cm.ano DESC, cm.mes DESC, cm.nome`;
 
     const result = await query(sql, params);
-    res.json(result.rows);
+    const response = { success: true, data: result.rows, total: result.rows.length };
+    await cacheService.set(cacheKey, response, cacheService.TTL.list);
+    res.json(response);
   } catch (error) {
     console.error('❌ Erro ao listar cardápios:', error);
     res.status(500).json({ message: 'Erro ao listar cardápios' });
@@ -89,6 +96,9 @@ export async function listarCardapiosModalidade(req: Request, res: Response) {
 export async function buscarCardapioModalidade(req: Request, res: Response) {
   try {
     const { id } = req.params;
+
+    const cached = await cacheService.get(`cardapios:${id}`);
+    if (cached) return res.json(cached);
 
     const result = await query(`
       SELECT 
@@ -110,7 +120,9 @@ export async function buscarCardapioModalidade(req: Request, res: Response) {
       return res.status(404).json({ message: 'Cardápio não encontrado' });
     }
 
-    res.json(result.rows[0]);
+    const response = { success: true, data: result.rows[0] };
+    await cacheService.set(`cardapios:${id}`, response, cacheService.TTL.single);
+    res.json(response);
   } catch (error) {
     console.error('❌ Erro ao buscar cardápio:', error);
     res.status(500).json({ message: 'Erro ao buscar cardápio' });
@@ -155,6 +167,7 @@ export async function criarCardapioModalidade(req: Request, res: Response) {
     `, [cardapioId]);
 
     res.status(201).json(cardapioCompleto.rows[0]);
+    cacheService.invalidateEntity('cardapios');
   } catch (error: any) {
     console.error('❌ Erro ao criar cardápio:', error);
     res.status(500).json({ message: 'Erro ao criar cardápio' });
@@ -209,6 +222,7 @@ export async function editarCardapioModalidade(req: Request, res: Response) {
     `, [id]);
 
     res.json(cardapioCompleto.rows[0]);
+    cacheService.invalidateEntity('cardapios', Number(id));
   } catch (error: any) {
     console.error('❌ Erro ao editar cardápio:', error);
     res.status(500).json({ message: 'Erro ao editar cardápio' });
@@ -227,6 +241,7 @@ export async function removerCardapioModalidade(req: Request, res: Response) {
     }
 
     res.json({ message: 'Cardápio removido com sucesso' });
+    cacheService.invalidateEntity('cardapios', Number(id));
   } catch (error) {
     console.error('❌ Erro ao remover cardápio:', error);
     res.status(500).json({ message: 'Erro ao remover cardápio' });
@@ -237,6 +252,9 @@ export async function removerCardapioModalidade(req: Request, res: Response) {
 export async function listarRefeicoesCardapio(req: Request, res: Response) {
   try {
     const { cardapioId } = req.params;
+
+    const cached = await cacheService.get(`cardapios:refeicoes:${cardapioId}`);
+    if (cached) return res.json(cached);
 
     const result = await query(`
       SELECT 
@@ -249,7 +267,9 @@ export async function listarRefeicoesCardapio(req: Request, res: Response) {
       ORDER BY crd.dia, crd.tipo_refeicao
     `, [cardapioId]);
 
-    res.json(result.rows);
+    const response = { success: true, data: result.rows, total: result.rows.length };
+    await cacheService.set(`cardapios:refeicoes:${cardapioId}`, response, cacheService.TTL.list);
+    res.json(response);
   } catch (error) {
     console.error('❌ Erro ao listar refeições:', error);
     res.status(500).json({ message: 'Erro ao listar refeições' });
@@ -273,6 +293,7 @@ export async function adicionarRefeicaoDia(req: Request, res: Response) {
     `, [cardapioId, refeicao_id, dia, tipo_refeicao, observacao]);
 
     res.status(201).json(result.rows[0]);
+    cacheService.invalidateEntity('cardapios', Number(cardapioId));
   } catch (error: any) {
     console.error('❌ Erro ao adicionar refeição:', error);
     if (error.code === '23505') {
@@ -294,6 +315,7 @@ export async function removerRefeicaoDia(req: Request, res: Response) {
     }
 
     res.json({ message: 'Refeição removida com sucesso' });
+    cacheService.invalidateEntity('cardapios');
   } catch (error) {
     console.error('❌ Erro ao remover refeição:', error);
     res.status(500).json({ message: 'Erro ao remover refeição' });

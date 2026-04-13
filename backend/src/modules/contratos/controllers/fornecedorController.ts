@@ -1,11 +1,15 @@
 // Controller de fornecedores para PostgreSQL - SIMPLIFICADO
 import { Request, Response } from "express";
 import db from "../../../database";
+import { cacheService } from '../../../utils/cacheService';
 
 export async function listarFornecedores(req: Request, res: Response) {
   try {
+    const cached = await cacheService.get('fornecedores:list:all');
+    if (cached) return res.json(cached);
+
     const result = await db.query(`
-      SELECT 
+      SELECT
         f.id,
         f.nome,
         f.cnpj,
@@ -17,17 +21,13 @@ export async function listarFornecedores(req: Request, res: Response) {
       ORDER BY f.nome
     `);
 
-    // Desabilitar cache no Vercel
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-    res.setHeader('Surrogate-Control', 'no-store');
-
-    res.json({
+    const response = {
       success: true,
       data: result.rows,
       total: result.rows.length
-    });
+    };
+    await cacheService.set('fornecedores:list:all', response, cacheService.TTL.list);
+    res.json(response);
   } catch (error) {
     console.error("❌ Erro ao listar fornecedores:", error);
     res.status(500).json({
@@ -42,8 +42,11 @@ export async function buscarFornecedor(req: Request, res: Response) {
   try {
     const { id } = req.params;
 
+    const cached = await cacheService.get(`fornecedores:${id}`);
+    if (cached) return res.json(cached);
+
     const result = await db.query(`
-      SELECT 
+      SELECT
         f.id,
         f.nome,
         f.cnpj,
@@ -64,10 +67,12 @@ export async function buscarFornecedor(req: Request, res: Response) {
       });
     }
 
-    res.json({
+    const response = {
       success: true,
       data: result.rows[0]
-    });
+    };
+    await cacheService.set(`fornecedores:${id}`, response, cacheService.TTL.single);
+    res.json(response);
   } catch (error) {
     console.error("❌ Erro ao buscar fornecedor:", error);
     res.status(500).json({
@@ -103,6 +108,7 @@ export async function criarFornecedor(req: Request, res: Response) {
       message: "Fornecedor criado com sucesso",
       data: result.rows[0]
     });
+    cacheService.invalidateEntity('fornecedores');
   } catch (error) {
     console.error("❌ Erro ao criar fornecedor:", error);
     res.status(500).json({
@@ -152,6 +158,7 @@ export async function editarFornecedor(req: Request, res: Response) {
       message: "Fornecedor atualizado com sucesso",
       data: result.rows[0]
     });
+    cacheService.invalidateEntity('fornecedores', Number(id));
   } catch (error) {
     console.error("❌ Erro ao editar fornecedor:", error);
     res.status(500).json({
@@ -182,6 +189,7 @@ export async function removerFornecedor(req: Request, res: Response) {
       message: "Fornecedor removido com sucesso",
       data: result.rows[0]
     });
+    cacheService.invalidateEntity('fornecedores', Number(id));
   } catch (error) {
     console.error("❌ Erro ao remover fornecedor:", error);
     res.status(500).json({

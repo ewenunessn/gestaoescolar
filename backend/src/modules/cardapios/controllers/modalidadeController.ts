@@ -1,16 +1,20 @@
 // Controller de modalidades para PostgreSQL
 import { Request, Response } from "express";
 import db from "../../../database";
+import { cacheService } from '../../../utils/cacheService';
 
 export async function listarModalidades(req: Request, res: Response) {
   try {
+    const cached = await cacheService.get('modalidades:list:all');
+    if (cached) return res.json(cached);
+
     // Permitir filtrar por status ativo via query param
     const { ativo } = req.query;
     const whereClause = ativo !== undefined ? 'WHERE m.ativo = $1' : '';
     const params = ativo !== undefined ? [ativo === 'true'] : [];
-    
+
     const result = await db.query(`
-      SELECT 
+      SELECT
         m.id,
         m.nome,
         m.codigo_financeiro,
@@ -28,11 +32,13 @@ export async function listarModalidades(req: Request, res: Response) {
       ORDER BY m.nome
     `, params);
 
-    res.json({
+    const response = {
       success: true,
       data: result.rows,
       total: result.rows.length
-    });
+    };
+    await cacheService.set('modalidades:list:all', response, cacheService.TTL.list);
+    res.json(response);
   } catch (error) {
     console.error("❌ Erro ao listar modalidades:", error);
     res.status(500).json({
@@ -47,8 +53,11 @@ export async function buscarModalidade(req: Request, res: Response) {
   try {
     const { id } = req.params;
 
+    const cached = await cacheService.get(`modalidades:${id}`);
+    if (cached) return res.json(cached);
+
     const result = await db.query(`
-      SELECT 
+      SELECT
         m.id,
         m.nome,
         m.codigo_financeiro,
@@ -72,10 +81,12 @@ export async function buscarModalidade(req: Request, res: Response) {
       });
     }
 
-    res.json({
+    const response = {
       success: true,
       data: result.rows[0]
-    });
+    };
+    await cacheService.set(`modalidades:${id}`, response, cacheService.TTL.single);
+    res.json(response);
   } catch (error) {
     console.error("❌ Erro ao buscar modalidade:", error);
     res.status(500).json({
@@ -107,6 +118,7 @@ export async function criarModalidade(req: Request, res: Response) {
       message: "Modalidade criada com sucesso",
       data: result.rows[0]
     });
+    cacheService.invalidateEntity('modalidades');
   } catch (error) {
     console.error("❌ Erro ao criar modalidade:", error);
     res.status(500).json({
@@ -152,6 +164,7 @@ export async function editarModalidade(req: Request, res: Response) {
       message: "Modalidade atualizada com sucesso",
       data: result.rows[0]
     });
+    cacheService.invalidateEntity('modalidades', Number(id));
   } catch (error) {
     console.error("❌ Erro ao editar modalidade:", error);
     res.status(500).json({
@@ -182,6 +195,7 @@ export async function removerModalidade(req: Request, res: Response) {
       message: "Modalidade removida com sucesso",
       data: result.rows[0]
     });
+    cacheService.invalidateEntity('modalidades', Number(id));
   } catch (error) {
     console.error("❌ Erro ao remover modalidade:", error);
     res.status(500).json({
@@ -216,6 +230,7 @@ export async function desativarModalidade(req: Request, res: Response) {
       message: "Modalidade desativada com sucesso",
       data: result.rows[0]
     });
+    cacheService.invalidateEntity('modalidades', Number(id));
   } catch (error) {
     console.error("❌ Erro ao desativar modalidade:", error);
     res.status(500).json({
@@ -250,6 +265,7 @@ export async function reativarModalidade(req: Request, res: Response) {
       message: "Modalidade reativada com sucesso",
       data: result.rows[0]
     });
+    cacheService.invalidateEntity('modalidades', Number(id));
   } catch (error) {
     console.error("❌ Erro ao reativar modalidade:", error);
     res.status(500).json({

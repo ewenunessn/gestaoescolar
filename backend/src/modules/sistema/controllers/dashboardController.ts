@@ -1,8 +1,12 @@
 import { Request, Response } from 'express';
 import db from '../../../database';
 import { asyncHandler } from '../../../utils/errorHandler';
+import { cacheService } from '../../../utils/cacheService';
 
 export const getDashboardStats = asyncHandler(async (_req: Request, res: Response) => {
+  const cached = await cacheService.get('dashboard:stats');
+  if (cached) return res.json(cached);
+
   const [escolas, alunos, solicitacoes] = await Promise.all([
     db.query(`SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE ativo = true) as ativas FROM escolas`),
     db.query(`SELECT COALESCE(SUM(quantidade_alunos), 0) as total FROM escola_modalidades`),
@@ -14,7 +18,7 @@ export const getDashboardStats = asyncHandler(async (_req: Request, res: Respons
     `),
   ]);
 
-  res.json({
+  const response = {
     success: true,
     data: {
       escolas: {
@@ -27,5 +31,7 @@ export const getDashboardStats = asyncHandler(async (_req: Request, res: Respons
         atendidas: Number(solicitacoes.rows[0].atendidas),
       },
     },
-  });
+  };
+  await cacheService.set('dashboard:stats', response, cacheService.TTL.stats);
+  res.json(response);
 });

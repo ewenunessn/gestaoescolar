@@ -1,22 +1,28 @@
 import { Request, Response } from 'express';
 const db = process.env.VERCEL === '1' ? require('../../../database-vercel') : require('../../../database');
+import { cacheService } from '../../../utils/cacheService';
 
 export const listarTiposRefeicao = async (req: Request, res: Response) => {
   try {
+    const cached = await cacheService.get('tipos_refeicao:list:all');
+    if (cached) return res.json(cached);
+
     const { ativo } = req.query;
-    
+
     let query = 'SELECT * FROM tipos_refeicao';
     const params: any[] = [];
-    
+
     if (ativo !== undefined) {
       query += ' WHERE ativo = $1';
       params.push(ativo === 'true');
     }
-    
+
     query += ' ORDER BY ordem ASC, horario ASC';
-    
+
     const result = await db.query(query, params);
-    res.json(result.rows);
+    const response = { success: true, data: result.rows, total: result.rows.length };
+    await cacheService.set('tipos_refeicao:list:all', response, cacheService.TTL.list);
+    res.json(response);
   } catch (err) {
     console.error('Erro ao listar tipos de refeição:', err);
     res.status(500).json({ error: 'Erro ao listar tipos de refeição' });
@@ -26,16 +32,22 @@ export const listarTiposRefeicao = async (req: Request, res: Response) => {
 export const buscarTipoRefeicao = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+
+    const cached = await cacheService.get(`tipos_refeicao:${id}`);
+    if (cached) return res.json(cached);
+
     const result = await db.query(
       'SELECT * FROM tipos_refeicao WHERE id = $1',
       [id]
     );
-    
+
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Tipo de refeição não encontrado' });
     }
-    
-    res.json(result.rows[0]);
+
+    const response = { success: true, data: result.rows[0] };
+    await cacheService.set(`tipos_refeicao:${id}`, response, cacheService.TTL.single);
+    res.json(response);
   } catch (err) {
     console.error('Erro ao buscar tipo de refeição:', err);
     res.status(500).json({ error: 'Erro ao buscar tipo de refeição' });
@@ -68,6 +80,7 @@ export const criarTipoRefeicao = async (req: Request, res: Response) => {
     );
     
     res.status(201).json(result.rows[0]);
+    cacheService.invalidateEntity('tipos_refeicao');
   } catch (err) {
     console.error('Erro ao criar tipo de refeição:', err);
     res.status(500).json({ error: 'Erro ao criar tipo de refeição' });
@@ -115,6 +128,7 @@ export const atualizarTipoRefeicao = async (req: Request, res: Response) => {
     );
     
     res.json(result.rows[0]);
+    cacheService.invalidateEntity('tipos_refeicao', Number(id));
   } catch (err) {
     console.error('Erro ao atualizar tipo de refeição:', err);
     res.status(500).json({ error: 'Erro ao atualizar tipo de refeição' });
@@ -147,6 +161,7 @@ export const deletarTipoRefeicao = async (req: Request, res: Response) => {
     }
 
     res.json({ message: 'Tipo de refeição excluído com sucesso' });
+    cacheService.invalidateEntity('tipos_refeicao', Number(id));
   } catch (err) {
     console.error('Erro ao deletar tipo de refeição:', err);
     res.status(500).json({ error: 'Erro ao deletar tipo de refeição' });

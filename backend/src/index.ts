@@ -8,7 +8,6 @@ import { config } from "./config/config";
 // Importar middlewares
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { generalLimiter, loginLimiter } from './middleware/rateLimiter';
-import { mediumCache, longCache } from './middleware/cache';
 import { paginationMiddleware, validatePaginationParams } from './middleware/pagination';
 import { balancedCompression } from './middleware/compression';
 import monitoringRoutes from './modules/sistema/routes/monitoringRoutes';
@@ -240,10 +239,10 @@ app.use("/api/permissoes", require("./modules/sistema/routes/permissoesRoutes").
 app.use("/api/admin", adminUsuariosRoutes);
 
 // Registrar rotas essenciais
-app.use("/api/escolas", mediumCache, escolaRoutes);
-app.use("/api/modalidades", longCache, modalidadeRoutes);
+app.use("/api/escolas", escolaRoutes);
+app.use("/api/modalidades", modalidadeRoutes);
 app.use("/api/escola-modalidades", escolaModalidadeRoutes);
-app.use("/api/fornecedores", mediumCache, fornecedorRoutes);
+app.use("/api/fornecedores", fornecedorRoutes);
 app.use("/api/contratos", contratoRoutes);
 app.use("/api/contrato-produtos", contratoProdutoRoutes);
 
@@ -257,7 +256,7 @@ app.use("/api/nutricionistas", nutricionistaRoutes);
 // app.use("/api/demandas", demandaRoutes); // REMOVIDO - rota duplicada, usar demandasRoutes
 app.use("/api/produtos", produtoRoutes);
 app.use("/api/produto-modalidades", produtoModalidadeRoutes);
-app.use("/api/unidades-medida", longCache, unidadeMedidaRoutes);
+app.use("/api/unidades-medida", unidadeMedidaRoutes);
 app.use("/api/estoque-central", estoqueCentralRoutes);
 app.use("/api/estoque-escolar", estoqueEscolarRoutes);
 

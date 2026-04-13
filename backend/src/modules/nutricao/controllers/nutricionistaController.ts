@@ -1,28 +1,34 @@
 // Controller de nutricionistas
 import { Request, Response } from 'express';
 import db from '../../../database';
+import { cacheService } from '../../../utils/cacheService';
 
 export async function listarNutricionistas(req: Request, res: Response) {
   try {
+    const cached = await cacheService.get('nutricionistas:list:all');
+    if (cached) return res.json(cached);
+
     const { ativo } = req.query;
-    
+
     let query = 'SELECT * FROM nutricionistas';
     const params: any[] = [];
-    
+
     if (ativo !== undefined) {
       query += ' WHERE ativo = $1';
       params.push(ativo === 'true');
     }
-    
+
     query += ' ORDER BY nome';
-    
+
     const result = await db.query(query, params);
-    
-    res.json({
+
+    const response = {
       success: true,
       data: result.rows,
       total: result.rows.length
-    });
+    };
+    await cacheService.set('nutricionistas:list:all', response, cacheService.TTL.list);
+    res.json(response);
   } catch (error: any) {
     console.error('❌ Erro ao listar nutricionistas:', error);
     res.status(500).json({
@@ -36,23 +42,28 @@ export async function listarNutricionistas(req: Request, res: Response) {
 export async function buscarNutricionista(req: Request, res: Response) {
   try {
     const { id } = req.params;
-    
+
+    const cached = await cacheService.get(`nutricionistas:${id}`);
+    if (cached) return res.json(cached);
+
     const result = await db.query(
       'SELECT * FROM nutricionistas WHERE id = $1',
       [id]
     );
-    
+
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
         message: 'Nutricionista não encontrado'
       });
     }
-    
-    res.json({
+
+    const response = {
       success: true,
       data: result.rows[0]
-    });
+    };
+    await cacheService.set(`nutricionistas:${id}`, response, cacheService.TTL.single);
+    res.json(response);
   } catch (error: any) {
     console.error('❌ Erro ao buscar nutricionista:', error);
     res.status(500).json({
@@ -97,6 +108,7 @@ export async function criarNutricionista(req: Request, res: Response) {
       message: 'Nutricionista criado com sucesso',
       data: result.rows[0]
     });
+    cacheService.invalidateEntity('nutricionistas');
   } catch (error: any) {
     console.error('❌ Erro ao criar nutricionista:', error);
     
@@ -157,9 +169,10 @@ export async function editarNutricionista(req: Request, res: Response) {
       message: 'Nutricionista atualizado com sucesso',
       data: result.rows[0]
     });
+    cacheService.invalidateEntity('nutricionistas', Number(id));
   } catch (error: any) {
     console.error('❌ Erro ao editar nutricionista:', error);
-    
+
     if (error.code === '23505') {
       return res.status(400).json({
         success: false,
@@ -209,6 +222,7 @@ export async function removerNutricionista(req: Request, res: Response) {
       message: 'Nutricionista removido com sucesso',
       data: result.rows[0]
     });
+    cacheService.invalidateEntity('nutricionistas', Number(id));
   } catch (error: any) {
     console.error('❌ Erro ao remover nutricionista:', error);
     res.status(500).json({
@@ -244,6 +258,7 @@ export async function desativarNutricionista(req: Request, res: Response) {
       message: 'Nutricionista desativado com sucesso',
       data: result.rows[0]
     });
+    cacheService.invalidateEntity('nutricionistas', Number(id));
   } catch (error: any) {
     console.error('❌ Erro ao desativar nutricionista:', error);
     res.status(500).json({

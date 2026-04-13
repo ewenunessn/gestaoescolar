@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import db from "../../../database";
+import { cacheService } from '../../../utils/cacheService';
 import {
   asyncHandler,
   ValidationError,
@@ -12,8 +13,11 @@ import {
 
 export async function listarEscolas(req, res) {
   try {
+    const cached = await cacheService.get('escolas:list:all');
+    if (cached) return res.json(cached);
+
     const result = await db.query(`
-      SELECT 
+      SELECT
         e.id,
         e.nome,
         e.codigo,
@@ -31,18 +35,19 @@ export async function listarEscolas(req, res) {
       FROM escolas e
       LEFT JOIN escola_modalidades em ON e.id = em.escola_id
       LEFT JOIN modalidades m ON em.modalidade_id = m.id
-      GROUP BY e.id, e.nome, e.codigo, e.endereco, e.municipio, e.endereco_maps, 
+      GROUP BY e.id, e.nome, e.codigo, e.endereco, e.municipio, e.endereco_maps,
                e.telefone, e.email, e.nome_gestor, e.administracao, e.ativo, e.created_at
       ORDER BY e.nome
     `);
 
     const escolas = result.rows;
-
-    res.json({
+    const response = {
       success: true,
       data: escolas,
       total: escolas.length
-    });
+    };
+    await cacheService.set('escolas:list:all', response, cacheService.TTL.list);
+    res.json(response);
   } catch (error) {
     console.error("❌ Erro ao listar escolas:", error);
     res.status(500).json({
@@ -57,8 +62,11 @@ export async function buscarEscola(req, res) {
   try {
     const { id } = req.params;
 
+    const cached = await cacheService.get(`escolas:${id}`);
+    if (cached) return res.json(cached);
+
     const result = await db.query(`
-      SELECT 
+      SELECT
         e.id,
         e.nome,
         e.codigo,
@@ -83,10 +91,12 @@ export async function buscarEscola(req, res) {
       });
     }
 
-    res.json({
+    const response = {
       success: true,
       data: result.rows[0]
-    });
+    };
+    await cacheService.set(`escolas:${id}`, response, cacheService.TTL.single);
+    res.json(response);
   } catch (error) {
     console.error("❌ Erro ao buscar escola:", error);
     res.status(500).json({
@@ -126,6 +136,7 @@ export async function criarEscola(req, res) {
       message: "Escola criada com sucesso",
       data: result.rows[0]
     });
+    cacheService.invalidateEntity('escolas');
   } catch (error) {
     console.error("❌ Erro ao criar escola:", error);
     res.status(500).json({
@@ -181,6 +192,7 @@ export async function editarEscola(req, res) {
       message: "Escola atualizada com sucesso",
       data: result.rows[0]
     });
+    cacheService.invalidateEntity('escolas', Number(id));
   } catch (error) {
     console.error("❌ Erro ao editar escola:", error);
     res.status(500).json({
@@ -211,6 +223,7 @@ export async function removerEscola(req, res) {
       message: "Escola removida com sucesso",
       data: result.rows[0]
     });
+    cacheService.invalidateEntity('escolas', Number(id));
   } catch (error) {
     console.error("❌ Erro ao remover escola:", error);
     res.status(500).json({
