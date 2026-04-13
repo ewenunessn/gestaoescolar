@@ -19,7 +19,7 @@ import {
   Grid,
   Checkbox,
 } from "@mui/material";
-import JsBarcode from "jsbarcode";
+import QRCode from "qrcode";
 import {
   School as SchoolIcon,
   LocalShipping as DeliveryIcon,
@@ -221,19 +221,14 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({
         modalidades
       });
 
-      // Gerar código de barras com o código da guia
+      // Gerar QR Code com o código da guia
       const codigoGuia = primeiroItem.codigo_guia || `GUIA-${primeiroItem.ano}-${String(primeiroItem.mes).padStart(2, '0')}-${String(primeiroItem.guia_id).padStart(5, '0')}`;
-      
-      // Criar canvas temporário para gerar o código de barras
-      const canvas = document.createElement('canvas');
-      JsBarcode(canvas, codigoGuia, {
-        format: 'CODE128',
-        width: 2,
-        height: 40,
-        displayValue: false,
-        margin: 4,
+
+      const qrCodeDataUrl = await QRCode.toDataURL(codigoGuia, {
+        width: 120,
+        margin: 1,
+        color: { dark: '#0f172a', light: '#ffffff' },
       });
-      const barcodeDataUrl = canvas.toDataURL('image/png');
 
       console.log('🔖 Código da guia:', codigoGuia);
 
@@ -411,11 +406,11 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({
                   },
                   {
                     stack: [
-                      { image: barcodeDataUrl, width: 100, height: 38, alignment: 'right' },
+                      { image: qrCodeDataUrl, width: 60, height: 60, alignment: 'right' },
                       { text: codigoGuia, fontSize: 6, alignment: 'right', margin: [0, 2, 0, 0], color: '#374151' },
                     ],
                     alignment: 'right',
-                    width: 100
+                    width: 70
                   },
                 ],
                 margin: [40, 0, 40, 0],
@@ -499,17 +494,13 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({
         if (primeiroItem.escola_endereco) enderecoEscola = primeiroItem.escola_endereco;
         if (primeiroItem.escola_total_alunos) totalAlunos = primeiroItem.escola_total_alunos;
 
-        // Gerar código de barras
+        // Gerar QR Code
         const codigoGuia = primeiroItem.codigo_guia || `GUIA-${primeiroItem.ano}-${String(primeiroItem.mes).padStart(2, '0')}-${String(primeiroItem.guia_id).padStart(5, '0')}`;
-        const canvas = document.createElement('canvas');
-        JsBarcode(canvas, codigoGuia, {
-          format: 'CODE128',
-          width: 2,
-          height: 40,
-          displayValue: false,
-          margin: 4,
+        const qrCodeDataUrl = await QRCode.toDataURL(codigoGuia, {
+          width: 120,
+          margin: 1,
+          color: { dark: '#0f172a', light: '#ffffff' },
         });
-        const barcodeDataUrl = canvas.toDataURL('image/png');
 
         // Determinar mês/ano
         const mesAno = (() => {
@@ -701,7 +692,7 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({
         // Guardar dados desta escola
         todasEscolas.push({
           content: allContent,
-          barcodeDataUrl,
+          qrCodeDataUrl,
           codigoGuia,
           numPaginas: totalPaginas,
         });
@@ -766,11 +757,11 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({
                   },
                   {
                     stack: [
-                      { image: escolaAtual.barcodeDataUrl, width: 100, height: 38, alignment: 'right' },
+                      { image: escolaAtual.qrCodeDataUrl, width: 60, height: 60, alignment: 'right' },
                       { text: escolaAtual.codigoGuia, fontSize: 6, alignment: 'right', margin: [0, 2, 0, 0], color: '#374151' },
                     ],
                     alignment: 'right',
-                    width: 100
+                    width: 70
                   },
                 ],
                 margin: [40, 0, 40, 0],
