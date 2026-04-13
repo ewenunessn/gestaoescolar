@@ -415,7 +415,7 @@ export const calcularCusto = async (req: Request, res: Response) => {
         unidade: ing.tipo_medida,
         fator_correcao: fatorCorrecao,
         peso_embalagem: pesoEmbalagem,
-        unidade_distribuicao: ing.unidade,
+        unidade_distribuicao: ing.unidade_distribuicao,
         preco_unitario: ing.preco_unitario,
         custo: round2(custo)
       });
