@@ -23,35 +23,33 @@ interface CalendarioMensalProps {
   onProximoMes?: () => void;
 }
 
-const ABV = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
+const ABV = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
 
 export default function CalendarioMensal({
   ano, mes, eventos, onDiaClick, onEventoClick, readonly,
   onMesAnterior, onProximoMes,
 }: CalendarioMensalProps) {
   const { semanas, hojeStr, evtPorData } = useMemo(() => {
-    /* Gerar o grid: semanas de SEG a SAB */
+    /* Gerar o grid: semanas de DOM a SAB */
     const primeiro = new Date(ano, mes - 1, 1);
     const ultimo = new Date(ano, mes, 0).getDate();
 
-    // Encontrar a segunda-feira da primeira semana
+    // Encontrar o domingo da primeira semana
     let ini = new Date(primeiro);
-    const dow = ini.getDay(); // 0=dom, 1=seg, ... 6=sab
-    ini.setDate(ini.getDate() - (dow === 0 ? 6 : dow - 1));
+    ini.setDate(ini.getDate() - ini.getDay()); // dow: 0=dom, 1=seg, ... 6=sab
 
     const semanasOut: number[][] = [];
     const cur = new Date(ini);
+    const ultimoDia = new Date(ano, mes, 0);
 
-    // Gerar semanas e filtrar só dias do mês atual
-    while (cur <= new Date(ano, mes, 0)) {
+    // Gerar semanas completas (7 dias), mesmo com dias fora do mês
+    while (cur <= ultimoDia) {
       const sem: number[] = [];
-      for (let i = 0; i < 6; i++) {
-        if (cur.getMonth() === mes - 1 && cur.getFullYear() === ano) {
-          sem.push(cur.getDate());
-        }
+      for (let i = 0; i < 7; i++) {
+        sem.push(cur.getMonth() === mes - 1 ? cur.getDate() : 0); // 0 = dia vazio
         cur.setDate(cur.getDate() + 1);
       }
-      if (sem.length > 0) semanasOut.push(sem);
+      semanasOut.push(sem);
     }
 
     const hoje = new Date();
@@ -133,7 +131,7 @@ export default function CalendarioMensal({
       {/* ═══ DIAS DA SEMANA ═══ */}
       <Box sx={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(6, 1fr)',
+        gridTemplateColumns: 'repeat(7, 1fr)',
         bgcolor: 'action.hover',
         borderBottom: '1px solid',
         borderColor: 'divider',
@@ -150,7 +148,7 @@ export default function CalendarioMensal({
               color: 'text.secondary',
               borderRight: '1px solid',
               borderColor: 'divider',
-              '&:nth-of-type(6)': { borderRight: 'none' },
+              '&:last-child': { borderRight: 'none' },
             }}
           >
             {abv}
@@ -164,16 +162,34 @@ export default function CalendarioMensal({
           key={si}
           sx={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(6, 1fr)',
+            gridTemplateColumns: 'repeat(7, 1fr)',
             borderTop: '1px solid',
             borderColor: 'divider',
           }}
         >
           {sem.map((dia, di) => {
-            const dataStr = `${ano}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
-            const isHoje = dataStr === hojeStr;
-            const eDia = evtPorData[dataStr] || [];
+            const isVazio = dia === 0;
+            const dataStr = isVazio ? '' : `${ano}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+            const isHoje = !isVazio && dataStr === hojeStr;
+            const eDia = !isVazio ? (evtPorData[dataStr] || []) : [];
             const temEvento = eDia.length > 0;
+
+            if (isVazio) {
+              return (
+                <Box
+                  key={di}
+                  sx={{
+                    minHeight: 100,
+                    p: 0.75,
+                    borderRight: '1px solid',
+                    borderColor: 'divider',
+                    '&:last-child': { borderRight: 'none' },
+                    bgcolor: 'rgba(0,0,0,0.02)',
+                    cursor: 'default',
+                  }}
+                />
+              );
+            }
 
             return (
               <Box
@@ -192,7 +208,6 @@ export default function CalendarioMensal({
                   position: 'relative',
                 }}
               >
-                {/* Indicador lateral de evento */}
                 {temEvento && (
                   <Box sx={{
                     position: 'absolute',
@@ -203,7 +218,6 @@ export default function CalendarioMensal({
                   }} />
                 )}
 
-                {/* Número do dia */}
                 <Box sx={{ display: 'flex', mb: 0.5 }}>
                   <Typography
                     sx={{
@@ -211,17 +225,15 @@ export default function CalendarioMensal({
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontWeight: isHoje ? 800 : 600,
                       fontSize: '0.72rem',
-                      color: isHoje ? 'primary.main' : 'text.primary',
+                      color: isHoje ? 'primary.contrastText' : 'text.primary',
                       bgcolor: isHoje ? 'primary.main' : 'transparent',
                       borderRadius: '50%',
-                      ...(isHoje && { color: 'primary.contrastText', bgcolor: 'primary.main' }),
                     }}
                   >
                     {dia}
                   </Typography>
                 </Box>
 
-                {/* Eventos */}
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
                   {eDia.slice(0, 3).map(ev => {
                     const nome = ev.titulo.includes(':')

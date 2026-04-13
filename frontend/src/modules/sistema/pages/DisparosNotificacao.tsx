@@ -47,7 +47,7 @@ interface FormDialogProps {
   modalidades: { id: number; nome: string }[];
 }
 
-function FormDialog({ open, onClose, onSaved, escolas, modalidades }: FormDialogProps) {
+function CriarDisparoDialog({ open, onClose, onSaved, escolas, modalidades }: FormDialogProps) {
   const [form, setForm] = useState<CriarDisparoPayload>({
     titulo: '', mensagem: '', link: '', tipo: 'info', alvo: 'todas',
   });
@@ -263,7 +263,7 @@ export default function DisparosNotificacao() {
         )}
       </Box>
 
-      <FormDialog
+      <CriarDisparoDialog
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
         onSaved={carregar}

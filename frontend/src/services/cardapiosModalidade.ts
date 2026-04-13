@@ -49,8 +49,8 @@ export let TIPOS_REFEICAO: Record<string, string> = { ...TIPOS_REFEICAO_PADRAO }
 export const carregarTiposRefeicao = async (): Promise<Record<string, string>> => {
   try {
     const response = await api.get('/tipos-refeicao', { params: { ativo: true } });
-    const tipos = response.data;
-    
+    const tipos = Array.isArray(response.data) ? response.data : (response.data?.data || []);
+
     const mapa: Record<string, string> = {};
     tipos.forEach((tipo: any) => {
       mapa[tipo.chave] = tipo.nome;
@@ -70,7 +70,7 @@ export const carregarTiposRefeicao = async (): Promise<Record<string, string>> =
 export const obterHorarioTipoRefeicao = async (chave: string): Promise<string> => {
   try {
     const response = await api.get('/tipos-refeicao', { params: { ativo: true } });
-    const tipos = response.data;
+    const tipos = Array.isArray(response.data) ? response.data : (response.data?.data || []);
     const tipo = tipos.find((t: any) => t.chave === chave);
     return tipo ? tipo.horario.substring(0, 5) : '';
   } catch (err) {

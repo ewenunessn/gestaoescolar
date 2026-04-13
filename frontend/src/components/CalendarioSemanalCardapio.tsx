@@ -40,7 +40,7 @@ const ICO: Record<string, React.ReactElement> = {
   jantar: <DinnerIcon fontSize="small" />,
 };
 
-const ABV = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
+const ABV = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
 const MES = [
   'Janeiro','Fevereiro','Marco','Abril','Maio','Junho',
   'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro',
@@ -72,20 +72,19 @@ export default function CalendarioSemanalCardapio({
     })();
   }, []);
 
-  // Gerar semanas (SEG-SAB)
+  // Gerar semanas (DOM-SAB)
   const semanas = useMemo(() => {
     const primeiro = new Date(ano, mes - 1, 1);
     const ultimo = new Date(ano, mes, 0);
     const out: Date[][] = [];
 
-    // Encontrar a segunda-feira da primeira semana
+    // Encontrar o domingo da primeira semana
     let ini = new Date(primeiro);
-    const dow = ini.getDay();
-    ini.setDate(ini.getDate() - (dow === 0 ? 6 : dow - 1));
+    ini.setDate(ini.getDate() - ini.getDay());
 
     while (ini <= ultimo) {
       const s: Date[] = [];
-      for (let i = 0; i < 6; i++) {
+      for (let i = 0; i < 7; i++) {
         const d = new Date(ini);
         d.setDate(d.getDate() + i);
         s.push(d);
@@ -248,7 +247,7 @@ export default function CalendarioSemanalCardapio({
                 return (
                   <th key={i} style={{ padding: '10px 6px', textAlign: 'center', verticalAlign: 'bottom' }}>
                     <Typography sx={{ fontWeight: 700, fontSize: '0.58rem', color: 'text.secondary', letterSpacing: '.08em', display: 'block' }}>
-                      {ABV[d.getDay() === 0 ? 6 : d.getDay() - 1]}
+                      {ABV[d.getDay()]}
                     </Typography>
                     <Typography sx={{ fontWeight: h ? 800 : 600, fontSize: h ? '1.05rem' : '0.92rem', color: h ? 'primary.main' : 'text.primary' }}>
                       {d.getDate()}
