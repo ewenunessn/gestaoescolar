@@ -224,11 +224,19 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({
       // Gerar QR Code com o código da guia
       const codigoGuia = primeiroItem.codigo_guia || `GUIA-${primeiroItem.ano}-${String(primeiroItem.mes).padStart(2, '0')}-${String(primeiroItem.guia_id).padStart(5, '0')}`;
 
-      const qrCodeDataUrl = await QRCode.toDataURL(codigoGuia, {
-        width: 120,
-        margin: 1,
-        color: { dark: '#0f172a', light: '#ffffff' },
-      });
+      let qrCodeDataUrl = '';
+      try {
+        qrCodeDataUrl = await QRCode.toDataURL(codigoGuia, {
+          width: 120,
+          margin: 1,
+          color: { dark: '#0f172a', light: '#ffffff' },
+        });
+        console.log('✅ QR Code gerado com sucesso, tamanho:', qrCodeDataUrl.length);
+      } catch (err) {
+        console.error('❌ Erro ao gerar QR Code:', err);
+        // Fallback: criar um data URL de imagem 1x1 transparente
+        qrCodeDataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+      }
 
       console.log('🔖 Código da guia:', codigoGuia);
 
