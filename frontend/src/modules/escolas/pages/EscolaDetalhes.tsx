@@ -13,9 +13,19 @@ import {
     Paper, Grid, Stack, CardContent, Menu
 } from "@mui/material";
 
-// ── Design tokens ──────────────────────────────────────────────
-const GREEN = "#22c55e";
-const NAVY = "#0f172a";
+// ── Design tokens (GitHub Dark Mode) ──────────────────────────────────────────────
+const GREEN = "#2ea043";
+const NAVY = "#0d1117";
+const GH_COLORS = {
+  bg: '#0d1117',
+  canvas: '#161b22',
+  border: '#21262d',
+  borderMd: '#30363d',
+  text: '#e6edf3',
+  muted: '#8b949e',
+  greenDim: 'rgba(35,134,54,0.15)',
+  purpleDim: 'rgba(188,140,255,0.15)',
+};
 import {
     Edit as EditIcon,
     Save as SaveIcon,
@@ -106,106 +116,132 @@ const EscolaInfoCard = ({ isEditing, formData, setFormData, associacoes, totalAl
     <Grid container spacing={2} sx={{ mb: 2 }}>
         {/* Card de Informações da Escola */}
         <Grid item xs={12} md={6}>
-            <Card sx={{ p: 1.5, borderRadius: '6px', height: '100%', borderColor: '#e5e7eb', borderWidth: 1, borderStyle: 'solid' }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <Box sx={{ width: 16, height: 3, borderRadius: 2, bgcolor: GREEN }} />
-                        <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: GREEN }}>
-                            Informações da Escola
-                        </Typography>
-                    </Box>
-                    {isEditing && (
-                        <Box sx={{ display: 'flex', gap: 1 }}>
-                            <Button onClick={onCancel} variant="outlined" disabled={salvando} size="small" sx={{ minHeight: 28, fontSize: '0.75rem' }}>Cancelar</Button>
-                            <Button onClick={onSave} variant="contained" disabled={salvando} size="small" sx={{ minHeight: 28, fontSize: '0.75rem', bgcolor: GREEN, '&:hover': { bgcolor: '#16a34a' }, borderRadius: '4px', textTransform: 'none' }}>
-                                {salvando ? 'Salvando...' : 'Salvar'}
-                            </Button>
+            <Card sx={{
+                height: '100%',
+                borderRadius: '6px',
+                border: `1px solid ${GH_COLORS.border}`,
+                bgcolor: GH_COLORS.canvas,
+                transition: 'all 0.2s',
+                overflow: 'visible',
+                '&:hover': { boxShadow: '0 1px 3px rgba(0,0,0,0.3)', borderColor: GH_COLORS.borderMd },
+            }}>
+                <CardContent sx={{ p: 3 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                            <Box sx={{ width: 36, height: 36, borderRadius: '4px', bgcolor: GH_COLORS.greenDim, display: 'flex', alignItems: 'center', justifyContent: 'center', color: GREEN }}>
+                                <SchoolIcon sx={{ fontSize: 20 }} />
+                            </Box>
+                            <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: GREEN }}>
+                                Informações da Escola
+                            </Typography>
                         </Box>
+                        {isEditing && (
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                                <Button onClick={onCancel} variant="outlined" disabled={salvando} size="small" sx={{ minHeight: 28, fontSize: '0.75rem' }}>Cancelar</Button>
+                                <Button onClick={onSave} variant="contained" disabled={salvando} size="small" sx={{ minHeight: 28, fontSize: '0.75rem', bgcolor: GREEN, '&:hover': { bgcolor: '#238636' }, borderRadius: '4px', textTransform: 'none' }}>
+                                    {salvando ? 'Salvando...' : 'Salvar'}
+                                </Button>
+                            </Box>
+                        )}
+                    </Box>
+                    {isEditing ? (
+                        <>
+                            <TextField label="Nome da Escola" value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} fullWidth size="small" sx={{ mb: 1 }} required />
+                            <TextField label="Código INEP" value={formData.codigo} onChange={(e) => setFormData({ ...formData, codigo: e.target.value })} fullWidth size="small" sx={{ mb: 1 }} helperText="Código do INEP - também usado para acesso ao sistema" />
+                            <TextField label="Endereço" value={formData.endereco} onChange={(e) => setFormData({ ...formData, endereco: e.target.value })} fullWidth size="small" sx={{ mb: 1 }} multiline rows={2} />
+                            <TextField label="Município" value={formData.municipio} onChange={(e) => setFormData({ ...formData, municipio: e.target.value })} fullWidth size="small" sx={{ mb: 1 }} />
+                            <TextField label="Telefone" value={formData.telefone} onChange={(e) => setFormData({ ...formData, telefone: e.target.value })} fullWidth size="small" sx={{ mb: 1 }} />
+                            <TextField label="E-mail" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} type="email" fullWidth size="small" sx={{ mb: 1 }} />
+                            <TextField label="Nome do(a) Gestor(a)" value={formData.nome_gestor} onChange={(e) => setFormData({ ...formData, nome_gestor: e.target.value })} fullWidth size="small" sx={{ mb: 1 }} />
+                            <FormControl fullWidth size="small" sx={{ mb: 1 }}>
+                                <InputLabel>Administração</InputLabel>
+                                <Select value={formData.administracao} onChange={(e) => setFormData({ ...formData, administracao: e.target.value as any })} label="Administração">
+                                    <MenuItem value=""><em>Nenhuma</em></MenuItem><MenuItem value="municipal">Municipal</MenuItem><MenuItem value="estadual">Estadual</MenuItem><MenuItem value="federal">Federal</MenuItem><MenuItem value="particular">Particular</MenuItem>
+                                </Select>
+                            </FormControl>
+                            <FormControlLabel control={<Switch checked={formData.ativo} onChange={(e) => setFormData({ ...formData, ativo: e.target.checked })} size="small" />} label={<Typography variant="body2">Escola Ativa</Typography>} sx={{ mt: 0.5 }} />
+                        </>
+                    ) : (
+                        <>
+                            <InfoItem icon={<SchoolIcon fontSize="small" color="action" />} label="Código INEP" value={formData.codigo} />
+                            <InfoItem icon={<LocationOnIcon fontSize="small" color="action" />} label="Endereço" value={formData.endereco} />
+                            <InfoItem icon={<LocationOnIcon fontSize="small" color="action" />} label="Município" value={formData.municipio} />
+                            <InfoItem icon={<PhoneIcon fontSize="small" color="action" />} label="Telefone" value={formData.telefone} />
+                            <InfoItem icon={<EmailIcon fontSize="small" color="action" />} label="E-mail" value={formData.email} />
+                            <InfoItem icon={<PersonIcon fontSize="small" color="action" />} label="Gestor(a)" value={formData.nome_gestor} />
+                            <InfoItem icon={<SchoolIcon fontSize="small" color="action" />} label="Administração" value={formData.administracao} />
+                        </>
                     )}
-                </Box>
-                {isEditing ? (
-                    <>
-                        <TextField label="Nome da Escola" value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} fullWidth size="small" sx={{ mb: 1 }} required />
-                        <TextField label="Código INEP" value={formData.codigo} onChange={(e) => setFormData({ ...formData, codigo: e.target.value })} fullWidth size="small" sx={{ mb: 1 }} helperText="Código do INEP - também usado para acesso ao sistema" />
-                        <TextField label="Endereço" value={formData.endereco} onChange={(e) => setFormData({ ...formData, endereco: e.target.value })} fullWidth size="small" sx={{ mb: 1 }} multiline rows={2} />
-                        <TextField label="Município" value={formData.municipio} onChange={(e) => setFormData({ ...formData, municipio: e.target.value })} fullWidth size="small" sx={{ mb: 1 }} />
-                        <TextField label="Telefone" value={formData.telefone} onChange={(e) => setFormData({ ...formData, telefone: e.target.value })} fullWidth size="small" sx={{ mb: 1 }} />
-                        <TextField label="E-mail" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} type="email" fullWidth size="small" sx={{ mb: 1 }} />
-                        <TextField label="Nome do(a) Gestor(a)" value={formData.nome_gestor} onChange={(e) => setFormData({ ...formData, nome_gestor: e.target.value })} fullWidth size="small" sx={{ mb: 1 }} />
-                        <FormControl fullWidth size="small" sx={{ mb: 1 }}>
-                            <InputLabel>Administração</InputLabel>
-                            <Select value={formData.administracao} onChange={(e) => setFormData({ ...formData, administracao: e.target.value as any })} label="Administração">
-                                <MenuItem value=""><em>Nenhuma</em></MenuItem><MenuItem value="municipal">Municipal</MenuItem><MenuItem value="estadual">Estadual</MenuItem><MenuItem value="federal">Federal</MenuItem><MenuItem value="particular">Particular</MenuItem>
-                            </Select>
-                        </FormControl>
-                        <FormControlLabel control={<Switch checked={formData.ativo} onChange={(e) => setFormData({ ...formData, ativo: e.target.checked })} size="small" />} label={<Typography variant="body2">Escola Ativa</Typography>} sx={{ mt: 0.5 }} />
-                    </>
-                ) : (
-                    <>
-                        <InfoItem icon={<SchoolIcon fontSize="small" color="action" />} label="Código INEP" value={formData.codigo} />
-                        <InfoItem icon={<LocationOnIcon fontSize="small" color="action" />} label="Endereço" value={formData.endereco} />
-                        <InfoItem icon={<LocationOnIcon fontSize="small" color="action" />} label="Município" value={formData.municipio} />
-                        <InfoItem icon={<PhoneIcon fontSize="small" color="action" />} label="Telefone" value={formData.telefone} />
-                        <InfoItem icon={<EmailIcon fontSize="small" color="action" />} label="E-mail" value={formData.email} />
-                        <InfoItem icon={<PersonIcon fontSize="small" color="action" />} label="Gestor(a)" value={formData.nome_gestor} />
-                        <InfoItem icon={<SchoolIcon fontSize="small" color="action" />} label="Administração" value={formData.administracao} />
-                    </>
-                )}
+                </CardContent>
             </Card>
         </Grid>
 
         {/* Card de Modalidades */}
         <Grid item xs={12} md={6}>
-            <Card sx={{ p: 1.5, borderRadius: '6px', height: '100%', borderColor: '#e5e7eb', borderWidth: 1, borderStyle: 'solid' }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <Box sx={{ width: 16, height: 3, borderRadius: 2, bgcolor: '#a855f7' }} />
-                        <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: '#a855f7' }}>
-                            Modalidades
-                        </Typography>
-                    </Box>
-                    <Button variant="contained" startIcon={<AddIcon fontSize="small" />} onClick={() => openModalidadeModal()} size="small" sx={{ minHeight: 28, fontSize: '0.75rem', borderRadius: '4px', textTransform: 'none', bgcolor: GREEN, '&:hover': { bgcolor: '#16a34a' } }}>
-                        Adicionar
-                    </Button>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
-                    <PeopleIcon fontSize="small" color="action" />
-                    <Box>
-                        <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.7rem', lineHeight: 1.2 }}>Total de Alunos</Typography>
-                        <Typography variant="body2" fontWeight={500} sx={{ fontSize: '0.8125rem' }}>{totalAlunos}</Typography>
-                    </Box>
-                </Box>
-                {associacoes.length === 0 ? (
-                    <Box sx={{ textAlign: 'center', py: 1.5 }}>
-                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8125rem' }}>Nenhuma modalidade</Typography>
-                    </Box>
-                ) : (
-                    <Box sx={{ maxHeight: 180, overflowY: 'auto' }}>
-                        {associacoes.map((assoc) => (
-                            <Box key={assoc.id} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 0.75, borderBottom: '1px solid', borderColor: 'divider' }}>
-                                <Box sx={{ flex: 1 }}>
-                                    <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.8125rem' }}>{assoc.modalidade_nome}</Typography>
-                                    <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.7rem' }}>
-                                        Atualizado: {formatDate(assoc.updated_at)}
-                                    </Typography>
-                                </Box>
-                                <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
-                                    <Chip label={`${assoc.quantidade_alunos} alunos`} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
-                                    <Tooltip title="Editar">
-                                        <IconButton size="small" onClick={() => openModalidadeModal(assoc)} sx={{ p: 0.5 }}>
-                                            <EditIcon sx={{ fontSize: 16 }} />
-                                        </IconButton>
-                                    </Tooltip>
-                                    <Tooltip title="Remover">
-                                        <IconButton size="small" onClick={() => handleDeleteModalidade(assoc.id)} color="delete" sx={{ p: 0.5 }}>
-                                            <DeleteIcon sx={{ fontSize: 16 }} />
-                                        </IconButton>
-                                    </Tooltip>
-                                </Box>
+            <Card sx={{
+                height: '100%',
+                borderRadius: '6px',
+                border: `1px solid ${GH_COLORS.border}`,
+                bgcolor: GH_COLORS.canvas,
+                transition: 'all 0.2s',
+                overflow: 'visible',
+                '&:hover': { boxShadow: '0 1px 3px rgba(0,0,0,0.3)', borderColor: GH_COLORS.borderMd },
+            }}>
+                <CardContent sx={{ p: 3 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                            <Box sx={{ width: 36, height: 36, borderRadius: '4px', bgcolor: GH_COLORS.purpleDim, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#bc8cff' }}>
+                                <CategoryIcon sx={{ fontSize: 20 }} />
                             </Box>
-                        ))}
+                            <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: '#bc8cff' }}>
+                                Modalidades
+                            </Typography>
+                        </Box>
+                        <Button variant="contained" startIcon={<AddIcon fontSize="small" />} onClick={() => openModalidadeModal()} size="small" sx={{ minHeight: 28, fontSize: '0.75rem', borderRadius: '4px', textTransform: 'none', bgcolor: GREEN, '&:hover': { bgcolor: '#238636' } }}>
+                            Adicionar
+                        </Button>
                     </Box>
-                )}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+                        <Box sx={{ width: 36, height: 36, borderRadius: '4px', bgcolor: GH_COLORS.greenDim, display: 'flex', alignItems: 'center', justifyContent: 'center', color: GREEN }}>
+                            <PeopleIcon sx={{ fontSize: 20 }} />
+                        </Box>
+                        <Box sx={{ ml: 1.5 }}>
+                            <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', lineHeight: 1.2 }}>Total de Alunos</Typography>
+                            <Typography variant="body2" fontWeight={600} sx={{ fontSize: '1.55rem', fontFamily: '"Fira Code", "Roboto Mono", monospace', lineHeight: 1.15, color: GREEN }}>{totalAlunos}</Typography>
+                        </Box>
+                    </Box>
+                    {associacoes.length === 0 ? (
+                        <Box sx={{ textAlign: 'center', py: 1.5 }}>
+                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8125rem' }}>Nenhuma modalidade</Typography>
+                        </Box>
+                    ) : (
+                        <Box sx={{ maxHeight: 180, overflowY: 'auto' }}>
+                            {associacoes.map((assoc) => (
+                                <Box key={assoc.id} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 0.75, borderBottom: '1px solid', borderColor: 'divider' }}>
+                                    <Box sx={{ flex: 1 }}>
+                                        <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.8125rem' }}>{assoc.modalidade_nome}</Typography>
+                                        <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.7rem' }}>
+                                            Atualizado: {formatDate(assoc.updated_at)}
+                                        </Typography>
+                                    </Box>
+                                    <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                                        <Chip label={`${assoc.quantidade_alunos} alunos`} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
+                                        <Tooltip title="Editar">
+                                            <IconButton size="small" onClick={() => openModalidadeModal(assoc)} sx={{ p: 0.5 }}>
+                                                <EditIcon sx={{ fontSize: 16 }} />
+                                            </IconButton>
+                                        </Tooltip>
+                                        <Tooltip title="Remover">
+                                            <IconButton size="small" onClick={() => handleDeleteModalidade(assoc.id)} color="delete" sx={{ p: 0.5 }}>
+                                                <DeleteIcon sx={{ fontSize: 16 }} />
+                                            </IconButton>
+                                        </Tooltip>
+                                    </Box>
+                                </Box>
+                            ))}
+                        </Box>
+                    )}
+                </CardContent>
             </Card>
         </Grid>
     </Grid>
