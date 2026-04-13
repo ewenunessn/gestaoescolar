@@ -27,7 +27,6 @@ import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
 import { toNum, formatarQuantidade } from "../../../utils/formatters";
 import { LoadingOverlay } from "../../../components/LoadingOverlay";
 import UnidadeMedidaSelect from "../../../components/UnidadeMedidaSelect";
-import { useUnidadesMedida } from "../../../hooks/queries/useUnidadesMedidaQueries";
 
 // --- Constantes ---
 
@@ -353,8 +352,9 @@ export default function ProdutoDetalhe() {
         ativo: prod.ativo !== undefined ? prod.ativo : true,
         estoque_minimo: prod.estoque_minimo || 0,
         fator_correcao: prod.fator_correcao || 1.0,
+        tipo_fator_correcao: prod.tipo_fator_correcao || 'perda',
         indice_coccao: prod.indice_coccao || 1.0,
-        unidade_distribuicao: prod.unidade_distribuicao || '',
+        unidade_medida_id: prod.unidade_medida_id || null,
         peso: prod.peso || '',
       });
       try {
@@ -391,8 +391,8 @@ export default function ProdutoDetalhe() {
         ativo: form.ativo !== undefined ? form.ativo : true,
         estoque_minimo: form.estoque_minimo ? Number(form.estoque_minimo) : 0,
         fator_correcao: form.fator_correcao ? Number(form.fator_correcao) : 1.0,
+        tipo_fator_correcao: form.tipo_fator_correcao || 'perda',
         indice_coccao: form.indice_coccao ? Number(form.indice_coccao) : 1.0,
-        unidade_distribuicao: form.unidade_distribuicao || '',
         unidade_medida_id: form.unidade_medida_id || null,
         peso: form.peso ? Number(form.peso) : null,
       };
@@ -423,8 +423,9 @@ export default function ProdutoDetalhe() {
       ativo: produto.ativo !== undefined ? produto.ativo : true,
       estoque_minimo: produto.estoque_minimo || 0,
       fator_correcao: produto.fator_correcao || 1.0,
+      tipo_fator_correcao: produto.tipo_fator_correcao || 'perda',
       indice_coccao: produto.indice_coccao || 1.0,
-      unidade_distribuicao: produto.unidade_distribuicao || '',
+      unidade_medida_id: produto.unidade_medida_id || null,
       peso: produto.peso || '',
     });
   }, [produto]);
@@ -442,8 +443,9 @@ export default function ProdutoDetalhe() {
       ativo: produto.ativo !== undefined ? produto.ativo : true,
       estoque_minimo: produto.estoque_minimo || 0,
       fator_correcao: produto.fator_correcao || 1.0,
+      tipo_fator_correcao: produto.tipo_fator_correcao || 'perda',
       indice_coccao: produto.indice_coccao || 1.0,
-      unidade_distribuicao: produto.unidade_distribuicao || '',
+      unidade_medida_id: produto.unidade_medida_id || null,
       peso: produto.peso || '',
     });
   }, [produto]);
@@ -480,6 +482,7 @@ export default function ProdutoDetalhe() {
           descricao: produto.descricao,
           categoria: alimento.categoria,
           tipo_processamento: produto.tipo_processamento,
+          tipo_fator_correcao: produto.tipo_fator_correcao,
           validade_minima: produto.validade_minima,
           imagem_url: produto.imagem_url,
           perecivel: produto.perecivel,
@@ -487,7 +490,7 @@ export default function ProdutoDetalhe() {
           estoque_minimo: produto.estoque_minimo,
           fator_correcao: produto.fator_correcao,
           indice_coccao: produto.indice_coccao,
-          unidade_distribuicao: produto.unidade_distribuicao,
+          unidade_medida_id: produto.unidade_medida_id,
           peso: produto.peso,
         };
         
@@ -577,11 +580,11 @@ export default function ProdutoDetalhe() {
                   ) : <ValueText>{produto.nome}</ValueText>}
                 </Field>
 
-                {/* Unidade de Distribuição */}
-                <Field label="Unidade de Distribuição">
+                {/* Unidade de Medida */}
+                <Field label="Unidade de Medida">
                   {isEditing ? (
-                    <UnidadeMedidaSelect value={form.unidade_medida_id || produto.unidade_medida_id} onChange={uid => setForm({ ...form, unidade_medida_id: uid })} size="small" label="" />
-                  ) : <ValueText>{produto.unidade_distribuicao || 'Não informado'}</ValueText>}
+                    <UnidadeMedidaSelect value={form.unidade_medida_id || null} onChange={uid => setForm({ ...form, unidade_medida_id: uid })} size="small" label="Selecione a unidade" />
+                  ) : <ValueText>{produto.unidade || '-'}</ValueText>}
                 </Field>
 
                 {/* Categoria */}

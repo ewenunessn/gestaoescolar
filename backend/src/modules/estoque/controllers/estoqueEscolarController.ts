@@ -40,7 +40,7 @@ export async function listarEstoqueEscola(req: Request, res: Response) {
     console.log(`[DEBUG] Buscando estoque para escola ID: ${escolaId}`);
 
     const result = await db.query(`
-      SELECT 
+      SELECT
         p.id as produto_id,
         p.nome as produto_nome,
         p.categoria,
@@ -49,9 +49,10 @@ export async function listarEstoqueEscola(req: Request, res: Response) {
         COALESCE(ee.quantidade_maxima, 0) as quantidade_maxima,
         ee.data_ultima_atualizacao,
         ee.observacoes,
-        COALESCE(p.unidade_distribuicao, 'UN') as unidade
+        COALESCE(um.codigo, 'UN') as unidade
       FROM produtos p
-      LEFT JOIN estoque_escolas ee 
+      LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
+      LEFT JOIN estoque_escolas ee
         ON ee.produto_id = p.id AND ee.escola_id = $1
       WHERE p.ativo = true
       ORDER BY p.nome
@@ -113,7 +114,7 @@ export async function debugEstoqueEscola(req: Request, res: Response) {
 
     // 5. Testar a query do controller
     const controllerResult = await db.query(`
-      SELECT 
+      SELECT
         p.id as produto_id,
         p.nome as produto_nome,
         p.categoria,
@@ -122,9 +123,10 @@ export async function debugEstoqueEscola(req: Request, res: Response) {
         COALESCE(ee.quantidade_maxima, 0) as quantidade_maxima,
         ee.data_ultima_atualizacao,
         ee.observacoes,
-        COALESCE(p.unidade_distribuicao, 'UN') as unidade
+        COALESCE(um.codigo, 'UN') as unidade
       FROM produtos p
-      LEFT JOIN estoque_escolas ee 
+      LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
+      LEFT JOIN estoque_escolas ee
         ON ee.produto_id = p.id AND ee.escola_id = $1
       WHERE p.nome ILIKE '%banana%' AND p.ativo = true
       ORDER BY p.nome

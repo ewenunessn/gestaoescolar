@@ -113,7 +113,7 @@ export async function gerarDemandaMensal(req: Request, res: Response) {
       SELECT
         p.id as produto_id,
         p.nome as produto_nome,
-        p.unidade_distribuicao as unidade_medida,
+        COALESCE(um.codigo, 'UN') as unidade,
         p.peso as peso_embalagem,
         p.preco_referencia,
         COALESCE(
@@ -147,6 +147,7 @@ export async function gerarDemandaMensal(req: Request, res: Response) {
       INNER JOIN refeicoes r ON cr.refeicao_id = r.id AND r.ativo = true
       INNER JOIN refeicao_produtos rp ON rp.refeicao_id = r.id
       INNER JOIN produtos p ON rp.produto_id = p.id AND p.ativo = true
+      LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
       WHERE e.ativo = true
         ${escolaFilter}
         ${modalidadeFilter}
@@ -163,7 +164,7 @@ export async function gerarDemandaMensal(req: Request, res: Response) {
       const {
         produto_id,
         produto_nome,
-        unidade_medida,
+        unidade_medida: unidade,
         peso_embalagem,
         preco_referencia,
         preco_unitario,
@@ -191,7 +192,7 @@ export async function gerarDemandaMensal(req: Request, res: Response) {
         demandaMap.set(produto_id, {
           produto_id,
           produto_nome,
-          unidade_medida,
+          unidade_medida: unidade,
           peso_embalagem: peso_embalagem ? Number(peso_embalagem) : undefined,
           quantidade_total: 0,
           valor_total: 0,
@@ -296,19 +297,19 @@ export async function gerarDemandaMultiplosCardapios(req: Request, res: Response
 
     // Query para calcular demanda com múltiplos cardápios
     const query = `
-      SELECT 
+      SELECT
         p.id as produto_id,
         p.nome as produto_nome,
-        p.unidade_distribuicao as unidade_medida,
+        COALESCE(um.codigo, 'UN') as unidade,
         p.preco_referencia,
         COALESCE(
-          (SELECT MAX(cp2.preco_unitario) 
-           FROM contrato_produtos cp2 
-           INNER JOIN contratos ct2 ON cp2.contrato_id = ct2.id 
-           WHERE cp2.produto_id = p.id 
-           AND ct2.ativo = true 
+          (SELECT MAX(cp2.preco_unitario)
+           FROM contrato_produtos cp2
+           INNER JOIN contratos ct2 ON cp2.contrato_id = ct2.id
+           WHERE cp2.produto_id = p.id
+           AND ct2.ativo = true
            AND CURRENT_DATE BETWEEN ct2.data_inicio AND ct2.data_fim),
-          p.preco_referencia, 
+          p.preco_referencia,
           0
         ) as preco_unitario,
         p.fator_divisao,
@@ -332,6 +333,7 @@ export async function gerarDemandaMultiplosCardapios(req: Request, res: Response
       INNER JOIN refeicoes r ON cr.refeicao_id = r.id AND r.ativo = true
       INNER JOIN refeicao_produtos rp ON rp.refeicao_id = r.id
       INNER JOIN produtos p ON rp.produto_id = p.id AND p.ativo = true
+      LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
       WHERE e.ativo = true
         ${escolaFilter}
         ${modalidadeFilter}
@@ -349,7 +351,7 @@ export async function gerarDemandaMultiplosCardapios(req: Request, res: Response
       const {
         produto_id,
         produto_nome,
-        unidade_medida,
+        unidade_medida: unidade,
         preco_referencia,
         preco_unitario,
         fator_divisao,
@@ -376,7 +378,7 @@ export async function gerarDemandaMultiplosCardapios(req: Request, res: Response
         demandaMap.set(produto_id, {
           produto_id,
           produto_nome,
-          unidade_medida,
+          unidade_medida: unidade,
           quantidade_total: 0,
           valor_total: 0,
           detalhes: []
@@ -601,19 +603,19 @@ export async function exportarDemandaExcel(req: Request, res: Response) {
 
     // Query para buscar dados detalhados para Excel
     const query = `
-      SELECT 
+      SELECT
         p.id as produto_id,
         p.nome as produto_nome,
-        p.unidade_distribuicao as unidade_medida,
+        COALESCE(um.codigo, 'UN') as unidade,
         p.preco_referencia,
         COALESCE(
-          (SELECT MAX(cp2.preco_unitario) 
-           FROM contrato_produtos cp2 
-           INNER JOIN contratos ct2 ON cp2.contrato_id = ct2.id 
-           WHERE cp2.produto_id = p.id 
-           AND ct2.ativo = true 
+          (SELECT MAX(cp2.preco_unitario)
+           FROM contrato_produtos cp2
+           INNER JOIN contratos ct2 ON cp2.contrato_id = ct2.id
+           WHERE cp2.produto_id = p.id
+           AND ct2.ativo = true
            AND CURRENT_DATE BETWEEN ct2.data_inicio AND ct2.data_fim),
-          p.preco_referencia, 
+          p.preco_referencia,
           0
         ) as preco_unitario,
         p.fator_divisao,
@@ -637,6 +639,7 @@ export async function exportarDemandaExcel(req: Request, res: Response) {
       INNER JOIN refeicoes r ON cr.refeicao_id = r.id AND r.ativo = true
       INNER JOIN refeicao_produtos rp ON rp.refeicao_id = r.id
       INNER JOIN produtos p ON rp.produto_id = p.id AND p.ativo = true
+      LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
       WHERE e.ativo = true
         ${escolaFilter}
         ${modalidadeFilter}
@@ -663,7 +666,7 @@ export async function exportarDemandaExcel(req: Request, res: Response) {
       const {
         produto_id,
         produto_nome,
-        unidade_medida,
+        unidade_medida: unidade,
         preco_unitario,
         fator_divisao,
         escola_nome,
@@ -704,7 +707,7 @@ export async function exportarDemandaExcel(req: Request, res: Response) {
       if (!demandaMap.has(produto_id)) {
         demandaMap.set(produto_id, {
           produto_nome,
-          unidade_medida,
+          unidade_medida: unidade,
           quantidade_total: 0,
           preco_unitario: toSafeNumber(preco_unitario),
           valor_total: 0
@@ -721,7 +724,7 @@ export async function exportarDemandaExcel(req: Request, res: Response) {
         escolaProdutoMap.set(chave, {
           escola_nome,
           produto_nome,
-          unidade_medida,
+          unidade_medida: unidade,
           quantidade: 0
         });
       }

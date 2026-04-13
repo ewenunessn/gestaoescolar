@@ -47,19 +47,20 @@ export class PedidoItemModel {
   async buscarPorPedido(pedidoId: number): Promise<any[]> {
     // Query sempre busca unidade do produto
     const query = `
-      SELECT 
+      SELECT
         pi.*,
         p.nome as produto_nome,
-        COALESCE(p.unidade_distribuicao, 'UN') as unidade,
+        COALESCE(um.codigo, 'UN') as unidade,
         cp.quantidade_contratada,
         cp.preco_unitario as preco_contrato
       FROM pedido_itens pi
       JOIN produtos p ON pi.produto_id = p.id
+      LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
       JOIN contrato_produtos cp ON pi.contrato_produto_id = cp.id
       WHERE pi.pedido_id = $1
       ORDER BY p.nome
     `;
-    
+
     const result = await this.pool.query(query, [pedidoId]);
     return result.rows;
   }

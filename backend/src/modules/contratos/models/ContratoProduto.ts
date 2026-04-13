@@ -41,13 +41,14 @@ export class ContratoProdutoModel {
 
   async buscarPorContrato(contratoId: number): Promise<ContratoProduto[]> {
     const query = `
-      SELECT cp.*, p.nome as produto_nome, p.unidade_distribuicao as unidade_medida
+      SELECT cp.*, p.nome as produto_nome, COALESCE(um.codigo, 'UN') as unidade_medida
       FROM contrato_produtos cp
       JOIN produtos p ON cp.produto_id = p.id
+      LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
       WHERE cp.contrato_id = $1 AND cp.ativo = true
       ORDER BY p.nome
     `;
-    
+
     const result = await this.pool.query(query, [contratoId]);
     return result.rows;
   }

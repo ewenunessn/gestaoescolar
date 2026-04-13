@@ -157,9 +157,11 @@ export const listarProdutos = asyncHandler(async (req: Request, res: Response) =
       p.updated_at,
       p.estoque_minimo,
       p.fator_correcao::text as fator_correcao,
+      p.tipo_fator_correcao,
       p.indice_coccao::text as indice_coccao,
-      p.unidade_distribuicao,
-      COALESCE(um.codigo, p.unidade_distribuicao, 'UN') as unidade,
+      p.unidade_medida_id,
+      COALESCE(um.codigo, 'UN') as unidade,
+      COALESCE(um.nome, 'Unidade') as unidade_nome,
       p.peso::text as peso,
       CASE
         WHEN EXISTS (
@@ -200,9 +202,15 @@ export const buscarProduto = asyncHandler(async (req: Request, res: Response) =>
       p.validade_minima, p.imagem_url, p.perecivel, p.ativo,
       p.created_at, p.updated_at, p.estoque_minimo,
       p.fator_correcao::text as fator_correcao,
+      p.tipo_fator_correcao,
       p.indice_coccao::text as indice_coccao,
-      p.unidade_distribuicao, p.peso::text as peso
-    FROM produtos p WHERE p.id = $1
+      p.unidade_medida_id,
+      COALESCE(um.codigo, 'UN') as unidade,
+      COALESCE(um.nome, 'Unidade') as unidade_nome,
+      p.peso::text as peso
+    FROM produtos p
+    LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
+    WHERE p.id = $1
   `, [id]);
 
   if (result.rows.length === 0) {
@@ -215,9 +223,9 @@ export const buscarProduto = asyncHandler(async (req: Request, res: Response) =>
 });
 
 export const criarProduto = asyncHandler(async (req: Request, res: Response) => {
-  const { 
-    nome, 
-    descricao, 
+  const {
+    nome,
+    descricao,
     tipo_processamento,
     categoria,
     validade_minima,
@@ -226,8 +234,9 @@ export const criarProduto = asyncHandler(async (req: Request, res: Response) => 
     ativo = true,
     estoque_minimo = 0,
     fator_correcao = 1.0,
+    tipo_fator_correcao = 'perda',
     indice_coccao = 1.0,
-    unidade_distribuicao,
+    unidade_medida_id,
     peso
   } = req.body;
 
@@ -259,16 +268,16 @@ export const criarProduto = asyncHandler(async (req: Request, res: Response) => 
   try {
     const result = await db.query(`
       INSERT INTO produtos (
-        nome, descricao, tipo_processamento, categoria, validade_minima, 
-        imagem_url, perecivel, ativo, estoque_minimo, fator_correcao, 
-        indice_coccao, unidade_distribuicao, peso, created_at, updated_at
+        nome, descricao, tipo_processamento, categoria, validade_minima,
+        imagem_url, perecivel, ativo, estoque_minimo, fator_correcao,
+        tipo_fator_correcao, indice_coccao, unidade_medida_id, peso, created_at, updated_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       RETURNING *
     `, [
       nome.trim(), descricao, tipo_processamento, categoria, validade_minima,
       imagem_url, perecivel, ativo, estoque_minimo, fatorCorrecaoNormalizado,
-      indiceCoccaoNormalizado, unidade_distribuicao, pesoNormalizado
+      tipo_fator_correcao, indiceCoccaoNormalizado, unidade_medida_id, pesoNormalizado
     ]);
 
     res.status(201).json({
@@ -285,9 +294,9 @@ export const criarProduto = asyncHandler(async (req: Request, res: Response) => 
 
 export const editarProduto = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { 
-    nome, 
-    descricao, 
+  const {
+    nome,
+    descricao,
     tipo_processamento,
     categoria,
     validade_minima,
@@ -296,8 +305,8 @@ export const editarProduto = asyncHandler(async (req: Request, res: Response) =>
     ativo,
     estoque_minimo,
     fator_correcao,
+    tipo_fator_correcao,
     indice_coccao,
-    unidade_distribuicao,
     unidade_medida_id,
     peso
   } = req.body;
@@ -351,8 +360,8 @@ export const editarProduto = asyncHandler(async (req: Request, res: Response) =>
       ativo = COALESCE($8, ativo),
       estoque_minimo = COALESCE($9, estoque_minimo),
       fator_correcao = COALESCE($10, fator_correcao),
-      indice_coccao = COALESCE($11, indice_coccao),
-      unidade_distribuicao = COALESCE($12, unidade_distribuicao),
+      tipo_fator_correcao = COALESCE($11, tipo_fator_correcao),
+      indice_coccao = COALESCE($12, indice_coccao),
       unidade_medida_id = COALESCE($13, unidade_medida_id),
       peso = COALESCE($14, peso),
       updated_at = CURRENT_TIMESTAMP
@@ -361,7 +370,7 @@ export const editarProduto = asyncHandler(async (req: Request, res: Response) =>
   `, [
     nomeNormalizado, descricao, tipo_processamento, categoria, validade_minima,
     imagem_url, perecivel, ativo, estoque_minimo, fatorCorrecaoNormalizado,
-    indiceCoccaoNormalizado, unidade_distribuicao, unidade_medida_id, pesoNormalizado, id
+    tipo_fator_correcao, indiceCoccaoNormalizado, unidade_medida_id, pesoNormalizado, id
   ]);
 
   if (result.rows.length === 0) {

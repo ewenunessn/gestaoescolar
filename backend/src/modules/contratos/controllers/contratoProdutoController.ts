@@ -6,7 +6,7 @@ import db from "../../../database";
 export async function listarContratoProdutos(req: Request, res: Response) {
   try {
     const result = await db.query(`
-      SELECT 
+      SELECT
         cp.id,
         cp.contrato_id,
         cp.produto_id,
@@ -16,10 +16,11 @@ export async function listarContratoProdutos(req: Request, res: Response) {
         cp.ativo,
         p.nome as produto_nome,
         p.peso as produto_peso,
-        p.unidade_distribuicao as produto_unidade,
+        COALESCE(um.codigo, 'UN') as produto_unidade,
         c.numero as contrato_numero
       FROM contrato_produtos cp
       INNER JOIN produtos p ON cp.produto_id = p.id
+      LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
       INNER JOIN contratos c ON cp.contrato_id = c.id
       ORDER BY c.numero, p.nome
     `);
@@ -40,7 +41,7 @@ export async function listarProdutosPorContrato(req: Request, res: Response) {
     const { contrato_id } = req.params;
 
     const result = await db.query(`
-      SELECT 
+      SELECT
         cp.id,
         cp.produto_id,
         cp.preco_unitario,
@@ -51,15 +52,16 @@ export async function listarProdutosPorContrato(req: Request, res: Response) {
         p.descricao as produto_descricao,
         p.categoria,
         p.peso as produto_peso,
-        p.unidade_distribuicao as produto_unidade,
+        COALESCE(um.codigo, 'UN') as produto_unidade,
         COALESCE(cp.quantidade_contratada, 0) - COALESCE(
-          (SELECT COALESCE(SUM(pi.quantidade), 0) 
-           FROM pedido_itens pi 
+          (SELECT COALESCE(SUM(pi.quantidade), 0)
+           FROM pedido_itens pi
            WHERE pi.contrato_produto_id = cp.id), 0
         ) as saldo,
         (cp.quantidade_contratada * cp.preco_unitario) as valor_total
       FROM contrato_produtos cp
       INNER JOIN produtos p ON cp.produto_id = p.id
+      LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
       WHERE cp.contrato_id = $1
       ORDER BY cp.ativo DESC, p.nome
     `, [contrato_id]);
@@ -80,7 +82,7 @@ export async function listarProdutosPorFornecedor(req: Request, res: Response) {
     const { fornecedor_id } = req.params;
 
     const result = await db.query(`
-      SELECT 
+      SELECT
         cp.id,
         cp.contrato_id,
         cp.produto_id,
@@ -89,10 +91,11 @@ export async function listarProdutosPorFornecedor(req: Request, res: Response) {
         cp.marca,
         p.nome as produto_nome,
         p.peso as produto_peso,
-        p.unidade_distribuicao as produto_unidade,
+        COALESCE(um.codigo, 'UN') as produto_unidade,
         c.numero as contrato_numero
       FROM contrato_produtos cp
       INNER JOIN produtos p ON cp.produto_id = p.id
+      LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
       INNER JOIN contratos c ON cp.contrato_id = c.id
       WHERE c.fornecedor_id = $1 AND cp.ativo = true
       ORDER BY c.numero, p.nome
@@ -114,7 +117,7 @@ export async function buscarContratoProduto(req: Request, res: Response) {
     const { id } = req.params;
 
     const result = await db.query(`
-      SELECT 
+      SELECT
         cp.id,
         cp.contrato_id,
         cp.produto_id,
@@ -124,10 +127,11 @@ export async function buscarContratoProduto(req: Request, res: Response) {
         cp.ativo,
         p.nome as produto_nome,
         p.peso as produto_peso,
-        p.unidade_distribuicao as produto_unidade,
+        COALESCE(um.codigo, 'UN') as produto_unidade,
         c.numero as contrato_numero
       FROM contrato_produtos cp
       INNER JOIN produtos p ON cp.produto_id = p.id
+      LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
       INNER JOIN contratos c ON cp.contrato_id = c.id
       WHERE cp.id = $1
     `, [id]);
@@ -172,9 +176,10 @@ export async function criarContratoProduto(req: Request, res: Response) {
     }
 
     const produtoCheck = await db.query(`
-      SELECT id, nome, unidade_distribuicao, peso 
-      FROM produtos 
-      WHERE id = $1
+      SELECT id, nome, COALESCE(um.codigo, 'UN') as unidade, peso
+      FROM produtos p
+      LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
+      WHERE p.id = $1
     `, [produto_id]);
     
     if (produtoCheck.rows.length === 0) {

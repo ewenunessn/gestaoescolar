@@ -217,7 +217,7 @@ async function calcularDemandaPeriodo(
       cm2.modalidade_id,
       rp.produto_id,
       p.nome as produto_nome,
-      p.unidade_distribuicao as unidade,
+      COALESCE(um.codigo, 'UN') as unidade,
       p.peso as peso_embalagem,
       COALESCE(p.fator_correcao, 1.0) as fator_correcao,
       COALESCE(p.indice_coccao, 1.0) as indice_coccao,
@@ -229,6 +229,7 @@ async function calcularDemandaPeriodo(
     INNER JOIN refeicoes r ON r.id = crd.refeicao_id
     INNER JOIN refeicao_produtos rp ON rp.refeicao_id = r.id
     INNER JOIN produtos p ON p.id = rp.produto_id
+    LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
     LEFT JOIN refeicao_produto_modalidade rpm
       ON rpm.refeicao_produto_id = rp.id AND rpm.modalidade_id = cm2.modalidade_id
     WHERE crd.cardapio_modalidade_id = ANY($1)
@@ -387,23 +388,23 @@ export const gerarPedidosPorPeriodo = async (req: Request, res: Response) => {
     const todosProdutoIds = [...new Set(demandasPorPeriodo.flatMap(d => d.demanda.map(p => p.produto_id)))];
     const contratosQuery = await client.query(`
       SELECT 
-        cp.id as contrato_produto_id, 
-        cp.produto_id, 
+        cp.id as contrato_produto_id,
+        cp.produto_id,
         cp.preco_unitario,
         cp.quantidade_contratada,
         cp.peso_embalagem,
         cp.unidade_compra,
         cp.fator_conversao,
         c.id as contrato_id,
-        c.numero as contrato_numero, 
+        c.numero as contrato_numero,
         c.data_fim as contrato_data_fim,
         f.id as fornecedor_id,
         f.nome as fornecedor_nome,
         p.peso as peso_distribuicao,
-        p.unidade_distribuicao,
+        COALESCE(um.codigo, 'UN') as unidade,
         COALESCE(
-          (SELECT SUM(cpm2.quantidade_disponivel) 
-           FROM contrato_produtos_modalidades cpm2 
+          (SELECT SUM(cpm2.quantidade_disponivel)
+           FROM contrato_produtos_modalidades cpm2
            WHERE cpm2.contrato_produto_id = cp.id AND cpm2.ativo = true),
           cp.quantidade_contratada
         ) as saldo_disponivel
@@ -411,6 +412,7 @@ export const gerarPedidosPorPeriodo = async (req: Request, res: Response) => {
       JOIN contratos c ON c.id = cp.contrato_id
       JOIN fornecedores f ON f.id = c.fornecedor_id
       JOIN produtos p ON p.id = cp.produto_id
+      LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
       WHERE cp.produto_id = ANY($1) AND cp.ativo = true
         AND c.status = 'ativo' AND c.data_fim >= CURRENT_DATE
       ORDER BY cp.produto_id, c.data_fim ASC
@@ -570,7 +572,7 @@ export const gerarPedidosPorPeriodo = async (req: Request, res: Response) => {
         produto.quantidade_kg,
         {
           peso_distribuicao_g: contrato.peso_distribuicao ? Number(contrato.peso_distribuicao) : undefined,
-          unidade_distribuicao: contrato.unidade_distribuicao
+          unidade_distribuicao: contrato.unidade
         }
       );
       
@@ -910,7 +912,7 @@ export const calcularDemandaPorCompetencia = async (req: Request, res: Response)
     // Buscar refeições dos cardápios NOVOS com produtos
     // Agora usa cardapio_refeicoes_dia ao invés de cardapio_refeicoes
     const refeicoesQuery = await db.pool.query(`
-      SELECT 
+      SELECT
         crd.id as cardapio_refeicao_dia_id,
         crd.cardapio_modalidade_id,
         crd.dia,
@@ -920,7 +922,7 @@ export const calcularDemandaPorCompetencia = async (req: Request, res: Response)
         rp.id as refeicao_produto_id,
         rp.produto_id,
         p.nome as produto_nome,
-        p.unidade_distribuicao as unidade,
+        COALESCE(um.codigo, 'UN') as unidade,
         p.peso as peso_embalagem,
         COALESCE(p.fator_correcao, 1.0) as fator_correcao,
         COALESCE(rpm.per_capita_ajustado, rp.per_capita) as per_capita,
@@ -931,6 +933,7 @@ export const calcularDemandaPorCompetencia = async (req: Request, res: Response)
       INNER JOIN refeicoes r ON r.id = crd.refeicao_id
       INNER JOIN refeicao_produtos rp ON rp.refeicao_id = r.id
       INNER JOIN produtos p ON p.id = rp.produto_id
+      LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
       LEFT JOIN refeicao_produto_modalidade rpm ON rpm.refeicao_produto_id = rp.id AND rpm.modalidade_id = cm2.modalidade_id
       WHERE crd.cardapio_modalidade_id = ANY($1)
         AND crd.ativo = true
@@ -1270,14 +1273,14 @@ export const gerarGuiasDemanda = async (req: Request, res: Response) => {
     // Buscar flag perecivel + dados de embalagem de todos os produtos envolvidos
     const todosProdutoIds = [...new Set(demandasPorPeriodo.flatMap(d => d.demanda.map(p => p.produto_id)))];
     const perecivelResult = await client.query(`
-      SELECT id, perecivel, peso, unidade_distribuicao FROM produtos WHERE id = ANY($1)
+      SELECT p.id, p.perecivel, p.peso, COALESCE(um.codigo, 'UN') as unidade FROM produtos p LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id WHERE p.id = ANY($1)
     `, [todosProdutoIds]);
     const perecivelMap = new Map<number, boolean>(perecivelResult.rows.map((r: any) => [r.id, !!r.perecivel]));
-    // peso em gramas → usado para converter kg → pacotes/unidades quando unidade_distribuicao estiver definido
+    // peso em gramas → usado para converter kg → pacotes/unidades quando unidade estiver definido
     const embalagemMap = new Map<number, { peso_g: number; unidade: string }>(
       perecivelResult.rows
-        .filter((r: any) => r.peso && r.peso > 0 && r.unidade_distribuicao)
-        .map((r: any) => [r.id, { peso_g: Number(r.peso), unidade: r.unidade_distribuicao }])
+        .filter((r: any) => r.peso && r.peso > 0 && r.unidade)
+        .map((r: any) => [r.id, { peso_g: Number(r.peso), unidade: r.unidade }])
     );
 
     // Helper: converte kg para unidades de embalagem (arredonda para cima)
@@ -1514,9 +1517,9 @@ export const gerarPedidoDaGuia = async (req: Request, res: Response) => {
     // 4. Buscar contratos ativos para todos os produtos
     const todosProdutoIds = [...new Set(itensResult.rows.map((r: any) => r.produto_id))];
     const contratosResult = await client.query(`
-      SELECT 
-        cp.id as contrato_produto_id, 
-        cp.produto_id, 
+      SELECT
+        cp.id as contrato_produto_id,
+        cp.produto_id,
         cp.preco_unitario,
         cp.quantidade_contratada,
         c.id as contrato_id,
@@ -1525,10 +1528,10 @@ export const gerarPedidoDaGuia = async (req: Request, res: Response) => {
         f.id as fornecedor_id,
         f.nome as fornecedor_nome,
         p.peso as peso_distribuicao,
-        p.unidade_distribuicao,
+        COALESCE(um.codigo, 'UN') as unidade,
         COALESCE(
-          (SELECT SUM(cpm2.quantidade_disponivel) 
-           FROM contrato_produtos_modalidades cpm2 
+          (SELECT SUM(cpm2.quantidade_disponivel)
+           FROM contrato_produtos_modalidades cpm2
            WHERE cpm2.contrato_produto_id = cp.id AND cpm2.ativo = true),
           cp.quantidade_contratada
         ) as saldo_disponivel
@@ -1536,6 +1539,7 @@ export const gerarPedidoDaGuia = async (req: Request, res: Response) => {
       JOIN contratos c ON c.id = cp.contrato_id
       JOIN fornecedores f ON f.id = c.fornecedor_id
       JOIN produtos p ON p.id = cp.produto_id
+      LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
       WHERE cp.produto_id = ANY($1) AND cp.ativo = true
         AND c.status = 'ativo' AND c.data_fim >= CURRENT_DATE
       ORDER BY cp.produto_id, c.data_fim ASC
@@ -1780,7 +1784,7 @@ export const gerarPedidoDaGuia = async (req: Request, res: Response) => {
           qtdTotalKg,
           {
             peso_distribuicao_g: contrato.peso_distribuicao ? Number(contrato.peso_distribuicao) : undefined,
-            unidade_distribuicao: contrato.unidade_distribuicao
+            unidade_distribuicao: contrato.unidade
           }
         );
         
@@ -2024,14 +2028,14 @@ async function processarGeracaoGuiasBackground(jobId: number) {
     // Buscar dados de produtos
     const todosProdutoIds = [...new Set(demandasPorPeriodo.flatMap(d => d.demanda.map(p => p.produto_id)))];
     const perecivelResult = await client.query(`
-      SELECT id, perecivel, peso, unidade_distribuicao FROM produtos WHERE id = ANY($1)
+      SELECT p.id, p.perecivel, p.peso, COALESCE(um.codigo, 'UN') as unidade FROM produtos p LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id WHERE p.id = ANY($1)
     `, [todosProdutoIds]);
-    
+
     const perecivelMap = new Map<number, boolean>(perecivelResult.rows.map((r: any) => [r.id, !!r.perecivel]));
     const embalagemMap = new Map<number, { peso_g: number; unidade: string }>(
       perecivelResult.rows
-        .filter((r: any) => r.peso && r.peso > 0 && r.unidade_distribuicao)
-        .map((r: any) => [r.id, { peso_g: Number(r.peso), unidade: r.unidade_distribuicao }])
+        .filter((r: any) => r.peso && r.peso > 0 && r.unidade)
+        .map((r: any) => [r.id, { peso_g: Number(r.peso), unidade: r.unidade }])
     );
 
     const converterParaEmbalagem = (quantidade_kg: number, peso_g: number): number => {
@@ -2335,14 +2339,14 @@ async function processarGeracaoPedidoBackground(jobId: number) {
 
     const todosProdutoIds = [...new Set(itensResult.rows.map((r: any) => r.produto_id))];
     const contratosResult = await client.query(`
-      SELECT 
+      SELECT
         cp.id as contrato_produto_id, cp.produto_id, cp.preco_unitario, cp.quantidade_contratada,
         c.id as contrato_id, c.numero as contrato_numero, c.data_fim as contrato_data_fim,
         f.id as fornecedor_id, f.nome as fornecedor_nome,
-        p.peso as peso_distribuicao, p.unidade_distribuicao,
+        p.peso as peso_distribuicao, COALESCE(um.codigo, 'UN') as unidade,
         COALESCE(
-          (SELECT SUM(cpm2.quantidade_disponivel) 
-           FROM contrato_produtos_modalidades cpm2 
+          (SELECT SUM(cpm2.quantidade_disponivel)
+           FROM contrato_produtos_modalidades cpm2
            WHERE cpm2.contrato_produto_id = cp.id AND cpm2.ativo = true),
           cp.quantidade_contratada
         ) as saldo_disponivel
@@ -2350,6 +2354,7 @@ async function processarGeracaoPedidoBackground(jobId: number) {
       JOIN contratos c ON c.id = cp.contrato_id
       JOIN fornecedores f ON f.id = c.fornecedor_id
       JOIN produtos p ON p.id = cp.produto_id
+      LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
       WHERE cp.produto_id = ANY($1) AND cp.ativo = true
         AND c.status = 'ativo' AND c.data_fim >= CURRENT_DATE
       ORDER BY cp.produto_id, c.data_fim ASC
@@ -2432,7 +2437,7 @@ async function processarGeracaoPedidoBackground(jobId: number) {
       const qtdTotalKg = grupo.escolas.reduce((s: number, e: any) => s + e.quantidade, 0);
       const conversao = converterDemandaParaCompra(qtdTotalKg, {
         peso_distribuicao_g: contrato.peso_distribuicao ? Number(contrato.peso_distribuicao) : undefined,
-        unidade_distribuicao: contrato.unidade_distribuicao
+        unidade_distribuicao: contrato.unidade
       });
       
       const preco = toNum(contrato.preco_unitario);

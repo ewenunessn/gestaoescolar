@@ -2,39 +2,58 @@ export interface Produto {
   id: number;
   nome: string;
   unidade?: string;
+  unidade_nome?: string;
+  unidade_medida_id?: number;
   categoria?: string;
   descricao?: string;
   tipo_processamento?: string;
+  validade_minima?: number;
+  imagem_url?: string;
   perecivel?: boolean;
-  per_capita?: number;
-  modalidade_id?: number;
-  fator_correcao?: number; // Fator de correção para calcular per capita líquido
   ativo: boolean;
   created_at: string;
   updated_at: string;
-  unidade_contrato?: string; // Deprecated: usar 'unidade'
+  estoque_minimo?: number;
+  fator_correcao?: number;
+  tipo_fator_correcao?: string;
+  indice_coccao?: number;
+  peso?: number;
+  tem_composicao_nutricional?: boolean;
+  tem_contrato?: boolean;
 }
 
 export interface CriarProdutoRequest {
   nome: string;
-  unidade?: string;
-  categoria?: string;
   descricao?: string;
   tipo_processamento?: string;
+  categoria?: string;
+  validade_minima?: number;
+  imagem_url?: string;
   perecivel?: boolean;
-  fator_correcao?: number;
   ativo?: boolean;
+  estoque_minimo?: number;
+  fator_correcao?: number;
+  tipo_fator_correcao?: string;
+  indice_coccao?: number;
+  unidade_medida_id?: number;
+  peso?: number;
 }
 
 export interface AtualizarProdutoRequest {
   nome?: string;
-  unidade?: string;
-  categoria?: string;
   descricao?: string;
   tipo_processamento?: string;
+  categoria?: string;
+  validade_minima?: number;
+  imagem_url?: string;
   perecivel?: boolean;
-  fator_correcao?: number;
   ativo?: boolean;
+  estoque_minimo?: number;
+  fator_correcao?: number;
+  tipo_fator_correcao?: string;
+  indice_coccao?: number;
+  unidade_medida_id?: number;
+  peso?: number;
 }
 
 export interface ComposicaoNutricional {
@@ -57,6 +76,8 @@ export interface ImportarProdutoRequest {
   tipo_processamento?: string;
   peso?: number;
   fator_correcao?: number;
+  tipo_fator_correcao?: string;
+  indice_coccao?: number;
   perecivel?: boolean;
   ativo?: boolean;
 }

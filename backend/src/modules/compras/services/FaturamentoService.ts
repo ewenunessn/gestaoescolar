@@ -172,7 +172,7 @@ export class FaturamentoService {
     
     // Query sempre busca unidade do produto
     const itensQuery = `
-      SELECT 
+      SELECT
         pi.id as pedido_item_id,
         pi.quantidade,
         pi.preco_unitario,
@@ -184,12 +184,13 @@ export class FaturamentoService {
         f.cnpj as fornecedor_cnpj,
         p.id as produto_id,
         p.nome as produto_nome,
-        COALESCE(p.unidade_distribuicao, 'UN') as unidade 
+        COALESCE(um.codigo, 'UN') as unidade
       FROM pedido_itens pi
       JOIN contrato_produtos cp ON pi.contrato_produto_id = cp.id
       JOIN contratos c ON cp.contrato_id = c.id
       JOIN fornecedores f ON c.fornecedor_id = f.id
       JOIN produtos p ON pi.produto_id = p.id
+      LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
       WHERE pi.pedido_id = $1
       ORDER BY c.numero, f.nome, p.nome
     `;

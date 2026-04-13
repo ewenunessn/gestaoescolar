@@ -74,7 +74,7 @@ export const calcularValoresNutricionais = async (req: Request, res: Response) =
     // NOTA: per_capita sempre representa alimento PRONTO (cozido/preparado)
     // Por isso NÃO usamos indice_coccao - apenas fator_correcao (perda no pré-preparo)
     const query = modalidade_id ? `
-      SELECT 
+      SELECT
         rp.produto_id,
         p.nome as produto_nome,
         COALESCE(rpm.per_capita_ajustado, rp.per_capita) as per_capita,
@@ -98,7 +98,7 @@ export const calcularValoresNutricionais = async (req: Request, res: Response) =
       WHERE rp.refeicao_id = $1
       ORDER BY rp.ordem, rp.id
     ` : `
-      SELECT 
+      SELECT
         rp.produto_id,
         p.nome as produto_nome,
         rp.per_capita,
@@ -275,7 +275,7 @@ export const calcularCusto = async (req: Request, res: Response) => {
     // NOTA: per_capita sempre representa alimento PRONTO (cozido/preparado)
     // Por isso NÃO usamos indice_coccao aqui - apenas fator_correcao (perda no pré-preparo)
     const query = modalidade_id ? `
-      SELECT 
+      SELECT
         rp.produto_id,
         p.nome as produto_nome,
         COALESCE(rpm.per_capita_ajustado, rp.per_capita) as per_capita,
@@ -283,10 +283,11 @@ export const calcularCusto = async (req: Request, res: Response) => {
         COALESCE(p.fator_correcao, 1.0) as fator_correcao,
         p.peso as peso_unitario,
         COALESCE(p.peso, 1000) as peso_embalagem,
-        p.unidade_distribuicao,
+        COALESCE(um.codigo, 'UN') as unidade,
         cp.preco_unitario
       FROM refeicao_produtos rp
       INNER JOIN produtos p ON p.id = rp.produto_id
+      LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
       LEFT JOIN refeicao_produto_modalidade rpm ON rpm.refeicao_produto_id = rp.id AND rpm.modalidade_id = $2
       LEFT JOIN LATERAL (
         SELECT preco_unitario
@@ -302,7 +303,7 @@ export const calcularCusto = async (req: Request, res: Response) => {
       WHERE rp.refeicao_id = $1
       ORDER BY rp.ordem, rp.id
     ` : `
-      SELECT 
+      SELECT
         rp.produto_id,
         p.nome as produto_nome,
         rp.per_capita,
@@ -310,10 +311,11 @@ export const calcularCusto = async (req: Request, res: Response) => {
         COALESCE(p.fator_correcao, 1.0) as fator_correcao,
         p.peso as peso_unitario,
         COALESCE(p.peso, 1000) as peso_embalagem,
-        p.unidade_distribuicao,
+        COALESCE(um.codigo, 'UN') as unidade,
         cp.preco_unitario
       FROM refeicao_produtos rp
       INNER JOIN produtos p ON p.id = rp.produto_id
+      LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
       LEFT JOIN LATERAL (
         SELECT preco_unitario
         FROM contrato_produtos cp
@@ -413,7 +415,7 @@ export const calcularCusto = async (req: Request, res: Response) => {
         unidade: ing.tipo_medida,
         fator_correcao: fatorCorrecao,
         peso_embalagem: pesoEmbalagem,
-        unidade_distribuicao: ing.unidade_distribuicao,
+        unidade_distribuicao: ing.unidade,
         preco_unitario: ing.preco_unitario,
         custo: round2(custo)
       });

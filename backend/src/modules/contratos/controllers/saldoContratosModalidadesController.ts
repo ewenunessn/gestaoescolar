@@ -100,10 +100,10 @@ class SaldoContratosModalidadesController {
 
       // Agora buscar todas as modalidades para esses produtos
       let query = `
-        SELECT 
+        SELECT
           cp.id as contrato_produto_id,
           p.nome as produto_nome,
-          COALESCE(p.unidade_distribuicao, 'UN') as unidade,
+          COALESCE(um.codigo, 'UN') as unidade,
           c.numero as contrato_numero,
           c.id as contrato_id,
           f.nome as fornecedor_nome,
@@ -121,6 +121,7 @@ class SaldoContratosModalidadesController {
         FROM contrato_produtos cp
         JOIN contratos c ON cp.contrato_id = c.id
         JOIN produtos p ON cp.produto_id = p.id
+        LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
         JOIN fornecedores f ON c.fornecedor_id = f.id
         CROSS JOIN modalidades m
         LEFT JOIN contrato_produtos_modalidades cpm ON (
@@ -316,7 +317,7 @@ class SaldoContratosModalidadesController {
   async listarProdutosContratos(req: Request, res: Response): Promise<void> {
     try {
       const result = await db.query(`
-        SELECT 
+        SELECT
           cp.id,
           cp.contrato_id,
           cp.produto_id,
@@ -326,11 +327,12 @@ class SaldoContratosModalidadesController {
           c.data_inicio,
           c.data_fim,
           p.nome as produto_nome,
-          COALESCE(p.unidade_distribuicao, 'UN') as unidade,
+          COALESCE(um.codigo, 'UN') as unidade,
           f.nome as fornecedor_nome
         FROM contrato_produtos cp
         JOIN contratos c ON cp.contrato_id = c.id
         JOIN produtos p ON cp.produto_id = p.id
+        LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
         JOIN fornecedores f ON c.fornecedor_id = f.id
         WHERE cp.ativo = true AND c.ativo = true
         ORDER BY c.numero, p.nome
@@ -511,17 +513,18 @@ class SaldoContratosModalidadesController {
 
       // Buscar informações da modalidade
       const saldoResult = await db.query(`
-        SELECT 
+        SELECT
           cpm.id,
           cpm.contrato_produto_id,
           cpm.modalidade_id,
           p.nome as produto_nome,
-          COALESCE(p.unidade_distribuicao, 'UN') as unidade,
+          COALESCE(um.codigo, 'UN') as unidade,
           m.nome as modalidade_nome,
           c.numero as contrato_numero
         FROM contrato_produtos_modalidades cpm
         JOIN contrato_produtos cp ON cpm.contrato_produto_id = cp.id
         JOIN produtos p ON cp.produto_id = p.id
+        LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
         JOIN contratos c ON cp.contrato_id = c.id
         JOIN modalidades m ON cpm.modalidade_id = m.id
         WHERE cpm.id = $1

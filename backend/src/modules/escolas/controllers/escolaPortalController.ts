@@ -92,12 +92,13 @@ export const getItensGuiaEscola = asyncHandler(async (req: Request, res: Respons
   }
 
   const result = await db.query(`
-    SELECT 
+    SELECT
       gpe.*,
       p.nome as produto_nome,
-      p.unidade_distribuicao
+      COALESCE(um.codigo, 'UN') as unidade
     FROM guia_produto_escola gpe
     INNER JOIN produtos p ON gpe.produto_id = p.id
+    LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
     WHERE gpe.guia_id = $1 AND gpe.escola_id = $2
     ORDER BY p.nome
   `, [guiaId, user.escola_id]);

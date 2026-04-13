@@ -457,7 +457,7 @@ export const buscarFichaTecnica = async (req: Request, res: Response) => {
         p.nome as produto_nome,
         rp.per_capita,
         rp.tipo_medida,
-        COALESCE(p.unidade_distribuicao, 'un') as unidade,
+        COALESCE(um.codigo, 'UN') as unidade,
         COALESCE(p.fator_correcao, 1.0) as fator_correcao,
         COALESCE(cp.preco_unitario, 0) as custo_unitario,
         COALESCE(cp.preco_unitario * (rp.per_capita / 1000.0), 0) as custo_total,
@@ -471,6 +471,7 @@ export const buscarFichaTecnica = async (req: Request, res: Response) => {
         pcn.sodio_mg as sodio_100g
       FROM refeicao_produtos rp
       JOIN produtos p ON p.id = rp.produto_id
+      LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
       LEFT JOIN produto_composicao_nutricional pcn ON pcn.produto_id = p.id
       LEFT JOIN LATERAL (
         SELECT preco_unitario

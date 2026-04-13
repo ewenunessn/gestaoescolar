@@ -431,16 +431,16 @@ class GuiaModel {
 
   async listarProdutosPorGuia(guiaId: number): Promise<GuiaProdutoEscola[]> {
     const result = await db.all(`
-      SELECT 
+      SELECT
         gpe.*,
         p.nome as produto_nome,
-        p.unidade_distribuicao as produto_unidade,
+        COALESCE(um.codigo, 'UN') as produto_unidade,
         e.nome as escola_nome,
         DATE(gpe.created_at) as data_criacao,
         COALESCE(gpe.quantidade_total_entregue, 0) as quantidade_total_entregue,
         (gpe.quantidade - COALESCE(gpe.quantidade_total_entregue, 0)) as saldo_pendente,
         COALESCE(gpe.quantidade_demanda, gpe.quantidade) as quantidade_demanda,
-        CASE 
+        CASE
           WHEN COALESCE(gpe.quantidade_total_entregue, 0) >= gpe.quantidade THEN 'entregue'
           WHEN COALESCE(gpe.quantidade_total_entregue, 0) > 0 THEN 'parcial'
           WHEN gpe.status = 'programada' THEN 'programada'
@@ -449,6 +449,7 @@ class GuiaModel {
         END as status_calculado
       FROM guia_produto_escola gpe
       JOIN produtos p ON gpe.produto_id = p.id
+      LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
       JOIN escolas e ON gpe.escola_id = e.id
       JOIN guias g ON gpe.guia_id = g.id
       WHERE gpe.guia_id = $1
@@ -652,18 +653,19 @@ class GuiaModel {
 
   async listarItensParaEntregaPorEscola(escolaId: number): Promise<any[]> {
     const result = await db.all(`
-      SELECT 
+      SELECT
         gpe.*,
         p.nome as produto_nome,
-        p.unidade_distribuicao as produto_unidade,
+        COALESCE(um.codigo, 'UN') as produto_unidade,
         g.mes,
         g.ano,
         g.observacao as guia_observacao
       FROM guia_produto_escola gpe
       INNER JOIN produtos p ON gpe.produto_id = p.id
+      LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
       INNER JOIN guias g ON gpe.guia_id = g.id
       INNER JOIN escolas e ON gpe.escola_id = e.id
-      WHERE gpe.escola_id = $1 
+      WHERE gpe.escola_id = $1
         AND gpe.para_entrega = true
         AND g.status = 'aberta'
       ORDER BY g.mes DESC, g.ano DESC, p.nome, gpe.lote

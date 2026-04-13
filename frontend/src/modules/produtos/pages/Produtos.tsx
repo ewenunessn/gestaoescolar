@@ -50,6 +50,7 @@ import {
 import { useNavigate, useLocation } from "react-router-dom";
 import { gerarModeloExcelProdutos } from "../../../utils/produtoImportUtils";
 import { LoadingOverlay } from "../../../components/LoadingOverlay";
+import UnidadeMedidaSelect from "../../../components/UnidadeMedidaSelect";
 import { DataTable } from "../../../components/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
 import * as XLSX from "xlsx";
@@ -67,7 +68,9 @@ interface Produto {
   estoque_minimo?: number;
   fator_correcao?: number;
   tipo_fator_correcao?: string;
-  unidade_distribuicao?: string;
+  indice_coccao?: number;
+  unidade?: string;
+  unidade_medida_id?: number;
   peso?: number;
   tem_composicao_nutricional?: boolean;
   tem_contrato?: boolean;
@@ -85,7 +88,8 @@ interface ProdutoForm {
   estoque_minimo?: number;
   fator_correcao?: number;
   tipo_fator_correcao?: string;
-  unidade_distribuicao?: string;
+  indice_coccao?: number;
+  unidade_medida_id?: number;
   peso?: number;
 }
 
@@ -133,7 +137,8 @@ const ProdutosPage = () => {
     estoque_minimo: 0,
     fator_correcao: 1.0,
     tipo_fator_correcao: "perda",
-    unidade_distribuicao: "",
+    indice_coccao: 1.0,
+    unidade_medida_id: undefined,
     peso: undefined,
   });
   
@@ -188,7 +193,7 @@ const ProdutosPage = () => {
       enableSorting: true,
     },
     { 
-      accessorKey: 'unidade_distribuicao', 
+      accessorKey: 'unidade',
       header: 'Unidade',
       size: 120,
       enableSorting: true,
@@ -311,7 +316,7 @@ const ProdutosPage = () => {
       estoque_minimo: 0,
       fator_correcao: 1.0,
       tipo_fator_correcao: "perda",
-      unidade_distribuicao: "",
+      unidade_medida_id: undefined,
       peso: undefined
     });
     setErroProduto("");
@@ -333,7 +338,7 @@ const ProdutosPage = () => {
       estoque_minimo: 0,
       fator_correcao: 1.0,
       tipo_fator_correcao: "perda",
-      unidade_distribuicao: "",
+      unidade_medida_id: undefined,
       peso: undefined
     });
   };
@@ -444,7 +449,7 @@ const ProdutosPage = () => {
         estoque_minimo: produto.estoque_minimo || 0,
         fator_correcao: produto.fator_correcao || 1.0,
         tipo_fator_correcao: produto.tipo_fator_correcao || 'perda',
-        unidade_distribuicao: produto.unidade_distribuicao || '',
+        unidade_medida_id: produto.unidade_medida_id || null,
         peso: produto.peso || ''
       }));
 
@@ -469,7 +474,7 @@ const ProdutosPage = () => {
         { wch: 15 }, // estoque_minimo
         { wch: 15 }, // fator_correcao
         { wch: 20 }, // tipo_fator_correcao
-        { wch: 20 }, // unidade_distribuicao
+        { wch: 20 }, // unidade
         { wch: 12 }  // peso
       ];
       ws['!cols'] = colWidths;
@@ -693,29 +698,11 @@ const ProdutosPage = () => {
               </Typography>
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={6}>
-                  <Autocomplete
-                    freeSolo
-                    options={[
-                      'Quilograma', 'Grama', 'Miligrama', 'Tonelada',
-                      'Litro', 'Mililitro',
-                      'Unidade', 'Dúzia', 'Caixa', 'Pacote', 'Fardo', 'Saco',
-                      'Lata', 'Galão', 'Bandeja', 'Maço', 'Pote',
-                      'Vidro', 'Sachê', 'Balde'
-                    ]}
-                    value={formData.unidade_distribuicao || ''}
-                    onChange={(event, newValue) => {
-                      setFormData({ ...formData, unidade_distribuicao: newValue || '' });
-                    }}
-                    onInputChange={(event, newInputValue) => {
-                      setFormData({ ...formData, unidade_distribuicao: newInputValue });
-                    }}
-                    renderInput={(params) => (
-                      <TextField 
-                        {...params} 
-                        label="Unidade de Distribuição" 
-                        helperText="Ex: Quilograma, Litro, Unidade"
-                      />
-                    )}
+                  <UnidadeMedidaSelect
+                    value={formData.unidade_medida_id || null}
+                    onChange={(uid) => setFormData({ ...formData, unidade_medida_id: uid })}
+                    size="small"
+                    label="Unidade de Medida"
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
@@ -791,15 +778,28 @@ const ProdutosPage = () => {
                 <Grid item xs={12} sm={6}>
                   <FormControl fullWidth>
                     <InputLabel>Tipo de Fator</InputLabel>
-                    <Select 
-                      value={formData.tipo_fator_correcao || 'perda'} 
-                      onChange={(e) => setFormData({ ...formData, tipo_fator_correcao: e.target.value })} 
+                    <Select
+                      value={formData.tipo_fator_correcao || 'perda'}
+                      onChange={(e) => setFormData({ ...formData, tipo_fator_correcao: e.target.value })}
                       label="Tipo de Fator"
                     >
                       <MenuItem value="perda">Perda</MenuItem>
                       <MenuItem value="rendimento">Rendimento</MenuItem>
                     </Select>
                   </FormControl>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Índice de Cocção"
+                    type="number"
+                    value={formData.indice_coccao || 1.0}
+                    onChange={(e) => {
+                      setFormData({ ...formData, indice_coccao: Number(e.target.value) });
+                    }}
+                    helperText=">1 ganha peso, <1 perde"
+                    inputProps={{ min: 0, step: 0.01 }}
+                    fullWidth
+                  />
                 </Grid>
                 <Grid item xs={12}>
                   <FormControl fullWidth>

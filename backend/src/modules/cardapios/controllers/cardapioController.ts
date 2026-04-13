@@ -377,7 +377,7 @@ export async function calcularCustoCardapio(req: Request, res: Response) {
 
     // Buscar refeições do cardápio com produtos e custos por modalidade
     const refeicoesResult = await query(`
-      SELECT 
+      SELECT
         crd.id as refeicao_dia_id,
         crd.dia,
         crd.tipo_refeicao,
@@ -388,7 +388,7 @@ export async function calcularCustoCardapio(req: Request, res: Response) {
         p.nome as produto_nome,
         rp.per_capita as per_capita_padrao,
         rp.tipo_medida,
-        p.unidade_distribuicao,
+        COALESCE(um.codigo, 'UN') as unidade,
         COALESCE(p.fator_correcao, 1.0) as fator_correcao,
         COALESCE(p.peso, 1000) as peso_embalagem,
         cjm.modalidade_id,
@@ -400,8 +400,9 @@ export async function calcularCustoCardapio(req: Request, res: Response) {
       INNER JOIN cardapio_modalidades cjm ON cjm.cardapio_id = crd.cardapio_modalidade_id
       LEFT JOIN refeicao_produtos rp ON r.id = rp.refeicao_id
       LEFT JOIN produtos p ON rp.produto_id = p.id
-      LEFT JOIN refeicao_produto_modalidade rpm 
-        ON rpm.refeicao_produto_id = rp.id 
+      LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
+      LEFT JOIN refeicao_produto_modalidade rpm
+        ON rpm.refeicao_produto_id = rp.id
         AND rpm.modalidade_id = cjm.modalidade_id
       LEFT JOIN LATERAL (
         SELECT cp.preco_unitario, f.tipo_fornecedor

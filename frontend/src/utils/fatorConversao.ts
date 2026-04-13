@@ -1,6 +1,6 @@
 /**
  * Utilitário para cálculo automático do fator de conversão
- * entre unidade_compra (contrato) e unidade_distribuicao (produto base)
+ * entre unidade_compra (contrato) e unidade do produto (unidades_medida)
  */
 
 // Unidades que são baseadas em peso (gramas)

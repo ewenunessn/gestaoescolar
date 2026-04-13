@@ -16,7 +16,8 @@ export const PRODUTO_IMPORT_HEADERS = [
   'estoque_minimo',
   'fator_correcao',
   'tipo_fator_correcao',
-  'unidade_distribuicao',
+  'indice_coccao',
+  'unidade_medida_id',
   'peso'
 ];
 
@@ -32,6 +33,7 @@ export const PRODUTO_IMPORT_EXEMPLOS = [
     100,
     1.0,
     'perda',
+    1.0,
     'KG',
     1000
   ],
@@ -46,6 +48,7 @@ export const PRODUTO_IMPORT_EXEMPLOS = [
     50,
     1.0,
     'perda',
+    1.0,
     'KG',
     1000
   ],
@@ -60,6 +63,7 @@ export const PRODUTO_IMPORT_EXEMPLOS = [
     0,
     1.4,
     'perda',
+    1.0,
     'KG',
     120
   ],
@@ -74,6 +78,7 @@ export const PRODUTO_IMPORT_EXEMPLOS = [
     200,
     1.0,
     'perda',
+    1.0,
     'Unidade',
     60
   ],
@@ -88,6 +93,7 @@ export const PRODUTO_IMPORT_EXEMPLOS = [
     20,
     1.0,
     'perda',
+    1.0,
     'L',
     920
   ]
@@ -104,7 +110,8 @@ export const PRODUTO_IMPORT_COL_WIDTHS = [
   { wch: 15 }, // estoque_minimo
   { wch: 15 }, // fator_correcao
   { wch: 20 }, // tipo_fator_correcao
-  { wch: 20 }, // unidade_distribuicao
+  { wch: 15 }, // indice_coccao
+  { wch: 20 }, // unidade_medida_id
   { wch: 12 }  // peso
 ];
 
@@ -122,7 +129,8 @@ export const PRODUTO_IMPORT_INSTRUCOES = [
   ['estoque_minimo', 'Estoque mínimo em unidades', 'NÃO', '100'],
   ['fator_correcao', 'Fator de correção (perdas/rendimento)', 'NÃO', '1.0'],
   ['tipo_fator_correcao', 'Tipo: perda ou rendimento', 'NÃO', 'perda'],
-  ['unidade_distribuicao', 'Unidade de distribuição (KG, L, Unidade, etc)', 'NÃO', 'KG'],
+  ['indice_coccao', 'Índice de cocção (>1 ganha peso, <1 perde)', 'NÃO', '1.0'],
+  ['unidade_medida_id', 'ID da unidade de medida cadastrada', 'NÃO', '1'],
   ['peso', 'Peso unitário em gramas', 'NÃO', '1000'],
   [''],
   ['NOTAS IMPORTANTES:'],
@@ -130,9 +138,9 @@ export const PRODUTO_IMPORT_INSTRUCOES = [
   ['- Use true ou false para os campos perecivel e ativo'],
   ['- Peso: em GRAMAS (ex: 1000 para 1kg, 60 para 1 ovo)'],
   ['- Fator de correção: >= 1.0 para perdas (ex: 1.4 para banana com casca)'],
-  ['- Fator de correção: <= 1.0 para rendimento (ex: 0.8 para arroz que rende 80%)'],
   ['- Tipo fator correção: "perda" ou "rendimento"'],
-  ['- Unidade distribuição: como o produto é distribuído (KG, L, Unidade, Pacote, etc)'],
+  ['- Índice de cocção: >1 ganha peso no cozimento, <1 perde peso',
+  '- Unidade distribuição: como o produto é distribuído (KG, L, Unidade, Pacote, etc)'],
   ['- Validade mínima: em dias (ex: 7 para frutas, 180 para arroz)'],
   ['- Estoque mínimo: quantidade mínima para alerta'],
   ['- O sistema identificará produtos existentes pelo nome e fará atualização'],

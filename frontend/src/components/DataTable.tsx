@@ -461,7 +461,7 @@ export const DataTable = memo(function DataTable<TData>({
               const valorRepasseCell = cells.find((c: any) => c.column.id === 'valor_repasse');
               const parcelasCell = cells.find((c: any) => c.column.id === 'parcelas');
               const totalAnualCell = cells.find((c: any) => c.column.id === 'total_anual');
-              const unidadeCell = cells.find((c: any) => c.column.id === 'unidade_distribuicao');
+              const unidadeCell = cells.find((c: any) => c.column.id === 'unidade');
               const composicaoCell = cells.find((c: any) => c.column.id === 'tem_composicao_nutricional');
               const contratoCell = cells.find((c: any) => c.column.id === 'tem_contrato');
               const fornecedorCell = cells.find((c: any) => c.column.id === 'fornecedor_id');

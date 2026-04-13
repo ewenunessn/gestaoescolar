@@ -45,7 +45,7 @@ class EstoqueCentralModel {
     return await db.transaction(async (client) => {
       // Buscar unidade do produto
       const produtoResult = await client.query(
-        `SELECT COALESCE(um.codigo, p.unidade_distribuicao, 'UN') as unidade
+        `SELECT COALESCE(um.codigo, 'UN') as unidade
          FROM produtos p
          LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
          WHERE p.id = $1`,
@@ -118,9 +118,10 @@ class EstoqueCentralModel {
     return db.transaction(async (client) => {
       // Buscar estoque do produto diretamente da tabela
       const estoqueResult = await client.query(
-        `SELECT ec.id, p.nome as produto_nome, p.unidade_distribuicao as unidade 
+        `SELECT ec.id, p.nome as produto_nome, COALESCE(um.codigo, 'UN') as unidade
          FROM estoque_central ec
          JOIN produtos p ON p.id = ec.produto_id
+         LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
          WHERE ec.produto_id = $1`,
         [produtoId]
       );
@@ -194,7 +195,7 @@ class EstoqueCentralModel {
     return await db.transaction(async (client) => {
       // Buscar unidade do produto
       const produtoResult = await client.query(
-        `SELECT COALESCE(um.codigo, p.unidade_distribuicao, 'UN') as unidade
+        `SELECT COALESCE(um.codigo, 'UN') as unidade
          FROM produtos p
          LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
          WHERE p.id = $1`,
@@ -285,7 +286,7 @@ class EstoqueCentralModel {
     return await db.transaction(async (client) => {
       // Buscar unidade do produto
       const produtoResult = await client.query(
-        `SELECT COALESCE(um.codigo, p.unidade_distribuicao, 'UN') as unidade
+        `SELECT COALESCE(um.codigo, 'UN') as unidade
          FROM produtos p
          LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
          WHERE p.id = $1`,
@@ -405,10 +406,11 @@ class EstoqueCentralModel {
     offset = 0
   ) {
     let query = `
-      SELECT m.*, p.nome as produto_nome, p.unidade_distribuicao as unidade_atual_produto
+      SELECT m.*, p.nome as produto_nome, COALESCE(um.codigo, 'UN') as unidade_atual_produto
       FROM estoque_central_movimentacoes m
       INNER JOIN estoque_central ec ON ec.id = m.estoque_central_id
       INNER JOIN produtos p ON p.id = ec.produto_id
+      LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
       WHERE 1=1
     `;
     const params: any[] = [];

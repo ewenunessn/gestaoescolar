@@ -143,7 +143,7 @@ const CardapioPublico: React.FC = () => {
         tableBody.push([
           { text: produto.produto_nome || '', fontSize: 9 },
           { text: produto.quantidade?.toFixed(2) || '0', fontSize: 9, alignment: 'center' },
-          { text: produto.unidade_medida || '', fontSize: 9, alignment: 'center' },
+          { text: produto.unidade || '', fontSize: 9, alignment: 'center' },
           { text: `R$ ${produto.custo_unitario?.toFixed(2) || '0.00'}`, fontSize: 9, alignment: 'right' },
           { text: `R$ ${produto.custo_total?.toFixed(2) || '0.00'}`, fontSize: 9, alignment: 'right' }
         ]);

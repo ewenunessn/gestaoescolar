@@ -864,7 +864,7 @@ export default function ContratoDetalhe() {
                   <Typography variant="body2">{option.nome}</Typography>
                   <Typography variant="caption" color="text.secondary">
                     {option.categoria && `${option.categoria}`}
-                    {option.unidade_distribuicao && ` • Unidade: ${option.unidade_distribuicao}`}
+                    {option.unidade && ` • Unidade: ${option.unidade}`}
                     {option.peso && ` • Peso: ${formatarNumero(option.peso)}g`}
                   </Typography>
                 </Box>
@@ -890,7 +890,7 @@ export default function ContratoDetalhe() {
             <Alert severity="info" sx={{ mb: 1.5, py: 0.5 }}>
               <Typography variant="body2" sx={{ fontSize: '0.8125rem' }}>
                 <strong>Produto:</strong> {produtoSelecionado.nome}
-                {produtoSelecionado.unidade_distribuicao && <> • <strong>Unidade:</strong> {produtoSelecionado.unidade_distribuicao}</>}
+                {produtoSelecionado.unidade && <> • <strong>Unidade:</strong> {produtoSelecionado.unidade}</>}
                 {produtoSelecionado.peso && <> • <strong>Peso:</strong> {formatarNumero(produtoSelecionado.peso)}g</>}
               </Typography>
             </Alert>

@@ -21,7 +21,7 @@ export async function getRefeicaoProdutos(
 ): Promise<RefeicaoProduto[]> {
   try {
     const query = `
-      SELECT 
+      SELECT
         rp.id,
         rp.refeicao_id,
         rp.produto_id,
@@ -32,7 +32,7 @@ export async function getRefeicaoProdutos(
         json_build_object(
           'id', p.id,
           'nome', p.nome,
-          'unidade', p.unidade_distribuicao,
+          'unidade', COALESCE(um.codigo, 'UN'),
           'fator_correcao', p.fator_correcao,
           'ativo', p.ativo
         ) as produto,
@@ -50,6 +50,7 @@ export async function getRefeicaoProdutos(
         ) as per_capita_por_modalidade
       FROM refeicao_produtos rp
       LEFT JOIN produtos p ON rp.produto_id = p.id
+      LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
       WHERE rp.refeicao_id = $1
       ORDER BY p.nome
     `;
