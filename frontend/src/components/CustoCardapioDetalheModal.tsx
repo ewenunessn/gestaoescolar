@@ -7,6 +7,7 @@ import {
 } from '@mui/material';
 import { Visibility as VisibilityIcon } from '@mui/icons-material';
 import { CustoCardapio } from '../services/cardapiosModalidade';
+import { modalidadeService } from '../services/modalidades';
 
 const fmt = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -60,10 +61,10 @@ function ProdutosRefeicaoModal({ open, onClose, refeicao }: ProdutosModalProps) 
         </Box>
       </DialogTitle>
       <DialogContent>
-        <TableContainer component={Paper} variant="outlined">
+        <TableContainer component={Paper} variant="outlined" sx={{ bgcolor: 'background.paper' }}>
           <Table size="small">
             <TableHead>
-              <TableRow sx={{ bgcolor: 'grey.50' }}>
+              <TableRow sx={{ bgcolor: 'action.hover' }}>
                 <TableCell><strong>Produto</strong></TableCell>
                 <TableCell><strong>Tipo Fornecedor</strong></TableCell>
                 <TableCell align="right"><strong>Custo/Aluno</strong></TableCell>
@@ -127,11 +128,12 @@ export default function CustoCardapioDetalheModal({ open, onClose, custo }: Prop
   React.useEffect(() => {
     const loadModalidades = async () => {
       try {
-        const response = await fetch('/api/modalidades');
-        const data = await response.json();
-        setModalidades(data);
+        const data = await modalidadeService.listar();
+        // Garantir que sempre seja um array
+        setModalidades(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error('Erro ao carregar modalidades:', error);
+        setModalidades([]);
       }
     };
     if (open) {
@@ -141,6 +143,7 @@ export default function CustoCardapioDetalheModal({ open, onClose, custo }: Prop
 
   // Função para obter nome da modalidade
   const getModalidadeNome = (modalidadeId: number) => {
+    if (!Array.isArray(modalidades)) return `Modalidade ${modalidadeId}`;
     const modalidade = modalidades.find(m => m.id === modalidadeId);
     return modalidade?.nome || `Modalidade ${modalidadeId}`;
   };
@@ -214,13 +217,13 @@ export default function CustoCardapioDetalheModal({ open, onClose, custo }: Prop
               { label: 'Custo Total', value: fmt(custo.custo_total), color: 'success.main' },
               { label: 'Custo por Aluno', value: fmt(custoPorAluno), color: 'primary.main' },
             ].map(({ label, value, color }) => (
-              <Box key={label} sx={{ flex: 1, p: 2, bgcolor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
+              <Box key={label} sx={{ flex: 1, p: 2, bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
                 <Typography variant="caption" color="text.secondary">{label}</Typography>
                 <Typography variant="h5" fontWeight={700} color={color}>{value}</Typography>
               </Box>
             ))}
             {custo.detalhes_por_modalidade.map((m) => (
-              <Box key={m.modalidade_id} sx={{ flex: 1, p: 2, bgcolor: 'action.hover', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
+              <Box key={m.modalidade_id} sx={{ flex: 1, p: 2, bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
                 <Typography variant="caption" color="text.secondary">{m.quantidade_alunos} alunos</Typography>
                 <Typography variant="h5" fontWeight={700}>{fmt(m.custo_total)}</Typography>
               </Box>
@@ -239,16 +242,16 @@ export default function CustoCardapioDetalheModal({ open, onClose, custo }: Prop
                   {custo.detalhes_por_tipo_fornecedor
                     .sort((a, b) => b.valor_total - a.valor_total)
                     .map((tipo) => (
-                    <Box 
-                      key={tipo.tipo_fornecedor} 
-                      sx={{ 
+                    <Box
+                      key={tipo.tipo_fornecedor}
+                      sx={{
                         flex: '1 1 calc(33.333% - 16px)',
                         minWidth: '200px',
-                        p: 2, 
-                        bgcolor: '#f8f9fa', 
-                        borderRadius: 1, 
+                        p: 2,
+                        bgcolor: 'background.paper',
+                        borderRadius: 1,
                         border: '2px solid',
-                        borderColor: TIPO_FORNECEDOR_COLORS[tipo.tipo_fornecedor] || '#e9ecef',
+                        borderColor: TIPO_FORNECEDOR_COLORS[tipo.tipo_fornecedor] || 'divider',
                         transition: 'all 0.2s',
                         '&:hover': {
                           transform: 'translateY(-2px)',
@@ -315,10 +318,10 @@ export default function CustoCardapioDetalheModal({ open, onClose, custo }: Prop
                 <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1, color: 'primary.main' }}>
                   Dia {dia}
                 </Typography>
-                <TableContainer component={Paper} variant="outlined">
+                <TableContainer component={Paper} variant="outlined" sx={{ bgcolor: 'background.paper' }}>
                   <Table size="small">
                     <TableHead>
-                      <TableRow sx={{ bgcolor: 'grey.50' }}>
+                      <TableRow sx={{ bgcolor: 'action.hover' }}>
                         <TableCell><strong>Refeição</strong></TableCell>
                         <TableCell><strong>Tipo</strong></TableCell>
                         <TableCell><strong>Modalidade</strong></TableCell>
