@@ -9,7 +9,12 @@ export const getDashboardStats = asyncHandler(async (_req: Request, res: Respons
 
   const [escolas, alunos, solicitacoes] = await Promise.all([
     db.query(`SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE ativo = true) as ativas FROM escolas`),
-    db.query(`SELECT COALESCE(SUM(quantidade_alunos), 0) as total FROM escola_modalidades`),
+    db.query(`
+      SELECT COALESCE(SUM(em.quantidade_alunos), 0) as total 
+      FROM escola_modalidades em
+      INNER JOIN escolas e ON em.escola_id = e.id
+      WHERE e.ativo = true
+    `),
     db.query(`
       SELECT
         COUNT(*) as total,

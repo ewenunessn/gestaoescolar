@@ -95,15 +95,12 @@ export const buscarIngredientesDetalhados = async (req: Request, res: Response) 
       valor ? round2(valor * proporcao) : 0;
 
     const ingredientes: IngredienteDetalhado[] = result.rows.map(ing => {
-      // Per capita cadastrado depende do tipo_medida:
-      // - Se 'gramas' ou 'mililitros': per_capita já está em gramas/ml
-      // - Se 'unidades': per_capita é a QUANTIDADE de unidades, precisa multiplicar pelo peso
+      // Per capita sempre em gramas ou miligramas
+      // Converter mg para g se necessário
       let quantidadeGramasLiquido = ing.per_capita;
       
-      if (ing.tipo_medida === 'unidades') {
-        // Usar peso unitário do produto cadastrado, ou 100g como fallback
-        const pesoUnitario = ing.peso_unitario || 100;
-        quantidadeGramasLiquido = ing.per_capita * pesoUnitario;
+      if (ing.tipo_medida === 'mg' || ing.tipo_medida === 'miligramas') {
+        quantidadeGramasLiquido = ing.per_capita / 1000;
       }
 
       // Calcular proporção usando quantidade LÍQUIDA (quantidade / 100g)
@@ -117,7 +114,7 @@ export const buscarIngredientesDetalhados = async (req: Request, res: Response) 
       return {
         produto_id: ing.produto_id,
         produto_nome: ing.produto_nome,
-        per_capita: quantidadeGramasLiquido, // LÍQUIDO em gramas (já convertido se for unidades)
+        per_capita: quantidadeGramasLiquido, // LÍQUIDO em gramas (já convertido se for mg)
         per_capita_liquido: quantidadeGramasLiquido, // Explícito
         per_capita_bruto: perCapitaBruto, // BRUTO (compra) em gramas
         tipo_medida: ing.tipo_medida,

@@ -40,13 +40,14 @@ export const JobProgressModal: React.FC<JobProgressModalProps> = ({
   useEffect(() => {
     if (!open || !jobId) {
       setPolling(false);
-      completedRef.current = false; // Reset ao fechar
+      completedRef.current = false;
       return;
     }
 
     setPolling(true);
-    completedRef.current = false; // Reset ao abrir
-    let intervalId: NodeJS.Timeout;
+    completedRef.current = false;
+    let intervalId: NodeJS.Timeout | null = null;
+    let isCancelled = false;
 
     const fetchJobStatus = async () => {
       try {
@@ -55,9 +56,9 @@ export const JobProgressModal: React.FC<JobProgressModalProps> = ({
 
         // Parar polling se job terminou
         if (jobData.status === 'concluido' || jobData.status === 'erro') {
+          if (intervalId) clearInterval(intervalId);
           setPolling(false);
-          
-          // Chamar onComplete apenas uma vez
+
           if (jobData.status === 'concluido' && onComplete && !completedRef.current) {
             completedRef.current = true;
             onComplete(jobData.resultado);
@@ -72,16 +73,17 @@ export const JobProgressModal: React.FC<JobProgressModalProps> = ({
     fetchJobStatus();
 
     // Polling a cada 2 segundos
-    if (polling) {
-      intervalId = setInterval(fetchJobStatus, 2000);
-    }
+    intervalId = setInterval(() => {
+      if (!isCancelled) {
+        fetchJobStatus();
+      }
+    }, 2000);
 
     return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
+      isCancelled = true;
+      if (intervalId) clearInterval(intervalId);
     };
-  }, [open, jobId, polling]); // Removido onComplete das dependências
+  }, [open, jobId]); // Removido polling das dependências
 
   const formatarTempo = (segundos?: number): string => {
     if (!segundos) return '--';

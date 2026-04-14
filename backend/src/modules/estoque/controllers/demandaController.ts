@@ -63,24 +63,26 @@ function calcularQuantidade(
   frequencia_mensal: number, 
   per_capita: number, 
   tipo_medida: string, 
-  fator_divisao: number
+  peso_embalagem: number
 ): number {
   const alunos = toSafeNumber(quantidade_alunos);
   const freq = toSafeNumber(frequencia_mensal);
   const capita = toSafeNumber(per_capita);
-  const fator = toSafeNumber(fator_divisao, 1);
+  const peso = toSafeNumber(peso_embalagem, 1000); // peso em gramas
   
-  let resultado: number;
-  
-  if (tipo_medida === 'unidades') {
-    // Para unidades, não dividir por 1000
-    resultado = (alunos * freq * capita) / fator;
-  } else {
-    // Para gramas, manter o cálculo original
-    resultado = (alunos * freq * capita) / 1000 / fator;
+  // Converter mg para g se necessário
+  let perCapitaGramas = capita;
+  if (tipo_medida === 'mg' || tipo_medida === 'miligramas') {
+    perCapitaGramas = capita / 1000;
   }
   
-  return resultado;
+  // Calcular total em gramas
+  const totalGramas = alunos * freq * perCapitaGramas;
+  
+  // Dividir pelo peso da embalagem para obter quantidade de pacotes/unidades
+  const quantidadeEmbalagens = totalGramas / peso;
+  
+  return quantidadeEmbalagens;
 }
 
 export async function gerarDemandaMensal(req: Request, res: Response) {

@@ -1607,7 +1607,7 @@ const CardapioCalendarioPage: React.FC = () => {
                         </Box>
                         <Box sx={{ width: 100, p: 1.5, textAlign: 'center' }}>
                           <Chip 
-                            label={produto.tipo_medida === 'gramas' ? 'Gramas' : 'Unidades'} 
+                            label={produto.tipo_medida === 'gramas' ? 'Gramas' : 'Miligramas'} 
                             size="small" 
                             variant="outlined"
                           />

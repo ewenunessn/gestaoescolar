@@ -8,12 +8,15 @@ const getQuantidadeLiquida = (ing: {
   tipo_medida: string;
   peso_unitario: number | null;
 }) => {
-  if (ing.tipo_medida === 'unidades') {
-    const peso = toNum(ing.peso_unitario, 100);
-    const perCapita = toNum(ing.per_capita, 0);
-    return perCapita * peso;
+  const perCapita = toNum(ing.per_capita, 0);
+  
+  // Converter mg para g se necessário
+  if (ing.tipo_medida === 'mg' || ing.tipo_medida === 'miligramas') {
+    return perCapita / 1000;
   }
-  return toNum(ing.per_capita, 0);
+  
+  // Já está em gramas
+  return perCapita;
 };
 
 interface IngredienteNutricional {

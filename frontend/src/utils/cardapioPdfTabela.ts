@@ -29,12 +29,12 @@ export const gerarPDFTabela = async ({
   const pdfMake = await initPdfMake();
   const instituicao = await fetchInstituicaoForPDF();
 
-  // Carregar tipos de refeição dinâmicos
-  const tiposRefeicaoData = await listarTiposRefeicao(true);
+  // Carregar tipos de refeição dinâmicos (serviço já retorna o array)
+  const tiposRefeicaoArray = await listarTiposRefeicao(true);
   const tiposRefeicaoMap: Record<string, string> = {};
   const tiposHorariosMap: Record<string, string> = {};
-  
-  tiposRefeicaoData.forEach(tipo => {
+
+  tiposRefeicaoArray.forEach(tipo => {
     tiposRefeicaoMap[tipo.chave] = tipo.nome.toUpperCase();
     tiposHorariosMap[tipo.chave] = formatarHorario(tipo.horario) + 'H';
   });
@@ -44,7 +44,7 @@ export const gerarPDFTabela = async ({
   const tiposExistentes = new Set<string>();
   datasOrdenadas.forEach(data => {
     const dia = data.getDate();
-    const refeicoesNoDia = refeicoes.filter(r => r.dia === dia);
+    const refeicoesNoDia = refeicoes.filter(r => String(r.dia) === String(dia));
     refeicoesNoDia.forEach(r => {
       if (tiposRefeicaoMap[r.tipo_refeicao]) {
         tiposExistentes.add(r.tipo_refeicao);
@@ -53,7 +53,7 @@ export const gerarPDFTabela = async ({
   });
 
   // Ordenar tipos pela ordem definida no banco
-  const tiposOrdenados = tiposRefeicaoData
+  const tiposOrdenados = tiposRefeicaoArray
     .filter(tipo => tiposExistentes.has(tipo.chave))
     .sort((a, b) => a.ordem - b.ordem)
     .map(tipo => tipo.chave);

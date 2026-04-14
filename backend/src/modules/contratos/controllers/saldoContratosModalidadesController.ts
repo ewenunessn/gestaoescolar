@@ -369,7 +369,8 @@ class SaldoContratosModalidadesController {
           m.ativo
         FROM modalidades m
         LEFT JOIN escola_modalidades em ON m.id = em.modalidade_id
-        WHERE m.ativo = true
+        LEFT JOIN escolas e ON em.escola_id = e.id
+        WHERE m.ativo = true AND (e.ativo = true OR e.id IS NULL)
         GROUP BY m.id, m.nome, m.codigo_financeiro, m.ativo
         ORDER BY m.nome
       `);

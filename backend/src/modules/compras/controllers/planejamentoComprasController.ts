@@ -192,7 +192,10 @@ async function calcularDemandaPeriodo(
       AND cm2.modalidade_id IS NOT NULL
   `, [ano, mes]);
 
-  if (cardapiosQuery.rows.length === 0) return [];
+  if (cardapiosQuery.rows.length === 0) {
+    // Retornar info de debug no erro
+    throw new Error(`Nenhum cardápio ativo encontrado para competência ${ano}-${mes}. Verifique se existe um cardápio ativo com refeições cadastradas.`);
+  }
 
   const escolasQuery = escola_ids && escola_ids.length > 0
     ? await db.pool.query(`
@@ -209,6 +212,7 @@ async function calcularDemandaPeriodo(
       `);
 
   const escolas = escolasQuery.rows;
+  console.log('[calcularDemandaPeriodo] Escolas encontradas:', escolas.length);
   if (escolas.length === 0) return [];
 
   const refeicoesQuery = await db.pool.query(`
@@ -237,6 +241,38 @@ async function calcularDemandaPeriodo(
       AND crd.dia BETWEEN $2 AND $3
   `, [cardapiosQuery.rows.map((c: any) => c.id), diaInicio, diaFim]);
 
+  console.log('[DEBUG] Cardápio IDs:', cardapiosQuery.rows.map((c: any) => c.id));
+  console.log('[DEBUG] Dia range:', diaInicio, 'a', diaFim);
+  console.log('[DEBUG] Refeições query result:', refeicoesQuery.rows.length, 'rows');
+  if (refeicoesQuery.rows.length > 0) {
+    console.log('[DEBUG] Primeira row:', refeicoesQuery.rows[0]);
+  } else {
+    // Testar query simplificada para debug
+    console.log('[DEBUG] Testando query simplificada...');
+    const testQuery = await db.pool.query(`
+      SELECT crd.id, crd.cardapio_modalidade_id, crd.dia, crd.refeicao_id, crd.ativo
+      FROM cardapio_refeicoes_dia crd
+      WHERE crd.cardapio_modalidade_id = ANY($1)
+        AND crd.ativo = true
+        AND crd.dia BETWEEN $2 AND $3
+    `, [cardapiosQuery.rows.map((c: any) => c.id), diaInicio, diaFim]);
+    console.log('[DEBUG] cardapio_refeicoes_dia encontrado:', testQuery.rows.length);
+    if (testQuery.rows.length > 0) {
+      console.log('[DEBUG] Test rows:', testQuery.rows);
+      
+      // Testar com refeicao_produtos
+      const refeicaoIds = testQuery.rows.map(r => r.refeicao_id);
+      const testQuery2 = await db.pool.query(`
+        SELECT rp.id, rp.refeicao_id, rp.produto_id
+        FROM refeicao_produtos rp
+        WHERE rp.refeicao_id = ANY($1)
+        LIMIT 5
+      `, [refeicaoIds]);
+      console.log('[DEBUG] refeicao_produtos encontrado:', testQuery2.rows.length);
+      if (testQuery2.rows.length > 0) console.log('[DEBUG] RP rows:', testQuery2.rows);
+    }
+  }
+
   // Agrupar por modalidade → produto → ocorrências
   const porModalidade = new Map<number, Map<number, any[]>>();
   for (const ref of refeicoesQuery.rows) {
@@ -259,33 +295,26 @@ async function calcularDemandaPeriodo(
       const indiceCoccao = toNum(ref.indice_coccao, 1.0);
       const fator = toNum(ref.fator_correcao, 1.0);
       
-      // CORREÇÃO: Para produtos em UNIDADES, usar o peso do produto
-      let qtdKg: number;
-      
-      if (ref.tipo_medida === 'unidades') {
-        // Per capita em UNIDADES (ex: 1 ovo)
-        // Quantidade = alunos × per_capita × frequência
-        const quantidadeUnidades = escola.numero_alunos * perCapita * ocorrencias.length;
-        
-        // Converter para kg usando o peso do produto (se disponível)
-        if (ref.peso_embalagem && ref.peso_embalagem > 0) {
-          // peso_embalagem está em gramas
-          qtdKg = (quantidadeUnidades * ref.peso_embalagem) / 1000;
-        } else {
-          // Se não tem peso, assumir que 1 unidade = 100g (fallback)
-          qtdKg = (quantidadeUnidades * 100) / 1000;
-        }
-      } else {
-        // Per capita em GRAMAS (ex: 150g de arroz cozido)
-        // NOTA: Índice de cocção DESABILITADO por padrão (considerar_indice_coccao = false)
-        // O campo existe no banco apenas para referência, mas não é aplicado automaticamente
-        // LÓGICA: Apenas FC (fator de correção) é aplicado se habilitado
-        // 1. Per capita já está no estado final (cozido)
-        const perCapitaCru = considerar_indice_coccao ? perCapita / indiceCoccao : perCapita;
-        // 2. Calcular quanto precisa COMPRAR (antes de limpar/descascar)
-        const perCapitaBruto = considerar_fator_correcao ? perCapitaCru * fator : perCapitaCru;
-        qtdKg = (escola.numero_alunos * perCapitaBruto * ocorrencias.length) / 1000;
+      // Converter mg para g se necessário
+      let perCapitaGramas = perCapita;
+      if (ref.tipo_medida === 'mg' || ref.tipo_medida === 'miligramas') {
+        perCapitaGramas = perCapita / 1000;
       }
+      
+      // Per capita sempre em GRAMAS
+      // NOTA: Índice de cocção DESABILITADO por padrão (considerar_indice_coccao = false)
+      // O campo existe no banco apenas para referência, mas não é aplicado automaticamente
+      // LÓGICA: Apenas FC (fator de correção) é aplicado se habilitado
+      // 1. Per capita já está no estado final (cozido)
+      const perCapitaCru = considerar_indice_coccao ? perCapitaGramas / indiceCoccao : perCapitaGramas;
+      // 2. Calcular quanto precisa COMPRAR (antes de limpar/descascar)
+      const perCapitaBruto = considerar_fator_correcao ? perCapitaCru * fator : perCapitaCru;
+      
+      // Calcular total em gramas
+      const totalGramas = escola.numero_alunos * perCapitaBruto * ocorrencias.length;
+      
+      // Converter para kg
+      const qtdKg = totalGramas / 1000;
 
       if (!totais.has(produto_id)) {
         const ref = ocorrencias[0];
@@ -996,10 +1025,10 @@ export const calcularDemandaPorCompetencia = async (req: Request, res: Response)
         const perCapitaLiquido = per_capita;
         const perCapitaBruto = perCapitaLiquido * fator;
 
-        // Converter para gramas se necessário
+        // Converter mg para gramas se necessário
         let perCapitaGramas = perCapitaBruto;
-        if (tipo_medida === 'unidades') {
-          perCapitaGramas = perCapitaBruto * 100;
+        if (tipo_medida === 'mg' || tipo_medida === 'miligramas') {
+          perCapitaGramas = perCapitaBruto / 1000;
         }
 
         // Contar quantas vezes o produto aparece no período
@@ -1237,6 +1266,12 @@ export const gerarGuiasDemanda = async (req: Request, res: Response) => {
         erros: erros.map(m => ({ motivo: m })),
         total_criadas: 0,
         total_erros: erros.length,
+        debug: {
+          ano,
+          mes,
+          periodos_verificados: periodos,
+          escola_ids: escola_ids || 'todas as escolas',
+        },
       });
     }
 
@@ -1990,7 +2025,15 @@ async function processarGeracaoGuiasBackground(jobId: number) {
       await JobService.atualizarStatus(jobId, 'erro', {
         progresso: 100,
         erro: 'Nenhum produto calculado para os períodos informados',
-        resultado: { erros: erros.map(m => ({ motivo: m })) },
+        resultado: {
+          erros: erros.map(m => ({ motivo: m })),
+          detalhes_debug: {
+            ano,
+            mes,
+            periodos_verificados: periodos.length,
+            escola_ids: escola_ids || 'todas as escolas',
+          },
+        },
       });
       return;
     }

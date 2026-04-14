@@ -281,7 +281,8 @@ export default function PlanejamentoCompras() {
                   resolve();
                 } else if (job.status === 'erro') {
                   clearInterval(interval);
-                  reject(new Error(job.erro || 'Erro no processamento'));
+                  const debugInfo = job.resultado?.detalhes_debug ? ` | Ano/Mês: ${job.resultado.detalhes_debug.ano}/${job.resultado.detalhes_debug.mes} | Escolas: ${job.resultado.detalhes_debug.escola_ids}` : '';
+                  reject(new Error((job.erro || 'Erro no processamento') + debugInfo));
                 } else if (tentativas >= MAX) {
                   clearInterval(interval);
                   reject(new Error('Tempo limite excedido'));
@@ -303,7 +304,8 @@ export default function PlanejamentoCompras() {
           toast.success('Guias geradas', `${res.total_criadas} guia(s) de demanda criada(s) com sucesso`);
         } else {
           const motivos = res.erros?.map((e) => e.motivo).join('; ') || 'Verifique os erros abaixo';
-          toast.error('Nenhuma guia criada', motivos);
+          const debugMsg = res.debug ? ` | Ano/Mês: ${res.debug.ano}/${res.debug.mes} | Escolas: ${res.debug.escola_ids} | Períodos: ${JSON.stringify(res.debug.periodos_verificados)}` : '';
+          toast.error('Nenhuma guia criada', motivos + debugMsg);
         }
       }
     } catch (error: any) {

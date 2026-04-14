@@ -853,9 +853,22 @@ export default function PreparacaoDetalhe() {
                       </Box>
                     ))}
                     {valoresNutricionais.alertas && valoresNutricionais.alertas.length > 0 && (
-                      <Box sx={{ mt: 1, bgcolor: 'warning.light', px: 1, py: 0.75, borderRadius: 1, border: '1px solid', borderColor: 'warning.main' }}>
+                      <Box sx={{ 
+                        mt: 1.5, 
+                        bgcolor: 'rgba(255, 152, 0, 0.15)', 
+                        px: 1.5, 
+                        py: 1, 
+                        borderRadius: 1, 
+                        border: '1px solid', 
+                        borderColor: 'rgba(255, 152, 0, 0.5)'
+                      }}>
+                        <Typography variant="caption" sx={{ fontWeight: 600, color: 'warning.light', display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+                          ⚠️ Alertas Nutricionais
+                        </Typography>
                         {valoresNutricionais.alertas.map((alerta, idx) => (
-                          <Typography key={idx} variant="caption" sx={{ display: 'block', fontSize: '0.68rem', color: 'text.primary' }}>• {alerta.mensagem}</Typography>
+                          <Typography key={idx} variant="caption" sx={{ display: 'block', fontSize: '0.7rem', color: 'text.primary', ml: 2, lineHeight: 1.5 }}>
+                            • {alerta.mensagem}
+                          </Typography>
                         ))}
                       </Box>
                     )}
@@ -870,7 +883,10 @@ export default function PreparacaoDetalhe() {
 
         {/* Tab 1: Ficha Técnica */}
         {tabAtiva === 1 && (
-          <Card sx={{ borderRadius: '8px', p: 2, maxWidth: '100%', overflow: 'auto' }}>
+          <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 2, alignItems: 'flex-start' }}>
+            {/* Coluna principal: Conteúdo da Ficha Técnica */}
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Card sx={{ borderRadius: '8px', p: 2, maxWidth: '100%', overflow: 'auto' }}>
             {/* Seletor de Modalidade - apenas na Ficha Técnica */}
             {!editando && modalidades.length > 0 && (
               <Box sx={{ 
@@ -1087,72 +1103,7 @@ export default function PreparacaoDetalhe() {
                   </Grid>
                 )}
 
-                {/* Composição Nutricional Calculada Dinamicamente */}
-                {preparacao.rendimento_porcoes && associacoes.length > 0 && (
-                  <>
-                    <Grid item xs={12}>
-                      <Divider sx={{ my: 0.5 }} />
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, mt: 1.5 }}>
-                        <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
-                          Composição Nutricional Calculada (por porção)
-                        </Typography>
-                        {loadingNutricional && <CircularProgress size={16} />}
-                      </Box>
-                      {!loadingNutricional && errorNutricional && (
-                        <Typography variant="caption" color="error" sx={{ display: 'block', mb: 1 }}>
-                          ⚠️ Erro ao calcular valores nutricionais
-                        </Typography>
-                      )}
-                      {!loadingNutricional && valoresNutricionais?.aviso && (
-                        <Typography variant="caption" color="warning.main" sx={{ display: 'block', mb: 1 }}>
-                          ⚠️ {valoresNutricionais.aviso}
-                        </Typography>
-                      )}
-                    </Grid>
-
-                    {!loadingNutricional && valoresNutricionais && (
-                      <Grid item xs={12}>
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
-                          {/* Energia em destaque */}
-                          <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, bgcolor: 'action.hover', px: 1.5, py: 0.5, borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
-                            <Typography variant="caption" color="text.secondary">Energia</Typography>
-                            <Typography variant="body2" sx={{ fontWeight: 700, color: 'primary.main' }}>
-                              {toNum(valoresNutricionais.por_porcao.calorias).toFixed(0)} kcal
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              / {(toNum(valoresNutricionais.por_porcao.calorias) * 4.184).toFixed(0)} kJ
-                            </Typography>
-                          </Box>
-                          {[
-                            { label: 'Proteínas', value: toNum(valoresNutricionais.por_porcao.proteinas).toFixed(1), unit: 'g' },
-                            { label: 'Lipídios', value: toNum(valoresNutricionais.por_porcao.lipidios).toFixed(1), unit: 'g' },
-                            { label: 'Carboidratos', value: toNum(valoresNutricionais.por_porcao.carboidratos).toFixed(1), unit: 'g' },
-                            { label: 'Cálcio', value: toNum(valoresNutricionais.por_porcao.calcio).toFixed(1), unit: 'mg' },
-                            { label: 'Ferro', value: toNum(valoresNutricionais.por_porcao.ferro).toFixed(1), unit: 'mg' },
-                            { label: 'Vit. A', value: toNum(valoresNutricionais.por_porcao.vitamina_a).toFixed(1), unit: 'mcg' },
-                            { label: 'Vit. C', value: toNum(valoresNutricionais.por_porcao.vitamina_c).toFixed(1), unit: 'mg' },
-                            { label: 'Sódio', value: toNum(valoresNutricionais.por_porcao.sodio).toFixed(1), unit: 'mg' },
-                          ].map(({ label, value, unit }) => (
-                            <Box key={label} sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, bgcolor: 'action.selected', px: 1.5, py: 0.5, borderRadius: 1 }}>
-                              <Typography variant="caption" color="text.secondary">{label}</Typography>
-                              <Typography variant="body2" sx={{ fontWeight: 700 }}>{value}{unit}</Typography>
-                            </Box>
-                          ))}
-                          {valoresNutricionais.alertas && valoresNutricionais.alertas.length > 0 && (
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, bgcolor: 'warning.light', px: 1.5, py: 0.5, borderRadius: 1, border: '1px solid', borderColor: 'warning.main' }}>
-                              <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.primary' }}>Alertas:</Typography>
-                              {valoresNutricionais.alertas.map((alerta, idx) => (
-                                <Typography key={idx} variant="caption" sx={{ color: 'text.primary' }}>• {alerta.mensagem}</Typography>
-                              ))}
-                            </Box>
-                          )}
-                        </Box>
-                      </Grid>
-                    )}
-                  </>
-                )}
-
-                {/* Custo Estimado Calculado Dinamicamente */}
+                {/* Custo Estimado */}
                 {preparacao.rendimento_porcoes && associacoes.length > 0 && (
                   <>
                     <Grid item xs={12}>
@@ -1162,16 +1113,6 @@ export default function PreparacaoDetalhe() {
                           Custo Estimado
                         </Typography>
                         {loadingCusto && <CircularProgress size={16} />}
-                        {!loadingCusto && custoData && custoData.detalhamento && (
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            onClick={() => setDetalhamentoCustoOpen(true)}
-                            sx={{ ml: 'auto' }}
-                          >
-                            Ver Detalhamento
-                          </Button>
-                        )}
                       </Box>
                       {!loadingCusto && errorCusto && (
                         <Typography variant="caption" color="error" sx={{ display: 'block', mb: 1 }}>
@@ -1187,26 +1128,92 @@ export default function PreparacaoDetalhe() {
 
                     {!loadingCusto && custoData && (
                       <>
-                        <Grid item xs={12} md={4}>
-                          <Typography variant="body2" color="text.secondary">Custo Total</Typography>
-                          <Typography variant="h6" sx={{ fontWeight: 600, color: 'success.main' }}>
-                            R$ {toNum(custoData.custo_total).toFixed(2)}
-                          </Typography>
-                        </Grid>
+                        <Grid item xs={12}>
+                          <Box sx={{ 
+                            display: 'grid', 
+                            gridTemplateColumns: { 
+                              xs: '1fr', 
+                              sm: 'repeat(2, 1fr)', 
+                              md: custoData.detalhamento ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)' 
+                            }, 
+                            gap: 2
+                          }}>
+                            {/* Custo Total */}
+                            <Box sx={{ 
+                              bgcolor: 'action.hover', 
+                              p: 2.5, 
+                              borderRadius: 1, 
+                              border: '1px solid', 
+                              borderColor: 'divider',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              justifyContent: 'center',
+                              height: 110
+                            }}>
+                              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Custo Total</Typography>
+                              <Typography variant="h5" sx={{ fontWeight: 600, color: 'success.main' }}>
+                                R$ {toNum(custoData.custo_total).toFixed(2)}
+                              </Typography>
+                            </Box>
 
-                        <Grid item xs={12} md={4}>
-                          <Typography variant="body2" color="text.secondary">Custo por Porção</Typography>
-                          <Typography variant="h6" sx={{ fontWeight: 600, color: 'success.main' }}>
-                            R$ {toNum(custoData.custo_por_porcao).toFixed(2)}
-                          </Typography>
+                            {/* Custo por Porção */}
+                            <Box sx={{ 
+                              bgcolor: 'action.hover', 
+                              p: 2.5, 
+                              borderRadius: 1, 
+                              border: '1px solid', 
+                              borderColor: 'divider',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              justifyContent: 'center',
+                              height: 110
+                            }}>
+                              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Custo por Porção</Typography>
+                              <Typography variant="h5" sx={{ fontWeight: 600, color: 'success.main' }}>
+                                R$ {toNum(custoData.custo_por_porcao).toFixed(2)}
+                              </Typography>
+                            </Box>
+
+                            {/* Botão Ver Detalhamento */}
+                            {custoData.detalhamento && (
+                              <Box sx={{ 
+                                bgcolor: 'action.hover', 
+                                p: 2.5, 
+                                borderRadius: 1, 
+                                border: '1px solid', 
+                                borderColor: 'divider',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                height: 110
+                              }}>
+                                <Button
+                                  variant="outlined"
+                                  onClick={() => setDetalhamentoCustoOpen(true)}
+                                  fullWidth
+                                >
+                                  Ver Detalhamento
+                                </Button>
+                              </Box>
+                            )}
+                          </Box>
                         </Grid>
 
                         {custoData.alertas && custoData.alertas.length > 0 && (
                           <Grid item xs={12}>
-                            <Box sx={{ bgcolor: 'error.light', p: 1.5, borderRadius: 1, border: '1px solid', borderColor: 'error.main' }}>
-                              <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>Alertas de Custo:</Typography>
+                            <Box sx={{ 
+                              bgcolor: 'rgba(244, 67, 54, 0.15)', 
+                              px: 2, 
+                              py: 1.5, 
+                              borderRadius: 1, 
+                              border: '1px solid', 
+                              borderColor: 'rgba(244, 67, 54, 0.5)'
+                            }}>
+                              <Typography variant="body2" sx={{ fontWeight: 600, color: 'error.light', mb: 0.5, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                ⚠️ Alertas de Custo
+                              </Typography>
                               {custoData.alertas.map((alerta, idx) => (
-                                <Typography key={idx} variant="caption" sx={{ display: 'block' }}>
+                                <Typography key={idx} variant="body2" sx={{ color: 'text.primary', ml: 2.5, lineHeight: 1.6 }}>
                                   • {alerta.mensagem}
                                 </Typography>
                               ))}
@@ -1272,6 +1279,103 @@ export default function PreparacaoDetalhe() {
             </Box>
             )}
           </Card>
+            </Box>
+
+            {/* Coluna direita: Painel Nutricional e Custo */}
+            {!editando && (
+              <Box sx={{ width: isMobile ? '100%' : 280, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {/* Card Nutricional */}
+                <Card sx={{ borderRadius: '8px', p: 1.5, bgcolor: 'background.paper' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+                    <Typography variant="caption" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary' }}>
+                      Nutrição / porção
+                    </Typography>
+                    {loadingNutricional && <CircularProgress size={12} />}
+                  </Box>
+
+                  {!preparacao?.rendimento_porcoes ? (
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                      Informe o rendimento (porções) para ver os cálculos.
+                    </Typography>
+                  ) : associacoes.length === 0 ? (
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                      Adicione ingredientes para ver os valores nutricionais.
+                    </Typography>
+                  ) : !loadingNutricional && valoresNutricionais ? (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                      {/* Aviso sobre dados faltantes */}
+                      {valoresNutricionais.aviso && (
+                        <Box sx={{ 
+                          bgcolor: 'rgba(255, 152, 0, 0.15)', 
+                          px: 1.5, 
+                          py: 1, 
+                          borderRadius: 1, 
+                          border: '1px solid', 
+                          borderColor: 'rgba(255, 152, 0, 0.5)',
+                          mb: 1
+                        }}>
+                          <Typography variant="caption" sx={{ fontWeight: 600, color: 'warning.light', display: 'block', mb: 0.5 }}>
+                            ⚠️ Atenção
+                          </Typography>
+                          <Typography variant="caption" sx={{ display: 'block', fontSize: '0.7rem', color: 'text.primary', lineHeight: 1.5 }}>
+                            {valoresNutricionais.aviso}
+                          </Typography>
+                        </Box>
+                      )}
+                      
+                      {/* Energia em destaque */}
+                      <Box sx={{ bgcolor: 'action.hover', px: 1.5, py: 0.75, borderRadius: 1, mb: 0.5 }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Energia</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 700, color: 'primary.main' }}>
+                          {toNum(valoresNutricionais.por_porcao.calorias).toFixed(0)} kcal
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {(toNum(valoresNutricionais.por_porcao.calorias) * 4.184).toFixed(0)} kJ
+                        </Typography>
+                      </Box>
+                      {[
+                        { label: 'Proteínas', value: toNum(valoresNutricionais.por_porcao.proteinas).toFixed(1), unit: 'g' },
+                        { label: 'Lipídios', value: toNum(valoresNutricionais.por_porcao.lipidios).toFixed(1), unit: 'g' },
+                        { label: 'Carboidratos', value: toNum(valoresNutricionais.por_porcao.carboidratos).toFixed(1), unit: 'g' },
+                        { label: 'Cálcio', value: toNum(valoresNutricionais.por_porcao.calcio).toFixed(1), unit: 'mg' },
+                        { label: 'Ferro', value: toNum(valoresNutricionais.por_porcao.ferro).toFixed(1), unit: 'mg' },
+                        { label: 'Vit. A', value: toNum(valoresNutricionais.por_porcao.vitamina_a).toFixed(1), unit: 'mcg' },
+                        { label: 'Vit. C', value: toNum(valoresNutricionais.por_porcao.vitamina_c).toFixed(1), unit: 'mg' },
+                        { label: 'Sódio', value: toNum(valoresNutricionais.por_porcao.sodio).toFixed(1), unit: 'mg' },
+                      ].map(({ label, value, unit }) => (
+                        <Box key={label} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', py: 0.25, borderBottom: '1px solid', borderColor: 'divider' }}>
+                          <Typography variant="caption" color="text.secondary">{label}</Typography>
+                          <Typography variant="caption" sx={{ fontWeight: 700 }}>{value}{unit}</Typography>
+                        </Box>
+                      ))}
+                      {valoresNutricionais.alertas && valoresNutricionais.alertas.length > 0 && (
+                        <Box sx={{ 
+                          mt: 1.5, 
+                          bgcolor: 'rgba(255, 152, 0, 0.15)', 
+                          px: 1.5, 
+                          py: 1, 
+                          borderRadius: 1, 
+                          border: '1px solid', 
+                          borderColor: 'rgba(255, 152, 0, 0.5)'
+                        }}>
+                          <Typography variant="caption" sx={{ fontWeight: 600, color: 'warning.light', display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+                            ⚠️ Alertas
+                          </Typography>
+                          {valoresNutricionais.alertas.map((alerta, idx) => (
+                            <Typography key={idx} variant="caption" sx={{ display: 'block', fontSize: '0.7rem', color: 'text.primary', ml: 2, lineHeight: 1.5 }}>
+                              • {alerta.mensagem}
+                            </Typography>
+                          ))}
+                        </Box>
+                      )}
+                    </Box>
+                  ) : !loadingNutricional && errorNutricional ? (
+                    <Typography variant="caption" color="error">Erro ao calcular valores.</Typography>
+                  ) : null}
+                </Card>
+              </Box>
+            )}
+          </Box>
         )}
       </Box>
     </Box>

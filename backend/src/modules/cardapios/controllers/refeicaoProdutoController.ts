@@ -25,14 +25,14 @@ export async function adicionarRefeicaoProduto(req: Request, res: Response) {
   }
   
   // Validar tipo_medida
-  if (!['gramas', 'mililitros', 'unidades'].includes(tipo_medida)) {
+  if (!['gramas', 'mg'].includes(tipo_medida)) {
     return res.status(400).json({ 
-      message: "tipo_medida deve ser 'gramas', 'mililitros' ou 'unidades'." 
+      message: "tipo_medida deve ser 'gramas' ou 'mg'." 
     });
   }
   
   // Validar se o valor está dentro de limites razoáveis
-  const limite = tipo_medida === 'unidades' ? 100 : 1000;
+  const limite = tipo_medida === 'mg' ? 100000 : 10000;
   if (per_capita != null && (per_capita < 0 || per_capita > limite)) {
     return res.status(400).json({ 
       message: `per_capita deve estar entre 0 e ${limite} ${tipo_medida}.` 
@@ -60,14 +60,14 @@ export async function editarRefeicaoProduto(req: Request, res: Response) {
     }
     
     // Validar tipo_medida se fornecido
-    if (tipo_medida && !['gramas', 'mililitros', 'unidades'].includes(tipo_medida)) {
+    if (tipo_medida && !['gramas', 'mg'].includes(tipo_medida)) {
       return res.status(400).json({ 
-        message: "tipo_medida deve ser 'gramas', 'mililitros' ou 'unidades'." 
+        message: "tipo_medida deve ser 'gramas' ou 'mg'." 
       });
     }
     
     // Validar se o valor está dentro de limites razoáveis
-    const limite = tipo_medida === 'unidades' ? 100 : 1000;
+    const limite = tipo_medida === 'mg' ? 100000 : 10000;
     if (per_capita < 0 || per_capita > limite) {
       return res.status(400).json({ 
         message: `per_capita deve estar entre 0 e ${limite} ${tipo_medida || 'gramas'}.` 

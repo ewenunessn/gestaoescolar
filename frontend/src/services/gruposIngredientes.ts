@@ -7,7 +7,7 @@ export interface GrupoItem {
   produto_id: number;
   produto_nome: string;
   per_capita: number;
-  tipo_medida: 'gramas' | 'unidades';
+  tipo_medida: 'gramas' | 'mg';
   fator_correcao?: number;
 }
 

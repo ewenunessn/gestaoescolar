@@ -18,10 +18,11 @@ export async function listarRefeicoes(req: Request, res: Response) {
                 CASE 
                   WHEN pcn.energia_kcal IS NOT NULL THEN 
                     -- Usar per capita ajustado por modalidade se existir, senão usar o padrão
+                    -- Converter mg para g se necessário
                     pcn.energia_kcal * (
                       CASE 
-                        WHEN rp.tipo_medida = 'unidades' THEN 
-                          (COALESCE(rpm.per_capita_ajustado, rp.per_capita) * COALESCE(p.peso, 100.0)) / 100.0
+                        WHEN rp.tipo_medida = 'mg' THEN 
+                          (COALESCE(rpm.per_capita_ajustado, rp.per_capita) / 1000.0) / 100.0
                         ELSE 
                           COALESCE(rpm.per_capita_ajustado, rp.per_capita) / 100.0
                       END
@@ -88,8 +89,8 @@ export async function buscarRefeicao(req: Request, res: Response) {
               WHEN pcn.energia_kcal IS NOT NULL THEN 
                 pcn.energia_kcal * (
                   CASE 
-                    WHEN rp.tipo_medida = 'unidades' THEN 
-                      (rp.per_capita * COALESCE(p.peso, 100.0)) / 100.0
+                    WHEN rp.tipo_medida = 'mg' THEN 
+                      (rp.per_capita / 1000.0) / 100.0
                     ELSE 
                       rp.per_capita / 100.0
                   END
@@ -489,8 +490,8 @@ export const buscarFichaTecnica = async (req: Request, res: Response) => {
     const produtosProcessados = produtos.rows.map(ing => {
       // Per capita cadastrado é LÍQUIDO (consumo)
       let quantidadeGramasLiquido = parseFloat(ing.per_capita) || 0;
-      if (ing.tipo_medida === 'unidades') {
-        quantidadeGramasLiquido = quantidadeGramasLiquido * 100; // Assumir 100g por unidade
+      if (ing.tipo_medida === 'mg' || ing.tipo_medida === 'miligramas') {
+        quantidadeGramasLiquido = quantidadeGramasLiquido / 1000; // Converter mg para g
       }
 
       // Calcular proporção usando quantidade LÍQUIDA (quantidade / 100g)

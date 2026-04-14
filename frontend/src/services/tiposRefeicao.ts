@@ -21,7 +21,8 @@ export interface TipoRefeicaoInput {
 export const listarTiposRefeicao = async (ativo?: boolean): Promise<TipoRefeicao[]> => {
   const params = ativo !== undefined ? { ativo } : {};
   const response = await api.get('/tipos-refeicao', { params });
-  return response.data;
+  // A API retorna {success: true, data: [...], total: X}
+  return response.data?.data ?? response.data;
 };
 
 export const buscarTipoRefeicao = async (id: number): Promise<TipoRefeicao> => {

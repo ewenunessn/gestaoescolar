@@ -34,7 +34,7 @@ export interface RefeicaoProduto {
   refeicao_id: number;
   produto_id: number;
   per_capita: number;
-  tipo_medida: 'gramas' | 'unidades';
+  tipo_medida: 'gramas' | 'mg';
   created_at: string;
   updated_at: string;
   // Dados relacionados
@@ -46,7 +46,7 @@ export interface CriarRefeicaoProdutoRequest {
   refeicao_id: number;
   produto_id: number;
   per_capita: number;
-  tipo_medida: 'gramas' | 'unidades';
+  tipo_medida: 'gramas' | 'mg';
 }
 
 export interface AtualizarRefeicaoProdutoRequest extends Partial<CriarRefeicaoProdutoRequest> {

@@ -620,13 +620,17 @@ const CardapiosModalidadePage: React.FC = () => {
                       />
                     )}
                     renderTags={(value, getTagProps) =>
-                      value.map((option, index) => (
-                        <Chip
-                          label={option.nome}
-                          size="small"
-                          {...getTagProps({ index })}
-                        />
-                      ))
+                      value.map((option, index) => {
+                        const { key, ...tagProps } = getTagProps({ index });
+                        return (
+                          <Chip
+                            key={key}
+                            label={option.nome}
+                            size="small"
+                            {...tagProps}
+                          />
+                        );
+                      })
                     }
                     noOptionsText="Nenhuma modalidade encontrada"
                   />

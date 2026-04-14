@@ -247,13 +247,35 @@ const GuiaDemandaDetalhe: React.FC = () => {
                 if (window.confirm(`Deseja realmente excluir "${produto.produto_nome}" de todas as escolas?`)) {
                   try {
                     setLoading(true);
+                    
+                    // Debug: mostrar informações do produto
+                    console.log('🔍 Produto selecionado:', produto);
+                    console.log('🔍 Total de itens disponíveis:', itens.length);
+                    
+                    // Normalizar data do produto (pode ser null, string vazia ou string de data)
+                    const dataProdutoNormalizada = produto.data_entrega && produto.data_entrega !== '' ? produto.data_entrega : null;
+                    
                     // Excluir todos os itens deste produto (considerando data_entrega)
                     const itensParaExcluir = itens.filter(i => {
                       if (i.produto_id !== produto.produto_id) return false;
-                      if (produto.data_entrega === null) return !i.data_entrega;
-                      const dataItem = i.data_entrega ? String(i.data_entrega).split('T')[0] : null;
-                      return dataItem === produto.data_entrega;
+                      
+                      // Normalizar data do item
+                      const dataItemNormalizada = i.data_entrega ? String(i.data_entrega).split('T')[0] : null;
+                      
+                      // Se ambos são null/vazio, match
+                      if (dataProdutoNormalizada === null && dataItemNormalizada === null) return true;
+                      // Se um é null e outro não, não match
+                      if (dataProdutoNormalizada === null || dataItemNormalizada === null) return false;
+                      // Comparar as strings de data
+                      return dataItemNormalizada === dataProdutoNormalizada;
                     });
+                    
+                    console.log('🔍 Itens para excluir:', itensParaExcluir.length, itensParaExcluir);
+                    
+                    if (itensParaExcluir.length === 0) {
+                      toast.warning('Nenhum item encontrado para excluir');
+                      return;
+                    }
                     
                     await Promise.all(
                       itensParaExcluir.map(item => 

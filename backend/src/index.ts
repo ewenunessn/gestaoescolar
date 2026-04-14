@@ -3,6 +3,10 @@ import path from "path";
 import fs from "fs";
 import dotenv from "dotenv";
 import cors from "cors";
+
+// Carregar variáveis de ambiente PRIMEIRO
+dotenv.config();
+
 import { config } from "./config/config";
 
 // Importar middlewares
@@ -72,8 +76,6 @@ import { createGuiaTables, createEssentialTables } from "./modules/guias/models/
 
 // Importar configuração do banco de dados baseada no ambiente
 const db = process.env.VERCEL === '1' ? require("./database-vercel") : require("./database");
-
-dotenv.config();
 
 // Normalizar CORS origins — remover entradas não-string para segurança
 const rawOrigin = config.backend.cors.origin;

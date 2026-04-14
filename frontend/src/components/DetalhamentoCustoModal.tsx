@@ -164,17 +164,17 @@ export default function DetalhamentoCustoModal({
         </Box>
 
         {/* Legenda */}
-        <Box mt={2} p={2} bgcolor="info.light" borderRadius={1}>
-          <Typography variant="caption" fontWeight={600} display="block" gutterBottom>
+        <Box mt={2} p={2} bgcolor="rgba(33, 150, 243, 0.1)" borderRadius={1} border="1px solid" borderColor="rgba(33, 150, 243, 0.3)">
+          <Typography variant="caption" fontWeight={600} display="block" gutterBottom color="info.light">
             📊 Como o custo é calculado:
           </Typography>
-          <Typography variant="caption" display="block" gutterBottom>
+          <Typography variant="caption" display="block" gutterBottom color="text.primary">
             1️⃣ <strong>Qtd Líquida</strong>: O que o aluno vai comer (per capita cadastrado)
           </Typography>
-          <Typography variant="caption" display="block" gutterBottom>
+          <Typography variant="caption" display="block" gutterBottom color="text.primary">
             2️⃣ <strong>Qtd Bruta</strong> = Qtd Líquida × FC (o que precisa comprar considerando perdas)
           </Typography>
-          <Typography variant="caption" display="block">
+          <Typography variant="caption" display="block" color="text.primary">
             3️⃣ <strong>Custo</strong> = Qtd Bruta × Preço Unitário
           </Typography>
         </Box>

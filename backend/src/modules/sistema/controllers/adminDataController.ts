@@ -16,7 +16,10 @@ export async function getSystemStats(req: Request, res: Response) {
         (SELECT COUNT(*) FROM produtos) as total_produtos,
         (SELECT COUNT(*) FROM contratos) as total_contratos,
         (SELECT COUNT(*) FROM pedidos) as total_pedidos,
-        (SELECT COALESCE(SUM(quantidade_alunos), 0) FROM escola_modalidades) as total_alunos
+        (SELECT COALESCE(SUM(em.quantidade_alunos), 0) 
+         FROM escola_modalidades em
+         INNER JOIN escolas e ON em.escola_id = e.id
+         WHERE e.ativo = true) as total_alunos
     `);
 
     // Instituições por plano
