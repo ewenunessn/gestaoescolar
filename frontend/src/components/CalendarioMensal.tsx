@@ -163,6 +163,7 @@ export default function CalendarioMensal({
           sx={{
             display: 'grid',
             gridTemplateColumns: 'repeat(7, 1fr)',
+            gridAutoRows: '1fr',
             borderTop: '1px solid',
             borderColor: 'divider',
           }}
@@ -179,7 +180,7 @@ export default function CalendarioMensal({
                 <Box
                   key={di}
                   sx={{
-                    minHeight: 100,
+                    minHeight: 110,
                     p: 0.75,
                     borderRight: '1px solid',
                     borderColor: 'divider',
@@ -196,7 +197,7 @@ export default function CalendarioMensal({
                 key={di}
                 onClick={() => !readonly && onDiaClick(dataStr)}
                 sx={{
-                  minHeight: 100,
+                  minHeight: 110,
                   p: 0.75,
                   borderRight: '1px solid',
                   borderColor: 'divider',
@@ -206,6 +207,8 @@ export default function CalendarioMensal({
                   transition: 'background 0.12s ease',
                   '&:hover': readonly ? {} : { bgcolor: 'rgba(255,255,255,0.03)' },
                   position: 'relative',
+                  display: 'flex',
+                  flexDirection: 'column',
                 }}
               >
                 {temEvento && (
@@ -218,7 +221,7 @@ export default function CalendarioMensal({
                   }} />
                 )}
 
-                <Box sx={{ display: 'flex', mb: 0.5 }}>
+                <Box sx={{ display: 'flex', mb: 0.5, flexShrink: 0 }}>
                   <Typography
                     sx={{
                       width: 22, height: 22,
@@ -234,13 +237,20 @@ export default function CalendarioMensal({
                   </Typography>
                 </Box>
 
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+                <Box sx={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: 0.25,
+                  flex: 1,
+                  minHeight: 0,
+                  overflow: 'hidden'
+                }}>
                   {eDia.slice(0, 3).map(ev => {
                     const nome = ev.titulo.includes(':')
                       ? ev.titulo.split(':')[1].trim()
                       : ev.titulo;
                     return (
-                      <Typography
+                      <Box
                         key={ev.id}
                         onClick={(e) => { e.stopPropagation(); onEventoClick?.(ev); }}
                         sx={{
@@ -251,9 +261,6 @@ export default function CalendarioMensal({
                           fontSize: '0.58rem',
                           fontWeight: 600,
                           cursor: 'pointer',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
                           lineHeight: 1.3,
                           boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
                           transition: 'all 0.12s ease',
@@ -261,14 +268,22 @@ export default function CalendarioMensal({
                             transform: 'scale(1.02)',
                             boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
                           },
+                          wordBreak: 'break-word',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          maxWidth: '100%',
                         }}
+                        title={nome}
                       >
                         {nome}
-                      </Typography>
+                      </Box>
                     );
                   })}
                   {eDia.length > 3 && (
-                    <Typography sx={{ fontSize: '0.58rem', color: 'text.secondary', fontWeight: 600, pl: 0.5 }}>
+                    <Typography sx={{ fontSize: '0.58rem', color: 'text.secondary', fontWeight: 600, pl: 0.5, flexShrink: 0 }}>
                       +{eDia.length - 3} mais
                     </Typography>
                   )}

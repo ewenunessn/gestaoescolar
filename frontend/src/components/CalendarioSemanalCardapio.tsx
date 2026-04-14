@@ -313,6 +313,7 @@ export default function CalendarioSemanalCardapio({
                                   key={ei}
                                   label={nome}
                                   size="small"
+                                  title={nome}
                                   onClick={(ev) => { ev.stopPropagation(); onEventoClick?.(e); }}
                                   sx={{
                                     bgcolor: e.cor,
@@ -321,8 +322,14 @@ export default function CalendarioSemanalCardapio({
                                     height: 22,
                                     borderRadius: 1,
                                     width: '100%',
+                                    maxWidth: '100%',
                                     justifyContent: 'flex-start',
-                                    '& .MuiChip-label': { px: 1 },
+                                    '& .MuiChip-label': { 
+                                      px: 1,
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      whiteSpace: 'nowrap'
+                                    },
                                     boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
                                     transition: 'all 0.12s ease',
                                     '&:hover': { transform: 'scale(1.02)', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' },
