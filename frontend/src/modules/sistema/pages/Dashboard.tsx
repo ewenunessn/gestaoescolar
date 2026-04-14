@@ -268,8 +268,8 @@ const Dashboard = () => {
           <Grid item xs={12} sm={6} lg={3}>
             <StatItem
               label="Escolas"
-              value={stats.escolas.total}
-              detail={`${stats.escolas.ativas} ativas`}
+              value={`${stats.escolas.ativas}/${stats.escolas.total}`}
+              detail="ativas"
               icon={<SchoolIcon sx={{ fontSize: 18 }} />}
               accent={GH.blue}
               accentBg={GH.blueDim}

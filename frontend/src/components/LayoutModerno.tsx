@@ -2,14 +2,14 @@ import React, { useState, useCallback, useEffect } from "react";
 import {
   Box, Drawer, List, Typography, IconButton, ListItem, ListItemButton,
   ListItemIcon, ListItemText, Collapse, Tooltip, useTheme, useMediaQuery,
-  Button, CircularProgress, AppBar, Toolbar,
+  Button, CircularProgress, AppBar, Toolbar, InputBase,
 } from "@mui/material";
 import {
   Menu as MenuIcon, Dashboard, School, Category, Inventory, Restaurant,
   MenuBook, Business, Assignment, LocalShipping, Logout, ListAlt, RequestPage,
   Print, Settings, Description, Agriculture, Calculate,
   ExpandLess, ExpandMore, Apps as AppsIcon, AdminPanelSettings, CalendarToday, HomeWork,
-  NotificationsActive, Schedule,
+  NotificationsActive, Schedule, Search as SearchIcon,
 } from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
 import { logout } from "../services/auth";
@@ -22,21 +22,58 @@ import { NotificacoesProvider } from '../contexts/NotificacoesContext';
 import { NotificacoesEscolaProvider } from '../contexts/NotificacoesEscolaContext';
 import NotificacoesMenu from './NotificacoesMenu';
 import NotificacoesEscolaMenu from './NotificacoesEscolaMenu';
+import { GlobalSearchDropdown, useGlobalSearch } from './GlobalSearch';
 
-const drawerWidth = 220;
-const collapsedDrawerWidth = 64;
+const drawerWidth = 240;
+const collapsedDrawerWidth = 72;
 
-// GitHub Dark tokens
-const SIDEBAR_BG = "#0d1117";
-const CANVAS = "#161b22";
-const BORDER = "#21262d";
-const BORDER_MD = "#30363d";
-const TEXT = "#e6edf3";
-const MUTED = "#8b949e";
-const SUB = "#6e7681";
-const GREEN = "#2ea043";
-const GREEN_DIM = "rgba(46,160,67,0.12)";
-const RED = "#f85149";
+// ═══════════════════════════════════════════════════════════════
+// DESIGN SYSTEM - Inspirado no exemplo fornecido (modo escuro)
+// Clean, modern sidebar com cards sutis e hover states elegantes
+// ═══════════════════════════════════════════════════════════════
+
+const DESIGN_TOKENS = {
+  // Core Palette - Cores exatas da imagem (lado direito - modo escuro)
+  bg: {
+    primary: "#161b22",      // Fundo principal do sidebar (GitHub dark)
+    secondary: "#21262d",    // Fundo dos cards/itens
+    elevated: "#2d333b",     // Itens elevados/hover
+    accent: "#373e47",       // Hover mais intenso
+  },
+  border: {
+    subtle: "#21262d",       // Bordas sutis
+    medium: "#30363d",       // Bordas médias
+    strong: "#484f58",       // Bordas fortes
+  },
+  text: {
+    primary: "#e6edf3",      // Texto principal (branco suave)
+    secondary: "#8b949e",    // Texto secundário (cinza claro)
+    muted: "#6e7681",        // Texto esmaecido (cinza médio)
+    accent: "#7d8590",       // Cinza azulado de destaque
+  },
+  accent: {
+    primary: "#58a6ff",      // Azul GitHub
+    secondary: "#79c0ff",    // Azul mais claro
+    success: "#3fb950",      // Verde GitHub
+    warning: "#d29922",      // Amarelo
+    danger: "#f85149",       // Vermelho GitHub
+  },
+  glow: {
+    blue: "0 0 20px rgba(88, 166, 255, 0.15)",
+    subtle: "0 2px 8px rgba(0, 0, 0, 0.3)",
+  }
+};
+
+const SIDEBAR_BG = DESIGN_TOKENS.bg.primary;
+const CANVAS = DESIGN_TOKENS.bg.secondary;
+const BORDER = DESIGN_TOKENS.border.subtle;
+const BORDER_MD = DESIGN_TOKENS.border.medium;
+const TEXT = DESIGN_TOKENS.text.primary;
+const MUTED = DESIGN_TOKENS.text.secondary;
+const SUB = DESIGN_TOKENS.text.muted;
+const GREEN = DESIGN_TOKENS.accent.success;
+const GREEN_DIM = `${DESIGN_TOKENS.accent.success}20`;
+const RED = DESIGN_TOKENS.accent.danger;
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   "Principal":     <Dashboard fontSize="small" />,
@@ -60,9 +97,10 @@ const MENU_ESCOLA = [
 ];
 
 const getMenuConfig = (_cfg: any) => [
+  // Dashboard como item standalone (sem categoria)
   {
-    category: "Principal",
-    items: [{ text: "Dashboard", icon: <Dashboard fontSize="small" />, path: "/dashboard" }],
+    standalone: true,
+    item: { text: "Dashboard", icon: <Dashboard fontSize="small" />, path: "/dashboard" }
   },
   {
     category: "Cadastros",
@@ -122,51 +160,146 @@ const getMenuConfig = (_cfg: any) => [
   },
 ];
 
-// ─── SubItem (sem ícones visíveis) ───
+// ─── SubItem com estilo clean e moderno ───
 const SubItem: React.FC<{
   item: any; isActive: boolean; onClick: (path: string) => void; collapsed: boolean;
 }> = ({ item, isActive, onClick, collapsed }) => {
+  const [isHovered, setIsHovered] = useState(false);
+  
   const btn = (
     <ListItemButton
       onClick={() => onClick(item.path)}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       sx={{
-        pl: collapsed ? 0 : 1.5, pr: 1, py: 0.5, mx: 0.75, my: 0.2,
-        borderRadius: "4px", minWidth: 28, minHeight: 28,
+        pl: collapsed ? 0 : 3, 
+        pr: 2, 
+        py: 1.25, 
+        mx: collapsed ? 0.5 : 1.5, 
+        my: 0.5,
+        borderRadius: "10px",
+        minWidth: 40,
+        minHeight: 44,
         justifyContent: collapsed ? "center" : "flex-start",
-        bgcolor: isActive ? GREEN_DIM : "transparent",
-        color: isActive ? GREEN : "rgba(255,255,255,0.55)",
-        transition: "all 0.15s ease",
-        "&:hover": { bgcolor: "rgba(255,255,255,0.05)", color: TEXT },
+        position: "relative",
+        bgcolor: isActive ? DESIGN_TOKENS.bg.secondary : "transparent",
+        color: isActive ? DESIGN_TOKENS.text.primary : DESIGN_TOKENS.text.secondary,
+        transition: "all 0.2s ease",
+        "&:hover": { 
+          bgcolor: DESIGN_TOKENS.bg.elevated,
+          color: DESIGN_TOKENS.text.primary,
+          transform: "translateX(2px)",
+        },
       }}
     >
-      {isActive && !collapsed && (
-        <Box sx={{ width: 4, height: 4, borderRadius: "50%", bgcolor: GREEN, flexShrink: 0, mr: 1.5, mt: 0.5 }} />
-      )}
       {!collapsed && (
         <ListItemText
           primary={item.text}
           primaryTypographyProps={{
-            fontSize: "0.76rem",
+            fontSize: "0.875rem",
             fontWeight: isActive ? 500 : 400,
-            color: "inherit",
-            lineHeight: 1.2,
+            letterSpacing: "0.01em",
           }}
-          sx={{ ml: 0 }}
         />
       )}
     </ListItemButton>
   );
-  if (collapsed) {
-    return (
-      <ListItem disablePadding sx={{ mb: 0.2 }}>
-        <Tooltip title={item.text} placement="right" arrow>{btn}</Tooltip>
-      </ListItem>
-    );
-  }
-  return <ListItem disablePadding sx={{ mb: 0 }}>{btn}</ListItem>;
+  
+  return collapsed ? (
+    <Tooltip 
+      title={item.text} 
+      placement="right"
+      componentsProps={{
+        tooltip: {
+          sx: {
+            bgcolor: DESIGN_TOKENS.bg.elevated,
+            color: DESIGN_TOKENS.text.primary,
+            fontSize: "0.8rem",
+            py: 0.75,
+            px: 1.5,
+            borderRadius: "8px",
+            boxShadow: DESIGN_TOKENS.glow.subtle,
+          }
+        }
+      }}
+    >
+      {btn}
+    </Tooltip>
+  ) : btn;
 };
 
-// ─── CategoryGroup ───
+// ─── StandaloneItem - Item sem categoria (como Dashboard) ───
+const StandaloneItem: React.FC<{
+  item: any; location: string; onNavigate: (path: string) => void; collapsed: boolean;
+}> = ({ item, location, onNavigate, collapsed }) => {
+  const isActive = location === item.path || (item.path !== "/" && location.startsWith(item.path));
+  
+  const btn = (
+    <ListItemButton
+      onClick={() => onNavigate(item.path)}
+      sx={{
+        pl: collapsed ? 0 : 2, 
+        pr: 2, 
+        py: 1.5, 
+        mx: collapsed ? 0.5 : 1.5, 
+        my: 0.5,
+        borderRadius: "10px",
+        minWidth: 44,
+        minHeight: 48,
+        justifyContent: collapsed ? "center" : "flex-start",
+        bgcolor: isActive ? DESIGN_TOKENS.bg.secondary : "transparent",
+        color: isActive ? DESIGN_TOKENS.text.primary : DESIGN_TOKENS.text.secondary,
+        transition: "all 0.2s ease",
+        "&:hover": { 
+          bgcolor: DESIGN_TOKENS.bg.elevated,
+          color: DESIGN_TOKENS.text.primary,
+        },
+      }}
+    >
+      <ListItemIcon sx={{ 
+        color: "inherit", 
+        minWidth: collapsed ? 0 : 40,
+        justifyContent: "center",
+      }}>
+        {item.icon}
+      </ListItemIcon>
+      {!collapsed && (
+        <ListItemText
+          primary={item.text}
+          primaryTypographyProps={{
+            fontSize: "0.9rem",
+            fontWeight: isActive ? 500 : 400,
+            letterSpacing: "0.01em",
+          }}
+        />
+      )}
+    </ListItemButton>
+  );
+  
+  return collapsed ? (
+    <Tooltip 
+      title={item.text} 
+      placement="right"
+      componentsProps={{
+        tooltip: {
+          sx: {
+            bgcolor: DESIGN_TOKENS.bg.elevated,
+            color: DESIGN_TOKENS.text.primary,
+            fontSize: "0.8rem",
+            py: 0.75,
+            px: 1.5,
+            borderRadius: "8px",
+            boxShadow: DESIGN_TOKENS.glow.subtle,
+          }
+        }
+      }}
+    >
+      {btn}
+    </Tooltip>
+  ) : btn;
+};
+
+// ─── CategoryGroup com estilo clean e moderno ───
 const CategoryGroup: React.FC<{
   category: string; items: any[]; location: string;
   onNavigate: (path: string) => void; collapsed: boolean; defaultOpen?: boolean;
@@ -182,57 +315,85 @@ const CategoryGroup: React.FC<{
   if (collapsed) {
     return (
       <Box sx={{
-        borderTop: isFirst ? "none" : `1px solid ${BORDER}`,
-        pt: isFirst ? 0 : 0.75,
-        mt: isFirst ? 0 : 0,
-        mx: 0.25,
+        borderTop: isFirst ? "none" : `1px solid ${DESIGN_TOKENS.border.subtle}`,
+        pt: isFirst ? 0 : 2,
+        mt: isFirst ? 0 : 1,
+        mx: 0.5,
       }}>
         <Tooltip
           title={
             <Box>
-              <Typography variant="caption" sx={{ fontWeight: 500, display: "block", mb: 0.5, color: SUB, fontSize: "0.65rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              <Typography variant="caption" sx={{ 
+                fontWeight: 600, 
+                display: "block", 
+                mb: 1.5, 
+                color: DESIGN_TOKENS.text.primary, 
+                fontSize: "0.75rem", 
+                textTransform: "uppercase", 
+                letterSpacing: "0.5px",
+                pb: 0.75,
+                borderBottom: `1px solid ${DESIGN_TOKENS.border.subtle}`,
+              }}>
                 {category}
               </Typography>
               {items.map(i => {
                 const active = location === i.path || (i.path !== "/" && location.startsWith(i.path));
                 return (
                   <Box key={i.path} onClick={() => onNavigate(i.path)} sx={{
-                    display: "flex", alignItems: "center", gap: 0.75, py: 0.3, px: 0.5,
-                    cursor: "pointer", borderRadius: "4px",
-                    "&:hover": { bgcolor: "rgba(255,255,255,0.08)" },
-                    color: active ? GREEN : "rgba(255,255,255,0.55)",
+                    display: "flex", 
+                    alignItems: "center", 
+                    gap: 1.5, 
+                    py: 1, 
+                    px: 1.5,
+                    cursor: "pointer", 
+                    borderRadius: "8px",
+                    bgcolor: active ? DESIGN_TOKENS.bg.secondary : "transparent",
+                    "&:hover": { 
+                      bgcolor: DESIGN_TOKENS.bg.elevated,
+                    },
+                    color: active ? DESIGN_TOKENS.text.primary : DESIGN_TOKENS.text.secondary,
+                    transition: "all 0.2s ease",
                   }}>
                     {i.icon}
-                    <Typography variant="caption" sx={{ fontSize: "0.7rem" }}>{i.text}</Typography>
+                    <Typography variant="caption" sx={{ fontSize: "0.8rem", fontWeight: active ? 500 : 400 }}>
+                      {i.text}
+                    </Typography>
                   </Box>
                 );
               })}
             </Box>
           }
-          placement="right" arrow
+          placement="right"
           componentsProps={{
             tooltip: {
               sx: {
-                bgcolor: CANVAS, p: 1, maxWidth: 180,
-                border: `1px solid ${BORDER_MD}`, borderRadius: "6px",
-                boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+                bgcolor: DESIGN_TOKENS.bg.elevated, 
+                p: 1.5, 
+                maxWidth: 240,
+                borderRadius: "12px",
+                boxShadow: DESIGN_TOKENS.glow.subtle,
               },
             },
-            arrow: { sx: { color: CANVAS } },
           }}
         >
           <ListItemButton sx={{
-            justifyContent: "center", mx: 0.25, px: 1, py: 1, minWidth: 30, borderRadius: "4px",
-            color: hasActive ? TEXT : "rgba(255,255,255,0.35)",
-            bgcolor: hasActive ? "rgba(255,255,255,0.06)" : "transparent",
-            "&:hover": { bgcolor: "rgba(255,255,255,0.05)", color: TEXT },
-            transition: "all 0.15s ease",
-            position: "relative",
+            justifyContent: "center", 
+            mx: 0.5, 
+            px: 1.5, 
+            py: 1.5, 
+            minWidth: 44, 
+            borderRadius: "10px",
+            color: hasActive ? DESIGN_TOKENS.text.primary : DESIGN_TOKENS.text.muted,
+            bgcolor: hasActive ? DESIGN_TOKENS.bg.secondary : "transparent",
+            "&:hover": { 
+              bgcolor: DESIGN_TOKENS.bg.elevated,
+              color: DESIGN_TOKENS.text.primary,
+            },
+            transition: "all 0.2s ease",
           }}>
-            {hasActive && (
-              <Box sx={{ position: "absolute", left: 5, top: "50%", transform: "translateY(-50%)", width: 3, height: 3, borderRadius: "50%", bgcolor: GREEN }} />
-            )}
-            <ListItemIcon sx={{ color: "inherit", minWidth: 0, justifyContent: "center" }}>{icon}</ListItemIcon>
+            <ListItemIcon sx={{ color: "inherit", minWidth: 0, justifyContent: "center" }}>
+              {icon}
+            </ListItemIcon>
           </ListItemButton>
         </Tooltip>
       </Box>
@@ -241,29 +402,59 @@ const CategoryGroup: React.FC<{
 
   return (
     <Box sx={{
-      borderTop: isFirst ? "none" : `1px solid ${BORDER}`,
-      pt: isFirst ? 0 : 0.5,
-      mt: isFirst ? 0 : 0,
+      borderTop: isFirst ? "none" : `1px solid ${DESIGN_TOKENS.border.subtle}`,
+      pt: isFirst ? 0 : 2,
+      mt: isFirst ? 0 : 1,
     }}>
-      <ListItemButton onClick={() => setOpen(o => !o)} sx={{
-        px: 1.5, py: 0.55, mx: 0.75, borderRadius: "4px",
-        color: hasActive ? TEXT : "rgba(255,255,255,0.35)",
-        bgcolor: "transparent",
-        "&:hover": { bgcolor: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.7)" },
-        transition: "all 0.15s ease",
-        minHeight: 32,
-      }}>
-        <ListItemIcon sx={{ color: "inherit", minWidth: 28, justifyContent: "center" }}>{icon}</ListItemIcon>
-        <ListItemText primary={category} primaryTypographyProps={{
-          fontSize: "0.7rem", fontWeight: 500,
-          color: "inherit",
-          textTransform: "uppercase",
-          letterSpacing: "0.4px",
-        }} />
-        {open ? <ExpandLess sx={{ fontSize: 14, opacity: 0.5 }} /> : <ExpandMore sx={{ fontSize: 14, opacity: 0.5 }} />}
+      <ListItemButton 
+        onClick={() => setOpen(o => !o)} 
+        sx={{
+          px: 2, 
+          py: 1, 
+          mx: 1.5, 
+          mb: 0.5,
+          borderRadius: "10px",
+          color: DESIGN_TOKENS.text.muted,
+          bgcolor: "transparent",
+          "&:hover": { 
+            bgcolor: DESIGN_TOKENS.bg.secondary,
+            color: DESIGN_TOKENS.text.secondary,
+          },
+          transition: "all 0.2s ease",
+          minHeight: 40,
+        }}
+      >
+        <ListItemIcon sx={{ 
+          color: "inherit", 
+          minWidth: 36, 
+          justifyContent: "center",
+        }}>
+          {icon}
+        </ListItemIcon>
+        <ListItemText 
+          primary={category} 
+          primaryTypographyProps={{
+            fontSize: "0.75rem", 
+            fontWeight: 600,
+            color: "inherit",
+            textTransform: "uppercase",
+            letterSpacing: "0.8px",
+          }} 
+        />
+        <Box sx={{
+          transition: "transform 0.2s ease",
+          transform: open ? "rotate(180deg)" : "rotate(0deg)",
+          display: "flex",
+          alignItems: "center",
+        }}>
+          <ExpandMore sx={{ 
+            fontSize: 20, 
+            opacity: 0.5,
+          }} />
+        </Box>
       </ListItemButton>
-      <Collapse in={open} timeout={180} unmountOnExit>
-        <List dense disablePadding sx={{ pb: 0.25 }}>
+      <Collapse in={open} timeout={200} unmountOnExit>
+        <List dense disablePadding sx={{ pb: 0.5 }}>
           {items.map(item => {
             const isActive = location === item.path || (item.path !== "/" && location.startsWith(item.path));
             return <SubItem key={item.path} item={item} isActive={isActive} onClick={onNavigate} collapsed={false} />;
@@ -327,20 +518,27 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
   // Filtrar menu por permissões
   const menuConfig = isEscolaUser ? MENU_ESCOLA : (() => {
     const base = getMenuConfig(configModuloSaldo);
-    return base.map(cat => ({
-      ...cat,
-      items: cat.items.filter((item: any) => {
-        // adminOnly: manter filtro existente
-        if (item.adminOnly && !isAdmin) return false;
-        // Se não tem slug mapeado, mostrar (fallback)
-        const slug = MODULO_SLUGS[item.text];
-        if (!slug) return true;
-        // Admin sempre vê tudo
-        if (isAdmin) return true;
-        // Verificar permissão de leitura
-        return hasLeitura(slug);
-      }),
-    })).filter(cat => cat.items.length > 0); // remover categorias vazios
+    return base.map(cat => {
+      // Se for standalone, não precisa filtrar items
+      if (cat.standalone) {
+        return cat;
+      }
+      // Se for categoria, filtrar items
+      return {
+        ...cat,
+        items: cat.items?.filter((item: any) => {
+          // adminOnly: manter filtro existente
+          if (item.adminOnly && !isAdmin) return false;
+          // Se não tem slug mapeado, mostrar (fallback)
+          const slug = MODULO_SLUGS[item.text];
+          if (!slug) return true;
+          // Admin sempre vê tudo
+          if (isAdmin) return true;
+          // Verificar permissão de leitura
+          return hasLeitura(slug);
+        }) || [],
+      };
+    }).filter(cat => cat.standalone || (cat.items && cat.items.length > 0)); // remover categorias vazias
   })();
 
   const handleDrawerToggle = useCallback(() => setMobileOpen(p => !p), []);
@@ -357,8 +555,7 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
     if (isMobile) setMobileOpen(false);
   }, [navigate, isMobile]);
 
-  // Determine first group name for separator logic
-  const firstCategory = menuConfig.length > 0 ? menuConfig[0].category : "";
+  const search = useGlobalSearch();
 
   // Drawer para mobile (sempre expandido, com botão sair visível)
   const mobileDrawer = (
@@ -368,25 +565,30 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
     }}>
       {/* ── Brand Header ── */}
       <Box sx={{
-        px: 2, py: 2.5,
-        borderBottom: `1px solid ${BORDER}`,
+        px: 2.5, 
+        py: 3,
+        borderBottom: `1px solid ${DESIGN_TOKENS.border.subtle}`,
         flexShrink: 0,
-        display: "flex", alignItems: "center",
+        display: "flex", 
+        alignItems: "center",
         justifyContent: "flex-start",
-        bgcolor: SIDEBAR_BG,
-        minHeight: 60,
+        bgcolor: DESIGN_TOKENS.bg.primary,
+        minHeight: 72,
       }}>
         <Box sx={{
-          width: 8, height: 8, borderRadius: "50%", bgcolor: GREEN,
+          width: 8, 
+          height: 8, 
+          borderRadius: "50%", 
+          bgcolor: DESIGN_TOKENS.accent.success,
           flexShrink: 0,
-          mr: 1.5,
-          boxShadow: `0 0 8px ${GREEN}`,
+          mr: 2,
+          boxShadow: `0 0 8px ${DESIGN_TOKENS.accent.success}80`,
         }} />
         <Typography variant="h6" sx={{
-          fontWeight: 700,
-          color: TEXT,
-          fontSize: "0.95rem",
-          letterSpacing: "0.5px",
+          fontWeight: 600,
+          color: DESIGN_TOKENS.text.primary,
+          fontSize: "1.1rem",
+          letterSpacing: "0.3px",
         }}>
           NutriLog
         </Typography>
@@ -406,10 +608,33 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
 
       {/* ── Menu Items ── */}
       <Box sx={{
-        flexGrow: 1, overflow: "auto", py: 0.5, minHeight: 0,
-        "&::-webkit-scrollbar": { width: "5px" },
-        "&::-webkit-scrollbar-thumb": { background: BORDER_MD, borderRadius: "3px" },
-        "&::-webkit-scrollbar-track": { background: SIDEBAR_BG },
+        flexGrow: 1, 
+        overflow: "auto", 
+        py: 1, 
+        minHeight: 0,
+        position: "relative",
+        "&::before": {
+          content: '""',
+          position: "absolute",
+          inset: 0,
+          backgroundImage: `
+            radial-gradient(circle at 20% 30%, ${DESIGN_TOKENS.accent.primary}03 0%, transparent 50%),
+            radial-gradient(circle at 80% 70%, ${DESIGN_TOKENS.accent.secondary}03 0%, transparent 50%)
+          `,
+          pointerEvents: "none",
+          zIndex: 0,
+        },
+        "&::-webkit-scrollbar": { width: "6px" },
+        "&::-webkit-scrollbar-thumb": { 
+          background: DESIGN_TOKENS.border.medium,
+          borderRadius: "3px",
+          "&:hover": {
+            background: DESIGN_TOKENS.border.strong,
+          }
+        },
+        "&::-webkit-scrollbar-track": { 
+          background: DESIGN_TOKENS.bg.primary,
+        },
       }}>
         {loadingConfig ? (
           <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
@@ -417,21 +642,40 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
           </Box>
         ) : (
           <List dense disablePadding>
-            {menuConfig.map(({ category, items }) => (
-              <CategoryGroup
-                key={category}
-                category={category}
-                items={items.filter((i: any) => !i.adminOnly || isAdmin)}
-                location={location.pathname}
-                onNavigate={(path) => {
-                  handleNavigation(path);
-                  handleDrawerToggle(); // Fecha o drawer após navegar
-                }}
-                collapsed={false} // Sempre expandido no mobile
-                defaultOpen={category === "Principal" || category === "Portal Escola"}
-                isFirst={category === firstCategory}
-              />
-            ))}
+            {menuConfig.map((config: any, index: number) => {
+              if (config.standalone) {
+                // Renderizar item standalone (Dashboard)
+                return (
+                  <StandaloneItem
+                    key={config.item.path}
+                    item={config.item}
+                    location={location.pathname}
+                    onNavigate={(path) => {
+                      handleNavigation(path);
+                      handleDrawerToggle();
+                    }}
+                    collapsed={false}
+                  />
+                );
+              } else {
+                // Renderizar categoria normal
+                return (
+                  <CategoryGroup
+                    key={config.category}
+                    category={config.category}
+                    items={config.items.filter((i: any) => !i.adminOnly || isAdmin)}
+                    location={location.pathname}
+                    onNavigate={(path) => {
+                      handleNavigation(path);
+                      handleDrawerToggle();
+                    }}
+                    collapsed={false}
+                    defaultOpen={config.category === "Portal Escola"}
+                    isFirst={index === 1} // Primeira categoria após Dashboard
+                  />
+                );
+              }
+            })}
           </List>
         )}
       </Box>
@@ -439,19 +683,29 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
       {/* ── Footer com botão Sair ── */}
       <Box sx={{
         flexShrink: 0,
-        borderTop: `1px solid ${BORDER}`,
-        bgcolor: "rgba(0,0,0,0.12)",
-        py: 0.75, px: 1,
+        borderTop: `1px solid ${DESIGN_TOKENS.border.subtle}`,
+        bgcolor: DESIGN_TOKENS.bg.primary,
+        py: 1.5, 
+        px: 1.5,
       }}>
         <Button onClick={handleLogout} size="small" startIcon={
-          <Logout sx={{ fontSize: 16, color: RED }} />
+          <Logout sx={{ fontSize: 20, color: DESIGN_TOKENS.accent.danger }} />
         } sx={{
-          width: "100%", textTransform: "none",
-          fontSize: "0.72rem", minHeight: 30, px: 1,
-          borderRadius: "4px", justifyContent: "flex-start",
-          color: "rgba(255,255,255,0.45)", letterSpacing: "0.3px",
-          "&:hover": { bgcolor: "rgba(248,81,73,0.08)", color: RED },
-          transition: "all 0.15s ease",
+          width: "100%", 
+          textTransform: "none",
+          fontSize: "0.875rem", 
+          minHeight: 44, 
+          px: 2,
+          borderRadius: "10px", 
+          justifyContent: "flex-start",
+          color: DESIGN_TOKENS.text.muted, 
+          letterSpacing: "0.3px",
+          fontWeight: 400,
+          "&:hover": { 
+            bgcolor: `${DESIGN_TOKENS.accent.danger}20`,
+            color: DESIGN_TOKENS.accent.danger,
+          },
+          transition: "all 0.2s ease",
         }}>
           Sair
         </Button>
@@ -466,26 +720,32 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
     }}>
       {/* ── Brand Header ── */}
       <Box sx={{
-        px: collapsed ? 1.5 : 2, py: collapsed ? 2 : 2.5,
-        borderBottom: `1px solid ${BORDER}`,
+        px: collapsed ? 2 : 2.5, 
+        py: 3,
+        borderBottom: `1px solid ${DESIGN_TOKENS.border.subtle}`,
         flexShrink: 0,
-        display: "flex", alignItems: "center",
+        display: "flex", 
+        alignItems: "center",
         justifyContent: collapsed ? "center" : "flex-start",
-        bgcolor: SIDEBAR_BG,
-        minHeight: 60,
+        bgcolor: DESIGN_TOKENS.bg.primary,
+        minHeight: 72,
       }}>
-        <Box sx={{
-          width: 8, height: 8, borderRadius: "50%", bgcolor: GREEN,
-          flexShrink: 0,
-          mr: collapsed ? 0 : 1.5,
-          display: collapsed ? "none" : "flex",
-          boxShadow: `0 0 8px ${GREEN}`,
-        }} />
+        {!collapsed && (
+          <Box sx={{
+            width: 8, 
+            height: 8, 
+            borderRadius: "50%", 
+            bgcolor: DESIGN_TOKENS.accent.success,
+            flexShrink: 0,
+            mr: 2,
+            boxShadow: `0 0 8px ${DESIGN_TOKENS.accent.success}80`,
+          }} />
+        )}
         <Typography variant="h6" sx={{
-          fontWeight: 700,
-          color: TEXT,
-          fontSize: collapsed ? "0.85rem" : "0.95rem",
-          letterSpacing: collapsed ? "2px" : "0.5px",
+          fontWeight: 600,
+          color: DESIGN_TOKENS.text.primary,
+          fontSize: collapsed ? "1rem" : "1.1rem",
+          letterSpacing: collapsed ? "1.5px" : "0.3px",
           textAlign: "center",
         }}>
           {collapsed ? "NL" : "NutriLog"}
@@ -506,10 +766,33 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
 
       {/* ── Menu Items ── */}
       <Box sx={{
-        flexGrow: 1, overflow: "auto", py: 0.5, minHeight: 0,
-        "&::-webkit-scrollbar": { width: "5px" },
-        "&::-webkit-scrollbar-thumb": { background: BORDER_MD, borderRadius: "3px" },
-        "&::-webkit-scrollbar-track": { background: SIDEBAR_BG },
+        flexGrow: 1, 
+        overflow: "auto", 
+        py: 1, 
+        minHeight: 0,
+        position: "relative",
+        "&::before": {
+          content: '""',
+          position: "absolute",
+          inset: 0,
+          backgroundImage: `
+            radial-gradient(circle at 20% 30%, ${DESIGN_TOKENS.accent.primary}03 0%, transparent 50%),
+            radial-gradient(circle at 80% 70%, ${DESIGN_TOKENS.accent.secondary}03 0%, transparent 50%)
+          `,
+          pointerEvents: "none",
+          zIndex: 0,
+        },
+        "&::-webkit-scrollbar": { width: "6px" },
+        "&::-webkit-scrollbar-thumb": { 
+          background: DESIGN_TOKENS.border.medium,
+          borderRadius: "3px",
+          "&:hover": {
+            background: DESIGN_TOKENS.border.strong,
+          }
+        },
+        "&::-webkit-scrollbar-track": { 
+          background: DESIGN_TOKENS.bg.primary,
+        },
       }}>
         {loadingConfig ? (
           <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
@@ -517,18 +800,34 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
           </Box>
         ) : (
           <List dense disablePadding>
-            {menuConfig.map(({ category, items }) => (
-              <CategoryGroup
-                key={category}
-                category={category}
-                items={items.filter((i: any) => !i.adminOnly || isAdmin)}
-                location={location.pathname}
-                onNavigate={handleNavigation}
-                collapsed={collapsed}
-                defaultOpen={category === "Principal" || category === "Portal Escola"}
-                isFirst={category === firstCategory}
-              />
-            ))}
+            {menuConfig.map((config: any, index: number) => {
+              if (config.standalone) {
+                // Renderizar item standalone (Dashboard)
+                return (
+                  <StandaloneItem
+                    key={config.item.path}
+                    item={config.item}
+                    location={location.pathname}
+                    onNavigate={handleNavigation}
+                    collapsed={collapsed}
+                  />
+                );
+              } else {
+                // Renderizar categoria normal
+                return (
+                  <CategoryGroup
+                    key={config.category}
+                    category={config.category}
+                    items={config.items.filter((i: any) => !i.adminOnly || isAdmin)}
+                    location={location.pathname}
+                    onNavigate={handleNavigation}
+                    collapsed={collapsed}
+                    defaultOpen={config.category === "Portal Escola"}
+                    isFirst={index === 1} // Primeira categoria após Dashboard
+                  />
+                );
+              }
+            })}
           </List>
         )}
       </Box>
@@ -536,35 +835,57 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
       {/* ── Footer ── */}
       <Box sx={{
         flexShrink: 0,
-        borderTop: `1px solid ${BORDER}`,
-        bgcolor: "rgba(0,0,0,0.12)",
-        py: 0.75, px: 1,
+        borderTop: `1px solid ${DESIGN_TOKENS.border.subtle}`,
+        bgcolor: DESIGN_TOKENS.bg.primary,
+        py: 1.5, 
+        px: 1.5,
       }}>
         <IconButton onClick={handleCollapseToggle} size="small" sx={{
-          display: { xs: "none", md: "flex" }, width: "100%",
-          borderRadius: "4px", py: 0.75, minHeight: 32,
-          color: "rgba(255,255,255,0.45)",
-          justifyContent: "flex-start", px: 1,
-          "&:hover": { bgcolor: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.7)" },
-          transition: "all 0.15s ease",
+          display: { xs: "none", md: "flex" }, 
+          width: "100%",
+          borderRadius: "10px", 
+          py: 1.25, 
+          minHeight: 44,
+          color: DESIGN_TOKENS.text.muted,
+          justifyContent: "flex-start", 
+          px: 2,
+          "&:hover": { 
+            bgcolor: DESIGN_TOKENS.bg.secondary,
+            color: DESIGN_TOKENS.text.secondary,
+          },
+          transition: "all 0.2s ease",
         }}>
-          <MenuIcon sx={{ fontSize: 16, mr: 1 }} />
+          <MenuIcon sx={{ fontSize: 20, mr: collapsed ? 0 : 1.5 }} />
           {!collapsed && (
-            <Typography sx={{ fontSize: "0.72rem", letterSpacing: "0.3px" }}>
+            <Typography sx={{ 
+              fontSize: "0.875rem", 
+              letterSpacing: "0.3px",
+              fontWeight: 400,
+            }}>
               Recolher menu
             </Typography>
           )}
         </IconButton>
         {!collapsed && (
           <Button onClick={handleLogout} size="small" startIcon={
-            <Logout sx={{ fontSize: 16, color: RED }} />
+            <Logout sx={{ fontSize: 20, color: DESIGN_TOKENS.accent.danger }} />
           } sx={{
-            mt: 0.25, width: "100%", textTransform: "none",
-            fontSize: "0.72rem", minHeight: 30, px: 1,
-            borderRadius: "4px", justifyContent: "flex-start",
-            color: "rgba(255,255,255,0.45)", letterSpacing: "0.3px",
-            "&:hover": { bgcolor: "rgba(248,81,73,0.08)", color: RED },
-            transition: "all 0.15s ease",
+            mt: 0.75, 
+            width: "100%", 
+            textTransform: "none",
+            fontSize: "0.875rem", 
+            minHeight: 44, 
+            px: 2,
+            borderRadius: "10px", 
+            justifyContent: "flex-start",
+            color: DESIGN_TOKENS.text.muted, 
+            letterSpacing: "0.3px",
+            fontWeight: 400,
+            "&:hover": { 
+              bgcolor: `${DESIGN_TOKENS.accent.danger}20`,
+              color: DESIGN_TOKENS.accent.danger,
+            },
+            transition: "all 0.2s ease",
           }}>
             Sair
           </Button>
@@ -575,30 +896,105 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
 
   return (
     <Box sx={{ display: "flex", minHeight: "100vh" }}>
-      {/* AppBar com botão hambúrguer para mobile */}
+      {/* AppBar - Header bar no topo */}
       <AppBar
         position="fixed"
         sx={{
-          display: { xs: "block", md: "none" },
-          bgcolor: SIDEBAR_BG,
-          borderBottom: `1px solid ${BORDER}`,
+          width: { xs: "100%", md: `calc(100% - ${collapsed ? collapsedDrawerWidth : drawerWidth}px)` },
+          ml: { xs: 0, md: `${collapsed ? collapsedDrawerWidth : drawerWidth}px` },
+          bgcolor: DESIGN_TOKENS.bg.primary,
+          borderBottom: `1px solid ${DESIGN_TOKENS.border.subtle}`,
           boxShadow: "none",
+          transition: "width 0.25s ease, margin 0.25s ease",
+          zIndex: (theme) => theme.zIndex.drawer - 1,
         }}
       >
-        <Toolbar>
+        <Toolbar sx={{ minHeight: { xs: 56, md: 64 }, gap: 2 }}>
           <IconButton
             color="inherit"
             aria-label="abrir menu"
             edge="start"
             onClick={handleDrawerToggle}
-            sx={{ mr: 2 }}
+            sx={{ display: { xs: "block", md: "none" } }}
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, color: TEXT }}>
-            NutriEscola
-          </Typography>
-          <NotificacoesMenu sx={{ mr: 2 }} />
+          
+          {/* Barra de busca global */}
+          <Box sx={{ 
+            flexGrow: 1, 
+            maxWidth: { xs: "100%", md: 480 },
+            display: "flex",
+            alignItems: "center",
+            position: "relative",
+          }}>
+            <Box sx={{
+              borderRadius: "10px",
+              bgcolor: DESIGN_TOKENS.bg.secondary,
+              border: `1px solid ${search.open ? DESIGN_TOKENS.accent.primary : DESIGN_TOKENS.border.subtle}`,
+              boxShadow: search.open ? `0 0 0 3px ${DESIGN_TOKENS.accent.primary}20` : "none",
+              "&:hover": {
+                bgcolor: DESIGN_TOKENS.bg.elevated,
+                border: `1px solid ${DESIGN_TOKENS.border.medium}`,
+              },
+              transition: "all 0.2s ease",
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+            }}>
+              <Box sx={{ pl: 2, pr: 1, display: "flex", alignItems: "center", color: DESIGN_TOKENS.text.muted }}>
+                <SearchIcon sx={{ fontSize: 20 }} />
+              </Box>
+              <InputBase
+                inputRef={search.inputRef}
+                value={search.query}
+                onChange={e => { search.setQuery(e.target.value); search.setOpen(true); }}
+                onFocus={() => search.setOpen(true)}
+                onBlur={() => setTimeout(() => search.setOpen(false), 150)}
+                placeholder="Buscar páginas..."
+                sx={{
+                  flex: 1, py: 1, pr: 2,
+                  color: DESIGN_TOKENS.text.primary,
+                  fontSize: "0.875rem",
+                  "& input::placeholder": { color: DESIGN_TOKENS.text.muted, opacity: 1 },
+                }}
+              />
+              <Box sx={{ 
+                display: { xs: "none", md: "flex" },
+                alignItems: "center",
+                mr: 1.5,
+                opacity: search.open ? 0 : 0.45,
+                transition: "opacity 0.2s ease",
+                bgcolor: DESIGN_TOKENS.bg.accent,
+                border: `1px solid ${DESIGN_TOKENS.border.medium}`,
+                borderRadius: "6px",
+                px: 1,
+                py: 0.4,
+                gap: 0.5,
+              }}>
+                <Typography sx={{ fontSize: "0.68rem", fontWeight: 600, color: DESIGN_TOKENS.text.muted, fontFamily: "monospace", lineHeight: 1 }}>Ctrl</Typography>
+                <Typography sx={{ fontSize: "0.68rem", fontWeight: 600, color: DESIGN_TOKENS.text.muted, fontFamily: "monospace", lineHeight: 1 }}>K</Typography>
+              </Box>
+            </Box>
+
+            {/* Dropdown de resultados */}
+            {search.open && (
+              <GlobalSearchDropdown
+                query={search.query}
+                loading={search.loading}
+                results={search.results}
+                onNavigate={search.handleNavigate}
+                onClose={search.handleClose}
+              />
+            )}
+          </Box>
+
+          {/* Seletor de Período e Notificações */}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, ml: "auto" }}>
+            <SeletorPeriodo />
+            <NotificacoesEscolaMenu />
+            <NotificacoesMenu />
+          </Box>
         </Toolbar>
       </AppBar>
 
@@ -623,7 +1019,7 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
         width: { md: `calc(100% - ${collapsed ? collapsedDrawerWidth : drawerWidth}px)` },
         minHeight: "100vh", bgcolor: "background.default",
         transition: "width 0.25s ease",
-        mt: { xs: "56px", md: 0 }, // Margem top no mobile para não ficar atrás do AppBar
+        mt: { xs: "56px", md: "64px" }, // Margem top para não ficar atrás do AppBar
       }}>
         {children}
       </Box>

@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
     Box,
     Typography,
-    Container,
     Button,
     TextField,
     IconButton,
@@ -22,7 +21,9 @@ import {
     DragIndicator as DragIcon,
     Search as SearchIcon,
     Clear as ClearIcon,
-    Close as CloseIcon
+    Close as CloseIcon,
+    ArrowBack as ArrowBackIcon,
+    Route as RouteIcon
 } from "@mui/icons-material";
 import {
     DndContext,
@@ -49,6 +50,8 @@ import { listarEscolas } from "../../../services/escolas";
 import { RotaEntrega, RotaEscola } from "../../entregas/types/rota";
 import { DataTable } from "../../../components/DataTable";
 import PageHeader from "../../../components/PageHeader";
+import PageContainer from "../../../components/PageContainer";
+import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
 
 // Componente para item arrastável da escola
 interface SortableEscolaItemProps {
@@ -471,17 +474,15 @@ const GerenciarEscolasRota: React.FC = () => {
 
     if (error && !rota) {
         return (
-            <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', p: 4 }}>
-                <Container maxWidth="md">
-                    <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
-                    <Button variant="contained" onClick={loadDados}>Tentar Novamente</Button>
-                </Container>
-            </Box>
+            <PageContainer>
+                <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
+                <Button variant="contained" onClick={loadDados}>Tentar Novamente</Button>
+            </PageContainer>
         );
     }
 
     return (
-        <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+        <PageContainer>
             {successMessage && (
                 <Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}>
                     <Alert severity="success" onClose={() => setSuccessMessage(null)}>
@@ -497,20 +498,43 @@ const GerenciarEscolasRota: React.FC = () => {
                 </Box>
             )}
 
-            <Container maxWidth="lg" sx={{ py: 4 }}>
-                <PageHeader
-                    title={rota ? `Rota ${rota.nome}` : 'Gerenciar Escolas da Rota'}
-                    subtitle={`${escolasRota.length} ${escolasRota.length === 1 ? 'escola' : 'escolas'} na rota. Arraste para reordenar.`}
-                    breadcrumbs={[
-                        { label: 'Dashboard', path: '/dashboard' },
-                        { label: 'Entregas', path: '/entregas' },
-                        { label: 'Gestão de Rotas', path: '/gestao-rotas' },
-                        { label: rota ? `Rota ${rota.nome}` : 'Gerenciar Escolas' },
-                    ]}
-                />
+            <PageBreadcrumbs
+                items={[
+                    { label: 'Dashboard', path: '/dashboard' },
+                    { label: 'Gestão de Rotas', path: '/gestao-rotas', icon: <RouteIcon fontSize="small" /> },
+                    { label: rota ? `Rota ${rota.nome}` : 'Gerenciar Escolas' }
+                ]}
+            />
 
-                {/* Botão de Adicionar */}
-                <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-end' }}>
+            <PageHeader
+                title={rota ? `Rota ${rota.nome}` : 'Gerenciar Escolas da Rota'}
+                subtitle={`${escolasRota.length} ${escolasRota.length === 1 ? 'escola' : 'escolas'} na rota. Arraste para reordenar.`}
+                breadcrumbs={[
+                    { label: 'Dashboard', path: '/dashboard' },
+                    { label: 'Entregas' },
+                    { label: 'Gestão de Rotas', path: '/gestao-rotas' },
+                    { label: rota ? `Rota ${rota.nome}` : 'Gerenciar Escolas' },
+                ]}
+            />
+
+            {/* Botão de Voltar e Adicionar */}
+            <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Button
+                    startIcon={<ArrowBackIcon />}
+                    onClick={() => navigate('/gestao-rotas')}
+                    sx={{ textTransform: 'none' }}
+                >
+                    Voltar para Rotas
+                </Button>
+                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                    {salvandoOperacao && (
+                        <Chip 
+                            size="small" 
+                            label={salvandoOperacao} 
+                            sx={{ bgcolor: 'transparent', border: '1px solid', borderColor: 'divider', color: 'text.secondary' }}
+                            icon={<CircularProgress size={10} color="inherit" />} 
+                        />
+                    )}
                     <Button
                         variant="contained"
                         startIcon={<AddIcon />}
@@ -520,20 +544,15 @@ const GerenciarEscolasRota: React.FC = () => {
                             borderRadius: 2,
                             px: 3,
                             py: 1,
-                            fontWeight: 600
+                            fontWeight: 600,
+                            bgcolor: '#059669',
+                            '&:hover': { bgcolor: '#047857' }
                         }}
                     >
                         Adicionar Escolas
                     </Button>
-                    {salvandoOperacao && (
-                        <Chip 
-                            size="small" 
-                            label={salvandoOperacao} 
-                            sx={{ ml: 2, bgcolor: 'transparent', border: '1px solid', borderColor: 'divider', color: 'text.secondary' }}
-                            icon={<CircularProgress size={10} color="inherit" />} 
-                        />
-                    )}
                 </Box>
+            </Box>
 
                 {/* Lista de Escolas na Rota com DataTable */}
                 <Box sx={{ maxWidth: '1200px', mx: 'auto' }}>
@@ -622,7 +641,7 @@ const GerenciarEscolasRota: React.FC = () => {
                         </Box>
                     )}
                 </Box>
-            </Container>
+            </PageContainer>
 
             {/* Dialog para Adicionar Escolas */}
             <Dialog 
