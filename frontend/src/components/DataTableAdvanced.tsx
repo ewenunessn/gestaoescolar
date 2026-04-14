@@ -225,6 +225,13 @@ export function DataTableAdvanced<TData>({
                   onDelete={() => setRowSelection({})}
                 />
               )}
+              {!searchOpen && (
+                <Tooltip title="Buscar">
+                  <IconButton size="small" onClick={() => setSearchOpen(true)} sx={{ color: MUTED }}>
+                    <SearchIcon sx={{ fontSize: 17 }} />
+                  </IconButton>
+                </Tooltip>
+              )}
             </Stack>
           </Box>
         )}
@@ -299,13 +306,7 @@ export function DataTableAdvanced<TData>({
                 ),
               }}
             />
-          ) : (
-            <Tooltip title="Buscar">
-              <IconButton size="small" onClick={() => setSearchOpen(true)} sx={{ color: MUTED }}>
-                <SearchIcon sx={{ fontSize: 17 }} />
-              </IconButton>
-            </Tooltip>
-          )}
+          ) : null}
 
           {enableColumnVisibility && (
             <Tooltip title="Colunas">
