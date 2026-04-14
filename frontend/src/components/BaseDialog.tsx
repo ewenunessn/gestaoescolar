@@ -58,7 +58,7 @@ interface BaseDialogProps {
   icon?: React.ReactNode;
 }
 
-export const BaseDialog: React.FC<BaseDialogProps> = ({
+const BaseDialogInternal: React.FC<BaseDialogProps & { actions?: React.ReactNode }> = ({
   open,
   onClose,
   title,
@@ -66,6 +66,7 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
   maxWidth = 'sm',
   showCloseButton = true,
   icon,
+  actions,
 }) => {
   return (
     <Dialog
@@ -95,10 +96,9 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
         )}
       </DialogTitle>
       <DialogContent sx={{ pt: 2 }}>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          {children}
-        </Box>
+        {children}
       </DialogContent>
+      {actions}
     </Dialog>
   );
 };
@@ -131,25 +131,31 @@ export const FormDialog: React.FC<FormDialogProps> = ({
   saveColor = 'primary',
   ...baseProps
 }) => {
-  return (
-    <BaseDialog {...baseProps}>
-      <DialogActions sx={{ p: 3, pt: 1 }}>
-        {!hideCancel && (
-          <Button onClick={baseProps.onClose} sx={{ color: 'text.secondary' }}>
-            {cancelLabel}
-          </Button>
-        )}
-        <Button
-          onClick={onSave}
-          variant="contained"
-          color={saveColor}
-          disabled={loading || disableSave}
-          startIcon={loading ? <CircularProgress size={20} /> : null}
-        >
-          {loading ? 'Salvando...' : saveLabel}
+  const actions = (
+    <DialogActions sx={{ p: 3, pt: 1 }}>
+      {!hideCancel && (
+        <Button onClick={baseProps.onClose} sx={{ color: 'text.secondary' }}>
+          {cancelLabel}
         </Button>
-      </DialogActions>
-    </BaseDialog>
+      )}
+      <Button
+        onClick={onSave}
+        variant="contained"
+        color={saveColor}
+        disabled={loading || disableSave}
+        startIcon={loading ? <CircularProgress size={20} /> : null}
+      >
+        {loading ? 'Salvando...' : saveLabel}
+      </Button>
+    </DialogActions>
+  );
+
+  return (
+    <BaseDialogInternal {...baseProps} actions={actions}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        {baseProps.children}
+      </Box>
+    </BaseDialogInternal>
   );
 };
 
@@ -239,12 +245,15 @@ export const DetailsDialog: React.FC<DetailsDialogProps> = ({
   ...baseProps
 }) => {
   return (
-    <BaseDialog
+    <BaseDialogInternal
       {...baseProps}
       showCloseButton={!hideCloseButton}
       maxWidth="md"
     >
       {children}
-    </BaseDialog>
+    </BaseDialogInternal>
   );
 };
+
+// Re-export BaseDialog for backward compatibility
+export const BaseDialog = BaseDialogInternal;

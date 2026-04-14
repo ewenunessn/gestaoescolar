@@ -164,7 +164,7 @@ export default function EditarIngredienteDialog({
       title="Editar Ingrediente"
       onSave={handleConfirm}
       loading={false}
-      disableSave={modalidades.length === 0}
+      disableSave={loading || modalidades.length === 0}
       maxWidth="md"
     >
       <Box sx={{ mb: 2 }}>
@@ -192,7 +192,6 @@ export default function EditarIngredienteDialog({
           >
             <MenuItem value="gramas">Gramas (g)</MenuItem>
             <MenuItem value="mililitros">Mililitros (ml)</MenuItem>
-            <MenuItem value="unidades">Unidades (un)</MenuItem>
           </Select>
         </FormControl>
 
