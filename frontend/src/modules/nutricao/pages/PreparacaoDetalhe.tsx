@@ -75,7 +75,7 @@ interface preparacaoProduto {
   id: number;
   produto_id: number;
   per_capita: number;
-  tipo_medida: 'gramas' | 'mililitros' | 'unidades';
+  tipo_medida: 'gramas' | 'mg';
   ordem?: number;
   produto?: Produto;
   per_capita_por_modalidade?: Array<{
@@ -114,6 +114,8 @@ export default function PreparacaoDetalhe() {
   const [editando, setEditando] = useState(false);
   const [form, setForm] = useState<any>({});
   const [openExcluir, setOpenExcluir] = useState(false);
+  const [openDialogDetalhes, setOpenDialogDetalhes] = useState(false);
+  const [formDetalhes, setFormDetalhes] = useState<any>({});
   const [dialogAdicionarOpen, setDialogAdicionarOpen] = useState(false);
   const [dialogGrupoOpen, setDialogGrupoOpen] = useState(false);
   const [dialogEditarOpen, setDialogEditarOpen] = useState(false);
@@ -322,8 +324,9 @@ export default function PreparacaoDetalhe() {
   useEffect(() => {
     if (preparacao) {
       setForm(preparacao);
+      setFormDetalhes(preparacao);
       setPageTitle(preparacao.nome);
-      
+
       // Selecionar primeira modalidade ativa por padrão
       const ativas = modalidades.filter(m => m.ativo);
       if (ativas.length > 0 && !modalidadeSelecionada) {
@@ -392,7 +395,7 @@ export default function PreparacaoDetalhe() {
           refeicaoId: Number(id),
           produtoId: item.produto_id,
           perCapita: item.per_capita,
-          tipoMedida: item.tipo_medida as 'gramas' | 'unidades',
+          tipoMedida: item.tipo_medida as 'gramas' | 'mg',
           perCapitaPorModalidade: [],
         });
         adicionados++;
@@ -698,34 +701,48 @@ export default function PreparacaoDetalhe() {
         <PageHeader
           title={preparacao?.nome || 'Detalhes da Preparação'}
           action={
-            <IconButton size="small" onClick={() => setShowEdicaoRapida(true)}>
-              <EditIcon fontSize="small" />
-            </IconButton>
+            <Tooltip title="Editar informações da preparação">
+              <IconButton size="small" onClick={() => setOpenDialogDetalhes(true)}>
+                <EditIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
           }
         />
 
         {/* Tabs + Ações na mesma linha */}
-        <Box sx={{ 
-          display: 'flex', 
+        <Box sx={{
+          display: 'flex',
           flexDirection: isMobile ? 'column' : 'row',
           alignItems: isMobile ? 'stretch' : 'center',
-          borderBottom: 1, 
-          borderColor: 'divider', 
+          borderBottom: 1,
+          borderColor: 'divider',
           pb: 0.5,
           gap: isMobile ? 1 : 0,
         }}>
           <ViewTabs
             value={tabAtiva}
-            onChange={setTabAtiva}
+            onChange={(newValue) => {
+              // Impedir troca de aba enquanto edita
+              if (!editando) {
+                setTabAtiva(newValue);
+              }
+            }}
             tabs={[
               { value: 0, label: isMobile ? 'Ingred.' : 'Ingredientes', icon: <RestaurantIcon sx={{ fontSize: 16 }} /> },
               { value: 1, label: isMobile ? 'Ficha' : 'Ficha Técnica', icon: <DescriptionIcon sx={{ fontSize: 16 }} /> },
             ]}
+            sx={{
+              opacity: editando ? 0.5 : 1,
+              pointerEvents: editando ? 'none' : 'auto'
+            }}
           />
           <Box sx={{ flex: 1 }} />
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: isMobile ? 'flex-end' : 'flex-start' }}>
             {editando ? (
               <>
+                <Typography variant="caption" sx={{ color: 'warning.main', fontWeight: 600, mr: 1 }}>
+                  Editando Ficha Técnica
+                </Typography>
                 <Button onClick={() => setEditando(false)} startIcon={<CancelIcon />} size="small" disabled={editarRefeicaoMutation.isPending}>
                   Cancelar
                 </Button>
@@ -739,9 +756,6 @@ export default function PreparacaoDetalhe() {
                   <MoreVertIcon />
                 </IconButton>
                 <Menu anchorEl={menuAnchorEl} open={Boolean(menuAnchorEl)} onClose={() => setMenuAnchorEl(null)}>
-                  <MenuItem onClick={() => { setMenuAnchorEl(null); setEditando(true); }}>
-                    <EditIcon fontSize="small" sx={{ mr: 1 }} /> Editar
-                  </MenuItem>
                   <MenuItem onClick={() => { setMenuAnchorEl(null); setOpenExcluir(true); }} sx={{ color: 'error.main' }}>
                     <DeleteIcon fontSize="small" sx={{ mr: 1 }} /> Excluir
                   </MenuItem>
@@ -891,6 +905,15 @@ export default function PreparacaoDetalhe() {
                 )}
                 <Box sx={{ flex: 1 }} />
                 <Button
+                  onClick={() => setEditando(true)}
+                  variant="outlined"
+                  startIcon={<EditIcon />}
+                  size="small"
+                  sx={{ whiteSpace: 'nowrap', mr: 1 }}
+                >
+                  Editar Ficha
+                </Button>
+                <Button
                   onClick={gerarPDF}
                   variant="outlined"
                   startIcon={<PdfIcon />}
@@ -964,6 +987,12 @@ export default function PreparacaoDetalhe() {
                     value={form.modo_preparo || ''}
                     onChange={(e) => setForm({ ...form, modo_preparo: e.target.value })}
                     placeholder="Descreva o passo a passo do preparo..."
+                    sx={{
+                      '& .MuiInputBase-root': {
+                        alignItems: 'flex-start',
+                        textAlign: 'left'
+                      }
+                    }}
                   />
                 </Grid>
 
@@ -977,6 +1006,12 @@ export default function PreparacaoDetalhe() {
                     value={form.utensilios || ''}
                     onChange={(e) => setForm({ ...form, utensilios: e.target.value })}
                     placeholder="Ex: Panela grande, colher de pau, escorredor..."
+                    sx={{
+                      '& .MuiInputBase-root': {
+                        alignItems: 'flex-start',
+                        textAlign: 'left'
+                      }
+                    }}
                   />
                 </Grid>
 
@@ -990,6 +1025,12 @@ export default function PreparacaoDetalhe() {
                     value={form.observacoes_tecnicas || ''}
                     onChange={(e) => setForm({ ...form, observacoes_tecnicas: e.target.value })}
                     placeholder="Observações do nutricionista sobre a preparação..."
+                    sx={{
+                      '& .MuiInputBase-root': {
+                        alignItems: 'flex-start',
+                        textAlign: 'left'
+                      }
+                    }}
                   />
                 </Grid>
               </Grid>
@@ -1294,7 +1335,137 @@ export default function PreparacaoDetalhe() {
         </Button>
       </DialogActions>
     </Dialog>
-    </>
+
+    {/* Diálogo de Editar Informações da Preparação */}
+    <Dialog 
+      open={openDialogDetalhes} 
+      onClose={() => setOpenDialogDetalhes(false)}
+      maxWidth="sm"
+      fullWidth
+    >
+      <DialogTitle sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+        <EditIcon sx={{ color: 'primary.main' }} />
+        Editar Informações da Preparação
+      </DialogTitle>
+      <DialogContent dividers>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
+          {/* Nome */}
+          <Box>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, display: 'flex', alignItems: 'center', gap: 0.75 }}>
+              <Box sx={{ width: 3, height: 16, borderRadius: 1.5, bgcolor: 'primary.main' }} />
+              Nome da Preparação
+            </Typography>
+            <TextField
+              fullWidth
+              value={formDetalhes.nome || ''}
+              onChange={(e) => setFormDetalhes({ ...formDetalhes, nome: e.target.value })}
+              placeholder="Ex: Arroz Integral, Feijão Carioca..."
+              sx={{
+                '& .MuiInputBase-input': {
+                  fontWeight: 600,
+                  fontSize: '1rem'
+                }
+              }}
+            />
+          </Box>
+
+          <Divider />
+
+          {/* Categoria */}
+          <Box>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, display: 'flex', alignItems: 'center', gap: 0.75 }}>
+              <Box sx={{ width: 3, height: 16, borderRadius: 1.5, bgcolor: 'success.main' }} />
+              Categoria
+            </Typography>
+            <FormControl fullWidth>
+              <InputLabel>Categoria da preparação</InputLabel>
+              <Select
+                value={formDetalhes.categoria || ''}
+                onChange={(e) => setFormDetalhes({ ...formDetalhes, categoria: e.target.value })}
+                label="Categoria da preparação"
+              >
+                <MenuItem value="Prato Principal">🍽️ Prato Principal</MenuItem>
+                <MenuItem value="Acompanhamento">🥗 Acompanhamento</MenuItem>
+                <MenuItem value="Sobremesa">🍰 Sobremesa</MenuItem>
+                <MenuItem value="Lanche">🥪 Lanche</MenuItem>
+                <MenuItem value="Bebida">🥤 Bebida</MenuItem>
+                <MenuItem value="Salada">🥬 Salada</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+
+          <Divider />
+
+          {/* Tempo e Rendimento */}
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                  <Box sx={{ width: 3, height: 16, borderRadius: 1.5, bgcolor: 'info.main' }} />
+                  Tempo de Preparo
+                </Typography>
+                <TextField
+                  label="Minutos"
+                  type="number"
+                  fullWidth
+                  value={formDetalhes.tempo_preparo_minutos || ''}
+                  onChange={(e) => setFormDetalhes({ ...formDetalhes, tempo_preparo_minutos: e.target.value })}
+                  InputProps={{ 
+                    inputProps: { min: 0 },
+                    endAdornment: <Typography variant="body2" sx={{ color: 'text.secondary', mr: 1 }}>min</Typography>
+                  }}
+                />
+              </Box>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                  <Box sx={{ width: 3, height: 16, borderRadius: 1.5, bgcolor: 'warning.main' }} />
+                  Rendimento
+                </Typography>
+                <TextField
+                  label="Porções"
+                  type="number"
+                  fullWidth
+                  value={formDetalhes.rendimento_porcoes || ''}
+                  onChange={(e) => setFormDetalhes({ ...formDetalhes, rendimento_porcoes: e.target.value })}
+                  InputProps={{ 
+                    inputProps: { min: 1 },
+                    endAdornment: <Typography variant="body2" sx={{ color: 'text.secondary', mr: 1 }}>porções</Typography>
+                  }}
+                  helperText="Número de porções que a receita rende"
+                />
+              </Box>
+            </Grid>
+          </Grid>
+        </Box>
+      </DialogContent>
+      <DialogActions sx={{ p: 2, pt: 1.5 }}>
+        <Button onClick={() => setOpenDialogDetalhes(false)} startIcon={<CancelIcon />}>
+          Cancelar
+        </Button>
+        <Button 
+          onClick={async () => {
+            try {
+              await editarRefeicaoMutation.mutateAsync({ 
+                id: Number(id), 
+                data: formDetalhes 
+              });
+              setOpenDialogDetalhes(false);
+              toast.success('Informações atualizadas com sucesso!');
+            } catch {
+              toast.error('Não foi possível salvar as alterações.');
+            }
+          }} 
+          variant="contained" 
+          startIcon={<SaveIcon />}
+          disabled={editarRefeicaoMutation.isPending}
+        >
+          {editarRefeicaoMutation.isPending ? 'Salvando...' : 'Salvar Alterações'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  </>
   );
 }
 
