@@ -9,6 +9,7 @@ router.use(authenticateToken);
 
 // Rotas de demandas
 router.get('/solicitantes', demandaController.listarSolicitantes);
+router.get('/cardapios-disponiveis', demandaController.listarCardapiosDisponiveis);
 router.post('/', demandaController.criar);
 router.get('/', demandaController.listar);
 router.get('/:id', demandaController.buscarPorId);

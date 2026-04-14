@@ -21,6 +21,13 @@ import {
   Popover,
   Checkbox,
   FormControlLabel,
+  Autocomplete,
+  TextField,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  Skeleton,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -29,6 +36,10 @@ import {
   Delete as DeleteIcon,
   TableChart as TableChartIcon,
   Clear as ClearIcon,
+  MenuBook as MenuBookIcon,
+  CheckBox as CheckBoxIcon,
+  CheckBoxOutlineBlank as CheckBoxOutlineBlankIcon,
+  SelectAll as SelectAllIcon,
 } from "@mui/icons-material";
 import { ColumnDef } from "@tanstack/react-table";
 import PageContainer from "../../../components/PageContainer";
@@ -39,6 +50,7 @@ import { JobProgressModal } from "../../../components/JobProgressModal";
 import { guiaService } from "../../../services/guiaService";
 import { useToast } from "../../../hooks/useToast";
 import { iniciarGeracaoGuiasAsync, GerarGuiasResponse } from "../../../services/planejamentoCompras";
+import { listarCardapiosDisponiveis, CardapioDisponivel } from "../../../services/demanda";
 import { DataTable } from "../../../components/DataTable";
 import { LoadingOverlay } from "../../../components/LoadingOverlay";
 
@@ -97,6 +109,11 @@ const GuiasDemandaLista: React.FC = () => {
   const [considerarFatorCorrecao, setConsiderarFatorCorrecao] = useState(true);
   const [gerandoGuias, setGerandoGuias] = useState(false);
   const [resultadoGuias, setResultadoGuias] = useState<GerarGuiasResponse | null>(null);
+
+  // Cardápios disponíveis para a competência
+  const [cardapiosDisponiveis, setCardapiosDisponiveis] = useState<CardapioDisponivel[]>([]);
+  const [cardapiosSelecionados, setCardapiosSelecionados] = useState<number[]>([]);
+  const [loadingCardapios, setLoadingCardapios] = useState(false);
   
   // Job progress
   const [jobProgressOpen, setJobProgressOpen] = useState(false);
@@ -313,6 +330,53 @@ const GuiasDemandaLista: React.FC = () => {
     return competencias;
   };
 
+  const competenciasOptions = useMemo(() => gerarCompetenciasDisponiveis(), []);
+
+  const carregarCardapios = useCallback(async (competencia?: string) => {
+    const comp = competencia || competenciaGerar;
+    if (!comp) return;
+    const [ano, mes] = comp.split('-').map(Number);
+    setLoadingCardapios(true);
+    setCardapiosDisponiveis([]);
+    setCardapiosSelecionados([]);
+    try {
+      const cardapios = await listarCardapiosDisponiveis({ mes, ano });
+      setCardapiosDisponiveis(cardapios);
+      setCardapiosSelecionados(cardapios.map(c => c.id));
+    } catch (error) {
+      console.error('Erro ao carregar cardápios:', error);
+    } finally {
+      setLoadingCardapios(false);
+    }
+  }, [competenciaGerar]);
+
+  const handleCompetenciaChange = useCallback((_: any, newValue: { valor: string; label: string } | null) => {
+    const valor = newValue?.valor || '';
+    setCompetenciaGerar(valor);
+    setPeriodosGerar([]);
+    setResultadoGuias(null);
+    if (valor) {
+      carregarCardapios();
+    } else {
+      setCardapiosDisponiveis([]);
+      setCardapiosSelecionados([]);
+    }
+  }, [carregarCardapios]);
+
+  const toggleCardapio = (id: number) => {
+    setCardapiosSelecionados(prev =>
+      prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]
+    );
+  };
+
+  const toggleTodosCardapios = () => {
+    if (cardapiosSelecionados.length === cardapiosDisponiveis.length) {
+      setCardapiosSelecionados([]);
+    } else {
+      setCardapiosSelecionados(cardapiosDisponiveis.map(c => c.id));
+    }
+  };
+
   const handleGerarGuias = async () => {
     if (!competenciaGerar || periodosGerar.length === 0) {
       toast.warning('Defina a competência e ao menos um período');
@@ -326,8 +390,9 @@ const GuiasDemandaLista: React.FC = () => {
         periodosGerar,
         undefined,
         undefined,
-        false, // índice de cocção desabilitado
-        considerarFatorCorrecao
+        false,
+        considerarFatorCorrecao,
+        cardapiosSelecionados.length > 0 ? cardapiosSelecionados : undefined
       );
       
       // Fechar modal de configuração
@@ -337,7 +402,6 @@ const GuiasDemandaLista: React.FC = () => {
       setCurrentJobId(response.job_id);
       setJobProgressOpen(true);
       
-      // Removido: toast.info - não precisa notificar ao iniciar
     } catch (error: any) {
       const msg = error.response?.data?.error || 'Não foi possível iniciar a geração de guias';
       toast.error(msg);
@@ -364,6 +428,8 @@ const GuiasDemandaLista: React.FC = () => {
     setCompetenciaGerar('');
     setPeriodosGerar([]);
     setResultadoGuias(null);
+    setCardapiosDisponiveis([]);
+    setCardapiosSelecionados([]);
   };
 
   return (
@@ -659,27 +725,117 @@ const GuiasDemandaLista: React.FC = () => {
             Selecione a competência e um ou mais períodos. Cada período gera uma guia de demanda com as quantidades por escola.
           </Alert>
 
-          <FormControl fullWidth sx={{ mb: 2 }}>
-            <InputLabel>Competência</InputLabel>
-            <Select
-              value={competenciaGerar}
-              onChange={(e) => {
-                setCompetenciaGerar(e.target.value);
-                setPeriodosGerar([]);
-                setResultadoGuias(null);
-              }}
-              label="Competência"
-            >
-              {gerarCompetenciasDisponiveis().map((comp) => (
-                <MenuItem key={comp.valor} value={comp.valor}>
-                  {comp.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          <Box sx={{ mb: 2, display: 'flex', gap: 1.5, alignItems: 'center' }}>
+            <FormControl sx={{ flex: 1 }}>
+              <InputLabel size="small">Mês</InputLabel>
+              <Select
+                size="small"
+                label="Mês"
+                value={competenciaGerar ? competenciaGerar.split('-')[1] : ''}
+                onChange={(e) => {
+                  const ano = competenciaGerar ? competenciaGerar.split('-')[0] : String(new Date().getFullYear());
+                  const mes = e.target.value;
+                  const novaComp = `${ano}-${mes}`;
+                  setCompetenciaGerar(novaComp);
+                  setPeriodosGerar([]);
+                  setResultadoGuias(null);
+                  setCardapiosDisponiveis([]);
+                  setCardapiosSelecionados([]);
+                  if (novaComp) carregarCardapios(novaComp);
+                }}
+              >
+                {[
+                  ['01','Janeiro'],['02','Fevereiro'],['03','Março'],['04','Abril'],
+                  ['05','Maio'],['06','Junho'],['07','Julho'],['08','Agosto'],
+                  ['09','Setembro'],['10','Outubro'],['11','Novembro'],['12','Dezembro'],
+                ].map(([val, label]) => (
+                  <MenuItem key={val} value={val}>{label}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl sx={{ width: 110 }}>
+              <InputLabel size="small">Ano</InputLabel>
+              <Select
+                size="small"
+                label="Ano"
+                value={competenciaGerar ? competenciaGerar.split('-')[0] : String(new Date().getFullYear())}
+                onChange={(e) => {
+                  const mes = competenciaGerar ? competenciaGerar.split('-')[1] : String(new Date().getMonth() + 1).padStart(2, '0');
+                  const ano = e.target.value;
+                  const novaComp = `${ano}-${mes}`;
+                  setCompetenciaGerar(novaComp);
+                  setPeriodosGerar([]);
+                  setResultadoGuias(null);
+                  setCardapiosDisponiveis([]);
+                  setCardapiosSelecionados([]);
+                  if (novaComp) carregarCardapios(novaComp);
+                }}
+              >
+                {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 1 + i).map(ano => (
+                  <MenuItem key={ano} value={String(ano)}>{ano}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
 
           {competenciaGerar && (
             <>
+              {/* Seleção de Cardápios */}
+              {loadingCardapios ? (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, py: 1 }}>
+                  <CircularProgress size={16} />
+                  <Typography variant="body2" color="text.secondary">Carregando cardápios...</Typography>
+                </Box>
+              ) : cardapiosDisponiveis.length > 0 ? (
+                <Box sx={{ mb: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                      Cardápios disponíveis
+                    </Typography>
+                    <Button size="small" onClick={toggleTodosCardapios} sx={{ textTransform: 'none', fontSize: '0.75rem' }}>
+                      {cardapiosSelecionados.length === cardapiosDisponiveis.length ? 'Desmarcar todos' : 'Selecionar todos'}
+                    </Button>
+                  </Box>
+                  <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, maxHeight: 180, overflow: 'auto' }}>
+                    {cardapiosDisponiveis.map((cardapio) => (
+                      <Box
+                        key={cardapio.id}
+                        onClick={() => toggleCardapio(cardapio.id)}
+                        sx={{
+                          display: 'flex', alignItems: 'center', gap: 1,
+                          px: 2, py: 1,
+                          cursor: 'pointer',
+                          borderBottom: '1px solid',
+                          borderColor: 'divider',
+                          '&:last-child': { borderBottom: 'none' },
+                          bgcolor: cardapiosSelecionados.includes(cardapio.id) ? 'action.selected' : 'transparent',
+                          '&:hover': { bgcolor: 'action.hover' },
+                        }}
+                      >
+                        <Checkbox
+                          checked={cardapiosSelecionados.includes(cardapio.id)}
+                          onChange={() => toggleCardapio(cardapio.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          size="small"
+                          sx={{ p: 0 }}
+                        />
+                        <Typography variant="body2">{cardapio.nome}</Typography>
+                        {cardapio.modalidade_nome && (
+                          <Chip label={cardapio.modalidade_nome} size="small" sx={{ height: 18, fontSize: '0.65rem', ml: 'auto' }} />
+                        )}
+                      </Box>
+                    ))}
+                  </Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                    {cardapiosSelecionados.length} de {cardapiosDisponiveis.length} selecionado(s)
+                  </Typography>
+                </Box>
+              ) : (
+                <Alert severity="warning" sx={{ mb: 2 }}>
+                  Nenhum cardápio encontrado para esta competência.
+                </Alert>
+              )}
               {periodosGerar.length > 0 && (
                 <Box sx={{ mb: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                   {periodosGerar.map((p, idx) => (

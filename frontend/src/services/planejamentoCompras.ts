@@ -225,7 +225,8 @@ export async function iniciarGeracaoGuiasAsync(
   escola_ids?: number[],
   observacoes?: string,
   considerar_indice_coccao?: boolean,
-  considerar_fator_correcao?: boolean
+  considerar_fator_correcao?: boolean,
+  cardapio_ids?: number[]
 ): Promise<IniciarJobResponse> {
   const response = await api.post('/planejamento-compras/gerar-guias-async', {
     competencia,
@@ -233,7 +234,8 @@ export async function iniciarGeracaoGuiasAsync(
     escola_ids,
     observacoes,
     considerar_indice_coccao,
-    considerar_fator_correcao
+    considerar_fator_correcao,
+    cardapio_ids,
   });
   return response.data;
 }

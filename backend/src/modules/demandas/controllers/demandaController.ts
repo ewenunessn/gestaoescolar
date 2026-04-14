@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import { demandaModel } from '../models/demandaModel';
+import db from '../../../database';
+import { obterPeriodoUsuario } from '../../../utils/periodoHelper';
 import {
   asyncHandler,
   ValidationError,
@@ -11,6 +13,60 @@ import {
 } from '../../../utils/errorHandler';
 
 export const demandaController = {
+
+  async listarCardapiosDisponiveis(req: Request, res: Response) {
+    try {
+      const { mes, ano } = req.query;
+      const userId = (req as any).user?.id;
+
+      const params: any[] = [];
+      let paramIndex = 1;
+      let whereClause = 'WHERE cm.ativo = true';
+
+      // Se mês/ano fornecidos, filtrar por competência (ignora período)
+      if (mes && ano) {
+        whereClause += ` AND cm.mes = $${paramIndex}`;
+        params.push(Number(mes));
+        paramIndex++;
+        whereClause += ` AND cm.ano = $${paramIndex}`;
+        params.push(Number(ano));
+        paramIndex++;
+      } else {
+        // Sem competência: filtrar pelo período do usuário
+        const periodoId = await obterPeriodoUsuario(userId);
+        if (periodoId) {
+          whereClause += ` AND cm.periodo_id = $${paramIndex}`;
+          params.push(periodoId);
+          paramIndex++;
+        }
+      }
+
+      const query = `
+        SELECT DISTINCT
+          cm.id,
+          cm.nome,
+          cm.mes,
+          cm.ano,
+          STRING_AGG(DISTINCT m.nome, ', ' ORDER BY m.nome) FILTER (WHERE m.nome IS NOT NULL) as modalidade_nome,
+          COUNT(DISTINCT crd.id) as total_refeicoes
+        FROM cardapios_modalidade cm
+        LEFT JOIN cardapio_refeicoes_dia crd ON cm.id = crd.cardapio_modalidade_id
+        LEFT JOIN cardapio_modalidades cjm ON cjm.cardapio_id = cm.id
+        LEFT JOIN modalidades m ON m.id = cjm.modalidade_id
+        ${whereClause}
+        GROUP BY cm.id, cm.nome, cm.mes, cm.ano
+        ORDER BY cm.ano DESC, cm.mes DESC, cm.nome
+      `;
+
+      const result = await db.query(query, params);
+      res.json({ success: true, data: result.rows });
+    } catch (error: any) {
+      console.error('Erro ao listar cardápios disponíveis:', error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  },
+
+
   async listar(req: Request, res: Response) {
     try {
       console.log('🔄 [DEMANDAS] Iniciando listar...');

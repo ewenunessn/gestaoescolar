@@ -508,7 +508,7 @@ export default function CompraForm() {
     }
 
     return (
-        <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', bgcolor: 'white' }}>
+        <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
             {/* Breadcrumbs */}
             <Box sx={{ px: 3, pt: 2, pb: 0 }}>
                 <PageBreadcrumbs items={[
@@ -522,15 +522,16 @@ export default function CompraForm() {
                 flexShrink: 0, 
                 px: 3, 
                 py: 2.5, 
-                bgcolor: 'white',
-                borderBottom: '1px solid #e9ecef'
+                bgcolor: 'background.paper',
+                borderBottom: '1px solid',
+                borderColor: 'divider',
             }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                         <IconButton onClick={() => navigate(isEdit ? `/compras/${id}` : '/compras')} size="small">
                             <ArrowBackIcon />
                         </IconButton>
-                        <Typography variant="h5" sx={{ fontWeight: 600, color: '#212529' }}>
+                        <Typography variant="h5" sx={{ fontWeight: 600, color: 'text.primary' }}>
                             {isEdit ? `Compra ${compra?.numero}` : 'Nova Compra'}
                         </Typography>
                     </Box>
@@ -541,11 +542,11 @@ export default function CompraForm() {
                             disabled={loading}
                             sx={{ 
                                 textTransform: 'none',
-                                borderColor: '#dee2e6',
-                                color: '#495057',
+                                borderColor: 'divider',
+                                color: 'text.secondary',
                                 '&:hover': {
                                     borderColor: '#adb5bd',
-                                    bgcolor: '#f8f9fa'
+                                    bgcolor: 'action.hover'
                                 }
                             }}
                         >
@@ -584,15 +585,15 @@ export default function CompraForm() {
                     />
                     <Box sx={{ display: 'flex', gap: 3, px: 2, borderLeft: '1px solid #dee2e6' }}>
                         <Box>
-                            <Typography variant="caption" sx={{ color: '#6c757d', display: 'block' }}>Itens</Typography>
-                            <Typography variant="body2" fontWeight="600" sx={{ color: '#212529' }}>{itens.length}</Typography>
+                            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>Itens</Typography>
+                            <Typography variant="body2" fontWeight="600" sx={{ color: 'text.primary' }}>{itens.length}</Typography>
                         </Box>
                         <Box>
-                            <Typography variant="caption" sx={{ color: '#6c757d', display: 'block' }}>Fornecedores</Typography>
-                            <Typography variant="body2" fontWeight="600" sx={{ color: '#212529' }}>{totalFornecedores}</Typography>
+                            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>Fornecedores</Typography>
+                            <Typography variant="body2" fontWeight="600" sx={{ color: 'text.primary' }}>{totalFornecedores}</Typography>
                         </Box>
                         <Box>
-                            <Typography variant="caption" sx={{ color: '#6c757d', display: 'block' }}>Total</Typography>
+                            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>Total</Typography>
                             <Typography variant="body2" fontWeight="600" color="primary">
                                 {formatarMoeda(calcularValorTotal())}
                             </Typography>
@@ -613,7 +614,7 @@ export default function CompraForm() {
                     flex: 1,
                     display: 'flex',
                     flexDirection: 'column',
-                    bgcolor: 'white',
+                    bgcolor: 'background.paper',
                     borderRadius: '8px',
                     overflow: 'hidden'
                 }}>
@@ -624,9 +625,10 @@ export default function CompraForm() {
                         alignItems: 'center', 
                         px: 3,
                         py: 2,
-                        borderBottom: '1px solid #e9ecef'
+                        borderBottom: '1px solid',
+                        borderColor: 'divider',
                     }}>
-                        <Typography variant="body2" sx={{ color: '#6c757d', fontSize: '0.875rem' }}>
+                        <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.875rem' }}>
                             {itens.length} {itens.length === 1 ? 'item' : 'itens'}
                         </Typography>
                         <Button
@@ -658,7 +660,7 @@ export default function CompraForm() {
                                 {itens.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={7} align="center" sx={{ py: 8, border: 0 }}>
-                                            <Typography variant="body2" sx={{ color: '#6c757d' }}>
+                                            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                                                 Nenhum item adicionado. Clique em "Adicionar item" para começar.
                                             </Typography>
                                         </TableCell>
@@ -669,24 +671,23 @@ export default function CompraForm() {
                                             key={index} 
                                             hover
                                             sx={{ 
-                                                bgcolor: 'white',
-                                                '&:hover': { bgcolor: '#f8f9fa !important' },
+                                                '&:hover': { bgcolor: 'action.hover' },
                                                 '&:last-child td': { borderBottom: 0 }
                                             }}
                                         >
                                             <TableCell sx={{ 
                                                 py: 1.75, 
                                                 px: 2, 
-                                                borderBottom: '1px solid #f1f3f5',
+                                                borderBottom: '1px solid',
                                                 borderLeft: 0,
                                                 borderRight: 0,
                                                 borderTop: 0
                                             }}>
-                                                <Typography variant="body2" sx={{ fontWeight: 500, color: '#212529', fontSize: '0.875rem' }}>
+                                                <Typography variant="body2" sx={{ fontWeight: 500, color: 'text.primary', fontSize: '0.875rem' }}>
                                                     {item.produto_nome}
                                                 </Typography>
                                                 {item.observacoes && (
-                                                    <Typography variant="caption" sx={{ color: '#6c757d', fontSize: '0.75rem' }}>
+                                                    <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.75rem' }}>
                                                         {item.observacoes}
                                                     </Typography>
                                                 )}
@@ -694,70 +695,70 @@ export default function CompraForm() {
                                             <TableCell sx={{ 
                                                 py: 1.75, 
                                                 px: 2, 
-                                                borderBottom: '1px solid #f1f3f5',
+                                                borderBottom: '1px solid',
                                                 borderLeft: 0,
                                                 borderRight: 0,
                                                 borderTop: 0
                                             }}>
-                                                <Typography variant="body2" sx={{ color: '#212529', fontSize: '0.875rem' }}>
+                                                <Typography variant="body2" sx={{ color: 'text.primary', fontSize: '0.875rem' }}>
                                                     {item.fornecedor_nome}
                                                 </Typography>
-                                                <Typography variant="caption" sx={{ color: '#6c757d', fontSize: '0.75rem' }}>
+                                                <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.75rem' }}>
                                                     {item.contrato_numero}
                                                 </Typography>
                                             </TableCell>
                                             <TableCell align="right" sx={{ 
                                                 py: 1.75, 
                                                 px: 2, 
-                                                borderBottom: '1px solid #f1f3f5',
+                                                borderBottom: '1px solid',
                                                 borderLeft: 0,
                                                 borderRight: 0,
                                                 borderTop: 0
                                             }}>
-                                                <Typography variant="body2" sx={{ color: '#212529', fontSize: '0.875rem' }}>
+                                                <Typography variant="body2" sx={{ color: 'text.primary', fontSize: '0.875rem' }}>
                                                     {formatarNumero(item.quantidade)} {item.unidade}
                                                 </Typography>
                                             </TableCell>
                                             <TableCell align="center" sx={{ 
                                                 py: 1.75, 
                                                 px: 2, 
-                                                borderBottom: '1px solid #f1f3f5',
+                                                borderBottom: '1px solid',
                                                 borderLeft: 0,
                                                 borderRight: 0,
                                                 borderTop: 0
                                             }}>
-                                                <Typography variant="body2" sx={{ color: '#212529', fontSize: '0.875rem' }}>
+                                                <Typography variant="body2" sx={{ color: 'text.primary', fontSize: '0.875rem' }}>
                                                     {formatarData(item.data_entrega_prevista)}
                                                 </Typography>
                                             </TableCell>
                                             <TableCell align="right" sx={{ 
                                                 py: 1.75, 
                                                 px: 2, 
-                                                borderBottom: '1px solid #f1f3f5',
+                                                borderBottom: '1px solid',
                                                 borderLeft: 0,
                                                 borderRight: 0,
                                                 borderTop: 0
                                             }}>
-                                                <Typography variant="body2" sx={{ color: '#212529', fontSize: '0.875rem' }}>
+                                                <Typography variant="body2" sx={{ color: 'text.primary', fontSize: '0.875rem' }}>
                                                     {formatarMoeda(item.preco_unitario)}
                                                 </Typography>
                                             </TableCell>
                                             <TableCell align="right" sx={{ 
                                                 py: 1.75, 
                                                 px: 2, 
-                                                borderBottom: '1px solid #f1f3f5',
+                                                borderBottom: '1px solid',
                                                 borderLeft: 0,
                                                 borderRight: 0,
                                                 borderTop: 0
                                             }}>
-                                                <Typography variant="body2" sx={{ fontWeight: 500, color: '#212529', fontSize: '0.875rem' }}>
+                                                <Typography variant="body2" sx={{ fontWeight: 500, color: 'text.primary', fontSize: '0.875rem' }}>
                                                     {formatarMoeda(item.valor_total)}
                                                 </Typography>
                                             </TableCell>
                                             <TableCell align="right" sx={{ 
                                                 py: 1.75, 
                                                 px: 2, 
-                                                borderBottom: '1px solid #f1f3f5',
+                                                borderBottom: '1px solid',
                                                 borderLeft: 0,
                                                 borderRight: 0,
                                                 borderTop: 0
@@ -767,9 +768,9 @@ export default function CompraForm() {
                                                         size="small"
                                                         onClick={() => abrirDialogEditar(index)}
                                                         sx={{ 
-                                                            color: '#6c757d', 
+                                                            color: 'text.secondary', 
                                                             '&:hover': { 
-                                                                color: '#495057',
+                                                                color: 'text.secondary',
                                                                 bgcolor: 'rgba(0,0,0,0.04)'
                                                             } 
                                                         }}
@@ -780,7 +781,7 @@ export default function CompraForm() {
                                                         size="small"
                                                         onClick={() => removerItem(index)}
                                                         sx={{ 
-                                                            color: '#6c757d', 
+                                                            color: 'text.secondary', 
                                                             '&:hover': { 
                                                                 color: '#dc3545',
                                                                 bgcolor: 'rgba(220,53,69,0.04)'

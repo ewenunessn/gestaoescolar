@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Select,
-  MenuItem,
   Box,
   Typography,
   Chip,
@@ -10,6 +8,8 @@ import {
   Alert,
   Snackbar,
   Backdrop,
+  Autocomplete,
+  TextField,
 } from '@mui/material';
 import { CalendarToday, Public, Person } from '@mui/icons-material';
 import { usePeriodos, usePeriodoAtivo, useSelecionarPeriodo } from '../hooks/queries/usePeriodosQueries';
@@ -20,21 +20,17 @@ export const SeletorPeriodo: React.FC = () => {
   const selecionarPeriodo = useSelecionarPeriodo();
   const [erro, setErro] = useState<string | null>(null);
 
-  const handleChange = (event: any) => {
-    const periodoId = event.target.value;
+  const handleChange = (_: any, periodo: any) => {
+    if (!periodo) return;
     setErro(null);
-    
-    selecionarPeriodo.mutate(periodoId, {
+    selecionarPeriodo.mutate(periodo.id, {
       onError: (error: any) => {
-        console.error('Erro ao selecionar período:', error);
         setErro(error?.response?.data?.message || 'Erro ao selecionar período');
       },
     });
   };
 
-  const handleCloseErro = () => {
-    setErro(null);
-  };
+  const handleCloseErro = () => setErro(null);
 
   if (loadingPeriodos || loadingAtivo) {
     return <CircularProgress size={20} />;
@@ -53,46 +49,82 @@ export const SeletorPeriodo: React.FC = () => {
 
   const periodoGlobalAtivo = periodos.find(p => p.ativo);
   const isUsuarioPeriodo = periodoAtivo.id !== periodoGlobalAtivo?.id;
+  const periodoSelecionado = periodos.find(p => p.id === periodoAtivo.id) ?? null;
 
   return (
     <>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <Tooltip title={isUsuarioPeriodo ? 'Seu período selecionado' : 'Período ativo global'}>
-          {isUsuarioPeriodo ? <Person fontSize="small" /> : <Public fontSize="small" />}
+          {isUsuarioPeriodo ? <Person fontSize="small" sx={{ color: 'text.secondary' }} /> : <Public fontSize="small" sx={{ color: 'text.secondary' }} />}
         </Tooltip>
-        
-        <Select
-          value={periodoAtivo.id}
+
+        <Autocomplete
+          value={periodoSelecionado}
           onChange={handleChange}
-          size="small"
+          options={periodos}
+          getOptionLabel={(p) => `${p.ano}${p.descricao ? ` - ${p.descricao}` : ''}`}
+          isOptionEqualToValue={(a, b) => a.id === b.id}
           disabled={selecionarPeriodo.isPending}
-          sx={{
-            minWidth: 120,
-            '& .MuiSelect-select': {
-              py: 0.5,
+          disableClearable
+          size="small"
+          sx={{ minWidth: 180 }}
+          componentsProps={{
+            paper: {
+              sx: {
+                bgcolor: '#21262d',
+                border: '1px solid #30363d',
+                borderRadius: '10px',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                mt: 0.5,
+              }
+            }
+          }}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              placeholder="Buscar período..."
+              size="small"
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  fontSize: '0.8rem',
+                  bgcolor: '#21262d',
+                  borderRadius: '8px',
+                  color: '#e6edf3',
+                  '& fieldset': { borderColor: '#30363d' },
+                  '&:hover fieldset': { borderColor: '#484f58' },
+                  '&.Mui-focused fieldset': { borderColor: '#58a6ff' },
+                },
+                '& .MuiSvgIcon-root': { color: '#8b949e' },
+                '& input::placeholder': { color: '#6e7681', opacity: 1 },
+              }}
+            />
+          )}
+          renderOption={(props, periodo) => (
+            <Box component="li" {...props} sx={{
               display: 'flex',
               alignItems: 'center',
               gap: 1,
-            },
-          }}
-        >
-          {periodos.map((periodo) => (
-            <MenuItem key={periodo.id} value={periodo.id}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-                <Typography variant="body2">{periodo.ano}</Typography>
-                {periodo.ativo && (
-                  <Chip label="Ativo" size="small" color="primary" sx={{ height: 20 }} />
-                )}
-                {periodo.fechado && (
-                  <Chip label="Fechado" size="small" color="default" sx={{ height: 20 }} />
-                )}
-              </Box>
-            </MenuItem>
-          ))}
-        </Select>
+              px: 2,
+              py: 1,
+              fontSize: '0.8rem',
+              color: '#e6edf3',
+              '&:hover': { bgcolor: '#2d333b !important' },
+              '&.Mui-focused': { bgcolor: '#2d333b !important' },
+            }}>
+              <Typography variant="body2" sx={{ color: '#e6edf3', fontSize: '0.8rem' }}>
+                {periodo.descricao || periodo.ano}
+              </Typography>
+              {periodo.ativo && (
+                <Chip label="Ativo" size="small" sx={{ height: 16, fontSize: '0.65rem', ml: 'auto', bgcolor: '#1f6feb', color: '#fff' }} />
+              )}
+              {periodo.fechado && (
+                <Chip label="Fechado" size="small" sx={{ height: 16, fontSize: '0.65rem', ml: 'auto', bgcolor: '#30363d', color: '#8b949e' }} />
+              )}
+            </Box>
+          )}
+        />
       </Box>
 
-      {/* Backdrop com loading durante a troca de período */}
       <Backdrop
         sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }}
         open={selecionarPeriodo.isPending}

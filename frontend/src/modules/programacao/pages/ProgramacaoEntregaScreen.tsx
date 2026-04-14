@@ -154,9 +154,9 @@ export default function ProgramacaoEntregaScreen() {
   }
 
   return (
-    <Box sx={{ height: 'calc(100vh - 56px)', display: 'flex', flexDirection: 'column', bgcolor: '#fff', overflow: 'hidden' }}>
+    <Box sx={{ height: 'calc(100vh - 56px)', display: 'flex', flexDirection: 'column', bgcolor: 'background.default', overflow: 'hidden' }}>
       {/* Header */}
-      <Box sx={{ px: 2, pt: 1.5, pb: 1, borderBottom: '1px solid #e9ecef', flexShrink: 0 }}>
+      <Box sx={{ px: 2, pt: 1.5, pb: 1, borderBottom: '1px solid', borderColor: 'divider', flexShrink: 0 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Box sx={{ display: 'flex', alignItems: "center", gap: 1 }}>
             <IconButton size="small" onClick={() => navigate(backPath)}>

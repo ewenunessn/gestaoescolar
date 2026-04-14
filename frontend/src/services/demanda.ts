@@ -71,6 +71,8 @@ export async function gerarDemandaMultiplosCardapios(params: {
 export async function listarCardapiosDisponiveis(params?: {
   escola_ids?: number[];
   modalidade_ids?: number[];
+  mes?: number;
+  ano?: number;
 }): Promise<CardapioDisponivel[]> {
   const { data } = await apiWithRetry.get("/demandas/cardapios-disponiveis", { params });
   return data.data;

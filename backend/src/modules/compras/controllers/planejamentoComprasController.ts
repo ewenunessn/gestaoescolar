@@ -176,13 +176,21 @@ async function calcularDemandaPeriodo(
   data_inicio: string,
   data_fim: string,
   escola_ids?: number[],
-  considerar_indice_coccao: boolean = false, // DESABILITADO POR PADRÃO
-  considerar_fator_correcao: boolean = true
+  considerar_indice_coccao: boolean = false,
+  considerar_fator_correcao: boolean = true,
+  cardapio_ids?: number[]
 ): Promise<ProdutoDemanda[]> {
   const diaInicio = parseInt(data_inicio.split('-')[2]);
   const diaFim = parseInt(data_fim.split('-')[2]);
 
   // Buscar cardápios ativos com suas modalidades (usando tabela de junção)
+  let cardapioFilter = '';
+  const cardapioParams: any[] = [ano, mes];
+  if (cardapio_ids && cardapio_ids.length > 0) {
+    cardapioFilter = `AND cm.id = ANY($3)`;
+    cardapioParams.push(cardapio_ids);
+  }
+
   const cardapiosQuery = await db.pool.query(`
     SELECT DISTINCT cm.id, cm2.modalidade_id
     FROM cardapios_modalidade cm
@@ -190,7 +198,8 @@ async function calcularDemandaPeriodo(
     LEFT JOIN cardapio_modalidades cm2 ON cm2.cardapio_id = cm.id
     WHERE cm.ativo = true AND cm.ano = $1 AND cm.mes = $2
       AND cm2.modalidade_id IS NOT NULL
-  `, [ano, mes]);
+      ${cardapioFilter}
+  `, cardapioParams);
 
   if (cardapiosQuery.rows.length === 0) {
     // Retornar info de debug no erro
@@ -1930,10 +1939,11 @@ export const gerarPedidoDaGuia = async (req: Request, res: Response) => {
 
 // ─── Iniciar Job de Geração de Guias (Assíncrono) ────────────────────────────
 export const iniciarGeracaoGuias = async (req: Request, res: Response) => {
-  const { competencia, periodos, escola_ids, observacoes, considerar_indice_coccao, considerar_fator_correcao } = req.body as {
+  const { competencia, periodos, escola_ids, cardapio_ids, observacoes, considerar_indice_coccao, considerar_fator_correcao } = req.body as {
     competencia: string;
     periodos: Periodo[];
     escola_ids?: number[];
+    cardapio_ids?: number[];
     observacoes?: string;
     considerar_indice_coccao?: boolean;
     considerar_fator_correcao?: boolean;
@@ -1951,6 +1961,7 @@ export const iniciarGeracaoGuias = async (req: Request, res: Response) => {
         competencia,
         periodos,
         escola_ids,
+        cardapio_ids,
         observacoes,
         considerar_indice_coccao,
         considerar_fator_correcao,
@@ -1982,7 +1993,7 @@ async function processarGeracaoGuiasBackground(jobId: number) {
     return;
   }
 
-  const { competencia, periodos, escola_ids, observacoes, considerar_indice_coccao, considerar_fator_correcao } = job.parametros;
+  const { competencia, periodos, escola_ids, cardapio_ids, observacoes, considerar_indice_coccao, considerar_fator_correcao } = job.parametros;
   const [ano, mes] = competencia.split('-').map(Number);
 
   const client = await db.pool.connect();
@@ -2006,7 +2017,8 @@ async function processarGeracaoGuiasBackground(jobId: number) {
         periodo.data_fim,
         escola_ids,
         considerar_indice_coccao,
-        considerar_fator_correcao
+        considerar_fator_correcao,
+        cardapio_ids
       );
       
       if (demanda.length === 0) {
