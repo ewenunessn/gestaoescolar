@@ -482,6 +482,7 @@ const GerenciarEscolasRota: React.FC = () => {
     }
 
     return (
+        <>
         <PageContainer>
             {successMessage && (
                 <Box sx={{ position: 'fixed', top: 80, right: 20, zIndex: 9999 }}>
@@ -747,7 +748,7 @@ const GerenciarEscolasRota: React.FC = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
-        </Box>
+        </>
     );
 };
 
