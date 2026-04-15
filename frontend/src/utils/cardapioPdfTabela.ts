@@ -158,12 +158,10 @@ export const gerarPDFTabela = async ({
     const dia = data.getDate();
     const refeicoesNoDia = refeicoes.filter(r => r.dia === dia);
     refeicoesNoDia.forEach(r => {
-      console.log(`Dia ${dia}: Refeição ID ${r.refeicao_id} - ${r.refeicao_nome}`);
       refeicoesIds.add(r.refeicao_id);
     });
   });
 
-  console.log('IDs únicos de refeições:', Array.from(refeicoesIds));
 
   // Gerar dados para o QR code
   const qrData = {
@@ -174,13 +172,9 @@ export const gerarPDFTabela = async ({
     dias: datasOrdenadas.map(d => d.getDate())
   };
 
-  console.log('Dados do QR Code:', qrData);
 
   // Gerar URL completa
   const qrUrl = `${window.location.origin}/cardapio-publico?data=${encodeURIComponent(JSON.stringify(qrData))}`;
-  console.log('URL do QR Code:', qrUrl);
-  console.log('URL decodificada:', decodeURIComponent(qrUrl));
-  console.log('Tamanho da URL:', qrUrl.length);
 
   // Gerar QR code como data URL
   let qrCodeDataUrl: string | null = null;
@@ -193,8 +187,6 @@ export const gerarPDFTabela = async ({
         light: '#FFFFFF'
       }
     });
-    console.log('QR Code gerado com sucesso!');
-    console.log('QR Code URL (primeiros 100 chars):', qrCodeDataUrl?.substring(0, 100));
   } catch (qrError) {
     console.error('Erro ao gerar QR Code:', qrError);
     throw new Error('Falha ao gerar QR Code: ' + (qrError as Error).message);
@@ -268,8 +260,6 @@ export const gerarPDFTabela = async ({
     };
   };
 
-  console.log('Montando PDF com QR Code...');
-  console.log('QR Code Data URL válido:', !!qrCodeDataUrl);
 
   // Criar conteúdo do QR Code
   const qrCodeContent = qrCodeDataUrl ? {
@@ -298,15 +288,12 @@ export const gerarPDFTabela = async ({
     margin: [0, 15, 0, 0]
   } : null;
 
-  console.log('QR Code Content criado:', !!qrCodeContent);
 
   // Montar array de conteúdo
   const pdfContent: any[] = [tableContent];
   if (qrCodeContent) {
-    console.log('Adicionando QR Code ao PDF...');
     pdfContent.push(qrCodeContent);
   } else {
-    console.warn('QR Code não foi adicionado ao PDF!');
   }
 
   const doc = buildPdfDoc({

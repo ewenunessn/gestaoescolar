@@ -66,12 +66,10 @@ export default function FaturamentoDetalhe() {
 
       const faturamentosData = await faturamentoService.buscarPorPedido(Number(pedidoId));
       setFaturamentos(faturamentosData);
-      console.log('📊 Faturamentos carregados:', faturamentosData);
 
       if (faturamentosData.length > 0) {
         // Usar o resumo real do faturamento em vez da prévia
         const resumoData = await faturamentoService.buscarResumo(faturamentosData[0].id);
-        console.log('📊 Resumo carregado:', resumoData);
         
         // Adaptar o formato do resumo para o formato da prévia
         // Agrupar itens por produto para consolidar as divisões por modalidade
@@ -136,14 +134,10 @@ export default function FaturamentoDetalhe() {
               itens: Object.values(itensPorProduto)
             };
             
-            console.log('📊 Contrato adaptado:', contratoAdaptado);
-            console.log('📊 Valor total original:', contrato.valor_total, 'Convertido:', Number(contrato.valor_total || 0));
-            console.log('📊 Itens do contrato:', Object.values(itensPorProduto));
             return contratoAdaptado;
           })
         };
         
-        console.log('📊 Prévia adaptada:', previaAdaptada);
         setPrevia(previaAdaptada);
         return previaAdaptada;
       }

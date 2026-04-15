@@ -15,7 +15,6 @@ export interface Modalidade {
 export async function createModalidadeTable() {
   // Tabela já criada via migração PostgreSQL
   // Esta função é mantida para compatibilidade
-  console.log('Tabela modalidades já existe no PostgreSQL');
 }
 
 export async function getModalidades(): Promise<Modalidade[]> {

@@ -207,7 +207,7 @@ export async function registrarRecebimento(req: Request, res: Response) {
     await client.query('BEGIN');
 
     const { pedidoId, pedidoItemId, quantidadeRecebida, observacoes } = req.body;
-    const usuarioId = (req as any).user?.id || 1;
+    const usuarioId = req.user?.id || 1;
 
     // Validar quantidade
     if (!quantidadeRecebida || quantidadeRecebida <= 0) {

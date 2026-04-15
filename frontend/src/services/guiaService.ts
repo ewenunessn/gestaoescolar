@@ -154,7 +154,6 @@ export const guiaService = {
     if (!guia_id) {
       throw new Error('guia_id é obrigatório');
     }
-    console.log('🔧 guiaService.adicionarProdutoEscola - Dados enviados:', rest);
     const response = await api.post(`/guias/${guia_id}/produtos`, rest);
     return response.data;
   },

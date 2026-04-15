@@ -83,35 +83,21 @@ export const useCurrentUser = () => {
       
       setUser(userData);
     } catch (err: any) {
-      console.error('⚠️ Erro ao buscar dados do usuário:', err);
       setError('Erro ao carregar dados do usuário');
-      // IMPORTANTE: Não limpar o user se já temos dados do localStorage
-      // Isso evita logout forçado se houver problema temporário de rede
-      console.log('ℹ️ Mantendo dados do usuário do localStorage');
+      // Não limpar o user se já temos dados do localStorage
+      // Evita logout forçado em caso de problema temporário de rede
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    // Só buscar do servidor se temos token E não estamos na página de login
     const token = getToken();
     const isLoginPage = window.location.pathname.includes('/login');
     
     if (token && !isLoginPage) {
-      console.log('👤 [useCurrentUser] Token encontrado, aguardando sincronização...');
-      // Delay maior para garantir que o localStorage foi sincronizado após login
-      const timer = setTimeout(() => {
-        console.log('👤 [useCurrentUser] Buscando dados do usuário do servidor...');
-        fetchUser();
-      }, 500); // Aumentado de 200ms para 500ms
-      return () => clearTimeout(timer);
+      fetchUser();
     } else {
-      if (isLoginPage) {
-        console.log('👤 [useCurrentUser] Na página de login - não buscar dados');
-      } else {
-        console.log('👤 [useCurrentUser] Nenhum token encontrado');
-      }
       setLoading(false);
     }
   }, []);

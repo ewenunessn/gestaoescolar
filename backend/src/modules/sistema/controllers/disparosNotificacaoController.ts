@@ -19,7 +19,7 @@ export const listarDisparos = asyncHandler(async (req: Request, res: Response) =
 
 // ── Criar disparo (somente imediato) ────────────────────────────────────────
 export const criarDisparo = asyncHandler(async (req: Request, res: Response) => {
-  const user = (req as any).user;
+  const user = req.user;
   const { titulo, mensagem, link, tipo = 'info', alvo, modalidade_id, escola_ids } = req.body;
 
   if (!titulo || !mensagem) throw new ValidationError('titulo e mensagem são obrigatórios');

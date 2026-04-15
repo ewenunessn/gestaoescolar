@@ -290,11 +290,9 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
 
         try {
             let allResults: SearchResult[] = [];
-            console.log(`🔍 Iniciando busca otimizada para: "${query}"`);
 
             // Busca 1: Busca específica para escolas usando amenity=school
             if (query.toLowerCase().includes('escola') || query.toLowerCase().includes('municipal') || query.toLowerCase().includes('estadual') || query.toLowerCase().includes('colégio')) {
-                console.log('🏫 Busca específica para escolas');
                 const schoolResponse = await fetch(
                     `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=br&limit=5&addressdetails=1&extratags=1&layer=poi&amenity=school`
                 );
@@ -302,13 +300,11 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
                 if (schoolResponse.ok) {
                     const schoolResults: SearchResult[] = await schoolResponse.json();
                     allResults = [...allResults, ...schoolResults];
-                    console.log(`📚 Encontradas ${schoolResults.length} escolas específicas`);
                 }
             }
 
             // Busca 2: Busca estruturada usando amenity parameter
             if (allResults.length < 3) {
-                console.log('🔍 Busca estruturada com amenity');
                 const structuredResponse = await fetch(
                     `https://nominatim.openstreetmap.org/search?format=json&amenity=${encodeURIComponent(query)}&countrycodes=br&limit=3&addressdetails=1&extratags=1&layer=poi`
                 );
@@ -316,13 +312,11 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
                 if (structuredResponse.ok) {
                     const structuredResults: SearchResult[] = await structuredResponse.json();
                     allResults = [...allResults, ...structuredResults];
-                    console.log(`🏢 Encontrados ${structuredResults.length} estabelecimentos`);
                 }
             }
 
             // Busca 3: Busca por categoria usando múltiplos tipos educacionais
             if (allResults.length < 3 && (query.toLowerCase().includes('escola') || query.toLowerCase().includes('colégio'))) {
-                console.log('📖 Busca por categoria educacional');
                 const categoryResponse = await fetch(
                     `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=br&limit=3&addressdetails=1&extratags=1&layer=poi&featureType=settlement`
                 );
@@ -335,13 +329,11 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
                         ['school', 'college', 'university', 'kindergarten'].includes(result.type)
                     );
                     allResults = [...allResults, ...educationalResults];
-                    console.log(`🎓 Encontradas ${educationalResults.length} instituições educacionais`);
                 }
             }
 
             // Busca 4: Busca geral otimizada com dedupe
             if (allResults.length < 3) {
-                console.log('🌐 Busca geral otimizada');
                 const generalResponse = await fetch(
                     `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=br&limit=5&addressdetails=1&extratags=1&layer=address,poi&dedupe=1`
                 );
@@ -349,13 +341,11 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
                 if (generalResponse.ok) {
                     const generalResults: SearchResult[] = await generalResponse.json();
                     allResults = [...allResults, ...generalResults];
-                    console.log(`📍 Encontrados ${generalResults.length} locais gerais`);
                 }
             }
 
             // Busca 5: Fallback com termos mais amplos
             if (allResults.length === 0) {
-                console.log('🔄 Busca fallback com termos amplos');
                 const words = query.split(' ');
                 const broadQuery = words.length > 2 ? words.slice(0, 2).join(' ') : query;
 
@@ -366,7 +356,6 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
                 if (fallbackResponse.ok) {
                     const fallbackResults: SearchResult[] = await fallbackResponse.json();
                     allResults = [...allResults, ...fallbackResults];
-                    console.log(`🎯 Encontrados ${fallbackResults.length} resultados amplos`);
                 }
             }
 
@@ -385,7 +374,6 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
                 .slice(0, 5); // Limitar a 5 melhores resultados
 
             setSearchResults(processedResults);
-            console.log(`✅ Total de ${processedResults.length} resultados únicos processados`);
 
         } catch (error) {
             console.error('Erro na busca:', error);

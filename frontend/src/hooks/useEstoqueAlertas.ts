@@ -12,7 +12,6 @@ export function useEstoqueAlertas() {
       setError(null);
       const alertasData = await getAlertas(true); // Apenas não resolvidos
       setAlertas(alertasData);
-      console.log('📊 Alertas de estoque carregados:', {
         total: alertasData.length,
         criticos: alertasData.filter(a => a.nivel === 'critical').length,
         avisos: alertasData.filter(a => a.nivel === 'warning').length,
@@ -24,7 +23,6 @@ export function useEstoqueAlertas() {
       if (err.response?.status === 404 || err.response?.status === 500) {
         setError(null); // Não mostrar erro, apenas não mostrar alertas
         setAlertas([]);
-        console.log('⚠️ Módulo de estoque ainda não configurado ou sem alertas');
       } else {
         setError('Erro ao carregar alertas');
         setAlertas([]);

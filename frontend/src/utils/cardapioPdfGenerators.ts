@@ -36,7 +36,6 @@ export const exportarCalendarioPDF = async ({
     const response = await api.get('/instituicao');
     instituicao = response.data;
   } catch (err) {
-    console.log('Não foi possível carregar informações da instituição');
   }
   
   const getCalendarioSemanasParaPDF = () => {

@@ -14,12 +14,8 @@ export const guiaController = {
   // Listar todas as guias
   async listarGuias(req: Request, res: Response) {
     try {
-      console.log('🔍 [GuiaController] Iniciando listarGuias');
-      console.log('🔍 [GuiaController] Listando guias...');
 
-      console.log('🔍 [GuiaController] Chamando GuiaModel.listarGuias');
       const guias = await GuiaModel.listarGuias();
-      console.log('✅ [GuiaController] Guias retornadas:', guias.length);
       
       res.json({ success: true, data: guias });
     } catch (error) {
@@ -90,7 +86,6 @@ export const guiaController = {
   // Atualizar guia
   async atualizarGuia(req: Request, res: Response) {
     try {
-      console.log('🔍 [GuiaController] atualizarGuia');
 
       const { id } = req.params;
       const { observacao } = req.body;
@@ -137,7 +132,6 @@ export const guiaController = {
   // Adicionar produto à guia
   async adicionarProdutoGuia(req: Request, res: Response) {
     try {
-      console.log('🔍 [GuiaController] adicionarProdutoGuia');
 
       const { guiaId } = req.params;
       
@@ -196,7 +190,6 @@ export const guiaController = {
   // Remover produto da guia
   async removerProdutoGuia(req: Request, res: Response) {
     try {
-      console.log('🔍 [GuiaController] removerProdutoGuia');
 
       const { guiaId, produtoId, escolaId } = req.params;
       const guia = await GuiaModel.buscarGuia(parseInt(guiaId));
@@ -237,7 +230,6 @@ export const guiaController = {
   // Remover item da guia pelo ID direto
   async removerItemGuia(req: Request, res: Response) {
     try {
-      console.log('🔍 [GuiaController] removerItemGuia');
       const { itemId } = req.params;
       
       if (!itemId) {
@@ -275,10 +267,10 @@ export const guiaController = {
       }
 
       produtos.sort((a, b) => {
-        const escolaA = (a as any).escola_nome || '';
-        const escolaB = (b as any).escola_nome || '';
-        const produtoA = (a as any).produto_nome || '';
-        const produtoB = (b as any).produto_nome || '';
+        const escolaA = (a as Record<string,any>).escola_nome || '';
+        const escolaB = (b as Record<string,any>).escola_nome || '';
+        const produtoA = (a as Record<string,any>).produto_nome || '';
+        const produtoB = (b as Record<string,any>).produto_nome || '';
         
         if (escolaA !== escolaB) {
           return escolaA.localeCompare(escolaB);
@@ -296,7 +288,6 @@ export const guiaController = {
   // Atualizar dados de entrega
   async atualizarEntrega(req: Request, res: Response) {
     try {
-      console.log('🔍 [GuiaController] atualizarEntrega');
 
       const { guiaId, produtoId, escolaId } = req.params;
       const { 
@@ -354,7 +345,6 @@ export const guiaController = {
   // Atualizar campo para_entrega de um item
   async atualizarParaEntrega(req: Request, res: Response) {
     try {
-      console.log('🔍 [GuiaController] atualizarParaEntrega');
 
       const { itemId } = req.params;
       const { para_entrega } = req.body;
@@ -402,7 +392,6 @@ export const guiaController = {
   // Listar todos os itens de uma guia
   async listarItensGuia(req: Request, res: Response) {
     try {
-      console.log('🔍 [GuiaController] listarItensGuia');
 
       const { guiaId } = req.params;
       const guia = await GuiaModel.buscarGuia(parseInt(guiaId));
@@ -415,12 +404,12 @@ export const guiaController = {
       
       const itensFormatados = itens.map(item => ({
         id: item.id,
-        produto_nome: (item as any).produto_nome || 'Produto não identificado',
+        produto_nome: (item as Record<string,any>).produto_nome || 'Produto não identificado',
         quantidade: item.quantidade || 0,
-        unidade: item.unidade || (item as any).produto_unidade || 'un',
-        quantidade_demanda: (item as any).quantidade_demanda || item.quantidade || 0,
+        unidade: item.unidade || (item as Record<string,any>).produto_unidade || 'un',
+        quantidade_demanda: (item as Record<string,any>).quantidade_demanda || item.quantidade || 0,
         lote: item.lote || null,
-        escola_nome: (item as any).escola_nome || 'Escola não identificada',
+        escola_nome: (item as Record<string,any>).escola_nome || 'Escola não identificada',
         escola_id: item.escola_id,
         produto_id: item.produto_id,
         guia_id: item.guia_id,
@@ -568,7 +557,6 @@ export const guiaController = {
         });
       }
 
-      console.log(`🔍 [GuiaController] Listando status escolas: ${mes}/${ano}${guia_id ? ` guia_id=${guia_id}` : ''}`);
       const escolas = await GuiaModel.listarStatusEscolas(
         Number(mes),
         Number(ano),
@@ -618,22 +606,30 @@ export const guiaController = {
       }>();
 
       for (const item of itens) {
-        const dataKey = item.data_entrega ? String(item.data_entrega).split('T')[0] : '';
+        let dataKey = '';
+        if (item.data_entrega) {
+          // Handle both Date objects and strings
+          if (item.data_entrega instanceof Date) {
+            dataKey = item.data_entrega.toISOString().split('T')[0];
+          } else {
+            dataKey = String(item.data_entrega).split('T')[0];
+          }
+        }
         const key = `${item.produto_id}__${dataKey}`;
         if (!grupos.has(key)) {
           grupos.set(key, {
             produto_id: item.produto_id,
-            produto_nome: (item as any).produto_nome || '',
-            unidade: (item as any).produto_unidade || (item as any).unidade || 'kg',
+            produto_nome: (item as Record<string,any>).produto_nome || '',
+            unidade: (item as Record<string,any>).produto_unidade || (item as Record<string,any>).unidade || 'kg',
             data_entrega: dataKey || null,
             escolas: [],
           });
         }
         grupos.get(key)!.escolas.push({
           id: item.escola_id,
-          nome: (item as any).escola_nome || '',
+          nome: (item as Record<string,any>).escola_nome || '',
           quantidade: Number(item.quantidade) || 0,
-          quantidade_demanda: Number((item as any).quantidade_demanda ?? item.quantidade) || 0,
+          quantidade_demanda: Number((item as Record<string,any>).quantidade_demanda ?? item.quantidade) || 0,
           item_id: item.id,
         } as any);
       }
@@ -671,7 +667,6 @@ export const guiaController = {
 
   // Listar competências com resumo de status
   async listarCompetencias(req: Request, res: Response) {    try {
-      console.log('🔍 [GuiaController] Listando competências');
       
       const competencias = await GuiaModel.listarCompetencias();
       

@@ -273,7 +273,6 @@ export const invalidateCacheOnEstoqueChange = () => {
   cacheMatrizEstoque.invalidateAll();
   cacheEstatisticas.invalidate();
   
-  console.log('🗑️ Cache de estoque invalidado devido a mudanças');
 };
 
 /**

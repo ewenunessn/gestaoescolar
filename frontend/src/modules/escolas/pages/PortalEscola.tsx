@@ -408,8 +408,6 @@ export default function PortalEscola() {
               return dataCardapio.toDateString() === hoje.toDateString();
             });
 
-            console.log('📅 Cardápio de hoje:', cardapioHoje);
-            console.log('🍽️ Tipos de refeição carregados:', tiposRefeicao);
 
             if (!cardapioHoje || !cardapioHoje.refeicoes || cardapioHoje.refeicoes.length === 0) {
               return (
@@ -423,7 +421,6 @@ export default function PortalEscola() {
             const refeicoesPorTipo: Record<string, any[]> = {};
             cardapioHoje.refeicoes.forEach((ref: any) => {
               const tipo = ref.tipo_refeicao || 'refeicao'; // 'tipo_refeicao' vem do backend
-              console.log('🍴 Refeição:', ref.nome, '| Tipo:', tipo, '| Label:', tiposRefeicao[tipo]);
               if (!refeicoesPorTipo[tipo]) {
                 refeicoesPorTipo[tipo] = [];
               }

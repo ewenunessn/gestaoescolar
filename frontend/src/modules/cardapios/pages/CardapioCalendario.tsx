@@ -13,7 +13,7 @@ import { useToast } from "../../../hooks/useToast";
 import { usePageTitle } from "../../../contexts/PageTitleContext";
 import PageContainer from "../../../components/PageContainer";
 import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
-import CalendarioSelector from "../../../components/CalendarioSelector";
+import CalendarioProfissional from "../../../components/CalendarioProfissional";
 import { useInstituicaoForPDF } from "../../../hooks/useInstituicao";
 import { createPDFHeader, createPDFFooter, getDefaultPDFStyles, buildPdfDoc } from "../../../utils/pdfUtils";
 import { gerarPDFTabela as gerarPDFTabelaUtil } from "../../../utils/cardapioPdfTabela";
@@ -266,7 +266,6 @@ const CardapioCalendarioPage: React.FC = () => {
         const response = await api.get('/instituicao');
         instituicao = response.data;
       } catch (err) {
-        console.log('Não foi possível carregar informações da instituição');
       }
       
       // Gerar semanas do calendário para o PDF
@@ -1070,7 +1069,7 @@ const CardapioCalendarioPage: React.FC = () => {
           {/* Coluna principal - Calendário */}
           <Grid item xs={12} lg={9}>
             {/* Usar o seletor de calendário */}
-            <CalendarioSelector
+            <CalendarioProfissional
               ano={ano}
               mes={mes}
               eventos={todosEventos}

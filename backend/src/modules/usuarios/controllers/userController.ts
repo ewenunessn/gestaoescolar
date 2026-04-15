@@ -47,9 +47,7 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     ativo: true
   });
 
-  console.log(`✅ Usuário criado: ${novo.nome} (${novo.email}) - Tipo: ${userType}`);
   if (isFirstUser) {
-    console.log('🎉 Primeiro usuário do sistema criado com privilégios de administrador!');
   }
 
   res.status(201).json({
@@ -97,7 +95,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     isSystemAdmin
   };
 
-  const token = jwt.sign(tokenPayload, config.jwtSecret as string, { expiresIn: config.jwtExpiresIn as any });
+  const token = jwt.sign(tokenPayload, config.jwtSecret as string, { expiresIn: config.jwtExpiresIn as string });
 
   res.json({
     success: true,
@@ -128,7 +126,7 @@ export const getUsers = asyncHandler(async (req: Request, res: Response) => {
 
 // Obter perfil do usuário logado
 export const getProfile = asyncHandler(async (req: Request, res: Response) => {
-  const userId = (req as any).user?.id;
+  const userId = req.user?.id;
   
   if (!userId) {
     throw new AuthenticationError('Token inválido');
@@ -169,8 +167,7 @@ export const checkSystemStatus = asyncHandler(async (req: Request, res: Response
 
 // Permissões do usuário atual (qualquer usuário pode ver as próprias)
 export const getMePermissoes = asyncHandler(async (req: Request, res: Response) => {
-  const authReq = req as any;
-  const userId = authReq.user.id;
+  const userId = req.user!.id;
 
   // Buscar permissões diretas
   const diretas = await db.query(`

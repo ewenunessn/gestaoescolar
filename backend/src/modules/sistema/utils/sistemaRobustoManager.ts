@@ -27,7 +27,6 @@ export default class SistemaRobustoManager {
   // Métodos adicionais para compatibilidade
   async fechar(): Promise<void> {
     // Não precisa fazer nada aqui, mas mantém para compatibilidade
-    console.log('SistemaRobustoManager fechado');
   }
 
   async definirConfiguracao(modulo: string, chave: string, valor: any, usuario_id: number): Promise<boolean> {

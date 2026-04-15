@@ -122,18 +122,7 @@ class SaldoContratosModalidadesService {
         }
       });
       
-      console.log('🔍 Requisição Saldo Contratos:', {
-        filtros,
-        url: `/saldo-contratos-modalidades?${params.toString()}`
-      });
-      
       const response = await api.get(`/saldo-contratos-modalidades?${params.toString()}`);
-      
-      console.log('📦 Resposta Saldo Contratos:', {
-        total: response.data.data?.length,
-        pagination: response.data.pagination
-      });
-      
       return response.data;
     } catch (error) {
       console.error('Erro ao listar saldos por modalidade:', error);

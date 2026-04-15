@@ -22,7 +22,6 @@ export class PerformanceMonitor {
     
     // Log com cores baseadas na performance
     const color = duration < 50 ? '#22c55e' : duration < 200 ? '#f59e0b' : '#ef4444';
-    console.log(`%c⚡ ${label}: ${duration.toFixed(2)}ms`, `color: ${color}; font-weight: bold`);
     
     return duration;
   }
@@ -47,13 +46,6 @@ export class PerformanceMonitor {
 
   static logMemoryUsage(label: string): void {
     if (!this.enabled || !('memory' in performance)) return;
-    
-    const memory = (performance as any).memory;
-    console.log(`📊 ${label} - Memória:`, {
-      used: `${(memory.usedJSHeapSize / 1024 / 1024).toFixed(2)}MB`,
-      total: `${(memory.totalJSHeapSize / 1024 / 1024).toFixed(2)}MB`,
-      limit: `${(memory.jsHeapSizeLimit / 1024 / 1024).toFixed(2)}MB`,
-    });
   }
 }
 
@@ -64,7 +56,6 @@ export function useRenderCount(componentName: string): void {
   const renderCount = React.useRef(0);
   renderCount.current++;
   
-  console.log(`🔄 ${componentName} renderizado ${renderCount.current} vez(es)`);
 }
 
 // Hook para detectar mudanças desnecessárias
@@ -88,7 +79,6 @@ export function useWhyDidYouUpdate(name: string, props: Record<string, any>): vo
       });
       
       if (Object.keys(changedProps).length) {
-        console.log(`🔍 ${name} - Props alteradas:`, changedProps);
       }
     }
     

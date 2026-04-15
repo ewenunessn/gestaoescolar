@@ -197,7 +197,7 @@ export async function criarCompra(req: Request, res: Response) {
       competencia_mes_ano
     } = req.body;
 
-    const usuario_criacao_id = (req as any).user?.id || 1;
+    const usuario_criacao_id = req.user?.id || 1;
 
     // Permitir criar compra vazia (será preenchida depois)
     const temItens = itens && Array.isArray(itens) && itens.length > 0;
@@ -549,7 +549,7 @@ export async function atualizarStatusCompra(req: Request, res: Response) {
   try {
     const { id } = req.params;
     const { status, motivo } = req.body;
-    const usuario_id = (req as any).user?.id || 1;
+    const usuario_id = req.user?.id || 1;
 
     const statusValidos = ['pendente', 'recebido_parcial', 'concluido', 'suspenso', 'cancelado'];
 
@@ -635,7 +635,6 @@ export async function excluirCompra(req: Request, res: Response) {
     const numero = pedidoResult.rows[0].numero;
 
     // Permitir excluir pedidos em qualquer status
-    console.log(`⚠️ EXCLUSÃO DE PEDIDO: Pedido ${numero} (Status: ${status}) sendo excluído`);
 
     // Excluir faturamentos relacionados
     // Primeiro, buscar os faturamentos_pedidos relacionados
@@ -790,7 +789,6 @@ export async function listarProdutosContrato(req: Request, res: Response) {
 
 export async function listarTodosProdutosDisponiveis(req: Request, res: Response) {
   try {
-    console.log(`✅ Listando produtos disponíveis`);
     
     // Query sempre busca unidade do produto
     const query = `
@@ -825,9 +823,7 @@ export async function listarTodosProdutosDisponiveis(req: Request, res: Response
 
     const produtosResult = await db.query(query);
 
-    console.log(`📊 Produtos encontrados: ${produtosResult.rows.length}`);
     if (produtosResult.rows.length > 0) {
-      console.log(`📦 Primeiro produto:`, JSON.stringify(produtosResult.rows[0], null, 2));
     }
 
     res.json({

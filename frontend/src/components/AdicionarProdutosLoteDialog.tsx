@@ -222,7 +222,6 @@ const AdicionarProdutosLoteDialog: React.FC<AdicionarProdutosLoteDialogProps> = 
       };
     });
 
-    console.log('✅ Produtos para adicionar:', produtosParaAdicionar);
     onAdicionar(produtosParaAdicionar);
     handleFechar();
   };
@@ -247,8 +246,6 @@ const AdicionarProdutosLoteDialog: React.FC<AdicionarProdutosLoteDialogProps> = 
           return;
         }
 
-        console.log('📊 Total de linhas no Excel:', jsonData.length);
-        console.log('📋 Dados do Excel:', jsonData);
 
         // Validar e processar dados
         const novosIds: number[] = [];
@@ -295,8 +292,6 @@ const AdicionarProdutosLoteDialog: React.FC<AdicionarProdutosLoteDialogProps> = 
           };
         }
 
-        console.log('✅ Produtos válidos:', novosIds.length);
-        console.log('❌ Erros encontrados:', erros.length);
 
         if (novosIds.length === 0) {
           setErroImportacao(`Nenhum produto válido encontrado no arquivo.\n${erros.join('\n')}`);
@@ -305,7 +300,6 @@ const AdicionarProdutosLoteDialog: React.FC<AdicionarProdutosLoteDialogProps> = 
 
         // Mostrar aviso se houver erros, mas continuar com os válidos
         if (erros.length > 0) {
-          console.warn('⚠️ Erros na importação:', erros);
           setErroImportacao(`${novosIds.length} produtos válidos encontrados. ${erros.length} linhas com erro foram ignoradas.`);
         }
 

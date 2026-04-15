@@ -398,7 +398,6 @@ export async function obterResumoFaturamento(req: Request, res: Response) {
         data_consumo: item.data_consumo
       };
       
-      console.log('📊 Item adicionado ao resumo:', itemData);
       modalidade.itens.push(itemData);
       
       modalidade.quantidade_total += Number(item.quantidade_modalidade || 0);

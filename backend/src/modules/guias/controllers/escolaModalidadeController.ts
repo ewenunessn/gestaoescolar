@@ -78,7 +78,6 @@ export async function listarModalidadesPorEscola(req: Request, res: Response) {
   try {
     const { escola_id } = req.params;
     
-    console.log('🔍 Buscando modalidades para escola_id:', escola_id);
     
     const modalidades = await db.all(`
       SELECT 
@@ -95,7 +94,6 @@ export async function listarModalidadesPorEscola(req: Request, res: Response) {
       ORDER BY m.nome
     `, [escola_id]);
 
-    console.log('✅ Modalidades encontradas:', modalidades.length, modalidades);
 
     res.json({
       success: true,

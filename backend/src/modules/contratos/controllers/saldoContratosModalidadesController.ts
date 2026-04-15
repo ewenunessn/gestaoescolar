@@ -65,13 +65,6 @@ class SaldoContratosModalidadesController {
       const produtosPaginados = await db.query(produtosQuery, produtosParams);
       const produtoIds = produtosPaginados.rows.flatMap((r: any) => r.contrato_produto_ids);
 
-      console.log('=== DEBUG SALDO CONTRATOS ===');
-      console.log('Limit:', limit);
-      console.log('Offset:', offset);
-      console.log('Produtos encontrados:', produtosPaginados.rows.length);
-      console.log('Total de IDs:', produtoIds.length);
-      console.log('Query:', produtosQuery);
-      console.log('Params:', produtosParams);
 
       // Se não há produtos, retornar vazio
       if (produtoIds.length === 0) {

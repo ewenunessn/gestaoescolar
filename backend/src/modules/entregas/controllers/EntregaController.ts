@@ -99,19 +99,6 @@ class EntregaController {
         precisao_gps
       } = req.body;
 
-      console.log('📥 Confirmar entrega - itemId:', itemId);
-      console.log('📥 Dados recebidos:', {
-        quantidade_entregue,
-        nome_quem_entregou,
-        nome_quem_recebeu,
-        observacao,
-        tem_assinatura: !!assinatura_base64,
-        tamanho_assinatura: assinatura_base64?.length,
-        latitude,
-        longitude,
-        precisao_gps
-      });
-
       if (!itemId || isNaN(Number(itemId))) {
         console.error('❌ ID do item inválido:', itemId);
         return res.status(400).json({ error: 'ID do item é obrigatório e deve ser um número' });
@@ -150,7 +137,6 @@ class EntregaController {
         return res.status(400).json({ error: 'Longitude deve ser um número válido entre -180 e 180' });
       }
 
-      console.log('✅ Validações OK, confirmando entrega...');
 
       const item = await EntregaModel.confirmarEntrega(Number(itemId), {
         quantidade_entregue: Number(quantidade_entregue),
@@ -163,7 +149,6 @@ class EntregaController {
         precisao_gps: precisao_gps ? Number(precisao_gps) : null
       });
 
-      console.log('✅ Entrega confirmada com sucesso');
 
       res.json({
         message: 'Entrega confirmada com sucesso',

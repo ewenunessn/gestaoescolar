@@ -80,12 +80,10 @@ const CardapioPublico: React.FC = () => {
   const carregarRefeicoes = async (ids: number[]) => {
     try {
       setLoading(true);
-      console.log('Carregando refeições com IDs:', ids);
       const promises = ids.map(id => api.get(`/refeicoes/${id}`));
       const responses = await Promise.all(promises);
       // A API retorna { success: true, data: {...} }
       const refeicoesData = responses.map(r => r.data.data || r.data);
-      console.log('Refeições carregadas:', refeicoesData);
       setRefeicoes(refeicoesData);
     } catch (err) {
       console.error('Erro ao carregar refeições:', err);
@@ -96,7 +94,6 @@ const CardapioPublico: React.FC = () => {
   };
 
   const handleRefeicaoClick = async (refeicaoId: number) => {
-    console.log('Clicou na refeição ID:', refeicaoId);
     
     if (!refeicaoId) {
       console.error('ID da refeição é undefined!');
@@ -110,9 +107,7 @@ const CardapioPublico: React.FC = () => {
 
     try {
       // Buscar ficha técnica
-      console.log('Buscando ficha técnica para refeição:', refeicaoId);
       const response = await api.get(`/refeicoes/${refeicaoId}/ficha-tecnica`);
-      console.log('Ficha técnica recebida:', response.data);
       setFichaTecnica(response.data);
       
       // Gerar PDF

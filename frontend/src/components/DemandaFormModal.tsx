@@ -82,8 +82,6 @@ export default function DemandaFormModal({ open, onClose, onSuccess, demandaId }
         ? new Date(demanda.data_solicitacao).toISOString().split('T')[0]
         : new Date().toISOString().split('T')[0];
       
-      console.log('Data original:', demanda.data_solicitacao);
-      console.log('Data formatada:', dataFormatada);
       
       setFormData({
         escola_solicitante: demanda.escola_nome || '',

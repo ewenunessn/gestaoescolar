@@ -14,7 +14,6 @@ export default function UpdateNotification() {
       // Obter versão do app
       electronAPI.getAppVersion().then((version: string) => {
         setAppVersion(version);
-        console.log('Versão do app:', version);
       });
 
       // Listener para download de atualização

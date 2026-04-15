@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { AuthenticatedRequest } from '../middleware/authMiddleware';
 
 /**
  * Rate Limiter simples em memória
@@ -116,10 +117,8 @@ export const generalLimiter = rateLimit({
   max: process.env.NODE_ENV === 'development' ? 2000 : 1000,
   message: 'Muitas requisições. Limite: 1000 requisições a cada 15 minutos.',
   keyGenerator: (req: Request) => {
-    // Preferir usuário autenticado como chave
-    const user = (req as any).usuario || (req as any).user;
+    const user = (req as AuthenticatedRequest).user;
     if (user?.id) return `user_${user.id}`;
-    // Fallback para IP
     return req.ip || req.socket.remoteAddress || 'unknown';
   }
 });

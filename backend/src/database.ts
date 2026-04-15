@@ -20,9 +20,7 @@ import { Pool, PoolClient, QueryResult } from 'pg';
 
 let pool: Pool;
 
-console.log('🔍 Verificando configuração do banco...');
-console.log('🔍 DATABASE_URL presente?', !!process.env.DATABASE_URL);
-console.log('🔍 POSTGRES_URL presente?', !!process.env.POSTGRES_URL);
+const isDev = process.env.NODE_ENV === 'development';
 
 if (process.env.NEON_DATABASE_URL || process.env.DATABASE_URL || process.env.POSTGRES_URL) {
     // ========================================
@@ -35,7 +33,6 @@ if (process.env.NEON_DATABASE_URL || process.env.DATABASE_URL || process.env.POS
     const isLocalDatabase = connectionString.includes('localhost') || connectionString.includes('127.0.0.1');
     
     if (isLocalDatabase) {
-        console.log('✅ Usando connection string LOCAL (sem SSL)');
         pool = new Pool({
             connectionString,
             ssl: false,
@@ -45,9 +42,7 @@ if (process.env.NEON_DATABASE_URL || process.env.DATABASE_URL || process.env.POS
             connectionTimeoutMillis: 5000,
         });
     } else {
-        console.log('✅ Usando NEON/VERCEL (com SSL verify-full)');
-        
-        // Adicionar sslmode=verify-full à connection string se não estiver presente
+        // Produção: Neon/Vercel com SSL
         let finalConnectionString = connectionString;
         if (!connectionString.includes('sslmode=')) {
             const separator = connectionString.includes('?') ? '&' : '?';
@@ -84,12 +79,6 @@ if (process.env.NEON_DATABASE_URL || process.env.DATABASE_URL || process.env.POS
         client_encoding: 'UTF8'
     };
 
-    console.log('🔧 Usando configuração BANCO LOCAL:', {
-        host: dbConfig.host,
-        port: dbConfig.port,
-        database: dbConfig.database,
-        user: dbConfig.user
-    });
 
     pool = new Pool(dbConfig);
 }
@@ -102,18 +91,13 @@ async function query(text: string, params: any[] = []): Promise<QueryResult> {
         const duration = Date.now() - start;
 
         if (process.env.NODE_ENV === 'development') {
-            console.log('Query executada:', {
-                text: text.substring(0, 50) + '...',
-                duration: duration + 'ms',
-                rows: res.rowCount
-            });
+            // Log de query apenas em dev
         }
 
         return res;
     } catch (error: any) {
         // Reconecta automaticamente se a conexão foi encerrada pelo servidor
         if (error.message?.includes('Connection terminated') || error.code === 'ECONNRESET') {
-            console.warn('⚠️ Conexão encerrada, tentando novamente...');
             const res = await pool.query(text, params);
             return res;
         }
@@ -144,7 +128,6 @@ async function transaction(callback: (client: PoolClient) => Promise<any>): Prom
 async function testConnection(): Promise<boolean> {
     try {
         const result = await query('SELECT NOW() as current_time, current_database() as db_name');
-        console.log('✅ PostgreSQL conectado:', result.rows[0]);
         return true;
     } catch (error: any) {
         console.error('❌ Erro na conexão PostgreSQL:', error.message);
@@ -184,13 +167,11 @@ testConnection();
 
 // Fechar pool quando aplicação terminar
 process.on('SIGINT', () => {
-    console.log('Fechando pool PostgreSQL...');
     pool.end();
     process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-    console.log('Fechando pool PostgreSQL...');
     pool.end();
     process.exit(0);
 });

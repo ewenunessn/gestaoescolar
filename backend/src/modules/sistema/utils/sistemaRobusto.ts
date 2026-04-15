@@ -266,7 +266,6 @@ export class SistemaRobustoImpl implements SistemaRobusto {
   async criarBackup(caminho_destino?: string): Promise<boolean> {
     try {
       // Implementação simplificada - em produção usaria pg_dump ou similar
-      console.log('Backup solicitado para:', caminho_destino || 'backup_default');
       
       // Criar registro de backup
       const result = await db.query(
@@ -290,7 +289,6 @@ export class SistemaRobustoImpl implements SistemaRobusto {
       for (const tabela of tabelas) {
         try {
           await db.query(`ANALYZE ${tabela}`);
-          console.log(`Tabela ${tabela} otimizada`);
         } catch (error) {
           console.warn(`Erro ao otimizar tabela ${tabela}:`, error.message);
         }

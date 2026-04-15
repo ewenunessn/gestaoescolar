@@ -766,7 +766,6 @@ export class FaturamentoService {
               
               // Se o consumo foi registrado, atualizar também o saldo
               if (consumoRegistrado) {
-                console.log(`🔄 Atualizando consumo: +${quantidadeAdicional} para modalidade ${outroItem.modalidade_id} do produto ${itemRemovido.produto_nome}`);
                 
                 const updateConsumoResult = await client.query(`
                   UPDATE contrato_produtos_modalidades cpm
@@ -936,10 +935,8 @@ export class FaturamentoService {
         RETURNING id, consumo_registrado, data_consumo
       `, [itemId]);
       
-      console.log('✅ Item marcado como consumido:', updateItemResult.rows[0]);
       
       await client.query('COMMIT');
-      console.log('✅ Transação commitada com sucesso!');
       
     } catch (error) {
       await client.query('ROLLBACK');

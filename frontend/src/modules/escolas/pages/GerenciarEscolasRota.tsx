@@ -321,12 +321,8 @@ const GerenciarEscolasRota: React.FC = () => {
     };
 
     const removerEscolaRota = async (escola: any) => {
-        console.log('=== FUNÇÃO REMOVER CHAMADA ===');
-        console.log('Escola recebida:', escola);
-        console.log('Rota atual:', rota);
         
         if (!rota) {
-            console.log('Rota não encontrada, saindo da função');
             return;
         }
 
@@ -337,16 +333,13 @@ const GerenciarEscolasRota: React.FC = () => {
             await rotaService.removerEscolaRota(rota.id, escola.id);
 
             // Atualizar estado local
-            console.log('Escolas antes da remoção:', escolasRota);
             const novasEscolas = escolasRota.filter(er => er.escola_id !== escola.id);
-            console.log('Escolas após filtro:', novasEscolas);
             
             const escolasReordenadas = novasEscolas.map((er, index) => ({
                 ...er,
                 ordem: index + 1
             }));
 
-            console.log('Escolas reordenadas:', escolasReordenadas);
             setEscolasRota(escolasReordenadas);
             // Não adicionamos a escola de volta às disponíveis, pois ela sempre deve estar disponível
 

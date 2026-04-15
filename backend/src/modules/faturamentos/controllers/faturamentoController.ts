@@ -24,7 +24,7 @@ export async function criarFaturamento(req: Request, res: Response) {
     await client.query('BEGIN');
 
     const { pedido_id, observacoes, itens }: FaturamentoInput = req.body;
-    const usuarioId = (req as any).user?.id || 1;
+    const usuarioId = req.user?.id || 1;
 
     // Validações
     if (!pedido_id) {

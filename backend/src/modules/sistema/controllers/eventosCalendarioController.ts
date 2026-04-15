@@ -111,7 +111,7 @@ export const criarEvento = async (req: Request, res: Response) => {
       anexos
     } = req.body;
 
-    const usuario_id = (req as any).usuario?.id;
+    const usuario_id = req.usuario?.id;
 
     // Validações
     if (!titulo || !tipo_evento || !data_inicio) {
@@ -348,7 +348,7 @@ export const importarFeriadosNacionais = async (req: Request, res: Response) => 
       { data: `${ano}-12-25`, titulo: 'Natal', tipo: 'feriado_nacional' }
     ];
 
-    const usuario_id = (req as any).usuario?.id;
+    const usuario_id = req.usuario?.id;
     let importados = 0;
 
     for (const feriado of feriados) {
@@ -361,7 +361,6 @@ export const importarFeriadosNacionais = async (req: Request, res: Response) => 
         `, [calendario_id, feriado.titulo, feriado.tipo, feriado.data, usuario_id]);
         importados++;
       } catch (err) {
-        console.log(`Feriado ${feriado.titulo} já existe ou erro ao importar`);
       }
     }
 

@@ -68,7 +68,6 @@ export const calcularValoresNutricionais = async (req: Request, res: Response) =
   const { id } = req.params; // refeicao_id
   const { rendimento_porcoes, modalidade_id } = req.body; // número de porções e modalidade opcional
 
-  console.log(`[NUTRICIONAL] Calculando para refeição ${id}, rendimento: ${rendimento_porcoes}, modalidade: ${modalidade_id}`);
 
   try {
     // Validar entrada
@@ -225,7 +224,6 @@ export const calcularValoresNutricionais = async (req: Request, res: Response) =
       alertas.push({ tipo: 'info', mensagem: 'Fibras abaixo do ideal (mínimo 3g por refeição)' });
     }
 
-    console.log(`[NUTRICIONAL] Cálculo concluído - Total: ${totais.calorias.toFixed(1)} kcal, Por porção: ${caloriasPorPorcao.toFixed(1)} kcal`);
 
     return res.json({
       total: {

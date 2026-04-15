@@ -90,9 +90,10 @@ export const rotaService = {
       const response = await api.post('/entregas/planejamentos-avancado', data);
       return response.data;
     } catch (error: any) {
-      // Fallback: criar planejamentos individuais se a rota avançada não existir
+      // Fallback legítimo: a rota /planejamentos-avancado pode não existir em versões
+      // antigas do backend. Nesse caso, cria os planejamentos individualmente.
+      // Diferente de retornar dados falsos — aqui a operação é realmente executada.
       if (error.response?.status === 404) {
-        console.log('Rota avançada não disponível, usando método alternativo...');
         const planejamentos = [];
         
         for (const rotaId of data.rotaIds) {

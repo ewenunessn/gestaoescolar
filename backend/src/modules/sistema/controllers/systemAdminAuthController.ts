@@ -60,7 +60,7 @@ export class SystemAdminAuthController {
           type: 'system_admin'
         },
         JWT_SECRET,
-        { expiresIn: config.jwtExpiresIn as any }
+        { expiresIn: config.jwtExpiresIn as string }
       );
 
       // Log de auditoria
@@ -101,7 +101,7 @@ export class SystemAdminAuthController {
   // Get current admin
   async me(req: Request, res: Response) {
     try {
-      const adminId = (req as any).systemAdmin?.id;
+      const adminId = req.systemAdmin?.id;
 
       if (!adminId) {
         return res.status(401).json({
@@ -139,7 +139,7 @@ export class SystemAdminAuthController {
   // Logout
   async logout(req: Request, res: Response) {
     try {
-      const adminId = (req as any).systemAdmin?.id;
+      const adminId = req.systemAdmin?.id;
 
       if (adminId) {
         // Log de auditoria

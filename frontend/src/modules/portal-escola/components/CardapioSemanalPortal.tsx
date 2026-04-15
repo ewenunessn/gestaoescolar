@@ -112,7 +112,6 @@ const CardapioSemanalPortal: React.FC<CardapioSemanalPortalProps> = ({ cardapios
       );
       const responses = await Promise.all(fichasPromises);
       const fichas = responses.map(r => r.data);
-      console.log('Fichas técnicas recebidas:', fichas);
       setFichasTecnicas(fichas);
     } catch (error) {
       console.error('Erro ao carregar fichas técnicas:', error);

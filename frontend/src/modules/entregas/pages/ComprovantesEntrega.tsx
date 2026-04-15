@@ -107,11 +107,6 @@ export default function ComprovantesEntrega() {
     buscarInstituicao()
       .then(inst => {
         setInstituicao(inst);
-        console.log('📋 Instituição carregada:', {
-          nome: inst.nome,
-          temLogo: !!inst.logo_url,
-          logoUrl: inst.logo_url
-        });
       })
       .catch(err => {
         console.error('❌ Erro ao carregar instituição:', err);
@@ -204,130 +199,138 @@ export default function ComprovantesEntrega() {
 
   const imprimirComprovante = async () => {
     if (!comprovanteDetalhes) return;
-    await gerarPdfComprovante(comprovanteDetalhes);
+    try {
+      await gerarPdfComprovante(comprovanteDetalhes);
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Erro ao imprimir comprovante');
+    }
   };
 
   const gerarPdfComprovante = async (comprovante: Comprovante) => {
-    // Verificar se a instituição tem logo
-    if (!instituicao?.logo_url) {
-      console.warn('⚠️ Instituição sem logo cadastrada');
-    } else {
-      console.log('✅ Logo da instituição:', instituicao.logo_url);
-    }
-
-    // Parse date properly - handle both date-only and datetime formats
-    let dataFormatada: string;
     try {
-      const date = new Date(comprovante.data_entrega);
-      if (isNaN(date.getTime())) {
-        // If invalid, try adding time
-        const dateWithTime = new Date(comprovante.data_entrega + 'T12:00:00');
-        dataFormatada = dateWithTime.toLocaleString('pt-BR', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        });
+      // Verificar se a instituição tem logo
+      if (!instituicao?.logo_url) {
       } else {
-        dataFormatada = date.toLocaleString('pt-BR', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        });
       }
-    } catch (e) {
-      dataFormatada = 'Data não disponível';
-    }
-    const temLote = comprovante.itens.some(i => i.lote);
 
-    // Gerar código de barras com o número do comprovante
-    const canvas = document.createElement('canvas');
-    JsBarcode(canvas, comprovante.numero_comprovante, {
-      format: 'CODE128',
-      width: 2,
-      height: 80,
-      displayValue: true,
-      fontSize: 14,
-      margin: 10
-    });
-    const barcodeDataUrl = canvas.toDataURL('image/png');
+      // Parse date properly - handle both date-only and datetime formats
+      let dataFormatada: string;
+      try {
+        const date = new Date(comprovante.data_entrega);
+        if (isNaN(date.getTime())) {
+          // If invalid, try adding time
+          const dateWithTime = new Date(comprovante.data_entrega + 'T12:00:00');
+          dataFormatada = dateWithTime.toLocaleString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+        } else {
+          dataFormatada = date.toLocaleString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+        }
+      } catch (e) {
+        dataFormatada = 'Data não disponível';
+      }
+      const temLote = comprovante.itens.some(i => i.lote);
 
-    const infoRows: any[] = [
-      [{ text: 'Escola:', bold: true }, comprovante.escola_nome],
-      ...(comprovante.escola_endereco ? [[{ text: 'Endereço:', bold: true }, comprovante.escola_endereco]] : []),
-      [{ text: 'Data da Entrega:', bold: true }, dataFormatada],
-      [{ text: 'Entregador:', bold: true }, comprovante.nome_quem_entregou],
-      [{ text: 'Recebedor:', bold: true }, `${comprovante.nome_quem_recebeu}${comprovante.cargo_recebedor ? ` (${comprovante.cargo_recebedor})` : ''}`],
-      ...(comprovante.observacao ? [[{ text: 'Observações:', bold: true }, comprovante.observacao]] : []),
-    ];
+      // Gerar código de barras com o número do comprovante
+      const canvas = document.createElement('canvas');
+      JsBarcode(canvas, comprovante.numero_comprovante, {
+        format: 'CODE128',
+        width: 2,
+        height: 80,
+        displayValue: true,
+        fontSize: 14,
+        margin: 10
+      });
+      const barcodeDataUrl = canvas.toDataURL('image/png');
 
-    const headers = ['Produto', 'Quantidade', 'Unidade', ...(temLote ? ['Lote'] : [])];
-    const rows = comprovante.itens.map(item => [
-      item.produto_nome,
-      formatarQuantidade(item.quantidade_entregue),
-      item.unidade,
-      ...(temLote ? [item.lote || '-'] : []),
-    ]);
-    const widths = temLote ? ['*', 70, 60, 70] : ['*', 80, 70];
-
-    const content: any[] = [
-      {
-        table: {
-          widths: [120, '*'],
-          body: infoRows.map(([label, value]) => [
-            { text: label, fontSize: 9, bold: true },
-            { text: value, fontSize: 9 },
-          ]),
-        },
-        layout: 'noBorders',
-        margin: [0, 0, 0, 10],
-      },
-      { text: `Itens Entregues (${comprovante.itens.length})`, style: 'sectionTitle' },
-      buildTable(headers, rows, widths),
-    ];
-
-    const pdfMake = await initPdfMake();
-    const doc = buildPdfDoc({
-      instituicao,
-      title: 'Comprovante de Entrega',
-      subtitle: comprovante.numero_comprovante,
-      content,
-      showSignature: false,
-    });
-
-    // Salvar o footer original
-    const originalFooter = doc.footer;
-
-    // Adicionar código de barras acima do rodapé
-    doc.footer = (currentPage: number, pageCount: number) => {
-      const originalFooterContent = typeof originalFooter === 'function' 
-        ? originalFooter(currentPage, pageCount) 
-        : originalFooter;
-
-      return [
-        {
-          columns: [
-            { width: '*', text: '' },
-            {
-              image: barcodeDataUrl,
-              width: 200,
-              alignment: 'right',
-              margin: [0, 0, 40, 0]
-            }
-          ],
-          margin: [40, 0, 0, 5]
-        },
-        originalFooterContent
+      const infoRows: any[] = [
+        [{ text: 'Escola:', bold: true }, comprovante.escola_nome],
+        ...(comprovante.escola_endereco ? [[{ text: 'Endereço:', bold: true }, comprovante.escola_endereco]] : []),
+        [{ text: 'Data da Entrega:', bold: true }, dataFormatada],
+        [{ text: 'Entregador:', bold: true }, comprovante.nome_quem_entregou],
+        [{ text: 'Recebedor:', bold: true }, `${comprovante.nome_quem_recebeu}${comprovante.cargo_recebedor ? ` (${comprovante.cargo_recebedor})` : ''}`],
+        ...(comprovante.observacao ? [[{ text: 'Observações:', bold: true }, comprovante.observacao]] : []),
       ];
-    };
 
-    pdfMake.createPdf(doc).download(`comprovante-${comprovante.numero_comprovante}.pdf`);
+      const headers = ['Produto', 'Quantidade', 'Unidade', ...(temLote ? ['Lote'] : [])];
+      const rows = comprovante.itens.map(item => [
+        item.produto_nome,
+        formatarQuantidade(item.quantidade_entregue),
+        item.unidade,
+        ...(temLote ? [item.lote || '-'] : []),
+      ]);
+      const widths = temLote ? ['*', 70, 60, 70] : ['*', 80, 70];
+
+      const content: any[] = [
+        {
+          table: {
+            widths: [120, '*'],
+            body: infoRows.map(([label, value]) => [
+              { text: label, fontSize: 9, bold: true },
+              { text: value, fontSize: 9 },
+            ]),
+          },
+          layout: 'noBorders',
+          margin: [0, 0, 0, 10],
+        },
+        { text: `Itens Entregues (${comprovante.itens.length})`, style: 'sectionTitle' },
+        buildTable(headers, rows, widths),
+      ];
+
+      const pdfMake = await initPdfMake();
+      const doc = buildPdfDoc({
+        instituicao,
+        title: 'Comprovante de Entrega',
+        subtitle: comprovante.numero_comprovante,
+        content,
+        showSignature: false,
+      });
+
+      // Salvar o footer original
+      const originalFooter = doc.footer;
+
+      // Adicionar código de barras acima do rodapé
+      doc.footer = (currentPage: number, pageCount: number) => {
+        const originalFooterContent = typeof originalFooter === 'function'
+          ? originalFooter(currentPage, pageCount)
+          : originalFooter;
+
+        return [
+          {
+            columns: [
+              { width: '*', text: '' },
+              {
+                image: barcodeDataUrl,
+                width: 200,
+                alignment: 'right',
+                margin: [0, 0, 40, 0]
+              }
+            ],
+            margin: [40, 0, 0, 5]
+          },
+          originalFooterContent
+        ];
+      };
+
+      pdfMake.createPdf(doc).download(`comprovante-${comprovante.numero_comprovante}.pdf`);
+    } catch (err: any) {
+      console.error('❌ Erro ao gerar PDF do comprovante:', err);
+      toast.error('Erro ao gerar PDF do comprovante. Tente novamente.');
+    }
   };
 
-  const formatarQuantidade = (valor: number): string => {
+  const formatarQuantidade = (valor: number | null | undefined): string => {
+    if (valor == null) return '0';
     if (Number.isInteger(valor)) {
       return valor.toLocaleString('pt-BR');
     }

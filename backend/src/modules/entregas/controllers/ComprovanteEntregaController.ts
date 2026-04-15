@@ -190,7 +190,7 @@ class ComprovanteEntregaController {
   async cancelarItem(req: Request, res: Response) {
     try {
       const { historico_entrega_id, motivo } = req.body;
-      const usuario_id = (req as any).user?.id;
+      const usuario_id = req.user?.id;
 
       if (!historico_entrega_id) {
         return res.status(400).json({ error: 'historico_entrega_id é obrigatório' });

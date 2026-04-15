@@ -168,7 +168,6 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({
         filtros.somentePendentes
       );
 
-      console.log('📦 Itens carregados para PDF:', itens.length, itens);
 
       if (itens.length === 0) {
         setError('Nenhum item encontrado para esta escola');
@@ -214,7 +213,6 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({
         totalAlunos = primeiroItem.escola_total_alunos;
       }
       
-      console.log('📚 Dados da escola (snapshot):', {
         nome: nomeEscola,
         endereco: enderecoEscola,
         totalAlunos,
@@ -231,14 +229,12 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({
           margin: 1,
           color: { dark: '#0f172a', light: '#ffffff' },
         });
-        console.log('✅ QR Code gerado com sucesso, tamanho:', qrCodeDataUrl.length);
       } catch (err) {
         console.error('❌ Erro ao gerar QR Code:', err);
         // Fallback: criar um data URL de imagem 1x1 transparente
         qrCodeDataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
       }
 
-      console.log('🔖 Código da guia:', codigoGuia);
 
       // Determinar mês/ano a partir dos itens ou filtro
       const mesAno = (() => {
@@ -447,7 +443,6 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({
       setGerandoPdfMultiplo(true);
       const escolasParaPdf = escolas.filter(e => escolasSelecionadas.has(e.id));
       
-      console.log(`📦 Gerando PDF para ${escolasParaPdf.length} escolas`);
       
       const pdfMake = await initPdfMake();
       const todasEscolas: any[] = [];
@@ -457,7 +452,6 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({
       for (let escolaIdx = 0; escolaIdx < escolasParaPdf.length; escolaIdx++) {
         const escola = escolasParaPdf[escolaIdx];
         
-        console.log(`📋 Processando escola ${escolaIdx + 1}/${escolasParaPdf.length}: ${escola.nome}`);
         
         // Buscar itens da escola
         const itens = await entregaService.listarItensPorEscola(
@@ -469,7 +463,6 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({
           filtros.somentePendentes
         );
 
-        console.log(`  ✓ ${itens.length} itens encontrados`);
 
         if (itens.length === 0) continue;
 
@@ -709,13 +702,11 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({
       }
 
       if (todasEscolas.length === 0) {
-        console.log('❌ Nenhuma escola processada');
         setError('Nenhum item encontrado para as escolas selecionadas');
         setGerandoPdfMultiplo(false);
         return;
       }
 
-      console.log(`✅ Total de escolas processadas: ${todasEscolas.length}`);
 
       // Concatenar conteúdo de todas as escolas
       const allContent: any[] = [];
@@ -779,9 +770,7 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({
         },
       };
 
-      console.log('🎯 Gerando PDF...');
       pdfMake.createPdf(doc).download(`guias-entrega-multiplas.pdf`);
-      console.log('✅ PDF gerado com sucesso!');
       
       // Limpar seleção
       setEscolasSelecionadas(new Set());

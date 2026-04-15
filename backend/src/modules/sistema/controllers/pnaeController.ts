@@ -282,7 +282,7 @@ export const salvarRelatorio = async (req: Request, res: Response) => {
       observacoes
     } = req.body;
 
-    const userId = (req as any).user?.id; // Assumindo que tem middleware de autenticação
+    const userId = req.user?.id; // Assumindo que tem middleware de autenticação
 
     const query = `
       INSERT INTO pnae_relatorios (

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import db from '../../../database';
 import { cacheService } from '../../../utils/cacheService';
-import { obterPeriodoUsuario } from '../../../utils/periodoHelper';
+import { obterPeriodoUsuario } from '../../../utils/periodoUsuarioHelper';
 
 const query = db.query.bind(db);
 
@@ -13,7 +13,7 @@ export async function listarCardapiosModalidade(req: Request, res: Response) {
     const cached = await cacheService.get(cacheKey);
     if (cached) return res.json(cached);
 
-    const userId = (req as any).user?.id;
+    const userId = req.user?.id;
     const periodoId = await obterPeriodoUsuario(userId);
 
     let sql = `

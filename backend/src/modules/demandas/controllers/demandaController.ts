@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { demandaModel } from '../models/demandaModel';
 import db from '../../../database';
-import { obterPeriodoUsuario } from '../../../utils/periodoHelper';
+import { obterPeriodoUsuario } from '../../../utils/periodoUsuarioHelper';
 import {
   asyncHandler,
   ValidationError,
@@ -17,7 +17,7 @@ export const demandaController = {
   async listarCardapiosDisponiveis(req: Request, res: Response) {
     try {
       const { mes, ano } = req.query;
-      const userId = (req as any).user?.id;
+      const userId = req.user?.id;
 
       const params: any[] = [];
       let paramIndex = 1;
@@ -69,11 +69,9 @@ export const demandaController = {
 
   async listar(req: Request, res: Response) {
     try {
-      console.log('🔄 [DEMANDAS] Iniciando listar...');
 
       const { escola_id, escola_nome, objeto, status, data_inicio, data_fim } = req.query;
 
-      console.log('🔍 [DEMANDAS] Chamando demandaModel.listar...');
       const startTime = Date.now();
       
       const demandas = await demandaModel.listar({
@@ -86,7 +84,6 @@ export const demandaController = {
       });
 
       const duration = Date.now() - startTime;
-      console.log(`✅ [DEMANDAS] Query executada em ${duration}ms, ${demandas.length} resultados`);
 
       res.json({
         success: true,
@@ -104,15 +101,12 @@ export const demandaController = {
 
   async listarSolicitantes(req: Request, res: Response) {
     try {
-      console.log('🔄 [DEMANDAS] Iniciando listarSolicitantes...');
 
-      console.log('🔍 [DEMANDAS] Chamando listarSolicitantes...');
       const startTime = Date.now();
       
       const solicitantes = await demandaModel.listarSolicitantes();
       
       const duration = Date.now() - startTime;
-      console.log(`✅ [DEMANDAS] Solicitantes listados em ${duration}ms, ${solicitantes.length} resultados`);
 
       res.json({
         success: true,
@@ -130,22 +124,18 @@ export const demandaController = {
 
   async buscarPorId(req: Request, res: Response) {
     try {
-      console.log('🔄 [DEMANDAS] Iniciando buscarPorId...');
 
       const { id } = req.params;
-      console.log('🔍 [DEMANDAS] Buscando demanda ID:', id);
       
       const demanda = await demandaModel.buscarPorId(Number(id));
 
       if (!demanda) {
-        console.log('❌ [DEMANDAS] Demanda não encontrada:', id);
         return res.status(404).json({
           success: false,
           message: 'Demanda não encontrada'
         });
       }
 
-      console.log('✅ [DEMANDAS] Demanda encontrada:', demanda.id);
 
       res.json({
         success: true,
@@ -163,11 +153,9 @@ export const demandaController = {
 
   async criar(req: Request, res: Response) {
     try {
-      console.log('🔄 [DEMANDAS] Iniciando criar...');
       
       const demanda = await demandaModel.criar(req.body);
 
-      console.log('✅ [DEMANDAS] Demanda criada:', demanda.id);
 
       res.status(201).json({
         success: true,
@@ -186,14 +174,11 @@ export const demandaController = {
 
   async atualizar(req: Request, res: Response) {
     try {
-      console.log('🔄 [DEMANDAS] Iniciando atualizar...');
 
       const { id } = req.params;
-      console.log('🔍 [DEMANDAS] Atualizando demanda ID:', id);
       
       const demanda = await demandaModel.atualizar(Number(id), req.body);
 
-      console.log('✅ [DEMANDAS] Demanda atualizada:', demanda.id);
 
       res.json({
         success: true,
@@ -212,14 +197,11 @@ export const demandaController = {
 
   async excluir(req: Request, res: Response) {
     try {
-      console.log('🔄 [DEMANDAS] Iniciando excluir...');
 
       const { id } = req.params;
-      console.log('🔍 [DEMANDAS] Excluindo demanda ID:', id);
       
       await demandaModel.excluir(Number(id));
 
-      console.log('✅ [DEMANDAS] Demanda excluída:', id);
 
       res.json({
         success: true,
@@ -237,16 +219,13 @@ export const demandaController = {
 
   async atualizarStatus(req: Request, res: Response) {
     try {
-      console.log('🔄 [DEMANDAS] Iniciando atualizarStatus...');
 
       const { id } = req.params;
       const { status } = req.body;
       
-      console.log('🔍 [DEMANDAS] Atualizando status da demanda ID:', id, 'para:', status);
       
       const demanda = await demandaModel.atualizarStatus(Number(id), status);
 
-      console.log('✅ [DEMANDAS] Status atualizado:', demanda.id);
 
       res.json({
         success: true,

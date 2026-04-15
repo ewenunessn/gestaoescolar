@@ -105,9 +105,7 @@ export const useSelecionarPeriodo = () => {
     mutationFn: periodoServiceExtended.selecionarPeriodo,
     onSuccess: () => {
       queryClient.invalidateQueries();
-      setTimeout(() => {
-        window.location.reload();
-      }, 300);
+      window.location.reload();
     },
   });
 };

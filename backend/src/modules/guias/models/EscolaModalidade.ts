@@ -13,7 +13,6 @@ export interface EscolaModalidade {
 export async function createEscolaModalidadeTable() {
   // Tabela já criada via migração PostgreSQL
   // Esta função é mantida para compatibilidade
-  console.log('Tabela escola_modalidades já existe no PostgreSQL');
 }
 
 export async function getEscolaModalidades(): Promise<EscolaModalidade[]> {

@@ -3,7 +3,7 @@ import db from '../../../database';
 import { asyncHandler, ValidationError } from '../../../utils/errorHandler';
 
 export const listarNotificacoes = asyncHandler(async (req: Request, res: Response) => {
-  const user = (req as any).user;
+  const user = req.user;
   const { apenas_nao_lidas } = req.query;
 
   const where = apenas_nao_lidas === 'true' ? 'AND lida = false' : '';
@@ -20,20 +20,20 @@ export const listarNotificacoes = asyncHandler(async (req: Request, res: Respons
 });
 
 export const marcarLida = asyncHandler(async (req: Request, res: Response) => {
-  const user = (req as any).user;
+  const user = req.user;
   const { id } = req.params;
   await db.query(`UPDATE notificacoes SET lida = true WHERE id = $1 AND usuario_id = $2`, [id, user.id]);
   res.json({ success: true });
 });
 
 export const marcarTodasLidas = asyncHandler(async (req: Request, res: Response) => {
-  const user = (req as any).user;
+  const user = req.user;
   await db.query(`UPDATE notificacoes SET lida = true WHERE usuario_id = $1 AND lida = false`, [user.id]);
   res.json({ success: true });
 });
 
 export const deletarNotificacao = asyncHandler(async (req: Request, res: Response) => {
-  const user = (req as any).user;
+  const user = req.user;
   const { id } = req.params;
   const result = await db.query(`DELETE FROM notificacoes WHERE id = $1 AND usuario_id = $2`, [id, user.id]);
   if (result.rowCount === 0) throw new ValidationError('Notificação não encontrada');

@@ -196,12 +196,9 @@ class ComprovanteEntregaModel {
     query += ` ORDER BY data_entrega DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     params.push(limit, offset);
 
-    console.log('🔍 Query comprovantes:', query);
-    console.log('📊 Params:', params);
 
     const result = await db.query(query, params);
 
-    console.log('✅ Comprovantes encontrados:', result.rows.length);
 
     return result.rows;
   }
@@ -221,17 +218,35 @@ class ComprovanteEntregaModel {
    * Excluir permanentemente um comprovante e seus itens
    */
   async excluir(id: number): Promise<void> {
-    // Primeiro excluir os itens
-    await db.query(`
-      DELETE FROM comprovante_itens
-      WHERE comprovante_id = $1
-    `, [id]);
+    const client = await db.pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // Excluir os itens do comprovante
+      await client.query(`
+        DELETE FROM comprovante_itens
+        WHERE comprovante_id = $1
+      `, [id]);
 
-    // Depois excluir o comprovante
-    await db.query(`
-      DELETE FROM comprovantes_entrega
-      WHERE id = $1
-    `, [id]);
+      // Excluir registros de cancelamento (se existirem)
+      await client.query(`
+        DELETE FROM comprovante_cancelamentos
+        WHERE comprovante_id = $1
+      `, [id]);
+
+      // Excluir o comprovante
+      await client.query(`
+        DELETE FROM comprovantes_entrega
+        WHERE id = $1
+      `, [id]);
+
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   /**

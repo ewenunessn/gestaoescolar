@@ -392,7 +392,6 @@ export default function PlanejamentoCompras() {
       const dataInicioStr = dataInicio.toISOString().split('T')[0];
       const dataFimStr = dataFim.toISOString().split('T')[0];
       
-      console.log('Enviando:', { competencia, dataInicioStr, dataFimStr });
 
       const resultado = await calcularDemandaPorCompetencia(
         competencia,

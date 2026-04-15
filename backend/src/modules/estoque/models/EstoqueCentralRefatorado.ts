@@ -50,7 +50,7 @@ class EstoqueCentralModel {
         estoqueId = estoqueResult.rows[0].id;
       }
 
-      const quantidadeNum = parseFloat(dados.quantidade as any) || 0;
+      const quantidadeNum = parseFloat(String(dados.quantidade)) || 0;
 
       // Criar ou atualizar lote
       const loteResult = await client.query(
@@ -102,7 +102,7 @@ class EstoqueCentralModel {
       }
 
       const estoqueId = estoqueResult.rows[0].id;
-      let quantidadeRestante = parseFloat(dados.quantidade as any) || 0;
+      let quantidadeRestante = parseFloat(String(dados.quantidade)) || 0;
 
       // Buscar lotes disponíveis ordenados por FEFO
       const lotesResult = await client.query(
@@ -158,7 +158,7 @@ class EstoqueCentralModel {
         quantidadeRestante -= quantidadeRetirar;
       }
 
-      return { movimentacoes, total_retirado: parseFloat(dados.quantidade as any) };
+      return { movimentacoes, total_retirado: parseFloat(String(dados.quantidade)) };
     });
   }
 

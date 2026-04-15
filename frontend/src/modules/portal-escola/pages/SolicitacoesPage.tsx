@@ -49,7 +49,6 @@ export default function SolicitacoesPage() {
       
       // Verifica se é uma data válida
       if (isNaN(data.getTime())) {
-        console.warn('Data inválida:', dataStr);
         return '-';
       }
       
@@ -80,7 +79,6 @@ export default function SolicitacoesPage() {
     setLoading(true);
     try {
       const data = await listarMinhasSolicitacoes();
-      console.log('📋 Solicitações carregadas:', data);
       setSolicitacoes(data);
     } catch {
       toast.error('Erro ao carregar solicitações');
@@ -243,7 +241,6 @@ export default function SolicitacoesPage() {
       size: 120,
       cell: ({ row }) => {
         const sol = row.original;
-        console.log('Status da solicitação:', sol.id, sol.status);
         return (
           <Box sx={{ display: 'flex', gap: 0.5 }}>
             <Tooltip title="Ver Detalhes">

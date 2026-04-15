@@ -57,7 +57,6 @@ export const useInstituicaoForPDF = () => {
         return data;
       }
     } catch (err) {
-      console.log('Não foi possível carregar informações da instituição para PDF');
     }
     
     return null;

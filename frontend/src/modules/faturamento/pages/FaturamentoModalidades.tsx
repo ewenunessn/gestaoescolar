@@ -145,7 +145,6 @@ export default function FaturamentoModalidades() {
       );
       
       if (faturamentosDoId.length > 0) {
-        console.log('📦 Faturamento encontrado:', faturamentosDoId);
         
         // Agrupar por modalidade e depois por contrato_produto_id
         const faturamentosPorModalidade = new Map<number, ItemFaturamento[]>();
@@ -162,7 +161,6 @@ export default function FaturamentoModalidades() {
           const contratoId = pedidoItem?.contrato_produto_id;
           
           if (!contratoId) {
-            console.warn('⚠️ Contrato não encontrado para pedido_item_id:', fat.pedido_item_id);
             return;
           }
           
@@ -225,7 +223,6 @@ export default function FaturamentoModalidades() {
   const adicionarItens = () => {
     if (!modalidadeSelecionada || !pedido) return;
 
-    console.log('➕ Adicionando itens:', itensSelecionados);
 
     const novosFaturamentos = faturamentos.map(fat => {
       if (fat.modalidade_id === modalidadeSelecionada) {
@@ -250,7 +247,6 @@ export default function FaturamentoModalidades() {
                   quantidade_pedido: Number(itemExistente.quantidade_pedido) + Number(pedidoItem.quantidade),
                   pedido_item_ids: [...itemExistente.pedido_item_ids, Number(itemId)]
                 };
-                console.log('✏️ Item agrupado atualizado:', novosItens[itemExistenteIndex]);
               } else {
                 // Adicionar novo item agrupado
                 const novoItem = {
@@ -263,7 +259,6 @@ export default function FaturamentoModalidades() {
                   preco_unitario: Number(pedidoItem.preco_unitario)
                 };
                 novosItens.push(novoItem);
-                console.log('➕ Novo item agrupado adicionado:', novoItem);
               }
             }
           }
@@ -277,7 +272,6 @@ export default function FaturamentoModalidades() {
       return fat;
     });
 
-    console.log('📦 Faturamentos após adicionar:', novosFaturamentos);
     setFaturamentos(novosFaturamentos);
     setDialogAberto(false);
     setModalidadeSelecionada(null);
@@ -306,7 +300,6 @@ export default function FaturamentoModalidades() {
       return;
     }
     
-    console.log('🔄 Atualizando quantidade:', {
       modalidadeId,
       contratoProdutoId,
       valor,
@@ -319,7 +312,6 @@ export default function FaturamentoModalidades() {
           ...fat,
           itens: fat.itens.map(item => {
             if (item.contrato_produto_id === contratoProdutoId) {
-              console.log('✅ Item atualizado:', {
                 antes: item.quantidade_alocada,
                 depois: novaQuantidade
               });
@@ -332,7 +324,6 @@ export default function FaturamentoModalidades() {
       return fat;
     });
     
-    console.log('📦 Novos faturamentos:', novosFaturamentos);
     setFaturamentos(novosFaturamentos);
   };
 
@@ -374,7 +365,6 @@ export default function FaturamentoModalidades() {
   };
 
   const abrirDialogAutomatico = () => {
-    console.log('🚀 Abrindo dialog de alocamento automático');
     setItensAutomaticoSelecionados([]);
     setModalidadesAutomaticoSelecionadas([]);
     setEtapaAutomatico(1);
@@ -382,8 +372,6 @@ export default function FaturamentoModalidades() {
   };
 
   const avancarParaEtapa2 = () => {
-    console.log('⏭️ Avançando para etapa 2');
-    console.log('📦 Itens selecionados na etapa 1:', itensAutomaticoSelecionados);
     
     if (itensAutomaticoSelecionados.length === 0) {
       setErro('Selecione pelo menos um item');
@@ -404,19 +392,14 @@ export default function FaturamentoModalidades() {
 
     if (!pedido) return;
 
-    console.log('🔄 Iniciando alocamento automático');
-    console.log('📦 Itens selecionados:', itensAutomaticoSelecionados);
-    console.log('🏷️ Modalidades selecionadas:', modalidadesAutomaticoSelecionadas);
 
     // Calcular soma total dos repasses das modalidades selecionadas
     const modalidadesSelecionadasData = modalidades.filter(m => 
       modalidadesAutomaticoSelecionadas.includes(m.id)
     );
     
-    console.log('📊 Modalidades com dados:', modalidadesSelecionadasData);
     
     const somaRepasses = modalidadesSelecionadasData.reduce((sum, m) => sum + Number(m.valor_repasse), 0);
-    console.log('💰 Soma dos repasses:', somaRepasses);
 
     if (somaRepasses === 0) {
       setErro('A soma dos repasses não pode ser zero');
@@ -464,10 +447,8 @@ export default function FaturamentoModalidades() {
 
     // Para cada grupo de itens (por contrato_produto_id)
     itensAgrupados.forEach((grupo) => {
-      console.log(`📦 ${grupo.produto_nome}: disponível ${grupo.quantidade_disponivel} (total: ${grupo.quantidade_total})`);
       
       if (grupo.quantidade_disponivel <= 0) {
-        console.log('⚠️ Quantidade disponível é zero ou negativa');
         return;
       }
 
@@ -477,7 +458,6 @@ export default function FaturamentoModalidades() {
       modalidadesSelecionadasData.forEach((modalidade, index) => {
         const faturamentoIndex = novosFaturamentos.findIndex(f => f.modalidade_id === modalidade.id);
         if (faturamentoIndex === -1) {
-          console.log('❌ Faturamento não encontrado para modalidade:', modalidade.id);
           return;
         }
 
@@ -489,12 +469,10 @@ export default function FaturamentoModalidades() {
         } else {
           // Para as outras, calcular proporção e arredondar para baixo
           const proporcao = Number(modalidade.valor_repasse) / somaRepasses;
-          console.log(`📊 ${modalidade.nome}: proporção ${proporcao} (${(proporcao * 100).toFixed(2)}%)`);
           quantidadeModalidade = Math.floor(grupo.quantidade_disponivel * proporcao);
           quantidadeRestante -= quantidadeModalidade;
         }
 
-        console.log(`✅ ${modalidade.nome}: alocando ${quantidadeModalidade}`);
 
         if (quantidadeModalidade > 0) {
           // Verificar se o item já existe (agrupar por contrato_produto_id)
@@ -503,7 +481,6 @@ export default function FaturamentoModalidades() {
           );
 
           if (itemExistenteIndex !== -1) {
-            console.log(`📝 Atualizando item existente: ${novosFaturamentos[faturamentoIndex].itens[itemExistenteIndex].quantidade_alocada} + ${quantidadeModalidade}`);
             const itemExistente = novosFaturamentos[faturamentoIndex].itens[itemExistenteIndex];
             novosFaturamentos[faturamentoIndex].itens[itemExistenteIndex] = {
               ...itemExistente,
@@ -512,7 +489,6 @@ export default function FaturamentoModalidades() {
               pedido_item_ids: [...new Set([...itemExistente.pedido_item_ids, ...grupo.pedido_item_ids])]
             };
           } else {
-            console.log(`➕ Adicionando novo item`);
             novosFaturamentos[faturamentoIndex].itens.push({
               pedido_item_ids: grupo.pedido_item_ids,
               contrato_produto_id: grupo.contrato_produto_id,
@@ -527,7 +503,6 @@ export default function FaturamentoModalidades() {
       });
     });
 
-    console.log('✅ Novos faturamentos:', novosFaturamentos);
     setFaturamentos(novosFaturamentos);
     setDialogAutomaticoAberto(false);
     setSucesso('Itens alocados automaticamente com sucesso!');
@@ -637,8 +612,6 @@ export default function FaturamentoModalidades() {
         });
       });
 
-      console.log('🔄 Atualizando faturamento:', faturamentoId);
-      console.log('📦 Itens para enviar:', itensParaEnviar);
       await atualizarFaturamento(Number(faturamentoId), {
         itens: itensParaEnviar
       });

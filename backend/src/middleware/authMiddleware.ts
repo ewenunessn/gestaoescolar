@@ -2,6 +2,17 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { config } from '../config/config';
 
+interface JwtPayload {
+  id: number;
+  email: string;
+  nome: string;
+  tipo: string;
+  isSystemAdmin?: boolean;
+  escola_id?: number;
+  tipo_secretaria?: string;
+  institution_id?: string;
+}
+
 export interface AuthenticatedRequest extends Request {
   user?: {
     id: number;
@@ -31,7 +42,7 @@ export function authenticateToken(req: Request, res: Response, next: NextFunctio
   }
 
   try {
-    const decoded = jwt.verify(token, config.jwtSecret) as any;
+    const decoded = jwt.verify(token, config.jwtSecret) as JwtPayload;
     
     // Adicionar informações do usuário à requisição
     (req as AuthenticatedRequest).user = {
@@ -83,7 +94,7 @@ export function optionalAuth(req: Request, res: Response, next: NextFunction) {
   }
 
   try {
-    const decoded = jwt.verify(token, config.jwtSecret) as any;
+    const decoded = jwt.verify(token, config.jwtSecret) as JwtPayload;
     
     (req as AuthenticatedRequest).user = {
       id: decoded.id,

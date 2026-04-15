@@ -122,7 +122,6 @@ const atualizarInstituicao = async (req: Request, res: Response) => {
           const logoPath = path.join(__dirname, '../../uploads/logos', path.basename(instituicao.logo_url));
           await fs.unlink(logoPath);
         } catch (error) {
-          console.log('Erro ao remover logo anterior:', (error as Error).message);
         }
       }
 

@@ -1,90 +1,32 @@
-import api from './api';
+/**
+ * @deprecated Use `modalidades.ts` instead.
+ * Este arquivo existe apenas para compatibilidade com imports antigos.
+ * Re-exporta tudo de modalidades.ts.
+ */
+export {
+  modalidadeService,
+  modalidadeService as default,
+  type Modalidade,
+  type ModalidadeInput,
+} from './modalidades';
 
-export interface Modalidade {
-  id: number;
-  nome: string;
-  codigo_financeiro?: string;
-  ativo: boolean;
-  created_at?: string;
-  updated_at?: string;
+// Aliases de compatibilidade para funções com nomes diferentes
+import { modalidadeService as svc } from './modalidades';
+
+export async function listarModalidades(ativo?: boolean) {
+  const todos = await svc.listar();
+  if (ativo !== undefined) return todos.filter((m: any) => m.ativo === ativo);
+  return todos;
 }
 
-export interface CriarModalidadeData {
-  nome: string;
-  codigo_financeiro?: string;
-  ativo: boolean;
+export async function criarModalidade(dados: any) {
+  return svc.criar(dados);
 }
 
-class ModalidadeService {
-  private baseUrl = '/modalidades';
-
-  async listar(ativo?: boolean): Promise<Modalidade[]> {
-    try {
-      const params = ativo !== undefined ? `?ativo=${ativo}` : '';
-      const response = await api.get(`${this.baseUrl}${params}`);
-      return response.data.data || response.data;
-    } catch (error) {
-      console.error('Erro ao listar modalidades:', error);
-      throw error;
-    }
-  }
-
-  async buscarPorId(id: number): Promise<Modalidade> {
-    try {
-      const response = await api.get(`${this.baseUrl}/${id}`);
-      return response.data.data || response.data;
-    } catch (error) {
-      console.error('Erro ao buscar modalidade:', error);
-      throw error;
-    }
-  }
-
-  async criar(dados: CriarModalidadeData): Promise<Modalidade> {
-    try {
-      const response = await api.post(this.baseUrl, dados);
-      return response.data.data || response.data;
-    } catch (error) {
-      console.error('Erro ao criar modalidade:', error);
-      throw error;
-    }
-  }
-
-  async atualizar(id: number, dados: Partial<CriarModalidadeData>): Promise<Modalidade> {
-    try {
-      const response = await api.put(`${this.baseUrl}/${id}`, dados);
-      return response.data.data || response.data;
-    } catch (error) {
-      console.error('Erro ao atualizar modalidade:', error);
-      throw error;
-    }
-  }
-
-  async remover(id: number): Promise<void> {
-    try {
-      await api.delete(`${this.baseUrl}/${id}`);
-    } catch (error) {
-      console.error('Erro ao remover modalidade:', error);
-      throw error;
-    }
-  }
+export async function editarModalidade(id: number, dados: any) {
+  return svc.atualizar(id, dados);
 }
 
-// Funções auxiliares para compatibilidade
-export async function listarModalidades(ativo?: boolean): Promise<Modalidade[]> {
-  return modalidadeService.listar(ativo);
+export async function removerModalidade(id: number) {
+  return svc.remover(id);
 }
-
-export async function criarModalidade(dados: CriarModalidadeData): Promise<Modalidade> {
-  return modalidadeService.criar(dados);
-}
-
-export async function editarModalidade(id: number, dados: Partial<CriarModalidadeData>): Promise<Modalidade> {
-  return modalidadeService.atualizar(id, dados);
-}
-
-export async function removerModalidade(id: number): Promise<void> {
-  return modalidadeService.remover(id);
-}
-
-export const modalidadeService = new ModalidadeService();
-export default modalidadeService;

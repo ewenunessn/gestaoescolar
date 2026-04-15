@@ -148,7 +148,6 @@ class RotaController {
       const { rotaId } = req.params;
       const { escolaId, ordem, observacao } = req.body;
 
-      console.log('📥 Adicionar escola à rota:', { rotaId, escolaId, ordem, observacao });
 
       if (!rotaId || isNaN(Number(rotaId))) {
         console.error('❌ ID da rota inválido:', rotaId);
@@ -167,7 +166,6 @@ class RotaController {
         observacao
       );
 
-      console.log('✅ Escola adicionada à rota com sucesso:', escolaRota);
 
       res.status(201).json({
         message: 'Escola adicionada à rota com sucesso',

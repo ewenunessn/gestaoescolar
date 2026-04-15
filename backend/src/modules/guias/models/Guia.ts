@@ -161,7 +161,6 @@ export async function createEssentialTables() {
 class GuiaModel {
   async listarGuias(): Promise<Guia[]> {
     try {
-      console.log('🔍 [GuiaModel] Listando guias');
       const result = await db.all(`
         SELECT 
           g.*,
@@ -174,7 +173,6 @@ class GuiaModel {
         GROUP BY g.id, g.mes, g.ano, g.nome, g.observacao, g.status, g.created_at, g.updated_at
         ORDER BY g.created_at DESC
       `);
-      console.log('✅ [GuiaModel] Encontradas', result.length, 'guias');
       return result;
     } catch (error) {
       console.error('❌ [GuiaModel] Erro ao listar guias:', error);
@@ -212,7 +210,6 @@ class GuiaModel {
 
   async listarStatusEscolas(mes: number, ano: number, guiaId?: number): Promise<any[]> {
     try {
-      console.log(`🔍 [GuiaModel] Listando status das escolas para ${mes}/${ano}`);
       
       const tableExists = async (name: string): Promise<boolean> => {
         try {
@@ -293,7 +290,6 @@ class GuiaModel {
 
   async listarRomaneio(filtros: { dataInicio?: string; dataFim?: string; escolaId?: number; rotaId?: number; status?: string }): Promise<any[]> {
     try {
-      console.log('🔍 [GuiaModel] Listando romaneio com filtros:', filtros);
       
       // Query otimizada: usa subquery para rotas ao invés de JOIN + GROUP BY
       let query = `

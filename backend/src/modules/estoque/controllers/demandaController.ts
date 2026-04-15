@@ -2,7 +2,7 @@
 import { Request, Response } from "express";
 import * as ExcelJS from 'exceljs';
 import db from "../../../database";
-import { obterPeriodoUsuario } from "../../../utils/periodoHelper";
+import { obterPeriodoUsuario } from "../../../utils/periodoUsuarioHelper";elper";
 
 interface DemandaItem {
   produto_id: number;
@@ -89,7 +89,6 @@ export async function gerarDemandaMensal(req: Request, res: Response) {
   try {
     const { mes, ano, escola_ids, modalidade_ids } = req.body;
 
-    console.log('Gerando demanda mensal:', { mes, ano, escola_ids, modalidade_ids });
 
     // Construir filtros dinâmicos
     let escolaFilter = '';
@@ -270,7 +269,6 @@ export async function gerarDemandaMultiplosCardapios(req: Request, res: Response
   try {
     const { mes, ano, escola_ids, modalidade_ids, cardapio_ids } = req.body;
 
-    console.log('Gerando demanda com múltiplos cardápios:', { mes, ano, escola_ids, modalidade_ids, cardapio_ids });
 
     // Construir filtros dinâmicos
     let escolaFilter = '';
@@ -444,7 +442,7 @@ export async function gerarDemandaMultiplosCardapios(req: Request, res: Response
 export async function listarCardapiosDisponiveis(req: Request, res: Response) {
   try {
     const { escola_ids, modalidade_ids } = req.query;
-    const userId = (req as any).user?.id;
+    const userId = req.user?.id;
 
     // Obter período do usuário ou período ativo global
     const periodoId = await obterPeriodoUsuario(userId);
@@ -576,7 +574,6 @@ export async function exportarDemandaExcel(req: Request, res: Response) {
   try {
     const { mes, ano, escola_ids, modalidade_ids } = req.body;
 
-    console.log('Exportando demanda para Excel:', { mes, ano, escola_ids, modalidade_ids });
 
     // Validações
     if (!mes || !ano) {
@@ -651,7 +648,6 @@ export async function exportarDemandaExcel(req: Request, res: Response) {
     const result = await db.query(query, params);
     const dados = result.rows;
 
-    console.log(`📊 Processando ${dados.length} registros para Excel`);
 
     if (dados.length === 0) {
       return res.status(404).json({
@@ -680,7 +676,6 @@ export async function exportarDemandaExcel(req: Request, res: Response) {
 
       // Debug log para primeiros registros
       if (index < 5) {
-        console.log(`📝 Registro ${index + 1}:`, {
           escola_nome,
           produto_nome,
           quantidade_alunos,
@@ -702,7 +697,6 @@ export async function exportarDemandaExcel(req: Request, res: Response) {
 
       // Debug log para quantidade calculada
       if (index < 5) {
-        console.log(`🧮 Quantidade calculada para ${escola_nome} - ${produto_nome}: ${quantidade_calculada}`);
       }
 
       // Agregar por produto (Aba 1)
@@ -736,7 +730,6 @@ export async function exportarDemandaExcel(req: Request, res: Response) {
       
       // Debug log para primeira escola
       if (escola_nome === 'Anexo - Didi' && produto_nome.includes('Baião')) {
-        console.log(`📊 ${escola_nome} - ${produto_nome}:`, {
           chave,
           quantidade_calculada,
           quantidade_anterior: itemEscola.quantidade - quantidade_calculada,
@@ -830,37 +823,28 @@ export async function exportarDemandaExcel(req: Request, res: Response) {
       produtoNomeParaId.set(item.produto_nome, id);
     });
 
-    console.log(`🗺️ Mapeamento produto_nome -> produto_id:`);
     Array.from(produtoNomeParaId.entries()).forEach(([nome, id]) => {
-      console.log(`   "${nome}" -> ${id}`);
     });
 
     // Obter lista única de produtos e escolas
     const produtos = [...new Set(Array.from(escolaProdutoMap.values()).map(item => item.produto_nome))].sort();
     const escolas = [...new Set(Array.from(escolaProdutoMap.values()).map(item => item.escola_nome))].sort();
 
-    console.log(`📋 Produtos encontrados: ${produtos.join(', ')}`);
-    console.log(`🏫 Escolas encontradas: ${escolas.join(', ')}`);
-    console.log(`🗂️ Total de chaves escola-produto: ${escolaProdutoMap.size}`);
     
     // Log das chaves para Anexo - Didi especificamente
     const chavesAnexoDidi = Array.from(escolaProdutoMap.keys()).filter(chave => chave.includes('Anexo - Didi'));
-    console.log(`🔑 Chaves para Anexo - Didi:`, chavesAnexoDidi);
     
     // Log dos valores para Anexo - Didi
     chavesAnexoDidi.forEach(chave => {
       const item = escolaProdutoMap.get(chave);
-      console.log(`📋 ${chave}:`, item);
     });
 
     // Log final dos totais por escola para Anexo - Didi
-    console.log(`🎯 Totais finais para Anexo - Didi:`);
     produtos.forEach(produto => {
       const produto_id = produtoNomeParaId.get(produto);
       const chave = `Anexo - Didi|${produto_id}`;
       const item = escolaProdutoMap.get(chave);
       if (item) {
-        console.log(`   ${produto}: ${item.quantidade}`);
       }
     });
 
@@ -921,7 +905,6 @@ export async function exportarDemandaExcel(req: Request, res: Response) {
         
         // Debug log específico para Anexo - Didi
         if (escola === 'Anexo - Didi' && produto.includes('Baião')) {
-          console.log(`🔍 ${escola} - ${produto}:`, {
             produto_id,
             chave,
             item_existe: !!item,

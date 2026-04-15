@@ -404,7 +404,6 @@ export default function CardapioDetalhe() {
 
   // Resetar estados quando a URL muda (especialmente de /novo para /id)
   useEffect(() => {
-    console.log('URL mudou - isNovo:', isNovo, 'id:', id);
     
     if (isNovo) {
       // Modo de criação
@@ -465,13 +464,9 @@ export default function CardapioDetalhe() {
         data_fim: formatDateForInput(cardapioData.data_fim)
       });
       
-      console.log('Refeições do cardápio carregadas:', refeicoesCardapioData);
-      console.log('Quantidade de preparações:', refeicoesCardapioData?.length || 0);
       
       // Log detalhado da primeira preparação para debug
       if (refeicoesCardapioData && refeicoesCardapioData.length > 0) {
-        console.log('Primeira preparação:', refeicoesCardapioData[0]);
-        console.log('Objeto refeicao:', refeicoesCardapioData[0].refeicao);
       }
       
       setRefeicoesAdicionadas(refeicoesCardapioData || []);
@@ -493,7 +488,6 @@ export default function CardapioDetalhe() {
       const response = await cardapioServiceExtended.calcularCustoRefeicoes(cardapioId);
       // A API retorna { data: { refeicoes: [...] } }
       const custosData = response?.refeicoes || [];
-      console.log('Custos recebidos da API:', custosData);
       setCustosRefeicoes(Array.isArray(custosData) ? custosData : []);
     } catch (error) {
       console.error("Erro ao carregar custos das refeições:", error);
@@ -507,7 +501,6 @@ export default function CardapioDetalhe() {
     setLoadingCustoCardapio(true);
     try {
       const custoData = await cardapioServiceExtended.calcularCustoCardapio(parseInt(id));
-      console.log('Custo do cardápio:', custoData);
       setCustoCardapio(custoData);
       setModalCustoCardapio(true);
     } catch (error) {
@@ -548,15 +541,11 @@ export default function CardapioDetalhe() {
 
       if (isNovo) {
         const novoCardapio = await cardapioService.criar(dadosParaEnviar);
-        console.log('Novo cardápio criado:', novoCardapio);
-        console.log('ID do cardápio:', novoCardapio?.id);
-        console.log('Tipo do ID:', typeof novoCardapio?.id);
         
         queryClient.invalidateQueries({ queryKey: ['cardapios'] });
         
         if (novoCardapio && novoCardapio.id) {
           const targetUrl = `/cardapios/${novoCardapio.id}`;
-          console.log('Navegando para:', targetUrl);
           navigate(targetUrl);
         } else {
           console.error('Cardápio criado mas sem ID:', novoCardapio);
@@ -617,8 +606,6 @@ export default function CardapioDetalhe() {
         frequencia_mensal: 1
       };
       
-      console.log('Adicionando preparação - dados:', dadosParaEnviar);
-      console.log('Cardápio atual:', cardapio);
       
       const novaAssociacao = await cardapioServiceExtended.adicionarRefeicao(dadosParaEnviar);
       
@@ -720,7 +707,6 @@ export default function CardapioDetalhe() {
       if (jaAdicionada) {
         // Se já está adicionada e foi solta no mesmo container, cancelar a remoção (não fazer nada)
         // Isso permite que o usuário "cancele" uma remoção acidental
-        console.log("Preparação já adicionada - cancelando ação (mantendo no cardápio)");
       } else if (refeicoesDisponiveis.some(r => r.id === activeRefeicaoId)) {
         // Se está disponível e não foi adicionada, adicionar
         adicionarRefeicao(activeRefeicaoId);

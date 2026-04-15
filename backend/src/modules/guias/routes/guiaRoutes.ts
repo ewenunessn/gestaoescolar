@@ -10,7 +10,6 @@ router.use(authenticateToken);
 
 // Rota de teste
 router.get('/test', (req, res) => {
-  console.log('🧪 Rota de teste /guias/test chamada');
   res.json({ success: true, message: 'Rota de teste funcionando' });
 });
 

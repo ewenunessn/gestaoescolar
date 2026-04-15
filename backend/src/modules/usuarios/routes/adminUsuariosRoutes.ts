@@ -12,7 +12,7 @@ import {
 const router = Router();
 
 // Todas as rotas exigem autenticação + ser admin
-router.use(authenticateToken, requireAdmin as any);
+router.use(authenticateToken, requireAdmin);
 
 // Usuários
 router.get("/usuarios", listarUsuarios);

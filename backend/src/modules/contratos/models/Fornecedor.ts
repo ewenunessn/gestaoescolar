@@ -73,7 +73,6 @@ export async function updateFornecedor(id: number, fornecedor: Partial<Fornecedo
   values.push(id);
   
   const query = `UPDATE fornecedores SET ${fields.join(', ')} WHERE id = $${paramIndex}`;
-  console.log('Update query:', query, 'Values:', values);
   
   await db.query(query, values);
 }

@@ -37,7 +37,7 @@ export const listarPeriodos = async (req: Request, res: Response) => {
  */
 export const obterPeriodoAtivo = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user?.id;
+    const userId = req.user?.id;
     
     // Se usuário está logado, verificar se tem período selecionado
     if (userId) {
@@ -394,7 +394,7 @@ export const deletarPeriodo = async (req: Request, res: Response) => {
 export const selecionarPeriodoUsuario = async (req: Request, res: Response) => {
   try {
     const { periodoId } = req.body;
-    const userId = (req as any).user?.id;
+    const userId = req.user?.id;
 
     if (!userId) {
       return res.status(401).json({

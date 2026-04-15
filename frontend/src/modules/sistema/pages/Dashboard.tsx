@@ -205,17 +205,14 @@ const Dashboard = () => {
     // Verificar se há token antes de fazer requisições
     const token = localStorage.getItem('token');
     if (token && token !== 'null' && token !== 'undefined') {
-      console.log('📊 [Dashboard] Token encontrado, carregando stats...');
       api.get("/dashboard/stats")
         .then((r) => {
-          console.log('✅ [Dashboard] Stats carregadas com sucesso');
           setStats(r.data.data);
         })
         .catch((err) => {
           console.error('❌ [Dashboard] Erro ao carregar stats:', err);
         });
     } else {
-      console.log('⚠️ [Dashboard] Sem token, não carregar stats');
     }
   }, []);
 

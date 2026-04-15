@@ -249,8 +249,6 @@ const GuiaDemandaDetalhe: React.FC = () => {
                     setLoading(true);
                     
                     // Debug: mostrar informações do produto
-                    console.log('🔍 Produto selecionado:', produto);
-                    console.log('🔍 Total de itens disponíveis:', itens.length);
                     
                     // Normalizar data do produto (pode ser null, string vazia ou string de data)
                     const dataProdutoNormalizada = produto.data_entrega && produto.data_entrega !== '' ? produto.data_entrega : null;
@@ -270,7 +268,6 @@ const GuiaDemandaDetalhe: React.FC = () => {
                       return dataItemNormalizada === dataProdutoNormalizada;
                     });
                     
-                    console.log('🔍 Itens para excluir:', itensParaExcluir.length, itensParaExcluir);
                     
                     if (itensParaExcluir.length === 0) {
                       toast.warning('Nenhum item encontrado para excluir');
@@ -513,7 +510,6 @@ const GuiaDemandaDetalhe: React.FC = () => {
         return (a.data_entrega ?? '').localeCompare(b.data_entrega ?? '');
       });
       
-      console.log(`📊 ${result.length} produtos agrupados de ${itens.length} itens`);
       return result;
     });
   }, [itens]);
@@ -535,7 +531,6 @@ const GuiaDemandaDetalhe: React.FC = () => {
         };
       });
       
-      console.log(`📊 ${result.length} escolas processadas de ${escolas.length} total`);
       return result;
     });
   }, [escolas, itens]);
@@ -727,7 +722,6 @@ const GuiaDemandaDetalhe: React.FC = () => {
         return linha;
       });
 
-      console.log(`📊 Matriz ${escolasComItens.length}x${produtosUnicos.length} processada`);
       return { produtos: produtosUnicos, matriz };
     });
   }, [itens, escolasComItens]);
@@ -873,7 +867,6 @@ const GuiaDemandaDetalhe: React.FC = () => {
         totalPendentes: itens.filter(i => i.status === 'pendente').length,
       };
       
-      console.log('📊 Estatísticas:', stats);
       return stats;
     });
   }, [itens, escolasComItens]);

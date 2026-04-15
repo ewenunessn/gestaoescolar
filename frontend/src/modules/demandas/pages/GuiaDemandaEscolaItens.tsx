@@ -94,7 +94,6 @@ const GuiaDemandaEscolaItens: React.FC = () => {
   });
 
   useEffect(() => {
-    console.log('📍 Params:', { guiaId, escolaId });
     
     if (!guiaId) {
       toast.error('ID da guia não encontrado na URL');
@@ -146,7 +145,6 @@ const GuiaDemandaEscolaItens: React.FC = () => {
         const escolaResponse = await api.get(`/escolas/${escolaId}`);
         setEscola(escolaResponse.data.data || escolaResponse.data);
       } catch (error) {
-        console.warn('Erro ao carregar escola, usando ID:', error);
         // Se falhar, criar um objeto básico com o ID
         setEscola({ id: Number(escolaId), nome: `Escola ${escolaId}` });
       }
@@ -190,11 +188,6 @@ const GuiaDemandaEscolaItens: React.FC = () => {
   };
 
   const handleSave = async () => {
-    console.log('🚀 handleSave chamado');
-    console.log('🚀 editingItem:', editingItem);
-    console.log('🚀 formData:', formData);
-    console.log('🚀 guia:', guia);
-    console.log('🚀 escolaId:', escolaId);
     
     if (!guia || !escolaId) {
       toast.error('Dados da guia ou escola não encontrados');
@@ -209,13 +202,11 @@ const GuiaDemandaEscolaItens: React.FC = () => {
     
     try {
       if (editingItem) {
-        console.log('📝 Editando item existente');
         await guiaService.atualizarProdutoEscola(editingItem.id, {
           quantidade: formData.quantidade
         });
         toast.success('Item atualizado com sucesso!');
       } else {
-        console.log('➕ Adicionando novo item');
         const produtoSelecionado = produtos.find(p => p.id === formData.produto_id);
         if (!produtoSelecionado) {
           toast.error('Produto não encontrado');
@@ -247,13 +238,8 @@ const GuiaDemandaEscolaItens: React.FC = () => {
           dadosParaEnviar.dataProgramada = formData.data_programada;
         }
         
-        console.log('📦 Dados do formulário:', formData);
-        console.log('📦 Produto selecionado:', produtoSelecionado);
-        console.log('📦 Enviando para API:', dadosParaEnviar);
-        console.log('📦 URL:', `/guias/${guiaId}/produtos`);
         
         const response = await api.post(`/guias/${guiaId}/produtos`, dadosParaEnviar);
-        console.log('✅ Resposta da API:', response.data);
         toast.success('Item adicionado com sucesso!');
       }
       setOpenModal(false);

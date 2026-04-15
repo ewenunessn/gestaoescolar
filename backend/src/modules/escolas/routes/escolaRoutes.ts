@@ -13,7 +13,7 @@ const {
   criarEscola,
   editarEscola,
   removerEscola
-} = escolaController as any;
+} = escolaController;
 
 if (!listarEscolas || !buscarEscola || !criarEscola || !editarEscola || !removerEscola) {
   throw new Error("Controladores de escolas não carregados corretamente");

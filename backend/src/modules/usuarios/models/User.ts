@@ -27,7 +27,6 @@ export async function createUserTable(): Promise<void> {
     `);
     
     if (!result.rows[0].exists) {
-      console.log('🔧 Criando tabela usuarios...');
       await db.query(`
         CREATE TABLE usuarios (
           id SERIAL PRIMARY KEY,
@@ -40,7 +39,6 @@ export async function createUserTable(): Promise<void> {
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
-      console.log('✅ Tabela usuarios criada com sucesso!');
     }
   } catch (error) {
     console.error('❌ Erro ao criar tabela usuarios:', error);
@@ -163,7 +161,6 @@ export async function resetUserSequence(): Promise<void> {
     await db.query(`
       SELECT setval('usuarios_id_seq', COALESCE((SELECT MAX(id) FROM usuarios), 0) + 1);
     `);
-    console.log('✅ Sequência da tabela usuarios resetada com sucesso!');
   } catch (error) {
     console.error('❌ Erro ao resetar sequência:', error);
     throw error;

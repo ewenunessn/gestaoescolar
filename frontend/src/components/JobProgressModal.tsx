@@ -35,7 +35,6 @@ export const JobProgressModal: React.FC<JobProgressModalProps> = ({
   const [polling, setPolling] = useState(true);
   const completedRef = useRef(false); // Flag para evitar múltiplas chamadas
 
-  console.log('🎨 JobProgressModal renderizado:', { open, jobId, polling });
 
   useEffect(() => {
     if (!open || !jobId) {

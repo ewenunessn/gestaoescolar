@@ -35,7 +35,7 @@ export async function ensureAdminTables() {
 // ─── Middleware de verificação de admin ──────────────────────────────────────
 
 export function requireAdmin(req: Request, res: Response, next: Function) {
-  const user = (req as any).user;
+  const user = req.user;
   if (!user || (user.tipo !== 'admin' && !user.isSystemAdmin)) {
     return res.status(403).json({ success: false, message: 'Acesso restrito ao administrador' });
   }
@@ -140,7 +140,7 @@ export const atualizarUsuario = asyncHandler(async (req: Request, res: Response)
 
 export const excluirUsuario = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const currentUser = (req as any).user;
+  const currentUser = req.user;
 
   if (String(currentUser?.id) === String(id)) {
     throw new ValidationError('Você não pode excluir sua própria conta');

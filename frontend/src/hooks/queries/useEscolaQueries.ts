@@ -2,10 +2,10 @@
  * Hooks do React Query para operações de escolas
  */
 
-import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys, cacheConfig, invalidateQueries } from '../../lib/queryClient';
 import { Escola, EscolaCreate, EscolaUpdate } from '../../../../shared/types';
+import { useAuth } from '../../contexts/AuthContext';
 
 import { 
   listarEscolas, 
@@ -20,27 +20,16 @@ import {
 // ============================================================================
 
 export function useEscolas(filters?: { search?: string; ativo?: boolean }) {
-  // Só executar query se houver token (usuário autenticado)
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  
-  // Adicionar um pequeno delay para garantir que o token foi carregado
-  const [isReady, setIsReady] = React.useState(false);
-  
-  React.useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsReady(true);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, []);
+  const { isReady, hasToken } = useAuth();
   
   return useQuery({
     queryKey: queryKeys.escolas.list(filters),
     queryFn: listarEscolas,
-    enabled: isReady && !!token, // Só executar se estiver pronto E houver token
-    staleTime: 0, // Sempre considerar dados como desatualizados
-    gcTime: 5 * 60 * 1000, // Manter em cache por 5 minutos
-    refetchOnMount: true, // Sempre refetch ao montar
-    refetchOnWindowFocus: true, // Refetch ao focar na janela
+    enabled: isReady && hasToken, // Aguarda AuthContext estar pronto
+    staleTime: 0,
+    gcTime: 5 * 60 * 1000,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
     select: (data: Escola[]) => {
       let filteredData = [...data];
       

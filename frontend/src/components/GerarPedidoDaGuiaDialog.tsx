@@ -41,14 +41,10 @@ export default function GerarPedidoDaGuiaDialog({ open, onClose, onSuccess, guia
 
   // Debug: Log quando estados de job mudam
   useEffect(() => {
-    console.log('🔄 Estado jobProgressOpen mudou:', jobProgressOpen);
-    console.log('🔄 Estado currentJobId mudou:', currentJobId);
   }, [jobProgressOpen, currentJobId]);
 
   // Debug: Log quando estados mudam
   useEffect(() => {
-    console.log('🔄 Estado dialogSelecaoContratos mudou:', dialogSelecaoContratos);
-    console.log('🔄 Produtos múltiplos contratos:', produtosMultiplosContratos.length);
   }, [dialogSelecaoContratos, produtosMultiplosContratos]);
 
   useEffect(() => {
@@ -100,9 +96,6 @@ export default function GerarPedidoDaGuiaDialog({ open, onClose, onSuccess, guia
       return;
     }
 
-    console.log('🚀 Iniciando geração de pedido...');
-    console.log('📋 Guia selecionada:', guiaSelecionada.id);
-    console.log('📋 Contratos já selecionados:', contratosSelecionados);
 
     setGerando(true);
     try {
@@ -112,22 +105,17 @@ export default function GerarPedidoDaGuiaDialog({ open, onClose, onSuccess, guia
         contratosSelecionados.length > 0 ? contratosSelecionados : undefined
       );
       
-      console.log('📋 Resultado completo recebido:', JSON.stringify(resultado, null, 2));
       
       // Verificar se requer seleção de múltiplos contratos
       if ((resultado as any).requer_selecao) {
-        console.log('⚠️ Requer seleção de múltiplos contratos');
-        console.log('📦 Produtos com múltiplos contratos:', (resultado as any).produtos_multiplos_contratos);
         
         setProdutosMultiplosContratos((resultado as any).produtos_multiplos_contratos || []);
         setDialogSelecaoContratos(true);
         setGerando(false);
         
-        console.log('✅ Dialog de seleção deve abrir agora');
         
         // Se também houver produtos sem contrato, guardar para mostrar depois
         if ((resultado as any).produtos_sem_contrato?.length > 0) {
-          console.log('⚠️ Também há produtos sem contrato:', (resultado as any).produtos_sem_contrato);
           setProdutosSemContrato((resultado as any).produtos_sem_contrato);
         }
         
@@ -136,7 +124,6 @@ export default function GerarPedidoDaGuiaDialog({ open, onClose, onSuccess, guia
       
       // Verificar se requer confirmação (produtos sem contrato)
       if ((resultado as any).requer_confirmacao) {
-        console.log('⚠️ Requer confirmação (produtos sem contrato)');
         setProdutosSemContrato((resultado as any).produtos_sem_contrato || []);
         setProdutosComContrato((resultado as any).produtos_com_contrato || 0);
         setMostrarConfirmacao(true);
@@ -145,7 +132,6 @@ export default function GerarPedidoDaGuiaDialog({ open, onClose, onSuccess, guia
       }
       
       // Se chegou aqui, pode gerar o pedido - usar sistema ASSÍNCRONO
-      console.log('✅ Iniciando geração assíncrona do pedido...');
       setGerando(false);
       
       const response = await iniciarGeracaoPedidoAsync(
@@ -173,11 +159,9 @@ export default function GerarPedidoDaGuiaDialog({ open, onClose, onSuccess, guia
   async function handleConfirmarComSemContrato() {
     if (!guiaSelecionada) return;
 
-    console.log('🚀 Confirmando geração com produtos sem contrato...');
     setMostrarConfirmacao(false);
     
     try {
-      console.log('📞 Chamando iniciarGeracaoPedidoAsync...');
       // AQUI usar o sistema assíncrono com job
       const response = await iniciarGeracaoPedidoAsync(
         guiaSelecionada.id,
@@ -185,17 +169,13 @@ export default function GerarPedidoDaGuiaDialog({ open, onClose, onSuccess, guia
         true // ignorar_sem_contrato
       );
       
-      console.log('✅ Response recebida:', response);
-      console.log('🆔 Job ID:', response.job_id);
       
       // Fechar dialog de configuração
       onClose();
       
       // Abrir modal de progresso
-      console.log('🎬 Abrindo modal de progresso...');
       setCurrentJobId(response.job_id);
       setJobProgressOpen(true);
-      console.log('✅ Estados atualizados - jobProgressOpen:', true, 'currentJobId:', response.job_id);
       
     } catch (error: any) {
       console.error('❌ Erro ao iniciar geração de pedido:', error);
@@ -387,10 +367,6 @@ export default function GerarPedidoDaGuiaDialog({ open, onClose, onSuccess, guia
         </DialogActions>
         
         {/* Dialog de Seleção de Múltiplos Contratos */}
-        {console.log('🎨 Renderizando SelecionarContratosDialog:', { 
-          open: dialogSelecaoContratos, 
-          produtos: produtosMultiplosContratos.length 
-        })}
         <SelecionarContratosDialog
           open={dialogSelecaoContratos}
           onClose={handleCancelarSelecaoContratos}

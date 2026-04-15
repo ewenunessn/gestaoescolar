@@ -183,7 +183,6 @@ async function calcularDemandaPeriodo(
   const diaInicio = parseInt(data_inicio.split('-')[2], 10);
   const diaFim = parseInt(data_fim.split('-')[2], 10);
 
-  console.log(`[calcularDemandaPeriodo] data_inicio=${data_inicio} data_fim=${data_fim} diaInicio=${diaInicio} diaFim=${diaFim}`);
 
   // Buscar cardápios ativos com suas modalidades (usando tabela de junção)
   let cardapioFilter = '';
@@ -223,7 +222,6 @@ async function calcularDemandaPeriodo(
       `);
 
   const escolas = escolasQuery.rows;
-  console.log('[calcularDemandaPeriodo] Escolas encontradas:', escolas.length);
   if (escolas.length === 0) return [];
 
   const refeicoesQuery = await db.pool.query(`
@@ -262,7 +260,6 @@ async function calcularDemandaPeriodo(
   // (fallback para quando o período não coincide com os dias cadastrados)
   let refeicoes = refeicoesQuery.rows;
   if (refeicoes.length === 0) {
-    console.log(`[FALLBACK] Nenhuma refeição no range ${diaInicio}-${diaFim}, usando todos os dias do cardápio`);
     const fallbackQuery = await db.pool.query(`
       SELECT
         crd.dia,
@@ -288,12 +285,8 @@ async function calcularDemandaPeriodo(
         AND crd.ativo = true
     `, [cardapiosQuery.rows.map((c: any) => c.id)]);
     refeicoes = fallbackQuery.rows;
-    console.log(`[FALLBACK] Usando ${refeicoes.length} refeições sem filtro de dia`);
   }
 
-  console.log('[DEBUG] Cardápio IDs:', cardapiosQuery.rows.map((c: any) => c.id));
-  console.log('[DEBUG] Dia range:', diaInicio, 'a', diaFim);
-  console.log('[DEBUG] Refeições encontradas:', refeicoes.length, 'rows');
 
   // Agrupar por modalidade → produto → ocorrências
   const porModalidade = new Map<number, Map<number, any[]>>();
@@ -404,7 +397,7 @@ export const gerarPedidosPorPeriodo = async (req: Request, res: Response) => {
   }
 
   const [ano, mes] = competencia.split('-').map(Number);
-  const usuario_id = (req as any).user?.id || 1;
+  const usuario_id = req.user?.id || 1;
   const meses = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
   const mesAbrev = meses[mes - 1];
 
@@ -833,16 +826,13 @@ export const calcularDemandaPorCompetencia = async (req: Request, res: Response)
     escola_ids?: number[];
   };
 
-  console.log('📊 Calcular demanda por competência:', { competencia, data_inicio, data_fim, escola_ids });
 
   try {
     if (!competencia) {
-      console.log('❌ Competência não fornecida');
       return res.status(400).json({ error: 'Competência é obrigatória' });
     }
 
     if (!data_inicio || !data_fim) {
-      console.log('❌ Período não fornecido');
       return res.status(400).json({ error: 'Período é obrigatório' });
     }
 
@@ -853,12 +843,6 @@ export const calcularDemandaPorCompetencia = async (req: Request, res: Response)
 
     const primeiroDiaStr = primeiroDiaCompetencia.toISOString().split('T')[0];
     const ultimoDiaStr = ultimoDiaCompetencia.toISOString().split('T')[0];
-
-    console.log('📅 Buscando cardápios para competência:', {
-      competencia,
-      primeiroDia: primeiroDiaStr,
-      ultimoDia: ultimoDiaStr
-    });
 
     // Buscar cardápios NOVOS (cardapios_modalidade) da competência com suas modalidades
     const cardapiosQuery = await db.pool.query(`
@@ -879,19 +863,8 @@ export const calcularDemandaPorCompetencia = async (req: Request, res: Response)
     `, [ano, mes]);
 
     const cardapios = cardapiosQuery.rows;
-    console.log('📋 Cardápios encontrados:', {
-      total: cardapios.length,
-      cardapios: cardapios.map(c => ({
-        id: c.id,
-        nome: c.nome,
-        modalidade_id: c.modalidade_id,
-        mes: c.mes,
-        ano: c.ano
-      }))
-    });
 
     if (cardapios.length === 0) {
-      console.log('❌ Nenhum cardápio encontrado para a competência');
       
       // Buscar cardápios próximos
       const cardapiosProximos = await db.pool.query(`
@@ -951,14 +924,12 @@ export const calcularDemandaPorCompetencia = async (req: Request, res: Response)
       return res.status(400).json({ error: 'Nenhuma escola com modalidades encontrada' });
     }
 
-    console.log(`🏫 Escolas encontradas: ${escolas.length} combinações escola+modalidade`);
 
     // Calcular dias no período selecionado
     const inicio = new Date(data_inicio);
     const fim = new Date(data_fim);
     const diasPeriodo = Math.ceil((fim.getTime() - inicio.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
-    console.log(`📅 Período: ${data_inicio} a ${data_fim} = ${diasPeriodo} dias`);
 
     // Buscar refeições dos cardápios NOVOS com produtos
     // Agora usa cardapio_refeicoes_dia ao invés de cardapio_refeicoes
@@ -997,7 +968,6 @@ export const calcularDemandaPorCompetencia = async (req: Request, res: Response)
     ]);
 
     const refeicoes = refeicoesQuery.rows;
-    console.log(`🍽️ Refeições encontradas: ${refeicoes.length}`);
 
     // Agrupar refeições por modalidade e contar ocorrências por produto
     const refeicoesPorModalidade = new Map<number, Map<number, any[]>>();
@@ -1059,20 +1029,6 @@ export const calcularDemandaPorCompetencia = async (req: Request, res: Response)
         // Quantidade total = alunos * per capita BRUTO * vezes que aparece
         const quantidadeGramas = escolaModalidade.numero_alunos * perCapitaGramas * vezesNoPeriodo;
         const quantidadeKg = quantidadeGramas / 1000;
-
-        // Log detalhado do cálculo
-        console.log(`🔢 ${produto_nome}:`, {
-          escola: escolaModalidade.escola_nome,
-          modalidade: escolaModalidade.modalidade_nome,
-          alunos: escolaModalidade.numero_alunos,
-          per_capita_liquido: perCapitaLiquido,
-          fator_correcao: fator,
-          per_capita_bruto_gramas: perCapitaGramas,
-          vezes_no_periodo: vezesNoPeriodo,
-          dias: ocorrencias.map(o => o.dia).join(', '),
-          calculo: `${escolaModalidade.numero_alunos} alunos × ${perCapitaGramas}g × ${vezesNoPeriodo} vezes`,
-          quantidade_kg: quantidadeKg.toFixed(2)
-        });
 
         if (!produtosEscola.has(produto_id)) {
           const peso_emb = primeiraOcorrencia.peso_embalagem ? Number(primeiraOcorrencia.peso_embalagem) : null;
@@ -1460,13 +1416,12 @@ export const gerarGuiasDemanda = async (req: Request, res: Response) => {
 export const gerarPedidoDaGuia = async (req: Request, res: Response) => {
   const { guia_id, observacoes } = req.body as { guia_id: number; observacoes?: string };
 
-  console.log('🚀 Gerando pedido da guia:', { guia_id, observacoes });
 
   if (!guia_id) {
     return res.status(400).json({ error: 'guia_id é obrigatório' });
   }
 
-  const usuario_id = (req as any).user?.id || 1;
+  const usuario_id = req.user?.id || 1;
   const client = await db.pool.connect();
 
   try {
@@ -1479,12 +1434,10 @@ export const gerarPedidoDaGuia = async (req: Request, res: Response) => {
 
     if (guiaResult.rows.length === 0) {
       await client.query('ROLLBACK');
-      console.log('❌ Guia não encontrada:', guia_id);
       return res.status(404).json({ error: 'Guia não encontrada' });
     }
 
     const guia = guiaResult.rows[0];
-    console.log('📋 Guia encontrada:', guia);
     const competencia = guia.competencia_mes_ano || `${guia.ano}-${String(guia.mes).padStart(2, '0')}`;
     const [ano, mes] = competencia.split('-').map(Number);
     const meses = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
@@ -1602,8 +1555,6 @@ export const gerarPedidoDaGuia = async (req: Request, res: Response) => {
       ORDER BY cp.produto_id, c.data_fim ASC
     `, [todosProdutoIds]);
 
-    console.log('📦 Contratos encontrados:', contratosResult.rows.length);
-    console.log('📋 Produtos buscados:', todosProdutoIds);
 
     // Agrupar TODOS os contratos por produto
     const contratosPorProduto = new Map<number, any[]>();
@@ -1614,10 +1565,8 @@ export const gerarPedidoDaGuia = async (req: Request, res: Response) => {
       contratosPorProduto.get(row.produto_id)!.push(row);
     }
 
-    console.log('📊 Produtos com contratos:', contratosPorProduto.size);
 
     // PRIMEIRO: Identificar produtos SEM contrato
-    console.log('🔍 Verificando produtos sem contrato...');
     const produtosSemContrato: Array<{ produto_id: number; produto_nome: string; quantidade: number }> = [];
     const produtosComContrato: number[] = [];
     
@@ -1637,11 +1586,8 @@ export const gerarPedidoDaGuia = async (req: Request, res: Response) => {
         }
       }
       
-      console.log('✅ Produtos COM contrato:', produtosComContrato.length);
-      console.log('❌ Produtos SEM contrato:', produtosSemContrato.length);
       
       if (produtosSemContrato.length > 0) {
-        console.log('📋 Detalhes produtos sem contrato:', produtosSemContrato.map(p => `${p.produto_nome} (${p.quantidade}kg)`).join(', '));
       }
     } catch (error) {
       console.error('❌ Erro ao verificar produtos sem contrato:', error);
@@ -1649,7 +1595,6 @@ export const gerarPedidoDaGuia = async (req: Request, res: Response) => {
     }
 
     // SEGUNDO: Identificar produtos com múltiplos contratos (ANTES de verificar sem contrato)
-    console.log('🔍 Verificando produtos com múltiplos contratos...');
     const produtosComMultiplosContratos: any[] = [];
     
     try {
@@ -1679,7 +1624,6 @@ export const gerarPedidoDaGuia = async (req: Request, res: Response) => {
         }
       }
       
-      console.log('📊 Produtos com múltiplos contratos:', produtosComMultiplosContratos.length);
     } catch (error) {
       console.error('❌ Erro ao verificar múltiplos contratos:', error);
       throw error;
@@ -1688,13 +1632,9 @@ export const gerarPedidoDaGuia = async (req: Request, res: Response) => {
     // TERCEIRO: Se houver produtos com múltiplos contratos E não foi fornecida a seleção, retornar para seleção
     const { contratos_selecionados } = req.body;
     
-    console.log('🔍 Verificando seleção de contratos...');
-    console.log('📋 Contratos selecionados recebidos:', contratos_selecionados ? 'SIM' : 'NÃO');
-    console.log('📊 Produtos com múltiplos contratos:', produtosComMultiplosContratos.length);
     
     if (produtosComMultiplosContratos.length > 0 && !contratos_selecionados) {
       await client.query('ROLLBACK');
-      console.log('⚠️ Retornando para seleção de múltiplos contratos');
       return res.status(200).json({
         requer_selecao: true,
         produtos_multiplos_contratos: produtosComMultiplosContratos,
@@ -1703,7 +1643,6 @@ export const gerarPedidoDaGuia = async (req: Request, res: Response) => {
       });
     }
     
-    console.log('✅ Prosseguindo com geração do pedido...');
 
     // QUARTO: Se TODOS os produtos não têm contrato, retornar erro
     if (produtosSemContrato.length > 0 && produtosComContrato.length === 0) {
@@ -1743,7 +1682,6 @@ export const gerarPedidoDaGuia = async (req: Request, res: Response) => {
     }
 
     // SÉTIMO: Montar mapa final de contratos a usar (apenas produtos COM contrato)
-    console.log('🔧 Montando mapa de contratos a usar...');
     const contratosParaUsar = new Map<number, Array<{ contrato: any; quantidade?: number }>>();
     
     try {
@@ -1766,14 +1704,12 @@ export const gerarPedidoDaGuia = async (req: Request, res: Response) => {
         }
       }
       
-      console.log('✅ Contratos mapeados:', contratosParaUsar.size);
     } catch (error) {
       console.error('❌ Erro ao montar mapa de contratos:', error);
       throw error;
     }
 
     // SEXTO: Filtrar apenas grupos COM contrato para criar o pedido
-    console.log('🔧 Filtrando grupos com contrato...');
     const gruposComContrato: typeof grupos = new Map();
     
     try {
@@ -1783,8 +1719,6 @@ export const gerarPedidoDaGuia = async (req: Request, res: Response) => {
         }
       }
       
-      console.log('✅ Grupos com contrato:', gruposComContrato.size);
-      console.log('📊 Total de grupos:', grupos.size);
     } catch (error) {
       console.error('❌ Erro ao filtrar grupos:', error);
       throw error;
@@ -1801,14 +1735,12 @@ export const gerarPedidoDaGuia = async (req: Request, res: Response) => {
     }
 
     // SÉTIMO: Criar o pedido
-    console.log('📝 Criando pedido...');
     const maxResult = await client.query(`
       SELECT COALESCE(MAX(CAST(SUBSTRING(numero FROM LENGTH(numero) - 5) AS INTEGER)), 0) as max_seq
       FROM pedidos WHERE competencia_mes_ano = $1
     `, [competencia]);
     const seq = (parseInt(maxResult.rows[0].max_seq) + 1).toString().padStart(6, '0');
     const numero = `PED-${mesAbrev}${ano}${seq}`;
-    console.log('📋 Número do pedido:', numero);
 
     const nomesSemContrato = produtosSemContrato.map(p => p.produto_nome).join(', ');
     const obsTexto = [
@@ -1920,7 +1852,6 @@ export const gerarPedidoDaGuia = async (req: Request, res: Response) => {
     const valorTotal = toNum(pedidoAtualizado.rows[0]?.valor_total, 0);
 
     await client.query('COMMIT');
-    console.log('✅ Pedido criado com sucesso:', { pedido_id, numero, valorTotal });
 
     return res.status(200).json({
       pedidos_criados: [{
@@ -1979,7 +1910,7 @@ export const iniciarGeracaoGuias = async (req: Request, res: Response) => {
         considerar_indice_coccao,
         considerar_fator_correcao,
       },
-      (req as any).usuario?.id
+      req.usuario?.id
     );
 
     // Processar em background (não aguarda)
@@ -2246,7 +2177,7 @@ export const buscarStatusJob = async (req: Request, res: Response) => {
 // ─── Listar Jobs do Usuário ───────────────────────────────────────────────────
 export const listarJobsUsuario = async (req: Request, res: Response) => {
   try {
-    const usuario_id = (req as any).usuario?.id;
+    const usuario_id = req.usuario?.id;
     
     if (!usuario_id) {
       return res.status(401).json({ error: 'Usuário não autenticado' });
@@ -2279,7 +2210,7 @@ export const iniciarGeracaoPedido = async (req: Request, res: Response) => {
         contratos_selecionados,
         ignorar_sem_contrato,
       },
-      (req as any).usuario?.id || (req as any).user?.id
+      req.usuario?.id || req.user?.id
     );
 
     // Processar em background

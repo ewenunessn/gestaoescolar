@@ -30,6 +30,13 @@ const MAX_COLS = 5;
 const COL_W = 200;
 const ESC_W = 220;
 
+function fmtDataEntrega(data: string | null): string {
+  if (!data || data === '') return 'Sem data';
+  const d = new Date(data + 'T12:00:00');
+  if (isNaN(d.getTime())) return 'Sem data';
+  return d.toLocaleDateString('pt-BR');
+}
+
 export default function AjusteGuiaDemandaScreen() {
   const { guiaId } = useParams<{ guiaId: string }>();
   const navigate = useNavigate();
@@ -126,9 +133,8 @@ export default function AjusteGuiaDemandaScreen() {
     const g = grupos[gi];
     if (!g) return `Coluna ${ci + 1}`;
     const nome = g.produto_nome.split(' ').slice(0, 3).join(' ');
-    return g.data_entrega
-      ? `${nome}\n${new Date(g.data_entrega + 'T12:00:00').toLocaleDateString('pt-BR')}`
-      : nome;
+    const dataStr = fmtDataEntrega(g.data_entrega);
+    return dataStr !== 'Sem data' ? `${nome}\n${dataStr}` : nome;
   }
 
   function colUnidade(ci: number) {
@@ -324,7 +330,7 @@ export default function AjusteGuiaDemandaScreen() {
               <ListItemButton key={gi} disabled={emUso !== -1} onClick={() => selAnchor && selectCol(selAnchor.ci, gi)}>
                 <ListItemText
                   primary={g.produto_nome}
-                  secondary={`${g.data_entrega ? new Date(g.data_entrega + 'T12:00:00').toLocaleDateString('pt-BR') : 'Sem data'} · ${g.escolas.length} escola(s)${emUso !== -1 ? ` · Em uso na col. ${emUso + 1}` : ''}`}
+                  secondary={`${fmtDataEntrega(g.data_entrega)} · ${g.escolas.length} escola(s)${emUso !== -1 ? ` · Em uso na col. ${emUso + 1}` : ''}`}
                   primaryTypographyProps={{ fontSize: 12 }}
                   secondaryTypographyProps={{ fontSize: 10, color: emUso !== -1 ? 'error.main' : undefined }}
                 />

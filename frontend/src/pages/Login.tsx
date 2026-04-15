@@ -36,21 +36,12 @@ export default function Login() {
     setErro("");
     setLoading(true);
     
-    console.log('🔐 [LOGIN] Iniciando processo de login...');
-    console.log('🔐 [LOGIN] localStorage antes do login:', {
-      token: localStorage.getItem('token') ? 'EXISTE' : 'AUSENTE',
-      user: localStorage.getItem('user') ? 'EXISTE' : 'AUSENTE'
-    });
-    
     try {
       const response = await login(email, senha);
-      console.log('✅ [LOGIN] Resposta recebida do servidor');
       
       // Salvar token IMEDIATAMENTE
       const token = response.token;
       localStorage.setItem("token", token);
-      console.log('💾 [LOGIN] Token salvo no localStorage');
-      console.log('💾 [LOGIN] Token (primeiros 50 chars):', token.substring(0, 50));
       
       const payload = JSON.parse(atob(token.split(".")[1]));
       const userData = {
@@ -68,30 +59,14 @@ export default function Login() {
       localStorage.setItem("user", JSON.stringify(userData));
       localStorage.setItem("perfil", response.tipo);
       localStorage.setItem("nome", response.nome);
-      console.log('💾 [LOGIN] Dados do usuário salvos:', { tipo: userData.tipo, escola_id: userData.escola_id });
       
-      // Verificar se realmente foi salvo
-      console.log('🔍 [LOGIN] Verificando localStorage após salvar:', {
-        token: localStorage.getItem('token') ? `${localStorage.getItem('token')?.substring(0, 30)}...` : 'AUSENTE',
-        user: localStorage.getItem('user') ? 'EXISTE' : 'AUSENTE'
-      });
-      
-      // Disparar evento customizado para notificar outros componentes
+      // Disparar evento para notificar AuthContext da mudança de token
       window.dispatchEvent(new Event('auth-changed'));
-      console.log('📢 [LOGIN] Evento auth-changed disparado');
 
       // Determinar rota de redirecionamento
       const isEscolaUser = !!(userData.escola_id && userData.tipo !== 'admin' && !payload.isSystemAdmin);
       const redirectPath = isEscolaUser ? '/portal-escola' : '/dashboard';
-      console.log('🔀 [LOGIN] Redirecionando para:', redirectPath);
       
-      // CRÍTICO: Aguardar mais tempo para garantir que tudo está sincronizado
-      // Isso é especialmente importante na Vercel onde o código minificado é mais rápido
-      await new Promise(resolve => setTimeout(resolve, 1000)); // 1 segundo de delay
-      console.log('⏰ [LOGIN] Delay completado, redirecionando agora...');
-      
-      // Usar navigate do React Router ao invés de window.location
-      // Isso evita reload completo e mantém o estado do React
       navigate(redirectPath, { replace: true });
     } catch (err: any) {
       console.error('❌ [LOGIN] Erro:', err);

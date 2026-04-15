@@ -232,7 +232,6 @@ export default function ContratoDetalhe() {
   const paginatedProdutos = useMemo(() => {
     const startIndex = page * rowsPerPage;
     const result = filteredProdutos.slice(startIndex, startIndex + rowsPerPage);
-    console.log('📄 Paginação:', { page, rowsPerPage, startIndex, total: filteredProdutos.length, resultado: result.length });
     return result;
   }, [filteredProdutos, page, rowsPerPage]);
 
@@ -283,7 +282,6 @@ export default function ContratoDetalhe() {
         valor_total: p.valor_total ?? ((p.quantidade_contratada ?? p.limite ?? 0) * (p.preco_unitario ?? p.preco ?? 0))
       }));
       
-      console.log('📦 Produtos carregados:', produtosMapeados.length, produtosMapeados);
       setProdutosContrato(produtosMapeados);
       setPage(0); // Reset página ao carregar dados
 
@@ -494,7 +492,6 @@ export default function ContratoDetalhe() {
   };
 
   const handleAdicionarProdutosLote = async (produtos: any[]) => {
-    console.log('📦 Produtos recebidos para adicionar:', produtos);
     
     const resultados = {
       sucesso: [] as any[],
@@ -514,7 +511,6 @@ export default function ContratoDetalhe() {
           unidade: produto.unidade || null,
           ativo: true
         };
-        console.log('📝 Payload para adicionar:', payload);
         await adicionarContratoProduto(payload);
         resultados.sucesso.push(produto);
       } catch (error: any) {

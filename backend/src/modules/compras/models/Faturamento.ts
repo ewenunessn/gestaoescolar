@@ -173,7 +173,6 @@ export class FaturamentoModel {
         
         // Se está marcado como consumido mas não tem histórico, corrigir
         if (historicoResult.rows.length === 0) {
-          console.log(`⚠️ Inconsistência detectada no item ${item.id}: marcado como consumido mas sem histórico. Corrigindo...`);
           await this.pool.query(`
             UPDATE faturamento_itens
             SET consumo_registrado = false,
@@ -185,13 +184,6 @@ export class FaturamentoModel {
         }
       }
     }
-    
-    console.log(`📊 Itens do faturamento ${faturamentoId}:`, result.rows.map(r => ({
-      id: r.id,
-      produto_nome: r.produto_nome,
-      consumo_registrado: r.consumo_registrado,
-      data_consumo: r.data_consumo
-    })));
     
     return result.rows;
   }

@@ -83,7 +83,7 @@ function num(v: any): number | null {
 }
 
 export const standardizarComposicaoNutricional = asyncHandler(async (req: Request, res: Response) => {
-  const user = (req as any).user;
+  const user = req.user;
   if (!user || !user.isSystemAdmin) {
     throw new AuthorizationError('Apenas administradores do sistema podem executar esta operação');
   }
@@ -342,11 +342,6 @@ export const editarProduto = asyncHandler(async (req: Request, res: Response) =>
   const fatorCorrecaoNormalizado = fator_correcao !== undefined ? num(fator_correcao) || 1.0 : undefined;
   const indiceCoccaoNormalizado = indice_coccao !== undefined ? num(indice_coccao) || 1.0 : undefined;
   const pesoNormalizado = peso !== undefined ? num(peso) : undefined;
-
-  console.log('📝 [editarProduto] Params:', {
-    id, nomeNormalizado, descricao, tipo_processamento, categoria,
-    fatorCorrecaoNormalizado, pesoNormalizado
-  });
 
   const result = await db.query(`
     UPDATE produtos SET

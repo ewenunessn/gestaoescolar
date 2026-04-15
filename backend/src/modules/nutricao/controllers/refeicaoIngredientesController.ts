@@ -36,7 +36,6 @@ export const buscarIngredientesDetalhados = async (req: Request, res: Response) 
   const { modalidade_id } = req.query; // modalidade opcional
 
   try {
-    console.log('🔍 Buscando ingredientes detalhados para refeição:', id, 'modalidade:', modalidade_id);
     
     // Query que busca per capita ajustado por modalidade se modalidade_id for fornecido
     const query = modalidade_id ? `

@@ -80,7 +80,6 @@ export class QueryAnalyzer {
       
       // Log de queries lentas
       if (this.options.logSlowQueries && executionTime > (this.options.slowQueryThreshold || 1000)) {
-        console.warn(`🐌 Slow Query Detected (${executionTime}ms) in ${context}:`, {
           query: this.sanitizeQuery(query),
           executionTime,
           rowsReturned: result.rows.length,
@@ -121,7 +120,6 @@ export class QueryAnalyzer {
       };
       
     } catch (error) {
-      console.warn('Could not analyze query plan:', error.message);
       return null;
     }
   }
@@ -281,7 +279,6 @@ export class QueryAnalyzer {
   async generatePerformanceReport(queries: Array<{ name: string; query: string; params?: any[] }>) {
     const results = [];
     
-    console.log('🔍 Iniciando análise de performance de queries...');
     
     for (const { name, query, params = [] } of queries) {
       try {
@@ -309,7 +306,6 @@ export class QueryAnalyzer {
       )
     };
     
-    console.log('📊 Relatório de Performance:', summary);
     
     return { results, summary };
   }
@@ -318,14 +314,12 @@ export class QueryAnalyzer {
    * Monitora queries em tempo real
    */
   startQueryMonitoring(callback?: (analysis: QueryAnalysisResult) => void) {
-    console.log('🔍 Monitoramento de queries iniciado');
     
     // Interceptar queries do pool de conexão (implementação específica do driver)
     // Esta é uma implementação conceitual - a implementação real dependeria do driver usado
     
     return {
       stop: () => {
-        console.log('⏹️ Monitoramento de queries parado');
       }
     };
   }
@@ -354,7 +348,6 @@ export const executeOptimizedQuery = async (
   
   // Log apenas se a performance for ruim
   if (analysis.performance === 'poor' || analysis.performance === 'fair') {
-    console.warn(`⚠️ Query Performance Issue in ${context}:`, {
       performance: analysis.performance,
       executionTime: analysis.executionTime,
       recommendations: analysis.recommendations

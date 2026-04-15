@@ -56,7 +56,7 @@ async function recalcularStatusSolicitacao(solicitacaoId: number, respondidoPor:
 // ── PORTAL DA ESCOLA ──────────────────────────────────────────────────────────
 
 export const listarMinhasSolicitacoes = asyncHandler(async (req: Request, res: Response) => {
-  const user = (req as any).user;
+  const user = req.user;
   if (!user.escola_id) throw new ValidationError('Usuário não está associado a uma escola');
 
   const sols = await db.query(`
@@ -89,7 +89,7 @@ export const listarMinhasSolicitacoes = asyncHandler(async (req: Request, res: R
 });
 
 export const criarSolicitacao = asyncHandler(async (req: Request, res: Response) => {
-  const user = (req as any).user;
+  const user = req.user;
   if (!user.escola_id) throw new ValidationError('Usuário não está associado a uma escola');
 
   const { observacao, itens } = req.body;
@@ -132,7 +132,7 @@ export const criarSolicitacao = asyncHandler(async (req: Request, res: Response)
 });
 
 export const cancelarSolicitacao = asyncHandler(async (req: Request, res: Response) => {
-  const user = (req as any).user;
+  const user = req.user;
   if (!user.escola_id) throw new ValidationError('Usuário não está associado a uma escola');
 
   const { id } = req.params;
@@ -192,7 +192,7 @@ export const listarTodasSolicitacoes = asyncHandler(async (req: Request, res: Re
 
 /** Aceita um item individual */
 export const aceitarItem = asyncHandler(async (req: Request, res: Response) => {
-  const user = (req as any).user;
+  const user = req.user;
   const { itemId } = req.params;
 
   const result = await db.query(`
@@ -211,7 +211,7 @@ export const aceitarItem = asyncHandler(async (req: Request, res: Response) => {
 
 /** Aceita todos os itens pendentes de uma solicitação */
 export const aprovarTudo = asyncHandler(async (req: Request, res: Response) => {
-  const user = (req as any).user;
+  const user = req.user;
   const { id } = req.params;
 
   const sol = await db.query('SELECT id FROM solicitacoes WHERE id = $1', [id]);
@@ -230,7 +230,7 @@ export const aprovarTudo = asyncHandler(async (req: Request, res: Response) => {
 
 /** Recusa um item individual com justificativa */
 export const recusarItem = asyncHandler(async (req: Request, res: Response) => {
-  const user = (req as any).user;
+  const user = req.user;
   const { itemId } = req.params;
   const { justificativa } = req.body;
 

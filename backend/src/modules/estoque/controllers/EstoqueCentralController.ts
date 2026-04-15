@@ -105,8 +105,8 @@ class EstoqueCentralController {
         documento,
         fornecedor,
         nota_fiscal,
-        usuario_id: (req as any).user?.id,
-        usuario_nome: (req as any).user?.nome
+        usuario_id: req.user?.id,
+        usuario_nome: req.user?.nome
       });
 
       res.status(201).json(movimentacao);
@@ -192,8 +192,8 @@ class EstoqueCentralController {
         motivo,
         observacao,
         documento,
-        usuario_id: (req as any).user?.id,
-        usuario_nome: (req as any).user?.nome
+        usuario_id: req.user?.id,
+        usuario_nome: req.user?.nome
       });
 
       res.status(201).json(movimentacao);
@@ -245,8 +245,8 @@ class EstoqueCentralController {
         lote_id: lote_id ? parseInt(lote_id) : undefined,
         motivo,
         observacao,
-        usuario_id: (req as any).user?.id,
-        usuario_nome: (req as any).user?.nome
+        usuario_id: req.user?.id,
+        usuario_nome: req.user?.nome
       });
 
       res.status(201).json(movimentacao);

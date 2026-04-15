@@ -31,7 +31,6 @@ export const ConfigProvider: React.FC<ConfigProviderProps> = ({ children }) => {
 
   const atualizarConfig = useCallback(async (novaConfig: ConfiguracaoModuloSaldo) => {
     // Não faz nada, configuração é fixa
-    console.log('Configuração é fixa em modalidades');
   }, []);
 
   const value: ConfigContextType = useMemo(() => ({
