@@ -180,8 +180,10 @@ async function calcularDemandaPeriodo(
   considerar_fator_correcao: boolean = true,
   cardapio_ids?: number[]
 ): Promise<ProdutoDemanda[]> {
-  const diaInicio = parseInt(data_inicio.split('-')[2]);
-  const diaFim = parseInt(data_fim.split('-')[2]);
+  const diaInicio = parseInt(data_inicio.split('-')[2], 10);
+  const diaFim = parseInt(data_fim.split('-')[2], 10);
+
+  console.log(`[calcularDemandaPeriodo] data_inicio=${data_inicio} data_fim=${data_fim} diaInicio=${diaInicio} diaFim=${diaFim}`);
 
   // Buscar cardápios ativos com suas modalidades (usando tabela de junção)
   let cardapioFilter = '';
@@ -249,10 +251,10 @@ async function calcularDemandaPeriodo(
       AND crd.ativo = true
       AND (
         -- Período normal (mesmo mês): dia entre início e fim
-        ($2 <= $3 AND crd.dia BETWEEN $2 AND $3)
+        ($2::integer <= $3::integer AND crd.dia BETWEEN $2::integer AND $3::integer)
         OR
         -- Período que cruza meses: dia >= início OU dia <= fim
-        ($2 > $3 AND (crd.dia >= $2 OR crd.dia <= $3))
+        ($2::integer > $3::integer AND (crd.dia >= $2::integer OR crd.dia <= $3::integer))
       )
   `, [cardapiosQuery.rows.map((c: any) => c.id), diaInicio, diaFim]);
 
