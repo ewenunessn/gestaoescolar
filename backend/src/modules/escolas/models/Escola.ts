@@ -95,7 +95,7 @@ export class EscolaModel {
   async excluir(id: number): Promise<boolean> {
     const query = 'UPDATE escolas SET ativa = false WHERE id = $1';
     const result = await this.pool.query(query, [id]);
-    return result.rowCount > 0;
+    return result.rowCount! > 0;
   }
 
   async adicionarModalidade(modalidade: Omit<EscolaModalidade, 'id' | 'created_at'>): Promise<EscolaModalidade> {
@@ -149,7 +149,7 @@ export class EscolaModel {
   async removerModalidade(id: number): Promise<boolean> {
     const query = 'UPDATE escolas_modalidades SET ativa = false WHERE id = $1';
     const result = await this.pool.query(query, [id]);
-    return result.rowCount > 0;
+    return result.rowCount! > 0;
   }
 
   async buscarPorCodigoInep(codigoInep: string): Promise<Escola | null> {

@@ -107,7 +107,10 @@ export function optionalAuth(req: Request, res: Response, next: NextFunction) {
       institution_id: decoded.institution_id
     };
   } catch (error) {
-    // Ignora erros de token em autenticação opcional
+    // Token presente mas inválido — continua sem req.user, mas log para auditoria
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('⚠️ [optionalAuth] Token inválido ignorado:', (error as Error).message);
+    }
   }
 
   next();

@@ -34,8 +34,8 @@ async function ensureProdutoComposicaoTable() {
         ferro_mg DECIMAL(8,2),
         vitamina_e_mg DECIMAL(8,2),
         vitamina_b1_mg DECIMAL(8,2),
-        criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        criado_em TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        atualizado_em TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(produto_id)
       )
     `);

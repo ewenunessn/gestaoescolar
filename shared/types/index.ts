@@ -448,6 +448,121 @@ export interface ValidationResult<T = any> {
 }
 
 // ============================================================================
+// TIPOS MULTI-TENANT
+// ============================================================================
+
+export interface TenantSettings {
+  features: {
+    inventory: boolean;
+    contracts: boolean;
+    deliveries: boolean;
+    reports: boolean;
+    mobile: boolean;
+    analytics: boolean;
+  };
+  branding: {
+    primaryColor: string;
+    secondaryColor: string;
+  };
+  notifications: {
+    email: boolean;
+    sms: boolean;
+    push: boolean;
+  };
+  integrations: {
+    whatsapp: boolean;
+    email: boolean;
+    sms: boolean;
+  };
+}
+
+export interface TenantLimits {
+  maxUsers: number;
+  maxSchools: number;
+  maxProducts: number;
+  storageLimit: number;
+  apiRateLimit: number;
+  maxContracts: number;
+  maxOrders: number;
+}
+
+export interface Tenant {
+  id: ID;
+  slug: string;
+  subdomain?: string;
+  nome: string;
+  settings: TenantSettings;
+  limits: TenantLimits;
+  ativo: boolean;
+  created_at: DateString;
+  updated_at: DateString;
+}
+
+export type TenantErrorCode =
+  | 'TENANT_NOT_FOUND'
+  | 'TENANT_INACTIVE'
+  | 'CROSS_TENANT_ACCESS'
+  | 'TENANT_LIMIT_EXCEEDED'
+  | 'TENANT_SLUG_CONFLICT'
+  | 'TENANT_SUBDOMAIN_CONFLICT';
+
+export abstract class TenantError extends Error {
+  abstract code: TenantErrorCode;
+  constructor(message: string) {
+    super(message);
+    this.name = 'TenantError';
+  }
+}
+
+export class TenantNotFoundError extends TenantError {
+  code: TenantErrorCode = 'TENANT_NOT_FOUND';
+  constructor(identifier: string) {
+    super(`Tenant not found: ${identifier}`);
+    this.name = 'TenantNotFoundError';
+  }
+}
+
+export class TenantInactiveError extends TenantError {
+  code: TenantErrorCode = 'TENANT_INACTIVE';
+  constructor(tenantId: string) {
+    super(`Tenant is inactive: ${tenantId}`);
+    this.name = 'TenantInactiveError';
+  }
+}
+
+export class CrossTenantAccessError extends TenantError {
+  code: TenantErrorCode = 'CROSS_TENANT_ACCESS';
+  constructor(resource: string) {
+    super(`Cross-tenant access denied for resource: ${resource}`);
+    this.name = 'CrossTenantAccessError';
+  }
+}
+
+export class TenantLimitExceededError extends TenantError {
+  code: TenantErrorCode = 'TENANT_LIMIT_EXCEEDED';
+  constructor(limit: string, current: number, max: number) {
+    super(`Tenant limit exceeded for ${limit}: ${current}/${max}`);
+    this.name = 'TenantLimitExceededError';
+  }
+}
+
+export class TenantSlugConflictError extends TenantError {
+  code: TenantErrorCode = 'TENANT_SLUG_CONFLICT';
+  constructor(slug: string) {
+    super(`Tenant slug already exists: ${slug}`);
+    this.name = 'TenantSlugConflictError';
+  }
+}
+
+export class TenantSubdomainConflictError extends TenantError {
+  code: TenantErrorCode = 'TENANT_SUBDOMAIN_CONFLICT';
+  constructor(subdomain: string) {
+    super(`Tenant subdomain already exists: ${subdomain}`);
+    this.name = 'TenantSubdomainConflictError';
+  }
+}
+
+// ============================================================================
 // TIPOS DE EVENTOS E NOTIFICAÇÕES
 // ============================================================================
 

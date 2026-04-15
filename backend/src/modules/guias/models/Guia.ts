@@ -36,8 +36,8 @@ export async function createGuiaTables() {
       nome TEXT,
       observacao TEXT,
       status VARCHAR(20) NOT NULL DEFAULT 'aberta' CHECK (status IN ('aberta','fechada','cancelada')),
-      created_at TIMESTAMP DEFAULT NOW(),
-      updated_at TIMESTAMP DEFAULT NOW()
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
     )`
   );
 
@@ -61,12 +61,12 @@ export async function createGuiaTables() {
       para_entrega BOOLEAN DEFAULT TRUE,
       entrega_confirmada BOOLEAN DEFAULT FALSE,
       quantidade_entregue DECIMAL(12,3),
-      data_entrega TIMESTAMP,
+      data_entrega TIMESTAMPTZ,
       nome_quem_recebeu TEXT,
       nome_quem_entregou TEXT,
       status VARCHAR(20),
-      created_at TIMESTAMP DEFAULT NOW(),
-      updated_at TIMESTAMP DEFAULT NOW()
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
     )
   `;
   await db.query(guiaProdutoSql);
@@ -75,8 +75,8 @@ export async function createGuiaTables() {
     `CREATE TABLE IF NOT EXISTS rotas_entrega (
       id SERIAL PRIMARY KEY,
       nome TEXT NOT NULL,
-      created_at TIMESTAMP DEFAULT NOW(),
-      updated_at TIMESTAMP DEFAULT NOW()
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
     )`
   );
 
@@ -86,8 +86,8 @@ export async function createGuiaTables() {
       rota_id INTEGER NOT NULL,
       escola_id INTEGER,
       ordem INTEGER,
-      created_at TIMESTAMP DEFAULT NOW(),
-      updated_at TIMESTAMP DEFAULT NOW()
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
     )
   `;
   await db.query(rotaEscolasSql);

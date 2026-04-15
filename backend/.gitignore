@@ -29,6 +29,7 @@ build/
 .env.test.local
 .env.production.local
 .env.vercel
+.env.production
 
 # Uploads
 uploads/

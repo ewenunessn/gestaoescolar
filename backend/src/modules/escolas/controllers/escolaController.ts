@@ -11,7 +11,7 @@ import {
   handleDatabaseError
 } from "../../../utils/errorHandler";
 
-export async function listarEscolas(req, res) {
+export async function listarEscolas(req: Request, res: Response) {
   try {
     const cached = await cacheService.get('escolas:list:all');
     if (cached) return res.json(cached);

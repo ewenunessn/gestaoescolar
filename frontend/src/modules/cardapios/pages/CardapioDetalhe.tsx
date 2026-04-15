@@ -78,6 +78,8 @@ import { useSafeData } from "../../../hooks/useSafeData";
 import DownloadIcon from "@mui/icons-material/Download";
 import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
 import PageContainer from "../../../components/PageContainer";
+import PageHeader from "../../../components/PageHeader";
+import { usePageTitle } from "../../../contexts/PageTitleContext";
 import {
   DndContext,
   DragEndEvent,
@@ -291,6 +293,7 @@ export default function CardapioDetalhe() {
   const location = useLocation();
   const isNovo = location.pathname.endsWith("/novo");
   const navigate = useNavigate();
+  const { setPageTitle, setBackPath } = usePageTitle();
   const { safeString, safeDate } = useSafeData();
   const queryClient = useQueryClient();
   
@@ -384,6 +387,12 @@ export default function CardapioDetalhe() {
   );
 
   // Carregar dados iniciais
+  useEffect(() => {
+    setPageTitle(isNovo ? 'Novo Cardápio' : `Cardápio - ${cardapio?.nome || 'Detalhes'}`);
+    setBackPath('/cardapios');
+    return () => setBackPath(null);
+  }, [isNovo, cardapio?.nome]);
+
   useEffect(() => {
     async function fetchModalidades() {
       try {
@@ -770,6 +779,11 @@ export default function CardapioDetalhe() {
               ]}
             />
           </Box>
+
+          <PageHeader
+            title={isNovo ? (form.nome || 'Novo Cardápio') : (cardapio?.nome || 'Carregando...')}
+            subtitle={isNovo ? 'Preencha os dados do cardápio' : 'Visualize e gerencie as refeições do cardápio'}
+          />
 
           {/* Card de Informações do Cardápio */}
         <Card sx={{ mb: 4, borderRadius: 3, boxShadow: 3 }}>

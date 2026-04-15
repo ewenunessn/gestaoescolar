@@ -93,7 +93,7 @@ function loadConfig(): Config {
       port: (jsonConfig as any)?.database?.port || parseInt(process.env.DB_PORT || '5432'),
       name: (jsonConfig as any)?.database?.name || process.env.DB_NAME || 'alimentacao_escolar',
       user: (jsonConfig as any)?.database?.user || process.env.DB_USER || 'postgres',
-      password: process.env.DB_PASSWORD, // Deve ser configurada em variável de ambiente
+      password: process.env.DB_PASSWORD || '', // Deve ser configurada em variável de ambiente
       ssl: (jsonConfig as any)?.database?.ssl ?? (process.env.DB_SSL === 'true')
     },
     jwt: {

@@ -197,7 +197,8 @@ export async function criarCompra(req: Request, res: Response) {
       competencia_mes_ano
     } = req.body;
 
-    const usuario_criacao_id = req.user?.id || 1;
+    const usuario_criacao_id = req.user?.id;
+    if (!usuario_criacao_id) return res.status(401).json({ success: false, message: 'Usuário não autenticado' });
 
     // Permitir criar compra vazia (será preenchida depois)
     const temItens = itens && Array.isArray(itens) && itens.length > 0;
@@ -549,7 +550,8 @@ export async function atualizarStatusCompra(req: Request, res: Response) {
   try {
     const { id } = req.params;
     const { status, motivo } = req.body;
-    const usuario_id = req.user?.id || 1;
+    const usuario_id = req.user?.id;
+    if (!usuario_id) return res.status(401).json({ success: false, message: 'Usuário não autenticado' });
 
     const statusValidos = ['pendente', 'recebido_parcial', 'concluido', 'suspenso', 'cancelado'];
 

@@ -195,14 +195,14 @@ WHERE schemaname = 'public'
     )
 ORDER BY tablename;
 
--- Grant necessary permissions
--- Allow the application user to use the tenant functions
-GRANT EXECUTE ON FUNCTION set_tenant_context(UUID) TO PUBLIC;
-GRANT EXECUTE ON FUNCTION get_current_tenant_id() TO PUBLIC;
-GRANT EXECUTE ON FUNCTION clear_tenant_context() TO PUBLIC;
+-- Grant necessary permissions — restrito ao role da aplicação
+-- Evitar GRANT TO PUBLIC para funções sensíveis de tenant
+GRANT EXECUTE ON FUNCTION set_tenant_context(UUID) TO app_user;
+GRANT EXECUTE ON FUNCTION get_current_tenant_id() TO app_user;
+GRANT EXECUTE ON FUNCTION clear_tenant_context() TO app_user;
 
--- Allow viewing RLS status
-GRANT SELECT ON rls_status TO PUBLIC;
+-- Allow viewing RLS status (leitura pública, sem risco)
+GRANT SELECT ON rls_status TO app_user;
 
 -- Comments for documentation
 COMMENT ON FUNCTION set_tenant_context(UUID) IS 'Sets the tenant context for the current session. Validates tenant exists and is active.';

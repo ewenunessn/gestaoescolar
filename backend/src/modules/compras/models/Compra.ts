@@ -172,7 +172,7 @@ export class PedidoModel {
     values.push(id);
 
     const result = await this.pool.query(query, values);
-    return result.rowCount > 0;
+    return result.rowCount! > 0;
   }
 
   async gerarNumero(): Promise<string> {

@@ -25,12 +25,14 @@ export const config = {
 
   // Configurações de segurança
   jwtSecret: process.env.JWT_SECRET || (() => {
-    console.error('❌❌❌ ERRO CRÍTICO: JWT_SECRET NÃO CONFIGURADO! ❌❌❌');
-    console.error('❌ Isso causará tokens inválidos a cada restart do servidor!');
-    console.error('❌ Configure JWT_SECRET nas variáveis de ambiente do Vercel!');
-    console.error('❌ Acesse: https://vercel.com/dashboard → Settings → Environment Variables');
-    console.error('❌ Gerando secret temporário - TODOS OS TOKENS SERÃO INVÁLIDOS NO PRÓXIMO RESTART!');
-    return 'TEMPORARY-INSECURE-SECRET-' + Date.now();
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        '❌ ERRO CRÍTICO: JWT_SECRET não configurado em produção! ' +
+        'Configure JWT_SECRET nas variáveis de ambiente do Vercel.'
+      );
+    }
+    console.warn('⚠️ JWT_SECRET não configurado — gerando secret temporário para desenvolvimento');
+    return 'DEV-TEMPORARY-SECRET-' + Date.now() + '-' + Math.random().toString(36).slice(2);
   })(),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "7d", // Aumentado para 7 dias
 
@@ -66,7 +68,7 @@ export const config = {
         ? `https://${process.env.VERCEL_URL}${this.apiBasePath}`
         : `${this.apiBasePath}`;
     }
-    return `http://192.168.18.12:${this.port}${this.apiBasePath}`;
+    return `http://${process.env.API_HOST || 'localhost'}:${this.port}${this.apiBasePath}`;
   },
 
   get healthUrl() {
@@ -75,6 +77,6 @@ export const config = {
         ? `https://${process.env.VERCEL_URL}/health`
         : `/health`;
     }
-    return `http://192.168.18.12:${this.port}/health`;
+    return `http://${process.env.API_HOST || 'localhost'}:${this.port}/health`;
   },
 };

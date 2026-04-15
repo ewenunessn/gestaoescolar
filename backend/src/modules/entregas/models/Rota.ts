@@ -199,7 +199,7 @@ class RotaModel {
       RETURNING *
     `, [data.nome, data.descricao || null, data.cor || '#1976d2', data.ativo !== undefined ? data.ativo : true]);
 
-    return await this.buscarRota(result.lastID);
+    return await this.buscarRota(result.lastID)!;
   }
 
   async atualizarRota(id: number, data: Partial<CreateRotaData>): Promise<RotaEntrega> {
@@ -238,7 +238,7 @@ class RotaModel {
       WHERE id = $${paramCount}
     `, values);
 
-    return await this.buscarRota(id);
+    return await this.buscarRota(id)!;
   }
 
   async deletarRota(id: number): Promise<boolean> {
@@ -346,7 +346,7 @@ class RotaModel {
       RETURNING *
     `, [rotaId, escolaId, ordem, observacao || null]);
 
-    return await this.buscarEscolaRota(result.lastID);
+    return await this.buscarEscolaRota(result.lastID)!;
   }
 
   async buscarEscolaRota(id: number): Promise<RotaEscola | null> {
@@ -434,7 +434,7 @@ class RotaModel {
       RETURNING *
     `, [data.guia_id, data.rota_id, data.data_planejada || null, data.responsavel || null, data.observacao || null]);
 
-    return await this.buscarPlanejamento(result.lastID);
+    return await this.buscarPlanejamento(result.lastID)!;
   }
 
   async buscarPlanejamento(id: number): Promise<PlanejamentoEntrega | null> {
@@ -489,7 +489,7 @@ class RotaModel {
       WHERE id = $${paramCount}
     `, values);
 
-    return await this.buscarPlanejamento(id);
+    return await this.buscarPlanejamento(id)!;
   }
 
   async deletarPlanejamento(id: number): Promise<boolean> {

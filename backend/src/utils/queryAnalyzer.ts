@@ -80,6 +80,7 @@ export class QueryAnalyzer {
       
       // Log de queries lentas
       if (this.options.logSlowQueries && executionTime > (this.options.slowQueryThreshold || 1000)) {
+        console.log('[SlowQuery]', {
           query: this.sanitizeQuery(query),
           executionTime,
           rowsReturned: result.rows.length,
@@ -348,6 +349,7 @@ export const executeOptimizedQuery = async (
   
   // Log apenas se a performance for ruim
   if (analysis.performance === 'poor' || analysis.performance === 'fair') {
+    console.log('[PoorQuery]', {
       performance: analysis.performance,
       executionTime: analysis.executionTime,
       recommendations: analysis.recommendations

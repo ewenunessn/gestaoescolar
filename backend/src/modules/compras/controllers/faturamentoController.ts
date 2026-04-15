@@ -32,7 +32,8 @@ export async function gerarFaturamento(req: Request, res: Response) {
   try {
     const { pedido_id } = req.params;
     const { observacoes } = req.body;
-    const usuarioId = 1; // TODO: Pegar do token de autenticação
+    const usuarioId = (req as any).user?.id;
+    if (!usuarioId) return res.status(401).json({ success: false, message: 'Usuário não autenticado' });
     
     const resultado = await FaturamentoService.gerarFaturamento(
       Number(pedido_id), 
@@ -253,8 +254,9 @@ export async function registrarConsumoFaturamento(req: Request, res: Response) {
 export async function registrarConsumoItem(req: Request, res: Response) {
   try {
     const { id, itemId } = req.params;
-    const usuarioId = 1; // TODO: Pegar do token
-    
+    const usuarioId = (req as any).user?.id;
+    if (!usuarioId) return res.status(401).json({ success: false, message: 'Usuário não autenticado' });
+
     await FaturamentoService.registrarConsumoItem(
       Number(id),
       Number(itemId),
@@ -280,8 +282,9 @@ export async function registrarConsumoItem(req: Request, res: Response) {
 export async function reverterConsumoItem(req: Request, res: Response) {
   try {
     const { id, itemId } = req.params;
-    const usuarioId = 1; // TODO: Pegar do token
-    
+    const usuarioId = (req as any).user?.id;
+    if (!usuarioId) return res.status(401).json({ success: false, message: 'Usuário não autenticado' });
+
     await FaturamentoService.reverterConsumoItem(
       Number(id),
       Number(itemId),

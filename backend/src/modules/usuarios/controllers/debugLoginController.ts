@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import db from "../../../database";
+import { config } from "../../../config/config";
 
 // Função auxiliar para buscar usuário
 async function findUserByEmail(email: string) {
@@ -56,7 +57,6 @@ export async function debugLogin(req: Request, res: Response) {
     debugInfo.data.sistemaSimplificado = true;
 
     debugInfo.step = '5. Gerando token';
-    const { config } = require('../../../config/config');
     debugInfo.data.jwtSecretConfigured = !!process.env.JWT_SECRET;
 
     const tokenPayload = {

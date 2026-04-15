@@ -267,7 +267,7 @@ export class FaturamentoModel {
     `;
 
     const result = await this.pool.query(query, [status, id]);
-    return result.rowCount > 0;
+    return result.rowCount! > 0;
   }
 
   async excluir(id: number): Promise<boolean> {
@@ -316,8 +316,8 @@ export class FaturamentoModel {
       `, [id]);
       
       await client.query('COMMIT');
-      return result.rowCount > 0;
-      
+      return result.rowCount! > 0;
+
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;

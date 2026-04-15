@@ -2,7 +2,7 @@
 import { Request, Response } from "express";
 import * as ExcelJS from 'exceljs';
 import db from "../../../database";
-import { obterPeriodoUsuario } from "../../../utils/periodoUsuarioHelper";elper";
+import { obterPeriodoUsuario } from "../../../utils/periodoUsuarioHelper";
 
 interface DemandaItem {
   produto_id: number;
@@ -676,6 +676,7 @@ export async function exportarDemandaExcel(req: Request, res: Response) {
 
       // Debug log para primeiros registros
       if (index < 5) {
+        console.log({
           escola_nome,
           produto_nome,
           quantidade_alunos,
@@ -730,6 +731,7 @@ export async function exportarDemandaExcel(req: Request, res: Response) {
       
       // Debug log para primeira escola
       if (escola_nome === 'Anexo - Didi' && produto_nome.includes('Baião')) {
+        console.log({
           chave,
           quantidade_calculada,
           quantidade_anterior: itemEscola.quantidade - quantidade_calculada,
@@ -905,6 +907,7 @@ export async function exportarDemandaExcel(req: Request, res: Response) {
         
         // Debug log específico para Anexo - Didi
         if (escola === 'Anexo - Didi' && produto.includes('Baião')) {
+          console.log({
             produto_id,
             chave,
             item_existe: !!item,

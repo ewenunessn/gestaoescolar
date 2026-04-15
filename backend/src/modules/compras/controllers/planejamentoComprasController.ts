@@ -397,7 +397,8 @@ export const gerarPedidosPorPeriodo = async (req: Request, res: Response) => {
   }
 
   const [ano, mes] = competencia.split('-').map(Number);
-  const usuario_id = req.user?.id || 1;
+  const usuario_id = req.user?.id;
+  if (!usuario_id) throw new Error('Usuário não autenticado');
   const meses = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
   const mesAbrev = meses[mes - 1];
 
@@ -1421,10 +1422,9 @@ export const gerarPedidoDaGuia = async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'guia_id é obrigatório' });
   }
 
-  const usuario_id = req.user?.id || 1;
-  const client = await db.pool.connect();
-
-  try {
+  const usuario_id = req.user?.id;
+  if (!usuario_id) return res.status(401).json({ error: 'Usuário não autenticado' });
+  const client = await db.pool.connect();  try {
     await client.query('BEGIN');
 
     // 1. Buscar a guia
@@ -2238,7 +2238,8 @@ async function processarGeracaoPedidoBackground(jobId: number) {
   }
 
   const { guia_id, observacoes, contratos_selecionados, ignorar_sem_contrato } = job.parametros;
-  const usuario_id = job.usuario_id || 1;
+  const usuario_id = job.usuario_id;
+  if (!usuario_id) throw new Error('Job sem usuário associado');
   const client = await db.pool.connect();
 
   try {

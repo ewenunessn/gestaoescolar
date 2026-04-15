@@ -1,6 +1,7 @@
 import { Pool } from 'pg';
 import * as fs from 'fs';
 import * as path from 'path';
+import { exec as execCallback } from 'child_process';
 
 export interface BackupInfo {
   id?: number;
@@ -45,11 +46,10 @@ export class SistemaRobusto {
       const backupInfo = await this.registrarBackup(nomeArquivo, tipo, 'em_progresso');
 
       // Executar pg_dump (assumindo que está disponível no sistema)
-      const { exec } = require('child_process');
       const comando = `pg_dump ${process.env.DATABASE_URL} > "${caminhoCompleto}"`;
       
       await new Promise((resolve, reject) => {
-        exec(comando, (error: any, stdout: any, stderr: any) => {
+        execCallback(comando, (error: any, stdout: any, stderr: any) => {
           if (error) {
             reject(error);
           } else {

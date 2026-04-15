@@ -3,9 +3,7 @@ import { Instituicao, InstituicaoInput } from '../models/Instituicao';
 import multer from 'multer';
 import path from 'path';
 import { promises as fs } from 'fs';
-
-// Importar conexão do banco
-const db = process.env.VERCEL === '1' ? require("../../../database-vercel") : require("../../../database");
+import db from '../../../database';
 
 // Configuração do multer para upload de logo
 const storage = multer.diskStorage({

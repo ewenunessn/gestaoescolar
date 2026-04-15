@@ -91,7 +91,7 @@ export class RefeicaoModel {
   async excluir(id: number): Promise<boolean> {
     const query = 'UPDATE refeicoes SET ativa = false WHERE id = $1';
     const result = await this.pool.query(query, [id]);
-    return result.rowCount > 0;
+    return result.rowCount! > 0;
   }
 
   async adicionarIngrediente(ingrediente: Omit<RefeicaoIngrediente, 'id' | 'created_at'>): Promise<RefeicaoIngrediente> {
@@ -147,7 +147,7 @@ export class RefeicaoModel {
   async removerIngrediente(id: number): Promise<boolean> {
     const query = 'DELETE FROM refeicoes_ingredientes WHERE id = $1';
     const result = await this.pool.query(query, [id]);
-    return result.rowCount > 0;
+    return result.rowCount! > 0;
   }
 
   async buscarPorTipo(tipo: string): Promise<Refeicao[]> {

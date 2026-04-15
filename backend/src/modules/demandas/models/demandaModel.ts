@@ -53,7 +53,7 @@ export const demandaModel = {
       demanda.descricao_itens,
       demanda.status || 'pendente',
       demanda.observacoes || null,
-      demanda.usuario_criacao_id || 1
+      demanda.usuario_criacao_id
     ];
 
     const result = await db.query(query, values);

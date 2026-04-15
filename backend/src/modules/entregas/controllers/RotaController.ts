@@ -450,8 +450,8 @@ class RotaController {
         const planejamento = await RotaModel.criarPlanejamento({
           guia_id: guiaId,
           rota_id: rotaId,
-          data_planejada: dataPlanejada || null,
-          responsavel: null,
+          data_planejada: dataPlanejada || undefined,
+          responsavel: undefined,
           observacao: observacaoCompleta
         });
 

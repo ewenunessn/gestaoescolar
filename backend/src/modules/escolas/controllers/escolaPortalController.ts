@@ -3,8 +3,7 @@ import db from '../../../database';
 import { asyncHandler, ValidationError } from "../../../utils/errorHandler";
 
 export const getDashboardEscola = asyncHandler(async (req: Request, res: Response) => {
-  const user = req.user;
-  
+  const user = req.user!;
   
   if (!user.escola_id) {
     throw new ValidationError('Usuário não está associado a uma escola');
@@ -55,7 +54,7 @@ export const getDashboardEscola = asyncHandler(async (req: Request, res: Respons
 });
 
 export const getGuiasEscola = asyncHandler(async (req: Request, res: Response) => {
-  const user = req.user;
+  const user = req.user!;
   
   if (!user.escola_id) {
     throw new ValidationError('Usuário não está associado a uma escola');
@@ -82,7 +81,7 @@ export const getGuiasEscola = asyncHandler(async (req: Request, res: Response) =
 });
 
 export const getItensGuiaEscola = asyncHandler(async (req: Request, res: Response) => {
-  const user = req.user;
+  const user = req.user!;
   const { guiaId } = req.params;
   
   if (!user.escola_id) {
@@ -105,7 +104,7 @@ export const getItensGuiaEscola = asyncHandler(async (req: Request, res: Respons
 });
 
 export const getCardapiosSemana = asyncHandler(async (req: Request, res: Response) => {
-  const user = req.user;
+  const user = req.user!;
   
   if (!user.escola_id) {
     throw new ValidationError('Usuário não está associado a uma escola');
@@ -178,7 +177,7 @@ export const getCardapiosSemana = asyncHandler(async (req: Request, res: Respons
 
 
 export const getComprovantesEscola = asyncHandler(async (req: Request, res: Response) => {
-  const user = req.user;
+  const user = req.user!;
   
   if (!user.escola_id) {
     throw new ValidationError('Usuário não está associado a uma escola');
@@ -225,7 +224,7 @@ export const getComprovantesEscola = asyncHandler(async (req: Request, res: Resp
 });
 
 export const getComprovanteDetalhes = asyncHandler(async (req: Request, res: Response) => {
-  const user = req.user;
+  const user = req.user!;
   const { id } = req.params;
   
   if (!user.escola_id) {

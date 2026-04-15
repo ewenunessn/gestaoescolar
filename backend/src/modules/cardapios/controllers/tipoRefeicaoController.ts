@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-const db = process.env.VERCEL === '1' ? require('../../../database-vercel') : require('../../../database');
+import db from '../../../database';
 import { cacheService } from '../../../utils/cacheService';
 
 export const listarTiposRefeicao = async (req: Request, res: Response) => {

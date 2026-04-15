@@ -80,7 +80,7 @@ export class ContratoProdutoModel {
   async excluir(id: number): Promise<boolean> {
     const query = 'UPDATE contrato_produtos SET ativo = false WHERE id = $1';
     const result = await this.pool.query(query, [id]);
-    return result.rowCount > 0;
+    return result.rowCount! > 0;
   }
 
   async verificarPreco(contratoId: number, produtoId: number): Promise<number | null> {

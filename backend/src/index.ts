@@ -14,14 +14,15 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { generalLimiter, loginLimiter } from './middleware/rateLimiter';
 import { paginationMiddleware, validatePaginationParams } from './middleware/pagination';
 import { balancedCompression } from './middleware/compression';
-import monitoringRoutes from './modules/sistema/routes/monitoringRoutes';
 
 // Importar rotas organizadas por módulos
 import userRoutes from "./modules/usuarios/routes/userRoutes";
 import adminUsuariosRoutes from "./modules/usuarios/routes/adminUsuariosRoutes";
 import { ensureAdminTables } from "./modules/usuarios/controllers/adminUsuariosController";
 
-// Importar rotas essenciais
+import permissaoRoutes from "./modules/sistema/routes/permissoesRoutes";
+import refeicaoProdutoModalidadeRoutes from "./modules/nutricao/routes/refeicaoProdutoModalidadeRoutes";
+import refeicaoCalculosRoutes from "./modules/nutricao/routes/refeicaoCalculosRoutes";
 import escolaRoutes from "./modules/escolas/routes/escolaRoutes";
 import modalidadeRoutes from "./modules/cardapios/routes/modalidadeRoutes";
 import escolaModalidadeRoutes from "./modules/guias/routes/escolaModalidadeRoutes";
@@ -37,8 +38,6 @@ import produtoModalidadeRoutes from "./modules/estoque/routes/produtoModalidadeR
 
 import estoqueCentralRoutes from "./modules/estoque/routes/estoqueCentralRoutes";
 import estoqueEscolarRoutes from "./modules/estoque/routes/estoqueEscolarRoutes";
-// import demandaRoutes from "./modules/estoque/routes/demandaRoutes"; // REMOVIDO - usar demandasRoutes do módulo demandas
-
 import saldoContratosModalidadesRoutes from "./modules/contratos/routes/saldoContratosModalidadesRoutes";
 import guiaRoutes from "./modules/guias/routes/guiaRoutes";
 import entregaRoutes from "./modules/entregas/routes/entregaRoutes";
@@ -61,21 +60,12 @@ import dashboardRoutes from "./modules/sistema/routes/dashboardRoutes";
 import notificacoesRoutes from "./modules/sistema/routes/notificacoesRoutes";
 import disparosNotificacaoRoutes from "./modules/sistema/routes/disparosNotificacaoRoutes";
 import unidadeMedidaRoutes from "./modules/unidades/routes/unidadeMedidaRoutes";
-import debugEnvRoutes from "./routes/debug-env";
 
 import { createServer } from 'http';
 import { initRedis } from "./config/redis";
 import { createGuiaTables, createEssentialTables } from "./modules/guias/models/Guia";
 
-// Módulo de gás removido
-
-
-
-// Importar rotas preservadas do sistema escolar
-
-
-// Importar configuração do banco de dados baseada no ambiente
-const db = process.env.VERCEL === '1' ? require("./database-vercel") : require("./database");
+import db from "./database";
 
 // Normalizar CORS origins — remover entradas não-string para segurança
 const rawOrigin = config.backend.cors.origin;
@@ -133,8 +123,8 @@ async function ensureProdutoComposicaoNutricionalTable() {
         ferro_mg DECIMAL(8,2),
         vitamina_e_mg DECIMAL(8,2),
         vitamina_b1_mg DECIMAL(8,2),
-        criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        criado_em TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        atualizado_em TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(produto_id)
       )
     `);
@@ -156,11 +146,6 @@ app.use('/api', (req, res, next) => {
   if (req.path.startsWith('/planejamento-compras/gerar')) return next();
   return generalLimiter(req, res, next);
 });
-
-// CORS já está configurado corretamente acima com as origens específicas
-// Removido middleware que forçava '*' e conflitava com credentials: true
-
-// Admin routes removed
 
 // Servir arquivos estáticos
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
@@ -195,8 +180,10 @@ app.get("/health", async (req, res) => {
   }
 });
 
-// Endpoint de teste PostgreSQL
-app.get("/api/test-db", async (req, res) => {
+import { authenticateToken } from './middleware/authMiddleware';
+
+// Endpoint de teste de banco protegido por auth
+app.get("/api/test-db", authenticateToken, async (req, res) => {
   try {
     const result = await db.query('SELECT NOW() as current_time, version()');
     res.json({
@@ -213,31 +200,10 @@ app.get("/api/test-db", async (req, res) => {
   }
 });
 
-// Endpoint temporário para debug de usuários
-app.get("/api/debug/users", async (req, res) => {
-  try {
-    const result = await db.query('SELECT id, nome, email, tipo, ativo FROM usuarios LIMIT 5');
-    res.json({
-      success: true,
-      count: result.rows.length,
-      users: result.rows
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : String(error)
-    });
-  }
-});
-
-
-
-
-
 // Registrar rotas essenciais
 app.use("/api/usuarios", userRoutes);
 app.use("/api/auth", userRoutes); // compatibilidade para login
-app.use("/api/permissoes", require("./modules/sistema/routes/permissoesRoutes").default);
+app.use("/api/permissoes", permissaoRoutes);
 app.use("/api/admin", adminUsuariosRoutes);
 
 // Registrar rotas essenciais
@@ -250,12 +216,11 @@ app.use("/api/contrato-produtos", contratoProdutoRoutes);
 
 app.use("/api/refeicoes", refeicaoRoutes);
 app.use("/api/refeicao-produtos", refeicaoProdutoRoutes);
-app.use("/api/refeicao-produto-modalidade", require("./modules/nutricao/routes/refeicaoProdutoModalidadeRoutes").default);
-app.use("/api", require("./modules/nutricao/routes/refeicaoCalculosRoutes").default); // Cálculos automáticos
+app.use("/api/refeicao-produto-modalidade", refeicaoProdutoModalidadeRoutes);
+app.use("/api", refeicaoCalculosRoutes);
 app.use("/api/cardapios", cardapioRoutes);
 app.use("/api/tipos-refeicao", tipoRefeicaoRoutes);
 app.use("/api/nutricionistas", nutricionistaRoutes);
-// app.use("/api/demandas", demandaRoutes); // REMOVIDO - rota duplicada, usar demandasRoutes
 app.use("/api/produtos", produtoRoutes);
 app.use("/api/produto-modalidades", produtoModalidadeRoutes);
 app.use("/api/unidades-medida", unidadeMedidaRoutes);
@@ -282,17 +247,6 @@ app.use("/api/solicitacoes-alimentos", solicitacoesAlimentosRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/notificacoes", notificacoesRoutes);
 app.use("/api/disparos-notificacao", disparosNotificacaoRoutes);
-app.use("/api", debugEnvRoutes); // Debug endpoint
-
-
-// Rotas de gás removidas
-
-
-
-// Rotas preservadas do sistema escolar
-
-
-
 
 // Rota raiz - informações da API
 app.get("/", (req, res) => {
@@ -305,34 +259,30 @@ app.get("/", (req, res) => {
     endpoints: {
       health: "/health",
       database_test: "/api/test-db",
-      performance: "/api/performance",
       documentation: "Rotas disponíveis listadas abaixo"
     },
     availableRoutes: [
-      "/api/usuarios",
-      "/api/auth",
-      "/api/escolas",
-      "/api/modalidades",
-      "/api/escola-modalidades",
-
-      "/api/fornecedores",
-      "/api/contratos",
-      "/api/contrato-produtos",
-      "/api/compras",
-      "/api/refeicoes",
-      "/api/cardapios",
-      "/api/demanda",
-      "/api/produtos",
-      "/api/produtos-orm",
-      "/api/produto-modalidades",
-
-
-      "/api/estoque-moderno",
-      
-      "/api/performance",
-      "/api/backup",
-      "/api/test-db",
-      "/health"
+      "/api/usuarios", "/api/auth",
+      "/api/escolas", "/api/modalidades", "/api/escola-modalidades",
+      "/api/fornecedores", "/api/contratos", "/api/contrato-produtos",
+      "/api/refeicoes", "/api/refeicao-produtos", "/api/refeicao-produto-modalidade",
+      "/api/refeicao-calculos",
+      "/api/cardapios", "/api/tipos-refeicao", "/api/nutricionistas",
+      "/api/demandas",
+      "/api/produtos", "/api/produto-modalidades", "/api/unidades-medida",
+      "/api/estoque-central", "/api/estoque-escolar",
+      "/api/saldo-contratos-modalidades",
+      "/api/guias",
+      "/api/entregas",
+      "/api/compras", "/api/planejamento-compras",
+      "/api/faturamentos",
+      "/api/recebimentos",
+      "/api/instituicao", "/api/pnae", "/api/periodos",
+      "/api/escola-portal", "/api/calendario-letivo",
+      "/api/taco", "/api/grupos-ingredientes",
+      "/api/solicitacoes-alimentos",
+      "/api/dashboard", "/api/notificacoes", "/api/disparos-notificacao",
+      "/api/permissoes", "/api/admin"
     ],
     timestamp: new Date().toISOString()
   });
@@ -363,7 +313,6 @@ async function iniciarServidor() {
 
       console.log(`📊 Tabelas disponíveis: ${tabelas.rows[0].total}`);
 
-      // ORM removido - usando SQL puro
       console.log('✅ Sistema configurado para usar SQL puro');
 
       // Initialize cache system
@@ -397,16 +346,14 @@ async function iniciarServidor() {
         console.error('⚠️ Falha ao garantir tabela produto_composicao_nutricional (continuando):', e);
       }
 
-
-
       console.log('✅ Módulos inicializados com sucesso!');
 
-      // Real-time monitoring service removed
       console.log('✅ Serviços simplificados inicializados');
 
       // Iniciar servidor com host/porta dinâmicos e fallback
+      const DEFAULT_PORT = 3000;
       const HOST = process.env.HOST || '0.0.0.0';
-      const BASE_PORT = Number(process.env.PORT) || (config as any).port || 3000;
+      const BASE_PORT = Number(process.env.PORT) || (config as any).port || DEFAULT_PORT;
       let currentPort = BASE_PORT;
 
       const startListening = (retries = 5) => {

@@ -27,8 +27,8 @@ if (process.env.NEON_DATABASE_URL || process.env.DATABASE_URL || process.env.POS
     // CONFIGURAÇÃO NEON/VERCEL (Connection String)
     // ========================================
     // Prioridade: NEON_DATABASE_URL > POSTGRES_URL > DATABASE_URL
-    const connectionString = process.env.NEON_DATABASE_URL || process.env.POSTGRES_URL || process.env.DATABASE_URL;
-    
+    const connectionString = process.env.NEON_DATABASE_URL || process.env.POSTGRES_URL || process.env.DATABASE_URL || '';
+
     // Detectar se é ambiente local (localhost) ou produção (Neon/Vercel)
     const isLocalDatabase = connectionString.includes('localhost') || connectionString.includes('127.0.0.1');
     
@@ -73,7 +73,13 @@ if (process.env.NEON_DATABASE_URL || process.env.DATABASE_URL || process.env.POS
         user: process.env.DB_USER || 'postgres',
         host: process.env.DB_HOST || 'localhost',
         database: process.env.DB_NAME || 'alimentacao_escolar',
-        password: process.env.DB_PASSWORD || 'admin123',
+        password: process.env.DB_PASSWORD || (() => {
+            if (process.env.NODE_ENV === 'production') {
+                throw new Error('ERRO CRÍTICO: DB_PASSWORD não configurado em produção!');
+            }
+            console.warn('⚠️ DB_PASSWORD não configurado — usando padrão para desenvolvimento');
+            return 'admin123';
+        })(),
         port: parseInt(process.env.DB_PORT || '5432'),
         ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
         client_encoding: 'UTF8'
@@ -161,9 +167,6 @@ const db = {
         };
     }
 };
-
-// Testar conexão ao iniciar
-testConnection();
 
 // Fechar pool quando aplicação terminar
 process.on('SIGINT', () => {

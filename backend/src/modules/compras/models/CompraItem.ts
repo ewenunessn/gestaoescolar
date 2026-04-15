@@ -92,13 +92,13 @@ export class PedidoItemModel {
   async excluir(id: number): Promise<boolean> {
     const query = 'DELETE FROM pedido_itens WHERE id = $1';
     const result = await this.pool.query(query, [id]);
-    return result.rowCount > 0;
+    return result.rowCount! > 0;
   }
 
   async excluirPorPedido(pedidoId: number): Promise<boolean> {
     const query = 'DELETE FROM pedido_itens WHERE pedido_id = $1';
     const result = await this.pool.query(query, [pedidoId]);
-    return result.rowCount > 0;
+    return result.rowCount! > 0;
   }
 
   async calcularValorTotal(pedidoId: number): Promise<number> {

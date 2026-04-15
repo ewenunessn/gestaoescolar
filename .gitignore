@@ -79,6 +79,7 @@ web_modules/
 backend/.env
 backend/.env.local
 backend/.env.production
+backend/.env.vercel
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache

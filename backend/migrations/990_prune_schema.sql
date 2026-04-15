@@ -4,6 +4,16 @@
 -- - Runs in a single transaction
 -- - Logs all dropped tables into schema_prune_log
 -- - Only affects BASE TABLES in the public schema
+--
+-- PROTEÇÃO: requer confirmação explícita via session variable
+-- Execute antes: SET session myvars.confirm_prune = 'YES';
+
+DO $$
+BEGIN
+  IF current_setting('myvars.confirm_prune', true) != 'YES' THEN
+    RAISE EXCEPTION 'PRUNE ABORTADO: execute SET session myvars.confirm_prune = ''YES'' antes de rodar esta migração';
+  END IF;
+END $$;
 
 BEGIN;
 

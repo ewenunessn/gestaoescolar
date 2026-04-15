@@ -9,6 +9,7 @@ import theme from './theme/theme';
 import { ToastContainer as ReactToastifyContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import UpdateNotification from './components/UpdateNotification';
+import ErrorBoundary from './components/ErrorBoundary';
 
 interface AppProps {
   routerConfig?: {
@@ -21,15 +22,16 @@ interface AppProps {
 
 export default function App({ routerConfig }: AppProps) {
   return (
-    <AuthProvider>
-      <QueryProvider>
-        <ThemeProvider theme={theme}>
-          <CssBaseline />
-          <PageTitleProvider>
-            <ConfigProvider>
-              <AppRouter routerConfig={routerConfig} />
-              <UpdateNotification />
-              <ReactToastifyContainer
+    <ErrorBoundary>
+      <AuthProvider>
+        <QueryProvider>
+          <ThemeProvider theme={theme}>
+            <CssBaseline />
+            <PageTitleProvider>
+              <ConfigProvider>
+                <AppRouter routerConfig={routerConfig} />
+                <UpdateNotification />
+                <ReactToastifyContainer
                   position="top-right"
                   autoClose={4000}
                   hideProgressBar={false}
@@ -42,10 +44,11 @@ export default function App({ routerConfig }: AppProps) {
                   theme="light"
                   style={{ zIndex: 9999 }}
                 />
-            </ConfigProvider>
-          </PageTitleProvider>
-        </ThemeProvider>
-      </QueryProvider>
-    </AuthProvider>
+              </ConfigProvider>
+            </PageTitleProvider>
+          </ThemeProvider>
+        </QueryProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

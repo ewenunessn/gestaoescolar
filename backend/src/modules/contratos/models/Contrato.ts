@@ -123,7 +123,7 @@ export class ContratoModel {
     `;
 
     const result = await this.pool.query(query, [novoSaldo, id]);
-    return result.rowCount > 0;
+    return result.rowCount! > 0;
   }
 
   async reservarSaldo(id: number, valor: number): Promise<boolean> {
@@ -134,7 +134,7 @@ export class ContratoModel {
     `;
 
     const result = await this.pool.query(query, [valor, id]);
-    return result.rowCount > 0;
+    return result.rowCount! > 0;
   }
 
   async liberarSaldo(id: number, valor: number): Promise<boolean> {
@@ -145,7 +145,7 @@ export class ContratoModel {
     `;
 
     const result = await this.pool.query(query, [valor, id]);
-    return result.rowCount > 0;
+    return result.rowCount! > 0;
   }
 
   async buscarContratosVencendo(dias: number = 30): Promise<Contrato[]> {

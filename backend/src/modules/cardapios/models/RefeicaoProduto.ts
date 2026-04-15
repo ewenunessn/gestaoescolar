@@ -188,7 +188,7 @@ export async function deleteRefeicaoProduto(id: number): Promise<boolean> {
   try {
     const query = `DELETE FROM refeicao_produtos WHERE id = $1`;
     const result = await db.query(query, [id]);
-    return result.rowCount > 0;
+    return result.rowCount! > 0;
   } catch (error) {
     console.error("❌ Erro ao remover produto da refeição:", error);
     throw error;

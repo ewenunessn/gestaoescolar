@@ -6,6 +6,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 export interface SystemAdminRequest extends Request {
   systemAdmin?: {
     id: number;
+    nome: string;
     email: string;
     role: string;
     permissions: any;
@@ -41,6 +42,7 @@ export function authenticateSystemAdmin(
 
     req.systemAdmin = {
       id: decoded.id,
+      nome: decoded.nome || decoded.name || 'admin',
       email: decoded.email,
       role: decoded.role,
       permissions: decoded.permissions
