@@ -247,44 +247,55 @@ async function calcularDemandaPeriodo(
       ON rpm.refeicao_produto_id = rp.id AND rpm.modalidade_id = cm2.modalidade_id
     WHERE crd.cardapio_modalidade_id = ANY($1)
       AND crd.ativo = true
-      AND crd.dia BETWEEN $2 AND $3
+      AND (
+        -- Período normal (mesmo mês): dia entre início e fim
+        ($2 <= $3 AND crd.dia BETWEEN $2 AND $3)
+        OR
+        -- Período que cruza meses: dia >= início OU dia <= fim
+        ($2 > $3 AND (crd.dia >= $2 OR crd.dia <= $3))
+      )
   `, [cardapiosQuery.rows.map((c: any) => c.id), diaInicio, diaFim]);
+
+  // Se não encontrou refeições no range de dias, usa TODOS os dias do cardápio
+  // (fallback para quando o período não coincide com os dias cadastrados)
+  let refeicoes = refeicoesQuery.rows;
+  if (refeicoes.length === 0) {
+    console.log(`[FALLBACK] Nenhuma refeição no range ${diaInicio}-${diaFim}, usando todos os dias do cardápio`);
+    const fallbackQuery = await db.pool.query(`
+      SELECT
+        crd.dia,
+        cm2.modalidade_id,
+        rp.produto_id,
+        p.nome as produto_nome,
+        COALESCE(um.codigo, 'UN') as unidade,
+        p.peso as peso_embalagem,
+        COALESCE(p.fator_correcao, 1.0) as fator_correcao,
+        COALESCE(p.indice_coccao, 1.0) as indice_coccao,
+        COALESCE(rpm.per_capita_ajustado, rp.per_capita) as per_capita,
+        rp.tipo_medida
+      FROM cardapio_refeicoes_dia crd
+      INNER JOIN cardapios_modalidade cm ON cm.id = crd.cardapio_modalidade_id
+      INNER JOIN cardapio_modalidades cm2 ON cm2.cardapio_id = cm.id
+      INNER JOIN refeicoes r ON r.id = crd.refeicao_id
+      INNER JOIN refeicao_produtos rp ON rp.refeicao_id = r.id
+      INNER JOIN produtos p ON p.id = rp.produto_id
+      LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
+      LEFT JOIN refeicao_produto_modalidade rpm
+        ON rpm.refeicao_produto_id = rp.id AND rpm.modalidade_id = cm2.modalidade_id
+      WHERE crd.cardapio_modalidade_id = ANY($1)
+        AND crd.ativo = true
+    `, [cardapiosQuery.rows.map((c: any) => c.id)]);
+    refeicoes = fallbackQuery.rows;
+    console.log(`[FALLBACK] Usando ${refeicoes.length} refeições sem filtro de dia`);
+  }
 
   console.log('[DEBUG] Cardápio IDs:', cardapiosQuery.rows.map((c: any) => c.id));
   console.log('[DEBUG] Dia range:', diaInicio, 'a', diaFim);
-  console.log('[DEBUG] Refeições query result:', refeicoesQuery.rows.length, 'rows');
-  if (refeicoesQuery.rows.length > 0) {
-    console.log('[DEBUG] Primeira row:', refeicoesQuery.rows[0]);
-  } else {
-    // Testar query simplificada para debug
-    console.log('[DEBUG] Testando query simplificada...');
-    const testQuery = await db.pool.query(`
-      SELECT crd.id, crd.cardapio_modalidade_id, crd.dia, crd.refeicao_id, crd.ativo
-      FROM cardapio_refeicoes_dia crd
-      WHERE crd.cardapio_modalidade_id = ANY($1)
-        AND crd.ativo = true
-        AND crd.dia BETWEEN $2 AND $3
-    `, [cardapiosQuery.rows.map((c: any) => c.id), diaInicio, diaFim]);
-    console.log('[DEBUG] cardapio_refeicoes_dia encontrado:', testQuery.rows.length);
-    if (testQuery.rows.length > 0) {
-      console.log('[DEBUG] Test rows:', testQuery.rows);
-      
-      // Testar com refeicao_produtos
-      const refeicaoIds = testQuery.rows.map(r => r.refeicao_id);
-      const testQuery2 = await db.pool.query(`
-        SELECT rp.id, rp.refeicao_id, rp.produto_id
-        FROM refeicao_produtos rp
-        WHERE rp.refeicao_id = ANY($1)
-        LIMIT 5
-      `, [refeicaoIds]);
-      console.log('[DEBUG] refeicao_produtos encontrado:', testQuery2.rows.length);
-      if (testQuery2.rows.length > 0) console.log('[DEBUG] RP rows:', testQuery2.rows);
-    }
-  }
+  console.log('[DEBUG] Refeições encontradas:', refeicoes.length, 'rows');
 
   // Agrupar por modalidade → produto → ocorrências
   const porModalidade = new Map<number, Map<number, any[]>>();
-  for (const ref of refeicoesQuery.rows) {
+  for (const ref of refeicoes) {
     if (!porModalidade.has(ref.modalidade_id)) porModalidade.set(ref.modalidade_id, new Map());
     const pm = porModalidade.get(ref.modalidade_id)!;
     if (!pm.has(ref.produto_id)) pm.set(ref.produto_id, []);
