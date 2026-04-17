@@ -609,10 +609,11 @@ export const guiaController = {
         let dataKey = '';
         if (item.data_entrega) {
           // Handle both Date objects and strings
-          if (item.data_entrega instanceof Date) {
-            dataKey = item.data_entrega.toISOString().split('T')[0];
+          const d = item.data_entrega as any;
+          if (d instanceof Date) {
+            dataKey = d.toISOString().split('T')[0];
           } else {
-            dataKey = String(item.data_entrega).split('T')[0];
+            dataKey = String(d).split('T')[0];
           }
         }
         const key = `${item.produto_id}__${dataKey}`;

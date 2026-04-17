@@ -67,9 +67,9 @@ export async function debugLogin(req: Request, res: Response) {
       isSystemAdmin: user.tipo === 'admin'
     };
 
-    const token = jwt.sign(tokenPayload, config.jwtSecret, { expiresIn: config.jwtExpiresIn });
+    const token = jwt.sign(tokenPayload, config.jwtSecret as string, { expiresIn: config.jwtExpiresIn as any });
     debugInfo.data.tokenGerado = !!token;
-    debugInfo.data.tokenPreview = token.substring(0, 30) + '...';
+    debugInfo.data.tokenPreview = (token as string).substring(0, 30) + '...';
 
     debugInfo.step = '6. Sucesso!';
     return res.json({

@@ -15,6 +15,8 @@ export interface SystemAdmin {
   id: number;
   nome: string;
   email: string;
+  role: string;
+  permissions: any;
 }
 
 declare global {

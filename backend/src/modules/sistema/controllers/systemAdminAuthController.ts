@@ -60,7 +60,7 @@ export class SystemAdminAuthController {
           type: 'system_admin'
         },
         JWT_SECRET,
-        { expiresIn: config.jwtExpiresIn as string }
+        { expiresIn: config.jwtExpiresIn as any }
       );
 
       // Log de auditoria
@@ -93,7 +93,7 @@ export class SystemAdminAuthController {
       res.status(500).json({
         success: false,
         message: 'Erro ao fazer login',
-        error: error.message
+        error: (error as any).message
       });
     }
   }
@@ -131,7 +131,7 @@ export class SystemAdminAuthController {
       res.status(500).json({
         success: false,
         message: 'Erro ao buscar dados do administrador',
-        error: error.message
+        error: (error as any).message
       });
     }
   }
@@ -158,7 +158,7 @@ export class SystemAdminAuthController {
       res.status(500).json({
         success: false,
         message: 'Erro ao fazer logout',
-        error: error.message
+        error: (error as any).message
       });
     }
   }

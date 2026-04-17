@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, RequestHandler } from 'express';
 import {
   getSystemStats
 } from '../controllers/adminDataController';
@@ -7,7 +7,7 @@ import { authenticateSystemAdmin } from '../../../middleware/systemAdminAuth';
 const router = Router();
 
 // Todas as rotas requerem autenticação de system admin
-router.use(authenticateSystemAdmin);
+router.use(authenticateSystemAdmin as unknown as RequestHandler);
 
 // Obter estatísticas gerais do sistema
 router.get('/stats', getSystemStats);

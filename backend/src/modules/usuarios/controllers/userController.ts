@@ -95,7 +95,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     isSystemAdmin
   };
 
-  const token = jwt.sign(tokenPayload, config.jwtSecret as string, { expiresIn: config.jwtExpiresIn as string });
+  const token = jwt.sign(tokenPayload, config.jwtSecret as string, { expiresIn: config.jwtExpiresIn as any });
 
   res.json({
     success: true,
