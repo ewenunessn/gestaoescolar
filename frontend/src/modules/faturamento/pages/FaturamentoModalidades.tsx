@@ -300,21 +300,12 @@ export default function FaturamentoModalidades() {
       return;
     }
     
-      modalidadeId,
-      contratoProdutoId,
-      valor,
-      novaQuantidade
-    });
-    
     const novosFaturamentos = faturamentos.map(fat => {
       if (fat.modalidade_id === modalidadeId) {
         return {
           ...fat,
           itens: fat.itens.map(item => {
             if (item.contrato_produto_id === contratoProdutoId) {
-                antes: item.quantidade_alocada,
-                depois: novaQuantidade
-              });
               return { ...item, quantidade_alocada: novaQuantidade };
             }
             return item;
