@@ -1,6 +1,20 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
+import { createRequire } from "module";
+
+const require = createRequire(import.meta.url);
+
+// Resolve a package from either local or workspace root node_modules
+function resolvePackage(pkg: string): string {
+  try {
+    return path.dirname(require.resolve(`${pkg}/package.json`));
+  } catch {
+    // fallback to workspace root
+    const rootPath = path.resolve(__dirname, `../node_modules/${pkg}`);
+    return rootPath;
+  }
+}
 
 export default defineConfig(({ mode }) => {
   // Carregar variáveis de ambiente baseadas no modo
@@ -36,7 +50,9 @@ export default defineConfig(({ mode }) => {
         'util': false,
         'events': false,
         // Path aliases
-        '@shared': path.resolve(__dirname, '../shared')
+        '@shared': path.resolve(__dirname, '../shared'),
+        // Explicit resolution for packages that may be hoisted by npm workspaces
+        'react-toastify': resolvePackage('react-toastify'),
       },
       dedupe: ['react', 'react-dom']
     },
