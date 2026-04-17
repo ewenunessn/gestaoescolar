@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build --mode production",
-    "vercel-build": "vite build --mode production",
+    "vercel-build": "NODE_PATH=../node_modules vite build --mode production",
     "preview": "vite preview",
     "deploy": "vercel --prod",
     "deploy:dev": "vercel",

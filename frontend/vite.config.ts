@@ -38,9 +38,7 @@ export default defineConfig(({ mode }) => {
         // Path aliases
         '@shared': path.resolve(__dirname, '../shared')
       },
-      dedupe: ['react', 'react-dom'],
-      // Resolve modules from workspace root node_modules (npm workspaces hoisting)
-      moduleDirectories: ['node_modules', path.resolve(__dirname, '../node_modules')]
+      dedupe: ['react', 'react-dom']
     },
     esbuild: {
       // Skip type checking during build for faster builds
