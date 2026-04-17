@@ -212,12 +212,6 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({
       if (primeiroItem.escola_total_alunos) {
         totalAlunos = primeiroItem.escola_total_alunos;
       }
-      
-        nome: nomeEscola,
-        endereco: enderecoEscola,
-        totalAlunos,
-        modalidades
-      });
 
       // Gerar QR Code com o código da guia
       const codigoGuia = primeiroItem.codigo_guia || `GUIA-${primeiroItem.ano}-${String(primeiroItem.mes).padStart(2, '0')}-${String(primeiroItem.guia_id).padStart(5, '0')}`;
