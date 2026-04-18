@@ -27,7 +27,8 @@ import {
   Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
-  Inventory as InventoryIcon
+  Inventory as InventoryIcon,
+  ArrowBack as ArrowBackIcon
 } from "@mui/icons-material";
 import { ColumnDef } from "@tanstack/react-table";
 import PageContainer from "../../../components/PageContainer";
@@ -77,6 +78,7 @@ const GuiaDemandaEscolaItens: React.FC = () => {
   
   const [guia, setGuia] = useState<any>(null);
   const [escola, setEscola] = useState<any>(null);
+  const [escolas, setEscolas] = useState<any[]>([]);
   const [itens, setItens] = useState<GuiaProdutoEscola[]>([]);
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(false);
@@ -135,9 +137,10 @@ const GuiaDemandaEscolaItens: React.FC = () => {
       const guiaData = await guiaService.buscarGuia(Number(guiaId));
       setGuia(guiaData);
       
-      const [itensData, produtosData] = await Promise.all([
+      const [itensData, produtosData, escolasData] = await Promise.all([
         guiaService.listarProdutosPorEscola(Number(escolaId), guiaData.mes, guiaData.ano),
-        produtoService.listar()
+        produtoService.listar(),
+        api.get('/escolas').then(res => res.data.data || res.data)
       ]);
       
       // Buscar dados da escola - usar a API correta
@@ -151,6 +154,7 @@ const GuiaDemandaEscolaItens: React.FC = () => {
       
       setItens(itensData);
       setProdutos(produtosData);
+      setEscolas(escolasData);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
     } finally {
@@ -429,17 +433,70 @@ const GuiaDemandaEscolaItens: React.FC = () => {
   return (
     <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden' }}>
       <PageContainer fullHeight>
-        <PageBreadcrumbs items={[
-          { label: 'Dashboard', path: '/dashboard' },
-          { label: 'Demandas', path: '/demandas' },
-          { label: 'Guias', path: '/guias-demanda' },
-          { label: escola?.nome || 'Escola' },
-        ]} />
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
+          <Tooltip title="Voltar">
+            <IconButton
+              size="small"
+              onClick={() => navigate(`/guias-demanda/${guiaId}`)}
+              sx={{ 
+                bgcolor: 'action.hover',
+                border: '1px solid',
+                borderColor: 'divider',
+                '&:hover': { 
+                  bgcolor: 'action.selected',
+                  borderColor: 'primary.main'
+                }
+              }}
+            >
+              <ArrowBackIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <PageBreadcrumbs items={[
+            { label: 'Dashboard', path: '/dashboard' },
+            { label: 'Demandas', path: '/demandas' },
+            { label: 'Guias', path: '/guias-demanda' },
+            { label: escola?.nome || 'Escola' },
+          ]} />
+        </Box>
         {/* Estatísticas discretas */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-            Itens da Escola
-          </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, mt: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              Itens da Escola
+            </Typography>
+            
+            <Autocomplete
+              size="small"
+              options={escolas}
+              getOptionLabel={(option) => option.nome || ''}
+              value={escolas.find(e => e.id === Number(escolaId)) || null}
+              onChange={(_, newValue) => {
+                if (newValue) {
+                  navigate(`/guias-demanda/${guiaId}/escola/${newValue.id}`);
+                }
+              }}
+              sx={{ minWidth: 300 }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  placeholder="Alternar escola..."
+                  variant="outlined"
+                  size="small"
+                  InputProps={{
+                    ...params.InputProps,
+                    startAdornment: (
+                      <>
+                        <InputAdornment position="start">
+                          <SearchIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
+                        </InputAdornment>
+                        {params.InputProps.startAdornment}
+                      </>
+                    )
+                  }}
+                />
+              )}
+            />
+          </Box>
           
           <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
             {[
