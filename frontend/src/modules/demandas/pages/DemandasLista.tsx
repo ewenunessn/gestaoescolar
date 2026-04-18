@@ -510,6 +510,37 @@ export default function DemandasLista() {
             { label: 'Dashboard', path: '/dashboard' },
             { label: 'Demandas' },
           ]}
+          action={
+            <Autocomplete
+              size="small"
+              options={escolas}
+              getOptionLabel={(option) => option.nome || ''}
+              value={escolas.find(e => e.nome === filtroSolicitante) || null}
+              onChange={(_, newValue) => {
+                setFiltroSolicitante(newValue?.nome || '');
+              }}
+              sx={{ minWidth: 300 }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  placeholder="Filtrar por escola..."
+                  variant="outlined"
+                  size="small"
+                  InputProps={{
+                    ...params.InputProps,
+                    startAdornment: (
+                      <>
+                        <InputAdornment position="start">
+                          <SearchIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
+                        </InputAdornment>
+                        {params.InputProps.startAdornment}
+                      </>
+                    )
+                  }}
+                />
+              )}
+            />
+          }
         />
         
         <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', p: 3, mb: 3 }}>
