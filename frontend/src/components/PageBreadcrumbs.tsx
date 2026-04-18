@@ -10,7 +10,7 @@ interface BreadcrumbItem {
 
 interface PageBreadcrumbsProps {
   items?: BreadcrumbItem[];
-  breadcrumbs?: BreadcrumbItem[]; // Alias para compatibilidade
+  breadcrumbs?: BreadcrumbItem[];
 }
 
 export default function PageBreadcrumbs({ items, breadcrumbs }: PageBreadcrumbsProps) {
@@ -23,11 +23,8 @@ export default function PageBreadcrumbs({ items, breadcrumbs }: PageBreadcrumbsP
   }
 
   return (
-    <Box sx={{ mb: 0.25 }}>
-      <Breadcrumbs
-        aria-label="breadcrumb"
-        sx={{ fontSize: '0.75rem' }}
-      >
+    <Box className="data-breadcrumb-area">
+      <Breadcrumbs aria-label="breadcrumb" separator="›">
         {breadcrumbItems.map((item, index) => {
           const isLast = index === breadcrumbItems.length - 1;
 
@@ -35,14 +32,7 @@ export default function PageBreadcrumbs({ items, breadcrumbs }: PageBreadcrumbsP
             return (
               <Typography
                 key={index}
-                color="text.primary"
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 0.4,
-                  fontSize: '0.75rem',
-                  fontWeight: 500,
-                }}
+                className="data-breadcrumb-current"
               >
                 {item.icon}
                 {item.label}
@@ -53,17 +43,8 @@ export default function PageBreadcrumbs({ items, breadcrumbs }: PageBreadcrumbsP
           return (
             <Link
               key={index}
-              color="inherit"
+              className="data-breadcrumb-link"
               onClick={() => navigate(item.path!)}
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 0.4,
-                cursor: 'pointer',
-                textDecoration: 'none',
-                fontSize: '0.75rem',
-                '&:hover': { textDecoration: 'underline' },
-              }}
             >
               {item.icon}
               {item.label}

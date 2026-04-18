@@ -33,6 +33,7 @@ import {
   Chip,
   Stack,
   Tooltip,
+  useTheme,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
@@ -41,15 +42,17 @@ import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 
-// ── GitHub Dark Mode tokens ───────────────────────────────────
-const GREEN = '#2ea043';
-const SIDEBAR_BG = '#0d1117';
-const CANVAS = '#161b22';
-const BORDER = '#21262d';
-const BORDER_MD = '#30363d';
-const TEXT = '#e6edf3';
-const MUTED = '#8b949e';
-const SUB = '#6e7681';
+// ── Theme-derived tokens (centralized in theme.ts) ──
+const getToken = (theme: ReturnType<typeof useTheme>) => ({
+  green: theme.palette.success.main,
+  bg: theme.palette.background.default,
+  canvas: theme.palette.background.paper,
+  border: theme.palette.divider,
+  borderMd: 'rgba(255,255,255,0.10)',
+  text: theme.palette.text.primary,
+  muted: theme.palette.text.secondary,
+  sub: '#666',
+});
 
 // ── Debounce hook ──
 function useDebounce<T>(value: T, delay: number): T {
@@ -98,6 +101,8 @@ export function DataTableAdvanced<TData>({
   onImportExportClick,
   emptyMessage = 'Nenhum registro encontrado',
 }: DataTableAdvancedProps<TData>) {
+  const theme = useTheme();
+  const t = getToken(theme);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
@@ -159,25 +164,17 @@ export function DataTableAdvanced<TData>({
 
   return (
     <Paper
+      className="data-table-paper"
       sx={{
         width: '100%',
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
-        border: `1px solid ${BORDER}`,
-        borderRadius: '6px',
-        backgroundColor: CANVAS,
-        backgroundImage: 'none',
-        boxShadow: 'none',
         overflow: 'hidden',
       }}
     >
       {/* ── Toolbar ── */}
-      <Box sx={{
-        px: 2, py: 1.25,
-        borderBottom: `1px solid ${BORDER}`,
-        backgroundColor: CANVAS,
-      }}>
+      <Box className="data-table-toolbar">
         {/* Title + count */}
         {title && (
           <Box sx={{
@@ -187,17 +184,17 @@ export function DataTableAdvanced<TData>({
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
               <Box sx={{
                 width: 3, height: 18, borderRadius: '2px',
-                bgcolor: GREEN,
+                bgcolor: t.green,
               }} />
               <Typography sx={{
                 fontSize: '0.8125rem', fontWeight: 600,
-                color: TEXT,
+                color: t.text,
                 letterSpacing: '-0.01em',
               }}>
                 {title}
               </Typography>
               <Typography sx={{
-                fontSize: '0.6875rem', color: SUB,
+                fontSize: '0.6875rem', color: t.sub,
                 ml: 0.5, fontWeight: 400,
               }}>
                 {filteredCount} {filteredCount === 1 ? 'registro' : 'registros'}
@@ -227,7 +224,7 @@ export function DataTableAdvanced<TData>({
               )}
               {!searchOpen && (
                 <Tooltip title="Buscar">
-                  <IconButton size="small" onClick={() => setSearchOpen(true)} sx={{ color: MUTED }}>
+                  <IconButton size="small" onClick={() => setSearchOpen(true)} sx={{ color: t.muted }}>
                     <SearchIcon sx={{ fontSize: 17 }} />
                   </IconButton>
                 </Tooltip>
@@ -273,24 +270,24 @@ export function DataTableAdvanced<TData>({
               sx={{
                 width: 240,
                 '& .MuiOutlinedInput-root': {
-                  bgcolor: SIDEBAR_BG,
+                  bgcolor: t.bg,
                   borderRadius: '6px',
                   fontSize: '0.75rem',
                   height: 32,
-                  '& fieldset': { borderColor: BORDER_MD },
-                  '&:hover fieldset': { borderColor: MUTED },
-                  '&.Mui-focused fieldset': { borderColor: GREEN },
+                  '& fieldset': { borderColor: t.borderMd },
+                  '&:hover fieldset': { borderColor: t.muted },
+                  '&.Mui-focused fieldset': { borderColor: t.green },
                 },
                 '& .MuiInputBase-input': {
-                  color: TEXT,
-                  '&::placeholder': { color: SUB, opacity: 1 },
+                  color: t.text,
+                  '&::placeholder': { color: t.sub, opacity: 1 },
                   padding: '0 10px',
                 },
               }}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start" sx={{ ml: 0.5 }}>
-                    <SearchIcon sx={{ color: MUTED, fontSize: 15 }} />
+                    <SearchIcon sx={{ color: t.muted, fontSize: 15 }} />
                   </InputAdornment>
                 ),
                 endAdornment: (
@@ -299,7 +296,7 @@ export function DataTableAdvanced<TData>({
                       setSearchInput('');
                       setGlobalFilter('');
                       setSearchOpen(false);
-                    }} sx={{ color: MUTED, p: 0.25 }}>
+                    }} sx={{ color: t.muted, p: 0.25 }}>
                       <ClearIcon sx={{ fontSize: 14 }} />
                     </IconButton>
                   </InputAdornment>
@@ -313,7 +310,7 @@ export function DataTableAdvanced<TData>({
               <IconButton
                 size="small"
                 onClick={(e) => setColumnMenuAnchor(e.currentTarget)}
-                sx={{ color: MUTED }}
+                sx={{ color: t.muted }}
               >
                 <ViewColumnIcon sx={{ fontSize: 17 }} />
               </IconButton>
@@ -322,7 +319,7 @@ export function DataTableAdvanced<TData>({
 
           {onFilterClick && (
             <Tooltip title="Filtros">
-              <IconButton size="small" onClick={onFilterClick} sx={{ color: MUTED }}>
+              <IconButton size="small" onClick={onFilterClick} sx={{ color: t.muted }}>
                 <FilterListIcon sx={{ fontSize: 17 }} />
               </IconButton>
             </Tooltip>
@@ -330,7 +327,7 @@ export function DataTableAdvanced<TData>({
 
           {onImportExportClick && (
             <Tooltip title="Importar/Exportar">
-              <IconButton size="small" onClick={onImportExportClick} sx={{ color: MUTED }}>
+              <IconButton size="small" onClick={onImportExportClick} sx={{ color: t.muted }}>
                 <MoreVertIcon sx={{ fontSize: 17 }} />
               </IconButton>
             </Tooltip>
@@ -338,7 +335,7 @@ export function DataTableAdvanced<TData>({
 
           {enableExport && (
             <Tooltip title="Exportar">
-              <IconButton size="small" onClick={handleExport} disabled={!onExport} sx={{ color: MUTED }}>
+              <IconButton size="small" onClick={handleExport} disabled={!onExport} sx={{ color: t.muted }}>
                 <FileDownloadIcon sx={{ fontSize: 17 }} />
               </IconButton>
             </Tooltip>
@@ -352,7 +349,7 @@ export function DataTableAdvanced<TData>({
           flex: 1,
           overflow: 'auto',
           '&::-webkit-scrollbar': { width: '6px', height: '6px' },
-          '&::-webkit-scrollbar-thumb': { background: BORDER_MD, borderRadius: '3px' },
+          '&::-webkit-scrollbar-thumb': { background: t.borderMd, borderRadius: '3px' },
           '&::-webkit-scrollbar-track': { background: 'transparent' },
         }}
       >
@@ -373,12 +370,12 @@ export function DataTableAdvanced<TData>({
                     padding="checkbox"
                     sx={{
                       fontWeight: 500,
-                      backgroundColor: SIDEBAR_BG,
-                      color: MUTED,
+                      backgroundColor: t.bg,
+                      color: t.muted,
                       fontSize: '0.6875rem',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
-                      borderBottom: `1px solid ${BORDER}`,
+                      borderBottom: `1px solid ${t.border}`,
                       position: 'sticky',
                       top: 0,
                       zIndex: 2,
@@ -391,8 +388,8 @@ export function DataTableAdvanced<TData>({
                       onChange={table.getToggleAllRowsSelectedHandler()}
                       size="small"
                       sx={{
-                        color: MUTED,
-                        '&.Mui-checked': { color: GREEN },
+                        color: t.muted,
+                        '&.Mui-checked': { color: t.green },
                       }}
                     />
                   </TableCell>
@@ -404,13 +401,13 @@ export function DataTableAdvanced<TData>({
                       key={header.id}
                       sx={{
                         fontWeight: 500,
-                        backgroundColor: SIDEBAR_BG,
-                        color: MUTED,
+                        backgroundColor: t.bg,
+                        color: t.muted,
                         fontSize: '0.6875rem',
                         textTransform: 'uppercase',
                         letterSpacing: '0.05em',
-                        borderBottom: `1px solid ${BORDER}`,
-                        borderRight: `1px solid ${BORDER}`,
+                        borderBottom: `1px solid ${t.border}`,
+                        borderRight: `1px solid ${t.border}`,
                         width: header.getSize(),
                         position: 'sticky',
                         top: 0,
@@ -440,7 +437,7 @@ export function DataTableAdvanced<TData>({
                               }
                               sx={{
                                 ml: 0.5,
-                                '&.Mui-active': { color: TEXT },
+                                '&.Mui-active': { color: t.text },
                                 '& .MuiTableSortLabel-icon': {
                                   fill: 'currentColor',
                                   opacity: 0.4,
@@ -460,13 +457,13 @@ export function DataTableAdvanced<TData>({
             {loading ? (
               <TableRow>
                 <TableCell colSpan={columns.length + (enableRowSelection ? 1 : 0)} align="center" sx={{ py: 8 }}>
-                  <CircularProgress sx={{ color: MUTED }} size={24} />
+                  <CircularProgress sx={{ color: t.muted }} size={24} />
                 </TableCell>
               </TableRow>
             ) : table.getRowModel().rows.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={columns.length + (enableRowSelection ? 1 : 0)} align="center" sx={{ py: 8 }}>
-                  <Typography sx={{ color: MUTED, fontSize: '0.8125rem' }}>
+                  <Typography sx={{ color: t.muted, fontSize: '0.8125rem' }}>
                     {emptyMessage}
                   </Typography>
                 </TableCell>
@@ -487,7 +484,7 @@ export function DataTableAdvanced<TData>({
                   }}
                 >
                   {enableRowSelection && (
-                    <TableCell padding="checkbox" sx={{ borderColor: BORDER, bgcolor: 'transparent' }}>
+                    <TableCell padding="checkbox" sx={{ borderColor: t.border, bgcolor: 'transparent' }}>
                       <Checkbox
                         checked={row.getIsSelected()}
                         onChange={row.getToggleSelectedHandler()}
@@ -508,12 +505,12 @@ export function DataTableAdvanced<TData>({
                           }
                         }}
                         sx={{
-                          borderBottom: `1px solid ${BORDER}`,
+                          borderBottom: `1px solid ${t.border}`,
                           bgcolor: 'transparent',
-                          color: TEXT,
+                          color: t.text,
                           fontSize: '0.8125rem',
                           padding: '8px 12px',
-                          borderColor: BORDER,
+                          borderColor: t.border,
                         }}
                       >
                         {flexRender(
@@ -546,8 +543,8 @@ export function DataTableAdvanced<TData>({
           `${from}–${to} de ${count !== -1 ? count : `mais de ${to}`}`
         }
         sx={{
-          borderTop: `1px solid ${BORDER}`,
-          backgroundColor: CANVAS,
+          borderTop: `1px solid ${t.border}`,
+          backgroundColor: t.canvas,
           '.MuiTablePagination-toolbar': {
             minHeight: 44,
             paddingLeft: 2,
@@ -555,17 +552,17 @@ export function DataTableAdvanced<TData>({
           },
           '.MuiTablePagination-selectLabel, .MuiTablePagination-displayedRows': {
             fontSize: '0.6875rem',
-            color: MUTED,
+            color: t.muted,
             padding: 0,
           },
           '.MuiSelect-select, .MuiInputBase-root': {
             fontSize: '0.6875rem',
-            color: TEXT,
+            color: t.text,
           },
-          '.MuiSvgIcon-root': { fontSize: '1rem', color: MUTED },
+          '.MuiSvgIcon-root': { fontSize: '1rem', color: t.muted },
           '.MuiIconButton-root': {
-            color: MUTED,
-            '&:hover': { color: TEXT },
+            color: t.muted,
+            '&:hover': { color: t.text },
           },
         }}
       />
@@ -578,8 +575,8 @@ export function DataTableAdvanced<TData>({
           onClose={() => setColumnMenuAnchor(null)}
           PaperProps={{
             sx: {
-              bgcolor: CANVAS,
-              border: `1px solid ${BORDER_MD}`,
+              bgcolor: t.canvas,
+              border: `1px solid ${t.borderMd}`,
               boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
               borderRadius: '6px',
               minWidth: 180,
@@ -587,7 +584,7 @@ export function DataTableAdvanced<TData>({
           }}
         >
           <MenuItem disabled dense>
-            <Typography sx={{ fontSize: '0.65rem', fontWeight: 600, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            <Typography sx={{ fontSize: '0.65rem', fontWeight: 600, color: t.muted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               Colunas
             </Typography>
           </MenuItem>
@@ -606,7 +603,7 @@ export function DataTableAdvanced<TData>({
                   size="small"
                   sx={{ p: 0 }}
                 />
-                <Typography sx={{ fontSize: '0.75rem', color: TEXT }}>
+                <Typography sx={{ fontSize: '0.75rem', color: t.text }}>
                   {typeof column.columnDef.header === 'string' ? column.columnDef.header : column.id}
                 </Typography>
               </MenuItem>

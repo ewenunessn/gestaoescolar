@@ -1,53 +1,56 @@
 import { createTheme, Theme, PaletteColor, PaletteColorOptions } from '@mui/material/styles';
 
 // ──────────────────────────────────────────────────────────────
-// DESIGN TOKENS — GitHub Dark Mode
+// DESIGN TOKENS — Gowen Dark Mode
 //
-// Background:    #0d1117  (page canvas)
-// Canvas inset:  #161b22  (panels, cards, sidebar)
-// Borders:       #21262d  →  #30363d
-// Text primary:  #e6edf3
-// Text muted:    #8b949e
-// Subtle:        #6e7681
-// Green accent:  #238636 / #2ea043
-// Blue:          #58a6ff
+// Background:    #0d0d0d  (page canvas — almost pure black)
+// Card surface:  #181818  (panels, cards, sidebar)
+// Borders:       rgba(255,255,255,0.07)
+// Text primary:  #f0f0f0
+// Text muted:    #888 / #666
+// Accent:        #00bfff  (cyan neon)
+// Green:         #22c55e  (active/status)
+// Red:           #ef4444  (danger)
+// Amber:         #f59e0b  (warning/tokens)
 // ──────────────────────────────────────────────────────────────
 
 const GH = {
-  bg:       '#0d1117',
-  canvas:   '#161b22',
-  canvasSub:'#0d1117',
-  border:   '#21262d',
-  borderMd: '#30363d',
-  text:     '#e6edf3',
-  muted:    '#8b949e',
-  sub:      '#6e7681',
-  green:    '#238636',
-  greenLt:  '#2ea043',
-  greenDim: 'rgba(35,134,54,0.15)',
-  blue:     '#58a6ff',
-  blueDim:  'rgba(56,139,253,0.15)',
-  red:      '#f85149',
-  redDim:   'rgba(248,81,73,0.15)',
-  orange:   '#d29922',
-  orangeDim:'rgba(210,153,34,0.15)',
-  purple:   '#bc8cff',
-  yellow:   '#e3b341',
+  bg:       '#0d0d0d',
+  canvas:   '#181818',
+  canvasSub:'#0d0d0d',
+  border:   'rgba(255,255,255,0.07)',
+  borderMd: 'rgba(255,255,255,0.10)',
+  text:     '#f0f0f0',
+  muted:    '#888',
+  sub:      '#666',
+  cyan:     '#00bfff',
+  cyanDim:  'rgba(0,191,255,0.12)',
+  green:    '#22c55e',
+  greenLt:  '#22c55e',
+  greenDim: 'rgba(34,197,94,0.12)',
+  blue:     '#00bfff',
+  blueDim:  'rgba(0,191,255,0.12)',
+  red:      '#ef4444',
+  redDim:   'rgba(239,68,68,0.12)',
+  orange:   '#f59e0b',
+  orangeDim:'rgba(245,158,11,0.12)',
+  purple:   '#a855f7',
+  yellow:   '#fbbf24',
 };
 
 const NAVY   = GH.bg;
-const GREEN  = GH.greenLt;
+const CYAN   = GH.cyan;
 
 // Compat aliases para refs antigas de SLATE → dark mapping
 const SLATE: Record<number, string> = {
   50:  GH.canvas,
-  100: '#1c2129',
-  200: GH.border,
-  300: GH.borderMd,
+  100: '#1a1a1a',
+  200: 'rgba(255,255,255,0.07)',
+  300: 'rgba(255,255,255,0.10)',
   400: GH.sub,
   500: GH.muted,
-  600: '#6e7681',
-  700: '#535c66',
+  600: '#666',
+  700: '#555',
   800: GH.text,
   900: '#ffffff',
 };
@@ -91,6 +94,8 @@ declare module '@mui/material/IconButton' {
 const baseTheme = {
   typography: {
     fontFamily: [
+      '"Inter"',
+      '"Geist"',
       '-apple-system',
       'BlinkMacSystemFont',
       '"Segoe UI"',
@@ -101,9 +106,9 @@ const baseTheme = {
       '"Segoe UI Emoji"',
     ].join(','),
     fontSize: 14,
-    h1:   { fontSize: '2rem', fontWeight: 600 },
-    h2:   { fontSize: '1.5rem', fontWeight: 600 },
-    h3:   { fontSize: '1.25rem', fontWeight: 600 },
+    h1:   { fontSize: '2rem', fontWeight: 700 },
+    h2:   { fontSize: '1.5rem', fontWeight: 700 },
+    h3:   { fontSize: '1.25rem', fontWeight: 700 },
     h4:   { fontSize: '1rem', fontWeight: 600 },
     h5:   { fontSize: '0.875rem', fontWeight: 600 },
     h6:   { fontSize: '0.8125rem', fontWeight: 600 },
@@ -112,7 +117,7 @@ const baseTheme = {
     button: { fontSize: '0.8125rem' },
   },
   shape: {
-    borderRadius: 6,
+    borderRadius: 12,
   },
   components: {
     MuiButton: {
@@ -123,7 +128,7 @@ const baseTheme = {
       styleOverrides: {
         root: ({ theme, ownerState }: { theme: any; ownerState: any }) => ({
           textTransform: 'none',
-          borderRadius: '6px',
+          borderRadius: '8px',
           fontWeight: 500,
           fontSize: '0.8125rem',
           lineHeight: 1.4,
@@ -141,18 +146,18 @@ const baseTheme = {
           }),
           ...(ownerState.variant === 'contained' && ownerState.color === 'primary' && {
             backgroundColor: theme.palette.primary.main,
-            color: '#fff',
-            '&:hover': { backgroundColor: '#26a641' },
+            color: '#0d0d0d',
+            '&:hover': { backgroundColor: '#33ccff' },
           }),
           ...(ownerState.variant === 'contained' && ownerState.color === 'success' && {
             backgroundColor: GH.green,
             color: '#fff',
-            '&:hover': { backgroundColor: GH.greenLt },
+            '&:hover': { backgroundColor: '#4ade80' },
           }),
           ...(ownerState.variant === 'contained' && ownerState.color === 'error' && {
             backgroundColor: theme.palette.error.main,
             color: '#fff',
-            '&:hover': { backgroundColor: theme.palette.error.dark },
+            '&:hover': { backgroundColor: '#f87171' },
           }),
           ...(ownerState.variant === 'outlined' && {
             borderColor: GH.borderMd,
@@ -175,7 +180,7 @@ const baseTheme = {
     MuiCard: {
       styleOverrides: {
         root: () => ({
-          borderRadius: '6px',
+          borderRadius: '12px',
           boxShadow: 'none',
           border: `1px solid ${GH.border}`,
           backgroundColor: GH.canvas,
@@ -184,11 +189,15 @@ const baseTheme = {
     },
     MuiPaper: {
       styleOverrides: {
-        root: () => ({
-          backgroundImage: 'none',
-          boxShadow: 'none',
-          backgroundColor: GH.canvas,
-        }),
+        root: ({ ownerState }: { ownerState: any }) => {
+          // DataGrid/Paper wrapper style — applied only to table papers (identified by inline border)
+          // We avoid overriding all papers; use className for DataTable papers instead.
+          return {
+            backgroundImage: 'none',
+            boxShadow: 'none',
+            backgroundColor: GH.canvas,
+          };
+        },
       },
     },
     MuiIconButton: {
@@ -255,7 +264,7 @@ const baseTheme = {
       styleOverrides: {
         root: {
           '& .MuiOutlinedInput-root': {
-            borderRadius: '6px',
+            borderRadius: '8px',
             fontSize: '0.8125rem',
             backgroundColor: GH.bg,
             color: GH.text,
@@ -288,7 +297,7 @@ const baseTheme = {
       },
       styleOverrides: {
         root: {
-          borderRadius: '6px',
+          borderRadius: '8px',
           fontSize: '0.8125rem',
           backgroundColor: GH.bg,
           color: GH.text,
@@ -334,7 +343,7 @@ const baseTheme = {
       styleOverrides: {
         inputRoot: {
           fontSize: '0.8125rem',
-          borderRadius: '6px',
+          borderRadius: '8px',
         },
         option: {
           fontSize: '0.8125rem',
@@ -362,12 +371,18 @@ const baseTheme = {
     },
     MuiTableContainer: {
       styleOverrides: {
-        root: () => ({
+        root: ({ theme }: { theme: Theme }) => ({
           borderRadius: 0,
           border: 'none',
           boxShadow: 'none',
-          backgroundColor: GH.canvas,
+          backgroundColor: theme.palette.background.paper,
           overflow: 'auto',
+          '&::-webkit-scrollbar': { width: '6px', height: '6px' },
+          '&::-webkit-scrollbar-thumb': {
+            background: 'rgba(255,255,255,0.10)',
+            borderRadius: '3px',
+          },
+          '&::-webkit-scrollbar-track': { background: 'transparent' },
           '@media print': {
             maxHeight: 'none',
             overflow: 'visible',
@@ -603,7 +618,7 @@ const baseTheme = {
           backgroundColor: '#1f2428',
           color: GH.text,
           fontSize: '0.75rem',
-          borderRadius: '6px',
+          borderRadius: '8px',
           padding: '5px 10px',
           border: `1px solid ${GH.borderMd}`,
         },
@@ -658,32 +673,46 @@ const baseTheme = {
         },
       },
     },
+    MuiBreadcrumbs: {
+      styleOverrides: {
+        root: {
+          fontSize: '0.75rem',
+        },
+        li: {
+          fontSize: '0.75rem',
+        },
+        separator: {
+          color: GH.sub,
+          fontSize: '0.75rem',
+        },
+      },
+    },
   },
 };
 
 // ──────────────────────────────────────────────────────────────
-// DARK THEME — GitHub style
+// DARK THEME — Gowen style
 // ──────────────────────────────────────────────────────────────
 export const darkTheme = createTheme({
   ...baseTheme,
   palette: {
     mode: 'dark',
     primary: {
-      main: GH.green,
-      light: GH.greenLt,
-      dark: '#1a7e2b',
-      contrastText: '#ffffff',
+      main: GH.cyan,
+      light: '#33ccff',
+      dark: '#0099cc',
+      contrastText: '#0d0d0d',
     },
     secondary: {
-      main: GH.blue,
-      light: '#79c0ff',
-      dark: '#388bfd',
-      contrastText: '#0d1117',
+      main: GH.cyan,
+      light: '#33ccff',
+      dark: '#0099cc',
+      contrastText: '#0d0d0d',
     },
     background: {
       default: GH.bg,
       paper: GH.canvas,
-      sidebar: '#0d1117',
+      sidebar: '#111111',
     },
     text: {
       primary: GH.text,
@@ -713,18 +742,18 @@ export const darkTheme = createTheme({
       contrastText: '#ffffff',
     },
     info: {
-      main: GH.blue,
-      light: '#79c0ff',
-      dark: '#388bfd',
-      contrastText: '#0d1117',
+      main: GH.cyan,
+      light: '#33ccff',
+      dark: '#0099cc',
+      contrastText: '#0d0d0d',
     },
-    sidebarSelection: GH.greenLt,
-    tableHover: 'rgba(255,255,255,0.02)',
+    sidebarSelection: GH.cyan,
+    tableHover: 'rgba(255,255,255,0.03)',
     add: {
-      main: GH.greenLt,
-      light: '#4ae168',
-      dark: GH.green,
-      contrastText: '#ffffff',
+      main: GH.cyan,
+      light: '#33ccff',
+      dark: '#0099cc',
+      contrastText: '#0d0d0d',
     },
     delete: {
       main: GH.red,
@@ -733,10 +762,10 @@ export const darkTheme = createTheme({
       contrastText: '#ffffff',
     },
     edit: {
-      main: GH.blue,
-      light: '#79c0ff',
-      dark: '#388bfd',
-      contrastText: '#0d1117',
+      main: GH.cyan,
+      light: '#33ccff',
+      dark: '#0099cc',
+      contrastText: '#0d0d0d',
     },
   },
   components: {
@@ -759,6 +788,9 @@ export const darkTheme = createTheme({
           '&::-webkit-scrollbar-thumb:hover': {
             backgroundColor: GH.sub,
           },
+          '&::-webkit-scrollbar-thumb:hover': {
+            backgroundColor: GH.sub,
+          },
         },
         '.MuiDrawer-paper': {
           backgroundColor: `${GH.bg} !important`,
@@ -772,6 +804,143 @@ export const darkTheme = createTheme({
         '.MuiTable-root .MuiTableRow-root:hover': {
           backgroundColor: `rgba(255,255,255,0.02) !important`,
         },
+        /* ── DataTable wrapper ── */
+        '.data-table-paper': {
+          border: `1px solid ${GH.border} !important`,
+          borderRadius: '12px !important',
+          backgroundColor: `${GH.canvas} !important`,
+          overflow: 'hidden',
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100%',
+        },
+        '.data-table-toolbar': {
+          px: 2, py: 1.25,
+          borderBottom: `1px solid ${GH.border}`,
+          backgroundColor: `${GH.canvas} !important`,
+        },
+        '.data-table-title-bar': {
+          width: 3, height: 18, borderRadius: '2px',
+          backgroundColor: GH.green,
+        },
+        '.data-table-title': {
+          fontSize: '0.8125rem', fontWeight: 600,
+          color: `${GH.text} !important`,
+          letterSpacing: '-0.01em',
+        },
+        '.data-table-count': {
+          fontSize: '0.6875rem', color: GH.sub,
+          fontWeight: 400,
+        },
+        '.data-table-header-cell': {
+          fontWeight: '500 !important',
+          backgroundColor: `${GH.bg} !important`,
+          color: `${GH.muted} !important`,
+          fontSize: '0.6875rem',
+          textTransform: 'uppercase',
+          letterSpacing: '0.05em',
+          borderBottom: `1px solid ${GH.border}`,
+          borderRight: `1px solid ${GH.border}`,
+          padding: '6px 12px !important',
+          position: 'sticky', top: 0, zIndex: 2,
+        },
+        '.data-table-header-cell:last-child': {
+          borderRight: 'none',
+        },
+        '.data-table-body-cell': {
+          borderBottom: `1px solid ${GH.border} !important`,
+          borderColor: `${GH.border} !important`,
+          color: `${GH.text} !important`,
+          fontSize: '0.8125rem',
+          padding: '8px 12px !important',
+          backgroundColor: 'transparent !important',
+          lineHeight: 1.5,
+        },
+        '.data-table-checkbox': {
+          color: `${GH.muted} !important`,
+        },
+        '.data-table-checkbox.Mui-checked, .data-table-checkbox.MuiCheckbox-indeterminate': {
+          color: `${GH.green} !important`,
+        },
+        '.data-table-pagination': {
+          borderTop: `1px solid ${GH.border}`,
+          backgroundColor: `${GH.canvas} !important`,
+        },
+        '.data-table-search': {
+          width: 240,
+          '& .MuiOutlinedInput-root': {
+            bgcolor: `${GH.bg} !important`,
+            borderRadius: '6px',
+            fontSize: '0.75rem',
+            height: 32,
+            '& fieldset': { borderColor: GH.borderMd },
+            '&:hover fieldset': { borderColor: GH.muted },
+            '&.Mui-focused fieldset': { borderColor: GH.green },
+          },
+          '& .MuiInputBase-input': {
+            color: `${GH.text} !important`,
+            padding: '0 10px',
+            '&::placeholder': { color: GH.sub, opacity: 1 },
+          },
+        },
+        '.data-table-menu': {
+          bgcolor: `${GH.canvas} !important`,
+          border: `1px solid ${GH.borderMd} !important`,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+          borderRadius: '12px',
+          minWidth: 180,
+        },
+        '.data-table-selection-chip': {
+          bgcolor: `${GH.cyanDim} !important`,
+          color: `${GH.cyan} !important`,
+          borderColor: `${GH.cyan}33 !important`,
+          fontSize: '0.6875rem',
+          fontWeight: 500,
+          height: 22,
+          '& .MuiChip-deleteIcon': {
+            color: `${GH.cyan} !important`,
+            opacity: 0.7,
+            '&:hover': { opacity: 1 },
+          },
+        },
+        '.data-table-btn-create': {
+          bgcolor: `${GH.green} !important`,
+          color: '#fff !important',
+          textTransform: 'none',
+          fontWeight: 600,
+          borderRadius: '6px',
+          fontSize: '0.75rem',
+          px: 2,
+          letterSpacing: '-0.01em',
+          '&:hover': { bgcolor: '#4ade80 !important' },
+          transition: 'all 0.15s ease',
+        },
+        /* ── Breadcrumbs ── */
+        '.data-breadcrumb-area': {
+          mb: 0.25,
+        },
+        '.data-breadcrumb-back': {
+          mr: 0.5, p: 0.5,
+        },
+        '.data-breadcrumb-row': {
+          display: 'flex', alignItems: 'center',
+        },
+        '.data-breadcrumb-link': {
+          fontSize: '0.75rem',
+          color: `${GH.muted} !important`,
+          cursor: 'pointer',
+          textDecoration: 'none',
+          display: 'flex', alignItems: 'center', gap: 0.4,
+          '&:hover': { textDecoration: 'underline', color: `${GH.text} !important` },
+        },
+        '.data-breadcrumb-current': {
+          fontSize: '0.75rem',
+          fontWeight: 500,
+          color: `${GH.text} !important`,
+          display: 'flex', alignItems: 'center', gap: 0.4,
+        },
+        /* ── Global placeholders ── */
         '::-webkit-input-placeholder': {
           color: GH.sub,
         },

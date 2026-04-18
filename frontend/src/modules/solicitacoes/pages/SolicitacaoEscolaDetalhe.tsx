@@ -18,6 +18,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import PageContainer from "../../../components/PageContainer";
 import PageHeader from "../../../components/PageHeader";
+import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
 import { useToast } from "../../../hooks/useToast";
 import {
   listarTodasSolicitacoes, aceitarItem, recusarItem, aprovarTudo,
@@ -204,16 +205,17 @@ export default function SolicitacaoEscolaDetalhe() {
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       <PageContainer>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-          <Button startIcon={<ArrowBackIcon />} onClick={() => navigate('/solicitacoes-alimentos')} size="small">
-            Voltar
-          </Button>
+        <Box className="data-breadcrumb-row" sx={{ mb: 0.5 }}>
+          <IconButton size="small" onClick={() => navigate('/solicitacoes-alimentos')} className="data-breadcrumb-back">
+            <ArrowBackIcon fontSize="small" />
+          </IconButton>
+          <PageBreadcrumbs items={[
+            { label: 'Dashboard', path: '/dashboard' },
+            { label: 'Solicitações', path: '/solicitacoes-alimentos' },
+            { label: escolaNome },
+          ]} />
         </Box>
-        <PageHeader
-          title={escolaNome}
-          subtitle="Solicitações de alimentos"
-          breadcrumbs={[{ label: 'Dashboard', path: '/dashboard' }, { label: 'Solicitações', path: '/solicitacoes-alimentos' }, { label: escolaNome }]}
-        />
+        <PageHeader title={escolaNome} subtitle="Solicitações de alimentos" />
 
         <Box sx={{ mb: 2 }}>
           <ViewTabs

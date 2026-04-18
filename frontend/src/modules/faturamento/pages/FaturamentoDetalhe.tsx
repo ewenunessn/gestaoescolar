@@ -33,6 +33,8 @@ import {
   FileDownload as FileDownloadIcon,
   Delete as DeleteIcon
 } from "@mui/icons-material";
+import PageContainer from "../../../components/PageContainer";
+import PageHeader from "../../../components/PageHeader";
 import faturamentoService from "../../../services/faturamento";
 import type { ContratoCalculado } from "../../../types/faturamento";
 import { formatarMoeda, formatarData } from "../../../utils/dateUtils";

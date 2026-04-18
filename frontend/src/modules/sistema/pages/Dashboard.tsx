@@ -32,24 +32,26 @@ import PageContainer from "../../../components/PageContainer";
 import api from "../../../services/api";
 import { useDashboardPNAE } from "../../../hooks/queries/usePnaeQueries";
 
-// ── GitHub Dark Tokens ────────────────────────────────────────
+// ── Gowen Dark Tokens ────────────────────────────────────────
 const GH = {
-  bg:       "#0d1117",
-  canvas:   "#161b22",
-  border:   "#21262d",
-  borderMd: "#30363d",
-  text:     "#e6edf3",
-  muted:    "#8b949e",
-  sub:      "#6e7681",
-  green:    "#238636",
-  greenLt:  "#2ea043",
-  greenDim: "rgba(35,134,54,0.15)",
-  blue:     "#58a6ff",
-  blueDim:  "rgba(56,139,253,0.15)",
-  red:      "#f85149",
-  redDim:   "rgba(248,81,73,0.15)",
-  orange:   "#d29922",
-  orangeDim:"rgba(210,153,34,0.15)",
+  bg:       "#0d0d0d",
+  canvas:   "#181818",
+  border:   "rgba(255,255,255,0.07)",
+  borderMd: "rgba(255,255,255,0.10)",
+  text:     "#f0f0f0",
+  muted:    "#888",
+  sub:      "#666",
+  cyan:     "#00bfff",
+  cyanDim:  "rgba(0,191,255,0.12)",
+  green:    "#22c55e",
+  greenLt:  "#22c55e",
+  greenDim: "rgba(34,197,94,0.12)",
+  blue:     "#00bfff",
+  blueDim:  "rgba(0,191,255,0.12)",
+  red:      "#ef4444",
+  redDim:   "rgba(239,68,68,0.12)",
+  orange:   "#f59e0b",
+  orangeDim:"rgba(245,158,11,0.12)",
 };
 
 interface Stats {
@@ -77,12 +79,12 @@ interface StatItemProps {
   accentBg?: string;
 }
 
-const StatItem: React.FC<StatItemProps> = ({ label, value, detail, icon, accent = GH.greenLt, accentBg = GH.greenDim }) => (
+const StatItem: React.FC<StatItemProps> = ({ label, value, detail, icon, accent = GH.cyan, accentBg = GH.cyanDim }) => (
   <Box
     sx={{
       p: 3,
       border: `1px solid ${GH.border}`,
-      borderRadius: "6px",
+      borderRadius: "12px",
       bgcolor: GH.canvas,
       transition: "border-color 0.2s ease",
       height: "100%",
@@ -96,9 +98,11 @@ const StatItem: React.FC<StatItemProps> = ({ label, value, detail, icon, accent 
     <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
       <Typography
         sx={{
-          fontSize: "0.75rem",
-          fontWeight: 400,
+          fontSize: "0.7rem",
+          fontWeight: 500,
           color: GH.muted,
+          textTransform: "uppercase",
+          letterSpacing: "0.05em",
           lineHeight: 1.4,
         }}
       >
@@ -108,7 +112,7 @@ const StatItem: React.FC<StatItemProps> = ({ label, value, detail, icon, accent 
         sx={{
           width: 32,
           height: 32,
-          borderRadius: "6px",
+          borderRadius: "8px",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -122,10 +126,10 @@ const StatItem: React.FC<StatItemProps> = ({ label, value, detail, icon, accent 
     </Box>
     <Typography
       sx={{
-        fontSize: "1.85rem",
-        fontWeight: 600,
+        fontSize: "2rem",
+        fontWeight: 700,
         color: GH.text,
-        letterSpacing: "-0.5px",
+        letterSpacing: "-1px",
         lineHeight: 1,
         mb: 0.5,
       }}
@@ -136,7 +140,7 @@ const StatItem: React.FC<StatItemProps> = ({ label, value, detail, icon, accent 
       <Typography
         sx={{
           fontSize: "0.75rem",
-          color: GH.sub,
+          color: GH.muted,
           fontWeight: 400,
           mt: "auto",
         }}
@@ -232,31 +236,33 @@ const Dashboard = () => {
 
   return (
     <PageContainer sx={{ pb: 4 }}>
-      {/* ── Greeting ─────────────────────────────────────── */}
-      <Box sx={{ mb: 4 }}>
-        <Typography
-          sx={{
-            fontSize: "0.75rem",
-            fontWeight: 400,
-            color: GH.sub,
-            letterSpacing: "0.5px",
-            mb: 0.5,
-            textTransform: "capitalize",
-          }}
-        >
-          {today}
-        </Typography>
-        <Typography
-          sx={{
-            fontSize: "1.75rem",
-            fontWeight: 600,
-            color: GH.text,
-            letterSpacing: "-0.5px",
-            lineHeight: 1.2,
-          }}
-        >
-          {stats ? `${greeting}.` : "Carregando.."}
-        </Typography>
+      {/* ── Greeting / Topbar ────────────────────────────── */}
+      <Box sx={{ mb: 5, display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: 1 }}>
+        <Box>
+          <Typography
+            sx={{
+              fontSize: "0.7rem",
+              fontWeight: 500,
+              color: GH.sub,
+              letterSpacing: "0.05em",
+              textTransform: "uppercase",
+              mb: 0.5,
+            }}
+          >
+            {today}
+          </Typography>
+          <Typography
+            sx={{
+              fontSize: "1.85rem",
+              fontWeight: 700,
+              color: GH.text,
+              letterSpacing: "-0.5px",
+              lineHeight: 1.2,
+            }}
+          >
+            {stats ? `${greeting}` : "Carregando.."}
+          </Typography>
+        </Box>
       </Box>
 
       {/* ── Stats ────────────────────────────────────────── */}
@@ -296,17 +302,17 @@ const Dashboard = () => {
               sx={{
                 p: 3,
                 border: `1px solid ${GH.border}`,
-                borderRadius: "6px",
+                borderRadius: "12px",
                 bgcolor: GH.canvas,
                 transition: "border-color 0.2s ease",
                 height: "100%",
                 display: "flex",
                 flexDirection: "column",
-                "&:hover": { borderColor: GH.borderMd },
+                "&:hover": { borderColor: GH.borderMd }
               }}
             >
               <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
-                <Typography sx={{ fontSize: "0.75rem", fontWeight: 400, color: GH.muted, lineHeight: 1.4 }}>
+                <Typography sx={{ fontSize: "0.7rem", fontWeight: 500, color: GH.muted, textTransform: "uppercase", letterSpacing: "0.05em", lineHeight: 1.4 }}>
                   PNAE — Af.
                 </Typography>
                 <Box
@@ -330,10 +336,10 @@ const Dashboard = () => {
 
               <Typography
                 sx={{
-                  fontSize: "1.85rem",
-                  fontWeight: 600,
-                  color: pnaeAtende ? GH.greenLt : GH.red,
-                  letterSpacing: "-0.5px",
+                  fontSize: "2rem",
+                  fontWeight: 700,
+                  color: pnaeAtende ? GH.green : GH.red,
+                  letterSpacing: "-1px",
                   lineHeight: 1,
                   mb: 0.5,
                 }}
@@ -370,7 +376,7 @@ const Dashboard = () => {
                 sx={{
                   p: 3,
                   border: `1px solid ${GH.border}`,
-                  borderRadius: "6px",
+                  borderRadius: "12px",
                   bgcolor: GH.canvas,
                   height: 120,
                 }}
@@ -386,11 +392,12 @@ const Dashboard = () => {
         <Grid item xs={12} md={6}>
           <Typography
             sx={{
-              fontSize: "0.85rem",
+              fontSize: "0.7rem",
               fontWeight: 600,
-              color: GH.text,
+              color: GH.muted,
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
               mb: 2,
-              letterSpacing: "-0.01em",
             }}
           >
             Acesso rápido
@@ -402,7 +409,7 @@ const Dashboard = () => {
               gap: 0.5,
               p: 2,
               border: `1px solid ${GH.border}`,
-              borderRadius: "6px",
+              borderRadius: "12px",
               bgcolor: GH.canvas,
             }}
           >
@@ -423,11 +430,12 @@ const Dashboard = () => {
             <>
               <Typography
                 sx={{
-                  fontSize: "0.85rem",
+                  fontSize: "0.7rem",
                   fontWeight: 600,
-                  color: GH.text,
+                  color: GH.muted,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
                   mb: 2,
-                  letterSpacing: "-0.01em",
                 }}
               >
                 Conformidade PNAE
@@ -436,7 +444,7 @@ const Dashboard = () => {
                 sx={{
                   p: 3,
                   border: `1px solid ${GH.border}`,
-                  borderRadius: "6px",
+                  borderRadius: "12px",
                   bgcolor: GH.canvas,
                 }}
               >
@@ -449,8 +457,8 @@ const Dashboard = () => {
                     <Typography
                       sx={{
                         fontSize: "2.25rem",
-                        fontWeight: 600,
-                        color: pnaeAtende ? GH.greenLt : GH.red,
+                        fontWeight: 700,
+                        color: pnaeAtende ? GH.green : GH.red,
                         letterSpacing: "-1px",
                         lineHeight: 1.1,
                       }}
@@ -460,7 +468,7 @@ const Dashboard = () => {
                   </Box>
                   <Box sx={{ textAlign: "right" }}>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 0.5 }}>
-                      <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: pnaeAtende ? GH.greenLt : GH.red }} />
+                      <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: pnaeAtende ? GH.green : GH.red }} />
                       <Typography sx={{ fontSize: "0.75rem", color: GH.muted }}>
                         Mín: 45%
                       </Typography>
@@ -469,7 +477,7 @@ const Dashboard = () => {
                       sx={{
                         fontSize: "0.82rem",
                         fontWeight: 500,
-                        color: pnaeAtende ? GH.greenLt : GH.red,
+                        color: pnaeAtende ? GH.green : GH.red,
                       }}
                     >
                       {pnaeAtende ? "Conforme" : "Não conforme"}

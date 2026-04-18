@@ -39,15 +39,18 @@ import AddIcon from '@mui/icons-material/Add';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 
-// ── GitHub Dark Mode tokens ───────────────────────────────────
-const GREEN = '#2ea043';
-const SIDEBAR_BG = '#0d1117';
-const CANVAS = '#161b22';
-const BORDER = '#21262d';
-const BORDER_MD = '#30363d';
-const TEXT = '#e6edf3';
-const MUTED = '#8b949e';
-const SUB = '#6e7681';
+// ── Theme-derived tokens (centralized in theme.ts) ──
+const getToken = (theme: ReturnType<typeof useTheme>) => ({
+  green: theme.palette.success.main,
+  bg: theme.palette.background.default,
+  canvas: theme.palette.background.paper,
+  border: theme.palette.divider,
+  borderMd: 'rgba(255,255,255,0.10)',
+  text: theme.palette.text.primary,
+  muted: theme.palette.text.secondary,
+  sub: '#666',
+  canvasSub: theme.palette.background.default,
+});
 
 interface DataTableProps<TData> {
   data: TData[];
@@ -71,10 +74,12 @@ const TableRowMemo = memo(function TableRowMemo<TData>({
   row,
   onRowClick,
   isMobile = false,
+  t,
 }: {
   row: any;
   onRowClick?: (row: TData) => void;
   isMobile?: boolean;
+  t: ReturnType<typeof getToken>;
 }) {
   const handleClick = useCallback(() => {
     onRowClick?.(row.original);
@@ -99,9 +104,9 @@ const TableRowMemo = memo(function TableRowMemo<TData>({
             width: cell.column.cardSize?.() ?? cell.column.getSize(),
             fontSize: isMobile ? '0.75rem' : '0.8125rem',
             padding: isMobile ? '8px 4px' : '8px 12px',
-            borderBottom: `1px solid ${BORDER}`,
-            borderColor: BORDER,
-            color: TEXT,
+            borderBottom: `1px solid ${t.border}`,
+            borderColor: t.border,
+            color: t.text,
             bgcolor: 'transparent',
             lineHeight: 1.5,
           }}
@@ -132,6 +137,7 @@ export const DataTable = memo(function DataTable<TData>({
   initialPageSize = 50,
 }: DataTableProps<TData>) {
   const theme = useTheme();
+  const t = getToken(theme);
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -183,46 +189,28 @@ export const DataTable = memo(function DataTable<TData>({
 
   return (
     <Paper
+      className="data-table-paper"
       sx={{
         width: '100%',
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
-        borderRadius: '6px',
         overflow: 'hidden',
-        border: `1px solid ${BORDER}`,
-        backgroundColor: CANVAS,
-        backgroundImage: 'none',
-        boxShadow: 'none',
       }}
     >
       {/* ── Toolbar ── */}
-      <Box sx={{
-        px: 2, py: 1.25,
-        borderBottom: `1px solid ${BORDER}`,
-        backgroundColor: CANVAS,
-      }}>
+      <Box className="data-table-toolbar">
         <Box sx={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           flexWrap: 'wrap', gap: 1.5,
         }}>
           {title ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-              <Box sx={{
-                width: 3, height: 18, borderRadius: '2px',
-                bgcolor: GREEN,
-              }} />
-              <Typography sx={{
-                fontSize: '0.8125rem', fontWeight: 600,
-                color: TEXT,
-                letterSpacing: '-0.01em',
-              }}>
+              <Box className="data-table-title-bar" />
+              <Typography className="data-table-title">
                 {title}
               </Typography>
-              <Typography sx={{
-                fontSize: '0.6875rem', color: SUB,
-                ml: 0.5, fontWeight: 400,
-              }}>
+              <Typography className="data-table-count">
                 {filteredCount} {filteredCount === 1 ? 'registro' : 'registros'}
               </Typography>
             </Box>
@@ -236,7 +224,7 @@ export const DataTable = memo(function DataTable<TData>({
                 startIcon={<AddIcon sx={{ fontSize: 16 }} />}
                 size="small"
                 sx={{
-                  bgcolor: GREEN,
+                  bgcolor: t.green,
                   color: '#fff',
                   textTransform: 'none',
                   fontWeight: 600,
@@ -244,7 +232,7 @@ export const DataTable = memo(function DataTable<TData>({
                   fontSize: '0.75rem',
                   px: 2,
                   letterSpacing: '-0.01em',
-                  '&:hover': { bgcolor: '#26a641' },
+                  '&:hover': { bgcolor: '#4ade80' },
                   transition: 'all 0.15s ease',
                 }}
               >
@@ -259,38 +247,16 @@ export const DataTable = memo(function DataTable<TData>({
                 value={globalFilter ?? ''}
                 onChange={(e) => setGlobalFilter(e.target.value)}
                 autoFocus
-                sx={{
-                  width: 240,
-                  '& .MuiOutlinedInput-root': {
-                    bgcolor: SIDEBAR_BG,
-                    borderRadius: '6px',
-                    fontSize: '0.75rem',
-                    height: 32,
-                    '& fieldset': {
-                      borderColor: BORDER_MD,
-                    },
-                    '&:hover fieldset': {
-                      borderColor: MUTED,
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: GREEN,
-                    },
-                  },
-                  '& .MuiInputBase-input': {
-                    color: TEXT,
-                    '&::placeholder': { color: SUB, opacity: 1 },
-                    padding: '0 10px',
-                  },
-                }}
+                className="data-table-search"
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start" sx={{ ml: 0.5 }}>
-                      <SearchIcon sx={{ color: MUTED, fontSize: 15 }} />
+                      <SearchIcon sx={{ color: t.muted, fontSize: 15 }} />
                     </InputAdornment>
                   ),
                   endAdornment: (
                     <InputAdornment position="end">
-                      <IconButton size="small" onClick={handleSearchClear} sx={{ color: MUTED, p: 0.25 }}>
+                      <IconButton size="small" onClick={handleSearchClear} sx={{ color: t.muted, p: 0.25 }}>
                         <ClearIcon sx={{ fontSize: 14 }} />
                       </IconButton>
                     </InputAdornment>
@@ -299,7 +265,7 @@ export const DataTable = memo(function DataTable<TData>({
               />
             ) : (
               <Tooltip title="Buscar">
-                <IconButton onClick={handleSearchToggle} size="small" sx={{ color: MUTED }}>
+                <IconButton onClick={handleSearchToggle} size="small" sx={{ color: t.muted }}>
                   <SearchIcon sx={{ fontSize: 17 }} />
                 </IconButton>
               </Tooltip>
@@ -307,7 +273,7 @@ export const DataTable = memo(function DataTable<TData>({
 
             {onFilterClick && (
               <Tooltip title="Filtros">
-                <IconButton size="small" onClick={onFilterClick} sx={{ color: MUTED }}>
+                <IconButton size="small" onClick={onFilterClick} sx={{ color: t.muted }}>
                   <FilterListIcon sx={{ fontSize: 17 }} />
                 </IconButton>
               </Tooltip>
@@ -315,7 +281,7 @@ export const DataTable = memo(function DataTable<TData>({
 
             {onImportExportClick && (
               <Tooltip title="Importar/Exportar">
-                <IconButton onClick={onImportExportClick} size="small" sx={{ color: MUTED }}>
+                <IconButton onClick={onImportExportClick} size="small" sx={{ color: t.muted }}>
                   <MoreVertIcon sx={{ fontSize: 17 }} />
                 </IconButton>
               </Tooltip>
@@ -332,9 +298,6 @@ export const DataTable = memo(function DataTable<TData>({
           sx={{
             flex: 1,
             overflow: 'auto',
-            '&::-webkit-scrollbar': { width: '6px', height: '6px' },
-            '&::-webkit-scrollbar-thumb': { background: BORDER_MD, borderRadius: '3px' },
-            '&::-webkit-scrollbar-track': { background: 'transparent' },
           }}
         >
           <Table
@@ -352,20 +315,9 @@ export const DataTable = memo(function DataTable<TData>({
                   {headerGroup.headers.map((header) => (
                     <TableCell
                       key={header.id}
+                      className="data-table-header-cell"
                       sx={{
-                        fontWeight: 500,
-                        backgroundColor: SIDEBAR_BG,
-                        color: MUTED,
-                        fontSize: '0.6875rem',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em',
-                        borderBottom: `1px solid ${BORDER}`,
-                        borderRight: `1px solid ${BORDER}`,
                         width: header.getSize(),
-                        position: 'sticky',
-                        top: 0,
-                        zIndex: 2,
-                        padding: '6px 12px',
                         '&:last-child': { borderRight: 'none' },
                       }}
                     >
@@ -390,7 +342,7 @@ export const DataTable = memo(function DataTable<TData>({
                               }
                               sx={{
                                 ml: 0.5,
-                                '&.Mui-active': { color: TEXT },
+                                '&.Mui-active': { color: t.text },
                                 '& .MuiTableSortLabel-icon': {
                                   fill: 'currentColor',
                                   opacity: 0.4,
@@ -409,14 +361,14 @@ export const DataTable = memo(function DataTable<TData>({
               {loading ? (
                 <TableRow>
                   <TableCell colSpan={columns.length} align="center" sx={{ py: 8 }}>
-                    <CircularProgress sx={{ color: MUTED }} size={24} />
+                    <CircularProgress sx={{ color: t.muted }} size={24} />
                   </TableCell>
                 </TableRow>
               ) : rows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={columns.length} align="center" sx={{ py: 8 }}>
                     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-                      <Typography sx={{ color: MUTED, fontSize: '0.8125rem' }}>
+                      <Typography sx={{ color: t.muted, fontSize: '0.8125rem' }}>
                         Nenhum registro encontrado
                       </Typography>
                     </Box>
@@ -428,6 +380,7 @@ export const DataTable = memo(function DataTable<TData>({
                     key={row.id}
                     row={row}
                     onRowClick={onRowClick}
+                    t={t}
                   />
                 ))
               )}
@@ -439,11 +392,11 @@ export const DataTable = memo(function DataTable<TData>({
         <Box sx={{ flex: 1, overflow: 'auto', p: 1 }}>
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-              <CircularProgress sx={{ color: MUTED }} size={24} />
+              <CircularProgress sx={{ color: t.muted }} size={24} />
             </Box>
           ) : rows.length === 0 ? (
             <Box sx={{ textAlign: 'center', py: 8 }}>
-              <Typography sx={{ color: MUTED, fontSize: '0.8125rem' }}>
+              <Typography sx={{ color: t.muted, fontSize: '0.8125rem' }}>
                 Nenhum registro encontrado
               </Typography>
             </Box>
@@ -481,13 +434,13 @@ export const DataTable = memo(function DataTable<TData>({
                     mb: 0.75,
                     p: 1.25,
                     cursor: onRowClick ? 'pointer' : 'default',
-                    border: `1px solid ${BORDER}`,
+                    border: `1px solid ${t.border}`,
                     borderRadius: '6px',
-                    backgroundColor: CANVAS,
+                    backgroundColor: t.canvas,
                     transition: 'all 0.15s ease',
                     '&:hover': {
                       backgroundColor: 'rgba(255,255,255,0.02)',
-                      borderColor: BORDER_MD,
+                      borderColor: t.borderMd,
                     },
                     '&:active': {
                       transform: onRowClick ? 'scale(0.99)' : 'none',
@@ -505,7 +458,7 @@ export const DataTable = memo(function DataTable<TData>({
                         {numeroCell ? (
                           <>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <Typography sx={{ fontWeight: 600, fontSize: '0.8125rem', color: TEXT }}>
+                              <Typography sx={{ fontWeight: 600, fontSize: '0.8125rem', color: t.text }}>
                                 {numeroCell.getValue()}
                               </Typography>
                               {statusCell && (
@@ -518,11 +471,11 @@ export const DataTable = memo(function DataTable<TData>({
                               )}
                             </Box>
                             {fornecedorCell && (
-                              <Typography sx={{ color: MUTED, display: 'block', mt: 0.5, fontSize: '0.75rem' }}>
+                              <Typography sx={{ color: t.muted, display: 'block', mt: 0.5, fontSize: '0.75rem' }}>
                                 {flexRender(fornecedorCell.column.columnDef.cell, fornecedorCell.getContext())}
                               </Typography>
                             )}
-                            <Typography sx={{ color: MUTED, display: 'block', mt: 0.25, fontSize: '0.7rem' }}>
+                            <Typography sx={{ color: t.muted, display: 'block', mt: 0.25, fontSize: '0.7rem' }}>
                               {row.original.data_inicio && row.original.data_fim && (
                                 <>
                                   {new Date(row.original.data_inicio).toLocaleDateString('pt-BR')} a {new Date(row.original.data_fim).toLocaleDateString('pt-BR')}
@@ -541,14 +494,14 @@ export const DataTable = memo(function DataTable<TData>({
                             <Box sx={{
                               fontSize: '0.8125rem', fontWeight: 600, lineHeight: 1.3,
                               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                              color: TEXT,
+                              color: t.text,
                             }}>
                               {guiaNomeCell
                                 ? flexRender(guiaNomeCell.column.columnDef.cell, guiaNomeCell.getContext())
                                 : nomeCell && flexRender(nomeCell.column.columnDef.cell, nomeCell.getContext())}
                             </Box>
                             {guiaNomeCell && (competenciaCell || totalEscolasCell || totalItensCell || statusCell) && (
-                              <Typography sx={{ color: MUTED, display: 'block', mt: 0.25, fontSize: '0.7rem' }}>
+                              <Typography sx={{ color: t.muted, display: 'block', mt: 0.25, fontSize: '0.7rem' }}>
                                 {competenciaCell && <>{flexRender(competenciaCell.column.columnDef.cell, competenciaCell.getContext())}</>}
                                 {competenciaCell && (totalEscolasCell || totalItensCell) && ' - '}
                                 {totalEscolasCell && totalEscolasCell.getValue() && <>{totalEscolasCell.getValue()} escolas</>}
@@ -559,14 +512,14 @@ export const DataTable = memo(function DataTable<TData>({
                               </Typography>
                             )}
                             {!guiaNomeCell && competenciaCell && (
-                              <Typography sx={{ color: MUTED, display: 'block', mt: 0.25, fontSize: '0.7rem' }}>
+                              <Typography sx={{ color: t.muted, display: 'block', mt: 0.25, fontSize: '0.7rem' }}>
                                 {row.original.mes && row.original.ano && (
                                   <>{row.original.mes}/{row.original.ano}{(row.original as any).modalidades_nomes && <> - {(row.original as any).modalidades_nomes}</>}</>
                                 )}
                               </Typography>
                             )}
                             {!guiaNomeCell && !competenciaCell && (totalAlunosCell || modalidadesCell || valorRepasseCell || parcelasCell || totalAnualCell || unidadeCell || composicaoCell || contratoCell) && (
-                              <Typography sx={{ color: MUTED, display: 'block', mt: 0.25, fontSize: '0.7rem' }}>
+                              <Typography sx={{ color: t.muted, display: 'block', mt: 0.25, fontSize: '0.7rem' }}>
                                 {totalAlunosCell && totalAlunosCell.getValue() && <>{Number(totalAlunosCell.getValue()).toLocaleString('pt-BR')} alunos</>}
                                 {totalAlunosCell && totalAlunosCell.getValue() && modalidadesCell && modalidadesCell.getValue() && ' - '}
                                 {modalidadesCell && modalidadesCell.getValue() && <>{modalidadesCell.getValue()}</>}
@@ -596,7 +549,7 @@ export const DataTable = memo(function DataTable<TData>({
                     <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', ml: 3, flexWrap: 'wrap' }}>
                       {tipoCell && <Box>{flexRender(tipoCell.column.columnDef.cell, tipoCell.getContext())}</Box>}
                       {valorCaloricoCell && (
-                        <Typography sx={{ color: MUTED, fontSize: '0.7rem' }}>
+                        <Typography sx={{ color: t.muted, fontSize: '0.7rem' }}>
                           {flexRender(valorCaloricoCell.column.columnDef.cell, valorCaloricoCell.getContext())}
                         </Typography>
                       )}
@@ -625,8 +578,8 @@ export const DataTable = memo(function DataTable<TData>({
           isMobile ? `${from}-${to}/${count}` : `${from}–${to} de ${count !== -1 ? count : `mais de ${to}`}`
         }
         sx={{
-          borderTop: `1px solid ${BORDER}`,
-          backgroundColor: CANVAS,
+          borderTop: `1px solid ${t.border}`,
+          backgroundColor: t.canvas,
           '.MuiTablePagination-toolbar': {
             minHeight: 44,
             paddingLeft: 2,
@@ -634,21 +587,21 @@ export const DataTable = memo(function DataTable<TData>({
           },
           '.MuiTablePagination-selectLabel, .MuiTablePagination-displayedRows': {
             fontSize: '0.6875rem',
-            color: MUTED,
+            color: t.muted,
             paddingTop: 0,
             paddingBottom: 0,
           },
           '.MuiSelect-select, .MuiInputBase-root': {
             fontSize: '0.6875rem',
-            color: TEXT,
+            color: t.text,
           },
           '.MuiSvgIcon-root': {
             fontSize: '1rem',
-            color: MUTED,
+            color: t.muted,
           },
           '.MuiIconButton-root': {
-            color: MUTED,
-            '&:hover': { color: TEXT },
+            color: t.muted,
+            '&:hover': { color: t.text },
           },
         }}
       />

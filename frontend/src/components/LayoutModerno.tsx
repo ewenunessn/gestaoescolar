@@ -28,38 +28,37 @@ const drawerWidth = 240;
 const collapsedDrawerWidth = 72;
 
 // ═══════════════════════════════════════════════════════════════
-// DESIGN SYSTEM - Inspirado no exemplo fornecido (modo escuro)
-// Clean, modern sidebar com cards sutis e hover states elegantes
+// DESIGN SYSTEM — Gowen Dark Mode
+// Clean, modern sidebar com estilo cyberpunk sutil (cyan neon)
 // ═══════════════════════════════════════════════════════════════
 
 const DESIGN_TOKENS = {
-  // Core Palette - Cores exatas da imagem (lado direito - modo escuro)
   bg: {
-    primary: "#161b22",      // Fundo principal do sidebar (GitHub dark)
-    secondary: "#21262d",    // Fundo dos cards/itens
-    elevated: "#2d333b",     // Itens elevados/hover
-    accent: "#373e47",       // Hover mais intenso
+    primary: "#0d0d0d",      // Fundo principal — quase preto
+    secondary: "#1a1a1a",    // Fundo dos cards/itens
+    elevated: "#222222",     // Itens elevados/hover
+    accent: "#2a2a2a",       // Hover mais intenso
   },
   border: {
-    subtle: "#21262d",       // Bordas sutis
-    medium: "#30363d",       // Bordas médias
-    strong: "#484f58",       // Bordas fortes
+    subtle: "rgba(255,255,255,0.06)",
+    medium: "rgba(255,255,255,0.10)",
+    strong: "rgba(255,255,255,0.15)",
   },
   text: {
-    primary: "#e6edf3",      // Texto principal (branco suave)
-    secondary: "#8b949e",    // Texto secundário (cinza claro)
-    muted: "#6e7681",        // Texto esmaecido (cinza médio)
-    accent: "#7d8590",       // Cinza azulado de destaque
+    primary: "#f0f0f0",      // Texto principal
+    secondary: "#888",       // Texto secundário
+    muted: "#666",           // Texto esmaecido
+    accent: "#777",
   },
   accent: {
-    primary: "#58a6ff",      // Azul GitHub
-    secondary: "#79c0ff",    // Azul mais claro
-    success: "#3fb950",      // Verde GitHub
-    warning: "#d29922",      // Amarelo
-    danger: "#f85149",       // Vermelho GitHub
+    primary: "#00bfff",      // Ciano neon — cor principal
+    secondary: "#33ccff",    // Ciano mais claro
+    success: "#22c55e",      // Verde ativo
+    warning: "#f59e0b",      // Âmbar/âmbar
+    danger: "#ef4444",       // Vermelho
   },
   glow: {
-    blue: "0 0 20px rgba(88, 166, 255, 0.15)",
+    cyan: "0 0 20px rgba(0,191,255,0.15)",
     subtle: "0 2px 8px rgba(0, 0, 0, 0.3)",
   }
 };
@@ -71,6 +70,8 @@ const BORDER_MD = DESIGN_TOKENS.border.medium;
 const TEXT = DESIGN_TOKENS.text.primary;
 const MUTED = DESIGN_TOKENS.text.secondary;
 const SUB = DESIGN_TOKENS.text.muted;
+const CYAN = DESIGN_TOKENS.accent.primary;
+const CYAN_DIM = `${DESIGN_TOKENS.accent.primary}20`;
 const GREEN = DESIGN_TOKENS.accent.success;
 const GREEN_DIM = `${DESIGN_TOKENS.accent.success}20`;
 const RED = DESIGN_TOKENS.accent.danger;
@@ -177,13 +178,13 @@ const SubItem: React.FC<{
         py: 1.25, 
         mx: collapsed ? 0.5 : 1.5, 
         my: 0.5,
-        borderRadius: "10px",
+        borderRadius: "12px",
         minWidth: 40,
         minHeight: 44,
         justifyContent: collapsed ? "center" : "flex-start",
         position: "relative",
-        bgcolor: isActive ? DESIGN_TOKENS.bg.secondary : "transparent",
-        color: isActive ? DESIGN_TOKENS.text.primary : DESIGN_TOKENS.text.secondary,
+        bgcolor: isActive ? `${DESIGN_TOKENS.accent.primary}15` : "transparent",
+        color: isActive ? DESIGN_TOKENS.accent.primary : DESIGN_TOKENS.text.secondary,
         transition: "all 0.2s ease",
         "&:hover": { 
           bgcolor: DESIGN_TOKENS.bg.elevated,
@@ -217,7 +218,7 @@ const SubItem: React.FC<{
             fontSize: "0.8rem",
             py: 0.75,
             px: 1.5,
-            borderRadius: "8px",
+            borderRadius: "10px",
             boxShadow: DESIGN_TOKENS.glow.subtle,
           }
         }
@@ -243,12 +244,12 @@ const StandaloneItem: React.FC<{
         py: 1.5, 
         mx: collapsed ? 0.5 : 1.5, 
         my: 0.5,
-        borderRadius: "10px",
+        borderRadius: "12px",
         minWidth: 44,
         minHeight: 48,
         justifyContent: collapsed ? "center" : "flex-start",
-        bgcolor: isActive ? DESIGN_TOKENS.bg.secondary : "transparent",
-        color: isActive ? DESIGN_TOKENS.text.primary : DESIGN_TOKENS.text.secondary,
+        bgcolor: isActive ? `${DESIGN_TOKENS.accent.primary}15` : "transparent",
+        color: isActive ? DESIGN_TOKENS.accent.primary : DESIGN_TOKENS.text.secondary,
         transition: "all 0.2s ease",
         "&:hover": { 
           bgcolor: DESIGN_TOKENS.bg.elevated,
@@ -288,7 +289,7 @@ const StandaloneItem: React.FC<{
             fontSize: "0.8rem",
             py: 0.75,
             px: 1.5,
-            borderRadius: "8px",
+            borderRadius: "10px",
             boxShadow: DESIGN_TOKENS.glow.subtle,
           }
         }
@@ -346,7 +347,7 @@ const CategoryGroup: React.FC<{
                     py: 1, 
                     px: 1.5,
                     cursor: "pointer", 
-                    borderRadius: "8px",
+                    borderRadius: "10px",
                     bgcolor: active ? DESIGN_TOKENS.bg.secondary : "transparent",
                     "&:hover": { 
                       bgcolor: DESIGN_TOKENS.bg.elevated,
@@ -382,7 +383,7 @@ const CategoryGroup: React.FC<{
             px: 1.5, 
             py: 1.5, 
             minWidth: 44, 
-            borderRadius: "10px",
+            borderRadius: "12px",
             color: hasActive ? DESIGN_TOKENS.text.primary : DESIGN_TOKENS.text.muted,
             bgcolor: hasActive ? DESIGN_TOKENS.bg.secondary : "transparent",
             "&:hover": { 
@@ -413,7 +414,7 @@ const CategoryGroup: React.FC<{
           py: 1, 
           mx: 1.5, 
           mb: 0.5,
-          borderRadius: "10px",
+          borderRadius: "12px",
           color: DESIGN_TOKENS.text.muted,
           bgcolor: "transparent",
           "&:hover": { 
@@ -576,19 +577,20 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
         minHeight: 72,
       }}>
         <Box sx={{
-          width: 8, 
-          height: 8, 
-          borderRadius: "50%", 
-          bgcolor: DESIGN_TOKENS.accent.success,
+          width: 8,
+          height: 8,
+          borderRadius: "50%",
+          bgcolor: DESIGN_TOKENS.accent.primary,
           flexShrink: 0,
           mr: 2,
-          boxShadow: `0 0 8px ${DESIGN_TOKENS.accent.success}80`,
+          boxShadow: `0 0 8px ${DESIGN_TOKENS.accent.primary}80`,
         }} />
         <Typography variant="h6" sx={{
-          fontWeight: 600,
-          color: DESIGN_TOKENS.text.primary,
-          fontSize: "1.1rem",
-          letterSpacing: "0.3px",
+          fontWeight: 800,
+          color: DESIGN_TOKENS.accent.primary,
+          fontSize: "1.15rem",
+          letterSpacing: "0.5px",
+          textTransform: "uppercase",
         }}>
           NutriLog
         </Typography>
@@ -618,8 +620,8 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
           position: "absolute",
           inset: 0,
           backgroundImage: `
-            radial-gradient(circle at 20% 30%, ${DESIGN_TOKENS.accent.primary}03 0%, transparent 50%),
-            radial-gradient(circle at 80% 70%, ${DESIGN_TOKENS.accent.secondary}03 0%, transparent 50%)
+            radial-gradient(circle at 20% 30%, ${DESIGN_TOKENS.accent.primary}05 0%, transparent 50%),
+            radial-gradient(circle at 80% 70%, ${DESIGN_TOKENS.accent.primary}03 0%, transparent 50%)
           `,
           pointerEvents: "none",
           zIndex: 0,
@@ -696,7 +698,7 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
           fontSize: "0.875rem", 
           minHeight: 44, 
           px: 2,
-          borderRadius: "10px", 
+          borderRadius: "12px", 
           justifyContent: "flex-start",
           color: DESIGN_TOKENS.text.muted, 
           letterSpacing: "0.3px",
@@ -732,21 +734,22 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
       }}>
         {!collapsed && (
           <Box sx={{
-            width: 8, 
-            height: 8, 
-            borderRadius: "50%", 
-            bgcolor: DESIGN_TOKENS.accent.success,
+            width: 8,
+            height: 8,
+            borderRadius: "50%",
+            bgcolor: DESIGN_TOKENS.accent.primary,
             flexShrink: 0,
             mr: 2,
-            boxShadow: `0 0 8px ${DESIGN_TOKENS.accent.success}80`,
+            boxShadow: `0 0 8px ${DESIGN_TOKENS.accent.primary}80`,
           }} />
         )}
         <Typography variant="h6" sx={{
-          fontWeight: 600,
-          color: DESIGN_TOKENS.text.primary,
-          fontSize: collapsed ? "1rem" : "1.1rem",
-          letterSpacing: collapsed ? "1.5px" : "0.3px",
+          fontWeight: 800,
+          color: DESIGN_TOKENS.accent.primary,
+          fontSize: collapsed ? "1rem" : "1.15rem",
+          letterSpacing: collapsed ? "2px" : "0.5px",
           textAlign: "center",
+          textTransform: "uppercase",
         }}>
           {collapsed ? "NL" : "NutriLog"}
         </Typography>
@@ -776,8 +779,8 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
           position: "absolute",
           inset: 0,
           backgroundImage: `
-            radial-gradient(circle at 20% 30%, ${DESIGN_TOKENS.accent.primary}03 0%, transparent 50%),
-            radial-gradient(circle at 80% 70%, ${DESIGN_TOKENS.accent.secondary}03 0%, transparent 50%)
+            radial-gradient(circle at 20% 30%, ${DESIGN_TOKENS.accent.primary}05 0%, transparent 50%),
+            radial-gradient(circle at 80% 70%, ${DESIGN_TOKENS.accent.primary}03 0%, transparent 50%)
           `,
           pointerEvents: "none",
           zIndex: 0,
@@ -843,7 +846,7 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
         <IconButton onClick={handleCollapseToggle} size="small" sx={{
           display: { xs: "none", md: "flex" }, 
           width: "100%",
-          borderRadius: "10px", 
+          borderRadius: "12px", 
           py: 1.25, 
           minHeight: 44,
           color: DESIGN_TOKENS.text.muted,
@@ -876,7 +879,7 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
             fontSize: "0.875rem", 
             minHeight: 44, 
             px: 2,
-            borderRadius: "10px", 
+            borderRadius: "12px", 
             justifyContent: "flex-start",
             color: DESIGN_TOKENS.text.muted, 
             letterSpacing: "0.3px",
@@ -929,7 +932,7 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
             position: "relative",
           }}>
             <Box sx={{
-              borderRadius: "10px",
+              borderRadius: "12px",
               bgcolor: DESIGN_TOKENS.bg.secondary,
               border: `1px solid ${search.open ? DESIGN_TOKENS.accent.primary : DESIGN_TOKENS.border.subtle}`,
               boxShadow: search.open ? `0 0 0 3px ${DESIGN_TOKENS.accent.primary}20` : "none",
