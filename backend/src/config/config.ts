@@ -1,9 +1,31 @@
 import dotenv from "dotenv";
 
-dotenv.config();
+// Só carrega dotenv se não estiver no Vercel (desenvolvimento local)
+if (process.env.VERCEL !== '1') {
+  dotenv.config();
+}
 
 const isVercel = process.env.VERCEL === '1';
 const isProduction = process.env.NODE_ENV === 'production';
+
+// Função para obter JWT_SECRET com validação
+const getJwtSecret = (): string => {
+  const secret = process.env.JWT_SECRET;
+  
+  if (secret) {
+    return secret;
+  }
+  
+  if (isProduction) {
+    throw new Error(
+      '❌ ERRO CRÍTICO: JWT_SECRET não configurado em produção! ' +
+      'Configure JWT_SECRET nas variáveis de ambiente do Vercel.'
+    );
+  }
+  
+  console.warn('⚠️ JWT_SECRET não configurado — gerando secret temporário para desenvolvimento');
+  return 'DEV-TEMPORARY-SECRET-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+};
 
 export const config = {
   // Configurações do servidor
@@ -24,16 +46,9 @@ export const config = {
   },
 
   // Configurações de segurança
-  jwtSecret: process.env.JWT_SECRET || (() => {
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error(
-        '❌ ERRO CRÍTICO: JWT_SECRET não configurado em produção! ' +
-        'Configure JWT_SECRET nas variáveis de ambiente do Vercel.'
-      );
-    }
-    console.warn('⚠️ JWT_SECRET não configurado — gerando secret temporário para desenvolvimento');
-    return 'DEV-TEMPORARY-SECRET-' + Date.now() + '-' + Math.random().toString(36).slice(2);
-  })(),
+  get jwtSecret(): string {
+    return getJwtSecret();
+  },
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "7d", // Aumentado para 7 dias
 
   // Configurações do backend (para compatibilidade com index.ts)

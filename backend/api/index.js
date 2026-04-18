@@ -40,6 +40,11 @@ module.exports = async (req, res) => {
       DATABASE_URL: process.env.DATABASE_URL ? '✅ Configurado' : '❌ Ausente',
       JWT_SECRET: process.env.JWT_SECRET ? `✅ Configurado (${process.env.JWT_SECRET.substring(0, 10)}...)` : '❌ AUSENTE'
     });
+    
+    // Log adicional para debug
+    console.log('🔍 DEBUG - Todas as env vars que começam com JWT:', 
+      Object.keys(process.env).filter(k => k.includes('JWT')).map(k => `${k}: ${process.env[k] ? 'SET' : 'NOT SET'}`)
+    );
 
     // Importa o app compilado do dist
     const appModule = require('../dist/index.js');
