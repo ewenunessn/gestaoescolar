@@ -564,37 +564,7 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
       height: "100%", display: "flex", flexDirection: "column",
       bgcolor: SIDEBAR_BG,
     }}>
-      {/* ── Brand Header ── */}
-      <Box sx={{
-        px: 2.5, 
-        py: 3,
-        borderBottom: `1px solid ${DESIGN_TOKENS.border.subtle}`,
-        flexShrink: 0,
-        display: "flex", 
-        alignItems: "center",
-        justifyContent: "flex-start",
-        bgcolor: DESIGN_TOKENS.bg.primary,
-        minHeight: 72,
-      }}>
-        <Box sx={{
-          width: 8,
-          height: 8,
-          borderRadius: "50%",
-          bgcolor: DESIGN_TOKENS.accent.primary,
-          flexShrink: 0,
-          mr: 2,
-          boxShadow: `0 0 8px ${DESIGN_TOKENS.accent.primary}80`,
-        }} />
-        <Typography variant="h6" sx={{
-          fontWeight: 800,
-          color: DESIGN_TOKENS.accent.primary,
-          fontSize: "1.15rem",
-          letterSpacing: "0.5px",
-          textTransform: "uppercase",
-        }}>
-          NutriLog
-        </Typography>
-      </Box>
+      {/* ── Brand Header removed — logo moved to AppBar ── */}
 
       {/* ── Config update indicator ── */}
       {hasRecentChange && !loadingConfig && (
@@ -720,40 +690,7 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
       height: "100%", display: "flex", flexDirection: "column",
       bgcolor: SIDEBAR_BG,
     }}>
-      {/* ── Brand Header ── */}
-      <Box sx={{
-        px: collapsed ? 2 : 2.5, 
-        py: 3,
-        borderBottom: `1px solid ${DESIGN_TOKENS.border.subtle}`,
-        flexShrink: 0,
-        display: "flex", 
-        alignItems: "center",
-        justifyContent: collapsed ? "center" : "flex-start",
-        bgcolor: DESIGN_TOKENS.bg.primary,
-        minHeight: 72,
-      }}>
-        {!collapsed && (
-          <Box sx={{
-            width: 8,
-            height: 8,
-            borderRadius: "50%",
-            bgcolor: DESIGN_TOKENS.accent.primary,
-            flexShrink: 0,
-            mr: 2,
-            boxShadow: `0 0 8px ${DESIGN_TOKENS.accent.primary}80`,
-          }} />
-        )}
-        <Typography variant="h6" sx={{
-          fontWeight: 800,
-          color: DESIGN_TOKENS.accent.primary,
-          fontSize: collapsed ? "1rem" : "1.15rem",
-          letterSpacing: collapsed ? "2px" : "0.5px",
-          textAlign: "center",
-          textTransform: "uppercase",
-        }}>
-          {collapsed ? "NL" : "NutriLog"}
-        </Typography>
-      </Box>
+      {/* ── Brand Header removed — logo moved to AppBar ── */}
 
       {/* ── Config update indicator ── */}
       {hasRecentChange && !loadingConfig && (
@@ -903,16 +840,27 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
       <AppBar
         position="fixed"
         sx={{
-          width: { xs: "100%", md: `calc(100% - ${collapsed ? collapsedDrawerWidth : drawerWidth}px)` },
-          ml: { xs: 0, md: `${collapsed ? collapsedDrawerWidth : drawerWidth}px` },
+          width: "100%",
           bgcolor: DESIGN_TOKENS.bg.primary,
           borderBottom: `1px solid ${DESIGN_TOKENS.border.subtle}`,
           boxShadow: "none",
           transition: "width 0.25s ease, margin 0.25s ease",
-          zIndex: (theme) => theme.zIndex.drawer - 1,
+          zIndex: (theme) => theme.zIndex.drawer + 1,
         }}
       >
         <Toolbar sx={{ minHeight: { xs: 56, md: 64 }, gap: 2 }}>
+          {/* Logo no header */}
+          <Box
+            component="img"
+            src="/nutrilog_logo_v2.svg"
+            alt="NutriLog"
+            sx={{
+              height: 36,
+              width: "auto",
+              objectFit: "contain",
+              mr: 2,
+            }}
+          />
           <IconButton
             color="inherit"
             aria-label="abrir menu"
@@ -1003,7 +951,7 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
       <Box component="nav" sx={{ width: { md: collapsed ? collapsedDrawerWidth : drawerWidth }, flexShrink: { md: 0 }, transition: "width 0.25s ease" }}>
         <Drawer variant="temporary" open={mobileOpen} onClose={handleDrawerToggle}
           ModalProps={{ keepMounted: true }}
-          sx={{ display: { xs: "block", md: "none" }, "& .MuiDrawer-paper": { width: drawerWidth, bgcolor: SIDEBAR_BG } }}>
+          sx={{ display: { xs: "block", md: "none" }, "& .MuiDrawer-paper": { width: drawerWidth, bgcolor: SIDEBAR_BG, mt: { xs: '56px' } } }}>
           {mobileDrawer}
         </Drawer>
         <Drawer variant="permanent" open
@@ -1011,6 +959,7 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
             width: collapsed ? collapsedDrawerWidth : drawerWidth,
             borderRight: `1px solid ${BORDER}`, bgcolor: SIDEBAR_BG,
             transition: "width 0.25s ease", overflowX: "hidden",
+            mt: '64px', height: 'calc(100% - 64px)',
           } }}>
           {drawer}
         </Drawer>
