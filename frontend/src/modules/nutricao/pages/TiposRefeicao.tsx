@@ -8,6 +8,7 @@ import {
   Delete as DeleteIcon,
   CheckCircle as CheckCircleIcon,
   Cancel as CancelIcon,
+  Add as AddIcon,
 } from "@mui/icons-material";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "../../../components/DataTable";
@@ -225,6 +226,11 @@ const TiposRefeicaoPage: React.FC = () => {
           title="Tipos de Refeição"
           totalCount={tipos.length}
           breadcrumbs={[{ label: 'Dashboard', path: '/dashboard' }, { label: 'Cardápios' }, { label: 'Tipos de Refeição' }]}
+          action={
+            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => handleOpenDialog()} sx={{ borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
+              Novo Tipo
+            </Button>
+          }
         />
 
         {/* DataTable com altura fixa para scroll */}
@@ -234,8 +240,6 @@ const TiposRefeicaoPage: React.FC = () => {
             data={tipos}
             columns={columns}
             loading={loading}
-            onCreateClick={() => handleOpenDialog()}
-            createButtonLabel="Novo Tipo"
           />
         </Box>
       </PageContainer>

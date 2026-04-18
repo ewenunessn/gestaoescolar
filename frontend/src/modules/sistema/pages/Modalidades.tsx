@@ -32,6 +32,7 @@ import {
   Delete as DeleteIcon,
   Clear as ClearIcon,
   People as PeopleIcon,
+  Add as AddIcon,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { Modalidade } from "../../../services/modalidades";
@@ -323,6 +324,11 @@ const ModalidadesPage = () => {
           title="Modalidades"
           totalCount={modalidades.length}
           breadcrumbs={[{ label: 'Dashboard', path: '/dashboard' }, { label: 'Cadastros' }, { label: 'Modalidades' }]}
+          action={
+            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => openModal()} sx={{ borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
+              Nova Modalidade
+            </Button>
+          }
         />
 
         {/* DataTable com altura fixa para scroll */}
@@ -334,8 +340,6 @@ const ModalidadesPage = () => {
             loading={loading}
             onRowClick={handleRowClick}
             searchPlaceholder="Buscar modalidades..."
-            onCreateClick={() => openModal()}
-            createButtonLabel="Nova Modalidade"
             onFilterClick={(e) => setFilterAnchorEl(e.currentTarget)}
             onImportExportClick={(e) => setImportExportMenuAnchor(e.currentTarget)}
             initialPageSize={50}

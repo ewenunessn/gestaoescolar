@@ -414,8 +414,8 @@ const EscolasPage = () => {
             { label: 'Escolas' },
           ]}
           action={
-            <Button variant="contained" startIcon={<AddIcon />} onClick={openModal}
-              sx={{ bgcolor: '#22c55e', '&:hover': { bgcolor: '#16a34a' }, borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
+            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={openModal}
+              sx={{ borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
               Nova Escola
             </Button>
           }

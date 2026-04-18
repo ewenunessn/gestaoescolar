@@ -29,6 +29,7 @@ import {
   Visibility as VisibilityIcon,
   Delete as DeleteIcon,
   ShoppingCart,
+  Add as AddIcon,
 } from "@mui/icons-material";
 import { ColumnDef } from "@tanstack/react-table";
 import pedidosService from "../../../services/pedidos";
@@ -269,10 +270,16 @@ const PedidosPage = () => {
             { label: 'Compras' },
           ]}
           action={
-            <Button variant="contained" startIcon={<ShoppingCart />} onClick={() => setDialogGerarDaGuia(true)}
-              size="small" sx={{ bgcolor: '#1d4ed8', '&:hover': { bgcolor: '#1e40af' }, borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
-              Gerar Pedido da Guia
-            </Button>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button variant="outlined" color="primary" startIcon={<ShoppingCart />} onClick={() => setDialogGerarDaGuia(true)}
+                sx={{ borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
+                Gerar da Guia
+              </Button>
+              <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => navigate('/compras/novo')}
+                sx={{ borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
+                Novo Pedido
+              </Button>
+            </Box>
           }
         />
 
@@ -284,8 +291,6 @@ const PedidosPage = () => {
             loading={loading}
             onRowClick={handleRowClick}
             searchPlaceholder="Buscar pedidos..."
-            onCreateClick={() => navigate('/compras/novo')}
-            createButtonLabel="Novo Pedido"
             onFilterClick={(e) => setFilterAnchorEl(e.currentTarget)}
             initialPageSize={50}
           />

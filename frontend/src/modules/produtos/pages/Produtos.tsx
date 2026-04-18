@@ -46,6 +46,7 @@ import {
   FileUpload as FileUploadIcon,
   Edit as EditIcon,
   Clear as ClearIcon,
+  Add as AddIcon,
 } from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
 import { gerarModeloExcelProdutos } from "../../../utils/produtoImportUtils";
@@ -518,6 +519,11 @@ const ProdutosPage = () => {
           title="Produtos"
           totalCount={produtosFiltrados.length}
           breadcrumbs={[{ label: 'Dashboard', path: '/dashboard' }, { label: 'Cadastros' }, { label: 'Produtos' }]}
+          action={
+            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={openModal} sx={{ borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
+              Novo Produto
+            </Button>
+          }
         />
 
         {/* DataTable com altura fixa para scroll */}
@@ -529,8 +535,6 @@ const ProdutosPage = () => {
             loading={loading}
             onRowClick={handleRowClick}
             searchPlaceholder="Buscar produtos..."
-            onCreateClick={openModal}
-            createButtonLabel="Novo Produto"
             onFilterClick={(e) => setFilterAnchorEl(e.currentTarget)}
             onImportExportClick={(e) => setImportExportMenuAnchor(e.currentTarget)}
             initialPageSize={50}

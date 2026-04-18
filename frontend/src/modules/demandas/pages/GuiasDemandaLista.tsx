@@ -450,10 +450,24 @@ const GuiasDemandaLista: React.FC = () => {
             { label: 'Guias de Demanda' },
           ]}
           action={
-            <Button variant="contained" startIcon={<TableChartIcon />} onClick={() => setOpenGerarGuia(true)}
-              size="small" sx={{ bgcolor: '#1d4ed8', '&:hover': { bgcolor: '#1e40af' }, borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
-              Gerar Guia de Demanda
-            </Button>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button variant="outlined" color="primary" startIcon={<TableChartIcon />} onClick={() => setOpenGerarGuia(true)}
+                sx={{ borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
+                Gerar Guia de Demanda
+              </Button>
+              <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => {
+                const inicial = {
+                  mes: new Date().getMonth() + 1,
+                  ano: new Date().getFullYear()
+                };
+                setFormData(inicial);
+                setFormDataInicial(JSON.parse(JSON.stringify(inicial)));
+                setOpenModal(true);
+              }}
+                sx={{ borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
+                Nova Competência
+              </Button>
+            </Box>
           }
         />
 
@@ -466,16 +480,6 @@ const GuiasDemandaLista: React.FC = () => {
             loading={loading}
             onRowClick={handleRowClick}
             searchPlaceholder="Buscar guias..."
-            onCreateClick={() => {
-              const inicial = {
-                mes: new Date().getMonth() + 1,
-                ano: new Date().getFullYear()
-              };
-              setFormData(inicial);
-              setFormDataInicial(JSON.parse(JSON.stringify(inicial)));
-              setOpenModal(true);
-            }}
-            createButtonLabel="Nova Competência"
             onFilterClick={(e) => setFilterAnchorEl(e.currentTarget)}
           />
         </Box>
