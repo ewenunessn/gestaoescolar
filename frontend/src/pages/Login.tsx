@@ -9,8 +9,9 @@ import {
   CircularProgress,
   IconButton,
   Fade,
+  Card,
 } from "@mui/material";
-import { Visibility, VisibilityOff, LoginOutlined } from "@mui/icons-material";
+import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { login } from "../services/auth";
 import { useNavigate, useLocation } from "react-router-dom";
 
@@ -76,75 +77,121 @@ export default function Login() {
     }
   }
 
-  const fieldSx = {
-    "& .MuiOutlinedInput-root": {
-      borderRadius: "12px",
-      transition: "all 0.2s ease-in-out",
-      bgcolor: "#ffffff",
-      "& fieldset": { borderColor: "#e2e8f0" },
-      "&:hover fieldset": { borderColor: "#3b82f6" },
-      "&.Mui-focused fieldset": { borderColor: "#3b82f6", borderWidth: 2 },
-    },
-    "& .MuiInputBase-input": { fontSize: "0.95rem", py: 1.6 },
-  };
-
   return (
     <Box
       sx={{
         minHeight: "100vh",
-        // Gradiente moderno no fundo
-        background: "radial-gradient(circle at top left, #1e293b 0%, #0f172a 100%)",
+        bgcolor: "#0d0d0d",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         p: 2,
+        position: "relative",
+        overflow: "hidden",
+        "&::before": {
+          content: '""',
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: "radial-gradient(circle at 20% 50%, rgba(0, 191, 255, 0.08) 0%, transparent 50%), radial-gradient(circle at 80% 80%, rgba(34, 197, 94, 0.06) 0%, transparent 50%)",
+          pointerEvents: "none",
+        },
       }}
     >
       <Fade in={true} timeout={800}>
-        <Box
+        <Card
           sx={{
-            bgcolor: "rgba(255, 255, 255, 0.98)",
-            borderRadius: "28px",
-            p: { xs: 4, sm: 6 },
+            bgcolor: "#181818",
+            borderRadius: "16px",
+            border: "1px solid rgba(255,255,255,0.07)",
+            p: { xs: 4, sm: 5 },
             width: "100%",
             maxWidth: 440,
-            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2)",
             textAlign: "center",
+            position: "relative",
+            zIndex: 1,
           }}
         >
-          {/* Logo ou Ícone */}
+          {/* Logo */}
           <Box
             sx={{
-              width: 56,
-              height: 56,
-              bgcolor: "#eff6ff",
-              borderRadius: "16px",
               display: "flex",
-              alignItems: "center",
               justifyContent: "center",
-              mx: "auto",
-              mb: 3,
-              color: "#3b82f6",
+              mb: 4,
             }}
           >
-            <LoginOutlined sx={{ fontSize: 32 }} />
+            <img 
+              src="/nutrilog_logo_v2.svg" 
+              alt="NutriLog" 
+              style={{ 
+                height: "80px",
+                width: "auto"
+              }} 
+            />
           </Box>
 
-          <Typography variant="h4" sx={{ fontWeight: 800, color: "#1e293b", mb: 1, letterSpacing: "-0.02em" }}>
-            NutriLog
-          </Typography>
-          <Typography variant="body1" sx={{ color: "#64748b", mb: 4 }}>
-            Acesse sua conta para continuar
+          <Typography 
+            variant="body2" 
+            sx={{ 
+              color: "#888", 
+              mb: 4,
+              fontSize: "0.875rem"
+            }}
+          >
+            Sistema de Gestão Nutricional
           </Typography>
 
-          {successMessage && <Alert severity="success" sx={{ mb: 3, borderRadius: "12px" }}>{successMessage}</Alert>}
-          {erro && <Alert severity="error" sx={{ mb: 3, borderRadius: "12px" }}>{erro}</Alert>}
+          {successMessage && (
+            <Alert 
+              severity="success" 
+              sx={{ 
+                mb: 3, 
+                borderRadius: "12px",
+                bgcolor: "rgba(34, 197, 94, 0.12)",
+                border: "1px solid rgba(34, 197, 94, 0.2)",
+                color: "#22c55e",
+                "& .MuiAlert-icon": { color: "#22c55e" }
+              }}
+            >
+              {successMessage}
+            </Alert>
+          )}
+          
+          {erro && (
+            <Alert 
+              severity="error" 
+              sx={{ 
+                mb: 3, 
+                borderRadius: "12px",
+                bgcolor: "rgba(239, 68, 68, 0.12)",
+                border: "1px solid rgba(239, 68, 68, 0.2)",
+                color: "#ef4444",
+                "& .MuiAlert-icon": { color: "#ef4444" }
+              }}
+            >
+              {erro}
+            </Alert>
+          )}
 
           <form onSubmit={handleSubmit}>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
               <Box sx={{ textAlign: "left" }}>
-                <Typography variant="caption" sx={{ fontWeight: 700, color: "#475569", ml: 1, mb: 0.5, display: "block", textTransform: "uppercase", fontSize: "0.7rem" }}>
-                  E-mail institucional
+                <Typography 
+                  variant="caption" 
+                  sx={{ 
+                    fontWeight: 600, 
+                    color: "#888", 
+                    ml: 0.5, 
+                    mb: 0.75, 
+                    display: "block",
+                    fontSize: "0.75rem",
+                    letterSpacing: "0.02em"
+                  }}
+                >
+                  E-mail
                 </Typography>
                 <TextField
                   type="email"
@@ -153,12 +200,47 @@ export default function Login() {
                   fullWidth
                   placeholder="exemplo@email.com"
                   required
-                  sx={fieldSx}
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: "12px",
+                      bgcolor: "#0d0d0d",
+                      color: "#f0f0f0",
+                      "& fieldset": { 
+                        borderColor: "rgba(255,255,255,0.07)" 
+                      },
+                      "&:hover fieldset": { 
+                        borderColor: "rgba(255,255,255,0.12)" 
+                      },
+                      "&.Mui-focused fieldset": { 
+                        borderColor: "#00bfff",
+                        borderWidth: 1
+                      },
+                    },
+                    "& .MuiInputBase-input": { 
+                      fontSize: "0.875rem", 
+                      py: 1.5,
+                      "&::placeholder": {
+                        color: "#666",
+                        opacity: 1
+                      }
+                    },
+                  }}
                 />
               </Box>
 
               <Box sx={{ textAlign: "left" }}>
-                <Typography variant="caption" sx={{ fontWeight: 700, color: "#475569", ml: 1, mb: 0.5, display: "block", textTransform: "uppercase", fontSize: "0.7rem" }}>
+                <Typography 
+                  variant="caption" 
+                  sx={{ 
+                    fontWeight: 600, 
+                    color: "#888", 
+                    ml: 0.5, 
+                    mb: 0.75, 
+                    display: "block",
+                    fontSize: "0.75rem",
+                    letterSpacing: "0.02em"
+                  }}
+                >
                   Senha
                 </Typography>
                 <TextField
@@ -168,12 +250,40 @@ export default function Login() {
                   fullWidth
                   placeholder="••••••••"
                   required
-                  sx={fieldSx}
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: "12px",
+                      bgcolor: "#0d0d0d",
+                      color: "#f0f0f0",
+                      "& fieldset": { 
+                        borderColor: "rgba(255,255,255,0.07)" 
+                      },
+                      "&:hover fieldset": { 
+                        borderColor: "rgba(255,255,255,0.12)" 
+                      },
+                      "&.Mui-focused fieldset": { 
+                        borderColor: "#00bfff",
+                        borderWidth: 1
+                      },
+                    },
+                    "& .MuiInputBase-input": { 
+                      fontSize: "0.875rem", 
+                      py: 1.5,
+                      "&::placeholder": {
+                        color: "#666",
+                        opacity: 1
+                      }
+                    },
+                  }}
                   InputProps={{
                     endAdornment: (
                       <InputAdornment position="end">
-                        <IconButton onClick={() => setShowPassword(p => !p)} edge="end" sx={{ color: "#94a3b8" }}>
-                          {showPassword ? <VisibilityOff /> : <Visibility />}
+                        <IconButton 
+                          onClick={() => setShowPassword(p => !p)} 
+                          edge="end" 
+                          sx={{ color: "#666", "&:hover": { color: "#888" } }}
+                        >
+                          {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
                         </IconButton>
                       </InputAdornment>
                     ),
@@ -188,31 +298,46 @@ export default function Login() {
                 disabled={loading}
                 sx={{
                   mt: 1,
-                  py: 1.8,
-                  borderRadius: "14px",
-                  bgcolor: "#2563eb",
-                  fontWeight: 700,
-                  fontSize: "1rem",
+                  py: 1.5,
+                  borderRadius: "12px",
+                  bgcolor: "#00bfff",
+                  color: "#0d0d0d",
+                  fontWeight: 600,
+                  fontSize: "0.875rem",
                   textTransform: "none",
-                  boxShadow: "0 4px 6px -1px rgba(37, 99, 235, 0.2)",
+                  boxShadow: "0 0 20px rgba(0, 191, 255, 0.3)",
                   transition: "all 0.2s",
                   "&:hover": { 
-                    bgcolor: "#1d4ed8", 
-                    boxShadow: "0 10px 15px -3px rgba(37, 99, 235, 0.3)",
+                    bgcolor: "#00a8e6",
+                    boxShadow: "0 0 30px rgba(0, 191, 255, 0.4)",
                     transform: "translateY(-1px)"
                   },
-                  "&:active": { transform: "translateY(0)" }
+                  "&:active": { 
+                    transform: "translateY(0)" 
+                  },
+                  "&.Mui-disabled": {
+                    bgcolor: "rgba(0, 191, 255, 0.3)",
+                    color: "rgba(13, 13, 13, 0.5)"
+                  }
                 }}
               >
-                {loading ? <CircularProgress size={24} color="inherit" /> : "Entrar na plataforma"}
+                {loading ? <CircularProgress size={20} sx={{ color: "#0d0d0d" }} /> : "Entrar"}
               </Button>
             </Box>
           </form>
           
-          <Typography variant="caption" sx={{ color: "#94a3b8", display: "block", mt: 4 }}>
-            © {new Date().getFullYear()} NutriLog - Sistema de Gestão Nutricional
+          <Typography 
+            variant="caption" 
+            sx={{ 
+              color: "#666", 
+              display: "block", 
+              mt: 4,
+              fontSize: "0.7rem"
+            }}
+          >
+            © {new Date().getFullYear()} NutriLog
           </Typography>
-        </Box>
+        </Card>
       </Fade>
     </Box>
   );
