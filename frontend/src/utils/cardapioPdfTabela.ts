@@ -2,7 +2,7 @@ import { CardapioModalidade, RefeicaoDia, TIPOS_REFEICAO } from '../services/car
 import { listarTiposRefeicao, formatarHorario } from '../services/tiposRefeicao';
 import { dateUtils } from './dateUtils';
 import { buildPdfDoc } from './pdfUtils';
-import { initPdfMake } from './cardapioPdfGenerators';
+import { initPdfMake } from './pdfUtils';
 import QRCode from 'qrcode';
 
 interface GerarPDFTabelaParams {

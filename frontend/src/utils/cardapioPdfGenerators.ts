@@ -1,22 +1,10 @@
 import api from '../services/api';
+import { buscarInstituicao } from '../services/instituicao';
 import { CardapioModalidade, RefeicaoDia, TIPOS_REFEICAO } from '../services/cardapiosModalidade';
 import { dateUtils } from './dateUtils';
+import { initPdfMake, buildPdfDoc } from './pdfUtils';
 
-// Função para obter URL base da API
-const getApiBaseUrl = () => {
-  return process.env.NODE_ENV === 'production' 
-    ? 'https://gestaoescolar-backend.vercel.app'
-    : 'http://localhost:3000';
-};
-
-// Importação dinâmica para pdfmake
-export const initPdfMake = async () => {
-  const pdfMake = (await import('pdfmake/build/pdfmake')).default;
-  const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default as any;
-  
-  (pdfMake as any).vfs = pdfFonts.pdfMake?.vfs || pdfFonts;
-  return pdfMake;
-};
+// ─── Exportar Calendário PDF ──────────────────────────────────────────────────
 
 interface ExportarCalendarioPDFParams {
   cardapio: CardapioModalidade;
@@ -33,9 +21,9 @@ export const exportarCalendarioPDF = async ({
   
   let instituicao = null;
   try {
-    const response = await api.get('/instituicao');
-    instituicao = response.data;
+    instituicao = await buscarInstituicao();
   } catch (err) {
+    console.warn('Não foi possível carregar dados da instituição para o PDF');
   }
   
   const getCalendarioSemanasParaPDF = () => {
@@ -76,9 +64,10 @@ export const exportarCalendarioPDF = async ({
   tableBody.push(
     diasSemana.map(dia => ({
       text: dia,
-      style: 'tableHeader',
+      bold: true,
+      fontSize: 9,
+      fillColor: '#e3f2fd',
       alignment: 'center',
-      bold: true
     }))
   );
   
@@ -126,76 +115,40 @@ export const exportarCalendarioPDF = async ({
     
     tableBody.push(row);
   });
-  
-  const headerContent: any[] = [];
-  
-  if (instituicao?.logo_url) {
-    headerContent.push({
-      columns: [
-        {
-          image: instituicao.logo_url.startsWith('data:') ? instituicao.logo_url : `${getApiBaseUrl()}${instituicao.logo_url}`,
-          width: 60,
-          height: 60
-        },
-        {
-          stack: [
-            { text: instituicao.nome || 'Secretaria Municipal de Educação', style: 'header', alignment: 'center' },
-            { text: `Cardapio - ${cardapio.nome}`, style: 'subheader', alignment: 'center' },
-            { text: `${dateUtils.getMonthName(cardapio.mes)} / ${cardapio.ano} - ${cardapio.modalidade_nome}`, style: 'subheader2', alignment: 'center' }
-          ],
-          width: '*'
-        },
-        { text: '', width: 60 }
-      ],
-      margin: [0, 0, 0, 10]
-    });
-  } else {
-    headerContent.push({
-      stack: [
-        { text: instituicao?.nome || 'Secretaria Municipal de Educação', style: 'header', alignment: 'center' },
-        { text: `Cardapio - ${cardapio.nome}`, style: 'subheader', alignment: 'center' },
-        { text: `${dateUtils.getMonthName(cardapio.mes)} / ${cardapio.ano} - ${cardapio.modalidade_nome}`, style: 'subheader2', alignment: 'center' }
-      ]
-    });
-  }
-  
-  const docDefinition: any = {
-    pageSize: 'A4',
-    pageOrientation: 'landscape',
-    pageMargins: [15, 60, 15, 30],
-    header: {
-      stack: headerContent,
-      margin: [15, 10, 15, 0]
-    },
-    content: [
-      {
-        table: {
-          widths: Array(7).fill('*'),
-          heights: (row: number) => row === 0 ? 18 : 75,
-          body: tableBody
-        },
-        layout: {
-          hLineWidth: () => 0.5,
-          vLineWidth: () => 0.5,
-          hLineColor: () => '#cccccc',
-          vLineColor: () => '#cccccc',
-          paddingLeft: () => 3,
-          paddingRight: () => 3,
-          paddingTop: () => 3,
-          paddingBottom: () => 3
-        }
+
+  const calendarContent: any[] = [
+    {
+      table: {
+        widths: Array(7).fill('*'),
+        heights: (row: number) => row === 0 ? 18 : 75,
+        body: tableBody
+      },
+      layout: {
+        hLineWidth: () => 0.5,
+        vLineWidth: () => 0.5,
+        hLineColor: () => '#cccccc',
+        vLineColor: () => '#cccccc',
+        paddingLeft: () => 3,
+        paddingRight: () => 3,
+        paddingTop: () => 3,
+        paddingBottom: () => 3
       }
-    ],
-    styles: {
-      header: { fontSize: 15, bold: true },
-      subheader: { fontSize: 13, bold: true, margin: [0, 2, 0, 0] },
-      subheader2: { fontSize: 10, margin: [0, 2, 0, 0] },
-      tableHeader: { bold: true, fontSize: 9, fillColor: '#e3f2fd', alignment: 'center' }
     }
-  };
+  ];
+
+  const doc = buildPdfDoc({
+    instituicao,
+    title: `Cardápio - ${cardapio.nome}`,
+    subtitle: `${dateUtils.getMonthName(cardapio.mes)} / ${cardapio.ano} - ${cardapio.modalidade_nome}`,
+    content: calendarContent,
+    orientation: 'landscape',
+    pageMargins: [15, 30, 15, 50],
+  });
   
-  pdfMake.createPdf(docDefinition).download(`cardapio-${cardapio.mes}-${cardapio.ano}.pdf`);
+  pdfMake.createPdf(doc).download(`cardapio-${cardapio.mes}-${cardapio.ano}.pdf`);
 };
+
+// ─── Exportar Frequência PDF ──────────────────────────────────────────────────
 
 interface ExportarFrequenciaPDFParams {
   cardapio: CardapioModalidade;
@@ -229,21 +182,21 @@ export const exportarFrequenciaPDF = async ({
     if (frequencia[tipo]) {
       content.push({
         text: tipoNome,
-        style: 'sectionHeader',
+        style: 'sectionTitle',
         margin: [0, content.length > 0 ? 15 : 0, 0, 5]
       });
       
       const tableBody: any[] = [
         [
-          { text: 'Refeicao', style: 'tableHeader' },
-          { text: 'Frequencia', style: 'tableHeader', alignment: 'center' }
+          { text: 'Refeição', bold: true, fontSize: 8, color: '#212121', fillColor: '#F5F5F5', margin: [6, 5, 6, 5] },
+          { text: 'Frequência', bold: true, fontSize: 8, color: '#212121', fillColor: '#F5F5F5', alignment: 'center', margin: [6, 5, 6, 5] }
         ]
       ];
       
       Object.entries(frequencia[tipo]).forEach(([nome, freq]) => {
         tableBody.push([
-          { text: nome },
-          { text: freq.toString(), alignment: 'center' }
+          { text: nome, fontSize: 8, color: '#212121', margin: [6, 4, 6, 4] },
+          { text: freq.toString(), fontSize: 8, color: '#212121', alignment: 'center', margin: [6, 4, 6, 4] }
         ]);
       });
       
@@ -253,65 +206,28 @@ export const exportarFrequenciaPDF = async ({
           body: tableBody
         },
         layout: {
-          hLineWidth: () => 0.5,
-          vLineWidth: () => 0.5,
-          hLineColor: () => '#cccccc',
-          vLineColor: () => '#cccccc'
-        }
+          hLineWidth: (i: number, node: any) => (i === 0 || i === 1 || i === node.table.body.length ? 1.0 : 0.6),
+          vLineWidth: () => 0.6,
+          hLineColor: (i: number, node: any) => (i === 0 || i === node.table.body.length ? '#616161' : '#9E9E9E'),
+          vLineColor: () => '#9E9E9E',
+        },
+        margin: [0, 4, 0, 8],
       });
     }
   });
+
+  const doc = buildPdfDoc({
+    instituicao,
+    title: `Relatório de Frequência - ${cardapio.nome}`,
+    subtitle: `${dateUtils.getMonthName(cardapio.mes)} / ${cardapio.ano} - ${cardapio.modalidade_nome}`,
+    content,
+    showSignature: !!instituicao?.secretario_nome,
+  });
   
-  const headerContent: any[] = [];
-  
-  if (instituicao?.logo_url) {
-    headerContent.push({
-      columns: [
-        {
-          image: instituicao.logo_url.startsWith('data:') ? instituicao.logo_url : `${getApiBaseUrl()}${instituicao.logo_url}`,
-          width: 50,
-          height: 50
-        },
-        {
-          stack: [
-            { text: instituicao.nome || 'Secretaria Municipal de Educação', style: 'header', alignment: 'center' },
-            { text: `Relatorio de Frequencia - ${cardapio.nome}`, style: 'subheader', alignment: 'center' },
-            { text: `${dateUtils.getMonthName(cardapio.mes)} / ${cardapio.ano} - ${cardapio.modalidade_nome}`, style: 'subheader2', alignment: 'center' }
-          ],
-          width: '*'
-        },
-        { text: '', width: 50 }
-      ]
-    });
-  } else {
-    headerContent.push({
-      stack: [
-        { text: instituicao?.nome || 'Secretaria Municipal de Educação', style: 'header', alignment: 'center' },
-        { text: `Relatorio de Frequencia - ${cardapio.nome}`, style: 'subheader', alignment: 'center' },
-        { text: `${dateUtils.getMonthName(cardapio.mes)} / ${cardapio.ano} - ${cardapio.modalidade_nome}`, style: 'subheader2', alignment: 'center' }
-      ]
-    });
-  }
-  
-  const docDefinition: any = {
-    pageSize: 'A4',
-    pageMargins: [40, 80, 40, 40],
-    header: {
-      stack: headerContent,
-      margin: [40, 20, 40, 0]
-    },
-    content: content,
-    styles: {
-      header: { fontSize: 16, bold: true },
-      subheader: { fontSize: 14, bold: true, margin: [0, 3, 0, 0] },
-      subheader2: { fontSize: 11, margin: [0, 3, 0, 0] },
-      sectionHeader: { fontSize: 12, bold: true },
-      tableHeader: { bold: true, fillColor: '#428bca', color: 'white', fontSize: 10 }
-    }
-  };
-  
-  pdfMake.createPdf(docDefinition).download(`frequencia-cardapio-${cardapio.mes}-${cardapio.ano}.pdf`);
+  pdfMake.createPdf(doc).download(`frequencia-cardapio-${cardapio.mes}-${cardapio.ano}.pdf`);
 };
+
+// ─── Exportar Relatório Detalhado PDF ─────────────────────────────────────────
 
 interface ExportarRelatorioDetalhadoParams {
   cardapio: CardapioModalidade;
@@ -347,12 +263,15 @@ export const exportarRelatorioDetalhado = async ({
   });
   
   if (refeicoesNoPeriodo.length === 0) {
-    const docDefinition: any = {
+    const doc = buildPdfDoc({
+      instituicao,
+      title: `Cardápio Detalhado - ${cardapio.nome}`,
+      subtitle: `${dateUtils.getMonthName(cardapio.mes)}/${cardapio.ano} - ${cardapio.modalidade_nome}`,
       content: [
-        { text: 'Nenhuma refeicao cadastrada neste periodo', alignment: 'center', margin: [0, 50, 0, 0] }
-      ]
-    };
-    pdfMake.createPdf(docDefinition).download(`cardapio-detalhado-${cardapio.mes}-${cardapio.ano}.pdf`);
+        { text: 'Nenhuma refeição cadastrada neste período', alignment: 'center', margin: [0, 50, 0, 0] }
+      ],
+    });
+    pdfMake.createPdf(doc).download(`cardapio-detalhado-${cardapio.mes}-${cardapio.ano}.pdf`);
     return;
   }
   
@@ -382,9 +301,9 @@ export const exportarRelatorioDetalhado = async ({
   
   const tableBody: any[] = [
     [
-      { text: 'Data', style: 'tableHeader', alignment: 'center' },
-      { text: 'Refeicao', style: 'tableHeader' },
-      { text: 'Produtos e Per Capita', style: 'tableHeader' }
+      { text: 'Data', bold: true, fontSize: 8, color: '#212121', fillColor: '#F5F5F5', alignment: 'center', margin: [6, 5, 6, 5] },
+      { text: 'Refeição', bold: true, fontSize: 8, color: '#212121', fillColor: '#F5F5F5', margin: [6, 5, 6, 5] },
+      { text: 'Produtos e Per Capita', bold: true, fontSize: 8, color: '#212121', fillColor: '#F5F5F5', margin: [6, 5, 6, 5] }
     ]
   ];
   
@@ -480,115 +399,38 @@ export const exportarRelatorioDetalhado = async ({
       }
     });
   });
-  
-  const headerContent: any[] = [];
-  
-  if (instituicao?.logo_url) {
-    headerContent.push({
-      columns: [
-        {
-          image: instituicao.logo_url.startsWith('data:') ? instituicao.logo_url : `${getApiBaseUrl()}${instituicao.logo_url}`,
-          width: 50,
-          height: 50
-        },
-        {
-          stack: [
-            { text: instituicao.nome || 'Secretaria Municipal de Educação', style: 'header', alignment: 'center' },
-            { text: `Cardapio Detalhado - ${cardapio.nome}`, style: 'subheader', alignment: 'center' },
-            { 
-              text: `${dateUtils.getMonthName(cardapio.mes)}/${cardapio.ano} - ${cardapio.modalidade_nome} | Periodo: ${periodoForm.diaInicio} a ${periodoForm.diaFim}`, 
-              style: 'subheader2', 
-              alignment: 'center' 
-            }
-          ],
-          width: '*'
-        },
-        { text: '', width: 50 }
-      ]
-    });
-  } else {
-    headerContent.push({
-      stack: [
-        { text: instituicao?.nome || 'Secretaria Municipal de Educação', style: 'header', alignment: 'center' },
-        { text: `Cardapio Detalhado - ${cardapio.nome}`, style: 'subheader', alignment: 'center' },
-        { 
-          text: `${dateUtils.getMonthName(cardapio.mes)}/${cardapio.ano} - ${cardapio.modalidade_nome} | Periodo: ${periodoForm.diaInicio} a ${periodoForm.diaFim}`, 
-          style: 'subheader2', 
-          alignment: 'center' 
+
+  const detailedContent: any[] = [
+    {
+      table: {
+        widths: [60, 100, '*'],
+        body: tableBody,
+        heights: (rowIndex: number) => {
+          if (rowIndex === 0) return 20;
+          return 'auto';
         }
-      ]
-    });
-  }
-  
-  const footerContent = (currentPage: number, pageCount: number) => {
-    const footerStack: any[] = [
-      {
-        text: `Pagina ${currentPage} de ${pageCount} - Gerado em ${new Date().toLocaleDateString('pt-BR')}`,
-        alignment: 'center',
-        fontSize: 7,
-        color: '#999999',
-        margin: [0, 10, 0, 0]
+      },
+      layout: {
+        hLineWidth: () => 0.5,
+        vLineWidth: () => 0.5,
+        hLineColor: () => '#cccccc',
+        vLineColor: () => '#cccccc',
+        paddingLeft: () => 5,
+        paddingRight: () => 5,
+        paddingTop: () => 5,
+        paddingBottom: () => 5
       }
-    ];
-    
-    if (instituicao?.secretario_nome && currentPage === pageCount) {
-      footerStack.push({
-        columns: [
-          { text: '', width: '*' },
-          {
-            stack: [
-              { text: '_'.repeat(40), alignment: 'center', margin: [0, 20, 0, 5] },
-              { text: instituicao.secretario_nome, alignment: 'center', bold: true, fontSize: 10 },
-              { text: instituicao.secretario_cargo || 'Secretário(a) de Educação', alignment: 'center', fontSize: 9 }
-            ],
-            width: 200
-          },
-          { text: '', width: '*' }
-        ],
-        margin: [0, 20, 0, 0]
-      });
     }
-    
-    return { stack: footerStack };
-  };
+  ];
+
+  const doc = buildPdfDoc({
+    instituicao,
+    title: `Cardápio Detalhado - ${cardapio.nome}`,
+    subtitle: `${dateUtils.getMonthName(cardapio.mes)}/${cardapio.ano} - ${cardapio.modalidade_nome} | Período: ${periodoForm.diaInicio} a ${periodoForm.diaFim}`,
+    content: detailedContent,
+    showSignature: !!instituicao?.secretario_nome,
+    pageMargins: [30, 40, 30, 60],
+  });
   
-  const docDefinition: any = {
-    pageSize: 'A4',
-    pageMargins: [30, 70, 30, 60],
-    header: {
-      stack: headerContent,
-      margin: [30, 15, 30, 0]
-    },
-    footer: footerContent,
-    content: [
-      {
-        table: {
-          widths: [60, 100, '*'],
-          body: tableBody,
-          heights: (rowIndex: number) => {
-            if (rowIndex === 0) return 20;
-            return 'auto';
-          }
-        },
-        layout: {
-          hLineWidth: () => 0.5,
-          vLineWidth: () => 0.5,
-          hLineColor: () => '#cccccc',
-          vLineColor: () => '#cccccc',
-          paddingLeft: () => 5,
-          paddingRight: () => 5,
-          paddingTop: () => 5,
-          paddingBottom: () => 5
-        }
-      }
-    ],
-    styles: {
-      header: { fontSize: 14, bold: true },
-      subheader: { fontSize: 12, bold: true, margin: [0, 3, 0, 0] },
-      subheader2: { fontSize: 9, margin: [0, 3, 0, 0] },
-      tableHeader: { bold: true, fillColor: '#428bca', color: 'white', fontSize: 9 }
-    }
-  };
-  
-  pdfMake.createPdf(docDefinition).download(`cardapio-detalhado-${cardapio.mes}-${cardapio.ano}.pdf`);
+  pdfMake.createPdf(doc).download(`cardapio-detalhado-${cardapio.mes}-${cardapio.ano}.pdf`);
 };

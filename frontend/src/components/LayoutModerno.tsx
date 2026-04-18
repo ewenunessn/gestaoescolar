@@ -995,8 +995,7 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
           {/* Seletor de Período e Notificações */}
           <Box sx={{ display: "flex", alignItems: "center", gap: 1, ml: "auto" }}>
             <SeletorPeriodo />
-            <NotificacoesEscolaMenu />
-            <NotificacoesMenu />
+            {isEscolaUser ? <NotificacoesEscolaMenu /> : <NotificacoesMenu />}
           </Box>
         </Toolbar>
       </AppBar>

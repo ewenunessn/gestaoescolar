@@ -60,6 +60,8 @@ export interface PdfDocOptions {
   extraStyles?: Record<string, any>;
   /** Rodapé customizado (substitui o padrão) */
   customFooter?: (currentPage: number, pageCount: number) => any;
+  /** Margens customizadas [left, top, right, bottom] (substitui o padrão) */
+  pageMargins?: [number, number, number, number];
 }
 
 // ─── Helpers internos ─────────────────────────────────────────────────────────
@@ -86,7 +88,7 @@ const processImageUrl = (logoUrl: string): string => {
 
 // ─── Cabeçalho padrão (bloco pdfmake) ────────────────────────────────────────
 
-const buildHeader = (
+export const buildHeader = (
   instituicao: Instituicao | null, 
   title: string, 
   subtitle?: string,
@@ -168,7 +170,7 @@ const buildHeader = (
 
 // ─── Rodapé padrão (função pdfmake) ──────────────────────────────────────────
 
-const buildFooter = (
+export const buildFooter = (
   instituicao: Instituicao | null,
   showSignature: boolean,
   totalPages: number
@@ -265,9 +267,10 @@ export const buildPdfDoc = ({
   showSignature = false,
   extraStyles = {},
   customFooter,
+  pageMargins,
 }: PdfDocOptions): any => ({
   pageOrientation: orientation,
-  pageMargins: [40, orientation === 'landscape' ? 30 : 40, 40, 60],
+  pageMargins: pageMargins || [40, orientation === 'landscape' ? 30 : 40, 40, 60],
   content: [
     ...buildHeader(instituicao, title, subtitle, orientation),
     ...content,

@@ -24,6 +24,8 @@ import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
 import { PedidoDetalhado, STATUS_PEDIDO } from "../../../types/pedido";
 import PageContainer from "../../../components/PageContainer";
 import { formatarMoeda, formatarData } from "../../../utils/dateUtils";
+import { buscarInstituicao } from "../../../services/instituicao";
+import { initPdfMake, buildPdfDoc, PDF_COLORS } from "../../../utils/pdfUtils";
 
 const formatarNumero = (n: number) => parseFloat(n.toString()).toString();
 
@@ -55,9 +57,9 @@ export default function PedidoDetalhe() {
     if (!pedido) return;
     setGerandoPdf(true);
     try {
-      const pdfMake = (await import('pdfmake/build/pdfmake')).default;
-      const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default as any;
-      (pdfMake as any).vfs = pdfFonts.pdfMake?.vfs || pdfFonts;
+      const pdfMake = await initPdfMake();
+      let instituicao = null;
+      try { instituicao = await buscarInstituicao(); } catch {}
 
       // Carregar programações de todos os itens
       const progsMap: Record<number, any[]> = {};
@@ -78,11 +80,11 @@ export default function PedidoDetalhe() {
         fornMap[fid].itens.push(item);
       });
 
-      const C_HEADER = '#2d3748';
-      const C_SUB    = '#4a5568';
-      const C_STRIPE = '#f7f8fa';
-      const C_BORDER = '#e2e8f0';
-      const C_TOTAL  = '#1a202c';
+      const C_HEADER = PDF_COLORS.headerBg;
+      const C_SUB    = PDF_COLORS.accent;
+      const C_STRIPE = PDF_COLORS.stripe;
+      const C_BORDER = PDF_COLORS.border;
+      const C_TOTAL  = PDF_COLORS.dark;
 
       const competencia = pedido.competencia_mes_ano ?? formatarData(pedido.data_pedido);
       const docNumero   = pedido.numero;
@@ -93,15 +95,24 @@ export default function PedidoDetalhe() {
       const content: any[] = [];
       let pageSeq = 0;
 
+      const renderMoeda = (valor: number | string | undefined, bg: string, fontSize = 8, bold = false, color = '#212121', margin = [4, 3, 4, 3]) => {
+        const num = Number(valor) || 0;
+        const str = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(num).replace(/^R\$\s*/, '').trim();
+        return {
+          columns: [
+            { text: 'R$', alignment: 'left', width: 'auto', fontSize, bold, color },
+            { text: str, alignment: 'right', width: '*', fontSize, bold, color }
+          ],
+          fillColor: bg, margin
+        };
+      };
+
       Object.values(fornMap).forEach((forn, fi) => {
-        // Agrupar itens do fornecedor por data de entrega (programação)
-        // Montar mapa: data_entrega -> [{ item, quantidade }]
         const progDataMap: Record<string, { item: typeof pedido.itens[0]; quantidade: number }[]> = {};
 
         forn.itens.forEach(item => {
           const progs = progsMap[item.id!] ?? [];
           if (progs.length === 0) {
-            // Sem programação: usa data prevista ou "Sem data"
             const key = item.data_entrega_prevista ? item.data_entrega_prevista.split('T')[0] : 'Sem data definida';
             if (!progDataMap[key]) progDataMap[key] = [];
             progDataMap[key].push({ item, quantidade: Number(item.quantidade) });
@@ -126,21 +137,18 @@ export default function PedidoDetalhe() {
           const linhas = progDataMap[data];
           let subtotal = 0;
 
-          // Cabeçalho do fornecedor (só na primeira data)
           if (di === 0) {
             content.push({
               columns: [
                 {
                   stack: [
-                    { text: 'REQUISIÇÃO DE COMPRA', fontSize: 7, bold: true, color: '#718096', characterSpacing: 1 },
+                    { text: 'FORNECEDOR', fontSize: 7, bold: true, color: '#718096', characterSpacing: 1 },
                     { text: forn.nome, fontSize: 14, bold: true, color: C_TOTAL, margin: [0, 2, 0, 0] },
                     { text: `CNPJ: ${forn.cnpj}`, fontSize: 8, color: C_SUB, margin: [0, 2, 0, 0] },
                   ],
                 },
                 {
                   stack: [
-                    { text: `Pedido: ${docNumero}`, fontSize: 8, alignment: 'right', color: C_SUB },
-                    { text: `Competência: ${competencia}`, fontSize: 8, alignment: 'right', color: C_SUB, margin: [0, 2, 0, 0] },
                     { text: `Controle: ${ctrlBase}-${String(pageSeq).padStart(3, '0')}`, fontSize: 7, alignment: 'right', color: '#a0aec0', margin: [0, 2, 0, 0] },
                   ],
                   width: 180,
@@ -150,14 +158,12 @@ export default function PedidoDetalhe() {
             });
             content.push({ canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1.5, lineColor: C_HEADER }], margin: [0, 0, 0, 8] });
           } else {
-            // Próxima data do mesmo fornecedor: número de controle atualizado
             content.push({
               text: `Controle: ${ctrlBase}-${String(pageSeq).padStart(3, '0')}`,
               fontSize: 7, alignment: 'right', color: '#a0aec0', margin: [0, 0, 0, 4],
             });
           }
 
-          // Linha de data de entrega
           content.push({
             table: {
               widths: ['*'],
@@ -171,39 +177,36 @@ export default function PedidoDetalhe() {
             margin: [0, 0, 0, 4],
           });
 
-          // Tabela de itens
           const tableBody: any[][] = [
-            // Cabeçalho
             [
-              { text: 'Item', bold: true, fontSize: 8, fillColor: C_HEADER, color: '#fff', margin: [4, 4, 4, 4] },
-              { text: 'Marca', bold: true, fontSize: 8, fillColor: C_HEADER, color: '#fff', alignment: 'center', margin: [4, 4, 4, 4] },
-              { text: 'Unid.', bold: true, fontSize: 8, fillColor: C_HEADER, color: '#fff', alignment: 'center', margin: [4, 4, 4, 4] },
-              { text: 'Vl. Unit.', bold: true, fontSize: 8, fillColor: C_HEADER, color: '#fff', alignment: 'right', margin: [4, 4, 4, 4] },
-              { text: 'Quantidade', bold: true, fontSize: 8, fillColor: C_HEADER, color: '#fff', alignment: 'right', margin: [4, 4, 4, 4] },
-              { text: 'Custo', bold: true, fontSize: 8, fillColor: C_HEADER, color: '#fff', alignment: 'right', margin: [4, 4, 4, 4] },
+              { text: 'Item', bold: true, fontSize: 8, fillColor: '#f1f5f9', color: '#334155', margin: [4, 4, 4, 4] },
+              { text: 'Marca', bold: true, fontSize: 8, fillColor: '#f1f5f9', color: '#334155', alignment: 'center', margin: [4, 4, 4, 4] },
+              { text: 'Unid.', bold: true, fontSize: 8, fillColor: '#f1f5f9', color: '#334155', alignment: 'center', margin: [4, 4, 4, 4] },
+              { text: 'Vl. Unit.', bold: true, fontSize: 8, fillColor: '#f1f5f9', color: '#334155', alignment: 'right', margin: [4, 4, 4, 4] },
+              { text: 'Quantidade', bold: true, fontSize: 8, fillColor: '#f1f5f9', color: '#334155', alignment: 'right', margin: [4, 4, 4, 4] },
+              { text: 'Custo', bold: true, fontSize: 8, fillColor: '#f1f5f9', color: '#334155', alignment: 'right', margin: [4, 4, 4, 4] },
             ],
           ];
 
           linhas.forEach(({ item, quantidade }, idx) => {
             const custo = Number(item.preco_unitario) * quantidade;
             subtotal += custo;
-            const bg = idx % 2 === 0 ? '#ffffff' : C_STRIPE;
+            const bg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
             tableBody.push([
               { text: item.produto_nome ?? '—', fontSize: 8, fillColor: bg, margin: [4, 3, 4, 3] },
               { text: item.marca ?? '—', fontSize: 8, fillColor: bg, alignment: 'center', margin: [4, 3, 4, 3] },
               { text: item.unidade ?? '—', fontSize: 8, fillColor: bg, alignment: 'center', margin: [4, 3, 4, 3] },
-              { text: formatarMoeda(item.preco_unitario), fontSize: 8, fillColor: bg, alignment: 'right', margin: [4, 3, 4, 3] },
-              { text: `${quantidade % 1 === 0 ? quantidade.toFixed(0) : quantidade.toFixed(2)} ${item.unidade ?? ''}`, fontSize: 8, fillColor: bg, alignment: 'right', margin: [4, 3, 4, 3] },
-              { text: formatarMoeda(custo), fontSize: 8, fillColor: bg, alignment: 'right', margin: [4, 3, 4, 3] },
+              renderMoeda(item.preco_unitario, bg),
+              { text: `${quantidade % 1 === 0 ? quantidade.toFixed(0) : quantidade.toFixed(2)}`, fontSize: 8, fillColor: bg, alignment: 'right', margin: [4, 3, 4, 3] },
+              renderMoeda(custo, bg),
             ]);
           });
 
-          // Subtotal da programação
           totalFornecedor += subtotal;
           tableBody.push([
             { text: `Subtotal — ${data}`, colSpan: 5, bold: true, fontSize: 8, fillColor: '#edf2f7', alignment: 'right', margin: [4, 4, 4, 4] },
             {}, {}, {}, {},
-            { text: formatarMoeda(subtotal), bold: true, fontSize: 8, fillColor: '#edf2f7', alignment: 'right', margin: [4, 4, 4, 4] },
+            renderMoeda(subtotal, '#edf2f7', 8, true, undefined, [4, 4, 4, 4]),
           ]);
 
           content.push({
@@ -214,21 +217,21 @@ export default function PedidoDetalhe() {
             },
             layout: {
               hLineWidth: () => 0.5,
-              vLineWidth: () => 0,
-              hLineColor: () => C_BORDER,
+              vLineWidth: () => 0.5,
+              hLineColor: () => '#cbd5e1',
+              vLineColor: () => '#cbd5e1',
               fillColor: () => null,
             },
             margin: [0, 0, 0, 8],
           });
         });
 
-        // Total geral do fornecedor
         content.push({
           table: {
             widths: ['*', 100],
             body: [[
               { text: `TOTAL GERAL — ${forn.nome}`, bold: true, fontSize: 9, color: '#ffffff', fillColor: C_TOTAL, margin: [6, 5, 6, 5] },
-              { text: formatarMoeda(totalFornecedor), bold: true, fontSize: 10, color: '#ffffff', fillColor: C_TOTAL, alignment: 'right', margin: [6, 5, 6, 5] },
+              renderMoeda(totalFornecedor, C_TOTAL, 10, true, '#ffffff', [6, 5, 6, 5]),
             ]],
           },
           layout: 'noBorders',
@@ -236,21 +239,15 @@ export default function PedidoDetalhe() {
         });
       });
 
-      const docDef: any = {
-        pageSize: 'A4',
-        pageOrientation: 'portrait',
-        pageMargins: [28, 36, 28, 36],
+      const doc = buildPdfDoc({
+        instituicao,
+        title: `Requisição de Compra`,
+        subtitle: `Pedido ${docNumero} · Competência: ${competencia}`,
         content,
-        footer: (currentPage: number, pageCount: number) => ({
-          columns: [
-            { text: `Pedido ${docNumero} · Competência: ${competencia}`, fontSize: 7, color: '#a0aec0', margin: [28, 0, 0, 0] },
-            { text: `Página ${currentPage} de ${pageCount}`, fontSize: 7, color: '#a0aec0', alignment: 'right', margin: [0, 0, 28, 0] },
-          ],
-        }),
-        defaultStyle: { font: 'Roboto' },
-      };
+        pageMargins: [28, 36, 28, 56],
+      });
 
-      pdfMake.createPdf(docDef).download(`requisicao-${docNumero}.pdf`);
+      pdfMake.createPdf(doc).download(`requisicao-${docNumero}.pdf`);
     } catch (e) {
       console.error(e);
       setErro('Erro ao gerar PDF');

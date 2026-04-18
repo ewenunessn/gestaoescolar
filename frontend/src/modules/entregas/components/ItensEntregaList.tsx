@@ -30,7 +30,6 @@ import { ColumnDef } from "@tanstack/react-table";
 import { EscolaEntrega, ItemEntrega, ConfirmarEntregaData } from "../types";
 import { entregaService } from "../services/entregaService";
 import ViewTabs from "../../../components/ViewTabs";
-import { SignaturePad } from "../../../components/SignaturePad";
 import { DataTableAdvanced } from "../../../components/DataTableAdvanced";
 
 interface ItemSelecionado extends ItemEntrega {
@@ -63,9 +62,7 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
   const [nomeRecebedor, setNomeRecebedor] = useState('');
   const [nomeEntregador, setNomeEntregador] = useState('');
   const [observacao, setObservacao] = useState('');
-  const [assinatura, setAssinatura] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
-  const [showSignaturePad, setShowSignaturePad] = useState(false);
   const [localizacaoGPS, setLocalizacaoGPS] = useState<{ latitude: number; longitude: number; precisao: number } | null>(null);
 
   useEffect(() => {
@@ -121,7 +118,6 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
       setItensSelecionados([]);
       setNomeRecebedor('');
       setObservacao('');
-      setAssinatura(null);
     } catch (err) {
       console.error('Erro ao carregar itens:', err);
       setError('Erro ao carregar itens para entrega');
@@ -198,11 +194,6 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
       return;
     }
 
-    if (!assinatura) {
-      setError('É necessário coletar a assinatura do recebedor');
-      return;
-    }
-
     try {
       setProcessando(true);
       setError(null);
@@ -215,7 +206,6 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
           nome_quem_entregou: nomeEntregador.trim(),
           nome_quem_recebeu: nomeRecebedor.trim(),
           observacao: observacao.trim() || undefined,
-          assinatura_base64: assinatura,
           latitude: localizacaoGPS?.latitude,
           longitude: localizacaoGPS?.longitude,
           precisao_gps: localizacaoGPS?.precisao
@@ -243,7 +233,6 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
             nome_quem_entregou: nomeEntregador.trim(),
             nome_quem_recebeu: nomeRecebedor.trim(),
             observacao: observacao.trim() || undefined,
-            assinatura_base64: assinatura,
             itens: itensComprovante
           });
         } catch (err) {
@@ -507,7 +496,7 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
             <StepLabel>Seleção de Itens</StepLabel>
           </Step>
           <Step>
-            <StepLabel>Revisão e Assinatura</StepLabel>
+            <StepLabel>Revisão</StepLabel>
           </Step>
           <Step>
             <StepLabel>Confirmação</StepLabel>
@@ -605,62 +594,6 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
             </Box>
           )}
 
-          <Box sx={{ mt: 3 }}>
-            <Typography variant="subtitle2" gutterBottom fontWeight={600}>
-              Assinatura do Recebedor *
-            </Typography>
-            {assinatura ? (
-              <Box>
-                <Paper
-                  variant="outlined"
-                  sx={{
-                    p: 1,
-                    mb: 2,
-                    border: '2px solid',
-                    borderColor: 'success.main',
-                    bgcolor: 'success.50',
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    maxHeight: '150px',
-                    overflow: 'hidden'
-                  }}
-                >
-                  <img
-                    src={assinatura}
-                    alt="Assinatura"
-                    style={{
-                      maxWidth: '300px',
-                      maxHeight: '120px',
-                      width: 'auto',
-                      height: 'auto',
-                      display: 'block'
-                    }}
-                  />
-                </Paper>
-                <Button
-                  variant="outlined"
-                  color="warning"
-                  fullWidth
-                  onClick={() => {
-                    setAssinatura(null);
-                    setShowSignaturePad(true);
-                  }}
-                >
-                  ✏️ Refazer Assinatura
-                </Button>
-              </Box>
-            ) : (
-              <Button
-                variant="contained"
-                fullWidth
-                onClick={() => setShowSignaturePad(true)}
-                sx={{ mb: 2 }}
-              >
-                ✍️ Coletar Assinatura
-              </Button>
-            )}
-          </Box>
         </Paper>
         </Box>
 
@@ -683,7 +616,7 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
           <Button
             variant="contained"
             onClick={finalizarEntrega}
-            disabled={processando || !nomeRecebedor.trim() || !assinatura}
+            disabled={processando || !nomeRecebedor.trim()}
             fullWidth
             sx={{ flex: 2 }}
           >
@@ -691,23 +624,6 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
           </Button>
         </Box>
 
-        <Dialog open={showSignaturePad} onClose={() => setShowSignaturePad(false)} maxWidth="md" fullWidth>
-          <DialogTitle>Coletar Assinatura do Recebedor</DialogTitle>
-          <DialogContent>
-            <SignaturePad
-              onSave={(dataUrl) => {
-                setAssinatura(dataUrl);
-                setShowSignaturePad(false);
-              }}
-              onClear={() => setAssinatura(null)}
-            />
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setShowSignaturePad(false)}>
-              Cancelar
-            </Button>
-          </DialogActions>
-        </Dialog>
       </Box>
     );
   }
@@ -720,7 +636,7 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
           <StepLabel>Seleção de Itens</StepLabel>
         </Step>
         <Step>
-          <StepLabel>Revisão e Assinatura</StepLabel>
+          <StepLabel>Revisão</StepLabel>
         </Step>
         <Step>
           <StepLabel>Confirmação</StepLabel>

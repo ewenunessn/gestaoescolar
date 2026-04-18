@@ -199,7 +199,7 @@ export const DataTable = memo(function DataTable<TData>({
       }}
     >
       {/* ── Toolbar ── */}
-      <Box className="data-table-toolbar">
+      <Box className="data-table-toolbar" sx={{ p: 2, pb: 1.5 }}>
         <Box sx={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           flexWrap: 'wrap', gap: 1.5,
@@ -216,23 +216,21 @@ export const DataTable = memo(function DataTable<TData>({
             </Box>
           ) : <Box />}
 
-          <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
             {onCreateClick && (
               <Button
                 variant="contained"
+                color="primary"
                 onClick={onCreateClick}
                 startIcon={<AddIcon sx={{ fontSize: 16 }} />}
                 size="small"
                 sx={{
-                  bgcolor: t.green,
-                  color: '#fff',
                   textTransform: 'none',
                   fontWeight: 600,
                   borderRadius: '6px',
                   fontSize: '0.75rem',
                   px: 2,
                   letterSpacing: '-0.01em',
-                  '&:hover': { bgcolor: '#4ade80' },
                   transition: 'all 0.15s ease',
                 }}
               >

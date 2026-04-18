@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import {
   Box, Button, Card, CardContent, Dialog, DialogTitle, DialogContent, DialogActions,
   FormControl, Grid, IconButton, InputLabel, MenuItem, Select, TextField, Typography, Chip, Menu,
-  CircularProgress, Divider, Alert
+  CircularProgress, Divider, Alert, Autocomplete
 } from "@mui/material";
 import { ArrowBack as ArrowBackIcon, Delete as DeleteIcon, PictureAsPdf as PdfIcon, MoreVert as MoreIcon, Event as EventIcon, CalendarMonth as CalendarIcon, RestaurantMenu as RestaurantIcon } from "@mui/icons-material";
 import Calendar from "react-calendar";
@@ -1385,20 +1385,18 @@ const CardapioCalendarioPage: React.FC = () => {
         </DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <FormControl fullWidth required>
-              <InputLabel>Preparação</InputLabel>
-              <Select 
-                value={String(formData.refeicao_id || '')} 
-                onChange={(e) => setFormData({ ...formData, refeicao_id: e.target.value })} 
-                label="Preparação"
-              >
-                {refeicoesDisponiveis.map((r) => (
-                  <MenuItem key={r.id} value={String(r.id)}>
-                    {r.nome} {r.descricao && `- ${r.descricao}`}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <Autocomplete
+              options={refeicoesDisponiveis}
+              getOptionLabel={(option) => option.nome + (option.descricao ? ` - ${option.descricao}` : '')}
+              value={refeicoesDisponiveis.find(r => String(r.id) === String(formData.refeicao_id)) || null}
+              onChange={(_e, newValue) => setFormData({ ...formData, refeicao_id: newValue ? String(newValue.id) : '' })}
+              renderInput={(params) => (
+                <TextField {...params} label="Preparação" required />
+              )}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              noOptionsText="Nenhuma preparação encontrada"
+              fullWidth
+            />
 
             <FormControl fullWidth required>
               <InputLabel>Tipo de Preparação</InputLabel>

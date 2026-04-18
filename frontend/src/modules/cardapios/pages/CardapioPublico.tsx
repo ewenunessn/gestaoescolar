@@ -33,7 +33,7 @@ import {
   Refresh as RefreshIcon
 } from "@mui/icons-material";
 import api from "../../../services/api";
-import { initPdfMake } from "../../../utils/cardapioPdfGenerators";
+import { initPdfMake } from "../../../utils/pdfUtils";
 import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
 
 interface Refeicao {

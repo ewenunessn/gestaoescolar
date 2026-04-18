@@ -1,7 +1,7 @@
 import db from "../../../database";
 
-// Nome da tabela - usar demandas_escolas no Neon, demandas localmente
-const TABLE_NAME = process.env.NODE_ENV === 'production' ? 'demandas_escolas' : 'demandas';
+// Nome da tabela - fixado para manter consistência entre ambientes
+const TABLE_NAME = 'demandas_escolas';
 
 export interface Demanda {
   id: number;

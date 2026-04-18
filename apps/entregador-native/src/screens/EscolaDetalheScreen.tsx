@@ -4,7 +4,6 @@ import { Text, Card, ActivityIndicator, Button, Checkbox, TextInput } from 'reac
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { listarItensEscola, ItemEntrega, confirmarEntregaItem } from '../api/rotas';
 import { handleAxiosError, API_URL } from '../api/client';
-import SignaturePad from '../components/SignaturePad';
 import OfflineIndicator from '../components/OfflineIndicator';
 import { useOffline } from '../contexts/OfflineContext';
 import { cacheService } from '../services/cacheService';
@@ -40,9 +39,7 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
   const [nomeRecebedor, setNomeRecebedor] = useState('');
   const [nomeEntregador, setNomeEntregador] = useState('');
   const [observacao, setObservacao] = useState('');
-  const [assinatura, setAssinatura] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
-  const [showSignaturePad, setShowSignaturePad] = useState(false);
 
   const { isOnline, addOperation } = useOffline();
 
@@ -239,11 +236,6 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
       return;
     }
 
-    if (!assinatura) {
-      Alert.alert('Atenção', 'É necessário coletar a assinatura do recebedor');
-      return;
-    }
-
     try {
       setSalvando(true);
       
@@ -255,8 +247,7 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
           quantidade_entregue: item.quantidade_a_entregar,
           nome_quem_entregou: nomeEntregador.trim(),
           nome_quem_recebeu: nomeRecebedor.trim(),
-          observacao: observacao.trim() || undefined,
-          assinatura_base64: assinatura
+          observacao: observacao.trim() || undefined
         };
 
         // Dados do comprovante para salvar offline
@@ -265,7 +256,6 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
           nome_quem_entregou: nomeEntregador.trim(),
           nome_quem_recebeu: nomeRecebedor.trim(),
           observacao: observacao.trim() || undefined,
-          assinatura_base64: assinatura,
           produto_nome: item.produto_nome,
           quantidade_entregue: item.quantidade_a_entregar,
         };
@@ -347,7 +337,6 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
         nome_quem_entregou: nomeEntregador.trim(),
         nome_quem_recebeu: nomeRecebedor.trim(),
         observacao: observacao.trim() || undefined,
-        assinatura_base64: assinatura,
         itens: itensComprovante
       };
 
@@ -552,43 +541,6 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
               multiline
               numberOfLines={3}
               style={styles.input}
-            />
-
-            <View style={styles.assinaturaSection}>
-              <Text variant="titleSmall" style={styles.sectionTitle}>
-                Assinatura do Recebedor *
-              </Text>
-              {assinatura ? (
-                <View>
-                  <View style={styles.assinaturaPreview}>
-                    <Text style={styles.assinaturaTexto}>✓ Assinatura capturada</Text>
-                  </View>
-                  <Button
-                    mode="outlined"
-                    onPress={() => setShowSignaturePad(true)}
-                    style={styles.refazerButton}
-                    icon="pencil"
-                  >
-                    Refazer Assinatura
-                  </Button>
-                </View>
-              ) : (
-                <Button
-                  mode="contained"
-                  onPress={() => setShowSignaturePad(true)}
-                  style={styles.assinarButton}
-                  icon="draw"
-                  buttonColor="#1976d2"
-                >
-                  Coletar Assinatura
-                </Button>
-              )}
-            </View>
-
-            <SignaturePad
-              visible={showSignaturePad}
-              onClose={() => setShowSignaturePad(false)}
-              onSave={(sig) => setAssinatura(sig)}
             />
 
             <View style={styles.botoesRevisao}>
@@ -1022,30 +974,6 @@ const styles = StyleSheet.create({
   },
   input: {
     marginBottom: 12,
-  },
-  assinaturaSection: {
-    marginTop: 16,
-    marginBottom: 16,
-  },
-  assinaturaPreview: {
-    padding: 16,
-    backgroundColor: '#f0fdf4',
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: '#059669',
-    marginBottom: 12,
-    alignItems: 'center',
-  },
-  assinaturaTexto: {
-    color: '#059669',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  assinarButton: {
-    paddingVertical: 8,
-  },
-  refazerButton: {
-    borderColor: '#1976d2',
   },
   botoesRevisao: {
     flexDirection: 'row',

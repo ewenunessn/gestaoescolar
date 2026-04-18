@@ -174,7 +174,7 @@ export function DataTableAdvanced<TData>({
       }}
     >
       {/* ── Toolbar ── */}
-      <Box className="data-table-toolbar">
+      <Box className="data-table-toolbar" sx={{ p: 2, pb: 1.5 }}>
         {/* Title + count */}
         {title && (
           <Box sx={{
@@ -200,7 +200,7 @@ export function DataTableAdvanced<TData>({
                 {filteredCount} {filteredCount === 1 ? 'registro' : 'registros'}
               </Typography>
             </Box>
-            <Stack direction="row" spacing={1} alignItems="center">
+            <Stack direction="row" spacing={2} alignItems="center">
               {toolbarActions}
               {enableRowSelection && Object.keys(rowSelection).length > 0 && (
                 <Chip
@@ -234,7 +234,7 @@ export function DataTableAdvanced<TData>({
         )}
         {!title && (
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', mb: 1 }}>
-            <Stack direction="row" spacing={1} alignItems="center">
+            <Stack direction="row" spacing={2} alignItems="center">
               {toolbarActions}
               {enableRowSelection && Object.keys(rowSelection).length > 0 && (
                 <Chip
