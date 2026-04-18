@@ -788,9 +788,6 @@ export const darkTheme = createTheme({
           '&::-webkit-scrollbar-thumb:hover': {
             backgroundColor: GH.sub,
           },
-          '&::-webkit-scrollbar-thumb:hover': {
-            backgroundColor: GH.sub,
-          },
         },
         '.MuiDrawer-paper': {
           backgroundColor: `${GH.bg} !important`,
