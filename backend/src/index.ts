@@ -180,6 +180,25 @@ app.get("/health", async (req, res) => {
   }
 });
 
+// DEBUG ENDPOINT - TEMPORÁRIO - Verificar variáveis de ambiente
+app.get("/debug-env", (req, res) => {
+  const envVars = {
+    NODE_ENV: process.env.NODE_ENV,
+    VERCEL: process.env.VERCEL,
+    JWT_SECRET_EXISTS: !!process.env.JWT_SECRET,
+    JWT_SECRET_LENGTH: process.env.JWT_SECRET?.length || 0,
+    JWT_SECRET_FIRST_10: process.env.JWT_SECRET?.substring(0, 10) || 'NOT_SET',
+    ALL_JWT_VARS: Object.keys(process.env).filter(k => k.includes('JWT')),
+    ALL_ENV_KEYS: Object.keys(process.env).sort()
+  };
+  
+  res.json({
+    message: "Environment Variables Debug",
+    timestamp: new Date().toISOString(),
+    ...envVars
+  });
+});
+
 import { authenticateToken } from './middleware/authMiddleware';
 
 // Endpoint de teste de banco protegido por auth
