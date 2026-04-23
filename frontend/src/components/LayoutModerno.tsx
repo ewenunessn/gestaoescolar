@@ -104,7 +104,7 @@ const getLayoutTokens = (theme: ReturnType<typeof useTheme>): LayoutTokens => ({
   primaryTint: alpha(theme.palette.primary.main, 0.16),
   successTint: alpha(theme.palette.success.main, 0.18),
   dangerTint: alpha(theme.palette.error.main, 0.18),
-  shadow: theme.palette.mode === "light" ? "0 20px 40px rgba(31,36,48,0.08)" : "0 20px 48px rgba(0,0,0,0.28)",
+  shadow: theme.palette.mode === "light" ? "0 10px 24px rgba(31,36,48,0.05)" : "0 12px 28px rgba(0,0,0,0.2)",
 });
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {

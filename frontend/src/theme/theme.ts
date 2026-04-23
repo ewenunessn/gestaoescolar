@@ -166,7 +166,7 @@ const createComponents = (mode: AppThemeMode, t: ThemeTokens): ThemeOptions['com
       },
       '.data-table-action': {
         borderRadius: '8px',
-        border: `1px solid ${t.border}`,
+        border: `1px solid ${t.borderStrong}`,
         backgroundColor: alpha(t.text, mode === 'light' ? 0.02 : 0.03),
       },
       '.data-table-action:hover': {
@@ -240,7 +240,7 @@ const createComponents = (mode: AppThemeMode, t: ThemeTokens): ThemeOptions['com
 
         return {
           borderRadius: 8,
-          border: `1px solid ${alpha(theme.palette.text.primary, theme.palette.mode === 'light' ? 0.08 : 0.12)}`,
+          border: `1px solid ${alpha(theme.palette.text.primary, theme.palette.mode === 'light' ? 0.12 : 0.16)}`,
           backgroundColor: baseTint,
           color: tone,
           '&:hover': {
