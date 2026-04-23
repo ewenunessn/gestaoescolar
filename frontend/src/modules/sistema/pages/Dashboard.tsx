@@ -1,58 +1,33 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  alpha,
   Box,
-  Typography,
-  Grid,
-  IconButton,
   Button,
-  Divider,
   CircularProgress,
+  Divider,
+  Grid,
   LinearProgress,
+  Typography,
+  useTheme,
 } from "@mui/material";
 import {
   ArrowForward as ArrowIcon,
-  School as SchoolIcon,
-  People as PeopleIcon,
-  Assignment as AssignmentIcon,
-  ShoppingCart as CartIcon,
-  Route as RouteIcon,
+  Assignment,
+  CheckCircle as CheckCircleIcon,
   Inventory as InventoryIcon,
   MenuBook as MenuBookIcon,
-  Storage as StorageIcon,
-  Receipt as ReceiptIcon,
-  CheckCircle as CheckCircleIcon,
-  Warning as WarningIcon,
-  TrendingUp,
   People,
-  Assignment,
-  ShoppingCart,
+  Receipt as ReceiptIcon,
+  Route as RouteIcon,
+  School as SchoolIcon,
+  Storage as StorageIcon,
+  Warning as WarningIcon,
 } from "@mui/icons-material";
-import PageContainer from "../../../components/PageContainer";
-import api from "../../../services/api";
-import { useDashboardPNAE } from "../../../hooks/queries/usePnaeQueries";
 
-// ── Gowen Dark Tokens ────────────────────────────────────────
-const GH = {
-  bg:       "#0d0d0d",
-  canvas:   "#181818",
-  border:   "rgba(255,255,255,0.07)",
-  borderMd: "rgba(255,255,255,0.10)",
-  text:     "#f0f0f0",
-  muted:    "#888",
-  sub:      "#666",
-  cyan:     "#00bfff",
-  cyanDim:  "rgba(0,191,255,0.12)",
-  green:    "#22c55e",
-  greenLt:  "#22c55e",
-  greenDim: "rgba(34,197,94,0.12)",
-  blue:     "#00bfff",
-  blueDim:  "rgba(0,191,255,0.12)",
-  red:      "#ef4444",
-  redDim:   "rgba(239,68,68,0.12)",
-  orange:   "#f59e0b",
-  orangeDim:"rgba(245,158,11,0.12)",
-};
+import PageContainer from "../../../components/PageContainer";
+import { useDashboardPNAE } from "../../../hooks/queries/usePnaeQueries";
+import api from "../../../services/api";
 
 interface Stats {
   escolas: { total: number; ativas: number };
@@ -69,155 +44,35 @@ const quickLinks = [
   { label: "Rotas", path: "/gestao-rotas", icon: <RouteIcon sx={{ fontSize: 16 }} /> },
 ];
 
-// ── Stat Card ───────────────────────────────────────────────────
-interface StatItemProps {
-  label: string;
-  value: string | number;
-  detail: string;
-  icon: React.ReactNode;
-  accent?: string;
-  accentBg?: string;
-}
-
-const StatItem: React.FC<StatItemProps> = ({ label, value, detail, icon, accent = GH.cyan, accentBg = GH.cyanDim }) => (
-  <Box
-    sx={{
-      p: 3,
-      border: `1px solid ${GH.border}`,
-      borderRadius: "12px",
-      bgcolor: GH.canvas,
-      transition: "border-color 0.2s ease",
-      height: "100%",
-      display: "flex",
-      flexDirection: "column",
-      "&:hover": {
-        borderColor: GH.borderMd,
-      },
-    }}
-  >
-    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
-      <Typography
-        sx={{
-          fontSize: "0.7rem",
-          fontWeight: 500,
-          color: GH.muted,
-          textTransform: "uppercase",
-          letterSpacing: "0.05em",
-          lineHeight: 1.4,
-        }}
-      >
-        {label}
-      </Typography>
-      <Box
-        sx={{
-          width: 32,
-          height: 32,
-          borderRadius: "8px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          bgcolor: accentBg,
-          color: accent,
-          flexShrink: 0,
-        }}
-      >
-        {icon}
-      </Box>
-    </Box>
-    <Typography
-      sx={{
-        fontSize: "2rem",
-        fontWeight: 700,
-        color: GH.text,
-        letterSpacing: "-1px",
-        lineHeight: 1,
-        mb: 0.5,
-      }}
-    >
-      {value}
-    </Typography>
-    {detail && (
-      <Typography
-        sx={{
-          fontSize: "0.75rem",
-          color: GH.muted,
-          fontWeight: 400,
-          mt: "auto",
-        }}
-      >
-        {detail}
-      </Typography>
-    )}
-  </Box>
-);
-
-// ── Quick Link ──────────────────────────────────────────────────
-interface QuickLinkProps {
-  label: string;
-  icon: React.ReactNode;
-  onClick: () => void;
-}
-
-const QuickLinkItem: React.FC<QuickLinkProps> = ({ label, icon, onClick }) => (
-  <Button
-    fullWidth
-    onClick={onClick}
-    startIcon={icon}
-    endIcon={<ArrowIcon sx={{ fontSize: 14, opacity: 0, transition: "opacity 0.15s" }} />}
-    sx={{
-      justifyContent: "flex-start",
-      px: 2,
-      py: 1,
-      color: GH.muted,
-      fontSize: "0.82rem",
-      fontWeight: 400,
-      textTransform: "none",
-      borderRadius: "6px",
-      transition: "all 0.15s ease",
-      "&:hover": {
-        bgcolor: "rgba(255,255,255,0.04)",
-        color: GH.text,
-        "& .ql-arrow": { opacity: 1 },
-      },
-      "&:active": {
-        bgcolor: "rgba(255,255,255,0.06)",
-      },
-      "& .MuiButton-startIcon": {
-        color: GH.sub,
-        transition: "color 0.15s",
-      },
-      "&:hover .MuiButton-startIcon": {
-        color: GH.greenLt,
-      },
-    }}
-  >
-    {label}
-  </Button>
-);
-
-// ── Dashboard ───────────────────────────────────────────────────
 const Dashboard = () => {
+  const theme = useTheme();
   const navigate = useNavigate();
   const [stats, setStats] = useState<Stats | null>(null);
   const [greeting, setGreeting] = useState("");
   const { data: pnae, isLoading: loadingPnae } = useDashboardPNAE();
 
+  const tone = useMemo(() => ({
+    panel: theme.palette.background.paper,
+    panelAlt: alpha(theme.palette.text.primary, theme.palette.mode === "light" ? 0.03 : 0.05),
+    border: theme.palette.divider,
+    borderStrong: alpha(theme.palette.text.primary, theme.palette.mode === "light" ? 0.12 : 0.18),
+    primaryTint: alpha(theme.palette.primary.main, 0.14),
+    successTint: alpha(theme.palette.success.main, 0.16),
+    warningTint: alpha(theme.palette.warning.main, 0.18),
+    dangerTint: alpha(theme.palette.error.main, 0.16),
+    shadow: theme.palette.mode === "light" ? "0 18px 40px rgba(31,36,48,0.08)" : "0 20px 48px rgba(0,0,0,0.22)",
+  }), [theme]);
+
   useEffect(() => {
-    const h = new Date().getHours();
-    setGreeting(h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite");
-    
-    // Verificar se há token antes de fazer requisições
-    const token = localStorage.getItem('token');
-    if (token && token !== 'null' && token !== 'undefined') {
-      api.get("/dashboard/stats")
-        .then((r) => {
-          setStats(r.data.data);
-        })
-        .catch((err) => {
-          console.error('❌ [Dashboard] Erro ao carregar stats:', err);
-        });
-    } else {
-    }
+    const hour = new Date().getHours();
+    setGreeting(hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite");
+
+    const token = localStorage.getItem("token");
+    if (!token || token === "null" || token === "undefined") return;
+
+    api.get("/dashboard/stats")
+      .then((response) => setStats(response.data.data))
+      .catch((error) => console.error("[Dashboard] Erro ao carregar stats:", error));
   }, []);
 
   const today = new Date().toLocaleDateString("pt-BR", {
@@ -227,332 +82,309 @@ const Dashboard = () => {
     year: "numeric",
   });
 
-  const pct = (v: string | number) => `${Number(v).toFixed(1)}%`;
-  const pnaeAtende = pnae?.alertas?.atende_45_porcento ?? (Number(pnae?.agricultura_familiar?.percentual_af ?? 0) >= 45);
-  const pnaePercent = pnae ? pct(pnae.agricultura_familiar?.percentual_af ?? 0) : "—";
+  const pnaePercentNumber = Number(pnae?.agricultura_familiar?.percentual_af ?? 0);
+  const pnaePercent = pnae ? `${pnaePercentNumber.toFixed(1)}%` : "—";
+  const pnaeAtende = pnae?.alertas?.atende_45_porcento ?? (pnaePercentNumber >= 45);
   const solicitacoesAtendidas = stats?.solicitacoes.atendidas ?? 0;
   const solicitacoesTotal = stats?.solicitacoes.total ?? 0;
   const solicitacoesPct = solicitacoesTotal > 0 ? ((solicitacoesAtendidas / solicitacoesTotal) * 100).toFixed(0) : "0";
 
-  return (
-    <PageContainer sx={{ pb: 4 }}>
-      {/* ── Greeting / Topbar ────────────────────────────── */}
-      <Box sx={{ mb: 5, display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: 1 }}>
-        <Box>
-          <Typography
-            sx={{
-              fontSize: "0.7rem",
-              fontWeight: 500,
-              color: GH.sub,
-              letterSpacing: "0.05em",
-              textTransform: "uppercase",
-              mb: 0.5,
-            }}
-          >
-            {today}
-          </Typography>
-          <Typography
-            sx={{
-              fontSize: "1.85rem",
-              fontWeight: 700,
-              color: GH.text,
-              letterSpacing: "-0.5px",
-              lineHeight: 1.2,
-            }}
-          >
-            {stats ? `${greeting}` : "Carregando.."}
-          </Typography>
+  const StatCard = ({
+    label,
+    value,
+    detail,
+    icon,
+    color,
+    tint,
+  }: {
+    label: string;
+    value: string | number;
+    detail: string;
+    icon: React.ReactNode;
+    color: string;
+    tint: string;
+  }) => (
+    <Box
+      sx={{
+        height: "100%",
+        p: 3,
+        borderRadius: "12px",
+        border: `1px solid ${tone.border}`,
+        backgroundColor: tone.panel,
+        boxShadow: tone.shadow,
+      }}
+    >
+      <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", mb: 2.5 }}>
+        <Typography sx={{ fontSize: "0.72rem", fontWeight: 700, color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+          {label}
+        </Typography>
+        <Box
+          sx={{
+            width: 36,
+            height: 36,
+            borderRadius: "8px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: tint,
+            color,
+          }}
+        >
+          {icon}
         </Box>
       </Box>
+      <Typography sx={{ fontSize: "2.1rem", lineHeight: 1, letterSpacing: "-0.05em", fontWeight: 700, color: "text.primary", mb: 0.75 }}>
+        {value}
+      </Typography>
+      <Typography sx={{ fontSize: "0.78rem", color: "text.secondary" }}>{detail}</Typography>
+    </Box>
+  );
 
-      {/* ── Stats ────────────────────────────────────────── */}
+  return (
+    <PageContainer sx={{ py: 3, px: { xs: 2, md: 3 }, display: "grid", gap: 3 }}>
+      <Box
+        sx={{
+          p: { xs: 2.5, md: 3.5 },
+          borderRadius: "18px",
+          border: `1px solid ${tone.border}`,
+          background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.18)} 0%, ${tone.panel} 42%, ${tone.panelAlt} 100%)`,
+          boxShadow: tone.shadow,
+        }}
+      >
+        <Typography sx={{ fontSize: "0.72rem", fontWeight: 700, color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.08em", mb: 1 }}>
+          {today}
+        </Typography>
+        <Typography sx={{ fontSize: { xs: "1.8rem", md: "2.35rem" }, lineHeight: 1.05, letterSpacing: "-0.05em", fontWeight: 700, color: "text.primary", mb: 1 }}>
+          {stats ? `${greeting}` : "Carregando..."}
+        </Typography>
+        <Typography sx={{ maxWidth: 620, color: "text.secondary", fontSize: "0.92rem", lineHeight: 1.6 }}>
+          Visão rápida da operação escolar, compras e conformidade. O painel foi reorganizado para leitura mais direta e melhor contraste entre indicadores e ações.
+        </Typography>
+      </Box>
+
       {stats ? (
-        <Grid container spacing={2} sx={{ mb: 4 }}>
-          <Grid item xs={12} sm={6} lg={3}>
-            <StatItem
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6} xl={3}>
+            <StatCard
               label="Escolas"
               value={`${stats.escolas.ativas}/${stats.escolas.total}`}
               detail="ativas"
               icon={<SchoolIcon sx={{ fontSize: 18 }} />}
-              accent={GH.blue}
-              accentBg={GH.blueDim}
+              color={theme.palette.primary.main}
+              tint={tone.primaryTint}
             />
           </Grid>
-          <Grid item xs={12} sm={6} lg={3}>
-            <StatItem
+          <Grid item xs={12} sm={6} xl={3}>
+            <StatCard
               label="Alunos"
               value={stats.alunos.toLocaleString("pt-BR")}
               detail="total cadastrado"
               icon={<People sx={{ fontSize: 18 }} />}
+              color={theme.palette.info.main}
+              tint={alpha(theme.palette.info.main, 0.16)}
             />
           </Grid>
-          <Grid item xs={12} sm={6} lg={3}>
-            <StatItem
+          <Grid item xs={12} sm={6} xl={3}>
+            <StatCard
               label="Solicitações"
               value={`${solicitacoesPct}%`}
               detail={`${solicitacoesAtendidas} de ${solicitacoesTotal} atendidas`}
               icon={<Assignment sx={{ fontSize: 18 }} />}
-              accent={GH.orange}
-              accentBg={GH.orangeDim}
+              color={theme.palette.warning.main}
+              tint={tone.warningTint}
             />
           </Grid>
-          <Grid item xs={12} sm={6} lg={3}>
-            {/* PNAE */}
+          <Grid item xs={12} sm={6} xl={3}>
             <Box
               sx={{
-                p: 3,
-                border: `1px solid ${GH.border}`,
-                borderRadius: "12px",
-                bgcolor: GH.canvas,
-                transition: "border-color 0.2s ease",
                 height: "100%",
-                display: "flex",
-                flexDirection: "column",
-                "&:hover": { borderColor: GH.borderMd }
+                p: 3,
+                borderRadius: "12px",
+                border: `1px solid ${tone.border}`,
+                backgroundColor: tone.panel,
+                boxShadow: tone.shadow,
               }}
             >
-              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
-                <Typography sx={{ fontSize: "0.7rem", fontWeight: 500, color: GH.muted, textTransform: "uppercase", letterSpacing: "0.05em", lineHeight: 1.4 }}>
-                  PNAE — Af.
+              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2.5 }}>
+                <Typography sx={{ fontSize: "0.72rem", fontWeight: 700, color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                  PNAE
                 </Typography>
                 <Box
                   sx={{
-                    width: 32, height: 32, borderRadius: "6px",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    bgcolor: pnaeAtende ? GH.greenDim : GH.orangeDim,
-                    color: pnaeAtende ? GH.greenLt : GH.orange,
-                    flexShrink: 0,
+                    width: 36,
+                    height: 36,
+                    borderRadius: "8px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: pnaeAtende ? tone.successTint : tone.warningTint,
+                    color: pnaeAtende ? theme.palette.success.main : theme.palette.warning.main,
                   }}
                 >
-                  {loadingPnae ? (
-                    <CircularProgress size={18} sx={{ color: GH.sub }} />
-                  ) : pnaeAtende ? (
-                    <CheckCircleIcon sx={{ fontSize: 18 }} />
-                  ) : (
-                    <WarningIcon sx={{ fontSize: 18 }} />
-                  )}
+                  {loadingPnae ? <CircularProgress size={18} /> : pnaeAtende ? <CheckCircleIcon sx={{ fontSize: 18 }} /> : <WarningIcon sx={{ fontSize: 18 }} />}
                 </Box>
               </Box>
-
-              <Typography
-                sx={{
-                  fontSize: "2rem",
-                  fontWeight: 700,
-                  color: pnaeAtende ? GH.green : GH.red,
-                  letterSpacing: "-1px",
-                  lineHeight: 1,
-                  mb: 0.5,
-                }}
-              >
+              <Typography sx={{ fontSize: "2.1rem", lineHeight: 1, letterSpacing: "-0.05em", fontWeight: 700, color: pnaeAtende ? "success.main" : "warning.main", mb: 1 }}>
                 {pnaePercent}
               </Typography>
-
-              <Box sx={{ mt: 1.5 }}>
-                <LinearProgress
-                  variant="determinate"
-                  value={Math.min(parseFloat(pnaePercent) / 45 * 100, 100)}
-                  sx={{
-                    height: 4,
-                    borderRadius: 2,
-                    bgcolor: GH.bg,
-                    "& .MuiLinearProgress-bar": {
-                      bgcolor: pnaeAtende ? GH.greenLt : GH.orange,
-                      borderRadius: 2,
-                    },
-                  }}
-                />
-              </Box>
-              <Typography sx={{ fontSize: "0.65rem", color: GH.sub, mt: "auto" }}>
-                Mínimo requerido: 45%
-              </Typography>
+              <LinearProgress
+                variant="determinate"
+                value={Math.min((pnaePercentNumber / 45) * 100, 100)}
+                sx={{
+                  height: 7,
+                  borderRadius: 999,
+                  mb: 1.5,
+                  backgroundColor: alpha(theme.palette.text.primary, 0.08),
+                  "& .MuiLinearProgress-bar": {
+                    borderRadius: 999,
+                    backgroundColor: pnaeAtende ? theme.palette.success.main : theme.palette.warning.main,
+                  },
+                }}
+              />
+              <Typography sx={{ fontSize: "0.78rem", color: "text.secondary" }}>Mínimo requerido: 45%</Typography>
             </Box>
           </Grid>
         </Grid>
       ) : (
-        <Grid container spacing={2} sx={{ mb: 4 }}>
-          {[0, 1, 2, 3].map((i) => (
-            <Grid item xs={12} sm={6} md={3} key={i}>
-              <Box
-                sx={{
-                  p: 3,
-                  border: `1px solid ${GH.border}`,
-                  borderRadius: "12px",
-                  bgcolor: GH.canvas,
-                  height: 120,
-                }}
-              />
+        <Grid container spacing={2}>
+          {[0, 1, 2, 3].map((item) => (
+            <Grid item xs={12} sm={6} xl={3} key={item}>
+              <Box sx={{ height: 140, borderRadius: "12px", border: `1px solid ${tone.border}`, backgroundColor: tone.panel, boxShadow: tone.shadow }} />
             </Grid>
           ))}
         </Grid>
       )}
 
-      {/* ── Bottom Section ───────────────────────────────── */}
-      <Grid container spacing={4}>
-        {/* Quick Links */}
-        <Grid item xs={12} md={6}>
-          <Typography
-            sx={{
-              fontSize: "0.7rem",
-              fontWeight: 600,
-              color: GH.muted,
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-              mb: 2,
-            }}
-          >
-            Acesso rápido
-          </Typography>
+      <Grid container spacing={2.5}>
+        <Grid item xs={12} lg={5}>
           <Box
             sx={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 0.5,
-              p: 2,
-              border: `1px solid ${GH.border}`,
-              borderRadius: "12px",
-              bgcolor: GH.canvas,
+              p: 3,
+              borderRadius: "14px",
+              border: `1px solid ${tone.border}`,
+              backgroundColor: tone.panel,
+              boxShadow: tone.shadow,
+              height: "100%",
             }}
           >
-            {quickLinks.map((link) => (
-              <QuickLinkItem
-                key={link.label}
-                label={link.label}
-                icon={link.icon}
-                onClick={() => navigate(link.path)}
-              />
-            ))}
-          </Box>
-        </Grid>
-
-        {/* PNAE Panel (expanded) */}
-        <Grid item xs={12} md={6}>
-          {pnae && (
-            <>
-              <Typography
-                sx={{
-                  fontSize: "0.7rem",
-                  fontWeight: 600,
-                  color: GH.muted,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.05em",
-                  mb: 2,
-                }}
-              >
-                Conformidade PNAE
-              </Typography>
-              <Box
-                sx={{
-                  p: 3,
-                  border: `1px solid ${GH.border}`,
-                  borderRadius: "12px",
-                  bgcolor: GH.canvas,
-                }}
-              >
-                {/* Main metric */}
-                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", mb: 3 }}>
-                  <Box>
-                    <Typography sx={{ fontSize: "0.75rem", color: GH.muted, mb: 0.5 }}>
-                      Percentual de compras da agricultura familiar
-                    </Typography>
-                    <Typography
-                      sx={{
-                        fontSize: "2.25rem",
-                        fontWeight: 700,
-                        color: pnaeAtende ? GH.green : GH.red,
-                        letterSpacing: "-1px",
-                        lineHeight: 1.1,
-                      }}
-                    >
-                      {pnaePercent}
-                    </Typography>
-                  </Box>
-                  <Box sx={{ textAlign: "right" }}>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 0.5 }}>
-                      <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: pnaeAtende ? GH.green : GH.red }} />
-                      <Typography sx={{ fontSize: "0.75rem", color: GH.muted }}>
-                        Mín: 45%
-                      </Typography>
-                    </Box>
-                    <Typography
-                      sx={{
-                        fontSize: "0.82rem",
-                        fontWeight: 500,
-                        color: pnaeAtende ? GH.green : GH.red,
-                      }}
-                    >
-                      {pnaeAtende ? "Conforme" : "Não conforme"}
-                    </Typography>
-                  </Box>
-                </Box>
-
-                {/* Progress bar */}
-                <LinearProgress
-                  variant="determinate"
-                  value={Math.min(parseFloat(pnaePercent) / 45 * 100, 100)}
-                  sx={{
-                    height: 8,
-                    borderRadius: 4,
-                    bgcolor: GH.bg,
-                    mb: 2,
-                    "& .MuiLinearProgress-bar": {
-                      bgcolor: pnaeAtende ? GH.greenLt : GH.red,
-                      borderRadius: 4,
-                      transition: "width 0.8s cubic-bezier(0.22, 1, 0.36, 1)",
-                    },
-                  }}
-                />
-
-                <Divider sx={{ borderColor: GH.border, my: 2.5 }} />
-
-                {/* Alertas */}
-                <Box sx={{ display: "flex", gap: 2 }}>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography sx={{ fontSize: "0.68rem", color: GH.sub, textTransform: "uppercase", letterSpacing: "0.5px", mb: 0.5 }}>
-                      Total de contratos
-                    </Typography>
-                    <Typography sx={{ fontSize: "1rem", fontWeight: 600, color: GH.text }}>
-                      {pnae?.contratos?.total ?? 0}
-                    </Typography>
-                  </Box>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography sx={{ fontSize: "0.68rem", color: GH.sub, textTransform: "uppercase", letterSpacing: "0.5px", mb: 0.5 }}>
-                      Com agricultura familiar
-                    </Typography>
-                    <Typography sx={{ fontSize: "1rem", fontWeight: 600, color: GH.greenLt }}>
-                      {pnae?.contratos?.com_af ?? 0}
-                    </Typography>
-                  </Box>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography sx={{ fontSize: "0.68rem", color: GH.sub, textTransform: "uppercase", letterSpacing: "0.5px", mb: 0.5 }}>
-                      Alertas
-                    </Typography>
-                    <Typography sx={{ fontSize: "1rem", fontWeight: 600, color: GH.orange }}>
-                      {pnae?.alertas?.total_alertas ?? "—"}
-                    </Typography>
-                  </Box>
-                </Box>
-
+            <Typography sx={{ fontSize: "0.72rem", fontWeight: 700, color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.08em", mb: 2 }}>
+              Acesso rápido
+            </Typography>
+            <Box sx={{ display: "grid", gap: 1 }}>
+              {quickLinks.map((link) => (
                 <Button
-                  variant="outlined"
-                  onClick={() => navigate("/pnae/dashboard")}
+                  key={link.label}
+                  fullWidth
+                  startIcon={link.icon}
                   endIcon={<ArrowIcon sx={{ fontSize: 14 }} />}
+                  onClick={() => navigate(link.path)}
                   sx={{
-                    mt: 2.5,
-                    color: GH.muted,
-                    borderColor: GH.borderMd,
-                    fontSize: "0.78rem",
-                    fontWeight: 400,
+                    justifyContent: "space-between",
+                    px: 1.6,
+                    py: 1.2,
+                    borderRadius: "8px",
+                    color: "text.primary",
+                    backgroundColor: tone.panelAlt,
+                    border: `1px solid ${tone.border}`,
                     "&:hover": {
-                      borderColor: GH.border,
-                      bgcolor: "rgba(255,255,255,0.04)",
-                      color: GH.text,
+                      backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                      borderColor: tone.borderStrong,
                     },
                   }}
                 >
-                  Ver detalhes do PNAE
+                  {link.label}
                 </Button>
+              ))}
+            </Box>
+          </Box>
+        </Grid>
+
+        <Grid item xs={12} lg={7}>
+          {pnae && (
+            <Box
+              sx={{
+                p: 3,
+                borderRadius: "14px",
+                border: `1px solid ${tone.border}`,
+                backgroundColor: tone.panel,
+                boxShadow: tone.shadow,
+                height: "100%",
+              }}
+            >
+              <Typography sx={{ fontSize: "0.72rem", fontWeight: 700, color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.08em", mb: 2 }}>
+                Conformidade PNAE
+              </Typography>
+
+              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 2, mb: 2.5 }}>
+                <Box>
+                  <Typography sx={{ fontSize: "0.82rem", color: "text.secondary", mb: 0.5 }}>
+                    Percentual de compras da agricultura familiar
+                  </Typography>
+                  <Typography sx={{ fontSize: { xs: "2.1rem", md: "2.5rem" }, lineHeight: 1, letterSpacing: "-0.05em", fontWeight: 700, color: pnaeAtende ? "success.main" : "error.main" }}>
+                    {pnaePercent}
+                  </Typography>
+                </Box>
+                <Box sx={{ textAlign: { xs: "left", md: "right" } }}>
+                  <Typography sx={{ fontSize: "0.76rem", color: "text.secondary", mb: 0.5 }}>Meta mínima: 45%</Typography>
+                  <Typography sx={{ fontSize: "0.9rem", fontWeight: 700, color: pnaeAtende ? "success.main" : "error.main" }}>
+                    {pnaeAtende ? "Conforme" : "Não conforme"}
+                  </Typography>
+                </Box>
               </Box>
-            </>
+
+              <LinearProgress
+                variant="determinate"
+                value={Math.min((pnaePercentNumber / 45) * 100, 100)}
+                sx={{
+                  height: 9,
+                  borderRadius: 999,
+                  mb: 3,
+                  backgroundColor: alpha(theme.palette.text.primary, 0.08),
+                  "& .MuiLinearProgress-bar": {
+                    borderRadius: 999,
+                    backgroundColor: pnaeAtende ? theme.palette.success.main : theme.palette.error.main,
+                  },
+                }}
+              />
+
+              <Divider sx={{ borderColor: tone.border, my: 2.5 }} />
+
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={4}>
+                  <Typography sx={{ fontSize: "0.7rem", color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.08em", mb: 0.75 }}>
+                    Total de contratos
+                  </Typography>
+                  <Typography sx={{ fontSize: "1.2rem", fontWeight: 700, color: "text.primary" }}>
+                    {pnae?.contratos?.total ?? 0}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <Typography sx={{ fontSize: "0.7rem", color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.08em", mb: 0.75 }}>
+                    Com agricultura familiar
+                  </Typography>
+                  <Typography sx={{ fontSize: "1.2rem", fontWeight: 700, color: "success.main" }}>
+                    {pnae?.contratos?.com_af ?? 0}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <Typography sx={{ fontSize: "0.7rem", color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.08em", mb: 0.75 }}>
+                    Alertas
+                  </Typography>
+                  <Typography sx={{ fontSize: "1.2rem", fontWeight: 700, color: "warning.main" }}>
+                    {pnae?.alertas?.total_alertas ?? "—"}
+                  </Typography>
+                </Grid>
+              </Grid>
+
+              <Button
+                variant="outlined"
+                onClick={() => navigate("/pnae/dashboard")}
+                endIcon={<ArrowIcon sx={{ fontSize: 14 }} />}
+                sx={{ mt: 3 }}
+              >
+                Ver detalhes do PNAE
+              </Button>
+            </Box>
           )}
         </Grid>
       </Grid>

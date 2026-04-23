@@ -46,10 +46,10 @@ const getToken = (theme: Theme) => ({
   bg: theme.palette.background.default,
   canvas: theme.palette.background.paper,
   border: theme.palette.divider,
-  borderMd: 'rgba(255,255,255,0.10)',
+  borderMd: theme.palette.mode === 'light' ? 'rgba(31,36,48,0.16)' : 'rgba(255,255,255,0.14)',
   text: theme.palette.text.primary,
   muted: theme.palette.text.secondary,
-  sub: '#666',
+  sub: theme.palette.mode === 'light' ? '#7b8492' : '#8893a5',
   canvasSub: theme.palette.background.default,
 });
 
@@ -236,14 +236,9 @@ export const DataTable = memo(function DataTable<TData>({
                 onClick={onCreateClick}
                 startIcon={<AddIcon sx={{ fontSize: 16 }} />}
                 size="small"
+                className="data-table-btn-create"
                 sx={{
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  borderRadius: '6px',
-                  fontSize: '0.75rem',
                   px: 2,
-                  letterSpacing: '-0.01em',
-                  transition: 'all 0.15s ease',
                 }}
               >
                 {createButtonLabel}
@@ -275,7 +270,7 @@ export const DataTable = memo(function DataTable<TData>({
               />
             ) : (
               <Tooltip title="Buscar">
-                <IconButton onClick={handleSearchToggle} size="small" sx={{ color: t.muted }}>
+                <IconButton onClick={handleSearchToggle} size="small" className="data-table-action">
                   <SearchIcon sx={{ fontSize: 17 }} />
                 </IconButton>
               </Tooltip>
@@ -283,7 +278,7 @@ export const DataTable = memo(function DataTable<TData>({
 
             {onFilterClick && (
               <Tooltip title="Filtros">
-                <IconButton size="small" onClick={onFilterClick} sx={{ color: t.muted }}>
+                <IconButton size="small" onClick={onFilterClick} className="data-table-action">
                   <FilterListIcon sx={{ fontSize: 17 }} />
                 </IconButton>
               </Tooltip>
@@ -291,7 +286,7 @@ export const DataTable = memo(function DataTable<TData>({
 
             {onImportExportClick && (
               <Tooltip title="Importar/Exportar">
-                <IconButton onClick={onImportExportClick} size="small" sx={{ color: t.muted }}>
+                <IconButton onClick={onImportExportClick} size="small" className="data-table-action">
                   <MoreVertIcon sx={{ fontSize: 17 }} />
                 </IconButton>
               </Tooltip>
@@ -612,8 +607,7 @@ export const DataTable = memo(function DataTable<TData>({
             color: t.muted,
           },
           '.MuiIconButton-root': {
-            color: t.muted,
-            '&:hover': { color: t.text },
+            color: t.text,
           },
         }}
       />

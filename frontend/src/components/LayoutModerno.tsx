@@ -1,89 +1,120 @@
-﻿import React, { useState, useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Box, Drawer, List, Typography, IconButton, ListItem, ListItemButton,
-  ListItemIcon, ListItemText, Collapse, Tooltip, useTheme, useMediaQuery,
-  Button, CircularProgress, AppBar, Toolbar, InputBase,
+  alpha,
+  AppBar,
+  Box,
+  Button,
+  CircularProgress,
+  Collapse,
+  Drawer,
+  IconButton,
+  InputBase,
+  List,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem,
+  Toolbar,
+  Tooltip,
+  Typography,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import {
-  Menu as MenuIcon, Dashboard, School, Category, Inventory, Restaurant,
-  MenuBook, Business, Assignment, LocalShipping, Logout, ListAlt, RequestPage,
-  Print, Settings, Description, Agriculture, Calculate,
-  ExpandLess, ExpandMore, Apps as AppsIcon, AdminPanelSettings, CalendarToday, HomeWork,
-  NotificationsActive, Schedule, Search as SearchIcon,
+  AdminPanelSettings,
+  Apps as AppsIcon,
+  Assignment,
+  Agriculture,
+  Business,
+  Calculate,
+  CalendarToday,
+  Category,
+  Dashboard,
+  DarkModeOutlined,
+  Description,
+  ExpandMore,
+  HomeWork,
+  Inventory,
+  LightModeOutlined,
+  ListAlt,
+  LocalShipping,
+  Logout,
+  Menu as MenuIcon,
+  MenuBook,
+  NotificationsActive,
+  Print,
+  RequestPage,
+  Restaurant,
+  Schedule,
+  School,
+  Search as SearchIcon,
+  Settings,
 } from "@mui/icons-material";
-import { useNavigate, useLocation } from "react-router-dom";
-import { logout } from "../services/auth";
+import { useLocation, useNavigate } from "react-router-dom";
+
+import { useThemePreference } from "../contexts/ThemeContext";
+import { NotificacoesProvider } from "../contexts/NotificacoesContext";
+import { NotificacoesEscolaProvider } from "../contexts/NotificacoesEscolaContext";
 import { useConfigContext } from "../contexts/ConfigContext";
+import { logout } from "../services/auth";
 import { useConfigChangeIndicator } from "../hooks/useConfigChangeIndicator";
-import { useUserRole } from "../hooks/useUserRole";
 import { useUserPermissions } from "../hooks/useUserPermissions";
-import { SeletorPeriodo } from './SeletorPeriodo';
-import { NotificacoesProvider } from '../contexts/NotificacoesContext';
-import { NotificacoesEscolaProvider } from '../contexts/NotificacoesEscolaContext';
-import NotificacoesMenu from './NotificacoesMenu';
-import NotificacoesEscolaMenu from './NotificacoesEscolaMenu';
-import { GlobalSearchDropdown, useGlobalSearch } from './GlobalSearch';
+import { useUserRole } from "../hooks/useUserRole";
+import { SeletorPeriodo } from "./SeletorPeriodo";
+import { GlobalSearchDropdown, useGlobalSearch } from "./GlobalSearch";
+import NotificacoesEscolaMenu from "./NotificacoesEscolaMenu";
+import NotificacoesMenu from "./NotificacoesMenu";
 
-const drawerWidth = 240;
-const collapsedDrawerWidth = 72;
+const drawerWidth = 248;
+const collapsedDrawerWidth = 78;
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// DESIGN SYSTEM â€” Gowen Dark Mode
-// Clean, modern sidebar com estilo cyberpunk sutil (cyan neon)
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-
-const DESIGN_TOKENS = {
-  bg: {
-    primary: "#0d0d0d",      // Fundo principal â€” quase preto
-    secondary: "#1a1a1a",    // Fundo dos cards/itens
-    elevated: "#222222",     // Itens elevados/hover
-    accent: "#2a2a2a",       // Hover mais intenso
-  },
-  border: {
-    subtle: "rgba(255,255,255,0.06)",
-    medium: "rgba(255,255,255,0.10)",
-    strong: "rgba(255,255,255,0.15)",
-  },
-  text: {
-    primary: "#f0f0f0",      // Texto principal
-    secondary: "#888",       // Texto secundÃ¡rio
-    muted: "#666",           // Texto esmaecido
-    accent: "#777",
-  },
-  accent: {
-    primary: "#00bfff",      // Ciano neon â€” cor principal
-    secondary: "#33ccff",    // Ciano mais claro
-    success: "#22c55e",      // Verde ativo
-    warning: "#f59e0b",      // Ã‚mbar/Ã¢mbar
-    danger: "#ef4444",       // Vermelho
-  },
-  glow: {
-    cyan: "0 0 20px rgba(0,191,255,0.15)",
-    subtle: "0 2px 8px rgba(0, 0, 0, 0.3)",
-  }
+type LayoutTokens = {
+  bgPrimary: string;
+  bgSecondary: string;
+  bgElevated: string;
+  bgAccent: string;
+  borderSubtle: string;
+  borderMedium: string;
+  textPrimary: string;
+  textSecondary: string;
+  textMuted: string;
+  primary: string;
+  success: string;
+  danger: string;
+  primaryTint: string;
+  successTint: string;
+  dangerTint: string;
+  shadow: string;
 };
 
-const SIDEBAR_BG = DESIGN_TOKENS.bg.primary;
-const CANVAS = DESIGN_TOKENS.bg.secondary;
-const BORDER = DESIGN_TOKENS.border.subtle;
-const BORDER_MD = DESIGN_TOKENS.border.medium;
-const TEXT = DESIGN_TOKENS.text.primary;
-const MUTED = DESIGN_TOKENS.text.secondary;
-const SUB = DESIGN_TOKENS.text.muted;
-const CYAN = DESIGN_TOKENS.accent.primary;
-const CYAN_DIM = `${DESIGN_TOKENS.accent.primary}20`;
-const GREEN = DESIGN_TOKENS.accent.success;
-const GREEN_DIM = `${DESIGN_TOKENS.accent.success}20`;
-const RED = DESIGN_TOKENS.accent.danger;
+const getLayoutTokens = (theme: ReturnType<typeof useTheme>): LayoutTokens => ({
+  bgPrimary: theme.palette.background.sidebar,
+  bgSecondary: theme.palette.background.paper,
+  bgElevated: alpha(theme.palette.text.primary, theme.palette.mode === "light" ? 0.05 : 0.08),
+  bgAccent: alpha(theme.palette.text.primary, theme.palette.mode === "light" ? 0.035 : 0.06),
+  borderSubtle: theme.palette.divider,
+  borderMedium: alpha(theme.palette.text.primary, theme.palette.mode === "light" ? 0.14 : 0.2),
+  textPrimary: theme.palette.text.primary,
+  textSecondary: theme.palette.text.secondary,
+  textMuted: alpha(theme.palette.text.secondary, 0.8),
+  primary: theme.palette.primary.main,
+  success: theme.palette.success.main,
+  danger: theme.palette.error.main,
+  primaryTint: alpha(theme.palette.primary.main, 0.16),
+  successTint: alpha(theme.palette.success.main, 0.18),
+  dangerTint: alpha(theme.palette.error.main, 0.18),
+  shadow: theme.palette.mode === "light" ? "0 20px 40px rgba(31,36,48,0.08)" : "0 20px 48px rgba(0,0,0,0.28)",
+});
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
-  "Principal":     <Dashboard fontSize="small" />,
-  "Cadastros":     <School fontSize="small" />,
-  "CardÃ¡pios":     <MenuBook fontSize="small" />,
-  "Compras":       <Assignment fontSize="small" />,
-  "Entregas":      <LocalShipping fontSize="small" />,
-  "Estoque":       <Inventory fontSize="small" />,
-  "ConfiguraÃ§Ãµes": <Settings fontSize="small" />,
+  Principal: <Dashboard fontSize="small" />,
+  Cadastros: <School fontSize="small" />,
+  "Cardápios": <MenuBook fontSize="small" />,
+  Compras: <Assignment fontSize="small" />,
+  Entregas: <LocalShipping fontSize="small" />,
+  Estoque: <Inventory fontSize="small" />,
+  "Configurações": <Settings fontSize="small" />,
   "Portal Escola": <HomeWork fontSize="small" />,
 };
 
@@ -92,382 +123,342 @@ const MENU_ESCOLA = [
     category: "Portal Escola",
     items: [
       { text: "Minha Escola", icon: <HomeWork fontSize="small" />, path: "/portal-escola" },
-      { text: "SolicitaÃ§Ãµes", icon: <RequestPage fontSize="small" />, path: "/portal-escola/solicitacoes" },
+      { text: "Solicitações", icon: <RequestPage fontSize="small" />, path: "/portal-escola/solicitacoes" },
     ],
   },
 ];
 
-const getMenuConfig = (_cfg: any) => [
-  // Dashboard como item standalone (sem categoria)
+const getMenuConfig = (_cfg: unknown) => [
   {
     standalone: true,
-    item: { text: "Dashboard", icon: <Dashboard fontSize="small" />, path: "/dashboard" }
+    item: { text: "Dashboard", icon: <Dashboard fontSize="small" />, path: "/dashboard" },
   },
   {
     category: "Cadastros",
     items: [
-      { text: "Escolas",        icon: <School fontSize="small" />,     path: "/escolas" },
-      { text: "Modalidades",    icon: <Category fontSize="small" />,   path: "/modalidades" },
-      { text: "Produtos",       icon: <Inventory fontSize="small" />,  path: "/produtos" },
+      { text: "Escolas", icon: <School fontSize="small" />, path: "/escolas" },
+      { text: "Modalidades", icon: <Category fontSize="small" />, path: "/modalidades" },
+      { text: "Produtos", icon: <Inventory fontSize="small" />, path: "/produtos" },
       { text: "Nutricionistas", icon: <Restaurant fontSize="small" />, path: "/nutricionistas" },
-      { text: "Fornecedores",   icon: <Business fontSize="small" />,   path: "/fornecedores" },
-      { text: "Contratos",      icon: <Assignment fontSize="small" />, path: "/contratos" },
+      { text: "Fornecedores", icon: <Business fontSize="small" />, path: "/fornecedores" },
+      { text: "Contratos", icon: <Assignment fontSize="small" />, path: "/contratos" },
     ],
   },
   {
-    category: "CardÃ¡pios",
+    category: "Cardápios",
     items: [
-      { text: "PreparaÃ§Ãµes", icon: <Restaurant fontSize="small" />, path: "/preparacoes" },
-      { text: "CardÃ¡pios",   icon: <MenuBook fontSize="small" />,   path: "/cardapios" },
-      { text: "Tipos de RefeiÃ§Ã£o", icon: <Schedule fontSize="small" />, path: "/tipos-refeicao" },
+      { text: "Preparações", icon: <Restaurant fontSize="small" />, path: "/preparacoes" },
+      { text: "Cardápios", icon: <MenuBook fontSize="small" />, path: "/cardapios" },
+      { text: "Tipos de Refeição", icon: <Schedule fontSize="small" />, path: "/tipos-refeicao" },
     ],
   },
   {
     category: "Compras",
     items: [
-      { text: "Planejamento",     icon: <Calculate fontSize="small" />,   path: "/compras/planejamento" },
-      { text: "Guias de Demanda", icon: <ListAlt fontSize="small" />,     path: "/guias-demanda" },
-      { text: "Pedidos",          icon: <RequestPage fontSize="small" />, path: "/compras" },
-      { text: "Saldo Contratos",  icon: <Category fontSize="small" />,    path: "/saldos-contratos-modalidades" },
-      { text: "Dashboard PNAE",   icon: <Agriculture fontSize="small" />, path: "/pnae/dashboard" },
+      { text: "Planejamento", icon: <Calculate fontSize="small" />, path: "/compras/planejamento" },
+      { text: "Guias de Demanda", icon: <ListAlt fontSize="small" />, path: "/guias-demanda" },
+      { text: "Pedidos", icon: <RequestPage fontSize="small" />, path: "/compras" },
+      { text: "Saldo Contratos", icon: <Category fontSize="small" />, path: "/saldos-contratos-modalidades" },
+      { text: "Dashboard PNAE", icon: <Agriculture fontSize="small" />, path: "/pnae/dashboard" },
     ],
   },
   {
     category: "Entregas",
     items: [
-      { text: "GestÃ£o de Rotas", icon: <Business fontSize="small" />,      path: "/gestao-rotas" },
-      { text: "Romaneio",        icon: <Print fontSize="small" />,         path: "/romaneio" },
-      { text: "Entregas",        icon: <LocalShipping fontSize="small" />, path: "/entregas" },
-      { text: "Comprovantes",    icon: <Description fontSize="small" />,   path: "/comprovantes-entrega" },
+      { text: "Gestão de Rotas", icon: <Business fontSize="small" />, path: "/gestao-rotas" },
+      { text: "Romaneio", icon: <Print fontSize="small" />, path: "/romaneio" },
+      { text: "Entregas", icon: <LocalShipping fontSize="small" />, path: "/entregas" },
+      { text: "Comprovantes", icon: <Description fontSize="small" />, path: "/comprovantes-entrega" },
     ],
   },
   {
     category: "Estoque",
     items: [
       { text: "Estoque Central", icon: <Inventory fontSize="small" />, path: "/estoque-central" },
-      { text: "Estoque Escolar", icon: <School fontSize="small" />,    path: "/estoque-escolar" },
-      { text: "SolicitaÃ§Ãµes Recebidas", icon: <RequestPage fontSize="small" />, path: "/solicitacoes-alimentos" },
+      { text: "Estoque Escolar", icon: <School fontSize="small" />, path: "/estoque-escolar" },
+      { text: "Solicitações Recebidas", icon: <RequestPage fontSize="small" />, path: "/solicitacoes-alimentos" },
     ],
   },
   {
-    category: "ConfiguraÃ§Ãµes",
+    category: "Configurações",
     items: [
-      { text: "InstituiÃ§Ã£o",       icon: <Settings fontSize="small" />,           path: "/configuracao-instituicao" },
-      { text: "CalendÃ¡rio Letivo", icon: <CalendarToday fontSize="small" />,      path: "/calendario-letivo" },
-      { text: "PerÃ­odos",          icon: <CalendarToday fontSize="small" />,      path: "/periodos",                adminOnly: true },
-      { text: "UsuÃ¡rios",          icon: <AdminPanelSettings fontSize="small" />, path: "/gerenciamento-usuarios",  adminOnly: true },
-      { text: "Disparos",          icon: <NotificationsActive fontSize="small" />, path: "/disparos-notificacao",   adminOnly: true },
+      { text: "Instituição", icon: <Settings fontSize="small" />, path: "/configuracao-instituicao" },
+      { text: "Calendário Letivo", icon: <CalendarToday fontSize="small" />, path: "/calendario-letivo" },
+      { text: "Períodos", icon: <CalendarToday fontSize="small" />, path: "/periodos", adminOnly: true },
+      { text: "Usuários", icon: <AdminPanelSettings fontSize="small" />, path: "/gerenciamento-usuarios", adminOnly: true },
+      { text: "Disparos", icon: <NotificationsActive fontSize="small" />, path: "/disparos-notificacao", adminOnly: true },
     ],
   },
 ];
 
-// â”€â”€â”€ SubItem com estilo clean e moderno â”€â”€â”€
-const SubItem: React.FC<{
-  item: any; isActive: boolean; onClick: (path: string) => void; collapsed: boolean;
-}> = ({ item, isActive, onClick, collapsed }) => {
-  const [isHovered, setIsHovered] = useState(false);
-  
-  const btn = (
-    <ListItemButton
-      onClick={() => onClick(item.path)}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      sx={{
-        pl: collapsed ? 0 : 3, 
-        pr: 2, 
-        py: 1.25, 
-        mx: collapsed ? 0.5 : 1.5, 
-        my: 0.5,
-        borderRadius: "12px",
-        minWidth: 40,
-        minHeight: 44,
-        justifyContent: collapsed ? "center" : "flex-start",
-        position: "relative",
-        bgcolor: isActive ? `${DESIGN_TOKENS.accent.primary}15` : "transparent",
-        color: isActive ? DESIGN_TOKENS.accent.primary : DESIGN_TOKENS.text.secondary,
-        transition: "all 0.2s ease",
-        "&:hover": { 
-          bgcolor: DESIGN_TOKENS.bg.elevated,
-          color: DESIGN_TOKENS.text.primary,
-          transform: "translateX(2px)",
-        },
-      }}
-    >
-      {!collapsed && (
-        <ListItemText
-          primary={item.text}
-          primaryTypographyProps={{
-            fontSize: "0.875rem",
-            fontWeight: isActive ? 500 : 400,
-            letterSpacing: "0.01em",
-          }}
-        />
-      )}
-    </ListItemButton>
-  );
-  
-  return collapsed ? (
-    <Tooltip 
-      title={item.text} 
-      placement="right"
-      componentsProps={{
-        tooltip: {
-          sx: {
-            bgcolor: DESIGN_TOKENS.bg.elevated,
-            color: DESIGN_TOKENS.text.primary,
-            fontSize: "0.8rem",
-            py: 0.75,
-            px: 1.5,
-            borderRadius: "10px",
-            boxShadow: DESIGN_TOKENS.glow.subtle,
-          }
-        }
-      }}
-    >
-      {btn}
-    </Tooltip>
-  ) : btn;
+const MODULO_SLUGS: Record<string, string> = {
+  Dashboard: "dashboard",
+  Escolas: "escolas",
+  Modalidades: "modalidades",
+  Produtos: "produtos",
+  Nutricionistas: "nutricionistas",
+  Fornecedores: "fornecedores",
+  Contratos: "contratos",
+  Preparações: "preparacoes",
+  "Cardápios": "cardapios",
+  "Tipos de Refeição": "tipos_refeicao",
+  Planejamento: "planejamento_compras",
+  "Guias de Demanda": "demandas",
+  Pedidos: "pedidos",
+  "Saldo Contratos": "saldo_contratos",
+  "Dashboard PNAE": "pnae",
+  "Gestão de Rotas": "rotas",
+  Romaneio: "romaneio",
+  Entregas: "entregas",
+  Comprovantes: "comprovantes",
+  "Estoque Central": "estoque",
+  "Estoque Escolar": "estoque",
+  "Solicitações Recebidas": "solicitacoes",
+  Instituição: "configuracoes",
+  "Calendário Letivo": "calendario",
+  Períodos: "periodos",
+  Usuários: "usuarios",
+  Disparos: "notificacoes",
 };
 
-// â”€â”€â”€ StandaloneItem - Item sem categoria (como Dashboard) â”€â”€â”€
-const StandaloneItem: React.FC<{
-  item: any; location: string; onNavigate: (path: string) => void; collapsed: boolean;
-}> = ({ item, location, onNavigate, collapsed }) => {
-  const isActive = location === item.path || (item.path !== "/" && location.startsWith(item.path));
-  
-  const btn = (
+const isActivePath = (pathname: string, path: string) => pathname === path || (path !== "/" && pathname.startsWith(path));
+
+const NavItem = ({
+  item,
+  pathname,
+  onNavigate,
+  collapsed,
+  tokens,
+}: {
+  item: { text: string; icon: React.ReactNode; path: string };
+  pathname: string;
+  onNavigate: (path: string) => void;
+  collapsed: boolean;
+  tokens: LayoutTokens;
+}) => {
+  const active = isActivePath(pathname, item.path);
+  const content = (
     <ListItemButton
       onClick={() => onNavigate(item.path)}
       sx={{
-        pl: collapsed ? 0 : 2, 
-        pr: 2, 
-        py: 1.5, 
-        mx: collapsed ? 0.5 : 1.5, 
+        mx: collapsed ? 0.75 : 1.25,
         my: 0.5,
-        borderRadius: "12px",
-        minWidth: 44,
-        minHeight: 48,
+        px: collapsed ? 1 : 1.5,
+        py: 1.1,
+        minHeight: 44,
+        borderRadius: 1.5,
         justifyContent: collapsed ? "center" : "flex-start",
-        bgcolor: isActive ? `${DESIGN_TOKENS.accent.primary}15` : "transparent",
-        color: isActive ? DESIGN_TOKENS.accent.primary : DESIGN_TOKENS.text.secondary,
-        transition: "all 0.2s ease",
-        "&:hover": { 
-          bgcolor: DESIGN_TOKENS.bg.elevated,
-          color: DESIGN_TOKENS.text.primary,
+        backgroundColor: active ? tokens.primaryTint : "transparent",
+        color: active ? tokens.primary : tokens.textSecondary,
+        border: `1px solid ${active ? alpha(tokens.primary, 0.18) : "transparent"}`,
+        "&:hover": {
+          backgroundColor: active ? tokens.primaryTint : tokens.bgElevated,
+          color: tokens.textPrimary,
         },
       }}
     >
-      <ListItemIcon sx={{ 
-        color: "inherit", 
-        minWidth: collapsed ? 0 : 40,
-        justifyContent: "center",
-      }}>
+      <ListItemIcon
+        sx={{
+          minWidth: collapsed ? 0 : 36,
+          color: "inherit",
+          justifyContent: "center",
+        }}
+      >
         {item.icon}
       </ListItemIcon>
       {!collapsed && (
         <ListItemText
           primary={item.text}
           primaryTypographyProps={{
-            fontSize: "0.9rem",
-            fontWeight: isActive ? 500 : 400,
-            letterSpacing: "0.01em",
+            fontSize: "0.84rem",
+            fontWeight: active ? 600 : 500,
           }}
         />
       )}
     </ListItemButton>
   );
-  
+
   return collapsed ? (
-    <Tooltip 
-      title={item.text} 
-      placement="right"
-      componentsProps={{
-        tooltip: {
-          sx: {
-            bgcolor: DESIGN_TOKENS.bg.elevated,
-            color: DESIGN_TOKENS.text.primary,
-            fontSize: "0.8rem",
-            py: 0.75,
-            px: 1.5,
-            borderRadius: "10px",
-            boxShadow: DESIGN_TOKENS.glow.subtle,
-          }
-        }
-      }}
-    >
-      {btn}
+    <Tooltip title={item.text} placement="right">
+      {content}
     </Tooltip>
-  ) : btn;
+  ) : content;
 };
 
-// â”€â”€â”€ CategoryGroup com estilo clean e moderno â”€â”€â”€
-const CategoryGroup: React.FC<{
-  category: string; items: any[]; location: string;
-  onNavigate: (path: string) => void; collapsed: boolean; defaultOpen?: boolean;
-  isFirst?: boolean;
-}> = ({ category, items, location, onNavigate, collapsed, defaultOpen = false, isFirst }) => {
-  const hasActive = items.some(i => location === i.path || (i.path !== "/" && location.startsWith(i.path)));
-  const [open, setOpen] = useState(defaultOpen || hasActive);
+const CategoryGroup = ({
+  category,
+  items,
+  pathname,
+  onNavigate,
+  collapsed,
+  tokens,
+}: {
+  category: string;
+  items: Array<{ text: string; icon: React.ReactNode; path: string }>;
+  pathname: string;
+  onNavigate: (path: string) => void;
+  collapsed: boolean;
+  tokens: LayoutTokens;
+}) => {
+  const hasActive = items.some((item) => isActivePath(pathname, item.path));
+  const [open, setOpen] = useState(hasActive);
 
-  useEffect(() => { if (hasActive) setOpen(true); }, [hasActive]);
+  useEffect(() => {
+    if (hasActive) setOpen(true);
+  }, [hasActive]);
 
   const icon = CATEGORY_ICONS[category] ?? <AppsIcon fontSize="small" />;
 
   if (collapsed) {
     return (
-      <Box sx={{
-        borderTop: isFirst ? "none" : `1px solid ${DESIGN_TOKENS.border.subtle}`,
-        pt: isFirst ? 0 : 2,
-        mt: isFirst ? 0 : 1,
-        mx: 0.5,
-      }}>
-        <Tooltip
-          title={
-            <Box>
-              <Typography variant="caption" sx={{ 
-                fontWeight: 600, 
-                display: "block", 
-                mb: 1.5, 
-                color: DESIGN_TOKENS.text.primary, 
-                fontSize: "0.75rem", 
-                textTransform: "uppercase", 
-                letterSpacing: "0.5px",
-                pb: 0.75,
-                borderBottom: `1px solid ${DESIGN_TOKENS.border.subtle}`,
-              }}>
-                {category}
-              </Typography>
-              {items.map(i => {
-                const active = location === i.path || (i.path !== "/" && location.startsWith(i.path));
-                return (
-                  <Box key={i.path} onClick={() => onNavigate(i.path)} sx={{
-                    display: "flex", 
-                    alignItems: "center", 
-                    gap: 1.5, 
-                    py: 1, 
-                    px: 1.5,
-                    cursor: "pointer", 
-                    borderRadius: "10px",
-                    bgcolor: active ? DESIGN_TOKENS.bg.secondary : "transparent",
-                    "&:hover": { 
-                      bgcolor: DESIGN_TOKENS.bg.elevated,
-                    },
-                    color: active ? DESIGN_TOKENS.text.primary : DESIGN_TOKENS.text.secondary,
-                    transition: "all 0.2s ease",
-                  }}>
-                    {i.icon}
-                    <Typography variant="caption" sx={{ fontSize: "0.8rem", fontWeight: active ? 500 : 400 }}>
-                      {i.text}
-                    </Typography>
-                  </Box>
-                );
-              })}
-            </Box>
-          }
-          placement="right"
-          componentsProps={{
-            tooltip: {
-              sx: {
-                bgcolor: DESIGN_TOKENS.bg.elevated, 
-                p: 1.5, 
-                maxWidth: 240,
-                borderRadius: "12px",
-                boxShadow: DESIGN_TOKENS.glow.subtle,
-              },
-            },
+      <Tooltip
+        placement="right"
+        title={
+          <Box>
+            <Typography sx={{ fontSize: "0.72rem", fontWeight: 700, mb: 1, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+              {category}
+            </Typography>
+            {items.map((item) => (
+              <Box
+                key={item.path}
+                onClick={() => onNavigate(item.path)}
+                sx={{
+                  py: 0.9,
+                  px: 1.1,
+                  borderRadius: 1,
+                  cursor: "pointer",
+                  color: isActivePath(pathname, item.path) ? tokens.primary : tokens.textPrimary,
+                  backgroundColor: isActivePath(pathname, item.path) ? tokens.primaryTint : "transparent",
+                  "&:hover": {
+                    backgroundColor: tokens.bgElevated,
+                  },
+                }}
+              >
+                {item.text}
+              </Box>
+            ))}
+          </Box>
+        }
+      >
+        <ListItemButton
+          onClick={() => setOpen((value) => !value)}
+          sx={{
+            mx: 0.75,
+            my: 0.5,
+            minHeight: 44,
+            borderRadius: 1.5,
+            justifyContent: "center",
+            color: hasActive ? tokens.primary : tokens.textMuted,
+            backgroundColor: hasActive ? tokens.primaryTint : "transparent",
+            "&:hover": { backgroundColor: tokens.bgElevated, color: tokens.textPrimary },
           }}
         >
-          <ListItemButton sx={{
-            justifyContent: "center", 
-            mx: 0.5, 
-            px: 1.5, 
-            py: 1.5, 
-            minWidth: 44, 
-            borderRadius: "12px",
-            color: hasActive ? DESIGN_TOKENS.text.primary : DESIGN_TOKENS.text.muted,
-            bgcolor: hasActive ? DESIGN_TOKENS.bg.secondary : "transparent",
-            "&:hover": { 
-              bgcolor: DESIGN_TOKENS.bg.elevated,
-              color: DESIGN_TOKENS.text.primary,
-            },
-            transition: "all 0.2s ease",
-          }}>
-            <ListItemIcon sx={{ color: "inherit", minWidth: 0, justifyContent: "center" }}>
-              {icon}
-            </ListItemIcon>
-          </ListItemButton>
-        </Tooltip>
-      </Box>
+          <ListItemIcon sx={{ minWidth: 0, color: "inherit", justifyContent: "center" }}>
+            {icon}
+          </ListItemIcon>
+        </ListItemButton>
+      </Tooltip>
     );
   }
 
   return (
-    <Box sx={{
-      borderTop: isFirst ? "none" : `1px solid ${DESIGN_TOKENS.border.subtle}`,
-      pt: isFirst ? 0 : 2,
-      mt: isFirst ? 0 : 1,
-    }}>
-      <ListItemButton 
-        onClick={() => setOpen(o => !o)} 
+    <Box sx={{ mt: 0.75 }}>
+      <ListItemButton
+        onClick={() => setOpen((value) => !value)}
         sx={{
-          px: 2, 
-          py: 1, 
-          mx: 1.5, 
-          mb: 0.5,
-          borderRadius: "12px",
-          color: DESIGN_TOKENS.text.muted,
-          bgcolor: "transparent",
-          "&:hover": { 
-            bgcolor: DESIGN_TOKENS.bg.secondary,
-            color: DESIGN_TOKENS.text.secondary,
-          },
-          transition: "all 0.2s ease",
+          mx: 1.25,
+          px: 1.25,
+          py: 0.9,
           minHeight: 40,
+          borderRadius: 1.5,
+          color: hasActive ? tokens.textPrimary : tokens.textMuted,
+          "&:hover": { backgroundColor: tokens.bgAccent, color: tokens.textPrimary },
         }}
       >
-        <ListItemIcon sx={{ 
-          color: "inherit", 
-          minWidth: 36, 
-          justifyContent: "center",
-        }}>
-          {icon}
-        </ListItemIcon>
-        <ListItemText 
-          primary={category} 
+        <ListItemIcon sx={{ minWidth: 34, color: "inherit" }}>{icon}</ListItemIcon>
+        <ListItemText
+          primary={category}
           primaryTypographyProps={{
-            fontSize: "0.75rem", 
-            fontWeight: 600,
-            color: "inherit",
+            fontSize: "0.7rem",
+            fontWeight: 700,
             textTransform: "uppercase",
-            letterSpacing: "0.8px",
-          }} 
+            letterSpacing: "0.08em",
+          }}
         />
-        <Box sx={{
-          transition: "transform 0.2s ease",
-          transform: open ? "rotate(180deg)" : "rotate(0deg)",
-          display: "flex",
-          alignItems: "center",
-        }}>
-          <ExpandMore sx={{ 
-            fontSize: 20, 
-            opacity: 0.5,
-          }} />
-        </Box>
+        <ExpandMore sx={{ fontSize: 18, transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.18s ease" }} />
       </ListItemButton>
-      <Collapse in={open} timeout={200} unmountOnExit>
+      <Collapse in={open} timeout={180} unmountOnExit>
         <List dense disablePadding sx={{ pb: 0.5 }}>
-          {items.map(item => {
-            const isActive = location === item.path || (item.path !== "/" && location.startsWith(item.path));
-            return <SubItem key={item.path} item={item} isActive={isActive} onClick={onNavigate} collapsed={false} />;
-          })}
+          {items.map((item) => (
+            <NavItem
+              key={item.path}
+              item={item}
+              pathname={pathname}
+              onNavigate={onNavigate}
+              collapsed={false}
+              tokens={tokens}
+            />
+          ))}
         </List>
       </Collapse>
     </Box>
   );
 };
 
-// â”€â”€â”€ Layout Principal â”€â”€â”€
+const ThemeSwitcher = ({ compact = false }: { compact?: boolean }) => {
+  const { mode, setTheme } = useThemePreference();
+  const theme = useTheme();
+  const tokens = getLayoutTokens(theme);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+  const icon = mode === "dark" ? <DarkModeOutlined fontSize="small" /> : <LightModeOutlined fontSize="small" />;
+
+  return (
+    <>
+      <Tooltip title="Tema">
+        <IconButton
+          onClick={(event) => setAnchorEl(event.currentTarget)}
+          sx={{
+            color: tokens.textSecondary,
+            border: `1px solid ${tokens.borderSubtle}`,
+            backgroundColor: compact ? "transparent" : tokens.bgSecondary,
+            "&:hover": { backgroundColor: tokens.bgElevated, color: tokens.textPrimary },
+          }}
+        >
+          {icon}
+        </IconButton>
+      </Tooltip>
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={() => setAnchorEl(null)}
+        PaperProps={{
+          sx: {
+            mt: 1,
+            minWidth: 180,
+            borderRadius: 1.5,
+            border: `1px solid ${tokens.borderSubtle}`,
+            boxShadow: tokens.shadow,
+          },
+        }}
+      >
+        <MenuItem selected={mode === "light"} onClick={() => { setTheme("light"); setAnchorEl(null); }}>
+          <LightModeOutlined sx={{ mr: 1.25, fontSize: 18 }} />
+          Claro
+        </MenuItem>
+        <MenuItem selected={mode === "dark"} onClick={() => { setTheme("dark"); setAnchorEl(null); }}>
+          <DarkModeOutlined sx={{ mr: 1.25, fontSize: 18 }} />
+          Escuro
+        </MenuItem>
+      </Menu>
+    </>
+  );
+};
+
 const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const theme = useTheme();
+  const tokens = getLayoutTokens(theme);
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => {
     const saved = localStorage.getItem("sidebar-collapsed");
@@ -476,459 +467,234 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const navigate = useNavigate();
   const location = useLocation();
-  const isMobile = useMediaQuery(useTheme().breakpoints.down("md"));
+  const search = useGlobalSearch();
 
   const { configModuloSaldo, loading: loadingConfig, onConfigChanged } = useConfigContext();
   const { hasRecentChange, showChangeIndicator } = useConfigChangeIndicator();
-  const { user, loading: loadingUser, isAdmin, isEscolaUser } = useUserRole();
-  const { hasLeitura, loading: loadingPerms } = useUserPermissions();
+  const { isAdmin, isEscolaUser } = useUserRole();
+  const { hasLeitura } = useUserPermissions();
 
-  useEffect(() => { if (onConfigChanged) onConfigChanged(showChangeIndicator); }, [onConfigChanged, showChangeIndicator]);
+  useEffect(() => {
+    if (onConfigChanged) onConfigChanged(showChangeIndicator);
+  }, [onConfigChanged, showChangeIndicator]);
 
-  // Mapa de mÃ³dulo â†’ slug de permissÃ£o
-  const MODULO_SLUGS: Record<string, string> = {
-    'Dashboard': 'dashboard',
-    'Escolas': 'escolas',
-    'Modalidades': 'modalidades',
-    'Produtos': 'produtos',
-    'Nutricionistas': 'nutricionistas',
-    'Fornecedores': 'fornecedores',
-    'Contratos': 'contratos',
-    'PreparaÃ§Ãµes': 'preparacoes',
-    'CardÃ¡pios': 'cardapios',
-    'Tipos de RefeiÃ§Ã£o': 'tipos_refeicao',
-    'Planejamento': 'planejamento_compras',
-    'Guias de Demanda': 'demandas',
-    'Pedidos': 'pedidos',
-    'Saldo Contratos': 'saldo_contratos',
-    'Dashboard PNAE': 'pnae',
-    'GestÃ£o de Rotas': 'rotas',
-    'Romaneio': 'romaneio',
-    'Entregas': 'entregas',
-    'Comprovantes': 'comprovantes',
-    'Estoque Central': 'estoque',
-    'Estoque Escolar': 'estoque',
-    'SolicitaÃ§Ãµes Recebidas': 'solicitacoes',
-    'InstituiÃ§Ã£o': 'configuracoes',
-    'CalendÃ¡rio Letivo': 'calendario',
-    'PerÃ­odos': 'periodos',
-    'UsuÃ¡rios': 'usuarios',
-    'Disparos': 'notificacoes',
-  };
+  const menuConfig = useMemo(() => {
+    if (isEscolaUser) return MENU_ESCOLA;
 
-  // Filtrar menu por permissÃµes
-  const menuConfig = isEscolaUser ? MENU_ESCOLA : (() => {
-    const base = getMenuConfig(configModuloSaldo);
-    return base.map(cat => {
-      // Se for standalone, nÃ£o precisa filtrar items
-      if (cat.standalone) {
-        return cat;
-      }
-      // Se for categoria, filtrar items
-      return {
-        ...cat,
-        items: cat.items?.filter((item: any) => {
-          // adminOnly: manter filtro existente
-          if (item.adminOnly && !isAdmin) return false;
-          // Se nÃ£o tem slug mapeado, mostrar (fallback)
-          const slug = MODULO_SLUGS[item.text];
-          if (!slug) return true;
-          // Admin sempre vÃª tudo
-          if (isAdmin) return true;
-          // Verificar permissÃ£o de leitura
-          return hasLeitura(slug);
-        }) || [],
-      };
-    }).filter(cat => cat.standalone || (cat.items && cat.items.length > 0)); // remover categorias vazias
-  })();
+    return getMenuConfig(configModuloSaldo)
+      .map((section) => {
+        if ("standalone" in section) return section;
 
-  const handleDrawerToggle = useCallback(() => setMobileOpen(p => !p), []);
+        return {
+          ...section,
+          items: section.items.filter((item: any) => {
+            if (item.adminOnly && !isAdmin) return false;
+            if (isAdmin) return true;
+            const slug = MODULO_SLUGS[item.text];
+            return slug ? hasLeitura(slug) : true;
+          }),
+        };
+      })
+      .filter((section: any) => section.standalone || section.items.length > 0);
+  }, [configModuloSaldo, hasLeitura, isAdmin, isEscolaUser]);
+
+  const handleDrawerToggle = useCallback(() => setMobileOpen((value) => !value), []);
   const handleCollapseToggle = useCallback(() => {
-    setCollapsed((p: boolean) => {
-      const v = !p;
-      localStorage.setItem("sidebar-collapsed", JSON.stringify(v));
-      return v;
+    setCollapsed((value: boolean) => {
+      const next = !value;
+      localStorage.setItem("sidebar-collapsed", JSON.stringify(next));
+      return next;
     });
   }, []);
-  const handleLogout = () => logout();
+
   const handleNavigation = useCallback((path: string) => {
     navigate(path);
     if (isMobile) setMobileOpen(false);
-  }, [navigate, isMobile]);
+  }, [isMobile, navigate]);
 
-  const search = useGlobalSearch();
+  const drawerContent = (
+    <Box sx={{ height: "100%", display: "flex", flexDirection: "column", backgroundColor: tokens.bgPrimary }}>
+      <Box sx={{ px: 1.5, pt: 1.5, pb: 1 }}>
+        {hasRecentChange && !loadingConfig && (
+          <Box
+            sx={{
+              px: 1.25,
+              py: 0.8,
+              borderRadius: 1,
+              backgroundColor: tokens.successTint,
+              color: tokens.success,
+              fontSize: "0.74rem",
+              fontWeight: 600,
+            }}
+          >
+            Menu atualizado
+          </Box>
+        )}
+      </Box>
 
-  // Drawer para mobile (sempre expandido, com botÃ£o sair visÃ­vel)
-  const mobileDrawer = (
-    <Box sx={{
-      height: "100%", display: "flex", flexDirection: "column",
-      bgcolor: SIDEBAR_BG,
-    }}>
-      {/* â”€â”€ Brand Header removed â€” logo moved to AppBar â”€â”€ */}
-
-      {/* â”€â”€ Config update indicator â”€â”€ */}
-      {hasRecentChange && !loadingConfig && (
-        <Box sx={{
-          mx: 1, mt: 1.5, py: 0.5, px: 1,
-          borderRadius: "4px", fontSize: "0.7rem", textAlign: "center",
-          bgcolor: GREEN_DIM, color: GREEN,
-          fontWeight: 500,
-        }}>
-          âœ“ Menu atualizado!
-        </Box>
-      )}
-
-      {/* â”€â”€ Menu Items â”€â”€ */}
-      <Box sx={{
-        flexGrow: 1, 
-        overflow: "auto", 
-        py: 1, 
-        minHeight: 0,
-        position: "relative",
-        "&::before": {
-          content: '""',
-          position: "absolute",
-          inset: 0,
-          backgroundImage: `
-            radial-gradient(circle at 20% 30%, ${DESIGN_TOKENS.accent.primary}05 0%, transparent 50%),
-            radial-gradient(circle at 80% 70%, ${DESIGN_TOKENS.accent.primary}03 0%, transparent 50%)
-          `,
-          pointerEvents: "none",
-          zIndex: 0,
-        },
-        "&::-webkit-scrollbar": { width: "6px" },
-        "&::-webkit-scrollbar-thumb": { 
-          background: DESIGN_TOKENS.border.medium,
-          borderRadius: "3px",
-          "&:hover": {
-            background: DESIGN_TOKENS.border.strong,
-          }
-        },
-        "&::-webkit-scrollbar-track": { 
-          background: DESIGN_TOKENS.bg.primary,
-        },
-      }}>
+      <Box
+        sx={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: "auto",
+          pb: 1.5,
+        }}
+      >
         {loadingConfig ? (
           <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
-            <CircularProgress size={24} sx={{ color: MUTED }} />
+            <CircularProgress size={24} />
           </Box>
         ) : (
-          <List dense disablePadding>
-            {menuConfig.map((config: any, index: number) => {
-              if (config.standalone) {
-                // Renderizar item standalone (Dashboard)
-                return (
-                  <StandaloneItem
-                    key={config.item.path}
-                    item={config.item}
-                    location={location.pathname}
-                    onNavigate={(path) => {
-                      handleNavigation(path);
-                      handleDrawerToggle();
-                    }}
-                    collapsed={false}
-                  />
-                );
-              } else {
-                // Renderizar categoria normal
-                return (
-                  <CategoryGroup
-                    key={config.category}
-                    category={config.category}
-                    items={config.items.filter((i: any) => !i.adminOnly || isAdmin)}
-                    location={location.pathname}
-                    onNavigate={(path) => {
-                      handleNavigation(path);
-                      handleDrawerToggle();
-                    }}
-                    collapsed={false}
-                    defaultOpen={config.category === "Portal Escola"}
-                    isFirst={index === 1} // Primeira categoria apÃ³s Dashboard
-                  />
-                );
-              }
-            })}
+          <List disablePadding>
+            {menuConfig.map((config: any) => (
+              "standalone" in config ? (
+                <NavItem
+                  key={config.item.path}
+                  item={config.item}
+                  pathname={location.pathname}
+                  onNavigate={handleNavigation}
+                  collapsed={collapsed && !isMobile}
+                  tokens={tokens}
+                />
+              ) : (
+                <CategoryGroup
+                  key={config.category}
+                  category={config.category}
+                  items={config.items}
+                  pathname={location.pathname}
+                  onNavigate={handleNavigation}
+                  collapsed={collapsed && !isMobile}
+                  tokens={tokens}
+                />
+              )
+            ))}
           </List>
         )}
       </Box>
 
-      {/* â”€â”€ Footer com botÃ£o Sair â”€â”€ */}
-      <Box sx={{
-        flexShrink: 0,
-        borderTop: `1px solid ${DESIGN_TOKENS.border.subtle}`,
-        bgcolor: DESIGN_TOKENS.bg.primary,
-        py: 1.5, 
-        px: 1.5,
-      }}>
-        <Button onClick={handleLogout} size="small" startIcon={
-          <Logout sx={{ fontSize: 20, color: DESIGN_TOKENS.accent.danger }} />
-        } sx={{
-          width: "100%", 
-          textTransform: "none",
-          fontSize: "0.875rem", 
-          minHeight: 44, 
-          px: 2,
-          borderRadius: "12px", 
-          justifyContent: "flex-start",
-          color: DESIGN_TOKENS.text.muted, 
-          letterSpacing: "0.3px",
-          fontWeight: 400,
-          "&:hover": { 
-            bgcolor: `${DESIGN_TOKENS.accent.danger}20`,
-            color: DESIGN_TOKENS.accent.danger,
-          },
-          transition: "all 0.2s ease",
-        }}>
-          Sair
+      <Box
+        sx={{
+          p: 1.5,
+          borderTop: `1px solid ${tokens.borderSubtle}`,
+          display: "grid",
+          gap: 1,
+        }}
+      >
+        {!isMobile && (
+          <Button
+            onClick={handleCollapseToggle}
+            startIcon={<MenuIcon />}
+            sx={{
+              justifyContent: collapsed ? "center" : "flex-start",
+              borderRadius: 1.5,
+              color: tokens.textSecondary,
+              backgroundColor: "transparent",
+              "&:hover": { backgroundColor: tokens.bgElevated, color: tokens.textPrimary },
+            }}
+          >
+            {!collapsed && "Recolher menu"}
+          </Button>
+        )}
+        {isMobile && <ThemeSwitcher compact />}
+        <Button
+          onClick={() => logout()}
+          startIcon={<Logout sx={{ color: tokens.danger }} />}
+          sx={{
+            justifyContent: collapsed && !isMobile ? "center" : "flex-start",
+            borderRadius: 1.5,
+            color: tokens.textSecondary,
+            "&:hover": {
+              backgroundColor: tokens.dangerTint,
+              color: tokens.danger,
+            },
+          }}
+        >
+          {(!collapsed || isMobile) && "Sair"}
         </Button>
       </Box>
     </Box>
   );
 
-  const drawer = (
-    <Box sx={{
-      height: "100%", display: "flex", flexDirection: "column",
-      bgcolor: SIDEBAR_BG,
-    }}>
-      {/* â”€â”€ Brand Header removed â€” logo moved to AppBar â”€â”€ */}
-
-      {/* â”€â”€ Config update indicator â”€â”€ */}
-      {hasRecentChange && !loadingConfig && (
-        <Box sx={{
-          mx: 1, mt: 1.5, py: 0.5, px: 1,
-          borderRadius: "4px", fontSize: "0.7rem", textAlign: "center",
-          bgcolor: GREEN_DIM, color: GREEN,
-          fontWeight: 500,
-        }}>
-          âœ“ Menu atualizado!
-        </Box>
-      )}
-
-      {/* â”€â”€ Menu Items â”€â”€ */}
-      <Box sx={{
-        flexGrow: 1, 
-        overflow: "auto", 
-        py: 1, 
-        minHeight: 0,
-        position: "relative",
-        "&::before": {
-          content: '""',
-          position: "absolute",
-          inset: 0,
-          backgroundImage: `
-            radial-gradient(circle at 20% 30%, ${DESIGN_TOKENS.accent.primary}05 0%, transparent 50%),
-            radial-gradient(circle at 80% 70%, ${DESIGN_TOKENS.accent.primary}03 0%, transparent 50%)
-          `,
-          pointerEvents: "none",
-          zIndex: 0,
-        },
-        "&::-webkit-scrollbar": { width: "6px" },
-        "&::-webkit-scrollbar-thumb": { 
-          background: DESIGN_TOKENS.border.medium,
-          borderRadius: "3px",
-          "&:hover": {
-            background: DESIGN_TOKENS.border.strong,
-          }
-        },
-        "&::-webkit-scrollbar-track": { 
-          background: DESIGN_TOKENS.bg.primary,
-        },
-      }}>
-        {loadingConfig ? (
-          <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
-            <CircularProgress size={24} sx={{ color: MUTED }} />
-          </Box>
-        ) : (
-          <List dense disablePadding>
-            {menuConfig.map((config: any, index: number) => {
-              if (config.standalone) {
-                // Renderizar item standalone (Dashboard)
-                return (
-                  <StandaloneItem
-                    key={config.item.path}
-                    item={config.item}
-                    location={location.pathname}
-                    onNavigate={handleNavigation}
-                    collapsed={collapsed}
-                  />
-                );
-              } else {
-                // Renderizar categoria normal
-                return (
-                  <CategoryGroup
-                    key={config.category}
-                    category={config.category}
-                    items={config.items.filter((i: any) => !i.adminOnly || isAdmin)}
-                    location={location.pathname}
-                    onNavigate={handleNavigation}
-                    collapsed={collapsed}
-                    defaultOpen={config.category === "Portal Escola"}
-                    isFirst={index === 1} // Primeira categoria apÃ³s Dashboard
-                  />
-                );
-              }
-            })}
-          </List>
-        )}
-      </Box>
-
-      {/* â”€â”€ Footer â”€â”€ */}
-      <Box sx={{
-        flexShrink: 0,
-        borderTop: `1px solid ${DESIGN_TOKENS.border.subtle}`,
-        bgcolor: DESIGN_TOKENS.bg.primary,
-        py: 1.5, 
-        px: 1.5,
-      }}>
-        <IconButton onClick={handleCollapseToggle} size="small" sx={{
-          display: { xs: "none", md: "flex" }, 
-          width: "100%",
-          borderRadius: "12px", 
-          py: 1.25, 
-          minHeight: 44,
-          color: DESIGN_TOKENS.text.muted,
-          justifyContent: "flex-start", 
-          px: 2,
-          "&:hover": { 
-            bgcolor: DESIGN_TOKENS.bg.secondary,
-            color: DESIGN_TOKENS.text.secondary,
-          },
-          transition: "all 0.2s ease",
-        }}>
-          <MenuIcon sx={{ fontSize: 20, mr: collapsed ? 0 : 1.5 }} />
-          {!collapsed && (
-            <Typography sx={{ 
-              fontSize: "0.875rem", 
-              letterSpacing: "0.3px",
-              fontWeight: 400,
-            }}>
-              Recolher menu
-            </Typography>
-          )}
-        </IconButton>
-        {!collapsed && (
-          <Button onClick={handleLogout} size="small" startIcon={
-            <Logout sx={{ fontSize: 20, color: DESIGN_TOKENS.accent.danger }} />
-          } sx={{
-            mt: 0.75, 
-            width: "100%", 
-            textTransform: "none",
-            fontSize: "0.875rem", 
-            minHeight: 44, 
-            px: 2,
-            borderRadius: "12px", 
-            justifyContent: "flex-start",
-            color: DESIGN_TOKENS.text.muted, 
-            letterSpacing: "0.3px",
-            fontWeight: 400,
-            "&:hover": { 
-              bgcolor: `${DESIGN_TOKENS.accent.danger}20`,
-              color: DESIGN_TOKENS.accent.danger,
-            },
-            transition: "all 0.2s ease",
-          }}>
-            Sair
-          </Button>
-        )}
-      </Box>
-    </Box>
-  );
-
   return (
-    <Box sx={{ display: "flex", minHeight: "100vh" }}>
-      {/* AppBar - Header bar no topo */}
+    <Box sx={{ display: "flex", minHeight: "100vh", backgroundColor: "background.default" }}>
       <AppBar
         position="fixed"
+        color="transparent"
         sx={{
-          width: "100%",
-          bgcolor: DESIGN_TOKENS.bg.primary,
-          borderBottom: `1px solid ${DESIGN_TOKENS.border.subtle}`,
-          boxShadow: "none",
-          transition: "width 0.25s ease, margin 0.25s ease",
-          zIndex: (theme) => theme.zIndex.drawer + 1,
+          backdropFilter: "blur(18px)",
+          backgroundColor: alpha(tokens.bgPrimary, theme.palette.mode === "light" ? 0.9 : 0.82),
+          borderBottom: `1px solid ${tokens.borderSubtle}`,
+          zIndex: (muiTheme) => muiTheme.zIndex.drawer + 1,
         }}
       >
-        <Toolbar sx={{ minHeight: { xs: 56, md: 64 }, gap: 2 }}>
-          {/* Logo no header */}
-          <Box
-            component="img"
-            src="/nutrilog_logo_v2.svg"
-            alt="NutriLog"
-            sx={{
-              height: 36,
-              width: "auto",
-              objectFit: "contain",
-              mr: 2,
-            }}
-          />
+        <Toolbar sx={{ minHeight: { xs: 60, md: 68 }, gap: 1.5 }}>
+          <Box component="img" src="/nutrilog_logo_v2.svg" alt="NutriLog" sx={{ height: 34, width: "auto", mr: 1 }} />
           <IconButton
             color="inherit"
-            aria-label="abrir menu"
             edge="start"
             onClick={handleDrawerToggle}
-            sx={{ display: { xs: "block", md: "none" } }}
+            sx={{ display: { xs: "inline-flex", md: "none" }, color: tokens.textPrimary }}
           >
             <MenuIcon />
           </IconButton>
-          
-          {/* Barra de busca global */}
-          <Box sx={{ 
-            flexGrow: 1, 
-            maxWidth: { xs: "100%", md: 480 },
-            display: "flex",
-            alignItems: "center",
-            position: "relative",
-          }}>
-            <Box sx={{
-              borderRadius: "12px",
-              bgcolor: DESIGN_TOKENS.bg.secondary,
-              border: `1px solid ${search.open ? DESIGN_TOKENS.accent.primary : DESIGN_TOKENS.border.subtle}`,
-              boxShadow: search.open ? `0 0 0 3px ${DESIGN_TOKENS.accent.primary}20` : "none",
-              "&:hover": {
-                bgcolor: DESIGN_TOKENS.bg.elevated,
-                border: `1px solid ${DESIGN_TOKENS.border.medium}`,
-              },
-              transition: "all 0.2s ease",
-              width: "100%",
-              display: "flex",
-              alignItems: "center",
-            }}>
-              <Box sx={{ pl: 2, pr: 1, display: "flex", alignItems: "center", color: DESIGN_TOKENS.text.muted }}>
-                <SearchIcon sx={{ fontSize: 20 }} />
+
+          <Box sx={{ flex: 1, maxWidth: 520, position: "relative" }}>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                borderRadius: 1.5,
+                backgroundColor: tokens.bgSecondary,
+                border: `1px solid ${search.open ? alpha(tokens.primary, 0.35) : tokens.borderSubtle}`,
+                boxShadow: search.open ? `0 0 0 3px ${alpha(tokens.primary, 0.12)}` : "none",
+              }}
+            >
+              <Box sx={{ pl: 1.75, pr: 1, display: "flex", alignItems: "center", color: tokens.textMuted }}>
+                <SearchIcon sx={{ fontSize: 18 }} />
               </Box>
               <InputBase
                 inputRef={search.inputRef}
                 value={search.query}
-                onChange={e => { search.setQuery(e.target.value); search.setOpen(true); }}
+                onChange={(event) => {
+                  search.setQuery(event.target.value);
+                  search.setOpen(true);
+                }}
                 onFocus={() => search.setOpen(true)}
                 onBlur={() => setTimeout(() => search.setOpen(false), 150)}
-                placeholder="Buscar pÃ¡ginas..."
+                placeholder="Buscar páginas..."
                 sx={{
-                  flex: 1, py: 1, pr: 2,
-                  color: DESIGN_TOKENS.text.primary,
-                  fontSize: "0.875rem",
-                  "& input::placeholder": { color: DESIGN_TOKENS.text.muted, opacity: 1 },
+                  flex: 1,
+                  py: 1,
+                  color: tokens.textPrimary,
+                  fontSize: "0.88rem",
+                  "& input::placeholder": {
+                    color: tokens.textMuted,
+                    opacity: 1,
+                  },
                 }}
               />
-              <Box sx={{ 
-                display: { xs: "none", md: "flex" },
-                alignItems: "center",
-                mr: 1.5,
-                opacity: search.open ? 0 : 0.45,
-                transition: "opacity 0.2s ease",
-                bgcolor: DESIGN_TOKENS.bg.accent,
-                border: `1px solid ${DESIGN_TOKENS.border.medium}`,
-                borderRadius: "6px",
-                px: 1,
-                py: 0.4,
-                gap: 0.5,
-              }}>
-                <Typography sx={{ fontSize: "0.68rem", fontWeight: 600, color: DESIGN_TOKENS.text.muted, fontFamily: "monospace", lineHeight: 1 }}>Ctrl</Typography>
-                <Typography sx={{ fontSize: "0.68rem", fontWeight: 600, color: DESIGN_TOKENS.text.muted, fontFamily: "monospace", lineHeight: 1 }}>K</Typography>
+              <Box
+                sx={{
+                  display: { xs: "none", lg: "flex" },
+                  alignItems: "center",
+                  gap: 0.5,
+                  mr: 1.25,
+                  px: 1,
+                  py: 0.4,
+                  borderRadius: 1,
+                  backgroundColor: tokens.bgAccent,
+                  border: `1px solid ${tokens.borderSubtle}`,
+                  color: tokens.textMuted,
+                  fontFamily: "monospace",
+                  fontSize: "0.68rem",
+                  fontWeight: 700,
+                }}
+              >
+                <span>Ctrl</span>
+                <span>K</span>
               </Box>
             </Box>
 
-            {/* Dropdown de resultados */}
             {search.open && (
               <GlobalSearchDropdown
                 query={search.query}
@@ -940,46 +706,67 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
             )}
           </Box>
 
-          {/* Seletor de PerÃ­odo e NotificaÃ§Ãµes */}
           <Box sx={{ display: "flex", alignItems: "center", gap: 1, ml: "auto" }}>
+            <ThemeSwitcher />
             <SeletorPeriodo />
             {isEscolaUser ? <NotificacoesEscolaMenu /> : <NotificacoesMenu />}
           </Box>
         </Toolbar>
       </AppBar>
 
-      <Box component="nav" sx={{ width: { md: collapsed ? collapsedDrawerWidth : drawerWidth }, flexShrink: { md: 0 }, transition: "width 0.25s ease" }}>
-        <Drawer variant="temporary" open={mobileOpen} onClose={handleDrawerToggle}
+      <Box component="nav" sx={{ width: { md: collapsed ? collapsedDrawerWidth : drawerWidth }, flexShrink: { md: 0 } }}>
+        <Drawer
+          variant="temporary"
+          open={mobileOpen}
+          onClose={handleDrawerToggle}
           ModalProps={{ keepMounted: true }}
-          sx={{ display: { xs: "block", md: "none" }, "& .MuiDrawer-paper": { width: drawerWidth, bgcolor: SIDEBAR_BG, mt: { xs: '56px' } } }}>
-          {mobileDrawer}
+          sx={{
+            display: { xs: "block", md: "none" },
+            "& .MuiDrawer-paper": {
+              width: drawerWidth,
+              mt: "60px",
+              height: "calc(100% - 60px)",
+              boxSizing: "border-box",
+            },
+          }}
+        >
+          {drawerContent}
         </Drawer>
-        <Drawer variant="permanent" open
-          sx={{ display: { xs: "none", md: "block" }, "& .MuiDrawer-paper": {
-            width: collapsed ? collapsedDrawerWidth : drawerWidth,
-            borderRight: `1px solid ${BORDER}`, bgcolor: SIDEBAR_BG,
-            transition: "width 0.25s ease", overflowX: "hidden",
-            mt: '64px', height: 'calc(100% - 64px)',
-          } }}>
-          {drawer}
+        <Drawer
+          variant="permanent"
+          open
+          sx={{
+            display: { xs: "none", md: "block" },
+            "& .MuiDrawer-paper": {
+              width: collapsed ? collapsedDrawerWidth : drawerWidth,
+              mt: "68px",
+              height: "calc(100% - 68px)",
+              overflowX: "hidden",
+              transition: "width 0.22s ease",
+            },
+          }}
+        >
+          {drawerContent}
         </Drawer>
       </Box>
 
-      <Box component="main" sx={{
-        flexGrow: 1,
-        width: { md: `calc(100% - ${collapsed ? collapsedDrawerWidth : drawerWidth}px)` },
-        minHeight: "100vh", bgcolor: "background.default",
-        transition: "width 0.25s ease",
-        mt: { xs: "56px", md: "64px" }, // Margem top para nÃ£o ficar atrÃ¡s do AppBar
-      }}>
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          minWidth: 0,
+          minHeight: "100vh",
+          mt: { xs: "60px", md: "68px" },
+          width: { md: `calc(100% - ${collapsed ? collapsedDrawerWidth : drawerWidth}px)` },
+          transition: "width 0.22s ease",
+        }}
+      >
         {children}
       </Box>
     </Box>
   );
 };
 
-// Ambos os providers sempre montados â€” evita erro de hook fora de provider
-// durante o render inicial (antes de useUserRole resolver o tipo do usuÃ¡rio).
 const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <NotificacoesProvider>
     <NotificacoesEscolaProvider>

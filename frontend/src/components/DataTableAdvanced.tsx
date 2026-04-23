@@ -49,10 +49,10 @@ const getToken = (theme: Theme) => ({
   bg: theme.palette.background.default,
   canvas: theme.palette.background.paper,
   border: theme.palette.divider,
-  borderMd: 'rgba(255,255,255,0.10)',
+  borderMd: theme.palette.mode === 'light' ? 'rgba(31,36,48,0.16)' : 'rgba(255,255,255,0.14)',
   text: theme.palette.text.primary,
   muted: theme.palette.text.secondary,
-  sub: '#666',
+  sub: theme.palette.mode === 'light' ? '#7b8492' : '#8893a5',
 });
 
 // ── Debounce hook ──
@@ -207,26 +207,15 @@ export function DataTableAdvanced<TData>({
               {enableRowSelection && Object.keys(rowSelection).length > 0 && (
                 <Chip
                   label={`${Object.keys(rowSelection).length} selecionado(s)`}
-                  sx={{
-                    bgcolor: 'rgba(56,139,253,0.12)',
-                    color: '#58a6ff',
-                    borderColor: 'rgba(56,139,253,0.3)',
-                    fontSize: '0.6875rem',
-                    fontWeight: 500,
-                    height: 22,
-                    '& .MuiChip-deleteIcon': {
-                      color: '#58a6ff',
-                      opacity: 0.7,
-                      '&:hover': { opacity: 1 },
-                    },
-                  }}
+                  className="data-table-selection-chip"
+                  sx={{ fontSize: '0.6875rem', fontWeight: 500, height: 22 }}
                   variant="outlined"
                   onDelete={() => setRowSelection({})}
                 />
               )}
               {!searchOpen && (
                 <Tooltip title="Buscar">
-                  <IconButton size="small" onClick={() => setSearchOpen(true)} sx={{ color: t.muted }}>
+                  <IconButton size="small" onClick={() => setSearchOpen(true)} className="data-table-action">
                     <SearchIcon sx={{ fontSize: 17 }} />
                   </IconButton>
                 </Tooltip>
@@ -241,15 +230,8 @@ export function DataTableAdvanced<TData>({
               {enableRowSelection && Object.keys(rowSelection).length > 0 && (
                 <Chip
                   label={`${Object.keys(rowSelection).length} selecionado(s)`}
-                  sx={{
-                    bgcolor: 'rgba(56,139,253,0.12)',
-                    color: '#58a6ff',
-                    borderColor: 'rgba(56,139,253,0.3)',
-                    fontSize: '0.6875rem',
-                    fontWeight: 500,
-                    height: 22,
-                    '& .MuiChip-deleteIcon': { color: '#58a6ff', opacity: 0.7 },
-                  }}
+                  className="data-table-selection-chip"
+                  sx={{ fontSize: '0.6875rem', fontWeight: 500, height: 22 }}
                   variant="outlined"
                   onDelete={() => setRowSelection({})}
                 />
@@ -312,7 +294,7 @@ export function DataTableAdvanced<TData>({
               <IconButton
                 size="small"
                 onClick={(e) => setColumnMenuAnchor(e.currentTarget)}
-                sx={{ color: t.muted }}
+                className="data-table-action"
               >
                 <ViewColumnIcon sx={{ fontSize: 17 }} />
               </IconButton>
@@ -321,7 +303,7 @@ export function DataTableAdvanced<TData>({
 
           {onFilterClick && (
             <Tooltip title="Filtros">
-              <IconButton size="small" onClick={onFilterClick} sx={{ color: t.muted }}>
+              <IconButton size="small" onClick={onFilterClick} className="data-table-action">
                 <FilterListIcon sx={{ fontSize: 17 }} />
               </IconButton>
             </Tooltip>
@@ -329,7 +311,7 @@ export function DataTableAdvanced<TData>({
 
           {onImportExportClick && (
             <Tooltip title="Importar/Exportar">
-              <IconButton size="small" onClick={onImportExportClick} sx={{ color: t.muted }}>
+              <IconButton size="small" onClick={onImportExportClick} className="data-table-action">
                 <MoreVertIcon sx={{ fontSize: 17 }} />
               </IconButton>
             </Tooltip>
@@ -337,7 +319,7 @@ export function DataTableAdvanced<TData>({
 
           {enableExport && (
             <Tooltip title="Exportar">
-              <IconButton size="small" onClick={handleExport} disabled={!onExport} sx={{ color: t.muted }}>
+              <IconButton size="small" onClick={handleExport} disabled={!onExport} className="data-table-action">
                 <FileDownloadIcon sx={{ fontSize: 17 }} />
               </IconButton>
             </Tooltip>
@@ -563,8 +545,7 @@ export function DataTableAdvanced<TData>({
           },
           '.MuiSvgIcon-root': { fontSize: '1rem', color: t.muted },
           '.MuiIconButton-root': {
-            color: t.muted,
-            '&:hover': { color: t.text },
+            color: t.text,
           },
         }}
       />
