@@ -13,7 +13,7 @@ import {
   editarContratoProduto,
   removerContratoProduto,
 } from "../../../services/contratos";
-import { fornecedorService } from "../../../services/fornecedores";
+import { fornecedorService, type Fornecedor } from "../../../services/fornecedores";
 import { produtoService } from "../../../services/produtos";
 import { formatDateForInput } from "../../../utils/dateUtils";
 import { usePageTitle } from "../../../contexts/PageTitleContext";
@@ -60,7 +60,29 @@ const formatarNumero = (valor: number | string | null | undefined): string => {
   return num % 1 === 0 ? num.toString() : num.toFixed(2).replace(/\.?0+$/, '');
 };
 
-const getStatusContrato = (contrato: any) => {
+type TipoLicitacao =
+  | "pregao_eletronico"
+  | "pregao_presencial"
+  | "chamada_publica_pnae"
+  | "dispensa_licitacao"
+  | "inexigibilidade"
+  | "concorrencia"
+  | "tomada_precos"
+  | "convite"
+  | "pregao"
+  | "chamada_publica_agricultura";
+
+interface ContratoResumo {
+  id: number;
+  numero: string;
+  data_inicio: string;
+  data_fim: string;
+  ativo: boolean;
+  status?: string;
+  tipo_licitacao?: TipoLicitacao;
+}
+
+const getStatusContrato = (contrato: ContratoResumo | null) => {
   if (!contrato) return { status: "Desconhecido", color: "default" as const };
   const hoje = new Date();
   const inicio = new Date(contrato.data_inicio);
@@ -74,10 +96,16 @@ const getStatusContrato = (contrato: any) => {
 
 // --- Subcomponente de UI ---
 
-const ContratoInfoCard = ({ contrato, fornecedor, valorTotal }) => {
+interface ContratoInfoCardProps {
+  contrato: ContratoResumo;
+  fornecedor: Fornecedor | null;
+  valorTotal: number;
+}
+
+const ContratoInfoCard = ({ contrato, fornecedor, valorTotal }: ContratoInfoCardProps) => {
   const status = getStatusContrato(contrato);
   
-  const tipoLicitacaoLabel = {
+  const tipoLicitacaoLabel: Record<TipoLicitacao, string> = {
     'pregao_eletronico': 'Pregão Eletrônico',
     'pregao_presencial': 'Pregão Presencial', 
     'chamada_publica_pnae': 'Chamada Pública PNAE',
@@ -121,7 +149,7 @@ const ContratoInfoCard = ({ contrato, fornecedor, valorTotal }) => {
                 <DescriptionIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
                 <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8125rem' }}>
                   <strong>Modalidade:</strong> {
-                    tipoLicitacaoLabel[contrato.tipo_licitacao] || 
+                    (contrato.tipo_licitacao ? tipoLicitacaoLabel[contrato.tipo_licitacao] : undefined) || 
                     tipoLicitacaoLabel['pregao_eletronico'] || 
                     'Pregão Eletrônico'
                   }
@@ -172,7 +200,7 @@ export default function ContratoDetalhe() {
 
   // Estados de dados
   const [contrato, setContrato] = useState<any>(null);
-  const [fornecedor, setFornecedor] = useState<any>(null);
+  const [fornecedor, setFornecedor] = useState<Fornecedor | null>(null);
   const [produtosDisponiveis, setProdutosDisponiveis] = useState<any[]>([]);
   const [produtosContrato, setProdutosContrato] = useState<any[]>([]);
   
@@ -271,7 +299,7 @@ export default function ContratoDetalhe() {
       ]);
 
       setContrato(contratoData);
-      setFornecedor(fornecedoresData.find(f => f.id === contratoData.fornecedor_id));
+      setFornecedor(fornecedoresData.find((f: Fornecedor) => f.id === contratoData.fornecedor_id) ?? null);
       setProdutosDisponiveis(produtosData);
 
       const produtosMapeados = produtosContratoData.map((p: any) => ({
@@ -776,7 +804,7 @@ export default function ContratoDetalhe() {
                                 </IconButton>
                               </Tooltip>
                               <Tooltip title="Remover">
-                                <IconButton size="small" onClick={() => confirmarRemoverProduto(produto.id)} color="delete">
+                                <IconButton size="small" onClick={() => confirmarRemoverProduto(produto.id)} color="error">
                                   <DeleteIcon fontSize="small" />
                                 </IconButton>
                               </Tooltip>
@@ -975,7 +1003,7 @@ export default function ContratoDetalhe() {
           <Button onClick={() => setConfirmCloseDialog(null)} variant="outlined" size="small">
             Continuar Editando
           </Button>
-          <Button onClick={confirmCloseProdutoDialog} color="delete" variant="contained" size="small">
+          <Button onClick={confirmCloseProdutoDialog} color="error" variant="contained" size="small">
             Descartar
           </Button>
         </DialogActions>
@@ -1137,7 +1165,7 @@ export default function ContratoDetalhe() {
             <Button onClick={() => setConfirmCloseDialog(null)} variant="outlined" size="small">
               Continuar Editando
             </Button>
-            <Button onClick={confirmCloseContratoDialog} color="delete" variant="contained" size="small">
+            <Button onClick={confirmCloseContratoDialog} color="error" variant="contained" size="small">
               Descartar
             </Button>
           </DialogActions>
@@ -1187,7 +1215,7 @@ export default function ContratoDetalhe() {
             <Button onClick={() => setDialogState(p => ({...p, removerProduto: false}))} sx={{ color: 'text.secondary' }}>
               Cancelar
             </Button>
-            <Button onClick={removerProdutoConfirmado} color="delete" variant="contained">
+            <Button onClick={removerProdutoConfirmado} color="error" variant="contained">
               Remover
             </Button>
           </DialogActions>
@@ -1242,7 +1270,7 @@ export default function ContratoDetalhe() {
                     <Checkbox 
                       checked={forceDelete} 
                       onChange={e => setForceDelete(e.target.checked)} 
-                      color="delete"
+                      color="error"
                       size="small"
                     />
                   } 
@@ -1262,7 +1290,7 @@ export default function ContratoDetalhe() {
             </Button>
             <Button 
               onClick={removerContratoConfirmado} 
-              color="delete" variant="contained" 
+              color="error" variant="contained" 
               disabled={dependenciasContrato && !forceDelete}
             >
               Remover

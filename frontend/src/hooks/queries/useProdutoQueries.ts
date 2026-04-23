@@ -4,8 +4,8 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys, cacheConfig, invalidateQueries } from '../../lib/queryClient';
-import { produtoService, CriarProdutoRequest, AtualizarProdutoRequest } from '../../services/produtos';
-import { Produto, ProdutoCreate, ProdutoUpdate } from '../../../../shared/types';
+import { produtoService } from '../../services/produtos';
+import type { AtualizarProdutoRequest, CriarProdutoRequest, Produto } from '../../types/produto';
 
 // ============================================================================
 // QUERIES
@@ -14,7 +14,7 @@ import { Produto, ProdutoCreate, ProdutoUpdate } from '../../../../shared/types'
 export function useProdutos(filters?: { search?: string; categoria?: string; ativo?: boolean }) {
   return useQuery({
     queryKey: queryKeys.produtos.list(filters),
-    queryFn: produtoService.listar,
+    queryFn: () => produtoService.listar(),
     staleTime: 0,
     gcTime: 5 * 60 * 1000,
     refetchOnMount: true,
@@ -26,7 +26,7 @@ export function useProdutos(filters?: { search?: string; categoria?: string; ati
         const searchLower = filters.search.toLowerCase();
         filteredData = filteredData.filter(produto =>
           produto.nome.toLowerCase().includes(searchLower) ||
-          produto.categoria.toLowerCase().includes(searchLower)
+          (produto.categoria || '').toLowerCase().includes(searchLower)
         );
       }
 

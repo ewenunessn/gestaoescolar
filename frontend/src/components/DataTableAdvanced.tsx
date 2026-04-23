@@ -34,6 +34,7 @@ import {
   Stack,
   Tooltip,
   useTheme,
+  Theme,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
@@ -43,7 +44,7 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 
 // ── Theme-derived tokens (centralized in theme.ts) ──
-const getToken = (theme: ReturnType<typeof useTheme>) => ({
+const getToken = (theme: Theme) => ({
   green: theme.palette.success.main,
   bg: theme.palette.background.default,
   canvas: theme.palette.background.paper,
@@ -66,6 +67,7 @@ function useDebounce<T>(value: T, delay: number): T {
 
 interface DataTableAdvancedProps<TData> {
   data: TData[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   columns: ColumnDef<TData, any>[];
   loading?: boolean;
   onRowClick?: (row: TData) => void;

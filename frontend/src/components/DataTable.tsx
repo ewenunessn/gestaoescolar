@@ -32,6 +32,7 @@ import {
   useMediaQuery,
   useTheme,
   Chip,
+  Theme,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
@@ -40,7 +41,7 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 
 // ── Theme-derived tokens (centralized in theme.ts) ──
-const getToken = (theme: ReturnType<typeof useTheme>) => ({
+const getToken = (theme: Theme) => ({
   green: theme.palette.success.main,
   bg: theme.palette.background.default,
   canvas: theme.palette.background.paper,
@@ -51,6 +52,17 @@ const getToken = (theme: ReturnType<typeof useTheme>) => ({
   sub: '#666',
   canvasSub: theme.palette.background.default,
 });
+
+type MobileRowData = {
+  data_inicio?: string;
+  data_fim?: string;
+  valor_total_contrato?: number | string;
+  mes?: number;
+  ano?: number;
+  valor_repasse?: number | string;
+  parcelas?: number | string;
+  modalidades_nomes?: string;
+};
 
 interface DataTableProps<TData> {
   data: TData[];
@@ -377,7 +389,7 @@ export const DataTable = memo(function DataTable<TData>({
                   <TableRowMemo
                     key={row.id}
                     row={row}
-                    onRowClick={onRowClick}
+                    onRowClick={onRowClick as ((row: unknown) => void) | undefined}
                     t={t}
                   />
                 ))
@@ -400,6 +412,7 @@ export const DataTable = memo(function DataTable<TData>({
             </Box>
           ) : (
             rows.map((row) => {
+              const original = row.original as TData & MobileRowData;
               const cells = row.getVisibleCells();
               const nomeCell = cells.find((c: any) => c.column.id === 'nome');
               const numeroCell = cells.find((c: any) => c.column.id === 'numero');
@@ -426,7 +439,7 @@ export const DataTable = memo(function DataTable<TData>({
               return (
                 <Paper
                   key={row.id}
-                  onClick={() => onRowClick?.(row.original)}
+                  onClick={() => onRowClick?.(row.original as TData)}
                   elevation={0}
                   sx={{
                     mb: 0.75,
@@ -457,7 +470,7 @@ export const DataTable = memo(function DataTable<TData>({
                           <>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                               <Typography sx={{ fontWeight: 600, fontSize: '0.8125rem', color: t.text }}>
-                                {numeroCell.getValue()}
+                                {String(numeroCell.getValue() ?? '')}
                               </Typography>
                               {statusCell && (
                                 <Box sx={{
@@ -474,15 +487,15 @@ export const DataTable = memo(function DataTable<TData>({
                               </Typography>
                             )}
                             <Typography sx={{ color: t.muted, display: 'block', mt: 0.25, fontSize: '0.7rem' }}>
-                              {row.original.data_inicio && row.original.data_fim && (
+                              {original.data_inicio && original.data_fim && (
                                 <>
-                                  {new Date(row.original.data_inicio).toLocaleDateString('pt-BR')} a {new Date(row.original.data_fim).toLocaleDateString('pt-BR')}
+                                  {new Date(original.data_inicio).toLocaleDateString('pt-BR')} a {new Date(original.data_fim).toLocaleDateString('pt-BR')}
                                 </>
                               )}
-                              {row.original.valor_total_contrato && (
+                              {original.valor_total_contrato && (
                                 <>
                                   {' - '}
-                                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(row.original.valor_total_contrato))}
+                                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(original.valor_total_contrato))}
                                 </>
                               )}
                             </Typography>
@@ -499,39 +512,40 @@ export const DataTable = memo(function DataTable<TData>({
                                 : nomeCell && flexRender(nomeCell.column.columnDef.cell, nomeCell.getContext())}
                             </Box>
                             {guiaNomeCell && (competenciaCell || totalEscolasCell || totalItensCell || statusCell) && (
-                              <Typography sx={{ color: t.muted, display: 'block', mt: 0.25, fontSize: '0.7rem' }}>
-                                {competenciaCell && <>{flexRender(competenciaCell.column.columnDef.cell, competenciaCell.getContext())}</>}
+                              <Box sx={{ color: t.muted, display: 'block', mt: 0.25, fontSize: '0.7rem' }}>
+                                {competenciaCell && <>{flexRender(competenciaCell.column.columnDef.cell, competenciaCell.getContext()) as React.ReactNode}</>}
                                 {competenciaCell && (totalEscolasCell || totalItensCell) && ' - '}
-                                {totalEscolasCell && totalEscolasCell.getValue() && <>{totalEscolasCell.getValue()} escolas</>}
-                                {totalEscolasCell && totalEscolasCell.getValue() && totalItensCell && totalItensCell.getValue() && ', '}
-                                {totalItensCell && totalItensCell.getValue() && <>{totalItensCell.getValue()} itens</>}
+                                {totalEscolasCell && Boolean(totalEscolasCell.getValue()) && <>{String(totalEscolasCell.getValue())} escolas</>}
+                                {totalEscolasCell && Boolean(totalEscolasCell.getValue()) && totalItensCell && Boolean(totalItensCell.getValue()) && ', '}
+                                {totalItensCell && Boolean(totalItensCell.getValue()) && <>{String(totalItensCell.getValue())} itens</>}
                                 {(competenciaCell || totalEscolasCell || totalItensCell) && statusCell && ' - '}
-                                {statusCell && <>{flexRender(statusCell.column.columnDef.cell, statusCell.getContext())}</>}
-                              </Typography>
+                                {statusCell && <>{flexRender(statusCell.column.columnDef.cell, statusCell.getContext()) as React.ReactNode}</>}
+                              </Box>
                             )}
                             {!guiaNomeCell && competenciaCell && (
                               <Typography sx={{ color: t.muted, display: 'block', mt: 0.25, fontSize: '0.7rem' }}>
-                                {row.original.mes && row.original.ano && (
-                                  <>{row.original.mes}/{row.original.ano}{(row.original as any).modalidades_nomes && <> - {(row.original as any).modalidades_nomes}</>}</>
+                                {original.mes && original.ano && (
+                                  <>{original.mes}/{original.ano}{original.modalidades_nomes && <> - {original.modalidades_nomes}</>}</>
                                 )}
                               </Typography>
                             )}
                             {!guiaNomeCell && !competenciaCell && (totalAlunosCell || modalidadesCell || valorRepasseCell || parcelasCell || totalAnualCell || unidadeCell || composicaoCell || contratoCell) && (
-                              <Typography sx={{ color: t.muted, display: 'block', mt: 0.25, fontSize: '0.7rem' }}>
-                                {totalAlunosCell && totalAlunosCell.getValue() && <>{Number(totalAlunosCell.getValue()).toLocaleString('pt-BR')} alunos</>}
-                                {totalAlunosCell && totalAlunosCell.getValue() && modalidadesCell && modalidadesCell.getValue() && ' - '}
-                                {modalidadesCell && modalidadesCell.getValue() && <>{modalidadesCell.getValue()}</>}
-                                {valorRepasseCell && valorRepasseCell.getValue() && <>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(valorRepasseCell.getValue()))}</>}
+                              // @ts-expect-error Mobile summary mixes heterogeneous cell value types.
+                              <Box sx={{ color: t.muted, display: 'block', mt: 0.25, fontSize: '0.7rem' }}>
+                                {totalAlunosCell && Boolean(totalAlunosCell.getValue()) && <>{Number(totalAlunosCell.getValue()).toLocaleString('pt-BR')} alunos</>}
+                                {totalAlunosCell && Boolean(totalAlunosCell.getValue()) && modalidadesCell && Boolean(modalidadesCell.getValue()) && ' - '}
+                                {modalidadesCell && Boolean(modalidadesCell.getValue()) && <>{String(modalidadesCell.getValue())}</>}
+                                {valorRepasseCell && Boolean(valorRepasseCell.getValue()) && <>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(valorRepasseCell.getValue()))}</>}
                                 {valorRepasseCell && valorRepasseCell.getValue() && parcelasCell && ' × '}
-                                {parcelasCell && parcelasCell.getValue() && <>{parcelasCell.getValue()}x</>}
-                                {(valorRepasseCell && valorRepasseCell.getValue() || parcelasCell && parcelasCell.getValue()) && totalAnualCell && ' = '}
-                                {totalAnualCell && row.original.valor_repasse && <>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(row.original.valor_repasse) * (Number(row.original.parcelas) || 1))}</>}
-                                {unidadeCell && unidadeCell.getValue() && <>{unidadeCell.getValue()}</>}
-                                {unidadeCell && unidadeCell.getValue() && (composicaoCell || contratoCell) && ' - '}
+                                {parcelasCell && Boolean(parcelasCell.getValue()) && <>{String(parcelasCell.getValue())}x</>}
+                                {((valorRepasseCell && Boolean(valorRepasseCell.getValue())) || (parcelasCell && Boolean(parcelasCell.getValue()))) && totalAnualCell && ' = '}
+                                {totalAnualCell && original.valor_repasse && <>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(original.valor_repasse) * (Number(original.parcelas) || 1))}</>}
+                                {unidadeCell && Boolean(unidadeCell.getValue()) && <>{String(unidadeCell.getValue())}</>}
+                                {unidadeCell && Boolean(unidadeCell.getValue()) && (composicaoCell || contratoCell) && ' - '}
                                 {composicaoCell && composicaoCell.getValue() && <>Composição</>}
                                 {composicaoCell && composicaoCell.getValue() && contratoCell && contratoCell.getValue() && ', '}
                                 {contratoCell && contratoCell.getValue() && <>Contrato</>}
-                              </Typography>
+                              </Box>
                             )}
                           </>
                         )}

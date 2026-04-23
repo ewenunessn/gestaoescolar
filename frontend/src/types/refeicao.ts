@@ -2,6 +2,7 @@ export interface Refeicao {
   id: number;
   nome: string;
   descricao?: string;
+  tipo?: 'cafe_manha' | 'almoco' | 'lanche_tarde' | 'jantar' | 'ceia';
   ativo: boolean;
   created_at: string;
   updated_at: string;
@@ -17,14 +18,15 @@ export interface Refeicao {
 export interface CriarRefeicaoRequest {
   nome: string;
   descricao?: string;
+  tipo?: 'cafe_manha' | 'almoco' | 'lanche_tarde' | 'jantar' | 'ceia';
   categoria?: string;
   ativo?: boolean;
 }
 
 export interface AtualizarRefeicaoRequest {
-  id: number;
   nome?: string;
   descricao?: string;
+  tipo?: 'cafe_manha' | 'almoco' | 'lanche_tarde' | 'jantar' | 'ceia';
   categoria?: string;
   ativo?: boolean;
 }
@@ -34,7 +36,7 @@ export interface RefeicaoProduto {
   refeicao_id: number;
   produto_id: number;
   per_capita: number;
-  tipo_medida: 'gramas' | 'mg';
+  tipo_medida: 'gramas' | 'mililitros' | 'unidades';
   created_at: string;
   updated_at: string;
   // Dados relacionados
@@ -46,9 +48,8 @@ export interface CriarRefeicaoProdutoRequest {
   refeicao_id: number;
   produto_id: number;
   per_capita: number;
-  tipo_medida: 'gramas' | 'mg';
+  tipo_medida: 'gramas' | 'mililitros' | 'unidades';
+  per_capita_por_modalidade?: Array<{ modalidade_id: number; per_capita: number }>;
 }
 
-export interface AtualizarRefeicaoProdutoRequest extends Partial<CriarRefeicaoProdutoRequest> {
-  id: number;
-}
+export interface AtualizarRefeicaoProdutoRequest extends Partial<CriarRefeicaoProdutoRequest> {}

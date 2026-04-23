@@ -1,5 +1,5 @@
-import AppRouter from "./routes/AppRouter";
-import { ConfigProvider } from "./context/ConfigContext";
+﻿import AppRouter from "./routes/AppRouter";
+import { ConfigProvider } from "./contexts/ConfigContext";
 import { PageTitleProvider } from "./contexts/PageTitleContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import { QueryProvider } from "./providers/QueryProvider";

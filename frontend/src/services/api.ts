@@ -181,15 +181,15 @@ api.interceptors.response.use(
 );
 
 export const apiWithRetry = {
-  get: <T = unknown>(url: string, config?: import('axios').AxiosRequestConfig) =>
+  get: <T = any>(url: string, config?: import('axios').AxiosRequestConfig) =>
     makeRequestWithRetry(() => api.get<T>(url, config)),
-  post: <T = unknown>(url: string, data?: unknown, config?: import('axios').AxiosRequestConfig) =>
+  post: <T = any>(url: string, data?: unknown, config?: import('axios').AxiosRequestConfig) =>
     makeRequestWithRetry(() => api.post<T>(url, data, config)),
-  put: <T = unknown>(url: string, data?: unknown, config?: import('axios').AxiosRequestConfig) =>
+  put: <T = any>(url: string, data?: unknown, config?: import('axios').AxiosRequestConfig) =>
     makeRequestWithRetry(() => api.put<T>(url, data, config)),
-  patch: <T = unknown>(url: string, data?: unknown, config?: import('axios').AxiosRequestConfig) =>
+  patch: <T = any>(url: string, data?: unknown, config?: import('axios').AxiosRequestConfig) =>
     makeRequestWithRetry(() => api.patch<T>(url, data, config)),
-  delete: <T = unknown>(url: string, config?: import('axios').AxiosRequestConfig) =>
+  delete: <T = any>(url: string, config?: import('axios').AxiosRequestConfig) =>
     makeRequestWithRetry(() => api.delete<T>(url, config)),
 };
 

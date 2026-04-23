@@ -58,14 +58,20 @@ export interface AtualizarProdutoRequest {
 
 export interface ComposicaoNutricional {
   produto_id: number;
+  calorias?: number;
   proteinas?: number;
   gorduras?: number;
   carboidratos?: number;
+  fibras?: number;
   calcio?: number;
   ferro?: number;
   vitamina_a?: number;
   vitamina_c?: number;
   sodio?: number;
+  gorduras_saturadas_g?: number;
+  gorduras_trans_g?: number;
+  colesterol?: number;
+  acucares?: number;
 }
 
 export interface ImportarProdutoRequest {

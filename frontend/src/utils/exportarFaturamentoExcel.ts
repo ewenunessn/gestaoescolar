@@ -1,11 +1,29 @@
-import ExcelJS from 'exceljs';
-import { saveAs } from 'file-saver';
 import type { ContratoCalculado } from '../types/faturamento';
+
+let excelExportDepsPromise: Promise<{
+  ExcelJS: typeof import('exceljs').default;
+  saveAs: typeof import('file-saver').saveAs;
+}> | null = null;
+
+const carregarDependenciasExcel = async () => {
+  if (!excelExportDepsPromise) {
+    excelExportDepsPromise = Promise.all([
+      import('exceljs'),
+      import('file-saver'),
+    ]).then(([excelJsModule, fileSaverModule]) => ({
+      ExcelJS: excelJsModule.default,
+      saveAs: fileSaverModule.saveAs,
+    }));
+  }
+
+  return excelExportDepsPromise;
+};
 
 export async function exportarContratoParaExcel(
   contrato: ContratoCalculado,
   pedidoNumero: string
 ) {
+  const { ExcelJS, saveAs } = await carregarDependenciasExcel();
   const workbook = new ExcelJS.Workbook();
 
   // Agrupar itens por modalidade

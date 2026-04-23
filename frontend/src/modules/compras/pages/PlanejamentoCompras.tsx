@@ -524,7 +524,7 @@ export default function PlanejamentoCompras() {
                 <Box sx={{ mb: 2 }}>
                   <ViewTabs
                     value={tabAtiva}
-                    onChange={setTabAtiva}
+                    onChange={(value) => setTabAtiva(Number(value))}
                     tabs={[
                       { value: 0, label: 'Por Escola', icon: <SchoolIcon sx={{ fontSize: 16 }} /> },
                       { value: 1, label: 'Por Produto', icon: <InventoryIcon sx={{ fontSize: 16 }} /> },

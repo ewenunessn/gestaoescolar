@@ -102,6 +102,9 @@ export interface GerarPedidosResponse {
   erros: { periodo: PeriodoGerarPedido; motivo: string }[];
   total_criados: number;
   total_erros: number;
+  requer_selecao?: boolean;
+  produtos_multiplos_contratos?: Array<Record<string, unknown>>;
+  mensagem?: string;
 }
 
 export interface GerarGuiasResponse {
@@ -116,6 +119,12 @@ export interface GerarGuiasResponse {
   erros: { motivo: string }[];
   total_criadas: number;
   total_erros: number;
+  debug?: {
+    ano: number;
+    mes: number;
+    escola_ids: number[];
+    periodos_verificados: PeriodoGerarPedido[];
+  };
 }
 
 export async function gerarGuiasDemanda(
@@ -152,6 +161,9 @@ export interface GerarPedidoDaGuiaResponse {
   erros: { motivo: string }[];
   total_criados: number;
   total_erros: number;
+  requer_selecao?: boolean;
+  produtos_multiplos_contratos?: Array<Record<string, unknown>>;
+  mensagem?: string;
 }
 
 export async function gerarPedidoDaGuia(

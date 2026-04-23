@@ -1,0 +1,92 @@
+import type { Express } from "express";
+
+import userRoutes from "../modules/usuarios/routes/userRoutes";
+import adminUsuariosRoutes from "../modules/usuarios/routes/adminUsuariosRoutes";
+
+import permissaoRoutes from "../modules/sistema/routes/permissoesRoutes";
+import refeicaoProdutoModalidadeRoutes from "../modules/nutricao/routes/refeicaoProdutoModalidadeRoutes";
+import refeicaoCalculosRoutes from "../modules/nutricao/routes/refeicaoCalculosRoutes";
+import escolaRoutes from "../modules/escolas/routes/escolaRoutes";
+import modalidadeRoutes from "../modules/cardapios/routes/modalidadeRoutes";
+import escolaModalidadeRoutes from "../modules/guias/routes/escolaModalidadeRoutes";
+import fornecedorRoutes from "../modules/contratos/routes/fornecedorRoutes";
+import contratoRoutes from "../modules/contratos/routes/contratoRoutes";
+import contratoProdutoRoutes from "../modules/contratos/routes/contratoProdutoRoutes";
+import refeicaoRoutes from "../modules/cardapios/routes/refeicaoRoutes";
+import refeicaoProdutoRoutes from "../modules/cardapios/routes/refeicaoProdutoRoutes";
+import cardapioRoutes from "../modules/cardapios/routes/cardapioRoutes";
+import tipoRefeicaoRoutes from "../modules/cardapios/routes/tipoRefeicaoRoutes";
+import produtoRoutes from "../modules/produtos/routes/produtoRoutes";
+import produtoModalidadeRoutes from "../modules/estoque/routes/produtoModalidadeRoutes";
+import estoqueCentralRoutes from "../modules/estoque/routes/estoqueCentralRoutes";
+import estoqueEscolarRoutes from "../modules/estoque/routes/estoqueEscolarRoutes";
+import saldoContratosModalidadesRoutes from "../modules/contratos/routes/saldoContratosModalidadesRoutes";
+import guiaRoutes from "../modules/guias/routes/guiaRoutes";
+import entregaRoutes from "../modules/entregas/routes/entregaRoutes";
+import rotaRoutes from "../modules/entregas/routes/rotaRoutes";
+import compraRoutes from "../modules/compras/routes/compraRoutes";
+import faturamentoRoutes from "../modules/faturamentos/routes/faturamentoRoutes";
+import demandasRoutes from "../modules/demandas/routes/demandaRoutes";
+import recebimentoRoutes from "../modules/recebimentos/routes/recebimentoRoutes";
+import instituicaoRoutes from "../modules/sistema/routes/instituicao";
+import pnaeRoutes from "../modules/sistema/routes/pnaeRoutes";
+import nutricionistaRoutes from "../modules/nutricao/routes/nutricionistaRoutes";
+import planejamentoComprasRoutes from "../modules/compras/routes/planejamentoComprasRoutes";
+import periodosRoutes from "../modules/sistema/routes/periodosRoutes";
+import escolaPortalRoutes from "../modules/escolas/routes/escolaPortalRoutes";
+import calendarioLetivoRoutes from "../modules/sistema/routes/calendarioLetivoRoutes";
+import tacoRoutes from "../modules/nutricao/routes/tacoRoutes";
+import gruposIngredientesRoutes from "../modules/nutricao/routes/gruposIngredientesRoutes";
+import solicitacoesAlimentosRoutes from "../modules/solicitacoes/routes/solicitacoesAlimentosRoutes";
+import dashboardRoutes from "../modules/sistema/routes/dashboardRoutes";
+import notificacoesRoutes from "../modules/sistema/routes/notificacoesRoutes";
+import disparosNotificacaoRoutes from "../modules/sistema/routes/disparosNotificacaoRoutes";
+import unidadeMedidaRoutes from "../modules/unidades/routes/unidadeMedidaRoutes";
+
+export function registerApiRoutes(app: Express): void {
+  app.use("/api/usuarios", userRoutes);
+  app.use("/api/auth", userRoutes);
+  app.use("/api/permissoes", permissaoRoutes);
+  app.use("/api/admin", adminUsuariosRoutes);
+
+  app.use("/api/escolas", escolaRoutes);
+  app.use("/api/modalidades", modalidadeRoutes);
+  app.use("/api/escola-modalidades", escolaModalidadeRoutes);
+  app.use("/api/fornecedores", fornecedorRoutes);
+  app.use("/api/contratos", contratoRoutes);
+  app.use("/api/contrato-produtos", contratoProdutoRoutes);
+
+  app.use("/api/refeicoes", refeicaoRoutes);
+  app.use("/api/refeicao-produtos", refeicaoProdutoRoutes);
+  app.use("/api/refeicao-produto-modalidade", refeicaoProdutoModalidadeRoutes);
+  app.use("/api", refeicaoCalculosRoutes);
+  app.use("/api/cardapios", cardapioRoutes);
+  app.use("/api/tipos-refeicao", tipoRefeicaoRoutes);
+  app.use("/api/nutricionistas", nutricionistaRoutes);
+  app.use("/api/produtos", produtoRoutes);
+  app.use("/api/produto-modalidades", produtoModalidadeRoutes);
+  app.use("/api/unidades-medida", unidadeMedidaRoutes);
+  app.use("/api/estoque-central", estoqueCentralRoutes);
+  app.use("/api/estoque-escolar", estoqueEscolarRoutes);
+
+  app.use("/api/saldo-contratos-modalidades", saldoContratosModalidadesRoutes);
+  app.use("/api/guias", guiaRoutes);
+  app.use("/api/entregas", entregaRoutes);
+  app.use("/api/entregas", rotaRoutes);
+  app.use("/api/compras", compraRoutes);
+  app.use("/api/faturamentos", faturamentoRoutes);
+  app.use("/api/demandas", demandasRoutes);
+  app.use("/api/recebimentos", recebimentoRoutes);
+  app.use("/api/instituicao", instituicaoRoutes);
+  app.use("/api/pnae", pnaeRoutes);
+  app.use("/api/planejamento-compras", planejamentoComprasRoutes);
+  app.use("/api/periodos", periodosRoutes);
+  app.use("/api/escola-portal", escolaPortalRoutes);
+  app.use("/api", calendarioLetivoRoutes);
+  app.use("/api/taco", tacoRoutes);
+  app.use("/api/grupos-ingredientes", gruposIngredientesRoutes);
+  app.use("/api/solicitacoes-alimentos", solicitacoesAlimentosRoutes);
+  app.use("/api/dashboard", dashboardRoutes);
+  app.use("/api/notificacoes", notificacoesRoutes);
+  app.use("/api/disparos-notificacao", disparosNotificacaoRoutes);
+}

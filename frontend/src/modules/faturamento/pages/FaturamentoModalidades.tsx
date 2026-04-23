@@ -184,7 +184,7 @@ export default function FaturamentoModalidades() {
             itens.push({
               pedido_item_ids: [fat.pedido_item_id],
               contrato_produto_id: contratoId,
-              produto_nome: fat.produto_nome,
+              produto_nome: fat.produto_nome || '',
               unidade: fat.unidade || 'UN',
               quantidade_pedido: quantidadePedido,
               quantidade_alocada: quantidadeAlocada,
@@ -252,7 +252,7 @@ export default function FaturamentoModalidades() {
                 const novoItem = {
                   pedido_item_ids: [Number(itemId)],
                   contrato_produto_id: pedidoItem.contrato_produto_id,
-                  produto_nome: pedidoItem.produto_nome,
+                  produto_nome: pedidoItem.produto_nome || '',
                   unidade: pedidoItem.unidade || 'UN',
                   quantidade_pedido: Number(pedidoItem.quantidade),
                   quantidade_alocada: Number(quantidade),
@@ -419,7 +419,7 @@ export default function FaturamentoModalidades() {
       if (!itensAgrupados.has(contratoId)) {
         itensAgrupados.set(contratoId, {
           contrato_produto_id: contratoId,
-          produto_nome: pedidoItem.produto_nome,
+          produto_nome: pedidoItem.produto_nome || '',
           unidade: pedidoItem.unidade || 'UN',
           preco_unitario: Number(pedidoItem.preco_unitario),
           pedido_item_ids: [],
@@ -525,7 +525,7 @@ export default function FaturamentoModalidades() {
     pedido.itens.forEach(item => {
       if (!itensPorContrato.has(item.contrato_produto_id)) {
         itensPorContrato.set(item.contrato_produto_id, {
-          nome: item.produto_nome,
+          nome: item.produto_nome || '',
           quantidadeTotal: 0,
           alocadoTotal: 0
         });
@@ -641,9 +641,9 @@ export default function FaturamentoModalidades() {
         const pedidoItem = pedido.itens.find(pi => pi.contrato_produto_id === item.contrato_produto_id);
         if (!pedidoItem) return;
 
-        const fornecedorNome = pedidoItem.fornecedor_nome;
+        const fornecedorNome = pedidoItem.fornecedor_nome || 'Fornecedor';
         const fornecedorCNPJ = pedidoItem.fornecedor_cnpj || '';
-        const contratoNumero = pedidoItem.contrato_numero;
+        const contratoNumero = pedidoItem.contrato_numero || 'Sem contrato';
 
         if (!dadosPorFornecedor.has(fornecedorNome)) {
           dadosPorFornecedor.set(fornecedorNome, {

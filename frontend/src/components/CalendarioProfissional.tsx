@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -27,7 +27,9 @@ interface EventoCalendario {
   data_fim?: string;
   cor: string;
   descricao?: string;
-  _refeicao?: any;
+  _refeicao?: {
+    tipo_refeicao?: string;
+  };
 }
 
 interface CalendarioProfissionalProps {
@@ -64,8 +66,6 @@ const CalendarioProfissional: React.FC<CalendarioProfissionalProps> = ({
     const m = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
     return `${m[mes - 1]} ${ano}`;
   }, [ano, mes]);
-
-  const MES = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
   // Unique event types for legend
   const tiposLegend = useMemo(() => {

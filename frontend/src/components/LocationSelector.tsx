@@ -76,6 +76,10 @@ interface SearchResult {
     lat: string;
     lon: string;
     place_id: string;
+    class?: string;
+    type?: string;
+    importance?: number;
+    relevance_score?: number;
 }
 
 declare global {
@@ -326,6 +330,7 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
                     // Filtrar apenas resultados educacionais
                     const educationalResults = categoryResults.filter(result =>
                         result.class === 'amenity' &&
+                        !!result.type &&
                         ['school', 'college', 'university', 'kindergarten'].includes(result.type)
                     );
                     allResults = [...allResults, ...educationalResults];

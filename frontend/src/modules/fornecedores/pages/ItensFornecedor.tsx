@@ -27,6 +27,11 @@ interface ItemContrato {
 const formatarMoeda = (valor: number) => 
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
 
+async function listarItensFornecedor(fornecedorId: number): Promise<ItemContrato[]> {
+  const response = await api.get(`/fornecedores/${fornecedorId}/itens`);
+  return response.data?.data || response.data || [];
+}
+
 export default function ItensFornecedor() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -97,6 +102,10 @@ export default function ItensFornecedor() {
       }
     });
   }, [itensFiltrados, sortBy, sortOrder]);
+
+  const valorTotalGeral = useMemo(() => {
+    return itensFiltrados.reduce((total, item) => total + Number(item.valor_total || 0), 0);
+  }, [itensFiltrados]);
 
   const itensPaginados = useMemo(() => {
     const startIndex = page * rowsPerPage;

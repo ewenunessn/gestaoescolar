@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react';
 import {
-  Button,
   TextField,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
   Box,
-  CircularProgress
 } from '@mui/material';
 import { FormDialog } from './BaseDialog';
 import { EventoCalendario, getLabelsEventos, getCoresEventos } from '../services/calendarioLetivo';
@@ -64,7 +62,7 @@ export default function CriarEditarEventoDialog({
     }
   }, [form.tipo_evento]);
 
-  const handleChange = (field: string, value: any) => {
+  const handleChange = (field: keyof EventoCalendario, value: EventoCalendario[keyof EventoCalendario]) => {
     setForm(prev => ({ ...prev, [field]: value }));
   };
 

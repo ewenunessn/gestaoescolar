@@ -531,7 +531,7 @@ export default function GerenciamentoUsuarios() {
 
       <ViewTabs
         value={tab}
-        onChange={(v) => setTab(v)}
+        onChange={(v) => setTab(Number(v))}
         tabs={[
           { value: 0, label: "Usuários", icon: <People fontSize="small" /> },
           { value: 1, label: "Funções e Permissões", icon: <Lock fontSize="small" /> },

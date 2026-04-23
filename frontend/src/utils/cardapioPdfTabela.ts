@@ -149,8 +149,8 @@ export const gerarPDFTabela = async ({
 
   const modalidades = (cardapio as any)?.modalidades_nomes || cardapio?.modalidade_nome || '';
   const subtitulo = modalidades 
-    ? `${modalidades} - ${cardapio?.ano} - ${dateUtils.getMonthName(cardapio?.mes)?.toUpperCase()}`
-    : `${cardapio?.ano} - ${dateUtils.getMonthName(cardapio?.mes)?.toUpperCase()}`;
+    ? `${modalidades} - ${cardapio?.ano} - ${dateUtils.getMonthName(cardapio?.mes ?? 1)?.toUpperCase()}`
+    : `${cardapio?.ano} - ${dateUtils.getMonthName(cardapio?.mes ?? 1)?.toUpperCase()}`;
 
   // Coletar IDs das refeições incluídas no PDF
   const refeicoesIds = new Set<number>();
@@ -324,6 +324,6 @@ export const gerarPDFTabela = async ({
   });
 
   pdfMake.createPdf(doc).download(
-    `cardapio-${dateUtils.getMonthName(cardapio?.mes)}-${cardapio?.ano}.pdf`
+    `cardapio-${dateUtils.getMonthName(cardapio?.mes ?? 1)}-${cardapio?.ano}.pdf`
   );
 };

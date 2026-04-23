@@ -70,6 +70,18 @@ interface ItemRomaneio {
   escola_rota?: string;
 }
 
+interface ProdutoAgrupado {
+  produto_nome: string;
+  unidade: string;
+  quantidade_total: number;
+  escolas: { id: number; nome: string; quantidade: number; status: string; rota?: string }[];
+}
+
+interface GrupoDataRomaneio {
+  data: string;
+  produtos: Record<string, ProdutoAgrupado>;
+}
+
 const Romaneio: React.FC = () => {
   const { setPageTitle } = usePageTitle();
   
@@ -223,7 +235,7 @@ const Romaneio: React.FC = () => {
 
   // Aplicar filtros locais (busca por palavra-chave)
   const filteredItens = useMemo(() => {
-    return itens.filter(item => {
+    return itens.filter((item: ItemRomaneio) => {
       // Busca por palavra-chave
       if (filters.search) {
         const searchLower = filters.search.toLowerCase();
@@ -238,17 +250,9 @@ const Romaneio: React.FC = () => {
 
   // Agrupar itens por data e produto (otimizado)
   const dadosAgrupadosProduto = useMemo(() => {
-    const grupos: Record<string, {
-      data: string;
-      produtos: Record<string, {
-        produto_nome: string;
-        unidade: string;
-        quantidade_total: number;
-        escolas: { id: number; nome: string; quantidade: number; status: string; rota?: string }[];
-      }>
-    }> = {};
+    const grupos: Record<string, GrupoDataRomaneio> = {};
 
-    filteredItens.forEach(item => {
+    filteredItens.forEach((item: ItemRomaneio) => {
       // Validar se data_entrega existe e é válida
       if (!item.data_entrega) {
         return; // Pular itens sem data
@@ -295,7 +299,7 @@ const Romaneio: React.FC = () => {
     // Converter para array e ordenar (otimizado)
     return Object.values(grupos)
       .sort((a, b) => a.data.localeCompare(b.data))
-      .map(grupo => ({
+      .map((grupo: GrupoDataRomaneio) => ({
         data: grupo.data,
         produtos: Object.values(grupo.produtos).sort((a, b) => {
           const nomeCompare = a.produto_nome.localeCompare(b.produto_nome);
@@ -306,11 +310,11 @@ const Romaneio: React.FC = () => {
 
   // Legenda de status
   const statusLegend = useMemo(() => {
-    const statusCounts = filteredItens.reduce((acc, item) => {
+    const statusCounts = filteredItens.reduce((acc: Record<string, number>, item: ItemRomaneio) => {
       const status = item.status || 'pendente';
       acc[status] = (acc[status] || 0) + 1;
       return acc;
-    }, {} as Record<string, number>);
+    }, {});
 
     return [
       { status: 'default', label: 'PENDENTE', count: statusCounts.pendente || 0 },
@@ -774,11 +778,11 @@ const Romaneio: React.FC = () => {
                 hideFooterSelectedRowCount
                 // Virtualização ATIVADA (padrão do MUI DataGrid)
                 // Renderiza apenas as linhas visíveis + buffer
-                rowBuffer={10}
-                columnBuffer={2}
+                rowBufferPx={520}
+                columnBufferPx={300}
                 // Threshold para começar a renderizar novas linhas
-                rowThreshold={3}
-                columnThreshold={3}
+
+
               />
             </Box>
           )}

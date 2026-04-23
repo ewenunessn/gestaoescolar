@@ -1,5 +1,5 @@
 import api from "../../../services/api";
-import { RotaEntrega, RotaEscola, PlanejamentoEntrega, CreateRotaData, CreatePlanejamentoData, CreatePlanejamentoAvancadoData } from "../../../types/rota";
+import { RotaEntrega, RotaEscola, PlanejamentoEntrega, CreateRotaData, CreatePlanejamentoData, CreatePlanejamentoAvancadoData } from "../types/rota";
 
 export const rotaService = {
   // Rotas de Entrega

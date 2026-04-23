@@ -1,13 +1,10 @@
 import { useState, useEffect } from 'react';
 import {
-  Button,
   Grid,
   TextField,
   Alert,
-  IconButton,
   Autocomplete
 } from '@mui/material';
-import { Close as CloseIcon, Save as SaveIcon } from '@mui/icons-material';
 import { FormDialog } from './BaseDialog';
 import demandasService from '../services/demandas';
 import { listarEscolas } from '../services/escolas';
@@ -99,9 +96,7 @@ export default function DemandaFormModal({ open, onClose, onSuccess, demandaId }
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const handleSubmit = async () => {
     try {
       setLoading(true);
       setErro('');
@@ -150,7 +145,9 @@ export default function DemandaFormModal({ open, onClose, onSuccess, demandaId }
       open={open}
       onClose={handleClose}
       title={demandaId ? 'Editar Demanda' : 'Nova Demanda'}
-      onSave={handleSubmit}
+      onSave={() => {
+        void handleSubmit();
+      }}
       loading={loading}
       saveLabel="Salvar"
       maxWidth="md"

@@ -131,8 +131,8 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
     return num.toFixed(3).replace(/\.?0+$/, '');
   };
 
-  const handleAbaChange = (_: React.SyntheticEvent, value: 'pendentes' | 'entregues') => {
-    setAbaAtiva(value);
+  const handleAbaChange = (value: string | number) => {
+    setAbaAtiva(value === 'entregues' ? 'entregues' : 'pendentes');
     setItensSelecionados([]);
   };
 
@@ -233,6 +233,7 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
             nome_quem_entregou: nomeEntregador.trim(),
             nome_quem_recebeu: nomeRecebedor.trim(),
             observacao: observacao.trim() || undefined,
+            assinatura_base64: '',
             itens: itensComprovante
           });
         } catch (err) {

@@ -228,7 +228,7 @@ const Dashboard = () => {
   });
 
   const pct = (v: string | number) => `${Number(v).toFixed(1)}%`;
-  const pnaeAtende = pnae?.alertas?.atende_45_porcento ?? (parseFloat(pnae?.agricultura_familiar?.percentual_af ?? 0) >= 45);
+  const pnaeAtende = pnae?.alertas?.atende_45_porcento ?? (Number(pnae?.agricultura_familiar?.percentual_af ?? 0) >= 45);
   const pnaePercent = pnae ? pct(pnae.agricultura_familiar?.percentual_af ?? 0) : "—";
   const solicitacoesAtendidas = stats?.solicitacoes.atendidas ?? 0;
   const solicitacoesTotal = stats?.solicitacoes.total ?? 0;

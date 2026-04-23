@@ -59,7 +59,7 @@ export const SeletorPeriodo: React.FC = () => {
         </Tooltip>
 
         <Autocomplete
-          value={periodoSelecionado}
+          value={periodoSelecionado ?? undefined}
           onChange={handleChange}
           options={periodos}
           getOptionLabel={(p) => `${p.ano}${p.descricao ? ` - ${p.descricao}` : ''}`}

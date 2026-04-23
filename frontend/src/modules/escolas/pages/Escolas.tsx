@@ -36,7 +36,7 @@ import {
   FileDownload as FileDownloadIcon,
   FileUpload as FileUploadIcon,
 } from "@mui/icons-material";
-import { ColumnDef } from "@tanstack/react-table";
+import { ColumnDef, CellContext } from "@tanstack/react-table";
 import { useNavigate, useLocation } from "react-router-dom";
 import { importarEscolasLote } from "../../../services/escolas";
 import { useEscolas, useCriarEscola, useExcluirEscola } from "../../../hooks/queries";
@@ -153,7 +153,7 @@ const EscolasPage = () => {
   });
 
   // Dados derivados do React Query
-  const escolas = escolasQuery.data || [];
+  const escolas = (escolasQuery.data || []) as EscolaLocal[];
   const loading = escolasQuery.isLoading;
   
   // Filtrar escolas
@@ -189,7 +189,7 @@ const EscolasPage = () => {
     navigate(`/escolas/${escola.id}`);
   }, [navigate]);
 
-  const columns = useMemo(() => [
+  const columns = useMemo<ColumnDef<EscolaLocal>[]>(() => [
     { 
       accessorKey: 'id', 
       header: 'ID',
@@ -207,7 +207,7 @@ const EscolasPage = () => {
       header: 'Total Alunos',
       size: 120,
       enableSorting: true,
-      cell: ({ getValue }) => {
+      cell: ({ getValue }: CellContext<EscolaLocal, unknown>) => {
         const value = getValue() as number | undefined;
         return value ? value.toLocaleString('pt-BR') : '-';
       },
@@ -217,21 +217,21 @@ const EscolasPage = () => {
       header: 'Modalidades',
       size: 200,
       enableSorting: true,
-      cell: ({ getValue }) => getValue() || '-',
+      cell: ({ getValue }: CellContext<EscolaLocal, unknown>) => getValue() || '-',
     },
     { 
       accessorKey: 'municipio', 
       header: 'Município',
       size: 150,
       enableSorting: true,
-      cell: ({ getValue }) => getValue() || '-',
+      cell: ({ getValue }: CellContext<EscolaLocal, unknown>) => getValue() || '-',
     },
     { 
       accessorKey: 'administracao', 
       header: 'Administração',
       size: 150,
       enableSorting: true,
-      cell: ({ getValue }) => {
+      cell: ({ getValue }: CellContext<EscolaLocal, unknown>) => {
         const value = getValue() as string | undefined;
         return value ? String(value).charAt(0).toUpperCase() + String(value).slice(1) : '-';
       },
@@ -241,7 +241,7 @@ const EscolasPage = () => {
       header: 'Status',
       size: 100,
       enableSorting: true,
-      cell: ({ getValue }) => (
+      cell: ({ getValue }: CellContext<EscolaLocal, unknown>) => (
         <Tooltip title={getValue() ? 'Ativa' : 'Inativa'}>
           <Box
             sx={{
@@ -260,7 +260,7 @@ const EscolasPage = () => {
       header: 'Ações',
       size: 100,
       enableSorting: false,
-      cell: ({ row }) => (
+      cell: ({ row }: CellContext<EscolaLocal, unknown>) => (
         <Box sx={{ display: 'flex', gap: 0.5 }} onClick={(e) => e.stopPropagation()}>
           <Tooltip title="Editar">
             <IconButton

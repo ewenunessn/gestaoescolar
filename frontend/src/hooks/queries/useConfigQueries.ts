@@ -45,7 +45,8 @@ export function useSalvarConfiguracao() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (config) => configService.salvarConfiguracao(config),
+    mutationFn: (config: Omit<ConfiguracaoSistema, 'id' | 'created_at' | 'updated_at'>) =>
+      configService.salvarConfiguracao(config),
     onSuccess: (savedConfig) => {
       // Atualizar configuração no cache
       queryClient.setQueryData(

@@ -215,7 +215,10 @@ const CardapioCalendarioPage: React.FC = () => {
     });
   };
 
-  const handleOpenDialog = (dia: number) => {
+  const handleOpenDialog = (dia: number | null) => {
+    if (!dia) {
+      return;
+    }
     setDiaSelecionado(dia);
     setFormData({ refeicao_id: '', tipo_refeicao: '', observacao: '' });
     setOpenDialog(true);

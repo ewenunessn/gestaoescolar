@@ -61,6 +61,8 @@ import {
   useDuplicarRefeicao
 } from "../../../hooks/queries/useRefeicaoQueries";
 
+type TipoRefeicao = 'cafe_manha' | 'almoco' | 'lanche_tarde' | 'jantar' | 'ceia';
+
 const RefeicoesPage = () => {
   const navigate = useNavigate();
   const toast = useToast();
@@ -98,7 +100,7 @@ const RefeicoesPage = () => {
   const [formData, setFormData] = useState({
     nome: '',
     descricao: '',
-    tipo: 'almoco' as 'cafe_manha' | 'almoco' | 'lanche_tarde' | 'jantar' | 'ceia',
+    tipo: 'almoco' as TipoRefeicao,
     ativo: true,
   });
 
@@ -172,7 +174,7 @@ const RefeicoesPage = () => {
         case 'name':
           return a.nome.localeCompare(b.nome);
         case 'tipo':
-          return a.tipo.localeCompare(b.tipo);
+          return (a.tipo || '').localeCompare(b.tipo || '');
         case 'status':
           return Number(b.ativo) - Number(a.ativo);
         default:
@@ -214,7 +216,7 @@ const RefeicoesPage = () => {
       setFormData({
         nome: refeicao.nome,
         descricao: refeicao.descricao || '',
-        tipo: refeicao.tipo,
+        tipo: (refeicao.tipo || 'almoco') as TipoRefeicao,
         ativo: refeicao.ativo,
       });
     } else {
@@ -428,7 +430,7 @@ const RefeicoesPage = () => {
                       </Box>
                     </TableCell>
                     <TableCell align="center">
-                      <Typography variant="body2" color="text.secondary">{tiposRefeicao[refeicao.tipo]}</Typography>
+                      <Typography variant="body2" color="text.secondary">{tiposRefeicao[(refeicao.tipo || 'almoco') as TipoRefeicao]}</Typography>
                     </TableCell>
                     <TableCell align="center">
                       <Typography variant="body2" sx={{ fontWeight: 600, color: 'primary.main' }}>
@@ -441,7 +443,7 @@ const RefeicoesPage = () => {
                         <Tooltip title="Ver Detalhes"><IconButton size="small" onClick={() => handleViewDetails(refeicao)} color="default"><Visibility fontSize="small" /></IconButton></Tooltip>
                         <Tooltip title="Duplicar"><IconButton size="small" onClick={() => openDuplicateModal(refeicao)} color="primary"><ContentCopy fontSize="small" /></IconButton></Tooltip>
                         <Tooltip title="Editar"><IconButton size="small" onClick={() => openModal(refeicao)} color="primary"><Edit fontSize="small" /></IconButton></Tooltip>
-                        <Tooltip title="Excluir"><IconButton size="small" onClick={() => openDeleteModal(refeicao)} color="delete"><Delete fontSize="small" /></IconButton></Tooltip>
+                        <Tooltip title="Excluir"><IconButton size="small" onClick={() => openDeleteModal(refeicao)} color="error"><Delete fontSize="small" /></IconButton></Tooltip>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -470,7 +472,7 @@ const RefeicoesPage = () => {
             <TextField label="Descrição (Opcional)" value={formData.descricao} onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} multiline rows={3} />
             <FormControl fullWidth>
                 <InputLabel>Tipo</InputLabel>
-                <Select value={formData.tipo} onChange={(e) => setFormData({ ...formData, tipo: e.target.value as any })} label="Tipo">
+                <Select value={formData.tipo} onChange={(e) => setFormData({ ...formData, tipo: e.target.value as TipoRefeicao })} label="Tipo">
                     {Object.entries(tiposRefeicao).map(([value, label]) => (
                         <MenuItem key={value} value={value}>{label}</MenuItem>
                     ))}
@@ -497,7 +499,7 @@ const RefeicoesPage = () => {
         </DialogContent>
         <DialogActions sx={{ p: 3, pt: 1 }}>
             <Button onClick={closeDeleteModal} sx={{ color: 'text.secondary' }} disabled={deletarRefeicaoMutation.isPending}>Cancelar</Button>
-            <Button onClick={handleDelete} color="delete" variant="contained" disabled={deletarRefeicaoMutation.isPending}>
+            <Button onClick={handleDelete} color="error" variant="contained" disabled={deletarRefeicaoMutation.isPending}>
               {deletarRefeicaoMutation.isPending ? 'Excluindo...' : 'Excluir'}
             </Button>
         </DialogActions>

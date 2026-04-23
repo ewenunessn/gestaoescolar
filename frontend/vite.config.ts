@@ -2,6 +2,24 @@ import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 
+const chunkPorDependencia = (id: string) => {
+  if (!id.includes('node_modules')) return undefined;
+
+  if (id.includes('node_modules/@pdfme/ui/')) return 'pdfme-ui';
+  if (id.includes('node_modules/@pdfme/schemas/')) return 'pdfme-schemas';
+  if (id.includes('node_modules/@pdfme/common/')) return 'pdfme-common';
+  if (id.includes('node_modules/antd/')) return 'antd';
+  if (id.includes('node_modules/@dnd-kit/')) return 'dnd-kit';
+  if (id.includes('node_modules/pdfmake/build/pdfmake')) return 'pdfmake';
+  if (id.includes('node_modules/pdfmake/build/vfs_fonts')) return 'pdf-fonts';
+  if (id.includes('node_modules/exceljs/')) return 'exceljs';
+  if (id.includes('node_modules/file-saver/')) return 'file-saver';
+  if (id.includes('node_modules/xlsx/')) return 'xlsx';
+  if (id.includes('node_modules/qrcode/')) return 'qrcode';
+
+  return undefined;
+};
+
 export default defineConfig(({ mode }) => {
   // Carregar variáveis de ambiente baseadas no modo
   const env = loadEnv(mode, '.', 'VITE_');
@@ -76,14 +94,19 @@ export default defineConfig(({ mode }) => {
       outDir: 'dist',
       sourcemap: isDev,
       minify: isProd,
-      chunkSizeWarningLimit: 1000,
+      chunkSizeWarningLimit: 5500,
       rollupOptions: {
         output: {
-          manualChunks: {
-            vendor: ['react', 'react-dom'],
-            mui: ['@mui/material', '@mui/icons-material'],
-            router: ['react-router-dom'],
-            utils: ['axios', 'date-fns']
+          manualChunks(id) {
+            const chunkEspecial = chunkPorDependencia(id);
+            if (chunkEspecial) return chunkEspecial;
+
+            if (id.includes('node_modules/react-router-dom/')) return 'router';
+            if (id.includes('node_modules/@mui/')) return 'mui';
+            if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/')) return 'vendor';
+            if (id.includes('node_modules/axios/') || id.includes('node_modules/date-fns/')) return 'utils';
+
+            return undefined;
           }
         }
       },

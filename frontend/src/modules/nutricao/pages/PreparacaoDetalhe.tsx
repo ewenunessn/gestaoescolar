@@ -71,11 +71,13 @@ interface Produto {
   ativo: boolean;
 }
 
+type TipoMedida = 'gramas' | 'mililitros' | 'unidades';
+
 interface preparacaoProduto {
   id: number;
   produto_id: number;
   per_capita: number;
-  tipo_medida: 'gramas' | 'mg';
+  tipo_medida: TipoMedida;
   ordem?: number;
   produto?: Produto;
   per_capita_por_modalidade?: Array<{
@@ -368,8 +370,9 @@ export default function PreparacaoDetalhe() {
   }
 
   async function adicionarProduto(
-    produtoId: number,    perCapitaGeral: number | null,
-    tipoMedida: 'gramas' | 'unidades',
+    produtoId: number,
+    perCapitaGeral: number | null,
+    tipoMedida: TipoMedida,
     perCapitaPorModalidade: Array<{modalidade_id: number, per_capita: number}>
   ) {
     try {
@@ -395,7 +398,7 @@ export default function PreparacaoDetalhe() {
           refeicaoId: Number(id),
           produtoId: item.produto_id,
           perCapita: item.per_capita,
-          tipoMedida: item.tipo_medida as 'gramas' | 'mg',
+          tipoMedida: item.tipo_medida as TipoMedida,
           perCapitaPorModalidade: [],
         });
         adicionados++;
@@ -421,7 +424,7 @@ export default function PreparacaoDetalhe() {
 
   async function confirmarEdicaoProduto(
     perCapitaGeral: number | null,
-    tipoMedida: 'gramas' | 'mililitros' | 'unidades',
+    tipoMedida: TipoMedida,
     perCapitaPorModalidade: Array<{modalidade_id: number, per_capita: number}>
   ) {
     if (!produtoEditando) return;
@@ -443,6 +446,9 @@ export default function PreparacaoDetalhe() {
   }
 
   async function gerarPDF() {
+    const refeicaoParaPdf = preparacao;
+    if (!refeicaoParaPdf) return;
+
     try {
       const { buscarIngredientesDetalhados } = await import('../../../services/refeicaoIngredientes');
       const { gerarPDFFichaTecnica } = await import('../../../utils/fichaTecnicaPdf');
@@ -459,16 +465,19 @@ export default function PreparacaoDetalhe() {
 
       await gerarPDFFichaTecnica({
         refeicao: {
-          nome: preparacao.nome,
-          descricao: preparacao.descricao,
-          categoria: preparacao.categoria,
-          tempo_preparo_minutos: preparacao.tempo_preparo_minutos,
-          rendimento_porcoes: preparacao.rendimento_porcoes,
-          modo_preparo: preparacao.modo_preparo,
-          utensilios: preparacao.utensilios,
-          observacoes_tecnicas: preparacao.observacoes_tecnicas,
+          nome: refeicaoParaPdf.nome,
+          descricao: refeicaoParaPdf.descricao,
+          categoria: refeicaoParaPdf.categoria,
+          tempo_preparo_minutos: refeicaoParaPdf.tempo_preparo_minutos,
+          rendimento_porcoes: refeicaoParaPdf.rendimento_porcoes,
+          modo_preparo: refeicaoParaPdf.modo_preparo,
+          utensilios: refeicaoParaPdf.utensilios,
+          observacoes_tecnicas: refeicaoParaPdf.observacoes_tecnicas,
         },
-        produtos: ingredientesDetalhados.ingredientes,
+        produtos: ingredientesDetalhados.ingredientes.map((ingrediente) => ({
+          ...ingrediente,
+          per_capita_bruto: ingrediente.per_capita_bruto ?? undefined,
+        })),
         modalidadeNome,
         instituicao,
       });
@@ -540,7 +549,7 @@ export default function PreparacaoDetalhe() {
             onChange={(newValue) => {
               // Impedir troca de aba enquanto edita
               if (!editando) {
-                setTabAtiva(newValue);
+                setTabAtiva(Number(newValue));
               }
             }}
             tabs={[
@@ -1233,7 +1242,11 @@ export default function PreparacaoDetalhe() {
       <DetalhamentoCustoModal
         open={detalhamentoCustoOpen}
         onClose={() => setDetalhamentoCustoOpen(false)}
-        detalhamento={custoData.detalhamento}
+        detalhamento={custoData.detalhamento.map((item) => ({
+          ...item,
+          quantidade_liquida: item.quantidade,
+          quantidade_bruta: item.quantidade,
+        }))}
         custoTotal={custoData.custo_total}
         custoPorPorcao={custoData.custo_por_porcao}
         rendimentoPorcoes={custoData.rendimento_porcoes || preparacao?.rendimento_porcoes || 1}
@@ -1250,7 +1263,7 @@ export default function PreparacaoDetalhe() {
       </DialogContent>
       <DialogActions>
         <Button onClick={() => setOpenExcluir(false)}>Cancelar</Button>
-        <Button onClick={excluirpreparacao} color="delete" variant="contained">
+        <Button onClick={excluirpreparacao} color="error" variant="contained">
           Excluir
         </Button>
       </DialogActions>

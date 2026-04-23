@@ -4,7 +4,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys, cacheConfig, invalidateQueries } from '../../lib/queryClient';
-import { Escola, EscolaCreate, EscolaUpdate } from '../../../../shared/types';
+import type { Escola } from '../../types/escola';
 import { useAuth } from '../../contexts/AuthContext';
 
 import { 
@@ -38,7 +38,7 @@ export function useEscolas(filters?: { search?: string; ativo?: boolean }) {
         filteredData = filteredData.filter(escola => 
           escola.nome.toLowerCase().includes(searchLower) ||
           escola.endereco?.toLowerCase().includes(searchLower) ||
-          escola.diretor?.toLowerCase().includes(searchLower)
+          escola.nome_gestor?.toLowerCase().includes(searchLower)
         );
       }
       

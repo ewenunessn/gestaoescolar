@@ -273,8 +273,7 @@ export default function CalendarioLetivo() {
               onMesAnterior={handleMesAnterior}
               onProximoMes={handleProximoMes}
               onDiaClick={handleDiaClick}
-              diasLetivos={[]}
-            />
+              />
           </Card>
         </Grid>
 

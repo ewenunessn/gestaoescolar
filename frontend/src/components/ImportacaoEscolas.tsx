@@ -6,7 +6,7 @@ import {
   CircularProgress,
 } from '@mui/material';
 import {
-  CloudUpload, Download, CheckCircle, Error, Warning, Delete, School,
+  CloudUpload, Download, CheckCircle, Error as ErrorIcon, Warning, Delete, School,
 } from '@mui/icons-material';
 import * as XLSX from 'xlsx';
 import { LoadingOverlay } from './LoadingOverlay';
@@ -79,7 +79,7 @@ const ImportacaoEscolas: React.FC<ImportacaoEscolasProps> = ({ open, onClose, on
           reject(error);
         }
       };
-      reader.onerror = () => reject(new Error('Erro ao ler arquivo'));
+      reader.onerror = () => reject(new globalThis.Error('Erro ao ler arquivo'));
       reader.readAsBinaryString(file);
     });
   };
@@ -161,7 +161,7 @@ const ImportacaoEscolas: React.FC<ImportacaoEscolasProps> = ({ open, onClose, on
   const getStatusProps = (status: 'valido' | 'erro' | 'aviso') => {
     switch (status) {
       case 'valido': return { color: '#059669', bgcolor: '#dcfce7', icon: <CheckCircle sx={{ fontSize: 16 }} />, label: 'Válida' };
-      case 'erro': return { color: '#dc2626', bgcolor: '#fee2e2', icon: <Error sx={{ fontSize: 16 }} />, label: 'Erro' };
+      case 'erro': return { color: '#dc2626', bgcolor: '#fee2e2', icon: <ErrorIcon sx={{ fontSize: 16 }} />, label: 'Erro' };
       case 'aviso': return { color: '#d97706', bgcolor: '#fef3c7', icon: <Warning sx={{ fontSize: 16 }} />, label: 'Aviso' };
     }
   };
@@ -205,7 +205,7 @@ const ImportacaoEscolas: React.FC<ImportacaoEscolasProps> = ({ open, onClose, on
           <Box>
             <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
               <Chip icon={<CheckCircle />} label={`${validasCount} válidas`} sx={{ bgcolor: '#dcfce7', color: '#059669', fontWeight: 600 }} />
-              <Chip icon={<Error />} label={`${errosCount} com erros`} sx={{ bgcolor: '#fee2e2', color: '#dc2626', fontWeight: 600 }} />
+              <Chip icon={<ErrorIcon />} label={`${errosCount} com erros`} sx={{ bgcolor: '#fee2e2', color: '#dc2626', fontWeight: 600 }} />
               <Box sx={{ flexGrow: 1 }} />
               <Alert severity="info" icon={false} sx={{ p: 1, py: 0.5 }}><strong>Modo Inteligente:</strong> Escolas existentes serão atualizadas e novas serão inseridas.</Alert>
             </Box>

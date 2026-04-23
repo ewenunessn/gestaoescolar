@@ -83,7 +83,7 @@ export const useAdicionarProdutoNaRefeicao = () => {
       refeicaoId: number;
       produtoId: number;
       perCapita: number;
-      tipoMedida: 'gramas' | 'unidades';
+      tipoMedida: 'gramas' | 'mililitros' | 'unidades';
       perCapitaPorModalidade?: Array<{ modalidade_id: number; per_capita: number }>;
     }) => refeicaoServiceExtended.adicionarProduto({
       refeicao_id: refeicaoId,
@@ -115,7 +115,7 @@ export const useEditarProdutoNaRefeicao = () => {
       id: number;
       refeicaoId: number;
       perCapita: number;
-      tipoMedida?: 'gramas' | 'unidades';
+      tipoMedida?: 'gramas' | 'mililitros' | 'unidades';
       perCapitaPorModalidade?: Array<{ modalidade_id: number; per_capita: number }>;
     }) => refeicaoServiceExtended.editarProduto(id, {
       per_capita: perCapita,

@@ -51,7 +51,7 @@ import { useToast } from "../../../hooks/useToast";
 const EstoqueLotes: React.FC = () => {
   const { produto_id } = useParams<{ produto_id: string }>();
   const navigate = useNavigate();
-  const { success, error, warning } = useToast();
+  const { success, error: showError, warning } = useToast();
 
   // Estados
   const [lotes, setLotes] = useState<EstoqueLote[]>([]);
@@ -88,7 +88,7 @@ const EstoqueLotes: React.FC = () => {
       setProduto(produtoData);
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
-      error("Erro ao carregar dados do produto");
+      showError("Erro ao carregar dados do produto");
     } finally {
       setLoading(false);
     }
@@ -121,7 +121,7 @@ const EstoqueLotes: React.FC = () => {
       success("Saída processada com sucesso");
     } catch (err: any) {
       console.error("Erro ao processar saída:", err);
-      error("Erro ao processar saída", err.response?.data?.message || "Erro ao processar saída");
+      showError("Erro ao processar saída", err.response?.data?.message || "Erro ao processar saída");
     }
   };
 

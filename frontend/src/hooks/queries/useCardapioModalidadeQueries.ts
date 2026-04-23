@@ -14,7 +14,7 @@ export const CARDAPIOS_MODALIDADE_QUERY_KEY = ['cardapios-modalidade'];
 export const useCardapiosModalidade = () => {
   return useQuery({
     queryKey: CARDAPIOS_MODALIDADE_QUERY_KEY,
-    queryFn: listarCardapiosModalidade,
+    queryFn: () => listarCardapiosModalidade(),
   });
 };
 

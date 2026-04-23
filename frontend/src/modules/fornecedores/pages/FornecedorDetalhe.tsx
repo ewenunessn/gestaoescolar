@@ -65,7 +65,13 @@ const getStatusContrato = (contrato: Contrato) => {
 };
 
 // --- Subcomponentes de UI ---
-const InfoItem = ({ icon, label, value }) => (
+interface InfoItemProps {
+  icon: React.ReactNode;
+  label: string;
+  value: React.ReactNode;
+}
+
+const InfoItem = ({ icon, label, value }: InfoItemProps) => (
     <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
         {icon}
         <Box>

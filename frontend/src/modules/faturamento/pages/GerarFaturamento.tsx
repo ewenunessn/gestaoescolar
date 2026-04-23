@@ -78,7 +78,7 @@ function GerarFaturamento() {
             setEtapaAtual(1);
 
             // Verificar se o pedido pode gerar faturamento
-            if (pedidoData.status === 'rascunho') {
+            if (pedidoData.status === 'pendente') {
                 setErro('Não é possível gerar faturamento para pedidos em rascunho');
                 return;
             }
@@ -193,7 +193,7 @@ function GerarFaturamento() {
                 </Typography>
                 <Chip
                     label={pedido.status}
-                    color={pedido.status === 'entregue' ? 'success' : 'primary'}
+                    color={pedido.status === 'concluido' ? 'success' : 'primary'}
                 />
             </Box>
 

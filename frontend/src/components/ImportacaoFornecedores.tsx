@@ -28,7 +28,7 @@ import {
   CloudUpload,
   Download,
   CheckCircle,
-  Error,
+  Error as ErrorIcon,
   Warning,
   Delete,
   Business,
@@ -50,10 +50,18 @@ interface FornecedorImportacao {
   nome: string;
   cnpj: string;
   email?: string;
+  telefone?: string;
+  endereco?: string;
+  cidade?: string;
+  estado?: string;
+  cep?: string;
+  observacoes?: string;
   ativo: boolean;
   status: 'valido' | 'erro' | 'aviso';
   mensagem?: string;
 }
+
+type LinhaImportacaoFornecedor = Record<string, unknown>;
 
 const ImportacaoFornecedores: React.FC<ImportacaoFornecedoresProps> = ({
   open,
@@ -200,14 +208,14 @@ const ImportacaoFornecedores: React.FC<ImportacaoFornecedoresProps> = ({
     }
   };
 
-  const lerArquivo = (file: File): Promise<any[]> => {
+  const lerArquivo = (file: File): Promise<LinhaImportacaoFornecedor[]> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       
       reader.onload = (e) => {
         try {
           const data = e.target?.result;
-          let jsonData: any[] = [];
+          let jsonData: LinhaImportacaoFornecedor[] = [];
 
           if (file.name.endsWith('.csv')) {
             // Processar CSV
@@ -217,7 +225,7 @@ const ImportacaoFornecedores: React.FC<ImportacaoFornecedoresProps> = ({
             
             jsonData = lines.slice(1).map(line => {
               // Processar CSV com aspas
-              const values = [];
+              const values: string[] = [];
               let current = '';
               let inQuotes = false;
               
@@ -234,7 +242,7 @@ const ImportacaoFornecedores: React.FC<ImportacaoFornecedoresProps> = ({
               }
               values.push(current.trim());
 
-              const obj: any = {};
+              const obj: LinhaImportacaoFornecedor = {};
               headers.forEach((header, index) => {
                 obj[header] = values[index] || '';
               });
@@ -245,7 +253,7 @@ const ImportacaoFornecedores: React.FC<ImportacaoFornecedoresProps> = ({
             const workbook = XLSX.read(data, { type: 'binary' });
             const sheetName = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[sheetName];
-            jsonData = XLSX.utils.sheet_to_json(worksheet);
+            jsonData = XLSX.utils.sheet_to_json<LinhaImportacaoFornecedor>(worksheet);
           }
 
           resolve(jsonData);
@@ -254,7 +262,7 @@ const ImportacaoFornecedores: React.FC<ImportacaoFornecedoresProps> = ({
         }
       };
 
-      reader.onerror = () => reject(new Error('Erro ao ler arquivo'));
+      reader.onerror = () => reject(new globalThis.Error('Erro ao ler arquivo'));
 
       if (file.name.endsWith('.csv')) {
         reader.readAsText(file);
@@ -264,19 +272,18 @@ const ImportacaoFornecedores: React.FC<ImportacaoFornecedoresProps> = ({
     });
   };
 
-  const validarFornecedores = (dadosRaw: any[]): FornecedorImportacao[] => {
-    return dadosRaw.map((linha, index) => {
+  const validarFornecedores = (dadosRaw: LinhaImportacaoFornecedor[]): FornecedorImportacao[] => {
+    return dadosRaw.map((linha) => {
       const fornecedor: FornecedorImportacao = {
-        nome: linha.nome || '',
-        cnpj: linha.cnpj || '',
-        email: linha.email || '',
-        telefone: linha.telefone || '',
-        endereco: linha.endereco || '',
-        cidade: linha.cidade || '',
-        estado: linha.estado || '',
-        cep: linha.cep || '',
-    
-        observacoes: linha.observacoes || '',
+        nome: String(linha.nome || ''),
+        cnpj: String(linha.cnpj || ''),
+        email: String(linha.email || ''),
+        telefone: String(linha.telefone || ''),
+        endereco: String(linha.endereco || ''),
+        cidade: String(linha.cidade || ''),
+        estado: String(linha.estado || ''),
+        cep: String(linha.cep || ''),
+        observacoes: String(linha.observacoes || ''),
         ativo: linha.ativo === 'true' || linha.ativo === true || linha.ativo === 1,
         status: 'valido',
         mensagem: ''
@@ -376,7 +383,7 @@ const ImportacaoFornecedores: React.FC<ImportacaoFornecedoresProps> = ({
       case 'aviso':
         return { color: '#d97706', bg: '#fef3c7', icon: <Warning sx={{ fontSize: 16 }} /> };
       case 'erro':
-        return { color: '#dc2626', bg: '#fee2e2', icon: <Error sx={{ fontSize: 16 }} /> };
+        return { color: '#dc2626', bg: '#fee2e2', icon: <ErrorIcon sx={{ fontSize: 16 }} /> };
       default:
         return { color: '#6b7280', bg: '#f3f4f6', icon: <CheckCircle sx={{ fontSize: 16 }} /> };
     }
@@ -534,7 +541,7 @@ const ImportacaoFornecedores: React.FC<ImportacaoFornecedoresProps> = ({
               )}
               {fornecedoresComErro > 0 && (
                 <Chip
-                  icon={<Error sx={{ fontSize: 16 }} />}
+                  icon={<ErrorIcon sx={{ fontSize: 16 }} />}
                   label={`${fornecedoresComErro} com erros`}
                   sx={{
                     bgcolor: '#fee2e2',

@@ -44,7 +44,7 @@ const CompactPagination: React.FC<CompactPaginationProps> = ({
         </Typography>
         <Select
           value={rowsPerPage}
-          onChange={(e) => onRowsPerPageChange(e as any)}
+          onChange={(e) => onRowsPerPageChange(e as unknown as React.ChangeEvent<HTMLInputElement>)}
           size="small"
           sx={{
             fontSize: '0.75rem',

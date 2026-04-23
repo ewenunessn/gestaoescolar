@@ -40,7 +40,7 @@ export function useSafeMutation<
         if (!options.mutationFn) {
           throw new Error('mutationFn is required');
         }
-        const result = await options.mutationFn(variables);
+        const result = await (options.mutationFn as any)(variables);
         return result;
       } finally {
         isExecutingRef.current = false;

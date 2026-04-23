@@ -11,7 +11,14 @@ export interface ConfiguracaoSistema {
   updated_at?: string;
 }
 
+export interface ConfiguracaoModuloSaldo {
+  modulo_principal: 'modalidades' | 'contratos';
+  mostrar_ambos: boolean;
+}
+
 class ConfigService {
+  private readonly MODULO_SALDO_CHAVE = 'modulo_saldo';
+
   // Buscar configuração específica
   async buscarConfiguracao(chave: string): Promise<ConfiguracaoSistema | null> {
     try {
@@ -81,6 +88,24 @@ class ConfigService {
 
   limparCache(): void {
     this.configCache.clear();
+  }
+
+  async buscarConfiguracaoModuloSaldo(): Promise<ConfiguracaoModuloSaldo> {
+    const configuracao = await this.buscarConfiguracaoComCache(this.MODULO_SALDO_CHAVE);
+
+    if (
+      configuracao &&
+      typeof configuracao === 'object' &&
+      (configuracao.modulo_principal === 'modalidades' || configuracao.modulo_principal === 'contratos') &&
+      typeof configuracao.mostrar_ambos === 'boolean'
+    ) {
+      return configuracao as ConfiguracaoModuloSaldo;
+    }
+
+    return {
+      modulo_principal: 'modalidades',
+      mostrar_ambos: false
+    };
   }
 }
 

@@ -18,7 +18,7 @@ export interface Periodo {
 }
 
 export type PeriodoCreate = Pick<Periodo, 'ano' | 'data_inicio' | 'data_fim'> & { descricao?: string };
-export type PeriodoUpdate = Pick<Periodo, 'data_inicio' | 'data_fim' | 'ocultar_dados'> & { descricao?: string };
+export type PeriodoUpdate = Partial<Pick<Periodo, 'data_inicio' | 'data_fim' | 'ocultar_dados'>> & { descricao?: string };
 
 // CRUD básico via factory
 export const periodoService = createCrudService<Periodo, PeriodoCreate, PeriodoUpdate>('periodos');

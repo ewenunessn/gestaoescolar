@@ -10,6 +10,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   cardapioService,
   cardapioServiceExtended,
+  type Cardapio,
+  type CardapioCreate,
 } from "../../../services/cardapios";
 import { refeicaoService } from "../../../services/refeicoes";
 import { formatDateForInput } from "../../../utils/dateUtils";
@@ -98,7 +100,7 @@ interface Refeicao {
   id: number;
   nome: string;
   descricao?: string;
-  tipo: string;
+  tipo?: string;
   ativo: boolean;
 }
 
@@ -109,6 +111,78 @@ interface CardapioRefeicao {
   frequencia_mensal: number;
   refeicao?: Refeicao;
 }
+
+interface CardapioFormState {
+  nome: string;
+  descricao: string;
+  periodo_dias: string;
+  data_inicio: string;
+  data_fim: string;
+  modalidade_id: number | "";
+  ativo: boolean;
+}
+
+interface CustoModalidade {
+  modalidade_nome: string;
+  total_alunos: number;
+  custo_por_aluno: number;
+  custo_total: number;
+}
+
+interface CustoPorDia {
+  dia: string;
+  total_refeicoes: number;
+  custo_total: number;
+}
+
+interface CustoDetalhamentoItem {
+  dia: string;
+  tipo_refeicao: string;
+  refeicao_nome: string;
+  modalidade_nome: string;
+  total_alunos: number;
+  custo_per_capita: number;
+  custo_total: number;
+}
+
+interface CustoDetalheProduto {
+  produto_nome: string;
+  unidade: string;
+  per_capita: number;
+  preco_unitario: number;
+  custo_por_aluno_produto: number;
+}
+
+interface ModalDetalheCusto {
+  refeicao_nome: string;
+  total_alunos_modalidade: number;
+  custo_por_aluno: number;
+  frequencia_mensal: number;
+  custo_total_refeicao: number;
+  produtos?: CustoDetalheProduto[];
+}
+
+interface CustoCardapio {
+  resumo?: {
+    custo_total: number;
+    total_refeicoes: number;
+    total_dias: number;
+    total_alunos: number;
+  };
+  por_modalidade?: CustoModalidade[];
+  por_dia?: CustoPorDia[];
+  detalhamento?: CustoDetalhamentoItem[];
+}
+
+const EMPTY_FORM: CardapioFormState = {
+  nome: "",
+  descricao: "",
+  periodo_dias: "",
+  data_inicio: "",
+  data_fim: "",
+  modalidade_id: "",
+  ativo: true,
+};
 
 interface DraggableRefeicaoProps {
   refeicao: Refeicao;
@@ -298,7 +372,7 @@ export default function CardapioDetalhe() {
   const queryClient = useQueryClient();
   
   // Estados principais
-  const [cardapio, setCardapio] = useState<any>(isNovo ? {} : null);
+  const [cardapio, setCardapio] = useState<Cardapio | null>(null);
   const [loading, setLoading] = useState(!isNovo);
   const [erro, setErro] = useState("");
   const [sucesso, setSucesso] = useState("");
@@ -307,27 +381,15 @@ export default function CardapioDetalhe() {
   const [openExcluir, setOpenExcluir] = useState(false);
   
   // Estados do formulário
-  const [form, setForm] = useState<any>(
-    isNovo
-      ? {
-          nome: "",
-          descricao: "",
-          periodo_dias: "",
-          data_inicio: "",
-          data_fim: "",
-          modalidade_id: "",
-          ativo: true,
-        }
-      : {}
-  );
+  const [form, setForm] = useState<CardapioFormState>(EMPTY_FORM);
   
   // Estados das refeições
   const [refeicoesDisponiveis, setRefeicoesDisponiveis] = useState<Refeicao[]>([]);
   const [refeicoesAdicionadas, setRefeicoesAdicionadas] = useState<CardapioRefeicao[]>([]);
   const [modalidades, setModalidades] = useState<any[]>([]);
   const [custosRefeicoes, setCustosRefeicoes] = useState<any[]>([]);
-  const [modalDetalheCusto, setModalDetalheCusto] = useState<any>(null);
-  const [custoCardapio, setCustoCardapio] = useState<any>(null);
+  const [modalDetalheCusto, setModalDetalheCusto] = useState<ModalDetalheCusto | null>(null);
+  const [custoCardapio, setCustoCardapio] = useState<CustoCardapio | null>(null);
   const [modalCustoCardapio, setModalCustoCardapio] = useState(false);
   const [loadingCustoCardapio, setLoadingCustoCardapio] = useState(false);
   
@@ -416,16 +478,8 @@ export default function CardapioDetalhe() {
     
     if (isNovo) {
       // Modo de criação
-      setCardapio({});
-      setForm({
-        nome: "",
-        descricao: "",
-        periodo_dias: "",
-        data_inicio: "",
-        data_fim: "",
-        modalidade_id: "",
-        ativo: true,
-      });
+      setCardapio(null);
+      setForm(EMPTY_FORM);
       setEditando(true);
       setLoading(false);
     } else {
@@ -468,9 +522,13 @@ export default function CardapioDetalhe() {
       
       setCardapio(cardapioData);
       setForm({
-        ...cardapioData,
-        data_inicio: formatDateForInput(cardapioData.data_inicio),
-        data_fim: formatDateForInput(cardapioData.data_fim)
+        nome: cardapioData.nome ?? "",
+        descricao: cardapioData.descricao ?? "",
+        periodo_dias: String(cardapioData.periodo_dias ?? ""),
+        data_inicio: cardapioData.data_inicio ? formatDateForInput(cardapioData.data_inicio) : "",
+        data_fim: cardapioData.data_fim ? formatDateForInput(cardapioData.data_fim) : "",
+        modalidade_id: cardapioData.modalidade_id ?? "",
+        ativo: cardapioData.ativo !== false,
       });
       
       
@@ -494,7 +552,7 @@ export default function CardapioDetalhe() {
 
   async function fetchCustosRefeicoes(cardapioId: number) {
     try {
-      const response = await cardapioServiceExtended.calcularCustoRefeicoes(cardapioId);
+      const response = await cardapioServiceExtended.calcularCustoRefeicoes(cardapioId) as { refeicoes?: unknown[] } | null;
       // A API retorna { data: { refeicoes: [...] } }
       const custosData = response?.refeicoes || [];
       setCustosRefeicoes(Array.isArray(custosData) ? custosData : []);
@@ -509,7 +567,7 @@ export default function CardapioDetalhe() {
     
     setLoadingCustoCardapio(true);
     try {
-      const custoData = await cardapioServiceExtended.calcularCustoCardapio(parseInt(id));
+      const custoData = await cardapioServiceExtended.calcularCustoCardapio(parseInt(id)) as CustoCardapio | null;
       setCustoCardapio(custoData);
       setModalCustoCardapio(true);
     } catch (error) {
@@ -537,9 +595,12 @@ export default function CardapioDetalhe() {
         throw new Error("Data de fim é obrigatória");
       }
 
-      const dadosParaEnviar = {
+      const dataBase = form.data_inicio ? new Date(form.data_inicio) : new Date();
+      const dadosParaEnviar: CardapioCreate = {
         nome: form.nome.trim(),
-        descricao: form.descricao?.trim() || null,
+        ano: dataBase.getFullYear(),
+        mes: dataBase.getMonth() + 1,
+        descricao: form.descricao?.trim() || undefined,
         periodo_dias: form.periodo_dias ? parseInt(form.periodo_dias) : 30,
         data_inicio: form.data_inicio,
         data_fim: form.data_fim,
@@ -621,10 +682,14 @@ export default function CardapioDetalhe() {
       // Buscar dados da preparação
       const refeicao = refeicoesDisponiveis.find(r => r.id === refeicaoId);
       if (refeicao) {
+        const associacaoBase =
+          novaAssociacao && typeof novaAssociacao === "object"
+            ? (novaAssociacao as Partial<CardapioRefeicao>)
+            : {};
         setRefeicoesAdicionadas(prev => [...prev, {
-          ...novaAssociacao,
+          ...associacaoBase,
           refeicao
-        }]);
+        } as CardapioRefeicao]);
         
         // Mostrar mensagem de sucesso
         setSucesso(`Preparação "${refeicao.nome}" adicionada com sucesso!`);
@@ -809,7 +874,12 @@ export default function CardapioDetalhe() {
                       label="Modalidade"
                       select
                       value={form.modalidade_id || ""}
-                      onChange={(e) => setForm({ ...form, modalidade_id: e.target.value })}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          modalidade_id: e.target.value === "" ? "" : Number(e.target.value),
+                        })
+                      }
                       fullWidth
                       required
                       disabled={!isNovo} // Desabilitar durante edição
@@ -958,7 +1028,7 @@ export default function CardapioDetalhe() {
                           Vigência
                         </Typography>
                         <Typography variant="body1" fontWeight="medium">
-                          {formatarData(cardapio?.data_inicio)} - {formatarData(cardapio?.data_fim)}
+                          {formatarData(cardapio?.data_inicio || "")} - {formatarData(cardapio?.data_fim || "")}
                         </Typography>
                       </Box>
                     </Box>
@@ -971,7 +1041,7 @@ export default function CardapioDetalhe() {
                           Progresso
                         </Typography>
                         <Typography variant="body1" fontWeight="medium">
-                          {calcularProgresso(cardapio?.data_inicio, cardapio?.data_fim).toFixed(0)}%
+                          {calcularProgresso(cardapio?.data_inicio || "", cardapio?.data_fim || "").toFixed(0)}%
                         </Typography>
                       </Box>
                     </Box>
@@ -1210,7 +1280,7 @@ export default function CardapioDetalhe() {
                 </Card>
 
                 {/* Custo por Modalidade */}
-                {custoCardapio.por_modalidade && custoCardapio.por_modalidade.length > 0 && (
+                {custoCardapio?.por_modalidade && custoCardapio.por_modalidade.length > 0 && (
                   <Box sx={{ mb: 3 }}>
                     <Typography variant="h6" gutterBottom>
                       Custo por Modalidade
@@ -1225,7 +1295,7 @@ export default function CardapioDetalhe() {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {custoCardapio.por_modalidade.map((modalidade, index) => (
+                        {custoCardapio.por_modalidade.map((modalidade: CustoModalidade, index: number) => (
                           <TableRow key={index}>
                             <TableCell>{modalidade.modalidade_nome}</TableCell>
                             <TableCell align="right">{modalidade.total_alunos}</TableCell>
@@ -1243,7 +1313,7 @@ export default function CardapioDetalhe() {
                 )}
 
                 {/* Custo por Dia */}
-                {custoCardapio.por_dia && custoCardapio.por_dia.length > 0 && (
+                {custoCardapio?.por_dia && custoCardapio.por_dia.length > 0 && (
                   <Box sx={{ mb: 3 }}>
                     <Typography variant="h6" gutterBottom>
                       Custo por Dia
@@ -1257,7 +1327,7 @@ export default function CardapioDetalhe() {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {custoCardapio.por_dia.map((dia, index) => (
+                        {custoCardapio.por_dia.map((dia: CustoPorDia, index: number) => (
                           <TableRow key={index}>
                             <TableCell>{dia.dia}</TableCell>
                             <TableCell align="right">{dia.total_refeicoes}</TableCell>
@@ -1272,7 +1342,7 @@ export default function CardapioDetalhe() {
                 )}
 
                 {/* Detalhamento */}
-                {custoCardapio.detalhamento && custoCardapio.detalhamento.length > 0 && (
+                {custoCardapio?.detalhamento && custoCardapio.detalhamento.length > 0 && (
                   <Box>
                     <Typography variant="h6" gutterBottom>
                       Detalhamento por Refeição
@@ -1290,7 +1360,7 @@ export default function CardapioDetalhe() {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {custoCardapio.detalhamento.map((item, index) => (
+                        {custoCardapio.detalhamento.map((item: CustoDetalhamentoItem, index: number) => (
                           <TableRow key={index}>
                             <TableCell>{item.dia}</TableCell>
                             <TableCell>{item.tipo_refeicao}</TableCell>
@@ -1348,7 +1418,7 @@ export default function CardapioDetalhe() {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {modalDetalheCusto.produtos?.map((produto, index) => (
+                    {modalDetalheCusto.produtos?.map((produto: CustoDetalheProduto, index: number) => (
                       <TableRow key={index}>
                         <TableCell>{produto.produto_nome}</TableCell>
                         <TableCell>{produto.unidade}</TableCell>

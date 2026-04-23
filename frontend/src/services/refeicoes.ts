@@ -14,6 +14,7 @@ export const refeicaoService = createCrudService<Refeicao, CriarRefeicaoRequest,
 
 // Alias para compatibilidade
 export const deletarRefeicao = refeicaoService.remover;
+export const listarRefeicoes = refeicaoService.listar;
 
 // Operações específicas de refeição
 export const refeicaoServiceExtended = {

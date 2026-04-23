@@ -1,10 +1,10 @@
-import express from "express";
+﻿import express from "express";
 import path from "path";
 import fs from "fs";
 import dotenv from "dotenv";
 import cors from "cors";
 
-// Carregar variáveis de ambiente PRIMEIRO
+// Carregar variÃ¡veis de ambiente PRIMEIRO
 dotenv.config();
 
 import { config } from "./config/config";
@@ -15,51 +15,8 @@ import { generalLimiter, loginLimiter } from './middleware/rateLimiter';
 import { paginationMiddleware, validatePaginationParams } from './middleware/pagination';
 import { balancedCompression } from './middleware/compression';
 
-// Importar rotas organizadas por módulos
-import userRoutes from "./modules/usuarios/routes/userRoutes";
-import adminUsuariosRoutes from "./modules/usuarios/routes/adminUsuariosRoutes";
 import { ensureAdminTables } from "./modules/usuarios/controllers/adminUsuariosController";
-
-import permissaoRoutes from "./modules/sistema/routes/permissoesRoutes";
-import refeicaoProdutoModalidadeRoutes from "./modules/nutricao/routes/refeicaoProdutoModalidadeRoutes";
-import refeicaoCalculosRoutes from "./modules/nutricao/routes/refeicaoCalculosRoutes";
-import escolaRoutes from "./modules/escolas/routes/escolaRoutes";
-import modalidadeRoutes from "./modules/cardapios/routes/modalidadeRoutes";
-import escolaModalidadeRoutes from "./modules/guias/routes/escolaModalidadeRoutes";
-import fornecedorRoutes from "./modules/contratos/routes/fornecedorRoutes";
-import contratoRoutes from "./modules/contratos/routes/contratoRoutes";
-import contratoProdutoRoutes from "./modules/contratos/routes/contratoProdutoRoutes";
-import refeicaoRoutes from "./modules/cardapios/routes/refeicaoRoutes";
-import refeicaoProdutoRoutes from "./modules/cardapios/routes/refeicaoProdutoRoutes";
-import cardapioRoutes from "./modules/cardapios/routes/cardapioRoutes";
-import tipoRefeicaoRoutes from "./modules/cardapios/routes/tipoRefeicaoRoutes";
-import produtoRoutes from "./modules/produtos/routes/produtoRoutes";
-import produtoModalidadeRoutes from "./modules/estoque/routes/produtoModalidadeRoutes";
-
-import estoqueCentralRoutes from "./modules/estoque/routes/estoqueCentralRoutes";
-import estoqueEscolarRoutes from "./modules/estoque/routes/estoqueEscolarRoutes";
-import saldoContratosModalidadesRoutes from "./modules/contratos/routes/saldoContratosModalidadesRoutes";
-import guiaRoutes from "./modules/guias/routes/guiaRoutes";
-import entregaRoutes from "./modules/entregas/routes/entregaRoutes";
-import rotaRoutes from "./modules/entregas/routes/rotaRoutes";
-import compraRoutes from "./modules/compras/routes/compraRoutes";
-import faturamentoRoutes from "./modules/faturamentos/routes/faturamentoRoutes";
-import demandasRoutes from "./modules/demandas/routes/demandaRoutes";
-import recebimentoRoutes from "./modules/recebimentos/routes/recebimentoRoutes";
-import instituicaoRoutes from "./modules/sistema/routes/instituicao";
-import pnaeRoutes from "./modules/sistema/routes/pnaeRoutes";
-import nutricionistaRoutes from "./modules/nutricao/routes/nutricionistaRoutes";
-import planejamentoComprasRoutes from "./modules/compras/routes/planejamentoComprasRoutes";
-import periodosRoutes from "./modules/sistema/routes/periodosRoutes";
-import escolaPortalRoutes from "./modules/escolas/routes/escolaPortalRoutes";
-import calendarioLetivoRoutes from "./modules/sistema/routes/calendarioLetivoRoutes";
-import tacoRoutes from "./modules/nutricao/routes/tacoRoutes";
-import gruposIngredientesRoutes from "./modules/nutricao/routes/gruposIngredientesRoutes";
-import solicitacoesAlimentosRoutes from "./modules/solicitacoes/routes/solicitacoesAlimentosRoutes";
-import dashboardRoutes from "./modules/sistema/routes/dashboardRoutes";
-import notificacoesRoutes from "./modules/sistema/routes/notificacoesRoutes";
-import disparosNotificacaoRoutes from "./modules/sistema/routes/disparosNotificacaoRoutes";
-import unidadeMedidaRoutes from "./modules/unidades/routes/unidadeMedidaRoutes";
+import { registerApiRoutes } from "./routes/registerApiRoutes";
 
 import { createServer } from 'http';
 import { initRedis } from "./config/redis";
@@ -67,7 +24,7 @@ import { createGuiaTables, createEssentialTables } from "./modules/guias/models/
 
 import db from "./database";
 
-// Normalizar CORS origins — remover entradas não-string para segurança
+// Normalizar CORS origins â€” remover entradas nÃ£o-string para seguranÃ§a
 const rawOrigin = config.backend.cors.origin;
 const allowedOrigins = Array.isArray(rawOrigin)
   ? rawOrigin.filter((o): o is string => typeof o === 'string')
@@ -92,7 +49,7 @@ const corsOptions = {
 const app = express();
 const httpServer = createServer(app);
 
-// CORS deve ser o PRIMEIRO middleware — antes de qualquer rota
+// CORS deve ser o PRIMEIRO middleware â€” antes de qualquer rota
 app.use(cors(corsOptions));
 // Responder OPTIONS imediatamente para preflight
 app.options('*', cors(corsOptions));
@@ -135,19 +92,19 @@ async function ensureProdutoComposicaoNutricionalTable() {
   }
 }
 
-// Middlewares de otimização
-app.use(balancedCompression);  // Compressão de respostas
-app.use(paginationMiddleware);  // Helpers de paginação
-app.use(validatePaginationParams);  // Validação de parâmetros
+// Middlewares de otimizaÃ§Ã£o
+app.use(balancedCompression);  // CompressÃ£o de respostas
+app.use(paginationMiddleware);  // Helpers de paginaÃ§Ã£o
+app.use(validatePaginationParams);  // ValidaÃ§Ã£o de parÃ¢metros
 
-// Rate limiting geral — excluir rotas de operações pesadas
+// Rate limiting geral â€” excluir rotas de operaÃ§Ãµes pesadas
 app.use('/api', (req, res, next) => {
-  // Não aplicar rate limit em rotas de geração (operações longas e legítimas)
+  // NÃ£o aplicar rate limit em rotas de geraÃ§Ã£o (operaÃ§Ãµes longas e legÃ­timas)
   if (req.path.startsWith('/planejamento-compras/gerar')) return next();
   return generalLimiter(req, res, next);
 });
 
-// Servir arquivos estáticos
+// Servir arquivos estÃ¡ticos
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Health check endpoint
@@ -180,24 +137,25 @@ app.get("/health", async (req, res) => {
   }
 });
 
-// DEBUG ENDPOINT - TEMPORÁRIO - Verificar variáveis de ambiente
-app.get("/debug-env", (req, res) => {
-  const envVars = {
-    NODE_ENV: process.env.NODE_ENV,
-    VERCEL: process.env.VERCEL,
-    JWT_SECRET_EXISTS: !!process.env.JWT_SECRET,
-    JWT_SECRET_LENGTH: process.env.JWT_SECRET?.length || 0,
-    JWT_SECRET_FIRST_10: process.env.JWT_SECRET?.substring(0, 10) || 'NOT_SET',
-    ALL_JWT_VARS: Object.keys(process.env).filter(k => k.includes('JWT')),
-    ALL_ENV_KEYS: Object.keys(process.env).sort()
-  };
-  
-  res.json({
-    message: "Environment Variables Debug",
-    timestamp: new Date().toISOString(),
-    ...envVars
+// DEBUG ENDPOINT - TEMPORARIO - habilitado apenas fora de producao
+if (process.env.NODE_ENV !== "production") {
+  app.get("/debug-env", (req, res) => {
+    const envVars = {
+      NODE_ENV: process.env.NODE_ENV,
+      VERCEL: process.env.VERCEL,
+      JWT_SECRET_EXISTS: !!process.env.JWT_SECRET,
+      JWT_SECRET_LENGTH: process.env.JWT_SECRET?.length || 0,
+      ALL_JWT_VARS: Object.keys(process.env).filter((k) => k.includes("JWT")),
+      ENV_KEYS_COUNT: Object.keys(process.env).length
+    };
+
+    res.json({
+      message: "Environment Variables Debug",
+      timestamp: new Date().toISOString(),
+      ...envVars
+    });
   });
-});
+}
 
 import { authenticateToken } from './middleware/authMiddleware';
 
@@ -219,58 +177,12 @@ app.get("/api/test-db", authenticateToken, async (req, res) => {
   }
 });
 
-// Registrar rotas essenciais
-app.use("/api/usuarios", userRoutes);
-app.use("/api/auth", userRoutes); // compatibilidade para login
-app.use("/api/permissoes", permissaoRoutes);
-app.use("/api/admin", adminUsuariosRoutes);
+registerApiRoutes(app);
 
-// Registrar rotas essenciais
-app.use("/api/escolas", escolaRoutes);
-app.use("/api/modalidades", modalidadeRoutes);
-app.use("/api/escola-modalidades", escolaModalidadeRoutes);
-app.use("/api/fornecedores", fornecedorRoutes);
-app.use("/api/contratos", contratoRoutes);
-app.use("/api/contrato-produtos", contratoProdutoRoutes);
-
-app.use("/api/refeicoes", refeicaoRoutes);
-app.use("/api/refeicao-produtos", refeicaoProdutoRoutes);
-app.use("/api/refeicao-produto-modalidade", refeicaoProdutoModalidadeRoutes);
-app.use("/api", refeicaoCalculosRoutes);
-app.use("/api/cardapios", cardapioRoutes);
-app.use("/api/tipos-refeicao", tipoRefeicaoRoutes);
-app.use("/api/nutricionistas", nutricionistaRoutes);
-app.use("/api/produtos", produtoRoutes);
-app.use("/api/produto-modalidades", produtoModalidadeRoutes);
-app.use("/api/unidades-medida", unidadeMedidaRoutes);
-app.use("/api/estoque-central", estoqueCentralRoutes);
-app.use("/api/estoque-escolar", estoqueEscolarRoutes);
-
-app.use("/api/saldo-contratos-modalidades", saldoContratosModalidadesRoutes);
-app.use("/api/guias", guiaRoutes);
-app.use("/api/entregas", entregaRoutes);
-app.use("/api/entregas", rotaRoutes);
-app.use("/api/compras", compraRoutes);
-app.use("/api/faturamentos", faturamentoRoutes);
-app.use("/api/demandas", demandasRoutes);
-app.use("/api/recebimentos", recebimentoRoutes);
-app.use("/api/instituicao", instituicaoRoutes);
-app.use("/api/pnae", pnaeRoutes);
-app.use("/api/planejamento-compras", planejamentoComprasRoutes);
-app.use("/api/periodos", periodosRoutes);
-app.use("/api/escola-portal", escolaPortalRoutes);
-app.use("/api", calendarioLetivoRoutes);
-app.use("/api/taco", tacoRoutes);
-app.use("/api/grupos-ingredientes", gruposIngredientesRoutes);
-app.use("/api/solicitacoes-alimentos", solicitacoesAlimentosRoutes);
-app.use("/api/dashboard", dashboardRoutes);
-app.use("/api/notificacoes", notificacoesRoutes);
-app.use("/api/disparos-notificacao", disparosNotificacaoRoutes);
-
-// Rota raiz - informações da API
+// Rota raiz - informaÃ§Ãµes da API
 app.get("/", (req, res) => {
   res.json({
-    name: "Sistema de Gestão Escolar API",
+    name: "Sistema de GestÃ£o Escolar API",
     version: "2.0.0",
     status: "online",
     database: "PostgreSQL",
@@ -278,7 +190,7 @@ app.get("/", (req, res) => {
     endpoints: {
       health: "/health",
       database_test: "/api/test-db",
-      documentation: "Rotas disponíveis listadas abaixo"
+      documentation: "Rotas disponÃ­veis listadas abaixo"
     },
     availableRoutes: [
       "/api/usuarios", "/api/auth",
@@ -307,21 +219,21 @@ app.get("/", (req, res) => {
   });
 });
 
-// Middleware para rotas não encontradas (404)
+// Middleware para rotas nÃ£o encontradas (404)
 app.use(notFoundHandler);
 
-// Middleware global de tratamento de erros (deve ser o último)
+// Middleware global de tratamento de erros (deve ser o Ãºltimo)
 app.use(errorHandler);
 
 // Inicializar servidor
 async function iniciarServidor() {
   try {
-    // Testar conexão PostgreSQL
-    console.log('🔍 Testando conexão PostgreSQL...');
+    // Testar conexÃ£o PostgreSQL
+    console.log('ðŸ” Testando conexÃ£o PostgreSQL...');
     const conectado = await db.testConnection();
 
     if (conectado) {
-      console.log('✅ PostgreSQL conectado com sucesso!');
+      console.log('âœ… PostgreSQL conectado com sucesso!');
 
       // Verificar tabelas
       const tabelas = await db.query(`
@@ -330,46 +242,46 @@ async function iniciarServidor() {
         WHERE table_schema = 'public'
       `);
 
-      console.log(`📊 Tabelas disponíveis: ${tabelas.rows[0].total}`);
+      console.log(`ðŸ“Š Tabelas disponÃ­veis: ${tabelas.rows[0].total}`);
 
-      console.log('✅ Sistema configurado para usar SQL puro');
+      console.log('âœ… Sistema configurado para usar SQL puro');
 
       // Initialize cache system
-      console.log('🔧 Inicializando sistema de cache...');
-      await initRedis();  // Tenta conectar ao Redis (fallback para memória se falhar)
+      console.log('ðŸ”§ Inicializando sistema de cache...');
+      await initRedis();  // Tenta conectar ao Redis (fallback para memÃ³ria se falhar)
 
-      // Inicializar módulos
-      console.log('🔧 Inicializando módulos...');
+      // Inicializar mÃ³dulos
+      console.log('ðŸ”§ Inicializando mÃ³dulos...');
 
       try {
         await createEssentialTables();
       } catch (e) {
-        console.error('⚠️ Falha ao criar tabelas essenciais (continuando):', e);
+        console.error('âš ï¸ Falha ao criar tabelas essenciais (continuando):', e);
       }
 
       try {
         await ensureAdminTables();
       } catch (e) {
-        console.error('⚠️ Falha ao criar tabelas de admin (continuando):', e);
+        console.error('âš ï¸ Falha ao criar tabelas de admin (continuando):', e);
       }
 
       try {
         await createGuiaTables();
       } catch (e) {
-        console.error('⚠️ Falha ao criar tabelas de guias (continuando):', e);
+        console.error('âš ï¸ Falha ao criar tabelas de guias (continuando):', e);
       }
 
       try {
         await ensureProdutoComposicaoNutricionalTable();
       } catch (e) {
-        console.error('⚠️ Falha ao garantir tabela produto_composicao_nutricional (continuando):', e);
+        console.error('âš ï¸ Falha ao garantir tabela produto_composicao_nutricional (continuando):', e);
       }
 
-      console.log('✅ Módulos inicializados com sucesso!');
+      console.log('âœ… MÃ³dulos inicializados com sucesso!');
 
-      console.log('✅ Serviços simplificados inicializados');
+      console.log('âœ… ServiÃ§os simplificados inicializados');
 
-      // Iniciar servidor com host/porta dinâmicos e fallback
+      // Iniciar servidor com host/porta dinÃ¢micos e fallback
       const DEFAULT_PORT = 3000;
       const HOST = process.env.HOST || '0.0.0.0';
       const BASE_PORT = Number(process.env.PORT) || (config as any).port || DEFAULT_PORT;
@@ -377,7 +289,7 @@ async function iniciarServidor() {
 
       const startListening = (retries = 5) => {
         const server = httpServer.listen(currentPort, HOST, () => {
-          console.log(`🚀 Servidor PostgreSQL rodando em ${HOST}:${currentPort}`);
+          console.log(`ðŸš€ Servidor PostgreSQL rodando em ${HOST}:${currentPort}`);
 
           // Tratar CORS origins que pode ser array ou boolean
           const corsOrigins = Array.isArray(config.backend.cors.origin)
@@ -386,20 +298,20 @@ async function iniciarServidor() {
               ? 'Qualquer origem (desenvolvimento)'
               : String(config.backend.cors.origin);
 
-          console.log(`📡 CORS Origins: ${corsOrigins}`);
-          console.log(`🐘 Banco: ${config.database.host}:${config.database.port}/${config.database.name}`);
-          console.log(`🌍 Ambiente: ${process.env.NODE_ENV || 'development'}`);
-          console.log(`🔗 Foreign Keys CASCADE: Ativas`);
+          console.log(`ðŸ“¡ CORS Origins: ${corsOrigins}`);
+          console.log(`ðŸ˜ Banco: ${config.database.host}:${config.database.port}/${config.database.name}`);
+          console.log(`ðŸŒ Ambiente: ${process.env.NODE_ENV || 'development'}`);
+          console.log(`ðŸ”— Foreign Keys CASCADE: Ativas`);
 
 
         });
         server.on('error', (err: any) => {
           if (err && err.code === 'EADDRINUSE' && retries > 0) {
-            console.warn(`⚠️ Porta ${currentPort} em uso. Tentando ${currentPort + 1}...`);
+            console.warn(`âš ï¸ Porta ${currentPort} em uso. Tentando ${currentPort + 1}...`);
             currentPort += 1;
             setTimeout(() => startListening(retries - 1), 200);
           } else {
-            console.error('❌ Erro ao iniciar o servidor:', err);
+            console.error('âŒ Erro ao iniciar o servidor:', err);
             process.exit(1);
           }
         });
@@ -407,33 +319,33 @@ async function iniciarServidor() {
       startListening();
 
     } else {
-      console.error('❌ Falha na conexão PostgreSQL');
-      console.error('   Verifique se o PostgreSQL está rodando');
+      console.error('âŒ Falha na conexÃ£o PostgreSQL');
+      console.error('   Verifique se o PostgreSQL estÃ¡ rodando');
       console.error('   Verifique as credenciais em database-pg.js');
       process.exit(1);
     }
 
   } catch (error) {
-    console.error('❌ Erro ao inicializar servidor:', error);
+    console.error('âŒ Erro ao inicializar servidor:', error);
     process.exit(1);
   }
 }
 
-// Inicializar apenas se não estiver no Vercel
+// Inicializar apenas se nÃ£o estiver no Vercel
 if (process.env.VERCEL !== '1') {
   iniciarServidor();
 }
 
-// Inicialização de schema essencial para Vercel (unificado em um único lugar)
+// InicializaÃ§Ã£o de schema essencial para Vercel (unificado em um Ãºnico lugar)
 if (process.env.VERCEL === '1') {
   (async function initVercelSchema() {
     try {
       await createEssentialTables();
       await createGuiaTables();
       await ensureProdutoComposicaoNutricionalTable();
-      console.log('✅ Schema essencial garantido (Vercel)');
+      console.log('âœ… Schema essencial garantido (Vercel)');
     } catch (e) {
-      console.error('⚠️ Falha ao inicializar schema (Vercel):', e);
+      console.error('âš ï¸ Falha ao inicializar schema (Vercel):', e);
     }
   })();
 }

@@ -9,7 +9,9 @@ interface EventoCalendario {
   data_fim?: string;
   cor: string;
   descricao?: string;
-  _refeicao?: any;
+  _refeicao?: {
+    tipo_refeicao?: string;
+  };
 }
 
 interface CalendarioMensalProps {
@@ -32,8 +34,6 @@ export default function CalendarioMensal({
   const { semanas, hojeStr, evtPorData } = useMemo(() => {
     /* Gerar o grid: semanas de DOM a SAB */
     const primeiro = new Date(ano, mes - 1, 1);
-    const ultimo = new Date(ano, mes, 0).getDate();
-
     // Encontrar o domingo da primeira semana
     let ini = new Date(primeiro);
     ini.setDate(ini.getDate() - ini.getDay()); // dow: 0=dom, 1=seg, ... 6=sab

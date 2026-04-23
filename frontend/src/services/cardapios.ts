@@ -6,13 +6,27 @@ export interface Cardapio {
   nome: string;
   mes: number;
   ano: number;
+  descricao?: string;
   observacao?: string;
+  periodo_dias?: number;
+  data_inicio?: string;
+  data_fim?: string;
+  modalidade_id?: number | null;
+  refeicoes?: unknown[];
   ativo?: boolean;
   created_at?: string;
   updated_at?: string;
 }
 
-export type CardapioCreate = Pick<Cardapio, 'nome' | 'mes' | 'ano'> & { observacao?: string };
+export type CardapioCreate = Pick<Cardapio, 'nome' | 'mes' | 'ano'> & {
+  observacao?: string;
+  descricao?: string;
+  periodo_dias?: number;
+  data_inicio?: string;
+  data_fim?: string;
+  modalidade_id?: number | null;
+  ativo?: boolean;
+};
 export type CardapioUpdate = Partial<CardapioCreate>;
 
 // CRUD básico via factory

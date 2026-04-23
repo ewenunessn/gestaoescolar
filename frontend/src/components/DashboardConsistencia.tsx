@@ -304,7 +304,9 @@ const DashboardConsistencia: React.FC = () => {
                                 Monitoramento e verificação de integridade dos pedidos
                             </Typography>
                         </Box>
-                        <NotificacoesMenu sx={{ mr: 1 }} />
+                        <Box sx={{ mr: 1 }}>
+                            <NotificacoesMenu />
+                        </Box>
                     </Box>
                     <Button
                         variant="contained"

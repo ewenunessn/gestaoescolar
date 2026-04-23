@@ -1,0 +1,19 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+[7m[1m[36m RUN [39m[22m[27m [36mv1.6.1[39m [90mC:/Users/Ewerton/Desktop/Ewerton/gestaoescolar/frontend[39m
+
+ [32m✓[39m src/utils/dateUtils.test.ts [2m ([22m[2m21 tests[22m[2m)[22m[90m 33[2mms[22m[39m
+[90mstderr[2m | src/tests/SafeButton.test.tsx[2m > [22m[2mSafeButton[2m > [22m[2mdeve prevenir duplo clique rapido[22m[39m
+Clique muito rapido, ignorando
+
+[90mstderr[2m | src/tests/SafeButton.test.tsx[2m > [22m[2mSafeButton[2m > [22m[2mdeve prevenir multiplos cliques durante execucao[22m[39m
+Clique muito rapido, ignorando
+Clique muito rapido, ignorando
+
+ [32m✓[39m src/tests/SafeButton.test.tsx [2m ([22m[2m9 tests[22m[2m)[22m[33m 397[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m2 passed[39m[22m[90m (2)[39m
+[2m      Tests [22m [1m[32m30 passed[39m[22m[90m (30)[39m
+[2m   Start at [22m 20:04:55
+[2m   Duration [22m 9.43s[2m (transform 271ms, setup 695ms, collect 5.89s, tests 430ms, environment 3.77s, prepare 903ms)[22m
+

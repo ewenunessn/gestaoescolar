@@ -24,24 +24,33 @@ export const PDF_COLORS = {
   divider:    '#e2e8f0',
 };
 
+let pdfMakePromise: Promise<any> | null = null;
+
 // ─── Inicialização do pdfmake (importação dinâmica para Vite) ─────────────────
 
 export const initPdfMake = async () => {
-  const pdfMakeModule = await import('pdfmake/build/pdfmake');
-  const pdfFonts = await import('pdfmake/build/vfs_fonts');
-  const pdfMake = (pdfMakeModule as any).default || pdfMakeModule;
-  // vfs_fonts 0.3.x exporta as fontes diretamente no objeto raiz
-  const vfs = (pdfFonts as any).default || pdfFonts;
-  pdfMake.vfs = vfs;
-  pdfMake.fonts = {
-    Roboto: {
-      normal: 'Roboto-Regular.ttf',
-      bold: 'Roboto-Medium.ttf',
-      italics: 'Roboto-Italic.ttf',
-      bolditalics: 'Roboto-MediumItalic.ttf',
-    },
-  };
-  return pdfMake;
+  if (!pdfMakePromise) {
+    pdfMakePromise = Promise.all([
+      import('pdfmake/build/pdfmake'),
+      import('pdfmake/build/vfs_fonts'),
+    ]).then(([pdfMakeModule, pdfFonts]) => {
+      const pdfMake = (pdfMakeModule as any).default || pdfMakeModule;
+      // vfs_fonts 0.3.x exporta as fontes diretamente no objeto raiz
+      const vfs = (pdfFonts as any).default || pdfFonts;
+      pdfMake.vfs = vfs;
+      pdfMake.fonts = {
+        Roboto: {
+          normal: 'Roboto-Regular.ttf',
+          bold: 'Roboto-Medium.ttf',
+          italics: 'Roboto-Italic.ttf',
+          bolditalics: 'Roboto-MediumItalic.ttf',
+        },
+      };
+      return pdfMake;
+    });
+  }
+
+  return pdfMakePromise;
 };
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────

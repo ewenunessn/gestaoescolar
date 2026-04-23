@@ -79,6 +79,14 @@ interface ModalidadeRowProps {
   formatarNumero: (valor: number) => string;
 }
 
+interface HistoricoConsumoItem {
+  id: number;
+  data_consumo: string;
+  quantidade: number;
+  responsavel_nome?: string;
+  observacao?: string;
+}
+
 const ModalidadeRow: React.FC<ModalidadeRowProps> = ({
   modalidade,
   produtoSelecionado,
@@ -217,7 +225,7 @@ const SaldoContratosModalidades: React.FC = () => {
   // Extrair dados da resposta
   const dados = responseData?.data || [];
   const total = responseData?.pagination?.total || 0;
-  const historicoConsumo = historicoData?.data?.historico || [];
+  const historicoConsumo: HistoricoConsumoItem[] = historicoData?.data?.historico || [];
 
   // Definir campos de filtro
   const filterFields: FilterField[] = useMemo(() => [
@@ -979,7 +987,7 @@ const SaldoContratosModalidades: React.FC = () => {
 
   const exportarCSV = async () => {
     try {
-      const blob = await saldoContratosModalidadesService.exportarCSV(filtros);
+      const blob = await saldoContratosModalidadesService.exportarCSV(filters as SaldoContratosModalidadesFilters);
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -1286,7 +1294,7 @@ const SaldoContratosModalidades: React.FC = () => {
                       mt: 1
                     }}
                   >
-                    <strong>Total Disponível para Consumo:</strong> {formatarNumero(calcularTotaisAtuais().totalDisponivel)} {produtoSelecionado.unidade}
+                    <strong>Total Disponível para Consumo:</strong> {formatarNumero(calcularTotaisAtuais().totalDisponivel ?? 0)} {produtoSelecionado.unidade}
                   </Typography>
                 </Box>
 
@@ -1561,7 +1569,7 @@ const SaldoContratosModalidades: React.FC = () => {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {historicoConsumo.map((consumo, index) => (
+                      {historicoConsumo.map((consumo: HistoricoConsumoItem, index: number) => (
                         <TableRow key={index}>
                           <TableCell>{formatarData(consumo.data_consumo)}</TableCell>
                           <TableCell align="right">{formatarNumero(consumo.quantidade)} {itemSelecionado?.unidade}</TableCell>
@@ -1571,7 +1579,7 @@ const SaldoContratosModalidades: React.FC = () => {
                             <Tooltip title="Excluir Consumo">
                               <IconButton
                                 size="small"
-                                color="delete"
+                                color="error"
                                 onClick={() => excluirConsumo(consumo.id)}
                               >
                                 <CancelIcon fontSize="small" />

@@ -27,8 +27,14 @@ export interface DashboardPNAE {
     valor_af_acumulado: string | number;
     percentual_af: string | number;
   }>;
+  contratos?: {
+    total: string | number;
+    com_af: string | number;
+  };
   alertas: {
     atende_30_porcento: boolean;
+    atende_45_porcento?: boolean;
+    total_alertas?: string | number;
     fornecedores_vencidos: boolean;
     fornecedores_vencendo: boolean;
   };

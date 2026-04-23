@@ -13,6 +13,7 @@ const GREEN = "#22c55e";
 const NAVY = "#0f172a";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "../../../components/DataTable";
+import PageHeader from "../../../components/PageHeader";
 import { 
   School as SchoolIcon, Inventory as InventoryIcon, CheckCircle as CheckCircleIcon, 
   Warning as WarningIcon, Restaurant as RestaurantIcon, Dashboard as DashboardIcon, 
@@ -739,11 +740,11 @@ export default function PortalEscola() {
         <Typography variant="subtitle2" sx={{ mt: 1 }}>Itens</Typography>
         {novaItens.map((item, idx) => (
           <Box key={idx} sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-            <Autocomplete<Produto>
+            <Autocomplete<Produto, false, false, true>
               options={produtos}
-              getOptionLabel={p => p.nome}
+              getOptionLabel={p => typeof p === 'string' ? p : p.nome}
               value={produtos.find(p => p.id === item.produto_id) ?? null}
-              onChange={(_, p) => setNovaItens(prev => prev.map((it, i) => i === idx ? { ...it, produto_id: p?.id, nome_produto: p?.nome ?? '', unidade: p?.unidade || it.unidade } : it))}
+              onChange={(_, p) => setNovaItens(prev => prev.map((it, i) => i === idx ? { ...it, produto_id: typeof p === 'string' ? undefined : p?.id, nome_produto: typeof p === 'string' ? p : p?.nome ?? '', unidade: typeof p === 'string' ? it.unidade : p?.unidade || it.unidade } : it))}
               onInputChange={(_, val, reason) => { if (reason === 'input') setNovaItens(prev => prev.map((it, i) => i === idx ? { ...it, nome_produto: val, produto_id: undefined } : it)); }}
               inputValue={item.nome_produto}
               size="small"
@@ -816,7 +817,7 @@ export default function PortalEscola() {
       <Box sx={{ mb: 3 }}>
         <ViewTabs
           value={abaAtiva}
-          onChange={setAbaAtiva}
+          onChange={(v) => setAbaAtiva(Number(v))}
           tabs={[
             { value: 0, label: 'Dashboard', icon: <DashboardIcon /> },
             { value: 1, label: 'Cardápio', icon: <RestaurantIcon /> },

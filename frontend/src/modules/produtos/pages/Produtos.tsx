@@ -9,7 +9,7 @@ import {
   useCategoriasProdutos 
 } from "../../../hooks/queries";
 import { useToast } from "../../../hooks/useToast";
-import ImportacaoProdutos from "../../../components/ImportacaoProdutos";
+import ImportacaoProdutos, { ProdutoImportacao } from "../../../components/ImportacaoProdutos";
 import {
   Box,
   Typography,
@@ -392,7 +392,7 @@ const ProdutosPage = () => {
   };
 
   // Funções de Importação/Exportação
-  const handleImportProdutos = async (produtosImportacao: Array<Record<string, unknown>>) => {
+  const handleImportProdutos = async (produtosImportacao: ProdutoImportacao[]) => {
     try {
       setLoadingImport(true);
       setImportModalOpen(false);
@@ -704,7 +704,7 @@ const ProdutosPage = () => {
                 <Grid item xs={12} sm={6}>
                   <UnidadeMedidaSelect
                     value={formData.unidade_medida_id || null}
-                    onChange={(uid) => setFormData({ ...formData, unidade_medida_id: uid })}
+                    onChange={(uid) => setFormData({ ...formData, unidade_medida_id: uid ?? undefined })}
                     size="small"
                     label="Unidade de Medida"
                   />

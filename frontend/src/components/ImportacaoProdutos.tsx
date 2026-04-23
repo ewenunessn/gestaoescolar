@@ -17,22 +17,17 @@ import {
   TableRow,
   Paper,
   Chip,
-  IconButton,
-  Tooltip,
   Stepper,
   Step,
   StepLabel,
   Card,
-  FormControlLabel,
-  Switch,
 } from '@mui/material';
 import {
   CloudUpload,
   Download,
   CheckCircle,
-  Error,
+  Error as ErrorIcon,
   Warning,
-  Delete,
   Inventory,
 } from '@mui/icons-material';
 import * as XLSX from 'xlsx';
@@ -44,7 +39,7 @@ interface ImportacaoProdutosProps {
   onImport: (produtos: ProdutoImportacao[]) => Promise<void>;
 }
 
-interface ProdutoImportacao {
+export interface ProdutoImportacao {
   nome: string;
   unidade: string;
   descricao?: string;
@@ -57,6 +52,8 @@ interface ProdutoImportacao {
   status: 'valido' | 'erro' | 'aviso';
   mensagem?: string;
 }
+
+type LinhaImportacaoProduto = Record<string, unknown>;
 
 const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
   open,
@@ -109,14 +106,14 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
     }
   };
 
-  const lerArquivo = (file: File): Promise<any[]> => {
+  const lerArquivo = (file: File): Promise<LinhaImportacaoProduto[]> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
 
       reader.onload = (e) => {
         try {
           const data = e.target?.result;
-          let jsonData: any[] = [];
+          let jsonData: LinhaImportacaoProduto[] = [];
 
           if (file.name.endsWith('.csv')) {
             // Processar CSV
@@ -126,7 +123,7 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
 
             jsonData = lines.slice(1).map(line => {
               // Processar CSV com aspas
-              const values = [];
+              const values: string[] = [];
               let current = '';
               let inQuotes = false;
 
@@ -143,7 +140,7 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
               }
               values.push(current.trim());
 
-              const obj: any = {};
+              const obj: LinhaImportacaoProduto = {};
               headers.forEach((header, index) => {
                 obj[header] = values[index] || '';
               });
@@ -154,7 +151,7 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
             const workbook = XLSX.read(data, { type: 'binary' });
             const sheetName = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[sheetName];
-            jsonData = XLSX.utils.sheet_to_json(worksheet);
+            jsonData = XLSX.utils.sheet_to_json<LinhaImportacaoProduto>(worksheet);
           }
 
           resolve(jsonData);
@@ -165,7 +162,7 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
 
       reader.onerror = () => {
         const errorMessage = 'Erro ao ler arquivo';
-        reject(new Error(errorMessage));
+        reject(new globalThis.Error(errorMessage));
       };
 
       if (file.name.endsWith('.csv')) {
@@ -176,22 +173,22 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
     });
   };
 
-  const validarProdutos = (dadosRaw: any[]): ProdutoImportacao[] => {
-    return dadosRaw.map((linha, index) => {
+  const validarProdutos = (dadosRaw: LinhaImportacaoProduto[]): ProdutoImportacao[] => {
+    return dadosRaw.map((linha) => {
       // Normalizar tipo_processamento para lowercase
-      let tipoProcessamento = linha.tipo_processamento || '';
+      let tipoProcessamento = String(linha.tipo_processamento || '');
       if (tipoProcessamento && typeof tipoProcessamento === 'string') {
         tipoProcessamento = tipoProcessamento.trim().toLowerCase();
       }
       
       const produto: ProdutoImportacao = {
-        nome: linha.nome || '',
-        unidade: linha.unidade || 'UN',
-        descricao: linha.descricao || '',
-        categoria: linha.categoria || '',
+        nome: String(linha.nome || ''),
+        unidade: String(linha.unidade || 'UN'),
+        descricao: String(linha.descricao || ''),
+        categoria: String(linha.categoria || ''),
         tipo_processamento: tipoProcessamento,
-        peso: linha.peso ? parseFloat(linha.peso) : undefined,
-        fator_correcao: linha.fator_correcao ? parseFloat(linha.fator_correcao) : undefined,
+        peso: linha.peso ? parseFloat(String(linha.peso)) : undefined,
+        fator_correcao: linha.fator_correcao ? parseFloat(String(linha.fator_correcao)) : undefined,
         perecivel: linha.perecivel === 'true' || linha.perecivel === true || linha.perecivel === 1,
         ativo: linha.ativo === 'true' || linha.ativo === true || linha.ativo === 1,
         status: 'valido',
@@ -269,23 +266,6 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
       alert('Erro ao importar produtos. Tente novamente.');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const removerProduto = (index: number) => {
-    setProdutos(produtos.filter((_, i) => i !== index));
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'valido':
-        return { color: '#059669', bg: '#dcfce7', icon: <CheckCircle sx={{ fontSize: 16 }} /> };
-      case 'aviso':
-        return { color: '#d97706', bg: '#fef3c7', icon: <Warning sx={{ fontSize: 16 }} /> };
-      case 'erro':
-        return { color: '#dc2626', bg: '#fee2e2', icon: <Error sx={{ fontSize: 16 }} /> };
-      default:
-        return { color: '#6b7280', bg: '#f3f4f6', icon: <CheckCircle sx={{ fontSize: 16 }} /> };
     }
   };
 
@@ -447,7 +427,7 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
               )}
               {produtosComErro > 0 && (
                 <Chip
-                  icon={<Error sx={{ fontSize: 16 }} />}
+                  icon={<ErrorIcon sx={{ fontSize: 16 }} />}
                   label={`${produtosComErro} com erros`}
                   sx={{
                     bgcolor: '#fee2e2',
@@ -504,7 +484,7 @@ const ImportacaoProdutos: React.FC<ImportacaoProdutosProps> = ({
                       >
                         <TableCell>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            {hasError && <Error sx={{ fontSize: 16, color: '#dc2626' }} />}
+                            {hasError && <ErrorIcon sx={{ fontSize: 16, color: '#dc2626' }} />}
                             {hasWarning && <Warning sx={{ fontSize: 16, color: '#d97706' }} />}
                             {!hasError && !hasWarning && <CheckCircle sx={{ fontSize: 16, color: '#059669' }} />}
                             <Typography sx={{ fontWeight: 600 }}>

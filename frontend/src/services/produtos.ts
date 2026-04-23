@@ -25,7 +25,7 @@ export async function importarProdutosLote(produtos: ImportarProdutoRequest[]): 
 // Operações de composição nutricional
 export async function buscarComposicaoNutricional(produtoId: number): Promise<ComposicaoNutricional | null> {
   const { data } = await apiWithRetry.get(`/produtos/${produtoId}/composicao-nutricional`);
-  return extractResponseData<ComposicaoNutricional>(data, null);
+  return extractResponseData<ComposicaoNutricional | null>(data, null);
 }
 
 export async function salvarComposicaoNutricional(

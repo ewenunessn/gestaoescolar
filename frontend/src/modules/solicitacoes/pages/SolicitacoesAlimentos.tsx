@@ -139,7 +139,7 @@ export default function SolicitacoesAlimentos() {
         <Box sx={{ mb: 2 }}>
           <ViewTabs
             value={aba}
-            onChange={setAba}
+            onChange={(v) => setAba(Number(v))}
             tabs={[
               { value: 0, label: 'Pendentes', badge: comPendencia.length },
               { value: 1, label: 'Concluídas', badge: semPendencia.length },

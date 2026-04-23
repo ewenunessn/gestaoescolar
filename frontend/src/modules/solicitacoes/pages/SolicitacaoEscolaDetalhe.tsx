@@ -220,7 +220,7 @@ export default function SolicitacaoEscolaDetalhe() {
         <Box sx={{ mb: 2 }}>
           <ViewTabs
             value={aba}
-            onChange={setAba}
+            onChange={(v) => setAba(Number(v))}
             tabs={[
               { value: 0, label: 'Pendentes', badge: pendentes.length },
               { value: 1, label: 'Histórico', badge: historico.length },

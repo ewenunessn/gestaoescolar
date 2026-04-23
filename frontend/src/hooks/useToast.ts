@@ -31,19 +31,31 @@ const infoOptions: ToastOptions = {
 };
 
 export const useToast = () => {
-  return {
+  const api = {
     // Notificações básicas
-    success: (message: string, options?: ToastOptions) =>
-      toast.success(message, { ...successOptions, ...options }),
+    success: (message: string, options?: ToastOptions | string) =>
+      toast.success(
+        typeof options === 'string' ? `${message}: ${options}` : message,
+        { ...successOptions, ...(typeof options === 'string' ? {} : options) }
+      ),
 
-    error: (message: string, options?: ToastOptions) =>
-      toast.error(message, { ...errorOptions, ...options }),
+    error: (message: string, options?: ToastOptions | string) =>
+      toast.error(
+        typeof options === 'string' ? `${message}: ${options}` : message,
+        { ...errorOptions, ...(typeof options === 'string' ? {} : options) }
+      ),
 
-    warning: (message: string, options?: ToastOptions) =>
-      toast.warning(message, { ...warningOptions, ...options }),
+    warning: (message: string, options?: ToastOptions | string) =>
+      toast.warning(
+        typeof options === 'string' ? `${message}: ${options}` : message,
+        { ...warningOptions, ...(typeof options === 'string' ? {} : options) }
+      ),
 
-    info: (message: string, options?: ToastOptions) =>
-      toast.info(message, { ...infoOptions, ...options }),
+    info: (message: string, options?: ToastOptions | string) =>
+      toast.info(
+        typeof options === 'string' ? `${message}: ${options}` : message,
+        { ...infoOptions, ...(typeof options === 'string' ? {} : options) }
+      ),
 
     // Notificações de sucesso específicas
     successSave: (message?: string) =>
@@ -120,6 +132,24 @@ export const useToast = () => {
         error: string | ((error: any) => string);
       },
       options?: ToastOptions
-    ) => toast.promise(promise, messages, { ...defaultOptions, ...options }),
+    ) =>
+      toast.promise(
+        promise,
+        {
+          pending: messages.pending,
+          success:
+            typeof messages.success === 'function'
+              ? { render: ({ data }) => (messages.success as (d: T) => string)(data as T) }
+              : messages.success,
+          error:
+            typeof messages.error === 'function'
+              ? { render: ({ data }) => (messages.error as (e: any) => string)(data) }
+              : messages.error,
+        },
+        { ...defaultOptions, ...options }
+      ),
   };
+
+  // Compatibilidade: algumas telas esperam `toast.toast.success(...)`
+  return { ...api, toast: api };
 };

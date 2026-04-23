@@ -20,8 +20,6 @@ import {
   Divider,
 } from '@mui/material';
 import {
-  ExpandMore as ExpandMoreIcon,
-  ExpandLess as ExpandLessIcon,
   Tune as TuneIcon,
 } from '@mui/icons-material';
 import { modalidadeService, Modalidade } from '../services/modalidades';
@@ -207,7 +205,7 @@ export default function AdicionarIngredienteDialog({
             <InputLabel>Unidade de Medida</InputLabel>
             <Select
               value={tipoMedida}
-              onChange={(e) => setTipoMedida(e.target.value as 'gramas' | 'unidades')}
+              onChange={(e) => setTipoMedida(e.target.value as 'gramas' | 'mililitros' | 'unidades')}
               label="Unidade de Medida"
             >
               <MenuItem value="gramas">Gramas (g)</MenuItem>

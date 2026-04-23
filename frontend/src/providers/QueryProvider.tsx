@@ -20,14 +20,8 @@ export function QueryProvider({ children }: QueryProviderProps) {
       {process.env.NODE_ENV === 'development' && (
         <ReactQueryDevtools 
           initialIsOpen={false}
-          position="bottom-right"
-          toggleButtonProps={{
-            style: {
-              marginLeft: '5px',
-              transform: 'scale(0.8)',
-              transformOrigin: 'bottom right',
-            },
-          }}
+          buttonPosition="bottom-right"
+          position="bottom"
         />
       )}
     </QueryClientProvider>

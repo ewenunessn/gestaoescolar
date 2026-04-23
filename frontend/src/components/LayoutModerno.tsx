@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+﻿import React, { useState, useCallback, useEffect } from "react";
 import {
   Box, Drawer, List, Typography, IconButton, ListItem, ListItemButton,
   ListItemIcon, ListItemText, Collapse, Tooltip, useTheme, useMediaQuery,
@@ -13,7 +13,7 @@ import {
 } from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
 import { logout } from "../services/auth";
-import { useConfigContext } from "../context/ConfigContext";
+import { useConfigContext } from "../contexts/ConfigContext";
 import { useConfigChangeIndicator } from "../hooks/useConfigChangeIndicator";
 import { useUserRole } from "../hooks/useUserRole";
 import { useUserPermissions } from "../hooks/useUserPermissions";
@@ -27,14 +27,14 @@ import { GlobalSearchDropdown, useGlobalSearch } from './GlobalSearch';
 const drawerWidth = 240;
 const collapsedDrawerWidth = 72;
 
-// ═══════════════════════════════════════════════════════════════
-// DESIGN SYSTEM — Gowen Dark Mode
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// DESIGN SYSTEM â€” Gowen Dark Mode
 // Clean, modern sidebar com estilo cyberpunk sutil (cyan neon)
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 const DESIGN_TOKENS = {
   bg: {
-    primary: "#0d0d0d",      // Fundo principal — quase preto
+    primary: "#0d0d0d",      // Fundo principal â€” quase preto
     secondary: "#1a1a1a",    // Fundo dos cards/itens
     elevated: "#222222",     // Itens elevados/hover
     accent: "#2a2a2a",       // Hover mais intenso
@@ -46,15 +46,15 @@ const DESIGN_TOKENS = {
   },
   text: {
     primary: "#f0f0f0",      // Texto principal
-    secondary: "#888",       // Texto secundário
+    secondary: "#888",       // Texto secundÃ¡rio
     muted: "#666",           // Texto esmaecido
     accent: "#777",
   },
   accent: {
-    primary: "#00bfff",      // Ciano neon — cor principal
+    primary: "#00bfff",      // Ciano neon â€” cor principal
     secondary: "#33ccff",    // Ciano mais claro
     success: "#22c55e",      // Verde ativo
-    warning: "#f59e0b",      // Âmbar/âmbar
+    warning: "#f59e0b",      // Ã‚mbar/Ã¢mbar
     danger: "#ef4444",       // Vermelho
   },
   glow: {
@@ -79,11 +79,11 @@ const RED = DESIGN_TOKENS.accent.danger;
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   "Principal":     <Dashboard fontSize="small" />,
   "Cadastros":     <School fontSize="small" />,
-  "Cardápios":     <MenuBook fontSize="small" />,
+  "CardÃ¡pios":     <MenuBook fontSize="small" />,
   "Compras":       <Assignment fontSize="small" />,
   "Entregas":      <LocalShipping fontSize="small" />,
   "Estoque":       <Inventory fontSize="small" />,
-  "Configurações": <Settings fontSize="small" />,
+  "ConfiguraÃ§Ãµes": <Settings fontSize="small" />,
   "Portal Escola": <HomeWork fontSize="small" />,
 };
 
@@ -92,7 +92,7 @@ const MENU_ESCOLA = [
     category: "Portal Escola",
     items: [
       { text: "Minha Escola", icon: <HomeWork fontSize="small" />, path: "/portal-escola" },
-      { text: "Solicitações", icon: <RequestPage fontSize="small" />, path: "/portal-escola/solicitacoes" },
+      { text: "SolicitaÃ§Ãµes", icon: <RequestPage fontSize="small" />, path: "/portal-escola/solicitacoes" },
     ],
   },
 ];
@@ -115,11 +115,11 @@ const getMenuConfig = (_cfg: any) => [
     ],
   },
   {
-    category: "Cardápios",
+    category: "CardÃ¡pios",
     items: [
-      { text: "Preparações", icon: <Restaurant fontSize="small" />, path: "/preparacoes" },
-      { text: "Cardápios",   icon: <MenuBook fontSize="small" />,   path: "/cardapios" },
-      { text: "Tipos de Refeição", icon: <Schedule fontSize="small" />, path: "/tipos-refeicao" },
+      { text: "PreparaÃ§Ãµes", icon: <Restaurant fontSize="small" />, path: "/preparacoes" },
+      { text: "CardÃ¡pios",   icon: <MenuBook fontSize="small" />,   path: "/cardapios" },
+      { text: "Tipos de RefeiÃ§Ã£o", icon: <Schedule fontSize="small" />, path: "/tipos-refeicao" },
     ],
   },
   {
@@ -135,7 +135,7 @@ const getMenuConfig = (_cfg: any) => [
   {
     category: "Entregas",
     items: [
-      { text: "Gestão de Rotas", icon: <Business fontSize="small" />,      path: "/gestao-rotas" },
+      { text: "GestÃ£o de Rotas", icon: <Business fontSize="small" />,      path: "/gestao-rotas" },
       { text: "Romaneio",        icon: <Print fontSize="small" />,         path: "/romaneio" },
       { text: "Entregas",        icon: <LocalShipping fontSize="small" />, path: "/entregas" },
       { text: "Comprovantes",    icon: <Description fontSize="small" />,   path: "/comprovantes-entrega" },
@@ -146,22 +146,22 @@ const getMenuConfig = (_cfg: any) => [
     items: [
       { text: "Estoque Central", icon: <Inventory fontSize="small" />, path: "/estoque-central" },
       { text: "Estoque Escolar", icon: <School fontSize="small" />,    path: "/estoque-escolar" },
-      { text: "Solicitações Recebidas", icon: <RequestPage fontSize="small" />, path: "/solicitacoes-alimentos" },
+      { text: "SolicitaÃ§Ãµes Recebidas", icon: <RequestPage fontSize="small" />, path: "/solicitacoes-alimentos" },
     ],
   },
   {
-    category: "Configurações",
+    category: "ConfiguraÃ§Ãµes",
     items: [
-      { text: "Instituição",       icon: <Settings fontSize="small" />,           path: "/configuracao-instituicao" },
-      { text: "Calendário Letivo", icon: <CalendarToday fontSize="small" />,      path: "/calendario-letivo" },
-      { text: "Períodos",          icon: <CalendarToday fontSize="small" />,      path: "/periodos",                adminOnly: true },
-      { text: "Usuários",          icon: <AdminPanelSettings fontSize="small" />, path: "/gerenciamento-usuarios",  adminOnly: true },
+      { text: "InstituiÃ§Ã£o",       icon: <Settings fontSize="small" />,           path: "/configuracao-instituicao" },
+      { text: "CalendÃ¡rio Letivo", icon: <CalendarToday fontSize="small" />,      path: "/calendario-letivo" },
+      { text: "PerÃ­odos",          icon: <CalendarToday fontSize="small" />,      path: "/periodos",                adminOnly: true },
+      { text: "UsuÃ¡rios",          icon: <AdminPanelSettings fontSize="small" />, path: "/gerenciamento-usuarios",  adminOnly: true },
       { text: "Disparos",          icon: <NotificationsActive fontSize="small" />, path: "/disparos-notificacao",   adminOnly: true },
     ],
   },
 ];
 
-// ─── SubItem com estilo clean e moderno ───
+// â”€â”€â”€ SubItem com estilo clean e moderno â”€â”€â”€
 const SubItem: React.FC<{
   item: any; isActive: boolean; onClick: (path: string) => void; collapsed: boolean;
 }> = ({ item, isActive, onClick, collapsed }) => {
@@ -229,7 +229,7 @@ const SubItem: React.FC<{
   ) : btn;
 };
 
-// ─── StandaloneItem - Item sem categoria (como Dashboard) ───
+// â”€â”€â”€ StandaloneItem - Item sem categoria (como Dashboard) â”€â”€â”€
 const StandaloneItem: React.FC<{
   item: any; location: string; onNavigate: (path: string) => void; collapsed: boolean;
 }> = ({ item, location, onNavigate, collapsed }) => {
@@ -300,7 +300,7 @@ const StandaloneItem: React.FC<{
   ) : btn;
 };
 
-// ─── CategoryGroup com estilo clean e moderno ───
+// â”€â”€â”€ CategoryGroup com estilo clean e moderno â”€â”€â”€
 const CategoryGroup: React.FC<{
   category: string; items: any[]; location: string;
   onNavigate: (path: string) => void; collapsed: boolean; defaultOpen?: boolean;
@@ -466,7 +466,7 @@ const CategoryGroup: React.FC<{
   );
 };
 
-// ─── Layout Principal ───
+// â”€â”€â”€ Layout Principal â”€â”€â”€
 const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => {
@@ -485,7 +485,7 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => { if (onConfigChanged) onConfigChanged(showChangeIndicator); }, [onConfigChanged, showChangeIndicator]);
 
-  // Mapa de módulo → slug de permissão
+  // Mapa de mÃ³dulo â†’ slug de permissÃ£o
   const MODULO_SLUGS: Record<string, string> = {
     'Dashboard': 'dashboard',
     'Escolas': 'escolas',
@@ -494,33 +494,33 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
     'Nutricionistas': 'nutricionistas',
     'Fornecedores': 'fornecedores',
     'Contratos': 'contratos',
-    'Preparações': 'preparacoes',
-    'Cardápios': 'cardapios',
-    'Tipos de Refeição': 'tipos_refeicao',
+    'PreparaÃ§Ãµes': 'preparacoes',
+    'CardÃ¡pios': 'cardapios',
+    'Tipos de RefeiÃ§Ã£o': 'tipos_refeicao',
     'Planejamento': 'planejamento_compras',
     'Guias de Demanda': 'demandas',
     'Pedidos': 'pedidos',
     'Saldo Contratos': 'saldo_contratos',
     'Dashboard PNAE': 'pnae',
-    'Gestão de Rotas': 'rotas',
+    'GestÃ£o de Rotas': 'rotas',
     'Romaneio': 'romaneio',
     'Entregas': 'entregas',
     'Comprovantes': 'comprovantes',
     'Estoque Central': 'estoque',
     'Estoque Escolar': 'estoque',
-    'Solicitações Recebidas': 'solicitacoes',
-    'Instituição': 'configuracoes',
-    'Calendário Letivo': 'calendario',
-    'Períodos': 'periodos',
-    'Usuários': 'usuarios',
+    'SolicitaÃ§Ãµes Recebidas': 'solicitacoes',
+    'InstituiÃ§Ã£o': 'configuracoes',
+    'CalendÃ¡rio Letivo': 'calendario',
+    'PerÃ­odos': 'periodos',
+    'UsuÃ¡rios': 'usuarios',
     'Disparos': 'notificacoes',
   };
 
-  // Filtrar menu por permissões
+  // Filtrar menu por permissÃµes
   const menuConfig = isEscolaUser ? MENU_ESCOLA : (() => {
     const base = getMenuConfig(configModuloSaldo);
     return base.map(cat => {
-      // Se for standalone, não precisa filtrar items
+      // Se for standalone, nÃ£o precisa filtrar items
       if (cat.standalone) {
         return cat;
       }
@@ -530,12 +530,12 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
         items: cat.items?.filter((item: any) => {
           // adminOnly: manter filtro existente
           if (item.adminOnly && !isAdmin) return false;
-          // Se não tem slug mapeado, mostrar (fallback)
+          // Se nÃ£o tem slug mapeado, mostrar (fallback)
           const slug = MODULO_SLUGS[item.text];
           if (!slug) return true;
-          // Admin sempre vê tudo
+          // Admin sempre vÃª tudo
           if (isAdmin) return true;
-          // Verificar permissão de leitura
+          // Verificar permissÃ£o de leitura
           return hasLeitura(slug);
         }) || [],
       };
@@ -558,15 +558,15 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const search = useGlobalSearch();
 
-  // Drawer para mobile (sempre expandido, com botão sair visível)
+  // Drawer para mobile (sempre expandido, com botÃ£o sair visÃ­vel)
   const mobileDrawer = (
     <Box sx={{
       height: "100%", display: "flex", flexDirection: "column",
       bgcolor: SIDEBAR_BG,
     }}>
-      {/* ── Brand Header removed — logo moved to AppBar ── */}
+      {/* â”€â”€ Brand Header removed â€” logo moved to AppBar â”€â”€ */}
 
-      {/* ── Config update indicator ── */}
+      {/* â”€â”€ Config update indicator â”€â”€ */}
       {hasRecentChange && !loadingConfig && (
         <Box sx={{
           mx: 1, mt: 1.5, py: 0.5, px: 1,
@@ -574,11 +574,11 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
           bgcolor: GREEN_DIM, color: GREEN,
           fontWeight: 500,
         }}>
-          ✓ Menu atualizado!
+          âœ“ Menu atualizado!
         </Box>
       )}
 
-      {/* ── Menu Items ── */}
+      {/* â”€â”€ Menu Items â”€â”€ */}
       <Box sx={{
         flexGrow: 1, 
         overflow: "auto", 
@@ -643,7 +643,7 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
                     }}
                     collapsed={false}
                     defaultOpen={config.category === "Portal Escola"}
-                    isFirst={index === 1} // Primeira categoria após Dashboard
+                    isFirst={index === 1} // Primeira categoria apÃ³s Dashboard
                   />
                 );
               }
@@ -652,7 +652,7 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
         )}
       </Box>
 
-      {/* ── Footer com botão Sair ── */}
+      {/* â”€â”€ Footer com botÃ£o Sair â”€â”€ */}
       <Box sx={{
         flexShrink: 0,
         borderTop: `1px solid ${DESIGN_TOKENS.border.subtle}`,
@@ -690,9 +690,9 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
       height: "100%", display: "flex", flexDirection: "column",
       bgcolor: SIDEBAR_BG,
     }}>
-      {/* ── Brand Header removed — logo moved to AppBar ── */}
+      {/* â”€â”€ Brand Header removed â€” logo moved to AppBar â”€â”€ */}
 
-      {/* ── Config update indicator ── */}
+      {/* â”€â”€ Config update indicator â”€â”€ */}
       {hasRecentChange && !loadingConfig && (
         <Box sx={{
           mx: 1, mt: 1.5, py: 0.5, px: 1,
@@ -700,11 +700,11 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
           bgcolor: GREEN_DIM, color: GREEN,
           fontWeight: 500,
         }}>
-          ✓ Menu atualizado!
+          âœ“ Menu atualizado!
         </Box>
       )}
 
-      {/* ── Menu Items ── */}
+      {/* â”€â”€ Menu Items â”€â”€ */}
       <Box sx={{
         flexGrow: 1, 
         overflow: "auto", 
@@ -763,7 +763,7 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
                     onNavigate={handleNavigation}
                     collapsed={collapsed}
                     defaultOpen={config.category === "Portal Escola"}
-                    isFirst={index === 1} // Primeira categoria após Dashboard
+                    isFirst={index === 1} // Primeira categoria apÃ³s Dashboard
                   />
                 );
               }
@@ -772,7 +772,7 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
         )}
       </Box>
 
-      {/* ── Footer ── */}
+      {/* â”€â”€ Footer â”€â”€ */}
       <Box sx={{
         flexShrink: 0,
         borderTop: `1px solid ${DESIGN_TOKENS.border.subtle}`,
@@ -902,7 +902,7 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
                 onChange={e => { search.setQuery(e.target.value); search.setOpen(true); }}
                 onFocus={() => search.setOpen(true)}
                 onBlur={() => setTimeout(() => search.setOpen(false), 150)}
-                placeholder="Buscar páginas..."
+                placeholder="Buscar pÃ¡ginas..."
                 sx={{
                   flex: 1, py: 1, pr: 2,
                   color: DESIGN_TOKENS.text.primary,
@@ -940,7 +940,7 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
             )}
           </Box>
 
-          {/* Seletor de Período e Notificações */}
+          {/* Seletor de PerÃ­odo e NotificaÃ§Ãµes */}
           <Box sx={{ display: "flex", alignItems: "center", gap: 1, ml: "auto" }}>
             <SeletorPeriodo />
             {isEscolaUser ? <NotificacoesEscolaMenu /> : <NotificacoesMenu />}
@@ -970,7 +970,7 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
         width: { md: `calc(100% - ${collapsed ? collapsedDrawerWidth : drawerWidth}px)` },
         minHeight: "100vh", bgcolor: "background.default",
         transition: "width 0.25s ease",
-        mt: { xs: "56px", md: "64px" }, // Margem top para não ficar atrás do AppBar
+        mt: { xs: "56px", md: "64px" }, // Margem top para nÃ£o ficar atrÃ¡s do AppBar
       }}>
         {children}
       </Box>
@@ -978,8 +978,8 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
   );
 };
 
-// Ambos os providers sempre montados — evita erro de hook fora de provider
-// durante o render inicial (antes de useUserRole resolver o tipo do usuário).
+// Ambos os providers sempre montados â€” evita erro de hook fora de provider
+// durante o render inicial (antes de useUserRole resolver o tipo do usuÃ¡rio).
 const LayoutModerno: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <NotificacoesProvider>
     <NotificacoesEscolaProvider>

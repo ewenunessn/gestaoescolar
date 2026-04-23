@@ -21,6 +21,7 @@ import {
   produtoService, deletarProduto,
   buscarComposicaoNutricional, salvarComposicaoNutricional,
 } from "../../../services/produtos";
+import type { Produto, ComposicaoNutricional } from "../../../types/produto";
 import { useAtualizarProduto } from "../../../hooks/queries/useProdutoQueries";
 import { useToast } from "../../../hooks/useToast";
 import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
@@ -60,9 +61,82 @@ const composicaoVazia = {
   acucares: "",
 };
 
+type ProdutoFormData = {
+  nome: string;
+  descricao: string;
+  categoria: string;
+  tipo_processamento: string;
+  validade_minima: number | string;
+  imagem_url: string;
+  perecivel: boolean;
+  ativo: boolean;
+  estoque_minimo: number | string;
+  fator_correcao: number | string;
+  tipo_fator_correcao: string;
+  indice_coccao: number | string;
+  unidade_medida_id: number | null;
+  peso: number | string;
+};
+
+type ComposicaoFormData = {
+  produto_id: number;
+  calorias: number | string;
+  proteinas: number | string;
+  gorduras: number | string;
+  carboidratos: number | string;
+  fibras: number | string;
+  calcio: number | string;
+  ferro: number | string;
+  vitamina_a: number | string;
+  vitamina_c: number | string;
+  sodio: number | string;
+  gorduras_saturadas_g: number | string;
+  gorduras_trans_g: number | string;
+  colesterol: number | string;
+  acucares: number | string;
+};
+
+type EditableFieldOption = {
+  value: string;
+  label: string;
+};
+
+type EditableFieldProps = {
+  label: string;
+  value: React.ReactNode;
+  field: string;
+  editingField: string | null;
+  formValue?: string | number | boolean | null;
+  onEdit: (field: string) => void;
+  onSave: (field: string) => void;
+  onCancel: (field: string) => void;
+  onChange: (field: string, value: string | number | boolean | null) => void;
+  isSaving: boolean;
+  type?: string;
+  options?: EditableFieldOption[] | null;
+  helperText?: React.ReactNode;
+  multiline?: boolean;
+  rows?: number;
+  autocompleteOptions?: string[] | null;
+};
+
+type SectionPaperProps = {
+  title: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+  actions?: React.ReactNode;
+};
+
+type ComposicaoNutricionalCardProps = {
+  composicaoData: ComposicaoFormData;
+  onSave: (data: ComposicaoFormData) => void | Promise<void>;
+  isSaving: boolean;
+  onCarregarTaco: () => void;
+};
+
 // --- Subcomponentes de UI ---
 
-const SectionPaper = ({ title, icon, children, actions }) => (
+const SectionPaper = ({ title, icon, children, actions }: SectionPaperProps) => (
     <Paper sx={{ p: 1.5, borderRadius: "8px", boxShadow: '0 4px 12px rgba(0,0,0,0.05)', height: '100%', display: 'flex', flexDirection: 'column' }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
             <Stack direction="row" alignItems="center" spacing={1}>
@@ -94,7 +168,7 @@ const EditableField = ({
   multiline = false,
   rows = 1,
   autocompleteOptions = null,
-}) => {
+}: EditableFieldProps) => {
   const isEditing = editingField === field;
   
   return (
@@ -111,7 +185,7 @@ const EditableField = ({
                 onChange={(e) => onChange(field, e.target.value)}
                 sx={{ fontSize: '0.8125rem' }}
               >
-                {options.map(opt => (
+                {options.map((opt) => (
                   <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
                 ))}
               </Select>
@@ -122,7 +196,7 @@ const EditableField = ({
               fullWidth
               size="small"
               options={autocompleteOptions}
-              value={formValue || ''}
+              value={String(formValue ?? '')}
               onChange={(event, newValue) => onChange(field, newValue || '')}
               onInputChange={(event, newInputValue) => onChange(field, newInputValue)}
               renderInput={(params) => (
@@ -185,7 +259,7 @@ const EditableField = ({
   );
 };
 
-const ComposicaoNutricionalCard = ({ composicaoData, onSave, isSaving, onCarregarTaco }) => {
+const ComposicaoNutricionalCard = ({ composicaoData, onSave, isSaving, onCarregarTaco }: ComposicaoNutricionalCardProps) => {
     const [editingField, setEditingField] = useState<string | null>(null);
     const [formData, setFormData] = useState(composicaoData);
     useEffect(() => { setFormData(composicaoData); }, [composicaoData]);
@@ -247,7 +321,7 @@ const ComposicaoNutricionalCard = ({ composicaoData, onSave, isSaving, onCarrega
                         {editingField === c.key ? (
                             <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', flex: 1, justifyContent: 'flex-end' }}>
                                 <TextField 
-                                    value={formData[c.key] || ''} 
+                                    value={formData[c.key as keyof ComposicaoFormData] || ''} 
                                     onChange={e => setFormData({ ...formData, [c.key]: e.target.value })} 
                                     type="number" 
                                     size="small"
@@ -284,10 +358,10 @@ const ComposicaoNutricionalCard = ({ composicaoData, onSave, isSaving, onCarrega
                         ) : (
                             <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', justifyContent: 'flex-end' }}>
                                 <Typography variant="body2" fontWeight={500} sx={{ fontSize: '0.8125rem', minWidth: 50, textAlign: 'right' }}>
-                                    {formData[c.key] || '-'}
+                                    {formData[c.key as keyof ComposicaoFormData] || '-'}
                                 </Typography>
                                 <Typography variant="caption" sx={{ fontSize: '0.7rem', minWidth: 30, color: 'text.secondary' }}>
-                                    {formData[c.key] ? c.unit : ''}
+                                    {formData[c.key as keyof ComposicaoFormData] ? c.unit : ''}
                                 </Typography>
                                 <IconButton 
                                     size="small" 
@@ -312,11 +386,26 @@ export default function ProdutoDetalhe() {
   const { setPageTitle } = usePageTitle();
   const toast = useToast();
 
-  const [produto, setProduto] = useState<any>(null);
-  const [composicao, setComposicao] = useState<any>(composicaoVazia);
+  const [produto, setProduto] = useState<Produto | null>(null);
+  const [composicao, setComposicao] = useState<ComposicaoFormData>(composicaoVazia);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
-  const [form, setForm] = useState<any>({});
+  const [form, setForm] = useState<ProdutoFormData>({
+    nome: '',
+    descricao: '',
+    categoria: '',
+    tipo_processamento: '',
+    validade_minima: '',
+    imagem_url: '',
+    perecivel: false,
+    ativo: true,
+    estoque_minimo: 0,
+    fator_correcao: 1,
+    tipo_fator_correcao: 'perda',
+    indice_coccao: 1,
+    unidade_medida_id: null,
+    peso: '',
+  });
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingComp, setIsSavingComp] = useState(false);
   const [openExcluir, setOpenExcluir] = useState(false);
@@ -339,6 +428,11 @@ export default function ProdutoDetalhe() {
     setLoading(true);
     try {
       const prod = await produtoService.buscarPorId(Number(id));
+      if (!prod) {
+        toast.error("Produto não encontrado");
+        navigate("/produtos");
+        return;
+      }
       setProduto(prod); 
       // Garantir que o formulário seja inicializado com todos os dados do produto
       setForm({
@@ -368,7 +462,7 @@ export default function ProdutoDetalhe() {
       toast.error("Produto não encontrado"); 
     } 
     finally { setLoading(false); }
-  }, [id]);
+  }, [id, navigate, toast]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -410,6 +504,7 @@ export default function ProdutoDetalhe() {
   }, [id, form, atualizarProdutoMutation, toast]);
 
   const handleCancel = useCallback(() => {
+    if (!produto) return;
     setIsEditing(false);
     // Restaurar form com dados do produto
     setForm({
@@ -431,6 +526,7 @@ export default function ProdutoDetalhe() {
   }, [produto]);
 
   const handleStartEdit = useCallback(() => {
+    if (!produto) return;
     setIsEditing(true);
     setForm({
       nome: produto.nome || '',
@@ -450,7 +546,7 @@ export default function ProdutoDetalhe() {
     });
   }, [produto]);
 
-  const handleSaveComposition = useCallback(async (compData, nomeAlimento?: string) => {
+  const handleSaveComposition = useCallback(async (compData: ComposicaoFormData, nomeAlimento?: string) => {
     setIsSavingComp(true);
     try {
       const dataToSend = { ...Object.fromEntries(Object.entries(compData).map(([k, v]) => [k, v === "" ? null : Number(v)])) };
@@ -466,6 +562,8 @@ export default function ProdutoDetalhe() {
   }, [id]);
 
   const handleTacoSelect = useCallback(async (composicaoTaco: any, nomeAlimento: string, alimento: TacoAlimento) => {
+    if (!produto) return;
+
     // Salvar composição nutricional
     await handleSaveComposition(composicaoTaco, nomeAlimento);
     

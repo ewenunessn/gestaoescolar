@@ -17,7 +17,9 @@ interface EventoCalendario {
   data_fim?: string;
   cor: string;
   descricao?: string;
-  _refeicao?: any;
+  _refeicao?: {
+    tipo_refeicao?: string;
+  };
 }
 
 interface Props {

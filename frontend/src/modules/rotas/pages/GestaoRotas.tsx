@@ -338,8 +338,7 @@ const GestaoRotas: React.FC = () => {
                         columns={columns}
                         searchPlaceholder="Buscar rotas..."
                         emptyMessage="Nenhuma rota encontrada"
-                        emptyIcon={<RouteIcon sx={{ fontSize: 48, opacity: 0.2 }} />}
-                        actions={
+                        rightToolbarActions={
                             <>
                                 <Button
                                     variant="outlined"

@@ -138,9 +138,9 @@ export default function CompraForm() {
                 unidade: item.unidade || '',
                 fornecedor_nome: item.fornecedor_nome || '',
                 contrato_numero: item.contrato_numero || '',
-                quantidade: parseFloat(item.quantidade) || 0,
-                preco_unitario: parseFloat(item.preco_unitario) || 0,
-                valor_total: parseFloat(item.valor_total) || 0,
+                quantidade: Number(item.quantidade) || 0,
+                preco_unitario: Number(item.preco_unitario) || 0,
+                valor_total: Number(item.valor_total) || 0,
                 data_entrega_prevista: item.data_entrega_prevista ? item.data_entrega_prevista.split('T')[0] : '',
                 observacoes: item.observacoes || '',
                 saldo_disponivel: parseFloat((item as any).saldo_disponivel) || 0

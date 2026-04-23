@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { refeicaoService, refeicaoServiceExtended, CriarRefeicaoRequest, AtualizarRefeicaoRequest } from '../../services/refeicoes';
-import { Refeicao } from '../../types/refeicao';
+import { refeicaoService, refeicaoServiceExtended } from '../../services/refeicoes';
+import type { AtualizarRefeicaoRequest, CriarRefeicaoRequest } from '../../types/refeicao';
 
 // Query key
 export const REFEICOES_QUERY_KEY = ['refeicoes'];

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { getAlertas, type AlertaEstoque } from '../services/estoqueCentralService';
 
 export function useEstoqueAlertas() {
@@ -10,18 +10,13 @@ export function useEstoqueAlertas() {
     try {
       setLoading(true);
       setError(null);
-      const alertasData = await getAlertas(true); // Apenas não resolvidos
+      const alertasData = await getAlertas(true); // Apenas nÃ£o resolvidos
       setAlertas(alertasData);
-        total: alertasData.length,
-        criticos: alertasData.filter(a => a.nivel === 'critical').length,
-        avisos: alertasData.filter(a => a.nivel === 'warning').length,
-        informativos: alertasData.filter(a => a.nivel === 'info').length
-      });
     } catch (err: any) {
-      console.error('❌ Erro ao carregar alertas:', err);
-      // Se for erro 404 ou similar, pode ser que o módulo ainda não esteja configurado
+      console.error('âŒ Erro ao carregar alertas:', err);
+      // Se for erro 404 ou similar, pode ser que o mÃ³dulo ainda nÃ£o esteja configurado
       if (err.response?.status === 404 || err.response?.status === 500) {
-        setError(null); // Não mostrar erro, apenas não mostrar alertas
+        setError(null); // NÃ£o mostrar erro, apenas nÃ£o mostrar alertas
         setAlertas([]);
       } else {
         setError('Erro ao carregar alertas');
@@ -65,7 +60,7 @@ export function useEstoqueAlertas() {
     alertasVencimentoProximo,
     alertasEstoqueBaixo,
     alertasEstoqueZerado,
-    // Funções
+    // FunÃ§Ãµes
     recarregar: carregarAlertas,
     // Status
     temAlertas: totalAlertas > 0,

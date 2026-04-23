@@ -4,33 +4,84 @@ import {
   FormControl, InputLabel, Select, MenuItem, Chip,
 } from "@mui/material";
 import { Save as SaveIcon, Refresh as ResetIcon } from "@mui/icons-material";
-import { Designer } from "@pdfme/ui";
-import { BLANK_PDF } from "@pdfme/common";
-import { text, image, line, rectangle, ellipse, table, barcodes } from "@pdfme/schemas";
 import { useToast } from "../../../hooks/useToast";
 import { buscarInstituicao, salvarTemplatePDF } from "../../../services/instituicao";
 import { usePageTitle } from "../../../contexts/PageTitleContext";
-import PageContainer from "../../../components/PageContainer";
 
-// Templates disponíveis no sistema
-const TEMPLATES_DISPONIVEIS = [
-  { id: 'guia_entrega',   label: 'Guia de Entrega',       descricao: 'Cabeçalho da guia de entrega por escola' },
-  { id: 'comprovante',    label: 'Comprovante de Entrega', descricao: 'Comprovante de entrega assinado' },
-  { id: 'romaneio',       label: 'Romaneio',               descricao: 'Romaneio de entrega por rota' },
-  { id: 'cabecalho_padrao', label: 'Cabeçalho Padrão',    descricao: 'Cabeçalho padrão para todos os documentos' },
-];
-
-// Variáveis dinâmicas disponíveis por template
-const VARIAVEIS: Record<string, string[]> = {
-  guia_entrega:    ['escola_nome', 'escola_endereco', 'rota_nome', 'rota_numero', 'total_alunos', 'mes_ano', 'inst_nome', 'inst_departamento', 'inst_logo'],
-  comprovante:     ['escola_nome', 'numero_comprovante', 'data_entrega', 'entregador', 'recebedor', 'inst_nome', 'inst_logo'],
-  romaneio:        ['rota_nome', 'data_inicio', 'data_fim', 'inst_nome', 'inst_logo'],
-  cabecalho_padrao:['inst_nome', 'inst_departamento', 'inst_logo', 'inst_secretario', 'inst_cargo'],
+type PdfDesignerTemplate = {
+  basePdf: unknown;
+  schemas: Array<Array<Record<string, unknown>>>;
 };
 
-// Template base padrão para novos templates
-const templateBase = (nome: string) => ({
-  basePdf: BLANK_PDF,
+type PdfDesignerPluginMap = Record<string, unknown>;
+
+type PdfDesignerInstance = {
+  destroy: () => void;
+  getTemplate: () => PdfDesignerTemplate;
+  updateTemplate: (template: PdfDesignerTemplate) => void;
+};
+
+type PdfDesignerConstructor = new (config: {
+  domContainer: HTMLDivElement;
+  template: PdfDesignerTemplate;
+  plugins: PdfDesignerPluginMap;
+  options?: {
+    font?: Record<string, { data: string; fallback?: boolean }>;
+  };
+}) => PdfDesignerInstance;
+
+type PdfDesignerAssets = {
+  Designer: PdfDesignerConstructor;
+  blankPdf: unknown;
+  plugins: PdfDesignerPluginMap;
+};
+
+let pdfDesignerAssetsPromise: Promise<PdfDesignerAssets> | null = null;
+
+const carregarAssetsPdfDesigner = async (): Promise<PdfDesignerAssets> => {
+  if (!pdfDesignerAssetsPromise) {
+    pdfDesignerAssetsPromise = Promise.all([
+      import("@pdfme/ui"),
+      import("@pdfme/common"),
+      import("@pdfme/schemas"),
+    ]).then(([uiModule, commonModule, schemasModule]) => {
+      const plugins = {
+        text: schemasModule.text,
+        image: schemasModule.image,
+        line: schemasModule.line,
+        rectangle: schemasModule.rectangle,
+        ellipse: schemasModule.ellipse,
+        table: schemasModule.table,
+        ...schemasModule.barcodes,
+      };
+
+      return {
+        Designer: uiModule.Designer as PdfDesignerConstructor,
+        blankPdf: commonModule.BLANK_PDF,
+        plugins,
+      };
+    });
+  }
+
+  return pdfDesignerAssetsPromise;
+};
+
+const TEMPLATES_DISPONIVEIS = [
+  { id: 'guia_entrega', label: 'Guia de Entrega', descricao: 'Cabecalho da guia de entrega por escola' },
+  { id: 'comprovante', label: 'Comprovante de Entrega', descricao: 'Comprovante de entrega assinado' },
+  { id: 'romaneio', label: 'Romaneio', descricao: 'Romaneio de entrega por rota' },
+  { id: 'cabecalho_padrao', label: 'Cabecalho Padrao', descricao: 'Cabecalho padrao para todos os documentos' },
+];
+
+const VARIAVEIS: Record<string, string[]> = {
+  guia_entrega: ['escola_nome', 'escola_endereco', 'rota_nome', 'rota_numero', 'total_alunos', 'mes_ano', 'inst_nome', 'inst_departamento', 'inst_logo'],
+  comprovante: ['escola_nome', 'numero_comprovante', 'data_entrega', 'entregador', 'recebedor', 'inst_nome', 'inst_logo'],
+  romaneio: ['rota_nome', 'data_inicio', 'data_fim', 'inst_nome', 'inst_logo'],
+  cabecalho_padrao: ['inst_nome', 'inst_departamento', 'inst_logo', 'inst_secretario', 'inst_cargo'],
+};
+
+const criarTemplateBase = (nome: string, blankPdf: unknown): PdfDesignerTemplate => ({
+  basePdf: blankPdf,
   schemas: [[
     {
       name: 'inst_nome',
@@ -42,7 +93,7 @@ const templateBase = (nome: string) => ({
       fontColor: '#1a202c',
       fontName: 'Helvetica',
       alignment: 'left',
-      content: `{inst_nome}`,
+      content: '{inst_nome}',
     },
     {
       name: 'inst_departamento',
@@ -54,7 +105,7 @@ const templateBase = (nome: string) => ({
       fontColor: '#4a5568',
       fontName: 'Helvetica',
       alignment: 'left',
-      content: `{inst_departamento}`,
+      content: '{inst_departamento}',
     },
     {
       name: 'titulo',
@@ -79,67 +130,95 @@ const templateBase = (nome: string) => ({
   ]],
 });
 
-const plugins = { text, image, line, rectangle, ellipse, table, ...barcodes };
-
 export default function EditorTemplatesPDF() {
   const { setPageTitle, setBackPath } = usePageTitle();
   const toast = useToast();
   const designerRef = useRef<HTMLDivElement>(null);
-  const designerInstance = useRef<Designer | null>(null);
+  const designerInstance = useRef<PdfDesignerInstance | null>(null);
 
   const [templateSelecionado, setTemplateSelecionado] = useState('cabecalho_padrao');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [designerLoading, setDesignerLoading] = useState(true);
   const [instituicao, setInstituicao] = useState<any>(null);
+  const [pdfAssets, setPdfAssets] = useState<PdfDesignerAssets | null>(null);
 
   useEffect(() => {
     setPageTitle('Editor de Templates PDF');
     setBackPath('/configuracao-instituicao');
     return () => setBackPath(null);
-  }, []);
+  }, [setBackPath, setPageTitle]);
 
   useEffect(() => {
-    buscarInstituicao().then(inst => {
-      setInstituicao(inst);
-      setLoading(false);
-    }).catch(() => setLoading(false));
-  }, []);
+    let ativo = true;
 
-  useEffect(() => {
-    if (loading || !designerRef.current) return;
-    inicializarDesigner();
+    buscarInstituicao()
+      .then((inst) => {
+        if (!ativo) return;
+        setInstituicao(inst);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!ativo) return;
+        setLoading(false);
+      });
+
     return () => {
-      designerInstance.current?.destroy();
-      designerInstance.current = null;
+      ativo = false;
     };
-  }, [loading, templateSelecionado]);
+  }, []);
 
-  const inicializarDesigner = () => {
-    if (!designerRef.current) return;
-    designerInstance.current?.destroy();
+  useEffect(() => {
+    let ativo = true;
+
+    carregarAssetsPdfDesigner()
+      .then((assets) => {
+        if (!ativo) return;
+        setPdfAssets(assets);
+        setDesignerLoading(false);
+      })
+      .catch(() => {
+        if (!ativo) return;
+        setDesignerLoading(false);
+        toast.error('Erro ao carregar editor de PDF');
+      });
+
+    return () => {
+      ativo = false;
+    };
+  }, [toast]);
+
+  useEffect(() => {
+    if (loading || designerLoading || !designerRef.current || !pdfAssets) return;
 
     const templateSalvo = instituicao?.pdf_templates?.[templateSelecionado];
-    const template = templateSalvo || templateBase(templateSelecionado);
+    const template = templateSalvo || criarTemplateBase(templateSelecionado, pdfAssets.blankPdf);
 
-    designerInstance.current = new Designer({
+    designerInstance.current?.destroy();
+    designerInstance.current = new pdfAssets.Designer({
       domContainer: designerRef.current,
       template,
-      plugins,
+      plugins: pdfAssets.plugins,
       options: {
         font: {
           Helvetica: { data: 'https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxK.woff2', fallback: true },
         },
       },
     });
-  };
+
+    return () => {
+      designerInstance.current?.destroy();
+      designerInstance.current = null;
+    };
+  }, [designerLoading, instituicao, loading, pdfAssets, templateSelecionado]);
 
   const handleSalvar = async () => {
     if (!designerInstance.current) return;
     setSaving(true);
+
     try {
       const template = designerInstance.current.getTemplate();
       await salvarTemplatePDF(templateSelecionado, template);
-      // Atualizar cache local
       setInstituicao((prev: any) => ({
         ...prev,
         pdf_templates: { ...(prev?.pdf_templates || {}), [templateSelecionado]: template },
@@ -153,15 +232,14 @@ export default function EditorTemplatesPDF() {
   };
 
   const handleResetar = () => {
-    if (!designerInstance.current) return;
-    designerInstance.current.updateTemplate(templateBase(templateSelecionado));
+    if (!designerInstance.current || !pdfAssets) return;
+    designerInstance.current.updateTemplate(criarTemplateBase(templateSelecionado, pdfAssets.blankPdf));
   };
 
-  const templateInfo = TEMPLATES_DISPONIVEIS.find(t => t.id === templateSelecionado);
   const variaveis = VARIAVEIS[templateSelecionado] || [];
-  const templatSalvo = !!instituicao?.pdf_templates?.[templateSelecionado];
+  const templateSalvo = !!instituicao?.pdf_templates?.[templateSelecionado];
 
-  if (loading) {
+  if (loading || designerLoading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
         <CircularProgress />
@@ -171,16 +249,15 @@ export default function EditorTemplatesPDF() {
 
   return (
     <Box sx={{ height: 'calc(100vh - 56px)', display: 'flex', flexDirection: 'column', bgcolor: '#f8f9fa' }}>
-      {/* Toolbar */}
       <Box sx={{ px: 2, py: 1.5, bgcolor: 'white', borderBottom: '1px solid #e9ecef', display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
         <FormControl size="small" sx={{ minWidth: 220 }}>
           <InputLabel>Template</InputLabel>
           <Select
             value={templateSelecionado}
             label="Template"
-            onChange={e => setTemplateSelecionado(e.target.value)}
+            onChange={(e) => setTemplateSelecionado(e.target.value)}
           >
-            {TEMPLATES_DISPONIVEIS.map(t => (
+            {TEMPLATES_DISPONIVEIS.map((t) => (
               <MenuItem key={t.id} value={t.id}>
                 <Box>
                   <Typography variant="body2">{t.label}</Typography>
@@ -191,14 +268,13 @@ export default function EditorTemplatesPDF() {
           </Select>
         </FormControl>
 
-        {templatSalvo && <Chip label="Salvo" color="success" size="small" />}
+        {templateSalvo && <Chip label="Salvo" color="success" size="small" />}
 
         <Box sx={{ flex: 1 }} />
 
-        {/* Variáveis disponíveis */}
         <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>
-          <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>Variáveis:</Typography>
-          {variaveis.map(v => (
+          <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>Variaveis:</Typography>
+          {variaveis.map((v) => (
             <Chip
               key={v}
               label={`{${v}}`}
@@ -225,10 +301,9 @@ export default function EditorTemplatesPDF() {
       </Box>
 
       <Alert severity="info" sx={{ mx: 2, mt: 1, py: 0.5 }}>
-        Arraste elementos da barra lateral, redimensione e posicione livremente. Use as variáveis acima para inserir dados dinâmicos — clique numa variável para copiar.
+        Arraste elementos da barra lateral, redimensione e posicione livremente. Use as variaveis acima para inserir dados dinamicos. Clique numa variavel para copiar.
       </Alert>
 
-      {/* Designer */}
       <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden', mt: 1 }}>
         <div ref={designerRef} style={{ width: '100%', height: '100%' }} />
       </Box>

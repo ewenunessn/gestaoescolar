@@ -11,7 +11,6 @@ import {
   CircularProgress,
 } from '@mui/material';
 import {
-  Warning,
   Business,
   Assignment,
 } from '@mui/icons-material';
@@ -28,13 +27,31 @@ interface ConfirmacaoExclusaoFornecedorProps {
   onCancel: () => void;
 }
 
+interface ContratoRelacionado {
+  id: number;
+  numero: string;
+  status: string;
+  dataInicio: string;
+  dataFim: string;
+  valorTotal: number;
+  totalProdutos: number;
+}
+
+interface RelacionamentosFornecedor {
+  fornecedor: string;
+  podeExcluir: boolean;
+  totalContratos: number;
+  contratosAtivos: number;
+  contratos: ContratoRelacionado[];
+}
+
 const ConfirmacaoExclusaoFornecedor: React.FC<ConfirmacaoExclusaoFornecedorProps> = ({
   open,
   fornecedor,
   onConfirm,
   onCancel
 }) => {
-  const [relacionamentos, setRelacionamentos] = useState<any>(null);
+  const [relacionamentos, setRelacionamentos] = useState<RelacionamentosFornecedor | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,9 +67,9 @@ const ConfirmacaoExclusaoFornecedor: React.FC<ConfirmacaoExclusaoFornecedorProps
     try {
       setLoading(true);
       setError(null);
-      const data = await verificarRelacionamentosFornecedor(fornecedor.id);
+      const data = await verificarRelacionamentosFornecedor(fornecedor.id) as RelacionamentosFornecedor;
       setRelacionamentos(data);
-    } catch (err: any) {
+    } catch (err) {
       setError('Erro ao carregar relacionamentos do fornecedor');
       console.error('Erro ao carregar relacionamentos:', err);
     } finally {
@@ -138,7 +155,7 @@ const ConfirmacaoExclusaoFornecedor: React.FC<ConfirmacaoExclusaoFornecedorProps
             </Typography>
 
             <List sx={{ bgcolor: '#f9fafb', borderRadius: '8px', p: 1 }}>
-              {relacionamentos.contratos.slice(0, 5).map((contrato: any, index: number) => (
+              {relacionamentos.contratos.slice(0, 5).map((contrato, index: number) => (
                 <React.Fragment key={contrato.id}>
                   <ListItem sx={{ py: 1 }}>
                     <ListItemText
@@ -207,7 +224,6 @@ const ConfirmacaoExclusaoFornecedor: React.FC<ConfirmacaoExclusaoFornecedorProps
       title="Confirmar Exclusão de Fornecedor"
       severity="warning"
       confirmLabel="Confirmar Exclusão"
-      maxWidth="md"
       loading={loading}
       message={renderConteudo()}
     />

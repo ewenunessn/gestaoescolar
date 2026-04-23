@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Button, ButtonProps } from '@mui/material';
 import { LoadingOverlay } from './LoadingOverlay';
 
@@ -10,9 +10,9 @@ interface SafeButtonWithOverlayProps extends Omit<ButtonProps, 'onClick'> {
 }
 
 /**
- * Botão com proteção contra duplo clique + overlay de loading
+ * Botao com protecao contra duplo clique + overlay de loading
  * Combina o melhor dos dois mundos:
- * - Desabilita o botão
+ * - Desabilita o botao
  * - Mostra overlay bloqueando toda a interface
  */
 export const SafeButtonWithOverlay: React.FC<SafeButtonWithOverlayProps> = ({
@@ -25,34 +25,45 @@ export const SafeButtonWithOverlay: React.FC<SafeButtonWithOverlayProps> = ({
   ...props
 }) => {
   const [isLoading, setIsLoading] = useState(false);
-  const [lastClick, setLastClick] = useState(0);
+  const isLoadingRef = useRef(false);
+  const lastClickRef = useRef(0);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const handleClick = useCallback(async () => {
     const now = Date.now();
-    
-    // Debounce
-    if (now - lastClick < debounceMs) {
-      console.warn('⚠️ Clique muito rápido, ignorando');
+
+    if (now - lastClickRef.current < debounceMs) {
+      console.warn('Clique muito rapido, ignorando');
       return;
     }
-    
-    // Previne cliques durante execução
-    if (isLoading) {
-      console.warn('⚠️ Ação já em andamento, ignorando');
+
+    if (isLoadingRef.current) {
+      console.warn('Acao ja em andamento, ignorando');
       return;
     }
-    
-    setLastClick(now);
+
+    lastClickRef.current = now;
+    isLoadingRef.current = true;
     setIsLoading(true);
-    
+
     try {
       await onClick();
     } catch (error) {
-      console.error('Erro ao executar ação:', error);
+      console.error('Erro ao executar acao:', error);
     } finally {
-      setIsLoading(false);
+      isLoadingRef.current = false;
+
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
-  }, [onClick, isLoading, lastClick, debounceMs]);
+  }, [onClick, debounceMs]);
 
   return (
     <>

@@ -198,7 +198,7 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
   }, []);
 
   return (
-    <BrowserRouter future={routerConfig?.future}>
+    <BrowserRouter>
       <EscolasProvider>
         <Routes>
             {/* Redireciona para dashboard se logado, senão para login */}

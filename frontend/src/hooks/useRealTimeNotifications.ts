@@ -26,10 +26,9 @@ export function useRealTimeNotifications(): UseRealTimeNotificationsReturn {
     
     const newNotification: NotificationItem = {
       id,
-      type: 'info',
-      autoHide: true,
-      duration: 5000,
       ...notification,
+      autoHide: notification.autoHide ?? true,
+      duration: notification.duration ?? 5000,
     };
 
     setNotifications(prev => [...prev, newNotification]);

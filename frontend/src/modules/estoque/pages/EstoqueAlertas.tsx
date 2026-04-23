@@ -50,7 +50,7 @@ import { useToast } from "../../../hooks/useToast";
 
 const EstoqueAlertas: React.FC = () => {
   const navigate = useNavigate();
-  const { success, error, warning } = useToast();
+  const { success, error: showError, warning } = useToast();
   
   // Estados
   const [alertas, setAlertas] = useState<AlertaEstoque[]>([]);
@@ -76,7 +76,7 @@ const EstoqueAlertas: React.FC = () => {
       setAlertas(alertasData);
     } catch (error) {
       console.error("Erro ao carregar alertas:", error);
-      error("Erro ao carregar alertas");
+      showError("Erro ao carregar alertas");
     } finally {
       setLoading(false);
     }
@@ -89,7 +89,7 @@ const EstoqueAlertas: React.FC = () => {
       success("Alertas atualizados com sucesso");
     } catch (error) {
       console.error("Erro ao atualizar alertas:", error);
-      error("Erro ao atualizar alertas");
+      showError("Erro ao atualizar alertas");
     }
   };
 
@@ -107,7 +107,7 @@ const EstoqueAlertas: React.FC = () => {
       success("Alerta marcado como resolvido");
     } catch (error) {
       console.error("Erro ao resolver alerta:", error);
-      error("Erro ao resolver alerta");
+      showError("Erro ao resolver alerta");
     }
   };
 
@@ -132,7 +132,7 @@ const EstoqueAlertas: React.FC = () => {
   const getIconeNivel = (nivel: string) => {
     switch (nivel) {
       case 'critical':
-        return <Error color="delete" />;
+        return <Error color="error" />;
       case 'warning':
         return <Warning color="warning" />;
       case 'info':
@@ -203,7 +203,7 @@ const EstoqueAlertas: React.FC = () => {
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" gap={2}>
-                <Error color="delete" />
+                <Error color="error" />
                 <Box>
                   <Typography variant="h6" fontWeight="bold">
                     {estatisticas.criticos}

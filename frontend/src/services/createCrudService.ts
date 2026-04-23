@@ -85,7 +85,7 @@ export function createCrudService<T, TCreate = Partial<T>, TUpdate = Partial<T>>
 
     buscarPorId: async (id: number): Promise<T | null> => {
       const { data } = await apiWithRetry.get(`${baseEndpoint}/${id}`);
-      return extractResponseData<T>(data, null);
+      return extractResponseData<T | null>(data, null);
     },
 
     criar: async (input: TCreate): Promise<T> => {

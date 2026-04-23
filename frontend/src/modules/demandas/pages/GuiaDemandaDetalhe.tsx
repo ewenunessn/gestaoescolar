@@ -907,7 +907,7 @@ const GuiaDemandaDetalhe: React.FC = () => {
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
           <ViewTabs
             value={tabAtiva}
-            onChange={(v) => setTabAtiva(v)}
+            onChange={(v) => setTabAtiva(Number(v))}
             tabs={[
               { value: 0, label: 'Por Produto', icon: <InventoryIcon sx={{ fontSize: 16 }} /> },
               { value: 1, label: 'Por Escola', icon: <SchoolIcon sx={{ fontSize: 16 }} /> },

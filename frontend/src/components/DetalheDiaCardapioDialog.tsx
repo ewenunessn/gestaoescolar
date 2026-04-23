@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, Chip, Button,
+  Dialog, DialogContent, DialogActions, Box, Typography, Chip, Button,
   IconButton, Card, CardContent, Divider
 } from '@mui/material';
 import { Delete as DeleteIcon, Event as EventIcon, Restaurant as RestaurantIcon, AccessTime as TimeIcon, Place as PlaceIcon, ContentCopy as CopyIcon, ArrowBack } from '@mui/icons-material';
@@ -21,6 +21,7 @@ export const DetalheDiaCardapioDialog: React.FC<DetalheDiaCardapioDialogProps> =
 }) => {
   const labels = getLabelsEventos();
   const cores = getCoresEventos();
+  type EventoTipo = keyof typeof labels;
 
   return (
     <Dialog
@@ -121,11 +122,11 @@ export const DetalheDiaCardapioDialog: React.FC<DetalheDiaCardapioDialogProps> =
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                 {eventosDia.map((evento) => (
                   <Card key={evento.id} variant="outlined"
-                    sx={{ borderLeft: `4px solid ${evento.cor || cores[evento.tipo_evento] || '#ccc'}` }}>
+                    sx={{ borderLeft: `4px solid ${evento.cor || cores[evento.tipo_evento as EventoTipo] || '#ccc'}` }}>
                     <CardContent sx={{ py: 1.2, px: 2, '&:last-child': { py: 1.2 } }}>
                       <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.5 }}>{evento.titulo}</Typography>
-                      <Chip label={labels[evento.tipo_evento as keyof typeof labels] || evento.tipo_evento}
-                        size="small" sx={{ bgcolor: evento.cor || cores[evento.tipo_evento] || '#ccc', color: '#fff', height: 18, fontSize: '0.6rem', fontWeight: 700 }} />
+                      <Chip label={labels[evento.tipo_evento as EventoTipo] || evento.tipo_evento}
+                        size="small" sx={{ bgcolor: evento.cor || cores[evento.tipo_evento as EventoTipo] || '#ccc', color: '#fff', height: 18, fontSize: '0.6rem', fontWeight: 700 }} />
                       {evento.local && (
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
                           <PlaceIcon sx={{ fontSize: 14, color: 'text.secondary' }} />

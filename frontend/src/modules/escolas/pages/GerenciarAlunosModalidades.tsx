@@ -4,9 +4,26 @@ import { useQueryClient } from "@tanstack/react-query";
 import PageContainer from "../../../components/PageContainer";
 import PageHeader from "../../../components/PageHeader";
 import { Search as SearchIcon } from "@mui/icons-material";
+import {
+  Alert,
+  Box,
+  Card,
+  CircularProgress,
+  InputAdornment,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Tooltip,
+  Typography,
+} from "@mui/material";
 import { listarEscolas, listarEscolaModalidades, adicionarEscolaModalidade, editarEscolaModalidade, removerEscolaModalidade } from "../../../services/escolas";
 import { modalidadeService } from "../../../services/modalidades";
 import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
+import CompactPagination from "../../../components/CompactPagination";
 
 // ── Design tokens ──────────────────────────────────────────────
 const GREEN = "#22c55e";
