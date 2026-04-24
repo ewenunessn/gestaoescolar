@@ -54,9 +54,9 @@ function SolicitacaoCard({
   const temPendente = sol.itens.some((i: SolicitacaoItem) => i.status === "pendente");
 
   return (
-    <Paper variant="outlined" sx={{ mb: 2, borderRadius: 2, overflow: 'hidden' }}>
+    <Paper variant="outlined" sx={{ mb: 2, borderRadius: 1, overflow: 'hidden' }}>
       <Box
-        sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1.5, cursor: 'pointer', bgcolor: 'grey.50' }}
+        sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1.5, cursor: 'pointer', bgcolor: 'action.hover' }}
         onClick={() => setExpanded(e => !e)}
       >
         <IconButton size="small" onClick={e => { e.stopPropagation(); setExpanded(v => !v); }}>
@@ -86,7 +86,7 @@ function SolicitacaoCard({
       <Collapse in={expanded} unmountOnExit>
         <Table size="small">
           <TableHead>
-            <TableRow sx={{ bgcolor: 'grey.100' }}>
+            <TableRow sx={{ bgcolor: 'action.hover' }}>
               <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>Produto</TableCell>
               <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', width: 130 }}>Quantidade</TableCell>
               <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', width: 110 }}>Status</TableCell>
@@ -205,7 +205,7 @@ export default function SolicitacaoEscolaDetalhe() {
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       <PageContainer>
-        <Box className="data-breadcrumb-row" sx={{ mb: 0.5 }}>
+        <Box className="data-breadcrumb-row" sx={{ display: 'none' }}>
           <IconButton size="small" onClick={() => navigate('/solicitacoes-alimentos')} className="data-breadcrumb-back">
             <ArrowBackIcon fontSize="small" />
           </IconButton>
@@ -215,7 +215,16 @@ export default function SolicitacaoEscolaDetalhe() {
             { label: escolaNome },
           ]} />
         </Box>
-        <PageHeader title={escolaNome} subtitle="SolicitaÃ§Ãµes de alimentos" />
+        <PageHeader
+          onBack={() => navigate('/solicitacoes-alimentos')}
+          breadcrumbs={[
+            { label: 'Dashboard', path: '/dashboard' },
+            { label: 'Solicitações', path: '/solicitacoes-alimentos' },
+            { label: escolaNome },
+          ]}
+          title={escolaNome}
+          subtitle="Solicitações de alimentos"
+        />
 
         <Box sx={{ mb: 2 }}>
           <ViewTabs

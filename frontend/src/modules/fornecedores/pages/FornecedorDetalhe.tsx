@@ -196,7 +196,7 @@ export default function FornecedorDetalhe() {
     <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden' }}>
       <PageContainer fullHeight sx={{ bgcolor: 'background.default' }}>
         {/* Seta + Breadcrumbs na mesma linha */}
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+        <Box sx={{ display: 'none' }}>
           <IconButton size="small" onClick={() => navigate('/fornecedores')} sx={{ mr: 0.5, p: 0.5 }}>
             <ArrowBackIcon fontSize="small" />
           </IconButton>
@@ -210,6 +210,12 @@ export default function FornecedorDetalhe() {
         </Box>
 
         <PageHeader
+          onBack={() => navigate('/fornecedores')}
+          breadcrumbs={[
+            { label: 'Dashboard', path: '/dashboard' },
+            { label: 'Fornecedores', path: '/fornecedores' },
+            { label: fornecedor?.nome || 'Detalhes' },
+          ]}
           title={fornecedor?.nome || 'Detalhes do Fornecedor'}
           action={
             <IconButton onClick={(e) => setMenuAnchorEl(e.currentTarget)}>

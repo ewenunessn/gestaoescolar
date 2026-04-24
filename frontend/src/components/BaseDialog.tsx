@@ -31,6 +31,7 @@
 
 import React from 'react';
 import {
+  alpha,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -40,6 +41,7 @@ import {
   IconButton,
   Box,
   CircularProgress,
+  useTheme,
 } from '@mui/material';
 import { Close as CloseIcon, Warning as WarningIcon } from '@mui/icons-material';
 
@@ -68,6 +70,8 @@ const BaseDialogInternal: React.FC<BaseDialogProps & { actions?: React.ReactNode
   icon,
   actions,
 }) => {
+  const theme = useTheme();
+
   return (
     <Dialog
       open={open}
@@ -75,10 +79,22 @@ const BaseDialogInternal: React.FC<BaseDialogProps & { actions?: React.ReactNode
       maxWidth={maxWidth}
       fullWidth
       PaperProps={{
-        sx: { borderRadius: '12px' },
+        sx: {
+          borderRadius: '12px',
+          border: `1px solid ${theme.palette.divider}`,
+          boxShadow: theme.palette.mode === 'light' ? '0 14px 32px rgba(31,36,48,0.08)' : '0 16px 36px rgba(0,0,0,0.22)',
+        },
       }}
     >
-      <DialogTitle sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1, pr: showCloseButton ? 6 : 2 }}>
+      <DialogTitle sx={{
+        fontWeight: 700,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1,
+        pr: showCloseButton ? 6 : 2,
+        pb: 1.25,
+        borderBottom: `1px solid ${alpha(theme.palette.text.primary, theme.palette.mode === 'light' ? 0.08 : 0.1)}`,
+      }}>
         {icon}
         {title}
         {showCloseButton && (
@@ -95,7 +111,7 @@ const BaseDialogInternal: React.FC<BaseDialogProps & { actions?: React.ReactNode
           </IconButton>
         )}
       </DialogTitle>
-      <DialogContent sx={{ pt: 2 }}>
+      <DialogContent sx={{ pt: 2.25 }}>
         {children}
       </DialogContent>
       {actions}
@@ -118,7 +134,7 @@ interface FormDialogProps extends Omit<BaseDialogProps, 'children' | 'icon'> {
   /** Hide cancel button */
   hideCancel?: boolean;
   /** Custom save button variant */
-  saveColor?: 'primary' | 'error' | 'warning' | 'success';
+  saveColor?: 'primary' | 'error' | 'warning' | 'success' | 'add' | 'edit' | 'delete';
 }
 
 export const FormDialog: React.FC<FormDialogProps> = ({
@@ -187,6 +203,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   cancelLabel = 'Cancelar',
   severity = 'warning',
 }) => {
+  const theme = useTheme();
   const severityColors: Record<string, 'warning' | 'error' | 'primary'> = {
     warning: 'warning',
     error: 'error',
@@ -200,9 +217,20 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       onClose={onClose}
       maxWidth="xs"
       fullWidth
-      PaperProps={{ sx: { borderRadius: '12px' } }}
+      PaperProps={{
+        sx: {
+          borderRadius: '12px',
+          border: `1px solid ${theme.palette.divider}`,
+        },
+      }}
     >
-      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <DialogTitle sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1,
+        borderBottom: `1px solid ${alpha(theme.palette.text.primary, theme.palette.mode === 'light' ? 0.08 : 0.1)}`,
+        pb: 1.25,
+      }}>
         <WarningIcon color={severityColors[severity]} />
         {title}
       </DialogTitle>

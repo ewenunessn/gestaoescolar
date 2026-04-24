@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Typography, Chip, useTheme, SxProps, Theme } from '@mui/material';
+import { alpha, Box, Typography, Chip, useTheme, SxProps, Theme } from '@mui/material';
 
 export interface ViewTab {
   value: string | number;
@@ -26,16 +26,14 @@ const ViewTabs: React.FC<ViewTabsProps> = ({
   sx,
 }) => {
   const theme = useTheme();
-  const isDark = theme.palette.mode === 'dark';
-
-  const trackBg = isDark ? '#21262d' : '#e8eaed';
-  const trackBorder = isDark ? '#30363d' : 'transparent';
-  const knobBg = isDark ? '#2d333b' : '#ffffff';
-  const knobBorder = isDark ? '#363b42' : '#d0d7de';
-  const textMuted = isDark ? '#8b949e' : '#656d76';
-  const textPrimary = isDark ? '#e6edf3' : '#1f2328';
-  const hoverBg = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
-  const sepColor = isDark ? '#30363d' : '#d0d7de';
+  const trackBg = theme.palette.background.paper;
+  const trackBorder = theme.palette.divider;
+  const knobBg = theme.palette.action.hover;
+  const knobBorder = alpha(theme.palette.text.primary, theme.palette.mode === 'light' ? 0.12 : 0.18);
+  const textMuted = theme.palette.text.secondary;
+  const textPrimary = theme.palette.text.primary;
+  const hoverBg = theme.palette.action.hover;
+  const sepColor = theme.palette.divider;
 
   const height = size === 'sm' ? '28px' : '32px';
   const px = size === 'sm' ? '12px' : '16px';
@@ -50,9 +48,11 @@ const ViewTabs: React.FC<ViewTabsProps> = ({
         height,
         bgcolor: trackBg,
         border: `1px solid ${trackBorder}`,
-        borderRadius: '8px',
+        borderRadius: 1,
         p: '3px',
         gap: '2px',
+        boxShadow: 'none',
+        ...sx,
       }}
     >
       {tabs.map((tab, index) => {
@@ -79,7 +79,7 @@ const ViewTabs: React.FC<ViewTabsProps> = ({
               gap: 0.5,
               px,
               py: '4px',
-              borderRadius: '6px',
+              borderRadius: 0.75,
               fontSize,
               fontWeight: isSelected ? 600 : 500,
               color: isSelected ? textPrimary : textMuted,
@@ -93,7 +93,7 @@ const ViewTabs: React.FC<ViewTabsProps> = ({
               position: 'relative',
               '&:hover': {
                 bgcolor: isSelected ? knobBg : hoverBg,
-                color: isSelected ? textPrimary : textMuted,
+                color: textPrimary,
               },
               // Hide separator when next to selected
               '&::after': {
@@ -134,11 +134,9 @@ const ViewTabs: React.FC<ViewTabsProps> = ({
                   borderRadius: '7px',
                   px: 0.3,
                   bgcolor: isSelected
-                    ? 'rgba(88,166,255,0.25)'
-                    : isDark
-                      ? 'rgba(88,166,255,0.15)'
-                      : 'rgba(9,105,218,0.12)',
-                  color: isDark ? '#58a6ff' : '#0969da',
+                    ? alpha(theme.palette.text.primary, 0.12)
+                    : alpha(theme.palette.text.primary, 0.08),
+                  color: theme.palette.text.primary,
                   border: 'none',
                   ml: 0.5,
                 }}

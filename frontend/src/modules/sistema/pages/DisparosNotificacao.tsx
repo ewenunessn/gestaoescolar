@@ -16,6 +16,7 @@ import {
 } from "../../../services/disparosNotificacao";
 import api from "../../../services/api";
 import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
+import PageHeader from "../../../components/PageHeader";
 
 // ── Design tokens ──────────────────────────────────────────────
 const GREEN = "#22c55e";
@@ -168,6 +169,7 @@ export default function DisparosNotificacao() {
 
   return (
     <>
+      <Box sx={{ display: 'none' }}>
       <PageBreadcrumbs
         breadcrumbs={[
           { label: 'Dashboard', path: '/dashboard' },
@@ -175,9 +177,30 @@ export default function DisparosNotificacao() {
           { label: 'Disparos de Notificação' },
         ]}
       />
+      </Box>
+      <PageHeader
+        breadcrumbs={[
+          { label: 'Dashboard', path: '/dashboard' },
+          { label: 'Sistema', path: '/sistema' },
+          { label: 'Disparos de Notificacao' },
+        ]}
+        title="Disparos de Notificacao"
+        subtitle="Envie notificacoes para usuarios das escolas"
+        action={
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Tooltip title="Atualizar">
+              <IconButton onClick={carregar}><Refresh /></IconButton>
+            </Tooltip>
+            <Button variant="contained" color="add" startIcon={<AddIcon />} onClick={() => setDialogOpen(true)}>
+              Novo Disparo
+            </Button>
+          </Box>
+        }
+      />
       {/* Navy header bar */}
       <Box
         sx={{
+          display: 'none',
           mb: 3,
           px: '28px',
           py: 2.5,

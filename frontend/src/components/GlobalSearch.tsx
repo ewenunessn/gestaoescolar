@@ -3,6 +3,7 @@ import {
   Box, Typography, InputBase, Paper, List, ListItemButton,
   ListItemIcon, ListItemText, Divider, Chip, CircularProgress,
 } from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
 import {
   Search as SearchIcon, Dashboard, School, Category, Inventory, Restaurant,
   MenuBook, Business, Assignment, LocalShipping, ListAlt, RequestPage,
@@ -57,13 +58,6 @@ const RECORD_ICONS: Record<string, React.ReactNode> = {
   "Fornecedor":   <Business fontSize="small" />,
   "Contrato":     <Assignment fontSize="small" />,
   "Pedido":       <RequestPage fontSize="small" />,
-};
-
-const DT = {
-  bg: { primary: "#161b22", secondary: "#21262d", elevated: "#2d333b" },
-  border: { subtle: "#21262d", medium: "#30363d" },
-  text: { primary: "#e6edf3", secondary: "#8b949e", muted: "#6e7681" },
-  accent: { primary: "#58a6ff", success: "#3fb950" },
 };
 
 function normalize(str: string) {
@@ -138,7 +132,11 @@ export const GlobalSearchDropdown: React.FC<{
   onNavigate: (path: string) => void;
   onClose: () => void;
 }> = ({ query, loading, results, onNavigate, onClose }) => {
+  const theme = useTheme();
   const [selected, setSelected] = useState(0);
+  const border = theme.palette.divider;
+  const selectedBg = alpha(theme.palette.primary.main, theme.palette.mode === "light" ? 0.09 : 0.14);
+  const hoverBg = alpha(theme.palette.text.primary, theme.palette.mode === "light" ? 0.04 : 0.07);
 
   useEffect(() => { setSelected(0); }, [results]);
 
@@ -167,23 +165,23 @@ export const GlobalSearchDropdown: React.FC<{
       position: "absolute",
       top: "calc(100% + 8px)",
       left: 0, right: 0,
-      bgcolor: DT.bg.elevated,
-      border: `1px solid ${DT.border.medium}`,
-      borderRadius: "12px",
+      bgcolor: "background.paper",
+      border: `1px solid ${border}`,
+      borderRadius: "10px",
       overflow: "hidden",
       zIndex: 9999,
-      boxShadow: "0 16px 48px rgba(0,0,0,0.5)",
+      boxShadow: theme.palette.mode === "light" ? "0 16px 34px rgba(31,36,48,0.12)" : "0 18px 40px rgba(0,0,0,0.34)",
       maxHeight: 480,
       overflowY: "auto",
     }}>
       {loading ? (
         <Box sx={{ py: 3, display: "flex", justifyContent: "center", alignItems: "center", gap: 1.5 }}>
-          <CircularProgress size={18} sx={{ color: DT.accent.primary }} />
-          <Typography sx={{ color: DT.text.muted, fontSize: "0.875rem" }}>Buscando...</Typography>
+          <CircularProgress size={18} />
+          <Typography sx={{ color: "text.secondary", fontSize: "0.875rem" }}>Buscando...</Typography>
         </Box>
       ) : results.length === 0 ? (
         <Box sx={{ py: 3, textAlign: "center" }}>
-          <Typography sx={{ color: DT.text.muted, fontSize: "0.875rem" }}>
+          <Typography sx={{ color: "text.secondary", fontSize: "0.875rem" }}>
             Nenhum resultado para "{query}"
           </Typography>
         </Box>
@@ -191,10 +189,10 @@ export const GlobalSearchDropdown: React.FC<{
         <List dense disablePadding>
           {Object.entries(grouped).map(([category, items], gi) => (
             <React.Fragment key={category}>
-              {gi > 0 && <Divider sx={{ borderColor: DT.border.subtle, mx: 1.5 }} />}
+              {gi > 0 && <Divider sx={{ borderColor: border, mx: 1.5 }} />}
               {/* Label da categoria */}
               <Box sx={{ px: 2, pt: gi === 0 ? 1.5 : 1, pb: 0.5 }}>
-                <Typography sx={{ fontSize: "0.7rem", fontWeight: 600, color: DT.text.muted, textTransform: "uppercase", letterSpacing: "0.8px" }}>
+                <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, color: "text.secondary", textTransform: "uppercase", letterSpacing: 0 }}>
                   {category}
                 </Typography>
               </Box>
@@ -209,20 +207,20 @@ export const GlobalSearchDropdown: React.FC<{
                       px: 2, py: 1,
                       mx: 1, mb: 0.25,
                       borderRadius: "8px",
-                      bgcolor: isSelected ? `${DT.accent.primary}15` : "transparent",
-                      "&:hover": { bgcolor: `${DT.accent.primary}10` },
+                      bgcolor: isSelected ? selectedBg : "transparent",
+                      "&:hover": { bgcolor: isSelected ? selectedBg : hoverBg },
                     }}
                   >
-                    <ListItemIcon sx={{ color: isSelected ? DT.accent.primary : DT.text.muted, minWidth: 34 }}>
+                    <ListItemIcon sx={{ color: isSelected ? "primary.main" : "text.secondary", minWidth: 34 }}>
                       {item.icon}
                     </ListItemIcon>
                     <ListItemText
                       primary={item.label}
                       secondary={item.sublabel}
-                      primaryTypographyProps={{ fontSize: "0.875rem", fontWeight: isSelected ? 500 : 400, color: DT.text.primary }}
-                      secondaryTypographyProps={{ fontSize: "0.75rem", color: DT.text.muted }}
+                      primaryTypographyProps={{ fontSize: "0.875rem", fontWeight: isSelected ? 600 : 400, color: "text.primary" }}
+                      secondaryTypographyProps={{ fontSize: "0.75rem", color: "text.secondary" }}
                     />
-                    {isSelected && <ArrowForward sx={{ fontSize: 14, color: DT.accent.primary, opacity: 0.7 }} />}
+                    {isSelected && <ArrowForward sx={{ fontSize: 14, color: "primary.main", opacity: 0.7 }} />}
                   </ListItemButton>
                 );
               })}
@@ -230,15 +228,15 @@ export const GlobalSearchDropdown: React.FC<{
           ))}
 
           {/* Rodapé com atalhos */}
-          <Box sx={{ px: 2, py: 1, borderTop: `1px solid ${DT.border.subtle}`, display: "flex", gap: 2, mt: 0.5 }}>
+          <Box sx={{ px: 2, py: 1, borderTop: `1px solid ${border}`, display: "flex", gap: 2, mt: 0.5 }}>
             {[["↑↓", "navegar"], ["Enter", "abrir"], ["Esc", "fechar"]].map(([key, label]) => (
               <Box key={key} sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
                 <Chip label={key} size="small" sx={{
                   height: 20, fontSize: "0.7rem", fontWeight: 600,
-                  bgcolor: DT.bg.secondary, color: DT.text.secondary,
-                  border: `1px solid ${DT.border.medium}`, borderRadius: "4px",
+                  bgcolor: "background.default", color: "text.secondary",
+                  border: `1px solid ${border}`, borderRadius: "4px",
                 }} />
-                <Typography sx={{ fontSize: "0.7rem", color: DT.text.muted }}>{label}</Typography>
+                <Typography sx={{ fontSize: "0.7rem", color: "text.secondary" }}>{label}</Typography>
               </Box>
             ))}
           </Box>

@@ -14,6 +14,8 @@ import {
 import ViewTabs from "../../../components/ViewTabs";
 import { LoadingOverlay } from "../../../components/LoadingOverlay";
 import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
+import PageHeader from "../../../components/PageHeader";
+import PageContainer from "../../../components/PageContainer";
 import { ConfirmDialog } from "../../../components/BaseDialog";
 import {
   getUsuarios, criarUsuario, atualizarUsuario, excluirUsuario,
@@ -478,26 +480,26 @@ export default function GerenciamentoUsuarios() {
         borderRadius: '4px',
         textTransform: 'none',
         fontWeight: 600,
-        bgcolor: GREEN,
-        '&:hover': { bgcolor: '#16a34a' },
         fontSize: '0.82rem',
       }}
+      color="add"
     >
       {label}
     </Button>
   );
 
-  const SectionBar = ({ color, label }: { color: string; label: string }) => (
+  const SectionBar = ({ label }: { color: string; label: string }) => (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-      <Box sx={{ width: 16, height: 3, borderRadius: 2, bgcolor: color }} />
-      <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color }}>
+      <Box sx={{ width: 16, height: 3, borderRadius: 1, bgcolor: 'text.secondary' }} />
+      <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0, color: 'text.secondary' }}>
         {label}
       </Typography>
     </Box>
   );
 
   return (
-    <>
+    <PageContainer>
+      <Box sx={{ display: 'none' }}>
       <PageBreadcrumbs
         breadcrumbs={[
           { label: 'Dashboard', path: '/dashboard' },
@@ -505,9 +507,20 @@ export default function GerenciamentoUsuarios() {
           { label: 'Gerenciamento de Usuários' },
         ]}
       />
+      </Box>
+      <PageHeader
+        breadcrumbs={[
+          { label: 'Dashboard', path: '/dashboard' },
+          { label: 'Sistema', path: '/sistema' },
+          { label: 'Gerenciamento de Usuarios' },
+        ]}
+        title="Gerenciamento de Usuarios"
+        subtitle="Gerencie usuarios, funcoes e permissoes do sistema"
+      />
       {/* Navy header bar */}
       <Box
         sx={{
+          display: 'none',
           mx: '-20px',
           mt: '-12px',
           mb: 3,
@@ -743,6 +756,6 @@ export default function GerenciamentoUsuarios() {
           salvandoFuncao ? 'Salvando função...' : ''
         }
       />
-    </>
+    </PageContainer>
   );
 }

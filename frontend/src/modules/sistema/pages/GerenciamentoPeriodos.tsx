@@ -32,6 +32,7 @@ import {
 } from "@mui/icons-material";
 import PageContainer from "../../../components/PageContainer";
 import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
+import PageHeader from "../../../components/PageHeader";
 import { SafeButtonWithOverlay } from "../../../components/SafeButtonWithOverlay";
 import { LoadingOverlay } from "../../../components/LoadingOverlay";
 import { FormDialog } from "../../../components/BaseDialog";
@@ -45,6 +46,7 @@ import {
   useDeletarPeriodo,
 } from "../../../hooks/queries/usePeriodosQueries";
 import { Periodo } from "../../../services/periodos";
+import { desktopMono } from "../../../theme/theme";
 
 // ── Design tokens ──────────────────────────────────────────────
 const GREEN = "#22c55e";
@@ -183,6 +185,7 @@ const GerenciamentoPeriodos = () => {
 
   return (
     <PageContainer>
+      <Box sx={{ display: 'none' }}>
       <PageBreadcrumbs
         breadcrumbs={[
           { label: 'Dashboard', path: '/dashboard' },
@@ -190,9 +193,20 @@ const GerenciamentoPeriodos = () => {
           { label: 'Gerenciamento de Períodos' },
         ]}
       />
+      </Box>
+      <PageHeader
+        breadcrumbs={[
+          { label: 'Dashboard', path: '/dashboard' },
+          { label: 'Sistema', path: '/sistema' },
+          { label: 'Gerenciamento de Periodos' },
+        ]}
+        title="Gerenciamento de Periodos"
+        subtitle="Controle dos anos letivos do sistema"
+      />
       {/* Navy header bar */}
       <Box
         sx={{
+          display: 'none',
           mx: '-20px',
           mt: '-12px',
           mb: 4,
@@ -230,8 +244,8 @@ const GerenciamentoPeriodos = () => {
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
             {/* Section bar */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-              <Box sx={{ width: 16, height: 3, borderRadius: 2, bgcolor: GREEN }} />
-              <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: GREEN }}>
+              <Box sx={{ width: 16, height: 3, borderRadius: 1, bgcolor: 'text.secondary' }} />
+              <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0, color: 'text.secondary' }}>
                 Períodos Cadastrados
               </Typography>
             </Box>
@@ -241,7 +255,7 @@ const GerenciamentoPeriodos = () => {
                 control={<Switch checked={ocultarInativos} onChange={(e) => setOcultarInativos(e.target.checked)} size="small" />}
                 label={<Typography variant="body2" color="text.secondary">Ocultar inativos</Typography>}
               />
-              <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpenDialog()}>
+              <Button variant="contained" color="add" startIcon={<AddIcon />} onClick={() => handleOpenDialog()}>
                 Novo Período
               </Button>
             </Box>
@@ -266,7 +280,7 @@ const GerenciamentoPeriodos = () => {
                     <TableCell>
                       <Typography
                         sx={{
-                          fontFamily: '"Fira Code", "Roboto Mono", monospace',
+                          fontFamily: desktopMono,
                           fontWeight: periodo.ativo ? 700 : 400,
                           fontSize: periodo.ativo ? '1.05rem' : '0.85rem',
                           color: periodo.ativo ? GREEN : '#64748b',
@@ -277,12 +291,12 @@ const GerenciamentoPeriodos = () => {
                     </TableCell>
                     <TableCell>{periodo.descricao}</TableCell>
                     <TableCell>
-                      <Typography sx={{ fontFamily: '"Fira Code", "Roboto Mono", monospace', fontSize: '0.8rem' }}>
+                      <Typography sx={{ fontFamily: desktopMono, fontSize: '0.8rem' }}>
                         {new Date(periodo.data_inicio).toLocaleDateString('pt-BR')}
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <Typography sx={{ fontFamily: '"Fira Code", "Roboto Mono", monospace', fontSize: '0.8rem' }}>
+                      <Typography sx={{ fontFamily: desktopMono, fontSize: '0.8rem' }}>
                         {new Date(periodo.data_fim).toLocaleDateString('pt-BR')}
                       </Typography>
                     </TableCell>
@@ -303,13 +317,13 @@ const GerenciamentoPeriodos = () => {
                       </Box>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="caption" display="block" sx={{ fontFamily: '"Fira Code", "Roboto Mono", monospace' }}>
+                      <Typography variant="caption" display="block" sx={{ fontFamily: desktopMono }}>
                         {periodo.total_pedidos || 0} pedidos
                       </Typography>
-                      <Typography variant="caption" display="block" sx={{ fontFamily: '"Fira Code", "Roboto Mono", monospace' }}>
+                      <Typography variant="caption" display="block" sx={{ fontFamily: desktopMono }}>
                         {periodo.total_guias || 0} guias
                       </Typography>
-                      <Typography variant="caption" display="block" sx={{ fontFamily: '"Fira Code", "Roboto Mono", monospace' }}>
+                      <Typography variant="caption" display="block" sx={{ fontFamily: desktopMono }}>
                         {periodo.total_cardapios || 0} cardápios
                       </Typography>
                     </TableCell>

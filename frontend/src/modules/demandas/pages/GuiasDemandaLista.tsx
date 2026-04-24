@@ -255,6 +255,7 @@ const GuiasDemandaLista: React.FC = () => {
           <Tooltip title="Excluir">
             <IconButton
               size="small"
+              color="delete"
               onClick={() => openDeleteModal(row.original)}
             >
               <DeleteIcon fontSize="small" />
@@ -455,7 +456,7 @@ const GuiasDemandaLista: React.FC = () => {
                 sx={{ borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
                 Gerar Guia de Demanda
               </Button>
-              <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => {
+              <Button variant="contained" color="add" startIcon={<AddIcon />} onClick={() => {
                 const inicial = {
                   mes: new Date().getMonth() + 1,
                   ano: new Date().getFullYear()

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  alpha,
   Box,
   Typography,
   Chip,
@@ -10,11 +11,13 @@ import {
   Backdrop,
   Autocomplete,
   TextField,
+  useTheme,
 } from '@mui/material';
 import { CalendarToday, Public, Person } from '@mui/icons-material';
 import { usePeriodos, usePeriodoAtivo, useSelecionarPeriodo } from '../hooks/queries/usePeriodosQueries';
 
 export const SeletorPeriodo: React.FC = () => {
+  const theme = useTheme();
   const { data: periodos, isLoading: loadingPeriodos } = usePeriodos();
   const { data: periodoAtivo, isLoading: loadingAtivo } = usePeriodoAtivo();
   const selecionarPeriodo = useSelecionarPeriodo();
@@ -53,9 +56,22 @@ export const SeletorPeriodo: React.FC = () => {
 
   return (
     <>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 0.75 }}>
         <Tooltip title={isUsuarioPeriodo ? 'Seu período selecionado' : 'Período ativo global'}>
-          {isUsuarioPeriodo ? <Person fontSize="small" sx={{ color: 'text.secondary' }} /> : <Public fontSize="small" sx={{ color: 'text.secondary' }} />}
+          <Box
+            sx={{
+              width: 34,
+              height: 34,
+              display: 'grid',
+              placeItems: 'center',
+              borderRadius: 1,
+              color: 'text.secondary',
+              border: `1px solid ${theme.palette.divider}`,
+              bgcolor: alpha(theme.palette.text.primary, theme.palette.mode === 'light' ? 0.02 : 0.04),
+            }}
+          >
+            {isUsuarioPeriodo ? <Person fontSize="small" /> : <Public fontSize="small" />}
+          </Box>
         </Tooltip>
 
         <Autocomplete
@@ -67,14 +83,32 @@ export const SeletorPeriodo: React.FC = () => {
           disabled={selecionarPeriodo.isPending}
           disableClearable
           size="small"
-          sx={{ minWidth: 180 }}
+          sx={{
+            width: 198,
+            '& .MuiAutocomplete-endAdornment': {
+              right: 7,
+              top: '50%',
+              transform: 'translateY(-50%)',
+            },
+            '& .MuiAutocomplete-popupIndicator': {
+              width: 24,
+              height: 24,
+              mr: 0.25,
+              color: 'text.secondary',
+              border: 0,
+              bgcolor: 'transparent',
+              '&:hover': {
+                bgcolor: alpha(theme.palette.text.primary, theme.palette.mode === 'light' ? 0.04 : 0.08),
+              },
+            },
+          }}
           componentsProps={{
             paper: {
               sx: {
-                bgcolor: '#21262d',
-                border: '1px solid #30363d',
-                borderRadius: '10px',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                bgcolor: 'background.paper',
+                border: `1px solid ${theme.palette.divider}`,
+                borderRadius: 1.25,
+                boxShadow: theme.palette.mode === 'light' ? '0 14px 28px rgba(31,36,48,0.12)' : '0 16px 34px rgba(0,0,0,0.32)',
                 mt: 0.5,
               }
             }
@@ -87,15 +121,17 @@ export const SeletorPeriodo: React.FC = () => {
               sx={{
                 '& .MuiOutlinedInput-root': {
                   fontSize: '0.8rem',
-                  bgcolor: '#21262d',
+                  bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'light' ? 0.82 : 0.72),
                   borderRadius: '8px',
-                  color: '#e6edf3',
-                  '& fieldset': { borderColor: '#30363d' },
-                  '&:hover fieldset': { borderColor: '#484f58' },
-                  '&.Mui-focused fieldset': { borderColor: '#58a6ff' },
+                  color: 'text.primary',
+                  height: 36,
+                  pr: '32px !important',
+                  '& fieldset': { borderColor: theme.palette.divider },
+                  '&:hover fieldset': { borderColor: alpha(theme.palette.text.primary, 0.22) },
+                  '&.Mui-focused fieldset': { borderColor: alpha(theme.palette.primary.main, 0.48) },
                 },
-                '& .MuiSvgIcon-root': { color: '#8b949e' },
-                '& input::placeholder': { color: '#6e7681', opacity: 1 },
+                '& .MuiAutocomplete-popupIndicator .MuiSvgIcon-root': { fontSize: 18 },
+                '& input::placeholder': { color: 'text.secondary', opacity: 1 },
               }}
             />
           )}
@@ -107,18 +143,18 @@ export const SeletorPeriodo: React.FC = () => {
               px: 2,
               py: 1,
               fontSize: '0.8rem',
-              color: '#e6edf3',
-              '&:hover': { bgcolor: '#2d333b !important' },
-              '&.Mui-focused': { bgcolor: '#2d333b !important' },
+              color: 'text.primary',
+              '&:hover': { bgcolor: 'action.hover !important' },
+              '&.Mui-focused': { bgcolor: 'action.hover !important' },
             }}>
-              <Typography variant="body2" sx={{ color: '#e6edf3', fontSize: '0.8rem' }}>
+              <Typography variant="body2" sx={{ color: 'text.primary', fontSize: '0.8rem' }}>
                 {periodo.descricao || periodo.ano}
               </Typography>
               {periodo.ativo && (
-                <Chip label="Ativo" size="small" sx={{ height: 16, fontSize: '0.65rem', ml: 'auto', bgcolor: '#1f6feb', color: '#fff' }} />
+                <Chip label="Ativo" size="small" color="primary" sx={{ height: 16, fontSize: '0.65rem', ml: 'auto' }} />
               )}
               {periodo.fechado && (
-                <Chip label="Fechado" size="small" sx={{ height: 16, fontSize: '0.65rem', ml: 'auto', bgcolor: '#30363d', color: '#8b949e' }} />
+                <Chip label="Fechado" size="small" sx={{ height: 16, fontSize: '0.65rem', ml: 'auto', color: 'text.secondary' }} />
               )}
             </Box>
           )}

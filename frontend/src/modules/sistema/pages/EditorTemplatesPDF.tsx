@@ -56,7 +56,7 @@ const carregarAssetsPdfDesigner = async (): Promise<PdfDesignerAssets> => {
       };
 
       return {
-        Designer: uiModule.Designer as PdfDesignerConstructor,
+        Designer: uiModule.Designer as unknown as PdfDesignerConstructor,
         blankPdf: commonModule.BLANK_PDF,
         plugins,
       };

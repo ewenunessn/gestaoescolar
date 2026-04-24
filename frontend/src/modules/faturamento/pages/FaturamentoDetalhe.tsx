@@ -488,6 +488,7 @@ export default function FaturamentoDetalhe() {
 
   return (
     <Box sx={{ p: 3 }}>
+      <Box sx={{ display: 'none' }}>
       <PageBreadcrumbs
         breadcrumbs={[
           { label: 'Dashboard', path: '/dashboard' },
@@ -495,7 +496,8 @@ export default function FaturamentoDetalhe() {
           { label: `Pedido ${previa?.pedido?.numero || 'Detalhes'}` },
         ]}
       />
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+      </Box>
+      <Box sx={{ display: 'none' }}>
         <IconButton onClick={() => navigate(`/compras/${pedidoId}`)} sx={{ mr: 2 }}>
           <ArrowBackIcon />
         </IconButton>
@@ -513,6 +515,27 @@ export default function FaturamentoDetalhe() {
           </Button>
         </Box>
       </Box>
+
+      <PageHeader
+        onBack={() => navigate(`/compras/${pedidoId}`)}
+        breadcrumbs={[
+          { label: 'Dashboard', path: '/dashboard' },
+          { label: 'Faturamento', path: '/faturamento' },
+          { label: `Pedido ${previa?.pedido?.numero || 'Detalhes'}` },
+        ]}
+        title={`Faturamento - Pedido ${previa?.pedido?.numero}`}
+        action={
+          <Button
+            variant="contained"
+            color="delete"
+            startIcon={<DeleteIcon />}
+            onClick={() => setDialogExcluir(true)}
+            disabled={processando}
+          >
+            Excluir Faturamento
+          </Button>
+        }
+      />
 
       {erro && (
         <Alert severity="error" sx={{ mb: 3 }} onClose={() => setErro('')}>
@@ -774,13 +797,13 @@ export default function FaturamentoDetalhe() {
               <TableContainer component={Paper} variant="outlined">
                 <Table size="small">
                   <TableHead>
-                    <TableRow sx={{ bgcolor: 'primary.main' }}>
-                      <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>ITEM</TableCell>
-                      <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>UNIDADE DE MEDIDA</TableCell>
-                      <TableCell align="right" sx={{ color: 'white', fontWeight: 'bold' }}>QUANTIDADE</TableCell>
+                    <TableRow sx={{ bgcolor: 'action.hover', '& .MuiTableCell-root': { color: 'text.secondary !important', fontWeight: 700 } }}>
+                      <TableCell sx={{ color: 'text.secondary', fontWeight: 'bold' }}>ITEM</TableCell>
+                      <TableCell sx={{ color: 'text.secondary', fontWeight: 'bold' }}>UNIDADE DE MEDIDA</TableCell>
+                      <TableCell align="right" sx={{ color: 'text.secondary', fontWeight: 'bold' }}>QUANTIDADE</TableCell>
                       <TableCell align="right" sx={{ color: 'white', fontWeight: 'bold' }}>PREÇO UNITÁRIO</TableCell>
-                      <TableCell align="right" sx={{ color: 'white', fontWeight: 'bold' }}>CUSTO POR ITEM</TableCell>
-                      <TableCell align="center" sx={{ color: 'white', fontWeight: 'bold' }}>STATUS</TableCell>
+                      <TableCell align="right" sx={{ color: 'text.secondary', fontWeight: 'bold' }}>CUSTO POR ITEM</TableCell>
+                      <TableCell align="center" sx={{ color: 'text.secondary', fontWeight: 'bold' }}>STATUS</TableCell>
                       <TableCell align="center" sx={{ color: 'white', fontWeight: 'bold' }}>AÇÕES</TableCell>
                     </TableRow>
                   </TableHead>

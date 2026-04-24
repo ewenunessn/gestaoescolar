@@ -1,25 +1,63 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
-  Box, Button, Card, CardContent, Grid, TextField, Typography, Avatar,
-  Alert, CircularProgress, Divider, IconButton, Tooltip
+  Alert,
+  Avatar,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  CircularProgress,
+  Grid,
+  IconButton,
+  TextField,
+  Tooltip,
+  Typography,
 } from "@mui/material";
-import { PhotoCamera as PhotoCameraIcon, Delete as DeleteIcon, Save as SaveIcon, PictureAsPdf as PdfIcon } from "@mui/icons-material";
-import { useNavigate } from "react-router-dom";
-import { useToast } from "../../../hooks/useToast";
-import PageContainer from "../../../components/PageContainer";
-import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
 import {
-  buscarInstituicao,
-  atualizarInstituicao,
-  uploadLogoBase64,
-  arquivoParaBase64,
+  Delete as DeleteIcon,
+  PhotoCamera as PhotoCameraIcon,
+  PictureAsPdf as PdfIcon,
+  Save as SaveIcon,
+} from "@mui/icons-material";
+import { useNavigate } from "react-router-dom";
+import PageContainer from "../../../components/PageContainer";
+import PageHeader from "../../../components/PageHeader";
+import { useToast } from "../../../hooks/useToast";
+import {
   Instituicao,
-  InstituicaoForm
+  InstituicaoForm,
+  arquivoParaBase64,
+  atualizarInstituicao,
+  buscarInstituicao,
+  uploadLogoBase64,
 } from "../../../services/instituicao";
 
-// ── Design tokens ──────────────────────────────────────────────
-const GREEN = "#22c55e";
-const NAVY = "#0f172a";
+const sectionTitleSx = {
+  fontSize: "0.72rem",
+  fontWeight: 700,
+  textTransform: "uppercase",
+  letterSpacing: 0,
+  color: "text.secondary",
+};
+
+const SectionTitle = ({ label }: { label: string }) => (
+  <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, mb: 2.5 }}>
+    <Box sx={{ width: 18, height: 3, borderRadius: 1, bgcolor: "text.secondary" }} />
+    <Typography sx={sectionTitleSx}>{label}</Typography>
+  </Box>
+);
+
+const emptyForm: InstituicaoForm = {
+  nome: "",
+  cnpj: "",
+  endereco: "",
+  telefone: "",
+  email: "",
+  site: "",
+  secretario_nome: "",
+  secretario_cargo: "Secretario(a) de Educacao",
+  departamento: "",
+};
 
 const ConfiguracaoInstituicaoPage: React.FC = () => {
   const toast = useToast();
@@ -29,20 +67,11 @@ const ConfiguracaoInstituicaoPage: React.FC = () => {
   const [instituicao, setInstituicao] = useState<Instituicao | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [formData, setFormData] = useState<InstituicaoForm>(emptyForm);
 
-  const [formData, setFormData] = useState<InstituicaoForm>({
-    nome: '',
-    cnpj: '',
-    endereco: '',
-    telefone: '',
-    email: '',
-    site: '',
-    secretario_nome: '',
-    secretario_cargo: 'Secretário(a) de Educação',
-    departamento: '',
-  });
-
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const loadData = async () => {
     try {
@@ -50,19 +79,19 @@ const ConfiguracaoInstituicaoPage: React.FC = () => {
       const data = await buscarInstituicao();
       setInstituicao(data);
       setFormData({
-        nome: data.nome || '',
-        cnpj: data.cnpj || '',
-        endereco: data.endereco || '',
-        telefone: data.telefone || '',
-        email: data.email || '',
-        site: data.site || '',
-        secretario_nome: data.secretario_nome || '',
-        secretario_cargo: data.secretario_cargo || 'Secretário(a) de Educação',
-        departamento: data.departamento || '',
+        nome: data.nome || "",
+        cnpj: data.cnpj || "",
+        endereco: data.endereco || "",
+        telefone: data.telefone || "",
+        email: data.email || "",
+        site: data.site || "",
+        secretario_nome: data.secretario_nome || "",
+        secretario_cargo: data.secretario_cargo || emptyForm.secretario_cargo,
+        departamento: data.departamento || "",
       });
-      if (data.logo_url) setLogoPreview(data.logo_url);
+      setLogoPreview(data.logo_url || null);
     } catch (err) {
-      toast.toast.error('Erro ao carregar configurações da instituição');
+      toast.toast.error("Erro ao carregar configuracoes da instituicao");
       console.error(err);
     } finally {
       setLoading(false);
@@ -72,48 +101,63 @@ const ConfiguracaoInstituicaoPage: React.FC = () => {
   const handleInputChange = (field: keyof InstituicaoForm) => (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
-    setFormData(prev => ({ ...prev, [field]: event.target.value }));
+    setFormData((prev) => ({ ...prev, [field]: event.target.value }));
   };
 
   const handleLogoChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/svg+xml'];
+
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/svg+xml"];
     if (!allowedTypes.includes(file.type)) {
-      toast.toast.error('Apenas imagens são permitidas (JPEG, PNG, GIF, SVG)');
+      toast.toast.error("Apenas imagens sao permitidas (JPEG, PNG, GIF, SVG)");
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      toast.toast.error('A imagem deve ter no máximo 5MB');
+      toast.toast.error("A imagem deve ter no maximo 5MB");
       return;
     }
+
     try {
       const base64 = await arquivoParaBase64(file);
       setLogoFile(file);
       setLogoPreview(base64);
     } catch (err) {
-      toast.toast.error('Erro ao processar imagem');
+      toast.toast.error("Erro ao processar imagem");
       console.error(err);
+    } finally {
+      event.target.value = "";
     }
   };
 
-  const handleRemoveLogo = () => { setLogoFile(null); setLogoPreview(null); };
+  const handleRemoveLogo = () => {
+    setLogoFile(null);
+    setLogoPreview(null);
+  };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!formData.nome.trim()) {
-      toast.toast.error('Nome da instituição é obrigatório');
+      toast.toast.error("Nome da instituicao e obrigatorio");
       return;
     }
+
     try {
       setSaving(true);
-      if (logoFile && logoPreview) await uploadLogoBase64(logoPreview);
-      const response = await atualizarInstituicao(formData);
-      toast.toast.success(response.message);
-      setInstituicao(response.instituicao);
+      const dadosResponse = await atualizarInstituicao(formData);
+      let instituicaoAtualizada = dadosResponse.instituicao;
+
+      if (logoFile && logoPreview) {
+        const logoResponse = await uploadLogoBase64(logoPreview);
+        instituicaoAtualizada = logoResponse.instituicao;
+        setLogoPreview(logoResponse.instituicao.logo_url || logoPreview);
+      }
+
+      setInstituicao(instituicaoAtualizada);
       setLogoFile(null);
+      toast.toast.success(dadosResponse.message || "Configuracoes salvas");
     } catch (err: any) {
-      toast.toast.error(err.response?.data?.message || "Erro ao salvar configurações");
+      toast.toast.error(err.response?.data?.message || "Erro ao salvar configuracoes");
       console.error(err);
     } finally {
       setSaving(false);
@@ -132,73 +176,54 @@ const ConfiguracaoInstituicaoPage: React.FC = () => {
 
   return (
     <PageContainer>
-      <PageBreadcrumbs
+      <PageHeader
         breadcrumbs={[
-          { label: 'Dashboard', path: '/dashboard' },
-          { label: 'Sistema', path: '/sistema' },
-          { label: 'Configurações da Instituição' },
+          { label: "Dashboard", path: "/dashboard" },
+          { label: "Sistema", path: "/sistema" },
+          { label: "Configuracoes da Instituicao" },
         ]}
+        title="Configuracoes da Instituicao"
+        subtitle="Dados institucionais usados em documentos, relatorios e templates PDF."
+        action={
+          <Button
+            variant="outlined"
+            startIcon={<PdfIcon />}
+            onClick={() => navigate("/editor-templates-pdf")}
+          >
+            Editor de Templates PDF
+          </Button>
+        }
       />
-      {/* Navy header bar */}
-      <Box
-        sx={{
-          mx: '-20px',
-          mt: '-12px',
-          mb: 4,
-          px: '28px',
-          py: 2.5,
-          background: `linear-gradient(135deg, ${NAVY}, #1e293b)`,
-          position: 'relative',
-        }}
-      >
-        <Box sx={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${GREEN}44, transparent)` }} />
-        <Typography sx={{ fontWeight: 800, fontSize: '1.55rem', color: '#fff', mb: 0.3, letterSpacing: '-0.5px' }}>
-          Configurações da Instituição
-        </Typography>
-        <Typography sx={{ fontSize: '0.82rem', color: '#94a3b8' }}>
-          Configure as informações da instituição que aparecerão nos documentos e relatórios
-        </Typography>
-      </Box>
 
       <form onSubmit={handleSubmit}>
-        <Grid container spacing={3}>
-          {/* Logo */}
+        <Grid container spacing={2.5}>
           <Grid item xs={12} md={4}>
-            <Card>
+            <Card sx={{ height: "100%" }}>
               <CardContent>
-                {/* Section bar */}
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
-                  <Box sx={{ width: 16, height: 3, borderRadius: 2, bgcolor: GREEN }} />
-                  <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: GREEN }}>
-                    Logo da Instituição
-                  </Typography>
-                </Box>
+                <SectionTitle label="Logo da Instituicao" />
 
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
                   <Avatar
                     src={logoPreview || undefined}
                     sx={{
-                      width: 120, height: 120,
-                      bgcolor: '#f8fafc',
-                      border: '2px dashed #e5e7eb',
+                      width: 128,
+                      height: 128,
+                      bgcolor: "action.hover",
+                      border: "1px dashed",
+                      borderColor: "divider",
                     }}
                   >
-                    {!logoPreview && <PhotoCameraIcon sx={{ fontSize: 40, color: '#94a3b8' }} />}
+                    {!logoPreview && <PhotoCameraIcon sx={{ fontSize: 40, color: "text.secondary" }} />}
                   </Avatar>
 
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Button
-                      variant="outlined"
-                      component="label"
-                      startIcon={<PhotoCameraIcon />}
-                      size="small"
-                    >
-                      Escolher Logo
+                  <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", justifyContent: "center" }}>
+                    <Button variant="outlined" component="label" startIcon={<PhotoCameraIcon />} size="small">
+                      Escolher logo
                       <input type="file" hidden accept="image/*" onChange={handleLogoChange} />
                     </Button>
                     {logoPreview && (
                       <Tooltip title="Remover logo">
-                        <IconButton size="small" color="error" onClick={handleRemoveLogo}>
+                        <IconButton size="small" color="delete" onClick={handleRemoveLogo}>
                           <DeleteIcon />
                         </IconButton>
                       </Tooltip>
@@ -206,51 +231,52 @@ const ConfiguracaoInstituicaoPage: React.FC = () => {
                   </Box>
 
                   <Typography variant="caption" color="text.secondary" textAlign="center">
-                    Formatos: JPEG, PNG, GIF, SVG<br />Tamanho máximo: 5MB
+                    JPEG, PNG, GIF ou SVG. Tamanho maximo: 5MB.
                   </Typography>
                 </Box>
               </CardContent>
             </Card>
           </Grid>
 
-          {/* Informações Básicas */}
           <Grid item xs={12} md={8}>
-            <Card>
+            <Card sx={{ height: "100%" }}>
               <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
-                  <Box sx={{ width: 16, height: 3, borderRadius: 2, bgcolor: '#2563eb' }} />
-                  <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: '#2563eb' }}>
-                    Informações Básicas
-                  </Typography>
-                </Box>
+                <SectionTitle label="Informacoes Basicas" />
 
                 <Grid container spacing={2}>
                   <Grid item xs={12}>
-                    <TextField label="Nome da Instituição" fullWidth required value={formData.nome} onChange={handleInputChange('nome')} placeholder="Ex: Secretaria Municipal de Educação" />
+                    <TextField
+                      label="Nome da Instituicao"
+                      fullWidth
+                      required
+                      value={formData.nome}
+                      onChange={handleInputChange("nome")}
+                      placeholder="Ex: Secretaria Municipal de Educacao"
+                    />
                   </Grid>
                   <Grid item xs={12} sm={6}>
-                    <TextField label="CNPJ" fullWidth value={formData.cnpj} onChange={handleInputChange('cnpj')} placeholder="00.000.000/0000-00" />
+                    <TextField label="CNPJ" fullWidth value={formData.cnpj} onChange={handleInputChange("cnpj")} placeholder="00.000.000/0000-00" />
                   </Grid>
                   <Grid item xs={12} sm={6}>
-                    <TextField label="Telefone" fullWidth value={formData.telefone} onChange={handleInputChange('telefone')} placeholder="(00) 0000-0000" />
+                    <TextField label="Telefone" fullWidth value={formData.telefone} onChange={handleInputChange("telefone")} placeholder="(00) 0000-0000" />
                   </Grid>
                   <Grid item xs={12}>
-                    <TextField label="Endereço" fullWidth multiline rows={2} value={formData.endereco} onChange={handleInputChange('endereco')} placeholder="Endereço completo da instituição" />
+                    <TextField label="Endereco" fullWidth multiline rows={2} value={formData.endereco} onChange={handleInputChange("endereco")} placeholder="Endereco completo da instituicao" />
                   </Grid>
                   <Grid item xs={12} sm={6}>
-                    <TextField label="E-mail" fullWidth type="email" value={formData.email} onChange={handleInputChange('email')} placeholder="contato@secretaria.gov.br" />
+                    <TextField label="E-mail" fullWidth type="email" value={formData.email} onChange={handleInputChange("email")} placeholder="contato@secretaria.gov.br" />
                   </Grid>
                   <Grid item xs={12} sm={6}>
-                    <TextField label="Site" fullWidth value={formData.site} onChange={handleInputChange('site')} placeholder="https://www.secretaria.gov.br" />
+                    <TextField label="Site" fullWidth value={formData.site} onChange={handleInputChange("site")} placeholder="https://www.secretaria.gov.br" />
                   </Grid>
                   <Grid item xs={12}>
                     <TextField
                       label="Departamento / Setor"
                       fullWidth
                       value={formData.departamento}
-                      onChange={handleInputChange('departamento')}
-                      placeholder="Ex: Departamento de Alimentação Escolar"
-                      helperText="Aparece abaixo do nome da instituição nos documentos PDF"
+                      onChange={handleInputChange("departamento")}
+                      placeholder="Ex: Departamento de Alimentacao Escolar"
+                      helperText="Aparece abaixo do nome da instituicao nos documentos PDF"
                     />
                   </Grid>
                 </Grid>
@@ -258,71 +284,46 @@ const ConfiguracaoInstituicaoPage: React.FC = () => {
             </Card>
           </Grid>
 
-          {/* Responsável */}
           <Grid item xs={12}>
             <Card>
               <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
-                  <Box sx={{ width: 16, height: 3, borderRadius: 2, bgcolor: '#a855f7' }} />
-                  <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: '#a855f7' }}>
-                    Responsável pela Secretaria
-                  </Typography>
-                </Box>
+                <SectionTitle label="Responsavel pela Secretaria" />
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  Informações do responsável que aparecerão na assinatura dos documentos oficiais.
+                  Informacoes do responsavel usadas na assinatura de documentos oficiais.
                 </Typography>
 
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={8}>
-                    <TextField label="Nome do Secretário(a)" fullWidth value={formData.secretario_nome} onChange={handleInputChange('secretario_nome')} placeholder="Nome completo do secretário de educação" />
+                    <TextField label="Nome do Secretario(a)" fullWidth value={formData.secretario_nome} onChange={handleInputChange("secretario_nome")} placeholder="Nome completo" />
                   </Grid>
                   <Grid item xs={12} sm={4}>
-                    <TextField label="Cargo" fullWidth value={formData.secretario_cargo} onChange={handleInputChange('secretario_cargo')} placeholder="Secretário(a) de Educação" />
+                    <TextField label="Cargo" fullWidth value={formData.secretario_cargo} onChange={handleInputChange("secretario_cargo")} placeholder="Secretario(a) de Educacao" />
                   </Grid>
                 </Grid>
               </CardContent>
             </Card>
           </Grid>
 
-          {/* Actions */}
           <Grid item xs={12}>
-            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'space-between', alignItems: 'center' }}>
-              <Button
-                variant="outlined"
-                startIcon={<PdfIcon />}
-                onClick={() => navigate('/editor-templates-pdf')}
-                size="large"
-              >
-                Editor de Templates PDF
-              </Button>
+            <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1.5 }}>
               <Button
                 type="submit"
                 variant="contained"
+                color="add"
                 startIcon={saving ? <CircularProgress size={20} /> : <SaveIcon />}
                 disabled={saving}
-                size="large"
               >
-                {saving ? 'Salvando...' : 'Salvar Configurações'}
+                {saving ? "Salvando..." : "Salvar Configuracoes"}
               </Button>
             </Box>
           </Grid>
         </Grid>
       </form>
 
-      {/* Info */}
-      <Box sx={{ mt: 4 }}>
-        <Alert severity="info" sx={{ borderRadius: '6px' }}>
-          <Typography variant="subtitle2" gutterBottom>
-            Como essas informações são usadas:
-          </Typography>
-          <Typography variant="body2" component="div">
-            • <strong>Logo:</strong> Aparece no cabeçalho dos relatórios PDF<br />
-            • <strong>Nome e endereço:</strong> Identificação da instituição nos documentos<br />
-            • <strong>Secretário:</strong> Nome e cargo para assinatura de documentos oficiais<br />
-            • <strong>Contatos:</strong> Informações de contato nos relatórios
-          </Typography>
-        </Alert>
-      </Box>
+      <Alert severity="info" sx={{ mt: 3 }}>
+        Essas informacoes alimentam cabecalhos de relatorios PDF, identificacao institucional,
+        assinatura de documentos oficiais e dados de contato.
+      </Alert>
     </PageContainer>
   );
 };

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import PageContainer from "../../../components/PageContainer";
 import PageHeader from "../../../components/PageHeader";
+import { desktopMono } from "../../../theme/theme";
 import { useToast } from "../../../hooks/useToast";
 import { usePageTitle } from "../../../contexts/PageTitleContext";
 import {
@@ -14,18 +15,6 @@ import {
 } from "@mui/material";
 
 // ── Design tokens (GitHub Dark Mode) ──────────────────────────────────────────────
-const GREEN = "#2ea043";
-const NAVY = "#0d1117";
-const GH_COLORS = {
-  bg: '#0d1117',
-  canvas: '#161b22',
-  border: '#21262d',
-  borderMd: '#30363d',
-  text: '#e6edf3',
-  muted: '#8b949e',
-  greenDim: 'rgba(35,134,54,0.15)',
-  purpleDim: 'rgba(188,140,255,0.15)',
-};
 import {
     Edit as EditIcon,
     Save as SaveIcon,
@@ -116,29 +105,21 @@ const EscolaInfoCard = ({ isEditing, formData, setFormData, associacoes, totalAl
     <Grid container spacing={2} sx={{ mb: 2 }}>
         {/* Card de Informações da Escola */}
         <Grid item xs={12} md={6}>
-            <Card sx={{
-                height: '100%',
-                borderRadius: '6px',
-                border: `1px solid ${GH_COLORS.border}`,
-                bgcolor: GH_COLORS.canvas,
-                transition: 'all 0.2s',
-                overflow: 'visible',
-                '&:hover': { boxShadow: '0 1px 3px rgba(0,0,0,0.3)', borderColor: GH_COLORS.borderMd },
-            }}>
+            <Card sx={{ height: '100%', borderRadius: 1, overflow: 'visible' }}>
                 <CardContent sx={{ p: 3 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                            <Box sx={{ width: 36, height: 36, borderRadius: '4px', bgcolor: GH_COLORS.greenDim, display: 'flex', alignItems: 'center', justifyContent: 'center', color: GREEN }}>
+                            <Box sx={{ width: 36, height: 36, borderRadius: 1, bgcolor: 'action.hover', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'success.main' }}>
                                 <SchoolIcon sx={{ fontSize: 20 }} />
                             </Box>
-                            <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: GREEN }}>
+                            <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0, color: 'text.secondary' }}>
                                 Informações da Escola
                             </Typography>
                         </Box>
                         {isEditing && (
                             <Box sx={{ display: 'flex', gap: 1 }}>
                                 <Button onClick={onCancel} variant="outlined" disabled={salvando} size="small" sx={{ minHeight: 28, fontSize: '0.75rem' }}>Cancelar</Button>
-                                <Button onClick={onSave} variant="contained" disabled={salvando} size="small" sx={{ minHeight: 28, fontSize: '0.75rem', bgcolor: GREEN, '&:hover': { bgcolor: '#238636' }, borderRadius: '4px', textTransform: 'none' }}>
+                                <Button onClick={onSave} variant="contained" color="add" disabled={salvando} size="small" sx={{ minHeight: 28, fontSize: '0.75rem', borderRadius: 1, textTransform: 'none' }}>
                                     {salvando ? 'Salvando...' : 'Salvar'}
                                 </Button>
                             </Box>
@@ -178,36 +159,28 @@ const EscolaInfoCard = ({ isEditing, formData, setFormData, associacoes, totalAl
 
         {/* Card de Modalidades */}
         <Grid item xs={12} md={6}>
-            <Card sx={{
-                height: '100%',
-                borderRadius: '6px',
-                border: `1px solid ${GH_COLORS.border}`,
-                bgcolor: GH_COLORS.canvas,
-                transition: 'all 0.2s',
-                overflow: 'visible',
-                '&:hover': { boxShadow: '0 1px 3px rgba(0,0,0,0.3)', borderColor: GH_COLORS.borderMd },
-            }}>
+            <Card sx={{ height: '100%', borderRadius: 1, overflow: 'visible' }}>
                 <CardContent sx={{ p: 3 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                            <Box sx={{ width: 36, height: 36, borderRadius: '4px', bgcolor: GH_COLORS.purpleDim, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#bc8cff' }}>
+                            <Box sx={{ width: 36, height: 36, borderRadius: 1, bgcolor: 'action.hover', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'info.main' }}>
                                 <CategoryIcon sx={{ fontSize: 20 }} />
                             </Box>
-                            <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: '#bc8cff' }}>
+                            <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0, color: 'text.secondary' }}>
                                 Modalidades
                             </Typography>
                         </Box>
-                        <Button variant="contained" startIcon={<AddIcon fontSize="small" />} onClick={() => openModalidadeModal()} size="small" sx={{ minHeight: 28, fontSize: '0.75rem', borderRadius: '4px', textTransform: 'none', bgcolor: GREEN, '&:hover': { bgcolor: '#238636' } }}>
+                        <Button variant="contained" color="add" startIcon={<AddIcon fontSize="small" />} onClick={() => openModalidadeModal()} size="small" sx={{ minHeight: 28, fontSize: '0.75rem', borderRadius: 1, textTransform: 'none' }}>
                             Adicionar
                         </Button>
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
-                        <Box sx={{ width: 36, height: 36, borderRadius: '4px', bgcolor: GH_COLORS.greenDim, display: 'flex', alignItems: 'center', justifyContent: 'center', color: GREEN }}>
+                        <Box sx={{ width: 36, height: 36, borderRadius: 1, bgcolor: 'action.hover', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'success.main' }}>
                             <PeopleIcon sx={{ fontSize: 20 }} />
                         </Box>
                         <Box sx={{ ml: 1.5 }}>
-                            <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', lineHeight: 1.2 }}>Total de Alunos</Typography>
-                            <Typography variant="body2" fontWeight={600} sx={{ fontSize: '1.55rem', fontFamily: '"Fira Code", "Roboto Mono", monospace', lineHeight: 1.15, color: GREEN }}>{totalAlunos}</Typography>
+                            <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0, lineHeight: 1.2 }}>Total de Alunos</Typography>
+                            <Typography variant="body2" fontWeight={600} sx={{ fontSize: '1.55rem', fontFamily: desktopMono, lineHeight: 1.15, color: 'text.primary' }}>{totalAlunos}</Typography>
                         </Box>
                     </Box>
                     {associacoes.length === 0 ? (
@@ -408,20 +381,13 @@ const EscolaDetalhesPage = () => {
         <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden' }}>
             <PageContainer fullHeight>
                 {/* Seta + Breadcrumbs na mesma linha */}
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
-                    <IconButton size="small" onClick={() => navigate('/escolas')} sx={{ mr: 0.5, p: 0.5 }}>
-                        <ArrowBackIcon fontSize="small" />
-                    </IconButton>
-                    <PageBreadcrumbs
-                        items={[
-                            { label: 'Dashboard', path: '/dashboard' },
-                            { label: 'Escolas', path: '/escolas' },
-                            { label: escola?.nome || 'Detalhes' },
-                        ]}
-                    />
-                </Box>
-
                 <PageHeader
+                    onBack={() => navigate('/escolas')}
+                    breadcrumbs={[
+                        { label: 'Dashboard', path: '/dashboard' },
+                        { label: 'Escolas', path: '/escolas' },
+                        { label: escola?.nome || 'Detalhes' },
+                    ]}
                     title={escola?.nome || 'Detalhes da Escola'}
                     subtitle="Informações e modalidades da escola"
                     action={

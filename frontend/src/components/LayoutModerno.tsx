@@ -51,6 +51,7 @@ import {
   Search as SearchIcon,
   Settings,
 } from "@mui/icons-material";
+import type { Theme } from "@mui/material/styles";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { useThemePreference } from "../contexts/ThemeContext";
@@ -65,6 +66,7 @@ import { SeletorPeriodo } from "./SeletorPeriodo";
 import { GlobalSearchDropdown, useGlobalSearch } from "./GlobalSearch";
 import NotificacoesEscolaMenu from "./NotificacoesEscolaMenu";
 import NotificacoesMenu from "./NotificacoesMenu";
+import { NutriLogLogo } from "./NutriLogLogo";
 
 const drawerWidth = 248;
 const collapsedDrawerWidth = 78;
@@ -74,6 +76,9 @@ type LayoutTokens = {
   bgSecondary: string;
   bgElevated: string;
   bgAccent: string;
+  navActiveBg: string;
+  navActiveBorder: string;
+  navActiveText: string;
   borderSubtle: string;
   borderMedium: string;
   textPrimary: string;
@@ -88,11 +93,14 @@ type LayoutTokens = {
   shadow: string;
 };
 
-const getLayoutTokens = (theme: ReturnType<typeof useTheme>): LayoutTokens => ({
+const getLayoutTokens = (theme: Theme): LayoutTokens => ({
   bgPrimary: theme.palette.background.sidebar,
   bgSecondary: theme.palette.background.paper,
-  bgElevated: alpha(theme.palette.text.primary, theme.palette.mode === "light" ? 0.05 : 0.08),
-  bgAccent: alpha(theme.palette.text.primary, theme.palette.mode === "light" ? 0.035 : 0.06),
+  bgElevated: alpha(theme.palette.text.primary, theme.palette.mode === "light" ? 0.05 : 0.05),
+  bgAccent: alpha(theme.palette.text.primary, theme.palette.mode === "light" ? 0.035 : 0.04),
+  navActiveBg: alpha(theme.palette.text.primary, theme.palette.mode === "light" ? 0.08 : 0.1),
+  navActiveBorder: alpha(theme.palette.text.primary, theme.palette.mode === "light" ? 0.12 : 0.16),
+  navActiveText: theme.palette.text.primary,
   borderSubtle: theme.palette.divider,
   borderMedium: alpha(theme.palette.text.primary, theme.palette.mode === "light" ? 0.14 : 0.2),
   textPrimary: theme.palette.text.primary,
@@ -104,7 +112,7 @@ const getLayoutTokens = (theme: ReturnType<typeof useTheme>): LayoutTokens => ({
   primaryTint: alpha(theme.palette.primary.main, 0.16),
   successTint: alpha(theme.palette.success.main, 0.18),
   dangerTint: alpha(theme.palette.error.main, 0.18),
-  shadow: theme.palette.mode === "light" ? "0 10px 24px rgba(31,36,48,0.05)" : "0 12px 28px rgba(0,0,0,0.2)",
+  shadow: theme.palette.mode === "light" ? "0 10px 24px rgba(31,36,48,0.05)" : "0 10px 24px rgba(0,0,0,0.16)",
 });
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
@@ -248,11 +256,11 @@ const NavItem = ({
         minHeight: 44,
         borderRadius: 1.5,
         justifyContent: collapsed ? "center" : "flex-start",
-        backgroundColor: active ? tokens.primaryTint : "transparent",
-        color: active ? tokens.primary : tokens.textSecondary,
-        border: `1px solid ${active ? alpha(tokens.primary, 0.18) : "transparent"}`,
+        backgroundColor: active ? tokens.navActiveBg : "transparent",
+        color: active ? tokens.navActiveText : tokens.textSecondary,
+        border: `1px solid ${active ? tokens.navActiveBorder : "transparent"}`,
         "&:hover": {
-          backgroundColor: active ? tokens.primaryTint : tokens.bgElevated,
+          backgroundColor: active ? tokens.navActiveBg : tokens.bgElevated,
           color: tokens.textPrimary,
         },
       }}
@@ -327,8 +335,8 @@ const CategoryGroup = ({
                   px: 1.1,
                   borderRadius: 1,
                   cursor: "pointer",
-                  color: isActivePath(pathname, item.path) ? tokens.primary : tokens.textPrimary,
-                  backgroundColor: isActivePath(pathname, item.path) ? tokens.primaryTint : "transparent",
+                  color: isActivePath(pathname, item.path) ? tokens.navActiveText : tokens.textPrimary,
+                  backgroundColor: isActivePath(pathname, item.path) ? tokens.navActiveBg : "transparent",
                   "&:hover": {
                     backgroundColor: tokens.bgElevated,
                   },
@@ -348,8 +356,8 @@ const CategoryGroup = ({
             minHeight: 44,
             borderRadius: 1.5,
             justifyContent: "center",
-            color: hasActive ? tokens.primary : tokens.textMuted,
-            backgroundColor: hasActive ? tokens.primaryTint : "transparent",
+            color: hasActive ? tokens.navActiveText : tokens.textMuted,
+            backgroundColor: hasActive ? tokens.navActiveBg : "transparent",
             "&:hover": { backgroundColor: tokens.bgElevated, color: tokens.textPrimary },
           }}
         >
@@ -627,8 +635,25 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
           zIndex: (muiTheme) => muiTheme.zIndex.drawer + 1,
         }}
       >
-        <Toolbar sx={{ minHeight: { xs: 60, md: 68 }, gap: 1.5 }}>
-          <Box component="img" src="/nutrilog_logo_v2.svg" alt="NutriLog" sx={{ height: 34, width: "auto", mr: 1 }} />
+        <Toolbar
+          sx={{
+            minHeight: { xs: 60, md: 64 },
+            gap: { xs: 1, md: 1.25 },
+            px: { xs: 1.25, md: 0 },
+          }}
+        >
+          <Box
+            sx={{
+              width: { xs: "auto", md: collapsed ? collapsedDrawerWidth : drawerWidth },
+              px: { xs: 0.75, md: 2.25 },
+              pl: { xs: 1.25, md: 2.5 },
+              display: "flex",
+              alignItems: "center",
+              flexShrink: 0,
+            }}
+          >
+            <NutriLogLogo compact={collapsed && !isMobile} />
+          </Box>
           <IconButton
             color="inherit"
             edge="start"
@@ -638,13 +663,22 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
             <MenuIcon />
           </IconButton>
 
-          <Box sx={{ flex: 1, maxWidth: 520, position: "relative" }}>
+          <Box
+            sx={{
+              flex: { xs: 1, md: "0 1 440px" },
+              maxWidth: { xs: "none", md: 440, xl: 500 },
+              minWidth: { xs: 0, md: 320 },
+              position: "relative",
+              ml: { xs: 0, md: 2 },
+            }}
+          >
             <Box
               sx={{
                 display: "flex",
                 alignItems: "center",
-                borderRadius: 1.5,
-                backgroundColor: tokens.bgSecondary,
+                minHeight: 38,
+                borderRadius: 1.25,
+                backgroundColor: alpha(tokens.bgSecondary, theme.palette.mode === "light" ? 0.82 : 0.72),
                 border: `1px solid ${search.open ? alpha(tokens.primary, 0.35) : tokens.borderSubtle}`,
                 boxShadow: search.open ? `0 0 0 3px ${alpha(tokens.primary, 0.12)}` : "none",
               }}
@@ -680,7 +714,7 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
                   gap: 0.5,
                   mr: 1.25,
                   px: 1,
-                  py: 0.4,
+                  py: 0.3,
                   borderRadius: 1,
                   backgroundColor: tokens.bgAccent,
                   border: `1px solid ${tokens.borderSubtle}`,
@@ -706,7 +740,19 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
             )}
           </Box>
 
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1, ml: "auto" }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 0.75,
+              ml: "auto",
+              pr: { xs: 0, md: 1.25 },
+              "& .MuiIconButton-root": {
+                width: 36,
+                height: 36,
+              },
+            }}
+          >
             <ThemeSwitcher />
             <SeletorPeriodo />
             {isEscolaUser ? <NotificacoesEscolaMenu /> : <NotificacoesMenu />}

@@ -510,7 +510,7 @@ export default function PreparacaoDetalhe() {
     }}>
       <Box sx={{ px: isMobile ? 1 : 2, pt: 1.5 }}>
         {/* Seta + Breadcrumbs na mesma linha */}
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+        <Box sx={{ display: 'none' }}>
           <IconButton size="small" onClick={() => navigate('/preparacoes')} sx={{ mr: 0.5, p: 0.5 }}>
             <ArrowBackIcon fontSize="small" />
           </IconButton>
@@ -524,6 +524,12 @@ export default function PreparacaoDetalhe() {
         </Box>
 
         <PageHeader
+          onBack={() => navigate('/preparacoes')}
+          breadcrumbs={[
+            { label: 'Dashboard', path: '/dashboard' },
+            { label: 'Preparações', path: '/preparacoes' },
+            { label: preparacao?.nome || '' },
+          ]}
           title={preparacao?.nome || 'Detalhes da Preparação'}
           action={
             <Tooltip title="Editar informações da preparação">
@@ -1285,7 +1291,7 @@ export default function PreparacaoDetalhe() {
           {/* Nome */}
           <Box>
             <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, display: 'flex', alignItems: 'center', gap: 0.75 }}>
-              <Box sx={{ width: 3, height: 16, borderRadius: 1.5, bgcolor: 'primary.main' }} />
+              <Box sx={{ width: 3, height: 16, borderRadius: 1.5, bgcolor: 'text.secondary' }} />
               Nome da Preparação
             </Typography>
             <TextField

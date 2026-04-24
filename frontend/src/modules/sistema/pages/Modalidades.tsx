@@ -158,8 +158,8 @@ const ModalidadesPage = () => {
             label={`${value || 1}x`} 
             size="small" 
             sx={{ 
-              bgcolor: '#e3f2fd', 
-              color: '#1976d2',
+              bgcolor: 'action.hover',
+              color: 'text.primary',
               fontWeight: 600,
               fontSize: '0.75rem'
             }} 
@@ -228,6 +228,7 @@ const ModalidadesPage = () => {
           <Tooltip title="Editar">
             <IconButton
               size="small"
+              color="edit"
               onClick={() => openModal(row.original)}
             >
               <EditIcon fontSize="small" />
@@ -236,6 +237,7 @@ const ModalidadesPage = () => {
           <Tooltip title="Excluir">
             <IconButton
               size="small"
+              color="delete"
               onClick={() => openDeleteModal(row.original)}
             >
               <DeleteIcon fontSize="small" />
@@ -325,7 +327,7 @@ const ModalidadesPage = () => {
           totalCount={modalidades.length}
           breadcrumbs={[{ label: 'Dashboard', path: '/dashboard' }, { label: 'Cadastros' }, { label: 'Modalidades' }]}
           action={
-            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => openModal()} sx={{ borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
+            <Button variant="contained" color="add" startIcon={<AddIcon />} onClick={() => openModal()} sx={{ borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
               Nova Modalidade
             </Button>
           }

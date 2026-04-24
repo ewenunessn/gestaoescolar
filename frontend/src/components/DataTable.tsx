@@ -232,7 +232,7 @@ export const DataTable = memo(function DataTable<TData>({
             {onCreateClick && (
               <Button
                 variant="contained"
-                color="primary"
+                color="add"
                 onClick={onCreateClick}
                 startIcon={<AddIcon sx={{ fontSize: 16 }} />}
                 size="small"

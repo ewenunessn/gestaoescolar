@@ -729,7 +729,7 @@ export default function PlanejamentoCompras() {
                 startIcon={gerandoPedidoGuia ? <CircularProgress size={18} /> : <ShoppingCartIcon />}
                 onClick={handleGerarPedidoDaGuia}
                 disabled={gerandoPedidoGuia || !guiaSelecionada}
-                sx={{ bgcolor: '#1d4ed8', '&:hover': { bgcolor: '#1e40af' } }}
+                color="add"
               >
                 {gerandoPedidoGuia ? 'Gerando...' : 'Gerar Pedido de Compra'}
               </Button>

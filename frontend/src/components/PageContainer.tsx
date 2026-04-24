@@ -19,8 +19,9 @@ const PageContainer: React.FC<PageContainerProps> = ({
   return (
     <Box
       sx={{
-        px: '20px',
-        py: 1.5,
+        px: { xs: 2, md: 3 },
+        py: { xs: 2, md: 2.5 },
+        width: '100%',
         ...(fullHeight && {
           height: '100%',
           display: 'flex',

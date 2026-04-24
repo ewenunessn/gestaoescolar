@@ -212,6 +212,7 @@ const PedidosPage = () => {
           <Tooltip title="Excluir">
             <IconButton
               size="small"
+              color="delete"
               onClick={() => openDeleteModal(row.original)}
             >
               <DeleteIcon fontSize="small" />
@@ -275,7 +276,7 @@ const PedidosPage = () => {
                 sx={{ borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
                 Gerar da Guia
               </Button>
-              <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => navigate('/compras/novo')}
+              <Button variant="contained" color="add" startIcon={<AddIcon />} onClick={() => navigate('/compras/novo')}
                 sx={{ borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
                 Novo Pedido
               </Button>

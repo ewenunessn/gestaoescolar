@@ -213,14 +213,14 @@ function DroppableZone({ id, children }: DroppableZoneProps) {
         pb: 2,
         minHeight: 200,
         border: "2px dashed",
-        borderRadius: 2,
+        borderRadius: 1,
         mx: 2,
         mb: 2,
         transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-        backgroundColor: isOver ? "rgba(25, 118, 210, 0.08)" : "transparent",
-        borderColor: isOver ? "primary.main" : "divider",
+        backgroundColor: isOver ? "action.hover" : "transparent",
+        borderColor: isOver ? "text.secondary" : "divider",
         transform: isOver ? "scale(1.02)" : "scale(1)",
-        boxShadow: isOver ? "0 4px 20px rgba(25, 118, 210, 0.15)" : "none",
+        boxShadow: isOver ? "0 4px 20px rgba(0,0,0,0.12)" : "none",
         '&::before': isOver ? {
           content: '""',
           position: 'absolute',
@@ -228,9 +228,9 @@ function DroppableZone({ id, children }: DroppableZoneProps) {
           left: 0,
           right: 0,
           bottom: 0,
-          background: 'linear-gradient(45deg, rgba(25, 118, 210, 0.05) 25%, transparent 25%, transparent 75%, rgba(25, 118, 210, 0.05) 75%)',
+          background: 'linear-gradient(45deg, rgba(127,127,127,0.08) 25%, transparent 25%, transparent 75%, rgba(127,127,127,0.08) 75%)',
           backgroundSize: '20px 20px',
-          borderRadius: 2,
+          borderRadius: 1,
           pointerEvents: 'none',
         } : {},
       }}
@@ -274,14 +274,14 @@ function DraggableRefeicao({
       {...listeners}
       sx={{
         mb: 1,
-        borderRadius: 2,
+        borderRadius: 1,
         border: '1px solid',
         borderColor: 'grey.300',
         bgcolor: 'background.paper',
         cursor: 'grab',
         '&:hover': {
-          bgcolor: 'grey.50',
-          borderColor: 'primary.main',
+          bgcolor: 'action.hover',
+          borderColor: 'text.secondary',
         },
         '&:active': {
           cursor: 'grabbing',
@@ -833,7 +833,7 @@ export default function CardapioDetalhe() {
       >
         <PageContainer>
           {/* Seta + Breadcrumbs na mesma linha */}
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+          <Box sx={{ display: 'none' }}>
             <IconButton size="small" onClick={() => navigate('/cardapios')} sx={{ mr: 0.5, p: 0.5 }}>
               <ArrowBackIcon fontSize="small" />
             </IconButton>
@@ -846,12 +846,18 @@ export default function CardapioDetalhe() {
           </Box>
 
           <PageHeader
+            onBack={() => navigate('/cardapios')}
+            breadcrumbs={[
+              { label: 'Dashboard', path: '/dashboard' },
+              { label: 'Cardápios', path: '/cardapios' },
+              { label: isNovo ? 'Novo Cardápio' : (cardapio?.nome || 'Detalhes do Cardápio') }
+            ]}
             title={isNovo ? (form.nome || 'Novo Cardápio') : (cardapio?.nome || 'Carregando...')}
             subtitle={isNovo ? 'Preencha os dados do cardápio' : 'Visualize e gerencie as refeições do cardápio'}
           />
 
           {/* Card de Informações do Cardápio */}
-        <Card sx={{ mb: 4, borderRadius: 3, boxShadow: 3 }}>
+        <Card sx={{ mb: 4, borderRadius: 1, border: 1, borderColor: 'divider', boxShadow: 'none' }}>
           <CardContent sx={{ p: 4 }}>
             {editando ? (
               <Box>
@@ -1240,38 +1246,38 @@ export default function CardapioDetalhe() {
             {custoCardapio && (
               <Box>
                 {/* Resumo Geral */}
-                <Card sx={{ mb: 3, bgcolor: 'primary.light' }}>
+                <Card sx={{ mb: 3, bgcolor: 'background.paper', border: 1, borderColor: 'divider' }}>
                   <CardContent>
                     <Grid container spacing={2}>
                       <Grid item xs={12} md={3}>
-                        <Typography variant="body2" color="primary.contrastText">
+                        <Typography variant="body2" color="text.secondary">
                           Custo Total
                         </Typography>
-                        <Typography variant="h5" color="primary.contrastText" fontWeight="bold">
+                        <Typography variant="h5" color="text.primary" fontWeight="bold">
                           R$ {toNum(custoCardapio.resumo?.custo_total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </Typography>
                       </Grid>
                       <Grid item xs={12} md={3}>
-                        <Typography variant="body2" color="primary.contrastText">
+                        <Typography variant="body2" color="text.secondary">
                           Total de Refeições
                         </Typography>
-                        <Typography variant="h5" color="primary.contrastText" fontWeight="bold">
+                        <Typography variant="h5" color="text.primary" fontWeight="bold">
                           {custoCardapio.resumo?.total_refeicoes || 0}
                         </Typography>
                       </Grid>
                       <Grid item xs={12} md={3}>
-                        <Typography variant="body2" color="primary.contrastText">
+                        <Typography variant="body2" color="text.secondary">
                           Total de Dias
                         </Typography>
-                        <Typography variant="h5" color="primary.contrastText" fontWeight="bold">
+                        <Typography variant="h5" color="text.primary" fontWeight="bold">
                           {custoCardapio.resumo?.total_dias || 0}
                         </Typography>
                       </Grid>
                       <Grid item xs={12} md={3}>
-                        <Typography variant="body2" color="primary.contrastText">
+                        <Typography variant="body2" color="text.secondary">
                           Total de Alunos
                         </Typography>
-                        <Typography variant="h5" color="primary.contrastText" fontWeight="bold">
+                        <Typography variant="h5" color="text.primary" fontWeight="bold">
                           {custoCardapio.resumo?.total_alunos || 0}
                         </Typography>
                       </Grid>
@@ -1447,11 +1453,11 @@ export default function CardapioDetalhe() {
                   </Typography>
                 </Box>
                 
-                <Box sx={{ mt: 2, p: 2, bgcolor: 'primary.light', borderRadius: 1 }}>
-                  <Typography variant="h6" color="primary.contrastText" align="center">
+                <Box sx={{ mt: 2, p: 2, bgcolor: 'action.hover', borderRadius: 1, border: 1, borderColor: 'divider' }}>
+                  <Typography variant="h6" color="text.primary" align="center">
                     <strong>Custo Total da Preparação: R$ {toNum(modalDetalheCusto.custo_total_refeicao).toFixed(2)}</strong>
                   </Typography>
-                  <Typography variant="caption" color="primary.contrastText" align="center" display="block">
+                  <Typography variant="caption" color="text.secondary" align="center" display="block">
                     (Custo por aluno × Total de alunos × Frequência mensal)
                   </Typography>
                 </Box>
@@ -1484,9 +1490,9 @@ export default function CardapioDetalhe() {
             <Paper
               sx={{
                 p: 2,
-                backgroundColor: "primary.main",
-                color: "primary.contrastText",
-                borderRadius: 2,
+                backgroundColor: "background.paper",
+                color: "text.primary",
+                borderRadius: 1,
                 boxShadow: '0 12px 30px rgba(0,0,0,0.2)',
                 transform: 'rotate(3deg)',
                 cursor: 'grabbing',

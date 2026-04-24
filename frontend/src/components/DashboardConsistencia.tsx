@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
+    alpha,
     Box,
     Card,
     CardContent,
@@ -21,6 +22,7 @@ import {
     DialogContent,
     DialogActions,
     CircularProgress,
+    useTheme,
 } from '@mui/material';
 import {
     Warning,
@@ -36,6 +38,7 @@ import {
 import NotificacoesMenu from './NotificacoesMenu';
 import { consistenciaService } from '../services/consistenciaService';
 import { toNum } from '../utils/formatters';
+import { desktopDisplay, desktopMono } from '../theme/theme';
 
 // ── Design tokens ──────────────────────────────────────────────
 const NAVY = "#0f172a";
@@ -141,7 +144,7 @@ const StatCard: React.FC<StatCardProps> = ({ label, value, icon, accent, bg, pro
 
             <Typography
                 sx={{
-                    fontFamily: '"Fira Code", "Roboto Mono", monospace',
+                    fontFamily: desktopMono,
                     fontSize: '1.65rem',
                     fontWeight: 700,
                     lineHeight: 1.15,
@@ -189,6 +192,7 @@ const Skeletal = () => <div className="cons-qb-skel" style={{ height: 120 }} />;
 
 // ── Main Component ─────────────────────────────────────────────
 const DashboardConsistencia: React.FC = () => {
+    const theme = useTheme();
     const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
     const [loading, setLoading] = useState(true);
     const [sincronizando, setSincronizando] = useState(false);
@@ -288,6 +292,7 @@ const DashboardConsistencia: React.FC = () => {
                         <Box>
                             <Typography
                                 sx={{
+                                    fontFamily: desktopDisplay,
                                     fontWeight: 800,
                                     fontSize: '1.55rem',
                                     color: '#fff',
@@ -300,7 +305,7 @@ const DashboardConsistencia: React.FC = () => {
                                 <Shield sx={{ color: GREEN, fontSize: 26 }} />
                                 Dashboard de Consistência
                             </Typography>
-                            <Typography sx={{ fontSize: '0.82rem', color: '#94a3b8', mt: 0.2 }}>
+                            <Typography sx={{ fontSize: '0.82rem', color: 'text.secondary', mt: 0.2 }}>
                                 Monitoramento e verificação de integridade dos pedidos
                             </Typography>
                         </Box>
@@ -381,7 +386,7 @@ const DashboardConsistencia: React.FC = () => {
                             value={
                                 <Box display="flex" alignItems="baseline" gap={0.3}>
                                     <span>{toNum(dashboardData.resumo_geral.percentual_consistencia).toFixed(1)}</span>
-                                    <span style={{ fontSize: '1.1rem', fontWeight: 500, opacity: 0.7 }}>%</span>
+                                    <Box component="span" sx={{ fontSize: '1.1rem', fontWeight: 500, opacity: 0.7 }}>%</Box>
                                 </Box>
                             }
                             icon={<DonutLarge sx={{ fontSize: 16, color: pctMain.accent }} />}
@@ -430,7 +435,7 @@ const DashboardConsistencia: React.FC = () => {
                                                 </TableCell>
                                                 <TableCell
                                                     sx={{
-                                                        fontFamily: '"Fira Code", "Roboto Mono", monospace',
+                                                        fontFamily: desktopMono,
                                                         fontWeight: 600,
                                                         fontSize: '0.8rem',
                                                         py: 0.8,
@@ -438,10 +443,10 @@ const DashboardConsistencia: React.FC = () => {
                                                 >
                                                     {alerta.numero_pedido}
                                                 </TableCell>
-                                                <TableCell sx={{ fontSize: '0.8rem', color: '#64748b', maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', py: 0.8 }}>
+                                                <TableCell sx={{ fontSize: '0.8rem', color: 'text.secondary', maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', py: 0.8 }}>
                                                     {alerta.descricao}
                                                 </TableCell>
-                                                <TableCell sx={{ fontSize: '0.72rem', color: '#94a3b8', py: 0.8 }}>
+                                                <TableCell sx={{ fontSize: '0.72rem', color: 'text.secondary', py: 0.8 }}>
                                                     {new Date(alerta.data_deteccao).toLocaleString('pt-BR')}
                                                 </TableCell>
                                                 <TableCell sx={{ py: 0.8 }}>
@@ -518,7 +523,7 @@ const DashboardConsistencia: React.FC = () => {
                                                 </Typography>
                                                 <Typography
                                                     sx={{
-                                                        fontFamily: '"Fira Code", "Roboto Mono", monospace',
+                                                        fontFamily: desktopMono,
                                                         fontSize: '1.5rem',
                                                         fontWeight: 700,
                                                         color: m.accent,
@@ -583,7 +588,7 @@ const DashboardConsistencia: React.FC = () => {
                             fontSize: '1rem',
                         }}
                     >
-                        <Shield sx={{ color: '#6366f1', fontSize: 20 }} />
+                        <Shield sx={{ color: theme.palette.primary.main, fontSize: 20 }} />
                         Detalhes de Consistência — Pedido {detalhePedido?.numero_pedido}
                     </DialogTitle>
                     <DialogContent>
@@ -613,10 +618,10 @@ const DashboardConsistencia: React.FC = () => {
                                             {detalhePedido.itens.map((item: any, index: number) => (
                                                 <TableRow key={index} sx={{ '&:hover': { bgcolor: '#f8fafc' }, transition: 'background 0.15s' }}>
                                                     <TableCell sx={{ fontWeight: 500, py: 0.8 }}>{item.nome_produto}</TableCell>
-                                                    <TableCell align="right" sx={{ fontFamily: '"Fira Code", "Roboto Mono", monospace', py: 0.8 }}>{item.quantidade_pedida}</TableCell>
-                                                    <TableCell align="right" sx={{ fontFamily: '"Fira Code", "Roboto Mono", monospace', py: 0.8 }}>{item.quantidade_recebida}</TableCell>
-                                                    <TableCell align="right" sx={{ fontFamily: '"Fira Code", "Roboto Mono", monospace', py: 0.8 }}>{item.quantidade_faturada}</TableCell>
-                                                    <TableCell align="right" sx={{ fontFamily: '"Fira Code", "Roboto Mono", monospace', py: 0.8 }}>{item.quantidade_estoque}</TableCell>
+                                                    <TableCell align="right" sx={{ fontFamily: desktopMono, py: 0.8 }}>{item.quantidade_pedida}</TableCell>
+                                                    <TableCell align="right" sx={{ fontFamily: desktopMono, py: 0.8 }}>{item.quantidade_recebida}</TableCell>
+                                                    <TableCell align="right" sx={{ fontFamily: desktopMono, py: 0.8 }}>{item.quantidade_faturada}</TableCell>
+                                                    <TableCell align="right" sx={{ fontFamily: desktopMono, py: 0.8 }}>{item.quantidade_estoque}</TableCell>
                                                     <TableCell sx={{ py: 0.8 }}>
                                                         {item.divergencias.length > 0 ? (
                                                             <Chip

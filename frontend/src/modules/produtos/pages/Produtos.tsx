@@ -287,6 +287,7 @@ const ProdutosPage = () => {
           <Tooltip title="Editar">
             <IconButton
               size="small"
+              color="edit"
               onClick={() => navigate(`/produtos/${row.original.id}`)}
             >
               <EditIcon fontSize="small" />
@@ -295,6 +296,7 @@ const ProdutosPage = () => {
           <Tooltip title="Excluir">
             <IconButton
               size="small"
+              color="delete"
               onClick={() => openDeleteModal(row.original)}
             >
               <DeleteIcon fontSize="small" />
@@ -520,7 +522,7 @@ const ProdutosPage = () => {
           totalCount={produtosFiltrados.length}
           breadcrumbs={[{ label: 'Dashboard', path: '/dashboard' }, { label: 'Cadastros' }, { label: 'Produtos' }]}
           action={
-            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={openModal} sx={{ borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
+            <Button variant="contained" color="add" startIcon={<AddIcon />} onClick={openModal} sx={{ borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
               Novo Produto
             </Button>
           }

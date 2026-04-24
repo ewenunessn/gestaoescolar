@@ -233,6 +233,7 @@ const FornecedoresPage: React.FC = () => {
           <Tooltip title="Editar">
             <IconButton
               size="small"
+              color="edit"
               onClick={() => openModal(row.original)}
             >
               <EditIcon fontSize="small" />
@@ -241,6 +242,7 @@ const FornecedoresPage: React.FC = () => {
           <Tooltip title="Excluir">
             <IconButton
               size="small"
+              color="delete"
               onClick={() => openDeleteModal(row.original)}
             >
               <DeleteIcon fontSize="small" />
@@ -387,8 +389,8 @@ const FornecedoresPage: React.FC = () => {
             { label: 'Fornecedores' },
           ]}
           action={
-            <Button variant="contained" startIcon={<AddIcon />} onClick={() => openModal()}
-              sx={{ bgcolor: '#22c55e', '&:hover': { bgcolor: '#16a34a' }, borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
+            <Button variant="contained" color="add" startIcon={<AddIcon />} onClick={() => openModal()}
+              sx={{ borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
               Novo Fornecedor
             </Button>
           }

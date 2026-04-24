@@ -357,7 +357,7 @@ export default function PedidoDetalhe() {
     <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden' }}>
       <PageContainer fullHeight sx={{ bgcolor: 'background.default' }}>
         {/* Seta + Breadcrumbs na mesma linha */}
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+        <Box sx={{ display: 'none' }}>
           <IconButton size="small" onClick={() => navigate('/compras')} sx={{ mr: 0.5, p: 0.5 }}>
             <ArrowBackIcon fontSize="small" />
           </IconButton>
@@ -371,6 +371,12 @@ export default function PedidoDetalhe() {
         </Box>
 
         <PageHeader
+          onBack={() => navigate('/compras')}
+          breadcrumbs={[
+            { label: 'Dashboard', path: '/dashboard' },
+            { label: 'Compras', path: '/compras' },
+            { label: `Compra ${pedido.numero}` },
+          ]}
           title={`Compra ${pedido.numero}`}
           action={
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>

@@ -297,8 +297,8 @@ const ContratosPage: React.FC = () => {
             { label: 'Contratos' },
           ]}
           action={
-            <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/contratos/novo')}
-              size="small" sx={{ bgcolor: '#22c55e', '&:hover': { bgcolor: '#16a34a' }, borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
+            <Button variant="contained" color="add" startIcon={<AddIcon />} onClick={() => navigate('/contratos/novo')}
+              size="small" sx={{ borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
               Novo Contrato
             </Button>
           }

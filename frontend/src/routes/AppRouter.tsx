@@ -1,9 +1,11 @@
 import { Suspense, lazy, useEffect } from "react";
+import { Box, Typography } from "@mui/material";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { isAuthenticated } from "../services/auth";
 import LayoutModerno from "../components/LayoutModerno";
 import PermissionGuard from "../components/PermissionGuard";
 import { EscolasProvider } from "../contexts/EscolasContext";
+import { desktopSans } from "../theme/theme";
 
 // Componentes críticos carregados imediatamente (páginas públicas)
 import Login from "../pages/Login";
@@ -17,16 +19,18 @@ import CardapioPublico from "../modules/cardapios/pages/CardapioPublico";
 
 // Componente de loading
 const PageLoader = () => (
-  <div style={{
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    height: '200px',
-    fontSize: '16px',
-    color: '#666'
-  }}>
-    Carregando...
-  </div>
+  <Box
+    sx={{
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      height: 200,
+    }}
+  >
+    <Typography sx={{ fontSize: '0.95rem', color: 'text.secondary', fontFamily: desktopSans }}>
+      Carregando...
+    </Typography>
+  </Box>
 );
 
 // Redireciona para a rota inicial correta conforme tipo de usuário

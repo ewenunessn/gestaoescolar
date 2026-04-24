@@ -265,6 +265,7 @@ const EscolasPage = () => {
           <Tooltip title="Editar">
             <IconButton
               size="small"
+              color="edit"
               onClick={() => navigate(`/escolas/${row.original.id}`)}
             >
               <EditIcon fontSize="small" />
@@ -273,6 +274,7 @@ const EscolasPage = () => {
           <Tooltip title="Excluir">
             <IconButton
               size="small"
+              color="delete"
               onClick={() => openDeleteModal(row.original)}
             >
               <DeleteIcon fontSize="small" />
@@ -414,7 +416,7 @@ const EscolasPage = () => {
             { label: 'Escolas' },
           ]}
           action={
-            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={openModal}
+            <Button variant="contained" color="add" startIcon={<AddIcon />} onClick={openModal}
               sx={{ borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
               Nova Escola
             </Button>

@@ -79,27 +79,58 @@ const lightTokens: ThemeTokens = {
 };
 
 const darkTokens: ThemeTokens = {
-  bg: '#171b24',
-  canvas: '#202532',
-  canvasAlt: '#262c39',
-  sidebar: '#141923',
-  text: '#eef2f7',
-  muted: '#a1abba',
-  subtle: '#738095',
-  border: 'rgba(226, 232, 240, 0.08)',
-  borderStrong: 'rgba(226, 232, 240, 0.16)',
-  primary: '#7db8ad',
-  primaryHover: '#96c7be',
-  primaryContrast: '#13201d',
-  success: '#63bb8a',
-  warning: '#d8a55f',
-  danger: '#e07f76',
-  info: '#84b5d3',
+  bg: '#0f1012',
+  canvas: '#17181c',
+  canvasAlt: '#1f2126',
+  sidebar: '#090a0c',
+  text: '#f3f4f6',
+  muted: '#a3a7b0',
+  subtle: '#767b86',
+  border: 'rgba(255, 255, 255, 0.07)',
+  borderStrong: 'rgba(255, 255, 255, 0.12)',
+  primary: '#58a6ff',
+  primaryHover: '#7bb8ff',
+  primaryContrast: '#07111f',
+  success: '#47c97e',
+  warning: '#d1a24e',
+  danger: '#ff7373',
+  info: '#7fb6ff',
 };
 
 const getTokens = (mode: AppThemeMode): ThemeTokens => (
   mode === 'light' ? lightTokens : darkTokens
 );
+
+export const desktopSans = [
+  '"Segoe UI Variable Text"',
+  '"Segoe UI Variable Static Text"',
+  '"Segoe UI"',
+  '"Inter"',
+  '-apple-system',
+  'BlinkMacSystemFont',
+  '"Helvetica Neue"',
+  'sans-serif',
+].join(',');
+
+export const desktopDisplay = [
+  '"Segoe UI Variable Display"',
+  '"Segoe UI Variable Text"',
+  '"Segoe UI"',
+  '"Inter"',
+  '-apple-system',
+  'BlinkMacSystemFont',
+  '"Helvetica Neue"',
+  'sans-serif',
+].join(',');
+
+export const desktopMono = [
+  '"Cascadia Mono"',
+  '"Cascadia Code"',
+  '"Consolas"',
+  '"SFMono-Regular"',
+  '"Roboto Mono"',
+  'monospace',
+].join(',');
 
 const createComponents = (mode: AppThemeMode, t: ThemeTokens): ThemeOptions['components'] => ({
   MuiCssBaseline: {
@@ -110,6 +141,10 @@ const createComponents = (mode: AppThemeMode, t: ThemeTokens): ThemeOptions['com
       body: {
         backgroundColor: t.bg,
         color: t.text,
+        fontFamily: desktopSans,
+        WebkitFontSmoothing: 'antialiased',
+        MozOsxFontSmoothing: 'grayscale',
+        textRendering: 'optimizeLegibility',
       },
       '#root': {
         minHeight: '100vh',
@@ -176,6 +211,9 @@ const createComponents = (mode: AppThemeMode, t: ThemeTokens): ThemeOptions['com
       '.data-table-action-view': {
         color: t.primary,
       },
+      '.data-table-action-add': {
+        color: t.success,
+      },
       '.data-table-action-edit': {
         color: t.info,
       },
@@ -183,11 +221,11 @@ const createComponents = (mode: AppThemeMode, t: ThemeTokens): ThemeOptions['com
         color: t.danger,
       },
       '.data-table-btn-create': {
-        backgroundColor: t.primary,
-        color: t.primaryContrast,
+        backgroundColor: t.success,
+        color: mode === 'light' ? '#f7fbf8' : '#08140e',
       },
       '.data-table-btn-create:hover': {
-        backgroundColor: t.primaryHover,
+        backgroundColor: alpha(t.success, mode === 'light' ? 0.9 : 0.82),
       },
     },
   },
@@ -211,6 +249,98 @@ const createComponents = (mode: AppThemeMode, t: ThemeTokens): ThemeOptions['com
         borderColor: t.borderStrong,
       },
     },
+    variants: [
+      {
+        props: { variant: 'contained', color: 'add' },
+        style: {
+          backgroundColor: t.success,
+          color: mode === 'light' ? '#f7fbf8' : '#08140e',
+          '&:hover': {
+            backgroundColor: alpha(t.success, mode === 'light' ? 0.9 : 0.82),
+          },
+        },
+      },
+      {
+        props: { variant: 'contained', color: 'edit' },
+        style: {
+          backgroundColor: t.info,
+          color: '#08131f',
+          '&:hover': {
+            backgroundColor: alpha(t.info, mode === 'light' ? 0.9 : 0.82),
+          },
+        },
+      },
+      {
+        props: { variant: 'contained', color: 'delete' },
+        style: {
+          backgroundColor: t.danger,
+          color: '#fff7f7',
+          '&:hover': {
+            backgroundColor: alpha(t.danger, mode === 'light' ? 0.9 : 0.82),
+          },
+        },
+      },
+      {
+        props: { variant: 'outlined', color: 'add' },
+        style: {
+          color: t.success,
+          borderColor: alpha(t.success, 0.34),
+          '&:hover': {
+            borderColor: alpha(t.success, 0.5),
+            backgroundColor: alpha(t.success, 0.08),
+          },
+        },
+      },
+      {
+        props: { variant: 'outlined', color: 'edit' },
+        style: {
+          color: t.info,
+          borderColor: alpha(t.info, 0.34),
+          '&:hover': {
+            borderColor: alpha(t.info, 0.5),
+            backgroundColor: alpha(t.info, 0.08),
+          },
+        },
+      },
+      {
+        props: { variant: 'outlined', color: 'delete' },
+        style: {
+          color: t.danger,
+          borderColor: alpha(t.danger, 0.34),
+          '&:hover': {
+            borderColor: alpha(t.danger, 0.5),
+            backgroundColor: alpha(t.danger, 0.08),
+          },
+        },
+      },
+      {
+        props: { variant: 'text', color: 'add' },
+        style: {
+          color: t.success,
+          '&:hover': {
+            backgroundColor: alpha(t.success, 0.08),
+          },
+        },
+      },
+      {
+        props: { variant: 'text', color: 'edit' },
+        style: {
+          color: t.info,
+          '&:hover': {
+            backgroundColor: alpha(t.info, 0.08),
+          },
+        },
+      },
+      {
+        props: { variant: 'text', color: 'delete' },
+        style: {
+          color: t.danger,
+          '&:hover': {
+            backgroundColor: alpha(t.danger, 0.08),
+          },
+        },
+      },
+    ],
   },
   MuiIconButton: {
     styleOverrides: {
@@ -218,18 +348,21 @@ const createComponents = (mode: AppThemeMode, t: ThemeTokens): ThemeOptions['com
         const baseTint = alpha(theme.palette.text.primary, theme.palette.mode === 'light' ? 0.03 : 0.05);
         const resolveColor = () => {
           switch (ownerState.color) {
-            case 'primary':
             case 'add':
+              return theme.palette.add.main;
+            case 'primary':
               return theme.palette.primary.main;
             case 'success':
               return theme.palette.success.main;
             case 'warning':
               return theme.palette.warning.main;
-            case 'error':
             case 'delete':
+              return theme.palette.delete.main;
+            case 'error':
               return theme.palette.error.main;
-            case 'info':
             case 'edit':
+              return theme.palette.edit.main;
+            case 'info':
               return theme.palette.info.main;
             default:
               return theme.palette.text.secondary;
@@ -261,8 +394,9 @@ const createComponents = (mode: AppThemeMode, t: ThemeTokens): ThemeOptions['com
   MuiCard: {
     styleOverrides: {
       root: {
-        borderRadius: 10,
+        borderRadius: 8,
         border: `1px solid ${t.border}`,
+        backgroundColor: t.canvas,
         boxShadow: 'none',
       },
     },
@@ -312,6 +446,42 @@ const createComponents = (mode: AppThemeMode, t: ThemeTokens): ThemeOptions['com
         color: t.text,
         border: `1px solid ${t.borderStrong}`,
         borderRadius: 10,
+      },
+    },
+  },
+  MuiTabs: {
+    styleOverrides: {
+      root: {
+        minHeight: 34,
+        borderRadius: 8,
+      },
+      indicator: {
+        display: 'none',
+      },
+      flexContainer: {
+        gap: 4,
+      },
+    },
+  },
+  MuiTab: {
+    styleOverrides: {
+      root: {
+        minHeight: 30,
+        padding: '6px 12px',
+        borderRadius: 6,
+        textTransform: 'none',
+        fontSize: '0.8125rem',
+        fontWeight: 600,
+        color: t.muted,
+        transition: 'background-color 0.15s ease, color 0.15s ease',
+        '&:hover': {
+          backgroundColor: alpha(t.text, mode === 'light' ? 0.06 : 0.08),
+          color: t.text,
+        },
+        '&.Mui-selected': {
+          backgroundColor: alpha(t.text, mode === 'light' ? 0.08 : 0.1),
+          color: t.text,
+        },
       },
     },
   },
@@ -376,8 +546,8 @@ export const createAppTheme = (mode: AppThemeMode) => {
       sidebarSelection: alpha(t.primary, mode === 'light' ? 0.16 : 0.22),
       tableHover: alpha(t.text, mode === 'light' ? 0.03 : 0.05),
       add: {
-        main: t.primary,
-        contrastText: t.primaryContrast,
+        main: t.success,
+        contrastText: mode === 'light' ? '#f7fbf8' : '#08140e',
       },
       edit: {
         main: t.info,
@@ -389,20 +559,14 @@ export const createAppTheme = (mode: AppThemeMode) => {
       },
     },
     typography: {
-      fontFamily: [
-        '"Segoe UI"',
-        '"Inter"',
-        '-apple-system',
-        'BlinkMacSystemFont',
-        'sans-serif',
-      ].join(','),
-      h1: { fontSize: '2rem', fontWeight: 700, letterSpacing: '-0.03em' },
-      h2: { fontSize: '1.6rem', fontWeight: 700, letterSpacing: '-0.03em' },
-      h3: { fontSize: '1.25rem', fontWeight: 700, letterSpacing: '-0.025em' },
-      h4: { fontSize: '1.05rem', fontWeight: 700, letterSpacing: '-0.02em' },
+      fontFamily: desktopSans,
+      h1: { fontFamily: desktopDisplay, fontSize: '2rem', fontWeight: 700, letterSpacing: '-0.03em' },
+      h2: { fontFamily: desktopDisplay, fontSize: '1.6rem', fontWeight: 700, letterSpacing: '-0.03em' },
+      h3: { fontFamily: desktopDisplay, fontSize: '1.25rem', fontWeight: 700, letterSpacing: '-0.025em' },
+      h4: { fontFamily: desktopDisplay, fontSize: '1.05rem', fontWeight: 700, letterSpacing: '-0.02em' },
       body1: { fontSize: '0.9rem' },
       body2: { fontSize: '0.82rem' },
-      button: { fontSize: '0.82rem' },
+      button: { fontFamily: desktopSans, fontSize: '0.82rem', letterSpacing: '-0.01em' },
     },
     shape: {
       borderRadius: 10,

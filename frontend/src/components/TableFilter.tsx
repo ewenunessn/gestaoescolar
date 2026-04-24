@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
+  alpha,
   Popover,
   Box,
   Typography,
@@ -11,6 +12,7 @@ import {
   Select,
   MenuItem,
   SelectChangeEvent,
+  useTheme,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -47,6 +49,7 @@ const TableFilter: React.FC<TableFilterProps> = ({
   searchPlaceholder = 'Buscar...',
   anchorEl,
 }) => {
+  const theme = useTheme();
   const [filters, setFilters] = useState<Record<string, any>>(initialValues);
 
   // Atualizar filtros quando initialValues mudar
@@ -111,18 +114,18 @@ const TableFilter: React.FC<TableFilterProps> = ({
               displayEmpty
               sx={{
                 borderRadius: '8px',
-                bgcolor: '#ffffff',
+                bgcolor: 'background.paper',
                 '& .MuiSelect-select': {
-                  py: 1.5,
+                  py: 1.2,
                 },
                 '& fieldset': {
-                  borderColor: '#dee2e6',
+                  borderColor: theme.palette.divider,
                 },
                 '&:hover fieldset': {
-                  borderColor: '#adb5bd',
+                  borderColor: alpha(theme.palette.text.primary, 0.18),
                 },
                 '&.Mui-focused fieldset': {
-                  borderColor: '#17a2b8',
+                  borderColor: theme.palette.primary.main,
                 },
               }}
             >
@@ -208,7 +211,8 @@ const TableFilter: React.FC<TableFilterProps> = ({
         paper: {
           sx: {
             borderRadius: '12px',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+            border: `1px solid ${theme.palette.divider}`,
+            boxShadow: theme.palette.mode === 'light' ? '0 14px 30px rgba(31,36,48,0.08)' : '0 16px 34px rgba(0,0,0,0.22)',
             minWidth: 400,
             maxWidth: 500,
             maxHeight: '80vh',
@@ -231,14 +235,14 @@ const TableFilter: React.FC<TableFilterProps> = ({
           alignItems: 'center',
           justifyContent: 'space-between',
           p: 2.5,
-          borderBottom: '1px solid #e9ecef',
-          bgcolor: '#ffffff',
+          borderBottom: `1px solid ${theme.palette.divider}`,
+          bgcolor: 'background.paper',
         }}
       >
-        <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1.125rem', color: '#212529' }}>
-          Filter
+        <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', letterSpacing: '-0.02em' }}>
+          Filtros
         </Typography>
-        <IconButton size="small" onClick={onClose} sx={{ color: '#6c757d' }}>
+        <IconButton size="small" onClick={onClose} sx={{ color: 'text.secondary' }}>
           <CloseIcon fontSize="small" />
         </IconButton>
       </Box>
@@ -246,20 +250,20 @@ const TableFilter: React.FC<TableFilterProps> = ({
       <Box sx={{ maxHeight: 'calc(80vh - 140px)', overflowY: 'auto' }}>
         {/* Busca por palavra-chave */}
         {showSearch && (
-          <Box sx={{ p: 2.5, borderBottom: '1px solid #e9ecef' }}>
+          <Box sx={{ p: 2.5, borderBottom: `1px solid ${theme.palette.divider}` }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#212529', fontSize: '0.875rem' }}>
-                Keyword search
+              <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                Busca
               </Typography>
               {filters.search && (
                 <Button
                   size="small"
                   onClick={() => handleReset('search')}
                   sx={{
-                    color: '#17a2b8',
+                    color: 'primary.main',
                     textTransform: 'none',
-                    fontSize: '0.875rem',
-                    fontWeight: 500,
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
                     minWidth: 'auto',
                     p: 0,
                     '&:hover': {
@@ -281,22 +285,22 @@ const TableFilter: React.FC<TableFilterProps> = ({
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <SearchIcon sx={{ color: '#6c757d', fontSize: 20 }} />
+                    <SearchIcon sx={{ color: 'text.secondary', fontSize: 18 }} />
                   </InputAdornment>
                 ),
               }}
               sx={{
                 '& .MuiOutlinedInput-root': {
                   borderRadius: '8px',
-                  bgcolor: '#ffffff',
+                  bgcolor: 'background.paper',
                   '& fieldset': {
-                    borderColor: '#dee2e6',
+                    borderColor: theme.palette.divider,
                   },
                   '&:hover fieldset': {
-                    borderColor: '#adb5bd',
+                    borderColor: alpha(theme.palette.text.primary, 0.18),
                   },
                   '&.Mui-focused fieldset': {
-                    borderColor: '#17a2b8',
+                    borderColor: theme.palette.primary.main,
                   },
                 },
               }}
@@ -306,9 +310,9 @@ const TableFilter: React.FC<TableFilterProps> = ({
 
         {/* Campos de filtro */}
         {fields.map((field) => (
-          <Box key={field.key} sx={{ p: 2.5, borderBottom: '1px solid #e9ecef' }}>
+          <Box key={field.key} sx={{ p: 2.5, borderBottom: `1px solid ${theme.palette.divider}` }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#212529', fontSize: '0.875rem' }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.82rem' }}>
                 {field.label}
               </Typography>
               {filters[field.key] && (
@@ -316,10 +320,10 @@ const TableFilter: React.FC<TableFilterProps> = ({
                   size="small"
                   onClick={() => handleReset(field.key)}
                   sx={{
-                    color: '#17a2b8',
+                    color: 'primary.main',
                     textTransform: 'none',
-                    fontSize: '0.875rem',
-                    fontWeight: 500,
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
                     minWidth: 'auto',
                     p: 0,
                     '&:hover': {
@@ -343,8 +347,8 @@ const TableFilter: React.FC<TableFilterProps> = ({
           display: 'flex',
           gap: 2,
           p: 2.5,
-          borderTop: '1px solid #e9ecef',
-          bgcolor: '#ffffff',
+          borderTop: `1px solid ${theme.palette.divider}`,
+          bgcolor: 'background.paper',
         }}
       >
         <Button
@@ -354,17 +358,17 @@ const TableFilter: React.FC<TableFilterProps> = ({
             flex: 1,
             textTransform: 'none',
             borderRadius: '8px',
-            borderColor: '#dee2e6',
-            color: '#495057',
-            fontWeight: 500,
+            borderColor: theme.palette.divider,
+            color: 'text.secondary',
+            fontWeight: 600,
             py: 1,
             '&:hover': {
-              borderColor: '#adb5bd',
-              bgcolor: '#f8f9fa',
+              borderColor: alpha(theme.palette.text.primary, 0.18),
+              bgcolor: alpha(theme.palette.text.primary, 0.03),
             },
           }}
         >
-          Reset all
+          Limpar
         </Button>
         <Button
           variant="contained"
@@ -373,16 +377,11 @@ const TableFilter: React.FC<TableFilterProps> = ({
             flex: 1,
             textTransform: 'none',
             borderRadius: '8px',
-            bgcolor: '#17a2b8',
-            color: '#ffffff',
-            fontWeight: 500,
+            fontWeight: 600,
             py: 1,
-            '&:hover': {
-              bgcolor: '#138496',
-            },
           }}
         >
-          Apply now
+          Aplicar
         </Button>
       </Box>
     </Popover>

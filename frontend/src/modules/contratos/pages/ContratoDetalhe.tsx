@@ -167,8 +167,8 @@ const ContratoInfoCard = ({ contrato, fornecedor, valorTotal }: ContratoInfoCard
           <Grid item xs={12} md={4}>
             <Box sx={{ 
               p: 1.5, 
-              bgcolor: 'primary.main', 
-              color: 'white', 
+              bgcolor: 'action.hover',
+              color: 'text.primary',
               borderRadius: 1, 
               textAlign: 'center'
             }}>
@@ -588,20 +588,13 @@ export default function ContratoDetalhe() {
       
       <PageContainer fullHeight>
         {/* Seta + Breadcrumbs na mesma linha */}
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
-          <IconButton size="small" onClick={handleVoltar} sx={{ mr: 0.5, p: 0.5 }}>
-            <ArrowBackIcon fontSize="small" />
-          </IconButton>
-          <PageBreadcrumbs
-            items={[
-              { label: 'Dashboard', path: '/dashboard' },
-              { label: 'Contratos', path: '/contratos' },
-              { label: contrato ? `Contrato ${contrato.numero}` : 'Carregando...' },
-            ]}
-          />
-        </Box>
-
         <PageHeader
+          onBack={handleVoltar}
+          breadcrumbs={[
+            { label: 'Dashboard', path: '/dashboard' },
+            { label: 'Contratos', path: '/contratos' },
+            { label: contrato ? `Contrato ${contrato.numero}` : 'Carregando...' },
+          ]}
           title={contrato ? `Contrato ${contrato.numero}` : 'Contrato'}
           action={
             <IconButton onClick={(e) => setMenuAnchorEl(e.currentTarget)}>

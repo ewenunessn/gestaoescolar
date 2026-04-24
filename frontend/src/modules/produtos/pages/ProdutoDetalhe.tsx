@@ -2,6 +2,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import PageContainer from "../../../components/PageContainer";
+import PageHeader from "../../../components/PageHeader";
 import { usePageTitle } from "../../../contexts/PageTitleContext";
 import {
   Box, Typography, Button, Card, CardContent, CircularProgress,
@@ -618,7 +619,7 @@ export default function ProdutoDetalhe() {
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       <PageContainer>
         {/* Seta + Breadcrumbs + Botões de ação */}
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5, justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+        <Box sx={{ display: 'none' }}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <IconButton size="small" onClick={() => navigate('/produtos')} sx={{ mr: 0.5, p: 0.5 }}>
               <ArrowBackIcon fontSize="small" />
@@ -633,10 +634,10 @@ export default function ProdutoDetalhe() {
           <Box sx={{ display: 'flex', gap: 1 }}>
             {!isEditing ? (
               <>
-                <Button variant="outlined" startIcon={<EditIcon />} onClick={handleStartEdit} size="small">
+                <Button variant="outlined" color="edit" startIcon={<EditIcon />} onClick={handleStartEdit} size="small">
                   Editar
                 </Button>
-                <Button variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={() => setOpenExcluir(true)} size="small">
+                <Button variant="outlined" color="delete" startIcon={<DeleteIcon />} onClick={() => setOpenExcluir(true)} size="small">
                   Excluir
                 </Button>
               </>
@@ -645,17 +646,50 @@ export default function ProdutoDetalhe() {
                 <Button variant="outlined" onClick={handleCancel} size="small">
                   Cancelar
                 </Button>
-                <Button variant="contained" onClick={handleSave} disabled={isSaving || !form.nome?.trim()} startIcon={isSaving ? <CircularProgress size={16} /> : null} size="small">
+                <Button variant="contained" color="add" onClick={handleSave} disabled={isSaving || !form.nome?.trim()} startIcon={isSaving ? <CircularProgress size={16} /> : null} size="small">
                   {isSaving ? 'Salvando...' : 'Salvar'}
                 </Button>
               </>
             )}
           </Box>
         </Box>
+
+        <PageHeader
+          onBack={() => navigate('/produtos')}
+          breadcrumbs={[
+            { label: 'Dashboard', path: '/dashboard' },
+            { label: 'Produtos', path: '/produtos' },
+            { label: produto?.nome || 'Detalhes do Produto' }
+          ]}
+          title={produto.nome}
+          action={
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              {!isEditing ? (
+                <>
+                  <Button variant="outlined" color="edit" startIcon={<EditIcon />} onClick={handleStartEdit} size="small">
+                    Editar
+                  </Button>
+                  <Button variant="outlined" color="delete" startIcon={<DeleteIcon />} onClick={() => setOpenExcluir(true)} size="small">
+                    Excluir
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button variant="outlined" onClick={handleCancel} size="small">
+                    Cancelar
+                  </Button>
+                  <Button variant="contained" color="add" onClick={handleSave} disabled={isSaving || !form.nome?.trim()} startIcon={isSaving ? <CircularProgress size={16} /> : null} size="small">
+                    {isSaving ? 'Salvando...' : 'Salvar'}
+                  </Button>
+                </>
+              )}
+            </Box>
+          }
+        />
         
         {/* Título do produto */}
-        <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <Typography variant="h4" sx={{ fontWeight: 700, fontSize: '1.5rem', letterSpacing: '-0.5px' }}>
+        <Box sx={{ display: 'none' }}>
+          <Typography variant="h4" sx={{ fontWeight: 700, fontSize: '1.5rem', letterSpacing: 0, color: 'text.primary' }}>
             {produto.nome}
           </Typography>
           <Chip label={produto.categoria || 'Sem categoria'} size="small" variant="outlined" sx={{ borderRadius: '4px' }} />

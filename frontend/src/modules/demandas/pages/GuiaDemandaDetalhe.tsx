@@ -747,8 +747,8 @@ const GuiaDemandaDetalhe: React.FC = () => {
                   minWidth: 32, 
                   height: 24, 
                   fontWeight: 600,
-                  bgcolor: 'primary.main',
-                  color: 'white',
+                  bgcolor: 'action.hover',
+                  color: 'text.primary',
                   flexShrink: 0
                 }} 
               />
@@ -812,7 +812,7 @@ const GuiaDemandaDetalhe: React.FC = () => {
         startIcon={<ShoppingCartIcon />} 
         size="small"
         onClick={() => setDialogGerarPedido(true)}
-        sx={{ bgcolor: '#1d4ed8', '&:hover': { bgcolor: '#1e40af' } }}
+        color="add"
       >
         Gerar Pedido
       </Button>
@@ -886,20 +886,13 @@ const GuiaDemandaDetalhe: React.FC = () => {
     <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden' }}>
       <PageContainer fullHeight>
         {/* Seta + Breadcrumbs na mesma linha */}
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
-          <IconButton size="small" onClick={() => navigate('/guias-demanda')} sx={{ mr: 0.5, p: 0.5 }}>
-            <ArrowBackIcon fontSize="small" />
-          </IconButton>
-          <PageBreadcrumbs
-            items={[
-              { label: 'Dashboard', path: '/dashboard' },
-              { label: 'Guias de Demanda', path: '/guias-demanda' },
-              { label: `${getMesNome(guia.mes)}/${guia.ano}` },
-            ]}
-          />
-        </Box>
-
         <PageHeader
+          onBack={() => navigate('/guias-demanda')}
+          breadcrumbs={[
+            { label: 'Dashboard', path: '/dashboard' },
+            { label: 'Guias de Demanda', path: '/guias-demanda' },
+            { label: `${getMesNome(guia.mes)}/${guia.ano}` },
+          ]}
           title={`Guia de Demanda - ${getMesNome(guia.mes)}/${guia.ano}`}
         />
 
@@ -1089,8 +1082,8 @@ const GuiaDemandaDetalhe: React.FC = () => {
                             minWidth: 32, 
                             height: 24, 
                             fontWeight: 600,
-                            bgcolor: 'primary.main',
-                            color: 'white'
+                            bgcolor: 'action.hover',
+                            color: 'text.primary'
                           }} 
                         />
                         {item.escola_nome}

@@ -22,7 +22,7 @@ export default function NotificacoesMenu() {
       <Tooltip title="Notificações">
         <IconButton onClick={e => setAnchor(e.currentTarget)} size="small" sx={{ color: 'text.secondary' }}>
           <Badge badgeContent={naoLidas || undefined} color="error" max={99}>
-            <BellIcon />
+            <BellIcon fontSize="small" />
           </Badge>
         </IconButton>
       </Tooltip>
@@ -33,7 +33,7 @@ export default function NotificacoesMenu() {
         onClose={() => setAnchor(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-        PaperProps={{ sx: { width: 360, maxHeight: 480, display: 'flex', flexDirection: 'column', borderRadius: 2 } }}
+        PaperProps={{ sx: { width: 360, maxHeight: 480, display: 'flex', flexDirection: 'column', borderRadius: 1.5, border: '1px solid', borderColor: 'divider' } }}
       >
         {/* Header */}
         <Box sx={{ px: 2, py: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid', borderColor: 'divider' }}>
