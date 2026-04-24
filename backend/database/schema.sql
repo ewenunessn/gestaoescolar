@@ -1159,6 +1159,20 @@ CREATE INDEX idx_auditoria_data ON public.logs_auditoria USING btree (created_at
 CREATE INDEX idx_auditoria_tabela ON public.logs_auditoria USING btree (tabela);
 CREATE INDEX idx_auditoria_usuario ON public.logs_auditoria USING btree (usuario_id);
 
+-- Tabela: categorias_financeiras_modalidade
+CREATE TABLE IF NOT EXISTS categorias_financeiras_modalidade (
+  id integer NOT NULL DEFAULT nextval('categorias_financeiras_modalidade_id_seq'::regclass),
+  nome character varying(255) NOT NULL,
+  codigo_financeiro character varying(50),
+  valor_repasse numeric DEFAULT 0.00,
+  parcelas integer DEFAULT 1,
+  ativo boolean DEFAULT true,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE (nome)
+);
+
 -- Tabela: modalidades
 CREATE TABLE IF NOT EXISTS modalidades (
   id integer NOT NULL DEFAULT nextval('modalidades_id_seq'::regclass),
@@ -1169,6 +1183,7 @@ CREATE TABLE IF NOT EXISTS modalidades (
   created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
   updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
   codigo_financeiro character varying(10),
+  categoria_financeira_id integer,
   PRIMARY KEY (id),
   UNIQUE (nome)
 );

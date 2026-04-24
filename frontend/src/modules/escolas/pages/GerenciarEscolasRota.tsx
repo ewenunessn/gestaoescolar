@@ -48,7 +48,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { rotaService } from "../../entregas/services/rotaService";
 import { listarEscolas } from "../../../services/escolas";
 import { RotaEntrega, RotaEscola } from "../../entregas/types/rota";
-import { DataTable } from "../../../components/DataTable";
 import PageHeader from "../../../components/PageHeader";
 import PageContainer from "../../../components/PageContainer";
 import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
@@ -474,6 +473,11 @@ const GerenciarEscolasRota: React.FC = () => {
         );
     }
 
+    const tituloRota = rota
+        ? (rota.nome.toLowerCase().startsWith('rota ') ? rota.nome : `Rota ${rota.nome}`)
+        : 'Gerenciar Escolas da Rota';
+    const breadcrumbRota = rota ? tituloRota : 'Gerenciar Escolas';
+
     return (
         <>
         <PageContainer>
@@ -492,27 +496,57 @@ const GerenciarEscolasRota: React.FC = () => {
                 </Box>
             )}
 
-            <PageBreadcrumbs
+            {false && <PageBreadcrumbs
                 items={[
                     { label: 'Dashboard', path: '/dashboard' },
                     { label: 'Gestão de Rotas', path: '/gestao-rotas', icon: <RouteIcon fontSize="small" /> },
-                    { label: rota ? `Rota ${rota.nome}` : 'Gerenciar Escolas' }
+                    { label: breadcrumbRota }
                 ]}
-            />
+            />}
 
             <PageHeader
-                title={rota ? `Rota ${rota.nome}` : 'Gerenciar Escolas da Rota'}
+                title={tituloRota}
                 subtitle={`${escolasRota.length} ${escolasRota.length === 1 ? 'escola' : 'escolas'} na rota. Arraste para reordenar.`}
                 breadcrumbs={[
                     { label: 'Dashboard', path: '/dashboard' },
                     { label: 'Entregas' },
                     { label: 'Gestão de Rotas', path: '/gestao-rotas' },
-                    { label: rota ? `Rota ${rota.nome}` : 'Gerenciar Escolas' },
+                    { label: breadcrumbRota },
                 ]}
+                action={
+                    <Box sx={{ display: 'flex', gap: 1.25, alignItems: 'center' }}>
+                        {salvandoOperacao && (
+                            <Chip
+                                size="small"
+                                label={salvandoOperacao}
+                                sx={{ bgcolor: 'transparent', border: '1px solid', borderColor: 'divider', color: 'text.secondary' }}
+                                icon={<CircularProgress size={10} color="inherit" />}
+                            />
+                        )}
+                        <Button
+                            variant="outlined"
+                            color="inherit"
+                            startIcon={<ArrowBackIcon />}
+                            onClick={() => navigate('/gestao-rotas')}
+                            sx={{ textTransform: 'none', fontWeight: 600 }}
+                        >
+                            Voltar
+                        </Button>
+                        <Button
+                            variant="contained"
+                            color="add"
+                            startIcon={<AddIcon />}
+                            onClick={() => setOpenDialog(true)}
+                            sx={{ textTransform: 'none', fontWeight: 600 }}
+                        >
+                            Adicionar Escolas
+                        </Button>
+                    </Box>
+                }
             />
 
             {/* Botão de Voltar e Adicionar */}
-            <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            {false && <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Button
                     startIcon={<ArrowBackIcon />}
                     onClick={() => navigate('/gestao-rotas')}
@@ -546,7 +580,7 @@ const GerenciarEscolasRota: React.FC = () => {
                         Adicionar Escolas
                     </Button>
                 </Box>
-            </Box>
+            </Box>}
 
                 {/* Lista de Escolas na Rota com DataTable */}
                 <Box sx={{ maxWidth: '1200px', mx: 'auto' }}>
@@ -573,8 +607,8 @@ const GerenciarEscolasRota: React.FC = () => {
                                         gridTemplateColumns: '40px 60px 1fr 2fr 150px 60px',
                                         gap: 2,
                                         p: 2,
-                                        bgcolor: 'grey.50',
-                                        borderBottom: '2px solid',
+                                        bgcolor: 'action.hover',
+                                        borderBottom: '1px solid',
                                         borderColor: 'divider',
                                         fontWeight: 600
                                     }}>

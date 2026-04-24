@@ -6,6 +6,7 @@ import {
   listarModalidades,
   listarProdutosContratos,
   listarResumoAlunos,
+  listarResumoAlunosFinanceiro,
   registrarConsumoModalidade,
   buscarHistoricoConsumoModalidade,
   excluirConsumoModalidade
@@ -35,5 +36,8 @@ router.get('/produtos-contratos', listarProdutosContratos);
 
 // Listar resumo de alunos por modalidade
 router.get('/resumo-alunos', listarResumoAlunos);
+
+// Listar resumo de alunos consolidado pela categoria financeira
+router.get('/resumo-alunos-financeiro', listarResumoAlunosFinanceiro);
 
 export default router;

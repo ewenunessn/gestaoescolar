@@ -1,6 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys, cacheConfig } from '../../lib/queryClient';
-import { modalidadeService, Modalidade, ModalidadeInput } from '../../services/modalidades';
+import {
+  modalidadeService,
+  Modalidade,
+  ModalidadeInput,
+  CategoriaFinanceiraModalidade,
+  CategoriaFinanceiraModalidadeInput,
+} from '../../services/modalidades';
 
 export function useModalidades() {
   return useQuery({
@@ -10,6 +16,16 @@ export function useModalidades() {
     gcTime: 5 * 60 * 1000,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
+  });
+}
+
+export function useCategoriasFinanceirasModalidade() {
+  return useQuery({
+    queryKey: [...queryKeys.modalidades.all, 'categorias-financeiras'],
+    queryFn: modalidadeService.listarCategoriasFinanceiras,
+    staleTime: 0,
+    gcTime: 5 * 60 * 1000,
+    refetchOnMount: true,
   });
 }
 
@@ -27,6 +43,24 @@ export function useCreateModalidade() {
   return useMutation({
     mutationFn: (data: ModalidadeInput) => modalidadeService.criar(data),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.modalidades.all });
+    },
+  });
+}
+
+export function useCreateCategoriaFinanceiraModalidade() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CategoriaFinanceiraModalidadeInput) =>
+      modalidadeService.criarCategoriaFinanceira(data),
+    onSuccess: (categoria) => {
+      const categoriasKey = [...queryKeys.modalidades.all, 'categorias-financeiras'];
+      queryClient.setQueryData(categoriasKey, (old: CategoriaFinanceiraModalidade[] | undefined) => {
+        const categorias = old || [];
+        return [...categorias.filter((item) => item.id !== categoria.id), categoria]
+          .sort((a, b) => a.nome.localeCompare(b.nome));
+      });
+      queryClient.invalidateQueries({ queryKey: categoriasKey });
       queryClient.invalidateQueries({ queryKey: queryKeys.modalidades.all });
     },
   });

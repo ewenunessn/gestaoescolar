@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import PageHeader from "../../../components/PageHeader";
 import PageContainer from "../../../components/PageContainer";
 import { useToast } from "../../../hooks/useToast";
@@ -36,7 +36,14 @@ import {
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { Modalidade } from "../../../services/modalidades";
-import { useModalidades, useCreateModalidade, useUpdateModalidade, useDeleteModalidade } from "../../../hooks/queries/useModalidadeQueries";
+import {
+  useModalidades,
+  useCategoriasFinanceirasModalidade,
+  useCreateCategoriaFinanceiraModalidade,
+  useCreateModalidade,
+  useUpdateModalidade,
+  useDeleteModalidade,
+} from "../../../hooks/queries/useModalidadeQueries";
 import { LoadingOverlay } from "../../../components/LoadingOverlay";
 import { DataTable } from "../../../components/DataTable";
 import { FormDialog, ConfirmDialog } from "../../../components/BaseDialog";
@@ -48,6 +55,8 @@ const ModalidadesPage = () => {
   
   // React Query hooks para modalidades
   const { data: modalidades = [], isLoading: loading, error: queryError, refetch } = useModalidades();
+  const { data: categoriasFinanceiras = [] } = useCategoriasFinanceirasModalidade();
+  const createCategoriaFinanceiraMutation = useCreateCategoriaFinanceiraModalidade();
   const createModalidadeMutation = useCreateModalidade();
   const updateModalidadeMutation = useUpdateModalidade();
   const deleteModalidadeMutation = useDeleteModalidade();
@@ -64,15 +73,25 @@ const ModalidadesPage = () => {
 
   // Estados de modais
   const [modalOpen, setModalOpen] = useState(false);
+  const [categoriaModalOpen, setCategoriaModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [editingModalidade, setEditingModalidade] = useState<Modalidade | null>(null);
   const [modalidadeToDelete, setModalidadeToDelete] = useState<Modalidade | null>(null);
-  const [formData, setFormData] = useState({ 
-    nome: "", 
-    codigo_financeiro: "", 
+  const [formData, setFormData] = useState({
+    nome: "",
+    descricao: "",
+    categoria_financeira_id: "",
+    codigo_financeiro: "",
     valor_repasse: 0,
     parcelas: 1,
     ativo: true 
+  });
+  const [categoriaFormData, setCategoriaFormData] = useState({
+    nome: "",
+    codigo_financeiro: "",
+    valor_repasse: 0,
+    parcelas: 1,
+    ativo: true,
   });
 
   // Filtrar e ordenar modalidades
@@ -115,8 +134,34 @@ const ModalidadesPage = () => {
     { 
       accessorKey: 'nome', 
       header: 'Nome da Modalidade',
-      size: 300,
+      size: 240,
       enableSorting: true,
+    },
+    {
+      accessorKey: 'descricao',
+      header: 'Descricao / Faixa etaria',
+      size: 260,
+      enableSorting: false,
+      cell: ({ getValue }) => {
+        const value = getValue() as string | undefined;
+        return (
+          <Typography variant="body2" color="text.secondary" noWrap>
+            {value || '-'}
+          </Typography>
+        );
+      },
+    },
+    {
+      accessorKey: 'categoria_financeira_nome',
+      header: 'Categoria Financeira',
+      size: 200,
+      enableSorting: true,
+      cell: ({ row, getValue }) => {
+        const value = (getValue() as string | undefined) || row.original.nome;
+        return (
+          <Chip label={value} size="small" variant="outlined" sx={{ fontWeight: 600 }} />
+        );
+      },
     },
     { 
       accessorKey: 'codigo_financeiro', 
@@ -262,6 +307,8 @@ const ModalidadesPage = () => {
       setEditingModalidade(modalidade);
       setFormData({
         nome: modalidade.nome,
+        descricao: modalidade.descricao || "",
+        categoria_financeira_id: modalidade.categoria_financeira_id ? String(modalidade.categoria_financeira_id) : "",
         codigo_financeiro: modalidade.codigo_financeiro || "",
         valor_repasse: Number(modalidade.valor_repasse),
         parcelas: Number(modalidade.parcelas) || 1,
@@ -269,7 +316,7 @@ const ModalidadesPage = () => {
       });
     } else {
       setEditingModalidade(null);
-      setFormData({ nome: "", codigo_financeiro: "", valor_repasse: 0, parcelas: 1, ativo: true });
+      setFormData({ nome: "", descricao: "", categoria_financeira_id: "", codigo_financeiro: "", valor_repasse: 0, parcelas: 1, ativo: true });
     }
     setModalOpen(true);
   };
@@ -280,8 +327,13 @@ const ModalidadesPage = () => {
 
   const handleSave = async () => {
     try {
+      if (!formData.categoria_financeira_id) {
+        toast.warning("Selecione uma categoria financeira antes de salvar.");
+        return;
+      }
       const dataToSend = { 
         ...formData, 
+        categoria_financeira_id: Number(formData.categoria_financeira_id),
         valor_repasse: Number(formData.valor_repasse),
         parcelas: Number(formData.parcelas) || 1
       };
@@ -295,6 +347,57 @@ const ModalidadesPage = () => {
       closeModal();
     } catch (err) {
       toast.error("Erro ao salvar modalidade. Verifique os dados e tente novamente.");
+    }
+  };
+
+  const handleCategoriaChange = (categoriaId: string) => {
+    const categoria = categoriasFinanceiras.find((item) => String(item.id) === categoriaId);
+
+    setFormData({
+      ...formData,
+      categoria_financeira_id: categoriaId,
+      codigo_financeiro: categoria?.codigo_financeiro || "",
+      valor_repasse: Number(categoria?.valor_repasse) || 0,
+      parcelas: Number(categoria?.parcelas) || 1,
+    });
+  };
+
+  const openCategoriaModal = () => {
+    setCategoriaFormData({
+      nome: "",
+      codigo_financeiro: "",
+      valor_repasse: 0,
+      parcelas: 1,
+      ativo: true,
+    });
+    setCategoriaModalOpen(true);
+  };
+
+  const handleSaveCategoriaFinanceira = async () => {
+    try {
+      if (!categoriaFormData.nome.trim()) {
+        toast.warning("Informe o nome da categoria financeira.");
+        return;
+      }
+
+      const novaCategoria = await createCategoriaFinanceiraMutation.mutateAsync({
+        ...categoriaFormData,
+        nome: categoriaFormData.nome.trim(),
+        valor_repasse: Number(categoriaFormData.valor_repasse) || 0,
+        parcelas: Number(categoriaFormData.parcelas) || 1,
+      });
+
+      setFormData({
+        ...formData,
+        categoria_financeira_id: String(novaCategoria.id),
+        codigo_financeiro: novaCategoria.codigo_financeiro || "",
+        valor_repasse: Number(novaCategoria.valor_repasse) || 0,
+        parcelas: Number(novaCategoria.parcelas) || 1,
+      });
+      setCategoriaModalOpen(false);
+      toast.success("Categoria financeira criada com sucesso!");
+    } catch (err) {
+      toast.error("Erro ao criar categoria financeira. Verifique se ela já existe.");
     }
   };
 
@@ -449,7 +552,7 @@ const ModalidadesPage = () => {
         title={editingModalidade ? 'Editar Modalidade' : 'Nova Modalidade'}
         onSave={handleSave}
         loading={createModalidadeMutation.isPending || updateModalidadeMutation.isPending}
-        disableSave={!formData.nome.trim()}
+        disableSave={!formData.nome.trim() || !formData.categoria_financeira_id}
         maxWidth="md"
       >
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
@@ -464,12 +567,24 @@ const ModalidadesPage = () => {
           <Grid container spacing={2}>
             <Grid item xs={12}>
               <TextField
-                label="Nome da Modalalidade"
+                label="Nome da Modalidade"
                 value={formData.nome}
                 onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
                 required
                 fullWidth
                 placeholder="Ex: Ensino Fundamental, Ensino Médio"
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                label="Descricao / faixa etaria"
+                value={formData.descricao}
+                onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
+                fullWidth
+                multiline
+                minRows={2}
+                placeholder="Ex: alunos de 4 a 5 anos; etapa pedagogica usada no cardapio e na demanda"
+                helperText="Use este campo para registrar a faixa etaria ou observacao pedagogica."
               />
             </Grid>
           </Grid>
@@ -483,6 +598,35 @@ const ModalidadesPage = () => {
             Dados Financeiros
           </Typography>
           <Grid container spacing={2}>
+            <Grid item xs={12}>
+              <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
+                <FormControl fullWidth required>
+                  <InputLabel>Categoria financeira</InputLabel>
+                  <Select
+                    label="Categoria financeira"
+                    value={formData.categoria_financeira_id}
+                    onChange={(e) => handleCategoriaChange(String(e.target.value))}
+                  >
+                    {categoriasFinanceiras.map((categoria) => (
+                      <MenuItem key={categoria.id} value={String(categoria.id)}>
+                        {categoria.nome}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.75, ml: 1.75 }}>
+                    Modalidades pedagogicas com a mesma categoria serao consolidadas juntas no financeiro.
+                  </Typography>
+                </FormControl>
+                <Button
+                  variant="outlined"
+                  color="add"
+                  onClick={openCategoriaModal}
+                  sx={{ minWidth: 150, height: 40, textTransform: 'none' }}
+                >
+                  Nova categoria
+                </Button>
+              </Box>
+            </Grid>
             <Grid item xs={12}>
               <TextField
                 label="Código Financeiro"
@@ -543,6 +687,75 @@ const ModalidadesPage = () => {
           />
         </Box>
       </FormDialog>
+
+      <Dialog
+        open={categoriaModalOpen}
+        onClose={() => setCategoriaModalOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Nova Categoria Financeira</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Cadastre a categoria uma vez e vincule várias modalidades pedagógicas a ela.
+          </Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={12}>
+              <TextField
+                label="Nome da categoria"
+                value={categoriaFormData.nome}
+                onChange={(e) => setCategoriaFormData({ ...categoriaFormData, nome: e.target.value })}
+                required
+                fullWidth
+                placeholder="Ex: Fundamental"
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                label="Código Financeiro"
+                value={categoriaFormData.codigo_financeiro}
+                onChange={(e) => setCategoriaFormData({ ...categoriaFormData, codigo_financeiro: e.target.value })}
+                placeholder="Ex: 2.036, 1.025, FIN-001"
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Valor do Repasse (R$)"
+                type="number"
+                value={categoriaFormData.valor_repasse}
+                onChange={(e) => setCategoriaFormData({ ...categoriaFormData, valor_repasse: parseFloat(e.target.value) || 0 })}
+                inputProps={{ step: "0.01", min: "0" }}
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Número de Parcelas"
+                type="number"
+                value={categoriaFormData.parcelas}
+                onChange={(e) => setCategoriaFormData({ ...categoriaFormData, parcelas: parseInt(e.target.value) || 1 })}
+                inputProps={{ step: "1", min: "1" }}
+                helperText={`Total anual: ${formatCurrency(Number(categoriaFormData.valor_repasse) * Number(categoriaFormData.parcelas))}`}
+                fullWidth
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCategoriaModalOpen(false)} color="inherit">
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            color="add"
+            onClick={handleSaveCategoriaFinanceira}
+            disabled={!categoriaFormData.nome.trim() || createCategoriaFinanceiraMutation.isPending}
+          >
+            Salvar categoria
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Modal de Confirmação de Exclusão */}
       <ConfirmDialog

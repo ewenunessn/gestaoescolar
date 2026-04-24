@@ -467,17 +467,17 @@ export default function ComprovantesEntrega() {
 
         {/* Estatísticas */}
         <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-          <Box sx={{ flex: 1, p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+          <Box sx={{ flex: 1, p: 2, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
             <Typography variant="body2" color="text.secondary">Total de Comprovantes</Typography>
-            <Typography variant="h5">{estatisticas.total}</Typography>
+            <Typography variant="h5" color="text.primary">{estatisticas.total}</Typography>
           </Box>
-          <Box sx={{ flex: 1, p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+          <Box sx={{ flex: 1, p: 2, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
             <Typography variant="body2" color="text.secondary">Total de Itens</Typography>
-            <Typography variant="h5">{estatisticas.totalItens}</Typography>
+            <Typography variant="h5" color="text.primary">{estatisticas.totalItens}</Typography>
           </Box>
-          <Box sx={{ flex: 1, p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+          <Box sx={{ flex: 1, p: 2, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
             <Typography variant="body2" color="text.secondary">Escolas Atendidas</Typography>
-            <Typography variant="h5">{estatisticas.escolasAtendidas}</Typography>
+            <Typography variant="h5" color="text.primary">{estatisticas.escolasAtendidas}</Typography>
           </Box>
         </Box>
 

@@ -2,6 +2,8 @@ import { Router } from "express";
 import { authenticateToken } from "../../../middleware/authMiddleware";
 import {
   listarModalidades,
+  listarCategoriasFinanceirasModalidade,
+  criarCategoriaFinanceiraModalidade,
   buscarModalidade,
   criarModalidade,
   editarModalidade,
@@ -13,6 +15,12 @@ const router = Router();
 
 // Listar modalidades
 router.get("/", listarModalidades);
+
+// Listar categorias financeiras usadas pelas modalidades
+router.get("/categorias-financeiras", listarCategoriasFinanceirasModalidade);
+
+// Criar categoria financeira explicitamente para evitar duplicidade por digitação
+router.post("/categorias-financeiras", authenticateToken, criarCategoriaFinanceiraModalidade);
 
 // Buscar modalidade por ID
 router.get("/:id", buscarModalidade);

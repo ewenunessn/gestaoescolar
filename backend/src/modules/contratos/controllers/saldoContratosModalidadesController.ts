@@ -105,6 +105,12 @@ class SaldoContratosModalidadesController {
           cp.quantidade_contratada as quantidade_contrato,
           m.id as modalidade_id,
           m.nome as modalidade_nome,
+          m.descricao as modalidade_descricao,
+          m.categoria_financeira_id,
+          cfm.nome as categoria_financeira_nome,
+          COALESCE(cfm.codigo_financeiro, m.codigo_financeiro) as modalidade_codigo_financeiro,
+          COALESCE(cfm.valor_repasse, m.valor_repasse) as modalidade_valor_repasse,
+          COALESCE(cfm.parcelas, m.parcelas) as modalidade_parcelas,
           COALESCE(cpm.quantidade_inicial, 0) as quantidade_inicial,
           COALESCE(cpm.quantidade_consumida, 0) as quantidade_consumida,
           COALESCE(cpm.quantidade_disponivel, 0) as quantidade_disponivel,
@@ -117,6 +123,7 @@ class SaldoContratosModalidadesController {
         LEFT JOIN unidades_medida um ON p.unidade_medida_id = um.id
         JOIN fornecedores f ON c.fornecedor_id = f.id
         CROSS JOIN modalidades m
+        LEFT JOIN categorias_financeiras_modalidade cfm ON cfm.id = m.categoria_financeira_id
         LEFT JOIN contrato_produtos_modalidades cpm ON (
           cpm.contrato_produto_id = cp.id AND cpm.modalidade_id = m.id
         )
@@ -282,10 +289,20 @@ class SaldoContratosModalidadesController {
   async listarModalidades(req: Request, res: Response): Promise<void> {
     try {
       const result = await db.query(`
-        SELECT id, nome, codigo_financeiro, valor_repasse, ativo
-        FROM modalidades 
-        WHERE ativo = true
-        ORDER BY nome
+        SELECT
+          m.id,
+          m.nome,
+          m.descricao,
+          m.categoria_financeira_id,
+          cfm.nome as categoria_financeira_nome,
+          COALESCE(cfm.codigo_financeiro, m.codigo_financeiro) as codigo_financeiro,
+          COALESCE(cfm.valor_repasse, m.valor_repasse) as valor_repasse,
+          COALESCE(cfm.parcelas, m.parcelas) as parcelas,
+          m.ativo
+        FROM modalidades m
+        LEFT JOIN categorias_financeiras_modalidade cfm ON cfm.id = m.categoria_financeira_id
+        WHERE m.ativo = true
+        ORDER BY m.nome
       `);
 
       res.json({
@@ -356,15 +373,18 @@ class SaldoContratosModalidadesController {
         SELECT 
           m.id as modalidade_id,
           m.nome as modalidade_nome,
-          m.codigo_financeiro,
+          m.categoria_financeira_id,
+          cfm.nome as categoria_financeira_nome,
+          COALESCE(cfm.codigo_financeiro, m.codigo_financeiro) as codigo_financeiro,
           COALESCE(SUM(em.quantidade_alunos), 0) as total_alunos,
           COUNT(em.id) as total_escolas,
           m.ativo
         FROM modalidades m
+        LEFT JOIN categorias_financeiras_modalidade cfm ON cfm.id = m.categoria_financeira_id
         LEFT JOIN escola_modalidades em ON m.id = em.modalidade_id
         LEFT JOIN escolas e ON em.escola_id = e.id
         WHERE m.ativo = true AND (e.ativo = true OR e.id IS NULL)
-        GROUP BY m.id, m.nome, m.codigo_financeiro, m.ativo
+        GROUP BY m.id, m.nome, m.categoria_financeira_id, cfm.nome, cfm.codigo_financeiro, m.codigo_financeiro, m.ativo
         ORDER BY m.nome
       `);
 
@@ -375,6 +395,50 @@ class SaldoContratosModalidadesController {
 
     } catch (error) {
       console.error('❌ Erro ao listar resumo de alunos:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erro interno do servidor',
+        error: error instanceof Error ? error.message : 'Erro desconhecido'
+      });
+    }
+  }
+
+  /**
+   * Lista resumo de alunos consolidado pela categoria financeira.
+   * GET /api/saldo-contratos-modalidades/resumo-alunos-financeiro
+   */
+  async listarResumoAlunosFinanceiro(req: Request, res: Response): Promise<void> {
+    try {
+      const result = await db.query(`
+        SELECT
+          COALESCE(cfm.id, m.id) as categoria_financeira_id,
+          COALESCE(cfm.nome, m.nome) as categoria_financeira_nome,
+          COALESCE(cfm.codigo_financeiro, m.codigo_financeiro) as codigo_financeiro,
+          COALESCE(cfm.valor_repasse, m.valor_repasse) as valor_repasse,
+          COALESCE(cfm.parcelas, m.parcelas) as parcelas,
+          COALESCE(SUM(em.quantidade_alunos), 0) as total_alunos,
+          COUNT(DISTINCT em.escola_id) as total_escolas,
+          ARRAY_AGG(DISTINCT m.nome ORDER BY m.nome) as modalidades_pedagogicas
+        FROM modalidades m
+        LEFT JOIN categorias_financeiras_modalidade cfm ON cfm.id = m.categoria_financeira_id
+        LEFT JOIN escola_modalidades em ON m.id = em.modalidade_id
+        LEFT JOIN escolas e ON em.escola_id = e.id
+        WHERE m.ativo = true AND (e.ativo = true OR e.id IS NULL)
+        GROUP BY
+          COALESCE(cfm.id, m.id),
+          COALESCE(cfm.nome, m.nome),
+          COALESCE(cfm.codigo_financeiro, m.codigo_financeiro),
+          COALESCE(cfm.valor_repasse, m.valor_repasse),
+          COALESCE(cfm.parcelas, m.parcelas)
+        ORDER BY categoria_financeira_nome
+      `);
+
+      res.json({
+        success: true,
+        data: result.rows
+      });
+    } catch (error) {
+      console.error('Erro ao listar resumo financeiro de alunos:', error);
       res.status(500).json({
         success: false,
         message: 'Erro interno do servidor',
@@ -630,6 +694,7 @@ export const cadastrarSaldoModalidade = saldoContratosModalidadesController.cada
 export const listarModalidades = saldoContratosModalidadesController.listarModalidades.bind(saldoContratosModalidadesController);
 export const listarProdutosContratos = saldoContratosModalidadesController.listarProdutosContratos.bind(saldoContratosModalidadesController);
 export const listarResumoAlunos = saldoContratosModalidadesController.listarResumoAlunos.bind(saldoContratosModalidadesController);
+export const listarResumoAlunosFinanceiro = saldoContratosModalidadesController.listarResumoAlunosFinanceiro.bind(saldoContratosModalidadesController);
 export const registrarConsumoModalidade = saldoContratosModalidadesController.registrarConsumoModalidade.bind(saldoContratosModalidadesController);
 export const buscarHistoricoConsumoModalidade = saldoContratosModalidadesController.buscarHistoricoConsumoModalidade.bind(saldoContratosModalidadesController);
 export const excluirConsumoModalidade = saldoContratosModalidadesController.excluirConsumoModalidade.bind(saldoContratosModalidadesController);

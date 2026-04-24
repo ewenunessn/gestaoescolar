@@ -128,7 +128,7 @@ export class FaturamentoModel {
       SELECT 
         fi.*,
         m.nome as modalidade_nome,
-        m.codigo_financeiro as modalidade_codigo_financeiro,
+        COALESCE(cfm.codigo_financeiro, m.codigo_financeiro) as modalidade_codigo_financeiro,
         c.numero as contrato_numero,
         f.nome as fornecedor_nome,
         f.cnpj as fornecedor_cnpj,
@@ -140,6 +140,7 @@ export class FaturamentoModel {
         fi.data_consumo
       FROM faturamento_itens fi
       JOIN modalidades m ON fi.modalidade_id = m.id
+      LEFT JOIN categorias_financeiras_modalidade cfm ON cfm.id = m.categoria_financeira_id
       JOIN contratos c ON fi.contrato_id = c.id
       JOIN fornecedores f ON fi.fornecedor_id = f.id
       JOIN produtos pr ON fi.produto_id = pr.id

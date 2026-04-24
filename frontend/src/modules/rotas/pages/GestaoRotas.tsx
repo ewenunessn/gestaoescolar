@@ -289,11 +289,11 @@ const GestaoRotas: React.FC = () => {
             )}
 
             <PageContainer fullHeight>
-                <PageBreadcrumbs
+                {false && <PageBreadcrumbs
                     items={[
                         { label: 'Gestão de Rotas', icon: <RouteIcon fontSize="small" /> }
                     ]}
-                />
+                />}
                 <PageHeader
                   title="Gestão de Rotas de Entrega"
                   breadcrumbs={[{ label: 'Dashboard', path: '/dashboard' }, { label: 'Entregas' }, { label: 'Gestão de Rotas' }]}

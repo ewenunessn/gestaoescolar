@@ -54,10 +54,15 @@ export class FaturamentoService {
    */
   static async obterModalidadesComPercentuais(): Promise<ModalidadeCalculo[]> {
     const query = `
-      SELECT id, nome, codigo_financeiro, valor_repasse
-      FROM modalidades 
-      WHERE ativo = true 
-      ORDER BY nome
+      SELECT
+        m.id,
+        m.nome,
+        COALESCE(cfm.codigo_financeiro, m.codigo_financeiro) as codigo_financeiro,
+        COALESCE(cfm.valor_repasse, m.valor_repasse) as valor_repasse
+      FROM modalidades m
+      LEFT JOIN categorias_financeiras_modalidade cfm ON cfm.id = m.categoria_financeira_id
+      WHERE m.ativo = true
+      ORDER BY m.nome
     `;
     
     const result = await db.all(query);
@@ -230,10 +235,11 @@ export class FaturamentoService {
           cpm.quantidade_disponivel,
           cpm.quantidade_inicial,
           m.nome as modalidade_nome,
-          m.valor_repasse
+          COALESCE(cfm.valor_repasse, m.valor_repasse) as valor_repasse
         FROM contrato_produtos_modalidades cpm
         JOIN contrato_produtos cp ON cpm.contrato_produto_id = cp.id
         JOIN modalidades m ON cpm.modalidade_id = m.id
+        LEFT JOIN categorias_financeiras_modalidade cfm ON cfm.id = m.categoria_financeira_id
         WHERE cp.contrato_id = $1
           AND cp.produto_id = $2
           AND cpm.ativo = true
@@ -713,9 +719,10 @@ export class FaturamentoService {
             fi.modalidade_id,
             fi.quantidade_modalidade,
             fi.preco_unitario,
-            m.valor_repasse
+            COALESCE(cfm.valor_repasse, m.valor_repasse) as valor_repasse
           FROM faturamento_itens fi
           JOIN modalidades m ON m.id = fi.modalidade_id
+          LEFT JOIN categorias_financeiras_modalidade cfm ON cfm.id = m.categoria_financeira_id
           WHERE fi.faturamento_id = $1
             AND fi.contrato_id = $2
             AND fi.produto_id = $3
