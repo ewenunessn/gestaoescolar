@@ -13,7 +13,7 @@ const localPool = new PgPool({
 
 // Configuração do Neon
 const neonPool = new PgPool({
-  connectionString: 'postgresql://neondb_owner:npg_Iu0Uw0Iu0Uw0Iu0Uw0Iu0Uw0I@ep-quiet-bonus-a5kpwi8w-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require',
+  connectionString: process.env.NEON_DATABASE_URL || process.env.POSTGRES_URL || process.env.DATABASE_URL || '',
   ssl: { rejectUnauthorized: false }
 });
 

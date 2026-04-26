@@ -4,7 +4,7 @@
  */
 
 import { Instituicao } from '../services/instituicao';
-import { initPdfMake, buildPdfDoc, PDF_COLORS } from './pdfUtils';
+import { initPdfMake, buildPdfDoc, PDF_COLORS, savePdfMakeDocument } from './pdfUtils';
 
 const toNum = (v: any): number => parseFloat(v) || 0;
 
@@ -504,6 +504,10 @@ export async function gerarPDFFichaTecnica(data: FichaTecnicaData) {
     },
   });
 
-  pdfMake.createPdf(doc).download(`ficha-tecnica-${refeicao.nome.replace(/\s+/g, '-').toLowerCase()}.pdf`);
+  await savePdfMakeDocument(
+    pdfMake,
+    doc,
+    `ficha-tecnica-${refeicao.nome.replace(/\s+/g, '-').toLowerCase()}.pdf`,
+  );
 }
 

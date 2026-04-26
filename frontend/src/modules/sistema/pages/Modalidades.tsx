@@ -32,6 +32,7 @@ import {
   Delete as DeleteIcon,
   Clear as ClearIcon,
   People as PeopleIcon,
+  Assessment as AssessmentIcon,
   Add as AddIcon,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
@@ -785,6 +786,9 @@ const ModalidadesPage = () => {
       >
         <MenuItem onClick={() => { setImportExportMenuAnchor(null); navigate('/modalidades/gerenciar-alunos'); }}>
           <PeopleIcon sx={{ mr: 1 }} /> Gerenciar Alunos por Escola
+        </MenuItem>
+        <MenuItem onClick={() => { setImportExportMenuAnchor(null); navigate('/modalidades/relatorio-alunos'); }}>
+          <AssessmentIcon sx={{ mr: 1 }} /> Relatorio de Alunos
         </MenuItem>
       </Menu>
 

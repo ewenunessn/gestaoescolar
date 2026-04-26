@@ -1,6 +1,6 @@
 import { Suspense, lazy, useEffect } from "react";
 import { Box, Typography } from "@mui/material";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, HashRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { isAuthenticated } from "../services/auth";
 import LayoutModerno from "../components/LayoutModerno";
 import PermissionGuard from "../components/PermissionGuard";
@@ -62,6 +62,7 @@ function RootRedirect() {
 const Escolas = lazy(() => import("../modules/escolas/pages/Escolas"));
 const EscolaDetalhes = lazy(() => import("../modules/escolas/pages/EscolaDetalhes"));
 const GerenciarAlunosModalidades = lazy(() => import("../modules/escolas/pages/GerenciarAlunosModalidades"));
+const RelatorioAlunosModalidades = lazy(() => import("../modules/escolas/pages/RelatorioAlunosModalidades"));
 const GerenciarEscolasRota = lazy(() => import("../modules/escolas/pages/GerenciarEscolasRota"));
 
 // Lazy loading - Módulo: portal-escola (separado do módulo escolas)
@@ -138,7 +139,7 @@ const GestaoRotas = lazy(() => import("../modules/rotas/pages/GestaoRotas"));
 const Compras = lazy(() => import("../modules/compras/pages/Compras"));
 const CompraForm = lazy(() => import("../modules/compras/pages/CompraForm"));
 const CompraDetalhe = lazy(() => import("../modules/compras/pages/CompraDetalhe"));
-const PlanejamentoCompras = lazy(() => import("../modules/compras/pages/PlanejamentoCompras"));
+const Abastecimento = lazy(() => import("../modules/abastecimento/pages/Abastecimento"));
 
 // Lazy loading - Módulo: programacao
 const ProgramacaoEntregaScreen = lazy(() => import("../modules/programacao/pages/ProgramacaoEntregaScreen"));
@@ -149,7 +150,11 @@ const FaturamentosCompra = lazy(() => import("../modules/faturamento/pages/Fatur
 const FaturamentoModalidades = lazy(() => import("../modules/faturamento/pages/FaturamentoModalidades"));
 const RelatorioFaturamentoTipoFornecedor = lazy(() => import("../modules/faturamento/pages/RelatorioFaturamentoTipoFornecedor"));
 const FaturamentoDetalhe = lazy(() => import("../modules/faturamento/pages/FaturamentoDetalhe"));
-const GerarFaturamento = lazy(() => import("../modules/faturamento/pages/GerarFaturamento"));
+
+function LegacyFaturamentoRedirect() {
+  const { pedidoId } = useParams<{ pedidoId: string }>();
+  return <Navigate to={`/compras/${pedidoId}/faturamentos`} replace />;
+}
 
 // Lazy loading - Módulo: solicitacoes
 const SolicitacoesAlimentos = lazy(() => import("../modules/solicitacoes/pages/SolicitacoesAlimentos"));
@@ -194,6 +199,8 @@ function LazyRoute({ children, moduloSlug }: { children: JSX.Element; moduloSlug
 }
 
 export default function AppRouter({ routerConfig }: AppRouterProps) {
+  const Router = window.desktopShell?.isDesktop ? HashRouter : BrowserRouter;
+
   useEffect(() => {
     const loader = document.getElementById('initial-loader');
     if (loader) {
@@ -202,7 +209,7 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
   }, []);
 
   return (
-    <BrowserRouter>
+    <Router>
       <EscolasProvider>
         <Routes>
             {/* Redireciona para dashboard se logado, senão para login */}
@@ -272,6 +279,10 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
             <Route
               path="/modalidades/gerenciar-alunos"
               element={<LazyRoute moduloSlug="modalidades"><GerenciarAlunosModalidades /></LazyRoute>}
+            />
+            <Route
+              path="/modalidades/relatorio-alunos"
+              element={<LazyRoute moduloSlug="modalidades"><RelatorioAlunosModalidades /></LazyRoute>}
             />
             <Route
               path="/produtos"
@@ -379,7 +390,8 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
 
             {/* Rotas de Compras */}
             <Route path="/compras" element={<LazyRoute moduloSlug="pedidos"><Compras /></LazyRoute>} />
-            <Route path="/compras/planejamento" element={<LazyRoute moduloSlug="planejamento_compras"><PlanejamentoCompras /></LazyRoute>} />
+            <Route path="/abastecimento" element={<LazyRoute moduloSlug="planejamento_compras"><Abastecimento /></LazyRoute>} />
+            <Route path="/compras/planejamento" element={<Navigate to="/guias-demanda" replace />} />
             <Route path="/compras/novo" element={<LazyRoute moduloSlug="pedidos"><CompraForm /></LazyRoute>} />
             <Route path="/compras/:id/editar" element={<LazyRoute moduloSlug="pedidos"><CompraForm /></LazyRoute>} />
             <Route path="/compras/:id" element={<LazyRoute moduloSlug="pedidos"><CompraDetalhe /></LazyRoute>} />
@@ -388,7 +400,7 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
             <Route path="/compras/:id/faturamentos" element={<LazyRoute moduloSlug="faturamento"><FaturamentosCompra /></LazyRoute>} />
             <Route path="/compras/:id/faturamento/:faturamentoId/relatorio-tipo" element={<LazyRoute moduloSlug="faturamento"><RelatorioFaturamentoTipoFornecedor /></LazyRoute>} />
             <Route path="/compras/:id/faturamento/:faturamentoId" element={<LazyRoute moduloSlug="faturamento"><FaturamentoModalidades /></LazyRoute>} />
-            <Route path="/compras/:pedidoId/faturamento" element={<LazyRoute moduloSlug="faturamento"><GerarFaturamento /></LazyRoute>} />
+            <Route path="/compras/:pedidoId/faturamento" element={<LazyRoute moduloSlug="faturamento"><LegacyFaturamentoRedirect /></LazyRoute>} />
             <Route path="/compras/:pedidoId/faturamento/visualizar" element={<LazyRoute moduloSlug="faturamento"><FaturamentoDetalhe /></LazyRoute>} />
 
 
@@ -515,6 +527,6 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
 
           </Routes>
         </EscolasProvider>
-    </BrowserRouter>
+    </Router>
   );
 }

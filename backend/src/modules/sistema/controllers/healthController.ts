@@ -21,7 +21,7 @@ export class HealthController {
         },
         environment: {
           nodeEnv: process.env.NODE_ENV,
-          hasDatabase: !!process.env.DATABASE_URL || !!process.env.POSTGRES_URL
+          hasDatabase: !!(process.env.NEON_DATABASE_URL || process.env.POSTGRES_URL || process.env.DATABASE_URL)
         },
         version: {
           commit: '28b8184',
@@ -45,9 +45,8 @@ export class HealthController {
     try {
       const institutionId = req.params.institutionId;
       
-      // Test query
       const result = await db.pool.query(
-        'SELECT * FROM institutions WHERE id = $1',
+        'SELECT * FROM instituicoes WHERE id = $1',
         [institutionId]
       );
       
@@ -61,18 +60,14 @@ export class HealthController {
       
       const institution = result.rows[0];
       
-      // Test user count
-      const userCount = await db.pool.query(
-        'SELECT COUNT(*) as count FROM institution_users WHERE institution_id = $1',
-        [institutionId]
-      );
+      const userCount = await db.pool.query('SELECT COUNT(*) as count FROM usuarios');
       
       res.json({
         success: true,
         institution: {
           id: institution.id,
-          name: institution.name,
-          limits: institution.limits
+          name: institution.nome,
+          limits: null
         },
         userCount: parseInt(userCount.rows[0].count),
         canCreateUser: true

@@ -23,5 +23,6 @@ router.post('/simular-saida', requireEscrita('estoque'), EstoqueCentralControlle
 router.post('/entrada', requireEscrita('estoque'), EstoqueCentralController.registrarEntrada);
 router.post('/saida', requireEscrita('estoque'), EstoqueCentralController.registrarSaida);
 router.post('/ajuste', requireEscrita('estoque'), EstoqueCentralController.registrarAjuste);
+router.post('/transferencias', requireEscrita('estoque'), EstoqueCentralController.registrarTransferencia);
 
 export default router;

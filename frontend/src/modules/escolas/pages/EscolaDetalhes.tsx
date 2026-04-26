@@ -70,6 +70,8 @@ interface EscolaModalidade {
     updated_at?: string;
 }
 
+const todayIso = () => new Date().toISOString().slice(0, 10);
+
 // --- Interfaces ---
 // (As interfaces originais foram mantidas)
 
@@ -347,11 +349,12 @@ const EscolaDetalhesPage = () => {
     const handleSaveModalidade = useCallback(async () => {
         setIsSavingModalidade(true);
         try {
+            const metadados = { vigente_de: todayIso() };
             if (editingModalidade) {
-                await editarEscolaModalidade(editingModalidade.id, { quantidade_alunos: Number(modalidadeForm.alunos) });
+                await editarEscolaModalidade(editingModalidade.id, { quantidade_alunos: Number(modalidadeForm.alunos), ...metadados });
                 toast.success('Sucesso!', 'Modalidade atualizada com sucesso!');
             } else {
-                await adicionarEscolaModalidade(Number(id), Number(modalidadeForm.modalidade_id), Number(modalidadeForm.alunos));
+                await adicionarEscolaModalidade(Number(id), Number(modalidadeForm.modalidade_id), Number(modalidadeForm.alunos), metadados);
                 toast.success('Sucesso!', 'Modalidade adicionada com sucesso!');
             }
             setModalOpen(false);
@@ -364,7 +367,7 @@ const EscolaDetalhesPage = () => {
 
     const handleDeleteModalidade = useCallback(async (associacaoId: number) => {
         try {
-            await removerEscolaModalidade(associacaoId);
+            await removerEscolaModalidade(associacaoId, { vigente_de: todayIso() });
             toast.success('Sucesso!', 'Modalidade removida com sucesso!');
             await loadData();
             // Invalidar cache de modalidades para atualizar contagem de alunos

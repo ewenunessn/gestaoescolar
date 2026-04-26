@@ -22,6 +22,27 @@ let pool: Pool;
 
 const isDev = process.env.NODE_ENV === 'development';
 
+function normalizeConnectionStringSsl(connectionString: string): string {
+    const isLocalDatabase = connectionString.includes('localhost') || connectionString.includes('127.0.0.1');
+    if (isLocalDatabase) {
+        return connectionString;
+    }
+
+    try {
+        const url = new URL(connectionString);
+        const sslmode = url.searchParams.get('sslmode');
+        if (!sslmode || ['prefer', 'require', 'verify-ca'].includes(sslmode)) {
+            url.searchParams.set('sslmode', 'verify-full');
+        }
+        return url.toString();
+    } catch {
+        const separator = connectionString.includes('?') ? '&' : '?';
+        return connectionString.includes('sslmode=')
+            ? connectionString
+            : `${connectionString}${separator}sslmode=verify-full`;
+    }
+}
+
 if (process.env.NEON_DATABASE_URL || process.env.DATABASE_URL || process.env.POSTGRES_URL) {
     // ========================================
     // CONFIGURAÇÃO NEON/VERCEL (Connection String)
@@ -43,11 +64,7 @@ if (process.env.NEON_DATABASE_URL || process.env.DATABASE_URL || process.env.POS
         });
     } else {
         // Produção: Neon/Vercel com SSL
-        let finalConnectionString = connectionString;
-        if (!connectionString.includes('sslmode=')) {
-            const separator = connectionString.includes('?') ? '&' : '?';
-            finalConnectionString = `${connectionString}${separator}sslmode=verify-full`;
-        }
+        const finalConnectionString = normalizeConnectionStringSsl(connectionString);
         
         pool = new Pool({
             connectionString: finalConnectionString,

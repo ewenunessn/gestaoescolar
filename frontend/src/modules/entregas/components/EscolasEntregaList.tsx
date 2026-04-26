@@ -40,7 +40,7 @@ import { guiaService } from "../../../services/guiaService";
 import { buscarInstituicao, Instituicao } from "../../../services/instituicao";
 import { formatarQuantidade } from "../../../utils/formatters";
 import { DataTableAdvanced } from "../../../components/DataTableAdvanced";
-import { initPdfMake, buildPdfDoc, buildTable } from "../../../utils/pdfUtils";
+import { initPdfMake, buildPdfDoc, buildTable, savePdfMakeDocument } from "../../../utils/pdfUtils";
 import api from "../../../services/api";
 
 interface EscolasEntregaListProps {
@@ -417,7 +417,7 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({
           };
         },
       });
-      pdfMake.createPdf(doc).download(`guia-entrega-${nomeEscola}.pdf`);
+      await savePdfMakeDocument(pdfMake, doc, `guia-entrega-${nomeEscola}.pdf`);
     } catch (err) {
       console.error('Erro ao gerar PDF:', err);
       setError(`Erro ao gerar PDF: ${err instanceof Error ? err.message : String(err)}`);
@@ -764,7 +764,7 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({
         },
       };
 
-      pdfMake.createPdf(doc).download(`guias-entrega-multiplas.pdf`);
+      await savePdfMakeDocument(pdfMake, doc, `guias-entrega-multiplas.pdf`);
       
       // Limpar seleção
       setEscolasSelecionadas(new Set());

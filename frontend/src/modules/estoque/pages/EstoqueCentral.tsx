@@ -1,310 +1,680 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { useToast } from "../../../hooks/useToast";
-import StatusIndicator from "../../../components/StatusIndicator";
-import PageHeader from "../../../components/PageHeader";
-import PageContainer from "../../../components/PageContainer";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Box,
-  Typography,
   Button,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControl,
+  InputAdornment,
+  InputLabel,
+  MenuItem,
+  Paper,
+  Select,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Card,
-  CardContent,
-  IconButton,
-  Chip,
-  Alert,
   TextField,
-  InputAdornment,
-  FormControl,
-  FormControlLabel,
-  Switch,
-  Grid,
-  CircularProgress,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Paper,
-  Tooltip,
-  Menu,
-  MenuItem,
-  Collapse,
-  Divider,
+  Typography,
 } from "@mui/material";
-import CompactPagination from "../../../components/CompactPagination";
-import {
-  Search as SearchIcon,
-  Inventory,
-  Warning,
-  TrendingUp,
-  TrendingDown,
-  Add as AddIcon,
-  Info as InfoIcon,
-  History,
-  Refresh,
-  TuneRounded,
-  ExpandMore as ExpandMoreIcon,
-  ExpandLess as ExpandLessIcon,
-  Clear as ClearIcon,
-  MoreVert,
-} from "@mui/icons-material";
-import { useNavigate } from "react-router-dom";
-import {
-  getPosicaoEstoque,
-  getAlertas,
-  atualizarAlertas,
-  criarLoteEstoque,
-  formatarData,
-  calcularDiasParaVencimento,
-  isVencimentoProximo,
-  type EstoquePosicao,
-  type AlertaEstoque
-} from "../../../services/estoqueCentralService";
+import AddCircleOutlineRounded from "@mui/icons-material/AddCircleOutlineRounded";
+import CompareArrowsRounded from "@mui/icons-material/CompareArrowsRounded";
+import RefreshRounded from "@mui/icons-material/RefreshRounded";
+import RemoveCircleOutlineRounded from "@mui/icons-material/RemoveCircleOutlineRounded";
+import RuleFolderRounded from "@mui/icons-material/RuleFolderRounded";
+import SearchRounded from "@mui/icons-material/SearchRounded";
 
-// Helper para formatação de quantidade (exemplo)
-const formatarQuantidade = (qtd: number | string, unidade: string) => `${Number(qtd).toLocaleString('pt-BR')} ${unidade}`;
+import PageContainer from "../../../components/PageContainer";
+import { useToast } from "../../../hooks/useToast";
+import { listarEscolas } from "../../../services/escolas";
+import {
+  getAlertas,
+  listarMovimentacoesCentral,
+  listarPosicaoCentral,
+  registrarAjusteCentral,
+  registrarEntradaCentral,
+  registrarSaidaCentral,
+  registrarTransferencia,
+  type AlertaEstoque,
+  type EstoquePosicao,
+  type TimelineEventoEstoque,
+} from "../../../services/estoqueCentralService";
+import {
+  CompactActionButton,
+  CompactMetricsStrip,
+  DotStatus,
+  type CompactMetric,
+} from "../components/CompactStockLayout";
+import { StockMovementDialog } from "../components/StockMovementDialog";
+
+type MovimentoModo = "entrada" | "saida" | "ajuste" | "transferencia";
+
+const dialogTitleByMode: Record<Exclude<MovimentoModo, "transferencia">, string> = {
+  entrada: "Registrar entrada",
+  saida: "Registrar saida",
+  ajuste: "Ajuste de estoque",
+};
+
+const actionStyles = {
+  entrada: {
+    borderColor: "#B5D4F4",
+    color: "#185FA5",
+    "&:hover": { borderColor: "#B5D4F4", backgroundColor: "#E6F1FB" },
+  },
+  saida: {
+    borderColor: "#F7C1C1",
+    color: "#A32D2D",
+    "&:hover": { borderColor: "#F7C1C1", backgroundColor: "#FCEBEB" },
+  },
+  ajuste: {
+    borderColor: "#FAC775",
+    color: "#854F0B",
+    "&:hover": { borderColor: "#FAC775", backgroundColor: "#FAEEDA" },
+  },
+  transferir: {
+    borderColor: "#C9D2DC",
+    color: "text.primary",
+    "&:hover": { borderColor: "#C9D2DC", backgroundColor: "action.hover" },
+  },
+};
+
+const toolbarControlSx = {
+  flex: 1,
+  minWidth: 160,
+  backgroundColor: "background.default",
+  borderRadius: "6px",
+  "& .MuiOutlinedInput-root": {
+    borderRadius: "6px",
+    fontSize: 13,
+    "& fieldset": {
+      border: "0.5px solid",
+      borderColor: "action.selected",
+    },
+    "&.Mui-focused": {
+      backgroundColor: "background.paper",
+    },
+    "&.Mui-focused fieldset": {
+      borderColor: "primary.main",
+    },
+  },
+  "& .MuiInputBase-input": {
+    py: "7px",
+  },
+};
+
+const formatarQuantidade = (qtd: number | string, unidade: string) =>
+  `${Number(qtd).toLocaleString("pt-BR")} ${unidade}`;
+
+const obterStatusCentral = (item: EstoquePosicao) => {
+  if (Number(item.quantidade_disponivel) <= 0) {
+    return { label: "Sem saldo", tone: "error" as const };
+  }
+
+  if (Number(item.quantidade_vencida) > 0) {
+    return { label: "Vencido", tone: "error" as const };
+  }
+
+  if (Number(item.quantidade_reservada) > 0) {
+    return { label: "Reservado", tone: "warning" as const };
+  }
+
+  return { label: "Normal", tone: "success" as const };
+};
 
 const EstoqueCentralPage: React.FC = () => {
-  const navigate = useNavigate();
-
-  // Estados principais
-  const [posicoes, setPosicoes] = useState<EstoquePosicao[]>([]);
-  const [alertas, setAlertas] = useState<AlertaEstoque[]>([]);
-  const [loading, setLoading] = useState(true);
   const toast = useToast();
-
-  // Estados do menu de ações
-  const [actionsMenuAnchor, setActionsMenuAnchor] = useState<null | HTMLElement>(null);
-
-  // Estados de filtros
+  const [posicoes, setPosicoes] = useState<EstoquePosicao[]>([]);
+  const [, setMovimentacoes] = useState<TimelineEventoEstoque[]>([]);
+  const [alertas, setAlertas] = useState<AlertaEstoque[]>([]);
+  const [escolas, setEscolas] = useState<Array<{ id: number; nome: string }>>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [mostrarTodos, setMostrarTodos] = useState(false);
-  const [filtersExpanded, setFiltersExpanded] = useState(false);
-  const [hasActiveFilters, setHasActiveFilters] = useState(false);
-  
-  // Estados de paginação
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [selectedItem, setSelectedItem] = useState<EstoquePosicao | null>(null);
+  const [movOpen, setMovOpen] = useState(false);
+  const [movMode, setMovMode] = useState<Exclude<MovimentoModo, "transferencia">>("entrada");
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [transferForm, setTransferForm] = useState({
+    escola_id: "",
+    quantidade: "",
+    motivo: "",
+    observacao: "",
+  });
 
-  // Estados de modais
-  const [modalOpen, setModalOpen] = useState(false);
-  const [formData, setFormData] = useState({ produto_id: "", lote: "", quantidade: "", data_validade: "" });
-
-  // Carregar dados
-  const loadEstoque = useCallback(async () => {
+  const carregarDados = async () => {
     try {
       setLoading(true);
-      const [posicoesData, alertasData] = await Promise.all([
-        getPosicaoEstoque(mostrarTodos),
-        getAlertas()
-      ]);
-      setPosicoes(Array.isArray(posicoesData) ? posicoesData : []);
-      setAlertas(Array.isArray(alertasData) ? alertasData : []);
-    } catch (err) {
-      toast.error("Erro ao carregar dados do estoque. Tente novamente.");
+      const [posicoesResult, movimentacoesResult, alertasResult, escolasResult] =
+        await Promise.allSettled([
+          listarPosicaoCentral(true),
+          listarMovimentacoesCentral(10),
+          getAlertas(true),
+          listarEscolas(),
+        ]);
+
+      if (posicoesResult.status === "fulfilled") {
+        setPosicoes(posicoesResult.value);
+      } else {
+        setPosicoes([]);
+        toast.errorLoad("a posicao do estoque central");
+      }
+
+      setMovimentacoes(
+        movimentacoesResult.status === "fulfilled" ? movimentacoesResult.value : [],
+      );
+      setAlertas(alertasResult.status === "fulfilled" ? alertasResult.value : []);
+      setEscolas(escolasResult.status === "fulfilled" ? escolasResult.value ?? [] : []);
+    } catch {
+      toast.errorLoad("o estoque central");
+      setPosicoes([]);
+      setMovimentacoes([]);
+      setAlertas([]);
     } finally {
       setLoading(false);
     }
-  }, [mostrarTodos]);
+  };
 
   useEffect(() => {
-    loadEstoque();
-  }, [loadEstoque]);
+    void carregarDados();
+  }, []);
 
-  // Detectar filtros ativos
-  useEffect(() => {
-    setHasActiveFilters(!!(searchTerm || mostrarTodos));
-  }, [searchTerm, mostrarTodos]);
+  const posicoesFiltradas = useMemo(() => {
+    const termo = searchTerm.trim().toLowerCase();
+    return posicoes.filter((item) => {
+      if (!termo) {
+        return true;
+      }
 
-  // Filtrar posições
-  const filteredPosicoes = useMemo(() => {
-    return posicoes.filter(p => p.produto_nome.toLowerCase().includes(searchTerm.toLowerCase()));
+      return (
+        item.produto_nome.toLowerCase().includes(termo) ||
+        item.produto_unidade.toLowerCase().includes(termo)
+      );
+    });
   }, [posicoes, searchTerm]);
 
-  // Posições paginadas
-  const paginatedPosicoes = useMemo(() => {
-    const startIndex = page * rowsPerPage;
-    return filteredPosicoes.slice(startIndex, startIndex + rowsPerPage);
-  }, [filteredPosicoes, page, rowsPerPage]);
+  const metricas = useMemo<CompactMetric[]>(() => {
+    const disponiveis = posicoes.filter((item) => Number(item.quantidade_disponivel) > 0).length;
+    const semSaldo = posicoes.filter((item) => Number(item.quantidade_disponivel) <= 0).length;
+    const reservados = posicoes.filter((item) => Number(item.quantidade_reservada) > 0).length;
 
-  // Funções de paginação e filtros
-  const handleChangePage = useCallback((event: unknown, newPage: number) => setPage(newPage), []);
-  const handleChangeRowsPerPage = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  }, []);
-  useEffect(() => setPage(0), [searchTerm, mostrarTodos]);
-  const clearFilters = useCallback(() => { setSearchTerm(""); setMostrarTodos(false); }, []);
-  const toggleFilters = useCallback(() => setFiltersExpanded(!filtersExpanded), [filtersExpanded]);
-  
-  // Handlers de ações
-  const handleAtualizarAlertas = async () => {
+    return [
+      { label: "Total de itens", value: posicoes.length },
+      { label: "Disponiveis", value: disponiveis },
+      { label: "Reservados", value: reservados, tone: "warning" },
+      { label: "Alertas", value: alertas.length + semSaldo, tone: "error" },
+    ];
+  }, [alertas.length, posicoes]);
+
+  const selecionarLinha = (item: EstoquePosicao) => {
+    setSelectedItem((current) =>
+      current?.produto_id === item.produto_id ? null : item,
+    );
+  };
+
+  const abrirMovimentacao = (mode: Exclude<MovimentoModo, "transferencia">) => {
+    if (!selectedItem) {
+      return;
+    }
+
+    setMovMode(mode);
+    setMovOpen(true);
+  };
+
+  const abrirTransferencia = () => {
+    if (!selectedItem) {
+      return;
+    }
+
+    setTransferForm({
+      escola_id: "",
+      quantidade: "",
+      motivo: "",
+      observacao: "",
+    });
+    setTransferOpen(true);
+  };
+
+  const salvarMovimentacao = async (payload: {
+    quantidade: number;
+    motivo: string;
+    observacao?: string;
+  }) => {
+    if (!selectedItem) {
+      return;
+    }
+
     try {
-      await atualizarAlertas();
-      await loadEstoque();
-      toast.success("Alertas atualizados com sucesso!");
-    } catch (err) {
-      toast.error("Erro ao atualizar alertas.");
+      setSaving(true);
+
+      if (movMode === "entrada") {
+        await registrarEntradaCentral({
+          produto_id: selectedItem.produto_id,
+          quantidade: payload.quantidade,
+          motivo: payload.motivo,
+          observacao: payload.observacao,
+        });
+      } else if (movMode === "saida") {
+        await registrarSaidaCentral({
+          produto_id: selectedItem.produto_id,
+          quantidade: payload.quantidade,
+          motivo: payload.motivo,
+          observacao: payload.observacao,
+        });
+      } else {
+        await registrarAjusteCentral({
+          produto_id: selectedItem.produto_id,
+          quantidade_nova: payload.quantidade,
+          motivo: payload.motivo,
+          observacao: payload.observacao,
+        });
+      }
+
+      toast.successSave("Movimentacao registrada.");
+      setMovOpen(false);
+      await carregarDados();
+    } catch (error: any) {
+      toast.errorSave(
+        error?.response?.data?.error ||
+          error?.message ||
+          "Erro ao registrar movimentacao.",
+      );
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleSave = async () => {
+  const salvarTransferencia = async () => {
+    if (!selectedItem) {
+      return;
+    }
+
+    if (!transferForm.escola_id || !transferForm.quantidade || !transferForm.motivo.trim()) {
+      toast.warningRequired("Escola, quantidade e motivo");
+      return;
+    }
+
     try {
-      // Validação
-      await criarLoteEstoque({
-        produto_id: parseInt(formData.produto_id),
-        lote: formData.lote,
-        quantidade: parseFloat(formData.quantidade),
-        data_validade: formData.data_validade || undefined,
+      setSaving(true);
+      await registrarTransferencia({
+        escola_id: Number(transferForm.escola_id),
+        produto_id: selectedItem.produto_id,
+        quantidade: Number(transferForm.quantidade),
+        motivo: transferForm.motivo.trim(),
+        observacao: transferForm.observacao.trim() || undefined,
       });
-      setModalOpen(false);
-      setFormData({ produto_id: "", lote: "", quantidade: "", data_validade: "" });
-      await loadEstoque();
-      toast.success("Entrada registrada com sucesso!");
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Erro ao registrar entrada.");
+      toast.successSave("Transferencia registrada.");
+      setTransferOpen(false);
+      await carregarDados();
+    } catch (error: any) {
+      toast.errorSave(
+        error?.response?.data?.error ||
+          error?.message ||
+          "Erro ao registrar transferencia.",
+      );
+    } finally {
+      setSaving(false);
     }
   };
 
-  const openModal = () => setModalOpen(true);
-  const closeModal = () => setModalOpen(false);
-
-  // Componentes de UI
-  const getStatusProduto = (posicao: EstoquePosicao) => {
-    if (Number(posicao.quantidade_vencida) > 0) return { color: "error" as const, label: 'Com Vencidos' };
-    if (Number(posicao.quantidade_disponivel) === 0) return { color: "default" as const, label: 'Sem Estoque' };
-    if (posicao.proximo_vencimento && isVencimentoProximo(posicao.proximo_vencimento)) return { color: "warning" as const, label: 'Vence em Breve' };
-    return { color: "success" as const, label: 'Normal' };
-  };
-
-  const FiltersContent = () => (
-    <Box sx={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)', borderRadius: '16px', p: 3, border: '1px solid rgba(148, 163, 184, 0.1)' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}><TuneRounded sx={{ color: 'primary.main' }} /><Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>Filtros</Typography></Box>
-        {hasActiveFilters && <Button size="small" onClick={clearFilters} sx={{ color: 'text.secondary', textTransform: 'none' }}>Limpar Tudo</Button>}
-      </Box>
-      <Divider sx={{ mb: 2 }} />
-      <FormControlLabel control={<Switch checked={mostrarTodos} onChange={(e) => setMostrarTodos(e.target.checked)} />} label="Mostrar todos os produtos (incluindo sem estoque)" />
-    </Box>
-  );
-
-  const estatisticas = useMemo(() => ({
-    totalProdutos: posicoes.length,
-    comEstoque: posicoes.filter(p => Number(p.quantidade_disponivel) > 0).length,
-    comVencidos: posicoes.filter(p => Number(p.quantidade_vencida) > 0).length,
-    alertasAtivos: alertas.length
-  }), [posicoes, alertas]);
+  const saldoProjetadoTransferencia =
+    Number(selectedItem?.quantidade_disponivel || 0) - Number(transferForm.quantidade || 0);
 
   return (
-    <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden' }}>
-      <PageContainer fullHeight>
-          <PageHeader
-            title="Estoque Central"
-            breadcrumbs={[{ label: 'Dashboard', path: '/dashboard' }, { label: 'Estoque' }, { label: 'Estoque Central' }]}
+    <PageContainer>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: "28px",
+          flexWrap: "wrap",
+          gap: "12px",
+        }}
+      >
+        <Box>
+          <Typography
+            variant="h6"
+            sx={{ fontWeight: 500, fontSize: 20, color: "text.primary" }}
+          >
+            Estoque Central
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: "2px" }}>
+            Recebimento, saida, ajuste e transferencia
+          </Typography>
+        </Box>
+
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<RefreshRounded />}
+          onClick={() => void carregarDados()}
+          sx={{
+            borderRadius: "6px",
+            fontSize: 13,
+            fontWeight: 500,
+            px: "13px",
+            py: "6px",
+            textTransform: "none",
+          }}
+        >
+          Atualizar
+        </Button>
+      </Box>
+
+      <CompactMetricsStrip metrics={metricas} />
+
+      <Paper
+        sx={{
+          position: "sticky",
+          top: "calc(var(--app-top-offset, 68px) + 8px)",
+          zIndex: (theme) => theme.zIndex.appBar + 2,
+          mb: 1.5,
+          border: "0.5px solid",
+          borderColor: "divider",
+          borderRadius: "10px",
+          overflow: "visible",
+          boxShadow: (theme) =>
+            theme.palette.mode === "dark"
+              ? "0 10px 24px rgba(0, 0, 0, 0.36)"
+              : "0 10px 24px rgba(15, 23, 42, 0.08)",
+          backgroundColor: "background.paper",
+        }}
+      >
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            p: "10px 14px",
+            backgroundColor: "background.paper",
+            borderRadius: "10px",
+            flexWrap: "wrap",
+          }}
+        >
+          <TextField
+            size="small"
+            placeholder="Buscar produto ou unidade..."
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            sx={toolbarControlSx}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchRounded sx={{ fontSize: 14, color: "text.disabled" }} />
+                </InputAdornment>
+              ),
+            }}
           />
 
-        <Card sx={{ borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', p: 3, mb: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-            <TextField placeholder="Buscar por produto..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '12px' } }} InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon sx={{ color: 'text.secondary' }} /></InputAdornment>), endAdornment: searchTerm && (<InputAdornment position="end"><IconButton size="small" onClick={() => setSearchTerm('')}><ClearIcon fontSize="small" /></IconButton></InputAdornment>)}}/>
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <Button variant={filtersExpanded || hasActiveFilters ? 'contained' : 'outlined'} startIcon={filtersExpanded ? <ExpandLessIcon /> : <TuneRounded />} onClick={toggleFilters}>Filtros{hasActiveFilters && !filtersExpanded && (<Box sx={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', bgcolor: 'error.main' }}/>)}</Button>
-              <Button startIcon={<AddIcon />} onClick={openModal} variant="contained" color="add">Nova Entrada</Button>
-              <IconButton onClick={(e) => setActionsMenuAnchor(e.currentTarget)}><MoreVert /></IconButton>
+          <CompactActionButton
+            startIcon={<AddCircleOutlineRounded />}
+            disabled={!selectedItem}
+            onClick={() => abrirMovimentacao("entrada")}
+            sx={actionStyles.entrada}
+          >
+            + Entrada
+          </CompactActionButton>
+          <CompactActionButton
+            startIcon={<RemoveCircleOutlineRounded />}
+            disabled={!selectedItem || Number(selectedItem.quantidade_disponivel) <= 0}
+            onClick={() => abrirMovimentacao("saida")}
+            sx={actionStyles.saida}
+          >
+            - Saida
+          </CompactActionButton>
+          <CompactActionButton
+            startIcon={<RuleFolderRounded />}
+            disabled={!selectedItem}
+            onClick={() => abrirMovimentacao("ajuste")}
+            sx={actionStyles.ajuste}
+          >
+            Ajuste
+          </CompactActionButton>
+          <CompactActionButton
+            startIcon={<CompareArrowsRounded />}
+            disabled={!selectedItem || Number(selectedItem.quantidade_disponivel) <= 0}
+            onClick={abrirTransferencia}
+            sx={actionStyles.transferir}
+          >
+            Transferir
+          </CompactActionButton>
+        </Box>
+      </Paper>
+
+      <Paper
+        sx={{
+          border: "0.5px solid",
+          borderColor: "divider",
+          borderRadius: "10px",
+          overflow: "hidden",
+          boxShadow: "none",
+          backgroundColor: "background.paper",
+        }}
+      >
+        <Box sx={{ overflowX: "auto", borderBottomLeftRadius: "10px", borderBottomRightRadius: "10px" }}>
+          {loading ? (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 5 }}>
+              <CircularProgress />
             </Box>
-          </Box>
-          <Collapse in={filtersExpanded} timeout={400}><Box sx={{ mb: 3 }}><FiltersContent /></Box></Collapse>
-
-        </Card>
-        
-        {/* Cards de Estatísticas e Alertas */}
-        <Grid container spacing={3} mb={3}>
-            {Object.entries({
-                'Total Produtos': { value: estatisticas.totalProdutos, icon: <Inventory color="primary" /> },
-                'Com Estoque': { value: estatisticas.comEstoque, icon: <TrendingUp color="success" /> },
-                'Com Vencidos': { value: estatisticas.comVencidos, icon: <TrendingDown color="error" /> },
-                'Alertas Ativos': { value: estatisticas.alertasAtivos, icon: <Warning color="warning" /> },
-            }).map(([title, data]) => (
-                <Grid item xs={12} sm={6} md={3} key={title}><Card><CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>{data.icon}<Box><Typography variant="h6" fontWeight="bold">{data.value}</Typography><Typography variant="body2" color="text.secondary">{title}</Typography></Box></CardContent></Card></Grid>
-            ))}
-        </Grid>
-
-        {loading ? (
-          <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><CircularProgress size={60} /></CardContent></Card>
-        ) : filteredPosicoes.length === 0 ? (
-          <Card><CardContent sx={{ textAlign: 'center', py: 6 }}><Inventory sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} /><Typography variant="h6" sx={{ color: 'text.secondary' }}>Nenhuma posição de estoque encontrada</Typography></CardContent></Card>
-        ) : (
-          <Box>
-            <TableContainer>
-              <Table>
+          ) : (
+            <TableContainer component={Box}>
+              <Table size="small">
                 <TableHead>
                   <TableRow>
-                    <TableCell>Produto</TableCell>
-                    <TableCell align="right">Qtd. Disponível</TableCell>
-                    <TableCell align="right">Qtd. Vencida</TableCell>
-                    <TableCell>Próximo Vencimento</TableCell>
-                    <TableCell align="center" width="80">Ações</TableCell>
+                    {["Item", "Disponivel", "Reservado", "Total", "Status"].map((column) => (
+                      <TableCell
+                        key={column}
+                        align={column === "Item" || column === "Status" ? "left" : "right"}
+                        sx={{
+                          fontSize: 11,
+                          fontWeight: 500,
+                          color: "text.secondary",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                          p: "9px 16px",
+                          backgroundColor: "background.default",
+                          borderBottom: "0.5px solid",
+                          borderColor: "divider",
+                        }}
+                      >
+                        {column}
+                      </TableCell>
+                    ))}
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {paginatedPosicoes.map((posicao) => {
-                    const status = getStatusProduto(posicao);
-                    return (
-                      <TableRow key={posicao.produto_id} hover>
-                        <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <StatusIndicator status={status.label === 'Com Vencidos' ? 'error' : status.label === 'Sem Estoque' ? 'inativo' : status.label === 'Vence em Breve' ? 'warning' : 'ativo'} size="small" />
-                            <Box>
-                              <Typography variant="body2" sx={{ fontWeight: 600 }}>{posicao.produto_nome}</Typography>
-                              <Typography variant="caption" color="text.secondary">Un: {posicao.produto_unidade}</Typography>
-                            </Box>
-                          </Box>
-                        </TableCell>
-                        <TableCell align="right"><Typography variant="body2" fontWeight="bold">{formatarQuantidade(posicao.quantidade_disponivel, posicao.produto_unidade)}</Typography></TableCell>
-                        <TableCell align="right"><Typography variant="body2" color={Number(posicao.quantidade_vencida) > 0 ? 'error' : 'text.secondary'}>{formatarQuantidade(posicao.quantidade_vencida, posicao.produto_unidade)}</Typography></TableCell>
-                        <TableCell><Typography variant="body2">{posicao.proximo_vencimento ? formatarData(posicao.proximo_vencimento) : '-'}</Typography></TableCell>
+                  {posicoesFiltradas.map((item, index) => {
+                    const isSelected = selectedItem?.produto_id === item.produto_id;
+                    const status = obterStatusCentral(item);
+                    const isLast = index === posicoesFiltradas.length - 1;
 
-                        <TableCell align="center">
-                          <Tooltip title="Ver Lotes"><IconButton size="small" onClick={() => navigate(`/estoque-moderno/produtos/${posicao.produto_id}/lotes`)}><InfoIcon fontSize="small" /></IconButton></Tooltip>
-                          <Tooltip title="Movimentações"><IconButton size="small" onClick={() => navigate(`/estoque-moderno/produtos/${posicao.produto_id}/movimentacoes`)}><History fontSize="small" /></IconButton></Tooltip>
+                    return (
+                      <TableRow
+                        key={item.produto_id}
+                        hover
+                        selected={isSelected}
+                        onClick={() => selecionarLinha(item)}
+                        sx={(theme) => {
+                          const selectedBg =
+                            theme.palette.mode === "dark"
+                              ? "rgba(24, 95, 165, 0.32)"
+                              : "#E6F1FB";
+                          const hoverBg =
+                            theme.palette.mode === "dark"
+                              ? "rgba(255, 255, 255, 0.06)"
+                              : theme.palette.background.default;
+
+                          return {
+                            cursor: "pointer",
+                            backgroundColor: isSelected ? selectedBg : "inherit",
+                            "&:hover": {
+                              backgroundColor: isSelected ? selectedBg : hoverBg,
+                            },
+                            "&.Mui-selected, &.Mui-selected:hover": {
+                              backgroundColor: selectedBg,
+                            },
+                            "& td": {
+                              p: "10px 16px",
+                              borderBottom: isLast ? 0 : "0.5px solid",
+                              borderColor: "divider",
+                            },
+                          };
+                        }}
+                      >
+                        <TableCell>
+                          <Typography sx={{ fontWeight: 500, fontSize: 13 }}>
+                            {item.produto_nome}
+                          </Typography>
+                          <Typography sx={{ color: "text.secondary", fontSize: 11 }}>
+                            {item.produto_unidade} | Lotes: {item.lotes_ativos}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontVariantNumeric: "tabular-nums", fontSize: 13 }}>
+                          {formatarQuantidade(item.quantidade_disponivel, item.produto_unidade)}
+                        </TableCell>
+                        <TableCell align="right" sx={{ color: "text.secondary", fontSize: 13 }}>
+                          {formatarQuantidade(item.quantidade_reservada, item.produto_unidade)}
+                        </TableCell>
+                        <TableCell align="right" sx={{ color: "text.secondary", fontSize: 13 }}>
+                          {formatarQuantidade(item.quantidade_total, item.produto_unidade)}
+                        </TableCell>
+                        <TableCell>
+                          <DotStatus label={status.label} tone={status.tone} />
                         </TableCell>
                       </TableRow>
                     );
                   })}
+                  {!posicoesFiltradas.length ? (
+                    <TableRow>
+                      <TableCell colSpan={5} sx={{ borderBottom: 0 }}>
+                        <Typography textAlign="center" color="text.secondary" sx={{ py: 4, fontSize: 13 }}>
+                          Nenhum item encontrado.
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
                 </TableBody>
               </Table>
             </TableContainer>
-            <CompactPagination count={filteredPosicoes.length} page={page} onPageChange={handleChangePage} rowsPerPage={rowsPerPage} onRowsPerPageChange={handleChangeRowsPerPage} rowsPerPageOptions={[5, 10, 25, 50]} />
-          </Box>
-        )}
-      </PageContainer>
+          )}
+        </Box>
+      </Paper>
 
-      {/* Modal de Nova Entrada */}
-      <Dialog open={modalOpen} onClose={closeModal} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: '12px' } }}>
-        <DialogTitle sx={{ fontWeight: 600 }}>Nova Entrada de Estoque</DialogTitle>
-        <DialogContent sx={{ pt: 2 }}>
-          <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <TextField label="ID do Produto *" type="number" value={formData.produto_id} onChange={(e) => setFormData({ ...formData, produto_id: e.target.value })} required />
-            <TextField label="Número do Lote *" value={formData.lote} onChange={(e) => setFormData({ ...formData, lote: e.target.value })} required />
-            <TextField label="Quantidade *" type="number" value={formData.quantidade} onChange={(e) => setFormData({ ...formData, quantidade: e.target.value })} required />
-            <TextField label="Data de Validade" type="date" value={formData.data_validade} onChange={(e) => setFormData({ ...formData, data_validade: e.target.value })} InputLabelProps={{ shrink: true }} />
+      <StockMovementDialog
+        open={movOpen}
+        mode={movMode}
+        title={dialogTitleByMode[movMode]}
+        produtoNome={selectedItem?.produto_nome}
+        produtoId={selectedItem?.produto_id}
+        unidade={selectedItem?.produto_unidade || "UN"}
+        saldoAtual={Number(selectedItem?.quantidade_disponivel || 0)}
+        saving={saving}
+        confirmColor={
+          movMode === "entrada" ? "#185FA5" : movMode === "saida" ? "#A32D2D" : "#854F0B"
+        }
+        onClose={() => setMovOpen(false)}
+        onSubmit={salvarMovimentacao}
+      />
+
+      <Dialog open={transferOpen} onClose={() => setTransferOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Transferir para escola</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: "grid", gap: 2, pt: 1 }}>
+            <Box>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                {selectedItem?.produto_nome || "Produto selecionado"}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Saldo atual:{" "}
+                {formatarQuantidade(
+                  selectedItem?.quantidade_disponivel || 0,
+                  selectedItem?.produto_unidade || "UN",
+                )}
+              </Typography>
+            </Box>
+            <FormControl fullWidth>
+              <InputLabel>Escola destino</InputLabel>
+              <Select
+                value={transferForm.escola_id}
+                label="Escola destino"
+                onChange={(event) =>
+                  setTransferForm((current) => ({
+                    ...current,
+                    escola_id: String(event.target.value),
+                  }))
+                }
+              >
+                {escolas.map((escola) => (
+                  <MenuItem key={escola.id} value={String(escola.id)}>
+                    {escola.nome}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <TextField
+              label="Quantidade"
+              type="number"
+              value={transferForm.quantidade}
+              onChange={(event) =>
+                setTransferForm((current) => ({ ...current, quantidade: event.target.value }))
+              }
+              inputProps={{ min: 0, step: 0.001 }}
+            />
+            <TextField
+              label="Motivo"
+              value={transferForm.motivo}
+              onChange={(event) =>
+                setTransferForm((current) => ({ ...current, motivo: event.target.value }))
+              }
+            />
+            <TextField
+              label="Observacao"
+              value={transferForm.observacao}
+              onChange={(event) =>
+                setTransferForm((current) => ({ ...current, observacao: event.target.value }))
+              }
+              multiline
+              minRows={2}
+            />
+            <Box
+              sx={{
+                borderRadius: 3,
+                p: 2,
+                border: "1px solid rgba(15,76,129,0.12)",
+                background:
+                  "linear-gradient(135deg, rgba(15,76,129,0.08) 0%, rgba(255,255,255,0.96) 100%)",
+              }}
+            >
+              <Typography variant="body2" color="text.secondary">
+                Saldo antes:{" "}
+                {formatarQuantidade(
+                  selectedItem?.quantidade_disponivel || 0,
+                  selectedItem?.produto_unidade || "UN",
+                )}
+              </Typography>
+              <Typography variant="subtitle1" sx={{ fontWeight: 800, mt: 0.5 }}>
+                Saldo depois:{" "}
+                {formatarQuantidade(
+                  saldoProjetadoTransferencia,
+                  selectedItem?.produto_unidade || "UN",
+                )}
+              </Typography>
+            </Box>
           </Box>
         </DialogContent>
-        <DialogActions sx={{ p: 3, pt: 1 }}>
-          <Button onClick={closeModal} sx={{ color: 'text.secondary' }}>Cancelar</Button>
-          <Button onClick={handleSave} variant="contained" disabled={!formData.produto_id || !formData.lote || !formData.quantidade}>Registrar Entrada</Button>
+        <DialogActions>
+          <Button onClick={() => setTransferOpen(false)}>Cancelar</Button>
+          <Button variant="contained" onClick={() => void salvarTransferencia()} disabled={saving}>
+            {saving ? "Gravando..." : "Confirmar transferencia"}
+          </Button>
         </DialogActions>
       </Dialog>
-      
-      {/* Menu de Ações */}
-      <Menu anchorEl={actionsMenuAnchor} open={Boolean(actionsMenuAnchor)} onClose={() => setActionsMenuAnchor(null)}>
-        <MenuItem onClick={() => { setActionsMenuAnchor(null); handleAtualizarAlertas(); }}><Refresh sx={{ mr: 1 }} /> Atualizar Alertas</MenuItem>
-      </Menu>
-    </Box>
+    </PageContainer>
   );
 };
 

@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 // CONFIGURAÇÃO NEON - SUBSTITUA PELA SUA CONNECTION STRING
-const NEON_CONNECTION_STRING = process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_xxxxxxxxxx@ep-xxxxxxxx.us-east-2.aws.neon.tech/neondb?sslmode=require';
+const NEON_CONNECTION_STRING = process.env.DATABASE_URL || process.env.NEON_DATABASE_URL || process.env.POSTGRES_URL || process.env.DATABASE_URL || '';
 
 const pool = new Pool({
   connectionString: NEON_CONNECTION_STRING,

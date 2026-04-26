@@ -1,411 +1,367 @@
-import { Request, Response } from 'express';
-import EstoqueCentralModel from '../models/EstoqueCentral';
+import { Request, Response } from "express";
+
+import EstoqueCentralModel from "../models/EstoqueCentral";
+import estoqueLedgerService from "../services/estoqueLedgerService";
+import estoqueProjectionService from "../services/estoqueProjectionService";
+
+function parsePositiveNumber(value: unknown): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new Error("Quantidade deve ser maior que zero");
+  }
+  return parsed;
+}
+
+function parseNonNegativeNumber(value: unknown): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw new Error("Quantidade nao pode ser negativa");
+  }
+  return parsed;
+}
+
+function mapLegacyCentralRow(item: any) {
+  return {
+    produto_id: Number(item.produto_id),
+    produto_nome: item.produto_nome,
+    produto_unidade: item.produto_unidade || item.unidade || "UN",
+    quantidade_total: Number(item.quantidade_total ?? item.quantidade ?? 0),
+    quantidade_disponivel: Number(item.quantidade_disponivel ?? item.quantidade ?? 0),
+    quantidade_reservada: Number(item.quantidade_reservada ?? 0),
+    quantidade_vencida: Number(item.quantidade_vencida ?? 0),
+    lotes_ativos: Number(item.lotes_ativos ?? item.total_lotes ?? 0),
+    proximo_vencimento: item.proximo_vencimento ?? item.proxima_validade ?? null,
+  };
+}
+
+function mapLegacyMovimentacaoRow(item: any) {
+  const quantidade = Number(item.quantidade ?? 0);
+  return {
+    id: Number(item.id),
+    escopo: "central",
+    produto_id: Number(item.produto_id),
+    produto_nome: item.produto_nome || "Movimentacao de estoque",
+    tipo_evento:
+      item.tipo === "entrada"
+        ? "recebimento_central"
+        : item.tipo === "saida"
+          ? "saida_central"
+          : item.tipo === "ajuste"
+            ? "ajuste_estoque"
+            : item.tipo || "movimentacao",
+    origem: "central_operador",
+    quantidade_movimentada: quantidade,
+    data_movimentacao: item.data_movimentacao ?? item.created_at ?? item.updated_at,
+    usuario_nome: item.usuario_nome ?? null,
+    motivo: item.motivo ?? null,
+    observacoes: item.observacao ?? item.observacoes ?? null,
+  };
+}
+
+function isMissingRelationError(error: any): boolean {
+  return error?.code === "42P01" || String(error?.message || "").includes("does not exist");
+}
 
 class EstoqueCentralController {
-  /**
-   * Listar estoque central
-   * GET /api/estoque-central
-   */
   async listar(req: Request, res: Response) {
     try {
-      const limit = parseInt(req.query.limit as string) || 100;
-      const offset = parseInt(req.query.offset as string) || 0;
-
-      const estoque = await EstoqueCentralModel.listar(limit, offset);
-
-      const estoqueFormatado = estoque.map(item => ({
-        ...item,
-        quantidade: parseFloat(item.quantidade as any) || 0,
-        quantidade_reservada: parseFloat(item.quantidade_reservada as any) || 0,
-        quantidade_disponivel: parseFloat(item.quantidade_disponivel as any) || 0,
-        total_lotes: parseInt(item.total_lotes as any) || 0
-      }));
-
-      res.json({
-        estoque: estoqueFormatado,
-        limit,
-        offset
-      });
+      const mostrarTodos =
+        req.query.mostrarTodos === "true" ||
+        req.query.mostrar_todos === "true" ||
+        req.query.incluirZerados === "true";
+      const estoque = await estoqueProjectionService.listarSaldoCentral({ mostrarTodos });
+      res.json({ success: true, data: estoque, estoque });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      try {
+        console.warn("Falha ao ler ledger central; usando estoque legado:", error.message);
+        const legacy = await EstoqueCentralModel.listar();
+        const estoque = legacy.map(mapLegacyCentralRow);
+        return res.json({ success: true, data: estoque, estoque, source: "legacy" });
+      } catch (fallbackError: any) {
+        if (isMissingRelationError(fallbackError)) {
+          return res.json({ success: true, data: [], estoque: [], source: "empty" });
+        }
+        return res.status(500).json({ error: fallbackError.message || error.message });
+      }
     }
   }
 
-  /**
-   * Buscar estoque por produto
-   * GET /api/estoque-central/produto/:produtoId
-   */
   async buscarPorProduto(req: Request, res: Response) {
     try {
-      const { produtoId } = req.params;
-      const estoque = await EstoqueCentralModel.buscarPorProduto(parseInt(produtoId));
+      const produtoId = Number(req.params.produtoId);
+      const estoque = await estoqueProjectionService.listarSaldoCentral();
+      const item = estoque.find((row) => row.produto_id === produtoId);
 
-      if (!estoque) {
-        return res.status(404).json({ error: 'Produto não encontrado no estoque' });
+      if (!item) {
+        return res.status(404).json({ error: "Produto nao encontrado no estoque" });
       }
 
-      // Converter strings numéricas para números
-      const estoqueFormatado = {
-        ...estoque,
-        quantidade: parseFloat(estoque.quantidade as any) || 0,
-        quantidade_reservada: parseFloat(estoque.quantidade_reservada as any) || 0,
-        quantidade_disponivel: parseFloat(estoque.quantidade_disponivel as any) || 0,
-        total_lotes: parseInt(estoque.total_lotes as any) || 0
-      };
-
-      res.json(estoqueFormatado);
+      return res.json({ success: true, data: item, item });
     } catch (error: any) {
-      console.error('Erro ao buscar estoque:', error);
-      res.status(500).json({ error: error.message });
+      return res.status(500).json({ error: error.message });
     }
   }
 
-  /**
-   * Registrar entrada de estoque
-   * POST /api/estoque-central/entrada
-   */
   async registrarEntrada(req: Request, res: Response) {
     try {
-      const {
-        produto_id,
+      const produto_id = Number(req.body.produto_id);
+      if (!produto_id) {
+        return res.status(400).json({ error: "produto_id e obrigatorio" });
+      }
+
+      const quantidade = parsePositiveNumber(req.body.quantidade);
+      const movimentacao = await estoqueLedgerService.registrarMovimentacaoCentral({
+        produtoId: produto_id,
+        tipoMovimentacao: "entrada",
         quantidade,
-        lote,
-        data_fabricacao,
-        data_validade,
-        motivo,
-        observacao,
-        documento,
-        fornecedor,
-        nota_fiscal
-      } = req.body;
-
-      // Validações
-      if (!produto_id || !quantidade || !lote || !data_validade) {
-        return res.status(400).json({
-          error: 'Campos obrigatórios: produto_id, quantidade, lote, data_validade'
-        });
-      }
-
-      const quantidadeNum = parseFloat(quantidade);
-
-      if (isNaN(quantidadeNum) || quantidadeNum <= 0) {
-        return res.status(400).json({
-          error: 'Quantidade deve ser maior que zero'
-        });
-      }
-
-      const movimentacao = await EstoqueCentralModel.registrarEntrada({
-        produto_id: parseInt(produto_id),
-        quantidade: quantidadeNum,
-        lote,
-        data_fabricacao,
-        data_validade,
-        motivo,
-        observacao,
-        documento,
-        fornecedor,
-        nota_fiscal,
+        origem: req.body.origem ?? "central_operador",
+        motivo: req.body.motivo,
+        observacao: req.body.observacao,
+        referencia_tipo: req.body.referencia_tipo ?? "entrada_manual",
+        referencia_id: req.body.referencia_id ? Number(req.body.referencia_id) : undefined,
         usuario_id: req.user?.id,
-        usuario_nome: req.user?.nome
+        usuario_nome_snapshot: req.user?.nome,
       });
 
-      res.status(201).json(movimentacao);
+      return res.status(201).json({ success: true, data: movimentacao, movimentacao });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      return res.status(400).json({ error: error.message });
     }
   }
 
-  /**
-   * Simular saída de estoque (FEFO)
-   * POST /api/estoque-central/simular-saida
-   */
   async simularSaida(req: Request, res: Response) {
     try {
-      const { produto_id, quantidade } = req.body;
+      const produto_id = Number(req.body.produto_id);
+      if (!produto_id) {
+        return res.status(400).json({ error: "produto_id e obrigatorio" });
+      }
 
-      // Validações
-      if (!produto_id || !quantidade) {
+      const quantidade = parsePositiveNumber(req.body.quantidade);
+      const saldoAtual = await estoqueLedgerService.getCurrentBalance("central", produto_id);
+      const saldoPosterior = saldoAtual - quantidade;
+
+      if (saldoPosterior < 0) {
         return res.status(400).json({
-          error: 'Campos obrigatórios: produto_id, quantidade'
+          error: `Quantidade insuficiente. Saldo atual: ${saldoAtual}`,
         });
       }
 
-      const quantidadeNum = parseFloat(quantidade);
-      
-      if (isNaN(quantidadeNum) || quantidadeNum <= 0) {
-        return res.status(400).json({
-          error: 'Quantidade deve ser maior que zero'
-        });
-      }
-
-      const simulacao = await EstoqueCentralModel.simularSaida(
-        parseInt(produto_id),
-        quantidadeNum
-      );
-
-      res.json(simulacao);
+      return res.json({
+        success: true,
+        data: {
+          produto_id,
+          quantidade_solicitada: quantidade,
+          quantidade_disponivel: saldoAtual,
+          saldo_posterior: saldoPosterior,
+        },
+      });
     } catch (error: any) {
-      console.error('Erro ao simular saída:', error);
-      
-      // Tratar erro de quantidade insuficiente como 400 (Bad Request)
-      if (error.message && error.message.includes('Quantidade insuficiente')) {
-        return res.status(400).json({ error: error.message });
-      }
-      
-      // Outros erros como 500 (Internal Server Error)
-      res.status(500).json({ error: error.message });
+      return res.status(400).json({ error: error.message });
     }
   }
 
-  /**
-   * Registrar saída de estoque
-   * POST /api/estoque-central/saida
-   */
   async registrarSaida(req: Request, res: Response) {
     try {
-      const {
-        produto_id,
+      const produto_id = Number(req.body.produto_id);
+      if (!produto_id) {
+        return res.status(400).json({ error: "produto_id e obrigatorio" });
+      }
+
+      const quantidade = parsePositiveNumber(req.body.quantidade);
+      const movimentacao = await estoqueLedgerService.registrarMovimentacaoCentral({
+        produtoId: produto_id,
+        tipoMovimentacao: "saida",
         quantidade,
-        motivo,
-        observacao,
-        documento
-      } = req.body;
-
-      // Validações
-      if (!produto_id || !quantidade) {
-        return res.status(400).json({
-          error: 'Campos obrigatórios: produto_id, quantidade'
-        });
-      }
-
-      const quantidadeNum = parseFloat(quantidade);
-      
-      if (isNaN(quantidadeNum) || quantidadeNum <= 0) {
-        return res.status(400).json({
-          error: 'Quantidade deve ser maior que zero'
-        });
-      }
-
-      const movimentacao = await EstoqueCentralModel.registrarSaida({
-        produto_id: parseInt(produto_id),
-        quantidade: quantidadeNum,
-        motivo,
-        observacao,
-        documento,
+        origem: req.body.origem ?? "central_operador",
+        motivo: req.body.motivo,
+        observacao: req.body.observacao,
+        referencia_tipo: req.body.referencia_tipo ?? "saida_manual",
+        referencia_id: req.body.referencia_id ? Number(req.body.referencia_id) : undefined,
         usuario_id: req.user?.id,
-        usuario_nome: req.user?.nome
+        usuario_nome_snapshot: req.user?.nome,
       });
 
-      res.status(201).json(movimentacao);
+      return res.status(201).json({ success: true, data: movimentacao, movimentacao });
     } catch (error: any) {
-      console.error('Erro ao registrar saída:', error);
-      
-      // Tratar erro de quantidade insuficiente como 400 (Bad Request)
-      if (error.message && error.message.includes('Quantidade insuficiente')) {
-        return res.status(400).json({ error: error.message });
-      }
-      
-      // Outros erros como 500 (Internal Server Error)
-      res.status(500).json({ error: error.message });
+      const status = error.message?.includes("Saldo insuficiente") ? 400 : 500;
+      return res.status(status).json({ error: error.message });
     }
   }
 
-  /**
-   * Registrar ajuste de estoque
-   * POST /api/estoque-central/ajuste
-   */
   async registrarAjuste(req: Request, res: Response) {
     try {
-      const {
-        produto_id,
-        quantidade_nova,
-        lote_id,
-        motivo,
-        observacao
-      } = req.body;
-
-      // Validações
-      if (!produto_id || quantidade_nova === undefined || !motivo) {
-        return res.status(400).json({
-          error: 'Campos obrigatórios: produto_id, quantidade_nova, motivo'
-        });
+      const produto_id = Number(req.body.produto_id);
+      if (!produto_id) {
+        return res.status(400).json({ error: "produto_id e obrigatorio" });
       }
 
-      const quantidadeNovaNum = parseFloat(quantidade_nova);
-      
-      if (isNaN(quantidadeNovaNum) || quantidadeNovaNum < 0) {
-        return res.status(400).json({
-          error: 'Quantidade não pode ser negativa'
-        });
-      }
-
-      const movimentacao = await EstoqueCentralModel.registrarAjuste({
-        produto_id: parseInt(produto_id),
-        quantidade_nova: quantidadeNovaNum,
-        lote_id: lote_id ? parseInt(lote_id) : undefined,
-        motivo,
-        observacao,
+      const quantidade = parseNonNegativeNumber(req.body.quantidade_nova);
+      const movimentacao = await estoqueLedgerService.registrarMovimentacaoCentral({
+        produtoId: produto_id,
+        tipoMovimentacao: "ajuste",
+        quantidade,
+        origem: req.body.origem ?? "central_operador",
+        motivo: req.body.motivo,
+        observacao: req.body.observacao,
+        referencia_tipo: req.body.referencia_tipo ?? "ajuste_manual",
+        referencia_id: req.body.referencia_id ? Number(req.body.referencia_id) : undefined,
         usuario_id: req.user?.id,
-        usuario_nome: req.user?.nome
+        usuario_nome_snapshot: req.user?.nome,
       });
 
-      res.status(201).json(movimentacao);
+      return res.status(201).json({ success: true, data: movimentacao, movimentacao });
     } catch (error: any) {
-      console.error('Erro ao registrar ajuste:', error);
-      
-      // Tratar erros de validação como 400 (Bad Request)
-      if (error.message && (
-        error.message.includes('Quantidade insuficiente') ||
-        error.message.includes('não encontrado') ||
-        error.message.includes('inválid')
-      )) {
-        return res.status(400).json({ error: error.message });
-      }
-      
-      // Outros erros como 500 (Internal Server Error)
-      res.status(500).json({ error: error.message });
+      return res.status(400).json({ error: error.message });
     }
   }
 
-  /**
-   * Listar lotes de um produto
-   * GET /api/estoque-central/:estoqueId/lotes
-   */
+  async registrarTransferencia(req: Request, res: Response) {
+    try {
+      const escola_id = Number(req.body.escola_id);
+      const produto_id = Number(req.body.produto_id);
+      if (!escola_id || !produto_id) {
+        return res.status(400).json({ error: "escola_id e produto_id sao obrigatorios" });
+      }
+
+      const quantidade = parsePositiveNumber(req.body.quantidade);
+      const data = await estoqueLedgerService.registrarTransferenciaParaEscola({
+        escola_id,
+        produto_id,
+        quantidade,
+        motivo: req.body.motivo,
+        observacao: req.body.observacao,
+        referencia_tipo: req.body.referencia_tipo ?? "transferencia_manual",
+        referencia_id: req.body.referencia_id ? Number(req.body.referencia_id) : undefined,
+        usuario_id: req.user?.id,
+        usuario_nome_snapshot: req.user?.nome,
+      });
+
+      return res.status(201).json({ success: true, data });
+    } catch (error: any) {
+      const status = error.message?.includes("Saldo insuficiente") ? 400 : 500;
+      return res.status(status).json({ error: error.message });
+    }
+  }
+
   async listarLotes(req: Request, res: Response) {
     try {
-      const { estoqueId } = req.params;
-      const lotes = await EstoqueCentralModel.listarLotes(parseInt(estoqueId));
-
-      // Converter strings numéricas para números
-      const lotesFormatados = lotes.map(lote => ({
+      const estoqueId = Number(req.params.estoqueId);
+      const lotes = await EstoqueCentralModel.listarLotes(estoqueId);
+      const lotesFormatados = lotes.map((lote) => ({
         ...lote,
         quantidade: parseFloat(lote.quantidade as any) || 0,
         quantidade_reservada: parseFloat(lote.quantidade_reservada as any) || 0,
-        quantidade_disponivel: parseFloat(lote.quantidade_disponivel as any) || 0
+        quantidade_disponivel: parseFloat(lote.quantidade_disponivel as any) || 0,
       }));
 
-      res.json({ lotes: lotesFormatados });
+      return res.json({ success: true, data: lotesFormatados, lotes: lotesFormatados });
     } catch (error: any) {
-      console.error('Erro ao listar lotes:', error);
-      res.status(500).json({ error: error.message });
+      return res.status(500).json({ error: error.message });
     }
   }
 
-  /**
-   * Listar lotes próximos do vencimento
-   * GET /api/estoque-central/alertas/vencimento?dias=30
-   */
   async listarLotesProximosVencimento(req: Request, res: Response) {
     try {
       const dias = parseInt(req.query.dias as string) || 30;
       const lotes = await EstoqueCentralModel.listarLotesProximosVencimento(dias);
-
-      res.json({ lotes, dias });
+      return res.json({ success: true, data: lotes, lotes, dias });
     } catch (error: any) {
-      console.error('Erro ao listar lotes próximos do vencimento:', error);
-      res.status(500).json({ error: error.message });
+      return res.status(500).json({ error: error.message });
     }
   }
 
-  /**
-   * Listar produtos com estoque baixo
-   * GET /api/estoque-central/alertas/estoque-baixo
-   */
   async listarEstoqueBaixo(req: Request, res: Response) {
     try {
       const produtos = await EstoqueCentralModel.listarEstoqueBaixo();
-
-      res.json({ produtos });
+      return res.json({ success: true, data: produtos, produtos });
     } catch (error: any) {
-      console.error('Erro ao listar estoque baixo:', error);
-      res.status(500).json({ error: error.message });
+      return res.status(500).json({ error: error.message });
     }
   }
 
-  /**
-   * Listar todos os alertas (consolidado)
-   * GET /api/estoque-central/alertas?apenas_nao_resolvidos=true
-   */
   async listarAlertas(req: Request, res: Response) {
     try {
-      const apenasNaoResolvidos = req.query.apenas_nao_resolvidos === 'true';
       const dias = parseInt(req.query.dias as string) || 30;
-
-      // Buscar lotes próximos do vencimento e estoque baixo
       const [lotesVencimento, produtosEstoqueBaixo] = await Promise.all([
         EstoqueCentralModel.listarLotesProximosVencimento(dias),
-        EstoqueCentralModel.listarEstoqueBaixo()
+        EstoqueCentralModel.listarEstoqueBaixo(),
       ]);
 
-      // Formatar como alertas
       const alertas = [
         ...lotesVencimento.map((lote: any) => ({
           id: `vencimento-${lote.id}`,
           produto_id: lote.produto_id,
           lote_id: lote.id,
-          tipo: 'vencimento_proximo',
-          nivel: lote.dias_para_vencimento <= 7 ? 'critical' : 'warning',
-          titulo: `Lote próximo do vencimento`,
+          tipo: "vencimento_proximo",
+          nivel: lote.dias_para_vencimento <= 7 ? "critical" : "warning",
+          titulo: "Lote proximo do vencimento",
           descricao: `${lote.produto_nome} - Lote ${lote.lote} vence em ${lote.dias_para_vencimento} dias`,
           data_alerta: new Date().toISOString(),
           visualizado: false,
           resolvido: false,
           produto_nome: lote.produto_nome,
-          lote: lote.lote
+          lote: lote.lote,
         })),
         ...produtosEstoqueBaixo.map((produto: any) => ({
           id: `estoque-baixo-${produto.id}`,
           produto_id: produto.id,
           lote_id: null,
-          tipo: produto.quantidade_total === 0 ? 'estoque_zerado' : 'estoque_baixo',
-          nivel: produto.quantidade_total === 0 ? 'critical' : 'warning',
-          titulo: produto.quantidade_total === 0 ? 'Estoque zerado' : 'Estoque baixo',
+          tipo: produto.quantidade_total === 0 ? "estoque_zerado" : "estoque_baixo",
+          nivel: produto.quantidade_total === 0 ? "critical" : "warning",
+          titulo: produto.quantidade_total === 0 ? "Estoque zerado" : "Estoque baixo",
           descricao: `${produto.nome} - Quantidade: ${produto.quantidade_total} ${produto.unidade}`,
           data_alerta: new Date().toISOString(),
           visualizado: false,
           resolvido: false,
           produto_nome: produto.nome,
-          lote: null
-        }))
+          lote: null,
+        })),
       ];
 
-      res.json({ success: true, data: alertas });
+      return res.json({ success: true, data: alertas });
     } catch (error: any) {
-      console.error('Erro ao listar alertas:', error);
-      res.status(500).json({ error: error.message });
+      if (isMissingRelationError(error)) {
+        return res.json({ success: true, data: [] });
+      }
+      return res.status(500).json({ error: error.message });
     }
   }
 
-  /**
-   * Listar movimentações
-   * GET /api/estoque-central/movimentacoes?estoque_id=1&tipo=entrada&data_inicio=2026-01-01&data_fim=2026-12-31
-   */
   async listarMovimentacoes(req: Request, res: Response) {
+    const produtoId =
+      req.query.produto_id !== undefined
+        ? Number(req.query.produto_id)
+        : req.query.estoque_id !== undefined
+          ? Number(req.query.estoque_id)
+          : undefined;
+    const limit = parseInt(req.query.limit as string) || 100;
+
     try {
-      const estoqueId = req.query.estoque_id ? parseInt(req.query.estoque_id as string) : undefined;
-      const tipo = req.query.tipo as string;
-      const dataInicio = req.query.data_inicio as string;
-      const dataFim = req.query.data_fim as string;
-      const limit = parseInt(req.query.limit as string) || 100;
-      const offset = parseInt(req.query.offset as string) || 0;
-
-      const movimentacoes = await EstoqueCentralModel.listarMovimentacoes(
-        estoqueId,
-        tipo,
-        dataInicio,
-        dataFim,
+      const movimentacoes = await estoqueProjectionService.listarMovimentacoes("central", {
+        produtoId,
         limit,
-        offset
-      );
-
-      res.json({
-        movimentacoes,
-        limit,
-        offset
       });
+
+      return res.json({ success: true, data: movimentacoes, movimentacoes });
     } catch (error: any) {
-      console.error('Erro ao listar movimentações:', error);
-      res.status(500).json({ error: error.message });
+      try {
+        console.warn("Falha ao ler timeline central; usando historico legado:", error.message);
+        const legacy = await EstoqueCentralModel.listarMovimentacoes(
+          produtoId,
+          undefined,
+          undefined,
+          undefined,
+          limit,
+          0,
+        );
+        const movimentacoes = legacy.map(mapLegacyMovimentacaoRow);
+        return res.json({ success: true, data: movimentacoes, movimentacoes, source: "legacy" });
+      } catch (fallbackError: any) {
+        if (isMissingRelationError(fallbackError)) {
+          return res.json({ success: true, data: [], movimentacoes: [], source: "empty" });
+        }
+        return res.status(500).json({ error: fallbackError.message || error.message });
+      }
     }
   }
 }

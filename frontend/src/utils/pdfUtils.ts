@@ -25,8 +25,128 @@ export const PDF_COLORS = {
 };
 
 let pdfMakePromise: Promise<any> | null = null;
+const DESKTOP_DOWNLOAD_PATCHED = '__nutrilogDesktopDownloadPatched';
+
+export interface SavedGeneratedFile {
+  canceled: boolean;
+  fileName: string;
+  filePath?: string;
+}
+
+interface PdfDocumentLike {
+  download: (fileName?: string, ...args: any[]) => void;
+  getBase64: (callback: (data: string) => void) => void;
+}
+
+interface PdfMakeLike {
+  createPdf: (docDefinition: any) => PdfDocumentLike;
+}
+
+interface PdfMakeFontRegistryLike extends Partial<PdfMakeLike> {
+  vfs?: Record<string, any>;
+  fonts?: Record<string, any>;
+  addVirtualFileSystem?: (vfs: Record<string, any>) => void;
+  addFonts?: (fonts: Record<string, any>) => void;
+}
+
+const DEFAULT_PDF_FONTS = {
+  Roboto: {
+    normal: 'Roboto-Regular.ttf',
+    bold: 'Roboto-Medium.ttf',
+    italics: 'Roboto-Italic.ttf',
+    bolditalics: 'Roboto-MediumItalic.ttf',
+  },
+};
+
+const getPdfBase64 = (pdfDocument: PdfDocumentLike): Promise<string> => (
+  new Promise((resolve, reject) => {
+    try {
+      pdfDocument.getBase64((data) => resolve(data));
+    } catch (error) {
+      reject(error);
+    }
+  })
+);
+
+export const savePdfDocument = async (
+  pdfDocument: PdfDocumentLike,
+  fileName: string,
+): Promise<SavedGeneratedFile> => {
+  const desktopShell = typeof window !== 'undefined' ? window.desktopShell : undefined;
+
+  if (desktopShell?.isDesktop && desktopShell.saveGeneratedFile) {
+    const data = await getPdfBase64(pdfDocument);
+    return desktopShell.saveGeneratedFile({
+      fileName,
+      mimeType: 'application/pdf',
+      data,
+      encoding: 'base64',
+    });
+  }
+
+  pdfDocument.download(fileName);
+  return { canceled: false, fileName };
+};
+
+export const savePdfMakeDocument = async (
+  pdfMake: PdfMakeLike,
+  docDefinition: any,
+  fileName: string,
+): Promise<SavedGeneratedFile> => savePdfDocument(pdfMake.createPdf(docDefinition), fileName);
+
+const enhancePdfMakeForDesktopDownloads = (pdfMake: any) => {
+  if (!pdfMake || pdfMake[DESKTOP_DOWNLOAD_PATCHED]) return pdfMake;
+
+  const originalCreatePdf = pdfMake.createPdf.bind(pdfMake);
+  pdfMake.createPdf = (...args: any[]) => {
+    const pdfDocument = originalCreatePdf(...args);
+    const originalDownload = pdfDocument.download?.bind(pdfDocument);
+
+    if (originalDownload) {
+      pdfDocument.download = (fileName = 'documento.pdf', ...downloadArgs: any[]) => {
+        const desktopShell = typeof window !== 'undefined' ? window.desktopShell : undefined;
+        if (desktopShell?.isDesktop && desktopShell.saveGeneratedFile) {
+          return savePdfDocument(pdfDocument, fileName);
+        }
+
+        return originalDownload(fileName, ...downloadArgs);
+      };
+    }
+
+    return pdfDocument;
+  };
+
+  Object.defineProperty(pdfMake, DESKTOP_DOWNLOAD_PATCHED, {
+    value: true,
+    enumerable: false,
+  });
+
+  return pdfMake;
+};
 
 // ─── Inicialização do pdfmake (importação dinâmica para Vite) ─────────────────
+
+export const configurePdfMakeFonts = (
+  pdfMake: PdfMakeFontRegistryLike,
+  vfs: Record<string, any>,
+) => {
+  if (pdfMake.addVirtualFileSystem) {
+    pdfMake.addVirtualFileSystem(vfs);
+  } else {
+    pdfMake.vfs = vfs;
+  }
+
+  if (pdfMake.addFonts) {
+    pdfMake.addFonts(DEFAULT_PDF_FONTS);
+  }
+
+  pdfMake.fonts = {
+    ...(pdfMake.fonts || {}),
+    ...DEFAULT_PDF_FONTS,
+  };
+
+  return pdfMake;
+};
 
 export const initPdfMake = async () => {
   if (!pdfMakePromise) {
@@ -35,18 +155,9 @@ export const initPdfMake = async () => {
       import('pdfmake/build/vfs_fonts'),
     ]).then(([pdfMakeModule, pdfFonts]) => {
       const pdfMake = (pdfMakeModule as any).default || pdfMakeModule;
-      // vfs_fonts 0.3.x exporta as fontes diretamente no objeto raiz
       const vfs = (pdfFonts as any).default || pdfFonts;
-      pdfMake.vfs = vfs;
-      pdfMake.fonts = {
-        Roboto: {
-          normal: 'Roboto-Regular.ttf',
-          bold: 'Roboto-Medium.ttf',
-          italics: 'Roboto-Italic.ttf',
-          bolditalics: 'Roboto-MediumItalic.ttf',
-        },
-      };
-      return pdfMake;
+      configurePdfMakeFonts(pdfMake, vfs);
+      return enhancePdfMakeForDesktopDownloads(pdfMake);
     });
   }
 

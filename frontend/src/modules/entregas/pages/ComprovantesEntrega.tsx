@@ -43,7 +43,7 @@ import {
 } from "@mui/icons-material";
 import api from "../../../services/api";
 import { buscarInstituicao, Instituicao } from "../../../services/instituicao";
-import { initPdfMake, buildPdfDoc, buildTable } from "../../../utils/pdfUtils";
+import { initPdfMake, buildPdfDoc, buildTable, savePdfMakeDocument } from "../../../utils/pdfUtils";
 
 interface ComprovanteItem {
   id: number;
@@ -322,7 +322,7 @@ export default function ComprovantesEntrega() {
         ];
       };
 
-      pdfMake.createPdf(doc).download(`comprovante-${comprovante.numero_comprovante}.pdf`);
+      await savePdfMakeDocument(pdfMake, doc, `comprovante-${comprovante.numero_comprovante}.pdf`);
     } catch (err: any) {
       console.error('❌ Erro ao gerar PDF do comprovante:', err);
       toast.error('Erro ao gerar PDF do comprovante. Tente novamente.');

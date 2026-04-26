@@ -24,6 +24,7 @@ export const CustomThemeProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   useEffect(() => {
     document.documentElement.dataset.theme = mode;
+    window.desktopShell?.setTitleBarTheme?.(mode);
   }, [mode]);
 
   const setTheme = (nextMode: AppThemeMode) => {

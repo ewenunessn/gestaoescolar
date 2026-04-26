@@ -2,7 +2,7 @@ const { Client } = require('pg');
 
 // Configuração do banco Neon
 const NEON_CONFIG = {
-  connectionString: 'postgresql://neondb_owner:npg_PDfBTKRsi29G@ep-crimson-violet-adf47gue-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'
+  connectionString: process.env.NEON_DATABASE_URL || process.env.POSTGRES_URL || process.env.DATABASE_URL || ''
 };
 
 // Configuração do banco local

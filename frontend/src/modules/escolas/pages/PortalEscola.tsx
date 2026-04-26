@@ -32,7 +32,7 @@ import {
 import { produtoService, Produto } from "../../../services/produtoService";
 import CardapioSemanalPortal from "../components/CardapioSemanalPortal";
 import { buscarInstituicao, Instituicao } from "../../../services/instituicao";
-import { initPdfMake, buildPdfDoc, buildTable } from "../../../utils/pdfUtils";
+import { initPdfMake, buildPdfDoc, buildTable, savePdfMakeDocument } from "../../../utils/pdfUtils";
 import JsBarcode from "jsbarcode";
 import { carregarTiposRefeicao } from "../../../services/cardapiosModalidade";
 
@@ -287,7 +287,7 @@ export default function PortalEscola() {
         ];
       };
 
-      pdfMake.createPdf(doc).download(`comprovante-${comprovante.numero_comprovante}.pdf`);
+      await savePdfMakeDocument(pdfMake, doc, `comprovante-${comprovante.numero_comprovante}.pdf`);
       toast.success('PDF gerado com sucesso!');
     } catch (error) {
       console.error('Erro ao gerar PDF:', error);

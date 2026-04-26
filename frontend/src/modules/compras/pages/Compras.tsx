@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { usePageTitle } from "../../../contexts/PageTitleContext";
 import { useToast } from "../../../hooks/useToast";
 import PageContainer from "../../../components/PageContainer";
@@ -30,6 +30,7 @@ import {
   Delete as DeleteIcon,
   ShoppingCart,
   Add as AddIcon,
+  CalendarToday as CalendarIcon,
 } from "@mui/icons-material";
 import { ColumnDef } from "@tanstack/react-table";
 import pedidosService from "../../../services/pedidos";
@@ -39,10 +40,14 @@ import { DataTable } from "../../../components/DataTable";
 
 const PedidosPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { setPageTitle } = usePageTitle();
   const toast = useToast();
+  const isProgramacaoView = searchParams.get('etapa') === 'programacao';
 
-  useEffect(() => { setPageTitle('Compras'); }, [setPageTitle]);
+  useEffect(() => {
+    setPageTitle(isProgramacaoView ? 'Programação de Entrega' : 'Compras');
+  }, [isProgramacaoView, setPageTitle]);
 
   // Estados principais
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
@@ -200,6 +205,17 @@ const PedidosPage = () => {
       enableSorting: false,
       cell: ({ row }) => (
         <Box sx={{ display: 'flex', gap: 0.5 }} onClick={(e) => e.stopPropagation()}>
+          {isProgramacaoView && (
+            <Tooltip title="Abrir programação de entrega">
+              <IconButton
+                size="small"
+                onClick={() => navigate(`/compras/${row.original.id}/programacoes-ajuste`)}
+                color="primary"
+              >
+                <CalendarIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
           <Tooltip title="Ver Detalhes">
             <IconButton
               size="small"
@@ -221,11 +237,11 @@ const PedidosPage = () => {
         </Box>
       ),
     },
-  ], [navigate]);
+  ], [isProgramacaoView, navigate]);
 
   const handleRowClick = useCallback((pedido: Pedido) => {
-    navigate(`/compras/${pedido.id}`);
-  }, [navigate]);
+    navigate(isProgramacaoView ? `/compras/${pedido.id}/programacoes-ajuste` : `/compras/${pedido.id}`);
+  }, [isProgramacaoView, navigate]);
 
   const openDeleteModal = (pedido: Pedido) => {
     setPedidoToDelete(pedido);
@@ -264,22 +280,35 @@ const PedidosPage = () => {
     >
       <PageContainer fullHeight>
         <PageHeader
-          title="Pedidos de Compra"
+          title={isProgramacaoView ? "Programação de Entrega" : "Pedidos de Compra"}
           totalCount={pedidosFiltrados.length}
+          subtitle={
+            isProgramacaoView
+              ? "Selecione um pedido para definir datas e distribuição por escola."
+              : undefined
+          }
           breadcrumbs={[
             { label: 'Dashboard', path: '/dashboard' },
-            { label: 'Compras' },
+            { label: isProgramacaoView ? 'Programação de Entrega' : 'Compras' },
           ]}
           action={
             <Box sx={{ display: 'flex', gap: 1 }}>
+              {isProgramacaoView && (
+                <Button variant="outlined" onClick={() => navigate('/compras')}
+                  sx={{ borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
+                  Ver compras
+                </Button>
+              )}
               <Button variant="outlined" color="primary" startIcon={<ShoppingCart />} onClick={() => setDialogGerarDaGuia(true)}
                 sx={{ borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
                 Gerar da Guia
               </Button>
-              <Button variant="contained" color="add" startIcon={<AddIcon />} onClick={() => navigate('/compras/novo')}
-                sx={{ borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
-                Novo Pedido
-              </Button>
+              {!isProgramacaoView && (
+                <Button variant="contained" color="add" startIcon={<AddIcon />} onClick={() => navigate('/compras/novo')}
+                  sx={{ borderRadius: '6px', textTransform: 'none', fontWeight: 500 }}>
+                  Novo Pedido
+                </Button>
+              )}
             </Box>
           }
         />
@@ -291,7 +320,7 @@ const PedidosPage = () => {
             columns={columns}
             loading={loading}
             onRowClick={handleRowClick}
-            searchPlaceholder="Buscar pedidos..."
+            searchPlaceholder={isProgramacaoView ? "Buscar pedido para programar..." : "Buscar pedidos..."}
             onFilterClick={(e) => setFilterAnchorEl(e.currentTarget)}
             initialPageSize={50}
           />

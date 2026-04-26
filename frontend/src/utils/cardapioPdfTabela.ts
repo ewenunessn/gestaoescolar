@@ -1,8 +1,7 @@
 import { CardapioModalidade, RefeicaoDia, TIPOS_REFEICAO } from '../services/cardapiosModalidade';
 import { listarTiposRefeicao, formatarHorario } from '../services/tiposRefeicao';
 import { dateUtils } from './dateUtils';
-import { buildPdfDoc } from './pdfUtils';
-import { initPdfMake } from './pdfUtils';
+import { buildPdfDoc, initPdfMake, savePdfMakeDocument } from './pdfUtils';
 import QRCode from 'qrcode';
 
 interface GerarPDFTabelaParams {
@@ -323,7 +322,9 @@ export const gerarPDFTabela = async ({
     }
   });
 
-  pdfMake.createPdf(doc).download(
-    `cardapio-${dateUtils.getMonthName(cardapio?.mes ?? 1)}-${cardapio?.ano}.pdf`
+  await savePdfMakeDocument(
+    pdfMake,
+    doc,
+    `cardapio-${dateUtils.getMonthName(cardapio?.mes ?? 1)}-${cardapio?.ano}.pdf`,
   );
 };

@@ -10,14 +10,16 @@ import {
 export const faturamentoService = {
   // Calcular prévia do faturamento
   async calcularPrevia(pedidoId: number): Promise<FaturamentoPrevia> {
-    const response = await api.get(`/compras/${pedidoId}/faturamento/previa`);
+    const response = await api.get(`/faturamentos/pedido/${pedidoId}/resumo`);
     return response.data.data;
   },
 
   // Gerar faturamento definitivo
   async gerar(dados: GerarFaturamentoRequest): Promise<{ faturamento: Faturamento; previa: FaturamentoPrevia }> {
-    const response = await api.post(`/compras/${dados.pedido_id}/faturamento`, {
-      observacoes: dados.observacoes
+    const response = await api.post(`/faturamentos`, {
+      pedido_id: dados.pedido_id,
+      observacoes: dados.observacoes,
+      itens: []
     });
     return response.data.data;
   },
@@ -61,8 +63,39 @@ export const faturamentoService = {
 
   // Buscar faturamentos por pedido
   async buscarPorPedido(pedidoId: number): Promise<Faturamento[]> {
-    const response = await api.get(`/compras/${pedidoId}/faturamentos`);
-    return response.data.data;
+    const response = await api.get(`/faturamentos/pedido/${pedidoId}`);
+    const rows = Array.isArray(response.data?.data) ? response.data.data : [];
+    const faturamentos = new Map<number, Faturamento>();
+
+    rows.forEach((row: any) => {
+      const id = Number(row.faturamento_id ?? row.id);
+      if (!id) {
+        return;
+      }
+
+      if (faturamentos.has(id)) {
+        const faturamento = faturamentos.get(id)!;
+        faturamento.valor_total += Number(row.valor_total ?? 0);
+        return;
+      }
+
+      faturamentos.set(id, {
+        id,
+        pedido_id: Number(row.pedido_id),
+        pedido_numero: row.pedido_numero,
+        numero: row.numero || `FAT-${id}`,
+        data_faturamento: row.data_faturamento,
+        status: row.status || 'gerado',
+        valor_total: Number(row.valor_total ?? row.valor_total_faturamento ?? 0),
+        observacoes: row.faturamento_observacoes || row.observacoes,
+        usuario_criacao_id: Number(row.usuario_id || 0),
+        usuario_criacao_nome: row.usuario_nome,
+        created_at: row.created_at || row.data_faturamento,
+        updated_at: row.updated_at || row.data_faturamento,
+      });
+    });
+
+    return Array.from(faturamentos.values());
   },
 
   // Atualizar status do faturamento

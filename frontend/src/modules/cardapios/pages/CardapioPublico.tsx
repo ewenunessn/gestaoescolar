@@ -33,7 +33,7 @@ import {
   Refresh as RefreshIcon
 } from "@mui/icons-material";
 import api from "../../../services/api";
-import { initPdfMake } from "../../../utils/pdfUtils";
+import { initPdfMake, savePdfDocument } from "../../../utils/pdfUtils";
 import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
 
 interface Refeicao {
@@ -57,6 +57,7 @@ const CardapioPublico: React.FC = () => {
   const [fichaTecnica, setFichaTecnica] = useState<FichaTecnica | null>(null);
   const [loadingFicha, setLoadingFicha] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfDocument, setPdfDocument] = useState<any | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
   const [expandedRefeicao, setExpandedRefeicao] = useState<number | null>(null);
 
@@ -104,6 +105,7 @@ const CardapioPublico: React.FC = () => {
     setLoadingFicha(true);
     setOpenDialog(true);
     setPdfUrl(null);
+    setPdfDocument(null);
 
     try {
       // Buscar ficha técnica
@@ -208,6 +210,7 @@ const CardapioPublico: React.FC = () => {
       };
 
       const pdfDocGenerator = pdfMake.createPdf(docDefinition);
+      setPdfDocument(pdfDocGenerator);
       
       pdfDocGenerator.getDataUrl().then((dataUrl: string) => {
         setPdfUrl(dataUrl);
@@ -217,11 +220,18 @@ const CardapioPublico: React.FC = () => {
     }
   };
 
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
     if (pdfUrl && fichaTecnica) {
+      const fileName = `ficha-tecnica-${fichaTecnica.refeicao.nome.replace(/\s+/g, '-').toLowerCase()}.pdf`;
+
+      if (window.desktopShell?.isDesktop && pdfDocument) {
+        await savePdfDocument(pdfDocument, fileName);
+        return;
+      }
+
       const link = document.createElement('a');
       link.href = pdfUrl;
-      link.download = `ficha-tecnica-${fichaTecnica.refeicao.nome.replace(/\s+/g, '-').toLowerCase()}.pdf`;
+      link.download = fileName;
       link.click();
     }
   };

@@ -26,6 +26,7 @@ interface SearchResult {
 
 // ─── Índice de páginas (navegação) ───
 const PAGE_INDEX: SearchResult[] = [
+  { id: "p-abastecimento", label: "Abastecimento",         category: "Pagina", path: "/abastecimento",                    icon: <LocalShipping fontSize="small" />,      type: "page" },
   { id: "p-dashboard",    label: "Dashboard",              category: "Página", path: "/dashboard",                       icon: <Dashboard fontSize="small" />,          type: "page" },
   { id: "p-escolas",      label: "Escolas",                category: "Página", path: "/escolas",                         icon: <School fontSize="small" />,             type: "page" },
   { id: "p-produtos",     label: "Produtos",               category: "Página", path: "/produtos",                        icon: <Inventory fontSize="small" />,          type: "page" },
@@ -277,7 +278,7 @@ export function useGlobalSearch() {
       // Busca rápida nas páginas sem API
       if (query.trim().length > 0) {
         const q = normalize(query);
-        const pageResults = PAGE_INDEX.filter(p => normalize(p.label).includes(q)).slice(0, 5);
+        const pageResults = PAGE_INDEX.filter(p => p.id !== "p-planejamento" && normalize(p.label).includes(q)).slice(0, 5);
         setResults(pageResults);
       } else {
         setResults([]);
@@ -292,7 +293,7 @@ export function useGlobalSearch() {
       const q = normalize(query);
 
       // Páginas que batem
-      const pageResults = PAGE_INDEX.filter(p => normalize(p.label).includes(q));
+      const pageResults = PAGE_INDEX.filter(p => p.id !== "p-planejamento" && normalize(p.label).includes(q));
 
       // Registros das APIs
       const apiResults = await searchAPIs(query);

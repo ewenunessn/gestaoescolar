@@ -7,6 +7,7 @@ if (process.env.VERCEL !== '1') {
 
 const isVercel = process.env.VERCEL === '1';
 const isProduction = process.env.NODE_ENV === 'production';
+const isDesktopApp = process.env.DESKTOP_APP === '1';
 
 // Função para obter JWT_SECRET com validação
 const getJwtSecret = (): string => {
@@ -33,10 +34,11 @@ export const config = {
   nodeEnv: process.env.NODE_ENV || "development",
   isVercel,
   isProduction,
+  isDesktopApp,
 
   // Configurações do banco de dados
   database: {
-    url: process.env.POSTGRES_URL || process.env.DATABASE_URL,
+    url: process.env.NEON_DATABASE_URL || process.env.POSTGRES_URL || process.env.DATABASE_URL,
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT || '5432'),
     name: process.env.DB_NAME || 'alimentacao_escolar',
@@ -54,7 +56,9 @@ export const config = {
   // Configurações do backend (para compatibilidade com index.ts)
   backend: {
     cors: {
-      origin: isVercel
+      origin: isDesktopApp
+        ? true
+        : isVercel
         ? [
             "https://gestaoescolar-frontend.vercel.app",
             "https://gestaoescolar-frontend-painel.vercel.app",

@@ -16,7 +16,7 @@ import PageHeader from "../../../components/PageHeader";
 import api from "../../../services/api";
 import { useToast } from "../../../hooks/useToast";
 import { buscarInstituicao, Instituicao } from "../../../services/instituicao";
-import { initPdfMake, buildPdfDoc, buildTable } from "../../../utils/pdfUtils";
+import { initPdfMake, buildPdfDoc, buildTable, savePdfMakeDocument } from "../../../utils/pdfUtils";
 import JsBarcode from "jsbarcode";
 
 export default function ComprovantesPage() {
@@ -176,7 +176,7 @@ export default function ComprovantesPage() {
         ];
       };
 
-      pdfMake.createPdf(docDefinition).download(`comprovante-${comprovanteDetalhes.numero_comprovante}.pdf`);
+      await savePdfMakeDocument(pdfMake, docDefinition, `comprovante-${comprovanteDetalhes.numero_comprovante}.pdf`);
       toast.success('PDF gerado com sucesso!');
     } catch (error) {
       console.error('Erro ao gerar PDF:', error);

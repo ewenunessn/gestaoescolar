@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import db from '../../../database';
+import estoqueLedgerService from '../../estoque/services/estoqueLedgerService';
+import { buildRecebimentoCentralEvent } from '../../estoque/services/estoqueIntegracaoService';
 
 // Listar pedidos pendentes e parciais (com itens agrupados por fornecedor)
 export async function listarPedidosPendentes(req: Request, res: Response) {
@@ -220,11 +222,15 @@ export async function registrarRecebimento(req: Request, res: Response) {
 
     // Buscar item do pedido
     const itemResult = await client.query(`
-      SELECT pi.quantidade, COALESCE(SUM(r.quantidade_recebida), 0) as ja_recebido
+      SELECT
+        pi.quantidade,
+        cp.produto_id,
+        COALESCE(SUM(r.quantidade_recebida), 0) as ja_recebido
       FROM pedido_itens pi
+      INNER JOIN contrato_produtos cp ON cp.id = pi.contrato_produto_id
       LEFT JOIN recebimentos r ON pi.id = r.pedido_item_id
       WHERE pi.id = $1 AND pi.pedido_id = $2
-      GROUP BY pi.id, pi.quantidade
+      GROUP BY pi.id, pi.quantidade, cp.produto_id
     `, [pedidoItemId, pedidoId]);
 
     if (itemResult.rows.length === 0) {
@@ -256,6 +262,17 @@ export async function registrarRecebimento(req: Request, res: Response) {
       VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
       RETURNING *
     `, [pedidoId, pedidoItemId, quantidadeRecebida, observacoes, usuarioId]);
+
+    await estoqueLedgerService.appendEventWithClient(client, {
+      ...buildRecebimentoCentralEvent({
+        produto_id: Number(item.produto_id),
+        quantidade: Number(quantidadeRecebida),
+        pedido_item_id: Number(pedidoItemId),
+      }),
+      observacao: observacoes,
+      usuario_id: usuarioId,
+      usuario_nome_snapshot: req.user?.nome,
+    });
 
     // Verificar se todos os itens do pedido foram recebidos completamente
     const statusCheck = await client.query(`

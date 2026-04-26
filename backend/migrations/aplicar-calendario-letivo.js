@@ -12,7 +12,7 @@ require('dotenv').config();
 
 // Criar cliente PostgreSQL
 const client = new Client({
-  connectionString: process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_PDfBTKRsi29G@ep-crimson-violet-adf47gue-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require',
+  connectionString: process.env.DATABASE_URL || process.env.NEON_DATABASE_URL || process.env.POSTGRES_URL || process.env.DATABASE_URL || '',
   ssl: { rejectUnauthorized: false }
 });
 

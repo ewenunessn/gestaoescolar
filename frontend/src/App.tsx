@@ -9,6 +9,7 @@ import { createAppTheme } from './theme/theme';
 import { ToastContainer as ReactToastifyContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import UpdateNotification from './components/UpdateNotification';
+import DesktopDownloadNotifications from './components/DesktopDownloadNotifications';
 import ErrorBoundary from './components/ErrorBoundary';
 import { CustomThemeProvider, useThemePreference } from './contexts/ThemeContext';
 
@@ -46,6 +47,7 @@ function AppWithTheme({ routerConfig }: AppProps) {
         <ConfigProvider>
           <AppRouter routerConfig={routerConfig} />
           <UpdateNotification />
+          <DesktopDownloadNotifications />
           <ReactToastifyContainer
             position="top-right"
             autoClose={4000}

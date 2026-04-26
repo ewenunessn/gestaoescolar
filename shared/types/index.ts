@@ -124,6 +124,53 @@ export interface ProdutoUpdate extends Partial<ProdutoCreate> {}
 export type TipoMovimentacao = 'entrada' | 'saida' | 'ajuste';
 export type StatusEstoque = 'sem_estoque' | 'baixo_estoque' | 'normal' | 'alto_estoque';
 export type StatusLote = 'ativo' | 'esgotado' | 'vencido' | 'cancelado';
+export type OrigemEventoEstoque =
+  | 'recebimento'
+  | 'transferencia'
+  | 'portal_escola'
+  | 'central_operador'
+  | 'sistema'
+  | 'estorno';
+export type TipoEventoEstoque =
+  | 'recebimento_central'
+  | 'transferencia_para_escola'
+  | 'entrada_manual_escola'
+  | 'saida_central'
+  | 'saida_escola'
+  | 'ajuste_estoque'
+  | 'estorno_evento';
+export type ModoOperacaoEstoqueEscola = 'escola' | 'central' | 'hibrido';
+
+export interface EstoqueEvento {
+  id: ID;
+  tenant_id?: string;
+  escopo: 'central' | 'escola';
+  escola_id?: ID;
+  produto_id: ID;
+  lote_id?: ID;
+  tipo_evento: TipoEventoEstoque;
+  origem: OrigemEventoEstoque;
+  quantidade_delta: number;
+  quantidade_absoluta?: number;
+  motivo?: string;
+  observacao?: string;
+  referencia_tipo?: string;
+  referencia_id?: ID;
+  usuario_id?: ID;
+  usuario_nome_snapshot?: string;
+  data_evento: DateString;
+  evento_estornado_id?: ID;
+  created_at: DateString;
+}
+
+export interface EstoqueOperacaoEscola {
+  escola_id: ID;
+  modo_operacao: ModoOperacaoEstoqueEscola;
+  permite_ajuste_escola: boolean;
+  permite_lancamento_central: boolean;
+  updated_at: DateString;
+  updated_by?: ID;
+}
 
 export interface EstoqueEscola {
   id: ID;

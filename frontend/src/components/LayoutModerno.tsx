@@ -27,7 +27,6 @@ import {
   Assignment,
   Agriculture,
   Business,
-  Calculate,
   CalendarToday,
   Category,
   Dashboard,
@@ -66,10 +65,12 @@ import { SeletorPeriodo } from "./SeletorPeriodo";
 import { GlobalSearchDropdown, useGlobalSearch } from "./GlobalSearch";
 import NotificacoesEscolaMenu from "./NotificacoesEscolaMenu";
 import NotificacoesMenu from "./NotificacoesMenu";
+import { DesktopTitlebarMenu } from "./DesktopTitlebarMenu";
 import { NutriLogLogo } from "./NutriLogLogo";
 
 const drawerWidth = 248;
 const collapsedDrawerWidth = 78;
+const desktopTitleBarHeight = 32;
 
 type LayoutTokens = {
   bgPrimary: string;
@@ -117,6 +118,7 @@ const getLayoutTokens = (theme: Theme): LayoutTokens => ({
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   Principal: <Dashboard fontSize="small" />,
+  Abastecimento: <LocalShipping fontSize="small" />,
   Cadastros: <School fontSize="small" />,
   "Cardápios": <MenuBook fontSize="small" />,
   Compras: <Assignment fontSize="small" />,
@@ -163,20 +165,20 @@ const getMenuConfig = (_cfg: unknown) => [
   {
     category: "Compras",
     items: [
-      { text: "Planejamento", icon: <Calculate fontSize="small" />, path: "/compras/planejamento" },
-      { text: "Guias de Demanda", icon: <ListAlt fontSize="small" />, path: "/guias-demanda" },
-      { text: "Pedidos", icon: <RequestPage fontSize="small" />, path: "/compras" },
       { text: "Saldo Contratos", icon: <Category fontSize="small" />, path: "/saldos-contratos-modalidades" },
       { text: "Dashboard PNAE", icon: <Agriculture fontSize="small" />, path: "/pnae/dashboard" },
     ],
   },
   {
-    category: "Entregas",
+    category: "Abastecimento",
     items: [
-      { text: "Gestão de Rotas", icon: <Business fontSize="small" />, path: "/gestao-rotas" },
-      { text: "Romaneio", icon: <Print fontSize="small" />, path: "/romaneio" },
+      { text: "Visao Geral", icon: <Dashboard fontSize="small" />, path: "/abastecimento" },
+      { text: "Guias de Demanda", icon: <ListAlt fontSize="small" />, path: "/guias-demanda" },
+      { text: "Compras / Pedidos", icon: <RequestPage fontSize="small" />, path: "/compras" },
       { text: "Entregas", icon: <LocalShipping fontSize="small" />, path: "/entregas" },
+      { text: "Romaneio", icon: <Print fontSize="small" />, path: "/romaneio" },
       { text: "Comprovantes", icon: <Description fontSize="small" />, path: "/comprovantes-entrega" },
+      { text: "Rotas", icon: <Business fontSize="small" />, path: "/gestao-rotas" },
     ],
   },
   {
@@ -201,6 +203,9 @@ const getMenuConfig = (_cfg: unknown) => [
 
 const MODULO_SLUGS: Record<string, string> = {
   Dashboard: "dashboard",
+  "Visao Geral": "planejamento_compras",
+  "Compras / Pedidos": "pedidos",
+  Rotas: "rotas",
   Escolas: "escolas",
   Modalidades: "modalidades",
   Produtos: "produtos",
@@ -210,7 +215,6 @@ const MODULO_SLUGS: Record<string, string> = {
   Preparações: "preparacoes",
   "Cardápios": "cardapios",
   "Tipos de Refeição": "tipos_refeicao",
-  Planejamento: "planejamento_compras",
   "Guias de Demanda": "demandas",
   Pedidos: "pedidos",
   "Saldo Contratos": "saldo_contratos",
@@ -476,6 +480,11 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
   const navigate = useNavigate();
   const location = useLocation();
   const search = useGlobalSearch();
+  const desktopShell = window.desktopShell;
+  const isDesktopShell = Boolean(desktopShell?.isDesktop);
+  const titleBarOffset = isDesktopShell ? desktopTitleBarHeight : 0;
+  const mobileTopOffset = `calc(${titleBarOffset}px + 60px)`;
+  const desktopTopOffset = `calc(${titleBarOffset}px + 68px)`;
 
   const { configModuloSaldo, loading: loadingConfig, onConfigChanged } = useConfigContext();
   const { hasRecentChange, showChangeIndicator } = useConfigChangeIndicator();
@@ -517,6 +526,12 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const handleNavigation = useCallback((path: string) => {
     navigate(path);
+    if (isMobile) setMobileOpen(false);
+  }, [isMobile, navigate]);
+
+  const handleLogout = useCallback(() => {
+    logout({ redirect: false });
+    navigate("/login", { replace: true });
     if (isMobile) setMobileOpen(false);
   }, [isMobile, navigate]);
 
@@ -605,7 +620,7 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
         )}
         {isMobile && <ThemeSwitcher compact />}
         <Button
-          onClick={() => logout()}
+          onClick={handleLogout}
           startIcon={<Logout sx={{ color: tokens.danger }} />}
           sx={{
             justifyContent: collapsed && !isMobile ? "center" : "flex-start",
@@ -625,10 +640,55 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
 
   return (
     <Box sx={{ display: "flex", minHeight: "100vh", backgroundColor: "background.default" }}>
+      {isDesktopShell && (
+        <>
+          <Box
+            aria-hidden="true"
+            sx={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              height: titleBarOffset,
+              backgroundColor: tokens.bgPrimary,
+              zIndex: (muiTheme) => muiTheme.zIndex.drawer + 2,
+              WebkitAppRegion: "drag",
+              userSelect: "none",
+            }}
+          />
+          <DesktopTitlebarMenu
+            height={titleBarOffset}
+            backgroundColor={tokens.bgPrimary}
+            borderColor={tokens.borderSubtle}
+            iconColor={tokens.textPrimary}
+            showDevTools={Boolean(desktopShell?.isDev || import.meta.env.DEV)}
+            onBack={() => {
+              if (window.history.length > 1) {
+                navigate(-1);
+                return;
+              }
+              navigate("/");
+            }}
+            onReload={() => {
+              desktopShell?.reloadApp?.();
+            }}
+            onOpenLogs={() => {
+              desktopShell?.openLogsFolder?.();
+            }}
+            onShowAbout={() => {
+              desktopShell?.showAboutDialog?.();
+            }}
+            onToggleDevTools={() => {
+              desktopShell?.toggleDevTools?.();
+            }}
+          />
+        </>
+      )}
       <AppBar
         position="fixed"
         color="transparent"
         sx={{
+          top: titleBarOffset,
           backdropFilter: "blur(18px)",
           backgroundColor: alpha(tokens.bgPrimary, theme.palette.mode === "light" ? 0.9 : 0.82),
           borderBottom: `1px solid ${tokens.borderSubtle}`,
@@ -770,8 +830,8 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
             display: { xs: "block", md: "none" },
             "& .MuiDrawer-paper": {
               width: drawerWidth,
-              mt: "60px",
-              height: "calc(100% - 60px)",
+              mt: mobileTopOffset,
+              height: `calc(100% - ${titleBarOffset}px - 60px)`,
               boxSizing: "border-box",
             },
           }}
@@ -785,8 +845,8 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
             display: { xs: "none", md: "block" },
             "& .MuiDrawer-paper": {
               width: collapsed ? collapsedDrawerWidth : drawerWidth,
-              mt: "68px",
-              height: "calc(100% - 68px)",
+              mt: desktopTopOffset,
+              height: `calc(100% - ${titleBarOffset}px - 68px)`,
               overflowX: "hidden",
               transition: "width 0.22s ease",
             },
@@ -799,10 +859,18 @@ const LayoutModernoInner: React.FC<{ children: React.ReactNode }> = ({ children 
       <Box
         component="main"
         sx={{
+          "--app-sidebar-width": {
+            xs: "0px",
+            md: collapsed ? `${collapsedDrawerWidth}px` : `${drawerWidth}px`,
+          },
+          "--app-top-offset": {
+            xs: mobileTopOffset,
+            md: desktopTopOffset,
+          },
           flexGrow: 1,
           minWidth: 0,
           minHeight: "100vh",
-          mt: { xs: "60px", md: "68px" },
+          mt: { xs: mobileTopOffset, md: desktopTopOffset },
           width: { md: `calc(100% - ${collapsed ? collapsedDrawerWidth : drawerWidth}px)` },
           transition: "width 0.22s ease",
         }}

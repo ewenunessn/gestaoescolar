@@ -5,17 +5,17 @@ import {
   FormControl, Grid, IconButton, InputLabel, MenuItem, Select, TextField, Typography, Chip, Menu,
   CircularProgress, Divider, Alert, Autocomplete
 } from "@mui/material";
-import { ArrowBack as ArrowBackIcon, Delete as DeleteIcon, PictureAsPdf as PdfIcon, MoreVert as MoreIcon, Event as EventIcon, CalendarMonth as CalendarIcon, RestaurantMenu as RestaurantIcon } from "@mui/icons-material";
+import { Delete as DeleteIcon, PictureAsPdf as PdfIcon, MoreVert as MoreIcon, Event as EventIcon, CalendarMonth as CalendarIcon, RestaurantMenu as RestaurantIcon } from "@mui/icons-material";
 import Calendar from "react-calendar";
 import 'react-calendar/dist/Calendar.css';
 import '../../../styles/calendar-pdf.css';
 import { useToast } from "../../../hooks/useToast";
 import { usePageTitle } from "../../../contexts/PageTitleContext";
 import PageContainer from "../../../components/PageContainer";
-import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
+import PageHeader from "../../../components/PageHeader";
 import CalendarioProfissional from "../../../components/CalendarioProfissional";
 import { useInstituicaoForPDF } from "../../../hooks/useInstituicao";
-import { createPDFHeader, createPDFFooter, getDefaultPDFStyles, buildPdfDoc } from "../../../utils/pdfUtils";
+import { createPDFHeader, createPDFFooter, getDefaultPDFStyles, buildPdfDoc, initPdfMake, savePdfMakeDocument } from "../../../utils/pdfUtils";
 import { gerarPDFTabela as gerarPDFTabelaUtil } from "../../../utils/cardapioPdfTabela";
 import {
   buscarCardapioModalidade, listarRefeicoesCardapio, adicionarRefeicaoDia,
@@ -45,15 +45,6 @@ const getApiBaseUrl = () => {
     : 'http://localhost:3000';
 };
 // Importação dinâmica para pdfmake (funciona melhor com Vite)
-const initPdfMake = async () => {
-  const pdfMake = (await import('pdfmake/build/pdfmake')).default;
-  const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default as any;
-  
-  // Configurar fontes
-  (pdfMake as any).vfs = pdfFonts.pdfMake?.vfs || pdfFonts;
-  return pdfMake;
-};
-
 const CardapioCalendarioPage: React.FC = () => {
   const { cardapioId } = useParams<{ cardapioId: string }>();
   const navigate = useNavigate();
@@ -435,7 +426,7 @@ const CardapioCalendarioPage: React.FC = () => {
         }
       };
       
-      pdfMake.createPdf(docDefinition).download(`cardapio-${cardapio.mes}-${cardapio.ano}.pdf`);
+      await savePdfMakeDocument(pdfMake, docDefinition, `cardapio-${cardapio.mes}-${cardapio.ano}.pdf`);
       toast.success('PDF do calendário gerado!');
     } catch (err) {
       toast.error('Erro ao gerar PDF do calendário');
@@ -554,7 +545,7 @@ const CardapioCalendarioPage: React.FC = () => {
         }
       };
       
-      pdfMake.createPdf(docDefinition).download(`frequencia-cardapio-${cardapio.mes}-${cardapio.ano}.pdf`);
+      await savePdfMakeDocument(pdfMake, docDefinition, `frequencia-cardapio-${cardapio.mes}-${cardapio.ano}.pdf`);
       toast.success('PDF de frequência gerado!');
     } catch (err) {
       toast.error('Erro ao gerar PDF de frequência');
@@ -603,7 +594,7 @@ const CardapioCalendarioPage: React.FC = () => {
             { text: 'Nenhuma refeicao cadastrada neste periodo', alignment: 'center', margin: [0, 50, 0, 0] }
           ]
         };
-        pdfMake.createPdf(docDefinition).download(`cardapio-detalhado-${cardapio.mes}-${cardapio.ano}.pdf`);
+        await savePdfMakeDocument(pdfMake, docDefinition, `cardapio-detalhado-${cardapio.mes}-${cardapio.ano}.pdf`);
         toast.success('PDF gerado!');
         setOpenPeriodoDialog(false);
         return;
@@ -859,7 +850,7 @@ const CardapioCalendarioPage: React.FC = () => {
         }
       };
       
-      pdfMake.createPdf(docDefinition).download(`cardapio-detalhado-${cardapio.mes}-${cardapio.ano}.pdf`);
+      await savePdfMakeDocument(pdfMake, docDefinition, `cardapio-detalhado-${cardapio.mes}-${cardapio.ano}.pdf`);
       toast.success('PDF gerado com sucesso!');
       setOpenPeriodoDialog(false);
     } catch (err) {
@@ -1063,11 +1054,17 @@ const CardapioCalendarioPage: React.FC = () => {
   return (
     <>
       <PageContainer>
-        <PageBreadcrumbs items={[
+        <PageHeader
+          onBack={() => navigate('/cardapios')}
+          backLabel="Voltar para cardapios"
+          breadcrumbs={[
           { label: 'Dashboard', path: '/dashboard' },
           { label: 'Cardápios', path: '/cardapios' },
           { label: cardapio?.nome || 'Calendário' },
-        ]} />
+          ]}
+          title={cardapio?.nome || 'Calendario do Cardapio'}
+          subtitle="Gerencie as preparacoes do cardapio no calendario mensal"
+        />
         <Grid container spacing={3}>
           {/* Coluna principal - Calendário */}
           <Grid item xs={12} lg={9}>

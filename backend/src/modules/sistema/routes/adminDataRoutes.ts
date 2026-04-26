@@ -13,9 +13,9 @@ router.use(authenticateSystemAdmin as unknown as RequestHandler);
 router.get('/stats', getSystemStats);
 
 // Importar funções de deleção
-import { deleteInstitution } from '../controllers/deleteController';
+import { deleteInstituicao } from '../controllers/deleteController';
 
 // Deletar instituição (com todos os dados em cascata)
-router.delete('/institutions/:institutionId', deleteInstitution);
+router.delete('/instituicoes/:instituicaoId', deleteInstituicao);
 
 export default router;

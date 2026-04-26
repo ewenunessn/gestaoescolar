@@ -2,21 +2,58 @@
   "name": "gestaoescolar",
   "version": "1.0.0",
   "private": true,
+  "main": "desktop/main.cjs",
   "scripts": {
     "desktop:dev": "concurrently -k \"npm run dev --prefix frontend\" \"npm run dev --prefix backend\" \"wait-on tcp:5173 tcp:3000 && electron ./desktop/main.cjs\"",
     "desktop:build": "npm run build --prefix backend && npm run build:desktop --prefix frontend",
-    "desktop:start": "electron ./desktop/main.cjs"
+    "desktop:start": "electron ./desktop/main.cjs",
+    "desktop:test": "node --test desktop/*.test.cjs",
+    "desktop:pack": "npm run desktop:build && electron-builder --dir",
+    "desktop:dist": "npm run desktop:build && electron-builder --win --x64"
   },
   "workspaces": [
     "backend",
     "shared"
   ],
   "dependencies": {
+    "alimentacao-escolar-backend": "file:backend",
     "react-toastify": "^11.0.5"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
     "electron": "^37.2.1",
+    "electron-builder": "^26.8.1",
     "wait-on": "^8.0.3"
+  },
+  "build": {
+    "appId": "br.com.nutrilog.gestaoescolar",
+    "productName": "NutriLog",
+    "directories": {
+      "output": "release"
+    },
+    "asar": false,
+    "files": [
+      "desktop/**/*",
+      "frontend/dist/**/*",
+      "backend/dist/**/*",
+      "backend/package.json",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "${productName}-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }

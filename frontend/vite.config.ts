@@ -27,6 +27,7 @@ export default defineConfig(({ mode }) => {
   // Determinar se é desenvolvimento ou produção
   const isDev = mode === 'development';
   const isProd = mode === 'production';
+  const isDesktop = mode === 'desktop';
   
   // URLs da API baseadas no ambiente com fallbacks seguros
   const apiUrl = env.VITE_API_URL || (isDev ? 'http://localhost:3000' : 'https://gestaoescolar-backend.vercel.app');
@@ -115,7 +116,7 @@ export default defineConfig(({ mode }) => {
         exclude: ['node_modules/lodash-es/**', 'node_modules/@types/lodash-es/**']
       }
     },
-    base: '/',
+    base: isDesktop ? './' : '/',
     define: {
       global: 'globalThis',
       __DEV__: isDev,

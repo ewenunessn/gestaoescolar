@@ -6,7 +6,11 @@ import {
 } from '@mui/material';
 import { Close as CloseIcon, ShoppingCart as ShoppingCartIcon } from '@mui/icons-material';
 import { guiaService } from '../services/guiaService';
-import { gerarPedidoDaGuia, iniciarGeracaoPedidoAsync } from '../services/planejamentoCompras';
+import {
+  buscarStatusGeracaoCompra,
+  iniciarGeracaoPedidoAsync,
+  validarCompraDaGuia,
+} from '../services/compraGenerationService';
 import { useToast } from '../hooks/useToast';
 import SelecionarContratosDialog from './SelecionarContratosDialog';
 import { JobProgressModal } from './JobProgressModal';
@@ -100,10 +104,10 @@ export default function GerarPedidoDaGuiaDialog({ open, onClose, onSuccess, guia
     setGerando(true);
     try {
       // SEMPRE usar chamada síncrona primeiro para verificações
-      const resultado = await gerarPedidoDaGuia(
-        guiaSelecionada.id,
-        contratosSelecionados.length > 0 ? contratosSelecionados : undefined
-      );
+      const resultado = await validarCompraDaGuia({
+        guia_id: guiaSelecionada.id,
+        contratos_selecionados: contratosSelecionados.length > 0 ? contratosSelecionados : undefined,
+      });
       
       
       // Verificar se requer seleção de múltiplos contratos
@@ -284,7 +288,7 @@ export default function GerarPedidoDaGuiaDialog({ open, onClose, onSuccess, guia
             </Box>
           ) : guias.length === 0 ? (
             <Alert severity="info">
-              Nenhuma guia de demanda aberta encontrada. Crie uma guia no Planejamento de Compras primeiro.
+              Nenhuma guia de demanda aberta encontrada. Gere uma guia na pagina Guias de Demanda primeiro.
             </Alert>
           ) : (
             <>
@@ -381,6 +385,7 @@ export default function GerarPedidoDaGuiaDialog({ open, onClose, onSuccess, guia
         jobId={currentJobId}
         onClose={handleCloseJobProgress}
         onComplete={handleJobComplete}
+        buscarStatus={buscarStatusGeracaoCompra}
       />
     </>
   );

@@ -2,7 +2,7 @@ import api from '../services/api';
 import { buscarInstituicao } from '../services/instituicao';
 import { CardapioModalidade, RefeicaoDia, TIPOS_REFEICAO } from '../services/cardapiosModalidade';
 import { dateUtils } from './dateUtils';
-import { initPdfMake, buildPdfDoc } from './pdfUtils';
+import { initPdfMake, buildPdfDoc, savePdfMakeDocument } from './pdfUtils';
 
 // ─── Exportar Calendário PDF ──────────────────────────────────────────────────
 
@@ -145,7 +145,7 @@ export const exportarCalendarioPDF = async ({
     pageMargins: [15, 30, 15, 50],
   });
   
-  pdfMake.createPdf(doc).download(`cardapio-${cardapio.mes}-${cardapio.ano}.pdf`);
+  await savePdfMakeDocument(pdfMake, doc, `cardapio-${cardapio.mes}-${cardapio.ano}.pdf`);
 };
 
 // ─── Exportar Frequência PDF ──────────────────────────────────────────────────
@@ -224,7 +224,7 @@ export const exportarFrequenciaPDF = async ({
     showSignature: !!instituicao?.secretario_nome,
   });
   
-  pdfMake.createPdf(doc).download(`frequencia-cardapio-${cardapio.mes}-${cardapio.ano}.pdf`);
+  await savePdfMakeDocument(pdfMake, doc, `frequencia-cardapio-${cardapio.mes}-${cardapio.ano}.pdf`);
 };
 
 // ─── Exportar Relatório Detalhado PDF ─────────────────────────────────────────
@@ -271,7 +271,7 @@ export const exportarRelatorioDetalhado = async ({
         { text: 'Nenhuma refeição cadastrada neste período', alignment: 'center', margin: [0, 50, 0, 0] }
       ],
     });
-    pdfMake.createPdf(doc).download(`cardapio-detalhado-${cardapio.mes}-${cardapio.ano}.pdf`);
+    await savePdfMakeDocument(pdfMake, doc, `cardapio-detalhado-${cardapio.mes}-${cardapio.ano}.pdf`);
     return;
   }
   
@@ -432,5 +432,5 @@ export const exportarRelatorioDetalhado = async ({
     pageMargins: [30, 40, 30, 60],
   });
   
-  pdfMake.createPdf(doc).download(`cardapio-detalhado-${cardapio.mes}-${cardapio.ano}.pdf`);
+  await savePdfMakeDocument(pdfMake, doc, `cardapio-detalhado-${cardapio.mes}-${cardapio.ano}.pdf`);
 };

@@ -25,7 +25,7 @@ import { PedidoDetalhado, STATUS_PEDIDO } from "../../../types/pedido";
 import PageContainer from "../../../components/PageContainer";
 import { formatarMoeda, formatarData } from "../../../utils/dateUtils";
 import { buscarInstituicao } from "../../../services/instituicao";
-import { initPdfMake, buildPdfDoc, PDF_COLORS } from "../../../utils/pdfUtils";
+import { initPdfMake, buildPdfDoc, PDF_COLORS, savePdfMakeDocument } from "../../../utils/pdfUtils";
 
 const formatarNumero = (n: number) => parseFloat(n.toString()).toString();
 
@@ -247,7 +247,7 @@ export default function PedidoDetalhe() {
         pageMargins: [28, 36, 28, 56],
       });
 
-      pdfMake.createPdf(doc).download(`requisicao-${docNumero}.pdf`);
+      await savePdfMakeDocument(pdfMake, doc, `requisicao-${docNumero}.pdf`);
     } catch (e) {
       console.error(e);
       setErro('Erro ao gerar PDF');

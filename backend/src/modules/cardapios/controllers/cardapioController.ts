@@ -358,15 +358,31 @@ export async function calcularCustoCardapio(req: Request, res: Response) {
       });
     }
 
-    // Buscar quantidade de alunos por modalidade
+    const dataReferenciaAlunos = `${cardapio.ano}-${String(cardapio.mes).padStart(2, '0')}-01`;
+
+    // Buscar quantidade de alunos por modalidade vigente na competencia do cardapio
     const alunosResult = await query(`
-      SELECT 
+      WITH ultima_versao AS (
+        SELECT DISTINCT ON (h.escola_id, h.modalidade_id)
+          h.escola_id,
+          h.modalidade_id,
+          h.quantidade_alunos,
+          h.vigente_de,
+          h.created_at,
+          h.id
+        FROM escola_modalidades_historico h
+        INNER JOIN escolas e ON e.id = h.escola_id
+        WHERE h.modalidade_id = ANY($1::int[])
+          AND h.vigente_de <= $2::date
+          AND e.ativo = true
+        ORDER BY h.escola_id, h.modalidade_id, h.vigente_de DESC, h.created_at DESC, h.id DESC
+      )
+      SELECT
         modalidade_id,
         SUM(quantidade_alunos) as total_alunos
-      FROM escola_modalidades
-      WHERE modalidade_id = ANY($1::int[])
+      FROM ultima_versao
       GROUP BY modalidade_id
-    `, [modalidadesIds]);
+    `, [modalidadesIds, dataReferenciaAlunos]);
 
     const alunosPorModalidade: Record<number, number> = {};
     let totalAlunos = 0;

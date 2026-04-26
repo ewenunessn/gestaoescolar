@@ -3,10 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import PageContainer from "../../../components/PageContainer";
 import PageHeader from "../../../components/PageHeader";
-import { Search as SearchIcon } from "@mui/icons-material";
+import { Assessment as AssessmentIcon, Search as SearchIcon } from "@mui/icons-material";
 import {
   Alert,
   Box,
+  Button,
   Card,
   CircularProgress,
   InputAdornment,
@@ -28,6 +29,8 @@ import CompactPagination from "../../../components/CompactPagination";
 // ── Design tokens ──────────────────────────────────────────────
 const GREEN = "#22c55e";
 const NAVY = "#0f172a";
+
+const todayIso = () => new Date().toISOString().slice(0, 10);
 
 interface Escola {
   id: number;
@@ -146,6 +149,7 @@ const GerenciarAlunosModalidades: React.FC = () => {
   const handleSave = useCallback(async (escolaId: number, modalidadeId: number, valor: string) => {
     const key = `${escolaId}-${modalidadeId}`;
     const quantidade = parseInt(valor) || 0;
+    const metadados = { vigente_de: todayIso() };
     
     // Não salvar se for 0 ou vazio
     if (quantidade === 0 || valor === '') {
@@ -154,7 +158,7 @@ const GerenciarAlunosModalidades: React.FC = () => {
       if (existing && existing.id) {
         setSaving(prev => ({ ...prev, [key]: true }));
         try {
-          await removerEscolaModalidade(existing.id);
+          await removerEscolaModalidade(existing.id, metadados);
           const newEscolaModalidades = { ...escolaModalidades };
           delete newEscolaModalidades[key];
           setEscolaModalidades(newEscolaModalidades);
@@ -176,7 +180,7 @@ const GerenciarAlunosModalidades: React.FC = () => {
       
       if (existing && existing.id) {
         // Atualizar
-        await editarEscolaModalidade(existing.id, { quantidade_alunos: quantidade });
+        await editarEscolaModalidade(existing.id, { quantidade_alunos: quantidade, ...metadados });
         setEscolaModalidades(prev => ({
           ...prev,
           [key]: {
@@ -188,7 +192,7 @@ const GerenciarAlunosModalidades: React.FC = () => {
         queryClient.invalidateQueries({ queryKey: ['modalidades'] });
       } else {
         // Criar
-        const response = await adicionarEscolaModalidade(escolaId, modalidadeId, quantidade);
+        const response = await adicionarEscolaModalidade(escolaId, modalidadeId, quantidade, metadados);
         setEscolaModalidades(prev => ({
           ...prev,
           [key]: {
@@ -258,6 +262,17 @@ const GerenciarAlunosModalidades: React.FC = () => {
             { label: 'Escolas', path: '/escolas' },
             { label: 'Alunos e Modalidades' },
           ]}
+          action={
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<AssessmentIcon fontSize="small" />}
+              onClick={() => navigate('/modalidades/relatorio-alunos')}
+              sx={{ borderRadius: 1, textTransform: 'none' }}
+            >
+              Relatorio
+            </Button>
+          }
         />
 
         {error && (

@@ -16,13 +16,14 @@ import {
   Error as ErrorIcon,
   HourglassEmpty as HourglassIcon,
 } from '@mui/icons-material';
-import { Job, buscarStatusJob } from '../services/planejamentoCompras';
+import { Job, buscarStatusJob as buscarStatusJobPadrao } from '../services/planejamentoCompras';
 
 interface JobProgressModalProps {
   open: boolean;
   jobId: number | null;
   onClose: () => void;
   onComplete?: (resultado: any) => void;
+  buscarStatus?: (jobId: number) => Promise<Job>;
 }
 
 export const JobProgressModal: React.FC<JobProgressModalProps> = ({
@@ -30,9 +31,11 @@ export const JobProgressModal: React.FC<JobProgressModalProps> = ({
   jobId,
   onClose,
   onComplete,
+  buscarStatus,
 }) => {
   const [job, setJob] = useState<Job | null>(null);
   const [polling, setPolling] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const completedRef = useRef(false); // Flag para evitar múltiplas chamadas
 
 
@@ -44,14 +47,16 @@ export const JobProgressModal: React.FC<JobProgressModalProps> = ({
     }
 
     setPolling(true);
+    setFetchError(null);
     completedRef.current = false;
     let intervalId: NodeJS.Timeout | null = null;
     let isCancelled = false;
 
     const fetchJobStatus = async () => {
       try {
-        const jobData = await buscarStatusJob(jobId);
+        const jobData = await (buscarStatus ?? buscarStatusJobPadrao)(jobId);
         setJob(jobData);
+        setFetchError(null);
 
         // Parar polling se job terminou
         if (jobData.status === 'concluido' || jobData.status === 'erro') {
@@ -65,6 +70,8 @@ export const JobProgressModal: React.FC<JobProgressModalProps> = ({
         }
       } catch (error) {
         console.error('Erro ao buscar status do job:', error);
+        setFetchError(error instanceof Error ? error.message : 'Erro ao buscar status do job');
+        setPolling(false);
       }
     };
 
@@ -82,7 +89,7 @@ export const JobProgressModal: React.FC<JobProgressModalProps> = ({
       isCancelled = true;
       if (intervalId) clearInterval(intervalId);
     };
-  }, [open, jobId]); // Removido polling das dependências
+  }, [open, jobId, buscarStatus]); // Removido polling das dependências
 
   const formatarTempo = (segundos?: number): string => {
     if (!segundos) return '--';
@@ -97,6 +104,7 @@ export const JobProgressModal: React.FC<JobProgressModalProps> = ({
   };
 
   const getStatusIcon = () => {
+    if (fetchError) return <ErrorIcon sx={{ fontSize: 48, color: 'error.main' }} />;
     if (!job) return <CircularProgress size={48} />;
 
     switch (job.status) {
@@ -112,6 +120,7 @@ export const JobProgressModal: React.FC<JobProgressModalProps> = ({
   };
 
   const getStatusText = () => {
+    if (fetchError) return 'Erro ao consultar status';
     if (!job) return 'Carregando...';
 
     const isPedido = job.tipo === 'gerar_pedido';
@@ -192,6 +201,12 @@ export const JobProgressModal: React.FC<JobProgressModalProps> = ({
                 Tempo estimado: {formatarTempo(job.tempo_estimado)}
               </Typography>
             </Box>
+          )}
+
+          {fetchError && (
+            <Alert severity="error" sx={{ width: '100%' }}>
+              {fetchError}
+            </Alert>
           )}
 
           {/* Resultado */}

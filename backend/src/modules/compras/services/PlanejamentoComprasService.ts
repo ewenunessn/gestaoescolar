@@ -32,6 +32,27 @@ interface ConversaoCompra {
   unidade_distribuicao?: string;
 }
 
+function formatarCompetencia(ano: number, mes: number): string {
+  return `${ano}-${String(mes).padStart(2, '0')}`;
+}
+
+function normalizarCompetencia(valor: string): { competencia: string; ano: number; mes: number } | null {
+  const match = /^(\d{4})-(\d{1,2})$/.exec(String(valor || '').trim());
+  if (!match) return null;
+
+  const ano = Number(match[1]);
+  const mes = Number(match[2]);
+  if (!Number.isInteger(ano) || !Number.isInteger(mes) || mes < 1 || mes > 12) {
+    return null;
+  }
+
+  return { competencia: formatarCompetencia(ano, mes), ano, mes };
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Erro interno';
+}
+
 // ─── Helper: Batch INSERT para guia_produto_escola ───────────────────────────
 interface GuiaItemRow {
   produto_id: number;
@@ -39,6 +60,56 @@ interface GuiaItemRow {
   quantidade: number;
   unidade: string;
   data_entrega: string;
+}
+
+async function buscarEscolasModalidadesVigentes(
+  escolaIds: number[] | undefined,
+  dataReferencia: string,
+  incluirNomes = false
+) {
+  const values: any[] = [dataReferencia];
+  let escolaFilter = '';
+
+  if (escolaIds && escolaIds.length > 0) {
+    values.push(escolaIds);
+    escolaFilter = `AND h.escola_id = ANY($${values.length})`;
+  }
+
+  const escolaNomeSelect = incluirNomes ? ', e.nome as escola_nome' : '';
+  const modalidadeNomeSelect = incluirNomes ? ', m.nome as modalidade_nome' : '';
+  const modalidadeJoin = incluirNomes ? 'INNER JOIN modalidades m ON m.id = u.modalidade_id' : '';
+  const orderBy = incluirNomes ? 'ORDER BY e.nome, m.nome' : 'ORDER BY e.id, u.modalidade_id';
+
+  const result = await db.pool.query(`
+    WITH ultima_versao AS (
+      SELECT DISTINCT ON (h.escola_id, h.modalidade_id)
+        h.escola_id,
+        h.modalidade_id,
+        h.quantidade_alunos,
+        h.vigente_de,
+        h.created_at,
+        h.id
+      FROM escola_modalidades_historico h
+      INNER JOIN escolas e ON e.id = h.escola_id
+      WHERE h.vigente_de <= $1::date
+        AND e.ativo = true
+        ${escolaFilter}
+      ORDER BY h.escola_id, h.modalidade_id, h.vigente_de DESC, h.created_at DESC, h.id DESC
+    )
+    SELECT
+      e.id as escola_id
+      ${escolaNomeSelect},
+      u.modalidade_id,
+      u.quantidade_alunos as numero_alunos
+      ${modalidadeNomeSelect}
+    FROM ultima_versao u
+    INNER JOIN escolas e ON e.id = u.escola_id
+    ${modalidadeJoin}
+    WHERE COALESCE(u.quantidade_alunos, 0) > 0
+    ${orderBy}
+  `, values);
+
+  return result.rows;
 }
 
 async function batchInsertGuiaItens(
@@ -49,21 +120,49 @@ async function batchInsertGuiaItens(
 ): Promise<number> {
   if (rows.length === 0) return 0;
 
-  // Buscar snapshots de todas as escolas envolvidas de uma vez
   const escolaIds = [...new Set(rows.map(r => r.escola_id))];
+  const snapshotDate = rows
+    .map((row) => row.data_entrega)
+    .filter(Boolean)
+    .sort()[0] || new Date().toISOString().slice(0, 10);
+
   const snapshotResult = await client.query(`
+    WITH ultima_versao AS (
+      SELECT DISTINCT ON (h.escola_id, h.modalidade_id)
+        h.escola_id,
+        h.modalidade_id,
+        h.quantidade_alunos,
+        h.vigente_de,
+        h.created_at,
+        h.id
+      FROM escola_modalidades_historico h
+      WHERE h.vigente_de <= $1::date
+        AND h.escola_id = ANY($2)
+      ORDER BY h.escola_id, h.modalidade_id, h.vigente_de DESC, h.created_at DESC, h.id DESC
+    )
     SELECT
       e.id as escola_id,
       e.nome as escola_nome,
       e.endereco as escola_endereco,
       e.municipio as escola_municipio,
-      COALESCE((SELECT SUM(em.quantidade_alunos) FROM escola_modalidades em WHERE em.escola_id = e.id), 0) as escola_total_alunos,
-      (
-        SELECT COALESCE(jsonb_agg(jsonb_build_object('modalidade_id', em.modalidade_id, 'modalidade_nome', m.nome, 'quantidade_alunos', em.quantidade_alunos) ORDER BY m.nome), '[]'::jsonb)
-        FROM escola_modalidades em LEFT JOIN modalidades m ON em.modalidade_id = m.id WHERE em.escola_id = e.id
+      COALESCE(SUM(u.quantidade_alunos), 0) as escola_total_alunos,
+      COALESCE(
+        jsonb_agg(
+          jsonb_build_object(
+            'modalidade_id', u.modalidade_id,
+            'modalidade_nome', m.nome,
+            'quantidade_alunos', u.quantidade_alunos
+          )
+          ORDER BY m.nome
+        ) FILTER (WHERE u.modalidade_id IS NOT NULL),
+        '[]'::jsonb
       ) as escola_modalidades
-    FROM escolas e WHERE e.id = ANY($1)
-  `, [escolaIds]);
+    FROM escolas e
+    LEFT JOIN ultima_versao u ON u.escola_id = e.id
+    LEFT JOIN modalidades m ON m.id = u.modalidade_id
+    WHERE e.id = ANY($2)
+    GROUP BY e.id, e.nome, e.endereco, e.municipio
+  `, [snapshotDate, escolaIds]);
 
   const snapshotMap = new Map<number, any>();
   for (const row of snapshotResult.rows) {
@@ -203,25 +302,15 @@ async function calcularDemandaPeriodo(
   `, cardapioParams);
 
   if (cardapiosQuery.rows.length === 0) {
+    throw new Error(`Nenhum cardapio ativo encontrado para competencia ${formatarCompetencia(ano, mes)}. Verifique se existe um cardapio ativo com refeicoes cadastradas.`);
+    /*
     // Retornar info de debug no erro
     throw new Error(`Nenhum cardápio ativo encontrado para competência ${ano}-${mes}. Verifique se existe um cardápio ativo com refeições cadastradas.`);
   }
+    */
+  }
 
-  const escolasQuery = escola_ids && escola_ids.length > 0
-    ? await db.pool.query(`
-        SELECT e.id as escola_id, em.modalidade_id, em.quantidade_alunos as numero_alunos
-        FROM escolas e
-        INNER JOIN escola_modalidades em ON em.escola_id = e.id
-        WHERE e.id = ANY($1) AND e.ativo = true
-      `, [escola_ids])
-    : await db.pool.query(`
-        SELECT e.id as escola_id, em.modalidade_id, em.quantidade_alunos as numero_alunos
-        FROM escolas e
-        INNER JOIN escola_modalidades em ON em.escola_id = e.id
-        WHERE e.ativo = true
-      `);
-
-  const escolas = escolasQuery.rows;
+  const escolas = await buscarEscolasModalidadesVigentes(escola_ids, data_inicio);
   if (escolas.length === 0) return [];
 
   const refeicoesQuery = await db.pool.query(`
@@ -838,7 +927,12 @@ export const calcularDemandaPorCompetencia = async (reqBody: any, usuarioId: num
     }
 
     // Buscar cardápios ativos na competência
-    const [ano, mes] = competencia.split('-').map(Number);
+    const competenciaNormalizada = normalizarCompetencia(competencia);
+    if (!competenciaNormalizada) {
+      return { status: 400, data: { error: 'Competencia invalida. Use o formato YYYY-MM.' } };
+    }
+
+    const { competencia: competenciaMesAno, ano, mes } = competenciaNormalizada;
     const primeiroDiaCompetencia = new Date(ano, mes - 1, 1);
     const ultimoDiaCompetencia = new Date(ano, mes, 0);
 
@@ -890,36 +984,8 @@ export const calcularDemandaPorCompetencia = async (reqBody: any, usuarioId: num
       } };
     }
 
-    // Buscar escolas com suas modalidades
-    const escolasQuery = escola_ids && escola_ids.length > 0
-      ? await db.pool.query(`
-          SELECT 
-            e.id as escola_id, 
-            e.nome as escola_nome, 
-            em.modalidade_id, 
-            em.quantidade_alunos as numero_alunos, 
-            m.nome as modalidade_nome
-          FROM escolas e
-          INNER JOIN escola_modalidades em ON em.escola_id = e.id
-          INNER JOIN modalidades m ON m.id = em.modalidade_id
-          WHERE e.id = ANY($1) AND e.ativo = true
-          ORDER BY e.nome, m.nome
-        `, [escola_ids])
-      : await db.pool.query(`
-          SELECT 
-            e.id as escola_id, 
-            e.nome as escola_nome, 
-            em.modalidade_id, 
-            em.quantidade_alunos as numero_alunos, 
-            m.nome as modalidade_nome
-          FROM escolas e
-          INNER JOIN escola_modalidades em ON em.escola_id = e.id
-          INNER JOIN modalidades m ON m.id = em.modalidade_id
-          WHERE e.ativo = true
-          ORDER BY e.nome, m.nome
-        `);
-
-    const escolas = escolasQuery.rows;
+    // Buscar escolas com suas modalidades vigentes no inicio do periodo
+    const escolas = await buscarEscolasModalidadesVigentes(escola_ids, data_inicio, true);
 
     if (escolas.length === 0) {
       return { status: 400, data: { error: 'Nenhuma escola com modalidades encontrada' } };
@@ -1173,7 +1239,7 @@ export const calcularDemandaPorCompetencia = async (reqBody: any, usuarioId: num
     const escolasUnicasCount = escolasUnicas.size;
 
     return { status: 200, data: {
-      competencia,
+      competencia: competenciaMesAno,
       cardapios_encontrados: cardapios.length,
       cardapios: cardapios.map(c => c.nome),
       periodo: {
@@ -1198,10 +1264,11 @@ export const calcularDemandaPorCompetencia = async (reqBody: any, usuarioId: num
 // Múltiplos períodos geram 1 única guia por competência.
 // Cada item recebe data_entrega = data_inicio do período que o originou.
 export const gerarGuiasDemanda = async (reqBody: any, usuarioId: number, reqQuery?: any, reqParam?: any) => {
-  const { competencia, periodos, escola_ids, observacoes, considerar_indice_coccao, considerar_fator_correcao } = reqBody as {
+  const { competencia, periodos, escola_ids, cardapio_ids, observacoes, considerar_indice_coccao, considerar_fator_correcao } = reqBody as {
     competencia: string;
     periodos: Periodo[];
     escola_ids?: number[];
+    cardapio_ids?: number[];
     observacoes?: string;
     considerar_indice_coccao?: boolean;
     considerar_fator_correcao?: boolean;
@@ -1211,7 +1278,12 @@ export const gerarGuiasDemanda = async (reqBody: any, usuarioId: number, reqQuer
     return { status: 400, data: { error: 'Competência e períodos são obrigatórios' } };
   }
 
-  const [ano, mes] = competencia.split('-').map(Number);
+  const competenciaNormalizada = normalizarCompetencia(competencia);
+  if (!competenciaNormalizada) {
+    return { status: 400, data: { error: 'Competencia invalida. Use o formato YYYY-MM.' } };
+  }
+
+  const { competencia: competenciaMesAno, ano, mes } = competenciaNormalizada;
   const client = await db.pool.connect();
 
   try {
@@ -1223,14 +1295,18 @@ export const gerarGuiasDemanda = async (reqBody: any, usuarioId: number, reqQuer
     const demandasPorPeriodo: { periodo: Periodo; demanda: ProdutoDemanda[] }[] = [];
     for (const periodo of periodos) {
       const demanda = await calcularDemandaPeriodo(
-        ano, 
-        mes, 
-        periodo.data_inicio, 
-        periodo.data_fim, 
+        ano,
+        mes,
+        periodo.data_inicio,
+        periodo.data_fim,
         escola_ids,
         considerar_indice_coccao,
-        considerar_fator_correcao
-      );
+        considerar_fator_correcao,
+        cardapio_ids
+      ).catch((error) => {
+        erros.push(`Periodo ${periodo.data_inicio} a ${periodo.data_fim}: ${getErrorMessage(error)}`);
+        return [];
+      });
       if (demanda.length === 0) {
         erros.push(`Período ${periodo.data_inicio} a ${periodo.data_fim}: nenhum produto calculado`);
       } else {
@@ -1257,7 +1333,7 @@ export const gerarGuiasDemanda = async (reqBody: any, usuarioId: number, reqQuer
     // Buscar ou criar 1 única guia para a competência
     const guiaExistente = await client.query(`
       SELECT id FROM guias WHERE competencia_mes_ano = $1
-    `, [competencia]);
+    `, [competenciaMesAno]);
 
     let guia_id: number;
 
@@ -1280,7 +1356,7 @@ export const gerarGuiasDemanda = async (reqBody: any, usuarioId: number, reqQuer
         INSERT INTO guias (mes, ano, nome, competencia_mes_ano, observacao, status, codigo_guia, created_at, updated_at)
         VALUES ($1, $2, $3, $4, $5, 'aberta', $6, NOW(), NOW())
         RETURNING id
-      `, [mes, ano, nomePadrao, competencia, observacoes || null, codigo_guia]);
+      `, [mes, ano, nomePadrao, competenciaMesAno, observacoes || null, codigo_guia]);
       guia_id = guiaResult.rows[0].id;
     }
 
@@ -1384,7 +1460,7 @@ export const gerarGuiasDemanda = async (reqBody: any, usuarioId: number, reqQuer
     return { status: 200, data: {
       guias_criadas: [{
         guia_id,
-        competencia,
+        competencia: competenciaMesAno,
         periodos,
         total_produtos: new Set(demandasPorPeriodo.flatMap(d => d.demanda.map(p => p.produto_id))).size,
         total_itens: totalItens,
@@ -1938,7 +2014,16 @@ async function processarGeracaoGuiasBackground(jobId: number) {
   }
 
   const { competencia, periodos, escola_ids, cardapio_ids, observacoes, considerar_indice_coccao, considerar_fator_correcao } = job.parametros;
-  const [ano, mes] = competencia.split('-').map(Number);
+  const competenciaNormalizada = normalizarCompetencia(competencia);
+  if (!competenciaNormalizada) {
+    await JobService.atualizarStatus(jobId, 'erro', {
+      progresso: 100,
+      erro: 'Competencia invalida. Use o formato YYYY-MM.',
+    });
+    return;
+  }
+
+  const { competencia: competenciaMesAno, ano, mes } = competenciaNormalizada;
 
   const client = await db.pool.connect();
 
@@ -1963,7 +2048,10 @@ async function processarGeracaoGuiasBackground(jobId: number) {
         considerar_indice_coccao,
         considerar_fator_correcao,
         cardapio_ids
-      );
+      ).catch((error) => {
+        erros.push(`Periodo ${periodo.data_inicio} a ${periodo.data_fim}: ${getErrorMessage(error)}`);
+        return [];
+      });
       
       if (demanda.length === 0) {
         erros.push(`Período ${periodo.data_inicio} a ${periodo.data_fim}: nenhum produto calculado`);
@@ -1997,7 +2085,7 @@ async function processarGeracaoGuiasBackground(jobId: number) {
     // Buscar ou criar guia
     await JobService.atualizarStatus(jobId, 'processando', { progresso: 45 });
     
-    const guiaExistente = await client.query(`SELECT id FROM guias WHERE competencia_mes_ano = $1`, [competencia]);
+    const guiaExistente = await client.query(`SELECT id FROM guias WHERE competencia_mes_ano = $1`, [competenciaMesAno]);
     let guia_id: number;
 
     if (guiaExistente.rows.length > 0) {
@@ -2018,7 +2106,7 @@ async function processarGeracaoGuiasBackground(jobId: number) {
         INSERT INTO guias (mes, ano, nome, competencia_mes_ano, observacao, status, job_id, codigo_guia, created_at, updated_at)
         VALUES ($1, $2, $3, $4, $5, 'aberta', $6, $7, NOW(), NOW())
         RETURNING id
-      `, [mes, ano, nomePadrao, competencia, observacoes || null, jobId, codigo_guia]);
+      `, [mes, ano, nomePadrao, competenciaMesAno, observacoes || null, jobId, codigo_guia]);
       guia_id = guiaResult.rows[0].id;
     }
 
@@ -2134,12 +2222,17 @@ async function processarGeracaoGuiasBackground(jobId: number) {
     await JobService.atualizarStatus(jobId, 'concluido', {
       progresso: 100,
       resultado: {
-        guia_id,
-        competencia,
-        total_produtos: todosProdutoIds.length,
-        total_itens: totalItens,
-        total_escolas: new Set(demandasPorPeriodo.flatMap(d => d.demanda.flatMap(p => p.por_escola.map(e => e.escola_id)))).size,
+        guias_criadas: [{
+          guia_id,
+          competencia: competenciaMesAno,
+          periodos,
+          total_produtos: todosProdutoIds.length,
+          total_itens: totalItens,
+          total_escolas: new Set(demandasPorPeriodo.flatMap(d => d.demanda.flatMap(p => p.por_escola.map(e => e.escola_id)))).size,
+        }],
         erros: erros.map(m => ({ motivo: m })),
+        total_criadas: 1,
+        total_erros: erros.length,
       },
     });
 

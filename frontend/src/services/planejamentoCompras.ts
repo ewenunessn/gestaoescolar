@@ -133,7 +133,8 @@ export async function gerarGuiasDemanda(
   escola_ids?: number[],
   observacoes?: string,
   considerar_indice_coccao?: boolean,
-  considerar_fator_correcao?: boolean
+  considerar_fator_correcao?: boolean,
+  cardapio_ids?: number[]
 ): Promise<GerarGuiasResponse> {
   // Timeout maior para operações pesadas (2 minutos)
   const response = await api.post('/planejamento-compras/gerar-guias', {
@@ -142,7 +143,8 @@ export async function gerarGuiasDemanda(
     escola_ids,
     observacoes,
     considerar_indice_coccao,
-    considerar_fator_correcao
+    considerar_fator_correcao,
+    cardapio_ids,
   }, {
     timeout: 120000 // 2 minutos
   });

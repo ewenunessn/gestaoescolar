@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { apiWithRetry } from '../services/api';
 import { getToken } from '../services/auth';
 
@@ -20,72 +20,104 @@ export interface CurrentUser {
   updated_at?: string;
 }
 
-export const useCurrentUser = () => {
-  // Inicializar com dados do localStorage se disponíveis
-  const [user, setUser] = useState<CurrentUser | null>(() => {
-    try {
-      const token = getToken();
-      if (!token) return null;
-      
-      // Tentar carregar do localStorage primeiro
-      const savedUser = localStorage.getItem('user');
-      if (savedUser) {
-        const userData = JSON.parse(savedUser);
-        return userData;
-      }
-      
-      // Tentar extrair do token JWT
-      const tokenPayload = JSON.parse(atob(token.split('.')[1]));
-      if (tokenPayload) {
-        const userData = {
-          id: tokenPayload.id,
-          nome: tokenPayload.nome,
-          email: tokenPayload.email,
-          tipo: tokenPayload.tipo,
-          perfil: tokenPayload.tipo,
-          escola_id: tokenPayload.escola_id,
-          isSystemAdmin: tokenPayload.isSystemAdmin,
-          tipo_secretaria: tokenPayload.tipo_secretaria,
-          institution_id: tokenPayload.institution_id,
-        };
-        return userData;
-      }
-    } catch (err) {
-      console.error('❌ [INIT] Erro ao carregar usuário inicial:', err);
+let cachedUser: CurrentUser | null = null;
+let currentUserRequest: Promise<CurrentUser | null> | null = null;
+let lastUserFetchAt = 0;
+const USER_CACHE_TTL_MS = 60_000;
+
+function readInitialUser(): CurrentUser | null {
+  try {
+    const token = getToken();
+    if (!token) return null;
+
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      return JSON.parse(savedUser);
     }
+
+    const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+    if (tokenPayload) {
+      return {
+        id: tokenPayload.id,
+        nome: tokenPayload.nome,
+        email: tokenPayload.email,
+        tipo: tokenPayload.tipo,
+        perfil: tokenPayload.tipo,
+        escola_id: tokenPayload.escola_id,
+        isSystemAdmin: tokenPayload.isSystemAdmin,
+        tipo_secretaria: tokenPayload.tipo_secretaria,
+        institution_id: tokenPayload.institution_id,
+      };
+    }
+  } catch (err) {
+    console.error('Erro ao carregar usuario inicial:', err);
+  }
+
+  return null;
+}
+
+async function fetchCurrentUserOnce(force = false): Promise<CurrentUser | null> {
+  const token = getToken();
+  if (!token) {
+    cachedUser = null;
     return null;
+  }
+
+  const now = Date.now();
+  if (!force && cachedUser && now - lastUserFetchAt < USER_CACHE_TTL_MS) {
+    return cachedUser;
+  }
+
+  if (currentUserRequest) {
+    return currentUserRequest;
+  }
+
+  currentUserRequest = apiWithRetry
+    .get('/usuarios/me')
+    .then((response) => {
+      const userData = response.data?.data || response.data;
+      if (!userData) {
+        cachedUser = null;
+        return null;
+      }
+
+      userData.perfil = userData.tipo;
+      userData.isSystemAdmin = userData.tipo === 'admin';
+      localStorage.setItem('user', JSON.stringify(userData));
+      cachedUser = userData;
+      lastUserFetchAt = Date.now();
+      return userData;
+    })
+    .finally(() => {
+      currentUserRequest = null;
+    });
+
+  return currentUserRequest;
+}
+
+export const useCurrentUser = () => {
+  const [user, setUser] = useState<CurrentUser | null>(() => {
+    cachedUser = cachedUser ?? readInitialUser();
+    return cachedUser;
   });
-  
-  const [loading, setLoading] = useState(false); // Mudar para false já que carregamos do localStorage
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchUser = async () => {
+  const fetchUser = async (force = false) => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const token = getToken();
       if (!token) {
         setUser(null);
         return;
       }
 
-      const response = await apiWithRetry.get('/usuarios/me');
-      const userData = response.data?.data || response.data;
-      
-      // Mapear campos para compatibilidade
-      if (userData) {
-        userData.perfil = userData.tipo;
-        userData.isSystemAdmin = userData.tipo === 'admin';
-        // Atualizar localStorage com dados frescos
-        localStorage.setItem('user', JSON.stringify(userData));
-      }
-      
+      const userData = await fetchCurrentUserOnce(force);
       setUser(userData);
-    } catch (err: any) {
-      setError('Erro ao carregar dados do usuário');
-      // Não limpar o user se já temos dados do localStorage
-      // Evita logout forçado em caso de problema temporário de rede
+    } catch {
+      setError('Erro ao carregar dados do usuario');
     } finally {
       setLoading(false);
     }
@@ -94,22 +126,22 @@ export const useCurrentUser = () => {
   useEffect(() => {
     const token = getToken();
     const isLoginPage = window.location.pathname.includes('/login');
-    
+
     if (token && !isLoginPage) {
-      fetchUser();
+      void fetchUser();
     } else {
       setLoading(false);
     }
   }, []);
 
   const refreshUser = () => {
-    fetchUser();
+    void fetchUser(true);
   };
 
   return {
     user,
     loading,
     error,
-    refreshUser
+    refreshUser,
   };
 };

@@ -21,13 +21,12 @@ import {
   Popover,
   Checkbox,
   FormControlLabel,
-  Autocomplete,
   TextField,
   List,
   ListItem,
+  ListItemButton,
   ListItemText,
   ListItemIcon,
-  Skeleton,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -36,20 +35,19 @@ import {
   Delete as DeleteIcon,
   TableChart as TableChartIcon,
   Clear as ClearIcon,
-  MenuBook as MenuBookIcon,
-  CheckBox as CheckBoxIcon,
-  CheckBoxOutlineBlank as CheckBoxOutlineBlankIcon,
-  SelectAll as SelectAllIcon,
 } from "@mui/icons-material";
 import { ColumnDef } from "@tanstack/react-table";
 import PageContainer from "../../../components/PageContainer";
 import PageHeader from "../../../components/PageHeader";
-import PageBreadcrumbs from "../../../components/PageBreadcrumbs";
 import SeletorPeriodoCalendario, { Periodo } from "../../../components/SeletorPeriodoCalendario";
 import { JobProgressModal } from "../../../components/JobProgressModal";
 import { guiaService } from "../../../services/guiaService";
 import { useToast } from "../../../hooks/useToast";
-import { iniciarGeracaoGuiasAsync, GerarGuiasResponse } from "../../../services/planejamentoCompras";
+import {
+  buscarStatusGeracaoGuiaDemanda,
+  iniciarGeracaoGuiaDemanda,
+  GerarGuiasResponse,
+} from "../../../services/guiaDemandaGenerationService";
 import { listarCardapiosDisponiveis, CardapioDisponivel } from "../../../services/demanda";
 import { DataTable } from "../../../components/DataTable";
 import { LoadingOverlay } from "../../../components/LoadingOverlay";
@@ -313,26 +311,6 @@ const GuiasDemandaLista: React.FC = () => {
     }
   };
 
-  const gerarCompetenciasDisponiveis = () => {
-    const competencias = [];
-    const hoje = new Date();
-
-    for (let i = -12; i <= 3; i++) {
-      const data = new Date(hoje.getFullYear(), hoje.getMonth() + i, 1);
-      const ano = data.getFullYear();
-      const mes = String(data.getMonth() + 1).padStart(2, '0');
-      const mesNome = data.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-      competencias.push({
-        valor: `${ano}-${mes}`,
-        label: mesNome.charAt(0).toUpperCase() + mesNome.slice(1)
-      });
-    }
-
-    return competencias;
-  };
-
-  const competenciasOptions = useMemo(() => gerarCompetenciasDisponiveis(), []);
-
   const carregarCardapios = useCallback(async (competencia?: string) => {
     const comp = competencia || competenciaGerar;
     if (!comp) return;
@@ -350,19 +328,6 @@ const GuiasDemandaLista: React.FC = () => {
       setLoadingCardapios(false);
     }
   }, [competenciaGerar]);
-
-  const handleCompetenciaChange = useCallback((_: any, newValue: { valor: string; label: string } | null) => {
-    const valor = newValue?.valor || '';
-    setCompetenciaGerar(valor);
-    setPeriodosGerar([]);
-    setResultadoGuias(null);
-    if (valor) {
-      carregarCardapios();
-    } else {
-      setCardapiosDisponiveis([]);
-      setCardapiosSelecionados([]);
-    }
-  }, [carregarCardapios]);
 
   const toggleCardapio = (id: number) => {
     setCardapiosSelecionados(prev =>
@@ -384,17 +349,21 @@ const GuiasDemandaLista: React.FC = () => {
       return;
     }
     
+    if (cardapiosDisponiveis.length > 0 && cardapiosSelecionados.length === 0) {
+      toast.warning('Selecione ao menos um cardÃƒÂ¡pio para gerar a guia');
+      return;
+    }
+
     try {
       // Iniciar job assíncrono
-      const response = await iniciarGeracaoGuiasAsync(
-        competenciaGerar,
-        periodosGerar,
-        undefined,
-        undefined,
-        false,
-        considerarFatorCorrecao,
-        cardapiosSelecionados.length > 0 ? cardapiosSelecionados : undefined
-      );
+      setGerandoGuias(true);
+      const response = await iniciarGeracaoGuiaDemanda({
+        competencia: competenciaGerar,
+        periodos: periodosGerar,
+        considerar_indice_coccao: false,
+        considerar_fator_correcao: considerarFatorCorrecao,
+        cardapio_ids: cardapiosSelecionados.length > 0 ? cardapiosSelecionados : undefined,
+      });
       
       // Fechar modal de configuração
       setOpenGerarGuia(false);
@@ -406,6 +375,8 @@ const GuiasDemandaLista: React.FC = () => {
     } catch (error: any) {
       const msg = error.response?.data?.error || 'Não foi possível iniciar a geração de guias';
       toast.error(msg);
+    } finally {
+      setGerandoGuias(false);
     }
   };
 
@@ -802,36 +773,40 @@ const GuiasDemandaLista: React.FC = () => {
                       {cardapiosSelecionados.length === cardapiosDisponiveis.length ? 'Desmarcar todos' : 'Selecionar todos'}
                     </Button>
                   </Box>
-                  <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, maxHeight: 180, overflow: 'auto' }}>
-                    {cardapiosDisponiveis.map((cardapio) => (
-                      <Box
-                        key={cardapio.id}
-                        onClick={() => toggleCardapio(cardapio.id)}
-                        sx={{
-                          display: 'flex', alignItems: 'center', gap: 1,
-                          px: 2, py: 1,
-                          cursor: 'pointer',
-                          borderBottom: '1px solid',
-                          borderColor: 'divider',
-                          '&:last-child': { borderBottom: 'none' },
-                          bgcolor: cardapiosSelecionados.includes(cardapio.id) ? 'action.selected' : 'transparent',
-                          '&:hover': { bgcolor: 'action.hover' },
-                        }}
-                      >
-                        <Checkbox
-                          checked={cardapiosSelecionados.includes(cardapio.id)}
-                          onChange={() => toggleCardapio(cardapio.id)}
-                          onClick={(e) => e.stopPropagation()}
-                          size="small"
-                          sx={{ p: 0 }}
-                        />
-                        <Typography variant="body2">{cardapio.nome}</Typography>
-                        {cardapio.modalidade_nome && (
-                          <Chip label={cardapio.modalidade_nome} size="small" sx={{ height: 18, fontSize: '0.65rem', ml: 'auto' }} />
-                        )}
-                      </Box>
-                    ))}
-                  </Box>
+                  <List
+                    dense
+                    disablePadding
+                    sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, maxHeight: 180, overflow: 'auto' }}
+                  >
+                    {cardapiosDisponiveis.map((cardapio) => {
+                      const selected = cardapiosSelecionados.includes(cardapio.id);
+
+                      return (
+                        <ListItem key={cardapio.id} disablePadding divider>
+                          <ListItemButton selected={selected} onClick={() => toggleCardapio(cardapio.id)}>
+                            <ListItemIcon sx={{ minWidth: 32 }}>
+                              <Checkbox
+                                edge="start"
+                                checked={selected}
+                                tabIndex={-1}
+                                disableRipple
+                                size="small"
+                              />
+                            </ListItemIcon>
+                            <ListItemText
+                              primary={cardapio.nome}
+                              secondary={cardapio.modalidade_nome || `${cardapio.total_refeicoes} refeicao(oes)`}
+                              primaryTypographyProps={{ variant: 'body2', noWrap: true }}
+                              secondaryTypographyProps={{ variant: 'caption', noWrap: true }}
+                            />
+                            {cardapio.modalidade_nome && (
+                              <Chip label={cardapio.modalidade_nome} size="small" sx={{ height: 18, fontSize: '0.65rem', ml: 1 }} />
+                            )}
+                          </ListItemButton>
+                        </ListItem>
+                      );
+                    })}
+                  </List>
                   <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
                     {cardapiosSelecionados.length} de {cardapiosDisponiveis.length} selecionado(s)
                   </Typography>
@@ -867,7 +842,7 @@ const GuiasDemandaLista: React.FC = () => {
               </Button>
 
               {/* Opções de Cálculo */}
-              <Box sx={{ mt: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+              <Box sx={{ mt: 3, p: 2, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
                 <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, mb: 1.5 }}>
                   Opções de Cálculo
                 </Typography>
@@ -940,7 +915,13 @@ const GuiasDemandaLista: React.FC = () => {
             <Button
               onClick={handleGerarGuias}
               variant="contained"
-              disabled={gerandoGuias || !competenciaGerar || periodosGerar.length === 0}
+              disabled={
+                gerandoGuias ||
+                loadingCardapios ||
+                !competenciaGerar ||
+                periodosGerar.length === 0 ||
+                (cardapiosDisponiveis.length > 0 && cardapiosSelecionados.length === 0)
+              }
               startIcon={gerandoGuias ? <CircularProgress size={18} /> : <TableChartIcon />}
               sx={{ bgcolor: '#1d4ed8', '&:hover': { bgcolor: '#1e40af' } }}
             >
@@ -966,6 +947,7 @@ const GuiasDemandaLista: React.FC = () => {
         jobId={currentJobId}
         onClose={handleCloseJobProgress}
         onComplete={handleJobComplete}
+        buscarStatus={buscarStatusGeracaoGuiaDemanda}
       />
 
       <LoadingOverlay

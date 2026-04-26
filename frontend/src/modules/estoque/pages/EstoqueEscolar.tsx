@@ -1,568 +1,561 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Box,
-  Typography,
-  Card,
+  CircularProgress,
+  FormControl,
+  InputAdornment,
+  MenuItem,
+  Paper,
+  Select,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
-  Grid,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   TextField,
-  InputAdornment,
-  IconButton,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  CircularProgress,
-  Chip
+  Typography,
 } from "@mui/material";
-import {
-  Search as SearchIcon,
-  Add as AddIcon,
-  Remove as RemoveIcon,
-  SwapHoriz,
-  History
-} from "@mui/icons-material";
-import PageHeader from "../../../components/PageHeader";
+import AddCircleOutlineRounded from "@mui/icons-material/AddCircleOutlineRounded";
+import RemoveCircleOutlineRounded from "@mui/icons-material/RemoveCircleOutlineRounded";
+import RuleFolderRounded from "@mui/icons-material/RuleFolderRounded";
+import SearchRounded from "@mui/icons-material/SearchRounded";
+
 import PageContainer from "../../../components/PageContainer";
-import { listarEscolas } from "../../../services/escolas";
-import { listarEstoqueEscola, listarHistoricoEscola, registrarMovimentacao, type EstoqueEscolarItem, type EstoqueEscolarMovimentacao } from "../../../services/estoqueEscolarService";
 import { useToast } from "../../../hooks/useToast";
-import { formatarDataHora, getTipoMovimentacaoColor, getTipoMovimentacaoLabel } from "../../../services/estoqueCentralService";
+import { listarEscolas } from "../../../services/escolas";
+import {
+  listarEstoqueEscola,
+  listarHistoricoEscola,
+  registrarMovimentacao,
+  type EstoqueEscolarItem,
+  type EstoqueEscolarMovimentacao,
+} from "../../../services/estoqueEscolarService";
+import {
+  CategoryPill,
+  CompactActionButton,
+  CompactMetricsStrip,
+  DotStatus,
+  type CompactMetric,
+} from "../components/CompactStockLayout";
+import { StockMovementDialog } from "../components/StockMovementDialog";
+
+type MovimentoModo = "entrada" | "saida" | "ajuste";
+
+const dialogTitleByMode: Record<MovimentoModo, string> = {
+  entrada: "Registrar entrada",
+  saida: "Registrar saida",
+  ajuste: "Ajuste de estoque",
+};
+
+const actionStyles: Record<MovimentoModo, object> = {
+  entrada: {
+    borderColor: "#B5D4F4",
+    color: "#185FA5",
+    "&:hover": { borderColor: "#B5D4F4", backgroundColor: "#E6F1FB" },
+  },
+  saida: {
+    borderColor: "#F7C1C1",
+    color: "#A32D2D",
+    "&:hover": { borderColor: "#F7C1C1", backgroundColor: "#FCEBEB" },
+  },
+  ajuste: {
+    borderColor: "#FAC775",
+    color: "#854F0B",
+    "&:hover": { borderColor: "#FAC775", backgroundColor: "#FAEEDA" },
+  },
+};
+
+const compactSelectSx = {
+  minWidth: 210,
+  fontSize: 13,
+  backgroundColor: "background.paper",
+  borderRadius: "6px",
+  "& .MuiSelect-select": {
+    py: "6px",
+    px: "10px",
+  },
+  "& .MuiOutlinedInput-notchedOutline": {
+    border: "0.5px solid",
+    borderColor: "divider",
+  },
+};
+
+const toolbarControlSx = {
+  fontSize: 13,
+  backgroundColor: "background.default",
+  borderRadius: "6px",
+  "& .MuiSelect-select": {
+    py: "6px",
+    px: "10px",
+  },
+  "& .MuiOutlinedInput-root": {
+    borderRadius: "6px",
+    "& fieldset": {
+      border: "0.5px solid",
+      borderColor: "action.selected",
+    },
+    "&.Mui-focused fieldset": {
+      borderColor: "primary.main",
+    },
+  },
+  "& .MuiOutlinedInput-notchedOutline": {
+    border: "0.5px solid",
+    borderColor: "action.selected",
+  },
+};
 
 const formatarQuantidade = (qtd: number | string, unidade: string) =>
   `${Number(qtd).toLocaleString("pt-BR")} ${unidade}`;
 
+const obterStatusEscolar = (item: EstoqueEscolarItem) => {
+  const quantidade = Number(item.quantidade_atual);
+  const minimo = Number(item.quantidade_minima || 0);
+
+  if (quantidade <= minimo * 0.5) {
+    return { label: "Critico", tone: "error" as const };
+  }
+
+  if (quantidade < minimo) {
+    return { label: "Baixo", tone: "warning" as const };
+  }
+
+  return { label: "Normal", tone: "success" as const };
+};
+
 const EstoqueEscolar: React.FC = () => {
   const toast = useToast();
-  const [escolas, setEscolas] = useState<any[]>([]);
+  const [escolas, setEscolas] = useState<Array<{ id: number; nome: string }>>([]);
   const [escolaId, setEscolaId] = useState<number | "">("");
   const [itens, setItens] = useState<EstoqueEscolarItem[]>([]);
+  const [, setHistoricoItens] = useState<EstoqueEscolarMovimentacao[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [categoriaFiltro, setCategoriaFiltro] = useState("");
-  const [statusFiltro, setStatusFiltro] = useState<"todos" | "com_estoque" | "sem_estoque">("todos");
-  const [quantidadeMin, setQuantidadeMin] = useState("");
-  const [quantidadeMax, setQuantidadeMax] = useState("");
+  const [selectedItem, setSelectedItem] = useState<EstoqueEscolarItem | null>(null);
   const [movOpen, setMovOpen] = useState(false);
-  const [movItem, setMovItem] = useState<EstoqueEscolarItem | null>(null);
-  const [movTipo, setMovTipo] = useState<"entrada" | "saida" | "ajuste">("entrada");
-  const [movQuantidade, setMovQuantidade] = useState("");
-  const [movObservacoes, setMovObservacoes] = useState("");
+  const [movMode, setMovMode] = useState<MovimentoModo>("entrada");
   const [saving, setSaving] = useState(false);
-  const [historicoOpen, setHistoricoOpen] = useState(false);
-  const [historicoLoading, setHistoricoLoading] = useState(false);
-  const [historicoItens, setHistoricoItens] = useState<EstoqueEscolarMovimentacao[]>([]);
-  const [historicoProdutoId, setHistoricoProdutoId] = useState<number | "">("");
-  const [historicoTipo, setHistoricoTipo] = useState("");
-  const [historicoBusca, setHistoricoBusca] = useState("");
-  const [historicoDataInicio, setHistoricoDataInicio] = useState("");
-  const [historicoDataFim, setHistoricoDataFim] = useState("");
 
   useEffect(() => {
     listarEscolas()
-      .then(setEscolas)
+      .then((data) => setEscolas(data ?? []))
       .catch(() => toast.errorLoad("as escolas"));
   }, []);
 
-  const carregarEstoque = async (id: number) => {
+  const carregarDados = async (id: number) => {
     try {
       setLoading(true);
-      const data = await listarEstoqueEscola(id);
-      setItens(data);
+      const [estoque, historico] = await Promise.all([
+        listarEstoqueEscola(id),
+        listarHistoricoEscola(id, 8),
+      ]);
+      setItens(estoque);
+      setHistoricoItens(historico);
     } catch {
-      toast.errorLoad("o estoque da escola");
+      toast.errorLoad("o estoque escolar");
       setItens([]);
+      setHistoricoItens([]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (escolaId) {
-      carregarEstoque(Number(escolaId));
-    } else {
+    if (!escolaId) {
       setItens([]);
+      setHistoricoItens([]);
+      setSelectedItem(null);
+      return;
     }
-    setHistoricoOpen(false);
-    setHistoricoItens([]);
+
+    void carregarDados(Number(escolaId));
   }, [escolaId]);
 
   const categorias = useMemo(() => {
-    const valores = itens.map((item) => item.categoria).filter((cat): cat is string => Boolean(cat));
-    return Array.from(new Set(valores)).sort((a, b) => a.localeCompare(b));
-  }, [itens]);
-
-  const produtosOrdenados = useMemo(() => {
-    return [...itens]
-      .sort((a, b) => a.produto_nome.localeCompare(b.produto_nome))
-      .map((item) => ({ id: item.produto_id, nome: item.produto_nome }));
-  }, [itens]);
-
-  const unidadePorProduto = useMemo(() => {
-    return new Map(itens.map((item) => [item.produto_id, item.unidade]));
+    const base = ["Alimentos", "Higiene", "Limpeza"];
+    const values = itens
+      .map((item) => item.categoria)
+      .filter((value): value is string => Boolean(value));
+    return Array.from(new Set([...base, ...values])).sort((a, b) => a.localeCompare(b));
   }, [itens]);
 
   const itensFiltrados = useMemo(() => {
     const termo = searchTerm.trim().toLowerCase();
     return itens.filter((item) => {
-      const matchTermo = !termo ||
-        item.produto_nome.toLowerCase().includes(termo) ||
-        (item.categoria || "").toLowerCase().includes(termo);
+      const matchTermo = !termo || item.produto_nome.toLowerCase().includes(termo);
       const matchCategoria = !categoriaFiltro || item.categoria === categoriaFiltro;
-      const quantidadeAtual = Number(item.quantidade_atual);
-      const matchStatus = statusFiltro === "todos" ||
-        (statusFiltro === "sem_estoque" && quantidadeAtual <= 0) ||
-        (statusFiltro === "com_estoque" && quantidadeAtual > 0);
-      const min = quantidadeMin !== "" ? Number(quantidadeMin) : null;
-      const max = quantidadeMax !== "" ? Number(quantidadeMax) : null;
-      const matchMin = min === null || quantidadeAtual >= min;
-      const matchMax = max === null || quantidadeAtual <= max;
-      return matchTermo && matchCategoria && matchStatus && matchMin && matchMax;
+      return matchTermo && matchCategoria;
     });
-  }, [itens, searchTerm, categoriaFiltro, statusFiltro, quantidadeMin, quantidadeMax]);
+  }, [itens, searchTerm, categoriaFiltro]);
 
-  const historicoFiltrado = useMemo(() => {
-    const termo = historicoBusca.trim().toLowerCase();
-    const inicio = historicoDataInicio ? new Date(historicoDataInicio) : null;
-    const fim = historicoDataFim ? new Date(historicoDataFim) : null;
-    if (inicio) {
-      inicio.setHours(0, 0, 0, 0);
-    }
-    if (fim) {
-      fim.setHours(23, 59, 59, 999);
-    }
-    return historicoItens.filter((mov) => {
-      const matchProduto = !historicoProdutoId || mov.produto_id === historicoProdutoId;
-      const matchTipo = !historicoTipo || mov.tipo_movimentacao === historicoTipo;
-      const matchTermo = !termo ||
-        (mov.usuario_nome || "").toLowerCase().includes(termo) ||
-        (mov.produto_nome || "").toLowerCase().includes(termo) ||
-        (mov.observacoes || "").toLowerCase().includes(termo);
-      const dataMov = new Date(mov.data_movimentacao);
-      const matchInicio = !inicio || dataMov >= inicio;
-      const matchFim = !fim || dataMov <= fim;
-      return matchProduto && matchTipo && matchTermo && matchInicio && matchFim;
-    });
-  }, [historicoItens, historicoProdutoId, historicoTipo, historicoBusca, historicoDataInicio, historicoDataFim]);
+  const metricas = useMemo<CompactMetric[]>(() => {
+    const baixos = itens.filter((item) => obterStatusEscolar(item).label === "Baixo").length;
+    const criticos = itens.filter((item) => obterStatusEscolar(item).label === "Critico").length;
+    const disponiveis = itens.filter((item) => Number(item.quantidade_atual) > 0).length;
 
-  const abrirMovimentacao = (item: EstoqueEscolarItem, tipo: "entrada" | "saida" | "ajuste") => {
-    setMovItem(item);
-    setMovTipo(tipo);
-    setMovQuantidade("");
-    setMovObservacoes("");
+    return [
+      { label: "Total de itens", value: itens.length },
+      { label: "Disponiveis", value: disponiveis },
+      { label: "Estoque baixo", value: baixos, tone: "warning" },
+      { label: "Critico", value: criticos, tone: "error" },
+    ];
+  }, [itens]);
+
+  const selecionarLinha = (item: EstoqueEscolarItem) => {
+    setSelectedItem((current) =>
+      current?.produto_id === item.produto_id ? null : item,
+    );
+  };
+
+  const abrirMovimentacao = (mode: MovimentoModo) => {
+    if (!selectedItem) {
+      return;
+    }
+
+    setMovMode(mode);
     setMovOpen(true);
   };
 
-  const fecharMovimentacao = () => {
-    setMovOpen(false);
-    setMovItem(null);
-  };
-
-  const salvarMovimentacao = async () => {
-    if (!movItem || !escolaId) return;
-    const qtd = Number(movQuantidade);
-    if (isNaN(qtd) || qtd <= 0) {
-      toast.warningRequired("Quantidade");
+  const salvarMovimentacao = async (payload: {
+    quantidade: number;
+    motivo: string;
+    observacao?: string;
+  }) => {
+    if (!selectedItem || !escolaId) {
       return;
     }
+
     try {
       setSaving(true);
       await registrarMovimentacao(Number(escolaId), {
-        produto_id: movItem.produto_id,
-        tipo_movimentacao: movTipo,
-        quantidade: qtd,
-        observacoes: movObservacoes || undefined
+        produto_id: selectedItem.produto_id,
+        tipo_movimentacao: movMode,
+        quantidade: payload.quantidade,
+        motivo: payload.motivo,
+        observacoes: payload.observacao,
+        origem: "central_operador",
       });
-      toast.successSave("Movimentação registrada.");
-      fecharMovimentacao();
-      await carregarEstoque(Number(escolaId));
+      toast.successSave("Movimentacao registrada.");
+      setMovOpen(false);
+      await carregarDados(Number(escolaId));
     } catch (error: any) {
-      toast.errorSave(error.message);
+      toast.errorSave(
+        error?.response?.data?.error ||
+          error?.message ||
+          "Erro ao registrar movimentacao.",
+      );
     } finally {
       setSaving(false);
     }
   };
 
-  const abrirHistorico = async (produtoId?: number) => {
-    if (!escolaId) return;
-    setHistoricoOpen(true);
-    setHistoricoProdutoId(produtoId || "");
-    setHistoricoTipo("");
-    setHistoricoBusca("");
-    setHistoricoDataInicio("");
-    setHistoricoDataFim("");
-    try {
-      setHistoricoLoading(true);
-      const data = await listarHistoricoEscola(Number(escolaId));
-      setHistoricoItens(data);
-    } catch {
-      toast.errorLoad("o histórico");
-      setHistoricoItens([]);
-    } finally {
-      setHistoricoLoading(false);
-    }
-  };
-
-  const limparFiltros = () => {
-    setSearchTerm("");
-    setCategoriaFiltro("");
-    setStatusFiltro("todos");
-    setQuantidadeMin("");
-    setQuantidadeMax("");
-  };
-
   return (
     <PageContainer>
-      <PageHeader
-        title="Estoque Escolar"
-        breadcrumbs={[{ label: 'Dashboard', path: '/dashboard' }, { label: 'Estoque' }, { label: 'Estoque Escolar' }]}
-      />
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: "28px",
+          flexWrap: "wrap",
+          gap: "12px",
+        }}
+      >
+        <Box>
+          <Typography
+            variant="h6"
+            sx={{ fontWeight: 500, fontSize: 20, color: "text.primary" }}
+          >
+            Estoque Escolar
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: "2px" }}>
+            Movimentacao e controle por unidade
+          </Typography>
+        </Box>
 
-      <Card sx={{ p: 3, mb: 3 }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={4}>
-            <FormControl fullWidth>
-              <InputLabel>Escola</InputLabel>
-              <Select
-                value={escolaId}
-                label="Escola"
-                onChange={(e) => setEscolaId(e.target.value as number)}
-              >
-                {escolas.map((e) => (
-                  <MenuItem key={e.id} value={e.id}>{e.nome}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} md={5}>
-            <TextField
-              fullWidth
-              placeholder="Buscar produto..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon />
-                  </InputAdornment>
-                )
-              }}
-            />
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <FormControl fullWidth>
-              <InputLabel>Categoria</InputLabel>
-              <Select
-                value={categoriaFiltro}
-                label="Categoria"
-                onChange={(e) => setCategoriaFiltro(e.target.value)}
-              >
-                <MenuItem value="">Todas</MenuItem>
-                {categorias.map((categoria) => (
-                  <MenuItem key={categoria} value={categoria}>{categoria}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <FormControl fullWidth>
-              <InputLabel>Status</InputLabel>
-              <Select
-                value={statusFiltro}
-                label="Status"
-                onChange={(e) => setStatusFiltro(e.target.value as "todos" | "com_estoque" | "sem_estoque")}
-              >
-                <MenuItem value="todos">Todos</MenuItem>
-                <MenuItem value="com_estoque">Com estoque</MenuItem>
-                <MenuItem value="sem_estoque">Sem estoque</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} md={2}>
-            <TextField
-              fullWidth
-              label="Qtd. mínima"
-              type="number"
-              value={quantidadeMin}
-              onChange={(e) => setQuantidadeMin(e.target.value)}
-              inputProps={{ min: 0, step: 0.001 }}
-            />
-          </Grid>
-          <Grid item xs={12} md={2}>
-            <TextField
-              fullWidth
-              label="Qtd. máxima"
-              type="number"
-              value={quantidadeMax}
-              onChange={(e) => setQuantidadeMax(e.target.value)}
-              inputProps={{ min: 0, step: 0.001 }}
-            />
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <Box sx={{ display: "flex", gap: 1 }}>
-              <Button fullWidth variant="outlined" onClick={limparFiltros}>
-                Limpar filtros
-              </Button>
-              <Button fullWidth variant="contained" onClick={() => abrirHistorico()} disabled={!escolaId}>
-                Histórico
-              </Button>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Typography sx={{ fontSize: 13, color: "text.secondary" }}>
+            Unidade
+          </Typography>
+          <FormControl size="small">
+            <Select
+              value={escolaId}
+              displayEmpty
+              onChange={(event) => setEscolaId(event.target.value as number)}
+              sx={compactSelectSx}
+            >
+              <MenuItem value="">Selecione</MenuItem>
+              {escolas.map((escola) => (
+                <MenuItem key={escola.id} value={escola.id}>
+                  {escola.nome}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+      </Box>
+
+      <CompactMetricsStrip metrics={metricas} />
+
+      <Paper
+        sx={{
+          position: "sticky",
+          top: "calc(var(--app-top-offset, 68px) + 8px)",
+          zIndex: (theme) => theme.zIndex.appBar + 2,
+          mb: 1.5,
+          border: "0.5px solid",
+          borderColor: "divider",
+          borderRadius: "10px",
+          overflow: "visible",
+          boxShadow: (theme) =>
+            theme.palette.mode === "dark"
+              ? "0 10px 24px rgba(0, 0, 0, 0.36)"
+              : "0 10px 24px rgba(15, 23, 42, 0.08)",
+          backgroundColor: "background.paper",
+          flexShrink: 0,
+        }}
+      >
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            p: "10px 14px",
+            backgroundColor: "background.paper",
+            borderRadius: "10px",
+            flexWrap: "wrap",
+          }}
+        >
+          <TextField
+            size="small"
+            placeholder="Buscar item..."
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            sx={{
+              flex: 1,
+              minWidth: 140,
+              backgroundColor: "background.default",
+              borderRadius: "6px",
+              "& .MuiOutlinedInput-root": {
+                borderRadius: "6px",
+                fontSize: 13,
+                "& fieldset": {
+                  border: "0.5px solid",
+                  borderColor: "action.selected",
+                },
+                "&.Mui-focused": {
+                  backgroundColor: "background.paper",
+                },
+                "&.Mui-focused fieldset": {
+                  borderColor: "primary.main",
+                },
+              },
+              "& .MuiInputBase-input": {
+                py: "7px",
+              },
+            }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchRounded sx={{ fontSize: 14, color: "text.disabled" }} />
+                </InputAdornment>
+              ),
+            }}
+          />
+
+          <FormControl size="small" sx={{ minWidth: 170 }}>
+            <Select
+              value={categoriaFiltro}
+              displayEmpty
+              onChange={(event) => setCategoriaFiltro(event.target.value)}
+              sx={toolbarControlSx}
+            >
+              <MenuItem value="">Todas as categorias</MenuItem>
+              {categorias.map((categoria) => (
+                <MenuItem key={categoria} value={categoria}>
+                  {categoria}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <CompactActionButton
+            startIcon={<AddCircleOutlineRounded />}
+            disabled={!selectedItem}
+            onClick={() => abrirMovimentacao("entrada")}
+            sx={actionStyles.entrada}
+          >
+            + Entrada
+          </CompactActionButton>
+          <CompactActionButton
+            startIcon={<RemoveCircleOutlineRounded />}
+            disabled={!selectedItem}
+            onClick={() => abrirMovimentacao("saida")}
+            sx={actionStyles.saida}
+          >
+            - Saida
+          </CompactActionButton>
+          <CompactActionButton
+            startIcon={<RuleFolderRounded />}
+            disabled={!selectedItem}
+            onClick={() => abrirMovimentacao("ajuste")}
+            sx={actionStyles.ajuste}
+          >
+            ⇄ Ajuste
+          </CompactActionButton>
+        </Box>
+      </Paper>
+
+      <Paper
+        sx={{
+          border: "0.5px solid",
+          borderColor: "divider",
+          borderRadius: "10px",
+          overflow: "hidden",
+          boxShadow: "none",
+          backgroundColor: "background.paper",
+        }}
+      >
+
+        <Box
+          sx={{
+            overflowX: "auto",
+            borderBottomLeftRadius: "10px",
+            borderBottomRightRadius: "10px",
+          }}
+        >
+          {loading ? (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 5 }}>
+              <CircularProgress />
             </Box>
-          </Grid>
-        </Grid>
-      </Card>
-
-      <Card sx={{ p: 2 }}>
-        {loading ? (
-          <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
-            <CircularProgress />
-          </Box>
-        ) : (
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Produto</TableCell>
-                  <TableCell>Unidade</TableCell>
-                  <TableCell align="right">Quantidade</TableCell>
-                  <TableCell align="center">Status</TableCell>
-                  <TableCell align="center">Ações</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {itensFiltrados.map((item) => {
-                  const semEstoque = Number(item.quantidade_atual) <= 0;
-                  return (
-                    <TableRow key={item.produto_id} hover>
-                      <TableCell>
-                        <Typography variant="body2" fontWeight="bold">{item.produto_nome}</Typography>
-                        <Typography variant="caption" color="text.secondary">{item.categoria}</Typography>
-                      </TableCell>
-                      <TableCell>{item.unidade}</TableCell>
-                      <TableCell align="right">
-                        <Typography variant="body2">
-                          {formatarQuantidade(item.quantidade_atual, item.unidade)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="center">
-                        <Chip size="small" label={semEstoque ? "Sem estoque" : "Disponível"} color={semEstoque ? "default" : "success"} />
-                      </TableCell>
-                      <TableCell align="center">
-                        <IconButton size="small" onClick={() => abrirMovimentacao(item, "entrada")}>
-                          <AddIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton size="small" onClick={() => abrirMovimentacao(item, "saida")}>
-                          <RemoveIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton size="small" onClick={() => abrirMovimentacao(item, "ajuste")}>
-                          <SwapHoriz fontSize="small" />
-                        </IconButton>
-                        <IconButton size="small" onClick={() => abrirHistorico(item.produto_id)}>
-                          <History fontSize="small" />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-                {itensFiltrados.length === 0 && (
+          ) : (
+            <TableContainer component={Box}>
+              <Table size="small">
+                <TableHead>
                   <TableRow>
-                    <TableCell colSpan={5}>
-                      <Typography variant="body2" color="text.secondary" textAlign="center">
-                        Nenhum item encontrado
-                      </Typography>
-                    </TableCell>
+                    {["Item", "Categoria", "Quantidade", "Minimo", "Status"].map(
+                      (column) => (
+                        <TableCell
+                          key={column}
+                          sx={{
+                            fontSize: 11,
+                            fontWeight: 500,
+                            color: "text.secondary",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.05em",
+                            p: "9px 16px",
+                            backgroundColor: "background.default",
+                            borderBottom: "0.5px solid",
+                            borderColor: "divider",
+                          }}
+                        >
+                          {column}
+                        </TableCell>
+                      ),
+                    )}
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
-      </Card>
+                </TableHead>
+                <TableBody>
+                  {itensFiltrados.map((item, index) => {
+                    const isSelected = selectedItem?.produto_id === item.produto_id;
+                    const status = obterStatusEscolar(item);
+                    const isLast = index === itensFiltrados.length - 1;
 
-      <Dialog open={movOpen} onClose={fecharMovimentacao} maxWidth="sm" fullWidth>
-        <DialogTitle>Movimentação de Estoque</DialogTitle>
-        <DialogContent>
-          <Box sx={{ mt: 2 }}>
-            <Typography variant="subtitle2">{movItem?.produto_nome}</Typography>
-            <Typography variant="caption" color="text.secondary">{movItem?.categoria}</Typography>
-          </Box>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12} md={4}>
-              <FormControl fullWidth>
-                <InputLabel>Tipo</InputLabel>
-                <Select value={movTipo} label="Tipo" onChange={(e) => setMovTipo(e.target.value as any)}>
-                  <MenuItem value="entrada">Entrada</MenuItem>
-                  <MenuItem value="saida">Saída</MenuItem>
-                  <MenuItem value="ajuste">Ajuste</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} md={8}>
-              <TextField
-                label="Quantidade"
-                type="number"
-                fullWidth
-                value={movQuantidade}
-                onChange={(e) => setMovQuantidade(e.target.value)}
-                inputProps={{ min: 0, step: 0.001 }}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField label="Observações" fullWidth value={movObservacoes} onChange={(e) => setMovObservacoes(e.target.value)} />
-            </Grid>
-          </Grid>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={fecharMovimentacao}>Cancelar</Button>
-          <Button variant="contained" onClick={salvarMovimentacao} disabled={saving}>
-            {saving ? <CircularProgress size={22} /> : "Salvar"}
-          </Button>
-        </DialogActions>
-      </Dialog>
-      <Dialog open={historicoOpen} onClose={() => setHistoricoOpen(false)} maxWidth="lg" fullWidth>
-        <DialogTitle>Histórico de Movimentações</DialogTitle>
-        <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12} md={4}>
-              <FormControl fullWidth>
-                <InputLabel>Produto</InputLabel>
-                <Select
-                  value={historicoProdutoId}
-                  label="Produto"
-                  onChange={(e) => setHistoricoProdutoId(e.target.value === "" ? "" : Number(e.target.value))}
-                >
-                  <MenuItem value="">Todos</MenuItem>
-                  {produtosOrdenados.map((produto) => (
-                    <MenuItem key={produto.id} value={produto.id}>{produto.nome}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} md={3}>
-              <FormControl fullWidth>
-                <InputLabel>Tipo</InputLabel>
-                <Select
-                  value={historicoTipo}
-                  label="Tipo"
-                  onChange={(e) => setHistoricoTipo(e.target.value)}
-                >
-                  <MenuItem value="">Todos</MenuItem>
-                  <MenuItem value="entrada">Entrada</MenuItem>
-                  <MenuItem value="saida">Saída</MenuItem>
-                  <MenuItem value="ajuste">Ajuste</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} md={5}>
-              <TextField
-                fullWidth
-                placeholder="Buscar observação, usuário..."
-                value={historicoBusca}
-                onChange={(e) => setHistoricoBusca(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon />
-                    </InputAdornment>
-                  )
-                }}
-              />
-            </Grid>
-            <Grid item xs={12} md={3}>
-              <TextField
-                fullWidth
-                label="Data início"
-                type="date"
-                value={historicoDataInicio}
-                onChange={(e) => setHistoricoDataInicio(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-              />
-            </Grid>
-            <Grid item xs={12} md={3}>
-              <TextField
-                fullWidth
-                label="Data fim"
-                type="date"
-                value={historicoDataFim}
-                onChange={(e) => setHistoricoDataFim(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-              />
-            </Grid>
-          </Grid>
-          <Box sx={{ mt: 3 }}>
-            {historicoLoading ? (
-              <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
-                <CircularProgress />
-              </Box>
-            ) : (
-              <TableContainer component={Paper}>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Data/Hora</TableCell>
-                      <TableCell>Produto</TableCell>
-                      <TableCell align="center">Tipo</TableCell>
-                      <TableCell align="right">Qtd. Anterior</TableCell>
-                      <TableCell align="right">Qtd. Mov.</TableCell>
-                      <TableCell align="right">Qtd. Posterior</TableCell>
-                      <TableCell>Usuário</TableCell>
-                      <TableCell>Observações</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {historicoFiltrado.map((mov) => (
-                      <TableRow key={mov.id}>
-                        <TableCell>{formatarDataHora(mov.data_movimentacao)}</TableCell>
-                        <TableCell>{mov.produto_nome || "-"}</TableCell>
-                        <TableCell align="center">
-                          <Chip
-                            size="small"
-                            label={getTipoMovimentacaoLabel(mov.tipo_movimentacao)}
-                            color={getTipoMovimentacaoColor(mov.tipo_movimentacao) as any}
-                          />
-                        </TableCell>
-                        <TableCell align="right">
-                          {formatarQuantidade(mov.quantidade_anterior, unidadePorProduto.get(mov.produto_id) || "un")}
-                        </TableCell>
-                        <TableCell align="right">
-                          {formatarQuantidade(mov.quantidade_movimentada, unidadePorProduto.get(mov.produto_id) || "un")}
-                        </TableCell>
-                        <TableCell align="right">
-                          {formatarQuantidade(mov.quantidade_posterior, unidadePorProduto.get(mov.produto_id) || "un")}
-                        </TableCell>
-                        <TableCell>{mov.usuario_nome || "-"}</TableCell>
-                        <TableCell>{mov.observacoes || "-"}</TableCell>
-                      </TableRow>
-                    ))}
-                    {historicoFiltrado.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={8}>
-                          <Typography variant="body2" color="text.secondary" textAlign="center">
-                            Nenhuma movimentação encontrada
+                    return (
+                      <TableRow
+                        key={item.produto_id}
+                        hover
+                        selected={isSelected}
+                        onClick={() => selecionarLinha(item)}
+                        sx={(theme) => {
+                          const selectedBg =
+                            theme.palette.mode === "dark"
+                              ? "rgba(24, 95, 165, 0.32)"
+                              : "#E6F1FB";
+                          const hoverBg =
+                            theme.palette.mode === "dark"
+                              ? "rgba(255, 255, 255, 0.06)"
+                              : theme.palette.background.default;
+
+                          return {
+                            cursor: "pointer",
+                            backgroundColor: isSelected ? selectedBg : "inherit",
+                            "&:hover": {
+                              backgroundColor: isSelected ? selectedBg : hoverBg,
+                            },
+                            "&.Mui-selected, &.Mui-selected:hover": {
+                              backgroundColor: selectedBg,
+                            },
+                            "& td": {
+                              p: "10px 16px",
+                              borderBottom: isLast ? 0 : "0.5px solid",
+                              borderColor: "divider",
+                            },
+                          };
+                        }}
+                      >
+                        <TableCell>
+                          <Typography sx={{ fontWeight: 500, fontSize: 13 }}>
+                            {item.produto_nome}
                           </Typography>
                         </TableCell>
+                        <TableCell>
+                          <CategoryPill label={item.categoria || "Sem categoria"} />
+                        </TableCell>
+                        <TableCell
+                          sx={{
+                            fontVariantNumeric: "tabular-nums",
+                            fontSize: 13,
+                          }}
+                        >
+                          {formatarQuantidade(item.quantidade_atual, item.unidade)}
+                        </TableCell>
+                        <TableCell sx={{ color: "text.secondary", fontSize: 13 }}>
+                          {formatarQuantidade(item.quantidade_minima || 0, item.unidade)}
+                        </TableCell>
+                        <TableCell>
+                          <DotStatus label={status.label} tone={status.tone} />
+                        </TableCell>
                       </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setHistoricoOpen(false)}>Fechar</Button>
-        </DialogActions>
-      </Dialog>
+                    );
+                  })}
+                  {!itensFiltrados.length ? (
+                    <TableRow>
+                      <TableCell colSpan={5} sx={{ borderBottom: 0 }}>
+                        <Typography
+                          textAlign="center"
+                          color="text.secondary"
+                          sx={{ py: 4, fontSize: 13 }}
+                        >
+                          Nenhum item encontrado.
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </Box>
+      </Paper>
+
+      <StockMovementDialog
+        open={movOpen}
+        mode={movMode}
+        title={dialogTitleByMode[movMode]}
+        produtoNome={selectedItem?.produto_nome}
+        produtoId={selectedItem?.produto_id}
+        unidade={selectedItem?.unidade || "UN"}
+        saldoAtual={Number(selectedItem?.quantidade_atual || 0)}
+        saving={saving}
+        requireMotivo={false}
+        confirmColor={
+          movMode === "entrada" ? "#185FA5" : movMode === "saida" ? "#A32D2D" : "#854F0B"
+        }
+        onClose={() => setMovOpen(false)}
+        onSubmit={salvarMovimentacao}
+      />
     </PageContainer>
   );
 };

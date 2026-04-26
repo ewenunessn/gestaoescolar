@@ -1,5 +1,10 @@
 import { Router } from 'express';
 import { guiaController } from '../controllers/guiaController';
+import {
+  buscarStatusGeracaoGuiaDemanda,
+  gerarGuiaDemanda,
+  iniciarGeracaoGuiaDemanda,
+} from '../controllers/guiaDemandaGenerationController';
 import { authenticateToken } from '../../../middleware/authMiddleware';
 import { requireLeitura, requireEscrita } from '../../../middleware/permissionMiddleware';
 
@@ -17,6 +22,7 @@ router.get('/test', (req, res) => {
 router.get('/competencias', requireLeitura('guias'), guiaController.listarCompetencias);
 router.get('/status-escolas', requireLeitura('guias'), guiaController.listarStatusEscolas);
 router.get('/romaneio', requireLeitura('guias'), guiaController.listarRomaneio);
+router.get('/geracao-demanda/jobs/:id', requireLeitura('guias'), buscarStatusGeracaoGuiaDemanda);
 router.get('/', requireLeitura('guias'), guiaController.listarGuias);
 router.get('/:id', requireLeitura('guias'), guiaController.buscarGuia);
 router.get('/:guiaId/produtos', requireLeitura('guias'), guiaController.listarProdutosGuia);
@@ -26,6 +32,8 @@ router.get('/:guiaId/ajuste', requireLeitura('guias'), guiaController.listarIten
 
 // Rotas de guias - ESCRITA
 router.post('/', requireEscrita('guias'), guiaController.criarGuia);
+router.post('/geracao-demanda', requireEscrita('guias'), gerarGuiaDemanda);
+router.post('/geracao-demanda/async', requireEscrita('guias'), iniciarGeracaoGuiaDemanda);
 router.put('/:id', requireEscrita('guias'), guiaController.atualizarGuia);
 router.delete('/:id', requireEscrita('guias'), guiaController.deletarGuia);
 router.post('/:guiaId/produtos', requireEscrita('guias'), guiaController.adicionarProdutoGuia);

@@ -21,17 +21,20 @@ import { registerApiRoutes } from "./routes/registerApiRoutes";
 import { createServer } from 'http';
 import { initRedis } from "./config/redis";
 import { createGuiaTables, createEssentialTables } from "./modules/guias/models/Guia";
+import { ensureEstoqueLedgerSchema } from "./modules/estoque/services/estoqueSchemaService";
 
 import db from "./database";
 
 // Normalizar CORS origins â€” remover entradas nÃ£o-string para seguranÃ§a
 const rawOrigin = config.backend.cors.origin;
-const allowedOrigins = Array.isArray(rawOrigin)
-  ? rawOrigin.filter((o): o is string => typeof o === 'string')
-  : [String(rawOrigin)];
+const corsOrigin = typeof rawOrigin === 'boolean'
+  ? rawOrigin
+  : Array.isArray(rawOrigin)
+    ? rawOrigin.filter((o): o is string => typeof o === 'string')
+    : [String(rawOrigin)];
 
 const corsOptions = {
-  origin: allowedOrigins,
+  origin: corsOrigin,
   credentials: config.backend.cors.credentials,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   allowedHeaders: [
@@ -273,6 +276,7 @@ async function iniciarServidor() {
 
       try {
         await ensureProdutoComposicaoNutricionalTable();
+        await ensureEstoqueLedgerSchema();
       } catch (e) {
         console.error('âš ï¸ Falha ao garantir tabela produto_composicao_nutricional (continuando):', e);
       }
@@ -343,6 +347,7 @@ if (process.env.VERCEL === '1') {
       await createEssentialTables();
       await createGuiaTables();
       await ensureProdutoComposicaoNutricionalTable();
+      await ensureEstoqueLedgerSchema();
       console.log('âœ… Schema essencial garantido (Vercel)');
     } catch (e) {
       console.error('âš ï¸ Falha ao inicializar schema (Vercel):', e);

@@ -78,8 +78,10 @@ export default function FaturamentosPedido() {
         }
         
         const resumo = faturamentosMap.get(fat.faturamento_id)!;
-        resumo.total_itens++;
-        resumo.valor_total += Number(fat.valor_total);
+        if (fat.item_id) {
+          resumo.total_itens++;
+          resumo.valor_total += Number(fat.valor_total);
+        }
       });
 
       // Contar modalidades únicas por faturamento
@@ -96,7 +98,9 @@ export default function FaturamentosPedido() {
         if (!modalidadesPorFaturamento.has(fat.faturamento_id)) {
           modalidadesPorFaturamento.set(fat.faturamento_id, new Set());
         }
-        modalidadesPorFaturamento.get(fat.faturamento_id)!.add(fat.modalidade_id);
+        if (fat.modalidade_id) {
+          modalidadesPorFaturamento.get(fat.faturamento_id)!.add(fat.modalidade_id);
+        }
       });
 
       modalidadesPorFaturamento.forEach((modalidades, fatId) => {
