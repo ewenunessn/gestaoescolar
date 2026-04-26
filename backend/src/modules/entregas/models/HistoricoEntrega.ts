@@ -1,4 +1,5 @@
 import db from '../../../database';
+import type { PoolClient } from 'pg';
 
 export interface HistoricoEntregaRecord {
   id: number;
@@ -59,8 +60,12 @@ class HistoricoEntregaModel {
   /**
    * Criar um novo registro de entrega
    */
-  async criar(dados: CriarHistoricoEntregaData): Promise<HistoricoEntregaRecord> {
-    const result = await db.query(`
+  async criar(
+    dados: CriarHistoricoEntregaData,
+    client?: PoolClient,
+  ): Promise<HistoricoEntregaRecord> {
+    const query = client ? client.query.bind(client) : db.query;
+    const result = await query(`
       INSERT INTO historico_entregas (
         guia_produto_escola_id,
         quantidade_entregue,
@@ -86,7 +91,7 @@ class HistoricoEntregaModel {
     ]);
 
     // Atualizar quantidade total entregue no item
-    await db.query(`
+    await query(`
       UPDATE guia_produto_escola
       SET 
         quantidade_total_entregue = (

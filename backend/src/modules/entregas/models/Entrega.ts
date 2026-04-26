@@ -1,5 +1,7 @@
 import db from '../../../database';
+import type { PoolClient } from 'pg';
 import HistoricoEntregaModel from './HistoricoEntrega';
+import estoqueLedgerService from '../../estoque/services/estoqueLedgerService';
 
 export interface EscolaEntrega {
   id: number;
@@ -228,8 +230,13 @@ class EntregaModel {
     return result.rows;
   }
 
-  async buscarItemEntrega(itemId: number): Promise<ItemEntrega | null> {
-    const result = await db.query(`
+  async buscarItemEntrega(
+    itemId: number,
+    client?: PoolClient,
+    lockRow = false,
+  ): Promise<ItemEntrega | null> {
+    const query = client ? client.query.bind(client) : db.query;
+    const result = await query(`
       SELECT 
         gpe.*,
         p.nome as produto_nome,
@@ -243,99 +250,144 @@ class EntregaModel {
       INNER JOIN guias g ON gpe.guia_id = g.id
       INNER JOIN escolas e ON gpe.escola_id = e.id
       WHERE gpe.id = $1
+      ${lockRow ? 'FOR UPDATE OF gpe' : ''}
     `, [itemId]);
     return result.rows[0] || null;
   }
 
   async confirmarEntrega(itemId: number, dados: ConfirmarEntregaData): Promise<ItemEntrega & { historico_id?: number }> {
-    // Verificar se o item existe e pode ser entregue
-    const item = await this.buscarItemEntrega(itemId);
-    if (!item) {
-      throw new Error('Item não encontrado');
-    }
+    return db.transaction(async (client) => {
+      const item = await this.buscarItemEntrega(itemId, client, true);
+      if (!item) {
+        throw new Error('Item nao encontrado');
+      }
 
-    if (!item.para_entrega) {
-      throw new Error('Este item não está marcado para entrega');
-    }
+      if (!item.para_entrega) {
+        throw new Error('Este item nao esta marcado para entrega');
+      }
 
-    // Verificar saldo disponível
-    const saldoResult = await db.query(`
-      SELECT 
-        quantidade,
-        COALESCE(quantidade_total_entregue, 0) as quantidade_entregue,
-        (quantidade - COALESCE(quantidade_total_entregue, 0)) as saldo_pendente
-      FROM guia_produto_escola
-      WHERE id = $1
-    `, [itemId]);
+      const saldoPendente = Number(item.quantidade) - Number(item.quantidade_total_entregue || 0);
+      if (dados.quantidade_entregue > saldoPendente) {
+        throw new Error(
+          `Quantidade a entregar (${dados.quantidade_entregue}) e maior que o saldo pendente (${saldoPendente})`
+        );
+      }
 
-    const saldo = saldoResult.rows[0];
-    
-    if (dados.quantidade_entregue > saldo.saldo_pendente) {
-      throw new Error(
-        `Quantidade a entregar (${dados.quantidade_entregue}) é maior que o saldo pendente (${saldo.saldo_pendente})`
-      );
-    }
+      await estoqueLedgerService.registrarTransferenciaParaEscolaWithClient(client, {
+        escola_id: Number(item.escola_id),
+        produto_id: Number(item.produto_id),
+        quantidade: Number(dados.quantidade_entregue),
+        motivo: dados.observacao || 'Entrega confirmada',
+        observacao: dados.observacao || undefined,
+        referencia_tipo: 'guia_produto_escola',
+        referencia_id: Number(itemId),
+        usuario_nome_snapshot: dados.nome_quem_entregou,
+      });
 
-    // Criar registro no histórico de entregas
-    const historico = await HistoricoEntregaModel.criar({
-      guia_produto_escola_id: itemId,
-      quantidade_entregue: dados.quantidade_entregue,
-      nome_quem_entregou: dados.nome_quem_entregou,
-      nome_quem_recebeu: dados.nome_quem_recebeu,
-      observacao: dados.observacao,
-      assinatura_base64: dados.assinatura_base64,
-      latitude: dados.latitude,
-      longitude: dados.longitude,
-      precisao_gps: dados.precisao_gps
+      const historico = await HistoricoEntregaModel.criar({
+        guia_produto_escola_id: itemId,
+        quantidade_entregue: dados.quantidade_entregue,
+        nome_quem_entregou: dados.nome_quem_entregou,
+        nome_quem_recebeu: dados.nome_quem_recebeu,
+        observacao: dados.observacao,
+        assinatura_base64: dados.assinatura_base64,
+        latitude: dados.latitude,
+        longitude: dados.longitude,
+        precisao_gps: dados.precisao_gps
+      }, client);
+
+      const updatedItem = await this.buscarItemEntrega(itemId, client);
+      if (!updatedItem) {
+        throw new Error('Erro ao buscar item atualizado');
+      }
+
+      return {
+        ...updatedItem,
+        historico_id: historico.id
+      };
     });
-
-    // Buscar item atualizado
-    const updatedItem = await this.buscarItemEntrega(itemId);
-    if (!updatedItem) {
-      throw new Error('Erro ao buscar item atualizado');
-    }
-    
-    // Adicionar o ID do histórico ao retorno
-    return {
-      ...updatedItem,
-      historico_id: historico.id
-    };
   }
 
   async cancelarEntrega(itemId: number): Promise<ItemEntrega> {
-    // Verificar se o item existe
-    const item = await this.buscarItemEntrega(itemId);
-    if (!item) {
-      throw new Error('Item não encontrado');
-    }
+    return db.transaction(async (client) => {
+      const item = await this.buscarItemEntrega(itemId, client, true);
+      if (!item) {
+        throw new Error('Item nao encontrado');
+      }
 
-    if (!item.entrega_confirmada) {
-      throw new Error('Este item não foi entregue ainda');
-    }
+      const historicoResult = await client.query(`
+        SELECT COALESCE(SUM(quantidade_entregue), 0) AS quantidade_entregue
+        FROM historico_entregas
+        WHERE guia_produto_escola_id = $1
+      `, [itemId]);
+      const quantidadeEntregue = Number(historicoResult.rows[0]?.quantidade_entregue ?? 0);
 
-    // Cancelar a entrega
-    await db.query(`
-      UPDATE guia_produto_escola 
-      SET 
-        entrega_confirmada = false,
-        status = 'pendente',
-        quantidade_entregue = NULL,
-        data_entrega = NULL,
-        nome_quem_entregou = NULL,
-        nome_quem_recebeu = NULL,
-        observacao_entrega = NULL,
-        latitude = NULL,
-        longitude = NULL,
-        precisao_gps = NULL,
-        updated_at = NOW()
-      WHERE id = $1
-    `, [itemId]);
+      if (quantidadeEntregue <= 0) {
+        throw new Error('Este item nao foi entregue ainda');
+      }
 
-    const updatedItem = await this.buscarItemEntrega(itemId);
-    if (!updatedItem) {
-      throw new Error('Erro ao buscar item atualizado');
-    }
-    return updatedItem;
+      const saldoEscola = await estoqueLedgerService.getCurrentBalanceWithClient(
+        client,
+        'escola',
+        Number(item.produto_id),
+        Number(item.escola_id),
+      );
+      if (saldoEscola < quantidadeEntregue) {
+        throw new Error('Saldo escolar insuficiente para estornar esta entrega');
+      }
+
+      await estoqueLedgerService.appendEventWithClient(client, {
+        escopo: 'escola',
+        escola_id: Number(item.escola_id),
+        produto_id: Number(item.produto_id),
+        tipo_evento: 'estorno_evento',
+        origem: 'estorno',
+        quantidade_delta: quantidadeEntregue * -1,
+        motivo: 'Cancelamento de entrega',
+        referencia_tipo: 'guia_produto_escola',
+        referencia_id: Number(itemId),
+      });
+
+      await estoqueLedgerService.appendEventWithClient(client, {
+        escopo: 'central',
+        produto_id: Number(item.produto_id),
+        tipo_evento: 'estorno_evento',
+        origem: 'estorno',
+        quantidade_delta: quantidadeEntregue,
+        motivo: 'Cancelamento de entrega',
+        referencia_tipo: 'guia_produto_escola',
+        referencia_id: Number(itemId),
+      });
+
+      await client.query(`
+        DELETE FROM historico_entregas
+        WHERE guia_produto_escola_id = $1
+      `, [itemId]);
+
+      await client.query(`
+        UPDATE guia_produto_escola
+        SET
+          entrega_confirmada = false,
+          status = 'pendente',
+          quantidade_total_entregue = 0,
+          quantidade_entregue = NULL,
+          data_entrega = NULL,
+          nome_quem_entregou = NULL,
+          nome_quem_recebeu = NULL,
+          observacao_entrega = NULL,
+          latitude = NULL,
+          longitude = NULL,
+          precisao_gps = NULL,
+          updated_at = NOW()
+        WHERE id = $1
+      `, [itemId]);
+
+      const updatedItem = await this.buscarItemEntrega(itemId, client);
+      if (!updatedItem) {
+        throw new Error('Erro ao buscar item atualizado');
+      }
+      return updatedItem;
+    });
   }
 
   async obterEstatisticasEntregas(guiaId?: number, rotaId?: number, dataEntrega?: string, dataInicio?: string, dataFim?: string, somentePendentes?: boolean): Promise<any> {
