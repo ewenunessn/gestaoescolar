@@ -15,13 +15,60 @@ import { Instituicao } from '../services/instituicao';
 
 // ─── Cores padrão do sistema (mesmas usadas em CompraDetalhe, CardapioCalendario) ─
 export const PDF_COLORS = {
-  headerBg:   '#2d3748', // cabeçalho de tabela
+  headerBg:   '#1f2937', // cabeçalho de tabela
   headerText: '#ffffff',
-  stripe:     '#f7f8fa', // linhas alternadas
-  border:     '#e2e8f0', // bordas
-  accent:     '#4a5568', // subtítulos / linhas secundárias
-  dark:       '#1a202c', // totais / destaque
-  divider:    '#e2e8f0',
+  stripe:     '#f8fafc', // linhas alternadas
+  border:     '#525252', // bordas
+  accent:     '#475569', // subtítulos / linhas secundárias
+  dark:       '#111827', // totais / destaque
+  divider:    '#525252',
+  mutedBg:    '#f8fafc',
+  panelBg:    '#f9fafb',
+  subtle:     '#94a3b8',
+  lightBar:   '#cbd5e1',
+};
+
+export type PdfPageOrientation = 'portrait' | 'landscape';
+export type PdfPageMargins = [number, number, number, number];
+
+const A4_SIZE = {
+  portrait: { width: 595.28, height: 841.89 },
+  landscape: { width: 841.89, height: 595.28 },
+};
+
+const DEFAULT_PAGE_MARGINS: Record<PdfPageOrientation, PdfPageMargins> = {
+  portrait: [36, 34, 36, 58],
+  landscape: [32, 28, 32, 52],
+};
+
+export const PAGE = {
+  width: A4_SIZE.portrait.width,
+  height: A4_SIZE.portrait.height,
+  marginLeft: DEFAULT_PAGE_MARGINS.portrait[0],
+  marginTop: DEFAULT_PAGE_MARGINS.portrait[1],
+  marginRight: DEFAULT_PAGE_MARGINS.portrait[2],
+  marginBottom: DEFAULT_PAGE_MARGINS.portrait[3],
+  contentWidth: A4_SIZE.portrait.width - DEFAULT_PAGE_MARGINS.portrait[0] - DEFAULT_PAGE_MARGINS.portrait[2],
+};
+
+export const getDefaultPdfMargins = (orientation: PdfPageOrientation = 'portrait'): PdfPageMargins => (
+  [...DEFAULT_PAGE_MARGINS[orientation]] as PdfPageMargins
+);
+
+export const getPdfPageMetrics = (
+  orientation: PdfPageOrientation = 'portrait',
+  pageMargins?: PdfPageMargins,
+) => {
+  const margins = pageMargins || getDefaultPdfMargins(orientation);
+  const page = A4_SIZE[orientation];
+
+  return {
+    pageWidth: page.width,
+    pageHeight: page.height,
+    margins,
+    contentWidth: page.width - margins[0] - margins[2],
+    contentHeight: page.height - margins[1] - margins[3],
+  };
 };
 
 let pdfMakePromise: Promise<any> | null = null;
@@ -173,7 +220,7 @@ export interface PdfDocOptions {
   /** Conteúdo principal do documento (array de elementos pdfmake) */
   content: any[];
   /** Orientação da página (padrão: portrait) */
-  orientation?: 'portrait' | 'landscape';
+  orientation?: PdfPageOrientation;
   /** Mostrar assinatura do secretário no rodapé da última página */
   showSignature?: boolean;
   /** Estilos adicionais que se somam ao padrão */
@@ -181,7 +228,7 @@ export interface PdfDocOptions {
   /** Rodapé customizado (substitui o padrão) */
   customFooter?: (currentPage: number, pageCount: number) => any;
   /** Margens customizadas [left, top, right, bottom] (substitui o padrão) */
-  pageMargins?: [number, number, number, number];
+  pageMargins?: PdfPageMargins;
 }
 
 // ─── Helpers internos ─────────────────────────────────────────────────────────
@@ -212,20 +259,28 @@ export const buildHeader = (
   instituicao: Instituicao | null, 
   title: string, 
   subtitle?: string,
-  orientation: 'portrait' | 'landscape' = 'portrait'
+  orientation: PdfPageOrientation = 'portrait',
+  pageMargins?: PdfPageMargins,
 ): any => {
   const nome = instituicao?.nome || 'Secretaria Municipal de Educação';
   const logoUrl = instituicao?.logo_url ? processImageUrl(instituicao.logo_url) : null;
   
   // Ajustar tamanhos para modo paisagem
   const isLandscape = orientation === 'landscape';
-  const logoHeight = isLandscape ? 35 : 48;
-  const logoWidth = isLandscape ? 90 : 120;
-  const titleFontSize = isLandscape ? 14 : 16;
-  const subtitleFontSize = isLandscape ? 11 : 12;
-  const instFontSize = isLandscape ? 12 : 14;
-  const deptFontSize = isLandscape ? 9 : 10;
-  const lineWidth = isLandscape ? 755 : 515; // A4 landscape width - margins
+  const { contentWidth } = getPdfPageMetrics(orientation, pageMargins);
+  const logoHeight = isLandscape ? 38 : 48;
+  const logoWidth = isLandscape ? 112 : 120;
+  const logoColumnWidth = logoUrl
+    ? Math.min(isLandscape ? 150 : 142, Math.max(112, contentWidth * 0.28))
+    : 0;
+  const rightColumnWidth = Math.min(
+    isLandscape ? 270 : 190,
+    Math.max(isLandscape ? 210 : 155, contentWidth * 0.36),
+  );
+  const titleFontSize = isLandscape ? 14 : 15;
+  const subtitleFontSize = isLandscape ? 9.5 : 10.5;
+  const instFontSize = isLandscape ? 12.5 : 13.5;
+  const deptFontSize = isLandscape ? 8.5 : 9.5;
 
   // Construir conteúdo da primeira célula (logo + linha vertical)
   const logoCell: any = logoUrl
@@ -243,10 +298,10 @@ export const buildHeader = (
               lineColor: PDF_COLORS.headerBg,
             }],
             width: 1.5,
-            margin: [8, 0, 0, 0],
+            margin: [10, 0, 0, 0],
           },
         ],
-        columnGap: 0,
+        columnGap: 2,
       }
     : { text: '' };
 
@@ -258,33 +313,61 @@ export const buildHeader = (
         ? [{ text: instituicao.departamento, fontSize: deptFontSize, color: PDF_COLORS.accent, margin: [0, 1, 0, 0] }]
         : []),
     ],
-    margin: [12, 0, 0, 0],
+    margin: [logoUrl ? 12 : 0, 2, 8, 0],
   };
 
   // Terceira célula: rota e período
   const rightCell: any = {
     stack: [
-      { text: title, fontSize: titleFontSize, bold: true, color: PDF_COLORS.headerBg, alignment: 'right' },
-      ...(subtitle ? [{ text: subtitle, fontSize: subtitleFontSize, color: PDF_COLORS.accent, alignment: 'right', margin: [0, 2, 0, 0] }] : []),
+      { text: title, fontSize: titleFontSize, bold: true, color: PDF_COLORS.headerBg, alignment: 'right', lineHeight: 1.05 },
+      ...(subtitle ? [{ text: subtitle, fontSize: subtitleFontSize, color: PDF_COLORS.accent, alignment: 'right', margin: [0, 3, 0, 0], lineHeight: 1.1 }] : []),
     ],
+    margin: [8, 2, 0, 0],
   };
+
+  const body = logoUrl
+    ? [[logoCell, instCell, rightCell]]
+    : [[instCell, rightCell]];
+  const widths = logoUrl
+    ? [logoColumnWidth, '*', rightColumnWidth]
+    : ['*', rightColumnWidth];
 
   return [
     {
-      table: {
-        widths: [logoUrl ? (isLandscape ? 100 : 130) : 0, '*', isLandscape ? 200 : 160],
-        body: [[logoCell, instCell, rightCell]],
-      },
-      layout: 'noBorders',
-      margin: [0, 0, 0, isLandscape ? 4 : 8],
+      stack: [
+        {
+          canvas: [
+            { type: 'rect', x: 0, y: 0, w: contentWidth * 0.58, h: 4, color: PDF_COLORS.headerBg },
+            { type: 'rect', x: contentWidth * 0.58, y: 0, w: contentWidth * 0.27, h: 4, color: PDF_COLORS.accent },
+            { type: 'rect', x: contentWidth * 0.85, y: 0, w: contentWidth * 0.15, h: 4, color: PDF_COLORS.lightBar },
+          ],
+          margin: [0, 0, 0, 8],
+        },
+        {
+          table: {
+            widths,
+            body,
+          },
+          layout: {
+            paddingLeft: () => 0,
+            paddingRight: () => 0,
+            paddingTop: () => 0,
+            paddingBottom: () => 0,
+            hLineWidth: () => 0,
+            vLineWidth: () => 0,
+          },
+        },
+      ],
+      margin: [0, 0, 0, 10],
+      unbreakable: true,
     },
     {
       canvas: [{
-        type: 'line', x1: 0, y1: 0, x2: lineWidth, y2: 0,
-        lineWidth: 1.5, lineColor: PDF_COLORS.headerBg,
+        type: 'line', x1: 0, y1: 0, x2: contentWidth, y2: 0,
+        lineWidth: 1.2, lineColor: PDF_COLORS.headerBg,
       }],
+      margin: [0, 0, 0, 12],
     },
-    { text: '', margin: [0, isLandscape ? 3 : 6, 0, 0] },
   ];
 };
 
@@ -293,16 +376,20 @@ export const buildHeader = (
 export const buildFooter = (
   instituicao: Instituicao | null,
   showSignature: boolean,
-  totalPages: number
+  totalPages: number,
+  orientation: PdfPageOrientation = 'portrait',
+  pageMargins?: PdfPageMargins,
 ) => (currentPage: number, pageCount: number): any => {
   const nome = instituicao?.nome || 'Sistema de Gestão de Alimentação Escolar';
   const endereco = instituicao?.endereco || '';
   const geradoEm = new Date().toLocaleDateString('pt-BR');
+  const { contentWidth, margins } = getPdfPageMetrics(orientation, pageMargins);
+  const horizontalMargin = [margins[0], 0, margins[2], 0];
 
   const footerItems: any[] = [
     {
-      canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.4, lineColor: PDF_COLORS.divider }],
-      margin: [40, 0, 40, 4],
+      canvas: [{ type: 'line', x1: 0, y1: 0, x2: contentWidth, y2: 0, lineWidth: 0.4, lineColor: PDF_COLORS.divider }],
+      margin: [margins[0], 0, margins[2], 5],
     },
     {
       columns: [
@@ -315,9 +402,12 @@ export const buildFooter = (
         },
         { text: `Gerado em ${geradoEm} · Página ${currentPage} de ${pageCount}`, fontSize: 7, color: '#a0aec0', alignment: 'right' },
       ],
-      margin: [40, 0, 40, 0],
+      margin: horizontalMargin,
     },
   ];
+
+  footerItems[1].columns[1].text = `Gerado em ${geradoEm} - Pagina ${currentPage} de ${pageCount}`;
+  footerItems[1].columns[1].color = '#94a3b8';
 
   if (showSignature && instituicao?.secretario_nome && currentPage === pageCount) {
     footerItems.push({
@@ -333,7 +423,7 @@ export const buildFooter = (
         },
         { text: '', width: '*' },
       ],
-      margin: [40, 8, 40, 0],
+      margin: [margins[0], 8, margins[2], 0],
     });
   }
 
@@ -341,6 +431,75 @@ export const buildFooter = (
 };
 
 // ─── Estilos padrão ───────────────────────────────────────────────────────────
+
+interface PdfQrFooterOptions {
+  instituicao: Instituicao | null;
+  qrCodeDataUrl?: string | null;
+  qrLabel?: string;
+  footerNote?: string;
+  orientation?: PdfPageOrientation;
+  pageMargins?: PdfPageMargins;
+}
+
+export const buildQrFooter = ({
+  instituicao,
+  qrCodeDataUrl,
+  qrLabel,
+  footerNote,
+  orientation = 'portrait',
+  pageMargins,
+}: PdfQrFooterOptions) => (currentPage: number, pageCount: number): any => {
+  const nome = instituicao?.nome || 'Sistema de Gestao de Alimentacao Escolar';
+  const endereco = instituicao?.endereco || '';
+  const geradoEm = new Date().toLocaleDateString('pt-BR');
+  const { contentWidth, margins } = getPdfPageMetrics(orientation, pageMargins);
+  const noteText = footerNote || (qrCodeDataUrl
+    ? 'QR Code para uso no app'
+    : 'Documento gerado pelo sistema');
+  const columns: any[] = [
+    {
+      stack: [
+        { text: nome, fontSize: 7, bold: true, color: PDF_COLORS.dark },
+        ...(endereco ? [{ text: endereco, fontSize: 6, color: PDF_COLORS.accent, margin: [0, 1, 0, 0] }] : []),
+        { text: `Gerado em ${geradoEm} - Pagina ${currentPage} de ${pageCount}`, fontSize: 6, color: PDF_COLORS.subtle, margin: [0, 2, 0, 0] },
+      ],
+      alignment: 'left',
+      width: '*',
+    },
+    {
+      text: noteText,
+      fontSize: 6.5,
+      color: PDF_COLORS.subtle,
+      alignment: 'center',
+      width: 170,
+      margin: [8, 11, 8, 0],
+    },
+  ];
+
+  if (qrCodeDataUrl) {
+    columns.push({
+      stack: [
+        { image: qrCodeDataUrl, width: 56, height: 56, alignment: 'right' },
+        { text: qrLabel || 'QR Code', fontSize: 6, alignment: 'right', margin: [0, 2, 0, 0], color: PDF_COLORS.accent },
+      ],
+      alignment: 'right',
+      width: 66,
+    });
+  }
+
+  return {
+    stack: [
+      {
+        canvas: [{ type: 'line', x1: 0, y1: 0, x2: contentWidth, y2: 0, lineWidth: 0.6, lineColor: PDF_COLORS.divider }],
+        margin: [margins[0], 0, margins[2], 5],
+      },
+      {
+        columns,
+        margin: [margins[0], 0, margins[2], 0],
+      },
+    ],
+  };
+};
 
 export const getDefaultPDFStyles = (): Record<string, any> => ({
   // Cabeçalho
@@ -350,8 +509,8 @@ export const getDefaultPDFStyles = (): Record<string, any> => ({
   docSubtitle:  { fontSize: 10, color: '#444444' },
   // Conteúdo
   sectionTitle: { fontSize: 12, bold: true, margin: [0, 10, 0, 4] },
-  tableHeader:  { bold: true, fillColor: '#1565c0', color: 'white', fontSize: 9 },
-  tableCell:    { fontSize: 9 },
+  tableHeader:  { bold: true, fillColor: PDF_COLORS.headerBg, color: PDF_COLORS.headerText, fontSize: 8.5 },
+  tableCell:    { fontSize: 8.5, color: PDF_COLORS.dark },
   // Legado (mantido para compatibilidade com módulos existentes)
   header:       { fontSize: 16, bold: true },
   subheader:    { fontSize: 14, bold: true, margin: [0, 3, 0, 0] },
@@ -388,21 +547,138 @@ export const buildPdfDoc = ({
   extraStyles = {},
   customFooter,
   pageMargins,
-}: PdfDocOptions): any => ({
+}: PdfDocOptions): any => {
+  const resolvedMargins = pageMargins || getDefaultPdfMargins(orientation);
+
+  return {
   pageOrientation: orientation,
-  pageMargins: pageMargins || [40, orientation === 'landscape' ? 30 : 40, 40, 60],
+  pageMargins: resolvedMargins,
   content: [
-    ...buildHeader(instituicao, title, subtitle, orientation),
+    ...buildHeader(instituicao, title, subtitle, orientation, resolvedMargins),
     ...content,
   ],
-  footer: customFooter || buildFooter(instituicao, showSignature, 0),
+  footer: customFooter || buildFooter(instituicao, showSignature, 0, orientation, resolvedMargins),
   styles: { ...getDefaultPDFStyles(), ...extraStyles },
   defaultStyle: { fontSize: 10, font: 'Roboto' },
-});
+  };
+};
 
 // ─── Helpers de tabela padrão ─────────────────────────────────────────────────
 
 /** Cria um layout de tabela no estilo DataTable do sistema (cabeçalho cinza claro, bordas sutis) */
+export interface PdfInfoPanelItem {
+  label: string;
+  value: string | number | null | undefined;
+}
+
+export const buildInfoPanel = (
+  items: PdfInfoPanelItem[],
+  aside?: any,
+): any => {
+  const infoStack = items.map((item) => ({
+    text: [
+      { text: `${item.label}: `, bold: true, color: PDF_COLORS.dark },
+      { text: String(item.value ?? '-'), color: PDF_COLORS.accent },
+    ],
+    fontSize: 8.5,
+    margin: [0, 0, 0, 4],
+  }));
+
+  return {
+    table: {
+      widths: aside ? ['*', 96] : ['*'],
+      body: [
+        aside
+          ? [
+              { stack: infoStack },
+              { stack: Array.isArray(aside) ? aside : [aside], alignment: 'center' },
+            ]
+          : [{ stack: infoStack }],
+      ],
+    },
+    layout: {
+      hLineWidth: () => 0.8,
+      vLineWidth: () => 0.8,
+      hLineColor: () => PDF_COLORS.border,
+      vLineColor: () => PDF_COLORS.border,
+      paddingLeft: () => 10,
+      paddingRight: () => 10,
+      paddingTop: () => 8,
+      paddingBottom: () => 6,
+      fillColor: () => PDF_COLORS.mutedBg,
+    },
+    margin: [0, 0, 0, 12],
+    unbreakable: true,
+  };
+};
+
+export const buildPdfMetadataBand = (
+  items: PdfInfoPanelItem[],
+  aside?: any,
+  options?: { asideWidth?: number },
+): any => {
+  const columns = items.map((item) => ({
+    stack: [
+      {
+        text: String(item.label).toUpperCase(),
+        fontSize: 6.8,
+        bold: true,
+        color: PDF_COLORS.subtle,
+      },
+      {
+        text: String(item.value ?? '-'),
+        fontSize: 8.5,
+        bold: true,
+        color: PDF_COLORS.dark,
+        margin: [0, 2, 0, 0],
+      },
+    ],
+  }));
+
+  const body = aside
+    ? [[...columns, { stack: Array.isArray(aside) ? aside : [aside], alignment: 'right' }]]
+    : [columns];
+
+  return {
+    table: {
+      widths: aside ? [...items.map(() => '*'), options?.asideWidth || 104] : items.map(() => '*'),
+      body,
+    },
+    layout: {
+      hLineWidth: () => 0.8,
+      vLineWidth: () => 0.5,
+      hLineColor: () => PDF_COLORS.border,
+      vLineColor: () => PDF_COLORS.border,
+      paddingLeft: () => 8,
+      paddingRight: () => 8,
+      paddingTop: () => 7,
+      paddingBottom: () => 7,
+      fillColor: () => PDF_COLORS.mutedBg,
+    },
+    margin: [0, 0, 0, 12],
+    unbreakable: true,
+  };
+};
+
+export const buildPdfSectionTitle = (title: string, marginTop = 6): any => ({
+  columns: [
+    {
+      width: 3,
+      canvas: [{ type: 'rect', x: 0, y: 0, w: 3, h: 14, color: PDF_COLORS.accent }],
+    },
+    {
+      width: '*',
+      text: title.toUpperCase(),
+      fontSize: 8,
+      bold: true,
+      color: PDF_COLORS.accent,
+      margin: [7, 1, 0, 0],
+    },
+  ],
+  columnGap: 0,
+  margin: [0, marginTop, 0, 8],
+});
+
 export const buildTable = (
   headers: string[], 
   rows: any[][], 
@@ -410,43 +686,49 @@ export const buildTable = (
   options?: { compact?: boolean }
 ): any => {
   const compact = options?.compact || false;
-  const headerMargin = compact ? [4, 3, 4, 3] : [6, 5, 6, 5];
-  const cellMargin = compact ? [4, 2, 4, 2] : [6, 4, 6, 4];
+  const headerMargin = compact ? [5, 4, 5, 4] : [7, 6, 7, 6];
+  const cellMargin = compact ? [5, 3, 5, 3] : [7, 5, 7, 5];
 
   return {
     table: {
       headerRows: 1,
+      keepWithHeaderRows: 1,
       widths: widths || headers.map(() => '*'),
       body: [
         // Cabeçalho: fundo grey.100 (#F5F5F5), texto bold, sem cor de destaque
         headers.map(h => ({
           text: h,
           bold: true,
-          fontSize: 8,
-          color: '#212121',
-          fillColor: '#F5F5F5',
+          fontSize: compact ? 7.8 : 8.5,
+          color: PDF_COLORS.headerText,
+          fillColor: PDF_COLORS.headerBg,
           margin: headerMargin,
         })),
         // Linhas de dados: fundo branco, sem alternância (igual ao DataTable)
-        ...rows.map(row =>
+        ...rows.map((row, rowIndex) =>
           row.map(cell => ({
             text: String(cell ?? ''),
-            fontSize: 8,
-            color: '#212121',
-            fillColor: '#FFFFFF',
+            fontSize: compact ? 7.8 : 8.5,
+            color: PDF_COLORS.dark,
+            fillColor: rowIndex % 2 === 1 ? PDF_COLORS.stripe : '#FFFFFF',
             margin: cellMargin,
+            lineHeight: 1.15,
           }))
         ),
       ],
     },
     layout: {
-      hLineWidth: (i: number, node: any) => (i === 0 || i === 1 || i === node.table.body.length ? 1.0 : 0.6),
-      vLineWidth: () => 0.6,
-      hLineColor: (i: number, node: any) => (i === 0 || i === node.table.body.length ? '#616161' : '#9E9E9E'),
-      vLineColor: () => '#9E9E9E',
+      hLineWidth: (i: number, node: any) => (i === 0 || i === 1 || i === node.table.body.length ? 1.1 : 0.55),
+      vLineWidth: () => 0.55,
+      hLineColor: () => PDF_COLORS.border,
+      vLineColor: () => PDF_COLORS.border,
       fillColor: () => null,
+      paddingLeft: () => 0,
+      paddingRight: () => 0,
+      paddingTop: () => 0,
+      paddingBottom: () => 0,
     },
-    margin: [0, 4, 0, 8],
+    margin: [0, 2, 0, 10],
   };
 };
 

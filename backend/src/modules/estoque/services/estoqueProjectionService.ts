@@ -111,7 +111,7 @@ class EstoqueProjectionService {
             ON g.id = gpe.guia_id
           WHERE g.status = 'aberta'
             AND COALESCE(gpe.para_entrega, true) = true
-            AND COALESCE(gpe.status, 'pendente') IN ('pendente', 'parcial')
+            AND COALESCE(gpe.status, 'pendente') IN ('pendente', 'programada', 'parcial')
           GROUP BY gpe.produto_id
         )
         SELECT
@@ -171,8 +171,8 @@ class EstoqueProjectionService {
         SELECT
           ee.id,
           ee.escopo,
-          ee.escola_id,
-          es.nome AS escola_nome,
+          COALESCE(ee.escola_id, destino.escola_id) AS escola_id,
+          COALESCE(es.nome, destino.escola_nome) AS escola_nome,
           ee.produto_id,
           p.nome AS produto_nome,
           ee.tipo_evento,
@@ -187,6 +187,44 @@ class EstoqueProjectionService {
           ON p.id = ee.produto_id
         LEFT JOIN escolas es
           ON es.id = ee.escola_id
+        LEFT JOIN LATERAL (
+          SELECT
+            ee_destino.escola_id,
+            es_destino.nome AS escola_nome
+          FROM estoque_eventos ee_destino
+          INNER JOIN escolas es_destino
+            ON es_destino.id = ee_destino.escola_id
+          WHERE ee.escopo = 'central'
+            AND ee.tipo_evento = 'transferencia_para_escola'
+            AND ee.escola_id IS NULL
+            AND ee_destino.escopo = 'escola'
+            AND ee_destino.tipo_evento = 'transferencia_para_escola'
+            AND ee_destino.produto_id = ee.produto_id
+            AND (
+              (
+                ee.referencia_tipo IS NOT NULL
+                AND ee.referencia_id IS NOT NULL
+                AND ee_destino.referencia_tipo = ee.referencia_tipo
+                AND ee_destino.referencia_id = ee.referencia_id
+              )
+              OR (
+                ABS(ee_destino.quantidade_delta) = ABS(ee.quantidade_delta)
+                AND ABS(EXTRACT(EPOCH FROM (ee_destino.data_evento - ee.data_evento))) <= 60
+              )
+            )
+          ORDER BY
+            CASE
+              WHEN ee.referencia_tipo IS NOT NULL
+               AND ee.referencia_id IS NOT NULL
+               AND ee_destino.referencia_tipo = ee.referencia_tipo
+               AND ee_destino.referencia_id = ee.referencia_id
+              THEN 0
+              ELSE 1
+            END,
+            ABS(EXTRACT(EPOCH FROM (ee_destino.data_evento - ee.data_evento))),
+            ee_destino.id
+          LIMIT 1
+        ) destino ON true
         WHERE ee.escopo = $1
           AND ($2::integer IS NULL OR ee.escola_id = $2)
           AND ($3::integer IS NULL OR ee.produto_id = $3)

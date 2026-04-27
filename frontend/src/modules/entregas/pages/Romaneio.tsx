@@ -1,18 +1,21 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useLocation } from "react-router-dom";
 import PageContainer from "../../../components/PageContainer";
+import PageHeader from "../../../components/PageHeader";
 import TableFilter, { FilterField } from "../../../components/TableFilter";
 import StatusIndicator from "../../../components/StatusIndicator";
 import { usePageTitle } from "../../../contexts/PageTitleContext";
 import { useRomaneio, useRotas, useAtualizarProdutoEscola } from "../../../hooks/queries/useRomaneioQueries";
 import { formatarQuantidade } from "../../../utils/formatters";
-import { DataGrid, GridColDef, GridToolbar } from "@mui/x-data-grid";
+import { DataGrid } from "@mui/x-data-grid";
 import { ptBR as dataGridPtBR } from "@mui/x-data-grid/locales";
+import { ColumnDef } from "@tanstack/react-table";
+import { DataTableAdvanced } from "../../../components/DataTableAdvanced";
 // Atualizado em 2026-03-08 13:46 - Todas as referências a dataInicio/dataFim agora usam filters.dataInicio/filters.dataFim
 import {
   Box,
   Typography,
   Card,
-  CardContent,
   TextField,
   Button,
   FormControl,
@@ -53,10 +56,14 @@ import {
   Refresh as RefreshIcon
 } from "@mui/icons-material";
 import { useToast } from "../../../hooks/useToast";
-import { RotaEntrega } from "../types/rota";
 import { format } from "date-fns";
 import QRCode from "qrcode";
 import { LoadingOverlay } from "../../../components/LoadingOverlay";
+import { buscarInstituicao, Instituicao } from "../../../services/instituicao";
+import { buildPdfDoc, buildPdfMetadataBand, buildPdfSectionTitle, buildQrFooter, buildTable, initPdfMake, savePdfMakeDocument } from "../../../utils/pdfUtils";
+import { buildRomaneioApiParams, parseRomaneioFiltersFromSearch } from "../utils/romaneioFilters";
+import { buildRomaneioPdfFileName, buildRomaneioPdfRows, getRomaneioRouteLabel } from "../utils/romaneioPdf";
+import { buildRomaneioQrPayload } from "../utils/romaneioQr";
 
 interface ItemRomaneio {
   id: number;
@@ -84,6 +91,8 @@ interface GrupoDataRomaneio {
 
 const Romaneio: React.FC = () => {
   const { setPageTitle } = usePageTitle();
+  const location = useLocation();
+  const [instituicao, setInstituicao] = useState<Instituicao | null>(null);
   
   // Helper function para formatar datas com segurança
   const formatarDataSegura = (data: string | null | undefined, fallback: string = '—'): string => {
@@ -101,27 +110,27 @@ const Romaneio: React.FC = () => {
   // Filtros - NOVO SISTEMA
   const [filterOpen, setFilterOpen] = useState(false);
   const [filterAnchorEl, setFilterAnchorEl] = useState<HTMLElement | null>(null);
-  const [filters, setFilters] = useState<Record<string, any>>(() => {
+  const defaultRomaneioFilters = useMemo(() => {
     const hoje = new Date();
-    const primeiroDia = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split('T')[0];
-    const ultimoDia = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toISOString().split('T')[0];
     return {
-      dataInicio: primeiroDia,
-      dataFim: ultimoDia,
-      status: 'todos',
+      dataInicio: new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split('T')[0],
+      dataFim: new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toISOString().split('T')[0],
     };
-  });
-  
-  const [rotaIds, setRotaIds] = useState<number[]>([]);
+  }, []);
+  const initialRomaneioFilters = useMemo(
+    () => parseRomaneioFiltersFromSearch(location.search, defaultRomaneioFilters),
+    [location.search, defaultRomaneioFilters],
+  );
+  const [filters, setFilters] = useState<Record<string, any>>(() => initialRomaneioFilters.filters);
+  const [rotaIds, setRotaIds] = useState<number[]>(() => initialRomaneioFilters.rotaIds);
+  const romaneioApiParams = useMemo(
+    () => buildRomaneioApiParams(filters as any, rotaIds),
+    [filters, rotaIds],
+  );
   
   // React Query hooks
   const { data: rotas = [], isLoading: loadingRotas } = useRotas();
-  const { data: itens = [], isLoading: loading, error: queryError } = useRomaneio({
-    data_inicio: filters.dataInicio,
-    data_fim: filters.dataFim,
-    status: filters.status === 'todos' ? undefined : filters.status,
-    rota_id: rotaIds.length === 1 ? rotaIds[0] : undefined
-  });
+  const { data: itens = [], isLoading: loading, error: queryError } = useRomaneio(romaneioApiParams);
   const atualizarProdutoEscolaMutation = useAtualizarProdutoEscola();
   
   const error = queryError ? 'Erro ao carregar dados do romaneio' : null;
@@ -147,63 +156,109 @@ const Romaneio: React.FC = () => {
   // Estado para QR Code
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
   const [showQRDialog, setShowQRDialog] = useState(false);
+  const [gerandoPdf, setGerandoPdf] = useState(false);
 
-  // Gerar QR Code automaticamente quando houver rotas selecionadas
   useEffect(() => {
-    if (rotaIds.length > 0 && filters.dataInicio && filters.dataFim) {
+    buscarInstituicao().then(setInstituicao).catch(() => {});
+  }, []);
+
+  // Gerar QR Code automaticamente para o filtro atual do romaneio.
+  useEffect(() => {
+    if (filters.dataInicio && filters.dataFim) {
       gerarQRCodeAutomatico();
     } else {
       setQrCodeUrl('');
     }
-  }, [rotaIds, filters.dataInicio, filters.dataFim]);
+  }, [rotaIds, filters.dataInicio, filters.dataFim, filters.status, rotas]);
 
   const handlePrint = async () => {
-    // Gerar QR Code antes de imprimir se houver rotas selecionadas
-    if (rotaIds.length > 0 && !qrCodeUrl) {
-      await gerarQRCodeAutomatico();
-      // Aguardar um pouco para o QR Code ser renderizado
-      setTimeout(() => {
-        window.print();
-      }, 300);
-    } else {
-      window.print();
-    }
-  };
-
-  const gerarQRCodeAutomatico = async () => {
-    if (rotaIds.length === 0 || !filters.dataInicio || !filters.dataFim) {
+    if (dataGridRows.length === 0) {
+      toast.error('Nenhum item encontrado para gerar o PDF');
       return;
     }
 
     try {
-      const rotasSelecionadas = rotas.filter(r => rotaIds.includes(r.id));
-      
-      // Obter nome do usuário logado
-      const token = localStorage.getItem('token');
-      let geradoPor = 'Sistema';
-      if (token) {
-        try {
-          const parsed = JSON.parse(token);
-          geradoPor = parsed.nome || parsed.usuario?.nome || 'Sistema';
-        } catch (e) {
-          geradoPor = 'Sistema';
-        }
-      }
+      setGerandoPdf(true);
+      const qrUrl = qrCodeUrl || await gerarQRCodeAutomatico();
+      const pdfMake = await initPdfMake();
+      const rotaLabel = getRomaneioRouteLabel(rotaIds, rotas);
+      const periodoLabel = filters.dataInicio && filters.dataFim
+        ? `${formatarDataSegura(filters.dataInicio)} a ${formatarDataSegura(filters.dataFim)}`
+        : 'Nao definido';
+      const statusLabel = filters.status === 'todos' ? 'Todos (Ativos)' : getStatusItemLabel(filters.status);
+      const tableRows = buildRomaneioPdfRows(dataGridRows);
+      const qrMetadata = qrUrl
+        ? [
+            { image: qrUrl, width: 80, height: 80, alignment: 'center' },
+            { text: 'Filtro do app', fontSize: 7, color: '#475569', alignment: 'center', margin: [0, 3, 0, 0] },
+          ]
+        : undefined;
 
-      const qrData = {
-        rotaIds: rotaIds,
-        rotaNomes: rotasSelecionadas.map(r => r.nome),
-        dataInicio: filters.dataInicio,
-        dataFim: filters.dataFim,
-        geradoEm: new Date().toISOString(),
-        geradoPor
-      };
+      const content: any[] = [
+        buildPdfMetadataBand(
+          [
+            { label: 'Periodo', value: periodoLabel },
+            { label: 'Rota', value: rotaLabel },
+            { label: 'Status', value: statusLabel },
+            { label: 'Itens', value: dataGridRows.length },
+          ],
+          qrMetadata,
+          { asideWidth: 112 },
+        ),
+        buildPdfSectionTitle('Itens Entregues', 4),
+        buildTable(
+          ['Data', 'Produto', 'Qtde Total', 'Und.', 'Escolas'],
+          tableRows,
+          [68, '*', 62, 44, 48],
+          { compact: true },
+        ),
+      ];
+
+      const romaneioMargins: [number, number, number, number] = [36, 34, 36, 88];
+      const doc = buildPdfDoc({
+        instituicao,
+        title: 'Romaneio de Entrega',
+        subtitle: `${periodoLabel} | ${rotaLabel}`,
+        content,
+        orientation: 'portrait',
+        showSignature: false,
+        pageMargins: romaneioMargins,
+        customFooter: buildQrFooter({
+          instituicao,
+          orientation: 'portrait',
+          pageMargins: romaneioMargins,
+          footerNote: 'QR Code do filtro para carregar as informacoes no app',
+        }),
+      });
+
+      await savePdfMakeDocument(pdfMake, doc, buildRomaneioPdfFileName(filters));
+      toast.success('PDF do romaneio gerado com sucesso');
+    } catch (error) {
+      console.error('Erro ao gerar PDF do romaneio:', error);
+      toast.error('Erro ao gerar PDF do romaneio');
+    } finally {
+      setGerandoPdf(false);
+    }
+  };
+
+  const gerarQRCodeAutomatico = async () => {
+    if (!filters.dataInicio || !filters.dataFim) {
+      return null;
+    }
+
+    try {
+      const qrData = buildRomaneioQrPayload({
+        rotaIds,
+        rotas,
+        filters,
+      });
 
       const jsonData = JSON.stringify(qrData);
       
       const qrUrl = await QRCode.toDataURL(jsonData, {
-        width: 300,
-        margin: 2,
+        errorCorrectionLevel: 'M',
+        width: 720,
+        margin: 4,
         color: {
           dark: '#000000',
           light: '#FFFFFF'
@@ -211,9 +266,11 @@ const Romaneio: React.FC = () => {
       });
       
       setQrCodeUrl(qrUrl);
+      return qrUrl;
     } catch (error) {
       console.error('Erro ao gerar QR Code:', error);
       toast.error('Erro ao gerar QR Code');
+      return null;
     }
   };
 
@@ -345,55 +402,60 @@ const Romaneio: React.FC = () => {
     return rows;
   }, [dadosAgrupadosProduto]);
 
-  // Definir colunas do DataGrid (memoizado para evitar recriação)
-  const columns: GridColDef[] = useMemo(() => [
+  const tableColumns: ColumnDef<any>[] = useMemo(() => [
     {
-      field: 'data_entrega_formatada',
-      headerName: 'Data de Entrega',
-      width: 150,
+      accessorKey: 'data_entrega_formatada',
+      header: 'Data de Entrega',
+      size: 140,
     },
     {
-      field: 'produto_nome',
-      headerName: 'Produto',
-      flex: 1,
-      minWidth: 200,
+      accessorKey: 'produto_nome',
+      header: 'Produto',
+      size: 280,
+      cell: ({ getValue }) => (
+        <Typography variant="body2" fontWeight={600}>
+          {String(getValue() || '')}
+        </Typography>
+      ),
     },
     {
-      field: 'quantidade_formatada',
-      headerName: 'Quantidade Total',
-      width: 150,
-      align: 'center',
-      headerAlign: 'center',
+      accessorKey: 'quantidade_formatada',
+      header: 'Quantidade Total',
+      size: 150,
+      cell: ({ getValue }) => (
+        <Typography variant="body2" textAlign="right" fontWeight={600}>
+          {String(getValue() || '')}
+        </Typography>
+      ),
     },
     {
-      field: 'unidade',
-      headerName: 'Unidade',
-      width: 120,
-      align: 'center',
-      headerAlign: 'center',
+      accessorKey: 'unidade',
+      header: 'Unidade',
+      size: 100,
     },
     {
-      field: 'num_escolas',
-      headerName: 'Nº Escolas',
-      width: 120,
-      align: 'center',
-      headerAlign: 'center',
+      accessorKey: 'num_escolas',
+      header: 'Escolas',
+      size: 110,
+      cell: ({ getValue }) => (
+        <Chip
+          label={String(getValue() || 0)}
+          size="small"
+          variant="outlined"
+        />
+      ),
     },
     {
-      field: 'actions',
-      headerName: 'Ações',
-      width: 150,
-      align: 'center',
-      headerAlign: 'center',
-      sortable: false,
-      filterable: false,
-      disableExport: true,
-      renderCell: (params) => (
+      id: 'actions',
+      header: 'Acoes',
+      size: 150,
+      enableSorting: false,
+      cell: ({ row }) => (
         <Button
           variant="outlined"
           size="small"
           startIcon={<VisibilityIcon />}
-          onClick={() => handleOpenDetails(params.row.produto_nome, params.row.data_entrega, params.row.escolas)}
+          onClick={() => handleOpenDetails(row.original.produto_nome, row.original.data_entrega, row.original.escolas)}
         >
           Detalhes
         </Button>
@@ -502,6 +564,14 @@ const Romaneio: React.FC = () => {
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       <PageContainer>
+        <PageHeader
+          title="Romaneio de Entrega"
+          breadcrumbs={[
+            { label: 'Dashboard', path: '/dashboard' },
+            { label: 'Entregas', path: '/entregas' },
+            { label: 'Romaneio' },
+          ]}
+        />
         {/* Filtros - Não imprimir */}
         <Box sx={{ mb: 3, '@media print': { display: 'none' } }}>
         <Card sx={{ borderRadius: '12px', p: 2, mb: 2 }}>
@@ -588,9 +658,10 @@ const Romaneio: React.FC = () => {
                 variant="outlined"
                 startIcon={<PrintIcon />}
                 onClick={handlePrint}
+                disabled={loading || gerandoPdf}
                 size="small"
               >
-                Imprimir
+                {gerandoPdf ? 'Gerando...' : 'Gerar PDF'}
               </Button>
             </Box>
           </Box>
@@ -653,63 +724,8 @@ const Romaneio: React.FC = () => {
           <CircularProgress />
         </Box>
       ) : (
-        <Box id="printable-area">
-          {/* Cabeçalho de Impressão */}
-          <Box sx={{ display: 'none', '@media print': { display: 'block' }, mb: 2 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <Box sx={{ flex: 1 }}>
-                <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1 }}>Romaneio de Entrega</Typography>
-                <Box sx={{ borderBottom: '2px solid #000', pb: 1, mb: 2 }}>
-                  <Typography variant="subtitle1">
-                    <strong>Período:</strong> {filters.dataInicio && filters.dataFim 
-                      ? `${formatarDataSegura(filters.dataInicio)} a ${formatarDataSegura(filters.dataFim)}`
-                      : 'Não definido'
-                    }
-                  </Typography>
-                  <Typography variant="subtitle1">
-                    <strong>Rota:</strong> {rotaIds.length === 0 ? 'Todas as Rotas' : 
-                      rotaIds.length === rotas.length ? 'Todas as Rotas' :
-                      rotas.filter(r => rotaIds.includes(r.id)).map(r => r.nome).join(', ')}
-                  </Typography>
-                  <Typography variant="subtitle1">
-                    <strong>Status:</strong> {filters.status === 'todos' ? 'Todos (Ativos)' : getStatusItemLabel(filters.status)}
-                  </Typography>
-                </Box>
-              </Box>
-              {qrCodeUrl && rotaIds.length > 0 && (
-                <Box sx={{ ml: 3, textAlign: 'center' }}>
-                  <img 
-                    src={qrCodeUrl} 
-                    alt="QR Code" 
-                    style={{ 
-                      width: '120px', 
-                      height: '120px',
-                      border: '2px solid #000',
-                      padding: '4px',
-                      backgroundColor: '#fff'
-                    }} 
-                  />
-                  <Typography variant="caption" sx={{ display: 'block', mt: 0.5, fontSize: '9px' }}>
-                    Escaneie para filtrar entregas
-                  </Typography>
-                </Box>
-              )}
-            </Box>
-          </Box>
-
-          <style type="text/css" media="print">
-            {`
-              @page { size: auto; margin: 10mm; }
-              body { background-color: white !important; -webkit-print-color-adjust: exact; }
-              .MuiDataGrid-root { box-shadow: none !important; }
-              .MuiDataGrid-cell { border-bottom: 1px solid #ddd !important; padding: 8px !important; }
-              .MuiDataGrid-columnHeaders { background-color: #f5f5f5 !important; font-weight: bold !important; -webkit-print-color-adjust: exact; }
-              /* Esconder elementos de UI que possam ter vazado */
-              button, input, select, .MuiIconButton-root, .MuiDataGrid-toolbarContainer { display: none !important; }
-            `}
-          </style>
-
-          {/* DataGrid */}
+        <Box>
+          {/* Itens */}
           {dataGridRows.length === 0 ? (
             <Alert severity="info">
               Nenhum item encontrado para os filtros selecionados.
@@ -723,66 +739,12 @@ const Romaneio: React.FC = () => {
             </Alert>
           ) : (
             <Box sx={{ height: 'calc(100vh - 400px)', minHeight: 400, width: '100%' }}>
-              <DataGrid
-                rows={dataGridRows}
-                columns={columns}
-                initialState={{
-                  pagination: {
-                    paginationModel: { pageSize: 50, page: 0 },
-                  },
-                  sorting: {
-                    sortModel: [{ field: 'data_entrega_formatada', sort: 'asc' }],
-                  },
-                }}
-                pageSizeOptions={[25, 50, 100]}
-                disableRowSelectionOnClick
-                disableColumnMenu
-                density="compact"
-                localeText={dataGridPtBR.components.MuiDataGrid.defaultProps.localeText}
-                slots={{
-                  toolbar: GridToolbar,
-                }}
-                slotProps={{
-                  toolbar: {
-                    showQuickFilter: true,
-                    quickFilterProps: { debounceMs: 500 },
-                    printOptions: { disableToolbarButton: false },
-                    csvOptions: { 
-                      fileName: `romaneio-${new Date().toISOString().split('T')[0]}`,
-                      delimiter: ';',
-                      utf8WithBom: true,
-                    },
-                  },
-                }}
-                sx={{
-                  '& .MuiDataGrid-cell': {
-                    borderBottom: '1px solid #f0f0f0',
-                  },
-                  '& .MuiDataGrid-columnHeaders': {
-                    backgroundColor: '#f5f5f5',
-                    fontWeight: 'bold',
-                  },
-                  '& .MuiDataGrid-virtualScroller': {
-                    // Virtualização ativada para performance
-                    overflowY: 'auto !important',
-                  },
-                  '@media print': {
-                    '& .MuiDataGrid-toolbarContainer': {
-                      display: 'none',
-                    },
-                  },
-                }}
-                // Otimizações de performance com virtualização
-                rowHeight={52}
-                columnHeaderHeight={56}
-                hideFooterSelectedRowCount
-                // Virtualização ATIVADA (padrão do MUI DataGrid)
-                // Renderiza apenas as linhas visíveis + buffer
-                rowBufferPx={520}
-                columnBufferPx={300}
-                // Threshold para começar a renderizar novas linhas
-
-
+              <DataTableAdvanced
+                title="Itens do Romaneio"
+                data={dataGridRows}
+                columns={tableColumns}
+                searchPlaceholder="Buscar produto, data ou escola..."
+                emptyMessage="Nenhum item encontrado para os filtros selecionados"
               />
             </Box>
           )}
@@ -1029,8 +991,9 @@ const Romaneio: React.FC = () => {
             onClick={handlePrint}
             variant="contained"
             startIcon={<PrintIcon />}
+            disabled={gerandoPdf}
           >
-            Imprimir Romaneio
+            {gerandoPdf ? 'Gerando...' : 'Gerar PDF'}
           </Button>
         </DialogActions>
       </Dialog>

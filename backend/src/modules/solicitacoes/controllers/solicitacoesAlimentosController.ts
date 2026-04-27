@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import db from '../../../database';
 import { asyncHandler, ValidationError } from '../../../utils/errorHandler';
 import { criarNotificacao } from '../../../utils/notificacoesHelper';
+import solicitacaoEmergencialService from '../services/SolicitacaoEmergencialService';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -33,7 +34,7 @@ async function recalcularStatusSolicitacao(solicitacaoId: number, respondidoPor:
   );
   const todos = itens.rows;
   const pendentes = todos.filter((i: any) => i.status === 'pendente').length;
-  const aceitos   = todos.filter((i: any) => i.status === 'aceito').length;
+  const aceitos   = todos.filter((i: any) => i.status === 'aceito' || i.status === 'contemplado').length;
   const recusados = todos.filter((i: any) => i.status === 'recusado').length;
 
   let novoStatus: string;
@@ -207,6 +208,29 @@ export const aceitarItem = asyncHandler(async (req: Request, res: Response) => {
   await recalcularStatusSolicitacao(result.rows[0].solicitacao_id, user.id);
   const sol = await getSolicitacaoComItens(result.rows[0].solicitacao_id);
   res.json({ success: true, data: sol });
+});
+
+export const analisarItem = asyncHandler(async (req: Request, res: Response) => {
+  const { itemId } = req.params;
+  const analise = await solicitacaoEmergencialService.analisarItem(Number(itemId));
+  res.json({ success: true, data: analise });
+});
+
+export const aprovarItemEmergencial = asyncHandler(async (req: Request, res: Response) => {
+  const user = req.user;
+  const { itemId } = req.params;
+  const resultado = await solicitacaoEmergencialService.aprovarItemEmergencial(
+    Number(itemId),
+    {
+      quantidade_aprovada: req.body.quantidade_aprovada !== undefined
+        ? Number(req.body.quantidade_aprovada)
+        : undefined,
+      data_entrega_prevista: req.body.data_entrega_prevista,
+      observacao: req.body.observacao || null,
+    },
+    Number(user.id),
+  );
+  res.json({ success: true, data: resultado });
 });
 
 /** Aceita todos os itens pendentes de uma solicitação */

@@ -13,6 +13,7 @@ export interface HistoricoEntregaRecord {
   latitude?: number;
   longitude?: number;
   precisao_gps?: number;
+  client_operation_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -27,6 +28,7 @@ export interface CriarHistoricoEntregaData {
   latitude?: number | null;
   longitude?: number | null;
   precisao_gps?: number | null;
+  client_operation_id?: string | null;
 }
 
 export interface ItemComHistorico {
@@ -75,8 +77,9 @@ class HistoricoEntregaModel {
         assinatura_base64,
         latitude,
         longitude,
-        precisao_gps
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        precisao_gps,
+        client_operation_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *
     `, [
       dados.guia_produto_escola_id,
@@ -87,7 +90,8 @@ class HistoricoEntregaModel {
       dados.assinatura_base64,
       dados.latitude,
       dados.longitude,
-      dados.precisao_gps
+      dados.precisao_gps,
+      dados.client_operation_id
     ]);
 
     // Atualizar quantidade total entregue no item

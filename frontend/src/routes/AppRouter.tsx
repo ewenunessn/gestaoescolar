@@ -1,6 +1,6 @@
 import { Suspense, lazy, useEffect } from "react";
 import { Box, Typography } from "@mui/material";
-import { BrowserRouter, HashRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
+import { BrowserRouter, HashRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
 import { isAuthenticated } from "../services/auth";
 import LayoutModerno from "../components/LayoutModerno";
 import PermissionGuard from "../components/PermissionGuard";
@@ -154,6 +154,11 @@ const FaturamentoDetalhe = lazy(() => import("../modules/faturamento/pages/Fatur
 function LegacyFaturamentoRedirect() {
   const { pedidoId } = useParams<{ pedidoId: string }>();
   return <Navigate to={`/compras/${pedidoId}/faturamentos`} replace />;
+}
+
+function LegacyRomaneioRedirect() {
+  const location = useLocation();
+  return <Navigate to={`/entregas/romaneio${location.search}`} replace />;
 }
 
 // Lazy loading - Módulo: solicitacoes
@@ -335,7 +340,7 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
             />
             <Route
               path="/romaneio"
-              element={<LazyRoute moduloSlug="romaneio"><Romaneio /></LazyRoute>}
+              element={<LazyRoute moduloSlug="romaneio"><LegacyRomaneioRedirect /></LazyRoute>}
             />
             <Route
               path="/guias-demanda-old/:id"
@@ -344,6 +349,10 @@ export default function AppRouter({ routerConfig }: AppRouterProps) {
             <Route
               path="/entregas"
               element={<LazyRoute moduloSlug="entregas"><Entregas /></LazyRoute>}
+            />
+            <Route
+              path="/entregas/romaneio"
+              element={<LazyRoute moduloSlug="romaneio"><Romaneio /></LazyRoute>}
             />
             <Route
               path="/comprovantes-entrega"

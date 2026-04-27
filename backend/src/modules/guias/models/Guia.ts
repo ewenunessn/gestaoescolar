@@ -1,4 +1,5 @@
 import db from "../../../database";
+import { buildRomaneioRouteFilter, normalizeRomaneioRouteIds } from "./romaneioFilters";
 
 export interface Guia {
   id: number;
@@ -288,7 +289,7 @@ class GuiaModel {
     }
   }
 
-  async listarRomaneio(filtros: { dataInicio?: string; dataFim?: string; escolaId?: number; rotaId?: number; status?: string }): Promise<any[]> {
+  async listarRomaneio(filtros: { dataInicio?: string; dataFim?: string; escolaId?: number; rotaId?: number; rotaIds?: number[]; status?: string }): Promise<any[]> {
     try {
       
       // Query otimizada: usa subquery para rotas ao invés de JOIN + GROUP BY
@@ -335,13 +336,15 @@ class GuiaModel {
         paramCount++;
       }
 
-      if (filtros.rotaId) {
-        query += ` AND EXISTS (
-          SELECT 1 FROM rota_escolas res 
-          WHERE res.escola_id = e.id AND res.rota_id = $${paramCount}
-        )`;
-        params.push(filtros.rotaId);
-        paramCount++;
+      const routeIds = normalizeRomaneioRouteIds({
+        rotaId: filtros.rotaId,
+        rotaIds: filtros.rotaIds,
+      });
+      const routeFilter = buildRomaneioRouteFilter(routeIds, paramCount);
+      if (routeFilter.sql) {
+        query += routeFilter.sql;
+        params.push(...routeFilter.values);
+        paramCount += routeFilter.values.length;
       }
 
       if (filtros.status) {

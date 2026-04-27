@@ -87,7 +87,7 @@ export const guiaService = {
   },
 
   // Listar itens para romaneio
-  async listarRomaneio(params: { data_inicio?: string; data_fim?: string; escola_id?: number; rota_id?: number; status?: string }) {
+  async listarRomaneio(params: { data_inicio?: string; data_fim?: string; escola_id?: number; rota_id?: number; rota_ids?: string; status?: string }) {
     const response = await api.get('/guias/romaneio', { params });
     return response.data.data || response.data;
   },

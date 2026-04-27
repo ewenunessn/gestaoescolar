@@ -4,7 +4,12 @@ import { Text, Card, ActivityIndicator, Divider, IconButton } from 'react-native
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../api/client';
 import OfflineIndicator from '../components/OfflineIndicator';
+import { useOffline } from '../contexts/OfflineContext';
 import { obterDataAtual, formatarDataBR } from '../utils/dateUtils';
+import { cacheService } from '../services/cacheService';
+import { loadDeliveryOutboxOperations } from '../services/deliveryOutbox';
+import { buildPendingComprovanteDrafts, type DeliveryOutboxStatus } from '../services/deliveryOutboxCore';
+import { COMPROVANTES_REFRESH_MS, shouldRefreshCache } from '../services/deliverySyncPolicy';
 
 interface Comprovante {
   id: number;
@@ -22,17 +27,52 @@ interface Comprovante {
     unidade: string;
     lote?: string;
   }>;
+  offline_status?: DeliveryOutboxStatus;
+  offline_error?: string;
+  client_operation_ids?: string[];
 }
+
+const getOfflineComprovanteStatus = (status: DeliveryOutboxStatus): string => {
+  switch (status) {
+    case 'pending':
+      return 'Entrega aguardando envio';
+    case 'syncing':
+      return 'Sincronizando';
+    case 'failed_retryable':
+      return 'Falha temporaria. Sera reenviado.';
+    case 'failed_needs_action':
+      return 'Erro de sincronizacao. Precisa de acao.';
+    case 'comprovante_pending':
+      return 'Comprovante aguardando envio';
+    default:
+      return '';
+  }
+};
 
 export default function ComprovantesScreen({ route, navigation }: any) {
   const { rotaId } = route.params;
   const [comprovantes, setComprovantes] = useState<Comprovante[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const { syncVersion } = useOffline();
 
   useEffect(() => {
-    carregarComprovantes();
+    carregarComprovantesOfflineFirst();
   }, []);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      carregarComprovantesOfflineFirst();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
+  useEffect(() => {
+    if (syncVersion > 0) {
+      carregarComprovantesOfflineFirst(true);
+    }
+  }, [syncVersion]);
 
   const carregarComprovantes = async () => {
     try {
@@ -91,6 +131,69 @@ export default function ComprovantesScreen({ route, navigation }: any) {
     }
   };
 
+  const carregarComprovantesOfflineFirst = async (force = false) => {
+    try {
+      setLoading(comprovantes.length === 0);
+
+      const hoje = obterDataAtual();
+      const cacheKey = `comprovantes_${hoje}`;
+      const cachedEntry = await cacheService.getEntry<Comprovante[]>(cacheKey);
+      const outboxOperations = await loadDeliveryOutboxOperations();
+      const comprovantesPendentes = buildPendingComprovanteDrafts(outboxOperations, {
+        onlyDate: hoje,
+      }) as Comprovante[];
+      let comprovantesServidor: Comprovante[] = [];
+      let fetchError: Error | null = null;
+
+      if (cachedEntry) {
+        comprovantesServidor = cachedEntry.data;
+        setComprovantes([...comprovantesPendentes, ...comprovantesServidor]);
+      }
+
+      if (!shouldRefreshCache({ timestamp: cachedEntry?.timestamp, maxAgeMs: COMPROVANTES_REFRESH_MS, force })) {
+        return;
+      }
+
+      try {
+        const tokenData = await AsyncStorage.getItem('token');
+        const token = tokenData ? JSON.parse(tokenData).token : null;
+
+        if (!token) {
+          throw new Error('Token nao encontrado. Faca login novamente.');
+        }
+
+        const url = `${API_URL}/entregas/comprovantes?data_inicio=${hoje}&data_fim=${hoje}`;
+        const response = await fetch(url, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Erro ${response.status}: ${errorText || 'Erro ao carregar comprovantes'}`);
+        }
+
+        const data = await response.json();
+        const comprovantesArray = data.comprovantes || data;
+        comprovantesServidor = Array.isArray(comprovantesArray) ? comprovantesArray : [];
+        await cacheService.set(cacheKey, comprovantesServidor);
+      } catch (err: any) {
+        fetchError = err;
+        comprovantesServidor = cachedEntry?.data || [];
+      }
+
+      setComprovantes([...comprovantesPendentes, ...comprovantesServidor]);
+
+      if (fetchError && comprovantesPendentes.length === 0 && comprovantesServidor.length === 0) {
+        Alert.alert('Erro', fetchError.message || 'Nao foi possivel carregar os comprovantes');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const toggleExpand = (id: number) => {
     setExpandedId(expandedId === id ? null : id);
   };
@@ -126,6 +229,18 @@ export default function ComprovantesScreen({ route, navigation }: any) {
                   <Text variant="bodySmall" style={styles.data}>
                     📅 {formatarDataBR(item.data_entrega)}
                   </Text>
+                  {item.offline_status && (
+                    <Text
+                      variant="bodySmall"
+                      style={[
+                        styles.offlineStatus,
+                        item.offline_status === 'failed_needs_action' && styles.offlineStatusError,
+                      ]}
+                    >
+                      {getOfflineComprovanteStatus(item.offline_status)}
+                      {item.offline_error ? ` ${item.offline_error}` : ''}
+                    </Text>
+                  )}
                 </View>
                 <IconButton
                   icon={expandedId === item.id ? 'chevron-up' : 'chevron-down'}
@@ -247,6 +362,19 @@ const styles = StyleSheet.create({
   },
   data: {
     color: '#666',
+  },
+  offlineStatus: {
+    color: '#92400e',
+    backgroundColor: '#fef3c7',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    marginTop: 6,
+    alignSelf: 'flex-start',
+  },
+  offlineStatusError: {
+    color: '#991b1b',
+    backgroundColor: '#fee2e2',
   },
   detalhes: {
     marginTop: 8,

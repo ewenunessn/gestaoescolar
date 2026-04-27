@@ -3,6 +3,7 @@ import { View, StyleSheet, Alert } from 'react-native';
 import { Text, Button, Portal, Modal } from 'react-native-paper';
 import { CameraView, Camera } from 'expo-camera';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { normalizeQrFilter } from '../utils/qrFilter';
 
 interface QRScannerProps {
   visible: boolean;
@@ -29,21 +30,14 @@ export default function QRScanner({ visible, onClose, onScan }: QRScannerProps) 
     setScanned(true);
     
     try {
-      const qrData = JSON.parse(data);
-      
-      // Aceitar QR Code com rotaIds (novo formato - múltiplas rotas) ou rotaId (formato antigo - compatibilidade)
-      const hasRotas = (qrData.rotaIds && Array.isArray(qrData.rotaIds) && qrData.rotaIds.length > 0) || qrData.rotaId;
-      
-      if (hasRotas && qrData.dataInicio && qrData.dataFim) {
-        // Converter formato antigo para novo se necessário
-        if (qrData.rotaId && !qrData.rotaIds) {
-          qrData.rotaIds = [qrData.rotaId];
-          qrData.rotaNomes = [qrData.rotaNome];
-        }
-        
+      const qrData = normalizeQrFilter(data);
+
+      if (qrData) {
         await AsyncStorage.setItem('filtro_qrcode', JSON.stringify(qrData));
         
-        const rotasTexto = qrData.rotaNomes ? qrData.rotaNomes.join(', ') : qrData.rotaNome;
+        const rotasTexto = qrData.escopoRotas === 'todas'
+          ? 'Todas as Rotas'
+          : qrData.rotaNomes ? qrData.rotaNomes.join(', ') : qrData.rotaNome;
         
         Alert.alert(
           'Filtro Aplicado',

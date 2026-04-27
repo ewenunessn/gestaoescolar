@@ -11,15 +11,48 @@ interface CacheEntry<T> {
 export const cacheService = {
   async set<T>(key: string, data: T): Promise<void> {
     try {
+      const storageKey = `${CACHE_PREFIX}${key}`;
+      const cached = await AsyncStorage.getItem(storageKey);
+      if (cached) {
+        const current: CacheEntry<T> = JSON.parse(cached);
+        if (JSON.stringify(current.data) === JSON.stringify(data)) {
+          await AsyncStorage.setItem(storageKey, JSON.stringify({ data, timestamp: Date.now() }));
+          return;
+        }
+      }
+
       const entry: CacheEntry<T> = {
         data,
         timestamp: Date.now(),
       };
-      await AsyncStorage.setItem(`${CACHE_PREFIX}${key}`, JSON.stringify(entry));
+      await AsyncStorage.setItem(storageKey, JSON.stringify(entry));
       console.log(`Cache salvo: ${key}`);
     } catch (error) {
       console.error(`Erro ao salvar cache ${key}:`, error);
     }
+  },
+
+  async getEntry<T>(key: string): Promise<CacheEntry<T> | null> {
+    try {
+      const cached = await AsyncStorage.getItem(`${CACHE_PREFIX}${key}`);
+      if (!cached) {
+        return null;
+      }
+
+      return JSON.parse(cached);
+    } catch (error) {
+      console.error(`Erro ao recuperar entrada de cache ${key}:`, error);
+      return null;
+    }
+  },
+
+  async isFresh(key: string, maxAgeMs: number): Promise<boolean> {
+    const entry = await this.getEntry(key);
+    if (!entry) {
+      return false;
+    }
+
+    return Date.now() - entry.timestamp <= maxAgeMs;
   },
 
   async get<T>(key: string): Promise<T | null> {

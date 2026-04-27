@@ -83,6 +83,10 @@ export const recebimentosAPI = {
     pedidoItemId: number;
     quantidadeRecebida: number;
     observacoes?: string;
+    lote?: string;
+    dataFabricacao?: string;
+    dataValidade?: string;
+    notaFiscal?: string;
   }): Promise<any> {
     const response = await api.post('/recebimentos/registrar', data);
     return response.data;

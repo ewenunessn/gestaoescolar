@@ -2,10 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, FlatList, Pressable } from 'react-native';
 import { Text, Card, Button, ActivityIndicator } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { listarRotas, listarEscolasDaRota, listarItensEscola, Rota } from '../api/rotas';
+import { listarRotas, listarEscolasDaRota, listarItensEscola, obterOfflineBundle, Rota, EscolaRota } from '../api/rotas';
 import { handleAxiosError } from '../api/client';
 import { cacheService } from '../services/cacheService';
 import OfflineIndicator from '../components/OfflineIndicator';
+import { useOffline } from '../contexts/OfflineContext';
+import { loadDeliveryOutboxOperations } from '../services/deliveryOutbox';
+import { mergeItemsWithOutbox } from '../services/deliveryOutboxCore';
+import { hasPendingItemsFromProjection } from '../services/deliveryProjectionCore';
+import { getSchoolProjectionEntry, saveSchoolItemsSnapshot } from '../services/deliveryProjectionStore';
+import { getRouteProjectionEntry, saveRouteProjectionSnapshot } from '../services/deliveryRouteProjectionStore';
+import { applyDeliveryOfflineBundle } from '../services/deliveryOfflineBundle';
+import {
+  ROUTE_SCHOOLS_REFRESH_MS,
+  ROUTES_REFRESH_MS,
+  SCHOOL_ITEMS_REFRESH_MS,
+  shouldRefreshCache,
+} from '../services/deliverySyncPolicy';
 
 interface RotaComEscolas extends Rota {
   escolas_com_pendentes?: number;
@@ -16,99 +29,51 @@ export default function RotasScreen({ navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filtroAtivo, setFiltroAtivo] = useState<any>(null);
+  const { syncVersion } = useOffline();
 
   useEffect(() => {
-    carregarRotas();
     carregarFiltro();
+    carregarRotas();
   }, []);
 
-  const carregarRotas = async () => {
+  useEffect(() => {
+    if (syncVersion > 0) {
+      recalcularRotasDoCache();
+    }
+  }, [syncVersion]);
+
+  const carregarRotas = async (force = false) => {
+    let hadCache = false;
     try {
-      setLoading(true);
+      setLoading(rotas.length === 0);
       setError(''); // Limpar erro anterior
-      
-      let data: Rota[];
-      
+
+      const filtro = await carregarFiltro();
+      const cachedEntry = await cacheService.getEntry<Rota[]>('rotas');
+      hadCache = !!cachedEntry;
+      if (cachedEntry) {
+        setRotas(await montarRotasComContagem(cachedEntry.data, filtro, false));
+        setLoading(false);
+      }
+
+      if (!shouldRefreshCache({ timestamp: cachedEntry?.timestamp, maxAgeMs: ROUTES_REFRESH_MS, force })) {
+        return;
+      }
+
       try {
-        data = await listarRotas();
+        const bundle = await obterOfflineBundle();
+        await applyDeliveryOfflineBundle(bundle);
+        setRotas(await montarRotasComContagem(bundle.rotas, filtro, false));
+      } catch (bundleError) {
+        console.error('Erro ao carregar bundle offline de rotas:', bundleError);
+        const data = await listarRotas();
         await cacheService.set('rotas', data);
-      } catch (err) {
-        const cachedData = await cacheService.get<Rota[]>('rotas');
-        if (cachedData) {
-          console.log('Usando rotas do cache (offline)');
-          data = cachedData;
-        } else {
-          throw err;
-        }
+        setRotas(await montarRotasComContagem(data, filtro, !hadCache || force));
       }
-      
-      // Carregar filtro
-      const filtroSalvo = await AsyncStorage.getItem('filtro_qrcode');
-      let filtro = null;
-      if (filtroSalvo) {
-        filtro = JSON.parse(filtroSalvo);
-      }
-      
-      // Para cada rota, contar escolas com pendentes
-      const rotasComContagem = await Promise.all(
-        data.map(async (rota) => {
-          try {
-            const escolas = await listarEscolasDaRota(rota.id);
-            
-            // Contar escolas com itens pendentes
-            let escolasComPendentes = 0;
-            
-            for (const escola of escolas) {
-              try {
-                const itens = await listarItensEscola(escola.escola_id);
-                
-                // Aplicar filtro de data se houver
-                let itensFiltrados = itens;
-                if (filtro) {
-                  const dataInicio = new Date(filtro.dataInicio);
-                  dataInicio.setHours(0, 0, 0, 0);
-                  const dataFim = new Date(filtro.dataFim);
-                  dataFim.setHours(23, 59, 59, 999);
-                  
-                  itensFiltrados = itens.filter(item => {
-                    if (item.data_entrega) {
-                      const dataEntrega = new Date(item.data_entrega);
-                      return dataEntrega >= dataInicio && dataEntrega <= dataFim;
-                    }
-                    return true;
-                  });
-                }
-                
-                // Verificar se tem itens pendentes
-                const temPendentes = itensFiltrados.some(
-                  item => !item.entrega_confirmada || (item.saldo_pendente && item.saldo_pendente > 0)
-                );
-                
-                if (temPendentes) {
-                  escolasComPendentes++;
-                }
-              } catch (err) {
-                console.error(`Erro ao carregar itens da escola ${escola.escola_id}:`, err);
-              }
-            }
-            
-            return {
-              ...rota,
-              escolas_com_pendentes: escolasComPendentes
-            };
-          } catch (err) {
-            console.error(`Erro ao carregar escolas da rota ${rota.id}:`, err);
-            return {
-              ...rota,
-              escolas_com_pendentes: 0
-            };
-          }
-        })
-      );
-      
-      setRotas(rotasComContagem);
     } catch (err) {
-      setError(handleAxiosError(err));
+      if (!hadCache) {
+        setError(handleAxiosError(err));
+      }
     } finally {
       setLoading(false);
     }
@@ -118,17 +83,108 @@ export default function RotasScreen({ navigation }: any) {
     try {
       const filtro = await AsyncStorage.getItem('filtro_qrcode');
       if (filtro) {
-        setFiltroAtivo(JSON.parse(filtro));
+        const parsed = JSON.parse(filtro);
+        setFiltroAtivo(parsed);
+        return parsed;
       }
     } catch (err) {
       console.error('Erro ao carregar filtro:', err);
     }
+    setFiltroAtivo(null);
+    return null;
+  };
+
+  const recalcularRotasDoCache = async () => {
+    const filtro = await carregarFiltro();
+    const cachedEntry = await cacheService.getEntry<Rota[]>('rotas');
+    if (cachedEntry) {
+      setRotas(await montarRotasComContagem(cachedEntry.data, filtro, false));
+    }
+  };
+
+  const montarRotasComContagem = async (
+    rotasBase: Rota[],
+    filtro: any,
+    refreshMissingOrStale: boolean,
+  ): Promise<RotaComEscolas[]> => {
+    const outboxOperations = await loadDeliveryOutboxOperations();
+
+    return Promise.all(
+      rotasBase.map(async (rota) => {
+        const cacheKeyEscolas = `escolas_rota_${rota.id}`;
+        let escolasEntry = await cacheService.getEntry<EscolaRota[]>(cacheKeyEscolas);
+
+        if (
+          refreshMissingOrStale &&
+          shouldRefreshCache({
+            timestamp: escolasEntry?.timestamp,
+            maxAgeMs: ROUTE_SCHOOLS_REFRESH_MS,
+          })
+        ) {
+          try {
+            const escolasAtualizadas = await listarEscolasDaRota(rota.id);
+            await cacheService.set(cacheKeyEscolas, escolasAtualizadas);
+            escolasEntry = { data: escolasAtualizadas, timestamp: Date.now() };
+          } catch (err) {
+            console.error(`Erro ao atualizar escolas da rota ${rota.id}:`, err);
+          }
+        }
+
+        const escolas = escolasEntry?.data || [];
+        let routeProjectionEntry = await getRouteProjectionEntry(rota.id);
+
+        if (!routeProjectionEntry || refreshMissingOrStale) {
+          const projectionsBySchool = new Map();
+
+          for (const escola of escolas) {
+            let projectionEntry = await getSchoolProjectionEntry(escola.escola_id);
+
+            if (
+              refreshMissingOrStale &&
+              shouldRefreshCache({
+                timestamp: projectionEntry?.timestamp,
+                maxAgeMs: SCHOOL_ITEMS_REFRESH_MS,
+              })
+            ) {
+              try {
+                const itensAtualizados = await listarItensEscola(escola.escola_id);
+                const itensComOffline = mergeItemsWithOutbox(itensAtualizados, outboxOperations, {
+                  escolaId: escola.escola_id,
+                });
+                const projections = await saveSchoolItemsSnapshot(escola.escola_id, itensAtualizados, itensComOffline);
+                projectionEntry = { data: projections, timestamp: Date.now() };
+              } catch (err) {
+                console.error(`Erro ao atualizar itens da escola ${escola.escola_id}:`, err);
+              }
+            }
+
+            projectionsBySchool.set(escola.escola_id, projectionEntry?.data || []);
+          }
+
+          const routeProjections = await saveRouteProjectionSnapshot(rota.id, escolas, projectionsBySchool);
+          routeProjectionEntry = { data: routeProjections, timestamp: Date.now() };
+        }
+
+        const escolasComPendentes = routeProjectionEntry.data.filter((entry) =>
+          hasPendingItemsFromProjection(entry.projections, filtro),
+        ).length;
+
+        return {
+          ...rota,
+          escolas_com_pendentes: escolasComPendentes,
+        };
+      }),
+    );
   };
 
   const rotasFiltradas = filtroAtivo 
     ? rotas.filter(r => {
         // Suportar tanto rotaId (antigo) quanto rotaIds (novo)
+        if (filtroAtivo.escopoRotas === 'todas' || filtroAtivo.rotaIds === 'todas') {
+          return true;
+        }
         if (filtroAtivo.rotaIds && Array.isArray(filtroAtivo.rotaIds)) {
+          if (filtroAtivo.rotaIds.length === 0) return true;
           return filtroAtivo.rotaIds.includes(r.id);
         }
         // Fallback para formato antigo
@@ -149,7 +205,7 @@ export default function RotasScreen({ navigation }: any) {
     return (
       <View style={styles.center}>
         <Text style={styles.errorText}>❌ {error}</Text>
-        <Button mode="contained" onPress={carregarRotas} style={styles.retryButton}>
+        <Button mode="contained" onPress={() => carregarRotas(true)} style={styles.retryButton}>
           Tentar Novamente
         </Button>
       </View>
@@ -164,7 +220,9 @@ export default function RotasScreen({ navigation }: any) {
         <Card style={styles.filtroCard}>
           <Card.Content>
             <Text variant="titleMedium">
-              {filtroAtivo.rotaNomes && filtroAtivo.rotaNomes.length > 1 
+              {filtroAtivo.escopoRotas === 'todas' || filtroAtivo.rotaIds === 'todas'
+                ? 'Todas as Rotas'
+                : filtroAtivo.rotaNomes && filtroAtivo.rotaNomes.length > 1
                 ? `Rotas: ${filtroAtivo.rotaNomes.join(', ')}`
                 : `Rota: ${filtroAtivo.rotaNome || filtroAtivo.rotaNomes?.[0] || 'N/A'}`
               }

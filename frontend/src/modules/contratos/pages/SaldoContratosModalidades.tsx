@@ -38,6 +38,7 @@ import {
   MenuItem,
   Menu
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import { 
   Search as SearchIcon, 
   Download as DownloadIcon, 
@@ -1347,6 +1348,19 @@ const SaldoContratosModalidades: React.FC = () => {
           onClose={fecharDialogQuantidadeInicial}
           maxWidth="sm"
           fullWidth
+          PaperProps={{
+            sx: (theme) => ({
+              borderRadius: 2,
+              backgroundImage: "none",
+              bgcolor: "background.paper",
+              color: "text.primary",
+              border: "1px solid",
+              borderColor: "divider",
+              boxShadow: theme.palette.mode === "dark"
+                ? "0 24px 60px rgba(0,0,0,0.55)"
+                : "0 18px 46px rgba(31,36,48,0.12)",
+            }),
+          }}
           onKeyDown={(e) => {
             if (e.key === 'Tab' && !e.shiftKey) {
               e.preventDefault();
@@ -1359,7 +1373,16 @@ const SaldoContratosModalidades: React.FC = () => {
             }
           }}
         >
-          <DialogTitle sx={{ bgcolor: 'success.main', color: 'success.contrastText' }}>
+          <DialogTitle
+            sx={(theme) => ({
+              bgcolor: theme.palette.mode === "dark"
+                ? alpha(theme.palette.success.main, 0.14)
+                : alpha(theme.palette.success.main, 0.10),
+              color: "text.primary",
+              borderBottom: "1px solid",
+              borderColor: alpha(theme.palette.success.main, 0.28),
+            })}
+          >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
               <EditIcon />
               Editar Quantidade Inicial
@@ -1370,14 +1393,50 @@ const SaldoContratosModalidades: React.FC = () => {
               </Box>
             )}
           </DialogTitle>
-          <DialogContent>
+          <DialogContent
+            sx={(theme) => ({
+              bgcolor: "background.paper",
+              "& .MuiAlert-root": {
+                border: "1px solid",
+                backgroundImage: "none",
+                color: "text.primary",
+              },
+              "& .MuiAlert-standardInfo": {
+                bgcolor: alpha(theme.palette.info.main, theme.palette.mode === "dark" ? 0.14 : 0.10),
+                borderColor: alpha(theme.palette.info.main, 0.35),
+                "& .MuiAlert-icon": { color: "info.main" },
+              },
+              "& .MuiAlert-standardError": {
+                bgcolor: alpha(theme.palette.error.main, theme.palette.mode === "dark" ? 0.14 : 0.10),
+                borderColor: alpha(theme.palette.error.main, 0.35),
+                "& .MuiAlert-icon": { color: "error.main" },
+              },
+              "& .MuiOutlinedInput-root": {
+                bgcolor: theme.palette.mode === "dark"
+                  ? alpha(theme.palette.common.white, 0.03)
+                  : "background.default",
+              },
+            })}
+          >
             {modalidadeSelecionada && produtoSelecionado && (
               <Box sx={{ pt: 2 }}>
                 <Alert severity="info" sx={{ mb: 3 }}>
                   Define a quantidade inicial disponível para esta modalidade. Esta é a quantidade que será distribuída do contrato.
                 </Alert>
 
-                <Box sx={{ mb: 3, p: 2, bgcolor: 'primary.light', borderRadius: 1, border: 2, borderColor: 'primary.main' }}>
+                <Box
+                  sx={(theme) => ({
+                    mb: 3,
+                    p: 2,
+                    bgcolor: theme.palette.mode === "dark"
+                      ? alpha(theme.palette.success.main, 0.08)
+                      : alpha(theme.palette.success.main, 0.06),
+                    borderRadius: 1,
+                    border: "1px solid",
+                    borderColor: alpha(theme.palette.success.main, theme.palette.mode === "dark" ? 0.34 : 0.28),
+                    color: "text.primary",
+                  })}
+                >
                   <Typography variant="body2" gutterBottom>
                     <strong>Produto:</strong> {produtoSelecionado.produto_nome || produtoSelecionado.nome || 'N/A'}
                   </Typography>
@@ -1431,7 +1490,21 @@ const SaldoContratosModalidades: React.FC = () => {
               </Box>
             )}
           </DialogContent>
-          <DialogActions>
+          <DialogActions
+            sx={(theme) => ({
+              bgcolor: "background.paper",
+              borderTop: "1px solid",
+              borderColor: "divider",
+              px: 3,
+              py: 2,
+              "& .MuiButton-root": {
+                textTransform: "none",
+              },
+              "& .MuiButton-text": {
+                color: theme.palette.text.secondary,
+              },
+            })}
+          >
             <Button size="small" onClick={fecharDialogQuantidadeInicial} disabled={cadastrarSaldoMutation.isPending}>
               Cancelar
             </Button>

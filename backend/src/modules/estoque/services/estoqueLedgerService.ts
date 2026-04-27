@@ -482,6 +482,7 @@ class EstoqueLedgerService {
     const central_evento = await this.appendEventWithClient(client, {
       tenant_id: input.tenant_id ?? null,
       escopo: "central",
+      escola_id: Number(input.escola_id),
       produto_id: Number(input.produto_id),
       tipo_evento: "transferencia_para_escola",
       origem: "transferencia",

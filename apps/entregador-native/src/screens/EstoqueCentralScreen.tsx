@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl, Alert } from 'react-native';
-import { Text, Card, FAB, Searchbar, Chip, ActivityIndicator, IconButton } from 'react-native-paper';
-import { listarEstoqueCentral, EstoqueCentral } from '../api/estoqueCentral';
+import React, { useEffect, useState } from 'react';
+import { Alert, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Card, Chip, FAB, IconButton, Searchbar, Text } from 'react-native-paper';
+import { EstoqueCentral, listarEstoqueCentral } from '../api/estoqueCentral';
 import { handleAxiosError } from '../api/client';
 import { formatarNumeroInteligente } from '../utils/dateUtils';
 
@@ -11,7 +11,7 @@ export default function EstoqueCentralScreen({ navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [busca, setBusca] = useState('');
-  const [filtro, setFiltro] = useState<'todos' | 'baixo' | 'vencendo'>('todos');
+  const [filtro, setFiltro] = useState<'todos' | 'baixo'>('todos');
   const [fabOpen, setFabOpen] = useState(false);
 
   useEffect(() => {
@@ -25,12 +25,7 @@ export default function EstoqueCentralScreen({ navigation }: any) {
   const carregarEstoque = async () => {
     try {
       setLoading(true);
-      const data = await listarEstoqueCentral();
-      console.log('Estoque carregado:', data.length, 'itens');
-      if (data.length > 0) {
-        console.log('Primeiro item:', JSON.stringify(data[0], null, 2));
-      }
-      setEstoque(data);
+      setEstoque(await listarEstoqueCentral());
     } catch (err) {
       console.error('Erro ao carregar estoque:', err);
       Alert.alert('Erro', handleAxiosError(err));
@@ -43,24 +38,14 @@ export default function EstoqueCentralScreen({ navigation }: any) {
   const filtrarEstoque = () => {
     let resultado = estoque;
 
-    // Filtro por busca
     if (busca) {
-      resultado = resultado.filter(item =>
+      resultado = resultado.filter((item) =>
         item.produto_nome?.toLowerCase().includes(busca.toLowerCase())
       );
     }
 
-    // Filtro por tipo
     if (filtro === 'baixo') {
-      resultado = resultado.filter(item => formatarNumero(item.quantidade_disponivel) < 10);
-    } else if (filtro === 'vencendo') {
-      resultado = resultado.filter(item => {
-        if (!item.proxima_validade) return false;
-        const diasParaVencer = Math.ceil(
-          (new Date(item.proxima_validade).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
-        );
-        return diasParaVencer <= 30;
-      });
+      resultado = resultado.filter((item) => formatarNumero(item.quantidade_disponivel) < 10);
     }
 
     setEstoqueFiltrado(resultado);
@@ -84,26 +69,11 @@ export default function EstoqueCentralScreen({ navigation }: any) {
   const formatarNumero = (valor: any): number => {
     if (valor === null || valor === undefined) return 0;
     const num = typeof valor === 'number' ? valor : parseFloat(String(valor));
-    return isNaN(num) ? 0 : num;
-  };
-
-  const formatarValidade = (data?: string): string => {
-    if (!data) return 'Sem validade';
-    
-    const validade = new Date(data);
-    const hoje = new Date();
-    const diasParaVencer = Math.ceil((validade.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
-    
-    if (diasParaVencer < 0) return '⚠️ VENCIDO';
-    if (diasParaVencer <= 7) return `⚠️ ${diasParaVencer}d`;
-    if (diasParaVencer <= 30) return `⚡ ${diasParaVencer}d`;
-    
-    return validade.toLocaleDateString('pt-BR');
+    return Number.isNaN(num) ? 0 : num;
   };
 
   return (
     <View style={styles.container}>
-      {/* Header com Busca */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
           <Searchbar
@@ -122,7 +92,6 @@ export default function EstoqueCentralScreen({ navigation }: any) {
         </View>
       </View>
 
-      {/* Filtros */}
       <View style={styles.filtrosWrapper}>
         <ScrollView
           horizontal
@@ -146,25 +115,13 @@ export default function EstoqueCentralScreen({ navigation }: any) {
           >
             Estoque Baixo
           </Chip>
-          <Chip
-            selected={filtro === 'vencendo'}
-            onPress={() => setFiltro('vencendo')}
-            style={styles.chip}
-            icon="clock-alert-outline"
-            mode={filtro === 'vencendo' ? 'flat' : 'outlined'}
-          >
-            Vencendo
-          </Chip>
         </ScrollView>
       </View>
 
-      {/* Lista */}
       <ScrollView
         style={styles.lista}
         contentContainerStyle={styles.listaContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         {loading ? (
           <View style={styles.loadingContainer}>
@@ -174,13 +131,12 @@ export default function EstoqueCentralScreen({ navigation }: any) {
         ) : estoqueFiltrado.length === 0 ? (
           <Card style={styles.emptyCard}>
             <Card.Content>
-              <Text style={styles.emptyIcon}>📭</Text>
               <Text style={styles.emptyText}>
                 {busca ? 'Nenhum produto encontrado' : 'Estoque vazio'}
               </Text>
               {!busca && (
                 <Text style={styles.emptySubtext}>
-                  Clique no botão + para registrar uma entrada
+                  Clique no botao + para registrar uma entrada
                 </Text>
               )}
             </Card.Content>
@@ -189,9 +145,9 @@ export default function EstoqueCentralScreen({ navigation }: any) {
           estoqueFiltrado.map((item) => {
             const disponivel = formatarNumero(item.quantidade_disponivel);
             const corQuantidade = getCorQuantidade(disponivel);
-            
+
             return (
-              <Card key={item.id} style={styles.card} onPress={() => abrirDetalhes(item)}>
+              <Card key={item.produto_id} style={styles.card} onPress={() => abrirDetalhes(item)}>
                 <Card.Content>
                   <View style={styles.cardHeader}>
                     <View style={styles.cardTitleContainer}>
@@ -203,12 +159,10 @@ export default function EstoqueCentralScreen({ navigation }: any) {
 
                   <View style={styles.quantidadeContainer}>
                     <View style={styles.quantidadeBox}>
-                      <Text variant="bodySmall" style={styles.quantidadeLabel}>
-                        Disponível
-                      </Text>
+                      <Text variant="bodySmall" style={styles.quantidadeLabel}>Disponivel</Text>
                       <View style={styles.quantidadeValorContainer}>
-                        <Text 
-                          variant="headlineMedium" 
+                        <Text
+                          variant="headlineMedium"
                           style={[styles.quantidadeValor, { color: corQuantidade }]}
                         >
                           {formatarNumeroInteligente(disponivel, 0)}
@@ -223,28 +177,15 @@ export default function EstoqueCentralScreen({ navigation }: any) {
 
                     <View style={styles.infoGrid}>
                       <View style={styles.infoGridItem}>
-                        <Text variant="bodySmall" style={styles.infoLabel}>
-                          Total
-                        </Text>
+                        <Text variant="bodySmall" style={styles.infoLabel}>Total</Text>
                         <Text variant="titleSmall" style={styles.infoValue}>
                           {formatarNumeroInteligente(formatarNumero(item.quantidade))}
                         </Text>
                       </View>
 
-                      <View style={styles.infoGridItem}>
-                        <Text variant="bodySmall" style={styles.infoLabel}>
-                          Lotes
-                        </Text>
-                        <Text variant="titleSmall" style={styles.infoValue}>
-                          {item.total_lotes || 0}
-                        </Text>
-                      </View>
-
                       {formatarNumero(item.quantidade_reservada) > 0 && (
                         <View style={styles.infoGridItem}>
-                          <Text variant="bodySmall" style={styles.infoLabel}>
-                            Reservado
-                          </Text>
+                          <Text variant="bodySmall" style={styles.infoLabel}>Reservado</Text>
                           <Text variant="titleSmall" style={[styles.infoValue, { color: '#f59e0b' }]}>
                             {formatarNumeroInteligente(formatarNumero(item.quantidade_reservada))}
                           </Text>
@@ -252,14 +193,6 @@ export default function EstoqueCentralScreen({ navigation }: any) {
                       )}
                     </View>
                   </View>
-
-                  {item.proxima_validade && (
-                    <View style={styles.validadeContainer}>
-                      <Text variant="bodySmall" style={styles.validadeLabel}>
-                        🗓️ Próxima validade: {formatarValidade(item.proxima_validade)}
-                      </Text>
-                    </View>
-                  )}
                 </Card.Content>
               </Card>
             );
@@ -267,7 +200,6 @@ export default function EstoqueCentralScreen({ navigation }: any) {
         )}
       </ScrollView>
 
-      {/* FAB Menu */}
       <FAB.Group
         open={fabOpen}
         visible
@@ -281,7 +213,7 @@ export default function EstoqueCentralScreen({ navigation }: any) {
           },
           {
             icon: 'package-up',
-            label: 'Registrar Saída',
+            label: 'Registrar Saida',
             onPress: () => navigation.navigate('EstoqueCentralSaida'),
             color: '#dc2626',
           },
@@ -290,6 +222,12 @@ export default function EstoqueCentralScreen({ navigation }: any) {
             label: 'Ajustar Estoque',
             onPress: () => navigation.navigate('EstoqueCentralAjuste'),
             color: '#f59e0b',
+          },
+          {
+            icon: 'truck-delivery',
+            label: 'Transferir para Escola',
+            onPress: () => navigation.navigate('EstoqueCentralTransferencia'),
+            color: '#2563eb',
           },
         ]}
         onStateChange={({ open }) => setFabOpen(open)}
@@ -300,10 +238,7 @@ export default function EstoqueCentralScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
+  container: { flex: 1, backgroundColor: '#f5f5f5' },
   header: {
     backgroundColor: '#fff',
     padding: 16,
@@ -313,57 +248,22 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  searchbar: {
-    flex: 1,
-    elevation: 0,
-    backgroundColor: '#f5f5f5',
-  },
-  menuButton: {
-    margin: 0,
-  },
+  headerContent: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  searchbar: { flex: 1, elevation: 0, backgroundColor: '#f5f5f5' },
+  menuButton: { margin: 0 },
   filtrosWrapper: {
     backgroundColor: '#fff',
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
-  filtrosContent: {
-    paddingHorizontal: 16,
-    gap: 8,
-  },
-  chip: {
-    marginRight: 8,
-  },
-  lista: {
-    flex: 1,
-  },
-  listaContent: {
-    padding: 16,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-  },
-  loadingText: {
-    marginTop: 16,
-    color: '#666',
-  },
-  emptyCard: {
-    marginTop: 40,
-    alignItems: 'center',
-  },
-  emptyIcon: {
-    fontSize: 64,
-    textAlign: 'center',
-    marginBottom: 16,
-  },
+  filtrosContent: { paddingHorizontal: 16, gap: 8 },
+  chip: { marginRight: 8 },
+  lista: { flex: 1 },
+  listaContent: { padding: 16 },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
+  loadingText: { marginTop: 16, color: '#666' },
+  emptyCard: { marginTop: 40, alignItems: 'center' },
   emptyText: {
     textAlign: 'center',
     color: '#666',
@@ -371,11 +271,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 8,
   },
-  emptySubtext: {
-    textAlign: 'center',
-    color: '#999',
-    fontSize: 14,
-  },
+  emptySubtext: { textAlign: 'center', color: '#999', fontSize: 14 },
   card: {
     marginBottom: 12,
     elevation: 4,
@@ -385,23 +281,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 10,
-  },
-  cardTitleContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  produtoNome: {
-    fontWeight: 'bold',
-    color: '#1a1a1a',
-    fontSize: 15,
-  },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 },
+  cardTitleContainer: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  produtoNome: { fontWeight: 'bold', color: '#1a1a1a', fontSize: 15 },
   quantidadeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -410,9 +292,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     paddingHorizontal: 12,
   },
-  quantidadeBox: {
-    flex: 1,
-  },
+  quantidadeBox: { flex: 1 },
   quantidadeLabel: {
     color: '#666',
     marginBottom: 2,
@@ -420,56 +300,13 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
   },
-  quantidadeValorContainer: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 4,
-  },
-  quantidadeValor: {
-    fontWeight: 'bold',
-    fontSize: 24,
-  },
-  unidade: {
-    color: '#666',
-    fontWeight: '600',
-    fontSize: 13,
-  },
-  dividerVertical: {
-    width: 1,
-    height: 40,
-    backgroundColor: '#e0e0e0',
-    marginHorizontal: 12,
-  },
-  infoGrid: {
-    flex: 1,
-    gap: 6,
-  },
-  infoGridItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  infoLabel: {
-    color: '#666',
-    fontSize: 11,
-  },
-  infoValue: {
-    fontWeight: '600',
-    color: '#1a1a1a',
-    fontSize: 14,
-  },
-  validadeContainer: {
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-  },
-  validadeLabel: {
-    color: '#f59e0b',
-    fontWeight: '600',
-    fontSize: 12,
-  },
-  fab: {
-    backgroundColor: '#1976d2',
-  },
+  quantidadeValorContainer: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
+  quantidadeValor: { fontWeight: 'bold', fontSize: 24 },
+  unidade: { color: '#666', fontWeight: '600', fontSize: 13 },
+  dividerVertical: { width: 1, height: 40, backgroundColor: '#e0e0e0', marginHorizontal: 12 },
+  infoGrid: { flex: 1, gap: 6 },
+  infoGridItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  infoLabel: { color: '#666', fontSize: 11 },
+  infoValue: { fontWeight: '600', color: '#1a1a1a', fontSize: 14 },
+  fab: { backgroundColor: '#1976d2' },
 });

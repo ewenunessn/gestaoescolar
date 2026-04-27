@@ -1,11 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert, Platform } from 'react-native';
-import { Text, Card, Button, TextInput, ActivityIndicator } from 'react-native-paper';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import { registrarEntrada, EntradaData } from '../api/estoqueCentral';
-import { api, handleAxiosError } from '../api/client';
-import { formatarDataBR, stringParaData, formatarDataParaInput } from '../utils/dateUtils';
+import { ActivityIndicator, Button, Card, Text, TextInput } from 'react-native-paper';
+import { EntradaData, listarProdutos, registrarEntrada } from '../api/estoqueCentral';
+import { handleAxiosError } from '../api/client';
 
 interface Produto {
   id: number;
@@ -19,73 +17,46 @@ export default function EstoqueCentralEntradaScreen({ route, navigation }: any) 
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loadingProdutos, setLoadingProdutos] = useState(true);
   const [saving, setSaving] = useState(false);
-
   const [produtoId, setProdutoId] = useState(
     produtoInicial?.produto_id?.toString() || produtoInicial?.id?.toString() || ''
   );
   const [quantidade, setQuantidade] = useState('');
-  const [lote, setLote] = useState('');
-  const [dataFabricacao, setDataFabricacao] = useState('');
-  const [dataValidade, setDataValidade] = useState('');
   const [motivo, setMotivo] = useState('');
   const [observacao, setObservacao] = useState('');
   const [fornecedor, setFornecedor] = useState('');
   const [notaFiscal, setNotaFiscal] = useState('');
   const [documento, setDocumento] = useState('');
 
-  const [showDatePickerFabricacao, setShowDatePickerFabricacao] = useState(false);
-  const [showDatePickerValidade, setShowDatePickerValidade] = useState(false);
-
   useEffect(() => {
     carregarProdutos();
-    gerarCodigoLote();
   }, []);
-
-  const gerarCodigoLote = () => {
-    const hoje = new Date();
-    const ano = hoje.getFullYear();
-    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
-    const dia = String(hoje.getDate()).padStart(2, '0');
-    const hora = String(hoje.getHours()).padStart(2, '0');
-    const minuto = String(hoje.getMinutes()).padStart(2, '0');
-    const segundo = String(hoje.getSeconds()).padStart(2, '0');
-    
-    // Formato: LOTE-YYYYMMDD-HHMMSS
-    const codigoLote = `LOTE-${ano}${mes}${dia}-${hora}${minuto}${segundo}`;
-    setLote(codigoLote);
-  };
 
   const carregarProdutos = async () => {
     try {
-      const response = await api.get('/produtos');
-      setProdutos(response.data.data || response.data);
+      setProdutos(await listarProdutos());
     } catch (err) {
       console.error('Erro ao carregar produtos:', err);
-      Alert.alert('Erro', 'Não foi possível carregar os produtos');
+      Alert.alert('Erro', 'Nao foi possivel carregar os produtos');
     } finally {
       setLoadingProdutos(false);
     }
   };
 
-  const validarFormulario = (): boolean => {
+  const produtoSelecionado = useMemo(() => {
+    if (produtoInicial) return produtoInicial;
+    return produtos.find((produto) => String(produto.id) === produtoId);
+  }, [produtoId, produtoInicial, produtos]);
+
+  const quantidadeNumerica = Number(quantidade.replace(',', '.')) || 0;
+
+  const validarFormulario = () => {
     if (!produtoId) {
-      Alert.alert('Atenção', 'Selecione um produto');
+      Alert.alert('Atencao', 'Selecione um produto');
       return false;
     }
 
-    if (!quantidade || parseFloat(quantidade) <= 0) {
-      Alert.alert('Atenção', 'Informe uma quantidade válida');
-      return false;
-    }
-
-    // Lote e validade são obrigatórios
-    if (!lote) {
-      Alert.alert('Atenção', 'O código do lote é obrigatório. Clique em "Gerar Novo" se necessário.');
-      return false;
-    }
-    
-    if (!dataValidade) {
-      Alert.alert('Atenção', 'Informe a data de validade do lote');
+    if (!quantidade || quantidadeNumerica <= 0) {
+      Alert.alert('Atencao', 'Informe uma quantidade valida');
       return false;
     }
 
@@ -98,31 +69,28 @@ export default function EstoqueCentralEntradaScreen({ route, navigation }: any) 
     try {
       setSaving(true);
 
+      const detalhes = [
+        observacao.trim() || null,
+        fornecedor.trim() ? `Fornecedor: ${fornecedor.trim()}` : null,
+        notaFiscal.trim() ? `NF: ${notaFiscal.trim()}` : null,
+        documento.trim() ? `Documento: ${documento.trim()}` : null,
+      ].filter(Boolean).join('\n') || undefined;
+
       const dados: EntradaData = {
-        produto_id: parseInt(produtoId),
-        quantidade: parseFloat(quantidade),
-        lote: lote, // Obrigatório
-        data_validade: dataValidade, // Obrigatório
-        data_fabricacao: dataFabricacao || undefined,
-        motivo,
-        observacao,
-        fornecedor,
-        nota_fiscal: notaFiscal,
-        documento,
+        produto_id: Number(produtoId),
+        quantidade: quantidadeNumerica,
+        motivo: motivo.trim() || undefined,
+        observacao: detalhes,
+        fornecedor: fornecedor.trim() || undefined,
+        nota_fiscal: notaFiscal.trim() || undefined,
+        documento: documento.trim() || undefined,
       };
 
       await registrarEntrada(dados);
 
-      Alert.alert(
-        'Sucesso',
-        'Entrada registrada com sucesso!',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack()
-          }
-        ]
-      );
+      Alert.alert('Sucesso', 'Entrada registrada com sucesso', [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
     } catch (err) {
       console.error('Erro ao registrar entrada:', err);
       Alert.alert('Erro', handleAxiosError(err));
@@ -131,31 +99,13 @@ export default function EstoqueCentralEntradaScreen({ route, navigation }: any) 
     }
   };
 
-  const onChangeDateFabricacao = (_event: any, selectedDate?: Date) => {
-    setShowDatePickerFabricacao(Platform.OS === 'ios');
-    if (selectedDate) {
-      setDataFabricacao(formatarDataParaInput(selectedDate));
-    }
-  };
-
-  const onChangeDateValidade = (_event: any, selectedDate?: Date) => {
-    setShowDatePickerValidade(Platform.OS === 'ios');
-    if (selectedDate) {
-      setDataValidade(formatarDataParaInput(selectedDate));
-    }
-  };
-
-  const produtoSelecionado = produtoInicial || produtos.find(p => p.id === parseInt(produtoId));
-
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
       <Card style={styles.card}>
         <Card.Content>
-          <Text variant="titleLarge" style={styles.title}>
-            📦 Registrar Entrada
-          </Text>
+          <Text variant="titleLarge" style={styles.title}>Registrar Entrada</Text>
           <Text variant="bodyMedium" style={styles.subtitle}>
-            Registre a entrada de produtos no estoque central
+            Entrada manual no estoque central por produto.
           </Text>
         </Card.Content>
       </Card>
@@ -167,34 +117,27 @@ export default function EstoqueCentralEntradaScreen({ route, navigation }: any) 
         </View>
       ) : (
         <>
-          {/* Produto */}
           <Card style={styles.card}>
             <Card.Content>
-              <Text variant="titleMedium" style={styles.sectionTitle}>
-                Produto
-              </Text>
+              <Text variant="titleMedium" style={styles.sectionTitle}>Produto</Text>
               {produtoInicial ? (
                 <View style={styles.produtoSelecionado}>
                   <Text variant="bodyLarge" style={styles.produtoNome}>
                     {produtoInicial.produto_nome || produtoInicial.nome}
                   </Text>
                   <Text variant="bodyMedium" style={styles.produtoUnidade}>
-                    Unidade: {produtoInicial.unidade}
+                    Unidade: {produtoInicial.unidade || produtoInicial.produto_unidade || 'UN'}
                   </Text>
                 </View>
               ) : (
                 <View style={styles.pickerContainer}>
-                  <Picker
-                    selectedValue={produtoId}
-                    onValueChange={setProdutoId}
-                    style={styles.picker}
-                  >
+                  <Picker selectedValue={produtoId} onValueChange={setProdutoId} style={styles.picker}>
                     <Picker.Item label="Selecione um produto..." value="" />
-                    {produtos.map(produto => (
+                    {produtos.map((produto) => (
                       <Picker.Item
                         key={produto.id}
                         label={`${produto.nome} (${produto.unidade})`}
-                        value={produto.id.toString()}
+                        value={String(produto.id)}
                       />
                     ))}
                   </Picker>
@@ -203,119 +146,31 @@ export default function EstoqueCentralEntradaScreen({ route, navigation }: any) 
             </Card.Content>
           </Card>
 
-          {/* Quantidade */}
           <Card style={styles.card}>
             <Card.Content>
-              <Text variant="titleMedium" style={styles.sectionTitle}>
-                Quantidade
-              </Text>
+              <Text variant="titleMedium" style={styles.sectionTitle}>Movimentacao</Text>
               <TextInput
-                label={`Quantidade${produtoSelecionado ? ` (${produtoSelecionado.unidade})` : ''}`}
+                label={`Quantidade${produtoSelecionado ? ` (${produtoSelecionado.unidade || produtoSelecionado.produto_unidade || 'UN'})` : ''}`}
                 value={quantidade}
                 onChangeText={setQuantidade}
                 keyboardType="numeric"
                 mode="outlined"
                 style={styles.input}
               />
-            </Card.Content>
-          </Card>
-
-          {/* Lote (Obrigatório) */}
-          <Card style={styles.card}>
-            <Card.Content>
-              <Text variant="titleMedium" style={styles.sectionTitle}>
-                Informações do Lote (Obrigatório)
-              </Text>
-              
-              <Text variant="bodySmall" style={styles.loteHint}>
-                💡 O código do lote é gerado automaticamente. Você pode editá-lo ou gerar um novo.
-              </Text>
-              
-              <View style={styles.loteContainer}>
-                <TextInput
-                  label="Código do Lote"
-                  value={lote}
-                  onChangeText={setLote}
-                  mode="outlined"
-                  style={styles.loteInput}
-                  placeholder="LOTE-20260303-120000"
-                />
-                <Button
-                  mode="outlined"
-                  onPress={gerarCodigoLote}
-                  icon="refresh"
-                  style={styles.gerarLoteButton}
-                  compact
-                >
-                  Gerar Novo
-                </Button>
-              </View>
-
-                  <View style={styles.dateContainer}>
-                    <Text variant="bodyMedium" style={styles.dateLabel}>
-                      Data de Fabricação (opcional):
-                    </Text>
-                    <Button
-                      mode="outlined"
-                      onPress={() => setShowDatePickerFabricacao(true)}
-                      icon="calendar"
-                      style={styles.dateButton}
-                    >
-                      {dataFabricacao ? formatarDataBR(dataFabricacao) : 'Selecionar'}
-                    </Button>
-                  </View>
-
-                  {showDatePickerFabricacao && (
-                    <DateTimePicker
-                      value={dataFabricacao ? stringParaData(dataFabricacao) : new Date()}
-                      mode="date"
-                      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                      onChange={onChangeDateFabricacao}
-                    />
-                  )}
-
-                  <View style={styles.dateContainer}>
-                    <Text variant="bodyMedium" style={styles.dateLabel}>
-                      Data de Validade (obrigatória):
-                    </Text>
-                    <Button
-                      mode="outlined"
-                      onPress={() => setShowDatePickerValidade(true)}
-                      icon="calendar"
-                      style={styles.dateButton}
-                    >
-                      {dataValidade ? formatarDataBR(dataValidade) : 'Selecionar'}
-                    </Button>
-                  </View>
-
-                  {showDatePickerValidade && (
-                    <DateTimePicker
-                      value={dataValidade ? stringParaData(dataValidade) : new Date()}
-                      mode="date"
-                      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                      onChange={onChangeDateValidade}
-                      minimumDate={new Date()}
-                    />
-                  )}
-            </Card.Content>
-          </Card>
-
-          {/* Informações Adicionais */}
-          <Card style={styles.card}>
-            <Card.Content>
-              <Text variant="titleMedium" style={styles.sectionTitle}>
-                Informações Adicionais
-              </Text>
-
               <TextInput
                 label="Motivo"
                 value={motivo}
                 onChangeText={setMotivo}
                 mode="outlined"
                 style={styles.input}
-                placeholder="Ex: Compra mensal"
+                placeholder="Ex: compra mensal, ajuste de recebimento"
               />
+            </Card.Content>
+          </Card>
 
+          <Card style={styles.card}>
+            <Card.Content>
+              <Text variant="titleMedium" style={styles.sectionTitle}>Informacoes Adicionais</Text>
               <TextInput
                 label="Fornecedor"
                 value={fornecedor}
@@ -323,16 +178,13 @@ export default function EstoqueCentralEntradaScreen({ route, navigation }: any) 
                 mode="outlined"
                 style={styles.input}
               />
-
               <TextInput
                 label="Nota Fiscal"
                 value={notaFiscal}
                 onChangeText={setNotaFiscal}
                 mode="outlined"
                 style={styles.input}
-                placeholder="NF-12345"
               />
-
               <TextInput
                 label="Documento"
                 value={documento}
@@ -340,9 +192,8 @@ export default function EstoqueCentralEntradaScreen({ route, navigation }: any) 
                 mode="outlined"
                 style={styles.input}
               />
-
               <TextInput
-                label="Observações"
+                label="Observacao"
                 value={observacao}
                 onChangeText={setObservacao}
                 mode="outlined"
@@ -353,7 +204,6 @@ export default function EstoqueCentralEntradaScreen({ route, navigation }: any) 
             </Card.Content>
           </Card>
 
-          {/* Botões */}
           <View style={styles.actions}>
             <Button
               mode="contained"
@@ -365,12 +215,7 @@ export default function EstoqueCentralEntradaScreen({ route, navigation }: any) 
             >
               Registrar Entrada
             </Button>
-            <Button
-              mode="outlined"
-              onPress={() => navigation.goBack()}
-              disabled={saving}
-              style={styles.button}
-            >
+            <Button mode="outlined" onPress={() => navigation.goBack()} disabled={saving} style={styles.button}>
               Cancelar
             </Button>
           </View>
@@ -381,42 +226,15 @@ export default function EstoqueCentralEntradaScreen({ route, navigation }: any) 
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  card: {
-    margin: 16,
-    marginBottom: 0,
-  },
-  title: {
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  subtitle: {
-    color: '#666',
-  },
-  loadingContainer: {
-    padding: 40,
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 16,
-    color: '#666',
-  },
-  sectionTitle: {
-    fontWeight: 'bold',
-    marginBottom: 12,
-  },
-  pickerContainer: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 4,
-    backgroundColor: '#fff',
-  },
-  picker: {
-    height: 50,
-  },
+  container: { flex: 1, backgroundColor: '#f5f5f5' },
+  card: { margin: 16, marginBottom: 0 },
+  title: { fontWeight: 'bold', marginBottom: 8 },
+  subtitle: { color: '#666' },
+  loadingContainer: { padding: 40, alignItems: 'center' },
+  loadingText: { marginTop: 16, color: '#666' },
+  sectionTitle: { fontWeight: 'bold', marginBottom: 12 },
+  pickerContainer: { borderWidth: 1, borderColor: '#ccc', borderRadius: 4, backgroundColor: '#fff' },
+  picker: { height: 50 },
   produtoSelecionado: {
     padding: 16,
     backgroundColor: '#e8f5e9',
@@ -424,57 +242,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#4caf50',
   },
-  produtoNome: {
-    fontWeight: 'bold',
-    color: '#2e7d32',
-    marginBottom: 4,
-  },
-  produtoUnidade: {
-    color: '#558b2f',
-  },
-  input: {
-    marginBottom: 12,
-  },
-  loteHint: {
-    color: '#666',
-    fontStyle: 'italic',
-    marginBottom: 12,
-    lineHeight: 18,
-  },
-  loteContainer: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
-    alignItems: 'flex-start',
-  },
-  loteInput: {
-    flex: 1,
-  },
-  gerarLoteButton: {
-    marginTop: 8,
-  },
-  switchRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  dateContainer: {
-    marginBottom: 16,
-  },
-  dateLabel: {
-    marginBottom: 8,
-    fontWeight: '600',
-    color: '#666',
-  },
-  dateButton: {
-    justifyContent: 'flex-start',
-  },
-  actions: {
-    padding: 16,
-    gap: 12,
-  },
-  button: {
-    marginBottom: 0,
-  },
+  produtoNome: { fontWeight: 'bold', color: '#2e7d32', marginBottom: 4 },
+  produtoUnidade: { color: '#558b2f' },
+  input: { marginBottom: 12 },
+  actions: { padding: 16, gap: 12 },
+  button: { marginBottom: 0 },
 });

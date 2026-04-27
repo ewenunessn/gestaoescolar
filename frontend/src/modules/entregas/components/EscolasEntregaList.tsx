@@ -40,7 +40,7 @@ import { guiaService } from "../../../services/guiaService";
 import { buscarInstituicao, Instituicao } from "../../../services/instituicao";
 import { formatarQuantidade } from "../../../utils/formatters";
 import { DataTableAdvanced } from "../../../components/DataTableAdvanced";
-import { initPdfMake, buildPdfDoc, buildTable, savePdfMakeDocument } from "../../../utils/pdfUtils";
+import { initPdfMake, buildPdfDoc, buildQrFooter, buildTable, savePdfMakeDocument } from "../../../utils/pdfUtils";
 import api from "../../../services/api";
 
 interface EscolasEntregaListProps {
@@ -377,45 +377,20 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({
       });
 
       const pdfMake = await initPdfMake();
+      const guiaPdfMargins: [number, number, number, number] = [36, 34, 36, 88];
       const doc = buildPdfDoc({
         instituicao,
         title: rotaCompleta,
         subtitle: mesAno,
         content: allContent,
         showSignature: false,
-        customFooter: (currentPage: number, pageCount: number) => {
-          const geradoEm = new Date().toLocaleDateString('pt-BR');
-          return {
-            stack: [
-              {
-                canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.4, lineColor: '#9ca3af' }],
-                margin: [40, 0, 40, 4],
-              },
-              {
-                columns: [
-                  {
-                    stack: [
-                      { text: instituicao?.nome || 'Sistema de Gestão de Alimentação Escolar', fontSize: 7, color: '#374151' },
-                      ...(instituicao?.endereco ? [{ text: instituicao.endereco, fontSize: 6, color: '#374151', margin: [0, 1, 0, 0] }] : []),
-                      { text: `Gerado em ${geradoEm} · Página ${currentPage} de ${pageCount}`, fontSize: 6, color: '#374151', margin: [0, 2, 0, 0] },
-                    ],
-                    alignment: 'left',
-                    width: '*'
-                  },
-                  {
-                    stack: [
-                      { image: qrCodeDataUrl, width: 60, height: 60, alignment: 'right' },
-                      { text: codigoGuia, fontSize: 6, alignment: 'right', margin: [0, 2, 0, 0], color: '#374151' },
-                    ],
-                    alignment: 'right',
-                    width: 70
-                  },
-                ],
-                margin: [40, 0, 40, 0],
-              },
-            ]
-          };
-        },
+        pageMargins: guiaPdfMargins,
+        customFooter: buildQrFooter({
+          instituicao,
+          qrCodeDataUrl,
+          qrLabel: codigoGuia,
+          pageMargins: guiaPdfMargins,
+        }),
       });
       await savePdfMakeDocument(pdfMake, doc, `guia-entrega-${nomeEscola}.pdf`);
     } catch (err) {
@@ -712,14 +687,12 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({
       });
 
       // Criar documento com rodapé dinâmico por escola
+      const guiaMultiplaMargins: [number, number, number, number] = [40, 40, 40, 88];
       const doc = {
         pageSize: 'A4',
-        pageMargins: [40, 40, 40, 60],
+        pageMargins: guiaMultiplaMargins,
         content: allContent,
         footer: (currentPage: number, pageCount: number) => {
-          const geradoEm = new Date().toLocaleDateString('pt-BR');
-          
-          // Descobrir qual escola corresponde à página atual
           let paginaAcumulada = 0;
           let escolaAtual = todasEscolas[0];
           
@@ -731,36 +704,12 @@ export const EscolasEntregaList: React.FC<EscolasEntregaListProps> = ({
             paginaAcumulada += paginasPorEscola[i];
           }
           
-          return {
-            stack: [
-              {
-                canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.4, lineColor: '#9ca3af' }],
-                margin: [40, 0, 40, 4],
-              },
-              {
-                columns: [
-                  {
-                    stack: [
-                      { text: instituicao?.nome || 'Sistema de Gestão de Alimentação Escolar', fontSize: 7, color: '#374151' },
-                      ...(instituicao?.endereco ? [{ text: instituicao.endereco, fontSize: 6, color: '#374151', margin: [0, 1, 0, 0] }] : []),
-                      { text: `Gerado em ${geradoEm} · Página ${currentPage} de ${pageCount}`, fontSize: 6, color: '#374151', margin: [0, 2, 0, 0] },
-                    ],
-                    alignment: 'left',
-                    width: '*'
-                  },
-                  {
-                    stack: [
-                      { image: escolaAtual.qrCodeDataUrl, width: 60, height: 60, alignment: 'right' },
-                      { text: escolaAtual.codigoGuia, fontSize: 6, alignment: 'right', margin: [0, 2, 0, 0], color: '#374151' },
-                    ],
-                    alignment: 'right',
-                    width: 70
-                  },
-                ],
-                margin: [40, 0, 40, 0],
-              },
-            ]
-          };
+          return buildQrFooter({
+            instituicao,
+            qrCodeDataUrl: escolaAtual.qrCodeDataUrl,
+            qrLabel: escolaAtual.codigoGuia,
+            pageMargins: guiaMultiplaMargins,
+          })(currentPage, pageCount);
         },
       };
 

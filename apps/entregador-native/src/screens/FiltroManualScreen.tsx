@@ -40,7 +40,7 @@ export default function FiltroManualScreen({ navigation }: any) {
       const filtro = await AsyncStorage.getItem('filtro_qrcode');
       if (filtro) {
         const parsed = JSON.parse(filtro);
-        if (parsed.rotaIds) {
+        if (Array.isArray(parsed.rotaIds)) {
           setRotasSelecionadas(parsed.rotaIds);
         }
         if (parsed.dataInicio) {

@@ -531,7 +531,7 @@ const EstoqueCentralPage: React.FC = () => {
                             {item.produto_nome}
                           </Typography>
                           <Typography sx={{ color: "text.secondary", fontSize: 11 }}>
-                            {item.produto_unidade} | Lotes: {item.lotes_ativos}
+                            Unidade: {item.produto_unidade}
                           </Typography>
                         </TableCell>
                         <TableCell align="right" sx={{ fontVariantNumeric: "tabular-nums", fontSize: 13 }}>

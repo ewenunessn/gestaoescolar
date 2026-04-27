@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import GuiaModel from '../models/Guia';
+import { normalizeRomaneioRouteIds } from '../models/romaneioFilters';
 import {
   asyncHandler,
   ValidationError,
@@ -573,13 +574,15 @@ export const guiaController = {
   // Listar romaneio
   async listarRomaneio(req: Request, res: Response) {
     try {
-      const { data_inicio, data_fim, escola_id, rota_id, status } = req.query;
+      const { data_inicio, data_fim, escola_id, rota_id, rota_ids, status } = req.query;
+      const rotaIds = normalizeRomaneioRouteIds({ rota_id, rota_ids });
 
       const items = await GuiaModel.listarRomaneio({
         dataInicio: data_inicio as string,
         dataFim: data_fim as string,
         escolaId: escola_id ? parseInt(escola_id as string) : undefined,
         rotaId: rota_id ? parseInt(rota_id as string) : undefined,
+        rotaIds,
         status: status as string
       });
 

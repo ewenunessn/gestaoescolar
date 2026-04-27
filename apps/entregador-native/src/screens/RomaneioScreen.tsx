@@ -18,6 +18,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '../api/client';
+import { normalizeQrFilter } from '../utils/qrFilter';
 
 interface ItemRomaneio {
   id: number;
@@ -60,6 +61,7 @@ const RomaneioScreen = () => {
   const [dataFim, setDataFim] = useState<Date>(new Date());
   const [status, setStatus] = useState('pendente');
   const [rotaId, setRotaId] = useState<number | null>(null);
+  const [rotaIdsFiltro, setRotaIdsFiltro] = useState<number[] | 'todas'>('todas');
   
   // Controle dos DatePickers
   const [showDataInicio, setShowDataInicio] = useState(false);
@@ -105,32 +107,52 @@ const RomaneioScreen = () => {
     carregarDadosIniciais();
   }, []);
 
-  const carregarDadosIniciais = async () => {
-    await carregarRotas();
-    await carregarFiltroEntrega();
-    await carregarRomaneio();
+  type RomaneioQueryOverride = {
+    dataInicio?: Date;
+    dataFim?: Date;
+    rotaId?: number | null;
+    rotaIdsFiltro?: number[] | 'todas';
   };
 
-  const carregarFiltroEntrega = async () => {
+  const carregarDadosIniciais = async () => {
+    await carregarRotas();
+    const filtro = await carregarFiltroEntrega();
+    await carregarRomaneio(filtro || undefined);
+  };
+
+  const carregarFiltroEntrega = async (forcarFiltro = false): Promise<RomaneioQueryOverride | null> => {
     try {
       const filtro = await AsyncStorage.getItem('filtro_qrcode');
-      if (filtro && !usarDatasManual) {
-        const parsedFiltro = JSON.parse(filtro);
+      if (filtro && (!usarDatasManual || forcarFiltro)) {
+        const parsedFiltro = normalizeQrFilter(filtro);
+        if (!parsedFiltro) return null;
+
         console.log('📅 Usando datas do filtro de entrega:', parsedFiltro);
-        
-        if (parsedFiltro.dataInicio) {
-          setDataInicio(new Date(parsedFiltro.dataInicio));
-        }
-        if (parsedFiltro.dataFim) {
-          setDataFim(new Date(parsedFiltro.dataFim));
-        }
-        if (parsedFiltro.rotaIds && parsedFiltro.rotaIds.length === 1) {
-          setRotaId(parsedFiltro.rotaIds[0]);
-        }
+
+        const inicio = new Date(parsedFiltro.dataInicio);
+        const fim = new Date(parsedFiltro.dataFim);
+        const rotaIdsDoFiltro = parsedFiltro.rotaIds === 'todas' ? 'todas' : parsedFiltro.rotaIds;
+        const rotaUnica = Array.isArray(rotaIdsDoFiltro) && rotaIdsDoFiltro.length === 1
+          ? rotaIdsDoFiltro[0]
+          : null;
+
+        setDataInicio(inicio);
+        setDataFim(fim);
+        setRotaIdsFiltro(rotaIdsDoFiltro);
+        setRotaId(rotaUnica);
+
+        return {
+          dataInicio: inicio,
+          dataFim: fim,
+          rotaId: rotaUnica,
+          rotaIdsFiltro: rotaIdsDoFiltro,
+        };
       }
     } catch (error) {
       console.error('Erro ao carregar filtro de entrega:', error);
     }
+
+    return null;
   };
 
   const carregarRotas = async () => {
@@ -142,16 +164,24 @@ const RomaneioScreen = () => {
     }
   };
 
-  const carregarRomaneio = async () => {
+  const carregarRomaneio = async (override?: RomaneioQueryOverride) => {
     setLoading(true);
     try {
+      const dataInicioConsulta = override?.dataInicio || dataInicio;
+      const dataFimConsulta = override?.dataFim || dataFim;
+      const rotaIdConsulta = override?.rotaId !== undefined ? override.rotaId : rotaId;
+      const rotaIdsConsulta = override?.rotaIdsFiltro || rotaIdsFiltro;
       const params: any = {
-        data_inicio: format(dataInicio, 'yyyy-MM-dd'),
-        data_fim: format(dataFim, 'yyyy-MM-dd')
+        data_inicio: format(dataInicioConsulta, 'yyyy-MM-dd'),
+        data_fim: format(dataFimConsulta, 'yyyy-MM-dd')
       };
       
       if (status !== 'todos') params.status = status;
-      if (rotaId) params.rota_id = rotaId;
+      if (rotaIdConsulta) {
+        params.rota_id = rotaIdConsulta;
+      } else if (Array.isArray(rotaIdsConsulta) && rotaIdsConsulta.length > 0) {
+        params.rota_ids = rotaIdsConsulta.join(',');
+      }
 
       console.log('🔍 Carregando romaneio com params:', params);
       const response = await api.get('/guias/romaneio', { params });
@@ -191,8 +221,8 @@ const RomaneioScreen = () => {
 
   const limparDatasManual = async () => {
     setUsarDatasManual(false);
-    await carregarFiltroEntrega();
-    await carregarRomaneio();
+    const filtro = await carregarFiltroEntrega(true);
+    await carregarRomaneio(filtro || undefined);
   };
 
   const abrirDetalhes = (produto: ProdutoConsolidado, data: string) => {
@@ -565,7 +595,11 @@ const RomaneioScreen = () => {
             <View style={styles.pickerContainer}>
               <Picker
                 selectedValue={rotaId}
-                onValueChange={(value) => setRotaId(value)}
+                onValueChange={(value) => {
+                  const nextRotaId = value ? Number(value) : null;
+                  setRotaId(nextRotaId);
+                  setRotaIdsFiltro(nextRotaId ? [nextRotaId] : 'todas');
+                }}
                 style={styles.picker}
               >
                 <Picker.Item label="Todas as Rotas" value={null} />
@@ -592,7 +626,7 @@ const RomaneioScreen = () => {
 
             <TouchableOpacity 
               style={styles.searchButton}
-              onPress={carregarRomaneio}
+              onPress={() => carregarRomaneio()}
             >
               <Text style={styles.searchButtonText}>🔍 Buscar</Text>
             </TouchableOpacity>

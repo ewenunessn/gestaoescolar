@@ -2,6 +2,10 @@ import db from '../../../database';
 import type { PoolClient } from 'pg';
 import HistoricoEntregaModel from './HistoricoEntrega';
 import estoqueLedgerService from '../../estoque/services/estoqueLedgerService';
+import {
+  normalizeClientOperationId,
+  validateExistingOperationMatch,
+} from './entregaIdempotency';
 
 export interface EscolaEntrega {
   id: number;
@@ -51,6 +55,23 @@ export interface ConfirmarEntregaData {
   latitude?: number | null;
   longitude?: number | null;
   precisao_gps?: number | null;
+  client_operation_id?: string | null;
+}
+
+export interface OfflineBundleFilters {
+  rotaIds?: number[];
+  guiaId?: number;
+  dataEntrega?: string;
+  dataInicio?: string;
+  dataFim?: string;
+  somentePendentes?: boolean;
+}
+
+export interface OfflineEntregaBundle {
+  serverTime: string;
+  rotas: any[];
+  escolasPorRota: Record<number, any[]>;
+  itensPorEscola: Record<number, ItemEntrega[]>;
 }
 
 class EntregaModel {
@@ -255,11 +276,271 @@ class EntregaModel {
     return result.rows[0] || null;
   }
 
+  async obterOfflineBundle(filters: OfflineBundleFilters = {}): Promise<OfflineEntregaBundle> {
+    const serverTimeResult = await db.query('SELECT NOW() as server_time');
+    const routeParams: any[] = [];
+    let routeWhere = '';
+
+    if (filters.rotaIds && filters.rotaIds.length > 0) {
+      routeParams.push(filters.rotaIds);
+      routeWhere = `WHERE r.id = ANY($1::int[])`;
+    }
+
+    const rotasResult = await db.query(`
+      SELECT
+        r.*,
+        COUNT(re.escola_id)::int as total_escolas
+      FROM rotas_entrega r
+      LEFT JOIN rota_escolas re ON r.id = re.rota_id
+      ${routeWhere}
+      GROUP BY r.id, r.nome, r.descricao, r.cor, r.ativo, r.created_at, r.updated_at
+      ORDER BY r.nome
+    `, routeParams);
+
+    const rotaIds = rotasResult.rows.map((rota) => Number(rota.id));
+    if (rotaIds.length === 0) {
+      return {
+        serverTime: serverTimeResult.rows[0].server_time,
+        rotas: [],
+        escolasPorRota: {},
+        itensPorEscola: {},
+      };
+    }
+
+    const escolasResult = await db.query(`
+      SELECT
+        re.*,
+        e.nome as escola_nome,
+        e.endereco as escola_endereco,
+        e.municipio as escola_municipio
+      FROM rota_escolas re
+      JOIN escolas e ON re.escola_id = e.id
+      WHERE re.rota_id = ANY($1::int[])
+      ORDER BY re.rota_id, re.ordem, e.nome
+    `, [rotaIds]);
+
+    const itemParams: any[] = [rotaIds];
+    let paramCount = 2;
+    let whereClause = `WHERE re.rota_id = ANY($1::int[]) AND gpe.para_entrega = true AND g.status = 'aberta'`;
+
+    if (filters.guiaId) {
+      whereClause += ` AND g.id = $${paramCount}`;
+      itemParams.push(filters.guiaId);
+      paramCount++;
+    }
+    if (filters.dataEntrega) {
+      whereClause += ` AND DATE(gpe.data_entrega) = $${paramCount}`;
+      itemParams.push(filters.dataEntrega);
+      paramCount++;
+    }
+    if (!filters.dataEntrega && filters.dataInicio) {
+      whereClause += ` AND DATE(gpe.data_entrega) >= $${paramCount}`;
+      itemParams.push(filters.dataInicio);
+      paramCount++;
+    }
+    if (!filters.dataEntrega && filters.dataFim) {
+      whereClause += ` AND DATE(gpe.data_entrega) <= $${paramCount}`;
+      itemParams.push(filters.dataFim);
+      paramCount++;
+    }
+    if (filters.somentePendentes) {
+      whereClause += ` AND gpe.entrega_confirmada = false AND gpe.status = 'pendente'`;
+    }
+
+    const itensResult = await db.query(`
+      SELECT
+        gpe.id,
+        gpe.guia_id,
+        gpe.produto_id,
+        gpe.escola_id,
+        re.rota_id,
+        gpe.quantidade,
+        gpe.unidade,
+        gpe.lote,
+        gpe.observacao,
+        gpe.entrega_confirmada,
+        gpe.para_entrega,
+        gpe.status,
+        gpe.data_entrega,
+        gpe.nome_quem_recebeu,
+        gpe.nome_quem_entregou,
+        gpe.escola_nome,
+        gpe.escola_endereco,
+        gpe.escola_municipio,
+        gpe.escola_total_alunos,
+        gpe.escola_modalidades,
+        gpe.escola_snapshot_data,
+        gpe.updated_at,
+        p.nome as produto_nome,
+        gpe.unidade as produto_unidade,
+        g.mes,
+        g.ano,
+        g.codigo_guia,
+        g.observacao as guia_observacao,
+        COALESCE(gpe.quantidade_total_entregue, 0) as quantidade_ja_entregue,
+        (gpe.quantidade - COALESCE(gpe.quantidade_total_entregue, 0)) as saldo_pendente,
+        (
+          SELECT json_agg(
+            json_build_object(
+              'id', he.id,
+              'quantidade_entregue', he.quantidade_entregue,
+              'data_entrega', he.data_entrega,
+              'nome_quem_entregou', he.nome_quem_entregou,
+              'nome_quem_recebeu', he.nome_quem_recebeu,
+              'observacao', he.observacao
+            ) ORDER BY he.data_entrega DESC
+          )
+          FROM historico_entregas he
+          WHERE he.guia_produto_escola_id = gpe.id
+        ) as historico_entregas
+      FROM rota_escolas re
+      JOIN guia_produto_escola gpe ON gpe.escola_id = re.escola_id
+      JOIN produtos p ON gpe.produto_id = p.id
+      JOIN guias g ON gpe.guia_id = g.id
+      ${whereClause}
+      ORDER BY re.rota_id, re.ordem, gpe.entrega_confirmada ASC, g.mes DESC, g.ano DESC, p.nome, gpe.lote
+    `, itemParams);
+
+    const escolasPorRota: Record<number, any[]> = {};
+    for (const escola of escolasResult.rows) {
+      const rotaId = Number(escola.rota_id);
+      if (!escolasPorRota[rotaId]) {
+        escolasPorRota[rotaId] = [];
+      }
+      escolasPorRota[rotaId].push(escola);
+    }
+
+    const itensPorEscola: Record<number, ItemEntrega[]> = {};
+    for (const item of itensResult.rows) {
+      const escolaId = Number(item.escola_id);
+      if (!itensPorEscola[escolaId]) {
+        itensPorEscola[escolaId] = [];
+      }
+      itensPorEscola[escolaId].push(item);
+    }
+
+    return {
+      serverTime: serverTimeResult.rows[0].server_time,
+      rotas: rotasResult.rows,
+      escolasPorRota,
+      itensPorEscola,
+    };
+  }
+
+  async listarMudancasEntregas(since?: string): Promise<{ serverTime: string; itens: any[] }> {
+    const serverTimeResult = await db.query('SELECT NOW() as server_time');
+    const params: string[] = [];
+    let changedClause = `gpe.updated_at > NOW() - INTERVAL '24 hours'`;
+
+    if (since) {
+      params.push(since);
+      changedClause = `(
+        gpe.updated_at > $1
+        OR EXISTS (
+          SELECT 1
+          FROM historico_entregas he2
+          WHERE he2.guia_produto_escola_id = gpe.id
+            AND he2.updated_at > $1
+        )
+      )`;
+    }
+
+    const result = await db.query(`
+      SELECT
+        gpe.id,
+        gpe.guia_id,
+        gpe.produto_id,
+        gpe.escola_id,
+        re.rota_id,
+        gpe.quantidade,
+        gpe.unidade,
+        gpe.lote,
+        gpe.observacao,
+        gpe.entrega_confirmada,
+        gpe.para_entrega,
+        gpe.status,
+        gpe.data_entrega,
+        gpe.nome_quem_recebeu,
+        gpe.nome_quem_entregou,
+        gpe.escola_nome,
+        gpe.escola_endereco,
+        gpe.escola_municipio,
+        gpe.escola_total_alunos,
+        gpe.escola_modalidades,
+        gpe.escola_snapshot_data,
+        gpe.updated_at,
+        p.nome as produto_nome,
+        gpe.unidade as produto_unidade,
+        g.mes,
+        g.ano,
+        g.codigo_guia,
+        g.observacao as guia_observacao,
+        COALESCE(gpe.quantidade_total_entregue, 0) as quantidade_ja_entregue,
+        (gpe.quantidade - COALESCE(gpe.quantidade_total_entregue, 0)) as saldo_pendente,
+        (
+          SELECT json_agg(
+            json_build_object(
+              'id', he.id,
+              'quantidade_entregue', he.quantidade_entregue,
+              'data_entrega', he.data_entrega,
+              'nome_quem_entregou', he.nome_quem_entregou,
+              'nome_quem_recebeu', he.nome_quem_recebeu,
+              'observacao', he.observacao
+            ) ORDER BY he.data_entrega DESC
+          )
+          FROM historico_entregas he
+          WHERE he.guia_produto_escola_id = gpe.id
+        ) as historico_entregas
+      FROM guia_produto_escola gpe
+      LEFT JOIN rota_escolas re ON re.escola_id = gpe.escola_id
+      INNER JOIN produtos p ON gpe.produto_id = p.id
+      INNER JOIN guias g ON gpe.guia_id = g.id
+      WHERE gpe.para_entrega = true
+        AND g.status = 'aberta'
+        AND ${changedClause}
+      ORDER BY gpe.updated_at ASC, gpe.id ASC
+      LIMIT 1000
+    `, params);
+
+    return {
+      serverTime: serverTimeResult.rows[0].server_time,
+      itens: result.rows,
+    };
+  }
+
   async confirmarEntrega(itemId: number, dados: ConfirmarEntregaData): Promise<ItemEntrega & { historico_id?: number }> {
     return db.transaction(async (client) => {
+      const clientOperationId = normalizeClientOperationId(dados.client_operation_id);
+
       const item = await this.buscarItemEntrega(itemId, client, true);
       if (!item) {
         throw new Error('Item nao encontrado');
+      }
+
+      if (clientOperationId) {
+        await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [clientOperationId]);
+
+        const existingOperation = await client.query(`
+          SELECT id, guia_produto_escola_id
+          FROM historico_entregas
+          WHERE client_operation_id = $1
+          LIMIT 1
+        `, [clientOperationId]);
+
+        if (existingOperation.rows.length > 0) {
+          const existing = existingOperation.rows[0];
+          validateExistingOperationMatch(existing, itemId);
+
+          const updatedItem = await this.buscarItemEntrega(itemId, client);
+          if (!updatedItem) {
+            throw new Error('Erro ao buscar item atualizado');
+          }
+
+          return {
+            ...updatedItem,
+            historico_id: Number(existing.id)
+          };
+        }
       }
 
       if (!item.para_entrega) {
@@ -293,7 +574,8 @@ class EntregaModel {
         assinatura_base64: dados.assinatura_base64,
         latitude: dados.latitude,
         longitude: dados.longitude,
-        precisao_gps: dados.precisao_gps
+        precisao_gps: dados.precisao_gps,
+        client_operation_id: clientOperationId
       }, client);
 
       const updatedItem = await this.buscarItemEntrega(itemId, client);

@@ -14,6 +14,8 @@ router.delete('/:id', ctrl.cancelarSolicitacao);
 router.get('/', ctrl.listarTodasSolicitacoes);
 
 // Ações por item
+router.get('/itens/:itemId/analise', ctrl.analisarItem);
+router.patch('/itens/:itemId/aprovar-emergencial', ctrl.aprovarItemEmergencial);
 router.patch('/itens/:itemId/aceitar', ctrl.aceitarItem);
 router.patch('/itens/:itemId/recusar', ctrl.recusarItem);
 

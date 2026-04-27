@@ -21,6 +21,7 @@ import { registerApiRoutes } from "./routes/registerApiRoutes";
 import { createServer } from 'http';
 import { initRedis } from "./config/redis";
 import { createGuiaTables, createEssentialTables } from "./modules/guias/models/Guia";
+import { buildEntregaIdempotencySchemaSql } from "./modules/entregas/models/entregaIdempotency";
 import { ensureEstoqueLedgerSchema } from "./modules/estoque/services/estoqueSchemaService";
 
 import db from "./database";
@@ -277,6 +278,7 @@ async function iniciarServidor() {
       try {
         await ensureProdutoComposicaoNutricionalTable();
         await ensureEstoqueLedgerSchema();
+        await db.query(buildEntregaIdempotencySchemaSql());
       } catch (e) {
         console.error('âš ï¸ Falha ao garantir tabela produto_composicao_nutricional (continuando):', e);
       }
@@ -348,6 +350,7 @@ if (process.env.VERCEL === '1') {
       await createGuiaTables();
       await ensureProdutoComposicaoNutricionalTable();
       await ensureEstoqueLedgerSchema();
+      await db.query(buildEntregaIdempotencySchemaSql());
       console.log('âœ… Schema essencial garantido (Vercel)');
     } catch (e) {
       console.error('âš ï¸ Falha ao inicializar schema (Vercel):', e);

@@ -20,6 +20,9 @@ export interface EscolaRota {
 
 export interface ItemEntrega {
   id: number;
+  guia_id?: number;
+  produto_id?: number;
+  escola_id?: number;
   produto_nome: string;
   quantidade: number;
   unidade: string;
@@ -27,8 +30,10 @@ export interface ItemEntrega {
   observacao?: string;
   entrega_confirmada?: boolean;
   data_entrega?: string;
+  status?: string;
   quantidade_ja_entregue?: number;
   saldo_pendente?: number;
+  updated_at?: string;
   historico_entregas?: HistoricoEntrega[];
 }
 
@@ -63,9 +68,57 @@ export interface ConfirmarEntregaData {
   nome_quem_recebeu: string;
   observacao?: string;
   assinatura_base64?: string;
+  client_operation_id?: string;
+}
+
+export interface OfflineBundleFilters {
+  rotaIds?: number[] | 'todas';
+  guiaId?: number;
+  dataEntrega?: string;
+  dataInicio?: string;
+  dataFim?: string;
+  somentePendentes?: boolean;
+}
+
+export interface OfflineEntregaBundle {
+  serverTime: string;
+  rotas: Rota[];
+  escolasPorRota: Record<string, EscolaRota[]>;
+  itensPorEscola: Record<string, ItemEntrega[]>;
+}
+
+export async function obterOfflineBundle(filters: OfflineBundleFilters = {}): Promise<OfflineEntregaBundle> {
+  const params: Record<string, string | number | boolean> = {};
+
+  if (Array.isArray(filters.rotaIds) && filters.rotaIds.length > 0) {
+    params.rotaIds = filters.rotaIds.join(',');
+  }
+  if (filters.guiaId) params.guiaId = filters.guiaId;
+  if (filters.dataEntrega) params.dataEntrega = filters.dataEntrega;
+  if (filters.dataInicio) params.dataInicio = filters.dataInicio;
+  if (filters.dataFim) params.dataFim = filters.dataFim;
+  if (filters.somentePendentes !== undefined) params.somentePendentes = filters.somentePendentes;
+
+  const { data } = await api.get('/entregas/offline-bundle', { params });
+  return data;
+}
+
+export async function listarMudancasEntregas(since?: string): Promise<{ serverTime: string; itens: ItemEntrega[] }> {
+  const { data } = await api.get('/entregas/sync/mudancas', {
+    params: since ? { since } : undefined,
+  });
+  return data;
 }
 
 export async function confirmarEntregaItem(itemId: number, dados: ConfirmarEntregaData) {
   const { data } = await api.post(`/entregas/itens/${itemId}/confirmar`, dados);
+  return data;
+}
+
+export async function cancelarEntregaItem(historicoEntregaId: number, motivo?: string) {
+  const { data } = await api.post('/entregas/comprovantes/cancelar-item', {
+    historico_entrega_id: historicoEntregaId,
+    motivo,
+  });
   return data;
 }

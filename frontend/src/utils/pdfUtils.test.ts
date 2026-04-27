@@ -1,5 +1,13 @@
 import { describe, expect, it, vi, afterEach } from 'vitest';
-import { configurePdfMakeFonts, savePdfDocument, savePdfMakeDocument } from './pdfUtils';
+import {
+  buildInfoPanel,
+  buildPdfDoc,
+  buildTable,
+  configurePdfMakeFonts,
+  getPdfPageMetrics,
+  savePdfDocument,
+  savePdfMakeDocument,
+} from './pdfUtils';
 
 describe('savePdfDocument', () => {
   afterEach(() => {
@@ -111,5 +119,53 @@ describe('savePdfDocument', () => {
         bolditalics: 'Roboto-MediumItalic.ttf',
       },
     });
+  });
+
+  it('builds document chrome using the real content width from margins', () => {
+    const margins: [number, number, number, number] = [30, 30, 30, 50];
+    const doc = buildPdfDoc({
+      instituicao: null,
+      title: 'Romaneio de Entrega',
+      subtitle: '01/04/2026 a 27/04/2026',
+      content: [],
+      pageMargins: margins,
+    });
+
+    const metrics = getPdfPageMetrics('portrait', margins);
+    const divider = doc.content[1].canvas[0];
+
+    expect(doc.pageMargins).toEqual(margins);
+    expect(divider.x2).toBeCloseTo(metrics.contentWidth, 2);
+  });
+
+  it('uses the same measured width in the default landscape footer', () => {
+    const margins: [number, number, number, number] = [24, 28, 24, 52];
+    const doc = buildPdfDoc({
+      instituicao: null,
+      title: 'Relatorio',
+      content: [],
+      orientation: 'landscape',
+      pageMargins: margins,
+    });
+
+    const footer = doc.footer(1, 3);
+    const metrics = getPdfPageMetrics('landscape', margins);
+
+    expect(footer.stack[0].canvas[0].x2).toBeCloseTo(metrics.contentWidth, 2);
+    expect(footer.stack[0].margin).toEqual([24, 0, 24, 5]);
+  });
+
+  it('builds professional info panels and tables with stable layout metadata', () => {
+    const panel = buildInfoPanel([
+      { label: 'Periodo', value: '01/04/2026 a 27/04/2026' },
+      { label: 'Itens', value: 3 },
+    ]);
+    const table = buildTable(['Produto', 'Qtde'], [['Banana', '312']], ['*', 60], { compact: true });
+
+    expect(panel.table.widths).toEqual(['*']);
+    expect(panel.unbreakable).toBe(true);
+    expect(table.table.headerRows).toBe(1);
+    expect(table.table.keepWithHeaderRows).toBe(1);
+    expect(table.table.body[0][0].fillColor).toBe('#1f2937');
   });
 });

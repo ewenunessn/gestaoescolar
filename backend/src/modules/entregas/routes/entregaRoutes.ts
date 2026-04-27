@@ -13,6 +13,8 @@ router.use(authenticateToken);
 // Rotas de LEITURA - Entregas
 router.get('/escolas', requireLeitura('entregas'), EntregaController.listarEscolas);
 router.get('/estatisticas', requireLeitura('entregas'), EntregaController.obterEstatisticas);
+router.get('/offline-bundle', requireLeitura('entregas'), EntregaController.obterOfflineBundle);
+router.get('/sync/mudancas', requireLeitura('entregas'), EntregaController.listarMudancas);
 router.get('/escolas/:escolaId/itens', requireLeitura('entregas'), EntregaController.listarItensPorEscola);
 router.get('/itens/:itemId', requireLeitura('entregas'), EntregaController.buscarItem);
 

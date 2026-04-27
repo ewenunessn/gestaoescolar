@@ -2,10 +2,28 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, FlatList, Pressable, ScrollView } from 'react-native';
 import { Text, Card, ActivityIndicator, Button, Searchbar, IconButton, Menu, Dialog, Portal, Divider } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { listarEscolasDaRota, listarItensEscola, EscolaRota } from '../api/rotas';
+import { listarEscolasDaRota, listarItensEscola, obterOfflineBundle, EscolaRota } from '../api/rotas';
 import { handleAxiosError } from '../api/client';
 import { cacheService } from '../services/cacheService';
 import OfflineIndicator from '../components/OfflineIndicator';
+import { useOffline } from '../contexts/OfflineContext';
+import { loadDeliveryOutboxOperations } from '../services/deliveryOutbox';
+import { mergeItemsWithOutbox } from '../services/deliveryOutboxCore';
+import {
+  countPendingItemsFromProjection,
+  isSchoolFullyDeliveredOnDateFromProjection,
+} from '../services/deliveryProjectionCore';
+import {
+  getSchoolProjectionEntry,
+  saveSchoolItemsSnapshot,
+} from '../services/deliveryProjectionStore';
+import { getRouteProjection, getRouteProjectionEntry, saveRouteProjectionSnapshot } from '../services/deliveryRouteProjectionStore';
+import {
+  ROUTE_SCHOOLS_REFRESH_MS,
+  SCHOOL_ITEMS_REFRESH_MS,
+  shouldRefreshCache,
+} from '../services/deliverySyncPolicy';
+import { applyDeliveryOfflineBundle } from '../services/deliveryOfflineBundle';
 
 interface EscolaComItens extends EscolaRota {
   total_itens_pendentes?: number;
@@ -24,11 +42,14 @@ export default function RotaDetalheScreen({ route, navigation }: any) {
   const [dialogEntreguesVisible, setDialogEntreguesVisible] = useState(false);
   const [escolasEntregues, setEscolasEntregues] = useState<EscolaComItens[]>([]);
   const [loadingEntregues, setLoadingEntregues] = useState(false);
+  const { syncVersion } = useOffline();
 
   useEffect(() => {
     carregarFiltro();
     carregarEscolas();
-    
+  }, []);
+
+  useEffect(() => {
     // Adicionar botão de menu no header
     navigation.setOptions({
       headerRight: () => (
@@ -63,123 +84,139 @@ export default function RotaDetalheScreen({ route, navigation }: any) {
         </Menu>
       ),
     });
-    
+  }, [navigation, menuVisible]);
+
+  useEffect(() => {
     // Recarregar quando a tela ganhar foco (volta de outra tela)
     const unsubscribe = navigation.addListener('focus', () => {
-      console.log('RotaDetalheScreen ganhou foco, recarregando...');
-      carregarEscolas();
+      recalcularEscolasDoCache();
     });
 
     return unsubscribe;
-  }, [navigation, menuVisible]);
+  }, [navigation]);
+
+  useEffect(() => {
+    if (syncVersion > 0) {
+      recalcularEscolasDoCache();
+    }
+  }, [syncVersion]);
 
   const carregarFiltro = async () => {
     try {
       const filtro = await AsyncStorage.getItem('filtro_qrcode');
       if (filtro) {
-        setFiltroAtivo(JSON.parse(filtro));
+        const parsed = JSON.parse(filtro);
+        setFiltroAtivo(parsed);
+        return parsed;
       }
     } catch (err) {
       console.error('Erro ao carregar filtro:', err);
     }
+    setFiltroAtivo(null);
+    return null;
   };
 
-  const carregarEscolas = async () => {
+  const carregarEscolas = async (force = false) => {
+    let hadCache = false;
     try {
-      setLoading(true);
-      setError(''); // Limpar erro anterior
-      
+      setLoading(escolas.length === 0);
+      setError('');
+
       const cacheKey = `escolas_rota_${rotaId}`;
-      
-      let data: EscolaRota[];
-      
+      const filtro = await carregarFiltro();
+      let cachedEntry = await cacheService.getEntry<EscolaRota[]>(cacheKey);
+      hadCache = !!cachedEntry;
+
+      if (cachedEntry) {
+        setEscolas(await montarEscolasComContagem(cachedEntry.data, filtro, false));
+        setLoading(false);
+      }
+
+      if (!shouldRefreshCache({ timestamp: cachedEntry?.timestamp, maxAgeMs: ROUTE_SCHOOLS_REFRESH_MS, force })) {
+        return;
+      }
+
       try {
-        // Tentar buscar dados atualizados
-        data = await listarEscolasDaRota(rotaId);
-        // Salvar no cache
+        const bundle = await obterOfflineBundle({ rotaIds: [rotaId] });
+        await applyDeliveryOfflineBundle(bundle);
+        const data = bundle.escolasPorRota[String(rotaId)] || [];
+        setEscolas(await montarEscolasComContagem(data, filtro, false));
+      } catch (bundleError) {
+        console.error(`Erro ao carregar bundle offline da rota ${rotaId}:`, bundleError);
+        const data = await listarEscolasDaRota(rotaId);
         await cacheService.set(cacheKey, data);
-      } catch (err) {
-        // Se falhar, tentar usar cache
-        const cachedData = await cacheService.get<EscolaRota[]>(cacheKey);
-        if (cachedData) {
-          console.log('Usando dados do cache (offline)');
-          data = cachedData;
-        } else {
-          throw err;
-        }
+        cachedEntry = { data, timestamp: Date.now() };
+        setEscolas(await montarEscolasComContagem(data, filtro, !hadCache || force));
       }
-      
-      // Carregar filtro
-      const filtroSalvo = await AsyncStorage.getItem('filtro_qrcode');
-      let filtro = null;
-      if (filtroSalvo) {
-        filtro = JSON.parse(filtroSalvo);
-      }
-      
-      // Carregar itens de cada escola e contar pendentes
-      const escolasComItens = await Promise.all(
-        data.map(async (escola) => {
-          try {
-            const cacheKeyItens = `itens_escola_${escola.escola_id}`;
-            let itens;
-            
-            try {
-              itens = await listarItensEscola(escola.escola_id);
-              await cacheService.set(cacheKeyItens, itens);
-            } catch (err) {
-              const cachedItens = await cacheService.get(cacheKeyItens);
-              if (cachedItens) {
-                itens = cachedItens;
-              } else {
-                throw err;
-              }
-            }
-            
-            // Aplicar filtro de data se houver
-            let itensFiltrados = itens;
-            if (filtro) {
-              const dataInicio = new Date(filtro.dataInicio);
-              dataInicio.setHours(0, 0, 0, 0);
-              const dataFim = new Date(filtro.dataFim);
-              dataFim.setHours(23, 59, 59, 999);
-              
-              itensFiltrados = itens.filter(item => {
-                if (item.data_entrega) {
-                  const dataEntrega = new Date(item.data_entrega);
-                  return dataEntrega >= dataInicio && dataEntrega <= dataFim;
-                }
-                return true;
-              });
-            }
-            
-            // Contar itens pendentes
-            const itensPendentes = itensFiltrados.filter(
-              item => !item.entrega_confirmada || (item.saldo_pendente && item.saldo_pendente > 0)
-            );
-            
-            return {
-              ...escola,
-              total_itens_pendentes: itensPendentes.length
-            };
-          } catch (err) {
-            console.error(`Erro ao carregar itens da escola ${escola.escola_id}:`, err);
-            return {
-              ...escola,
-              total_itens_pendentes: 0
-            };
-          }
-        })
-      );
-      
-      // Filtrar apenas escolas com itens pendentes
-      const escolasComPendentes = escolasComItens.filter(e => e.total_itens_pendentes && e.total_itens_pendentes > 0);
-      
-      setEscolas(escolasComPendentes);
     } catch (err) {
-      setError(handleAxiosError(err));
+      if (!hadCache) {
+        setError(handleAxiosError(err));
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  const recalcularEscolasDoCache = async () => {
+    const filtro = await carregarFiltro();
+    const cachedEntry = await cacheService.getEntry<EscolaRota[]>(`escolas_rota_${rotaId}`);
+    if (cachedEntry) {
+      setEscolas(await montarEscolasComContagem(cachedEntry.data, filtro, false));
+    }
+  };
+
+  const montarEscolasComContagem = async (
+    escolasBase: EscolaRota[],
+    filtro: any,
+    refreshMissingOrStale: boolean,
+  ): Promise<EscolaComItens[]> => {
+    const outboxOperations = await loadDeliveryOutboxOperations();
+    let routeProjectionEntry = await getRouteProjectionEntry(rotaId);
+
+    if (!routeProjectionEntry || refreshMissingOrStale) {
+      const projectionsBySchool = new Map();
+
+      for (const escola of escolasBase) {
+        let projectionEntry = await getSchoolProjectionEntry(escola.escola_id);
+
+        if (
+          refreshMissingOrStale &&
+          shouldRefreshCache({
+            timestamp: projectionEntry?.timestamp,
+            maxAgeMs: SCHOOL_ITEMS_REFRESH_MS,
+          })
+        ) {
+          try {
+            const itensAtualizados = await listarItensEscola(escola.escola_id);
+            const itensComOffline = mergeItemsWithOutbox(itensAtualizados, outboxOperations, {
+              escolaId: escola.escola_id,
+            });
+            const projections = await saveSchoolItemsSnapshot(escola.escola_id, itensAtualizados, itensComOffline);
+            projectionEntry = { data: projections, timestamp: Date.now() };
+          } catch (err) {
+            console.error(`Erro ao atualizar itens da escola ${escola.escola_id}:`, err);
+          }
+        }
+
+        projectionsBySchool.set(escola.escola_id, projectionEntry?.data || []);
+      }
+
+      const routeProjections = await saveRouteProjectionSnapshot(rotaId, escolasBase, projectionsBySchool);
+      routeProjectionEntry = { data: routeProjections, timestamp: Date.now() };
+    }
+
+    const projectionsBySchool = new Map(
+      routeProjectionEntry.data.map((entry) => [entry.escola_id, entry.projections]),
+    );
+    const escolasComItens = escolasBase.map((escola) => ({
+      ...escola,
+      total_itens_pendentes: countPendingItemsFromProjection(
+        projectionsBySchool.get(escola.escola_id) || [],
+        filtro,
+      ),
+    }));
+
+    return escolasComItens.filter((escola) => escola.total_itens_pendentes && escola.total_itens_pendentes > 0);
   };
 
   const carregarEscolasEntregues = async () => {
@@ -198,44 +235,38 @@ export default function RotaDetalheScreen({ route, navigation }: any) {
 
       // Usar as escolas já carregadas
       const escolasComEntregasCompletas: EscolaComItens[] = [];
+      const routeProjection = await getRouteProjection(rotaId);
+      const escolasDaRota = (await cacheService.get<EscolaRota[]>(`escolas_rota_${rotaId}`)) || escolas;
+      const escolasById = new Map(escolasDaRota.map((escola) => [escola.escola_id, escola]));
       
-      for (const escola of escolas) {
+      for (const routeSchool of routeProjection || []) {
         try {
-          const itensEscola = await listarItensEscola(escola.escola_id);
-          
-          // Verificar se TODOS os itens foram entregues HOJE (pela data do histórico)
-          let todosEntreguesHoje = false;
-          
-          if (itensEscola.length > 0) {
-            todosEntreguesHoje = itensEscola.every(item => {
-              // Item deve estar confirmado
-              if (!item.entrega_confirmada) return false;
-              
-              // Item não deve ter saldo pendente
-              if (item.saldo_pendente && item.saldo_pendente > 0) return false;
-              
-              // Verificar se foi entregue hoje pelo histórico
-              if (item.historico_entregas && item.historico_entregas.length > 0) {
-                // Pegar a última entrega
-                const ultimaEntrega = item.historico_entregas[item.historico_entregas.length - 1];
-                const dataEntregaReal = new Date(ultimaEntrega.data_entrega);
-                dataEntregaReal.setHours(0, 0, 0, 0);
-                
-                return dataEntregaReal.getTime() === dataReferencia.getTime();
-              }
-              
-              return false;
-            });
+          const escola = escolasById.get(routeSchool.escola_id);
+          if (!escola) {
+            continue;
           }
 
-          if (todosEntreguesHoje) {
+          const projection = routeSchool.projections;
+          if (!projection || projection.length === 0) {
+            continue;
+          }
+          
+          // Verificar se TODOS os itens foram entregues HOJE (pela data do histórico)
+          
+              
+              // Item não deve ter saldo pendente
+              
+              // Verificar se foi entregue hoje pelo histórico
+                // Pegar a última entrega
+
+          if (isSchoolFullyDeliveredOnDateFromProjection(projection, dataReferencia)) {
             escolasComEntregasCompletas.push({
               ...escola,
-              total_itens_pendentes: itensEscola.length
+              total_itens_pendentes: projection.length
             });
           }
         } catch (err) {
-          console.error(`Erro ao carregar itens da escola ${escola.escola_id}:`, err);
+          console.error(`Erro ao carregar itens da escola ${routeSchool.escola_id}:`, err);
         }
       }
 
@@ -271,7 +302,7 @@ export default function RotaDetalheScreen({ route, navigation }: any) {
     return (
       <View style={styles.center}>
         <Text style={styles.errorText}>❌ {error}</Text>
-        <Button mode="contained" onPress={carregarEscolas}>
+        <Button mode="contained" onPress={() => carregarEscolas(true)}>
           Tentar Novamente
         </Button>
       </View>

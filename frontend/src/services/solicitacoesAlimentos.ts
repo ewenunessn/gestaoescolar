@@ -7,8 +7,14 @@ export interface SolicitacaoItem {
   nome_produto: string;
   quantidade: number;
   unidade: string;
-  status: 'pendente' | 'aceito' | 'recusado';
+  status: 'pendente' | 'aceito' | 'recusado' | 'contemplado';
   justificativa_recusa?: string;
+  quantidade_aprovada?: number;
+  data_entrega_prevista?: string;
+  guia_id?: number;
+  guia_produto_escola_id?: number;
+  atendimento_tipo?: 'emergencial' | 'guia_existente';
+  observacao_aprovacao?: string;
   respondido_por?: number;
   respondido_por_nome?: string;
   respondido_em?: string;
@@ -42,6 +48,44 @@ export interface CriarSolicitacaoData {
   itens: NovoItemData[];
 }
 
+export interface AnaliseSolicitacaoItem {
+  item: SolicitacaoItem & {
+    escola_id: number;
+    escola_nome: string;
+  };
+  estoque_central: {
+    quantidade_total: number;
+    quantidade_reservada: number;
+    quantidade_disponivel: number;
+  };
+  estoque_escola: {
+    quantidade_atual: number;
+  };
+  cobertura_guias: {
+    total_pendente: number;
+    itens: Array<{
+      guia_id: number;
+      guia_produto_escola_id: number;
+      guia_nome: string | null;
+      codigo_guia: string | null;
+      quantidade: number;
+      quantidade_entregue: number;
+      saldo_pendente: number;
+      data_entrega: string | null;
+      status: string;
+    }>;
+  };
+  quantidade_sugerida: number;
+  atendimento_sugerido: 'emergencial' | 'guia_existente';
+  data_entrega_sugerida: string;
+}
+
+export interface AprovarEmergencialData {
+  quantidade_aprovada?: number;
+  data_entrega_prevista?: string;
+  observacao?: string;
+}
+
 export const listarMinhasSolicitacoes = async (): Promise<Solicitacao[]> => {
   const res = await api.get('/solicitacoes-alimentos/minhas');
   return res.data.data;
@@ -63,6 +107,19 @@ export const listarTodasSolicitacoes = async (params?: { status?: string; escola
 
 export const aceitarItem = async (itemId: number): Promise<Solicitacao> => {
   const res = await api.patch(`/solicitacoes-alimentos/itens/${itemId}/aceitar`);
+  return res.data.data;
+};
+
+export const analisarItem = async (itemId: number): Promise<AnaliseSolicitacaoItem> => {
+  const res = await api.get(`/solicitacoes-alimentos/itens/${itemId}/analise`);
+  return res.data.data;
+};
+
+export const aprovarItemEmergencial = async (
+  itemId: number,
+  payload: AprovarEmergencialData,
+): Promise<any> => {
+  const res = await api.patch(`/solicitacoes-alimentos/itens/${itemId}/aprovar-emergencial`, payload);
   return res.data.data;
 };
 

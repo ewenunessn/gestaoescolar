@@ -55,7 +55,7 @@ export default function SolicitacoesAlimentos() {
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ['solicitacoes-alimentos'],
     queryFn: () => listarTodasSolicitacoes(),
-    onError: () => toast.error('Erro ao carregar solicitações'),
+    onError: () => toast.error('Erro ao carregar solicitacoes'),
   } as any);
 
   const escolas = useMemo(() => agruparPorEscola(rows as Solicitacao[]), [rows]);
@@ -99,7 +99,7 @@ export default function SolicitacoesAlimentos() {
     },
     {
       accessorKey: 'ultima_solicitacao',
-      header: 'Última Solicitação',
+      header: 'Ultima solicitacao',
       size: 150,
       cell: ({ getValue }) => {
         const data = getValue() as string;
@@ -115,7 +115,7 @@ export default function SolicitacoesAlimentos() {
         const status = getValue() as string;
         return (
           <Chip
-            label={status === 'pendente' ? 'Pendente' : 'Concluída'}
+            label={status === 'pendente' ? 'Pendente' : 'Concluida'}
             color={status === 'pendente' ? 'warning' : 'success'}
             size="small"
           />
@@ -131,9 +131,9 @@ export default function SolicitacoesAlimentos() {
     <Box sx={{ height: 'calc(100vh - 56px)', bgcolor: 'background.default', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <PageContainer fullHeight>
         <PageHeader
-          title="Solicitações de Alimentos"
-          subtitle="Solicitações enviadas pelas escolas"
-          breadcrumbs={[{ label: 'Dashboard', path: '/dashboard' }, { label: 'Solicitações' }]}
+          title="Solicitacoes de Alimentos"
+          subtitle="Solicitacoes enviadas pelas escolas"
+          breadcrumbs={[{ label: 'Dashboard', path: '/dashboard' }, { label: 'Solicitacoes' }]}
         />
 
         <Box sx={{ mb: 2 }}>
@@ -142,7 +142,7 @@ export default function SolicitacoesAlimentos() {
             onChange={(v) => setAba(Number(v))}
             tabs={[
               { value: 0, label: 'Pendentes', badge: comPendencia.length },
-              { value: 1, label: 'Concluídas', badge: semPendencia.length },
+              { value: 1, label: 'Concluidas', badge: semPendencia.length },
             ]}
           />
         </Box>
@@ -150,7 +150,7 @@ export default function SolicitacoesAlimentos() {
         {/* DataTable com altura fixa para scroll */}
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <DataTable
-            title={aba === 0 ? "Escolas com Pendências" : "Escolas Concluídas"}
+            title={aba === 0 ? "Escolas com Pendencias" : "Escolas Concluidas"}
             data={escolasFiltradas}
             columns={columns}
             loading={isLoading}

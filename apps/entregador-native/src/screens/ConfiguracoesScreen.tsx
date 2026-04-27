@@ -103,7 +103,9 @@ export default function ConfiguracoesScreen({ navigation }: any) {
                     Rota:
                   </Text>
                   <Text variant="bodyMedium" style={styles.filtroValue}>
-                    {filtroAtivo.rotaNome || filtroAtivo.rotaNomes?.join(', ')}
+                    {filtroAtivo.escopoRotas === 'todas' || filtroAtivo.rotaIds === 'todas'
+                      ? 'Todas as Rotas'
+                      : filtroAtivo.rotaNome || filtroAtivo.rotaNomes?.join(', ')}
                   </Text>
                 </View>
                 <View style={styles.filtroInfo}>

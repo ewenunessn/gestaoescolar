@@ -1,20 +1,44 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
-import { Text, Card, FAB, IconButton } from 'react-native-paper';
+import React, { useEffect, useState } from 'react';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Button, Card, Text } from 'react-native-paper';
 import QRScanner from '../components/QRScanner';
+
+interface Filtro {
+  escopoRotas?: string;
+  rotaIds?: number[] | string;
+  rotaNome?: string;
+  rotaNomes?: string[];
+  dataInicio: string;
+  dataFim: string;
+}
+
+interface ModuleCardProps {
+  icon: string;
+  title: string;
+  subtitle: string;
+  onPress: () => void;
+}
+
+function ModuleCard({ icon, title, subtitle, onPress }: ModuleCardProps) {
+  return (
+    <TouchableOpacity onPress={onPress} style={styles.modCard} activeOpacity={0.82}>
+      <Text style={styles.modIcon}>{icon}</Text>
+      <Text variant="titleSmall" style={styles.modTitle}>{title}</Text>
+      <Text variant="bodySmall" style={styles.modSubtitle}>{subtitle}</Text>
+    </TouchableOpacity>
+  );
+}
 
 export default function HomeScreen({ navigation }: any) {
   const [showScanner, setShowScanner] = useState(false);
-  const [filtroAtivo, setFiltroAtivo] = useState<any>(null);
+  const [filtroAtivo, setFiltroAtivo] = useState<Filtro | null>(null);
   const [nomeUsuario, setNomeUsuario] = useState('');
 
   useEffect(() => {
     carregarDados();
-    
-    // Recarregar dados quando a tela ganhar foco
+
     const unsubscribe = navigation.addListener('focus', () => {
-      console.log('HomeScreen ganhou foco, recarregando dados...');
       carregarDados();
     });
 
@@ -23,185 +47,158 @@ export default function HomeScreen({ navigation }: any) {
 
   const carregarDados = async () => {
     try {
-      // Carregar filtro
       const filtro = await AsyncStorage.getItem('filtro_qrcode');
-      console.log('Filtro carregado do AsyncStorage:', filtro);
-      
+
       if (filtro) {
-        const parsedFiltro = JSON.parse(filtro);
-        console.log('Filtro parseado:', parsedFiltro);
-        setFiltroAtivo(parsedFiltro);
+        setFiltroAtivo(JSON.parse(filtro));
       } else {
-        // Se não há filtro, garantir que o estado seja null
-        console.log('Nenhum filtro encontrado, setando null');
         setFiltroAtivo(null);
       }
 
-      // Carregar nome do usuário
       const token = await AsyncStorage.getItem('token');
       if (token) {
         const parsed = JSON.parse(token);
-        setNomeUsuario(parsed.nome || 'Usuário');
+        setNomeUsuario(parsed.nome || 'Usuario');
       }
     } catch (err) {
       console.error('Erro ao carregar dados:', err);
     }
   };
 
-  const handleQRScan = async (data: any) => {
+  const handleQRScan = (data: Filtro) => {
     setFiltroAtivo(data);
     setShowScanner(false);
-    
-    // Navegar para a tela de opções com o filtro aplicado
     navigation.navigate('OpcoesFiltro', { filtro: data });
   };
 
+  const formatarPeriodo = (inicio: string, fim: string): string => {
+    const fmt = (d: string) => new Date(d).toLocaleDateString('pt-BR');
+    return `${fmt(inicio)} - ${fmt(fim)}`;
+  };
+
+  const formatarRotas = (filtro: Filtro): string => {
+    if (filtro.escopoRotas === 'todas' || filtro.rotaIds === 'todas') {
+      return 'Todas as Rotas';
+    }
+
+    if (filtro.rotaNomes && filtro.rotaNomes.length > 1) {
+      return `Rotas: ${filtro.rotaNomes.join(', ')}`;
+    }
+
+    return `Rota: ${filtro.rotaNome ?? filtro.rotaNomes?.[0] ?? 'N/A'}`;
+  };
+
+  const usuario = nomeUsuario || 'Usuario';
+  const modules = [
+    {
+      icon: '\uD83D\uDCE6',
+      title: 'Estoque central',
+      subtitle: 'Entradas e saidas',
+      route: 'EstoqueCentral' as const,
+    },
+    {
+      icon: '\uD83D\uDCE5',
+      title: 'Recebimentos',
+      subtitle: 'Registrar pedidos',
+      route: 'Recebimentos' as const,
+    },
+  ];
+
   return (
     <View style={styles.container}>
-      <ScrollView 
+      <View style={styles.topbar}>
+        <View>
+          <Text variant="bodySmall" style={styles.topbarGreeting}>
+            Bom dia
+          </Text>
+          <Text variant="titleMedium" style={styles.topbarName}>
+            {usuario}
+          </Text>
+        </View>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>
+            {usuario.slice(0, 2).toUpperCase()}
+          </Text>
+        </View>
+      </View>
+
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {/* Saudação */}
-        <View style={styles.welcomeSection}>
-          <Text variant="headlineMedium" style={styles.welcomeTitle}>
-            Olá, {nomeUsuario}! 👋
-          </Text>
-          <Text variant="bodyLarge" style={styles.welcomeSubtitle}>
-            Bem-vindo ao App Entregador
-          </Text>
-        </View>
-
-        {/* Card de instrução */}
-        <Card style={styles.instructionCard}>
-          <Card.Content>
-            <Text variant="titleMedium" style={styles.instructionTitle}>
-              📱 Como começar
-            </Text>
-            <Text variant="bodyMedium" style={styles.instructionText}>
-              1. Clique no botão abaixo para escanear o QR Code{'\n'}
-              2. Aponte a câmera para o código fornecido{'\n'}
-              3. O filtro será aplicado automaticamente{'\n'}
-              4. Você verá apenas as entregas do período
-            </Text>
-          </Card.Content>
-        </Card>
-
-        {/* Card de filtro ativo */}
         {filtroAtivo ? (
           <Card style={styles.filtroCard}>
             <Card.Content>
+              <Text variant="labelSmall" style={styles.filtroLabel}>Filtro ativo</Text>
               <Text variant="titleMedium" style={styles.filtroTitle}>
-                ✓ Filtro Ativo
-              </Text>
-              <Text variant="bodyMedium" style={styles.filtroRota}>
-                {filtroAtivo.rotaNomes && filtroAtivo.rotaNomes.length > 1 
-                  ? `Rotas: ${filtroAtivo.rotaNomes.join(', ')}`
-                  : `Rota: ${filtroAtivo.rotaNome || filtroAtivo.rotaNomes?.[0] || 'N/A'}`
-                }
+                {formatarRotas(filtroAtivo)}
               </Text>
               <Text variant="bodySmall" style={styles.filtroPeriodo}>
-                Período: {new Date(filtroAtivo.dataInicio).toLocaleDateString('pt-BR')} até{' '}
-                {new Date(filtroAtivo.dataFim).toLocaleDateString('pt-BR')}
+                {formatarPeriodo(filtroAtivo.dataInicio, filtroAtivo.dataFim)}
               </Text>
-              <View style={styles.filtroActions}>
-                <FAB
-                  icon="eye"
-                  label="Ver Opções"
-                  onPress={() => navigation.navigate('OpcoesFiltro', { filtro: filtroAtivo })}
-                  style={styles.deliveryFab}
-                />
-              </View>
+              <Button
+                mode="contained"
+                icon="eye"
+                onPress={() => navigation.navigate('OpcoesFiltro', { filtro: filtroAtivo })}
+                style={styles.filtroBtn}
+                buttonColor="#27500A"
+                textColor="#EAF3DE"
+              >
+                Ver entregas
+              </Button>
             </Card.Content>
           </Card>
         ) : (
           <Card style={styles.noFiltroCard}>
             <Card.Content>
+              <Text variant="labelSmall" style={styles.noFiltroLabel}>Nenhum filtro ativo</Text>
               <Text variant="titleMedium" style={styles.noFiltroTitle}>
-                Nenhum filtro ativo
+                Escaneie um QR Code
               </Text>
-              <Text variant="bodyMedium" style={styles.noFiltroText}>
-                Escaneie um QR Code para começar
+              <Text variant="bodySmall" style={styles.noFiltroText}>
+                O filtro sera aplicado automaticamente
               </Text>
-              <View style={styles.noFiltroActions}>
-                <FAB
-                  icon="qrcode-scan"
-                  label="Escanear QR Code"
-                  onPress={() => setShowScanner(true)}
-                  style={styles.scanButtonLarge}
-                  color="#fff"
-                />
-              </View>
+              <Button
+                mode="contained"
+                icon="qrcode-scan"
+                onPress={() => setShowScanner(true)}
+                style={styles.noFiltroBtn}
+                buttonColor="#633806"
+                textColor="#FAEEDA"
+              >
+                Escanear QR Code
+              </Button>
             </Card.Content>
           </Card>
         )}
 
-        {/* Card de Estoque Central */}
-        <Card style={styles.estoqueCard}>
-          <Card.Content>
-            <Text variant="titleMedium" style={styles.estoqueTitle}>
-              📦 Estoque Central
-            </Text>
-            <Text variant="bodyMedium" style={styles.estoqueText}>
-              Gerencie entradas, saídas e ajustes do estoque
-            </Text>
-            <View style={styles.estoqueActions}>
-              <FAB
-                icon="warehouse"
-                label="Acessar Estoque"
-                onPress={() => navigation.navigate('EstoqueCentral')}
-                style={styles.estoqueFab}
-                color="#fff"
-              />
-            </View>
-          </Card.Content>
-        </Card>
+        <Text variant="labelSmall" style={styles.sectionLabel}>Modulos</Text>
 
-        {/* Card de Recebimentos */}
-        <Card style={styles.recebimentosCard}>
-          <Card.Content>
-            <Text variant="titleMedium" style={styles.recebimentosTitle}>
-              📥 Recebimentos
-            </Text>
-            <Text variant="bodyMedium" style={styles.recebimentosText}>
-              Registre o recebimento de mercadorias dos pedidos
-            </Text>
-            <View style={styles.recebimentosActions}>
-              <FAB
-                icon="package-variant"
-                label="Acessar Recebimentos"
-                onPress={() => navigation.navigate('Recebimentos')}
-                style={styles.recebimentosFab}
-                color="#fff"
-              />
-            </View>
-          </Card.Content>
-        </Card>
+        <View style={styles.modulesGrid}>
+          {modules.map((mod) => (
+            <ModuleCard
+              key={mod.route}
+              icon={mod.icon}
+              title={mod.title}
+              subtitle={mod.subtitle}
+              onPress={() => navigation.navigate(mod.route)}
+            />
+          ))}
+        </View>
 
-        {/* Card de Nutrição */}
-        <Card style={styles.nutricaoCard}>
+        <Card style={styles.instructionCard}>
           <Card.Content>
-            <Text variant="titleMedium" style={styles.nutricaoTitle}>
-              🥗 Nutrição
+            <Text variant="titleSmall" style={styles.instructionTitle}>
+              Como comecar
             </Text>
-            <Text variant="bodyMedium" style={styles.nutricaoText}>
-              Gerencie refeições e cardápios escolares
+            <Text variant="bodySmall" style={styles.instructionText}>
+              Escaneie o QR Code, o filtro sera aplicado automaticamente e voce vera as entregas do periodo.
             </Text>
-            <View style={styles.nutricaoActions}>
-              <FAB
-                icon="food-apple"
-                label="Acessar Nutrição"
-                onPress={() => navigation.navigate('Nutricao')}
-                style={styles.nutricaoFab}
-                color="#fff"
-              />
-            </View>
           </Card.Content>
         </Card>
       </ScrollView>
 
-      {/* Scanner QR */}
       <QRScanner
         visible={showScanner}
         onClose={() => setShowScanner(false)}
@@ -216,6 +213,37 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
+  topbar: {
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  topbarGreeting: {
+    color: '#666',
+  },
+  topbarName: {
+    fontWeight: '500',
+    color: '#111',
+  },
+  avatar: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#B5D4F4',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#0C447C',
+  },
   scrollView: {
     flex: 1,
   },
@@ -223,143 +251,106 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 32,
   },
-  welcomeSection: {
-    marginBottom: 24,
+  filtroCard: {
+    marginBottom: 10,
+    backgroundColor: '#EAF3DE',
+    borderWidth: 0.5,
+    borderColor: '#C0DD97',
+    borderRadius: 14,
+    elevation: 0,
   },
-  welcomeTitle: {
-    fontWeight: 'bold',
-    color: '#1976d2',
-    marginBottom: 8,
+  filtroLabel: {
+    color: '#3B6D11',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
   },
-  welcomeSubtitle: {
+  filtroTitle: {
+    fontWeight: '500',
+    color: '#27500A',
+    marginBottom: 2,
+  },
+  filtroPeriodo: {
+    color: '#3B6D11',
+    marginBottom: 12,
+  },
+  filtroBtn: {
+    marginTop: 4,
+    borderRadius: 8,
+  },
+  noFiltroCard: {
+    marginBottom: 10,
+    backgroundColor: '#FAEEDA',
+    borderWidth: 0.5,
+    borderColor: '#FAC775',
+    borderRadius: 14,
+    elevation: 0,
+  },
+  noFiltroLabel: {
+    color: '#854F0B',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  noFiltroTitle: {
+    fontWeight: '500',
+    color: '#633806',
+    marginBottom: 2,
+  },
+  noFiltroText: {
+    color: '#854F0B',
+    marginBottom: 12,
+  },
+  noFiltroBtn: {
+    marginTop: 4,
+    borderRadius: 8,
+  },
+  sectionLabel: {
+    color: '#999',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+    marginTop: 4,
+  },
+  modulesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 10,
+  },
+  modCard: {
+    flex: 1,
+    minWidth: '45%',
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    borderWidth: 0.5,
+    borderColor: 'rgba(0,0,0,0.1)',
+    padding: 12,
+    gap: 4,
+  },
+  modIcon: {
+    fontSize: 20,
+    marginBottom: 4,
+  },
+  modTitle: {
+    fontWeight: '500',
+    color: '#111',
+  },
+  modSubtitle: {
     color: '#666',
   },
   instructionCard: {
-    marginBottom: 16,
-    backgroundColor: '#e3f2fd',
+    backgroundColor: 'rgba(0,0,0,0.03)',
+    borderWidth: 0,
+    elevation: 0,
   },
   instructionTitle: {
-    fontWeight: 'bold',
-    color: '#1565c0',
-    marginBottom: 12,
+    fontWeight: '500',
+    color: '#444',
+    marginBottom: 6,
   },
   instructionText: {
-    color: '#1976d2',
-    lineHeight: 24,
-  },
-  filtroCard: {
-    marginBottom: 16,
-    backgroundColor: '#10b981',
-    borderWidth: 0,
-    elevation: 4,
-  },
-  filtroTitle: {
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 8,
-  },
-  filtroRota: {
-    color: '#fff',
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  filtroPeriodo: {
-    color: '#f0fdf4',
-    marginBottom: 12,
-  },
-  filtroActions: {
-    marginTop: 12,
-    alignItems: 'center',
-  },
-  deliveryFab: {
-    backgroundColor: '#047857',
-  },
-  noFiltroCard: {
-    marginBottom: 16,
-    backgroundColor: '#f59e0b',
-    borderWidth: 0,
-    elevation: 4,
-  },
-  noFiltroTitle: {
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 8,
-  },
-  noFiltroText: {
-    color: '#fff',
-    marginBottom: 12,
-  },
-  noFiltroActions: {
-    marginTop: 12,
-    alignItems: 'center',
-  },
-  scanButtonLarge: {
-    backgroundColor: '#d97706',
-  },
-  estoqueCard: {
-    marginBottom: 16,
-    backgroundColor: '#8b5cf6',
-    borderWidth: 0,
-    elevation: 4,
-  },
-  estoqueTitle: {
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 8,
-  },
-  estoqueText: {
-    color: '#fff',
-    marginBottom: 12,
-  },
-  estoqueActions: {
-    marginTop: 12,
-    alignItems: 'center',
-  },
-  estoqueFab: {
-    backgroundColor: '#6d28d9',
-  },
-  recebimentosCard: {
-    marginBottom: 16,
-    backgroundColor: '#059669',
-    borderWidth: 0,
-    elevation: 4,
-  },
-  recebimentosTitle: {
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 8,
-  },
-  recebimentosText: {
-    color: '#fff',
-    marginBottom: 12,
-  },
-  recebimentosActions: {
-    marginTop: 12,
-    alignItems: 'center',
-  },
-  recebimentosFab: {
-    backgroundColor: '#047857',
-  },
-  nutricaoCard: {
-    marginBottom: 16,
-    backgroundColor: '#4caf50',
-    borderWidth: 0,
-    elevation: 4,
-  },
-  nutricaoTitle: {
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 8,
-  },
-  nutricaoText: {
-    color: '#fff',
-    marginBottom: 12,
-  },
-  nutricaoActions: {
-    marginTop: 12,
-    alignItems: 'center',
-  },
-  nutricaoFab: {
-    backgroundColor: '#388e3c',
+    color: '#666',
+    lineHeight: 20,
   },
 });

@@ -1,148 +1,86 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { Text, Card, Button, TextInput, ActivityIndicator } from 'react-native-paper';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import { registrarAjuste, AjusteData, listarLotes, Lote } from '../api/estoqueCentral';
-import { api, handleAxiosError } from '../api/client';
+import { ActivityIndicator, Button, Card, Text, TextInput } from 'react-native-paper';
+import {
+  AjusteData,
+  EstoqueCentral,
+  listarEstoqueCentral,
+  registrarAjuste,
+} from '../api/estoqueCentral';
+import { handleAxiosError } from '../api/client';
 import { formatarNumeroInteligente } from '../utils/dateUtils';
 
-interface Produto {
-  id: number;
-  nome: string;
-  unidade: string;
-}
-
 export default function EstoqueCentralAjusteScreen({ route, navigation }: any) {
-  const produtoInicial = route.params?.produto;
+  const produtoInicial = route.params?.produto as EstoqueCentral | undefined;
 
-  const [produtos, setProdutos] = useState<Produto[]>([]);
-  const [lotes, setLotes] = useState<Lote[]>([]);
-  const [loadingProdutos, setLoadingProdutos] = useState(true);
-  const [loadingLotes, setLoadingLotes] = useState(false);
+  const [estoque, setEstoque] = useState<EstoqueCentral[]>([]);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-
   const [produtoId, setProdutoId] = useState(
     produtoInicial?.produto_id?.toString() || produtoInicial?.id?.toString() || ''
   );
-  const [loteId, setLoteId] = useState('');
   const [quantidadeNova, setQuantidadeNova] = useState('');
   const [motivo, setMotivo] = useState('');
   const [observacao, setObservacao] = useState('');
 
   useEffect(() => {
-    carregarProdutos();
-    if (produtoInicial) {
-      carregarLotes(produtoInicial.id);
-    }
+    carregarEstoque();
   }, []);
 
+  const carregarEstoque = async () => {
+    try {
+      setLoading(true);
+      setEstoque(await listarEstoqueCentral());
+    } catch (err) {
+      console.error('Erro ao carregar estoque:', err);
+      Alert.alert('Erro', handleAxiosError(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const produtoSelecionado = useMemo(() => {
+    if (produtoInicial) return produtoInicial;
+    return estoque.find((item) => String(item.produto_id) === produtoId || String(item.id) === produtoId);
+  }, [estoque, produtoId, produtoInicial]);
+
   useEffect(() => {
-    if (produtoId && !produtoInicial) {
-      // Buscar o estoque_central_id do produto selecionado
-      buscarEstoqueProduto(parseInt(produtoId));
+    if (produtoSelecionado && quantidadeNova === '') {
+      setQuantidadeNova(String(Number(produtoSelecionado.quantidade ?? 0)));
     }
-  }, [produtoId]);
+  }, [produtoSelecionado, quantidadeNova]);
 
-  const buscarEstoqueProduto = async (prodId: number) => {
-    try {
-      setLoadingLotes(true);
-      const response = await api.get(`/estoque-central/produto/${prodId}`);
-      if (response.data && response.data.id) {
-        carregarLotes(response.data.id);
-      }
-    } catch (err) {
-      console.error('Erro ao buscar estoque do produto:', err);
-    } finally {
-      setLoadingLotes(false);
-    }
-  };
+  const unidade = produtoSelecionado?.unidade || produtoSelecionado?.produto_unidade || 'UN';
+  const saldoAtual = Number(produtoSelecionado?.quantidade ?? 0);
+  const novaQuantidade = Number(quantidadeNova.replace(',', '.'));
+  const diferenca = Number.isFinite(novaQuantidade) ? novaQuantidade - saldoAtual : 0;
 
-  const carregarLotes = async (estoqueId: number) => {
-    try {
-      setLoadingLotes(true);
-      const lotesData = await listarLotes(estoqueId);
-      setLotes(lotesData);
-      
-      // Se houver apenas um lote, seleciona automaticamente
-      if (lotesData.length === 1) {
-        setLoteId(lotesData[0].id.toString());
-        setQuantidadeNova(lotesData[0].quantidade.toString());
-      }
-    } catch (err) {
-      console.error('Erro ao carregar lotes:', err);
-      Alert.alert('Erro', 'Não foi possível carregar os lotes');
-    } finally {
-      setLoadingLotes(false);
-    }
-  };
-
-  const carregarProdutos = async () => {
-    try {
-      const response = await api.get('/produtos');
-      setProdutos(response.data.data || response.data);
-    } catch (err) {
-      console.error('Erro ao carregar produtos:', err);
-      Alert.alert('Erro', 'Não foi possível carregar os produtos');
-    } finally {
-      setLoadingProdutos(false);
-    }
-  };
-
-  const formatarNumero = (valor: any): number => {
-    if (valor === null || valor === undefined) return 0;
-    const num = typeof valor === 'number' ? valor : parseFloat(String(valor));
-    return isNaN(num) ? 0 : num;
-  };
-
-  const validarFormulario = (): boolean => {
+  const validarFormulario = () => {
     if (!produtoId) {
-      Alert.alert('Atenção', 'Selecione um produto');
+      Alert.alert('Atencao', 'Selecione um produto');
       return false;
     }
 
-    if (!loteId) {
-      Alert.alert('Atenção', 'Selecione um lote para ajustar');
+    if (quantidadeNova === '' || !Number.isFinite(novaQuantidade) || novaQuantidade < 0) {
+      Alert.alert('Atencao', 'Informe uma quantidade valida');
       return false;
     }
 
-    if (quantidadeNova === '' || parseFloat(quantidadeNova) < 0) {
-      Alert.alert('Atenção', 'Informe uma quantidade válida (não pode ser negativa)');
-      return false;
-    }
-
-    if (!motivo) {
-      Alert.alert('Atenção', 'Informe o motivo do ajuste');
+    if (!motivo.trim()) {
+      Alert.alert('Atencao', 'Informe o motivo do ajuste');
       return false;
     }
 
     return true;
   };
 
-  const handleLoteChange = (loteIdSelecionado: string) => {
-    setLoteId(loteIdSelecionado);
-    const lote = lotes.find(l => l.id.toString() === loteIdSelecionado);
-    if (lote) {
-      setQuantidadeNova(lote.quantidade.toString());
-    }
-  };
-
   const handleSubmit = async () => {
     if (!validarFormulario()) return;
 
-    const lote = lotes.find(l => l.id.toString() === loteId);
-    const quantidadeAtual = lote ? formatarNumero(lote.quantidade) : 0;
-    const novaQuantidade = parseFloat(quantidadeNova);
-    const diferenca = novaQuantidade - quantidadeAtual;
-
-    const mensagem = diferenca > 0
-      ? `Aumentar lote em ${formatarNumeroInteligente(Math.abs(diferenca))}?`
-      : diferenca < 0
-      ? `Diminuir lote em ${formatarNumeroInteligente(Math.abs(diferenca))}?`
-      : 'Quantidade não será alterada. Continuar?';
-
     Alert.alert(
       'Confirmar Ajuste',
-      `Lote: ${lote?.lote}\n${mensagem}`,
+      `Saldo atual: ${formatarNumeroInteligente(saldoAtual)} ${unidade}\nNovo saldo: ${formatarNumeroInteligente(novaQuantidade)} ${unidade}`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -150,104 +88,76 @@ export default function EstoqueCentralAjusteScreen({ route, navigation }: any) {
           onPress: async () => {
             try {
               setSaving(true);
-
               const dados: AjusteData = {
-                produto_id: parseInt(produtoId),
+                produto_id: Number(produtoId),
                 quantidade_nova: novaQuantidade,
-                lote_id: parseInt(loteId),
-                motivo,
-                observacao,
+                motivo: motivo.trim(),
+                observacao: observacao.trim(),
               };
 
               await registrarAjuste(dados);
 
-              Alert.alert(
-                'Sucesso',
-                'Ajuste registrado com sucesso!',
-                [
-                  {
-                    text: 'OK',
-                    onPress: () => navigation.goBack()
-                  }
-                ]
-              );
+              Alert.alert('Sucesso', 'Ajuste registrado com sucesso', [
+                { text: 'OK', onPress: () => navigation.goBack() },
+              ]);
             } catch (err: any) {
-              // Tratamento específico para erros de validação
-              if (err.response?.data?.error) {
-                const mensagemErro = err.response.data.error;
-                if (mensagemErro.includes('Quantidade insuficiente') || 
-                    mensagemErro.includes('não encontrado') ||
-                    mensagemErro.includes('inválid')) {
-                  Alert.alert('Atenção', mensagemErro, [{ text: 'OK' }]);
-                  return;
-                }
-              }
-              
-              // Outros erros - log apenas para erros não esperados
               console.error('Erro ao registrar ajuste:', err);
               Alert.alert('Erro', handleAxiosError(err));
             } finally {
               setSaving(false);
             }
-          }
-        }
+          },
+        },
       ]
     );
   };
 
-  const produtoSelecionado = produtos.find(p => p.id === parseInt(produtoId));
-  const loteSelecionado = lotes.find(l => l.id.toString() === loteId);
-  const quantidadeAtual = loteSelecionado ? formatarNumero(loteSelecionado.quantidade) : 0;
-  const diferenca = quantidadeNova ? parseFloat(quantidadeNova) - quantidadeAtual : 0;
-
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
       <Card style={styles.card}>
         <Card.Content>
-          <Text variant="titleLarge" style={styles.title}>
-            ✏️ Ajustar Estoque por Lote
-          </Text>
+          <Text variant="titleLarge" style={styles.title}>Ajustar Estoque</Text>
           <Text variant="bodyMedium" style={styles.subtitle}>
-            Corrija a quantidade de um lote específico após inventário
+            Ajuste o saldo total do produto no estoque central.
           </Text>
         </Card.Content>
       </Card>
 
-      {loadingProdutos ? (
+      {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" />
-          <Text style={styles.loadingText}>Carregando produtos...</Text>
+          <Text style={styles.loadingText}>Carregando estoque...</Text>
         </View>
       ) : (
         <>
-          {/* Produto */}
           <Card style={styles.card}>
             <Card.Content>
-              <Text variant="titleMedium" style={styles.sectionTitle}>
-                Produto
-              </Text>
+              <Text variant="titleMedium" style={styles.sectionTitle}>Produto</Text>
               {produtoInicial ? (
                 <View style={styles.produtoSelecionado}>
                   <Text variant="bodyLarge" style={styles.produtoNome}>
-                    {produtoInicial.produto_nome || produtoInicial.nome}
+                    {produtoInicial.produto_nome}
                   </Text>
                   <Text variant="bodyMedium" style={styles.produtoUnidade}>
-                    Unidade: {produtoInicial.unidade}
+                    Saldo atual: {formatarNumeroInteligente(saldoAtual)} {unidade}
                   </Text>
                 </View>
               ) : (
                 <View style={styles.pickerContainer}>
                   <Picker
                     selectedValue={produtoId}
-                    onValueChange={setProdutoId}
+                    onValueChange={(value) => {
+                      setProdutoId(value);
+                      setQuantidadeNova('');
+                    }}
                     style={styles.picker}
                   >
                     <Picker.Item label="Selecione um produto..." value="" />
-                    {produtos.map(produto => (
+                    {estoque.map((item) => (
                       <Picker.Item
-                        key={produto.id}
-                        label={`${produto.nome} (${produto.unidade})`}
-                        value={produto.id.toString()}
+                        key={item.produto_id}
+                        label={`${item.produto_nome} (${formatarNumeroInteligente(Number(item.quantidade ?? 0))} ${item.unidade || 'UN'})`}
+                        value={String(item.produto_id)}
                       />
                     ))}
                   </Picker>
@@ -256,95 +166,46 @@ export default function EstoqueCentralAjusteScreen({ route, navigation }: any) {
             </Card.Content>
           </Card>
 
-          {/* Seleção de Lote */}
-          {produtoId && (
-            <Card style={styles.card}>
-              <Card.Content>
-                <Text variant="titleMedium" style={styles.sectionTitle}>
-                  Selecione o Lote
-                </Text>
-                {loadingLotes ? (
-                  <ActivityIndicator />
-                ) : lotes.length === 0 ? (
-                  <Text style={styles.emptyText}>Nenhum lote disponível para este produto</Text>
-                ) : (
-                  <View style={styles.pickerContainer}>
-                    <Picker
-                      selectedValue={loteId}
-                      onValueChange={handleLoteChange}
-                      style={styles.picker}
-                    >
-                      <Picker.Item label="Selecione um lote..." value="" />
-                      {lotes.map((lote) => (
-                        <Picker.Item
-                          key={lote.id}
-                          label={`${lote.lote} - ${formatarNumeroInteligente(formatarNumero(lote.quantidade))} ${produtoSelecionado?.unidade || produtoInicial?.unidade}`}
-                          value={lote.id.toString()}
-                        />
-                      ))}
-                    </Picker>
-                  </View>
-                )}
-              </Card.Content>
-            </Card>
-          )}
-
-          {/* Quantidade */}
-          {loteId && (
+          {produtoSelecionado && (
             <>
               <Card style={styles.card}>
                 <Card.Content>
-                  <Text variant="titleMedium" style={styles.sectionTitle}>
-                    Ajustar Quantidade
-                  </Text>
-                  
-                  <Text variant="bodyMedium" style={styles.quantidadeAtual}>
-                    Quantidade atual do lote: {formatarNumeroInteligente(quantidadeAtual)} {produtoSelecionado?.unidade || produtoInicial?.unidade}
-                  </Text>
-
+                  <Text variant="titleMedium" style={styles.sectionTitle}>Quantidade</Text>
                   <TextInput
-                    label="Nova Quantidade"
+                    label={`Nova Quantidade (${unidade})`}
                     value={quantidadeNova}
                     onChangeText={setQuantidadeNova}
                     keyboardType="numeric"
                     mode="outlined"
                     style={styles.input}
                   />
-
-                  {diferenca !== 0 && (
-                    <View style={styles.diferencaContainer}>
-                      <Text
-                        variant="bodyMedium"
-                        style={[
-                          styles.diferencaText,
-                          { color: diferenca > 0 ? '#10b981' : '#dc2626' }
-                        ]}
-                      >
-                        {diferenca > 0 ? '+' : ''}{formatarNumeroInteligente(diferenca)} {produtoSelecionado?.unidade || produtoInicial?.unidade}
-                      </Text>
-                    </View>
-                  )}
+                  <View style={styles.diferencaContainer}>
+                    <Text
+                      variant="bodyMedium"
+                      style={[
+                        styles.diferencaText,
+                        { color: diferenca > 0 ? '#10b981' : diferenca < 0 ? '#dc2626' : '#666' },
+                      ]}
+                    >
+                      Diferenca: {diferenca > 0 ? '+' : ''}{formatarNumeroInteligente(diferenca)} {unidade}
+                    </Text>
+                  </View>
                 </Card.Content>
               </Card>
 
-              {/* Informações Adicionais */}
               <Card style={styles.card}>
                 <Card.Content>
-                  <Text variant="titleMedium" style={styles.sectionTitle}>
-                    Motivo do Ajuste (Obrigatório)
-                  </Text>
-
+                  <Text variant="titleMedium" style={styles.sectionTitle}>Justificativa</Text>
                   <TextInput
-                    label="Motivo"
+                    label="Motivo *"
                     value={motivo}
                     onChangeText={setMotivo}
                     mode="outlined"
                     style={styles.input}
-                    placeholder="Ex: Inventário, Perda, Correção"
+                    placeholder="Ex: inventario, perda, correcao"
                   />
-
                   <TextInput
-                    label="Observações"
+                    label="Observacao"
                     value={observacao}
                     onChangeText={setObservacao}
                     mode="outlined"
@@ -355,24 +216,19 @@ export default function EstoqueCentralAjusteScreen({ route, navigation }: any) {
                 </Card.Content>
               </Card>
 
-              {/* Botões */}
               <View style={styles.actions}>
                 <Button
                   mode="contained"
                   onPress={handleSubmit}
                   loading={saving}
                   disabled={saving}
+                  icon="pencil"
+                  buttonColor="#f59e0b"
                   style={styles.button}
-                  icon="check"
                 >
                   Registrar Ajuste
                 </Button>
-                <Button
-                  mode="outlined"
-                  onPress={() => navigation.goBack()}
-                  disabled={saving}
-                  style={styles.button}
-                >
+                <Button mode="outlined" onPress={() => navigation.goBack()} disabled={saving} style={styles.button}>
                   Cancelar
                 </Button>
               </View>
@@ -385,92 +241,33 @@ export default function EstoqueCentralAjusteScreen({ route, navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  card: {
-    margin: 16,
-    marginBottom: 16,
-  },
-  title: {
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  subtitle: {
-    color: '#666',
-  },
-  loadingContainer: {
-    padding: 40,
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 16,
-    color: '#666',
-  },
-  sectionTitle: {
-    fontWeight: 'bold',
-    marginBottom: 12,
-  },
+  container: { flex: 1, backgroundColor: '#f5f5f5' },
+  card: { margin: 16, marginBottom: 0 },
+  title: { fontWeight: 'bold', marginBottom: 8 },
+  subtitle: { color: '#666' },
+  loadingContainer: { padding: 40, alignItems: 'center' },
+  loadingText: { marginTop: 16, color: '#666' },
+  sectionTitle: { fontWeight: 'bold', marginBottom: 12 },
   produtoSelecionado: {
     padding: 16,
-    backgroundColor: '#e8f5e9',
+    backgroundColor: '#fffbeb',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#4caf50',
+    borderColor: '#fcd34d',
   },
-  produtoNome: {
-    fontWeight: 'bold',
-    color: '#2e7d32',
-    marginBottom: 4,
-  },
-  produtoUnidade: {
-    color: '#558b2f',
-    marginBottom: 4,
-  },
-  quantidadeAtual: {
-    color: '#558b2f',
-    fontWeight: '600',
-    marginBottom: 12,
-    padding: 12,
-    backgroundColor: '#f0f9ff',
-    borderRadius: 6,
-  },
-  pickerContainer: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 4,
-    backgroundColor: '#fff',
-  },
-  picker: {
-    height: 50,
-  },
-  emptyText: {
-    textAlign: 'center',
-    color: '#666',
-    padding: 20,
-  },
-  input: {
-    marginBottom: 12,
-  },
+  produtoNome: { fontWeight: 'bold', color: '#92400e', marginBottom: 4 },
+  produtoUnidade: { color: '#78350f' },
+  pickerContainer: { borderWidth: 1, borderColor: '#ccc', borderRadius: 4, backgroundColor: '#fff' },
+  picker: { height: 50 },
+  input: { marginBottom: 12 },
   diferencaContainer: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     padding: 12,
     backgroundColor: '#f9f9f9',
     borderRadius: 6,
     marginTop: 8,
   },
-  diferencaText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  actions: {
-    padding: 16,
-    gap: 12,
-  },
-  button: {
-    marginBottom: 0,
-  },
+  diferencaText: { fontSize: 18, fontWeight: 'bold' },
+  actions: { padding: 16, gap: 12 },
+  button: { marginBottom: 0 },
 });

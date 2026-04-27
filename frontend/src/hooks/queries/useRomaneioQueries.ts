@@ -12,6 +12,7 @@ export const useRomaneio = (params: {
   data_fim?: string;
   escola_id?: number;
   rota_id?: number;
+  rota_ids?: string;
   status?: string;
 }) => {
   return useQuery({

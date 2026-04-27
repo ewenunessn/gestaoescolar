@@ -208,7 +208,8 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
           observacao: observacao.trim() || undefined,
           latitude: localizacaoGPS?.latitude,
           longitude: localizacaoGPS?.longitude,
-          precisao_gps: localizacaoGPS?.precisao
+          precisao_gps: localizacaoGPS?.precisao,
+          client_operation_id: `${Date.now()}_${item.id}_${Math.random().toString(36).slice(2, 11)}`
         };
 
         const response = await entregaService.confirmarEntrega(item.id, entregaData);

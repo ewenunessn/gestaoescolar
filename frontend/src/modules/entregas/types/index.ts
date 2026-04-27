@@ -33,6 +33,7 @@ export interface HistoricoEntrega {
   latitude?: number;
   longitude?: number;
   precisao_gps?: number;
+  client_operation_id?: string;
 }
 
 export interface ItemEntrega {
@@ -85,6 +86,7 @@ export interface ConfirmarEntregaData {
   latitude?: number;
   longitude?: number;
   precisao_gps?: number;
+  client_operation_id?: string;
 }
 
 export interface EstatisticasEntregas {

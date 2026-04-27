@@ -11,7 +11,78 @@ import {
 } from '../../../utils/errorHandler';
 
 
+export function getConfirmarEntregaErrorStatus(error: Error): number {
+  const message = error.message
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  const clientErrorFragments = [
+    'client_operation_id',
+    'nao encontrado',
+    'nao esta marcado',
+    'nao foi entregue',
+    'ja foi entregue',
+    'saldo insuficiente',
+    'quantidade a entregar',
+    'maior que o saldo pendente',
+    'quantidade invalida',
+  ];
+
+  return clientErrorFragments.some((fragment) => message.includes(fragment)) ? 400 : 500;
+}
+
+export function parseRotaIdsParam(value: unknown): number[] | undefined {
+  if (typeof value !== 'string' || value.trim() === '' || value === 'todas') {
+    return undefined;
+  }
+
+  const ids = value
+    .split(',')
+    .map((item) => Number(item.trim()))
+    .filter((item) => Number.isInteger(item) && item > 0);
+
+  return ids.length > 0 ? Array.from(new Set(ids)) : undefined;
+}
+
 class EntregaController {
+  async obterOfflineBundle(req: Request, res: Response) {
+    try {
+      const { rotaIds, guiaId, dataEntrega, dataInicio, dataFim, somentePendentes } = req.query;
+
+      const bundle = await EntregaModel.obterOfflineBundle({
+        rotaIds: parseRotaIdsParam(rotaIds),
+        guiaId: guiaId ? Number(guiaId) : undefined,
+        dataEntrega: typeof dataEntrega === 'string' ? dataEntrega : undefined,
+        dataInicio: typeof dataInicio === 'string' ? dataInicio : undefined,
+        dataFim: typeof dataFim === 'string' ? dataFim : undefined,
+        somentePendentes: somentePendentes === 'true',
+      });
+
+      res.json(bundle);
+    } catch (error) {
+      console.error('Erro ao montar bundle offline de entregas:', error);
+      res.status(500).json({
+        error: 'Erro interno do servidor',
+        message: error instanceof Error ? error.message : 'Erro desconhecido',
+      });
+    }
+  }
+
+  async listarMudancas(req: Request, res: Response) {
+    try {
+      const { since } = req.query;
+      const changes = await EntregaModel.listarMudancasEntregas(typeof since === 'string' ? since : undefined);
+      res.json(changes);
+    } catch (error) {
+      console.error('Erro ao listar mudancas de entregas:', error);
+      res.status(500).json({
+        error: 'Erro interno do servidor',
+        message: error instanceof Error ? error.message : 'Erro desconhecido',
+      });
+    }
+  }
+
   async listarEscolas(req: Request, res: Response) {
     try {
       const { guiaId, rotaId, dataEntrega, dataInicio, dataFim, somentePendentes } = req.query;
@@ -96,7 +167,8 @@ class EntregaController {
         assinatura_base64,
         latitude,
         longitude,
-        precisao_gps
+        precisao_gps,
+        client_operation_id
       } = req.body;
 
       if (!itemId || isNaN(Number(itemId))) {
@@ -146,7 +218,8 @@ class EntregaController {
         assinatura_base64: assinatura_base64 || null,
         latitude: latitude ? Number(latitude) : null,
         longitude: longitude ? Number(longitude) : null,
-        precisao_gps: precisao_gps ? Number(precisao_gps) : null
+        precisao_gps: precisao_gps ? Number(precisao_gps) : null,
+        client_operation_id: typeof client_operation_id === 'string' ? client_operation_id : null
       });
 
 
@@ -159,11 +232,7 @@ class EntregaController {
       console.error('❌ Erro ao confirmar entrega:', error);
       
       if (error instanceof Error) {
-        if (error.message.includes('não encontrado') || 
-            error.message.includes('não está marcado') || 
-            error.message.includes('já foi entregue')) {
-          return res.status(400).json({ error: error.message });
-        }
+        return res.status(getConfirmarEntregaErrorStatus(error)).json({ error: error.message });
       }
 
       res.status(500).json({ 

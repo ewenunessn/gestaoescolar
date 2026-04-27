@@ -15,7 +15,9 @@ export default function OpcoesFiltroScreen({ navigation, route }: any) {
               ✓ Filtro Aplicado
             </Text>
             <Text variant="bodyLarge" style={styles.filtroRota}>
-              {filtro?.rotaNomes && filtro.rotaNomes.length > 1 
+              {filtro?.escopoRotas === 'todas' || filtro?.rotaIds === 'todas'
+                ? 'Todas as Rotas'
+                : filtro?.rotaNomes && filtro.rotaNomes.length > 1 
                 ? `Rotas: ${filtro.rotaNomes.join(', ')}`
                 : `Rota: ${filtro?.rotaNome || filtro?.rotaNomes?.[0] || 'N/A'}`
               }

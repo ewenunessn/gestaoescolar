@@ -2,11 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, FlatList, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text, Card, ActivityIndicator, Button, Checkbox, TextInput } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { listarItensEscola, ItemEntrega, confirmarEntregaItem } from '../api/rotas';
+import { listarItensEscola, ItemEntrega, confirmarEntregaItem, cancelarEntregaItem } from '../api/rotas';
 import { handleAxiosError, API_URL } from '../api/client';
 import OfflineIndicator from '../components/OfflineIndicator';
 import { useOffline } from '../contexts/OfflineContext';
 import { cacheService } from '../services/cacheService';
+import { createDeliveryBatchId, loadDeliveryOutboxOperations } from '../services/deliveryOutbox';
+import { mergeItemsWithOutbox, type OfflineItemFields } from '../services/deliveryOutboxCore';
+import { saveSchoolItemsSnapshot } from '../services/deliveryProjectionStore';
+import { upsertRouteSchoolProjectionSnapshot } from '../services/deliveryRouteProjectionStore';
+import { SCHOOL_ITEMS_REFRESH_MS, shouldRefreshCache } from '../services/deliverySyncPolicy';
 
 // Função para formatar números removendo zeros desnecessários
 const formatarQuantidade = (valor: number | string): string => {
@@ -19,7 +24,47 @@ const formatarQuantidade = (valor: number | string): string => {
   return num.toFixed(3).replace(/\.?0+$/, '');
 };
 
-interface ItemSelecionado extends ItemEntrega {
+const criarClientOperationId = (itemId: number): string =>
+  `${Date.now()}_${itemId}_${Math.random().toString(36).substr(2, 9)}`;
+
+const getOfflineStatusLabel = (status?: OfflineItemFields['offline_status']): string => {
+  switch (status) {
+    case 'pending':
+      return 'Aguardando envio';
+    case 'syncing':
+      return 'Enviando ao servidor';
+    case 'failed_retryable':
+      return 'Falha temporaria. Sera reenviado.';
+    case 'failed_needs_action':
+      return 'Erro de sincronizacao. Precisa de acao.';
+    case 'comprovante_pending':
+      return 'Entrega enviada. Comprovante pendente.';
+    default:
+      return '';
+  }
+};
+
+function aplicarFiltroItens<T extends ItemEntrega>(itens: T[], filtro: any): T[] {
+  if (!filtro) {
+    return itens;
+  }
+
+  const dataInicio = new Date(filtro.dataInicio);
+  dataInicio.setHours(0, 0, 0, 0);
+  const dataFim = new Date(filtro.dataFim);
+  dataFim.setHours(23, 59, 59, 999);
+
+  return itens.filter((item) => {
+    if (item.data_entrega) {
+      const dataEntrega = new Date(item.data_entrega);
+      return dataEntrega >= dataInicio && dataEntrega <= dataFim;
+    }
+
+    return true;
+  });
+}
+
+interface ItemSelecionado extends ItemEntrega, OfflineItemFields {
   selecionado: boolean;
   quantidade_a_entregar: number;
 }
@@ -27,7 +72,7 @@ interface ItemSelecionado extends ItemEntrega {
 type Etapa = 'selecao' | 'revisao' | 'sucesso';
 
 export default function EscolaDetalheScreen({ route, navigation }: any) {
-  const { escolaId, escolaNome } = route.params;
+  const { escolaId, escolaNome, rotaId } = route.params;
   const [itens, setItens] = useState<ItemSelecionado[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -41,13 +86,19 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
   const [observacao, setObservacao] = useState('');
   const [salvando, setSalvando] = useState(false);
 
-  const { isOnline, addOperation } = useOffline();
+  const { isOnline, addOperation, syncPendingOperations, syncVersion } = useOffline();
 
   useEffect(() => {
     carregarFiltro();
     carregarItens();
     carregarNomeEntregador();
   }, []);
+
+  useEffect(() => {
+    if (syncVersion > 0) {
+      recalcularItensDoCache();
+    }
+  }, [syncVersion]);
 
   const carregarNomeEntregador = async () => {
     try {
@@ -81,63 +132,84 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
     }
   };
 
-  const carregarItens = async () => {
+  const carregarItens = async (force = false) => {
     try {
-      setLoading(true);
-      
-      // Tentar carregar do cache primeiro
+      setLoading(itens.length === 0);
+      setError('');
+
       const cacheKey = `itens_escola_${escolaId}`;
-      const cachedData = await cacheService.get<ItemEntrega[]>(cacheKey);
-      
-      let data: ItemEntrega[];
-      
+      const cachedEntry = await cacheService.getEntry<ItemEntrega[]>(cacheKey);
+      const filtroSalvo = await AsyncStorage.getItem('filtro_qrcode');
+      const filtro = filtroSalvo ? JSON.parse(filtroSalvo) : null;
+
+      if (cachedEntry) {
+        const itensSelecionaveis = await montarItensSelecionaveis(cachedEntry.data, filtro);
+        setItens(itensSelecionaveis);
+        setLoading(false);
+      }
+
+      if (!shouldRefreshCache({ timestamp: cachedEntry?.timestamp, maxAgeMs: SCHOOL_ITEMS_REFRESH_MS, force })) {
+        return;
+      }
+
       try {
-        // Tentar buscar dados atualizados
-        data = await listarItensEscola(escolaId);
-        // Salvar no cache
-        await cacheService.set(cacheKey, data);
+        const data = await listarItensEscola(escolaId);
+        const itensSelecionaveis = await montarItensSelecionaveis(data, filtro);
+        const projections = await saveSchoolItemsSnapshot(escolaId, data, itensSelecionaveis);
+        await atualizarProjecaoDaRota(projections);
+        setItens(itensSelecionaveis);
       } catch (err) {
-        // Se falhar e tiver cache, usar cache
-        if (cachedData) {
-          console.log('Usando dados do cache (offline)');
-          data = cachedData;
-        } else {
+        if (!cachedEntry) {
           throw err;
         }
       }
-      
-      // Aplicar filtro de data se houver
-      const filtroSalvo = await AsyncStorage.getItem('filtro_qrcode');
-      let dadosFiltrados = data;
-      
-      if (filtroSalvo) {
-        const filtro = JSON.parse(filtroSalvo);
-        const dataInicio = new Date(filtro.dataInicio);
-        dataInicio.setHours(0, 0, 0, 0);
-        const dataFim = new Date(filtro.dataFim);
-        dataFim.setHours(23, 59, 59, 999);
-        
-        dadosFiltrados = data.filter(item => {
-          if (item.data_entrega) {
-            const dataEntrega = new Date(item.data_entrega);
-            return dataEntrega >= dataInicio && dataEntrega <= dataFim;
-          }
-          return true;
-        });
-      }
-      
-      setItens(dadosFiltrados.map(item => ({
-        ...item,
-        selecionado: false,
-        quantidade_a_entregar: item.saldo_pendente !== undefined && item.saldo_pendente > 0 
-          ? parseFloat(String(item.saldo_pendente)) 
-          : parseFloat(String(item.quantidade))
-      })));
     } catch (err) {
       setError(handleAxiosError(err));
     } finally {
       setLoading(false);
     }
+  };
+
+  const recalcularItensDoCache = async () => {
+    const cachedEntry = await cacheService.getEntry<ItemEntrega[]>(`itens_escola_${escolaId}`);
+    if (!cachedEntry) {
+      return;
+    }
+
+    const filtroSalvo = await AsyncStorage.getItem('filtro_qrcode');
+    const filtro = filtroSalvo ? JSON.parse(filtroSalvo) : null;
+    setItens(await montarItensSelecionaveis(cachedEntry.data, filtro));
+  };
+
+  const montarItensSelecionaveis = async (data: ItemEntrega[], filtro: any): Promise<ItemSelecionado[]> => {
+    const dadosFiltrados = aplicarFiltroItens(data, filtro);
+    const outboxOperations = await loadDeliveryOutboxOperations();
+    const dadosComOffline = mergeItemsWithOutbox(dadosFiltrados, outboxOperations, { escolaId });
+
+    return dadosComOffline.map(item => ({
+      ...item,
+      selecionado: false,
+      quantidade_a_entregar: item.saldo_pendente !== undefined && item.saldo_pendente > 0
+        ? parseFloat(String(item.saldo_pendente))
+        : parseFloat(String(item.quantidade))
+    }));
+  };
+
+  const atualizarProjecaoDaRota = async (projections: { id: number; entrega_confirmada?: boolean; saldo_pendente?: number; data_entrega?: string; latest_historico_entrega_date?: string; }[]) => {
+    if (!rotaId) {
+      return;
+    }
+
+    await upsertRouteSchoolProjectionSnapshot(
+      rotaId,
+      {
+        escola_id: escolaId,
+        escola_nome: escolaNome,
+        escola_endereco: undefined,
+        ordem: undefined,
+      },
+      projections,
+    );
   };
 
   const toggleItem = (itemId: number) => {
@@ -240,27 +312,36 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
       setSalvando(true);
       
       const selecionados = itens.filter(i => i.selecionado);
+      const deliveryBatchId = createDeliveryBatchId();
       const historicoIds: number[] = [];
       
       for (const item of selecionados) {
+        const clientOperationId = criarClientOperationId(item.id);
         const entregaData = {
           quantidade_entregue: item.quantidade_a_entregar,
           nome_quem_entregou: nomeEntregador.trim(),
           nome_quem_recebeu: nomeRecebedor.trim(),
-          observacao: observacao.trim() || undefined
+          observacao: observacao.trim() || undefined,
+          client_operation_id: clientOperationId
         };
 
         // Dados do comprovante para salvar offline
         const comprovanteData = {
           escola_id: escolaId,
+          escola_nome: escolaNome,
           nome_quem_entregou: nomeEntregador.trim(),
           nome_quem_recebeu: nomeRecebedor.trim(),
           observacao: observacao.trim() || undefined,
           produto_nome: item.produto_nome,
           quantidade_entregue: item.quantidade_a_entregar,
+          unidade: item.unidade,
+          lote: item.lote,
+          batch_id: deliveryBatchId,
         };
 
-        if (isOnline) {
+        if (clientOperationId) {
+          await addOperation(item.id, entregaData, comprovanteData);
+        } else if (isOnline) {
           // Online: tentar enviar diretamente
           try {
             const response = await confirmarEntregaItem(item.id, entregaData);
@@ -306,6 +387,10 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
       // Atualizar cache local com as entregas realizadas
       await atualizarCacheLocal(selecionados);
 
+      if (isOnline) {
+        syncPendingOperations();
+      }
+
       // Não mostrar Alert, apenas a animação de sucesso
       setEtapa('sucesso');
       
@@ -316,6 +401,42 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
       Alert.alert('Erro', `Erro ao finalizar entrega: ${handleAxiosError(err)}`);
       setSalvando(false);
     }
+  };
+
+  const cancelarEntrega = async (item: ItemEntrega, historicoId?: number) => {
+    if (!historicoId) {
+      Alert.alert('Atencao', 'Historico da entrega nao encontrado para cancelamento');
+      return;
+    }
+
+    if (!isOnline) {
+      Alert.alert('Sem conexao', 'O cancelamento precisa de conexao para estornar o estoque com seguranca.');
+      return;
+    }
+
+    Alert.alert(
+      'Cancelar entrega',
+      `Deseja cancelar a entrega de ${item.produto_nome}? O estoque sera estornado.`,
+      [
+        { text: 'Voltar', style: 'cancel' },
+        {
+          text: 'Cancelar entrega',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setSalvando(true);
+              await cancelarEntregaItem(historicoId, 'Cancelamento pelo aplicativo nativo');
+              await carregarItens();
+              setAbaAtiva('entregues');
+            } catch (err) {
+              Alert.alert('Erro', `Erro ao cancelar entrega: ${handleAxiosError(err)}`);
+            } finally {
+              setSalvando(false);
+            }
+          },
+        },
+      ],
+    );
   };
 
   const criarComprovante = async (itensEntregues: ItemSelecionado[], historicoIds: number[]) => {
@@ -421,8 +542,9 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
         return item;
       });
 
-      // Salvar cache atualizado
-      await cacheService.set(cacheKey, itensAtualizados);
+      // Salvar cache atualizado e a projeção reduzida usada pelas listas.
+      const projections = await saveSchoolItemsSnapshot(escolaId, itensAtualizados, itensAtualizados);
+      await atualizarProjecaoDaRota(projections);
       console.log('Cache local atualizado com sucesso');
     } catch (error) {
       console.error('Erro ao atualizar cache local:', error);
@@ -442,7 +564,7 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
     return (
       <View style={styles.center}>
         <Text style={styles.errorText}>❌ {error}</Text>
-        <Button mode="contained" onPress={carregarItens}>
+        <Button mode="contained" onPress={() => carregarItens(true)}>
           Tentar Novamente
         </Button>
       </View>
@@ -463,11 +585,9 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
           <Text variant="bodyMedium" style={styles.sucessoText}>
             {itensSelecionados.length} {itensSelecionados.length === 1 ? 'item confirmado' : 'itens confirmados'} com sucesso
           </Text>
-          {!isOnline && (
-            <Text variant="bodySmall" style={styles.sucessoOffline}>
-              📱 Entrega salva offline. Será sincronizada quando voltar online.
-            </Text>
-          )}
+          <Text variant="bodySmall" style={styles.sucessoOffline}>
+            Entrega salva neste aparelho. {isOnline ? 'Sincronizando em segundo plano.' : 'Sera sincronizada quando voltar online.'}
+          </Text>
         </View>
       </View>
     );
@@ -659,6 +779,18 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
                       <Text style={styles.lote}>🏷️ Lote: {item.lote}</Text>
                     )}
 
+                    {item.offline_status && (
+                      <Text
+                        style={[
+                          styles.offlineStatus,
+                          item.offline_status === 'failed_needs_action' && styles.offlineStatusError,
+                        ]}
+                      >
+                        {getOfflineStatusLabel(item.offline_status)}
+                        {item.offline_error ? ` ${item.offline_error}` : ''}
+                      </Text>
+                    )}
+
                     {/* Campo de quantidade quando selecionado */}
                     {abaAtiva === 'pendentes' && item.selecionado && (
                       <View style={styles.quantidadeInput} pointerEvents="box-none">
@@ -701,6 +833,16 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
                             <Text style={styles.historicoRecebedor}>
                               Recebido por: {h.nome_quem_recebeu}
                             </Text>
+                            <Button
+                              mode="outlined"
+                              compact
+                              disabled={salvando || !isOnline || h.id < 0 || !!item.offline_status}
+                              onPress={() => cancelarEntrega(item, h.id)}
+                              style={styles.cancelarEntregaButton}
+                              textColor="#dc2626"
+                            >
+                              Cancelar / estornar
+                            </Button>
                           </View>
                         ))}
                       </View>
@@ -823,6 +965,20 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 4,
   },
+  offlineStatus: {
+    fontSize: 12,
+    color: '#92400e',
+    backgroundColor: '#fef3c7',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    marginTop: 6,
+    alignSelf: 'flex-start',
+  },
+  offlineStatusError: {
+    color: '#991b1b',
+    backgroundColor: '#fee2e2',
+  },
   historico: {
     marginTop: 12,
     padding: 12,
@@ -852,6 +1008,11 @@ const styles = StyleSheet.create({
   historicoRecebedor: {
     fontSize: 12,
     color: '#666',
+  },
+  cancelarEntregaButton: {
+    alignSelf: 'flex-start',
+    marginTop: 6,
+    borderColor: '#fecaca',
   },
   empty: {
     alignItems: 'center',

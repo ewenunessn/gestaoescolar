@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from "react";
-import { Box } from "@mui/material";
+import { Box, Button } from "@mui/material";
+import { Print as PrintIcon } from "@mui/icons-material";
+import { useNavigate } from "react-router-dom";
 import { usePageTitle } from "../../../contexts/PageTitleContext";
 import { EscolasEntregaList } from "../components/EscolasEntregaList";
 import { ItensEntregaList } from "../components/ItensEntregaList";
 import { EscolaEntrega } from "../types";
 import PageContainer from "../../../components/PageContainer";
 import PageHeader from "../../../components/PageHeader";
+import { buildRomaneioUrlFromEntregaFilters } from "../utils/romaneioFilters";
 
 const Entregas: React.FC = () => {
   const { setPageTitle, setBackPath } = usePageTitle();
+  const navigate = useNavigate();
   const [escolaSelecionada, setEscolaSelecionada] = useState<EscolaEntrega | null>(null);
   const [filtros, setFiltros] = useState<{
     guiaId?: number;
@@ -65,6 +69,15 @@ const Entregas: React.FC = () => {
             { label: 'Dashboard', path: '/dashboard' },
             { label: 'Entregas' },
           ]}
+          action={
+            <Button
+              variant="contained"
+              startIcon={<PrintIcon />}
+              onClick={() => navigate(buildRomaneioUrlFromEntregaFilters(filtros))}
+            >
+              Romaneio
+            </Button>
+          }
         />
         
         {!escolaSelecionada ? (

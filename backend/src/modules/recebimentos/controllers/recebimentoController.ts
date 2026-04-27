@@ -3,6 +3,37 @@ import db from '../../../database';
 import estoqueLedgerService from '../../estoque/services/estoqueLedgerService';
 import { buildRecebimentoCentralEvent } from '../../estoque/services/estoqueIntegracaoService';
 
+function normalizarTexto(valor: unknown): string | null {
+  if (typeof valor !== 'string') return null;
+  const texto = valor.trim();
+  return texto.length > 0 ? texto : null;
+}
+
+function montarObservacaoRecebimento(input: {
+  observacoes?: unknown;
+  lote?: unknown;
+  dataFabricacao?: unknown;
+  dataValidade?: unknown;
+  notaFiscal?: unknown;
+}): string | null {
+  const partes: string[] = [];
+  const metadados: string[] = [];
+  const observacoes = normalizarTexto(input.observacoes);
+  const lote = normalizarTexto(input.lote);
+  const dataFabricacao = normalizarTexto(input.dataFabricacao);
+  const dataValidade = normalizarTexto(input.dataValidade);
+  const notaFiscal = normalizarTexto(input.notaFiscal);
+
+  if (observacoes) partes.push(observacoes);
+  if (lote) metadados.push(`Lote: ${lote}`);
+  if (dataFabricacao) metadados.push(`Fabricacao: ${dataFabricacao}`);
+  if (dataValidade) metadados.push(`Validade: ${dataValidade}`);
+  if (notaFiscal) metadados.push(`NF: ${notaFiscal}`);
+  if (metadados.length > 0) partes.push(metadados.join(' | '));
+
+  return partes.length > 0 ? partes.join('\n') : null;
+}
+
 // Listar pedidos pendentes e parciais (com itens agrupados por fornecedor)
 export async function listarPedidosPendentes(req: Request, res: Response) {
   try {
@@ -208,7 +239,16 @@ export async function registrarRecebimento(req: Request, res: Response) {
   try {
     await client.query('BEGIN');
 
-    const { pedidoId, pedidoItemId, quantidadeRecebida, observacoes } = req.body;
+    const {
+      pedidoId,
+      pedidoItemId,
+      quantidadeRecebida,
+      observacoes,
+      lote,
+      dataFabricacao,
+      dataValidade,
+      notaFiscal,
+    } = req.body;
     const usuarioId = req.user?.id;
     if (!usuarioId) return res.status(401).json({ success: false, message: 'Usuário não autenticado' });
 
@@ -243,6 +283,13 @@ export async function registrarRecebimento(req: Request, res: Response) {
 
     const item = itemResult.rows[0];
     const saldoPendente = parseFloat(item.quantidade) - parseFloat(item.ja_recebido);
+    const observacaoRecebimento = montarObservacaoRecebimento({
+      observacoes,
+      lote,
+      dataFabricacao,
+      dataValidade,
+      notaFiscal,
+    });
 
     // Validar se quantidade não excede o saldo
     if (parseFloat(quantidadeRecebida) > saldoPendente) {
@@ -261,7 +308,7 @@ export async function registrarRecebimento(req: Request, res: Response) {
       )
       VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
       RETURNING *
-    `, [pedidoId, pedidoItemId, quantidadeRecebida, observacoes, usuarioId]);
+    `, [pedidoId, pedidoItemId, quantidadeRecebida, observacaoRecebimento, usuarioId]);
 
     await estoqueLedgerService.appendEventWithClient(client, {
       ...buildRecebimentoCentralEvent({
@@ -269,7 +316,7 @@ export async function registrarRecebimento(req: Request, res: Response) {
         quantidade: Number(quantidadeRecebida),
         pedido_item_id: Number(pedidoItemId),
       }),
-      observacao: observacoes,
+      observacao: observacaoRecebimento,
       usuario_id: usuarioId,
       usuario_nome_snapshot: req.user?.nome,
     });
@@ -308,7 +355,7 @@ export async function registrarRecebimento(req: Request, res: Response) {
 
     res.json({
       success: true,
-      message: 'Recebimento registrado com sucesso',
+      message: 'Recebimento registrado e estoque central atualizado',
       data: {
         recebimento: recebimentoResult.rows[0],
         pedido_status: novoStatus
