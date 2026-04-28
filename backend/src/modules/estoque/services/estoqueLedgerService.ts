@@ -76,6 +76,7 @@ export interface RegisterTransferInput {
   escola_id: number;
   produto_id: number;
   quantidade: number;
+  permitirSaldoNegativoCentral?: boolean;
   motivo?: string;
   observacao?: string;
   referencia_tipo?: string;
@@ -114,6 +115,21 @@ export function validateStockDelta(input: {
   if (input.saldoAtual + input.quantidadeDelta < 0) {
     throw new Error("Saldo insuficiente para a movimentacao");
   }
+}
+
+export function validateTransferCentralBalance(input: {
+  saldoCentral: number;
+  quantidade: number;
+  permitirSaldoNegativoCentral?: boolean;
+}): void {
+  if (input.permitirSaldoNegativoCentral) {
+    return;
+  }
+
+  validateStockDelta({
+    saldoAtual: input.saldoCentral,
+    quantidadeDelta: Number(input.quantidade) * -1,
+  });
 }
 
 export function buildEstornoEvent(
@@ -474,9 +490,10 @@ class EstoqueLedgerService {
       "central",
       input.produto_id,
     );
-    validateStockDelta({
-      saldoAtual: saldoCentral,
-      quantidadeDelta: Number(input.quantidade) * -1,
+    validateTransferCentralBalance({
+      saldoCentral,
+      quantidade: Number(input.quantidade),
+      permitirSaldoNegativoCentral: input.permitirSaldoNegativoCentral,
     });
 
     const central_evento = await this.appendEventWithClient(client, {

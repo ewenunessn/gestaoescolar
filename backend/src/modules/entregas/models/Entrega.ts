@@ -558,6 +558,7 @@ class EntregaModel {
         escola_id: Number(item.escola_id),
         produto_id: Number(item.produto_id),
         quantidade: Number(dados.quantidade_entregue),
+        permitirSaldoNegativoCentral: true,
         motivo: dados.observacao || 'Entrega confirmada',
         observacao: dados.observacao || undefined,
         referencia_tipo: 'guia_produto_escola',

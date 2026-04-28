@@ -5,6 +5,7 @@ import {
   applyStockEvents,
   buildEstornoEvent,
   buildSchoolMovementEvent,
+  validateTransferCentralBalance,
   validateStockDelta,
 } from "./estoqueLedgerService";
 
@@ -23,6 +24,24 @@ describe("estoqueLedgerService", () => {
     assert.throws(() => validateStockDelta({ saldoAtual: 5, quantidadeDelta: -6 }), {
       message: "Saldo insuficiente para a movimentacao",
     });
+  });
+
+  it("allows delivery transfers to leave central stock negative only when explicitly enabled", () => {
+    assert.throws(
+      () => validateTransferCentralBalance({
+        saldoCentral: 0,
+        quantidade: 2,
+      }),
+      { message: "Saldo insuficiente para a movimentacao" },
+    );
+
+    assert.doesNotThrow(() =>
+      validateTransferCentralBalance({
+        saldoCentral: 0,
+        quantidade: 2,
+        permitirSaldoNegativoCentral: true,
+      }),
+    );
   });
 
   it("creates an explicit estorno event instead of deleting history", () => {
