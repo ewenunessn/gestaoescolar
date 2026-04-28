@@ -150,3 +150,6 @@ release/
 *.sln
 *.sw?
 .vercel
+
+# Local git worktrees
+.worktrees/
