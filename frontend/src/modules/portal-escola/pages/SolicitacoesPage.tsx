@@ -335,11 +335,30 @@ export default function SolicitacoesPage() {
           />
 
           {/* Formulário para adicionar item */}
-          <Paper sx={{ p: 2, mb: 3, bgcolor: 'grey.50' }}>
+          <Paper
+            variant="outlined"
+            sx={{
+              p: 2,
+              mb: 3,
+              bgcolor: 'background.default',
+              borderColor: 'divider',
+              color: 'text.primary',
+            }}
+          >
             <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600 }}>
               Adicionar Item
             </Typography>
-            <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: {
+                  xs: '1fr 1fr',
+                  sm: 'minmax(0, 1fr) 120px 100px 120px',
+                },
+                gap: 2,
+                alignItems: 'flex-start',
+              }}
+            >
               <Autocomplete
                 options={produtos}
                 getOptionLabel={(p) => p.nome}
@@ -351,7 +370,7 @@ export default function SolicitacoesPage() {
                   }
                 }}
                 renderInput={(params) => <TextField {...params} label="Produto" size="small" />}
-                sx={{ flex: 2 }}
+                sx={{ gridColumn: { xs: '1 / -1', sm: 'auto' }, minWidth: 0 }}
               />
               <TextField
                 label="Quantidade"
@@ -373,7 +392,7 @@ export default function SolicitacoesPage() {
                 variant="contained"
                 startIcon={<AddIcon />}
                 onClick={handleAdicionarItem}
-                sx={{ minWidth: 120 }}
+                sx={{ gridColumn: { xs: '1 / -1', sm: 'auto' }, minWidth: 120 }}
               >
                 Adicionar
               </Button>
@@ -506,7 +525,17 @@ export default function SolicitacoesPage() {
               </TableContainer>
 
               {solicitacaoSelecionada.respondido_por_nome && (
-                <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                <Box
+                  sx={{
+                    mt: 2,
+                    p: 2,
+                    bgcolor: 'background.default',
+                    border: 1,
+                    borderColor: 'divider',
+                    borderRadius: 1,
+                    color: 'text.primary',
+                  }}
+                >
                   <strong>Respondido por:</strong> {solicitacaoSelecionada.respondido_por_nome}
                   {solicitacaoSelecionada.respondido_em && (
                     <> em {formatarData(solicitacaoSelecionada.respondido_em)}</>

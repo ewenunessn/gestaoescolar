@@ -21,6 +21,7 @@ import {
   LinearProgress
 } from "@mui/material";
 import {
+  ArrowBack as ArrowBackIcon,
   LocalShipping as DeliveryIcon,
   CheckCircle as CheckIcon,
   Cancel as CancelIcon,
@@ -632,6 +633,17 @@ export const ItensEntregaList: React.FC<ItensEntregaListProps> = ({ escola, onVo
   // Tela principal de seleção
   return (
     <Box>
+
+      <Box sx={{ display: 'flex', justifyContent: 'flex-start', mb: 2 }}>
+        <Button
+          variant="outlined"
+          startIcon={<ArrowBackIcon />}
+          onClick={onVoltar}
+          size="small"
+        >
+          Voltar para escolas
+        </Button>
+      </Box>
 
       <Stepper activeStep={0} sx={{ mb: 3 }}>
         <Step>

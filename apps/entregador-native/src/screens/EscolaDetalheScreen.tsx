@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, FlatList, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text, Card, ActivityIndicator, Button, Checkbox, TextInput } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { listarItensEscola, ItemEntrega, confirmarEntregaItem, cancelarEntregaItem } from '../api/rotas';
+import { listarItensEscola, ItemEntrega, confirmarEntregaItem } from '../api/rotas';
 import { handleAxiosError, API_URL } from '../api/client';
 import OfflineIndicator from '../components/OfflineIndicator';
 import { useOffline } from '../contexts/OfflineContext';
@@ -403,42 +403,6 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
     }
   };
 
-  const cancelarEntrega = async (item: ItemEntrega, historicoId?: number) => {
-    if (!historicoId) {
-      Alert.alert('Atencao', 'Historico da entrega nao encontrado para cancelamento');
-      return;
-    }
-
-    if (!isOnline) {
-      Alert.alert('Sem conexao', 'O cancelamento precisa de conexao para estornar o estoque com seguranca.');
-      return;
-    }
-
-    Alert.alert(
-      'Cancelar entrega',
-      `Deseja cancelar a entrega de ${item.produto_nome}? O estoque sera estornado.`,
-      [
-        { text: 'Voltar', style: 'cancel' },
-        {
-          text: 'Cancelar entrega',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setSalvando(true);
-              await cancelarEntregaItem(historicoId, 'Cancelamento pelo aplicativo nativo');
-              await carregarItens();
-              setAbaAtiva('entregues');
-            } catch (err) {
-              Alert.alert('Erro', `Erro ao cancelar entrega: ${handleAxiosError(err)}`);
-            } finally {
-              setSalvando(false);
-            }
-          },
-        },
-      ],
-    );
-  };
-
   const criarComprovante = async (itensEntregues: ItemSelecionado[], historicoIds: number[]) => {
     try {
       console.log('🔧 Iniciando criação de comprovante...');
@@ -583,10 +547,7 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
             Entrega Confirmada!
           </Text>
           <Text variant="bodyMedium" style={styles.sucessoText}>
-            {itensSelecionados.length} {itensSelecionados.length === 1 ? 'item confirmado' : 'itens confirmados'} com sucesso
-          </Text>
-          <Text variant="bodySmall" style={styles.sucessoOffline}>
-            Entrega salva neste aparelho. {isOnline ? 'Sincronizando em segundo plano.' : 'Sera sincronizada quando voltar online.'}
+            Entrega confirmada com sucesso.
           </Text>
         </View>
       </View>
@@ -833,16 +794,6 @@ export default function EscolaDetalheScreen({ route, navigation }: any) {
                             <Text style={styles.historicoRecebedor}>
                               Recebido por: {h.nome_quem_recebeu}
                             </Text>
-                            <Button
-                              mode="outlined"
-                              compact
-                              disabled={salvando || !isOnline || h.id < 0 || !!item.offline_status}
-                              onPress={() => cancelarEntrega(item, h.id)}
-                              style={styles.cancelarEntregaButton}
-                              textColor="#dc2626"
-                            >
-                              Cancelar / estornar
-                            </Button>
                           </View>
                         ))}
                       </View>
@@ -1009,11 +960,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
   },
-  cancelarEntregaButton: {
-    alignSelf: 'flex-start',
-    marginTop: 6,
-    borderColor: '#fecaca',
-  },
   empty: {
     alignItems: 'center',
     padding: 40,
@@ -1078,12 +1024,6 @@ const styles = StyleSheet.create({
   sucessoText: {
     color: '#666',
     textAlign: 'center',
-  },
-  sucessoOffline: {
-    color: '#f59e0b',
-    textAlign: 'center',
-    marginTop: 12,
-    fontStyle: 'italic',
   },
   revisaoCard: {
     margin: 12,

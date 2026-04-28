@@ -87,8 +87,12 @@ export function normalizeOutboxOperations(rawOperations: unknown[]): DeliveryOut
     .filter((operation): operation is Record<string, any> => !!operation && typeof operation === 'object')
     .map((operation) => {
       const legacyStatus = operation.status as LegacyDeliveryOutboxStatus | undefined;
-      const status: DeliveryOutboxStatus =
+      let status: DeliveryOutboxStatus =
         legacyStatus === 'failed' ? 'failed_retryable' : legacyStatus || 'pending';
+      const lastError = operation.lastError ? String(operation.lastError) : undefined;
+      if (status === 'failed_needs_action' && isRecoverableStockBalanceError(lastError)) {
+        status = 'failed_retryable';
+      }
       const clientOperationId =
         operation.data?.client_operation_id ||
         operation.id ||
@@ -106,7 +110,7 @@ export function normalizeOutboxOperations(rawOperations: unknown[]): DeliveryOut
         status,
         attemptCount: Number(operation.attemptCount || 0),
         lastAttemptAt: operation.lastAttemptAt ? Number(operation.lastAttemptAt) : undefined,
-        lastError: operation.lastError ? String(operation.lastError) : undefined,
+        lastError,
         historicoId: operation.historicoId ? Number(operation.historicoId) : undefined,
         comprovanteData: operation.comprovanteData,
       };
@@ -253,6 +257,14 @@ export function classifySyncError(error: any): SyncErrorClassification {
     'Falha ao sincronizar entrega.';
 
   if (!httpStatus || httpStatus === 408 || httpStatus === 429 || httpStatus >= 500) {
+    return {
+      status: 'failed_retryable',
+      message: String(message),
+      httpStatus,
+    };
+  }
+
+  if (isRecoverableStockBalanceError(message)) {
     return {
       status: 'failed_retryable',
       message: String(message),
@@ -417,4 +429,21 @@ function chooseWorstStatus(statuses: DeliveryOutboxStatus[]): DeliveryOutboxStat
   if (statuses.includes('pending')) return 'pending';
   if (statuses.includes('comprovante_pending')) return 'comprovante_pending';
   return 'synced';
+}
+
+function isRecoverableStockBalanceError(message?: unknown): boolean {
+  if (typeof message !== 'string') {
+    return false;
+  }
+
+  const normalized = message
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  return (
+    normalized.includes('saldo insuficiente') &&
+    !normalized.includes('saldo escolar') &&
+    !normalized.includes('estornar')
+  );
 }

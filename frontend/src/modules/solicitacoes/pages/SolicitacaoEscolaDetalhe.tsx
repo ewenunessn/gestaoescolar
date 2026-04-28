@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import {
-  Box, CircularProgress, Typography, Paper, Table, TableHead,
-  TableRow, TableCell, TableBody, Chip, IconButton, Tooltip, Button,
+  Box, CircularProgress, Typography, Paper, Chip, IconButton, Tooltip, Button,
   Collapse, TextField, Dialog, DialogTitle, DialogContent, DialogActions,
   Alert, Divider,
 } from "@mui/material";
@@ -25,6 +24,14 @@ import {
   listarTodasSolicitacoes, analisarItem, aprovarItemEmergencial, recusarItem,
   Solicitacao, SolicitacaoItem, AnaliseSolicitacaoItem,
 } from "../../../services/solicitacoesAlimentos";
+import {
+  formatDateBR,
+  formatQty,
+  getItemDecisionText,
+  getSolicitacaoDefaultExpanded,
+  summarizeSolicitacaoItems,
+  toDateInputValue,
+} from "./SolicitacaoEscolaDetalhe.helpers";
 
 const STATUS_SOL: Record<string, { label: string; color: 'warning' | 'info' | 'success' | 'error' | 'default' }> = {
   pendente:  { label: 'Pendente',  color: 'warning' },
@@ -33,33 +40,12 @@ const STATUS_SOL: Record<string, { label: string; color: 'warning' | 'info' | 's
   cancelada: { label: 'Cancelada', color: 'error'   },
 };
 
-const STATUS_ITEM: Record<string, { label: string; color: 'warning' | 'success' | 'error' }> = {
+const STATUS_ITEM: Record<string, { label: string; color: 'warning' | 'success' | 'error' | 'default' }> = {
   pendente: { label: 'Pendente', color: 'warning' },
   aceito:   { label: 'Aceito',   color: 'success' },
   contemplado: { label: 'Contemplado', color: 'success' },
   recusado: { label: 'Recusado', color: 'error'   },
 };
-
-function formatQty(value: number | undefined, unidade?: string) {
-  return Number(value ?? 0).toLocaleString('pt-BR') + (unidade ? ' ' + unidade : '');
-}
-
-function parseDateOnly(value?: string | null): Date | null {
-  if (!value) return null;
-  const normalized = String(value).slice(0, 10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) return null;
-  const date = new Date(`${normalized}T12:00:00`);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function formatDateBR(value?: string | null): string {
-  const date = parseDateOnly(value);
-  return date ? date.toLocaleDateString('pt-BR') : '';
-}
-
-function toDateInputValue(value?: string | null): string {
-  return parseDateOnly(value) ? String(value).slice(0, 10) : '';
-}
 
 function SolicitacaoCard({
   sol,
@@ -70,79 +56,116 @@ function SolicitacaoCard({
   onAnalisar: (itemId: number) => void;
   onAbrirRecusa: (itemId: number) => void;
 }) {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(() => getSolicitacaoDefaultExpanded(sol.status));
   const s = STATUS_SOL[sol.status] ?? { label: sol.status, color: 'default' as const };
+  const itemSummary = summarizeSolicitacaoItems(sol.itens);
+  const pendingCount = sol.itens.filter((item) => item.status === 'pendente').length;
 
   return (
-    <Paper variant="outlined" sx={{ mb: 2, borderRadius: 1, overflow: 'hidden' }}>
+    <Paper
+      variant="outlined"
+      sx={{
+        mb: 1.25,
+        borderRadius: 1,
+        overflow: 'hidden',
+        bgcolor: 'background.paper',
+      }}
+    >
       <Box
-        sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1.5, cursor: 'pointer', bgcolor: 'action.hover' }}
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: 'auto minmax(0, 1fr) auto',
+          alignItems: 'center',
+          gap: 1.25,
+          px: 2,
+          py: 1.35,
+          cursor: 'pointer',
+          bgcolor: 'action.hover',
+        }}
         onClick={() => setExpanded(e => !e)}
       >
         <IconButton size="small" onClick={e => { e.stopPropagation(); setExpanded(v => !v); }}>
           {expanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
         </IconButton>
-        <Typography variant="body2" sx={{ fontWeight: 500, flex: 1 }}>
-          {new Date(sol.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
-          {sol.observacao && <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>- {sol.observacao}</Typography>}
-        </Typography>
-        <Chip label={s.label} color={s.color} size="small" sx={{ mr: 1 }} />
+        <Box sx={{ minWidth: 0 }}>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Typography variant="body2" sx={{ fontWeight: 700 }}>
+              {new Date(sol.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {sol.itens.length} {sol.itens.length === 1 ? 'item' : 'itens'}
+              {pendingCount > 0 ? `, ${pendingCount} pendente${pendingCount > 1 ? 's' : ''}` : ''}
+            </Typography>
+          </Box>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+          >
+            {itemSummary}{sol.observacao ? ` - ${sol.observacao}` : ''}
+          </Typography>
+        </Box>
+        <Chip label={s.label} color={s.color} size="small" />
       </Box>
 
       <Collapse in={expanded} unmountOnExit>
-        <Table size="small">
-          <TableHead>
-            <TableRow sx={{ bgcolor: 'action.hover' }}>
-              <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>Produto</TableCell>
-              <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', width: 130 }}>Solicitado</TableCell>
-              <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', width: 110 }}>Status</TableCell>
-              <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>Decisao</TableCell>
-              <TableCell sx={{ width: 170 }} />
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {sol.itens.map((item: SolicitacaoItem) => {
-              const si = STATUS_ITEM[item.status] ?? { label: item.status, color: 'default' as const };
-              return (
-                <TableRow key={item.id}>
-                  <TableCell sx={{ fontSize: '0.82rem', fontWeight: 500 }}>{item.nome_produto}</TableCell>
-                  <TableCell sx={{ fontSize: '0.82rem' }}>{formatQty(item.quantidade, item.unidade)}</TableCell>
-                  <TableCell>
-                    <Chip label={si.label} color={si.color as any} size="small" sx={{ fontSize: '0.7rem' }} />
-                  </TableCell>
-                  <TableCell sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
-                    {item.status === 'aceito' && item.atendimento_tipo === 'emergencial'
-                      ? 'Guia emergencial - ' + formatQty(item.quantidade_aprovada, item.unidade) + (formatDateBR(item.data_entrega_prevista) ? ' em ' + formatDateBR(item.data_entrega_prevista) : '')
-                      : item.status === 'contemplado'
-                        ? 'Atendido por guia existente'
-                        : item.justificativa_recusa || item.observacao_aprovacao || '-'}
-                  </TableCell>
-                  <TableCell align="right">
-                    {item.status === 'pendente' && (
-                      <Box sx={{ display: 'flex', gap: 0.75, justifyContent: 'flex-end' }}>
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          color="primary"
-                          startIcon={<CheckCircleIcon sx={{ fontSize: 16 }} />}
-                          onClick={() => onAnalisar(item.id)}
-                          sx={{ textTransform: 'none', fontSize: '0.75rem', py: 0.35 }}
-                        >
-                          Analisar
-                        </Button>
-                        <Tooltip title="Recusar">
-                          <IconButton size="small" color="error" onClick={() => onAbrirRecusa(item.id)}>
-                            <CancelIcon sx={{ fontSize: 16 }} />
-                          </IconButton>
-                        </Tooltip>
-                      </Box>
-                    )}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+        <Box sx={{ px: 2, py: 1 }}>
+          {sol.itens.map((item: SolicitacaoItem) => {
+            const si = STATUS_ITEM[item.status] ?? { label: item.status, color: 'default' as const };
+            return (
+              <Box
+                key={item.id}
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', md: 'minmax(180px, 1fr) 130px 120px minmax(220px, 1.4fr) auto' },
+                  gap: { xs: 0.75, md: 1.5 },
+                  alignItems: 'center',
+                  py: 1.1,
+                  borderTop: '1px solid',
+                  borderColor: 'divider',
+                  '&:first-of-type': { borderTop: 0 },
+                }}
+              >
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.25 }}>
+                    {item.nome_produto}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: { xs: 'block', md: 'none' } }}>
+                    Solicitado: {formatQty(item.quantidade, item.unidade)}
+                  </Typography>
+                </Box>
+                <Typography variant="body2" sx={{ display: { xs: 'none', md: 'block' } }}>
+                  {formatQty(item.quantidade, item.unidade)}
+                </Typography>
+                <Box>
+                  <Chip label={si.label} color={si.color} size="small" sx={{ fontSize: '0.7rem' }} />
+                </Box>
+                <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.78rem' }}>
+                  {getItemDecisionText(item)}
+                </Typography>
+                {item.status === 'pendente' && (
+                  <Box sx={{ display: 'flex', gap: 0.75, justifyContent: { xs: 'flex-start', md: 'flex-end' } }}>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color="primary"
+                      startIcon={<CheckCircleIcon sx={{ fontSize: 16 }} />}
+                      onClick={() => onAnalisar(item.id)}
+                      sx={{ textTransform: 'none', fontSize: '0.75rem', py: 0.35 }}
+                    >
+                      Analisar
+                    </Button>
+                    <Tooltip title="Recusar">
+                      <IconButton size="small" color="error" onClick={() => onAbrirRecusa(item.id)}>
+                        <CancelIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                )}
+              </Box>
+            );
+          })}
+        </Box>
       </Collapse>
     </Paper>
   );
@@ -168,14 +191,16 @@ export default function SolicitacaoEscolaDetalhe() {
   const [quantidadeAprovada, setQuantidadeAprovada] = useState('');
   const [dataEntregaPrevista, setDataEntregaPrevista] = useState('');
   const [observacaoAprovacao, setObservacaoAprovacao] = useState('');
+  const escolaIdNumber = Number(escolaId);
 
   const { data: todas = [], isLoading } = useQuery({
-    queryKey: ['solicitacoes-alimentos'],
-    queryFn: () => listarTodasSolicitacoes(),
+    queryKey: ['solicitacoes-alimentos', 'escola', escolaIdNumber],
+    queryFn: () => listarTodasSolicitacoes({ escola_id: escolaIdNumber }),
+    enabled: Number.isFinite(escolaIdNumber),
     onError: () => toast.error('Erro ao carregar solicitacoes'),
   } as any);
 
-  const solicitacoes = (todas as Solicitacao[]).filter(s => s.escola_id === Number(escolaId));
+  const solicitacoes = todas as Solicitacao[];
   const escolaNome = solicitacoes[0]?.escola_nome ?? `Escola ${escolaId}`;
 
   const pendentes = solicitacoes.filter(s => s.status === 'pendente' || s.status === 'parcial')
